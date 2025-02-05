@@ -1,0 +1,15 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+calpol_sixplus:
+  name: CALPOL® SixPlusTM Oral Suspension
+  description: >-
+    Paracetamol oral suspension formulated with over twice the strength of infant paracetamol
+    to provide effective, soothing relief from pain and fever in children aged 6 and over.
+    Starts to work on fever in just 15 minutes without being harsh on the tummy.
+  standard_dosage: See recommended dosages by age
+  warnings: >-
+    - Leave at least 4 hours between doses.
+    - Contains paracetamol – do not use more than one product containing paracetamol at the same time.
+    - Do not give more than 4 doses in any 24 hour period.
+    - Do not give this medicine to your child for more than 3 days without speaking to your doctor or pharmacist.
+    - Shake bottle for at least 10 seconds before use.

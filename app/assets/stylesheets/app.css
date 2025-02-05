@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom styles for icons */
+.icon-xs {
+  @apply h-3 w-3;
+}
+
+.icon-sm {
+  @apply h-4 w-4;
+}
+
+.icon-md {
+  @apply h-5 w-5;
+}
+
+.icon-lg {
+  @apply h-6 w-6;
+}
+
+/* Navigation styles */
+.nav-container {
+  @apply bg-orange-500;
+}
+
+.nav-link {
+  @apply text-white hover:bg-orange-600 px-3 py-2 rounded-md text-sm;
+}
+
+.nav-button {
+  @apply text-white p-2 hover:bg-orange-600 rounded-md;
+}
+
+/* Card styles */
+.stat-card {
+  @apply bg-white overflow-hidden shadow rounded-lg;
+}
+
+.stat-icon-container {
+  @apply flex-shrink-0 rounded-md p-2;
+}
+
+.stat-icon {
+  @apply icon-sm text-white;
+}
+
+/* Button styles */
+.action-button {
+  @apply inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2;
+}
+
+.action-button--primary {
+  @apply bg-blue-600 hover:bg-blue-700 focus:ring-blue-500;
+}
+
+.action-button--success {
+  @apply bg-green-600 hover:bg-green-700 focus:ring-green-500;
+}
+
+/* Status icons */
+.status-icon {
+  @apply icon-xs;
+}
+
+.status-icon--success {
+  @apply text-green-500;
+}

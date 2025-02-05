@@ -1,0 +1,47 @@
+/* Icon base styles */
+.icon {
+  @apply inline-block;
+}
+
+/* Icon sizes */
+.icon-xs {
+  @apply h-3 w-3;
+}
+
+.icon-sm {
+  @apply h-4 w-4;
+}
+
+.icon-md {
+  @apply h-5 w-5;
+}
+
+.icon-lg {
+  @apply h-6 w-6;
+}
+
+/* Icon containers */
+.icon-container {
+  @apply flex-shrink-0 rounded-md p-1.5 flex items-center justify-center;
+}
+
+.icon-container--primary {
+  @apply bg-blue-500;
+}
+
+.icon-container--success {
+  @apply bg-green-500;
+}
+
+/* Icon colors */
+.icon--light {
+  @apply text-white;
+}
+
+.icon--muted {
+  @apply text-gray-400;
+}
+
+.icon--success {
+  @apply text-green-500;
+}

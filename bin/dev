@@ -1,0 +1,11 @@
+#!/usr/bin/env ruby
+require "fileutils"
+
+# Ensure the builds directory exists
+FileUtils.mkdir_p "app/assets/builds"
+
+# Precompile assets
+system "bin/rails assets:precompile"
+
+# Start the Rails server
+exec "bin/rails", "server", *ARGV

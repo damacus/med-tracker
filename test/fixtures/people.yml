@@ -1,0 +1,21 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+child_seven:
+  name: Alice
+  date_of_birth: 2018-02-04 # 7 years old
+
+child_nine:
+  name: Bob
+  date_of_birth: 2016-02-04 # 9 years old
+
+child_eleven:
+  name: Charlie
+  date_of_birth: 2014-02-04 # 11 years old
+
+child_fourteen:
+  name: David
+  date_of_birth: 2011-02-04 # 14 years old
+
+adult:
+  name: Eve
+  date_of_birth: 1990-02-04 # Adult

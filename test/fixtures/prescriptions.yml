@@ -1,0 +1,33 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+alice_calpol:
+  person: child_seven
+  medicine: calpol_sixplus
+  dosage: 5ml
+  frequency: Up to 4 times in 24 hours
+  start_date: 2025-02-04
+  notes: For fever and pain relief
+
+bob_calpol:
+  person: child_nine
+  medicine: calpol_sixplus
+  dosage: 7.5ml
+  frequency: Up to 4 times in 24 hours
+  start_date: 2025-02-04
+  notes: For headache
+
+charlie_calpol:
+  person: child_eleven
+  medicine: calpol_sixplus
+  dosage: 10ml
+  frequency: Up to 4 times in 24 hours
+  start_date: 2025-02-04
+  notes: For general pain relief
+
+david_calpol:
+  person: child_fourteen
+  medicine: calpol_sixplus
+  dosage: 15ml
+  frequency: Up to 4 times in 24 hours
+  start_date: 2025-02-04
+  notes: For fever

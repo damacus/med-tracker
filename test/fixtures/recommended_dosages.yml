@@ -1,0 +1,36 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+calpol_6_8:
+  medicine: calpol_sixplus
+  min_age: 6
+  max_age: 8
+  amount_ml: 5.0
+  frequency_per_day: 4
+
+calpol_8_10:
+  medicine: calpol_sixplus
+  min_age: 8
+  max_age: 10
+  amount_ml: 7.5
+  frequency_per_day: 4
+
+calpol_10_12:
+  medicine: calpol_sixplus
+  min_age: 10
+  max_age: 12
+  amount_ml: 10.0
+  frequency_per_day: 4
+
+calpol_12_16:
+  medicine: calpol_sixplus
+  min_age: 12
+  max_age: 16
+  amount_ml: 15.0 # Using max of range 10-15ml
+  frequency_per_day: 4
+
+calpol_16_plus:
+  medicine: calpol_sixplus
+  min_age: 16
+  max_age: 999 # Using a high number for adults
+  amount_ml: 20.0 # Using max of range 10-20ml
+  frequency_per_day: 4
