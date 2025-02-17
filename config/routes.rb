@@ -1,8 +1,8 @@
 Rails.application.routes.draw do
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 
-  # Set the root page to the dashboard
-  root "dashboard#index"
+  # Set the root page to home
+  root "home#index"
 
   # Dashboard
   get "dashboard", to: "dashboard#index"
@@ -21,7 +21,7 @@ Rails.application.routes.draw do
     resources :take_medicines, only: [ :create ]
   end
 
-  resources :people do
+  resources :people, except: [ :edit ] do
     resources :prescriptions, except: [ :index ] do
       member do
         post :take_medicine

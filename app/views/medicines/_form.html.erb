@@ -1,6 +1,6 @@
 <%= form_with(model: medicine, class: "max-w-lg mx-auto") do |f| %>
   <% if medicine.errors.any? %>
-    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+    <div>
       <h2><%= pluralize(medicine.errors.count, "error") %> prohibited this medicine from being saved:</h2>
       <ul>
         <% medicine.errors.full_messages.each do |message| %>
@@ -10,27 +10,27 @@
     </div>
   <% end %>
 
-  <div class="mb-4">
+  <div>
     <%= f.label :name, class: "block text-gray-700 text-sm font-bold mb-2" %>
     <%= f.text_field :name, class: "shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" %>
   </div>
 
-  <div class="mb-4">
+  <div>
     <%= f.label :description, class: "block text-gray-700 text-sm font-bold mb-2" %>
     <%= f.text_area :description, rows: 3, class: "shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" %>
   </div>
 
-  <div class="mb-4">
+  <div>
     <%= f.label :standard_dosage, class: "block text-gray-700 text-sm font-bold mb-2" %>
     <%= f.text_field :standard_dosage, class: "shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" %>
   </div>
 
-  <div class="mb-6">
+  <div>
     <%= f.label :warnings, class: "block text-gray-700 text-sm font-bold mb-2" %>
     <%= f.text_area :warnings, rows: 3, class: "shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" %>
   </div>
 
-  <div class="flex items-center justify-between">
+  <div>
     <%= f.submit class: "bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" %>
     <%= link_to "Back", medicines_path, class: "text-blue-500 hover:text-blue-800" %>
   </div>

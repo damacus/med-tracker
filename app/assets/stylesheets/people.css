@@ -1,0 +1,82 @@
+/* People page styles */
+.people {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.people__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.people__title {
+  font-size: 2rem;
+  color: #111827;
+  margin: 0;
+}
+
+.people__list {
+  display: grid;
+  gap: 1rem;
+}
+
+.people__item {
+  background-color: var(--color-card);
+  padding: var(--spacing-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+}
+
+.people__name {
+  font-size: 1.25rem;
+  color: #111827;
+  margin-bottom: 0.5rem;
+}
+
+.people__age {
+  color: #4b5563;
+  margin-bottom: 1rem;
+}
+
+.people__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  margin-top: var(--spacing-4);
+}
+
+.people__action-row {
+  display: flex;
+  gap: var(--spacing-2);
+}
+
+.people__action-row .button,
+.people__action-row form {
+  flex: 1;
+}
+
+.people__action-row .button {
+  width: 100%;
+  justify-content: center;
+}
+
+.people__action-row form {
+  margin: 0;
+  flex: 1;
+}
+
+.people__action-row:first-child .button {
+  width: 100%;
+}
+
+.people__link {
+  text-decoration: none;
+  padding: 0.5rem 1rem;
+  border-radius: 0.25rem;
+  font-weight: 500;
+}
+
+

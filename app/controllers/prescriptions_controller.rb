@@ -5,16 +5,32 @@ class PrescriptionsController < ApplicationController
   def new
     @prescription = @person.prescriptions.build
     @medicines = Medicine.all
+
+    respond_to do |format|
+      format.html
+      format.turbo_stream { render "prescriptions/inline_form" }
+    end
   end
 
   def create
     @prescription = @person.prescriptions.build(prescription_params)
 
     if @prescription.save
-      redirect_to person_path(@person), notice: "Prescription was successfully created."
+      respond_to do |format|
+        format.html { redirect_to person_path(@person), notice: "Prescription was successfully created." }
+        format.turbo_stream { 
+          render turbo_stream: [
+            turbo_stream.append("prescriptions", partial: "prescriptions/prescription", locals: { prescription: @prescription, person: @person }),
+            turbo_stream.remove("new_prescription")
+          ]
+        }
+      end
     else
       @medicines = Medicine.all
-      render :new, status: :unprocessable_entity
+      respond_to do |format|
+        format.html { render :new, status: :unprocessable_entity }
+        format.turbo_stream { render :inline_form, status: :unprocessable_entity }
+      end
     end
   end
 
@@ -39,7 +55,7 @@ class PrescriptionsController < ApplicationController
   def take_medicine
     # Extract the amount from the prescription's dosage if not provided
     amount = params[:amount_ml] || @prescription.dosage.to_f
-    
+
     @take = @prescription.take_medicines.create!(
       taken_at: Time.current,
       amount_ml: amount

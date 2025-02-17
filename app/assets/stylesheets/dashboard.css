@@ -1,0 +1,175 @@
+/* Dashboard styles */
+.dashboard {
+  padding: var(--spacing-4);
+}
+
+.dashboard__section {
+  margin-bottom: var(--spacing-8);
+}
+
+.dashboard__section-title {
+  font-size: var(--font-size-xl);
+  color: var(--color-text-bright);
+  margin-bottom: var(--spacing-4);
+  font-weight: 600;
+}
+
+/* Quick Stats */
+.quick-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-8);
+}
+
+.stat-card {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-4);
+  text-align: center;
+}
+
+.stat-card__number {
+  font-size: var(--font-size-3xl);
+  font-weight: bold;
+  color: var(--color-primary);
+  margin-bottom: var(--spacing-2);
+}
+
+.stat-card__label {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+/* Quick Actions */
+.quick-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-8);
+}
+
+.quick-action__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-4);
+  font-size: var(--font-size-base);
+  font-weight: 500;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-card);
+  color: var(--color-text-bright);
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.quick-action__button:hover {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+/* Schedule Section */
+.schedule-section {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-4);
+}
+
+.schedule-content {
+  display: grid;
+  gap: var(--spacing-6);
+}
+
+.schedule-person {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.schedule-person__header {
+  background-color: var(--color-input);
+  padding: var(--spacing-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.schedule-person__name {
+  color: var(--color-text-bright);
+  font-size: var(--font-size-lg);
+  margin-bottom: var(--spacing-1);
+}
+
+.schedule-person__age {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.schedule-prescriptions {
+  padding: var(--spacing-4);
+  display: grid;
+  gap: var(--spacing-4);
+}
+
+.prescription-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-input);
+}
+
+.prescription-card__content {
+  padding: var(--spacing-4);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--spacing-4);
+}
+
+.prescription-card__info {
+  flex: 1;
+}
+
+.prescription-card__medicine {
+  color: var(--color-primary);
+  font-size: var(--font-size-lg);
+  margin-bottom: var(--spacing-2);
+}
+
+.prescription-card__detail {
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  margin-bottom: var(--spacing-1);
+}
+
+.prescription-card__takes {
+  margin-top: var(--spacing-4);
+  padding-top: var(--spacing-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.prescription-card__takes-title {
+  color: var(--color-text-bright);
+  font-size: var(--font-size-sm);
+  margin-bottom: var(--spacing-2);
+}
+
+.prescription-card__takes-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.prescription-card__take {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  color: var(--color-success-text);
+  font-size: var(--font-size-sm);
+  margin-bottom: var(--spacing-1);
+}
+
+.prescription-card__actions {
+  flex-shrink: 0;
+}

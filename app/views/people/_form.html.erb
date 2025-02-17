@@ -1,6 +1,6 @@
-<%= form_with(model: person, class: "max-w-lg mx-auto") do |f| %>
+<%= form_with(model: person, class: "form") do |f| %>
   <% if person.errors.any? %>
-    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+    <div class="form__errors">
       <h2><%= pluralize(person.errors.count, "error") %> prohibited this person from being saved:</h2>
       <ul>
         <% person.errors.full_messages.each do |message| %>
@@ -10,18 +10,27 @@
     </div>
   <% end %>
 
-  <div class="mb-4">
-    <%= f.label :name, class: "block text-gray-700 text-sm font-bold mb-2" %>
-    <%= f.text_field :name, class: "shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" %>
-  </div>
+  <table class="form__table">
+    <tr class="form__row">
+      <td class="form__label-cell">
+        <%= f.label :name, class: "form__label" %>
+      </td>
+      <td class="form__input-cell">
+        <%= f.text_field :name, class: "form__input" %>
+      </td>
+    </tr>
+    <tr class="form__row">
+      <td class="form__label-cell">
+        <%= f.label :date_of_birth, class: "form__label" %>
+      </td>
+      <td class="form__input-cell">
+        <%= f.date_field :date_of_birth, class: "form__input" %>
+      </td>
+    </tr>
+  </table>
 
-  <div class="mb-6">
-    <%= f.label :date_of_birth, class: "block text-gray-700 text-sm font-bold mb-2" %>
-    <%= f.date_field :date_of_birth, class: "shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" %>
-  </div>
-
-  <div class="flex items-center justify-between">
-    <%= f.submit class: "bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" %>
-    <%= link_to "Back", people_path, class: "text-blue-500 hover:text-blue-800" %>
+  <div class="form__actions">
+    <%= f.submit class: "button" %>
+    <%= link_to "Back", people_path, class: "button button--secondary" %>
   </div>
 <% end %>

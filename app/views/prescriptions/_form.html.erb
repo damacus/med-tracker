@@ -1,6 +1,6 @@
 <%= form_with(model: [@person, prescription], class: "max-w-lg mx-auto") do |f| %>
   <% if prescription.errors.any? %>
-    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+    <div>
       <h2><%= pluralize(prescription.errors.count, "error") %> prohibited this prescription from being saved:</h2>
       <ul>
         <% prescription.errors.full_messages.each do |message| %>
@@ -10,38 +10,38 @@
     </div>
   <% end %>
 
-  <div class="mb-4">
+  <div>
     <%= f.label :medicine_id, class: "block text-gray-700 text-sm font-bold mb-2" %>
-    <%= f.collection_select :medicine_id, @medicines, :id, :name, {}, 
+    <%= f.collection_select :medicine_id, @medicines, :id, :name, {},
         class: "shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" %>
   </div>
 
-  <div class="mb-4">
+  <div>
     <%= f.label :dosage, class: "block text-gray-700 text-sm font-bold mb-2" %>
     <%= f.text_field :dosage, class: "shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" %>
   </div>
 
-  <div class="mb-4">
+  <div>
     <%= f.label :frequency, class: "block text-gray-700 text-sm font-bold mb-2" %>
     <%= f.text_field :frequency, class: "shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" %>
   </div>
 
-  <div class="mb-4">
+  <div>
     <%= f.label :start_date, class: "block text-gray-700 text-sm font-bold mb-2" %>
     <%= f.date_field :start_date, class: "shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" %>
   </div>
 
-  <div class="mb-4">
+  <div>
     <%= f.label :end_date, class: "block text-gray-700 text-sm font-bold mb-2" %>
     <%= f.date_field :end_date, class: "shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" %>
   </div>
 
-  <div class="mb-6">
+  <div>
     <%= f.label :notes, class: "block text-gray-700 text-sm font-bold mb-2" %>
     <%= f.text_area :notes, rows: 3, class: "shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" %>
   </div>
 
-  <div class="flex items-center justify-between">
+  <div>
     <%= f.submit class: "bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" %>
     <%= link_to "Back", person_path(@person), class: "text-blue-500 hover:text-blue-800" %>
   </div>

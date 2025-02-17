@@ -1,0 +1,61 @@
+<div id="prescription_<%= prescription.id %>" class="card">
+  <div class="flex justify-between">
+    <div>
+      <h3><%= prescription.medicine.name %></h3>
+      <p class="text-gray mb-2">Dosage: <%= prescription.dosage %></p>
+      <p class="text-gray mb-2">Frequency: <%= prescription.frequency %></p>
+      <p class="text-gray mb-2">Started: <%= prescription.start_date.strftime("%B %d, %Y") %></p>
+      <% if prescription.end_date %>
+        <p class="text-gray mb-2">Ends: <%= prescription.end_date.strftime("%B %d, %Y") %></p>
+      <% end %>
+      <% if prescription.notes.present? %>
+        <p class="text-gray mb-4">Notes: <%= prescription.notes %></p>
+      <% end %>
+
+      <div class="mt-4">
+        <h4>Today's takes:</h4>
+        <% todays_takes = prescription.take_medicines.where("taken_at >= ?", Time.current.beginning_of_day) %>
+        <% if todays_takes.any? %>
+          <ul class="mt-2">
+            <% todays_takes.order(taken_at: :desc).each do |take| %>
+              <li class="flex items-center gap-2 mb-2">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="var(--color-success)" width="16" height="16">
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                </svg>
+                <span class="text-gray"><%= take.taken_at.strftime("%l:%M %p").strip %></span>
+              </li>
+            <% end %>
+          </ul>
+        <% else %>
+          <p class="text-gray mt-2">No medications taken today</p>
+        <% end %>
+
+        <%= form_with url: take_medicine_person_prescription_path(person, prescription), method: :post, class: "mt-4" do |f| %>
+          <div class="flex items-center gap-2">
+            <%= f.label :amount_ml, "Amount (ml)", class: "sr-only" %>
+            <%= f.number_field :amount_ml, value: prescription.dosage.to_f, step: 0.5, min: 0, class: "form-input" %>
+            <%= f.submit "Take Now", class: "button button--primary" %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="flex gap-2">
+      <%= link_to edit_person_prescription_path(person, prescription), class: "button button--secondary" do %>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+        </svg>
+        <span>Edit</span>
+      <% end %>
+      <%= button_to person_prescription_path(person, prescription),
+          method: :delete,
+          class: "button button--danger",
+          form: { data: { turbo_confirm: "Are you sure?" } } do %>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+        </svg>
+        <span>Delete</span>
+      <% end %>
+    </div>
+  </div>
+</div>

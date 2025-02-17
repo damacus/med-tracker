@@ -1,5 +1,5 @@
 class PeopleController < ApplicationController
-  before_action :set_person, only: [ :show, :edit, :update, :destroy ]
+  before_action :set_person, only: [ :show, :update, :destroy ]
 
   def index
     @people = Person.all
@@ -11,9 +11,6 @@ class PeopleController < ApplicationController
 
   def new
     @person = Person.new
-  end
-
-  def edit
   end
 
   def create
@@ -28,7 +25,16 @@ class PeopleController < ApplicationController
 
   def update
     if @person.update(person_params)
-      redirect_to @person, notice: "Person was successfully updated."
+      respond_to do |format|
+        format.turbo_stream {
+          render turbo_stream: turbo_stream.replace(
+            @person,
+            partial: "person_details",
+            locals: { person: @person, editing: false }
+          )
+        }
+        format.html { redirect_to @person, notice: "Person was successfully updated." }
+      end
     else
       render :edit, status: :unprocessable_entity
     end

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html class="h-full bg-gray-50">
+<html>
   <head>
     <title><%= content_for(:title) || "Med Tracker" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -19,19 +19,13 @@
 
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
-    
-    <link rel="stylesheet" href="<%= asset_path('application.css') %>">
-    <script src="<%= asset_path('application.js') %>" defer="defer"></script>
+
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+    <%= javascript_include_tag "application", "data-turbo-track": "reload", type: "module" %>
   </head>
 
-  <body class="h-full">
-    <header class="site-header">
-      <button class="nav-button">
-        <svg class="icon icon-sm" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M3 6h18M3 12h18M3 18h18"/>
-        </svg>
-      </button>
-    </header>
+  <body>
     <%= render "layouts/navigation" %>
     <main>
       <%= yield %>
