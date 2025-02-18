@@ -18,7 +18,7 @@
         data: { turbo_stream: true } %>
 
     <% if person.prescriptions.any? %>
-      <%= link_to "Update Prescriptions", person_path(person),
+      <%= link_to "View Prescriptions", person_path(person),
           class: "button button--secondary",
           data: { turbo_stream: true} %>
     <% end %>
