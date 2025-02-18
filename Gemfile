@@ -50,6 +50,9 @@ group :development, :test do
   # Omakase Ruby styling [https://github.com/rails/rubocop-rails-omakase/]
   gem "rubocop-rails-omakase", require: false
 
+  # Clean database between tests
+  gem "database_cleaner-active_record"
+
   # Playwright for end-to-end testing
   gem "playwright-ruby-client"
   gem "capybara-playwright-driver"
