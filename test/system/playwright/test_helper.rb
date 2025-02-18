@@ -12,6 +12,7 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
 
   def setup
     super
+    Capybara.default_max_wait_time = 5
   end
 
   def teardown

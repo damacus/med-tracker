@@ -1,0 +1,43 @@
+# Paracetamol dosages
+paracetamol_500:
+  medicine: paracetamol
+  amount: 500
+
+paracetamol_1000:
+  medicine: paracetamol
+  amount: 1000
+
+# Ibuprofen dosages
+ibuprofen_400:
+  medicine: ibuprofen
+  amount: 400
+
+# Aspirin dosages
+aspirin_300:
+  medicine: aspirin
+  amount: 300
+
+aspirin_600:
+  medicine: aspirin
+  amount: 600
+
+aspirin_900:
+  medicine: aspirin
+  amount: 900
+
+# Calpol dosages
+calpol_2_5:
+  medicine: calpol
+  amount: 2.5
+
+calpol_5:
+  medicine: calpol
+  amount: 5
+
+calpol_7_5:
+  medicine: calpol
+  amount: 7.5
+
+calpol_10:
+  medicine: calpol
+  amount: 10

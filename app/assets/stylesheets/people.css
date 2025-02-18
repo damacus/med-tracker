@@ -1,82 +1,146 @@
-/* People page styles */
+/* People List Page */
 .people {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: var(--spacing-4);
 }
 
 .people__header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2rem;
+  margin-bottom: var(--spacing-6);
+  padding-bottom: var(--spacing-4);
+  border-bottom: 2px solid var(--color-gray-200);
 }
 
 .people__title {
-  font-size: 2rem;
-  color: #111827;
   margin: 0;
+  font-size: var(--font-size-2xl);
+  color: var(--color-gray-900);
+  font-weight: 600;
 }
 
-.people__list {
+.people__grid {
   display: grid;
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--spacing-4);
 }
 
-.people__item {
-  background-color: var(--color-card);
+/* Person Card Component */
+.person-card {
+  background-color: var(--color-white);
+  border-radius: var(--border-radius);
   padding: var(--spacing-4);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--color-border);
-}
-
-.people__name {
-  font-size: 1.25rem;
-  color: #111827;
-  margin-bottom: 0.5rem;
-}
-
-.people__age {
-  color: #4b5563;
-  margin-bottom: 1rem;
-}
-
-.people__actions {
+  box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-2);
+  border: 1px solid var(--color-gray-200);
+  transition: box-shadow 0.2s ease-in-out;
+}
+
+.person-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.person-card__title {
+  margin: 0 0 var(--spacing-4);
+  font-size: var(--font-size-xl);
+  color: var(--color-gray-900);
+}
+
+/* Person Details Component */
+.person-details {
+  background: var(--color-white);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-6);
+  margin-bottom: var(--spacing-6);
+  box-shadow: var(--shadow-sm);
+}
+
+.person-details__form {
+  width: 100%;
+}
+
+.person-details__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-4);
+}
+
+.person-details__name-field {
+  flex-grow: 1;
+  margin-right: var(--spacing-4);
+}
+
+.person-details__dob {
   margin-top: var(--spacing-4);
 }
 
-.people__action-row {
+.person-details__info {
+  flex-grow: 1;
+}
+
+.person-details__name {
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  margin-bottom: var(--spacing-2);
+}
+
+.person-details__birth,
+.person-details__age {
+  color: var(--color-gray-600);
+  margin-bottom: var(--spacing-2);
+}
+
+.person-details__actions {
   display: flex;
   gap: var(--spacing-2);
 }
 
-.people__action-row .button,
-.people__action-row form {
-  flex: 1;
+/* Prescriptions Section within Person Details */
+.person-details__prescriptions {
+  margin-top: var(--spacing-6);
 }
 
-.people__action-row .button {
+.person-details__prescriptions-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-4);
+}
+
+.person-details__prescriptions-title {
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  margin: 0;
+}
+  border-bottom: 2px solid var(--color-gray-200);
+  padding-bottom: var(--spacing-2);
+}
+
+.person-card__info {
+  flex: 1;
+  color: var(--color-gray-600);
+  margin-bottom: var(--spacing-4);
+}
+
+.person-card__info p {
+  margin: 0 0 var(--spacing-2);
+  line-height: 1.5;
+}
+
+.person-card__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.person-card__actions .button {
   width: 100%;
   justify-content: center;
-}
-
-.people__action-row form {
-  margin: 0;
-  flex: 1;
-}
-
-.people__action-row:first-child .button {
-  width: 100%;
-}
-
-.people__link {
-  text-decoration: none;
-  padding: 0.5rem 1rem;
-  border-radius: 0.25rem;
-  font-weight: 500;
+  text-align: center;
 }
 
 

@@ -1,15 +1,48 @@
-# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
-
-calpol_sixplus:
-  name: CALPOL® SixPlusTM Oral Suspension
+# Paracetamol
+paracetamol:
+  name: Paracetamol
   description: >-
-    Paracetamol oral suspension formulated with over twice the strength of infant paracetamol
-    to provide effective, soothing relief from pain and fever in children aged 6 and over.
-    Starts to work on fever in just 15 minutes without being harsh on the tummy.
-  standard_dosage: See recommended dosages by age
+    Paracetamol is a common painkiller used to treat aches and pain. It can also be used to
+    reduce a high temperature.
+  dosage: 500
+  unit: mg
   warnings: >-
-    - Leave at least 4 hours between doses.
-    - Contains paracetamol – do not use more than one product containing paracetamol at the same time.
-    - Do not give more than 4 doses in any 24 hour period.
-    - Do not give this medicine to your child for more than 3 days without speaking to your doctor or pharmacist.
-    - Shake bottle for at least 10 seconds before use.
+    Do not exceed 4000mg in 24 hours. Do not take with other paracetamol-containing products.
+    If symptoms persist, consult your doctor.
+
+# Ibuprofen
+ibuprofen:
+  name: Ibuprofen
+  description: >-
+    Ibuprofen is a common painkiller for treating aches and pains, as well as symptoms of colds
+    and flu. It can also be used to reduce a high temperature and treat inflammation.
+  dosage: 200
+  unit: tablet
+  warnings: >-
+    Take with or after food. Do not exceed 1200mg in 24 hours. Not suitable for people with
+    certain health conditions. If symptoms persist, consult your doctor.
+
+# Aspirin
+aspirin:
+  name: Aspirin
+  description: >-
+    Aspirin is used to treat pain, reduce inflammation and lower fever. It can also be taken
+    in low doses to help prevent heart attacks and strokes in high-risk patients.
+  dosage: 300
+  unit: mg
+  warnings: >-
+    Not suitable for children under 16. Do not exceed 4000mg in 24 hours. May cause stomach
+    irritation. If symptoms persist, consult your doctor.
+
+# Calpol
+calpol:
+  name: Calpol
+  description: >-
+    Calpol is a brand of children's medicine that contains paracetamol. It is
+     used to relieve pain and reduce fever in children.
+  dosage: 5
+  unit: ml
+  warnings: >-
+    Do not exceed the recommended dose. If symptoms persist for more than 3
+    days, consult your doctor. Contains paracetamol - do not use with
+    other paracetamol-containing products.

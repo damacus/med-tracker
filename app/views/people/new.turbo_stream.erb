@@ -1,0 +1,3 @@
+<%= turbo_stream.update "modal" do %>
+  <%= render "shared/modal", title: "Add Person", content: render("form", person: @person) %>
+<% end %>

@@ -1,54 +1,102 @@
 require "system/playwright/test_helper"
 
 class MedicinesTest < ApplicationSystemTestCase
-  test "creating a new medicine" do
+  def setup
+    @medicine = medicines(:paracetamol)
+    # Clean up any existing dependencies
+    @medicine.prescriptions.each do |prescription|
+      prescription.take_medicines.destroy_all
+    end
+    @medicine.prescriptions.destroy_all
+  end
+
+  test "creating a new medicine with dosage options" do
     visit medicines_path
     click_on "Add Medicine"
 
-    fill_in "Name", with: "Ibuprofen"
-    fill_in "Description", with: "Pain reliever and fever reducer"
-    fill_in "Standard dosage", with: "200-400mg every 4-6 hours"
+    fill_in "Name", with: "New Medicine"
+    fill_in "Description", with: "Test description"
+    fill_in "Dosage", with: "500"
+    select "mg", from: "medicine[unit]"
+
+    # Add first dosage option
+    click_button "Add Option"
+    assert_selector "[data-dosage-options-target='container'] input[type='number']"
+    within("[data-dosage-options-target='container']") do
+      first("input[type='number']").fill_in with: "250"
+    end
+
+    # Add second dosage option
+    click_button "Add Option"
+    assert_selector "[data-dosage-options-target='container'] input[type='number']", count: 2
+    within("[data-dosage-options-target='container']") do
+      all("input[type='number']").last.fill_in with: "750"
+    end
+    fill_in "Warnings", with: "Test warnings"
     click_on "Create Medicine"
 
     assert_text "Medicine was successfully created"
-    assert_text "Ibuprofen"
-    assert_text "Pain reliever and fever reducer"
+    assert_text "New Medicine"
+    assert_text "500.0 mg"
   end
 
-  test "editing an existing medicine" do
-    # Create a medicine first
-    medicine = Medicine.create!(
-      name: "Aspirin",
-      description: "Pain reliever",
-      standard_dosage: "325-650mg every 4 hours"
-    )
+  test "editing an existing medicine's dosage options" do
+    visit edit_medicine_path(@medicine)
 
-    visit medicines_path
-    within("#medicine_#{medicine.id}") do
-      click_on "Edit"
+    # Add a new dosage option
+    click_button "Add Option"
+    assert_selector "[data-dosage-options-target='container'] input[type='number']"
+    within("[data-dosage-options-target='container']") do
+      first("input[type='number']").fill_in with: "750"
     end
 
-    fill_in "Description", with: "Pain reliever and blood thinner"
-    click_on "Update Medicine"
+    # Remove the dosage option
+    within("[data-dosage-options-target='container']") do
+      first("button", text: "Remove").click
+    end
 
+    click_on "Update Medicine"
     assert_text "Medicine was successfully updated"
-    assert_text "Pain reliever and blood thinner"
   end
 
-  test "deleting a medicine" do
-    medicine = Medicine.create!(
-      name: "Test Medicine",
-      description: "To be deleted",
-      standard_dosage: "1 tablet daily"
-    )
+  test "validation errors for medicine with invalid dosage options" do
+    visit new_medicine_path
 
+    fill_in "Name", with: "Test Medicine"
+    fill_in "Description", with: "Test description"
+    fill_in "Dosage", with: "500"
+    select "mg", from: "medicine[unit]"
+
+    # Try to add invalid dosage options
+    click_button "Add Option"
+    assert_selector "[data-dosage-options-target='container'] input[type='number']"
+    within("[data-dosage-options-target='container']") do
+      first("input[type='number']").fill_in with: "0"
+    end
+
+    click_on "Create Medicine"
+
+    # Wait for the error message to appear
+    assert_selector ".form__errors"
+    assert_text "Dosage options amount must be greater than 0"
+  end
+
+  test "deleting a medicine also deletes its dosage options" do
     visit medicines_path
-    # Find and click the delete button
-    within("#medicine_#{medicine.id}") do
+
+    # Clean up any existing dependencies
+    @medicine.prescriptions.each do |prescription|
+      prescription.take_medicines.destroy_all
+    end
+    @medicine.prescriptions.destroy_all
+
+    # Now try to delete
+    accept_confirm do
       click_button "Delete"
     end
 
     assert_text "Medicine was successfully deleted"
+    assert_equal 0, DosageOption.where(medicine_id: @medicine.id).count
     refute_text "Test Medicine"
   end
 
@@ -56,7 +104,8 @@ class MedicinesTest < ApplicationSystemTestCase
     medicine = Medicine.create!(
       name: "Vitamin D3",
       description: "Vitamin D supplement",
-      standard_dosage: "1000 IU daily",
+      dosage: "1000",
+      unit: "IU",
       warnings: "Take with food for better absorption"
     )
 
@@ -64,7 +113,7 @@ class MedicinesTest < ApplicationSystemTestCase
 
     assert_text "Vitamin D3"
     assert_text "Vitamin D supplement"
-    assert_text "1000 IU daily"
+    assert_text "1000"
     assert_text "Take with food for better absorption"
   end
 end

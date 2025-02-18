@@ -45,6 +45,13 @@ class MedicinesController < ApplicationController
   end
 
   def medicine_params
-    params.require(:medicine).permit(:name, :description, :standard_dosage, :warnings)
+    params.require(:medicine).permit(
+      :name,
+      :description,
+      :dosage,
+      :unit,
+      :warnings,
+      dosage_options_attributes: [ :id, :amount, :_destroy ]
+    )
   end
 end

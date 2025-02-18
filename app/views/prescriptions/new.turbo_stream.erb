@@ -1,0 +1,5 @@
+<%= turbo_stream.update "modal" do %>
+  <%= render "shared/modal", title: "New Prescription for #{@person.name}" do %>
+    <%= render "form", prescription: @prescription, inline: true %>
+  <% end %>
+<% end %>

@@ -1,0 +1,13 @@
+<div id="modal" class="modal" data-controller="modal" data-show="true">
+  <div class="modal__overlay" data-action="click->modal#close"></div>
+  <div class="modal__container">
+    <div class="modal__header">
+      <h2 class="modal__title"><%= title %></h2>
+      <button class="modal__close" data-action="click->modal#close" type="button">×</button>
+    </div>
+
+    <div class="modal__content">
+      <%= content_for?(:modal_content) ? yield(:modal_content) : (local_assigns[:content] || yield) %>
+    </div>
+  </div>
+</div>

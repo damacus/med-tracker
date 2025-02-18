@@ -1,4 +1,7 @@
 <div class="dashboard">
+  <div class="page-header">
+    <h1 class="page-title">Medicine Tracker Dashboard</h1>
+  </div>
   <div class="dashboard__section">
     <h2 class="dashboard__section-title">Quick Stats</h2>
     <div class="quick-stats">
@@ -28,66 +31,52 @@
   <div class="dashboard__section">
     <h2 class="dashboard__section-title">Medication Schedule By Person</h2>
     <div class="schedule-section">
-
-      <% if @upcoming_prescriptions.any? %>
-        <div class="schedule-content">
-          <% @upcoming_prescriptions.each do |person, prescriptions| %>
-            <div class="schedule-person">
-              <div class="schedule-person__header">
-                <h3 class="schedule-person__name"><%= person.name %></h3>
-                <p class="schedule-person__age">Age: <%= person.age %></p>
-              </div>
-
-              <div class="schedule-prescriptions">
-                <% prescriptions.each do |prescription| %>
-                  <div id="prescription_<%= prescription.id %>" class="prescription-card">
-                    <div class="prescription-card__content">
-                      <div class="prescription-card__info">
-                        <h4 class="prescription-card__medicine"><%= prescription.medicine.name %></h4>
-                        <p class="prescription-card__detail">Dosage: <%= prescription.dosage %></p>
-                        <p class="prescription-card__detail">Frequency: <%= prescription.frequency %></p>
-                        <% if prescription.end_date %>
-                          <p class="prescription-card__detail">Ends: <%= prescription.end_date.strftime("%B %d, %Y") %></p>
-                        <% end %>
-
-                        <div class="prescription-card__takes">
-                          <h5 class="prescription-card__takes-title">Today's takes:</h5>
-                          <% todays_takes = prescription.take_medicines.today %>
-                          <% if todays_takes.any? %>
-                            <ul class="prescription-card__takes-list">
-                              <% todays_takes.each do |take| %>
-                                <li class="prescription-card__take">
-                                  <span class="prescription-card__take-time">
-                                    <%= take.taken_at.strftime("%I:%M %p").sub(/^0/, '') %>
-                                  </span>
-                                </li>
-                              <% end %>
-                            </ul>
-                          <% else %>
-                            <p class="prescription-card__no-takes">No medications taken today</p>
+      <% if @people.any? %>
+        <% if @upcoming_prescriptions.any? %>
+          <div class="schedule-content">
+            <% @upcoming_prescriptions.each do |person, prescriptions| %>
+              <div class="schedule-person">
+                <div class="schedule-person__header">
+                  <h3 class="schedule-person__name"><%= person.name %></h3>
+                  <p class="schedule-person__age">Age: <%= person.age %></p>
+                </div>
+                <div class="schedule-prescriptions">
+                  <% prescriptions.each do |prescription| %>
+                    <div id="prescription_<%= prescription.id %>" class="prescription-card">
+                      <div class="prescription-card__content">
+                        <div class="prescription-card__info">
+                          <h4 class="prescription-card__medicine"><%= prescription.medicine.name %></h4>
+                          <p class="prescription-card__detail">Dosage: <%= prescription.dosage %></p>
+                          <p class="prescription-card__detail">Frequency: <%= prescription.frequency %></p>
+                          <% if prescription.end_date %>
+                            <p class="prescription-card__detail">Ends: <%= prescription.end_date.strftime("%B %d, %Y") %></p>
+                          <% end %>
+                        </div>
+                        <div class="prescription-card__actions">
+                          <%= button_to prescription_take_medicines_path(prescription),
+                              method: :post,
+                              class: "quick-action__button",
+                              data: { test_id: "take-medicine-#{prescription.id}" } do %>
+                            Take Now
                           <% end %>
                         </div>
                       </div>
-
-                      <div class="prescription-card__actions">
-                        <%= button_to prescription_take_medicines_path(prescription),
-                            method: :post,
-                            class: "quick-action__button",
-                            data: { test_id: "take-medicine-#{prescription.id}" } do %>
-                          Take Now
-                        <% end %>
-                      </div>
                     </div>
-                  </div>
-                <% end %>
+                  <% end %>
+                </div>
               </div>
-            </div>
-          <% end %>
-        </div>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="empty-state">
+            <p class="empty-state__message">No active prescriptions found</p>
+            <p class="empty-state__help">Add prescriptions to see them here</p>
+          </div>
+        <% end %>
       <% else %>
-        <div class="schedule-empty">
-          <h3>No active prescriptions</h3>
-          <p>Get started by adding a new prescription.</p>
+        <div class="empty-state">
+          <p class="empty-state__message">No people found</p>
+          <p class="empty-state__help">Add people to start tracking their medications</p>
         </div>
       <% end %>
     </div>

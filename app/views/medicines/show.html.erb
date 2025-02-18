@@ -1,53 +1,51 @@
-<div>
+<div class="container">
   <% if notice %>
-    <div>
+    <div class="notice">
       <span><%= notice %></span>
     </div>
   <% end %>
 
-  <div>
-    <div>
-      <h1><%= @medicine.name %></h1>
+  <div class="medicine">
+    <div class="medicine__header">
+      <h1 class="medicine__title"><%= @medicine.name %></h1>
+    </div>
 
-      <div>
-        <h2>Description</h2>
-        <p><%= @medicine.description %></p>
-      </div>
+    <div class="medicine__section">
+      <h2 class="medicine__subtitle">Description</h2>
+      <p class="medicine__text"><%= @medicine.description %></p>
+    </div>
 
-      <div>
-        <h2>Standard Dosage</h2>
-        <p><%= @medicine.standard_dosage %></p>
-      </div>
+    <div class="medicine__section">
+      <h2 class="medicine__subtitle">Standard Dosage</h2>
+      <p class="medicine__text"><%= @medicine.dosage %> <%= @medicine.unit %></p>
+    </div>
 
-      <div>
-        <h2>Recommended Dosages by Age</h2>
-        <% if @medicine.recommended_dosages.any? %>
-          <div>
-            <% @medicine.recommended_dosages.order(:min_age).each do |dosage| %>
-              <div>
-                <h3><%= dosage.description %></h3>
-                <p><%= dosage.dosage_instruction %></p>
-              </div>
-            <% end %>
-          </div>
-        <% else %>
-          <p>No recommended dosages available.</p>
-        <% end %>
-      </div>
-
-      <% if @medicine.warnings.present? %>
-        <div>
-          <h2>Warnings</h2>
-          <p><%= @medicine.warnings %></p>
+    <div class="medicine__section">
+      <h2 class="medicine__subtitle">Additional Dosage Options</h2>
+      <% if @medicine.dosage_options.any? %>
+        <div class="medicine__options">
+          <% @medicine.dosage_options.ordered.each do |option| %>
+            <div class="medicine__option">
+              <p class="medicine__text"><%= option.amount %> <%= @medicine.unit %></p>
+            </div>
+          <% end %>
         </div>
+      <% else %>
+        <p class="medicine__text medicine__text--muted">No additional dosage options available.</p>
       <% end %>
     </div>
 
-    <div>
-      <div>
-        <%= link_to "Edit", edit_medicine_path(@medicine), class: "bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded" %>
-        <%= link_to "Back", medicines_path, class: "bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded" %>
+    <% if @medicine.warnings.present? %>
+      <div class="medicine__section medicine__section--warning">
+        <h2 class="medicine__subtitle">Warnings</h2>
+        <p class="medicine__text"><%= @medicine.warnings %></p>
       </div>
+    <% end %>
+    
+    <div class="medicine__actions">
+      <%= link_to "Edit", edit_medicine_path(@medicine), class: "button button--primary" %>
+      <%= link_to "Back", medicines_path, class: "button button--secondary" %>
     </div>
+  </div>
   </div>
 </div>

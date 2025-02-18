@@ -5,6 +5,3 @@
 5. When adding fixtures check that the relationships are valid.
 6. When adding fixtures check that there will be no foreign keys that are not part of the relationship.
 7. We are using propshaft for static assets.
-8. Do not run terminal commands for me.
-9. Only suggest terminal commands, so that I can paste them into the terminal.
-10. We are only using playwright for testing.

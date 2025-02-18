@@ -4,8 +4,8 @@ class HomePageTest < PlaywrightSystemTest
   test "visiting the home page" do
     visit root_path
 
-    assert_text "Medicine Tracker Dashboard"
-    assert_text "Quick Stats"
-    assert_text "Quick Actions"
+    assert_text "Medicine Tracker"
+    assert_text "Medicines"
+    assert_text "People"
   end
 end

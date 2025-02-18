@@ -1,5 +1,11 @@
-<div>
-  <h1>Edit Prescription for <%= @person.name %></h1>
+<div class="container">
+  <div class="page-header">
+    <h1 class="page-title">Edit Prescription for <%= @person.name %></h1>
+  </div>
 
-  <%= render "form", prescription: @prescription %>
+  <%= render "form", prescription: @prescription, inline: false %>
+
+  <div class="form__actions">
+    <%= link_to "Back", person_path(@person), class: "button button--secondary" %>
+  </div>
 </div>

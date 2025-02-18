@@ -10,7 +10,16 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_02_04_155037) do
+ActiveRecord::Schema[8.0].define(version: 2025_02_17_223629) do
+  create_table "dosage_options", force: :cascade do |t|
+    t.integer "medicine_id", null: false
+    t.decimal "amount", precision: 10, scale: 2, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["medicine_id", "amount"], name: "index_dosage_options_on_medicine_id_and_amount", unique: true
+    t.index ["medicine_id"], name: "index_dosage_options_on_medicine_id"
+  end
+
   create_table "medication_takes", force: :cascade do |t|
     t.integer "prescription_id", null: false
     t.datetime "taken_at"
@@ -21,13 +30,27 @@ ActiveRecord::Schema[8.0].define(version: 2025_02_04_155037) do
     t.index ["prescription_id"], name: "index_medication_takes_on_prescription_id"
   end
 
+  create_table "medicine_dosages", force: :cascade do |t|
+    t.decimal "amount"
+    t.string "unit"
+    t.string "description"
+    t.boolean "is_default"
+    t.integer "medicine_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["medicine_id"], name: "index_medicine_dosages_on_medicine_id"
+  end
+
   create_table "medicines", force: :cascade do |t|
     t.string "name"
     t.text "description"
-    t.string "standard_dosage"
+    t.decimal "dosage", precision: 10, scale: 2
     t.text "warnings"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "unit", default: "tablet", null: false
+    t.decimal "min_dosage", precision: 10, scale: 2
+    t.decimal "max_dosage", precision: 10, scale: 2
   end
 
   create_table "people", force: :cascade do |t|
@@ -62,7 +85,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_02_04_155037) do
     t.index ["medicine_id"], name: "index_recommended_dosages_on_medicine_id"
   end
 
+  add_foreign_key "dosage_options", "medicines"
   add_foreign_key "medication_takes", "prescriptions"
+  add_foreign_key "medicine_dosages", "medicines"
   add_foreign_key "prescriptions", "medicines"
   add_foreign_key "prescriptions", "people"
   add_foreign_key "recommended_dosages", "medicines"

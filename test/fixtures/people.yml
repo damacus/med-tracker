@@ -1,21 +1,12 @@
-# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+# Adults for testing prescriptions
+adult_john:
+  name: John Smith
+  date_of_birth: 1980-01-01
 
-child_seven:
-  name: Alice
-  date_of_birth: 2018-02-04 # 7 years old
+adult_jane:
+  name: Jane Doe
+  date_of_birth: 1985-05-15
 
-child_nine:
-  name: Bob
-  date_of_birth: 2016-02-04 # 9 years old
-
-child_eleven:
-  name: Charlie
-  date_of_birth: 2014-02-04 # 11 years old
-
-child_fourteen:
-  name: David
-  date_of_birth: 2011-02-04 # 14 years old
-
-adult:
-  name: Eve
-  date_of_birth: 1990-02-04 # Adult
+adult_bob:
+  name: Bob Wilson
+  date_of_birth: 1975-12-31

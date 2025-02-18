@@ -13,7 +13,8 @@ class TakeMedicinesTest < ApplicationSystemTestCase
       medicine = Medicine.create!(
         name: "Test Medicine",
         description: "Test Description",
-        standard_dosage: "5.0ml"
+        dosage: "5.0",
+        unit: "ml"
       )
 
       prescription = Prescription.create!(

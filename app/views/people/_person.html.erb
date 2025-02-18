@@ -1,0 +1,26 @@
+<div id="person_<%= person.id %>" class="person-card">
+  <h2 class="person-card__title"><%= person.name %></h2>
+
+  <div class="person-card__info">
+    <p>Age: <%= person.age %></p>
+    <p>Prescriptions:
+      <% if person.prescriptions.active.any? %>
+        <%= pluralize(person.prescriptions.active.count, 'active prescription') %>
+      <% else %>
+        No active prescriptions
+      <% end %>
+    </p>
+  </div>
+
+  <div class="person-card__actions">
+    <%= link_to "Add Prescription", new_person_prescription_path(person),
+        class: "button button--primary",
+        data: { turbo_stream: true } %>
+
+    <% if person.prescriptions.any? %>
+      <%= link_to "Update Prescriptions", person_path(person),
+          class: "button button--secondary",
+          data: { turbo_stream: true} %>
+    <% end %>
+  </div>
+</div>

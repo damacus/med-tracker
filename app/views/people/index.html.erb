@@ -1,43 +1,22 @@
-<div class="people">
+<div class="container">
   <% if notice %>
-    <div class="alert alert--success">
-      <span><%= notice %></span>
-    </div>
+	<div class="alert alert--success">
+	  <span><%= notice %></span>
+	</div>
   <% end %>
 
-  <div class="people__header">
-    <h1 class="people__title">People</h1>
-    <%= link_to "Add Person", new_person_path, class: "button button--primary" %>
+  <div class="page-header">
+	<h1 class="page-title">People</h1>
+	<%= link_to "Add Person", new_person_path,
+		class: "button button--primary",
+		data: { turbo_stream: true } %>
   </div>
 
-  <div class="people__list">
-    <% @people.each do |person| %>
-      <div id="person_<%= person.id %>" class="people__item">
-        <h2 class="people__name"><%= person.name %></h2>
-        <p class="people__age">Age: <%= person.age %></p>
-
-        <div class="people__actions">
-          <div class="people__action-row">
-            <%= link_to person_path(person), class: "button" do %>
-              <span>View</span>
-            <% end %>
-          </div>
-          <div class="people__action-row">
-            <%= link_to person_path(person, editing: true), class: "button" do %>
-              <span>Edit</span>
-            <% end %>
-            <%= button_to person_path(person),
-                method: :delete,
-                class: "button button--danger",
-                form: { 
-                  data: { turbo_confirm: "Are you sure?" },
-                  class: "button-form"
-                } do %>
-              <span>Delete</span>
-            <% end %>
-          </div>
-        </div>
-      </div>
-    <% end %>
+  <div class="item-grid" id="people">
+	<% @people.each do |person| %>
+	  <%= render "person", person: person %>
+	<% end %>
   </div>
+
+  <div id="modal"></div>
 </div>

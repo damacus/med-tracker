@@ -5,25 +5,56 @@
     </div>
   <% end %>
 
-  <%= render "person_details", person: @person, editing: params[:editing] %>
+  <%= turbo_frame_tag dom_id(@person) do %>
+    <div class="person-details">
+      <% if params[:editing] %>
+        <%= form_with(model: @person, class: "person-details__form", data: { controller: "auto-submit" }) do |f| %>
+          <div class="person-details__header">
+            <div class="person-details__name-field">
+              <%= f.text_field :name, class: "form__input", data: { action: "change->auto-submit#submit" } %>
+            </div>
+            <div class="person-details__actions">
+              <%= f.submit "Save", class: "button" %>
+              <%= link_to "Cancel", person_path(@person), class: "button button--secondary" %>
+            </div>
+          </div>
+          <div class="person-details__dob">
+            <%= f.date_field :date_of_birth, class: "form__input", data: { action: "change->auto-submit#submit" } %>
+          </div>
+        <% end %>
+      <% else %>
+        <div class="person-details__header">
+          <div class="person-details__info">
+            <h1 class="person-details__name"><%= @person.name %></h1>
+            <p class="person-details__birth">Born: <%= @person.date_of_birth.strftime("%B %d, %Y") %></p>
+            <p class="person-details__age">Age: <%= @person.age %></p>
+          </div>
+          <div class="person-details__actions">
+            <%= link_to "Edit", person_path(@person, editing: true), class: "button button--secondary" %>
+            <%= link_to "Back", people_path, class: "button button--secondary" %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
 
-  <div class="card">
-    <div class="flex justify-between items-center mb-6">
-      <h2 class="mb-0">Prescriptions</h2>
+  <div class="prescriptions-section">
+    <div class="prescriptions-section__header">
+      <h2>Prescriptions</h2>
       <%= link_to "Add Prescription", new_person_prescription_path(@person),
           class: "button button--primary",
-          data: { turbo_frame: "new_prescription" } %>
+          data: { turbo_stream: true } %>
     </div>
 
     <%= turbo_frame_tag "new_prescription" %>
 
-    <div id="prescriptions" class="flex flex-col gap-4">
+    <div id="prescriptions" class="prescriptions-section__list">
       <% @prescriptions.each do |prescription| %>
         <%= render "prescriptions/prescription", prescription: prescription, person: @person %>
       <% end %>
 
       <% if @prescriptions.empty? %>
-        <p class="text-gray text-center">No prescriptions yet.</p>
+        <p class="prescriptions-section__empty">No prescriptions yet.</p>
       <% end %>
     </div>
   </div>

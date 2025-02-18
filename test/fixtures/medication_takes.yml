@@ -1,31 +1,32 @@
-# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
-
-alice_morning_dose:
-  prescription: alice_calpol
-  taken_at: 2025-02-04 08:00:00
-  amount_ml: 5.0
-  notes: Morning dose for fever
-
-alice_afternoon_dose:
-  prescription: alice_calpol
-  taken_at: 2025-02-04 12:00:00
-  amount_ml: 5.0
-  notes: Afternoon dose
-
-bob_morning_dose:
-  prescription: bob_calpol
-  taken_at: 2025-02-04 07:30:00
-  amount_ml: 7.5
+# Paracetamol doses
+john_morning_paracetamol:
+  prescription: john_paracetamol
+  taken_at: 2025-02-17 08:00:00
+  amount_ml: 500
   notes: Morning dose for headache
 
-charlie_evening_dose:
-  prescription: charlie_calpol
-  taken_at: 2025-02-04 19:00:00
-  amount_ml: 10.0
-  notes: Evening dose for pain
+john_afternoon_paracetamol:
+  prescription: john_paracetamol
+  taken_at: 2025-02-17 14:00:00
+  amount_ml: 500
+  notes: Afternoon dose
 
-david_night_dose:
-  prescription: david_calpol
-  taken_at: 2025-02-04 20:00:00
-  amount_ml: 15.0
-  notes: Night dose for fever
+# Ibuprofen doses
+jane_morning_ibuprofen:
+  prescription: jane_ibuprofen
+  taken_at: 2025-02-17 08:00:00
+  amount_ml: 400
+  notes: Morning dose for back pain
+
+jane_evening_ibuprofen:
+  prescription: jane_ibuprofen
+  taken_at: 2025-02-17 20:00:00
+  amount_ml: 400
+  notes: Evening dose
+
+# Aspirin doses
+bob_morning_aspirin:
+  prescription: bob_aspirin
+  taken_at: 2025-02-17 07:00:00
+  amount_ml: 300
+  notes: Morning dose for fever

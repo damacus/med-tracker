@@ -27,6 +27,9 @@
 
   <body>
     <%= render "layouts/navigation" %>
+    <div id="flash">
+      <%= render "shared/flash" %>
+    </div>
     <main>
       <%= yield %>
     </main>

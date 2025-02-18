@@ -20,10 +20,11 @@ class PeopleTest < ApplicationSystemTestCase
       date_of_birth: "1985-05-15"
     )
 
-    medicine = Medicine.create!(
+    Medicine.create!(
       name: "Ibuprofen",
       description: "Pain reliever",
-      standard_dosage: "200-400mg every 4-6 hours"
+      dosage: "200",
+      unit: "mg"
     )
 
     visit person_path(person)
@@ -52,10 +53,11 @@ class PeopleTest < ApplicationSystemTestCase
     medicine = Medicine.create!(
       name: "Vitamin D",
       description: "Vitamin D supplement",
-      standard_dosage: "1000 IU daily"
+      dosage: "1000",
+      unit: "IU"
     )
 
-    prescription = person.prescriptions.create!(
+    person.prescriptions.create!(
       medicine: medicine,
       dosage: "2000 IU",
       frequency: "Once daily",
@@ -81,7 +83,8 @@ class PeopleTest < ApplicationSystemTestCase
     medicine = Medicine.create!(
       name: "Aspirin",
       description: "Pain reliever",
-      standard_dosage: "325-650mg every 4 hours"
+      dosage: "325",
+      unit: "mg"
     )
 
     prescription = person.prescriptions.create!(

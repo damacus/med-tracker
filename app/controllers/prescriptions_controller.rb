@@ -7,43 +7,83 @@ class PrescriptionsController < ApplicationController
     @medicines = Medicine.all
 
     respond_to do |format|
-      format.html
-      format.turbo_stream { render "prescriptions/inline_form" }
+      format.html { render :new, locals: { inline: false } }
+      format.turbo_stream do
+        render turbo_stream: turbo_stream.update("modal", partial: "shared/modal", locals: {
+          title: "New Prescription for #{@person.name}",
+          content: render_to_string(partial: "form", locals: { prescription: @prescription, inline: true })
+        })
+      end
     end
   end
 
   def create
     @prescription = @person.prescriptions.build(prescription_params)
+    @medicines = Medicine.all
 
     if @prescription.save
       respond_to do |format|
         format.html { redirect_to person_path(@person), notice: "Prescription was successfully created." }
-        format.turbo_stream { 
+        format.turbo_stream do
+          flash.now[:notice] = "Prescription was successfully created."
           render turbo_stream: [
-            turbo_stream.append("prescriptions", partial: "prescriptions/prescription", locals: { prescription: @prescription, person: @person }),
-            turbo_stream.remove("new_prescription")
+            turbo_stream.remove("modal"),
+            turbo_stream.replace("person_#{@person.id}", partial: "people/person", locals: { person: @person.reload }),
+            turbo_stream.update("flash", partial: "shared/flash")
           ]
-        }
+        end
       end
     else
-      @medicines = Medicine.all
       respond_to do |format|
         format.html { render :new, status: :unprocessable_entity }
-        format.turbo_stream { render :inline_form, status: :unprocessable_entity }
+        format.turbo_stream do
+          render turbo_stream: turbo_stream.update("modal", partial: "shared/modal", locals: {
+            title: "New Prescription for #{@person.name}",
+            content: render_to_string(partial: "form", locals: { prescription: @prescription, inline: true })
+          }), status: :unprocessable_entity
+        end
       end
     end
   end
 
   def edit
     @medicines = Medicine.all
+
+    respond_to do |format|
+      format.html
+      format.turbo_stream do
+        render turbo_stream: turbo_stream.update("modal", partial: "shared/modal", locals: {
+          title: "Edit Prescription for #{@person.name}",
+          content: render_to_string(partial: "form", locals: { prescription: @prescription, inline: true })
+        })
+      end
+    end
   end
 
   def update
     if @prescription.update(prescription_params)
-      redirect_to person_path(@person), notice: "Prescription was successfully updated."
+      respond_to do |format|
+        format.html { redirect_to person_path(@person), notice: "Prescription was successfully updated." }
+        format.turbo_stream {
+          render turbo_stream: [
+            turbo_stream.update("modal", ""),
+            turbo_stream.replace("person_#{@person.id}") do
+              render "people/person", person: @person.reload
+            end
+          ]
+        }
+      end
     else
       @medicines = Medicine.all
-      render :edit, status: :unprocessable_entity
+      respond_to do |format|
+        format.html { render :edit, status: :unprocessable_entity }
+        format.turbo_stream do
+          render turbo_stream: turbo_stream.update("modal", partial: "shared/modal", locals: {
+            title: "Edit Prescription for #{@person.name}",
+            content: render_to_string(partial: "form", locals: { prescription: @prescription, inline: true })
+          }), status: :unprocessable_entity
+        end
+      end
     end
   end
 

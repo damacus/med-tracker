@@ -1,29 +1,33 @@
-<div>
+<div class="container">
   <% if notice %>
-    <div>
-      <span><%= notice %></span>
-    </div>
+	<div class="alert alert--success">
+	  <span><%= notice %></span>
+	</div>
   <% end %>
 
-  <div>
-    <h1>Medicines</h1>
-    <%= link_to "Add Medicine", new_medicine_path, class: "bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" %>
+  <div class="page-header">
+	<h1 class="page-title">Medicines</h1>
+	<%= link_to "Add Medicine", new_medicine_path,
+		class: "button button--primary",
+		data: { turbo_stream: true } %>
   </div>
 
-  <div>
-    <% @medicines.each do |medicine| %>
-      <div id="medicine_<%= medicine.id %>">
-        <h2><%= medicine.name %></h2>
-        <p><%= medicine.description %></p>
-        <p>Standard dosage: <%= medicine.standard_dosage %></p>
+  <div class="item-grid" id="medicines">
+	<% @medicines.each do |medicine| %>
+	  <div class="item-card" id="medicine_<%= medicine.id %>">
+		<h2 class="item-card__title"><%= medicine.name %></h2>
+		<p class="item-card__detail"><%= medicine.description %></p>
+		<p class="item-card__detail">Standard dosage: <%= medicine.dosage %> <%= medicine.unit %></p>
 
-        <div>
-          <%= link_to "View", medicine_path(medicine), class: "text-blue-500 hover:text-blue-700" %>
-          <%= link_to "Edit", edit_medicine_path(medicine), class: "text-yellow-500 hover:text-yellow-700" %>
-          <%= button_to "Delete", medicine_path(medicine), method: :delete, class: "text-red-500 hover:text-red-700",
-              data: { confirm: "Are you sure?" } %>
-        </div>
-      </div>
-    <% end %>
+		<div class="item-card__actions">
+		  <%= link_to "View", medicine_path(medicine), class: "button button--link" %>
+		  <%= link_to "Edit", edit_medicine_path(medicine), class: "button button--link" %>
+		  <%= button_to "Delete", medicine_path(medicine),
+			  method: :delete,
+			  class: "button button--danger",
+			  data: { confirm: "Are you sure?" } %>
+		</div>
+	  </div>
+	<% end %>
   </div>
 </div>
