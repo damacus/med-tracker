@@ -1,0 +1,5 @@
+<%= turbo_stream.remove "modal" %>
+<%= turbo_stream.replace dom_id(@person) do %>
+  <%= render @person %>
+<% end %>
+<%= turbo_stream.update "flash", partial: "shared/flash" %>
