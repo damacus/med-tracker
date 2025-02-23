@@ -3,7 +3,7 @@
     <h1 class="page-title">Edit Prescription for <%= @person.name %></h1>
   </div>
 
-  <%= render "form", prescription: @prescription, inline: false %>
+  <%= render "form", prescription: @prescription, inline: false, medicines: @medicines %>
 
   <div class="form__actions">
     <%= link_to "Back", person_path(@person), class: "button button--secondary" %>

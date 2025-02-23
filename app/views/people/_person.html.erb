@@ -2,6 +2,7 @@
   <h2 class="person-card__title"><%= person.name %></h2>
 
   <div class="person-card__info">
+    <p>Born: <%= person.date_of_birth.strftime("%B %d, %Y") %></p>
     <p>Age: <%= person.age %></p>
     <p>Prescriptions:
       <% if person.prescriptions.active.any? %>

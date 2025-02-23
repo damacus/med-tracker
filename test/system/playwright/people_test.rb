@@ -1,17 +1,28 @@
 require "system/playwright/test_helper"
 
 class PeopleTest < ApplicationSystemTestCase
-  test "creating a new person" do
+  test "creating a new person via modal" do
     visit people_path
     click_on "Add Person"
 
-    fill_in "Name", with: "John Doe"
-    fill_in "Date of birth", with: "1990-01-01"
-    click_on "Create Person"
+    using_wait_time(5) do
+      assert_selector "dialog[open]" # Modal opens
+      assert_text "Add Person" # Modal title
 
-    assert_text "Person was successfully created"
-    assert_text "John Doe"
-    assert_text "January 01, 1990"
+      # Test validation
+      click_on "Create Person"
+      assert_text "Name can't be blank"
+
+      # Fill in valid data
+      fill_in "Name", with: "John Doe"
+      fill_in "Date of birth", with: "1990-01-01"
+      click_on "Create Person"
+
+      assert_text "Person was successfully created"
+      assert_text "John Doe"
+      assert_text "January 01, 1990"
+      assert_no_selector "dialog" # Modal closes
+    end
   end
 
   test "adding a prescription to a person" do
@@ -30,14 +41,17 @@ class PeopleTest < ApplicationSystemTestCase
     visit person_path(person)
     click_on "Add Prescription"
 
-    select "Ibuprofen", from: "Medicine"
+    using_wait_time(5) do
+      assert_selector "dialog[open]" # Modal opens
+      select "Ibuprofen", from: "Medicine"
     fill_in "Dosage", with: "200mg"
     fill_in "Frequency", with: "Every 6 hours"
     fill_in "Start date", with: Date.current.to_s
     fill_in "Notes", with: "Take with food"
-    click_on "Create Prescription"
+      click_on "Add Prescription"
 
-    assert_text "Prescription was successfully created"
+      assert_text "Prescription was successfully created"
+    end
     assert_text "Ibuprofen"
     assert_text "200mg"
     assert_text "Every 6 hours"
@@ -100,12 +114,15 @@ class PeopleTest < ApplicationSystemTestCase
       click_on "Edit"
     end
 
-    fill_in "Frequency", with: "Every 8 hours"
-    fill_in "Notes", with: "Updated: Take after meals"
-    click_on "Update Prescription"
+    using_wait_time(5) do
+      assert_selector "dialog[open]" # Modal opens
+      fill_in "Frequency", with: "Every 8 hours"
+      fill_in "Notes", with: "Updated: Take after meals"
+      click_on "Update Prescription"
 
-    assert_text "Prescription was successfully updated"
-    assert_text "Every 8 hours"
-    assert_text "Updated: Take after meals"
+      assert_text "Prescription was successfully updated"
+      assert_text "Every 8 hours"
+      assert_text "Updated: Take after meals"
+    end
   end
 end

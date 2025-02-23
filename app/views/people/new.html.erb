@@ -1,4 +1,7 @@
-<div class="container">
-  <h1 class="page-title">New Person</h1>
+<div class="modal__content">
   <%= render "form", person: @person %>
 </div>
+
+<script>
+  document.getElementById('modal').showModal();
+</script>

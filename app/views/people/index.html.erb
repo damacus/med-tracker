@@ -6,10 +6,8 @@
   <% end %>
 
   <div class="page-header">
-	<h1 class="page-title">People</h1>
-	<%= link_to "Add Person", new_person_path,
-		class: "button button--primary",
-		data: { turbo_stream: true } %>
+    <h1 class="page-title">People</h1>
+    <button type="button" class="button button--primary" onclick="document.getElementById('modal').showModal()">Add Person</button>
   </div>
 
   <div class="item-grid" id="people">
@@ -18,5 +16,15 @@
 	<% end %>
   </div>
 
-  <div id="modal"></div>
+  <dialog id="modal" class="modal">
+    <div class="modal__container">
+      <div class="modal__header">
+        <h2 class="modal__title">Add Person</h2>
+        <button class="modal__close" type="button" onclick="this.closest('dialog').close()">&times;</button>
+      </div>
+      <div class="modal__content">
+        <%= render "form", person: Person.new %>
+      </div>
+    </div>
+  </dialog>
 </div>

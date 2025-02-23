@@ -7,11 +7,11 @@ class PrescriptionsController < ApplicationController
     @medicines = Medicine.all
 
     respond_to do |format|
-      format.html { render :new, locals: { inline: false } }
+      format.html { render :new, locals: { inline: false, medicines: @medicines } }
       format.turbo_stream do
-        render turbo_stream: turbo_stream.update("modal", partial: "shared/modal", locals: {
+        render turbo_stream: turbo_stream.replace("modal", partial: "shared/modal", locals: {
           title: "New Prescription for #{@person.name}",
-          content: render_to_string(partial: "form", locals: { prescription: @prescription, inline: true })
+          content: render_to_string(partial: "form", locals: { prescription: @prescription, inline: true, medicines: @medicines })
         })
       end
     end
@@ -35,11 +35,11 @@ class PrescriptionsController < ApplicationController
       end
     else
       respond_to do |format|
-        format.html { render :new, status: :unprocessable_entity }
+        format.html { render :new, status: :unprocessable_entity, locals: { medicines: @medicines } }
         format.turbo_stream do
           render turbo_stream: turbo_stream.update("modal", partial: "shared/modal", locals: {
             title: "New Prescription for #{@person.name}",
-            content: render_to_string(partial: "form", locals: { prescription: @prescription, inline: true })
+            content: render_to_string(partial: "form", locals: { prescription: @prescription, inline: true, medicines: @medicines })
           }), status: :unprocessable_entity
         end
       end
@@ -50,11 +50,11 @@ class PrescriptionsController < ApplicationController
     @medicines = Medicine.all
 
     respond_to do |format|
-      format.html
+      format.html { render :edit, locals: { medicines: @medicines } }
       format.turbo_stream do
-        render turbo_stream: turbo_stream.update("modal", partial: "shared/modal", locals: {
+        render turbo_stream: turbo_stream.replace("modal", partial: "shared/modal", locals: {
           title: "Edit Prescription for #{@person.name}",
-          content: render_to_string(partial: "form", locals: { prescription: @prescription, inline: true })
+          content: render_to_string(partial: "form", locals: { prescription: @prescription, inline: true, medicines: @medicines })
         })
       end
     end
@@ -65,22 +65,27 @@ class PrescriptionsController < ApplicationController
       respond_to do |format|
         format.html { redirect_to person_path(@person), notice: "Prescription was successfully updated." }
         format.turbo_stream {
+          flash.now[:notice] = "Prescription was successfully updated."
           render turbo_stream: [
             turbo_stream.update("modal", ""),
-            turbo_stream.replace("person_#{@person.id}") do
-              render "people/person", person: @person.reload
-            end
+            turbo_stream.update("prescriptions",
+              render_to_string(partial: "prescriptions/prescription",
+                collection: @person.reload.prescriptions,
+                as: :prescription,
+                locals: { person: @person })
+            ),
+            turbo_stream.update("flash", partial: "shared/flash")
           ]
         }
       end
     else
       @medicines = Medicine.all
       respond_to do |format|
-        format.html { render :edit, status: :unprocessable_entity }
+        format.html { render :edit, status: :unprocessable_entity, locals: { medicines: @medicines } }
         format.turbo_stream do
           render turbo_stream: turbo_stream.update("modal", partial: "shared/modal", locals: {
             title: "Edit Prescription for #{@person.name}",
-            content: render_to_string(partial: "form", locals: { prescription: @prescription, inline: true })
+            content: render_to_string(partial: "form", locals: { prescription: @prescription, inline: true, medicines: @medicines })
           }), status: :unprocessable_entity
         end
       end

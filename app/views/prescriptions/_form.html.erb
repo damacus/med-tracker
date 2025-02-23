@@ -1,9 +1,14 @@
 <%# Usage:
     Inline form (in a modal):
-    render "form", prescription: @prescription, inline: true
+    render "form", prescription: @prescription, inline: true, medicines: @medicines
 
     Regular form (full page):
-    render "form", prescription: @prescription, inline: false
+    render "form", prescription: @prescription, inline: false, medicines: @medicines
+
+    Required locals:
+    - prescription: The prescription instance to build the form for
+    - medicines: Collection of available medicines for the select box
+    - inline: Boolean indicating if this is an inline form (modal) or full page form
 %>
 
 <% inline ||= false %>
@@ -23,7 +28,7 @@
   <div class="prescription-form__grid">
     <div class="prescription-form__field">
       <%= f.label :medicine_id, "Medicine", class: "form__label" %>
-      <%= f.collection_select :medicine_id, @medicines, :id, :name,
+      <%= f.collection_select :medicine_id, medicines, :id, :name,
           { prompt: "Select a medicine" },
           { class: "form__input" } %>
     </div>
@@ -55,20 +60,18 @@
   </div>
 
   <div class="form__actions">
-    <%= f.submit prescription.new_record? ? "Add Prescription" : "Update Prescription", class: "button button--primary" %>
-    <%= link_to "Cancel", person_path(@person), class: "button button--secondary" %>
-  </div>
-    </div>
-  </div>
-
-  <div class="prescription-form__actions">
     <% if inline %>
-      <%= f.submit "Add Prescription", class: "button button--primary", data: { "prescription-form-target": "submit" } %>
-      <%= link_to "Cancel", "#", class: "button button--secondary",
+      <%= f.submit prescription.new_record? ? "Add Prescription" : "Update Prescription", 
+          class: "button button--primary", 
+          data: { "prescription-form-target": "submit" } %>
+      <%= link_to "Cancel", "#", 
+          class: "button button--secondary",
           data: { action: "click->prescription-form#cancel" } %>
     <% else %>
-      <%= f.submit "Create Prescription", class: "button button--primary", data: { "prescription-form-target": "submit" } %>
-      <%= link_to "Back", person_path(@person), class: "button button--secondary" %>
+      <%= f.submit prescription.new_record? ? "Add Prescription" : "Update Prescription", 
+          class: "button button--primary" %>
+      <%= link_to "Cancel", person_path(@person), 
+          class: "button button--secondary" %>
     <% end %>
   </div>
 <% end %>
