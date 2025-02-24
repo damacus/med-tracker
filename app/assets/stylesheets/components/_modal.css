@@ -14,79 +14,104 @@
   --color-border: lightgray;
   --color-primary: royalblue;
   --color-white: white;
+  --color-card: #333;
+  --color-foreground: #fff;
+  --color-nav: #666;
+  --color-input: #444;
+  --color-background: #333;
+  --color-primary-dark: #0055cc;
+  --color-danger: #ff0000;
 }
 
 .modal {
+  /* Position */
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+
+  /* Size */
+  width: min(85vw, 48ch);
+  max-height: 90vh;
+  overflow-y: auto;
+
+  /* Appearance */
   border: none;
-  border-radius: var(--modal-border-radius);
-  box-shadow: var(--modal-shadow);
-  padding: var(--modal-padding);
-  width: var(--modal-width);
+  border-radius: 12px;
+  padding: 28px;
+  background-color: var(--color-card);
+  color: var(--color-foreground);
+  box-shadow: 0 4px 8px rgb(0 0 0 / 25%);
 }
 
 .modal__title {
   font-size: 1.5em;
   font-weight: 600;
-  margin-block: 0 var(--spacing-xl);
+  margin: 0 0 40px 0;
+  color: var(--color-primary);
 }
 
 .modal__form-group {
-  margin-bottom: var(--spacing-md);
+  margin-bottom: 20px;
 }
 
 .modal__label {
   display: block;
-  margin-block: var(--spacing-md) var(--spacing-xs);
+  margin: 20px 0 8px 0;
+  color: var(--color-foreground);
 }
 
 .modal__input {
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  font-size: inherit;
-  padding: var(--spacing-sm);
   width: 100%;
+  padding: 12px;
+  border: 1px solid var(--color-nav);
+  border-radius: 6px;
+  background-color: var(--color-input);
+  color: var(--color-foreground);
+  font-size: inherit;
 }
 
-.modal__input--date {
-  composes: modal__input;
-}
-
-.modal__input--text {
-  composes: modal__input;
-}
-
-.modal__input--email {
-  composes: modal__input;
+.modal__input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-dark);
 }
 
 .modal__actions {
-  margin-top: var(--spacing-lg);
+  margin-top: 32px;
 }
 
 .modal__submit {
-  appearance: none;
-  background: var(--color-primary);
+  width: 100%;
+  padding: 12px;
   border: none;
   border-radius: 6px;
-  color: var(--color-white);
+  background-color: var(--color-primary);
+  color: var(--color-background);
   cursor: pointer;
   font-size: inherit;
   font-weight: 600;
-  padding: var(--spacing-sm);
-  width: 100%;
+}
+
+.modal__submit:hover {
+  background-color: var(--color-primary-dark);
 }
 
 .modal__error {
-  color: red;
-  margin-bottom: var(--spacing-md);
+  margin-bottom: 20px;
+  padding: 12px;
+  border-radius: 6px;
+  background-color: var(--color-danger);
+  color: var(--color-background);
 }
 
 .modal__error-list {
   list-style-type: none;
   padding-left: 0;
+  margin: 8px 0 0 0;
 }
 
 /* Backdrop styles */
 .modal::backdrop {
-  background: rgb(0 0 0 / 50%);
+  background: rgb(0 0 0 / 75%);
 }

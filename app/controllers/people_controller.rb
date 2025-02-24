@@ -12,11 +12,13 @@ class PeopleController < ApplicationController
   # GET /people/new
   def new
     @person = Person.new
+    render "new", layout: "modal"
   end
 
   # GET /people/:id/edit
   def edit
     @person = Person.find(params[:id])
+    render "edit", layout: "modal"
   end
 
   def create
