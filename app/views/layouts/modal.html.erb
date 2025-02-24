@@ -1,0 +1,9 @@
+<%= turbo_frame_tag "modal" do %>
+  <dialog id="dialog">
+    <%= yield %>
+  </dialog>
+
+  <script type="text/javascript">
+    dialog.showModal();
+  </script>
+<% end %>

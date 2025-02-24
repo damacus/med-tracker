@@ -2,11 +2,14 @@
 adult_john:
   name: John Smith
   date_of_birth: 1980-01-01
+  email: john.smith@example.com
 
 adult_jane:
   name: Jane Doe
   date_of_birth: 1985-05-15
+  email: jane.doe@example.com
 
 adult_bob:
   name: Bob Wilson
   date_of_birth: 1975-12-31
+  email: bob.wilson@example.com

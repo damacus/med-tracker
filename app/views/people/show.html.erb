@@ -1,10 +1,4 @@
 <div class="container">
-  <% if notice %>
-    <div class="alert alert--success">
-      <span><%= notice %></span>
-    </div>
-  <% end %>
-
   <%= turbo_frame_tag dom_id(@person) do %>
     <div class="person-details">
       <% if params[:editing] %>

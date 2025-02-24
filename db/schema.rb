@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_02_17_223629) do
+ActiveRecord::Schema[8.0].define(version: 2025_02_24_142030) do
   create_table "dosage_options", force: :cascade do |t|
     t.integer "medicine_id", null: false
     t.decimal "amount", precision: 10, scale: 2, null: false
@@ -58,6 +58,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_02_17_223629) do
     t.date "date_of_birth"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "email"
+    t.index ["email"], name: "index_people_on_email"
   end
 
   create_table "prescriptions", force: :cascade do |t|

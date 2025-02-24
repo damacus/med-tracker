@@ -9,20 +9,30 @@ class PeopleController < ApplicationController
     @prescriptions = @person.prescriptions.includes(:medicine)
   end
 
+  # GET /people/new
+  def new
+    @person = Person.new
+  end
+
+  # GET /people/:id/edit
+  def edit
+    @person = Person.find(params[:id])
+  end
+
   def create
     @person = Person.new(person_params)
 
-    if @person.save
-      flash[:notice] = "Person was successfully created."
-      redirect_to people_path
-    else
-      respond_to do |format|
+    respond_to do |format|
+      if @person.save
+        format.html { redirect_to @person, notice: "Person was successfully created." }
+        format.turbo_stream { redirect_to people_path, notice: "Person was successfully created." }
+      else
         format.html { render :new, status: :unprocessable_entity }
         format.turbo_stream do
           render turbo_stream: turbo_stream.replace(
-            "modal",
-            partial: "shared/modal",
-            locals: { title: "Add Person", content: render_to_string(partial: "form", locals: { person: @person }) }
+            "person_form",
+            partial: "form",
+            locals: { person: @person }
           )
         end
       end
@@ -30,25 +40,26 @@ class PeopleController < ApplicationController
   end
 
   def update
-    if @person.update(person_params)
-      respond_to do |format|
-        format.turbo_stream {
-          render turbo_stream: turbo_stream.replace(
-            @person,
-            partial: "person_details",
-            locals: { person: @person, editing: false }
-          )
-        }
+    respond_to do |format|
+      if @person.update(person_params)
         format.html { redirect_to @person, notice: "Person was successfully updated." }
+        format.turbo_stream { redirect_to people_path, notice: "Person was successfully updated." }
+        format.json { render :show, status: :ok, location: @person }
+      else
+        format.html { render :edit, status: :unprocessable_entity }
+        format.json { render json: @person.errors, status: :unprocessable_entity }
       end
-    else
-      render :edit, status: :unprocessable_entity
     end
   end
 
+  # DELETE /people/1 or /people/1.json
   def destroy
-    @person.destroy
-    redirect_to people_url, notice: "Person was successfully deleted."
+    @person.destroy!
+
+    respond_to do |format|
+      format.html { redirect_to people_path, status: :see_other, notice: "Person was successfully deleted." }
+      format.json { head :no_content }
+    end
   end
 
   private
@@ -58,6 +69,6 @@ class PeopleController < ApplicationController
   end
 
   def person_params
-    params.require(:person).permit(:name, :date_of_birth)
+    params.require(:person).permit(:name, :date_of_birth, :email)
   end
 end

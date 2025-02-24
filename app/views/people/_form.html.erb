@@ -1,7 +1,8 @@
-<%= form_with(model: person, class: "form") do |f| %>
+<%= form_with(model: person, id: "person_form", data: { turbo_frame: "_top" }) do |form| %>
   <% if person.errors.any? %>
-    <div class="form__errors">
+    <div style="color: red">
       <h2><%= pluralize(person.errors.count, "error") %> prohibited this person from being saved:</h2>
+
       <ul>
         <% person.errors.full_messages.each do |message| %>
           <li><%= message %></li>
@@ -10,27 +11,23 @@
     </div>
   <% end %>
 
-  <table class="form__table">
-    <tr class="form__row">
-      <td class="form__label-cell">
-        <%= f.label :name, class: "form__label" %>
-      </td>
-      <td class="form__input-cell">
-        <%= f.text_field :name, class: "form__input" %>
-      </td>
-    </tr>
-    <tr class="form__row">
-      <td class="form__label-cell">
-        <%= f.label :date_of_birth, class: "form__label" %>
-      </td>
-      <td class="form__input-cell">
-        <%= f.date_field :date_of_birth, class: "form__input" %>
-      </td>
-    </tr>
-  </table>
+  <div>
+	<%= form.label :name, style: "display: block" %>
+	<%= form.text_field :name %>
+  </div>
+
+   <div>
+	<%= form.label :email, style: "display: block" %>
+	<%= form.text_field :email %>
+  </div>
+
+    <div>
+	<%= form.label :date_of_birth, style: "display: block" %>
+	<%= form.date_field :date_of_birth %>
+  </div>
 
   <div class="form__actions">
-    <%= f.submit class: "button" %>
-    <%= link_to "Back", people_path, class: "button button--secondary" %>
+    <%= form.submit class: "button button--primary" %>
+    <%= link_to "Cancel", people_path, class: "button button--secondary" %>
   </div>
 <% end %>

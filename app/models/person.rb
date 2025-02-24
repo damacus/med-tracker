@@ -17,4 +17,10 @@ class Person < ApplicationRecord
                (now.month == date_of_birth.month && now.day < date_of_birth.day)
     age
   end
+
+  # def new
+  #   @person = Person.new
+  #   layout = turbo_frame_request_id == "modal" ? "modal" : "application"
+  #   render "new", layout: layout
+  # end
 end
