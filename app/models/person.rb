@@ -1,9 +1,12 @@
 class Person < ApplicationRecord
   has_many :prescriptions, dependent: :destroy
   has_many :medicines, through: :prescriptions
+  normalizes :email, with: ->(email) { email.strip.downcase }
 
-  validates :name, presence: true
   validates :date_of_birth, presence: true
+  validates :name, :email, presence: true
+  validates :email, format: { with: URI::MailTo::EMAIL_REGEXP, allow_blank: true }
+  validates :email, uniqueness: true
 
   def age
     return nil unless date_of_birth
