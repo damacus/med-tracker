@@ -1,7 +1,10 @@
-<div class="modal__content">
-  <%= render "form", person: @person %>
-</div>
+<% content_for :title, "New Person" %>
 
-<script>
-  document.getElementById('modal').showModal();
+<dialog id="new_person_dialog">
+  <h1>New person</h1>
+  <%= render "form", person: @person %>
+</dialog>
+
+<script type="text/javascript">
+  new_person_dialog.showModal();
 </script>
