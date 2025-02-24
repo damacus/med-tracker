@@ -1,0 +1,16 @@
+{
+  "name": "Med Tracker",
+  "short_name": "MedTrack",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#007BFF",
+  "icons": [
+    {
+      "src": "/assets/favicon.svg",
+      "sizes": "48x48 72x72 96x96 128x128 256x256 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
