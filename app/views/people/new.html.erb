@@ -1,10 +1,12 @@
 <% content_for :title, "New Person" %>
 
-<dialog id="new_person_dialog">
+<%= turbo_frame_tag "modal" do %>
+  <dialog id="new_person_dialog">
   <h1>New person</h1>
   <%= render "form", person: @person %>
-</dialog>
+  </dialog>
 
-<script type="text/javascript">
+  <script type="text/javascript">
   new_person_dialog.showModal();
-</script>
+  </script>
+<% end%>
