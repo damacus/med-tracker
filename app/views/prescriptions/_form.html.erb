@@ -52,6 +52,28 @@
       <%= f.label :end_date, "End date", class: "form__label" %>
       <%= f.date_field :end_date, class: "form__input" %>
     </div>
+    
+    <div class="prescription-form__field">
+      <%= f.label :max_daily_doses, "Max doses per cycle", class: "form__label" %>
+      <%= f.number_field :max_daily_doses, class: "form__input", min: 1 %>
+    </div>
+    
+    <div class="prescription-form__field">
+      <%= f.label :min_hours_between_doses, "Minimum hours between doses", class: "form__label" %>
+      <%= f.number_field :min_hours_between_doses, class: "form__input", min: 1 %>
+    </div>
+    
+    <div class="prescription-form__field">
+      <%= f.label :dose_cycle, "Dose cycle", class: "form__label" %>
+      <%= f.select :dose_cycle, 
+          options_for_select([
+            ["Daily", "daily"],
+            ["Weekly", "weekly"],
+            ["Monthly", "monthly"]
+          ], prescription.dose_cycle),
+          { include_blank: "Select a cycle (default: daily)" },
+          { class: "form__input" } %>
+    </div>
 
     <div class="prescription-form__field prescription-form__field--full">
       <%= f.label :notes, class: "form__label" %>

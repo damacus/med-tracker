@@ -6,6 +6,9 @@ john_paracetamol:
   frequency: Every 4-6 hours
   start_date: 2025-02-17
   notes: For headache
+  max_daily_doses: 4
+  min_hours_between_doses: 4
+  dose_cycle: daily
 
 # Ibuprofen prescriptions
 jane_ibuprofen:
@@ -15,12 +18,29 @@ jane_ibuprofen:
   frequency: Every 6-8 hours
   start_date: 2025-02-17
   notes: For back pain
+  max_daily_doses: 3
+  min_hours_between_doses: 6
+  dose_cycle: daily
 
 # Aspirin prescriptions
 bob_aspirin:
   person: adult_bob
   medicine: aspirin
-  dosage: 300mg
-  frequency: Every 4-6 hours
+  dosage: 75mg
+  frequency: Once daily
   start_date: 2025-02-17
-  notes: For fever
+  notes: For heart health
+  max_daily_doses: 1
+  min_hours_between_doses: 24
+  dose_cycle: daily
+
+# Weekly medication
+bob_weekly_med:
+  person: adult_bob
+  medicine: vitamin_d
+  dosage: 1000 IU
+  frequency: Once weekly
+  start_date: 2025-02-17
+  notes: Weekly supplement
+  max_daily_doses: 1
+  dose_cycle: weekly

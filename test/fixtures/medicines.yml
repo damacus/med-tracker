@@ -46,3 +46,15 @@ calpol:
     Do not exceed the recommended dose. If symptoms persist for more than 3
     days, consult your doctor. Contains paracetamol - do not use with
     other paracetamol-containing products.
+
+# Vitamin D
+vitamin_d:
+  name: Vitamin D
+  description: >-
+    Vitamin D helps regulate the amount of calcium and phosphate in the body.
+    These nutrients are needed to keep bones, teeth and muscles healthy.
+  dosage: 1000
+  unit: IU
+  warnings: >-
+    Do not exceed recommended dosage. Consult your doctor before taking
+    supplements.
