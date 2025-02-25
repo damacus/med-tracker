@@ -11,7 +11,7 @@
 .nav {
 	background-color: var(--nav-background);
 	border-bottom: 1px solid var(--nav-border);
-	padding: var(--spacing-4) 0;
+	padding: var(--spacing-4);
 	color: var(--nav-text);
 	margin-bottom: var(--spacing-8);
 }
@@ -58,12 +58,13 @@
 
 .nav__menu {
 	display: flex;
+	color: var(--nav-text);
 	gap: var(--spacing-4);
 }
 
 .nav__link {
 	text-decoration: none;
-	color: var(--nav-text-muted);
+	color: var(--nav-text);
 	font-weight: 500;
 	padding: var(--spacing-2);
 	border-radius: var(--radius-base);
@@ -98,15 +99,16 @@
 
 /* Responsive navigation */
 @media (max-width: 768px) {
-	.nav__search {
-		display: none;
-	}
-
 	.nav__menu {
 		display: none;
 	}
 
-	.nav__container {
-		padding: 0 var(--spacing-2);
+	.nav__left {
+		/* display: none; */
+		padding: 0 var(--spacing-4);
+	}
+	.nav__right {
+		/* display: none; */
+		padding: 0 var(--spacing-4);
 	}
 }

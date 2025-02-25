@@ -3,7 +3,7 @@
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
 	gap: var(--spacing-4);
-	padding: var(--spacing-4);
+	padding: var(--spacing-1);
 }
 
 .item-card {
