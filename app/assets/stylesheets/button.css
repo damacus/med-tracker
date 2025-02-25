@@ -11,7 +11,7 @@
 	cursor: pointer;
 	text-decoration: none;
 	gap: var(--spacing-2);
-	min-width: 120px;
+	min-width: 55px;
 	border: 1px solid var(--color-primary);
 	background-color: var(--color-primary);
 	color: var(--color-text-bright);
@@ -33,19 +33,8 @@
 	color: var(--color-text-bright);
 }
 
-.button--danger {
-	background-color: var(--color-danger);
-	border-color: var(--color-danger);
-	color: white;
-}
-
-.button--danger:hover {
-	background-color: var(--color-danger-dark);
-	border-color: var(--color-danger-dark);
-}
-
 .button--sm {
-	min-width: 100px;
+	min-width: 60px;
 	padding: var(--spacing-2) var(--spacing-3);
 	font-size: var(--font-size-xs);
 }
@@ -77,9 +66,13 @@
 .button--danger {
 	background-color: var(--color-danger);
 	color: var(--color-text-bright);
+	border-color: var(--color-danger);
+	min-width: 60px;
 }
 
 .button--danger:hover {
+	background-color: var(--color-danger-dark);
+	border-color: var(--color-danger-dark);
 	filter: brightness(0.9);
 }
 

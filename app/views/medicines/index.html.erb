@@ -16,10 +16,7 @@
 		<div class="item-card__actions">
 		  <%= link_to "View", medicine_path(medicine), class: "button button--link" %>
 		  <%= link_to "Edit", edit_medicine_path(medicine), class: "button button--link" %>
-		  <%= button_to "Delete", medicine_path(medicine),
-			  method: :delete,
-			  class: "button button--danger",
-			  data: { confirm: "Are you sure?" } %>
+		  <%= link_to "Delete", medicine_path(medicine), class: "button button--danger", data: { turbo_method: :delete, turbo_confirm: "Are you sure?" } %>
 		</div>
 	  </div>
 	<% end %>

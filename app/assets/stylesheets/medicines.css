@@ -74,3 +74,8 @@
 	justify-content: flex-end;
 	margin-top: var(--spacing-8);
 }
+
+.medicine__actions {
+	display: flex;
+	gap: var(--spacing-2);
+}
