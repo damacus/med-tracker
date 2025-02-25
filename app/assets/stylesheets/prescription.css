@@ -1,0 +1,161 @@
+/* Prescription Section Component */
+.prescriptions-section {
+  margin-top: var(--spacing-6);
+}
+
+.prescriptions-section__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-4);
+}
+
+.prescriptions-section__list {
+  display: grid;
+  gap: var(--spacing-4);
+}
+
+.prescriptions-section__empty {
+  color: var(--color-text-muted);
+  text-align: center;
+  padding: var(--spacing-4);
+}
+
+/* Individual Prescription Component */
+.prescription {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-4);
+}
+
+.prescription__content {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing-4);
+}
+
+.prescription__info {
+  flex: 1;
+}
+
+.prescription__title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  margin: 0 0 var(--spacing-3) 0;
+  color: var(--color-text-bright);
+}
+
+.prescription__detail {
+  color: var(--color-text-muted);
+  margin-bottom: var(--spacing-2);
+}
+
+.prescription__notes {
+  color: var(--color-text-muted);
+  margin: var(--spacing-3) 0;
+  padding-top: var(--spacing-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.prescription__takes {
+  margin-top: var(--spacing-4);
+}
+
+.prescription__takes-title {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  margin-bottom: var(--spacing-2);
+  color: var(--color-text-bright);
+}
+
+.prescription__takes-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.prescription__take {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  margin-bottom: var(--spacing-2);
+}
+
+.prescription__take-icon {
+  flex-shrink: 0;
+}
+
+.prescription__take-time {
+  color: var(--color-text-muted);
+}
+
+.prescription__takes-empty {
+  color: var(--color-text-muted);
+  margin-top: var(--spacing-2);
+}
+
+.prescription__take-form-group {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  margin-top: var(--spacing-3);
+}
+
+.prescription__actions {
+  display: flex;
+  gap: var(--spacing-2);
+}
+
+/* Prescription Form Component */
+.prescription-form__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-4);
+}
+
+.prescription-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.prescription-form__field--full {
+  grid-column: 1 / -1;
+}
+
+/* Prescription Card Component */
+.prescription-card {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-4);
+}
+
+.prescription-card__content {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing-4);
+}
+
+.prescription-card__info {
+  flex: 1;
+}
+
+.prescription-card__medicine {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  margin: 0 0 var(--spacing-3) 0;
+  color: var(--color-text-bright);
+}
+
+.prescription-card__detail {
+  color: var(--color-text-muted);
+  margin-bottom: var(--spacing-2);
+}
+
+.prescription-card__actions {
+  display: flex;
+  gap: var(--spacing-2);
+}

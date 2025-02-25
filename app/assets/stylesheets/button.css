@@ -1,0 +1,99 @@
+/* Button Component */
+.button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--spacing-2) var(--spacing-4);
+	font-size: var(--font-size-base);
+	font-weight: 500;
+	border-radius: var(--radius-md);
+	transition: all 0.2s ease;
+	cursor: pointer;
+	text-decoration: none;
+	gap: var(--spacing-2);
+	min-width: 120px;
+	border: 1px solid var(--color-primary);
+	background-color: var(--color-primary);
+	color: var(--color-text-bright);
+}
+
+.button:hover {
+	background-color: var(--color-primary-dark);
+}
+
+.button--secondary {
+	background-color: transparent;
+	color: var(--color-text);
+	border-color: var(--color-border);
+}
+
+.button--secondary:hover {
+	background-color: var(--color-input);
+	border-color: var(--color-primary);
+	color: var(--color-text-bright);
+}
+
+.button--danger {
+	background-color: var(--color-danger);
+	border-color: var(--color-danger);
+	color: white;
+}
+
+.button--danger:hover {
+	background-color: var(--color-danger-dark);
+	border-color: var(--color-danger-dark);
+}
+
+.button--sm {
+	min-width: 100px;
+	padding: var(--spacing-2) var(--spacing-3);
+	font-size: var(--font-size-xs);
+}
+
+.button:focus {
+	outline: 2px solid var(--color-primary);
+	outline-offset: 2px;
+}
+
+.button--primary {
+	background-color: var(--color-primary);
+	color: var(--color-text-bright);
+}
+
+.button--primary:hover {
+	background-color: var(--color-primary-dark);
+}
+
+.button--secondary {
+	background-color: var(--color-card);
+	color: var(--color-text);
+	border: 1px solid var(--color-border);
+}
+
+.button--secondary:hover {
+	background-color: var(--color-input);
+}
+
+.button--danger {
+	background-color: var(--color-danger);
+	color: var(--color-text-bright);
+}
+
+.button--danger:hover {
+	filter: brightness(0.9);
+}
+
+.button--small {
+	padding: var(--spacing-1) var(--spacing-2);
+	font-size: var(--font-size-sm);
+}
+
+.button--large {
+	padding: var(--spacing-3) var(--spacing-6);
+	font-size: var(--font-size-lg);
+}
+
+.button:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}

@@ -1,66 +1,38 @@
-const CACHE_NAME = 'med-tracker-v1';
-const OFFLINE_URL = '/offline.html';
+// Add a service worker for processing Web Push notifications:
 
-const ASSETS_TO_CACHE = [
-  '/',
-  OFFLINE_URL,
-  '/manifest.json',
-  '/assets/images/favicon.svg',
-  '/assets/stylesheets/application.css',
-  '/assets/application.js'
-];
+// The install event is fired when the service worker is first installed
+self.addEventListener('install', function(event) {
+    console.log('Service Worker installed');
+  });
 
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(ASSETS_TO_CACHE))
-  );
+// The activate event is fired after the install event when the service worker is actually controlling the page
+self.addEventListener('activate', function(event) {
+  console.log('Service Worker activated');
 });
 
-self.addEventListener('activate', (event) => {
+// The push event is fired when a push notification is received
+self.addEventListener("push", async (event) => {
+  const { title, options } = await event.data.json()
+  event.waitUntil(self.registration.showNotification(title, options))
+})
+
+// The notificationclick event is fired when the user clicks on a notification
+self.addEventListener("notificationclick", function(event) {
+  event.notification.close()
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
-  );
-});
+    clients.matchAll({ type: "window" }).then((clientList) => {
+      for (let i = 0; i < clientList.length; i++) {
+        let client = clientList[i]
+        let clientPath = (new URL(client.url)).pathname
 
-self.addEventListener('fetch', (event) => {
-  if (event.request.mode === 'navigate') {
-    event.respondWith(
-      fetch(event.request)
-        .catch(() => {
-          return caches.open(CACHE_NAME)
-            .then((cache) => cache.match(OFFLINE_URL));
-        })
-    );
-    return;
-  }
-
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        if (response) {
-          return response;
+        if (clientPath == event.notification.data.path && "focus" in client) {
+          return client.focus()
         }
-        return fetch(event.request)
-          .then((response) => {
-            if (!response || response.status !== 200 || response.type !== 'basic') {
-              return response;
-            }
-            const responseToCache = response.clone();
-            caches.open(CACHE_NAME)
-              .then((cache) => {
-                cache.put(event.request, responseToCache);
-              });
-            return response;
-          });
-      })
-  );
-});
+      }
+
+      if (clients.openWindow) {
+        return clients.openWindow(event.notification.data.path)
+      }
+    })
+  )
+})

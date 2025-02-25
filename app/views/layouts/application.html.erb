@@ -14,10 +14,9 @@
     <%= yield :head %>
 
     <link rel="manifest" href="/manifest.json">
-    <%= favicon_link_tag "favicon.svg", type: "image/svg+xml" %>
-    <%= favicon_link_tag "favicon.svg", rel: "apple-touch-icon", type: "image/svg+xml" %>
-
-    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= favicon_link_tag "/favicon.svg", type: "image/svg+xml" %>
+    <%= favicon_link_tag "/favicon.svg", rel: "apple-touch-icon", type: "image/svg+xml" %>
+	<%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
     <%= javascript_include_tag "application", "data-turbo-track": "reload", type: "module" %>
 

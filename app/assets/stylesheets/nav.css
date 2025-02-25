@@ -1,0 +1,112 @@
+/* Navigation Component */
+:root {
+  --nav-background: var(--color-nav);
+  --nav-hover: var(--color-nav-hover);
+  --nav-text: var(--color-text-bright);
+  --nav-text-muted: var(--color-text-muted);
+  --nav-border: var(--color-border);
+  --nav-search-width: 200px;
+}
+
+.nav {
+  background-color: var(--nav-background);
+  border-bottom: 1px solid var(--nav-border);
+  padding: var(--spacing-4) 0;
+  color: var(--nav-text);
+  margin-bottom: var(--spacing-8);
+}
+
+.nav__container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--spacing-4);
+}
+
+.nav__left {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-8);
+}
+
+.nav__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  text-decoration: none;
+  color: var(--nav-text);
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+}
+
+.nav__logo {
+  color: var(--color-primary);
+}
+
+.nav__brand-text {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+}
+
+.nav__menu {
+	display: flex;
+	gap: var(--spacing-4);
+}
+
+.nav__link {
+  text-decoration: none;
+  color: var(--nav-text-muted);
+  font-weight: 500;
+  padding: var(--spacing-2);
+  border-radius: var(--radius-base);
+  transition: all 0.2s;
+}
+
+.nav__link:hover {
+  color: var(--nav-text);
+  background-color: var(--nav-hover);
+}
+
+.nav__right {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-4);
+}
+
+.nav__search {
+	position: relative;
+}
+
+.nav__search-input {
+  padding: var(--spacing-2) var(--spacing-4);
+  border: 1px solid var(--nav-border);
+  border-radius: var(--radius-base);
+  font-size: var(--font-size-sm);
+  width: var(--nav-search-width);
+  background-color: var(--nav-hover);
+  color: var(--nav-text);
+  transition: all 0.2s;
+}
+
+.nav__search-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-dark);
+}
+
+/* Responsive navigation */
+@media (max-width: 768px) {
+	.nav__search {
+		display: none;
+	}
+
+	.nav__menu {
+		display: none;
+	}
+
+	.nav__container {
+		padding: 0 var(--spacing-2);
+	}
+}

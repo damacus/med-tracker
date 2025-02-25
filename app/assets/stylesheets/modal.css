@@ -1,137 +1,248 @@
+/* Modal Component using BEM methodology */
+
+/* Modal-specific variables */
+:root {
+	--modal-border-radius: var(--radius-lg);
+	--modal-padding: var(--spacing-8);
+	--modal-shadow: var(--shadow-md);
+	--modal-width: min(85vw, 48ch);
+	--modal-background: var(--color-card);
+	--modal-title-margin: var(--spacing-8);
+	--modal-form-margin: var(--spacing-4);
+	--modal-input-padding: var(--spacing-3);
+
+	/* Add modal overlay variables */
+	--modal-overlay-bg: rgba(0, 0, 0, 0.7);
+	--modal-overlay-blur: 4px;
+	--modal-z-overlay: 40;
+	--modal-z-content: 50;
+}
+
+/* Modal styles */
 .modal {
-  opacity: 0;
-  transform: translateY(16px);
-  transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+	opacity: 0;
+	transform: translateY(16px);
+	transition: opacity 0.2s ease-out, transform 0.2s ease-out;
 }
 
 .modal[data-show="true"] {
-  opacity: 1;
-  transform: translateY(0);
+	opacity: 1;
+	transform: translateY(0);
 }
 
 .modal[data-show="false"] {
-  opacity: 0;
-  transform: translateY(16px);
+	opacity: 0;
+	transform: translateY(16px);
 }
 
 .modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 50;
+	/* Position */
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+
+	/* Size */
+	width: var(--modal-width);
+	max-height: 90vh;
+	overflow-y: auto;
+
+	/* Appearance */
+	border: none;
+	border-radius: var(--modal-border-radius);
+	padding: var(--modal-padding);
+	background-color: var(--modal-background);
+	color: var(--color-foreground);
+	box-shadow: var(--modal-shadow);
+	z-index: 50;
 }
 
 .modal__overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
-  z-index: 40;
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-color: var(--modal-overlay-bg);
+	backdrop-filter: blur(var(--modal-overlay-blur));
+	z-index: var(--modal-z-overlay);
 }
 
 .modal__container {
-  background-color: rgb(255, 255, 255);
-  border-radius: 8px;
-  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.2);
-  width: 100%;
-  max-width: min(600px, 90vw);
-  max-height: 85vh;
-  overflow-y: auto;
-  z-index: 50;
-  position: relative;
-  margin: 2rem;
+	background-color: var(--color-background);
+	border-radius: var(--radius-lg);
+	box-shadow: var(--shadow-lg);
+	width: 100%;
+	max-width: min(600px, 90vw);
+	max-height: 85vh;
+	overflow-y: auto;
+	z-index: var(--modal-z-content);
+	position: relative;
+	margin: var(--spacing-8);
 }
 
 .modal__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.5rem 2rem;
-  border-bottom: 1px solid var(--color-gray-200);
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: var(--spacing-6) var(--spacing-8);
+	border-bottom: 1px solid var(--color-border);
 }
 
 .modal__title {
-  margin: 0;
-  font-size: 1.5rem;
-  color: var(--color-gray-900);
-  font-weight: 500;
-  line-height: 1.2;
+	font-size: 1.5em;
+	font-weight: 600;
+	margin: 0 0 var(--modal-title-margin) 0;
+	color: var(--color-primary);
 }
 
-.modal__close {
-  background: none;
-  border: none;
-  color: var(--color-gray-500);
-  cursor: pointer;
-  font-size: 1.75rem;
-  padding: 0.5rem;
-  margin: -0.5rem -0.5rem -0.5rem 0.5rem;
-  line-height: 1;
-  transition: color 0.2s ease-in-out;
+.modal__form-group {
+	margin-bottom: var(--modal-form-margin);
 }
 
-.modal__close:hover {
-  color: var(--color-gray-900);
+.modal__label {
+	display: block;
+	margin: var(--modal-form-margin) 0 var(--spacing-xs) 0;
+	color: var(--color-foreground);
 }
 
-.modal__content {
-  padding: 2rem;
-  background-color: rgb(255, 255, 255);
+.modal__input {
+	width: 100%;
+	padding: var(--modal-input-padding);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-base);
+	background-color: var(--color-input);
+	color: var(--color-foreground);
+	font-size: inherit;
+}
+
+.modal__input:focus {
+	outline: none;
+	border-color: var(--color-primary);
+	box-shadow: 0 0 0 2px var(--color-primary-dark);
+}
+
+.modal__actions {
+	margin-top: var(--spacing-lg);
+}
+
+.modal__submit {
+	width: 100%;
+	padding: var(--modal-input-padding);
+	border: none;
+	border-radius: var(--radius-base);
+	background-color: var(--color-primary);
+	color: var(--color-background);
+	cursor: pointer;
+	font-size: inherit;
+	font-weight: 600;
+}
+
+.modal__submit:hover {
+	background-color: var(--color-primary-dark);
+}
+
+.modal__error {
+	margin-bottom: var(--modal-form-margin);
+	padding: var(--modal-input-padding);
+	border-radius: 6px;
+	background-color: var(--color-danger);
+	color: var(--color-background);
+}
+
+.modal__error-list {
+	list-style-type: none;
+	padding-left: 0;
+	margin: var(--spacing-xs) 0 0 0;
+}
+
+/* Backdrop styles */
+.modal::backdrop {
+	background: var(--modal-overlay-bg);
+}
+
+/* Animation keyframes */
+@keyframes modal-open {
+	from {
+		opacity: 0;
+		transform: translate(-50%, -60%);
+	}
+
+	to {
+		opacity: 1;
+		transform: translate(-50%, -50%);
+	}
+}
+
+@keyframes modal-close {
+	from {
+		opacity: 1;
+		transform: translate(-50%, -50%);
+	}
+
+	to {
+		opacity: 0;
+		transform: translate(-50%, -60%);
+	}
 }
 
 /* Animation classes */
 .modal[data-show="true"] .modal__overlay {
-  animation: fade-in 0.3s ease-out;
+	animation: fade-in 0.3s ease-out;
 }
 
 .modal[data-show="true"] .modal__container {
-  animation: slide-up 0.3s ease-out;
+	animation: slide-up 0.3s ease-out;
 }
 
 .modal[data-show="false"] .modal__overlay {
-  animation: fade-out 0.2s ease-in;
+	animation: fade-out 0.2s ease-in;
 }
 
 .modal[data-show="false"] .modal__container {
-  animation: slide-down 0.2s ease-in;
+	animation: slide-down 0.2s ease-in;
 }
 
 @keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+	from {
+		opacity: 0;
+	}
+
+	to {
+		opacity: 1;
+	}
 }
 
 @keyframes fade-out {
-  from { opacity: 1; }
-  to { opacity: 0; }
+	from {
+		opacity: 1;
+	}
+
+	to {
+		opacity: 0;
+	}
 }
 
 @keyframes slide-up {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+	from {
+		opacity: 0;
+		transform: translateY(10px);
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
 }
 
 @keyframes slide-down {
-  from {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  to {
-    opacity: 0;
-    transform: translateY(10px);
-  }
+	from {
+		opacity: 1;
+		transform: translateY(0);
+	}
+
+	to {
+		opacity: 0;
+		transform: translateY(10px);
+	}
 }

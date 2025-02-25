@@ -53,7 +53,7 @@
 }
 
 .home__card-text {
-  color: #4b5563;
+  color: var(--color-text-muted);
 }
 
 /* Responsive adjustments */
