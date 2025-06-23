@@ -1,5 +1,12 @@
 Rails.application.routes.draw do
+  resource :session
+  resources :passwords, param: :token
+  # Defines the root path route ("/")
   root "home#index"
+
+  namespace :admin do
+    resources :users, only: [:index]
+  end
 
   # Dashboard
   get "dashboard", to: "dashboard#index"
@@ -9,6 +16,9 @@ Rails.application.routes.draw do
   get "medicine-finder", to: "medicines#finder", as: :medicine_finder
 
   # Authentication
+  get "sign_up", to: "users#new"
+  resources :users, only: [:create]
+
   get "login", to: "sessions#new"
   post "login", to: "sessions#create"
   delete "logout", to: "sessions#destroy"

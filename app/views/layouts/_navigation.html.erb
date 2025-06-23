@@ -20,7 +20,11 @@
 
       <!-- Right side -->
       <div class="nav__right">
-        <%= link_to "Login", login_path, class: "button" %>
+        <% if authenticated? %>
+          <%= button_to "Sign out", logout_path, method: :delete, class: "button" %>
+        <% else %>
+          <%= link_to "Login", login_path, class: "button" %>
+        <% end %>
       </div>
     </div>
 </nav>
