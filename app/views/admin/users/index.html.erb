@@ -1,0 +1,19 @@
+<h1>User Management</h1>
+
+<table>
+  <thead>
+    <tr>
+      <th>Email</th>
+      <th>Role</th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% @users.each do |user| %>
+      <tr>
+        <td><%= user.email_address %></td>
+        <td><%= user.role.capitalize %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>

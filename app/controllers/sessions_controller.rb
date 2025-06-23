@@ -1,17 +1,21 @@
 class SessionsController < ApplicationController
+  allow_unauthenticated_access only: %i[ new create ]
+  rate_limit to: 10, within: 3.minutes, only: :create, with: -> { redirect_to new_session_url, alert: "Try again later." }
+
   def new
-    # Login form
   end
 
   def create
-    # TODO: Implement actual authentication
-    flash[:notice] = "Authentication not yet implemented"
-    redirect_to root_path
+    if user = User.authenticate_by(params.permit(:email_address, :password))
+      start_new_session_for user
+      redirect_to after_authentication_url, notice: "Signed in successfully."
+    else
+      redirect_to new_session_path, alert: "Try another email address or password."
+    end
   end
 
   def destroy
-    # TODO: Implement logout
-    flash[:notice] = "Logged out successfully"
-    redirect_to root_path
+    terminate_session
+    redirect_to login_path, notice: "Signed out successfully."
   end
 end

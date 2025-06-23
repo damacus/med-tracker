@@ -1,8 +1,20 @@
-/*
- *= require_self
- *= require button
- *= require_tree .
- */
+@import "_modal.css";
+@import "button.css";
+@import "card.css";
+@import "dashboard.css";
+@import "form.css";
+@import "home.css";
+@import "index.css";
+@import "item.css";
+@import "medicines.css";
+@import "modal.css";
+@import "nav.css";
+@import "navigation.css";
+@import "page.css";
+@import "people.css";
+@import "prescription.css";
+@import "shared.css";
+@import "stat-card.css";
 
 /* Base CSS Variables */
 :root {
