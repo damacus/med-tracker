@@ -1,9 +1,10 @@
+---
 name: CI
 
-on:
+'on':
   pull_request:
   push:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   scan_ruby:
