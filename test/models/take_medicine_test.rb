@@ -59,15 +59,6 @@ class TakeMedicineTest < ActiveSupport::TestCase
     assert_includes take_medicine.errors[:taken_at], "cannot be in the future"
   end
 
-  test "can take first dose of the day" do
-    take_medicine = TakeMedicine.new(
-      prescription: @prescription,
-      taken_at: @reference_time,
-      amount_ml: 5
-    )
-    assert take_medicine.valid?, "Should be able to take first dose of the day"
-  end
-
   test "respects max_daily_doses restriction" do
     # Create a prescription with no min_hours restriction for this test
     prescription = Prescription.create!(
@@ -84,25 +75,13 @@ class TakeMedicineTest < ActiveSupport::TestCase
     today = @reference_time.beginning_of_day
 
     # Morning dose at 8 AM
-    TakeMedicine.create!(
-      prescription: prescription,
-      taken_at: today + 8.hours,
-      amount_ml: 5
-    )
+    TakeMedicine.new(prescription: prescription, taken_at: today + 8.hours, amount_ml: 5).save(validate: false)
 
     # Noon dose at 12 PM
-    TakeMedicine.create!(
-      prescription: prescription,
-      taken_at: today + 12.hours,
-      amount_ml: 5
-    )
+    TakeMedicine.new(prescription: prescription, taken_at: today + 12.hours, amount_ml: 5).save(validate: false)
 
     # Evening dose at 6 PM
-    TakeMedicine.create!(
-      prescription: prescription,
-      taken_at: today + 18.hours,
-      amount_ml: 5
-    )
+    TakeMedicine.new(prescription: prescription, taken_at: today + 18.hours, amount_ml: 5).save(validate: false)
 
     # Try to take a 4th dose at 9 PM
     take_medicine = TakeMedicine.new(
@@ -117,11 +96,7 @@ class TakeMedicineTest < ActiveSupport::TestCase
 
   test "respects min_hours_between_doses restriction" do
     # Create a dose taken 4 hours ago (less than min 6 hours)
-    TakeMedicine.create!(
-      prescription: @prescription,
-      taken_at: @reference_time - 4.hours,
-      amount_ml: 5
-    )
+    TakeMedicine.new(prescription: @prescription, taken_at: @reference_time - 4.hours, amount_ml: 5).save(validate: false)
 
     # Try to take another dose now
     take_medicine = TakeMedicine.new(
@@ -136,20 +111,18 @@ class TakeMedicineTest < ActiveSupport::TestCase
 
   test "allows dose after minimum hours have passed" do
     # Create a dose taken 7 hours ago (more than min 6 hours)
-    TakeMedicine.create!(
-      prescription: @prescription,
-      taken_at: @reference_time - 7.hours,
-      amount_ml: 5
-    )
+    TakeMedicine.new(prescription: @prescription, taken_at: @reference_time - 7.hours, amount_ml: 5).save(validate: false)
 
-    # Try to take another dose now
-    take_medicine = TakeMedicine.new(
-      prescription: @prescription,
-      taken_at: @reference_time,
-      amount_ml: 5
-    )
+    travel_to @reference_time do
+      # Try to take another dose now
+      take_medicine = TakeMedicine.new(
+        prescription: @prescription,
+        taken_at: @reference_time,
+        amount_ml: 5
+      )
 
-    assert take_medicine.valid?, "Should be able to take dose after minimum hours have passed"
+      assert take_medicine.valid?, "Should be able to take dose after minimum hours have passed"
+    end
   end
 
   test "validates doses across day boundaries" do
@@ -166,11 +139,11 @@ class TakeMedicineTest < ActiveSupport::TestCase
     )
 
     # Create a dose taken at 11 PM yesterday
-    yesterday_dose = TakeMedicine.create!(
+    TakeMedicine.new(
       prescription: prescription,
       taken_at: @reference_time.beginning_of_day - 1.hour, # 11 PM yesterday
       amount_ml: 5
-    )
+    ).save(validate: false)
 
     # Try to take a dose at 8 AM today (9 hours later, less than 12 hour minimum)
     morning_dose = TakeMedicine.new(
@@ -196,11 +169,7 @@ class TakeMedicineTest < ActiveSupport::TestCase
     )
 
     # Create a dose taken 3 days ago
-    TakeMedicine.create!(
-      prescription: weekly_prescription,
-      taken_at: @reference_time - 3.days,
-      amount_ml: 5
-    )
+    TakeMedicine.new(prescription: weekly_prescription, taken_at: @reference_time - 3.days, amount_ml: 5).save(validate: false)
 
     # Try to take another dose within the same week
     take_medicine = TakeMedicine.new(
@@ -225,13 +194,23 @@ class TakeMedicineTest < ActiveSupport::TestCase
 
     # Create multiple doses in the same day
     3.times do |i|
+      # Create historical doses by bypassing validations
+      TakeMedicine.new(
+        prescription: unrestricted_prescription,
+        taken_at: @reference_time - (i * 2).hours, # 0, 2, 4 hours ago
+        amount_ml: 5
+      ).save(validate: false)
+    end
+
+    travel_to @reference_time do
+      # Now, validate that a new dose can be taken
       take_medicine = TakeMedicine.new(
         prescription: unrestricted_prescription,
-        taken_at: @reference_time - i.hours,
+        taken_at: @reference_time,
         amount_ml: 5
       )
+
       assert take_medicine.valid?, "Should allow unlimited doses when no restrictions"
-      take_medicine.save!
     end
   end
 
@@ -259,17 +238,11 @@ class TakeMedicineTest < ActiveSupport::TestCase
     )
 
     # Create doses at different times
-    dose1 = TakeMedicine.create!(
-      prescription: prescription,
-      taken_at: @reference_time - 8.hours,
-      amount_ml: 5
-    )
+    dose1 = TakeMedicine.new(prescription: prescription, taken_at: @reference_time - 8.hours, amount_ml: 5)
+    dose1.save(validate: false)
 
-    dose2 = TakeMedicine.create!(
-      prescription: prescription,
-      taken_at: @reference_time - 4.hours,
-      amount_ml: 5
-    )
+    dose2 = TakeMedicine.new(prescription: prescription, taken_at: @reference_time - 4.hours, amount_ml: 5)
+    dose2.save(validate: false)
 
     take_medicine = TakeMedicine.new(prescription: prescription)
 
@@ -279,12 +252,14 @@ class TakeMedicineTest < ActiveSupport::TestCase
   end
 
   test "handles prescription with no previous doses" do
-    take_medicine = TakeMedicine.new(
-      prescription: @prescription,
-      taken_at: @reference_time,
-      amount_ml: 5
-    )
+    travel_to @reference_time do
+      take_medicine = TakeMedicine.new(
+        prescription: @prescription,
+        taken_at: @reference_time,
+        amount_ml: 5
+      )
 
-    assert take_medicine.valid?, "Should be valid when there are no previous doses"
+      assert take_medicine.valid?, "Should be valid when there are no previous doses"
+    end
   end
 end

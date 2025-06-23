@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_02_25_220939) do
+ActiveRecord::Schema[8.0].define(version: 2025_06_23_093841) do
   create_table "dosage_options", force: :cascade do |t|
     t.integer "medicine_id", null: false
     t.decimal "amount", precision: 10, scale: 2, null: false
@@ -28,6 +28,12 @@ ActiveRecord::Schema[8.0].define(version: 2025_02_25_220939) do
     t.datetime "updated_at", null: false
     t.decimal "amount_ml"
     t.index ["prescription_id"], name: "index_medication_takes_on_prescription_id"
+  end
+
+  create_table "medications", force: :cascade do |t|
+    t.string "name"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
   end
 
   create_table "medicine_dosages", force: :cascade do |t|

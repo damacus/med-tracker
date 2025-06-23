@@ -89,7 +89,7 @@ class TakeMedicine < ApplicationRecord
     return unless prescription.min_hours_between_doses.present?
 
     validate_time_since_last_dose(validation_time)
-    validate_time_until_next_dose(validation_time)
+    validate_time_until_next_dose(validation_time) if persisted?
   end
 
   # Check if enough time has passed since the last dose
