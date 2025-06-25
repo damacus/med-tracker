@@ -1,4 +1,4 @@
-# Paracetamol doses
+---
 john_morning_paracetamol:
   prescription: john_paracetamol
   taken_at: 2025-02-17 08:00:00
@@ -11,7 +11,6 @@ john_afternoon_paracetamol:
   amount_ml: 500
   notes: Afternoon dose
 
-# Ibuprofen doses
 jane_morning_ibuprofen:
   prescription: jane_ibuprofen
   taken_at: 2025-02-17 08:00:00
@@ -24,7 +23,6 @@ jane_evening_ibuprofen:
   amount_ml: 400
   notes: Evening dose
 
-# Aspirin doses
 bob_morning_aspirin:
   prescription: bob_aspirin
   taken_at: 2025-02-17 07:00:00

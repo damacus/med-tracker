@@ -203,6 +203,12 @@ GEM
     parser (3.3.8.0)
       ast (~> 2.4.1)
       racc
+    phlex (2.3.1)
+      zeitwerk (~> 2.7)
+    phlex-rails (2.3.1)
+      phlex (~> 2.3.0)
+      railties (>= 7.1, < 9)
+      zeitwerk (~> 2.7)
     playwright-ruby-client (1.52.0)
       concurrent-ruby (>= 1.1.6)
       mime-types (>= 3.0)
@@ -410,6 +416,7 @@ DEPENDENCIES
   importmap-rails
   jbuilder
   kamal
+  phlex-rails (~> 2.3)
   playwright-ruby-client
   propshaft
   puma (>= 5.0)
