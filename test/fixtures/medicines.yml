@@ -1,60 +1,70 @@
-# Paracetamol
+---
 paracetamol:
   name: Paracetamol
+  dosage_amount: 500
+  dosage_unit: 'mg'
+  stock: 100
+  expiry_date: <%= 2.years.from_now.to_date %>
   description: >-
-    Paracetamol is a common painkiller used to treat aches and pain. It can also be used to
-    reduce a high temperature.
-  dosage: 500
-  unit: mg
-  warnings: >-
-    Do not exceed 4000mg in 24 hours. Do not take with other paracetamol-containing products.
-    If symptoms persist, consult your doctor.
-
-# Ibuprofen
-ibuprofen:
-  name: Ibuprofen
-  description: >-
-    Ibuprofen is a common painkiller for treating aches and pains, as well as symptoms of colds
-    and flu. It can also be used to reduce a high temperature and treat inflammation.
-  dosage: 200
-  unit: tablet
-  warnings: >-
-    Take with or after food. Do not exceed 1200mg in 24 hours. Not suitable for people with
-    certain health conditions. If symptoms persist, consult your doctor.
-
-# Aspirin
-aspirin:
-  name: Aspirin
-  description: >-
-    Aspirin is used to treat pain, reduce inflammation and lower fever. It can also be taken
-    in low doses to help prevent heart attacks and strokes in high-risk patients.
-  dosage: 300
-  unit: mg
-  warnings: >-
-    Not suitable for children under 16. Do not exceed 4000mg in 24 hours. May cause stomach
-    irritation. If symptoms persist, consult your doctor.
-
-# Calpol
-calpol:
-  name: Calpol
-  description: >-
-    Calpol is a brand of children's medicine that contains paracetamol. It is
-     used to relieve pain and reduce fever in children.
-  dosage: 5
-  unit: ml
+    Paracetamol is a common painkiller for treating aches and pains, as well as
+    symptoms of colds and flu. It can also be used to reduce a high temperature
+    and treat inflammation.
   warnings: >-
     Do not exceed the recommended dose. If symptoms persist for more than 3
     days, consult your doctor. Contains paracetamol - do not use with
     other paracetamol-containing products.
 
-# Vitamin D
+ibuprofen:
+  name: Ibuprofen
+  dosage_amount: 200
+  dosage_unit: 'mg'
+  stock: 50
+  expiry_date: <%= 1.year.from_now.to_date %>
+  description: >-
+    Ibuprofen is a common painkiller for treating aches and pains, as well as
+    symptoms of colds and flu. It can also be used to reduce a high temperature
+    and treat inflammation.
+  warnings: >-
+    Take with or after food. Do not exceed 1200mg in 24 hours. Not suitable for people with
+    certain health conditions. If symptoms persist, consult your doctor.
+
+aspirin:
+  name: Aspirin
+  description: >-
+    Aspirin is used to treat pain, reduce inflammation and lower fever. It can
+    also be taken in low doses to help prevent heart attacks and strokes in
+    high-risk patients.
+  dosage_amount: 300
+  dosage_unit: 'mg'
+  stock: 50
+  expiry_date: <%= 1.year.from_now.to_date %>
+  warnings: >-
+    Not suitable for children under 16. Do not exceed 4000mg in 24 hours. May
+    cause stomach irritation. If symptoms persist, consult your doctor.
+
+calpol:
+  name: Calpol
+  description: >-
+    Calpol is a brand of children's medicine that contains paracetamol. It is
+    used to relieve pain and reduce fever in children.
+  dosage_amount: 5
+  dosage_unit: ml
+  stock: 50
+  expiry_date: <%= 1.year.from_now.to_date %>
+  warnings: >-
+    Do not exceed the recommended dose. If symptoms persist for more than 3
+    days, consult your doctor. Contains paracetamol - do not use with
+    other paracetamol-containing products.
+
 vitamin_d:
   name: Vitamin D
   description: >-
     Vitamin D helps regulate the amount of calcium and phosphate in the body.
     These nutrients are needed to keep bones, teeth and muscles healthy.
-  dosage: 1000
-  unit: IU
+  dosage_amount: 1000
+  dosage_unit: IU
+  stock: 50
+  expiry_date: <%= 1.year.from_now.to_date %>
   warnings: >-
     Do not exceed recommended dosage. Consult your doctor before taking
     supplements.

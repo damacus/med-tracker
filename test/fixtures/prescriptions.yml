@@ -1,11 +1,13 @@
-# Paracetamol prescriptions
+---
+# Prescriptions Fixtures
+
 john_paracetamol:
-  person: adult_john
+  user: john
   medicine: paracetamol
-  dosage: 500mg
-  frequency: Every 4-6 hours
-  start_date: 2025-02-17
-  notes: For headache
+  dosage: '500mg'
+  frequency: 'As needed'
+  starts_on: <%= Date.today %>
+  ends_on: <%= 1.year.from_now.to_date %>
   max_daily_doses: 4
   min_hours_between_doses: 4
   dose_cycle: daily

@@ -1,16 +1,15 @@
+---
 # Paracetamol dosages
 paracetamol_adult:
   amount: 500
   unit: mg
   description: Standard adult dose
-  is_default: true
   medicine: paracetamol
 
 paracetamol_strong:
   amount: 1000
   unit: mg
   description: Strong adult dose
-  is_default: false
   medicine: paracetamol
 
 # Ibuprofen dosages
@@ -18,14 +17,12 @@ ibuprofen_adult:
   amount: 400
   unit: mg
   description: Standard adult dose
-  is_default: true
   medicine: ibuprofen
 
 ibuprofen_light:
   amount: 200
   unit: mg
   description: Light adult dose
-  is_default: false
   medicine: ibuprofen
 
 # Aspirin dosages
@@ -33,12 +30,10 @@ aspirin_adult:
   amount: 300
   unit: mg
   description: Standard adult dose
-  is_default: true
   medicine: aspirin
 
 aspirin_light:
   amount: 75
   unit: mg
   description: Low dose for heart health
-  is_default: false
   medicine: aspirin

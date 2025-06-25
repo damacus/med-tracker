@@ -1,0 +1,39 @@
+---
+one:
+  email_address: test@example.com
+  password_digest: <%= BCrypt::Password.create("password") %>
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>
+
+john:
+  email_address: john@example.com
+  password_digest: <%= BCrypt::Password.create("password") %>
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>
+
+admin:
+  email_address: admin@example.com
+  password_digest: <%= BCrypt::Password.create("adminpassword") %>
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>
+
+adult_john:
+  date_of_birth: 1980-01-01
+  email_address: john.smith@example.com
+  password_digest: <%= BCrypt::Password.create("password") %>
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>
+
+adult_jane:
+  date_of_birth: 1985-05-15
+  email_address: jane.doe@example.com
+  password_digest: <%= BCrypt::Password.create("password") %>
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>
+
+adult_bob:
+  date_of_birth: 1975-12-31
+  password_digest: <%= BCrypt::Password.create("password") %>
+  email_address: bob.wilson@example.com
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>
