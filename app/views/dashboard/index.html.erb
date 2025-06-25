@@ -6,8 +6,8 @@
     <h2 class="dashboard__section-title">Quick Stats</h2>
     <div class="quick-stats">
       <div class="stat-card">
-        <div class="stat-card__number"><%= @people.count %></div>
-        <div class="stat-card__label">People</div>
+        <div class="stat-card__number"><%= @users.count %></div>
+        <div class="stat-card__label">Users</div>
       </div>
       <div class="stat-card">
         <div class="stat-card__number"><%= @active_prescriptions.count %></div>
@@ -19,9 +19,7 @@
   <div class="dashboard__section">
     <h2 class="dashboard__section-title">Quick Actions</h2>
     <div class="quick-actions">
-      <%= link_to new_person_path, class: "quick-action__button" do %>
-        Add Person
-      <% end %>
+
       <%= link_to new_medicine_path, class: "quick-action__button" do %>
         Add Medicine
       <% end %>
@@ -31,14 +29,14 @@
   <div class="dashboard__section">
     <h2 class="dashboard__section-title">Medication Schedule By Person</h2>
     <div class="schedule-section">
-      <% if @people.any? %>
+      <% if @users.any? %>
         <% if @upcoming_prescriptions.any? %>
           <div class="schedule-content">
-            <% @upcoming_prescriptions.each do |person, prescriptions| %>
+            <% @upcoming_prescriptions.each do |user, prescriptions| %>
               <div class="schedule-person">
                 <div class="schedule-person__header">
-                  <h3 class="schedule-person__name"><%= person.name %></h3>
-                  <p class="schedule-person__age">Age: <%= person.age %></p>
+                  <h3 class="schedule-person__name"><%= user.name %></h3>
+                  <p class="schedule-person__age">Age: <%= user.age %></p>
                 </div>
                 <div class="schedule-prescriptions">
                   <% prescriptions.each do |prescription| %>
@@ -75,8 +73,8 @@
         <% end %>
       <% else %>
         <div class="empty-state">
-          <p class="empty-state__message">No people found</p>
-          <p class="empty-state__help">Add people to start tracking their medications</p>
+          <p class="empty-state__message">No users found</p>
+          <p class="empty-state__help">Add users to start tracking their medications</p>
         </div>
       <% end %>
     </div>

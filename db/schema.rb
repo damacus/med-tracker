@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_06_23_132218) do
+ActiveRecord::Schema[8.0].define(version: 2025_06_25_135502) do
   create_table "dosages", force: :cascade do |t|
     t.integer "medicine_id", null: false
     t.decimal "amount"
@@ -35,6 +35,12 @@ ActiveRecord::Schema[8.0].define(version: 2025_06_23_132218) do
     t.integer "current_supply"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.float "dosage_amount"
+    t.string "dosage_unit"
+    t.integer "stock"
+    t.date "expiry_date"
+    t.text "description"
+    t.text "warnings"
   end
 
   create_table "prescriptions", force: :cascade do |t|
@@ -45,6 +51,12 @@ ActiveRecord::Schema[8.0].define(version: 2025_06_23_132218) do
     t.date "end_date"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "frequency"
+    t.text "notes"
+    t.integer "max_daily_doses", default: 4
+    t.integer "min_hours_between_doses"
+    t.integer "dose_cycle"
+    t.boolean "active", default: true
     t.index ["dosage_id"], name: "index_prescriptions_on_dosage_id"
     t.index ["medicine_id"], name: "index_prescriptions_on_medicine_id"
     t.index ["user_id"], name: "index_prescriptions_on_user_id"

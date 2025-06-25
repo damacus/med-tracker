@@ -21,12 +21,11 @@ ibuprofen:
   stock: 50
   expiry_date: <%= 1.year.from_now.to_date %>
   description: >-
-    Ibuprofen is a common painkiller for treating aches and pains, as well as
-    symptoms of colds and flu. It can also be used to reduce a high temperature
-    and treat inflammation.
+    Ibuprofen is a nonsteroidal anti-inflammatory drug (NSAID) used for
+    treating pain, fever, and inflammation.
   warnings: >-
-    Take with or after food. Do not exceed 1200mg in 24 hours. Not suitable for people with
-    certain health conditions. If symptoms persist, consult your doctor.
+    May cause stomach upset. Take with food or milk. Do not take if you
+    have a history of stomach ulcers.
 
 aspirin:
   name: Aspirin
