@@ -4,45 +4,48 @@
 john_paracetamol:
   user: john
   medicine: paracetamol
-  dosage: '500mg'
+  dosage: paracetamol_adult
   frequency: 'As needed'
-  starts_on: <%= Date.today %>
-  ends_on: <%= 1.year.from_now.to_date %>
+  start_date: <%= Date.today %>
+  end_date: <%= 1.year.from_now.to_date %>
   max_daily_doses: 4
   min_hours_between_doses: 4
-  dose_cycle: daily
+  dose_cycle: :daily
 
 # Ibuprofen prescriptions
 jane_ibuprofen:
-  person: adult_jane
+  user: jane
   medicine: ibuprofen
-  dosage: 400mg
+  dosage: ibuprofen_adult
   frequency: Every 6-8 hours
-  start_date: 2025-02-17
+  start_date: <%= Date.today %>
+  end_date: <%= 1.year.from_now.to_date %>
   notes: For back pain
   max_daily_doses: 3
   min_hours_between_doses: 6
-  dose_cycle: daily
+  dose_cycle: :daily
 
 # Aspirin prescriptions
 bob_aspirin:
-  person: adult_bob
+  user: bob
   medicine: aspirin
-  dosage: 75mg
+  dosage: aspirin_light
   frequency: Once daily
-  start_date: 2025-02-17
+  start_date: <%= Date.today %>
+  end_date: <%= 1.year.from_now.to_date %>
   notes: For heart health
   max_daily_doses: 1
   min_hours_between_doses: 24
-  dose_cycle: daily
+  dose_cycle: :daily
 
 # Weekly medication
 bob_weekly_med:
-  person: adult_bob
+  user: bob
   medicine: vitamin_d
-  dosage: 1000 IU
+  dosage: vitamin_d_daily
   frequency: Once weekly
-  start_date: 2025-02-17
+  start_date: <%= Date.today %>
+  end_date: <%= 1.year.from_now.to_date %>
   notes: Weekly supplement
   max_daily_doses: 1
-  dose_cycle: weekly
+  dose_cycle: :weekly

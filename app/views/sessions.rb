@@ -11,7 +11,6 @@ module Views
       end
 
       def view_template
-        # Main login form using Phlex syntax
         form_with(url: session_path) do |form|
           form.label(:email_address)
           br
@@ -41,7 +40,6 @@ module Views
 
         br
 
-        # Password recovery link
         link_to("Forgot password?", new_password_path)
       end
     end

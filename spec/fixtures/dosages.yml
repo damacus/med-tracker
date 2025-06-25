@@ -1,15 +1,9 @@
 ---
 # Paracetamol dosages
 paracetamol_adult:
-  amount: 500
-  unit: mg
-  description: Standard adult dose
-  medicine: paracetamol
-
-paracetamol_strong:
   amount: 1000
   unit: mg
-  description: Strong adult dose
+  description: Standard adult dose
   medicine: paracetamol
 
 # Ibuprofen dosages
@@ -37,3 +31,9 @@ aspirin_light:
   unit: mg
   description: Low dose for heart health
   medicine: aspirin
+
+vitamin_d_daily:
+  amount: 1000
+  unit: IU
+  description: Daily Vitamin D supplement
+  medicine: vitamin_d
