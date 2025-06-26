@@ -3,7 +3,7 @@
 require 'test_helper'
 
 class PlaywrightSystemTest < ActionDispatch::SystemTestCase
-  driven_by :selenium, using: :headless_chrome, screen_size: [1400, 1400]
+  driven_by :playwright_driver, using: :headless_chrome, screen_size: [1400, 1400]
 
   def setup
     super

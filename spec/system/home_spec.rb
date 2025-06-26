@@ -13,12 +13,12 @@ RSpec.describe 'Home', type: :system do
     visit root_path
 
     # Assert that the page content is correct
-    within 'Home' do
-      aggregate_failures 'home content' do
-        expect(page).to have_content('Medicine Tracker')
-        expect(page).to have_link('Medicines', href: medicines_path)
-        expect(page).to have_link('People', href: people_path)
-      end
+    # within 'Home' do
+    aggregate_failures 'home content' do
+      expect(page).to have_content('Medicine Tracker')
+      expect(page).to have_link('Medicines', href: medicines_path)
+      expect(page).to have_link('People', href: people_path)
     end
+    # end
   end
 end

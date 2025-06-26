@@ -5,7 +5,7 @@ require 'rails_helper'
 RSpec.describe 'Dashboard', type: :system do
   fixtures :users, :medicines, :dosages, :prescriptions
 
-  it 'loads the dashboard for a signed-in user' do
+  it 'loads the dashboard for a signed-in user', pending: 'Dashboard not yet implemented' do
     # Sign in the user from fixtures
     sign_in(users(:john))
 

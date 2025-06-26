@@ -7,7 +7,7 @@ RSpec.describe 'Sessions::New view', type: :system do
   fixtures :users
 
   before do
-    driven_by(:selenium_headless)
+    driven_by(:playwright)
   end
 
   it 'renders the login form with all necessary fields' do
@@ -27,10 +27,8 @@ RSpec.describe 'Sessions::New view', type: :system do
     fill_in 'password', with: 'wrongpassword'
     click_button 'Sign in'
 
-    within 'Login' do
-      aggregate_failures 'login form' do
-        expect(page).to have_content('Try another email address or password')
-      end
+    aggregate_failures 'login form' do
+      expect(page).to have_content('Try another email address or password')
     end
   end
 
@@ -42,10 +40,6 @@ RSpec.describe 'Sessions::New view', type: :system do
     fill_in 'password', with: 'password'
     click_button 'Sign in'
 
-    within 'Login' do
-      aggregate_failures 'login form' do
-        expect(page).to have_content('Signed in successfully.')
-      end
-    end
+    expect(page).to have_content('Signed in successfully.')
   end
 end
