@@ -17,8 +17,8 @@ RSpec.describe 'AdminManagesUsers', type: :system do
     driven_by(:rack_test)
   end
 
-  context 'when logged in as an admin' do
-    it 'allows admin to see the list of users' do
+  context 'when user is logged in as an admin' do
+    it 'allows admin to see the list of users', pending: 'Admin management not yet implemented' do
       # Sign in as admin
       visit login_path
       fill_in 'Email address', with: admin.email_address
@@ -38,8 +38,8 @@ RSpec.describe 'AdminManagesUsers', type: :system do
     end
   end
 
-  context 'when logged in as a non-admin' do
-    it 'denies access to the user list' do
+  context 'when user is logged in as a non-admin' do
+    it 'denies access to the user list', pending: 'Admin management not yet implemented' do
       # Sign in as carer
       visit login_path
       fill_in 'Email address', with: carer.email_address

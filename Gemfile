@@ -32,16 +32,10 @@ gem 'solid_queue'
 
 # Reduces boot times through caching; required in config/boot.rb
 gem 'bootsnap', require: false
-
-# Deploy this application anywhere as a Docker container [https://kamal-deploy.org]
-gem 'kamal', require: false
-
 # Add HTTP asset caching/compression and X-Sendfile acceleration to Puma [https://github.com/basecamp/thruster/]
 gem 'thruster', require: false
 
-# Use Active Storage variants [https://guides.rubyonrails.org/active_storage_overview.html#transforming-images]
-# gem "image_processing", "~> 1.2"
-
+gem 'phlex-rails', '~> 2.3'
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
   gem 'debug', platforms: %i[mri windows], require: 'debug/prelude'
@@ -56,28 +50,17 @@ group :development, :test do
   gem 'database_cleaner-active_record'
 
   # Playwright for end-to-end testing
+  gem 'capybara'
   gem 'capybara-playwright-driver'
-  gem 'playwright-ruby-client'
-
-  # Use RSpec for testing
+  gem 'rails-controller-testing'
   gem 'rspec-rails', '~> 8.0'
-  gem 'rubocop-rspec'
   gem 'shoulda-matchers', '~> 6.0'
 end
 
 group :development do
-  # Use console on exceptions pages [https://github.com/rails/web-console]
   gem 'rubocop-capybara'
   gem 'rubocop-rails'
+  gem 'rubocop-rspec'
   gem 'rubocop-rspec_rails'
   gem 'web-console'
 end
-
-group :test do
-  # Use system testing [https://guides.rubyonrails.org/testing.html#system-testing]
-  gem 'capybara'
-  gem 'rails-controller-testing' # For controller testing with 'assigns' helper
-  gem 'selenium-webdriver'
-end
-
-gem 'phlex-rails', '~> 2.3'

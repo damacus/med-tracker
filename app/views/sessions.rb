@@ -19,8 +19,8 @@ module Views
             :email_address,
             required: true,
             autofocus: true,
-            autocomplete: "username",
-            placeholder: "Enter your email address",
+            autocomplete: 'username',
+            placeholder: 'Enter your email address',
             value: @params[:email_address]
           )
           br
@@ -30,18 +30,18 @@ module Views
           form.password_field(
             :password,
             required: true,
-            autocomplete: "current-password",
-            placeholder: "Enter your password",
+            autocomplete: 'current-password',
+            placeholder: 'Enter your password',
             maxlength: 72
           )
           br
 
-          form.submit("Sign in")
+          form.submit('Sign in')
         end
 
         br
 
-        link_to("Forgot password?", new_password_path)
+        link_to('Forgot password?', new_password_path)
       end
     end
   end
