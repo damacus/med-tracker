@@ -26,6 +26,15 @@ jane:
   created_at: <%= Time.current %>
   updated_at: <%= Time.current %>
 
+damacus:
+  name: Damacus User
+  email_address: damacus@example.com
+  password_digest: <%= BCrypt::Password.create('password') %>
+  role: :admin
+  date_of_birth: 1985-05-15
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>
+
 admin:
   name: Admin Doe
   email_address: admin@example.com

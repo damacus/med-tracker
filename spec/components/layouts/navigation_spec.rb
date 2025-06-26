@@ -1,72 +1,58 @@
 # frozen_string_literal: true
 
-require "rails_helper"
+require 'rails_helper'
 
 # Following the Red-Green-Refactor TDD cycle
-# This spec tests the navigation component with the official Phlex testing approach
-RSpec.describe Components::Layouts::Navigation, type: :component do
-  # Create a test user fixture
-  let(:user) { double("User", id: 1, email_address: "test@example.com") }
+# This spec tests the navigation component through system testing
+RSpec.describe 'Navigation', type: :system do
+  fixtures :users
+
+  before do
+    driven_by(:selenium_headless)
+  end
   
-  # Test behavior when user is authenticated
-  context "when user is authenticated" do
-    it "renders navigation with sign out button" do
-      # Set up component according to TDD test case
-      component = Components::Layouts::Navigation.new(current_user: user)
+  context 'when user is authenticated' do
+    it 'renders navigation with sign out button' do
+      # Log in user
+      user = users(:john) # Admin user from fixtures
       
-      # Stub URL helpers to isolate test from Rails routing
-      stub_url_helpers(component)
+      visit login_path
+      fill_in 'email_address', with: user.email_address
+      fill_in 'password', with: 'password'
+      click_button 'Sign in'
       
-      # We need to stub form and link helpers
-      allow(component).to receive(:link_to) do |text, path|
-        "<a href=\"#{path}\">#{text}</a>"
+      # Check navigation elements for authenticated user
+      within 'nav' do
+        expect(page).to have_link('Medicines')
+        expect(page).to have_link('People')
+        expect(page).to have_button('Sign out')
+        expect(page).not_to have_link('Login')
       end
-      
-      allow(component).to receive(:form_with) do |**kwargs, &block|
-        form_content = block.call if block
-        "<form action=\"#{kwargs[:url]}\" method=\"#{kwargs[:method] || 'post'}\">#{form_content}</form>"
-      end
-      
-      # Use the Phlex testing approach
-      render(component)
-      
-      # Test the rendered output for authenticated experience
-      expect(rendered).to include("Medicines")
-      expect(rendered).to include("People")
-      expect(rendered).to include("Medicine Finder")
-      expect(rendered).to include("Sign out")
-      expect(rendered).not_to include("Login")
     end
   end
   
-  # Test behavior when user is not authenticated
-  context "when user is not authenticated" do
-    it "renders navigation with login link" do
-      # Set up component according to TDD test case
-      component = Components::Layouts::Navigation.new(current_user: nil)
+  context 'when user is not authenticated' do
+    it 'renders navigation with login link' do
+      # Ensure we start with a fresh session
+      driven_by(:selenium_headless) # Re-initialize driver to reset session state
+      Capybara.reset_sessions!
       
-      # Stub URL helpers to isolate test from Rails routing
-      stub_url_helpers(component)
-      
-      # We need to stub form and link helpers
-      allow(component).to receive(:link_to) do |text, path|
-        "<a href=\"#{path}\">#{text}</a>"
+      # First try to log out explicitly if we're logged in
+      visit root_path
+      if page.has_button?('Sign out')
+        click_button 'Sign out'
       end
       
-      allow(component).to receive(:form_with) do |**kwargs, &block|
-        form_content = block.call if block
-        "<form action=\"#{kwargs[:url]}\" method=\"#{kwargs[:method] || 'post'}\">#{form_content}</form>"
+      # Then ensure we visit a page as a guest
+      visit login_path
+      
+      # Check navigation elements for unauthenticated user
+      within 'nav' do
+        expect(page).to have_link('Login')
+        expect(page).not_to have_button('Sign out')
+        expect(page).not_to have_link('Medicines')
+        expect(page).not_to have_link('People')
       end
-      
-      # Use the Phlex testing approach
-      render(component)
-      
-      # Test the rendered output for unauthenticated experience
-      expect(rendered).to include("Medicines")
-      expect(rendered).to include("People")
-      expect(rendered).to include("Medicine Finder")
-      expect(rendered).to include("Login")
-      expect(rendered).not_to include("Sign out")
     end
   end
 end

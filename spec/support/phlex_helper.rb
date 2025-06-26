@@ -4,46 +4,47 @@ require "rails_helper"
 
 # This module follows the approach from https://www.phlex.fun/components/testing.html
 module PhlexTestingSupport
-  # The basic render helper from the Phlex docs
+  # Basic render method for components
   def render(component)
     @rendered = component.call.to_s
+  end
+
+  # Enhanced render_inline helper for nested components
+  def render_inline(component)
+    # Set component's controller if it accepts one
+    component.controller = controller if component.respond_to?(:controller=)
+
+    # Render using Rails view context
+    component.instance_variable_set(:@view_context, view_context) if component.respond_to?(:view_context)
+
+    # Create the output
+    html = component.call.to_s
+    @rendered = html
+    
+    Nokogiri::HTML::DocumentFragment.parse(html)
+  end
+  
+  # Properly delegate rendering through Rails view context
+  def view_render(...)
+    view_context.render(...)
   end
 
   # Access to the rendered content
   def rendered
     @rendered
   end
-
-  # Stub common URL helpers for isolated component tests
-  def stub_url_helpers(component)
-    # Define the paths needed for navigation component
-    paths = {
-      medicines_path: "/medicines",
-      people_path: "/people",
-      medicine_finder_path: "/medicine_finder",
-      login_path: "/login",
-      session_path: "/session"
-    }
-    
-    # Apply stubs to the component
-    paths.each do |method_name, path|
-      allow(component).to receive(method_name).and_return(path)
-    end
+  
+  # Return a proper Rails view context
+  def view_context
+    controller.view_context
   end
   
-  # Create a test controller with request context
+  # Use Rails test controller for proper testing environment
   def controller
-    @controller ||= ApplicationController.new.tap do |controller|
-      request = ActionDispatch::TestRequest.create
-      controller.instance_variable_set(:@_request, request)
-      controller.request = request
-    end
-  end
-  
-  # You may need this for form helpers in components
-  def setup_form_helpers(component)
-    if component.respond_to?(:controller=)
-      component.controller = controller
+    @controller ||= ActionView::TestCase::TestController.new.tap do |controller|
+      # Set up default URL options
+      controller.instance_variable_set(:@_routes, Rails.application.routes)
+      controller.singleton_class.include(Rails.application.routes.url_helpers)
     end
   end
 end

@@ -1,37 +1,50 @@
 # frozen_string_literal: true
 
-require "rails_helper"
+require 'rails_helper'
 
-RSpec.describe Views::Sessions::New, type: :phlex do
-  # Use phlex_component helper to properly render the component
-  let(:flash) { {} }
-  let(:params) { {} }
-  let(:component) { described_class.new(flash: flash, params: params) }
-  let(:rendered) { render_inline(component).to_html }
+RSpec.describe 'Sessions::New view', type: :system do
+  # Load fixtures at the example group level, not inside examples
+  fixtures :users
 
-  it "renders a form with email and password fields" do
-    expect(rendered).to include('name="email_address"')
-    expect(rendered).to include('name="password"')
-    expect(rendered).to include('type="submit"')
-    expect(rendered).to include('Sign in')
+  before do
+    driven_by(:selenium_headless)
   end
 
-  it "renders the forgot password link" do
-    expect(rendered).to include('Forgot password?')
-  end
+  it 'renders the login form with all necessary fields' do
+    visit new_session_path
 
-  context "with flash messages" do
-    let(:flash) { { alert: "Test alert message" } }
-
-    it "renders alert messages" do
-      expect(rendered).to include("Test alert message")
+    aggregate_failures 'login form' do
+      expect(page).to have_field('email_address')
+      expect(page).to have_field('password')
+      expect(page).to have_button('Sign in')
+      expect(page).to have_link('Forgot password?')
     end
+  end
 
-    context "and notice messages" do
-      let(:flash) { { notice: "Test notice message" } }
+  it 'shows alert messages when login fails' do
+    visit new_session_path
+    fill_in 'email_address', with: 'wrong@example.com'
+    fill_in 'password', with: 'wrongpassword'
+    click_button 'Sign in'
 
-      it "renders notice messages" do
-        expect(rendered).to include("Test notice message")
+    within 'Login' do
+      aggregate_failures 'login form' do
+        expect(page).to have_content('Try another email address or password')
+      end
+    end
+  end
+
+  it 'shows notice messages upon successful actions' do
+    user = users(:john)
+
+    visit login_path
+    fill_in 'email_address', with: user.email_address
+    fill_in 'password', with: 'password'
+    click_button 'Sign in'
+
+    within 'Login' do
+      aggregate_failures 'login form' do
+        expect(page).to have_content('Signed in successfully')
       end
     end
   end

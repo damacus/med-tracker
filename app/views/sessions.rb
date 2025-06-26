@@ -6,8 +6,9 @@ module Views
       include Phlex::Rails::Helpers::FormWith
       include Phlex::Rails::Helpers::LinkTo
 
-      def initialize(params: {})
+      def initialize(params: {}, flash: {})
         @params = params
+        @flash = flash
       end
 
       def view_template
