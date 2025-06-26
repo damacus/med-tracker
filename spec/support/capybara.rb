@@ -8,6 +8,6 @@ end
 
 RSpec.configure do |config|
   config.before(:each, type: :system) do
-    driven_by :playwright_driver
+    driven_by :playwright
   end
 end
