@@ -53,6 +53,7 @@ group :development, :test do
   gem 'capybara'
   gem 'capybara-playwright-driver'
   gem 'rails-controller-testing'
+  gem 'rspec-github', require: false
   gem 'rspec-rails', '~> 8.0'
   gem 'shoulda-matchers', '~> 6.0'
 end
