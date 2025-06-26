@@ -60,7 +60,7 @@ group :development, :test do
   gem 'playwright-ruby-client'
 
   # Use RSpec for testing
-  gem 'rspec-rails', '~> 6.1'
+  gem 'rspec-rails', '~> 8.0'
   gem 'rubocop-rspec'
   gem 'shoulda-matchers', '~> 5.3'
 end
