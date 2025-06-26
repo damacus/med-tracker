@@ -21,7 +21,7 @@
     <%= javascript_include_tag "application", "data-turbo-track": "reload", type: "module" %>
 
   <body>
-    <%= render "layouts/navigation" %>
+    <%= render Components::Layouts::Navigation.new %>
     <div id="flash">
       <%= render "shared/flash" %>
     </div>

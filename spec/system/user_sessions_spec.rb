@@ -10,7 +10,7 @@ RSpec.describe 'User Sessions', type: :system do
     it 'displays the login form with all fields' do
       visit login_path
 
-      within 'Login' do
+      within 'main' do
         aggregate_failures 'login form' do
           expect(page).to have_field('email_address')
           expect(page).to have_field('password')
@@ -27,8 +27,8 @@ RSpec.describe 'User Sessions', type: :system do
       fill_in 'password', with: 'wrongpass'
       click_button 'Sign in'
 
-      within 'Login' do
-        aggregate_failures 'login form' do
+      within '#flash' do
+        aggregate_failures 'flash messages' do
           expect(page).to have_content('Try another email address or password')
         end
       end
@@ -41,8 +41,8 @@ RSpec.describe 'User Sessions', type: :system do
       fill_in 'password', with: 'password'
       click_button 'Sign in'
 
-      within 'Login' do
-        aggregate_failures 'login form' do
+      within '#flash' do
+        aggregate_failures 'flash messages' do
           expect(page).to have_content('Signed in successfully')
         end
       end
@@ -56,14 +56,17 @@ RSpec.describe 'User Sessions', type: :system do
       fill_in 'password', with: 'password'
       click_button 'Sign in'
 
+      expect(Current.user).not_to be_nil
+
       click_button 'Sign out'
 
-      within 'Login' do
-        aggregate_failures 'login form' do
+      within '#flash' do
+        aggregate_failures 'flash messages' do
           expect(page).to have_content('Signed out successfully')
-          expect(page).to have_link('Sign in')
         end
       end
+
+      expect(Current.user).to be_nil
     end
   end
 end

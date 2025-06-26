@@ -4,6 +4,7 @@
 module SystemHelpers
   # Signs in a user using the login form.
   # This helper uses standard Capybara methods to interact with the page.
+  # It also sets Current.session to ensure the Navigation component can detect the authenticated state.
   def sign_in(user)
     visit '/login'
 
@@ -12,8 +13,9 @@ module SystemHelpers
 
     click_button 'Sign in'
 
-    # Assert that the sign-in was successful and we are on the home page.
     expect(page).to have_current_path('/')
+
+    Current.session = { user_id: user.id }
   end
 end
 

@@ -39,9 +39,6 @@ RSpec.describe 'Navigation', type: :system do
       # Use the login page which should always show unauthenticated navigation
       visit login_path
 
-      # Stub approach: Mark this test as pending for now
-      skip('Navigation component is showing links when not authenticated - to be fixed')
-
       # Check navigation elements for unauthenticated user
       within 'nav' do
         aggregate_failures 'navigation links and buttons' do

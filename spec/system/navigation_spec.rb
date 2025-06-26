@@ -34,9 +34,11 @@ RSpec.describe 'Navigation', type: :system do
       # Assert that the navigation bar contains the correct elements for a guest.
       within('nav') do
         aggregate_failures 'navigation bar' do
-          expect(page).to have_link('Medicines')
-          expect(page).to have_link('People')
-          expect(page).to have_link('Medicine Finder')
+          # Unauthenticated users should not see navigation links
+          expect(page).not_to have_link('Medicines')
+          expect(page).not_to have_link('People')
+          expect(page).not_to have_link('Medicine Finder')
+          # But they should see the login link
           expect(page).to have_link('Login')
           expect(page).not_to have_button('Sign out')
         end

@@ -3,7 +3,9 @@
 module Components
   module Layouts
     # Navigation component that renders differently based on authentication state
-    class Navigation < ApplicationComponent
+    class Navigation < Components::Base
+      # Include additional helpers needed for this component
+      include Phlex::Rails::Helpers::ButtonTo
       # Initialize with optional current_user parameter (useful for testing)
       # @param [User, nil] current_user - The current user or nil if not authenticated
       def initialize(current_user: nil)
@@ -38,18 +40,13 @@ module Components
       # Check if user is authenticated
       # @return [Boolean] true if user is authenticated, false otherwise
       def authenticated?
-        # TODO: Fix-me
-        # For system tests, always return false to hide navigation links
-        # This helps us get past the test failures so we can continue development
-        return false if Rails.env.test? && @current_user.nil?
-
-        # Use provided user in test env, otherwise use Current.user
+        # Use provided user if available, otherwise use Current.user
         user = if @current_user.nil?
                  Current.user
                else
                  @current_user
                end
-
+        
         # Ensure we have a valid user object
         user.present? && !user.nil?
       end

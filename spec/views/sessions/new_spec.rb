@@ -44,7 +44,7 @@ RSpec.describe 'Sessions::New view', type: :system do
 
     within 'Login' do
       aggregate_failures 'login form' do
-        expect(page).to have_content('Signed in successfully')
+        expect(page).to have_content('Signed in successfully.')
       end
     end
   end
