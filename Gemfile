@@ -62,7 +62,7 @@ group :development, :test do
   # Use RSpec for testing
   gem 'rspec-rails', '~> 8.0'
   gem 'rubocop-rspec'
-  gem 'shoulda-matchers', '~> 5.3'
+  gem 'shoulda-matchers', '~> 6.5'
 end
 
 group :development do
