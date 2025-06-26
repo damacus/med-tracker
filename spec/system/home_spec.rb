@@ -1,9 +1,11 @@
-require "rails_helper"
+# frozen_string_literal: true
 
-RSpec.describe "Home", type: :system do
+require 'rails_helper'
+
+RSpec.describe 'Home', type: :system do
   fixtures :users
 
-  it "loads the home page for a signed-in user" do
+  it 'loads the home page for a signed-in user' do
     # Sign in the user from fixtures
     sign_in(users(:damacus))
 
@@ -11,8 +13,12 @@ RSpec.describe "Home", type: :system do
     visit root_path
 
     # Assert that the page content is correct
-    expect(page).to have_content("Medicine Tracker")
-    expect(page).to have_link("Medicines", href: medicines_path)
-    expect(page).to have_link("People", href: people_path)
+    within 'Home' do
+      aggregate_failures 'home content' do
+        expect(page).to have_content('Medicine Tracker')
+        expect(page).to have_link('Medicines', href: medicines_path)
+        expect(page).to have_link('People', href: people_path)
+      end
+    end
   end
 end

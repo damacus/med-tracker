@@ -1,5 +1,9 @@
 ---
-plugins: rubocop-rspec
+plugins:
+- rubocop-rspec
+- rubocop-rails
+- rubocop-capybara
+- rubocop-rspec_rails
 
 RSpec/ExampleLength:
-  Max: 10
+  Max: 15

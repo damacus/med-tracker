@@ -1,35 +1,48 @@
 # frozen_string_literal: true
 
-require "rails_helper"
+require 'rails_helper'
 
 RSpec.describe Components::Dashboard::PersonSchedule, type: :component do
   fixtures :users, :medicines, :dosages, :prescriptions
 
-  let(:user) { users(:john) }
-  let(:prescriptions) { user.prescriptions.where(active: true) }
   subject { described_class.new(user: user, prescriptions: prescriptions) }
+  
+  let(:user) { users(:john) }
+  let(:prescription) { prescriptions(:john_medicine) }
+  let(:prescriptions) { user.prescriptions.where(active: true) }
 
-  it "renders the person's name and age" do
+  it 'renders the person\'s name and age' do
     rendered = render_inline(subject)
+    # Use Nokogiri methods instead of Capybara matchers
+    name_element = rendered.css('.schedule-person__name')
+    expect(name_element).to be_present
+    expect(name_element.text).to include(user.name)
     
-    expect(rendered).to have_css(".schedule-person__name", text: user.name)
-    expect(rendered).to have_css(".schedule-person__age", text: "Age: #{user.age}")
+    age_element = rendered.css('.schedule-person__age')
+    expect(age_element).to be_present
+    expect(age_element.text).to include("Age: #{user.age}")
   end
   
-  it "renders each prescription" do
+  it 'renders each prescription' do
     rendered = render_inline(subject)
     
     prescriptions.each do |prescription|
-      expect(rendered).to have_css("#prescription_#{prescription.id}")
-      expect(rendered).to have_css(".prescription-card__medicine", text: prescription.medicine.name)
+      prescription_element = rendered.css("#prescription_#{prescription.id}")
+      expect(prescription_element).to be_present
+      
+      medicine_element = prescription_element.css('.prescription-card__medicine')
+      expect(medicine_element).to be_present
+      expect(medicine_element.text).to include(prescription.medicine.name)
     end
   end
 
-  it "renders take now buttons for each prescription" do
+  it 'renders take now buttons for each prescription' do
     rendered = render_inline(subject)
     
     prescriptions.each do |prescription|
-      expect(rendered).to have_css("[data-test-id='take-medicine-#{prescription.id}']", text: "Take Now")
+      button = rendered.css("[data-test-id='take-medicine-#{prescription.id}']")
+      expect(button).to be_present
+      expect(button.text).to include('Take Now')
     end
   end
 end
