@@ -1,4 +1,6 @@
-require "test_helpers/playwright_system_test"
+# frozen_string_literal: true
+
+require 'test_helpers/playwright_system_test'
 
 class PrescriptionsTest < PlaywrightSystemTest
   def setup
@@ -7,27 +9,27 @@ class PrescriptionsTest < PlaywrightSystemTest
     @medicine = medicines(:paracetamol)
   end
 
-  test "can create a new prescription" do
+  test 'can create a new prescription' do
     visit person_path(@person)
 
     # Click add prescription button
-    click_on "Add Prescription"
+    click_on 'Add Prescription'
 
     # Fill in the form
-    select @medicine.name, from: "Medicine"
-    fill_in "Dosage", with: "1.0"
-    fill_in "Frequency", with: "Every 6 hours"
-    fill_in "Start date", with: Date.current.strftime("%Y-%m-%d")
-    fill_in "End date", with: (Date.current + 7.days).strftime("%Y-%m-%d")
-    fill_in "Notes", with: "Test prescription notes"
+    select @medicine.name, from: 'Medicine'
+    fill_in 'Dosage', with: '1.0'
+    fill_in 'Frequency', with: 'Every 6 hours'
+    fill_in 'Start date', with: Date.current.strftime('%Y-%m-%d')
+    fill_in 'End date', with: (Date.current + 7.days).strftime('%Y-%m-%d')
+    fill_in 'Notes', with: 'Test prescription notes'
 
     # Submit the form
-    click_on "Add Prescription"
+    click_on 'Add Prescription'
 
     # Verify the prescription was created
-    assert_text "Prescription was successfully created"
+    assert_text 'Prescription was successfully created'
     assert_text @medicine.name
-    assert_text "Every 6 hours"
+    assert_text 'Every 6 hours'
   end
 
   # test "shows validation errors for invalid prescription" do
