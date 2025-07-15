@@ -1,73 +1,131 @@
-# PLAN
+# MEDTRACKER MIGRATION TO BRUTRB
 
-## Medicine Supply
+## Architecture Migration Plan
 
-- Order tablets?
-- Keep track of supply of medicine
-- Understand lead time on ordering medicine
+### Phase 1: Framework Transition
 
-## Medicines to add
+- **BREAKING CHANGE**: Migrate from Ruby on Rails to BrutRB framework
+- Replace Rails MVC architecture with BrutRB's approach
+- Maintain core medication tracking functionality during transition
+- Preserve existing database schema where possible
+
+### Phase 2: BrutRB Implementation
+
+#### Core Application Structure
+
+- Rebuild controllers using BrutRB conventions
+- Implement BrutRB routing and middleware
+- Convert Phlex components to BrutRB-compatible views
+- Migrate authentication system to work with BrutRB
+
+#### Data Layer
+
+- Adapt existing ActiveRecord models to BrutRB's data handling
+- Maintain current database schema (users, medicines, prescriptions, medication_takes)
+- Preserve data integrity and relationships
+- Keep existing validations and business logic
+
+#### Frontend Integration
+
+- Evaluate BrutRB's frontend capabilities vs current Hotwire setup
+- Maintain responsive design and user experience
+- Preserve existing CSS and styling where compatible
+- Adapt Stimulus controllers if needed
+
+### Phase 3: Feature Preservation
+
+#### Medicine Supply Management
+
+- Order tablets tracking
+- Supply level monitoring
+- Lead time management
+- Low stock alerts
+
+#### Medicine Catalog
 
 - Laxido
 - Movicol
 - Vitamins (adult)
 - Vitamins (child)
+- Custom medicine additions
 
-## Adminstration
+#### Administration & Logging
 
-- Record who adminisered the medicine - defualt to the logged in user
-- Log book / record of medicine taken
-- User types, admin, user, child, carer
-- User permissions
-- User roles
+- Record who administered medicine (default to logged in user)
+- Comprehensive log book / record of medicine taken
+- Timestamp tracking for all doses
+- Dose validation and safety checks
 
-Child:
+#### User Management & Permissions
 
-- Can take medicine
-- Can't order medicine
-- Can't see other users
-- Can't see other medicines
-- Can't see other orders
-
-Carer:
+**Child Role:**
 
 - Can take medicine
-- Can order medicine
-- Can see other users
-- Can't see other medicines
-- Can't see other orders
-- Can't see other admin
-- Can't see other roles
+- Cannot order medicine
+- Cannot see other users
+- Cannot see other medicines
+- Cannot see other orders
 
-Admin:
+**Carer Role:**
 
 - Can take medicine
 - Can order medicine
 - Can see other users
-- Can see other medicines
-- Can see other orders
-- Can see other admin
-- Can see other roles
-- Can add users
-- Can add medicines
-- Can add orders
-- Can add admin
-- Can add roles
-- Can edit users
-- Can edit medicines
-- Can edit orders
-- Can edit admin
-- Can edit roles
-- Can delete users
-- Can delete medicines
-- Can delete orders
-- Can delete admin
-- Can delete roles
-- Can add users to roles
-- Can add medicines to users
-- Can add orders to users
+- Cannot see other medicines
+- Cannot see other orders
+- Cannot see admin functions
+- Cannot see other roles
 
-## Notifications
+**Admin Role:**
 
-- Notification to take medicine
-- Notification to order medicine
+- Full system access
+- Can take medicine
+- Can order medicine
+- Can see and manage all users
+- Can see and manage all medicines
+- Can see and manage all orders
+- Can manage admin functions
+- Can manage user roles
+- Full CRUD operations on all entities
+- Can assign users to roles
+- Can assign medicines to users
+- Can assign orders to users
+
+#### Notifications System
+
+- Medicine taking reminders
+- Medicine ordering alerts
+- Low stock notifications
+- Dose timing warnings
+
+### Phase 4: Testing & Quality Assurance
+
+- Migrate existing RSpec tests to work with BrutRB
+- Maintain Playwright end-to-end tests
+- Ensure all safety validations work correctly
+- Test role-based permissions thoroughly
+- Validate data migration integrity
+
+### Phase 5: Deployment
+
+- Update deployment configuration for BrutRB
+- Modify Docker setup if needed
+- Update CI/CD pipeline
+- Plan zero-downtime migration strategy
+
+## Migration Risks & Considerations
+
+- **Data Safety**: Critical to preserve all medication records
+- **User Experience**: Minimize disruption to daily medication tracking
+- **Security**: Maintain role-based access controls
+- **Performance**: Ensure BrutRB performs well for medication timing
+- **Testing**: Comprehensive testing of safety-critical features
+
+## Success Criteria
+
+- All existing functionality preserved
+- Improved performance with BrutRB
+- Maintained data integrity
+- User roles and permissions working correctly
+- All safety validations operational
+- Successful deployment with zero data loss

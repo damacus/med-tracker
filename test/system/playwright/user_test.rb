@@ -2,7 +2,7 @@
 
 require 'system/playwright/test_helper'
 
-class PeopleTest < ApplicationSystemTestCase
+class UserTest < ApplicationSystemTestCase
   test 'creating a new person via modal' do
     visit people_path
     click_on 'Add Person'
