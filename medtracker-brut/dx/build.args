@@ -1,6 +1,0 @@
-# This is generated - see build.pre
-# When this file was created, there was no Gemfile.lock, so
-# it was not possible to determine which version of Playright was set up.
-# Once you've build your app and installed gems, you are 
-# encouraged to re-run `dx/build` to address this issue.
-PLAYWRIGHT_VERSION=latest

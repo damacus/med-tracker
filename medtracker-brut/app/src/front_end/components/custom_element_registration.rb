@@ -1,7 +1,0 @@
-# Registers your app's autnomous custom elements
-# with Phlex, so you can use them like normal HTML elements.
-module CustomElementRegistration
-  def self.included(other)
-    other.register_element :mb_example
-  end
-end
