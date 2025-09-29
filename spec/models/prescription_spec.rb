@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 
 RSpec.describe Prescription, type: :model do
@@ -11,8 +13,8 @@ RSpec.describe Prescription, type: :model do
         user: users(:john),
         medicine: medicines(:paracetamol),
         dosage: dosages(:paracetamol_adult),
-        start_date: Date.today,
-        end_date: Date.today + 30.days
+        start_date: Time.zone.today,
+        end_date: Time.zone.today + 30.days
       )
       new_prescription.save
       expect(new_prescription.active).to be true
@@ -36,8 +38,8 @@ RSpec.describe Prescription, type: :model do
         user: user,
         medicine: medicine,
         dosage: dosage,
-        start_date: Date.today,
-        end_date: Date.today + 30.days
+        start_date: Time.zone.today,
+        end_date: Time.zone.today + 30.days
       )
     end
 
@@ -45,7 +47,14 @@ RSpec.describe Prescription, type: :model do
       User.create!(name: 'Jane Doe', email_address: 'jane@example.com', password: 'password',
                    date_of_birth: '1990-01-01')
     end
-    let(:medicine) { Medicine.create!(name: 'Lisinopril', current_supply: 50) }
+    let(:medicine) do
+      Medicine.create!(
+        name: 'Lisinopril',
+        current_supply: 50,
+        stock: 50,
+        reorder_threshold: 10
+      )
+    end
     let(:dosage) { Dosage.create!(medicine: medicine, amount: 10, unit: 'mg', frequency: 'daily') }
 
     it { is_expected.to validate_presence_of(:start_date) }

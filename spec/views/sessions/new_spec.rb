@@ -21,6 +21,22 @@ RSpec.describe 'Sessions::New view', type: :system do
     end
   end
 
+  it 'applies the styled layout' do
+    visit new_session_path
+
+    aggregate_failures 'styled layout' do
+      expect(page).to have_css('h1', text: 'MedTracker')
+      expect(page).to have_css('p', text: 'Sign in to manage your medication plan')
+      expect(page).to have_css('form.space-y-6')
+      expect(page).to have_css('button[type="submit"].w-full', text: 'Sign in')
+      expect(page).to have_css('div[data-controller="ruby-ui--form-field"]', count: 2)
+      expect(page).to have_css('input[data-ruby-ui--form-field-target="input"]', count: 2)
+      expect(page).to have_css('button.inline-flex', text: 'Sign in')
+      expect(page).to have_css('a.text-primary', text: 'Forgot password?')
+      expect(page).to have_css('div.bg-gradient-to-br')
+    end
+  end
+
   it 'shows alert messages when login fails' do
     visit new_session_path
     fill_in 'email_address', with: 'wrong@example.com'

@@ -1,11 +1,16 @@
-#!/usr/bin/env ruby
-require "fileutils"
+#!/usr/bin/env sh
 
-# Ensure the builds directory exists
-FileUtils.mkdir_p "app/assets/builds"
+if ! gem list foreman -i --silent; then
+  echo "Installing foreman..."
+  gem install foreman
+fi
 
-# Precompile assets
-system "bin/rails assets:precompile"
+# Default to port 3000 if not specified
+export PORT="${PORT:-3000}"
 
-# Start the Rails server
-exec "bin/rails", "server", *ARGV
+# Let the debug gem allow remote connections,
+# but avoid loading until `debugger` is called
+export RUBY_DEBUG_OPEN="true"
+export RUBY_DEBUG_LAZY="true"
+
+exec foreman start -f Procfile.dev "$@"
