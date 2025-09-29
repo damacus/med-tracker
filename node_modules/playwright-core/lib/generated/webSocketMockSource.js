@@ -48,54 +48,12 @@ __export(webSocketMock_exports, {
   inject: () => inject
 });
 module.exports = __toCommonJS(webSocketMock_exports);
-
-// packages/playwright-core/src/utils/isomorphic/builtins.ts
-function builtins(global) {
-  var _a, _b, _c, _d, _e, _f, _g, _h, _i;
-  global = global != null ? global : globalThis;
-  if (!global["__playwright_builtins__"]) {
-    const builtins2 = {
-      setTimeout: (_a = global.setTimeout) == null ? void 0 : _a.bind(global),
-      clearTimeout: (_b = global.clearTimeout) == null ? void 0 : _b.bind(global),
-      setInterval: (_c = global.setInterval) == null ? void 0 : _c.bind(global),
-      clearInterval: (_d = global.clearInterval) == null ? void 0 : _d.bind(global),
-      requestAnimationFrame: (_e = global.requestAnimationFrame) == null ? void 0 : _e.bind(global),
-      cancelAnimationFrame: (_f = global.cancelAnimationFrame) == null ? void 0 : _f.bind(global),
-      requestIdleCallback: (_g = global.requestIdleCallback) == null ? void 0 : _g.bind(global),
-      cancelIdleCallback: (_h = global.cancelIdleCallback) == null ? void 0 : _h.bind(global),
-      performance: global.performance,
-      eval: (_i = global.eval) == null ? void 0 : _i.bind(global),
-      Intl: global.Intl,
-      Date: global.Date,
-      Map: global.Map,
-      Set: global.Set
-    };
-    Object.defineProperty(global, "__playwright_builtins__", { value: builtins2, configurable: false, enumerable: false, writable: false });
-  }
-  return global["__playwright_builtins__"];
-}
-var instance = builtins();
-var setTimeout = instance.setTimeout;
-var clearTimeout = instance.clearTimeout;
-var setInterval = instance.setInterval;
-var clearInterval = instance.clearInterval;
-var requestAnimationFrame = instance.requestAnimationFrame;
-var cancelAnimationFrame = instance.cancelAnimationFrame;
-var requestIdleCallback = instance.requestIdleCallback;
-var cancelIdleCallback = instance.cancelIdleCallback;
-var performance = instance.performance;
-var Intl = instance.Intl;
-var Date = instance.Date;
-var Map = instance.Map;
-var Set = instance.Set;
-
-// packages/injected/src/webSocketMock.ts
-function inject(globalThis2) {
-  if (globalThis2.__pwWebSocketDispatch)
+function inject(globalThis) {
+  if (globalThis.__pwWebSocketDispatch)
     return;
   function generateId() {
     const bytes = new Uint8Array(32);
-    globalThis2.crypto.getRandomValues(bytes);
+    globalThis.crypto.getRandomValues(bytes);
     const hex = "0123456789abcdef";
     return [...bytes].map((value) => {
       const high = Math.floor(value / 16);
@@ -107,17 +65,17 @@ function inject(globalThis2) {
     let s = "";
     for (let i = 0; i < b.length; i++)
       s += String.fromCharCode(b[i]);
-    return { data: globalThis2.btoa(s), isBase64: true };
+    return { data: globalThis.btoa(s), isBase64: true };
   }
   function stringToBuffer(s) {
-    s = globalThis2.atob(s);
+    s = globalThis.atob(s);
     const b = new Uint8Array(s.length);
     for (let i = 0; i < s.length; i++)
       b[i] = s.charCodeAt(i);
     return b.buffer;
   }
   function messageToData(message, cb) {
-    if (message instanceof globalThis2.Blob)
+    if (message instanceof globalThis.Blob)
       return message.arrayBuffer().then((buffer) => cb(bufferToData(new Uint8Array(buffer))));
     if (typeof message === "string")
       return cb({ data: message, isBase64: false });
@@ -131,10 +89,10 @@ function inject(globalThis2) {
     const buffer = stringToBuffer(data.data);
     return binaryType === "arraybuffer" ? buffer : new Blob([buffer]);
   }
-  const binding = globalThis2.__pwWebSocketBinding;
-  const NativeWebSocket = globalThis2.WebSocket;
-  const idToWebSocket = new Map();
-  globalThis2.__pwWebSocketDispatch = (request) => {
+  const binding = globalThis.__pwWebSocketBinding;
+  const NativeWebSocket = globalThis.WebSocket;
+  const idToWebSocket = /* @__PURE__ */ new Map();
+  globalThis.__pwWebSocketDispatch = (request) => {
     const ws = idToWebSocket.get(request.id);
     if (!ws)
       return;
@@ -178,7 +136,7 @@ function inject(globalThis2) {
       this._passthrough = false;
       this._wsBufferedMessages = [];
       this._binaryType = "blob";
-      this.url = new URL(url, globalThis2.window.document.baseURI).href.replace(/^http/, "ws");
+      this.url = new URL(url, globalThis.window.document.baseURI).href.replace(/^http/, "ws");
       this._origin = (_b = (_a = URL.parse(this.url)) == null ? void 0 : _a.origin) != null ? _b : "";
       this._protocols = protocols;
       this._id = generateId();
@@ -368,7 +326,7 @@ function inject(globalThis2) {
   // WebSocket.CLOSING
   _WebSocketMock.CLOSED = 3;
   let WebSocketMock = _WebSocketMock;
-  globalThis2.WebSocket = class WebSocket extends WebSocketMock {
+  globalThis.WebSocket = class WebSocket extends WebSocketMock {
   };
 }
 `;

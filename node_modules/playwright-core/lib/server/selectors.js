@@ -24,9 +24,8 @@ module.exports = __toCommonJS(selectors_exports);
 var import_crypto = require("./utils/crypto");
 var import_selectorParser = require("../utils/isomorphic/selectorParser");
 class Selectors {
-  constructor() {
+  constructor(engines, testIdAttributeName) {
     this.guid = `selectors@${(0, import_crypto.createGuid)()}`;
-    this._testIdAttributeName = "data-testid";
     this._builtinEngines = /* @__PURE__ */ new Set([
       "css",
       "css:light",
@@ -60,6 +59,7 @@ class Selectors {
       "internal:text",
       "internal:role",
       "internal:testid",
+      "internal:describe",
       "aria-ref"
     ]);
     this._builtinEnginesInMainWorld = /* @__PURE__ */ new Set([
@@ -67,24 +67,24 @@ class Selectors {
       "_vue"
     ]);
     this._engines = /* @__PURE__ */ new Map();
+    this._testIdAttributeName = testIdAttributeName ?? "data-testid";
+    for (const engine of engines)
+      this.register(engine);
   }
-  async register(name, source, contentScript = false) {
-    if (!name.match(/^[a-zA-Z_0-9-]+$/))
+  register(engine) {
+    if (!engine.name.match(/^[a-zA-Z_0-9-]+$/))
       throw new Error("Selector engine name may only contain [a-zA-Z0-9_] characters");
-    if (this._builtinEngines.has(name) || name === "zs" || name === "zs:light")
-      throw new Error(`"${name}" is a predefined selector engine`);
-    if (this._engines.has(name))
-      throw new Error(`"${name}" selector engine has been already registered`);
-    this._engines.set(name, { source, contentScript });
+    if (this._builtinEngines.has(engine.name) || engine.name === "zs" || engine.name === "zs:light")
+      throw new Error(`"${engine.name}" is a predefined selector engine`);
+    if (this._engines.has(engine.name))
+      throw new Error(`"${engine.name}" selector engine has been already registered`);
+    this._engines.set(engine.name, engine);
   }
   testIdAttributeName() {
     return this._testIdAttributeName;
   }
   setTestIdAttributeName(testIdAttributeName) {
     this._testIdAttributeName = testIdAttributeName;
-  }
-  unregisterAll() {
-    this._engines.clear();
   }
   parseSelector(selector, strict) {
     const parsed = typeof selector === "string" ? (0, import_selectorParser.parseSelector)(selector) : selector;

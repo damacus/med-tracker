@@ -30,7 +30,6 @@ __export(server_exports, {
   registry: () => import_registry.registry,
   registryDirectory: () => import_registry.registryDirectory,
   runTraceViewerApp: () => import_traceViewer.runTraceViewerApp,
-  serverSideCallMetadata: () => import_instrumentation.serverSideCallMetadata,
   startTraceViewerServer: () => import_traceViewer.startTraceViewerServer,
   writeDockerVersion: () => import_registry.writeDockerVersion
 });
@@ -40,7 +39,6 @@ var import_dispatcher = require("./dispatchers/dispatcher");
 var import_playwrightDispatcher = require("./dispatchers/playwrightDispatcher");
 var import_playwright = require("./playwright");
 var import_traceViewer = require("./trace/viewer/traceViewer");
-var import_instrumentation = require("./instrumentation");
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   DispatcherConnection,
@@ -55,7 +53,6 @@ var import_instrumentation = require("./instrumentation");
   registry,
   registryDirectory,
   runTraceViewerApp,
-  serverSideCallMetadata,
   startTraceViewerServer,
   writeDockerVersion
 });

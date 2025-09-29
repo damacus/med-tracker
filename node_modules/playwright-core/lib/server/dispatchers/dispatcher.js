@@ -21,8 +21,6 @@ __export(dispatcher_exports, {
   Dispatcher: () => Dispatcher,
   DispatcherConnection: () => DispatcherConnection,
   RootDispatcher: () => RootDispatcher,
-  dispatcherSymbol: () => dispatcherSymbol,
-  existingDispatcher: () => existingDispatcher,
   setMaxDispatchersForTest: () => setMaxDispatchersForTest
 });
 module.exports = __toCommonJS(dispatcher_exports);
@@ -35,11 +33,9 @@ var import_errors = require("../errors");
 var import_instrumentation = require("../instrumentation");
 var import_protocolError = require("../protocolError");
 var import_callLog = require("../callLog");
-const dispatcherSymbol = Symbol("dispatcher");
+var import_protocolMetainfo = require("../../utils/isomorphic/protocolMetainfo");
+var import_progress = require("../progress");
 const metadataValidator = (0, import_validator.createMetadataValidator)();
-function existingDispatcher(object) {
-  return object[dispatcherSymbol];
-}
 let maxDispatchersOverride;
 function setMaxDispatchersForTest(value) {
   maxDispatchersOverride = value;
@@ -53,27 +49,25 @@ function maxDispatchersForBucket(gcBucket) {
 class Dispatcher extends import_events.EventEmitter {
   constructor(parent, object, type, initializer, gcBucket) {
     super();
-    // Only "isScope" channel owners have registered dispatchers inside.
     this._dispatchers = /* @__PURE__ */ new Map();
     this._disposed = false;
     this._eventListeners = [];
-    this._openScope = new import_utils.LongStandingScope();
-    this._connection = parent instanceof DispatcherConnection ? parent : parent._connection;
+    this._activeProgressControllers = /* @__PURE__ */ new Set();
+    this.connection = parent instanceof DispatcherConnection ? parent : parent.connection;
     this._parent = parent instanceof DispatcherConnection ? void 0 : parent;
     const guid = object.guid;
     this._guid = guid;
     this._type = type;
     this._object = object;
     this._gcBucket = gcBucket ?? type;
-    object[dispatcherSymbol] = this;
-    this._connection.registerDispatcher(this);
+    this.connection.registerDispatcher(this);
     if (this._parent) {
       (0, import_utils.assert)(!this._parent._dispatchers.has(guid));
       this._parent._dispatchers.set(guid, this);
     }
     if (this._parent)
-      this._connection.sendCreate(this._parent, type, guid, initializer);
-    this._connection.maybeDisposeStaleDispatchers(this._gcBucket);
+      this.connection.sendCreate(this._parent, type, guid, initializer);
+    this.connection.maybeDisposeStaleDispatchers(this._gcBucket);
   }
   parentScope() {
     return this._parent;
@@ -88,16 +82,19 @@ class Dispatcher extends import_events.EventEmitter {
     oldParent._dispatchers.delete(child._guid);
     this._dispatchers.set(child._guid, child);
     child._parent = this;
-    this._connection.sendAdopt(this, child);
+    this.connection.sendAdopt(this, child);
   }
-  async _handleCommand(callMetadata, method, validParams) {
-    const commandPromise = this[method](validParams, callMetadata);
+  async _runCommand(callMetadata, method, validParams) {
+    const controller = new import_progress.ProgressController(callMetadata, (message) => {
+      const logName = this._object.logName || "api";
+      import_utils.debugLogger.log(logName, message);
+      this._object.instrumentation.onCallLog(this._object, callMetadata, logName, message);
+    });
+    this._activeProgressControllers.add(controller);
     try {
-      return await this._openScope.race(commandPromise);
-    } catch (e) {
-      if (callMetadata.potentiallyClosesScope && (0, import_errors.isTargetClosedError)(e))
-        return await commandPromise;
-      throw e;
+      return await controller.run((progress) => this[method](validParams, progress), validParams?.timeout);
+    } finally {
+      this._activeProgressControllers.delete(controller);
     }
   }
   _dispatchEvent(method, params) {
@@ -106,28 +103,42 @@ class Dispatcher extends import_events.EventEmitter {
         throw new Error(`${this._guid} is sending "${String(method)}" event after being disposed`);
       return;
     }
-    this._connection.sendEvent(this, method, params);
+    this.connection.sendEvent(this, method, params);
   }
   _dispose(reason) {
     this._disposeRecursively(new import_errors.TargetClosedError());
-    this._connection.sendDispose(this, reason);
+    this.connection.sendDispose(this, reason);
   }
   _onDispose() {
   }
+  async stopPendingOperations(error) {
+    const controllers = [];
+    const collect = (dispatcher) => {
+      controllers.push(...dispatcher._activeProgressControllers);
+      for (const child of [...dispatcher._dispatchers.values()])
+        collect(child);
+    };
+    collect(this);
+    await Promise.all(controllers.map((controller) => controller.abort(error)));
+  }
   _disposeRecursively(error) {
     (0, import_utils.assert)(!this._disposed, `${this._guid} is disposed more than once`);
+    for (const controller of this._activeProgressControllers) {
+      if (!controller.metadata.potentiallyClosesScope)
+        controller.abort(error).catch(() => {
+        });
+    }
     this._onDispose();
     this._disposed = true;
     import_eventsHelper.eventsHelper.removeEventListeners(this._eventListeners);
     this._parent?._dispatchers.delete(this._guid);
-    const list = this._connection._dispatchersByBucket.get(this._gcBucket);
+    const list = this.connection._dispatchersByBucket.get(this._gcBucket);
     list?.delete(this._guid);
-    this._connection._dispatchers.delete(this._guid);
+    this.connection._dispatcherByGuid.delete(this._guid);
+    this.connection._dispatcherByObject.delete(this._object);
     for (const dispatcher of [...this._dispatchers.values()])
       dispatcher._disposeRecursively(error);
     this._dispatchers.clear();
-    delete this._object[dispatcherSymbol];
-    this._openScope.close(error);
   }
   _debugScopeState() {
     return {
@@ -140,11 +151,11 @@ class Dispatcher extends import_events.EventEmitter {
 }
 class RootDispatcher extends Dispatcher {
   constructor(connection, createPlaywright) {
-    super(connection, { guid: "" }, "Root", {});
+    super(connection, (0, import_instrumentation.createRootSdkObject)(), "Root", {});
     this.createPlaywright = createPlaywright;
     this._initialized = false;
   }
-  async initialize(params) {
+  async initialize(params, progress) {
     (0, import_utils.assert)(this.createPlaywright);
     (0, import_utils.assert)(!this._initialized);
     this._initialized = true;
@@ -155,7 +166,8 @@ class RootDispatcher extends Dispatcher {
 }
 class DispatcherConnection {
   constructor(isLocal) {
-    this._dispatchers = /* @__PURE__ */ new Map();
+    this._dispatcherByGuid = /* @__PURE__ */ new Map();
+    this._dispatcherByObject = /* @__PURE__ */ new Map();
     this._dispatchersByBucket = /* @__PURE__ */ new Map();
     this.onmessage = (message) => {
     };
@@ -195,7 +207,7 @@ class DispatcherConnection {
   _tChannelImplFromWire(names, arg, path, context) {
     if (arg && typeof arg === "object" && typeof arg.guid === "string") {
       const guid = arg.guid;
-      const dispatcher = this._dispatchers.get(guid);
+      const dispatcher = this._dispatcherByGuid.get(guid);
       if (!dispatcher)
         throw new import_validator.ValidationError(`${path}: no object with guid ${guid}`);
       if (names !== "*" && !names.includes(dispatcher._type))
@@ -212,9 +224,13 @@ class DispatcherConnection {
     }
     throw new import_validator.ValidationError(`${path}: expected dispatcher ${names.toString()}`);
   }
+  existingDispatcher(object) {
+    return this._dispatcherByObject.get(object);
+  }
   registerDispatcher(dispatcher) {
-    (0, import_utils.assert)(!this._dispatchers.has(dispatcher._guid));
-    this._dispatchers.set(dispatcher._guid, dispatcher);
+    (0, import_utils.assert)(!this._dispatcherByGuid.has(dispatcher._guid));
+    this._dispatcherByGuid.set(dispatcher._guid, dispatcher);
+    this._dispatcherByObject.set(dispatcher._object, dispatcher);
     let list = this._dispatchersByBucket.get(dispatcher._gcBucket);
     if (!list) {
       list = /* @__PURE__ */ new Set();
@@ -231,7 +247,7 @@ class DispatcherConnection {
     const disposeCount = maxDispatchers / 10 | 0;
     this._dispatchersByBucket.set(gcBucket, new Set(dispatchersArray.slice(disposeCount)));
     for (let i = 0; i < disposeCount; ++i) {
-      const d = this._dispatchers.get(dispatchersArray[i]);
+      const d = this._dispatcherByGuid.get(dispatchersArray[i]);
       if (!d)
         continue;
       d._dispose("gc");
@@ -239,7 +255,7 @@ class DispatcherConnection {
   }
   async dispatch(message) {
     const { id, guid, method, params, metadata } = message;
-    const dispatcher = this._dispatchers.get(guid);
+    const dispatcher = this._dispatcherByGuid.get(guid);
     if (!dispatcher) {
       this.onmessage({ id, error: (0, import_errors.serializeError)(new import_errors.TargetClosedError()) });
       return;
@@ -257,16 +273,20 @@ class DispatcherConnection {
       this.onmessage({ id, error: (0, import_errors.serializeError)(e) });
       return;
     }
-    const sdkObject = dispatcher._object instanceof import_instrumentation.SdkObject ? dispatcher._object : void 0;
+    const metainfo = import_protocolMetainfo.methodMetainfo.get(dispatcher._type + "." + method);
+    if (metainfo?.internal) {
+      validMetadata.internal = true;
+    }
+    const sdkObject = dispatcher._object;
     const callMetadata = {
       id: `call@${id}`,
       location: validMetadata.location,
-      apiName: validMetadata.apiName,
+      title: validMetadata.title,
       internal: validMetadata.internal,
       stepId: validMetadata.stepId,
-      objectId: sdkObject?.guid,
-      pageId: sdkObject?.attribution?.page?.guid,
-      frameId: sdkObject?.attribution?.frame?.guid,
+      objectId: sdkObject.guid,
+      pageId: sdkObject.attribution?.page?.guid,
+      frameId: sdkObject.attribution?.frame?.guid,
       startTime: (0, import_utils.monotonicTime)(),
       endTime: 0,
       type: dispatcher._type,
@@ -274,7 +294,7 @@ class DispatcherConnection {
       params: params || {},
       log: []
     };
-    if (sdkObject && params?.info?.waitId) {
+    if (params?.info?.waitId) {
       const info = params.info;
       switch (info.phase) {
         case "before": {
@@ -301,46 +321,51 @@ class DispatcherConnection {
         }
       }
     }
-    await sdkObject?.instrumentation.onBeforeCall(sdkObject, callMetadata);
+    await sdkObject.instrumentation.onBeforeCall(sdkObject, callMetadata);
     const response = { id };
     try {
-      const result = await dispatcher._handleCommand(callMetadata, method, validParams);
+      if (this._dispatcherByGuid.get(guid) !== dispatcher)
+        throw new import_errors.TargetClosedError(closeReason(sdkObject));
+      const result = await dispatcher._runCommand(callMetadata, method, validParams);
       const validator = (0, import_validator.findValidator)(dispatcher._type, method, "Result");
       response.result = validator(result, "", this._validatorToWireContext());
       callMetadata.result = result;
     } catch (e) {
-      if ((0, import_errors.isTargetClosedError)(e) && sdkObject) {
+      if ((0, import_errors.isTargetClosedError)(e)) {
         const reason = closeReason(sdkObject);
         if (reason)
           (0, import_utils.rewriteErrorMessage)(e, reason);
       } else if ((0, import_protocolError.isProtocolError)(e)) {
-        if (e.type === "closed") {
-          const reason = sdkObject ? closeReason(sdkObject) : void 0;
-          e = new import_errors.TargetClosedError(reason, e.browserLogMessage());
-        } else if (e.type === "crashed") {
+        if (e.type === "closed")
+          e = new import_errors.TargetClosedError(closeReason(sdkObject), e.browserLogMessage());
+        else if (e.type === "crashed")
           (0, import_utils.rewriteErrorMessage)(e, "Target crashed " + e.browserLogMessage());
-        }
       }
       response.error = (0, import_errors.serializeError)(e);
       callMetadata.error = response.error;
     } finally {
       callMetadata.endTime = (0, import_utils.monotonicTime)();
-      await sdkObject?.instrumentation.onAfterCall(sdkObject, callMetadata);
+      await sdkObject.instrumentation.onAfterCall(sdkObject, callMetadata);
+      if (metainfo?.slowMo)
+        await this._doSlowMo(sdkObject);
     }
     if (response.error)
       response.log = (0, import_callLog.compressCallLog)(callMetadata.log);
     this.onmessage(response);
   }
+  async _doSlowMo(sdkObject) {
+    const slowMo = sdkObject.attribution.browser?.options.slowMo;
+    if (slowMo)
+      await new Promise((f) => setTimeout(f, slowMo));
+  }
 }
 function closeReason(sdkObject) {
-  return sdkObject.attribution.page?._closeReason || sdkObject.attribution.context?._closeReason || sdkObject.attribution.browser?._closeReason;
+  return sdkObject.attribution.page?.closeReason || sdkObject.attribution.context?._closeReason || sdkObject.attribution.browser?._closeReason;
 }
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   Dispatcher,
   DispatcherConnection,
   RootDispatcher,
-  dispatcherSymbol,
-  existingDispatcher,
   setMaxDispatchersForTest
 });

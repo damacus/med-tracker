@@ -34,13 +34,13 @@ module.exports = __toCommonJS(webSocketRouteDispatcher_exports);
 var import_page = require("../page");
 var import_dispatcher = require("./dispatcher");
 var import_pageDispatcher = require("./pageDispatcher");
-var webSocketMockSource = __toESM(require("../../generated/webSocketMockSource"));
-var import_crypto = require("../utils/crypto");
+var rawWebSocketMockSource = __toESM(require("../../generated/webSocketMockSource"));
+var import_instrumentation = require("../instrumentation");
 var import_urlMatch = require("../../utils/isomorphic/urlMatch");
 var import_eventsHelper = require("../utils/eventsHelper");
 class WebSocketRouteDispatcher extends import_dispatcher.Dispatcher {
   constructor(scope, id, url, frame) {
-    super(scope, { guid: "webSocketRoute@" + (0, import_crypto.createGuid)() }, "WebSocketRoute", { url });
+    super(scope, new import_instrumentation.SdkObject(scope._object, "webSocketRoute"), "WebSocketRoute", { url });
     this._type_WebSocketRoute = true;
     this._id = id;
     this._frame = frame;
@@ -64,13 +64,16 @@ class WebSocketRouteDispatcher extends import_dispatcher.Dispatcher {
   static {
     this._idToDispatcher = /* @__PURE__ */ new Map();
   }
-  static async installIfNeeded(target) {
-    const kBindingName = "__pwWebSocketBinding";
-    const context = target instanceof import_page.Page ? target.context() : target;
-    if (!context.hasBinding(kBindingName)) {
-      await context.exposeBinding(kBindingName, false, (source, payload) => {
+  static async install(progress, connection, target) {
+    const context = target instanceof import_page.Page ? target.browserContext : target;
+    let data = context.getBindingClient(kBindingName);
+    if (data && data.connection !== connection)
+      throw new Error("Another client is already routing WebSockets");
+    if (!data) {
+      data = { counter: 0, connection, binding: null };
+      data.binding = await context.exposeBinding(progress, kBindingName, false, (source, payload) => {
         if (payload.type === "onCreate") {
-          const contextDispatcher = (0, import_dispatcher.existingDispatcher)(context);
+          const contextDispatcher = connection.existingDispatcher(context);
           const pageDispatcher = contextDispatcher ? import_pageDispatcher.PageDispatcher.fromNullable(contextDispatcher, source.page) : void 0;
           let scope;
           if (pageDispatcher && matchesPattern(pageDispatcher, context._options.baseURL, payload.url))
@@ -95,40 +98,47 @@ class WebSocketRouteDispatcher extends import_dispatcher.Dispatcher {
           dispatcher?._dispatchEvent("closePage", { code: payload.code, reason: payload.reason, wasClean: payload.wasClean });
         if (payload.type === "onCloseServer")
           dispatcher?._dispatchEvent("closeServer", { code: payload.code, reason: payload.reason, wasClean: payload.wasClean });
-      });
+      }, data);
     }
-    const kInitScriptName = "webSocketMockSource";
-    if (!target.initScripts.find((s) => s.name === kInitScriptName)) {
-      await target.addInitScript(`
-        (() => {
-          const module = {};
-          ${webSocketMockSource.source}
-          (module.exports.inject())(globalThis);
-        })();
-      `, kInitScriptName);
-    }
+    ++data.counter;
+    return await target.addInitScript(progress, `
+      (() => {
+        const module = {};
+        ${rawWebSocketMockSource.source}
+        (module.exports.inject())(globalThis);
+      })();
+    `);
   }
-  async connect(params) {
-    await this._evaluateAPIRequest({ id: this._id, type: "connect" });
+  static async uninstall(connection, target, initScript) {
+    const context = target instanceof import_page.Page ? target.browserContext : target;
+    const data = context.getBindingClient(kBindingName);
+    if (!data || data.connection !== connection)
+      return;
+    if (--data.counter <= 0)
+      await context.removeExposedBindings([data.binding]);
+    await target.removeInitScripts([initScript]);
   }
-  async ensureOpened(params) {
-    await this._evaluateAPIRequest({ id: this._id, type: "ensureOpened" });
+  async connect(params, progress) {
+    await this._evaluateAPIRequest(progress, { id: this._id, type: "connect" });
   }
-  async sendToPage(params) {
-    await this._evaluateAPIRequest({ id: this._id, type: "sendToPage", data: { data: params.message, isBase64: params.isBase64 } });
+  async ensureOpened(params, progress) {
+    await this._evaluateAPIRequest(progress, { id: this._id, type: "ensureOpened" });
   }
-  async sendToServer(params) {
-    await this._evaluateAPIRequest({ id: this._id, type: "sendToServer", data: { data: params.message, isBase64: params.isBase64 } });
+  async sendToPage(params, progress) {
+    await this._evaluateAPIRequest(progress, { id: this._id, type: "sendToPage", data: { data: params.message, isBase64: params.isBase64 } });
   }
-  async closePage(params) {
-    await this._evaluateAPIRequest({ id: this._id, type: "closePage", code: params.code, reason: params.reason, wasClean: params.wasClean });
+  async sendToServer(params, progress) {
+    await this._evaluateAPIRequest(progress, { id: this._id, type: "sendToServer", data: { data: params.message, isBase64: params.isBase64 } });
   }
-  async closeServer(params) {
-    await this._evaluateAPIRequest({ id: this._id, type: "closeServer", code: params.code, reason: params.reason, wasClean: params.wasClean });
+  async closePage(params, progress) {
+    await this._evaluateAPIRequest(progress, { id: this._id, type: "closePage", code: params.code, reason: params.reason, wasClean: params.wasClean });
   }
-  async _evaluateAPIRequest(request) {
-    await this._frame.evaluateExpression(`globalThis.__pwWebSocketDispatch(${JSON.stringify(request)})`).catch(() => {
-    });
+  async closeServer(params, progress) {
+    await this._evaluateAPIRequest(progress, { id: this._id, type: "closeServer", code: params.code, reason: params.reason, wasClean: params.wasClean });
+  }
+  async _evaluateAPIRequest(progress, request) {
+    await progress.race(this._frame.evaluateExpression(`globalThis.__pwWebSocketDispatch(${JSON.stringify(request)})`).catch(() => {
+    }));
   }
   _onDispose() {
     WebSocketRouteDispatcher._idToDispatcher.delete(this._id);
@@ -148,6 +158,7 @@ function matchesPattern(dispatcher, baseURL, url) {
   }
   return false;
 }
+const kBindingName = "__pwWebSocketBinding";
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   WebSocketRouteDispatcher

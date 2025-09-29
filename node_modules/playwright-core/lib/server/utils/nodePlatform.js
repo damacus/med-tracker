@@ -84,7 +84,7 @@ const nodePlatform = {
   fs: () => import_fs.default,
   env: process.env,
   inspectCustom: util.inspect.custom,
-  isDebugMode: () => !!(0, import_debug.debugMode)(),
+  isDebugMode: () => (0, import_debug.debugMode)() === "inspector",
   isJSDebuggerAttached: () => !!require("inspector").url(),
   isLogEnabled(name) {
     return import_debugLogger.debugLogger.isEnabled(name);

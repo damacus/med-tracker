@@ -56,8 +56,10 @@ class FFNetworkManager {
   }
   _onRequestWillBeSent(event) {
     const redirectedFrom = event.redirectedFrom ? this._requests.get(event.redirectedFrom) || null : null;
-    const frame = redirectedFrom ? redirectedFrom.request.frame() : event.frameId ? this._page._frameManager.frame(event.frameId) : null;
+    const frame = redirectedFrom ? redirectedFrom.request.frame() : event.frameId ? this._page.frameManager.frame(event.frameId) : null;
     if (!frame)
+      return;
+    if (event.method === "OPTIONS" && !event.isIntercepted)
       return;
     if (redirectedFrom)
       this._requests.delete(redirectedFrom._id);
@@ -66,7 +68,7 @@ class FFNetworkManager {
     if (event.isIntercepted)
       route = new FFRouteImpl(this._session, request);
     this._requests.set(request._id, request);
-    this._page._frameManager.requestStarted(request.request, route);
+    this._page.frameManager.requestStarted(request.request, route);
   }
   _onResponseReceived(event) {
     const request = this._requests.get(event.requestId);
@@ -114,7 +116,7 @@ class FFNetworkManager {
     });
     response.setRawResponseHeaders(null);
     response.setResponseHeadersSize(null);
-    this._page._frameManager.requestReceivedResponse(response);
+    this._page.frameManager.requestReceivedResponse(response);
   }
   _onRequestFinished(event) {
     const request = this._requests.get(event.requestId);
@@ -133,7 +135,7 @@ class FFNetworkManager {
     }
     if (event.protocolVersion)
       response._setHttpVersion(event.protocolVersion);
-    this._page._frameManager.reportRequestFinished(request.request, response);
+    this._page.frameManager.reportRequestFinished(request.request, response);
   }
   _onRequestFailed(event) {
     const request = this._requests.get(event.requestId);
@@ -147,7 +149,7 @@ class FFNetworkManager {
       response._requestFinished(-1);
     }
     request.request._setFailureText(event.errorCode);
-    this._page._frameManager.requestFailed(request.request, event.errorCode === "NS_BINDING_ABORTED");
+    this._page.frameManager.requestFailed(request.request, event.errorCode === "NS_BINDING_ABORTED");
   }
 }
 const causeToResourceType = {
@@ -187,7 +189,7 @@ class InterceptableRequest {
     if (payload.postData)
       postDataBuffer = Buffer.from(payload.postData, "base64");
     this.request = new network.Request(
-      frame._page._browserContext,
+      frame._page.browserContext,
       frame,
       null,
       redirectedFrom ? redirectedFrom.request : null,

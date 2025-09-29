@@ -21,10 +21,9 @@ __export(multimap_exports, {
   MultiMap: () => MultiMap
 });
 module.exports = __toCommonJS(multimap_exports);
-var import_builtins = require("./builtins");
 class MultiMap {
   constructor() {
-    this._map = new import_builtins.Map();
+    this._map = /* @__PURE__ */ new Map();
   }
   set(key, value) {
     let values = this._map.get(key);

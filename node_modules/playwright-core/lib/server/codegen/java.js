@@ -119,7 +119,7 @@ class JavaLanguageGenerator {
         return `assertThat(${subject}.${this._asLocator(action.selector, inFrameLocator)}).${assertion};`;
       }
       case "assertSnapshot":
-        return `assertThat(${subject}.${this._asLocator(action.selector, inFrameLocator)}).matchesAriaSnapshot(${quote(action.snapshot)});`;
+        return `assertThat(${subject}.${this._asLocator(action.selector, inFrameLocator)}).matchesAriaSnapshot(${quote(action.ariaSnapshot)});`;
     }
   }
   _asLocator(selector, inFrameLocator) {

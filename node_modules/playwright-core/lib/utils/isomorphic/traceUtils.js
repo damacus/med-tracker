@@ -22,9 +22,8 @@ __export(traceUtils_exports, {
   serializeClientSideCallMetadata: () => serializeClientSideCallMetadata
 });
 module.exports = __toCommonJS(traceUtils_exports);
-var import_builtins = require("./builtins");
 function parseClientSideCallMetadata(data) {
-  const result = new import_builtins.Map();
+  const result = /* @__PURE__ */ new Map();
   const { files, stacks } = data;
   for (const s of stacks) {
     const [id, ff] = s;
@@ -33,7 +32,7 @@ function parseClientSideCallMetadata(data) {
   return result;
 }
 function serializeClientSideCallMetadata(metadatas) {
-  const fileNames = new import_builtins.Map();
+  const fileNames = /* @__PURE__ */ new Map();
   const stacks = [];
   for (const m of metadatas) {
     if (!m.stack || !m.stack.length)

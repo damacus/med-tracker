@@ -40,26 +40,16 @@ class Playwright extends import_channelOwner.ChannelOwner {
     this.webkit = import_browserType.BrowserType.from(initializer.webkit);
     this.webkit._playwright = this;
     this._android = import_android.Android.from(initializer.android);
+    this._android._playwright = this;
     this._electron = import_electron.Electron.from(initializer.electron);
-    this._bidiChromium = import_browserType.BrowserType.from(initializer.bidiChromium);
+    this._electron._playwright = this;
+    this._bidiChromium = import_browserType.BrowserType.from(initializer._bidiChromium);
     this._bidiChromium._playwright = this;
-    this._bidiFirefox = import_browserType.BrowserType.from(initializer.bidiFirefox);
+    this._bidiFirefox = import_browserType.BrowserType.from(initializer._bidiFirefox);
     this._bidiFirefox._playwright = this;
     this.devices = this._connection.localUtils()?.devices ?? {};
-    this.selectors = new import_selectors.Selectors();
+    this.selectors = new import_selectors.Selectors(this._connection._platform);
     this.errors = { TimeoutError: import_errors.TimeoutError };
-    const selectorsOwner = import_selectors.SelectorsOwner.from(initializer.selectors);
-    this.selectors._addChannel(selectorsOwner);
-    this._connection.on("close", () => {
-      this.selectors._removeChannel(selectorsOwner);
-    });
-    global._playwrightInstance = this;
-  }
-  _setSelectors(selectors) {
-    const selectorsOwner = import_selectors.SelectorsOwner.from(this._initializer.selectors);
-    this.selectors._removeChannel(selectorsOwner);
-    this.selectors = selectors;
-    this.selectors._addChannel(selectorsOwner);
   }
   static from(channel) {
     return channel._object;
@@ -69,7 +59,7 @@ class Playwright extends import_channelOwner.ChannelOwner {
   }
   _preLaunchedBrowser() {
     const browser = import_browser.Browser.from(this._initializer.preLaunchedBrowser);
-    browser._browserType = this[browser._name];
+    browser._connectToBrowserType(this[browser._name], {}, void 0);
     return browser;
   }
   _allContexts() {

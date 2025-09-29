@@ -24,23 +24,25 @@ __export(electronDispatcher_exports, {
 module.exports = __toCommonJS(electronDispatcher_exports);
 var import_browserContextDispatcher = require("./browserContextDispatcher");
 var import_dispatcher = require("./dispatcher");
-var import_elementHandlerDispatcher = require("./elementHandlerDispatcher");
 var import_jsHandleDispatcher = require("./jsHandleDispatcher");
 var import_electron = require("../electron/electron");
 class ElectronDispatcher extends import_dispatcher.Dispatcher {
-  constructor(scope, electron) {
+  constructor(scope, electron, denyLaunch) {
     super(scope, electron, "Electron", {});
     this._type_Electron = true;
+    this._denyLaunch = denyLaunch;
   }
-  async launch(params) {
-    const electronApplication = await this._object.launch(params);
+  async launch(params, progress) {
+    if (this._denyLaunch)
+      throw new Error(`Launching more browsers is not allowed.`);
+    const electronApplication = await this._object.launch(progress, params);
     return { electronApplication: new ElectronApplicationDispatcher(this, electronApplication) };
   }
 }
 class ElectronApplicationDispatcher extends import_dispatcher.Dispatcher {
   constructor(scope, electronApplication) {
     super(scope, electronApplication, "ElectronApplication", {
-      context: new import_browserContextDispatcher.BrowserContextDispatcher(scope, electronApplication.context())
+      context: import_browserContextDispatcher.BrowserContextDispatcher.from(scope, electronApplication.context())
     });
     this._type_EventTarget = true;
     this._type_ElectronApplication = true;
@@ -55,32 +57,29 @@ class ElectronApplicationDispatcher extends import_dispatcher.Dispatcher {
       this._dispatchEvent("console", {
         type: message.type(),
         text: message.text(),
-        args: message.args().map((a) => import_elementHandlerDispatcher.ElementHandleDispatcher.fromJSHandle(this, a)),
+        args: message.args().map((a) => import_jsHandleDispatcher.JSHandleDispatcher.fromJSHandle(this, a)),
         location: message.location()
       });
     });
   }
-  async browserWindow(params) {
-    const handle = await this._object.browserWindow(params.page.page());
-    return { handle: import_elementHandlerDispatcher.ElementHandleDispatcher.fromJSHandle(this, handle) };
+  async browserWindow(params, progress) {
+    const handle = await progress.race(this._object.browserWindow(params.page.page()));
+    return { handle: import_jsHandleDispatcher.JSHandleDispatcher.fromJSHandle(this, handle) };
   }
-  async evaluateExpression(params) {
-    const handle = await this._object._nodeElectronHandlePromise;
-    return { value: (0, import_jsHandleDispatcher.serializeResult)(await handle.evaluateExpression(params.expression, { isFunction: params.isFunction }, (0, import_jsHandleDispatcher.parseArgument)(params.arg))) };
+  async evaluateExpression(params, progress) {
+    const handle = await progress.race(this._object._nodeElectronHandlePromise);
+    return { value: (0, import_jsHandleDispatcher.serializeResult)(await progress.race(handle.evaluateExpression(params.expression, { isFunction: params.isFunction }, (0, import_jsHandleDispatcher.parseArgument)(params.arg)))) };
   }
-  async evaluateExpressionHandle(params) {
-    const handle = await this._object._nodeElectronHandlePromise;
-    const result = await handle.evaluateExpressionHandle(params.expression, { isFunction: params.isFunction }, (0, import_jsHandleDispatcher.parseArgument)(params.arg));
-    return { handle: import_elementHandlerDispatcher.ElementHandleDispatcher.fromJSHandle(this, result) };
+  async evaluateExpressionHandle(params, progress) {
+    const handle = await progress.race(this._object._nodeElectronHandlePromise);
+    const result = await progress.race(handle.evaluateExpressionHandle(params.expression, { isFunction: params.isFunction }, (0, import_jsHandleDispatcher.parseArgument)(params.arg)));
+    return { handle: import_jsHandleDispatcher.JSHandleDispatcher.fromJSHandle(this, result) };
   }
-  async updateSubscription(params) {
+  async updateSubscription(params, progress) {
     if (params.enabled)
       this._subscriptions.add(params.event);
     else
       this._subscriptions.delete(params.event);
-  }
-  async close() {
-    await this._object.close();
   }
 }
 // Annotate the CommonJS export names for ESM import in node:

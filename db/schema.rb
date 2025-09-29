@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_06_25_135502) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_29_081208) do
   create_table "dosages", force: :cascade do |t|
     t.integer "medicine_id", null: false
     t.decimal "amount"
@@ -41,6 +41,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_06_25_135502) do
     t.date "expiry_date"
     t.text "description"
     t.text "warnings"
+    t.integer "reorder_threshold", default: 10, null: false
   end
 
   create_table "prescriptions", force: :cascade do |t|

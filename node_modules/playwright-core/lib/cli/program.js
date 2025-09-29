@@ -50,7 +50,7 @@ import_utilsBundle.program.command("mark-docker-image [dockerImageNameTemplate]"
   (0, import_server.writeDockerVersion)(dockerImageNameTemplate).catch(logErrorAndExit);
 });
 commandWithOpenOptions("open [url]", "open page in browser specified via -b, --browser", []).action(function(url, options) {
-  open(options, url, codegenId()).catch(logErrorAndExit);
+  open(options, url).catch(logErrorAndExit);
 }).addHelpText("afterAll", `
 Examples:
 
@@ -64,8 +64,8 @@ commandWithOpenOptions(
     ["--target <language>", `language to generate, one of javascript, playwright-test, python, python-async, python-pytest, csharp, csharp-mstest, csharp-nunit, java, java-junit`, codegenId()],
     ["--test-id-attribute <attributeName>", "use the specified attribute to generate data test ID selectors"]
   ]
-).action(function(url, options) {
-  codegen(options, url).catch(logErrorAndExit);
+).action(async function(url, options) {
+  await codegen(options, url);
 }).addHelpText("afterAll", `
 Examples:
 
@@ -113,7 +113,59 @@ function checkBrowsersToInstall(args, options) {
     throw new Error(`Invalid installation targets: ${faultyArguments.map((name) => `'${name}'`).join(", ")}. Expecting one of: ${suggestedBrowsersToInstall()}`);
   return executables;
 }
-import_utilsBundle.program.command("install [browser...]").description("ensure browsers necessary for this version of Playwright are installed").option("--with-deps", "install system dependencies for browsers").option("--dry-run", "do not execute installation, only print information").option("--force", "force reinstall of stable browser channels").option("--only-shell", "only install headless shell when installing chromium").option("--no-shell", "do not install chromium headless shell").action(async function(args, options) {
+function printInstalledBrowsers(browsers2) {
+  const browserPaths = /* @__PURE__ */ new Set();
+  for (const browser of browsers2)
+    browserPaths.add(browser.browserPath);
+  console.log(`  Browsers:`);
+  for (const browserPath of [...browserPaths].sort())
+    console.log(`    ${browserPath}`);
+  console.log(`  References:`);
+  const references = /* @__PURE__ */ new Set();
+  for (const browser of browsers2)
+    references.add(browser.referenceDir);
+  for (const reference of [...references].sort())
+    console.log(`    ${reference}`);
+}
+function printGroupedByPlaywrightVersion(browsers2) {
+  const dirToVersion = /* @__PURE__ */ new Map();
+  for (const browser of browsers2) {
+    if (dirToVersion.has(browser.referenceDir))
+      continue;
+    const packageJSON2 = require(import_path.default.join(browser.referenceDir, "package.json"));
+    const version = packageJSON2.version;
+    dirToVersion.set(browser.referenceDir, version);
+  }
+  const groupedByPlaywrightMinorVersion = /* @__PURE__ */ new Map();
+  for (const browser of browsers2) {
+    const version = dirToVersion.get(browser.referenceDir);
+    let entries = groupedByPlaywrightMinorVersion.get(version);
+    if (!entries) {
+      entries = [];
+      groupedByPlaywrightMinorVersion.set(version, entries);
+    }
+    entries.push(browser);
+  }
+  const sortedVersions = [...groupedByPlaywrightMinorVersion.keys()].sort((a, b) => {
+    const aComponents = a.split(".");
+    const bComponents = b.split(".");
+    const aMajor = parseInt(aComponents[0], 10);
+    const bMajor = parseInt(bComponents[0], 10);
+    if (aMajor !== bMajor)
+      return aMajor - bMajor;
+    const aMinor = parseInt(aComponents[1], 10);
+    const bMinor = parseInt(bComponents[1], 10);
+    if (aMinor !== bMinor)
+      return aMinor - bMinor;
+    return aComponents.slice(2).join(".").localeCompare(bComponents.slice(2).join("."));
+  });
+  for (const version of sortedVersions) {
+    console.log(`
+Playwright version: ${version}`);
+    printInstalledBrowsers(groupedByPlaywrightMinorVersion.get(version));
+  }
+}
+import_utilsBundle.program.command("install [browser...]").description("ensure browsers necessary for this version of Playwright are installed").option("--with-deps", "install system dependencies for browsers").option("--dry-run", "do not execute installation, only print information").option("--list", "prints list of browsers from all playwright installations").option("--force", "force reinstall of stable browser channels").option("--only-shell", "only install headless shell when installing chromium").option("--no-shell", "do not install chromium headless shell").action(async function(args, options) {
   if (options.shell === false)
     options.noShell = true;
   if ((0, import_utils.isLikelyNpxGlobal)()) {
@@ -141,6 +193,8 @@ import_utilsBundle.program.command("install [browser...]").description("ensure b
     const executables = hasNoArguments ? defaultBrowsersToInstall(options) : checkBrowsersToInstall(args, options);
     if (options.withDeps)
       await import_server.registry.installDeps(executables, !!options.dryRun);
+    if (options.dryRun && options.list)
+      throw new Error(`Only one of --dry-run and --list can be specified`);
     if (options.dryRun) {
       for (const executable of executables) {
         const version = executable.browserVersion ? `version ` + executable.browserVersion : "";
@@ -154,6 +208,9 @@ import_utilsBundle.program.command("install [browser...]").description("ensure b
         }
         console.log(``);
       }
+    } else if (options.list) {
+      const browsers2 = await import_server.registry.listInstalledBrowsers();
+      printGroupedByPlaywrightVersion(browsers2);
     } else {
       const forceReinstall = hasNoArguments ? false : !!options.force;
       await import_server.registry.install(executables, forceReinstall);
@@ -210,7 +267,7 @@ const browsers = [
 ];
 for (const { alias, name, type } of browsers) {
   commandWithOpenOptions(`${alias} [url]`, `open page in ${name}`, []).action(function(url, options) {
-    open({ ...options, browser: type }, url, options.target).catch(logErrorAndExit);
+    open({ ...options, browser: type }, url).catch(logErrorAndExit);
   }).addHelpText("afterAll", `
 Examples:
 
@@ -310,30 +367,6 @@ async function launchContext(options, extraOptions) {
     if (options.proxyBypass)
       launchOptions.proxy.bypass = options.proxyBypass;
   }
-  const browser = await browserType.launch(launchOptions);
-  if (process.env.PWTEST_CLI_IS_UNDER_TEST) {
-    process._didSetSourcesForTest = (text) => {
-      process.stdout.write("\n-------------8<-------------\n");
-      process.stdout.write(text);
-      process.stdout.write("\n-------------8<-------------\n");
-      const autoExitCondition = process.env.PWTEST_CLI_AUTO_EXIT_WHEN;
-      if (autoExitCondition && text.includes(autoExitCondition))
-        closeBrowser();
-    };
-    const logs = [];
-    require("playwright-core/lib/utilsBundle").debug.log = (...args) => {
-      const line = require("util").format(...args) + "\n";
-      logs.push(line);
-      process.stderr.write(line);
-    };
-    browser.on("disconnected", () => {
-      const hasCrashLine = logs.some((line) => line.includes("process did exit:") && !line.includes("process did exit: exitCode=0, signal=null"));
-      if (hasCrashLine) {
-        process.stderr.write("Detected browser crash.\n");
-        (0, import_utils.gracefullyProcessExitDoNotHang)(1);
-      }
-    });
-  }
   if (options.viewportSize) {
     try {
       const [width, height] = options.viewportSize.split(",").map((n) => +n);
@@ -374,7 +407,15 @@ async function launchContext(options, extraOptions) {
       contextOptions.recordHar.urlFilter = options.saveHarGlob;
     contextOptions.serviceWorkers = "block";
   }
-  const context = await browser.newContext(contextOptions);
+  let browser;
+  let context;
+  if (options.userDataDir) {
+    context = await browserType.launchPersistentContext(options.userDataDir, { ...launchOptions, ...contextOptions });
+    browser = context.browser();
+  } else {
+    browser = await browserType.launch(launchOptions);
+    context = await browser.newContext(contextOptions);
+  }
   let closingBrowser = false;
   async function closeBrowser() {
     if (closingBrowser)
@@ -408,44 +449,35 @@ async function launchContext(options, extraOptions) {
   delete launchOptions.executablePath;
   delete launchOptions.handleSIGINT;
   delete contextOptions.deviceScaleFactor;
-  return { browser, browserName: browserType.name(), context, contextOptions, launchOptions };
+  return { browser, browserName: browserType.name(), context, contextOptions, launchOptions, closeBrowser };
 }
 async function openPage(context, url) {
-  const page = await context.newPage();
+  let page = context.pages()[0];
+  if (!page)
+    page = await context.newPage();
   if (url) {
     if (import_fs.default.existsSync(url))
       url = "file://" + import_path.default.resolve(url);
     else if (!url.startsWith("http") && !url.startsWith("file://") && !url.startsWith("about:") && !url.startsWith("data:"))
       url = "http://" + url;
-    await page.goto(url).catch((error) => {
-      if (process.env.PWTEST_CLI_AUTO_EXIT_WHEN) {
-      } else {
-        throw error;
-      }
-    });
+    await page.goto(url);
   }
   return page;
 }
-async function open(options, url, language) {
-  const { context, launchOptions, contextOptions } = await launchContext(options, { headless: !!process.env.PWTEST_CLI_HEADLESS, executablePath: process.env.PWTEST_CLI_EXECUTABLE_PATH });
-  await context._enableRecorder({
-    language,
-    launchOptions,
-    contextOptions,
-    device: options.device,
-    saveStorage: options.saveStorage,
-    handleSIGINT: false
-  });
+async function open(options, url) {
+  const { context } = await launchContext(options, { headless: !!process.env.PWTEST_CLI_HEADLESS, executablePath: process.env.PWTEST_CLI_EXECUTABLE_PATH });
   await openPage(context, url);
 }
 async function codegen(options, url) {
   const { target: language, output: outputFile, testIdAttribute: testIdAttributeName } = options;
   const tracesDir = import_path.default.join(import_os.default.tmpdir(), `playwright-recorder-trace-${Date.now()}`);
-  const { context, launchOptions, contextOptions } = await launchContext(options, {
+  const { context, browser, launchOptions, contextOptions, closeBrowser } = await launchContext(options, {
     headless: !!process.env.PWTEST_CLI_HEADLESS,
     executablePath: process.env.PWTEST_CLI_EXECUTABLE_PATH,
     tracesDir
   });
+  const donePromise = new import_utils.ManualPromise();
+  maybeSetupTestHooks(browser, closeBrowser, donePromise);
   import_utilsBundle.dotenv.config({ path: "playwright.env" });
   await context._enableRecorder({
     language,
@@ -459,6 +491,40 @@ async function codegen(options, url) {
     handleSIGINT: false
   });
   await openPage(context, url);
+  donePromise.resolve();
+}
+async function maybeSetupTestHooks(browser, closeBrowser, donePromise) {
+  if (!process.env.PWTEST_CLI_IS_UNDER_TEST)
+    return;
+  const logs = [];
+  require("playwright-core/lib/utilsBundle").debug.log = (...args) => {
+    const line = require("util").format(...args) + "\n";
+    logs.push(line);
+    process.stderr.write(line);
+  };
+  browser.on("disconnected", () => {
+    const hasCrashLine = logs.some((line) => line.includes("process did exit:") && !line.includes("process did exit: exitCode=0, signal=null"));
+    if (hasCrashLine) {
+      process.stderr.write("Detected browser crash.\n");
+      (0, import_utils.gracefullyProcessExitDoNotHang)(1);
+    }
+  });
+  const close = async () => {
+    await donePromise;
+    await closeBrowser();
+  };
+  if (process.env.PWTEST_CLI_EXIT_AFTER_TIMEOUT) {
+    setTimeout(close, +process.env.PWTEST_CLI_EXIT_AFTER_TIMEOUT);
+    return;
+  }
+  let stdin = "";
+  process.stdin.on("data", (data) => {
+    stdin += data.toString();
+    if (stdin.startsWith("exit")) {
+      process.stdin.destroy();
+      close();
+    }
+  });
 }
 async function waitForPage(page, captureOptions) {
   if (captureOptions.waitForSelector) {
@@ -545,7 +611,7 @@ function commandWithOpenOptions(command, description, options) {
   let result = import_utilsBundle.program.command(command).description(description);
   for (const option of options)
     result = result.option(option[0], ...option.slice(1));
-  return result.option("-b, --browser <browserType>", "browser to use, one of cr, chromium, ff, firefox, wk, webkit", "chromium").option("--block-service-workers", "block service workers").option("--channel <channel>", 'Chromium distribution channel, "chrome", "chrome-beta", "msedge-dev", etc').option("--color-scheme <scheme>", 'emulate preferred color scheme, "light" or "dark"').option("--device <deviceName>", 'emulate device, for example  "iPhone 11"').option("--geolocation <coordinates>", 'specify geolocation coordinates, for example "37.819722,-122.478611"').option("--ignore-https-errors", "ignore https errors").option("--load-storage <filename>", "load context storage state from the file, previously saved with --save-storage").option("--lang <language>", 'specify language / locale, for example "en-GB"').option("--proxy-server <proxy>", 'specify proxy server, for example "http://myproxy:3128" or "socks5://myproxy:8080"').option("--proxy-bypass <bypass>", 'comma-separated domains to bypass proxy, for example ".com,chromium.org,.domain.com"').option("--save-har <filename>", "save HAR file with all network activity at the end").option("--save-har-glob <glob pattern>", "filter entries in the HAR by matching url against this glob pattern").option("--save-storage <filename>", "save context storage state at the end, for later use with --load-storage").option("--timezone <time zone>", 'time zone to emulate, for example "Europe/Rome"').option("--timeout <timeout>", "timeout for Playwright actions in milliseconds, no timeout by default").option("--user-agent <ua string>", "specify user agent string").option("--viewport-size <size>", 'specify browser viewport size in pixels, for example "1280, 720"');
+  return result.option("-b, --browser <browserType>", "browser to use, one of cr, chromium, ff, firefox, wk, webkit", "chromium").option("--block-service-workers", "block service workers").option("--channel <channel>", 'Chromium distribution channel, "chrome", "chrome-beta", "msedge-dev", etc').option("--color-scheme <scheme>", 'emulate preferred color scheme, "light" or "dark"').option("--device <deviceName>", 'emulate device, for example  "iPhone 11"').option("--geolocation <coordinates>", 'specify geolocation coordinates, for example "37.819722,-122.478611"').option("--ignore-https-errors", "ignore https errors").option("--load-storage <filename>", "load context storage state from the file, previously saved with --save-storage").option("--lang <language>", 'specify language / locale, for example "en-GB"').option("--proxy-server <proxy>", 'specify proxy server, for example "http://myproxy:3128" or "socks5://myproxy:8080"').option("--proxy-bypass <bypass>", 'comma-separated domains to bypass proxy, for example ".com,chromium.org,.domain.com"').option("--save-har <filename>", "save HAR file with all network activity at the end").option("--save-har-glob <glob pattern>", "filter entries in the HAR by matching url against this glob pattern").option("--save-storage <filename>", "save context storage state at the end, for later use with --load-storage").option("--timezone <time zone>", 'time zone to emulate, for example "Europe/Rome"').option("--timeout <timeout>", "timeout for Playwright actions in milliseconds, no timeout by default").option("--user-agent <ua string>", "specify user agent string").option("--user-data-dir <directory>", "use the specified user data directory instead of a new context").option("--viewport-size <size>", 'specify browser viewport size in pixels, for example "1280, 720"');
 }
 function buildBasePlaywrightCLICommand(cliTargetLang) {
   switch (cliTargetLang) {

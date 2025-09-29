@@ -61,7 +61,7 @@ class WKInterceptableRequest {
     if (event.request.postData)
       postDataBuffer = Buffer.from(event.request.postData, "base64");
     this.request = new network.Request(
-      frame._page._browserContext,
+      frame._page.browserContext,
       frame,
       null,
       redirectedFrom?.request || null,

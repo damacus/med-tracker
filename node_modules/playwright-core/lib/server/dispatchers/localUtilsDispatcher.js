@@ -37,7 +37,6 @@ var localUtils = __toESM(require("../localUtils"));
 var import_userAgent = require("../utils/userAgent");
 var import_deviceDescriptors = require("../deviceDescriptors");
 var import_jsonPipeDispatcher = require("../dispatchers/jsonPipeDispatcher");
-var import_progress = require("../progress");
 var import_socksInterceptor = require("../socksInterceptor");
 var import_transport = require("../transport");
 var import_network = require("../utils/network");
@@ -45,6 +44,7 @@ var import_urlMatch = require("../../utils/isomorphic/urlMatch");
 class LocalUtilsDispatcher extends import_dispatcher.Dispatcher {
   constructor(scope, playwright) {
     const localUtils2 = new import_instrumentation.SdkObject(playwright, "localUtils", "localUtils");
+    localUtils2.logName = "browser";
     const deviceDescriptors = Object.entries(import_deviceDescriptors.deviceDescriptors).map(([name, descriptor]) => ({ name, descriptor }));
     super(scope, localUtils2, "LocalUtils", {
       deviceDescriptors
@@ -53,70 +53,66 @@ class LocalUtilsDispatcher extends import_dispatcher.Dispatcher {
     this._stackSessions = /* @__PURE__ */ new Map();
     this._type_LocalUtils = true;
   }
-  async zip(params) {
-    return await localUtils.zip(this._stackSessions, params);
+  async zip(params, progress) {
+    return await localUtils.zip(progress, this._stackSessions, params);
   }
-  async harOpen(params, metadata) {
-    return await localUtils.harOpen(this._harBackends, params);
+  async harOpen(params, progress) {
+    return await localUtils.harOpen(progress, this._harBackends, params);
   }
-  async harLookup(params, metadata) {
-    return await localUtils.harLookup(this._harBackends, params);
+  async harLookup(params, progress) {
+    return await localUtils.harLookup(progress, this._harBackends, params);
   }
-  async harClose(params, metadata) {
-    return await localUtils.harClose(this._harBackends, params);
+  async harClose(params, progress) {
+    localUtils.harClose(this._harBackends, params);
   }
-  async harUnzip(params, metadata) {
-    return await localUtils.harUnzip(params);
+  async harUnzip(params, progress) {
+    return await localUtils.harUnzip(progress, params);
   }
-  async tracingStarted(params, metadata) {
-    return await localUtils.tracingStarted(this._stackSessions, params);
+  async tracingStarted(params, progress) {
+    return await localUtils.tracingStarted(progress, this._stackSessions, params);
   }
-  async traceDiscarded(params, metadata) {
-    return await localUtils.traceDiscarded(this._stackSessions, params);
+  async traceDiscarded(params, progress) {
+    return await localUtils.traceDiscarded(progress, this._stackSessions, params);
   }
-  async addStackToTracingNoReply(params, metadata) {
-    return await localUtils.addStackToTracingNoReply(this._stackSessions, params);
+  async addStackToTracingNoReply(params, progress) {
+    localUtils.addStackToTracingNoReply(this._stackSessions, params);
   }
-  async connect(params, metadata) {
-    const controller = new import_progress.ProgressController(metadata, this._object);
-    controller.setLogName("browser");
-    return await controller.run(async (progress) => {
-      const wsHeaders = {
-        "User-Agent": (0, import_userAgent.getUserAgent)(),
-        "x-playwright-proxy": params.exposeNetwork ?? "",
-        ...params.headers
+  async connect(params, progress) {
+    const wsHeaders = {
+      "User-Agent": (0, import_userAgent.getUserAgent)(),
+      "x-playwright-proxy": params.exposeNetwork ?? "",
+      ...params.headers
+    };
+    const wsEndpoint = await urlToWSEndpoint(progress, params.wsEndpoint);
+    const transport = await import_transport.WebSocketTransport.connect(progress, wsEndpoint, { headers: wsHeaders, followRedirects: true, debugLogHeader: "x-playwright-debug-log" });
+    const socksInterceptor = new import_socksInterceptor.SocksInterceptor(transport, params.exposeNetwork, params.socksProxyRedirectPortForTest);
+    const pipe = new import_jsonPipeDispatcher.JsonPipeDispatcher(this);
+    transport.onmessage = (json) => {
+      if (socksInterceptor.interceptMessage(json))
+        return;
+      const cb = () => {
+        try {
+          pipe.dispatch(json);
+        } catch (e) {
+          transport.close();
+        }
       };
-      const wsEndpoint = await urlToWSEndpoint(progress, params.wsEndpoint);
-      const transport = await import_transport.WebSocketTransport.connect(progress, wsEndpoint, { headers: wsHeaders, followRedirects: true, debugLogHeader: "x-playwright-debug-log" });
-      const socksInterceptor = new import_socksInterceptor.SocksInterceptor(transport, params.exposeNetwork, params.socksProxyRedirectPortForTest);
-      const pipe = new import_jsonPipeDispatcher.JsonPipeDispatcher(this);
-      transport.onmessage = (json) => {
-        if (socksInterceptor.interceptMessage(json))
-          return;
-        const cb = () => {
-          try {
-            pipe.dispatch(json);
-          } catch (e) {
-            transport.close();
-          }
-        };
-        if (params.slowMo)
-          setTimeout(cb, params.slowMo);
-        else
-          cb();
-      };
-      pipe.on("message", (message) => {
-        transport.send(message);
-      });
-      transport.onclose = (reason) => {
-        socksInterceptor?.cleanup();
-        pipe.wasClosed(reason);
-      };
-      pipe.on("close", () => transport.close());
-      return { pipe, headers: transport.headers };
-    }, params.timeout || 0);
+      if (params.slowMo)
+        setTimeout(cb, params.slowMo);
+      else
+        cb();
+    };
+    pipe.on("message", (message) => {
+      transport.send(message);
+    });
+    transport.onclose = (reason) => {
+      socksInterceptor?.cleanup();
+      pipe.wasClosed(reason);
+    };
+    pipe.on("close", () => transport.close());
+    return { pipe, headers: transport.headers };
   }
-  async globToRegex(params, metadata) {
+  async globToRegex(params, progress) {
     const regex = (0, import_urlMatch.resolveGlobToRegexPattern)(params.baseURL, params.glob, params.webSocketUrl);
     return { regex };
   }
@@ -124,21 +120,19 @@ class LocalUtilsDispatcher extends import_dispatcher.Dispatcher {
 async function urlToWSEndpoint(progress, endpointURL) {
   if (endpointURL.startsWith("ws"))
     return endpointURL;
-  progress?.log(`<ws preparing> retrieving websocket url from ${endpointURL}`);
+  progress.log(`<ws preparing> retrieving websocket url from ${endpointURL}`);
   const fetchUrl = new URL(endpointURL);
   if (!fetchUrl.pathname.endsWith("/"))
     fetchUrl.pathname += "/";
   fetchUrl.pathname += "json";
-  const json = await (0, import_network.fetchData)({
+  const json = await (0, import_network.fetchData)(progress, {
     url: fetchUrl.toString(),
     method: "GET",
-    timeout: progress?.timeUntilDeadline() ?? 3e4,
     headers: { "User-Agent": (0, import_userAgent.getUserAgent)() }
   }, async (params, response) => {
     return new Error(`Unexpected status ${response.statusCode} when connecting to ${fetchUrl.toString()}.
 This does not look like a Playwright server, try connecting via ws://.`);
   });
-  progress?.throwIfAborted();
   const wsUrl = new URL(endpointURL);
   let wsEndpointPath = JSON.parse(json).wsEndpointPath;
   if (wsEndpointPath.startsWith("/"))

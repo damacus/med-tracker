@@ -37,9 +37,9 @@ var import_browser = require("../browser");
 var import_browserContext = require("../browserContext");
 var import_errors = require("../errors");
 var network = __toESM(require("../network"));
-var import_page = require("../page");
 var import_ffConnection = require("./ffConnection");
 var import_ffPage = require("./ffPage");
+var import_page = require("../page");
 class FFBrowser extends import_browser.Browser {
   constructor(parent, connection, options) {
     super(parent, options);
@@ -126,7 +126,7 @@ class FFBrowser extends import_browser.Browser {
     const ffPage = this._ffPages.get(payload.pageTargetId);
     if (!ffPage)
       return;
-    ffPage._page._frameManager.frameAbortedNavigation(payload.frameId, "Download is starting");
+    ffPage._page.frameManager.frameAbortedNavigation(payload.frameId, "Download is starting");
     let originPage = ffPage._page.initializedOrUndefined();
     if (!originPage) {
       ffPage._markAsError(new Error("Starting new page download"));
@@ -163,7 +163,6 @@ class FFBrowserContext extends import_browserContext.BrowserContext {
     const browserContextId = this._browserContextId;
     const promises = [
       super._initialize(),
-      this._browser.session.send("Browser.addBinding", { browserContextId: this._browserContextId, name: import_page.PageBinding.kPlaywrightBinding, script: "" }),
       this._updateInitScripts()
     ];
     if (this._options.acceptDownloads !== "internal-browser-default") {
@@ -175,13 +174,7 @@ class FFBrowserContext extends import_browserContext.BrowserContext {
         }
       }));
     }
-    if (this._options.viewport) {
-      const viewport = {
-        viewportSize: { width: this._options.viewport.width, height: this._options.viewport.height },
-        deviceScaleFactor: this._options.deviceScaleFactor || 1
-      };
-      promises.push(this._browser.session.send("Browser.setDefaultViewport", { browserContextId, viewport }));
-    }
+    promises.push(this.doUpdateDefaultViewport());
     if (this._options.hasTouch)
       promises.push(this._browser.session.send("Browser.setTouchOverride", { browserContextId, hasTouch: true }));
     if (this._options.userAgent)
@@ -197,37 +190,14 @@ class FFBrowserContext extends import_browserContext.BrowserContext {
     if (this._options.timezoneId)
       promises.push(this._browser.session.send("Browser.setTimezoneOverride", { browserContextId, timezoneId: this._options.timezoneId }));
     if (this._options.extraHTTPHeaders || this._options.locale)
-      promises.push(this.setExtraHTTPHeaders(this._options.extraHTTPHeaders || []));
+      promises.push(this.doUpdateExtraHTTPHeaders());
     if (this._options.httpCredentials)
       promises.push(this.setHTTPCredentials(this._options.httpCredentials));
     if (this._options.geolocation)
       promises.push(this.setGeolocation(this._options.geolocation));
     if (this._options.offline)
-      promises.push(this.setOffline(this._options.offline));
-    if (this._options.colorScheme !== "no-override") {
-      promises.push(this._browser.session.send("Browser.setColorScheme", {
-        browserContextId,
-        colorScheme: this._options.colorScheme !== void 0 ? this._options.colorScheme : "light"
-      }));
-    }
-    if (this._options.reducedMotion !== "no-override") {
-      promises.push(this._browser.session.send("Browser.setReducedMotion", {
-        browserContextId,
-        reducedMotion: this._options.reducedMotion !== void 0 ? this._options.reducedMotion : "no-preference"
-      }));
-    }
-    if (this._options.forcedColors !== "no-override") {
-      promises.push(this._browser.session.send("Browser.setForcedColors", {
-        browserContextId,
-        forcedColors: this._options.forcedColors !== void 0 ? this._options.forcedColors : "none"
-      }));
-    }
-    if (this._options.contrast !== "no-override") {
-      promises.push(this._browser.session.send("Browser.setContrast", {
-        browserContextId,
-        contrast: this._options.contrast !== void 0 ? this._options.contrast : "no-preference"
-      }));
-    }
+      promises.push(this.doUpdateOffline());
+    promises.push(this.doUpdateDefaultEmulatedMedia());
     if (this._options.recordVideo) {
       promises.push(this._ensureVideosPath().then(() => {
         return this._browser.session.send("Browser.setVideoRecordingOptions", {
@@ -256,7 +226,6 @@ class FFBrowserContext extends import_browserContext.BrowserContext {
     return this._ffPages().map((ffPage) => ffPage._page);
   }
   async doCreateNewPage() {
-    (0, import_browserContext.assertBrowserContextIsNotOwned)(this);
     const { targetId } = await this._browser.session.send("Browser.newPage", {
       browserContextId: this._browserContextId
     }).catch((e) => {
@@ -269,17 +238,34 @@ class FFBrowserContext extends import_browserContext.BrowserContext {
   async doGetCookies(urls) {
     const { cookies } = await this._browser.session.send("Browser.getCookies", { browserContextId: this._browserContextId });
     return network.filterCookies(cookies.map((c) => {
-      const copy = { ...c };
-      delete copy.size;
-      delete copy.session;
-      return copy;
+      const { name, value, domain, path, expires, httpOnly, secure, sameSite } = c;
+      return {
+        name,
+        value,
+        domain,
+        path,
+        expires,
+        httpOnly,
+        secure,
+        sameSite
+      };
     }), urls);
   }
   async addCookies(cookies) {
-    const cc = network.rewriteCookies(cookies).map((c) => ({
-      ...c,
-      expires: c.expires === -1 ? void 0 : c.expires
-    }));
+    const cc = network.rewriteCookies(cookies).map((c) => {
+      const { name, value, url, domain, path, expires, httpOnly, secure, sameSite } = c;
+      return {
+        name,
+        value,
+        url,
+        domain,
+        path,
+        expires: expires === -1 ? void 0 : expires,
+        httpOnly,
+        secure,
+        sameSite
+      };
+    });
     await this._browser.session.send("Browser.setCookies", { browserContextId: this._browserContextId, cookies: cc });
   }
   async doClearCookies() {
@@ -308,9 +294,8 @@ class FFBrowserContext extends import_browserContext.BrowserContext {
     this._options.geolocation = geolocation;
     await this._browser.session.send("Browser.setGeolocationOverride", { browserContextId: this._browserContextId, geolocation: geolocation || null });
   }
-  async setExtraHTTPHeaders(headers) {
-    this._options.extraHTTPHeaders = headers;
-    let allHeaders = this._options.extraHTTPHeaders;
+  async doUpdateExtraHTTPHeaders() {
+    let allHeaders = this._options.extraHTTPHeaders || [];
     if (this._options.locale)
       allHeaders = network.mergeHeaders([allHeaders, network.singleHeader("Accept-Language", this._options.locale)]);
     await this._browser.session.send("Browser.setExtraHTTPHeaders", { browserContextId: this._browserContextId, headers: allHeaders });
@@ -318,9 +303,8 @@ class FFBrowserContext extends import_browserContext.BrowserContext {
   async setUserAgent(userAgent) {
     await this._browser.session.send("Browser.setUserAgentOverride", { browserContextId: this._browserContextId, userAgent: userAgent || null });
   }
-  async setOffline(offline) {
-    this._options.offline = offline;
-    await this._browser.session.send("Browser.setOnlineOverride", { browserContextId: this._browserContextId, override: offline ? "offline" : "online" });
+  async doUpdateOffline() {
+    await this._browser.session.send("Browser.setOnlineOverride", { browserContextId: this._browserContextId, override: this._options.offline ? "offline" : "online" });
   }
   async doSetHTTPCredentials(httpCredentials) {
     this._options.httpCredentials = httpCredentials;
@@ -334,19 +318,59 @@ class FFBrowserContext extends import_browserContext.BrowserContext {
   async doAddInitScript(initScript) {
     await this._updateInitScripts();
   }
-  async doRemoveNonInternalInitScripts() {
+  async doRemoveInitScripts(initScripts) {
     await this._updateInitScripts();
   }
   async _updateInitScripts() {
     const bindingScripts = [...this._pageBindings.values()].map((binding) => binding.initScript.source);
+    if (this.bindingsInitScript)
+      bindingScripts.unshift(this.bindingsInitScript.source);
     const initScripts = this.initScripts.map((script) => script.source);
-    await this._browser.session.send("Browser.setInitScripts", { browserContextId: this._browserContextId, scripts: [import_page.kBuiltinsScript.source, ...bindingScripts, ...initScripts].map((script) => ({ script })) });
+    await this._browser.session.send("Browser.setInitScripts", { browserContextId: this._browserContextId, scripts: [...bindingScripts, ...initScripts].map((script) => ({ script })) });
   }
   async doUpdateRequestInterception() {
     await Promise.all([
-      this._browser.session.send("Browser.setRequestInterception", { browserContextId: this._browserContextId, enabled: !!this._requestInterceptor }),
-      this._browser.session.send("Browser.setCacheDisabled", { browserContextId: this._browserContextId, cacheDisabled: !!this._requestInterceptor })
+      this._browser.session.send("Browser.setRequestInterception", { browserContextId: this._browserContextId, enabled: this.requestInterceptors.length > 0 }),
+      this._browser.session.send("Browser.setCacheDisabled", { browserContextId: this._browserContextId, cacheDisabled: this.requestInterceptors.length > 0 })
     ]);
+  }
+  async doUpdateDefaultViewport() {
+    if (!this._options.viewport)
+      return;
+    const viewport = {
+      viewportSize: { width: this._options.viewport.width, height: this._options.viewport.height },
+      deviceScaleFactor: this._options.deviceScaleFactor || 1
+    };
+    await this._browser.session.send("Browser.setDefaultViewport", { browserContextId: this._browserContextId, viewport });
+  }
+  async doUpdateDefaultEmulatedMedia() {
+    if (this._options.colorScheme !== "no-override") {
+      await this._browser.session.send("Browser.setColorScheme", {
+        browserContextId: this._browserContextId,
+        colorScheme: this._options.colorScheme !== void 0 ? this._options.colorScheme : "light"
+      });
+    }
+    if (this._options.reducedMotion !== "no-override") {
+      await this._browser.session.send("Browser.setReducedMotion", {
+        browserContextId: this._browserContextId,
+        reducedMotion: this._options.reducedMotion !== void 0 ? this._options.reducedMotion : "no-preference"
+      });
+    }
+    if (this._options.forcedColors !== "no-override") {
+      await this._browser.session.send("Browser.setForcedColors", {
+        browserContextId: this._browserContextId,
+        forcedColors: this._options.forcedColors !== void 0 ? this._options.forcedColors : "none"
+      });
+    }
+    if (this._options.contrast !== "no-override") {
+      await this._browser.session.send("Browser.setContrast", {
+        browserContextId: this._browserContextId,
+        contrast: this._options.contrast !== void 0 ? this._options.contrast : "no-preference"
+      });
+    }
+  }
+  async doExposePlaywrightBinding() {
+    this._browser.session.send("Browser.addBinding", { browserContextId: this._browserContextId, name: import_page.PageBinding.kBindingName, script: "" });
   }
   onClosePersistent() {
   }

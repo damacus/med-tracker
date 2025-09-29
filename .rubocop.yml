@@ -1,9 +1,14 @@
 ---
 plugins:
-- rubocop-rspec
-- rubocop-rails
-- rubocop-capybara
-- rubocop-rspec_rails
+  - rubocop-rspec
+  - rubocop-rails
+  - rubocop-capybara
+  - rubocop-rspec_rails
 
 RSpec/ExampleLength:
   Max: 15
+
+Style/MethodLength:
+  Exclude:
+    - 'app/controllers/pwa_controller.rb'
+    - 'manifest_icons'

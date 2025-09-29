@@ -25,27 +25,36 @@ var import_browserContextDispatcher = require("./browserContextDispatcher");
 var import_browserDispatcher = require("./browserDispatcher");
 var import_dispatcher = require("./dispatcher");
 class BrowserTypeDispatcher extends import_dispatcher.Dispatcher {
-  constructor(scope, browserType) {
+  constructor(scope, browserType, denyLaunch) {
     super(scope, browserType, "BrowserType", {
       executablePath: browserType.executablePath(),
       name: browserType.name()
     });
     this._type_BrowserType = true;
+    this._denyLaunch = denyLaunch;
   }
-  async launch(params, metadata) {
-    const browser = await this._object.launch(metadata, params);
+  async launch(params, progress) {
+    if (this._denyLaunch)
+      throw new Error(`Launching more browsers is not allowed.`);
+    const browser = await this._object.launch(progress, params);
     return { browser: new import_browserDispatcher.BrowserDispatcher(this, browser) };
   }
-  async launchPersistentContext(params, metadata) {
-    const browserContext = await this._object.launchPersistentContext(metadata, params.userDataDir, params);
-    return { context: new import_browserContextDispatcher.BrowserContextDispatcher(this, browserContext) };
+  async launchPersistentContext(params, progress) {
+    if (this._denyLaunch)
+      throw new Error(`Launching more browsers is not allowed.`);
+    const browserContext = await this._object.launchPersistentContext(progress, params.userDataDir, params);
+    const browserDispatcher = new import_browserDispatcher.BrowserDispatcher(this, browserContext._browser);
+    const contextDispatcher = import_browserContextDispatcher.BrowserContextDispatcher.from(browserDispatcher, browserContext);
+    return { browser: browserDispatcher, context: contextDispatcher };
   }
-  async connectOverCDP(params, metadata) {
-    const browser = await this._object.connectOverCDP(metadata, params.endpointURL, params);
+  async connectOverCDP(params, progress) {
+    if (this._denyLaunch)
+      throw new Error(`Launching more browsers is not allowed.`);
+    const browser = await this._object.connectOverCDP(progress, params.endpointURL, params);
     const browserDispatcher = new import_browserDispatcher.BrowserDispatcher(this, browser);
     return {
       browser: browserDispatcher,
-      defaultContext: browser._defaultContext ? new import_browserContextDispatcher.BrowserContextDispatcher(browserDispatcher, browser._defaultContext) : void 0
+      defaultContext: browser._defaultContext ? import_browserContextDispatcher.BrowserContextDispatcher.from(browserDispatcher, browser._defaultContext) : void 0
     };
   }
 }

@@ -45,6 +45,7 @@ var import_waiter = require("./waiter");
 var import_assert = require("../utils/isomorphic/assert");
 var import_locatorUtils = require("../utils/isomorphic/locatorUtils");
 var import_urlMatch = require("../utils/isomorphic/urlMatch");
+var import_timeoutSettings = require("./timeoutSettings");
 class Frame extends import_channelOwner.ChannelOwner {
   constructor(parent, type, guid, initializer) {
     super(parent, type, guid, initializer);
@@ -90,9 +91,17 @@ class Frame extends import_channelOwner.ChannelOwner {
   page() {
     return this._page;
   }
+  _timeout(options) {
+    const timeoutSettings = this._page?._timeoutSettings || new import_timeoutSettings.TimeoutSettings(this._platform);
+    return timeoutSettings.timeout(options || {});
+  }
+  _navigationTimeout(options) {
+    const timeoutSettings = this._page?._timeoutSettings || new import_timeoutSettings.TimeoutSettings(this._platform);
+    return timeoutSettings.navigationTimeout(options || {});
+  }
   async goto(url, options = {}) {
     const waitUntil = verifyLoadState("waitUntil", options.waitUntil === void 0 ? "load" : options.waitUntil);
-    return network.Response.fromNullable((await this._channel.goto({ url, ...options, waitUntil })).response);
+    return network.Response.fromNullable((await this._channel.goto({ url, ...options, waitUntil, timeout: this._navigationTimeout(options) })).response);
   }
   _setupNavigationWaiter(options) {
     const waiter = new import_waiter.Waiter(this._page, "");
@@ -132,7 +141,7 @@ class Frame extends import_channelOwner.ChannelOwner {
       const response = request ? await waiter.waitForPromise(request._finalRequest()._internalResponse()) : null;
       waiter.dispose();
       return response;
-    });
+    }, { title: "Wait for navigation" });
   }
   async waitForLoadState(state = "load", options = {}) {
     state = verifyLoadState("state", state);
@@ -147,7 +156,7 @@ class Frame extends import_channelOwner.ChannelOwner {
         });
       }
       waiter.dispose();
-    });
+    }, { title: `Wait for load state "${state}"` });
   }
   async waitForURL(url, options = {}) {
     if ((0, import_urlMatch.urlMatches)(this._page?.context()._options.baseURL, this.url(), url))
@@ -167,6 +176,10 @@ class Frame extends import_channelOwner.ChannelOwner {
     const result = await this._channel.evaluateExpression({ expression: String(pageFunction), isFunction: typeof pageFunction === "function", arg: (0, import_jsHandle.serializeArgument)(arg) });
     return (0, import_jsHandle.parseResult)(result.value);
   }
+  async _evaluateFunction(functionDeclaration) {
+    const result = await this._channel.evaluateExpression({ expression: functionDeclaration, isFunction: true, arg: (0, import_jsHandle.serializeArgument)(void 0) });
+    return (0, import_jsHandle.parseResult)(result.value);
+  }
   async _evaluateExposeUtilityScript(pageFunction, arg) {
     (0, import_jsHandle.assertMaxArguments)(arguments.length, 2);
     const result = await this._channel.evaluateExpression({ expression: String(pageFunction), isFunction: typeof pageFunction === "function", arg: (0, import_jsHandle.serializeArgument)(arg) });
@@ -181,11 +194,11 @@ class Frame extends import_channelOwner.ChannelOwner {
       throw new Error("options.visibility is not supported, did you mean options.state?");
     if (options.waitFor && options.waitFor !== "visible")
       throw new Error("options.waitFor is not supported, did you mean options.state?");
-    const result = await this._channel.waitForSelector({ selector, ...options });
+    const result = await this._channel.waitForSelector({ selector, ...options, timeout: this._timeout(options) });
     return import_elementHandle.ElementHandle.fromNullable(result.element);
   }
   async dispatchEvent(selector, type, eventInit, options = {}) {
-    await this._channel.dispatchEvent({ selector, type, eventInit: (0, import_jsHandle.serializeArgument)(eventInit), ...options });
+    await this._channel.dispatchEvent({ selector, type, eventInit: (0, import_jsHandle.serializeArgument)(eventInit), ...options, timeout: this._timeout(options) });
   }
   async $eval(selector, pageFunction, arg) {
     (0, import_jsHandle.assertMaxArguments)(arguments.length, 3);
@@ -201,15 +214,15 @@ class Frame extends import_channelOwner.ChannelOwner {
     const result = await this._channel.querySelectorAll({ selector });
     return result.elements.map((e) => import_elementHandle.ElementHandle.from(e));
   }
-  async _queryCount(selector) {
-    return (await this._channel.queryCount({ selector })).value;
+  async _queryCount(selector, options) {
+    return (await this._channel.queryCount({ selector, ...options })).value;
   }
   async content() {
     return (await this._channel.content()).value;
   }
   async setContent(html, options = {}) {
     const waitUntil = verifyLoadState("waitUntil", options.waitUntil === void 0 ? "load" : options.waitUntil);
-    await this._channel.setContent({ html, ...options, waitUntil });
+    await this._channel.setContent({ html, ...options, waitUntil, timeout: this._navigationTimeout(options) });
   }
   name() {
     return this._name || "";
@@ -243,19 +256,19 @@ class Frame extends import_channelOwner.ChannelOwner {
     return import_elementHandle.ElementHandle.from((await this._channel.addStyleTag({ ...copy })).element);
   }
   async click(selector, options = {}) {
-    return await this._channel.click({ selector, ...options });
+    return await this._channel.click({ selector, ...options, timeout: this._timeout(options) });
   }
   async dblclick(selector, options = {}) {
-    return await this._channel.dblclick({ selector, ...options });
+    return await this._channel.dblclick({ selector, ...options, timeout: this._timeout(options) });
   }
   async dragAndDrop(source, target, options = {}) {
-    return await this._channel.dragAndDrop({ source, target, ...options });
+    return await this._channel.dragAndDrop({ source, target, ...options, timeout: this._timeout(options) });
   }
   async tap(selector, options = {}) {
-    return await this._channel.tap({ selector, ...options });
+    return await this._channel.tap({ selector, ...options, timeout: this._timeout(options) });
   }
   async fill(selector, value, options = {}) {
-    return await this._channel.fill({ selector, value, ...options });
+    return await this._channel.fill({ selector, value, ...options, timeout: this._timeout(options) });
   }
   async _highlight(selector) {
     return await this._channel.highlight({ selector });
@@ -288,36 +301,36 @@ class Frame extends import_channelOwner.ChannelOwner {
     return new import_locator.FrameLocator(this, selector);
   }
   async focus(selector, options = {}) {
-    await this._channel.focus({ selector, ...options });
+    await this._channel.focus({ selector, ...options, timeout: this._timeout(options) });
   }
   async textContent(selector, options = {}) {
-    const value = (await this._channel.textContent({ selector, ...options })).value;
+    const value = (await this._channel.textContent({ selector, ...options, timeout: this._timeout(options) })).value;
     return value === void 0 ? null : value;
   }
   async innerText(selector, options = {}) {
-    return (await this._channel.innerText({ selector, ...options })).value;
+    return (await this._channel.innerText({ selector, ...options, timeout: this._timeout(options) })).value;
   }
   async innerHTML(selector, options = {}) {
-    return (await this._channel.innerHTML({ selector, ...options })).value;
+    return (await this._channel.innerHTML({ selector, ...options, timeout: this._timeout(options) })).value;
   }
   async getAttribute(selector, name, options = {}) {
-    const value = (await this._channel.getAttribute({ selector, name, ...options })).value;
+    const value = (await this._channel.getAttribute({ selector, name, ...options, timeout: this._timeout(options) })).value;
     return value === void 0 ? null : value;
   }
   async inputValue(selector, options = {}) {
-    return (await this._channel.inputValue({ selector, ...options })).value;
+    return (await this._channel.inputValue({ selector, ...options, timeout: this._timeout(options) })).value;
   }
   async isChecked(selector, options = {}) {
-    return (await this._channel.isChecked({ selector, ...options })).value;
+    return (await this._channel.isChecked({ selector, ...options, timeout: this._timeout(options) })).value;
   }
   async isDisabled(selector, options = {}) {
-    return (await this._channel.isDisabled({ selector, ...options })).value;
+    return (await this._channel.isDisabled({ selector, ...options, timeout: this._timeout(options) })).value;
   }
   async isEditable(selector, options = {}) {
-    return (await this._channel.isEditable({ selector, ...options })).value;
+    return (await this._channel.isEditable({ selector, ...options, timeout: this._timeout(options) })).value;
   }
   async isEnabled(selector, options = {}) {
-    return (await this._channel.isEnabled({ selector, ...options })).value;
+    return (await this._channel.isEnabled({ selector, ...options, timeout: this._timeout(options) })).value;
   }
   async isHidden(selector, options = {}) {
     return (await this._channel.isHidden({ selector, ...options })).value;
@@ -326,26 +339,26 @@ class Frame extends import_channelOwner.ChannelOwner {
     return (await this._channel.isVisible({ selector, ...options })).value;
   }
   async hover(selector, options = {}) {
-    await this._channel.hover({ selector, ...options });
+    await this._channel.hover({ selector, ...options, timeout: this._timeout(options) });
   }
   async selectOption(selector, values, options = {}) {
-    return (await this._channel.selectOption({ selector, ...(0, import_elementHandle.convertSelectOptionValues)(values), ...options })).values;
+    return (await this._channel.selectOption({ selector, ...(0, import_elementHandle.convertSelectOptionValues)(values), ...options, timeout: this._timeout(options) })).values;
   }
   async setInputFiles(selector, files, options = {}) {
     const converted = await (0, import_elementHandle.convertInputFiles)(this._platform, files, this.page().context());
-    await this._channel.setInputFiles({ selector, ...converted, ...options });
+    await this._channel.setInputFiles({ selector, ...converted, ...options, timeout: this._timeout(options) });
   }
   async type(selector, text, options = {}) {
-    await this._channel.type({ selector, text, ...options });
+    await this._channel.type({ selector, text, ...options, timeout: this._timeout(options) });
   }
   async press(selector, key, options = {}) {
-    await this._channel.press({ selector, key, ...options });
+    await this._channel.press({ selector, key, ...options, timeout: this._timeout(options) });
   }
   async check(selector, options = {}) {
-    await this._channel.check({ selector, ...options });
+    await this._channel.check({ selector, ...options, timeout: this._timeout(options) });
   }
   async uncheck(selector, options = {}) {
-    await this._channel.uncheck({ selector, ...options });
+    await this._channel.uncheck({ selector, ...options, timeout: this._timeout(options) });
   }
   async setChecked(selector, checked, options) {
     if (checked)
@@ -354,7 +367,7 @@ class Frame extends import_channelOwner.ChannelOwner {
       await this.uncheck(selector, options);
   }
   async waitForTimeout(timeout) {
-    await this._channel.waitForTimeout({ timeout });
+    await this._channel.waitForTimeout({ waitTimeout: timeout });
   }
   async waitForFunction(pageFunction, arg, options = {}) {
     if (typeof options.polling === "string")
@@ -364,12 +377,21 @@ class Frame extends import_channelOwner.ChannelOwner {
       pollingInterval: options.polling === "raf" ? void 0 : options.polling,
       expression: String(pageFunction),
       isFunction: typeof pageFunction === "function",
-      arg: (0, import_jsHandle.serializeArgument)(arg)
+      arg: (0, import_jsHandle.serializeArgument)(arg),
+      timeout: this._timeout(options)
     });
     return import_jsHandle.JSHandle.from(result.handle);
   }
   async title() {
     return (await this._channel.title()).value;
+  }
+  async _expect(expression, options) {
+    const params = { expression, ...options, isNot: !!options.isNot };
+    params.expectedValue = (0, import_jsHandle.serializeArgument)(options.expectedValue);
+    const result = await this._channel.expect(params);
+    if (result.received !== void 0)
+      result.received = (0, import_jsHandle.parseResult)(result.received);
+    return result;
   }
 }
 function verifyLoadState(name, waitUntil) {

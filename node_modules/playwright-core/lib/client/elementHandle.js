@@ -40,6 +40,7 @@ class ElementHandle extends import_jsHandle.JSHandle {
   }
   constructor(parent, type, guid, initializer) {
     super(parent, type, guid, initializer);
+    this._frame = parent;
     this._elementChannel = this._channel;
   }
   asElement() {
@@ -50,10 +51,6 @@ class ElementHandle extends import_jsHandle.JSHandle {
   }
   async contentFrame() {
     return import_frame.Frame.fromNullable((await this._elementChannel.contentFrame()).frame);
-  }
-  async _generateLocatorString() {
-    const value = (await this._elementChannel.generateLocatorString()).value;
-    return value === void 0 ? null : value;
   }
   async getAttribute(name) {
     const value = (await this._elementChannel.getAttribute({ name })).value;
@@ -94,51 +91,51 @@ class ElementHandle extends import_jsHandle.JSHandle {
     await this._elementChannel.dispatchEvent({ type, eventInit: (0, import_jsHandle.serializeArgument)(eventInit) });
   }
   async scrollIntoViewIfNeeded(options = {}) {
-    await this._elementChannel.scrollIntoViewIfNeeded(options);
+    await this._elementChannel.scrollIntoViewIfNeeded({ ...options, timeout: this._frame._timeout(options) });
   }
   async hover(options = {}) {
-    await this._elementChannel.hover(options);
+    await this._elementChannel.hover({ ...options, timeout: this._frame._timeout(options) });
   }
   async click(options = {}) {
-    return await this._elementChannel.click(options);
+    return await this._elementChannel.click({ ...options, timeout: this._frame._timeout(options) });
   }
   async dblclick(options = {}) {
-    return await this._elementChannel.dblclick(options);
+    return await this._elementChannel.dblclick({ ...options, timeout: this._frame._timeout(options) });
   }
   async tap(options = {}) {
-    return await this._elementChannel.tap(options);
+    return await this._elementChannel.tap({ ...options, timeout: this._frame._timeout(options) });
   }
   async selectOption(values, options = {}) {
-    const result = await this._elementChannel.selectOption({ ...convertSelectOptionValues(values), ...options });
+    const result = await this._elementChannel.selectOption({ ...convertSelectOptionValues(values), ...options, timeout: this._frame._timeout(options) });
     return result.values;
   }
   async fill(value, options = {}) {
-    return await this._elementChannel.fill({ value, ...options });
+    return await this._elementChannel.fill({ value, ...options, timeout: this._frame._timeout(options) });
   }
   async selectText(options = {}) {
-    await this._elementChannel.selectText(options);
+    await this._elementChannel.selectText({ ...options, timeout: this._frame._timeout(options) });
   }
   async setInputFiles(files, options = {}) {
     const frame = await this.ownerFrame();
     if (!frame)
       throw new Error("Cannot set input files to detached element");
     const converted = await convertInputFiles(this._platform, files, frame.page().context());
-    await this._elementChannel.setInputFiles({ ...converted, ...options });
+    await this._elementChannel.setInputFiles({ ...converted, ...options, timeout: this._frame._timeout(options) });
   }
   async focus() {
     await this._elementChannel.focus();
   }
   async type(text, options = {}) {
-    await this._elementChannel.type({ text, ...options });
+    await this._elementChannel.type({ text, ...options, timeout: this._frame._timeout(options) });
   }
   async press(key, options = {}) {
-    await this._elementChannel.press({ key, ...options });
+    await this._elementChannel.press({ key, ...options, timeout: this._frame._timeout(options) });
   }
   async check(options = {}) {
-    return await this._elementChannel.check(options);
+    return await this._elementChannel.check({ ...options, timeout: this._frame._timeout(options) });
   }
   async uncheck(options = {}) {
-    return await this._elementChannel.uncheck(options);
+    return await this._elementChannel.uncheck({ ...options, timeout: this._frame._timeout(options) });
   }
   async setChecked(checked, options) {
     if (checked)
@@ -152,7 +149,7 @@ class ElementHandle extends import_jsHandle.JSHandle {
   }
   async screenshot(options = {}) {
     const mask = options.mask;
-    const copy = { ...options, mask: void 0 };
+    const copy = { ...options, mask: void 0, timeout: this._frame._timeout(options) };
     if (!copy.type)
       copy.type = determineScreenshotType(options);
     if (mask) {
@@ -184,10 +181,10 @@ class ElementHandle extends import_jsHandle.JSHandle {
     return (0, import_jsHandle.parseResult)(result.value);
   }
   async waitForElementState(state, options = {}) {
-    return await this._elementChannel.waitForElementState({ state, ...options });
+    return await this._elementChannel.waitForElementState({ state, ...options, timeout: this._frame._timeout(options) });
   }
   async waitForSelector(selector, options = {}) {
-    const result = await this._elementChannel.waitForSelector({ selector, ...options });
+    const result = await this._elementChannel.waitForSelector({ selector, ...options, timeout: this._frame._timeout(options) });
     return ElementHandle.fromNullable(result.element);
   }
 }
@@ -244,7 +241,7 @@ async function convertInputFiles(platform, files, context) {
             lastModifiedMs
           };
         }))
-      }), true);
+      }), { internal: true });
       for (let i = 0; i < files2.length; i++) {
         const writable = import_writableStream.WritableStream.from(writableStreams[i]);
         await platform.streamFile(files2[i], writable.stream());

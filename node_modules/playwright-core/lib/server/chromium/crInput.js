@@ -59,12 +59,12 @@ class RawKeyboardImpl {
     commands = commands.filter((x) => !x.startsWith("insert"));
     return commands.map((c) => c.substring(0, c.length - 1));
   }
-  async keydown(modifiers, keyName, description, autoRepeat) {
+  async keydown(progress, modifiers, keyName, description, autoRepeat) {
     const { code, key, location, text } = description;
-    if (code === "Escape" && await this._dragManger.cancelDrag())
+    if (code === "Escape" && await progress.race(this._dragManger.cancelDrag()))
       return;
     const commands = this._commandsForCode(code, modifiers);
-    await this._client.send("Input.dispatchKeyEvent", {
+    await progress.race(this._client.send("Input.dispatchKeyEvent", {
       type: text ? "keyDown" : "rawKeyDown",
       modifiers: (0, import_crProtocolHelper.toModifiersMask)(modifiers),
       windowsVirtualKeyCode: description.keyCodeWithoutLocation,
@@ -76,21 +76,21 @@ class RawKeyboardImpl {
       autoRepeat,
       location,
       isKeypad: location === input.keypadLocation
-    });
+    }));
   }
-  async keyup(modifiers, keyName, description) {
+  async keyup(progress, modifiers, keyName, description) {
     const { code, key, location } = description;
-    await this._client.send("Input.dispatchKeyEvent", {
+    await progress.race(this._client.send("Input.dispatchKeyEvent", {
       type: "keyUp",
       modifiers: (0, import_crProtocolHelper.toModifiersMask)(modifiers),
       key,
       windowsVirtualKeyCode: description.keyCodeWithoutLocation,
       code,
       location
-    });
+    }));
   }
-  async sendText(text) {
-    await this._client.send("Input.insertText", { text });
+  async sendText(progress, text) {
+    await progress.race(this._client.send("Input.insertText", { text }));
   }
 }
 class RawMouseImpl {
@@ -99,41 +99,44 @@ class RawMouseImpl {
     this._client = client;
     this._dragManager = dragManager;
   }
-  async move(x, y, button, buttons, modifiers, forClick) {
+  async move(progress, x, y, button, buttons, modifiers, forClick) {
     const actualMove = async () => {
-      await this._client.send("Input.dispatchMouseEvent", {
+      await progress.race(this._client.send("Input.dispatchMouseEvent", {
         type: "mouseMoved",
         button,
         buttons: (0, import_crProtocolHelper.toButtonsMask)(buttons),
         x,
         y,
-        modifiers: (0, import_crProtocolHelper.toModifiersMask)(modifiers)
-      });
+        modifiers: (0, import_crProtocolHelper.toModifiersMask)(modifiers),
+        force: buttons.size > 0 ? 0.5 : 0
+      }));
     };
     if (forClick) {
-      return actualMove();
+      await actualMove();
+      return;
     }
-    await this._dragManager.interceptDragCausedByMove(x, y, button, buttons, modifiers, actualMove);
+    await this._dragManager.interceptDragCausedByMove(progress, x, y, button, buttons, modifiers, actualMove);
   }
-  async down(x, y, button, buttons, modifiers, clickCount) {
+  async down(progress, x, y, button, buttons, modifiers, clickCount) {
     if (this._dragManager.isDragging())
       return;
-    await this._client.send("Input.dispatchMouseEvent", {
+    await progress.race(this._client.send("Input.dispatchMouseEvent", {
       type: "mousePressed",
       button,
       buttons: (0, import_crProtocolHelper.toButtonsMask)(buttons),
       x,
       y,
       modifiers: (0, import_crProtocolHelper.toModifiersMask)(modifiers),
-      clickCount
-    });
+      clickCount,
+      force: buttons.size > 0 ? 0.5 : 0
+    }));
   }
-  async up(x, y, button, buttons, modifiers, clickCount) {
+  async up(progress, x, y, button, buttons, modifiers, clickCount) {
     if (this._dragManager.isDragging()) {
-      await this._dragManager.drop(x, y, modifiers);
+      await this._dragManager.drop(progress, x, y, modifiers);
       return;
     }
-    await this._client.send("Input.dispatchMouseEvent", {
+    await progress.race(this._client.send("Input.dispatchMouseEvent", {
       type: "mouseReleased",
       button,
       buttons: (0, import_crProtocolHelper.toButtonsMask)(buttons),
@@ -141,25 +144,25 @@ class RawMouseImpl {
       y,
       modifiers: (0, import_crProtocolHelper.toModifiersMask)(modifiers),
       clickCount
-    });
+    }));
   }
-  async wheel(x, y, buttons, modifiers, deltaX, deltaY) {
-    await this._client.send("Input.dispatchMouseEvent", {
+  async wheel(progress, x, y, buttons, modifiers, deltaX, deltaY) {
+    await progress.race(this._client.send("Input.dispatchMouseEvent", {
       type: "mouseWheel",
       x,
       y,
       modifiers: (0, import_crProtocolHelper.toModifiersMask)(modifiers),
       deltaX,
       deltaY
-    });
+    }));
   }
 }
 class RawTouchscreenImpl {
   constructor(client) {
     this._client = client;
   }
-  async tap(x, y, modifiers) {
-    await Promise.all([
+  async tap(progress, x, y, modifiers) {
+    await progress.race(Promise.all([
       this._client.send("Input.dispatchTouchEvent", {
         type: "touchStart",
         modifiers: (0, import_crProtocolHelper.toModifiersMask)(modifiers),
@@ -173,7 +176,7 @@ class RawTouchscreenImpl {
         modifiers: (0, import_crProtocolHelper.toModifiersMask)(modifiers),
         touchPoints: []
       })
-    ]);
+    ]));
   }
 }
 // Annotate the CommonJS export names for ESM import in node:

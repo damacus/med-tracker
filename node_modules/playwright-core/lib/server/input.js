@@ -38,55 +38,58 @@ __export(input_exports, {
 module.exports = __toCommonJS(input_exports);
 var import_utils = require("../utils");
 var keyboardLayout = __toESM(require("./usKeyboardLayout"));
+var import_dom = require("./dom");
 const keypadLocation = keyboardLayout.keypadLocation;
 const kModifiers = ["Alt", "Control", "Meta", "Shift"];
 class Keyboard {
-  constructor(raw) {
+  constructor(raw, page) {
     this._pressedModifiers = /* @__PURE__ */ new Set();
     this._pressedKeys = /* @__PURE__ */ new Set();
     this._raw = raw;
+    this._page = page;
   }
-  async down(key) {
+  async down(progress, key) {
     const description = this._keyDescriptionForString(key);
     const autoRepeat = this._pressedKeys.has(description.code);
     this._pressedKeys.add(description.code);
     if (kModifiers.includes(description.key))
       this._pressedModifiers.add(description.key);
-    await this._raw.keydown(this._pressedModifiers, key, description, autoRepeat);
+    await this._raw.keydown(progress, this._pressedModifiers, key, description, autoRepeat);
   }
   _keyDescriptionForString(str) {
     const keyString = resolveSmartModifierString(str);
     let description = usKeyboardLayout.get(keyString);
-    (0, import_utils.assert)(description, `Unknown key: "${keyString}"`);
+    if (!description)
+      throw new import_dom.NonRecoverableDOMError(`Unknown key: "${keyString}"`);
     const shift = this._pressedModifiers.has("Shift");
     description = shift && description.shifted ? description.shifted : description;
     if (this._pressedModifiers.size > 1 || !this._pressedModifiers.has("Shift") && this._pressedModifiers.size === 1)
       return { ...description, text: "" };
     return description;
   }
-  async up(key) {
+  async up(progress, key) {
     const description = this._keyDescriptionForString(key);
     if (kModifiers.includes(description.key))
       this._pressedModifiers.delete(description.key);
     this._pressedKeys.delete(description.code);
-    await this._raw.keyup(this._pressedModifiers, key, description);
+    await this._raw.keyup(progress, this._pressedModifiers, key, description);
   }
-  async insertText(text) {
-    await this._raw.sendText(text);
+  async insertText(progress, text) {
+    await this._raw.sendText(progress, text);
   }
-  async type(text, options) {
+  async type(progress, text, options) {
     const delay = options && options.delay || void 0;
     for (const char of text) {
       if (usKeyboardLayout.has(char)) {
-        await this.press(char, { delay });
+        await this.press(progress, char, { delay });
       } else {
         if (delay)
-          await new Promise((f) => setTimeout(f, delay));
-        await this.insertText(char);
+          await progress.wait(delay);
+        await this.insertText(progress, char);
       }
     }
   }
-  async press(key, options = {}) {
+  async press(progress, key, options = {}) {
     function split(keyString) {
       const keys = [];
       let building = "";
@@ -104,15 +107,15 @@ class Keyboard {
     const tokens = split(key);
     key = tokens[tokens.length - 1];
     for (let i = 0; i < tokens.length - 1; ++i)
-      await this.down(tokens[i]);
-    await this.down(key);
+      await this.down(progress, tokens[i]);
+    await this.down(progress, key);
     if (options.delay)
-      await new Promise((f) => setTimeout(f, options.delay));
-    await this.up(key);
+      await progress.wait(options.delay);
+    await this.up(progress, key);
     for (let i = tokens.length - 2; i >= 0; --i)
-      await this.up(tokens[i]);
+      await this.up(progress, tokens[i]);
   }
-  async ensureModifiers(mm) {
+  async ensureModifiers(progress, mm) {
     const modifiers = mm.map(resolveSmartModifier);
     for (const modifier of modifiers) {
       if (!kModifiers.includes(modifier))
@@ -123,9 +126,9 @@ class Keyboard {
       const needDown = modifiers.includes(key);
       const isDown = this._pressedModifiers.has(key);
       if (needDown && !isDown)
-        await this.down(key);
+        await this.down(progress, key);
       else if (!needDown && isDown)
-        await this.up(key);
+        await this.up(progress, key);
     }
     return restore;
   }
@@ -151,9 +154,10 @@ class Mouse {
     this._page = page;
     this._keyboard = this._page.keyboard;
   }
-  async move(x, y, options = {}, metadata) {
-    if (metadata)
-      metadata.point = { x, y };
+  currentPoint() {
+    return { x: this._x, y: this._y };
+  }
+  async move(progress, x, y, options = {}) {
     const { steps = 1 } = options;
     const fromX = this._x;
     const fromY = this._y;
@@ -162,53 +166,44 @@ class Mouse {
     for (let i = 1; i <= steps; i++) {
       const middleX = fromX + (x - fromX) * (i / steps);
       const middleY = fromY + (y - fromY) * (i / steps);
-      await this._raw.move(middleX, middleY, this._lastButton, this._buttons, this._keyboard._modifiers(), !!options.forClick);
+      await this._raw.move(progress, middleX, middleY, this._lastButton, this._buttons, this._keyboard._modifiers(), !!options.forClick);
     }
   }
-  async down(options = {}, metadata) {
-    if (metadata)
-      metadata.point = { x: this._x, y: this._y };
+  async down(progress, options = {}) {
     const { button = "left", clickCount = 1 } = options;
     this._lastButton = button;
     this._buttons.add(button);
-    await this._raw.down(this._x, this._y, this._lastButton, this._buttons, this._keyboard._modifiers(), clickCount);
+    await this._raw.down(progress, this._x, this._y, this._lastButton, this._buttons, this._keyboard._modifiers(), clickCount);
   }
-  async up(options = {}, metadata) {
-    if (metadata)
-      metadata.point = { x: this._x, y: this._y };
+  async up(progress, options = {}) {
     const { button = "left", clickCount = 1 } = options;
     this._lastButton = "none";
     this._buttons.delete(button);
-    await this._raw.up(this._x, this._y, button, this._buttons, this._keyboard._modifiers(), clickCount);
+    await this._raw.up(progress, this._x, this._y, button, this._buttons, this._keyboard._modifiers(), clickCount);
   }
-  async click(x, y, options = {}, metadata) {
-    if (metadata)
-      metadata.point = { x, y };
+  async click(progress, x, y, options = {}) {
     const { delay = null, clickCount = 1 } = options;
     if (delay) {
-      this.move(x, y, { forClick: true });
+      this.move(progress, x, y, { forClick: true });
       for (let cc = 1; cc <= clickCount; ++cc) {
-        await this.down({ ...options, clickCount: cc });
-        await new Promise((f) => setTimeout(f, delay));
-        await this.up({ ...options, clickCount: cc });
+        await this.down(progress, { ...options, clickCount: cc });
+        await progress.wait(delay);
+        await this.up(progress, { ...options, clickCount: cc });
         if (cc < clickCount)
-          await new Promise((f) => setTimeout(f, delay));
+          await progress.wait(delay);
       }
     } else {
       const promises = [];
-      promises.push(this.move(x, y, { forClick: true }));
+      promises.push(this.move(progress, x, y, { forClick: true }));
       for (let cc = 1; cc <= clickCount; ++cc) {
-        promises.push(this.down({ ...options, clickCount: cc }));
-        promises.push(this.up({ ...options, clickCount: cc }));
+        promises.push(this.down(progress, { ...options, clickCount: cc }));
+        promises.push(this.up(progress, { ...options, clickCount: cc }));
       }
       await Promise.all(promises);
     }
   }
-  async dblclick(x, y, options = {}) {
-    await this.click(x, y, { ...options, clickCount: 2 });
-  }
-  async wheel(deltaX, deltaY) {
-    await this._raw.wheel(this._x, this._y, this._buttons, this._keyboard._modifiers(), deltaX, deltaY);
+  async wheel(progress, deltaX, deltaY) {
+    await this._raw.wheel(progress, this._x, this._y, this._buttons, this._keyboard._modifiers(), deltaX, deltaY);
   }
 }
 const aliases = /* @__PURE__ */ new Map([
@@ -261,12 +256,10 @@ class Touchscreen {
     this._raw = raw;
     this._page = page;
   }
-  async tap(x, y, metadata) {
-    if (metadata)
-      metadata.point = { x, y };
-    if (!this._page._browserContext._options.hasTouch)
+  async tap(progress, x, y) {
+    if (!this._page.browserContext._options.hasTouch)
       throw new Error("hasTouch must be enabled on the browser context before using the touchscreen.");
-    await this._raw.tap(x, y, this._page.keyboard._modifiers());
+    await this._raw.tap(progress, x, y, this._page.keyboard._modifiers());
   }
 }
 // Annotate the CommonJS export names for ESM import in node:

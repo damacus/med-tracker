@@ -43,8 +43,11 @@ class WebKit extends import_browserType.BrowserType {
   connectToTransport(transport, options) {
     return import_wkBrowser.WKBrowser.connect(this.attribution.playwright, transport, options);
   }
-  amendEnvironment(env, userDataDir, executable, browserArguments) {
-    return { ...env, CURL_COOKIE_JAR_PATH: import_path.default.join(userDataDir, "cookiejar.db") };
+  amendEnvironment(env, userDataDir, isPersistent) {
+    return {
+      ...env,
+      CURL_COOKIE_JAR_PATH: process.platform === "win32" && isPersistent ? import_path.default.join(userDataDir, "cookiejar.db") : void 0
+    };
   }
   doRewriteStartupLog(error) {
     if (!error.logs)

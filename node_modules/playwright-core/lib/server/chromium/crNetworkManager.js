@@ -67,13 +67,13 @@ class CRNetworkManager {
     ];
     if (this._page) {
       sessionInfo.eventListeners.push(...[
-        import_eventsHelper.eventsHelper.addEventListener(session, "Network.webSocketCreated", (e) => this._page._frameManager.onWebSocketCreated(e.requestId, e.url)),
-        import_eventsHelper.eventsHelper.addEventListener(session, "Network.webSocketWillSendHandshakeRequest", (e) => this._page._frameManager.onWebSocketRequest(e.requestId)),
-        import_eventsHelper.eventsHelper.addEventListener(session, "Network.webSocketHandshakeResponseReceived", (e) => this._page._frameManager.onWebSocketResponse(e.requestId, e.response.status, e.response.statusText)),
-        import_eventsHelper.eventsHelper.addEventListener(session, "Network.webSocketFrameSent", (e) => e.response.payloadData && this._page._frameManager.onWebSocketFrameSent(e.requestId, e.response.opcode, e.response.payloadData)),
-        import_eventsHelper.eventsHelper.addEventListener(session, "Network.webSocketFrameReceived", (e) => e.response.payloadData && this._page._frameManager.webSocketFrameReceived(e.requestId, e.response.opcode, e.response.payloadData)),
-        import_eventsHelper.eventsHelper.addEventListener(session, "Network.webSocketClosed", (e) => this._page._frameManager.webSocketClosed(e.requestId)),
-        import_eventsHelper.eventsHelper.addEventListener(session, "Network.webSocketFrameError", (e) => this._page._frameManager.webSocketError(e.requestId, e.errorMessage))
+        import_eventsHelper.eventsHelper.addEventListener(session, "Network.webSocketCreated", (e) => this._page.frameManager.onWebSocketCreated(e.requestId, e.url)),
+        import_eventsHelper.eventsHelper.addEventListener(session, "Network.webSocketWillSendHandshakeRequest", (e) => this._page.frameManager.onWebSocketRequest(e.requestId)),
+        import_eventsHelper.eventsHelper.addEventListener(session, "Network.webSocketHandshakeResponseReceived", (e) => this._page.frameManager.onWebSocketResponse(e.requestId, e.response.status, e.response.statusText)),
+        import_eventsHelper.eventsHelper.addEventListener(session, "Network.webSocketFrameSent", (e) => e.response.payloadData && this._page.frameManager.onWebSocketFrameSent(e.requestId, e.response.opcode, e.response.payloadData)),
+        import_eventsHelper.eventsHelper.addEventListener(session, "Network.webSocketFrameReceived", (e) => e.response.payloadData && this._page.frameManager.webSocketFrameReceived(e.requestId, e.response.opcode, e.response.payloadData)),
+        import_eventsHelper.eventsHelper.addEventListener(session, "Network.webSocketClosed", (e) => this._page.frameManager.webSocketClosed(e.requestId)),
+        import_eventsHelper.eventsHelper.addEventListener(session, "Network.webSocketFrameError", (e) => this._page.frameManager.webSocketError(e.requestId, e.errorMessage))
       ]);
     }
     this._sessions.set(session, sessionInfo);
@@ -261,11 +261,11 @@ class CRNetworkManager {
         redirectedFrom = request2;
       }
     }
-    let frame = requestWillBeSentEvent.frameId ? this._page?._frameManager.frame(requestWillBeSentEvent.frameId) : requestWillBeSentSessionInfo.workerFrame;
+    let frame = requestWillBeSentEvent.frameId ? this._page?.frameManager.frame(requestWillBeSentEvent.frameId) : requestWillBeSentSessionInfo.workerFrame;
     if (!frame && this._page && requestPausedEvent && requestPausedEvent.frameId)
-      frame = this._page._frameManager.frame(requestPausedEvent.frameId);
-    if (!frame && this._page && requestWillBeSentEvent.frameId === (this._page?._delegate)._targetId) {
-      frame = this._page._frameManager.frameAttached(requestWillBeSentEvent.frameId, null);
+      frame = this._page.frameManager.frame(requestPausedEvent.frameId);
+    if (!frame && this._page && requestWillBeSentEvent.frameId === (this._page?.delegate)._targetId) {
+      frame = this._page.frameManager.frameAttached(requestWillBeSentEvent.frameId, null);
     }
     const isInterceptedOptionsPreflight = !!requestPausedEvent && requestPausedEvent.request.method === "OPTIONS" && requestWillBeSentEvent.initiator.type === "preflight";
     if (isInterceptedOptionsPreflight && (this._page || this._serviceWorker).needsRequestInterception()) {
@@ -305,7 +305,7 @@ class CRNetworkManager {
     const documentId = isNavigationRequest ? requestWillBeSentEvent.loaderId : void 0;
     const request = new InterceptableRequest({
       session: requestWillBeSentSessionInfo.session,
-      context: (this._page || this._serviceWorker)._browserContext,
+      context: (this._page || this._serviceWorker).browserContext,
       frame: frame || null,
       serviceWorker: this._serviceWorker || null,
       documentId,
@@ -319,7 +319,7 @@ class CRNetworkManager {
     if (route) {
       request.request.setRawRequestHeaders((0, import_utils.headersObjectToArray)(requestPausedEvent.request.headers, "\n"));
     }
-    (this._page?._frameManager || this._serviceWorker).requestStarted(request.request, route || void 0);
+    (this._page?.frameManager || this._serviceWorker).requestStarted(request.request, route || void 0);
   }
   _createResponse(request, responsePayload, hasExtraInfo) {
     const getResponseBody = async () => {
@@ -398,8 +398,8 @@ class CRNetworkManager {
     response.setEncodedBodySize(null);
     response._requestFinished((timestamp - request._timestamp) * 1e3);
     this._deleteRequest(request);
-    (this._page?._frameManager || this._serviceWorker).requestReceivedResponse(response);
-    (this._page?._frameManager || this._serviceWorker).reportRequestFinished(request.request, response);
+    (this._page?.frameManager || this._serviceWorker).requestReceivedResponse(response);
+    (this._page?.frameManager || this._serviceWorker).reportRequestFinished(request.request, response);
   }
   _onResponseReceivedExtraInfo(event) {
     this._responseExtraInfoTracker.responseReceivedExtraInfo(event);
@@ -417,14 +417,14 @@ class CRNetworkManager {
     if (!request)
       return;
     const response = this._createResponse(request, event.response, event.hasExtraInfo);
-    (this._page?._frameManager || this._serviceWorker).requestReceivedResponse(response);
+    (this._page?.frameManager || this._serviceWorker).requestReceivedResponse(response);
   }
   _onLoadingFinished(sessionInfo, event) {
     this._responseExtraInfoTracker.loadingFinished(event);
     const request = this._requestIdToRequest.get(event.requestId);
     if (!request)
       return;
-    this._maybeUpdateOOPIFMainRequest(sessionInfo, request);
+    this._maybeUpdateRequestSession(sessionInfo, request);
     const response = request.request._existingResponse();
     if (response) {
       response.setTransferSize(event.encodedDataLength);
@@ -432,7 +432,7 @@ class CRNetworkManager {
       response._requestFinished(import_helper.helper.secondsToRoundishMillis(event.timestamp - request._timestamp));
     }
     this._deleteRequest(request);
-    (this._page?._frameManager || this._serviceWorker).reportRequestFinished(request.request, response);
+    (this._page?.frameManager || this._serviceWorker).reportRequestFinished(request.request, response);
   }
   _onLoadingFailed(sessionInfo, event) {
     this._responseExtraInfoTracker.loadingFailed(event);
@@ -447,7 +447,7 @@ class CRNetworkManager {
     }
     if (!request)
       return;
-    this._maybeUpdateOOPIFMainRequest(sessionInfo, request);
+    this._maybeUpdateRequestSession(sessionInfo, request);
     const response = request.request._existingResponse();
     if (response) {
       response.setTransferSize(null);
@@ -458,10 +458,10 @@ class CRNetworkManager {
     }
     this._deleteRequest(request);
     request.request._setFailureText(event.errorText || event.blockedReason || "");
-    (this._page?._frameManager || this._serviceWorker).requestFailed(request.request, !!event.canceled);
+    (this._page?.frameManager || this._serviceWorker).requestFailed(request.request, !!event.canceled);
   }
-  _maybeUpdateOOPIFMainRequest(sessionInfo, request) {
-    if (request.session !== sessionInfo.session && !sessionInfo.isMain && request._documentId === request._requestId)
+  _maybeUpdateRequestSession(sessionInfo, request) {
+    if (request.session !== sessionInfo.session && !sessionInfo.isMain && (request._documentId === request._requestId || sessionInfo.workerFrame))
       request.session = sessionInfo.session;
   }
 }

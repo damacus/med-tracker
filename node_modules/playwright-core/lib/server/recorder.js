@@ -28,211 +28,249 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 var recorder_exports = {};
 __export(recorder_exports, {
-  Recorder: () => Recorder
+  Recorder: () => Recorder,
+  RecorderEvent: () => RecorderEvent
 });
 module.exports = __toCommonJS(recorder_exports);
+var import_events = __toESM(require("events"));
 var import_fs = __toESM(require("fs"));
-var consoleApiSource = __toESM(require("../generated/consoleApiSource"));
 var import_utils = require("../utils");
 var import_browserContext = require("./browserContext");
 var import_debugger = require("./debugger");
-var import_contextRecorder = require("./recorder/contextRecorder");
 var import_recorderUtils = require("./recorder/recorderUtils");
 var import_locatorParser = require("../utils/isomorphic/locatorParser");
 var import_selectorParser = require("../utils/isomorphic/selectorParser");
+var import_progress = require("./progress");
+var import_recorderSignalProcessor = require("./recorder/recorderSignalProcessor");
+var rawRecorderSource = __toESM(require("./../generated/pollingRecorderSource"));
+var import_utils2 = require("./../utils");
+var import_frames = require("./frames");
+var import_page = require("./page");
+var import_recorderRunner = require("./recorder/recorderRunner");
 const recorderSymbol = Symbol("recorderSymbol");
-class Recorder {
+const RecorderEvent = {
+  PausedStateChanged: "pausedStateChanged",
+  ModeChanged: "modeChanged",
+  ElementPicked: "elementPicked",
+  CallLogsUpdated: "callLogsUpdated",
+  UserSourcesChanged: "userSourcesChanged",
+  ActionAdded: "actionAdded",
+  SignalAdded: "signalAdded",
+  PageNavigated: "pageNavigated",
+  ContextClosed: "contextClosed"
+};
+class Recorder extends import_events.default {
   constructor(context, params) {
+    super();
     this._highlightedElement = {};
     this._overlayState = { offsetX: 0 };
-    this._recorderApp = null;
     this._currentCallsMetadata = /* @__PURE__ */ new Map();
-    this._recorderSources = [];
     this._userSources = /* @__PURE__ */ new Map();
     this._omitCallTracking = false;
-    this._mode = params.mode || "none";
-    this.handleSIGINT = params.handleSIGINT;
-    this._contextRecorder = new import_contextRecorder.ContextRecorder(context, params, {});
+    this._currentLanguage = "javascript";
+    this._pageAliases = /* @__PURE__ */ new Map();
+    this._lastPopupOrdinal = 0;
+    this._lastDialogOrdinal = -1;
+    this._lastDownloadOrdinal = -1;
+    this._listeners = [];
+    this._enabled = false;
+    this._callLogs = [];
     this._context = context;
+    this._params = params;
+    this._mode = params.mode || "none";
+    this._recorderMode = params.recorderMode ?? "default";
+    this.handleSIGINT = params.handleSIGINT;
+    this._signalProcessor = new import_recorderSignalProcessor.RecorderSignalProcessor({
+      addAction: (actionInContext) => {
+        if (this._enabled)
+          this.emit(RecorderEvent.ActionAdded, actionInContext);
+      },
+      addSignal: (signal) => {
+        if (this._enabled)
+          this.emit(RecorderEvent.SignalAdded, signal);
+      }
+    });
+    context.on(import_browserContext.BrowserContext.Events.BeforeClose, () => {
+      this.emit(RecorderEvent.ContextClosed);
+    });
+    this._listeners.push(import_utils2.eventsHelper.addEventListener(process, "exit", () => {
+      this.emit(RecorderEvent.ContextClosed);
+    }));
+    this._setEnabled(params.mode === "recording");
     this._omitCallTracking = !!params.omitCallTracking;
     this._debugger = context.debugger();
     context.instrumentation.addListener(this, context);
-    this._currentLanguage = this._contextRecorder.languageName();
     if ((0, import_utils.isUnderTest)()) {
       this._overlayState.offsetX = 200;
     }
   }
-  static async showInspector(context, params, recorderAppFactory) {
-    if ((0, import_utils.isUnderTest)())
-      params.language = process.env.TEST_INSPECTOR_LANGUAGE;
-    return await Recorder.show(context, recorderAppFactory, params);
-  }
-  static showInspectorNoReply(context, recorderAppFactory) {
-    Recorder.showInspector(context, {}, recorderAppFactory).catch(() => {
-    });
-  }
-  static show(context, recorderAppFactory, params) {
+  static forContext(context, params) {
     let recorderPromise = context[recorderSymbol];
     if (!recorderPromise) {
-      recorderPromise = Recorder._create(context, recorderAppFactory, params);
+      recorderPromise = Recorder._create(context, params);
       context[recorderSymbol] = recorderPromise;
     }
     return recorderPromise;
   }
-  static async _create(context, recorderAppFactory, params = {}) {
+  static existingForContext(context) {
+    return context[recorderSymbol];
+  }
+  static async _create(context, params = {}) {
     const recorder = new Recorder(context, params);
-    const recorderApp = await recorderAppFactory(recorder);
-    await recorder._install(recorderApp);
+    await recorder._install();
     return recorder;
   }
-  async _install(recorderApp) {
-    this._recorderApp = recorderApp;
-    recorderApp.once("close", () => {
-      this._debugger.resume(false);
-      this._recorderApp = null;
-    });
-    recorderApp.on("event", (data) => {
-      if (data.event === "setMode") {
-        this.setMode(data.params.mode);
-        return;
-      }
-      if (data.event === "highlightRequested") {
-        if (data.params.selector)
-          this.setHighlightedSelector(this._currentLanguage, data.params.selector);
-        if (data.params.ariaTemplate)
-          this.setHighlightedAriaTemplate(data.params.ariaTemplate);
-        return;
-      }
-      if (data.event === "step") {
-        this._debugger.resume(true);
-        return;
-      }
-      if (data.event === "fileChanged") {
-        this._currentLanguage = this._contextRecorder.languageName(data.params.file);
-        this._refreshOverlay();
-        return;
-      }
-      if (data.event === "resume") {
-        this._debugger.resume(false);
-        return;
-      }
-      if (data.event === "pause") {
-        this._debugger.pauseOnNextStatement();
-        return;
-      }
-      if (data.event === "clear") {
-        this._contextRecorder.clearScript();
-        return;
-      }
-      if (data.event === "runTask") {
-        this._contextRecorder.runTask(data.params.task);
-        return;
-      }
-    });
-    await Promise.all([
-      recorderApp.setMode(this._mode),
-      recorderApp.setPaused(this._debugger.isPaused()),
-      this._pushAllSources()
-    ]);
+  async _install() {
+    this.emit(RecorderEvent.ModeChanged, this._mode);
+    this.emit(RecorderEvent.PausedStateChanged, this._debugger.isPaused());
     this._context.once(import_browserContext.BrowserContext.Events.Close, () => {
-      this._contextRecorder.dispose();
+      import_utils2.eventsHelper.removeEventListeners(this._listeners);
       this._context.instrumentation.removeListener(this);
-      this._recorderApp?.close().catch(() => {
-      });
+      this.emit(RecorderEvent.ContextClosed);
     });
-    this._contextRecorder.on(import_contextRecorder.ContextRecorder.Events.Change, (data) => {
-      this._recorderSources = data.sources;
-      recorderApp.setActions(data.actions, data.sources);
-      recorderApp.setRunningFile(void 0);
-      this._pushAllSources();
-    });
-    await this._context.exposeBinding("__pw_recorderState", false, async (source) => {
-      let actionSelector;
-      let actionPoint;
-      const hasActiveScreenshotCommand = [...this._currentCallsMetadata.keys()].some(isScreenshotCommand);
-      if (!hasActiveScreenshotCommand) {
-        actionSelector = await this._scopeHighlightedSelectorToFrame(source.frame);
-        for (const [metadata, sdkObject] of this._currentCallsMetadata) {
-          if (source.page === sdkObject.attribution.page) {
-            actionPoint = metadata.point || actionPoint;
-            actionSelector = actionSelector || metadata.params.selector;
+    const controller = new import_progress.ProgressController();
+    await controller.run(async (progress) => {
+      await this._context.exposeBinding(progress, "__pw_recorderState", false, async (source) => {
+        let actionSelector;
+        let actionPoint;
+        const hasActiveScreenshotCommand = [...this._currentCallsMetadata.keys()].some(isScreenshotCommand);
+        if (!hasActiveScreenshotCommand) {
+          actionSelector = await this._scopeHighlightedSelectorToFrame(source.frame);
+          for (const [metadata, sdkObject] of this._currentCallsMetadata) {
+            if (source.page === sdkObject.attribution.page) {
+              actionPoint = metadata.point || actionPoint;
+              actionSelector = actionSelector || metadata.params.selector;
+            }
           }
         }
-      }
-      const uiState = {
-        mode: this._mode,
-        actionPoint,
-        actionSelector,
-        ariaTemplate: this._highlightedElement.ariaTemplate,
-        language: this._currentLanguage,
-        testIdAttributeName: this._contextRecorder.testIdAttributeName(),
-        overlay: this._overlayState
-      };
-      return uiState;
+        const uiState = {
+          mode: this._mode,
+          actionPoint,
+          actionSelector,
+          ariaTemplate: this._highlightedElement.ariaTemplate,
+          language: this._currentLanguage,
+          testIdAttributeName: this._testIdAttributeName(),
+          overlay: this._overlayState
+        };
+        return uiState;
+      });
+      await this._context.exposeBinding(progress, "__pw_recorderElementPicked", false, async ({ frame }, elementInfo) => {
+        const selectorChain = await (0, import_recorderUtils.generateFrameSelector)(frame);
+        this.emit(RecorderEvent.ElementPicked, { selector: (0, import_recorderUtils.buildFullSelector)(selectorChain, elementInfo.selector), ariaSnapshot: elementInfo.ariaSnapshot }, true);
+      });
+      await this._context.exposeBinding(progress, "__pw_recorderSetMode", false, async ({ frame }, mode) => {
+        if (frame.parentFrame())
+          return;
+        this.setMode(mode);
+      });
+      await this._context.exposeBinding(progress, "__pw_recorderSetOverlayState", false, async ({ frame }, state) => {
+        if (frame.parentFrame())
+          return;
+        this._overlayState = state;
+      });
+      await this._context.exposeBinding(progress, "__pw_resume", false, () => {
+        this._debugger.resume(false);
+      });
+      this._context.on(import_browserContext.BrowserContext.Events.Page, (page) => this._onPage(page));
+      for (const page of this._context.pages())
+        this._onPage(page);
+      this._context.dialogManager.addDialogHandler((dialog) => {
+        this._onDialog(dialog.page());
+        return false;
+      });
+      await this._context.exposeBinding(
+        progress,
+        "__pw_recorderPerformAction",
+        false,
+        (source, action) => this._performAction(source.frame, action)
+      );
+      await this._context.exposeBinding(
+        progress,
+        "__pw_recorderRecordAction",
+        false,
+        (source, action) => this._recordAction(source.frame, action)
+      );
+      await this._context.extendInjectedScript(rawRecorderSource.source, { recorderMode: this._recorderMode });
     });
-    await this._context.exposeBinding("__pw_recorderElementPicked", false, async ({ frame }, elementInfo) => {
-      const selectorChain = await (0, import_contextRecorder.generateFrameSelector)(frame);
-      await this._recorderApp?.elementPicked({ selector: (0, import_recorderUtils.buildFullSelector)(selectorChain, elementInfo.selector), ariaSnapshot: elementInfo.ariaSnapshot }, true);
-    });
-    await this._context.exposeBinding("__pw_recorderSetMode", false, async ({ frame }, mode) => {
-      if (frame.parentFrame())
-        return;
-      this.setMode(mode);
-    });
-    await this._context.exposeBinding("__pw_recorderSetOverlayState", false, async ({ frame }, state) => {
-      if (frame.parentFrame())
-        return;
-      this._overlayState = state;
-    });
-    await this._context.exposeBinding("__pw_resume", false, () => {
-      this._debugger.resume(false);
-    });
-    await this._context.extendInjectedScript(consoleApiSource.source);
-    await this._contextRecorder.install();
     if (this._debugger.isPaused())
       this._pausedStateChanged();
     this._debugger.on(import_debugger.Debugger.Events.PausedStateChanged, () => this._pausedStateChanged());
-    this._context.recorderAppForTest = this._recorderApp;
   }
   _pausedStateChanged() {
     for (const { metadata, sdkObject } of this._debugger.pausedDetails()) {
       if (!this._currentCallsMetadata.has(metadata))
         this.onBeforeCall(sdkObject, metadata);
     }
-    this._recorderApp?.setPaused(this._debugger.isPaused());
+    this.emit(RecorderEvent.PausedStateChanged, this._debugger.isPaused());
     this._updateUserSources();
     this.updateCallLog([...this._currentCallsMetadata.keys()]);
+  }
+  mode() {
+    return this._mode;
   }
   setMode(mode) {
     if (this._mode === mode)
       return;
     this._highlightedElement = {};
     this._mode = mode;
-    this._recorderApp?.setMode(this._mode);
-    this._contextRecorder.setEnabled(this._isRecording());
+    this.emit(RecorderEvent.ModeChanged, this._mode);
+    this._setEnabled(this._isRecording());
     this._debugger.setMuted(this._isRecording());
     if (this._mode !== "none" && this._mode !== "standby" && this._context.pages().length === 1)
       this._context.pages()[0].bringToFront().catch(() => {
       });
     this._refreshOverlay();
   }
-  resume() {
-    this._debugger.resume(false);
+  url() {
+    const page = this._context.pages()[0];
+    return page?.mainFrame().url();
   }
-  mode() {
-    return this._mode;
-  }
-  setHighlightedSelector(language, selector) {
-    this._highlightedElement = { selector: (0, import_locatorParser.locatorOrSelectorAsSelector)(language, selector, this._context.selectors().testIdAttributeName()) };
+  setHighlightedSelector(selector) {
+    this._highlightedElement = { selector: (0, import_locatorParser.locatorOrSelectorAsSelector)(this._currentLanguage, selector, this._context.selectors().testIdAttributeName()) };
     this._refreshOverlay();
   }
   setHighlightedAriaTemplate(ariaTemplate) {
     this._highlightedElement = { ariaTemplate };
     this._refreshOverlay();
   }
+  step() {
+    this._debugger.resume(true);
+  }
+  setLanguage(language) {
+    this._currentLanguage = language;
+    this._refreshOverlay();
+  }
+  resume() {
+    this._debugger.resume(false);
+  }
+  pause() {
+    this._debugger.pauseOnNextStatement();
+  }
+  paused() {
+    return this._debugger.isPaused();
+  }
+  close() {
+    this._debugger.resume(false);
+  }
   hideHighlightedSelector() {
     this._highlightedElement = {};
     this._refreshOverlay();
+  }
+  pausedSourceId() {
+    for (const { metadata } of this._debugger.pausedDetails()) {
+      if (!metadata.location)
+        continue;
+      const source = this._userSources.get(metadata.location.file);
+      if (!source)
+        continue;
+      return source.id;
+    }
+  }
+  userSources() {
+    return [...this._userSources.values()];
+  }
+  callLog() {
+    return this._callLogs;
   }
   async _scopeHighlightedSelectorToFrame(frame) {
     if (!this._highlightedElement.selector)
@@ -250,9 +288,6 @@ class Recorder {
     } catch {
       return "";
     }
-  }
-  setOutput(codegenId, outputFile) {
-    this._contextRecorder.setOutput(codegenId, outputFile);
   }
   _refreshOverlay() {
     for (const page of this._context.pages()) {
@@ -285,7 +320,6 @@ class Recorder {
       source.highlight = [];
       source.revealLine = void 0;
     }
-    let fileToSelect = void 0;
     for (const metadata of this._currentCallsMetadata.keys()) {
       if (!metadata.location)
         continue;
@@ -299,16 +333,9 @@ class Recorder {
         const paused = this._debugger.isPaused(metadata);
         source.highlight.push({ line, type: metadata.error ? "error" : paused ? "paused" : "running" });
         source.revealLine = line;
-        fileToSelect = source.id;
       }
     }
-    this._pushAllSources();
-    if (fileToSelect)
-      this._recorderApp?.setRunningFile(fileToSelect);
-  }
-  _pushAllSources() {
-    const primaryPage = this._context.pages()[0];
-    this._recorderApp?.setSources([...this._recorderSources, ...this._userSources.values()], primaryPage?.mainFrame().url());
+    this.emit(RecorderEvent.UserSourcesChanged, this.userSources(), this.pausedSourceId());
   }
   async onBeforeInputAction(sdkObject, metadata) {
   }
@@ -329,7 +356,8 @@ class Recorder {
         status = "paused";
       logs.push((0, import_recorderUtils.metadataToCallLog)(metadata, status));
     }
-    this._recorderApp?.updateCallLogs(logs);
+    this._callLogs = logs;
+    this.emit(RecorderEvent.CallLogsUpdated, logs);
   }
   _isRecording() {
     return ["recording", "assertingText", "assertingVisibility", "assertingValue", "assertingSnapshot"].includes(this._mode);
@@ -340,6 +368,115 @@ class Recorder {
     } catch (e) {
       return "// No source available";
     }
+  }
+  _setEnabled(enabled) {
+    this._enabled = enabled;
+  }
+  async _onPage(page) {
+    const frame = page.mainFrame();
+    page.on(import_page.Page.Events.Close, () => {
+      this._signalProcessor.addAction({
+        frame: this._describeMainFrame(page),
+        action: {
+          name: "closePage",
+          signals: []
+        },
+        startTime: (0, import_utils2.monotonicTime)()
+      });
+      this._pageAliases.delete(page);
+      this._filePrimaryURLChanged();
+    });
+    frame.on(import_frames.Frame.Events.InternalNavigation, (event) => {
+      if (event.isPublic) {
+        this._onFrameNavigated(frame, page);
+        this._filePrimaryURLChanged();
+      }
+    });
+    page.on(import_page.Page.Events.Download, () => this._onDownload(page));
+    const suffix = this._pageAliases.size ? String(++this._lastPopupOrdinal) : "";
+    const pageAlias = "page" + suffix;
+    this._pageAliases.set(page, pageAlias);
+    if (page.opener()) {
+      this._onPopup(page.opener(), page);
+    } else {
+      this._signalProcessor.addAction({
+        frame: this._describeMainFrame(page),
+        action: {
+          name: "openPage",
+          url: page.mainFrame().url(),
+          signals: []
+        },
+        startTime: (0, import_utils2.monotonicTime)()
+      });
+    }
+    this._filePrimaryURLChanged();
+  }
+  _filePrimaryURLChanged() {
+    const page = this._context.pages()[0];
+    this.emit(RecorderEvent.PageNavigated, page?.mainFrame().url());
+  }
+  clear() {
+    if (this._params.mode === "recording") {
+      for (const page of this._context.pages())
+        this._onFrameNavigated(page.mainFrame(), page);
+    }
+  }
+  _describeMainFrame(page) {
+    return {
+      pageGuid: page.guid,
+      pageAlias: this._pageAliases.get(page),
+      framePath: []
+    };
+  }
+  async _describeFrame(frame) {
+    return {
+      pageGuid: frame._page.guid,
+      pageAlias: this._pageAliases.get(frame._page),
+      framePath: await (0, import_recorderUtils.generateFrameSelector)(frame)
+    };
+  }
+  _testIdAttributeName() {
+    return this._params.testIdAttributeName || this._context.selectors().testIdAttributeName() || "data-testid";
+  }
+  async _createActionInContext(frame, action) {
+    const frameDescription = await this._describeFrame(frame);
+    const actionInContext = {
+      frame: frameDescription,
+      action,
+      description: void 0,
+      startTime: (0, import_utils2.monotonicTime)()
+    };
+    return actionInContext;
+  }
+  async _performAction(frame, action) {
+    const actionInContext = await this._createActionInContext(frame, action);
+    this._signalProcessor.addAction(actionInContext);
+    if (actionInContext.action.name !== "openPage" && actionInContext.action.name !== "closePage")
+      await (0, import_recorderRunner.performAction)(this._pageAliases, actionInContext);
+    actionInContext.endTime = (0, import_utils2.monotonicTime)();
+  }
+  async _recordAction(frame, action) {
+    const actionInContext = await this._createActionInContext(frame, action);
+    this._signalProcessor.addAction(actionInContext);
+  }
+  _onFrameNavigated(frame, page) {
+    const pageAlias = this._pageAliases.get(page);
+    this._signalProcessor.signal(pageAlias, frame, { name: "navigation", url: frame.url() });
+  }
+  _onPopup(page, popup) {
+    const pageAlias = this._pageAliases.get(page);
+    const popupAlias = this._pageAliases.get(popup);
+    this._signalProcessor.signal(pageAlias, page.mainFrame(), { name: "popup", popupAlias });
+  }
+  _onDownload(page) {
+    const pageAlias = this._pageAliases.get(page);
+    ++this._lastDownloadOrdinal;
+    this._signalProcessor.signal(pageAlias, page.mainFrame(), { name: "download", downloadAlias: this._lastDownloadOrdinal ? String(this._lastDownloadOrdinal) : "" });
+  }
+  _onDialog(page) {
+    const pageAlias = this._pageAliases.get(page);
+    ++this._lastDialogOrdinal;
+    this._signalProcessor.signal(pageAlias, page.mainFrame(), { name: "dialog", dialogAlias: this._lastDialogOrdinal ? String(this._lastDialogOrdinal) : "" });
   }
 }
 function isScreenshotCommand(metadata) {
@@ -356,5 +493,6 @@ function languageForFile(file) {
 }
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
-  Recorder
+  Recorder,
+  RecorderEvent
 });

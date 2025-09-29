@@ -22,7 +22,6 @@ __export(playwright_exports, {
   createPlaywright: () => createPlaywright
 });
 module.exports = __toCommonJS(playwright_exports);
-var import_utils = require("../utils");
 var import_android = require("./android/android");
 var import_backendAdb = require("./android/backendAdb");
 var import_bidiChromium = require("./bidi/bidiChromium");
@@ -32,11 +31,10 @@ var import_debugController = require("./debugController");
 var import_electron = require("./electron/electron");
 var import_firefox = require("./firefox/firefox");
 var import_instrumentation = require("./instrumentation");
-var import_selectors = require("./selectors");
 var import_webkit = require("./webkit/webkit");
 class Playwright extends import_instrumentation.SdkObject {
   constructor(options) {
-    super({ attribution: {}, instrumentation: (0, import_instrumentation.createInstrumentation)() }, void 0, "Playwright");
+    super((0, import_instrumentation.createRootSdkObject)(), void 0, "Playwright");
     this._allPages = /* @__PURE__ */ new Set();
     this._allBrowsers = /* @__PURE__ */ new Set();
     this.options = options;
@@ -45,24 +43,16 @@ class Playwright extends import_instrumentation.SdkObject {
       onBrowserOpen: (browser) => this._allBrowsers.add(browser),
       onBrowserClose: (browser) => this._allBrowsers.delete(browser),
       onPageOpen: (page) => this._allPages.add(page),
-      onPageClose: (page) => this._allPages.delete(page),
-      onCallLog: (sdkObject, metadata, logName, message) => {
-        import_utils.debugLogger.log(logName, message);
-      }
+      onPageClose: (page) => this._allPages.delete(page)
     }, null);
     this.chromium = new import_chromium.Chromium(this);
-    this.bidiChromium = new import_bidiChromium.BidiChromium(this);
-    this.bidiFirefox = new import_bidiFirefox.BidiFirefox(this);
+    this._bidiChromium = new import_bidiChromium.BidiChromium(this);
+    this._bidiFirefox = new import_bidiFirefox.BidiFirefox(this);
     this.firefox = new import_firefox.Firefox(this);
     this.webkit = new import_webkit.WebKit(this);
     this.electron = new import_electron.Electron(this);
     this.android = new import_android.Android(this, new import_backendAdb.AdbBackend());
-    this.selectors = new import_selectors.Selectors();
     this.debugController = new import_debugController.DebugController(this);
-  }
-  async hideHighlight() {
-    await Promise.all([...this._allPages].map((p) => p.hideHighlight().catch(() => {
-    })));
   }
   allBrowsers() {
     return [...this._allBrowsers];

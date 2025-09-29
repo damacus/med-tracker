@@ -28,8 +28,8 @@ class FrameSelectors {
     this.frame = frame;
   }
   _parseSelector(selector, options) {
-    const strict = typeof options?.strict === "boolean" ? options.strict : !!this.frame._page.context()._options.strictSelectors;
-    return this.frame._page.context().selectors().parseSelector(selector, strict);
+    const strict = typeof options?.strict === "boolean" ? options.strict : !!this.frame._page.browserContext._options.strictSelectors;
+    return this.frame._page.browserContext.selectors().parseSelector(selector, strict);
   }
   async query(selector, options, scope) {
     const resolved = await this.resolveInjectedForSelector(selector, options, scope);
@@ -53,10 +53,11 @@ class FrameSelectors {
       return injected.querySelectorAll(info.parsed, scope2 || document);
     }, { info: resolved.info, scope: resolved.scope });
   }
-  async queryCount(selector) {
+  async queryCount(selector, options) {
     const resolved = await this.resolveInjectedForSelector(selector);
     if (!resolved)
       throw new Error(`Failed to find frame for selector "${selector}"`);
+    await options.__testHookBeforeQuery?.();
     return await resolved.injected.evaluate((injected, { info }) => {
       return injected.querySelectorAll(info.parsed, document).length;
     }, { info: resolved.info });
@@ -81,19 +82,35 @@ class FrameSelectors {
     }
     return Promise.all(result);
   }
+  _jumpToAriaRefFrameIfNeeded(selector, info, frame) {
+    if (info.parsed.parts[0].name !== "aria-ref")
+      return frame;
+    const body = info.parsed.parts[0].body;
+    const match = body.match(/^f(\d+)e\d+$/);
+    if (!match)
+      return frame;
+    const frameIndex = +match[1];
+    const page = this.frame._page;
+    const frameId = page.lastSnapshotFrameIds[frameIndex - 1];
+    const jumptToFrame = frameId ? page.frameManager.frame(frameId) : null;
+    if (!jumptToFrame)
+      throw new import_selectorParser.InvalidSelectorError(`Invalid frame in aria-ref selector "${selector}"`);
+    return jumptToFrame;
+  }
   async resolveFrameForSelector(selector, options = {}, scope) {
     let frame = this.frame;
     const frameChunks = (0, import_selectorParser.splitSelectorByFrame)(selector);
     for (const chunk of frameChunks) {
       (0, import_selectorParser.visitAllSelectorParts)(chunk, (part, nested) => {
         if (nested && part.name === "internal:control" && part.body === "enter-frame") {
-          const locator = (0, import_utils.asLocator)(this.frame._page.attribution.playwright.options.sdkLanguage, selector);
+          const locator = (0, import_utils.asLocator)(this.frame._page.browserContext._browser.sdkLanguage(), selector);
           throw new import_selectorParser.InvalidSelectorError(`Frame locators are not allowed inside composite locators, while querying "${locator}"`);
         }
       });
     }
     for (let i = 0; i < frameChunks.length - 1; ++i) {
       const info = this._parseSelector(frameChunks[i], options);
+      frame = this._jumpToAriaRefFrameIfNeeded(selector, info, frame);
       const context = await frame._context(info.world);
       const injectedScript = await context.injectedScript();
       const handle = await injectedScript.evaluateHandle((injected, { info: info2, scope: scope2, selectorString }) => {
@@ -105,7 +122,7 @@ class FrameSelectors {
       const element = handle.asElement();
       if (!element)
         return null;
-      const maybeFrame = await frame._page._delegate.getContentFrame(element);
+      const maybeFrame = await frame._page.delegate.getContentFrame(element);
       element.dispose();
       if (!maybeFrame)
         return null;
@@ -113,7 +130,9 @@ class FrameSelectors {
     }
     if (frame !== this.frame)
       scope = void 0;
-    return { frame, info: frame.selectors._parseSelector(frameChunks[frameChunks.length - 1], options), scope };
+    const lastChunk = frame.selectors._parseSelector(frameChunks[frameChunks.length - 1], options);
+    frame = this._jumpToAriaRefFrameIfNeeded(selector, lastChunk, frame);
+    return { frame, info: lastChunk, scope };
   }
   async resolveInjectedForSelector(selector, options, scope) {
     const resolved = await this.resolveFrameForSelector(selector, options, scope);
@@ -127,7 +146,7 @@ class FrameSelectors {
 async function adoptIfNeeded(handle, context) {
   if (handle._context === context)
     return handle;
-  const adopted = await handle._page._delegate.adoptElementHandle(handle, context);
+  const adopted = await handle._page.delegate.adoptElementHandle(handle, context);
   handle.dispose();
   return adopted;
 }

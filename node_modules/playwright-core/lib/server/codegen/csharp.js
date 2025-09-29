@@ -52,9 +52,7 @@ class CSharpLanguageGenerator {
     const action = actionInContext.action;
     if (this._mode !== "library" && (action.name === "openPage" || action.name === "closePage"))
       return "";
-    let pageAlias = actionInContext.frame.pageAlias;
-    if (this._mode !== "library")
-      pageAlias = pageAlias.replace("page", "Page");
+    const pageAlias = this._formatPageAlias(actionInContext.frame.pageAlias);
     const formatter = new CSharpFormatter(this._mode === "library" ? 0 : 8);
     if (action.name === "openPage") {
       formatter.add(`var ${pageAlias} = await context.NewPageAsync();`);
@@ -82,13 +80,20 @@ class CSharpLanguageGenerator {
       lines.push(`});`);
     }
     if (signals.popup) {
-      lines.unshift(`var ${signals.popup.popupAlias} = await ${pageAlias}.RunAndWaitForPopupAsync(async () =>
+      lines.unshift(`var ${this._formatPageAlias(signals.popup.popupAlias)} = await ${pageAlias}.RunAndWaitForPopupAsync(async () =>
 {`);
       lines.push(`});`);
     }
     for (const line of lines)
       formatter.add(line);
     return formatter.format();
+  }
+  _formatPageAlias(pageAlias) {
+    if (this._mode === "library")
+      return pageAlias;
+    if (pageAlias === "page")
+      return "Page";
+    return pageAlias;
   }
   _generateActionCall(subject, actionInContext) {
     const action = actionInContext.action;
@@ -135,7 +140,7 @@ class CSharpLanguageGenerator {
         return `await Expect(${subject}.${this._asLocator(action.selector)}).${assertion};`;
       }
       case "assertSnapshot":
-        return `await Expect(${subject}.${this._asLocator(action.selector)}).ToMatchAriaSnapshotAsync(${quote(action.snapshot)});`;
+        return `await Expect(${subject}.${this._asLocator(action.selector)}).ToMatchAriaSnapshotAsync(${quote(action.ariaSnapshot)});`;
     }
   }
   _asLocator(selector) {

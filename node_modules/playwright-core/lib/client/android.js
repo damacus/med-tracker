@@ -46,10 +46,6 @@ class Android extends import_channelOwner.ChannelOwner {
   }
   setDefaultTimeout(timeout) {
     this._timeoutSettings.setDefaultTimeout(timeout);
-    this._wrapApiCall(async () => {
-      await this._channel.setDefaultTimeoutNoReply({ timeout });
-    }, true).catch(() => {
-    });
   }
   async devices(options = {}) {
     const { devices } = await this._channel.devices(options);
@@ -64,7 +60,7 @@ class Android extends import_channelOwner.ChannelOwner {
     return await this._wrapApiCall(async () => {
       const deadline = options.timeout ? (0, import_time.monotonicTime)() + options.timeout : 0;
       const headers = { "x-playwright-browser": "android", ...options.headers };
-      const connectParams = { wsEndpoint, headers, slowMo: options.slowMo, timeout: options.timeout };
+      const connectParams = { wsEndpoint, headers, slowMo: options.slowMo, timeout: options.timeout || 0 };
       const connection = await (0, import_webSocket.connectOverWebSocket)(this._connection, connectParams);
       let device;
       connection.on("close", () => {
@@ -95,6 +91,7 @@ class AndroidDevice extends import_channelOwner.ChannelOwner {
     super(parent, type, guid, initializer);
     this._webViews = /* @__PURE__ */ new Map();
     this._shouldCloseConnectionOnClose = false;
+    this._android = parent;
     this.input = new AndroidInput(this);
     this._timeoutSettings = new import_timeoutSettings.TimeoutSettings(this._platform, parent._timeoutSettings);
     this._channel.on("webViewAdded", ({ webView }) => this._onWebViewAdded(webView));
@@ -117,10 +114,6 @@ class AndroidDevice extends import_channelOwner.ChannelOwner {
   }
   setDefaultTimeout(timeout) {
     this._timeoutSettings.setDefaultTimeout(timeout);
-    this._wrapApiCall(async () => {
-      await this._channel.setDefaultTimeoutNoReply({ timeout });
-    }, true).catch(() => {
-    });
   }
   serial() {
     return this._initializer.serial;
@@ -144,42 +137,42 @@ class AndroidDevice extends import_channelOwner.ChannelOwner {
       return webView;
     return await this.waitForEvent("webview", { ...options, predicate });
   }
-  async wait(selector, options) {
-    await this._channel.wait({ selector: toSelectorChannel(selector), ...options });
+  async wait(selector, options = {}) {
+    await this._channel.wait({ androidSelector: toSelectorChannel(selector), ...options, timeout: this._timeoutSettings.timeout(options) });
   }
-  async fill(selector, text, options) {
-    await this._channel.fill({ selector: toSelectorChannel(selector), text, ...options });
+  async fill(selector, text, options = {}) {
+    await this._channel.fill({ androidSelector: toSelectorChannel(selector), text, ...options, timeout: this._timeoutSettings.timeout(options) });
   }
-  async press(selector, key, options) {
+  async press(selector, key, options = {}) {
     await this.tap(selector, options);
     await this.input.press(key);
   }
-  async tap(selector, options) {
-    await this._channel.tap({ selector: toSelectorChannel(selector), ...options });
+  async tap(selector, options = {}) {
+    await this._channel.tap({ androidSelector: toSelectorChannel(selector), ...options, timeout: this._timeoutSettings.timeout(options) });
   }
-  async drag(selector, dest, options) {
-    await this._channel.drag({ selector: toSelectorChannel(selector), dest, ...options });
+  async drag(selector, dest, options = {}) {
+    await this._channel.drag({ androidSelector: toSelectorChannel(selector), dest, ...options, timeout: this._timeoutSettings.timeout(options) });
   }
-  async fling(selector, direction, options) {
-    await this._channel.fling({ selector: toSelectorChannel(selector), direction, ...options });
+  async fling(selector, direction, options = {}) {
+    await this._channel.fling({ androidSelector: toSelectorChannel(selector), direction, ...options, timeout: this._timeoutSettings.timeout(options) });
   }
-  async longTap(selector, options) {
-    await this._channel.longTap({ selector: toSelectorChannel(selector), ...options });
+  async longTap(selector, options = {}) {
+    await this._channel.longTap({ androidSelector: toSelectorChannel(selector), ...options, timeout: this._timeoutSettings.timeout(options) });
   }
-  async pinchClose(selector, percent, options) {
-    await this._channel.pinchClose({ selector: toSelectorChannel(selector), percent, ...options });
+  async pinchClose(selector, percent, options = {}) {
+    await this._channel.pinchClose({ androidSelector: toSelectorChannel(selector), percent, ...options, timeout: this._timeoutSettings.timeout(options) });
   }
-  async pinchOpen(selector, percent, options) {
-    await this._channel.pinchOpen({ selector: toSelectorChannel(selector), percent, ...options });
+  async pinchOpen(selector, percent, options = {}) {
+    await this._channel.pinchOpen({ androidSelector: toSelectorChannel(selector), percent, ...options, timeout: this._timeoutSettings.timeout(options) });
   }
-  async scroll(selector, direction, percent, options) {
-    await this._channel.scroll({ selector: toSelectorChannel(selector), direction, percent, ...options });
+  async scroll(selector, direction, percent, options = {}) {
+    await this._channel.scroll({ androidSelector: toSelectorChannel(selector), direction, percent, ...options, timeout: this._timeoutSettings.timeout(options) });
   }
-  async swipe(selector, direction, percent, options) {
-    await this._channel.swipe({ selector: toSelectorChannel(selector), direction, percent, ...options });
+  async swipe(selector, direction, percent, options = {}) {
+    await this._channel.swipe({ androidSelector: toSelectorChannel(selector), direction, percent, ...options, timeout: this._timeoutSettings.timeout(options) });
   }
   async info(selector) {
-    return (await this._channel.info({ selector: toSelectorChannel(selector) })).info;
+    return (await this._channel.info({ androidSelector: toSelectorChannel(selector) })).info;
   }
   async screenshot(options = {}) {
     const { binary } = await this._channel.screenshot();
@@ -222,7 +215,10 @@ class AndroidDevice extends import_channelOwner.ChannelOwner {
     const contextOptions = await (0, import_browserContext.prepareBrowserContextParams)(this._platform, options);
     const result = await this._channel.launchBrowser(contextOptions);
     const context = import_browserContext.BrowserContext.from(result.context);
-    context._setOptions(contextOptions, {});
+    const selectors = this._android._playwright.selectors;
+    selectors._contextsForSelectors.add(context);
+    context.once(import_events.Events.BrowserContext.Close, () => selectors._contextsForSelectors.delete(context));
+    await context._initializeHarFromOptions(options.recordHar);
     return context;
   }
   async waitForEvent(event, optionsOrPredicate = {}) {
@@ -323,8 +319,8 @@ function toSelectorChannel(selector) {
     enabled,
     focusable,
     focused,
-    hasChild: hasChild ? { selector: toSelectorChannel(hasChild.selector) } : void 0,
-    hasDescendant: hasDescendant ? { selector: toSelectorChannel(hasDescendant.selector), maxDepth: hasDescendant.maxDepth } : void 0,
+    hasChild: hasChild ? { androidSelector: toSelectorChannel(hasChild.selector) } : void 0,
+    hasDescendant: hasDescendant ? { androidSelector: toSelectorChannel(hasDescendant.selector), maxDepth: hasDescendant.maxDepth } : void 0,
     longClickable,
     scrollable,
     selected

@@ -111,7 +111,7 @@ class PythonLanguageGenerator {
         return `expect(${subject}.${this._asLocator(action.selector)}).${assertion};`;
       }
       case "assertSnapshot":
-        return `expect(${subject}.${this._asLocator(action.selector)}).to_match_aria_snapshot(${quote(action.snapshot)})`;
+        return `expect(${subject}.${this._asLocator(action.selector)}).to_match_aria_snapshot(${quote(action.ariaSnapshot)})`;
     }
   }
   _asLocator(selector) {

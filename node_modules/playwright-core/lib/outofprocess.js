@@ -37,9 +37,7 @@ var import_connection = require("./client/connection");
 var import_pipeTransport = require("./server/utils/pipeTransport");
 var import_manualPromise = require("./utils/isomorphic/manualPromise");
 var import_nodePlatform = require("./server/utils/nodePlatform");
-var import_selectors = require("./client/selectors");
 async function start(env = {}) {
-  (0, import_selectors.setPlatformForSelectors)(import_nodePlatform.nodePlatform);
   const client = new PlaywrightClient(env);
   const playwright = await client._playwright;
   playwright.driverProcess = client._driverProcess;

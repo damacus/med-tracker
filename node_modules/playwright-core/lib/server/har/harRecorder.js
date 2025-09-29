@@ -46,7 +46,7 @@ class HarRecorder {
     this._writtenZipEntries = /* @__PURE__ */ new Set();
     this._artifact = new import_artifact.Artifact(context, import_path.default.join(context._browser.options.artifactsDir, `${(0, import_crypto.createGuid)()}.har`));
     const urlFilterRe = options.urlRegexSource !== void 0 && options.urlRegexFlags !== void 0 ? new RegExp(options.urlRegexSource, options.urlRegexFlags) : void 0;
-    const expectsZip = options.path.endsWith(".zip");
+    const expectsZip = !!options.zip;
     const content = options.content || (expectsZip ? "attach" : "embed");
     this._tracer = new import_harTracer.HarTracer(context, page, this, {
       content,

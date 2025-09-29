@@ -18,14 +18,13 @@ var __copyProps = (to, from, except, desc) => {
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 var debugger_exports = {};
 __export(debugger_exports, {
-  Debugger: () => Debugger,
-  shouldSlowMo: () => shouldSlowMo
+  Debugger: () => Debugger
 });
 module.exports = __toCommonJS(debugger_exports);
 var import_events = require("events");
 var import_utils = require("../utils");
 var import_browserContext = require("./browserContext");
-var import_debug = require("../protocol/debug");
+var import_protocolMetainfo = require("../utils/isomorphic/protocolMetainfo");
 const symbol = Symbol("Debugger");
 class Debugger extends import_events.EventEmitter {
   constructor(context) {
@@ -42,7 +41,6 @@ class Debugger extends import_events.EventEmitter {
     this._context.once(import_browserContext.BrowserContext.Events.Close, () => {
       this._context.instrumentation.removeListener(this);
     });
-    this._slowMo = this._context._browser.options.slowMo;
   }
   static {
     this.Events = {
@@ -57,13 +55,6 @@ class Debugger extends import_events.EventEmitter {
       return;
     if (shouldPauseOnCall(sdkObject, metadata) || this._pauseOnNextStatement && shouldPauseBeforeStep(metadata))
       await this.pause(sdkObject, metadata);
-  }
-  async _doSlowMo() {
-    await new Promise((f) => setTimeout(f, this._slowMo));
-  }
-  async onAfterCall(sdkObject, metadata) {
-    if (this._slowMo && shouldSlowMo(metadata))
-      await this._doSlowMo();
   }
   async onBeforeInputAction(sdkObject, metadata) {
     if (this._muted)
@@ -117,20 +108,12 @@ function shouldPauseOnCall(sdkObject, metadata) {
   return metadata.method === "pause";
 }
 function shouldPauseBeforeStep(metadata) {
-  if (!metadata.apiName)
+  if (metadata.internal)
     return false;
-  if (metadata.method === "close")
-    return true;
-  if (metadata.method === "waitForSelector" || metadata.method === "waitForEventInfo" || metadata.method === "querySelector" || metadata.method === "querySelectorAll")
-    return false;
-  const step = metadata.type + "." + metadata.method;
-  return import_debug.commandsWithTracingSnapshots.has(step) && !import_debug.pausesBeforeInputActions.has(metadata.type + "." + metadata.method);
-}
-function shouldSlowMo(metadata) {
-  return import_debug.slowMoActions.has(metadata.type + "." + metadata.method);
+  const metainfo = import_protocolMetainfo.methodMetainfo.get(metadata.type + "." + metadata.method);
+  return !!metainfo?.pausesBeforeAction;
 }
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
-  Debugger,
-  shouldSlowMo
+  Debugger
 });

@@ -19,8 +19,7 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 var debug_exports = {};
 __export(debug_exports, {
   debugMode: () => debugMode,
-  isUnderTest: () => isUnderTest,
-  setUnderTest: () => setUnderTest
+  isUnderTest: () => isUnderTest
 });
 module.exports = __toCommonJS(debug_exports);
 var import_env = require("./env");
@@ -32,16 +31,12 @@ function debugMode() {
     return "";
   return _debugMode ? "inspector" : "";
 }
-let _isUnderTest = !!process.env.PWTEST_UNDER_TEST;
-function setUnderTest() {
-  _isUnderTest = true;
-}
+const _isUnderTest = (0, import_env.getAsBooleanFromENV)("PWTEST_UNDER_TEST");
 function isUnderTest() {
   return _isUnderTest;
 }
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   debugMode,
-  isUnderTest,
-  setUnderTest
+  isUnderTest
 });

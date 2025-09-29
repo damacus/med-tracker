@@ -22,7 +22,6 @@ __export(manualPromise_exports, {
   ManualPromise: () => ManualPromise
 });
 module.exports = __toCommonJS(manualPromise_exports);
-var import_builtins = require("./builtins");
 var import_stackTrace = require("./stackTrace");
 class ManualPromise extends Promise {
   constructor() {
@@ -56,7 +55,7 @@ class ManualPromise extends Promise {
 }
 class LongStandingScope {
   constructor() {
-    this._terminatePromises = new import_builtins.Map();
+    this._terminatePromises = /* @__PURE__ */ new Map();
     this._isClosed = false;
   }
   reject(error) {

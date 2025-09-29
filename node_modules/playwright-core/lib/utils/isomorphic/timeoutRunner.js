@@ -22,7 +22,6 @@ __export(timeoutRunner_exports, {
   raceAgainstDeadline: () => raceAgainstDeadline
 });
 module.exports = __toCommonJS(timeoutRunner_exports);
-var import_builtins = require("./builtins");
 var import_time = require("./time");
 async function raceAgainstDeadline(cb, deadline) {
   let timer;
@@ -33,10 +32,10 @@ async function raceAgainstDeadline(cb, deadline) {
     new Promise((resolve) => {
       const kMaxDeadline = 2147483647;
       const timeout = (deadline || kMaxDeadline) - (0, import_time.monotonicTime)();
-      timer = (0, import_builtins.setTimeout)(() => resolve({ timedOut: true }), timeout);
+      timer = setTimeout(() => resolve({ timedOut: true }), timeout);
     })
   ]).finally(() => {
-    (0, import_builtins.clearTimeout)(timer);
+    clearTimeout(timer);
   });
 }
 async function pollAgainstDeadline(callback, deadline, pollIntervals = [100, 250, 500, 1e3]) {
@@ -56,7 +55,7 @@ async function pollAgainstDeadline(callback, deadline, pollIntervals = [100, 250
     const interval = pollIntervals.shift() ?? lastPollInterval;
     if (deadline && deadline <= (0, import_time.monotonicTime)() + interval)
       break;
-    await new Promise((x) => (0, import_builtins.setTimeout)(x, interval));
+    await new Promise((x) => setTimeout(x, interval));
   }
   return { timedOut: true, result: lastResult };
 }

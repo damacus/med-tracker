@@ -58,12 +58,12 @@ class RawKeyboardImpl {
   constructor(client) {
     this._client = client;
   }
-  async keydown(modifiers, keyName, description, autoRepeat) {
+  async keydown(progress, modifiers, keyName, description, autoRepeat) {
     let text = description.text;
     if (text === "\r")
       text = "";
     const { code, key, location } = description;
-    await this._client.send("Page.dispatchKeyEvent", {
+    await progress.race(this._client.send("Page.dispatchKeyEvent", {
       type: "keydown",
       keyCode: description.keyCodeWithoutLocation,
       code,
@@ -71,39 +71,39 @@ class RawKeyboardImpl {
       repeat: autoRepeat,
       location,
       text
-    });
+    }));
   }
-  async keyup(modifiers, keyName, description) {
+  async keyup(progress, modifiers, keyName, description) {
     const { code, key, location } = description;
-    await this._client.send("Page.dispatchKeyEvent", {
+    await progress.race(this._client.send("Page.dispatchKeyEvent", {
       type: "keyup",
       key,
       keyCode: description.keyCodeWithoutLocation,
       code,
       location,
       repeat: false
-    });
+    }));
   }
-  async sendText(text) {
-    await this._client.send("Page.insertText", { text });
+  async sendText(progress, text) {
+    await progress.race(this._client.send("Page.insertText", { text }));
   }
 }
 class RawMouseImpl {
   constructor(client) {
     this._client = client;
   }
-  async move(x, y, button, buttons, modifiers, forClick) {
-    await this._client.send("Page.dispatchMouseEvent", {
+  async move(progress, x, y, button, buttons, modifiers, forClick) {
+    await progress.race(this._client.send("Page.dispatchMouseEvent", {
       type: "mousemove",
       button: 0,
       buttons: toButtonsMask(buttons),
       x: Math.floor(x),
       y: Math.floor(y),
       modifiers: toModifiersMask(modifiers)
-    });
+    }));
   }
-  async down(x, y, button, buttons, modifiers, clickCount) {
-    await this._client.send("Page.dispatchMouseEvent", {
+  async down(progress, x, y, button, buttons, modifiers, clickCount) {
+    await progress.race(this._client.send("Page.dispatchMouseEvent", {
       type: "mousedown",
       button: toButtonNumber(button),
       buttons: toButtonsMask(buttons),
@@ -111,10 +111,10 @@ class RawMouseImpl {
       y: Math.floor(y),
       modifiers: toModifiersMask(modifiers),
       clickCount
-    });
+    }));
   }
-  async up(x, y, button, buttons, modifiers, clickCount) {
-    await this._client.send("Page.dispatchMouseEvent", {
+  async up(progress, x, y, button, buttons, modifiers, clickCount) {
+    await progress.race(this._client.send("Page.dispatchMouseEvent", {
       type: "mouseup",
       button: toButtonNumber(button),
       buttons: toButtonsMask(buttons),
@@ -122,18 +122,18 @@ class RawMouseImpl {
       y: Math.floor(y),
       modifiers: toModifiersMask(modifiers),
       clickCount
-    });
+    }));
   }
-  async wheel(x, y, buttons, modifiers, deltaX, deltaY) {
+  async wheel(progress, x, y, buttons, modifiers, deltaX, deltaY) {
     await this._page.mainFrame().evaluateExpression(`new Promise(requestAnimationFrame)`, { world: "utility" });
-    await this._client.send("Page.dispatchWheelEvent", {
+    await progress.race(this._client.send("Page.dispatchWheelEvent", {
       deltaX,
       deltaY,
       x: Math.floor(x),
       y: Math.floor(y),
       deltaZ: 0,
       modifiers: toModifiersMask(modifiers)
-    });
+    }));
   }
   setPage(page) {
     this._page = page;
@@ -143,12 +143,12 @@ class RawTouchscreenImpl {
   constructor(client) {
     this._client = client;
   }
-  async tap(x, y, modifiers) {
-    await this._client.send("Page.dispatchTapEvent", {
+  async tap(progress, x, y, modifiers) {
+    await progress.race(this._client.send("Page.dispatchTapEvent", {
       x,
       y,
       modifiers: toModifiersMask(modifiers)
-    });
+    }));
   }
 }
 // Annotate the CommonJS export names for ESM import in node:

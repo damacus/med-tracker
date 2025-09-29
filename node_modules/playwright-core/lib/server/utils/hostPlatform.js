@@ -92,8 +92,10 @@ function calculatePlatform() {
         return { hostPlatform: "debian11" + archSuffix, isOfficiallySupportedPlatform: isOfficiallySupportedPlatform2 };
       if (distroInfo?.version === "12")
         return { hostPlatform: "debian12" + archSuffix, isOfficiallySupportedPlatform: isOfficiallySupportedPlatform2 };
+      if (distroInfo?.version === "13")
+        return { hostPlatform: "debian13" + archSuffix, isOfficiallySupportedPlatform: isOfficiallySupportedPlatform2 };
       if (distroInfo?.version === "")
-        return { hostPlatform: "debian12" + archSuffix, isOfficiallySupportedPlatform: isOfficiallySupportedPlatform2 };
+        return { hostPlatform: "debian13" + archSuffix, isOfficiallySupportedPlatform: isOfficiallySupportedPlatform2 };
     }
     return { hostPlatform: "ubuntu20.04" + archSuffix, isOfficiallySupportedPlatform: false };
   }

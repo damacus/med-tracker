@@ -18,26 +18,31 @@ var __copyProps = (to, from, except, desc) => {
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 var time_exports = {};
 __export(time_exports, {
+  DEFAULT_PLAYWRIGHT_LAUNCH_TIMEOUT: () => DEFAULT_PLAYWRIGHT_LAUNCH_TIMEOUT,
+  DEFAULT_PLAYWRIGHT_TIMEOUT: () => DEFAULT_PLAYWRIGHT_TIMEOUT,
   monotonicTime: () => monotonicTime,
   setTimeOrigin: () => setTimeOrigin,
   timeOrigin: () => timeOrigin
 });
 module.exports = __toCommonJS(time_exports);
-var import_builtins = require("./builtins");
-let _timeOrigin = import_builtins.performance.timeOrigin;
+let _timeOrigin = performance.timeOrigin;
 let _timeShift = 0;
 function setTimeOrigin(origin) {
   _timeOrigin = origin;
-  _timeShift = import_builtins.performance.timeOrigin - origin;
+  _timeShift = performance.timeOrigin - origin;
 }
 function timeOrigin() {
   return _timeOrigin;
 }
 function monotonicTime() {
-  return Math.floor((import_builtins.performance.now() + _timeShift) * 1e3) / 1e3;
+  return Math.floor((performance.now() + _timeShift) * 1e3) / 1e3;
 }
+const DEFAULT_PLAYWRIGHT_TIMEOUT = 3e4;
+const DEFAULT_PLAYWRIGHT_LAUNCH_TIMEOUT = 3 * 60 * 1e3;
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
+  DEFAULT_PLAYWRIGHT_LAUNCH_TIMEOUT,
+  DEFAULT_PLAYWRIGHT_TIMEOUT,
   monotonicTime,
   setTimeOrigin,
   timeOrigin

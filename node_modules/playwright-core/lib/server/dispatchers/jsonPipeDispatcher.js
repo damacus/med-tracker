@@ -22,16 +22,16 @@ __export(jsonPipeDispatcher_exports, {
 });
 module.exports = __toCommonJS(jsonPipeDispatcher_exports);
 var import_dispatcher = require("./dispatcher");
-var import_crypto = require("../utils/crypto");
+var import_instrumentation = require("../instrumentation");
 class JsonPipeDispatcher extends import_dispatcher.Dispatcher {
   constructor(scope) {
-    super(scope, { guid: "jsonPipe@" + (0, import_crypto.createGuid)() }, "JsonPipe", {});
+    super(scope, new import_instrumentation.SdkObject(scope._object, "jsonPipe"), "JsonPipe", {});
     this._type_JsonPipe = true;
   }
-  async send(params) {
+  async send(params, progress) {
     this.emit("message", params.message);
   }
-  async close() {
+  async close(params, progress) {
     this.emit("close");
     if (!this._disposed) {
       this._dispatchEvent("closed", {});

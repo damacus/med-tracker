@@ -41,43 +41,52 @@ class Browser extends import_instrumentation.SdkObject {
   }
   static {
     this.Events = {
+      Context: "context",
       Disconnected: "disconnected"
     };
   }
-  async newContext(metadata, options) {
+  sdkLanguage() {
+    return this.options.sdkLanguage || this.attribution.playwright.options.sdkLanguage;
+  }
+  async newContext(progress, options) {
     (0, import_browserContext.validateBrowserContextOptions)(options, this.options);
     let clientCertificatesProxy;
-    if (options.clientCertificates?.length) {
-      clientCertificatesProxy = new import_socksClientCertificatesInterceptor.ClientCertificatesProxy(options);
-      options = { ...options };
-      options.proxyOverride = await clientCertificatesProxy.listen();
-      options.internalIgnoreHTTPSErrors = true;
-    }
     let context;
     try {
-      context = await this.doCreateNewContext(options);
+      if (options.clientCertificates?.length) {
+        clientCertificatesProxy = await import_socksClientCertificatesInterceptor.ClientCertificatesProxy.create(progress, options);
+        options = { ...options };
+        options.proxyOverride = clientCertificatesProxy.proxySettings();
+        options.internalIgnoreHTTPSErrors = true;
+      }
+      context = await progress.race(this.doCreateNewContext(options));
+      context._clientCertificatesProxy = clientCertificatesProxy;
+      if (options.__testHookBeforeSetStorageState)
+        await progress.race(options.__testHookBeforeSetStorageState());
+      await context.setStorageState(progress, options.storageState, "initial");
+      this.emit(Browser.Events.Context, context);
+      return context;
     } catch (error) {
-      await clientCertificatesProxy?.close();
+      await context?.close({ reason: "Failed to create context" }).catch(() => {
+      });
+      await clientCertificatesProxy?.close().catch(() => {
+      });
       throw error;
     }
-    context._clientCertificatesProxy = clientCertificatesProxy;
-    if (options.storageState)
-      await context.setStorageState(metadata, options.storageState);
-    return context;
   }
-  async newContextForReuse(params, metadata) {
+  async newContextForReuse(progress, params) {
     const hash = import_browserContext.BrowserContext.reusableContextHash(params);
     if (!this._contextForReuse || hash !== this._contextForReuse.hash || !this._contextForReuse.context.canResetForReuse()) {
       if (this._contextForReuse)
         await this._contextForReuse.context.close({ reason: "Context reused" });
-      this._contextForReuse = { context: await this.newContext(metadata, params), hash };
-      return { context: this._contextForReuse.context, needsReset: false };
+      this._contextForReuse = { context: await this.newContext(progress, params), hash };
+      return this._contextForReuse.context;
     }
-    await this._contextForReuse.context.stopPendingOperations("Context recreated");
-    return { context: this._contextForReuse.context, needsReset: true };
+    await this._contextForReuse.context.resetForReuse(progress, params);
+    return this._contextForReuse.context;
   }
-  async stopPendingOperations(reason) {
-    await this._contextForReuse?.context?.stopPendingOperations(reason);
+  contextForReuse() {
+    return this._contextForReuse?.context;
   }
   _downloadCreated(page, uuid, url, suggestedFilename) {
     const download = new import_download.Download(page, this.options.downloadsPath || "", uuid, url, suggestedFilename);
@@ -101,7 +110,7 @@ class Browser extends import_instrumentation.SdkObject {
     this._idToVideo.set(videoId, { context, artifact });
     pageOrError.then((page) => {
       if (page instanceof import_page.Page) {
-        page._video = artifact;
+        page.video = artifact;
         page.emitOnContext(import_browserContext.BrowserContext.Events.VideoStarted, artifact);
         page.emit(import_page.Page.Events.Video, artifact);
       }

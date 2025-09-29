@@ -23,16 +23,22 @@ __export(streamDispatcher_exports, {
 module.exports = __toCommonJS(streamDispatcher_exports);
 var import_dispatcher = require("./dispatcher");
 var import_manualPromise = require("../../utils/isomorphic/manualPromise");
-var import_crypto = require("../utils/crypto");
+var import_instrumentation = require("../instrumentation");
+class StreamSdkObject extends import_instrumentation.SdkObject {
+  constructor(parent, stream) {
+    super(parent, "stream");
+    this.stream = stream;
+  }
+}
 class StreamDispatcher extends import_dispatcher.Dispatcher {
   constructor(scope, stream) {
-    super(scope, { guid: "stream@" + (0, import_crypto.createGuid)(), stream }, "Stream", {});
+    super(scope, new StreamSdkObject(scope._object, stream), "Stream", {});
     this._type_Stream = true;
     this._ended = false;
     stream.once("end", () => this._ended = true);
     stream.once("error", () => this._ended = true);
   }
-  async read(params) {
+  async read(params, progress) {
     const stream = this._object.stream;
     if (this._ended)
       return { binary: Buffer.from("") };
@@ -42,15 +48,16 @@ class StreamDispatcher extends import_dispatcher.Dispatcher {
       stream.on("readable", done);
       stream.on("end", done);
       stream.on("error", done);
-      await readyPromise;
-      stream.off("readable", done);
-      stream.off("end", done);
-      stream.off("error", done);
+      await progress.race(readyPromise).finally(() => {
+        stream.off("readable", done);
+        stream.off("end", done);
+        stream.off("error", done);
+      });
     }
     const buffer = stream.read(Math.min(stream.readableLength, params.size || stream.readableLength));
     return { binary: buffer || Buffer.from("") };
   }
-  async close() {
+  async close(params, progress) {
     this._object.stream.destroy();
   }
 }

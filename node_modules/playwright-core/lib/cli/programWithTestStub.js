@@ -58,7 +58,7 @@ const kExternalPlaywrightTestCommands = [
 ];
 function addExternalPlaywrightTestCommands() {
   for (const [command, description] of kExternalPlaywrightTestCommands) {
-    const playwrightTest = import_program.program.command(command).allowUnknownOption(true);
+    const playwrightTest = import_program.program.command(command).allowUnknownOption(true).allowExcessArguments(true);
     playwrightTest.description(`${description} Available in @playwright/test package.`);
     playwrightTest.action(async () => {
       printPlaywrightTestError(command);

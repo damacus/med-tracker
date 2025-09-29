@@ -34,7 +34,6 @@ __export(cssParser_exports, {
   serializeSelector: () => serializeSelector
 });
 module.exports = __toCommonJS(cssParser_exports);
-var import_builtins = require("./builtins");
 var css = __toESM(require("./cssTokenizer"));
 class InvalidSelectorError extends Error {
 }
@@ -65,7 +64,7 @@ function parseCSS(selector, customNames) {
   if (unsupportedToken)
     throw new InvalidSelectorError(`Unsupported token "${unsupportedToken.toSource()}" while parsing css selector "${selector}". Did you mean to CSS.escape it?`);
   let pos = 0;
-  const names = new import_builtins.Set();
+  const names = /* @__PURE__ */ new Set();
   function unexpected() {
     return new InvalidSelectorError(`Unexpected token "${tokens[pos].toSource()}" while parsing css selector "${selector}". Did you mean to CSS.escape it?`);
   }

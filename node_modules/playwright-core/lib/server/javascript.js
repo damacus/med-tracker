@@ -35,21 +35,15 @@ __export(javascript_exports, {
   evaluateExpression: () => evaluateExpression,
   isJavaScriptErrorInEvaluate: () => isJavaScriptErrorInEvaluate,
   normalizeEvaluationExpression: () => normalizeEvaluationExpression,
-  parseEvaluationResultValue: () => parseEvaluationResultValue,
   parseUnserializableValue: () => parseUnserializableValue,
-  serializeAsCallArgument: () => serializeAsCallArgument,
   sparseArrayToString: () => sparseArrayToString
 });
 module.exports = __toCommonJS(javascript_exports);
 var import_instrumentation = require("./instrumentation");
-var utilityScriptSource = __toESM(require("../generated/utilityScriptSource"));
+var rawUtilityScriptSource = __toESM(require("../generated/utilityScriptSource"));
 var import_utils = require("../utils");
-var import_builtins = require("../utils/isomorphic/builtins");
 var import_utilityScriptSerializers = require("../utils/isomorphic/utilityScriptSerializers");
 var import_manualPromise = require("../utils/isomorphic/manualPromise");
-const utilityScriptSerializers = (0, import_utilityScriptSerializers.source)((0, import_builtins.builtins)());
-const parseEvaluationResultValue = utilityScriptSerializers.parseEvaluationResultValue;
-const serializeAsCallArgument = utilityScriptSerializers.serializeAsCallArgument;
 class ExecutionContext extends import_instrumentation.SdkObject {
   constructor(parent, delegate, worldNameForTest) {
     super(parent, "execution-context");
@@ -70,7 +64,7 @@ class ExecutionContext extends import_instrumentation.SdkObject {
     return this._raceAgainstContextDestroyed(this.delegate.rawEvaluateHandle(this, expression));
   }
   async evaluateWithArguments(expression, returnByValue, values, handles) {
-    const utilityScript = await this._utilityScript();
+    const utilityScript = await this.utilityScript();
     return this._raceAgainstContextDestroyed(this.delegate.evaluateWithArguments(expression, returnByValue, utilityScript, values, handles));
   }
   getProperties(object) {
@@ -82,15 +76,15 @@ class ExecutionContext extends import_instrumentation.SdkObject {
   adoptIfNeeded(handle) {
     return null;
   }
-  _utilityScript() {
+  utilityScript() {
     if (!this._utilityScriptPromise) {
-      const source2 = `
+      const source = `
       (() => {
         const module = {};
-        ${utilityScriptSource.source}
-        return new (module.exports.UtilityScript())(${(0, import_utils.isUnderTest)()});
+        ${rawUtilityScriptSource.source}
+        return new (module.exports.UtilityScript())(globalThis, ${(0, import_utils.isUnderTest)()});
       })();`;
-      this._utilityScriptPromise = this._raceAgainstContextDestroyed(this.delegate.rawEvaluateHandle(this, source2)).then((handle) => {
+      this._utilityScriptPromise = this._raceAgainstContextDestroyed(this.delegate.rawEvaluateHandle(this, source)).then((handle) => {
         handle._setPreview("UtilityScript");
         return handle;
       });
@@ -197,7 +191,7 @@ async function evaluateExpression(context, expression, options, ...args) {
     handles.push(handle);
     return handles.length - 1;
   };
-  args = args.map((arg) => serializeAsCallArgument(arg, (handle) => {
+  args = args.map((arg) => (0, import_utilityScriptSerializers.serializeAsCallArgument)(arg, (handle) => {
     if (handle instanceof JSHandle) {
       if (!handle._objectId)
         return { fallThrough: handle._value };
@@ -292,8 +286,6 @@ function sparseArrayToString(entries) {
   evaluateExpression,
   isJavaScriptErrorInEvaluate,
   normalizeEvaluationExpression,
-  parseEvaluationResultValue,
   parseUnserializableValue,
-  serializeAsCallArgument,
   sparseArrayToString
 });

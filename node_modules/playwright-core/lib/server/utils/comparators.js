@@ -121,9 +121,9 @@ function compareText(actual, expectedBuffer) {
   const lines = import_utilsBundle2.diff.createPatch("file", expected, actual, void 0, void 0, { context: 5 }).split("\n");
   const coloredLines = lines.slice(4).map((line) => {
     if (line.startsWith("-"))
-      return import_utilsBundle2.colors.red(line);
-    if (line.startsWith("+"))
       return import_utilsBundle2.colors.green(line);
+    if (line.startsWith("+"))
+      return import_utilsBundle2.colors.red(line);
     if (line.startsWith("@@"))
       return import_utilsBundle2.colors.dim(line);
     return line;

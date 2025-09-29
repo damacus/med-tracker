@@ -20,7 +20,7 @@ var instrumentation_exports = {};
 __export(instrumentation_exports, {
   SdkObject: () => SdkObject,
   createInstrumentation: () => createInstrumentation,
-  serverSideCallMetadata: () => serverSideCallMetadata
+  createRootSdkObject: () => createRootSdkObject
 });
 module.exports = __toCommonJS(instrumentation_exports);
 var import_events = require("events");
@@ -33,6 +33,12 @@ class SdkObject extends import_events.EventEmitter {
     this.attribution = { ...parent.attribution };
     this.instrumentation = parent.instrumentation;
   }
+}
+function createRootSdkObject() {
+  const fakeParent = { attribution: {}, instrumentation: createInstrumentation() };
+  const root = new SdkObject(fakeParent);
+  root.guid = "";
+  return root;
 }
 function createInstrumentation() {
   const listeners = /* @__PURE__ */ new Map();
@@ -55,21 +61,9 @@ function createInstrumentation() {
     }
   });
 }
-function serverSideCallMetadata() {
-  return {
-    id: "",
-    startTime: 0,
-    endTime: 0,
-    type: "Internal",
-    method: "",
-    params: {},
-    log: [],
-    isServerSide: true
-  };
-}
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   SdkObject,
   createInstrumentation,
-  serverSideCallMetadata
+  createRootSdkObject
 });

@@ -2,7 +2,7 @@
 const { app } = require("electron");
 const { chromiumSwitches } = require("../chromium/chromiumSwitches");
 process.argv.splice(1, process.argv.indexOf("--remote-debugging-port=0"));
-for (const arg of chromiumSwitches) {
+for (const arg of chromiumSwitches()) {
   const match = arg.match(/--([^=]*)=?(.*)/);
   app.commandLine.appendSwitch(match[1], match[2]);
 }

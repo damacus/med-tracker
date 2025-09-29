@@ -34,6 +34,7 @@ __export(ffExecutionContext_exports, {
 module.exports = __toCommonJS(ffExecutionContext_exports);
 var import_assert = require("../../utils/isomorphic/assert");
 var import_stackTrace = require("../../utils/isomorphic/stackTrace");
+var import_utilityScriptSerializers = require("../../utils/isomorphic/utilityScriptSerializers");
 var js = __toESM(require("../javascript"));
 var dom = __toESM(require("../dom"));
 var import_protocolError = require("../protocolError");
@@ -73,7 +74,7 @@ class FFExecutionContext {
     }).catch(rewriteError);
     checkException(payload.exceptionDetails);
     if (returnByValue)
-      return js.parseEvaluationResultValue(payload.result.value);
+      return (0, import_utilityScriptSerializers.parseEvaluationResultValue)(payload.result.value);
     return createHandle(utilityScript._context, payload.result);
   }
   async getProperties(object) {

@@ -37,7 +37,7 @@ var import_ffBrowser = require("./ffBrowser");
 var import_ffConnection = require("./ffConnection");
 var import_ascii = require("../utils/ascii");
 var import_browserType = require("../browserType");
-var import_browserType2 = require("../browserType");
+var import_manualPromise = require("../../utils/isomorphic/manualPromise");
 class Firefox extends import_browserType.BrowserType {
   constructor(parent) {
     super(parent, "firefox");
@@ -55,7 +55,7 @@ Workaround: Set the HOME=/root environment variable${process.env.GITHUB_ACTION ?
       error.logs = "\n" + (0, import_ascii.wrapInASCIIBox)(import_browserType.kNoXServerRunningError, 1);
     return error;
   }
-  amendEnvironment(env, userDataDir, executable, browserArguments) {
+  amendEnvironment(env) {
     if (!import_path.default.isAbsolute(import_os.default.homedir()))
       throw new Error(`Cannot launch Firefox with relative home directory. Did you set ${import_os.default.platform() === "win32" ? "USERPROFILE" : "HOME"} to a relative path?`);
     if (import_os.default.platform() === "linux") {
@@ -90,14 +90,13 @@ Workaround: Set the HOME=/root environment variable${process.env.GITHUB_ACTION ?
       firefoxArguments.push("-silent");
     return firefoxArguments;
   }
-  readyState(options) {
-    return new JugglerReadyState();
-  }
-}
-class JugglerReadyState extends import_browserType2.BrowserReadyState {
-  onBrowserOutput(message) {
-    if (message.includes("Juggler listening to the pipe"))
-      this._wsEndpoint.resolve(void 0);
+  waitForReadyState(options, browserLogsCollector) {
+    const result = new import_manualPromise.ManualPromise();
+    browserLogsCollector.onMessage((message) => {
+      if (message.includes("Juggler listening to the pipe"))
+        result.resolve({});
+    });
+    return result;
   }
 }
 // Annotate the CommonJS export names for ESM import in node:

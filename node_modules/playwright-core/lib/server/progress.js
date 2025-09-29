@@ -18,87 +18,95 @@ var __copyProps = (to, from, except, desc) => {
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 var progress_exports = {};
 __export(progress_exports, {
-  ProgressController: () => ProgressController
+  ProgressController: () => ProgressController,
+  isAbortError: () => isAbortError,
+  raceUncancellableOperationWithCleanup: () => raceUncancellableOperationWithCleanup
 });
 module.exports = __toCommonJS(progress_exports);
 var import_errors = require("./errors");
 var import_utils = require("../utils");
 var import_manualPromise = require("../utils/isomorphic/manualPromise");
 class ProgressController {
-  constructor(metadata, sdkObject) {
+  constructor(metadata, onCallLog) {
     this._forceAbortPromise = new import_manualPromise.ManualPromise();
-    // Cleanups to be run only in the case of abort.
-    this._cleanups = [];
-    this._logName = "api";
+    this._donePromise = new import_manualPromise.ManualPromise();
     this._state = "before";
-    this._deadline = 0;
-    this._timeout = 0;
-    this.metadata = metadata;
-    this.sdkObject = sdkObject;
-    this.instrumentation = sdkObject.instrumentation;
+    this.metadata = metadata || { id: "", startTime: 0, endTime: 0, type: "Internal", method: "", params: {}, log: [], internal: true };
+    this._onCallLog = onCallLog;
     this._forceAbortPromise.catch((e) => null);
   }
-  setLogName(logName) {
-    this._logName = logName;
-  }
-  abort(error) {
-    this._forceAbortPromise.reject(error);
+  async abort(error) {
+    if (this._state === "running") {
+      error[kAbortErrorSymbol] = true;
+      this._state = { error };
+      this._forceAbortPromise.reject(error);
+    }
+    await this._donePromise;
   }
   async run(task, timeout) {
-    if (timeout) {
-      this._timeout = timeout;
-      this._deadline = timeout ? (0, import_utils.monotonicTime)() + timeout : 0;
-    }
     (0, import_utils.assert)(this._state === "before");
     this._state = "running";
-    this.sdkObject.attribution.context?._activeProgressControllers.add(this);
     const progress = {
       log: (message) => {
         if (this._state === "running")
           this.metadata.log.push(message);
-        this.instrumentation.onCallLog(this.sdkObject, this.metadata, this._logName, message);
+        this._onCallLog?.(message);
       },
-      timeUntilDeadline: () => this._deadline ? this._deadline - (0, import_utils.monotonicTime)() : 2147483647,
-      // 2^31-1 safe setTimeout in Node.
-      isRunning: () => this._state === "running",
-      cleanupWhenAborted: (cleanup) => {
-        if (this._state === "running")
-          this._cleanups.push(cleanup);
-        else
-          runCleanup(cleanup);
+      metadata: this.metadata,
+      race: (promise) => {
+        const promises = Array.isArray(promise) ? promise : [promise];
+        return Promise.race([...promises, this._forceAbortPromise]);
       },
-      throwIfAborted: () => {
-        if (this._state === "aborted")
-          throw new AbortedError();
-      },
-      metadata: this.metadata
+      wait: async (timeout2) => {
+        let timer2;
+        const promise = new Promise((f) => timer2 = setTimeout(f, timeout2));
+        return progress.race(promise).finally(() => clearTimeout(timer2));
+      }
     };
-    const timeoutError = new import_errors.TimeoutError(`Timeout ${this._timeout}ms exceeded.`);
-    const timer = setTimeout(() => this._forceAbortPromise.reject(timeoutError), progress.timeUntilDeadline());
+    let timer;
+    if (timeout) {
+      const timeoutError = new import_errors.TimeoutError(`Timeout ${timeout}ms exceeded.`);
+      timer = setTimeout(() => {
+        if (this._state === "running") {
+          timeoutError[kAbortErrorSymbol] = true;
+          this._state = { error: timeoutError };
+          this._forceAbortPromise.reject(timeoutError);
+        }
+      }, timeout);
+    }
     try {
-      const promise = task(progress);
-      const result = await Promise.race([promise, this._forceAbortPromise]);
+      const result = await task(progress);
       this._state = "finished";
       return result;
-    } catch (e) {
-      this._state = "aborted";
-      await Promise.all(this._cleanups.splice(0).map(runCleanup));
-      throw e;
+    } catch (error) {
+      this._state = { error };
+      throw error;
     } finally {
-      this.sdkObject.attribution.context?._activeProgressControllers.delete(this);
       clearTimeout(timer);
+      this._donePromise.resolve();
     }
   }
 }
-async function runCleanup(cleanup) {
-  try {
-    await cleanup();
-  } catch (e) {
-  }
+const kAbortErrorSymbol = Symbol("kAbortError");
+function isAbortError(error) {
+  return !!error[kAbortErrorSymbol];
 }
-class AbortedError extends Error {
+async function raceUncancellableOperationWithCleanup(progress, run, cleanup) {
+  let aborted = false;
+  try {
+    return await progress.race(run().then(async (t) => {
+      if (aborted)
+        await cleanup(t);
+      return t;
+    }));
+  } catch (error) {
+    aborted = true;
+    throw error;
+  }
 }
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
-  ProgressController
+  ProgressController,
+  isAbortError,
+  raceUncancellableOperationWithCleanup
 });

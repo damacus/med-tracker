@@ -29,7 +29,8 @@ __export(validatorPrimitives_exports, {
   tBoolean: () => tBoolean,
   tChannel: () => tChannel,
   tEnum: () => tEnum,
-  tNumber: () => tNumber,
+  tFloat: () => tFloat,
+  tInt: () => tInt,
   tObject: () => tObject,
   tOptional: () => tOptional,
   tString: () => tString,
@@ -53,12 +54,24 @@ function maybeFindValidator(type, method, kind) {
 function createMetadataValidator() {
   return tOptional(scheme["Metadata"]);
 }
-const tNumber = (arg, path, context) => {
+const tFloat = (arg, path, context) => {
   if (arg instanceof Number)
     return arg.valueOf();
   if (typeof arg === "number")
     return arg;
-  throw new ValidationError(`${path}: expected number, got ${typeof arg}`);
+  throw new ValidationError(`${path}: expected float, got ${typeof arg}`);
+};
+const tInt = (arg, path, context) => {
+  let value;
+  if (arg instanceof Number)
+    value = arg.valueOf();
+  else if (typeof arg === "number")
+    value = arg;
+  else
+    throw new ValidationError(`${path}: expected integer, got ${typeof arg}`);
+  if (!Number.isInteger(value))
+    throw new ValidationError(`${path}: expected integer, got float ${value}`);
+  return value;
 };
 const tBoolean = (arg, path, context) => {
   if (arg instanceof Boolean)
@@ -170,7 +183,8 @@ const tType = (name) => {
   tBoolean,
   tChannel,
   tEnum,
-  tNumber,
+  tFloat,
+  tInt,
   tObject,
   tOptional,
   tString,

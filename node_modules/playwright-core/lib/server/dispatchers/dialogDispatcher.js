@@ -34,11 +34,11 @@ class DialogDispatcher extends import_dispatcher.Dispatcher {
     });
     this._type_Dialog = true;
   }
-  async accept(params) {
-    await this._object.accept(params.promptText);
+  async accept(params, progress) {
+    await progress.race(this._object.accept(params.promptText));
   }
-  async dismiss() {
-    await this._object.dismiss();
+  async dismiss(params, progress) {
+    await progress.race(this._object.dismiss());
   }
 }
 // Annotate the CommonJS export names for ESM import in node:

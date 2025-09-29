@@ -28,15 +28,13 @@ var import_jsonl = require("./jsonl");
 var import_python = require("./python");
 function languageSet() {
   return /* @__PURE__ */ new Set([
-    new import_java.JavaLanguageGenerator("junit"),
-    new import_java.JavaLanguageGenerator("library"),
-    new import_javascript.JavaScriptLanguageGenerator(
-      /* isPlaywrightTest */
-      false
-    ),
     new import_javascript.JavaScriptLanguageGenerator(
       /* isPlaywrightTest */
       true
+    ),
+    new import_javascript.JavaScriptLanguageGenerator(
+      /* isPlaywrightTest */
+      false
     ),
     new import_python.PythonLanguageGenerator(
       /* isAsync */
@@ -59,6 +57,8 @@ function languageSet() {
     new import_csharp.CSharpLanguageGenerator("mstest"),
     new import_csharp.CSharpLanguageGenerator("nunit"),
     new import_csharp.CSharpLanguageGenerator("library"),
+    new import_java.JavaLanguageGenerator("junit"),
+    new import_java.JavaLanguageGenerator("library"),
     new import_jsonl.JsonlLanguageGenerator()
   ]);
 }

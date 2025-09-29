@@ -35,6 +35,7 @@ module.exports = __toCommonJS(crExecutionContext_exports);
 var import_assert = require("../../utils/isomorphic/assert");
 var import_crProtocolHelper = require("./crProtocolHelper");
 var import_stackTrace = require("../../utils/isomorphic/stackTrace");
+var import_utilityScriptSerializers = require("../../utils/isomorphic/utilityScriptSerializers");
 var js = __toESM(require("../javascript"));
 var dom = __toESM(require("../dom"));
 var import_protocolError = require("../protocolError");
@@ -77,7 +78,7 @@ class CRExecutionContext {
     }).catch(rewriteError);
     if (exceptionDetails)
       throw new js.JavaScriptErrorInEvaluate((0, import_crProtocolHelper.getExceptionMessage)(exceptionDetails));
-    return returnByValue ? js.parseEvaluationResultValue(remoteObject.value) : createHandle(utilityScript._context, remoteObject);
+    return returnByValue ? (0, import_utilityScriptSerializers.parseEvaluationResultValue)(remoteObject.value) : createHandle(utilityScript._context, remoteObject);
   }
   async getProperties(object) {
     const response = await this._client.send("Runtime.getProperties", {

@@ -18,58 +18,38 @@ var __copyProps = (to, from, except, desc) => {
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 var selectors_exports = {};
 __export(selectors_exports, {
-  Selectors: () => Selectors,
-  SelectorsOwner: () => SelectorsOwner,
-  setPlatformForSelectors: () => setPlatformForSelectors
+  Selectors: () => Selectors
 });
 module.exports = __toCommonJS(selectors_exports);
-var import_channelOwner = require("./channelOwner");
 var import_clientHelper = require("./clientHelper");
 var import_locator = require("./locator");
-var import_platform = require("./platform");
-let platform = import_platform.emptyPlatform;
-function setPlatformForSelectors(p) {
-  platform = p;
-}
 class Selectors {
-  constructor() {
-    this._channels = /* @__PURE__ */ new Set();
-    this._registrations = [];
+  constructor(platform) {
+    this._selectorEngines = [];
+    this._contextsForSelectors = /* @__PURE__ */ new Set();
+    this._platform = platform;
   }
   async register(name, script, options = {}) {
-    const source = await (0, import_clientHelper.evaluationScript)(platform, script, void 0, false);
-    const params = { ...options, name, source };
-    for (const channel of this._channels)
-      await channel._channel.register(params);
-    this._registrations.push(params);
+    if (this._selectorEngines.some((engine) => engine.name === name))
+      throw new Error(`selectors.register: "${name}" selector engine has been already registered`);
+    const source = await (0, import_clientHelper.evaluationScript)(this._platform, script, void 0, false);
+    const selectorEngine = { ...options, name, source };
+    for (const context of this._contextsForSelectors)
+      await context._channel.registerSelectorEngine({ selectorEngine });
+    this._selectorEngines.push(selectorEngine);
   }
   setTestIdAttribute(attributeName) {
+    this._testIdAttributeName = attributeName;
     (0, import_locator.setTestIdAttribute)(attributeName);
-    for (const channel of this._channels)
-      channel._channel.setTestIdAttributeName({ testIdAttributeName: attributeName }).catch(() => {
+    for (const context of this._contextsForSelectors)
+      context._channel.setTestIdAttributeName({ testIdAttributeName: attributeName }).catch(() => {
       });
   }
-  _addChannel(channel) {
-    this._channels.add(channel);
-    for (const params of this._registrations) {
-      channel._channel.register(params).catch(() => {
-      });
-      channel._channel.setTestIdAttributeName({ testIdAttributeName: (0, import_locator.testIdAttributeName)() }).catch(() => {
-      });
-    }
-  }
-  _removeChannel(channel) {
-    this._channels.delete(channel);
-  }
-}
-class SelectorsOwner extends import_channelOwner.ChannelOwner {
-  static from(browser) {
-    return browser._object;
+  _withSelectorOptions(options) {
+    return { ...options, selectorEngines: this._selectorEngines, testIdAttributeName: this._testIdAttributeName };
   }
 }
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
-  Selectors,
-  SelectorsOwner,
-  setPlatformForSelectors
+  Selectors
 });

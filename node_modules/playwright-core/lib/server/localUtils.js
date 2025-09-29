@@ -49,7 +49,7 @@ var import_zipBundle = require("../zipBundle");
 var import_traceUtils = require("../utils/isomorphic/traceUtils");
 var import_assert = require("../utils/isomorphic/assert");
 var import_fileUtils = require("./utils/fileUtils");
-async function zip(stackSessions, params) {
+async function zip(progress, stackSessions, params) {
   const promise = new import_manualPromise.ManualPromise();
   const zipFile = new import_zipBundle.yazl.ZipFile();
   zipFile.on("error", (error) => promise.reject(error));
@@ -64,7 +64,7 @@ async function zip(stackSessions, params) {
     addFile(entry.value, entry.name);
   const stackSession = params.stacksId ? stackSessions.get(params.stacksId) : void 0;
   if (stackSession?.callStacks.length) {
-    await stackSession.writer;
+    await progress.race(stackSession.writer);
     if (process.env.PW_LIVE_TRACE_STACKS) {
       zipFile.addFile(stackSession.file, "trace.stacks");
     } else {
@@ -84,16 +84,16 @@ async function zip(stackSessions, params) {
       addFile(sourceFile, "resources/src@" + await (0, import_crypto.calculateSha1)(sourceFile) + ".txt");
   }
   if (params.mode === "write") {
-    await import_fs.default.promises.mkdir(import_path.default.dirname(params.zipFile), { recursive: true });
+    await progress.race(import_fs.default.promises.mkdir(import_path.default.dirname(params.zipFile), { recursive: true }));
     zipFile.end(void 0, () => {
       zipFile.outputStream.pipe(import_fs.default.createWriteStream(params.zipFile)).on("close", () => promise.resolve()).on("error", (error) => promise.reject(error));
     });
-    await promise;
-    await deleteStackSession(stackSessions, params.stacksId);
+    await progress.race(promise);
+    await deleteStackSession(progress, stackSessions, params.stacksId);
     return;
   }
   const tempFile = params.zipFile + ".tmp";
-  await import_fs.default.promises.rename(params.zipFile, tempFile);
+  await progress.race(import_fs.default.promises.rename(params.zipFile, tempFile));
   import_zipBundle.yauzl.open(tempFile, (err, inZipFile) => {
     if (err) {
       promise.reject(err);
@@ -120,74 +120,81 @@ async function zip(stackSessions, params) {
       });
     });
   });
-  await promise;
-  await deleteStackSession(stackSessions, params.stacksId);
+  await progress.race(promise);
+  await deleteStackSession(progress, stackSessions, params.stacksId);
 }
-async function deleteStackSession(stackSessions, stacksId) {
+async function deleteStackSession(progress, stackSessions, stacksId) {
   const session = stacksId ? stackSessions.get(stacksId) : void 0;
   if (!session)
     return;
-  await session.writer;
-  if (session.tmpDir)
-    await (0, import_fileUtils.removeFolders)([session.tmpDir]);
   stackSessions.delete(stacksId);
+  if (session.tmpDir)
+    await progress.race((0, import_fileUtils.removeFolders)([session.tmpDir]));
 }
-async function harOpen(harBackends, params) {
+async function harOpen(progress, harBackends, params) {
   let harBackend;
   if (params.file.endsWith(".zip")) {
     const zipFile = new import_zipFile.ZipFile(params.file);
-    const entryNames = await zipFile.entries();
-    const harEntryName = entryNames.find((e) => e.endsWith(".har"));
-    if (!harEntryName)
-      return { error: "Specified archive does not have a .har file" };
-    const har = await zipFile.read(harEntryName);
-    const harFile = JSON.parse(har.toString());
-    harBackend = new import_harBackend.HarBackend(harFile, null, zipFile);
+    try {
+      const entryNames = await progress.race(zipFile.entries());
+      const harEntryName = entryNames.find((e) => e.endsWith(".har"));
+      if (!harEntryName)
+        return { error: "Specified archive does not have a .har file" };
+      const har = await progress.race(zipFile.read(harEntryName));
+      const harFile = JSON.parse(har.toString());
+      harBackend = new import_harBackend.HarBackend(harFile, null, zipFile);
+    } catch (error) {
+      zipFile.close();
+      throw error;
+    }
   } else {
-    const harFile = JSON.parse(await import_fs.default.promises.readFile(params.file, "utf-8"));
+    const harFile = JSON.parse(await progress.race(import_fs.default.promises.readFile(params.file, "utf-8")));
     harBackend = new import_harBackend.HarBackend(harFile, import_path.default.dirname(params.file), null);
   }
   harBackends.set(harBackend.id, harBackend);
   return { harId: harBackend.id };
 }
-async function harLookup(harBackends, params) {
+async function harLookup(progress, harBackends, params) {
   const harBackend = harBackends.get(params.harId);
   if (!harBackend)
     return { action: "error", message: `Internal error: har was not opened` };
-  return await harBackend.lookup(params.url, params.method, params.headers, params.postData, params.isNavigationRequest);
+  return await progress.race(harBackend.lookup(params.url, params.method, params.headers, params.postData, params.isNavigationRequest));
 }
-async function harClose(harBackends, params) {
+function harClose(harBackends, params) {
   const harBackend = harBackends.get(params.harId);
   if (harBackend) {
     harBackends.delete(harBackend.id);
     harBackend.dispose();
   }
 }
-async function harUnzip(params) {
+async function harUnzip(progress, params) {
   const dir = import_path.default.dirname(params.zipFile);
   const zipFile = new import_zipFile.ZipFile(params.zipFile);
-  for (const entry of await zipFile.entries()) {
-    const buffer = await zipFile.read(entry);
-    if (entry === "har.har")
-      await import_fs.default.promises.writeFile(params.harFile, buffer);
-    else
-      await import_fs.default.promises.writeFile(import_path.default.join(dir, entry), buffer);
+  try {
+    for (const entry of await progress.race(zipFile.entries())) {
+      const buffer = await progress.race(zipFile.read(entry));
+      if (entry === "har.har")
+        await progress.race(import_fs.default.promises.writeFile(params.harFile, buffer));
+      else
+        await progress.race(import_fs.default.promises.writeFile(import_path.default.join(dir, entry), buffer));
+    }
+    await progress.race(import_fs.default.promises.unlink(params.zipFile));
+  } finally {
+    zipFile.close();
   }
-  zipFile.close();
-  await import_fs.default.promises.unlink(params.zipFile);
 }
-async function tracingStarted(stackSessions, params) {
+async function tracingStarted(progress, stackSessions, params) {
   let tmpDir = void 0;
   if (!params.tracesDir)
-    tmpDir = await import_fs.default.promises.mkdtemp(import_path.default.join(import_os.default.tmpdir(), "playwright-tracing-"));
+    tmpDir = await progress.race(import_fs.default.promises.mkdtemp(import_path.default.join(import_os.default.tmpdir(), "playwright-tracing-")));
   const traceStacksFile = import_path.default.join(params.tracesDir || tmpDir, params.traceName + ".stacks");
   stackSessions.set(traceStacksFile, { callStacks: [], file: traceStacksFile, writer: Promise.resolve(), tmpDir });
   return { stacksId: traceStacksFile };
 }
-async function traceDiscarded(stackSessions, params) {
-  await deleteStackSession(stackSessions, params.stacksId);
+async function traceDiscarded(progress, stackSessions, params) {
+  await deleteStackSession(progress, stackSessions, params.stacksId);
 }
-async function addStackToTracingNoReply(stackSessions, params) {
+function addStackToTracingNoReply(stackSessions, params) {
   for (const session of stackSessions.values()) {
     session.callStacks.push(params.callData);
     if (process.env.PW_LIVE_TRACE_STACKS) {

@@ -28,12 +28,11 @@ __export(selectorParser_exports, {
   visitAllSelectorParts: () => visitAllSelectorParts
 });
 module.exports = __toCommonJS(selectorParser_exports);
-var import_builtins = require("./builtins");
 var import_cssParser = require("./cssParser");
 var import_cssParser2 = require("./cssParser");
-const kNestedSelectorNames = new import_builtins.Set(["internal:has", "internal:has-not", "internal:and", "internal:or", "internal:chain", "left-of", "right-of", "above", "below", "near"]);
-const kNestedSelectorNamesWithDistance = new import_builtins.Set(["left-of", "right-of", "above", "below", "near"]);
-const customCSSNames = new import_builtins.Set(["not", "is", "where", "has", "scope", "light", "visible", "text", "text-matches", "text-is", "has-text", "above", "below", "right-of", "left-of", "near", "nth-match"]);
+const kNestedSelectorNames = /* @__PURE__ */ new Set(["internal:has", "internal:has-not", "internal:and", "internal:or", "internal:chain", "left-of", "right-of", "above", "below", "near"]);
+const kNestedSelectorNamesWithDistance = /* @__PURE__ */ new Set(["left-of", "right-of", "above", "below", "near"]);
+const customCSSNames = /* @__PURE__ */ new Set(["not", "is", "where", "has", "scope", "light", "visible", "text", "text-matches", "text-is", "has-text", "above", "below", "right-of", "left-of", "near", "nth-match"]);
 function parseSelector(selector) {
   const parsedStrings = parseSelectorString(selector);
   const parts = [];

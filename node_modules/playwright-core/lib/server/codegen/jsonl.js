@@ -34,7 +34,8 @@ class JsonlLanguageGenerator {
     const entry = {
       ...actionInContext.action,
       ...actionInContext.frame,
-      locator
+      locator,
+      ariaSnapshot: void 0
     };
     return JSON.stringify(entry);
   }

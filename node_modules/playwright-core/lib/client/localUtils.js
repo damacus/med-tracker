@@ -25,7 +25,6 @@ var import_channelOwner = require("./channelOwner");
 class LocalUtils extends import_channelOwner.ChannelOwner {
   constructor(parent, type, guid, initializer) {
     super(parent, type, guid, initializer);
-    this.markAsInternalType();
     this.devices = {};
     for (const { name, descriptor } of initializer.deviceDescriptors)
       this.devices[name] = descriptor;

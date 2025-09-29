@@ -33,7 +33,7 @@ class WKProvisionalPage {
     const overrideFrameId = (handler) => {
       return (payload) => {
         if (payload.frameId)
-          payload.frameId = this._wkPage._page._frameManager.mainFrame()._id;
+          payload.frameId = this._wkPage._page.frameManager.mainFrame()._id;
         handler(payload);
       };
     };

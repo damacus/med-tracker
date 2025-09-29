@@ -25,7 +25,6 @@ __export(locator_exports, {
 });
 module.exports = __toCommonJS(locator_exports);
 var import_elementHandle = require("./elementHandle");
-var import_jsHandle = require("./jsHandle");
 var import_locatorGenerators = require("../utils/isomorphic/locatorGenerators");
 var import_locatorUtils = require("../utils/isomorphic/locatorUtils");
 var import_stringUtils = require("../utils/isomorphic/stringUtils");
@@ -56,8 +55,8 @@ class Locator {
     if (this._frame._platform.inspectCustom)
       this[this._frame._platform.inspectCustom] = () => this._inspect();
   }
-  async _withElement(task, timeout) {
-    timeout = this._frame.page()._timeoutSettings.timeout({ timeout });
+  async _withElement(task, options) {
+    const timeout = this._frame._timeout({ timeout: options.timeout });
     const deadline = timeout ? (0, import_time.monotonicTime)() + timeout : 0;
     return await this._frame._wrapApiCall(async () => {
       const result = await this._frame._channel.waitForSelector({ selector: this._selector, strict: true, state: "attached", timeout });
@@ -69,7 +68,7 @@ class Locator {
       } finally {
         await handle.dispose();
       }
-    });
+    }, { title: options.title, internal: options.internal });
   }
   _equals(locator) {
     return this._frame === locator._frame && this._selector === locator._selector;
@@ -78,7 +77,7 @@ class Locator {
     return this._frame.page();
   }
   async boundingBox(options) {
-    return await this._withElement((h) => h.boundingBox(), options?.timeout);
+    return await this._withElement((h) => h.boundingBox(), { title: "Bounding box", timeout: options?.timeout });
   }
   async check(options = {}) {
     return await this._frame.check(this._selector, { strict: true, ...options });
@@ -87,7 +86,7 @@ class Locator {
     return await this._frame.click(this._selector, { strict: true, ...options });
   }
   async dblclick(options = {}) {
-    return await this._frame.dblclick(this._selector, { strict: true, ...options });
+    await this._frame.dblclick(this._selector, { strict: true, ...options });
   }
   async dispatchEvent(type, eventInit = {}, options) {
     return await this._frame.dispatchEvent(this._selector, type, eventInit, { strict: true, ...options });
@@ -99,19 +98,22 @@ class Locator {
     });
   }
   async evaluate(pageFunction, arg, options) {
-    return await this._withElement((h) => h.evaluate(pageFunction, arg), options?.timeout);
+    return await this._withElement((h) => h.evaluate(pageFunction, arg), { title: "Evaluate", timeout: options?.timeout });
+  }
+  async _evaluateFunction(functionDeclaration, options) {
+    return await this._withElement((h) => h._evaluateFunction(functionDeclaration), { title: "Evaluate", timeout: options?.timeout });
   }
   async evaluateAll(pageFunction, arg) {
     return await this._frame.$$eval(this._selector, pageFunction, arg);
   }
   async evaluateHandle(pageFunction, arg, options) {
-    return await this._withElement((h) => h.evaluateHandle(pageFunction, arg), options?.timeout);
+    return await this._withElement((h) => h.evaluateHandle(pageFunction, arg), { title: "Evaluate", timeout: options?.timeout });
   }
   async fill(value, options = {}) {
     return await this._frame.fill(this._selector, value, { strict: true, ...options });
   }
   async clear(options = {}) {
-    return await this.fill("", options);
+    await this._frame._wrapApiCall(() => this.fill("", options), { title: "Clear" });
   }
   async _highlight() {
     return await this._frame._highlight(this._selector);
@@ -162,6 +164,9 @@ class Locator {
   contentFrame() {
     return new FrameLocator(this._frame, this._selector);
   }
+  describe(description) {
+    return new Locator(this._frame, this._selector + " >> internal:describe=" + JSON.stringify(description));
+  }
   first() {
     return new Locator(this._frame, this._selector + " >> nth=0");
   }
@@ -185,13 +190,14 @@ class Locator {
     return await this._frame.focus(this._selector, { strict: true, ...options });
   }
   async blur(options) {
-    await this._frame._channel.blur({ selector: this._selector, strict: true, ...options });
+    await this._frame._channel.blur({ selector: this._selector, strict: true, ...options, timeout: this._frame._timeout(options) });
   }
-  async count() {
-    return await this._frame._queryCount(this._selector);
+  // options are only here for testing
+  async count(_options) {
+    return await this._frame._queryCount(this._selector, _options);
   }
-  async _generateLocatorString() {
-    return await this._withElement((h) => h._generateLocatorString());
+  async _resolveSelector() {
+    return await this._frame._channel.resolveSelector({ selector: this._selector });
   }
   async getAttribute(name, options) {
     return await this._frame.getAttribute(this._selector, name, { strict: true, ...options });
@@ -231,20 +237,20 @@ class Locator {
   }
   async screenshot(options = {}) {
     const mask = options.mask;
-    return await this._withElement((h, timeout) => h.screenshot({ ...options, mask, timeout }), options.timeout);
+    return await this._withElement((h, timeout) => h.screenshot({ ...options, mask, timeout }), { title: "Screenshot", timeout: options.timeout });
   }
   async ariaSnapshot(options) {
-    const result = await this._frame._channel.ariaSnapshot({ ...options, mode: options?._mode, selector: this._selector });
+    const result = await this._frame._channel.ariaSnapshot({ ...options, selector: this._selector, timeout: this._frame._timeout(options) });
     return result.snapshot;
   }
   async scrollIntoViewIfNeeded(options = {}) {
-    return await this._withElement((h, timeout) => h.scrollIntoViewIfNeeded({ ...options, timeout }), options.timeout);
+    return await this._withElement((h, timeout) => h.scrollIntoViewIfNeeded({ ...options, timeout }), { title: "Scroll into view", timeout: options.timeout });
   }
   async selectOption(values, options = {}) {
     return await this._frame.selectOption(this._selector, values, { strict: true, ...options });
   }
   async selectText(options = {}) {
-    return await this._withElement((h, timeout) => h.selectText({ ...options, timeout }), options.timeout);
+    return await this._withElement((h, timeout) => h.selectText({ ...options, timeout }), { title: "Select text", timeout: options.timeout });
   }
   async setChecked(checked, options) {
     if (checked)
@@ -280,15 +286,13 @@ class Locator {
     return await this._frame.$$eval(this._selector, (ee) => ee.map((e) => e.textContent || ""));
   }
   async waitFor(options) {
-    await this._frame._channel.waitForSelector({ selector: this._selector, strict: true, omitReturnValue: true, ...options });
+    await this._frame._channel.waitForSelector({ selector: this._selector, strict: true, omitReturnValue: true, ...options, timeout: this._frame._timeout(options) });
   }
   async _expect(expression, options) {
-    const params = { selector: this._selector, expression, ...options, isNot: !!options.isNot };
-    params.expectedValue = (0, import_jsHandle.serializeArgument)(options.expectedValue);
-    const result = await this._frame._channel.expect(params);
-    if (result.received !== void 0)
-      result.received = (0, import_jsHandle.parseResult)(result.received);
-    return result;
+    return this._frame._expect(expression, {
+      ...options,
+      selector: this._selector
+    });
   }
   _inspect() {
     return this.toString();

@@ -23,19 +23,20 @@ __export(crCoverage_exports, {
 module.exports = __toCommonJS(crCoverage_exports);
 var import_utils = require("../../utils");
 var import_eventsHelper = require("../utils/eventsHelper");
+var import_progress = require("../progress");
 class CRCoverage {
   constructor(client) {
     this._jsCoverage = new JSCoverage(client);
     this._cssCoverage = new CSSCoverage(client);
   }
-  async startJSCoverage(options) {
-    return await this._jsCoverage.start(options);
+  async startJSCoverage(progress, options) {
+    await (0, import_progress.raceUncancellableOperationWithCleanup)(progress, () => this._jsCoverage.start(options), () => this._jsCoverage.stop());
   }
   async stopJSCoverage() {
     return await this._jsCoverage.stop();
   }
-  async startCSSCoverage(options) {
-    return await this._cssCoverage.start(options);
+  async startCSSCoverage(progress, options) {
+    await (0, import_progress.raceUncancellableOperationWithCleanup)(progress, () => this._cssCoverage.start(options), () => this._cssCoverage.stop());
   }
   async stopCSSCoverage() {
     return await this._cssCoverage.stop();
@@ -92,8 +93,8 @@ class JSCoverage {
       this._scriptSources.set(event.scriptId, response.scriptSource);
   }
   async stop() {
-    (0, import_utils.assert)(this._enabled, "JSCoverage is not enabled");
-    this._enabled = false;
+    if (!this._enabled)
+      return { entries: [] };
     const [profileResponse] = await Promise.all([
       this._client.send("Profiler.takePreciseCoverage"),
       this._client.send("Profiler.stopPreciseCoverage"),
@@ -101,6 +102,7 @@ class JSCoverage {
       this._client.send("Debugger.disable")
     ]);
     import_eventsHelper.eventsHelper.removeEventListeners(this._eventListeners);
+    this._enabled = false;
     const coverage = { entries: [] };
     for (const entry of profileResponse.result) {
       if (!this._scriptIds.has(entry.scriptId))
@@ -159,14 +161,15 @@ class CSSCoverage {
     }
   }
   async stop() {
-    (0, import_utils.assert)(this._enabled, "CSSCoverage is not enabled");
-    this._enabled = false;
+    if (!this._enabled)
+      return { entries: [] };
     const ruleTrackingResponse = await this._client.send("CSS.stopRuleUsageTracking");
     await Promise.all([
       this._client.send("CSS.disable"),
       this._client.send("DOM.disable")
     ]);
     import_eventsHelper.eventsHelper.removeEventListeners(this._eventListeners);
+    this._enabled = false;
     const styleSheetIdToCoverage = /* @__PURE__ */ new Map();
     for (const entry of ruleTrackingResponse.ruleUsage) {
       let ranges = styleSheetIdToCoverage.get(entry.styleSheetId);

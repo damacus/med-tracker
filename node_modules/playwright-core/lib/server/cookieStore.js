@@ -18,6 +18,7 @@ var __copyProps = (to, from, except, desc) => {
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 var cookieStore_exports = {};
 __export(cookieStore_exports, {
+  Cookie: () => Cookie,
   CookieStore: () => CookieStore,
   domainMatches: () => domainMatches,
   parseRawCookie: () => parseRawCookie
@@ -33,7 +34,7 @@ class Cookie {
   }
   // https://datatracker.ietf.org/doc/html/rfc6265#section-5.4
   matches(url) {
-    if (this._raw.secure && (url.protocol !== "https:" && url.hostname !== "localhost"))
+    if (this._raw.secure && (url.protocol !== "https:" && !(0, import_network.isLocalHostname)(url.hostname)))
       return false;
     if (!domainMatches(url.hostname, this._raw.domain))
       return false;
@@ -198,6 +199,7 @@ function pathMatches(value, path) {
 }
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
+  Cookie,
   CookieStore,
   domainMatches,
   parseRawCookie

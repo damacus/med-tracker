@@ -26,10 +26,8 @@ var import_browserServerImpl = require("./browserServerImpl");
 var import_server = require("./server");
 var import_nodePlatform = require("./server/utils/nodePlatform");
 var import_connection = require("./client/connection");
-var import_selectors = require("./client/selectors");
 function createInProcessPlaywright() {
   const playwright = (0, import_server.createPlaywright)({ sdkLanguage: process.env.PW_LANG_NAME || "javascript" });
-  (0, import_selectors.setPlatformForSelectors)(import_nodePlatform.nodePlatform);
   const clientConnection = new import_connection.Connection(import_nodePlatform.nodePlatform);
   clientConnection.useRawBuffers();
   const dispatcherConnection = new import_server.DispatcherConnection(
@@ -45,12 +43,17 @@ function createInProcessPlaywright() {
   playwrightAPI.firefox._serverLauncher = new import_browserServerImpl.BrowserServerLauncherImpl("firefox");
   playwrightAPI.webkit._serverLauncher = new import_browserServerImpl.BrowserServerLauncherImpl("webkit");
   playwrightAPI._android._serverLauncher = new import_androidServerImpl.AndroidServerLauncherImpl();
-  playwrightAPI._bidiChromium._serverLauncher = new import_browserServerImpl.BrowserServerLauncherImpl("bidiChromium");
-  playwrightAPI._bidiFirefox._serverLauncher = new import_browserServerImpl.BrowserServerLauncherImpl("bidiFirefox");
+  playwrightAPI._bidiChromium._serverLauncher = new import_browserServerImpl.BrowserServerLauncherImpl("_bidiChromium");
+  playwrightAPI._bidiFirefox._serverLauncher = new import_browserServerImpl.BrowserServerLauncherImpl("_bidiFirefox");
   dispatcherConnection.onmessage = (message) => setImmediate(() => clientConnection.dispatch(message));
   clientConnection.onmessage = (message) => setImmediate(() => dispatcherConnection.dispatch(message));
-  clientConnection.toImpl = (x) => x ? dispatcherConnection._dispatchers.get(x._guid)._object : dispatcherConnection._dispatchers.get("");
-  playwrightAPI._toImpl = clientConnection.toImpl;
+  clientConnection.toImpl = (x) => {
+    if (x instanceof import_connection.Connection)
+      return x === clientConnection ? dispatcherConnection : void 0;
+    if (!x)
+      return dispatcherConnection._dispatcherByGuid.get("");
+    return dispatcherConnection._dispatcherByGuid.get(x._guid)._object;
+  };
   return playwrightAPI;
 }
 // Annotate the CommonJS export names for ESM import in node:

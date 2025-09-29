@@ -25,18 +25,18 @@ __export(crConnection_exports, {
   kBrowserCloseMessageId: () => kBrowserCloseMessageId
 });
 module.exports = __toCommonJS(crConnection_exports);
-var import_events = require("events");
 var import_utils = require("../../utils");
 var import_debugLogger = require("../utils/debugLogger");
 var import_helper = require("../helper");
 var import_protocolError = require("../protocolError");
+var import_instrumentation = require("../instrumentation");
 const ConnectionEvents = {
   Disconnected: Symbol("ConnectionEvents.Disconnected")
 };
 const kBrowserCloseMessageId = -9999;
-class CRConnection extends import_events.EventEmitter {
-  constructor(transport, protocolLogger, browserLogsCollector) {
-    super();
+class CRConnection extends import_instrumentation.SdkObject {
+  constructor(parent, transport, protocolLogger, browserLogsCollector) {
+    super(parent, "cr-connection");
     this._lastId = 0;
     this._sessions = /* @__PURE__ */ new Map();
     this._closed = false;
@@ -83,9 +83,9 @@ class CRConnection extends import_events.EventEmitter {
     return new CDPSession(this.rootSession, sessionId);
   }
 }
-class CRSession extends import_events.EventEmitter {
+class CRSession extends import_instrumentation.SdkObject {
   constructor(connection, parentSession, sessionId, eventListener) {
-    super();
+    super(connection, "cr-session");
     this._callbacks = /* @__PURE__ */ new Map();
     this._crashed = false;
     this._closed = false;
@@ -160,11 +160,10 @@ class CRSession extends import_events.EventEmitter {
     this._callbacks.clear();
   }
 }
-class CDPSession extends import_events.EventEmitter {
+class CDPSession extends import_instrumentation.SdkObject {
   constructor(parentSession, sessionId) {
-    super();
+    super(parentSession, "cdp-session");
     this._listeners = [];
-    this.guid = `cdp-session@${sessionId}`;
     this._session = parentSession.createChildSession(sessionId, (method, params) => this.emit(CDPSession.Events.Event, { method, params }));
     this._listeners = [import_utils.eventsHelper.addEventListener(parentSession, "Target.detachedFromTarget", (event) => {
       if (event.sessionId === sessionId)

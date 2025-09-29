@@ -60,7 +60,9 @@ class Mouse {
     await this._page._channel.mouseClick({ x, y, ...options });
   }
   async dblclick(x, y, options = {}) {
-    await this.click(x, y, { ...options, clickCount: 2 });
+    await this._page._wrapApiCall(async () => {
+      await this.click(x, y, { ...options, clickCount: 2 });
+    }, { title: "Double click" });
   }
   async wheel(deltaX, deltaY) {
     await this._page._channel.mouseWheel({ deltaX, deltaY });

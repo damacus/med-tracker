@@ -40,11 +40,11 @@ class CRServiceWorker extends import_page.Worker {
   constructor(browserContext, session, url) {
     super(browserContext, url);
     this._session = session;
-    this._browserContext = browserContext;
+    this.browserContext = browserContext;
     if (!!process.env.PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS)
       this._networkManager = new import_crNetworkManager.CRNetworkManager(null, this);
     session.once("Runtime.executionContextCreated", (event) => {
-      this._createExecutionContext(new import_crExecutionContext.CRExecutionContext(session, event.context));
+      this.createExecutionContext(new import_crExecutionContext.CRExecutionContext(session, event.context));
     });
     if (this._networkManager && this._isNetworkInspectionEnabled()) {
       this.updateRequestInterception();
@@ -75,19 +75,19 @@ class CRServiceWorker extends import_page.Worker {
   async updateOffline() {
     if (!this._isNetworkInspectionEnabled())
       return;
-    await this._networkManager?.setOffline(!!this._browserContext._options.offline).catch(() => {
+    await this._networkManager?.setOffline(!!this.browserContext._options.offline).catch(() => {
     });
   }
   async updateHttpCredentials() {
     if (!this._isNetworkInspectionEnabled())
       return;
-    await this._networkManager?.authenticate(this._browserContext._options.httpCredentials || null).catch(() => {
+    await this._networkManager?.authenticate(this.browserContext._options.httpCredentials || null).catch(() => {
     });
   }
   async updateExtraHTTPHeaders() {
     if (!this._isNetworkInspectionEnabled())
       return;
-    await this._networkManager?.setExtraHTTPHeaders(this._browserContext._options.extraHTTPHeaders || []).catch(() => {
+    await this._networkManager?.setExtraHTTPHeaders(this.browserContext._options.extraHTTPHeaders || []).catch(() => {
     });
   }
   async updateRequestInterception() {
@@ -97,29 +97,24 @@ class CRServiceWorker extends import_page.Worker {
     });
   }
   needsRequestInterception() {
-    return this._isNetworkInspectionEnabled() && !!this._browserContext._requestInterceptor;
+    return this._isNetworkInspectionEnabled() && this.browserContext.requestInterceptors.length > 0;
   }
   reportRequestFinished(request, response) {
-    this._browserContext.emit(import_browserContext.BrowserContext.Events.RequestFinished, { request, response });
+    this.browserContext.emit(import_browserContext.BrowserContext.Events.RequestFinished, { request, response });
   }
   requestFailed(request, _canceled) {
-    this._browserContext.emit(import_browserContext.BrowserContext.Events.RequestFailed, request);
+    this.browserContext.emit(import_browserContext.BrowserContext.Events.RequestFailed, request);
   }
   requestReceivedResponse(response) {
-    this._browserContext.emit(import_browserContext.BrowserContext.Events.Response, response);
+    this.browserContext.emit(import_browserContext.BrowserContext.Events.Response, response);
   }
   requestStarted(request, route) {
-    this._browserContext.emit(import_browserContext.BrowserContext.Events.Request, request);
-    if (route) {
-      const r = new network.Route(request, route);
-      if (this._browserContext._requestInterceptor?.(r, request))
-        return;
-      r.continue({ isFallback: true }).catch(() => {
-      });
-    }
+    this.browserContext.emit(import_browserContext.BrowserContext.Events.Request, request);
+    if (route)
+      new network.Route(request, route).handle(this.browserContext.requestInterceptors);
   }
   _isNetworkInspectionEnabled() {
-    return this._browserContext._options.serviceWorkers !== "block";
+    return this.browserContext._options.serviceWorkers !== "block";
   }
 }
 // Annotate the CommonJS export names for ESM import in node:

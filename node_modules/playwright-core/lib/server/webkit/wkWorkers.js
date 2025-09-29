@@ -46,15 +46,15 @@ class WKWorkers {
           });
         });
         this._workerSessions.set(event.workerId, workerSession);
-        worker._createExecutionContext(new import_wkExecutionContext.WKExecutionContext(workerSession, void 0));
-        this._page._addWorker(event.workerId, worker);
+        worker.createExecutionContext(new import_wkExecutionContext.WKExecutionContext(workerSession, void 0));
+        this._page.addWorker(event.workerId, worker);
         workerSession.on("Console.messageAdded", (event2) => this._onConsoleMessage(worker, event2));
         Promise.all([
           workerSession.send("Runtime.enable"),
           workerSession.send("Console.enable"),
           session.send("Worker.initialized", { workerId: event.workerId })
         ]).catch((e) => {
-          this._page._removeWorker(event.workerId);
+          this._page.removeWorker(event.workerId);
         });
       }),
       import_eventsHelper.eventsHelper.addEventListener(session, "Worker.dispatchMessageFromWorker", (event) => {
@@ -69,12 +69,12 @@ class WKWorkers {
           return;
         workerSession.dispose();
         this._workerSessions.delete(event.workerId);
-        this._page._removeWorker(event.workerId);
+        this._page.removeWorker(event.workerId);
       })
     ];
   }
   clear() {
-    this._page._clearWorkers();
+    this._page.clearWorkers();
     this._workerSessions.clear();
   }
   async initializeSession(session) {
@@ -88,14 +88,14 @@ class WKWorkers {
     else if (type === "timing")
       derivedType = "timeEnd";
     const handles = (parameters || []).map((p) => {
-      return (0, import_wkExecutionContext.createHandle)(worker._existingExecutionContext, p);
+      return (0, import_wkExecutionContext.createHandle)(worker.existingExecutionContext, p);
     });
     const location = {
       url: url || "",
       lineNumber: (lineNumber || 1) - 1,
       columnNumber: (columnNumber || 1) - 1
     };
-    this._page._addConsoleMessage(derivedType, handles, location, handles.length ? void 0 : text);
+    this._page.addConsoleMessage(derivedType, handles, location, handles.length ? void 0 : text);
   }
 }
 // Annotate the CommonJS export names for ESM import in node:

@@ -29,9 +29,30 @@ module.exports = __toCommonJS(language_exports);
 function generateCode(actions, languageGenerator, options) {
   const header = languageGenerator.generateHeader(options);
   const footer = languageGenerator.generateFooter(options.saveStorage);
-  const actionTexts = actions.map((a) => languageGenerator.generateAction(a)).filter(Boolean);
+  const actionTexts = actions.map((a) => generateActionText(languageGenerator, a, !!options.generateAutoExpect)).filter(Boolean);
   const text = [header, ...actionTexts, footer].join("\n");
   return { header, footer, actionTexts, text };
+}
+function generateActionText(generator, action, generateAutoExpect) {
+  let text = generator.generateAction(action);
+  if (!text)
+    return;
+  if (generateAutoExpect && action.action.preconditionSelector) {
+    const expectAction = {
+      frame: action.frame,
+      startTime: action.startTime,
+      endTime: action.startTime,
+      action: {
+        name: "assertVisible",
+        selector: action.action.preconditionSelector,
+        signals: []
+      }
+    };
+    const expectText = generator.generateAction(expectAction);
+    if (expectText)
+      text = expectText + "\n\n" + text;
+  }
+  return text;
 }
 function sanitizeDeviceOptions(device, options) {
   const cleanedOptions = {};

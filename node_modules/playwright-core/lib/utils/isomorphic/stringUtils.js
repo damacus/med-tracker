@@ -19,7 +19,6 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 var stringUtils_exports = {};
 __export(stringUtils_exports, {
   cacheNormalizedWhitespaces: () => cacheNormalizedWhitespaces,
-  cssEscape: () => cssEscape,
   escapeForAttributeSelector: () => escapeForAttributeSelector,
   escapeForTextSelector: () => escapeForTextSelector,
   escapeHTML: () => escapeHTML,
@@ -38,7 +37,6 @@ __export(stringUtils_exports, {
   trimStringWithEllipsis: () => trimStringWithEllipsis
 });
 module.exports = __toCommonJS(stringUtils_exports);
-var import_builtins = require("./builtins");
 function escapeWithQuotes(text, char = "'") {
   const stringified = JSON.stringify(text);
   const escapedText = stringified.substring(1, stringified.length - 1).replace(/\\"/g, '"');
@@ -47,7 +45,7 @@ function escapeWithQuotes(text, char = "'") {
   if (char === '"')
     return char + escapedText.replace(/["]/g, '\\"') + char;
   if (char === "`")
-    return char + escapedText.replace(/[`]/g, "`") + char;
+    return char + escapedText.replace(/[`]/g, "\\`") + char;
   throw new Error("Invalid escape char");
 }
 function escapeTemplateString(text) {
@@ -62,30 +60,12 @@ function toTitleCase(name) {
 function toSnakeCase(name) {
   return name.replace(/([a-z0-9])([A-Z])/g, "$1_$2").replace(/([A-Z])([A-Z][a-z])/g, "$1_$2").toLowerCase();
 }
-function cssEscape(s) {
-  let result = "";
-  for (let i = 0; i < s.length; i++)
-    result += cssEscapeOne(s, i);
-  return result;
-}
 function quoteCSSAttributeValue(text) {
-  return `"${cssEscape(text).replace(/\\ /g, " ")}"`;
-}
-function cssEscapeOne(s, i) {
-  const c = s.charCodeAt(i);
-  if (c === 0)
-    return "\uFFFD";
-  if (c >= 1 && c <= 31 || c >= 48 && c <= 57 && (i === 0 || i === 1 && s.charCodeAt(0) === 45))
-    return "\\" + c.toString(16) + " ";
-  if (i === 0 && c === 45 && s.length === 1)
-    return "\\" + s.charAt(i);
-  if (c >= 128 || c === 45 || c === 95 || c >= 48 && c <= 57 || c >= 65 && c <= 90 || c >= 97 && c <= 122)
-    return s.charAt(i);
-  return "\\" + s.charAt(i);
+  return `"${text.replace(/["\\]/g, (char) => "\\" + char)}"`;
 }
 let normalizedWhitespaceCache;
 function cacheNormalizedWhitespaces() {
-  normalizedWhitespaceCache = new import_builtins.Map();
+  normalizedWhitespaceCache = /* @__PURE__ */ new Map();
 }
 function normalizeWhiteSpace(text) {
   let result = normalizedWhitespaceCache?.get(text);
@@ -156,7 +136,6 @@ function longestCommonSubstring(s1, s2) {
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   cacheNormalizedWhitespaces,
-  cssEscape,
   escapeForAttributeSelector,
   escapeForTextSelector,
   escapeHTML,

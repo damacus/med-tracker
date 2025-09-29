@@ -42,7 +42,6 @@ var import_utils = require("../../../utils");
 var import_utils2 = require("../../../utils");
 var import_httpServer = require("../../utils/httpServer");
 var import_utilsBundle = require("../../../utilsBundle");
-var import_instrumentation = require("../../instrumentation");
 var import_launchApp = require("../../launchApp");
 var import_launchApp2 = require("../../launchApp");
 var import_playwright = require("../../playwright");
@@ -125,14 +124,6 @@ async function installRootRedirect(server, traceUrls, options) {
   server.routePath("/", (_, response) => {
     response.statusCode = 302;
     response.setHeader("Location", urlPath);
-    if (process.env.EXPERIMENTAL_OPENAI_API_KEY)
-      response.appendHeader("Set-Cookie", `openai_api_key=${process.env.EXPERIMENTAL_OPENAI_API_KEY}`);
-    if (process.env.OPENAI_BASE_URL)
-      response.appendHeader("Set-Cookie", `openai_base_url=${process.env.OPENAI_BASE_URL}`);
-    if (process.env.EXPERIMENTAL_ANTHROPIC_API_KEY)
-      response.appendHeader("Set-Cookie", `anthropic_api_key=${process.env.EXPERIMENTAL_ANTHROPIC_API_KEY}`);
-    if (process.env.ANTHROPIC_BASE_URL)
-      response.appendHeader("Set-Cookie", `anthropic_base_url=${process.env.ANTHROPIC_BASE_URL}`);
     response.end();
     return true;
   });
@@ -156,28 +147,28 @@ async function openTraceViewerApp(url, browserName, options) {
   const traceViewerPlaywright = (0, import_playwright.createPlaywright)({ sdkLanguage: "javascript", isInternalPlaywright: true });
   const traceViewerBrowser = (0, import_utils2.isUnderTest)() ? "chromium" : browserName;
   const { context, page } = await (0, import_launchApp2.launchApp)(traceViewerPlaywright[traceViewerBrowser], {
-    // TODO: store language in the trace.
     sdkLanguage: traceViewerPlaywright.options.sdkLanguage,
     windowSize: { width: 1280, height: 800 },
     persistentContextOptions: {
       ...options?.persistentContextOptions,
-      useWebSocket: (0, import_utils2.isUnderTest)(),
+      cdpPort: (0, import_utils2.isUnderTest)() ? 0 : void 0,
       headless: !!options?.headless,
       colorScheme: (0, import_utils2.isUnderTest)() ? "light" : void 0
     }
   });
-  const controller = new import_progress.ProgressController((0, import_instrumentation.serverSideCallMetadata)(), context._browser);
+  const controller = new import_progress.ProgressController();
   await controller.run(async (progress) => {
     await context._browser._defaultContext._loadDefaultContextAsIs(progress);
+    if (process.env.PWTEST_PRINT_WS_ENDPOINT) {
+      process.stderr.write("DevTools listening on: " + context._browser.options.wsEndpoint + "\n");
+    }
+    if (!(0, import_utils2.isUnderTest)())
+      await (0, import_launchApp.syncLocalStorageWithSettings)(page, "traceviewer");
+    if ((0, import_utils2.isUnderTest)())
+      page.on("close", () => context.close({ reason: "Trace viewer closed" }).catch(() => {
+      }));
+    await page.mainFrame().goto(progress, url);
   });
-  if (process.env.PWTEST_PRINT_WS_ENDPOINT)
-    process.stderr.write("DevTools listening on: " + context._browser.options.wsEndpoint + "\n");
-  if (!(0, import_utils2.isUnderTest)())
-    await (0, import_launchApp.syncLocalStorageWithSettings)(page, "traceviewer");
-  if ((0, import_utils2.isUnderTest)())
-    page.on("close", () => context.close({ reason: "Trace viewer closed" }).catch(() => {
-    }));
-  await page.mainFrame().goto((0, import_instrumentation.serverSideCallMetadata)(), url);
   return page;
 }
 async function openTraceInBrowser(url) {

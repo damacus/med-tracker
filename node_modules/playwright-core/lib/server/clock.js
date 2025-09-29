@@ -31,67 +31,79 @@ __export(clock_exports, {
   Clock: () => Clock
 });
 module.exports = __toCommonJS(clock_exports);
-var clockSource = __toESM(require("../generated/clockSource"));
+var rawClockSource = __toESM(require("../generated/clockSource"));
 class Clock {
   constructor(browserContext) {
-    this._scriptInstalled = false;
+    this._initScripts = [];
     this._browserContext = browserContext;
   }
-  markAsUninstalled() {
-    this._scriptInstalled = false;
+  async uninstall(progress) {
+    await progress.race(this._browserContext.removeInitScripts(this._initScripts));
+    this._initScripts = [];
   }
-  async fastForward(ticks) {
-    await this._installIfNeeded();
+  async fastForward(progress, ticks) {
+    await this._installIfNeeded(progress);
     const ticksMillis = parseTicks(ticks);
-    await this._browserContext.addInitScript(`globalThis.__pwClock.controller.log('fastForward', ${Date.now()}, ${ticksMillis})`);
-    await this._evaluateInFrames(`globalThis.__pwClock.controller.fastForward(${ticksMillis})`);
+    this._initScripts.push(await this._browserContext.addInitScript(progress, `globalThis.__pwClock.controller.log('fastForward', ${Date.now()}, ${ticksMillis})`));
+    await progress.race(this._evaluateInFrames(`globalThis.__pwClock.controller.fastForward(${ticksMillis})`));
   }
-  async install(time) {
-    await this._installIfNeeded();
+  async install(progress, time) {
+    await this._installIfNeeded(progress);
     const timeMillis = time !== void 0 ? parseTime(time) : Date.now();
-    await this._browserContext.addInitScript(`globalThis.__pwClock.controller.log('install', ${Date.now()}, ${timeMillis})`);
-    await this._evaluateInFrames(`globalThis.__pwClock.controller.install(${timeMillis})`);
+    this._initScripts.push(await this._browserContext.addInitScript(progress, `globalThis.__pwClock.controller.log('install', ${Date.now()}, ${timeMillis})`));
+    await progress.race(this._evaluateInFrames(`globalThis.__pwClock.controller.install(${timeMillis})`));
   }
-  async pauseAt(ticks) {
-    await this._installIfNeeded();
+  async pauseAt(progress, ticks) {
+    await this._installIfNeeded(progress);
     const timeMillis = parseTime(ticks);
-    await this._browserContext.addInitScript(`globalThis.__pwClock.controller.log('pauseAt', ${Date.now()}, ${timeMillis})`);
-    await this._evaluateInFrames(`globalThis.__pwClock.controller.pauseAt(${timeMillis})`);
+    this._initScripts.push(await this._browserContext.addInitScript(progress, `globalThis.__pwClock.controller.log('pauseAt', ${Date.now()}, ${timeMillis})`));
+    await progress.race(this._evaluateInFrames(`globalThis.__pwClock.controller.pauseAt(${timeMillis})`));
   }
-  async resume() {
-    await this._installIfNeeded();
-    await this._browserContext.addInitScript(`globalThis.__pwClock.controller.log('resume', ${Date.now()})`);
-    await this._evaluateInFrames(`globalThis.__pwClock.controller.resume()`);
-  }
-  async setFixedTime(time) {
-    await this._installIfNeeded();
-    const timeMillis = parseTime(time);
-    await this._browserContext.addInitScript(`globalThis.__pwClock.controller.log('setFixedTime', ${Date.now()}, ${timeMillis})`);
-    await this._evaluateInFrames(`globalThis.__pwClock.controller.setFixedTime(${timeMillis})`);
-  }
-  async setSystemTime(time) {
-    await this._installIfNeeded();
-    const timeMillis = parseTime(time);
-    await this._browserContext.addInitScript(`globalThis.__pwClock.controller.log('setSystemTime', ${Date.now()}, ${timeMillis})`);
-    await this._evaluateInFrames(`globalThis.__pwClock.controller.setSystemTime(${timeMillis})`);
-  }
-  async runFor(ticks) {
-    await this._installIfNeeded();
-    const ticksMillis = parseTicks(ticks);
-    await this._browserContext.addInitScript(`globalThis.__pwClock.controller.log('runFor', ${Date.now()}, ${ticksMillis})`);
-    await this._evaluateInFrames(`globalThis.__pwClock.controller.runFor(${ticksMillis})`);
-  }
-  async _installIfNeeded() {
-    if (this._scriptInstalled)
+  resumeNoReply() {
+    if (!this._initScripts.length)
       return;
-    this._scriptInstalled = true;
+    const doResume = async () => {
+      this._initScripts.push(await this._browserContext.addInitScript(void 0, `globalThis.__pwClock.controller.log('resume', ${Date.now()})`));
+      await this._evaluateInFrames(`globalThis.__pwClock.controller.resume()`);
+    };
+    doResume().catch(() => {
+    });
+  }
+  async resume(progress) {
+    await this._installIfNeeded(progress);
+    this._initScripts.push(await this._browserContext.addInitScript(progress, `globalThis.__pwClock.controller.log('resume', ${Date.now()})`));
+    await progress.race(this._evaluateInFrames(`globalThis.__pwClock.controller.resume()`));
+  }
+  async setFixedTime(progress, time) {
+    await this._installIfNeeded(progress);
+    const timeMillis = parseTime(time);
+    this._initScripts.push(await this._browserContext.addInitScript(progress, `globalThis.__pwClock.controller.log('setFixedTime', ${Date.now()}, ${timeMillis})`));
+    await progress.race(this._evaluateInFrames(`globalThis.__pwClock.controller.setFixedTime(${timeMillis})`));
+  }
+  async setSystemTime(progress, time) {
+    await this._installIfNeeded(progress);
+    const timeMillis = parseTime(time);
+    this._initScripts.push(await this._browserContext.addInitScript(progress, `globalThis.__pwClock.controller.log('setSystemTime', ${Date.now()}, ${timeMillis})`));
+    await progress.race(this._evaluateInFrames(`globalThis.__pwClock.controller.setSystemTime(${timeMillis})`));
+  }
+  async runFor(progress, ticks) {
+    await this._installIfNeeded(progress);
+    const ticksMillis = parseTicks(ticks);
+    this._initScripts.push(await this._browserContext.addInitScript(progress, `globalThis.__pwClock.controller.log('runFor', ${Date.now()}, ${ticksMillis})`));
+    await progress.race(this._evaluateInFrames(`globalThis.__pwClock.controller.runFor(${ticksMillis})`));
+  }
+  async _installIfNeeded(progress) {
+    if (this._initScripts.length)
+      return;
     const script = `(() => {
       const module = {};
-      ${clockSource.source}
-      globalThis.__pwClock = (module.exports.inject())(globalThis);
+      ${rawClockSource.source}
+      if (!globalThis.__pwClock)
+        globalThis.__pwClock = (module.exports.inject())(globalThis);
     })();`;
-    await this._browserContext.addInitScript(script);
-    await this._evaluateInFrames(script);
+    const initScript = await this._browserContext.addInitScript(progress, script);
+    await progress.race(this._evaluateInFrames(script));
+    this._initScripts.push(initScript);
   }
   async _evaluateInFrames(script) {
     await this._browserContext.safeNonStallingEvaluateInAllFrames(script, "main", { throwOnJSErrors: true });

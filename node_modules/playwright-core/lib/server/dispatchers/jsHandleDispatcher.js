@@ -35,29 +35,34 @@ class JSHandleDispatcher extends import_dispatcher.Dispatcher {
     this._type_JSHandle = true;
     jsHandle._setPreviewCallback((preview) => this._dispatchEvent("previewUpdated", { preview }));
   }
-  async evaluateExpression(params) {
-    return { value: serializeResult(await this._object.evaluateExpression(params.expression, { isFunction: params.isFunction }, parseArgument(params.arg))) };
+  static fromJSHandle(scope, handle) {
+    return scope.connection.existingDispatcher(handle) || new JSHandleDispatcher(scope, handle);
   }
-  async evaluateExpressionHandle(params) {
-    const jsHandle = await this._object.evaluateExpressionHandle(params.expression, { isFunction: params.isFunction }, parseArgument(params.arg));
-    return { handle: import_elementHandlerDispatcher.ElementHandleDispatcher.fromJSHandle(this.parentScope(), jsHandle) };
+  async evaluateExpression(params, progress) {
+    const jsHandle = await progress.race(this._object.evaluateExpression(params.expression, { isFunction: params.isFunction }, parseArgument(params.arg)));
+    return { value: serializeResult(jsHandle) };
   }
-  async getProperty(params) {
-    const jsHandle = await this._object.getProperty(params.name);
-    return { handle: import_elementHandlerDispatcher.ElementHandleDispatcher.fromJSHandle(this.parentScope(), jsHandle) };
+  async evaluateExpressionHandle(params, progress) {
+    const jsHandle = await progress.race(this._object.evaluateExpressionHandle(params.expression, { isFunction: params.isFunction }, parseArgument(params.arg)));
+    return { handle: import_elementHandlerDispatcher.ElementHandleDispatcher.fromJSOrElementHandle(this.parentScope(), jsHandle) };
   }
-  async getPropertyList() {
-    const map = await this._object.getProperties();
+  async getProperty(params, progress) {
+    const jsHandle = await progress.race(this._object.getProperty(params.name));
+    return { handle: import_elementHandlerDispatcher.ElementHandleDispatcher.fromJSOrElementHandle(this.parentScope(), jsHandle) };
+  }
+  async getPropertyList(params, progress) {
+    const map = await progress.race(this._object.getProperties());
     const properties = [];
-    for (const [name, value] of map)
-      properties.push({ name, value: import_elementHandlerDispatcher.ElementHandleDispatcher.fromJSHandle(this.parentScope(), value) });
+    for (const [name, value] of map) {
+      properties.push({ name, value: import_elementHandlerDispatcher.ElementHandleDispatcher.fromJSOrElementHandle(this.parentScope(), value) });
+    }
     return { properties };
   }
-  async jsonValue() {
-    return { value: serializeResult(await this._object.jsonValue()) };
+  async jsonValue(params, progress) {
+    return { value: serializeResult(await progress.race(this._object.jsonValue())) };
   }
-  async dispose(_, metadata) {
-    metadata.potentiallyClosesScope = true;
+  async dispose(_, progress) {
+    progress.metadata.potentiallyClosesScope = true;
     this._object.dispose();
     this._dispose();
   }

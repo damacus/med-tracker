@@ -43,29 +43,29 @@ class RawKeyboardImpl {
   setSession(session) {
     this._session = session;
   }
-  async keydown(modifiers, keyName, description, autoRepeat) {
+  async keydown(progress, modifiers, keyName, description, autoRepeat) {
     keyName = (0, import_input.resolveSmartModifierString)(keyName);
     const actions = [];
     actions.push({ type: "keyDown", value: (0, import_bidiKeyboard.getBidiKeyValue)(keyName) });
-    await this._performActions(actions);
+    await this._performActions(progress, actions);
   }
-  async keyup(modifiers, keyName, description) {
+  async keyup(progress, modifiers, keyName, description) {
     keyName = (0, import_input.resolveSmartModifierString)(keyName);
     const actions = [];
     actions.push({ type: "keyUp", value: (0, import_bidiKeyboard.getBidiKeyValue)(keyName) });
-    await this._performActions(actions);
+    await this._performActions(progress, actions);
   }
-  async sendText(text) {
+  async sendText(progress, text) {
     const actions = [];
     for (const char of text) {
       const value = (0, import_bidiKeyboard.getBidiKeyValue)(char);
       actions.push({ type: "keyDown", value });
       actions.push({ type: "keyUp", value });
     }
-    await this._performActions(actions);
+    await this._performActions(progress, actions);
   }
-  async _performActions(actions) {
-    await this._session.send("input.performActions", {
+  async _performActions(progress, actions) {
+    await progress.race(this._session.send("input.performActions", {
       context: this._session.sessionId,
       actions: [
         {
@@ -74,26 +74,26 @@ class RawKeyboardImpl {
           actions
         }
       ]
-    });
+    }));
   }
 }
 class RawMouseImpl {
   constructor(session) {
     this._session = session;
   }
-  async move(x, y, button, buttons, modifiers, forClick) {
-    await this._performActions([{ type: "pointerMove", x, y }]);
+  async move(progress, x, y, button, buttons, modifiers, forClick) {
+    await this._performActions(progress, [{ type: "pointerMove", x, y }]);
   }
-  async down(x, y, button, buttons, modifiers, clickCount) {
-    await this._performActions([{ type: "pointerDown", button: toBidiButton(button) }]);
+  async down(progress, x, y, button, buttons, modifiers, clickCount) {
+    await this._performActions(progress, [{ type: "pointerDown", button: toBidiButton(button) }]);
   }
-  async up(x, y, button, buttons, modifiers, clickCount) {
-    await this._performActions([{ type: "pointerUp", button: toBidiButton(button) }]);
+  async up(progress, x, y, button, buttons, modifiers, clickCount) {
+    await this._performActions(progress, [{ type: "pointerUp", button: toBidiButton(button) }]);
   }
-  async wheel(x, y, buttons, modifiers, deltaX, deltaY) {
+  async wheel(progress, x, y, buttons, modifiers, deltaX, deltaY) {
     x = Math.floor(x);
     y = Math.floor(y);
-    await this._session.send("input.performActions", {
+    await progress.race(this._session.send("input.performActions", {
       context: this._session.sessionId,
       actions: [
         {
@@ -102,10 +102,10 @@ class RawMouseImpl {
           actions: [{ type: "scroll", x, y, deltaX, deltaY }]
         }
       ]
-    });
+    }));
   }
-  async _performActions(actions) {
-    await this._session.send("input.performActions", {
+  async _performActions(progress, actions) {
+    await progress.race(this._session.send("input.performActions", {
       context: this._session.sessionId,
       actions: [
         {
@@ -117,14 +117,14 @@ class RawMouseImpl {
           actions
         }
       ]
-    });
+    }));
   }
 }
 class RawTouchscreenImpl {
   constructor(session) {
     this._session = session;
   }
-  async tap(x, y, modifiers) {
+  async tap(progress, x, y, modifiers) {
   }
 }
 function toBidiButton(button) {

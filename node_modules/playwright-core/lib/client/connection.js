@@ -42,7 +42,6 @@ var import_localUtils = require("./localUtils");
 var import_network = require("./network");
 var import_page = require("./page");
 var import_playwright = require("./playwright");
-var import_selectors = require("./selectors");
 var import_stream = require("./stream");
 var import_tracing = require("./tracing");
 var import_worker = require("./worker");
@@ -104,7 +103,7 @@ class Connection extends import_eventEmitter.EventEmitter {
     else
       this._tracingCount--;
   }
-  async sendMessageToServer(object, method, params, apiName, frames, stepId) {
+  async sendMessageToServer(object, method, params, options) {
     if (this._closedError)
       throw this._closedError;
     if (object._wasCollected)
@@ -116,13 +115,13 @@ class Connection extends import_eventEmitter.EventEmitter {
     if (this._platform.isLogEnabled("channel")) {
       this._platform.log("channel", "SEND> " + JSON.stringify(message));
     }
-    const location = frames[0] ? { file: frames[0].file, line: frames[0].line, column: frames[0].column } : void 0;
-    const metadata = { apiName, location, internal: !apiName, stepId };
-    if (this._tracingCount && frames && type !== "LocalUtils")
-      this._localUtils?.addStackToTracingNoReply({ callData: { stack: frames, id } }).catch(() => {
+    const location = options.frames?.[0] ? { file: options.frames[0].file, line: options.frames[0].line, column: options.frames[0].column } : void 0;
+    const metadata = { title: options.title, location, internal: options.internal, stepId: options.stepId };
+    if (this._tracingCount && options.frames && type !== "LocalUtils")
+      this._localUtils?.addStackToTracingNoReply({ callData: { stack: options.frames ?? [], id } }).catch(() => {
       });
     this._platform.zones.empty.run(() => this.onmessage({ ...message, metadata }));
-    return await new Promise((resolve, reject) => this._callbacks.set(id, { resolve, reject, apiName, type, method }));
+    return await new Promise((resolve, reject) => this._callbacks.set(id, { resolve, reject, title: options.title, type, method }));
   }
   _validatorFromWireContext() {
     return {
@@ -276,9 +275,6 @@ class Connection extends import_eventEmitter.EventEmitter {
         break;
       case "Stream":
         result = new import_stream.Stream(parent, type, guid, initializer);
-        break;
-      case "Selectors":
-        result = new import_selectors.SelectorsOwner(parent, type, guid, initializer);
         break;
       case "SocksSupport":
         result = new DummyChannelOwner(parent, type, guid, initializer);

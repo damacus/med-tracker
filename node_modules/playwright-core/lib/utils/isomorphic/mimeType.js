@@ -23,7 +23,6 @@ __export(mimeType_exports, {
   isTextualMimeType: () => isTextualMimeType
 });
 module.exports = __toCommonJS(mimeType_exports);
-var import_builtins = require("./builtins");
 function isJsonMimeType(mimeType) {
   return !!mimeType.match(/^(application\/json|application\/.*?\+json|text\/(x-)?json)(;\s*charset=.*)?$/);
 }
@@ -37,7 +36,7 @@ function getMimeTypeForPath(path) {
   const extension = path.substring(dotIndex + 1);
   return types.get(extension) || null;
 }
-const types = new import_builtins.Map([
+const types = /* @__PURE__ */ new Map([
   ["ez", "application/andrew-inset"],
   ["aw", "application/applixware"],
   ["atom", "application/atom+xml"],

@@ -46,35 +46,26 @@ class DebugControllerDispatcher extends import_dispatcher.Dispatcher {
       })
     ];
   }
-  async initialize(params) {
+  async initialize(params, progress) {
     this._object.initialize(params.codegenId, params.sdkLanguage);
   }
-  async setReportStateChanged(params) {
+  async setReportStateChanged(params, progress) {
     this._object.setReportStateChanged(params.enabled);
   }
-  async resetForReuse() {
-    await this._object.resetForReuse();
+  async setRecorderMode(params, progress) {
+    await this._object.setRecorderMode(progress, params);
   }
-  async navigate(params) {
-    await this._object.navigate(params.url);
+  async highlight(params, progress) {
+    await this._object.highlight(progress, params);
   }
-  async setRecorderMode(params) {
-    await this._object.setRecorderMode(params);
+  async hideHighlight(params, progress) {
+    await this._object.hideHighlight(progress);
   }
-  async highlight(params) {
-    await this._object.highlight(params);
+  async resume(params, progress) {
+    await this._object.resume(progress);
   }
-  async hideHighlight() {
-    await this._object.hideHighlight();
-  }
-  async resume() {
-    await this._object.resume();
-  }
-  async kill() {
-    await this._object.kill();
-  }
-  async closeAllBrowsers() {
-    await this._object.closeAllBrowsers();
+  async kill(params, progress) {
+    this._object.kill();
   }
   _onDispose() {
     import_utils.eventsHelper.removeEventListeners(this._listeners);

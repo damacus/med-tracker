@@ -18,13 +18,10 @@ var __copyProps = (to, from, except, desc) => {
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 var timeoutSettings_exports = {};
 __export(timeoutSettings_exports, {
-  DEFAULT_LAUNCH_TIMEOUT: () => DEFAULT_LAUNCH_TIMEOUT,
-  DEFAULT_TIMEOUT: () => DEFAULT_TIMEOUT,
   TimeoutSettings: () => TimeoutSettings
 });
 module.exports = __toCommonJS(timeoutSettings_exports);
-const DEFAULT_TIMEOUT = 3e4;
-const DEFAULT_LAUNCH_TIMEOUT = 3 * 60 * 1e3;
+var import_time = require("../utils/isomorphic/time");
 class TimeoutSettings {
   constructor(platform, parent) {
     this._parent = parent;
@@ -53,7 +50,7 @@ class TimeoutSettings {
       return this._defaultTimeout;
     if (this._parent)
       return this._parent.navigationTimeout(options);
-    return DEFAULT_TIMEOUT;
+    return import_time.DEFAULT_PLAYWRIGHT_TIMEOUT;
   }
   timeout(options) {
     if (typeof options.timeout === "number")
@@ -64,12 +61,19 @@ class TimeoutSettings {
       return this._defaultTimeout;
     if (this._parent)
       return this._parent.timeout(options);
-    return DEFAULT_TIMEOUT;
+    return import_time.DEFAULT_PLAYWRIGHT_TIMEOUT;
+  }
+  launchTimeout(options) {
+    if (typeof options.timeout === "number")
+      return options.timeout;
+    if (this._platform.isDebugMode())
+      return 0;
+    if (this._parent)
+      return this._parent.launchTimeout(options);
+    return import_time.DEFAULT_PLAYWRIGHT_LAUNCH_TIMEOUT;
   }
 }
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
-  DEFAULT_LAUNCH_TIMEOUT,
-  DEFAULT_TIMEOUT,
   TimeoutSettings
 });

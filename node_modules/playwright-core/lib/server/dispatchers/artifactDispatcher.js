@@ -48,15 +48,15 @@ class ArtifactDispatcher extends import_dispatcher.Dispatcher {
   static fromNullable(parentScope, artifact) {
     if (!artifact)
       return void 0;
-    const result = (0, import_dispatcher.existingDispatcher)(artifact);
+    const result = parentScope.connection.existingDispatcher(artifact);
     return result || new ArtifactDispatcher(parentScope, artifact);
   }
-  async pathAfterFinished() {
-    const path = await this._object.localPathAfterFinished();
+  async pathAfterFinished(params, progress) {
+    const path = await progress.race(this._object.localPathAfterFinished());
     return { value: path };
   }
-  async saveAs(params) {
-    return await new Promise((resolve, reject) => {
+  async saveAs(params, progress) {
+    return await progress.race(new Promise((resolve, reject) => {
       this._object.saveAs(async (localPath, error) => {
         if (error) {
           reject(error);
@@ -70,10 +70,10 @@ class ArtifactDispatcher extends import_dispatcher.Dispatcher {
           reject(e);
         }
       });
-    });
+    }));
   }
-  async saveAsStream() {
-    return await new Promise((resolve, reject) => {
+  async saveAsStream(params, progress) {
+    return await progress.race(new Promise((resolve, reject) => {
       this._object.saveAs(async (localPath, error) => {
         if (error) {
           reject(error);
@@ -92,23 +92,23 @@ class ArtifactDispatcher extends import_dispatcher.Dispatcher {
           reject(e);
         }
       });
-    });
+    }));
   }
-  async stream() {
-    const fileName = await this._object.localPathAfterFinished();
+  async stream(params, progress) {
+    const fileName = await progress.race(this._object.localPathAfterFinished());
     const readable = import_fs.default.createReadStream(fileName, { highWaterMark: 1024 * 1024 });
     return { stream: new import_streamDispatcher.StreamDispatcher(this, readable) };
   }
-  async failure() {
-    const error = await this._object.failureError();
+  async failure(params, progress) {
+    const error = await progress.race(this._object.failureError());
     return { error: error || void 0 };
   }
-  async cancel() {
-    await this._object.cancel();
+  async cancel(params, progress) {
+    await progress.race(this._object.cancel());
   }
-  async delete(_, metadata) {
-    metadata.potentiallyClosesScope = true;
-    await this._object.delete();
+  async delete(params, progress) {
+    progress.metadata.potentiallyClosesScope = true;
+    await progress.race(this._object.delete());
     this._dispose();
   }
 }

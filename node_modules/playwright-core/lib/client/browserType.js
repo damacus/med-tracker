@@ -31,6 +31,7 @@ var import_headers = require("../utils/isomorphic/headers");
 var import_time = require("../utils/isomorphic/time");
 var import_timeoutRunner = require("../utils/isomorphic/timeoutRunner");
 var import_webSocket = require("./webSocket");
+var import_timeoutSettings = require("./timeoutSettings");
 class BrowserType extends import_channelOwner.ChannelOwner {
   constructor() {
     super(...arguments);
@@ -56,11 +57,12 @@ class BrowserType extends import_channelOwner.ChannelOwner {
       ...options,
       ignoreDefaultArgs: Array.isArray(options.ignoreDefaultArgs) ? options.ignoreDefaultArgs : void 0,
       ignoreAllDefaultArgs: !!options.ignoreDefaultArgs && !Array.isArray(options.ignoreDefaultArgs),
-      env: options.env ? (0, import_clientHelper.envObjectToArray)(options.env) : void 0
+      env: options.env ? (0, import_clientHelper.envObjectToArray)(options.env) : void 0,
+      timeout: new import_timeoutSettings.TimeoutSettings(this._platform).launchTimeout(options)
     };
     return await this._wrapApiCall(async () => {
       const browser = import_browser.Browser.from((await this._channel.launch(launchOptions)).browser);
-      this._didLaunchBrowser(browser, options, logger);
+      browser._connectToBrowserType(this, options, logger);
       return browser;
     });
   }
@@ -73,7 +75,11 @@ class BrowserType extends import_channelOwner.ChannelOwner {
   async launchPersistentContext(userDataDir, options = {}) {
     const logger = options.logger || this._playwright._defaultLaunchOptions?.logger;
     (0, import_assert.assert)(!options.port, "Cannot specify a port without launching as a server.");
-    options = { ...this._playwright._defaultLaunchOptions, ...this._playwright._defaultContextOptions, ...options };
+    options = this._playwright.selectors._withSelectorOptions({
+      ...this._playwright._defaultLaunchOptions,
+      ...this._playwright._defaultContextOptions,
+      ...options
+    });
     const contextParams = await (0, import_browserContext.prepareBrowserContextParams)(this._platform, options);
     const persistentParams = {
       ...contextParams,
@@ -81,14 +87,19 @@ class BrowserType extends import_channelOwner.ChannelOwner {
       ignoreAllDefaultArgs: !!options.ignoreDefaultArgs && !Array.isArray(options.ignoreDefaultArgs),
       env: options.env ? (0, import_clientHelper.envObjectToArray)(options.env) : void 0,
       channel: options.channel,
-      userDataDir: this._platform.path().isAbsolute(userDataDir) || !userDataDir ? userDataDir : this._platform.path().resolve(userDataDir)
+      userDataDir: this._platform.path().isAbsolute(userDataDir) || !userDataDir ? userDataDir : this._platform.path().resolve(userDataDir),
+      timeout: new import_timeoutSettings.TimeoutSettings(this._platform).launchTimeout(options)
     };
-    return await this._wrapApiCall(async () => {
+    const context = await this._wrapApiCall(async () => {
       const result = await this._channel.launchPersistentContext(persistentParams);
-      const context = import_browserContext.BrowserContext.from(result.context);
-      await this._didCreateContext(context, contextParams, options, logger);
-      return context;
+      const browser = import_browser.Browser.from(result.browser);
+      browser._connectToBrowserType(this, options, logger);
+      const context2 = import_browserContext.BrowserContext.from(result.context);
+      await context2._initializeHarFromOptions(options.recordHar);
+      return context2;
     });
+    await this._instrumentation.runAfterCreateBrowserContext(context);
+    return context;
   }
   async connect(optionsOrWsEndpoint, options) {
     if (typeof optionsOrWsEndpoint === "string")
@@ -106,7 +117,7 @@ class BrowserType extends import_channelOwner.ChannelOwner {
         headers,
         exposeNetwork: params.exposeNetwork ?? params._exposeNetwork,
         slowMo: params.slowMo,
-        timeout: params.timeout
+        timeout: params.timeout || 0
       };
       if (params.__testHookRedirectPortForwarding)
         connectParams.socksProxyRedirectPortForTest = params.__testHookRedirectPortForwarding;
@@ -128,9 +139,9 @@ class BrowserType extends import_channelOwner.ChannelOwner {
           connection.close();
           throw new Error("Malformed endpoint. Did you use BrowserType.launchServer method?");
         }
-        playwright._setSelectors(this._playwright.selectors);
+        playwright.selectors = this._playwright.selectors;
         browser = import_browser.Browser.from(playwright._initializer.preLaunchedBrowser);
-        this._didLaunchBrowser(browser, {}, logger);
+        browser._connectToBrowserType(this, {}, logger);
         browser._shouldCloseConnectionOnClose = true;
         browser.on(import_events.Events.Browser.Disconnected, () => connection.close());
         return browser;
@@ -158,33 +169,13 @@ class BrowserType extends import_channelOwner.ChannelOwner {
       endpointURL,
       headers,
       slowMo: params.slowMo,
-      timeout: params.timeout
+      timeout: new import_timeoutSettings.TimeoutSettings(this._platform).timeout(params)
     });
     const browser = import_browser.Browser.from(result.browser);
-    this._didLaunchBrowser(browser, {}, params.logger);
+    browser._connectToBrowserType(this, {}, params.logger);
     if (result.defaultContext)
-      await this._didCreateContext(import_browserContext.BrowserContext.from(result.defaultContext), {}, {}, params.logger);
+      await this._instrumentation.runAfterCreateBrowserContext(import_browserContext.BrowserContext.from(result.defaultContext));
     return browser;
-  }
-  _didLaunchBrowser(browser, browserOptions, logger) {
-    browser._browserType = this;
-    browser._options = browserOptions;
-    browser._logger = logger;
-  }
-  async _didCreateContext(context, contextOptions, browserOptions, logger) {
-    context._logger = logger;
-    context._browserType = this;
-    this._contexts.add(context);
-    context._setOptions(contextOptions, browserOptions);
-    if (this._playwright._defaultContextTimeout !== void 0)
-      context.setDefaultTimeout(this._playwright._defaultContextTimeout);
-    if (this._playwright._defaultContextNavigationTimeout !== void 0)
-      context.setDefaultNavigationTimeout(this._playwright._defaultContextNavigationTimeout);
-    await this._instrumentation.runAfterCreateBrowserContext(context);
-  }
-  async _willCloseContext(context) {
-    this._contexts.delete(context);
-    await this._instrumentation.runBeforeCloseBrowserContext(context);
   }
 }
 // Annotate the CommonJS export names for ESM import in node:

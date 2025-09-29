@@ -55,7 +55,7 @@ async function prepareFilesForUpload(frame, params) {
       (0, import_assert.assert)(import_path.default.isAbsolute(p) && import_path.default.resolve(p) === p, "Paths provided to localPaths must be absolute and fully resolved.");
   }
   let fileBuffers = payloads;
-  if (!frame._page._browserContext._browser._isCollocatedWithServer) {
+  if (!frame._page.browserContext._browser._isCollocatedWithServer) {
     if (localPaths) {
       if (await filesExceedUploadLimit(localPaths))
         throw new Error("Cannot transfer files larger than 50Mb to a browser not co-located with the server");

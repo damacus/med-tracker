@@ -31,32 +31,44 @@ var import_dispatcher = require("./dispatcher");
 var import_electronDispatcher = require("./electronDispatcher");
 var import_localUtilsDispatcher = require("./localUtilsDispatcher");
 var import_networkDispatchers = require("./networkDispatchers");
-var import_selectorsDispatcher = require("./selectorsDispatcher");
-var import_crypto = require("../utils/crypto");
+var import_instrumentation = require("../instrumentation");
 var import_eventsHelper = require("../utils/eventsHelper");
 class PlaywrightDispatcher extends import_dispatcher.Dispatcher {
-  constructor(scope, playwright, socksProxy, preLaunchedBrowser, prelaunchedAndroidDevice) {
-    const browserDispatcher = preLaunchedBrowser ? new import_browserDispatcher.ConnectedBrowserDispatcher(scope, preLaunchedBrowser) : void 0;
+  constructor(scope, playwright, options = {}) {
+    const denyLaunch = options.denyLaunch ?? false;
+    const chromium = new import_browserTypeDispatcher.BrowserTypeDispatcher(scope, playwright.chromium, denyLaunch);
+    const firefox = new import_browserTypeDispatcher.BrowserTypeDispatcher(scope, playwright.firefox, denyLaunch);
+    const webkit = new import_browserTypeDispatcher.BrowserTypeDispatcher(scope, playwright.webkit, denyLaunch);
+    const _bidiChromium = new import_browserTypeDispatcher.BrowserTypeDispatcher(scope, playwright._bidiChromium, denyLaunch);
+    const _bidiFirefox = new import_browserTypeDispatcher.BrowserTypeDispatcher(scope, playwright._bidiFirefox, denyLaunch);
     const android = new import_androidDispatcher.AndroidDispatcher(scope, playwright.android);
-    const prelaunchedAndroidDeviceDispatcher = prelaunchedAndroidDevice ? new import_androidDispatcher2.AndroidDeviceDispatcher(android, prelaunchedAndroidDevice) : void 0;
-    super(scope, playwright, "Playwright", {
-      chromium: new import_browserTypeDispatcher.BrowserTypeDispatcher(scope, playwright.chromium),
-      firefox: new import_browserTypeDispatcher.BrowserTypeDispatcher(scope, playwright.firefox),
-      webkit: new import_browserTypeDispatcher.BrowserTypeDispatcher(scope, playwright.webkit),
-      bidiChromium: new import_browserTypeDispatcher.BrowserTypeDispatcher(scope, playwright.bidiChromium),
-      bidiFirefox: new import_browserTypeDispatcher.BrowserTypeDispatcher(scope, playwright.bidiFirefox),
+    const initializer = {
+      chromium,
+      firefox,
+      webkit,
+      _bidiChromium,
+      _bidiFirefox,
       android,
-      electron: new import_electronDispatcher.ElectronDispatcher(scope, playwright.electron),
+      electron: new import_electronDispatcher.ElectronDispatcher(scope, playwright.electron, denyLaunch),
       utils: playwright.options.isServer ? void 0 : new import_localUtilsDispatcher.LocalUtilsDispatcher(scope, playwright),
-      selectors: new import_selectorsDispatcher.SelectorsDispatcher(scope, browserDispatcher?.selectors || playwright.selectors),
-      preLaunchedBrowser: browserDispatcher,
-      preConnectedAndroidDevice: prelaunchedAndroidDeviceDispatcher,
-      socksSupport: socksProxy ? new SocksSupportDispatcher(scope, socksProxy) : void 0
-    });
+      socksSupport: options.socksProxy ? new SocksSupportDispatcher(scope, playwright, options.socksProxy) : void 0
+    };
+    let browserDispatcher;
+    if (options.preLaunchedBrowser) {
+      const browserTypeDispatcher = initializer[options.preLaunchedBrowser.options.name];
+      browserDispatcher = new import_browserDispatcher.BrowserDispatcher(browserTypeDispatcher, options.preLaunchedBrowser, {
+        ignoreStopAndKill: true,
+        isolateContexts: !options.sharedBrowser
+      });
+      initializer.preLaunchedBrowser = browserDispatcher;
+    }
+    if (options.preLaunchedAndroidDevice)
+      initializer.preConnectedAndroidDevice = new import_androidDispatcher2.AndroidDeviceDispatcher(android, options.preLaunchedAndroidDevice);
+    super(scope, playwright, "Playwright", initializer);
     this._type_Playwright = true;
     this._browserDispatcher = browserDispatcher;
   }
-  async newRequest(params) {
+  async newRequest(params, progress) {
     const request = new import_fetch.GlobalAPIRequestContext(this._object, params);
     return { request: import_networkDispatchers.APIRequestContextDispatcher.from(this.parentScope(), request) };
   }
@@ -65,8 +77,8 @@ class PlaywrightDispatcher extends import_dispatcher.Dispatcher {
   }
 }
 class SocksSupportDispatcher extends import_dispatcher.Dispatcher {
-  constructor(scope, socksProxy) {
-    super(scope, { guid: "socksSupport@" + (0, import_crypto.createGuid)() }, "SocksSupport", {});
+  constructor(scope, parent, socksProxy) {
+    super(scope, new import_instrumentation.SdkObject(parent, "socksSupport"), "SocksSupport", {});
     this._type_SocksSupport = true;
     this._socksProxy = socksProxy;
     this._socksListeners = [
@@ -75,19 +87,19 @@ class SocksSupportDispatcher extends import_dispatcher.Dispatcher {
       import_eventsHelper.eventsHelper.addEventListener(socksProxy, import_socksProxy.SocksProxy.Events.SocksClosed, (payload) => this._dispatchEvent("socksClosed", payload))
     ];
   }
-  async socksConnected(params) {
+  async socksConnected(params, progress) {
     this._socksProxy?.socketConnected(params);
   }
-  async socksFailed(params) {
+  async socksFailed(params, progress) {
     this._socksProxy?.socketFailed(params);
   }
-  async socksData(params) {
+  async socksData(params, progress) {
     this._socksProxy?.sendSocketData(params);
   }
-  async socksError(params) {
+  async socksError(params, progress) {
     this._socksProxy?.sendSocketError(params);
   }
-  async socksEnd(params) {
+  async socksEnd(params, progress) {
     this._socksProxy?.sendSocketEnd(params);
   }
   _onDispose() {

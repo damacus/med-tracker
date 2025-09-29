@@ -33,33 +33,39 @@ __export(writableStreamDispatcher_exports, {
 module.exports = __toCommonJS(writableStreamDispatcher_exports);
 var import_fs = __toESM(require("fs"));
 var import_dispatcher = require("./dispatcher");
-var import_crypto = require("../utils/crypto");
+var import_instrumentation = require("../instrumentation");
+class WritableStreamSdkObject extends import_instrumentation.SdkObject {
+  constructor(parent, streamOrDirectory, lastModifiedMs) {
+    super(parent, "stream");
+    this.streamOrDirectory = streamOrDirectory;
+    this.lastModifiedMs = lastModifiedMs;
+  }
+}
 class WritableStreamDispatcher extends import_dispatcher.Dispatcher {
   constructor(scope, streamOrDirectory, lastModifiedMs) {
-    super(scope, { guid: "writableStream@" + (0, import_crypto.createGuid)(), streamOrDirectory }, "WritableStream", {});
+    super(scope, new WritableStreamSdkObject(scope._object, streamOrDirectory, lastModifiedMs), "WritableStream", {});
     this._type_WritableStream = true;
-    this._lastModifiedMs = lastModifiedMs;
   }
-  async write(params) {
+  async write(params, progress) {
     if (typeof this._object.streamOrDirectory === "string")
       throw new Error("Cannot write to a directory");
     const stream = this._object.streamOrDirectory;
-    await new Promise((fulfill, reject) => {
+    await progress.race(new Promise((fulfill, reject) => {
       stream.write(params.binary, (error) => {
         if (error)
           reject(error);
         else
           fulfill();
       });
-    });
+    }));
   }
-  async close() {
+  async close(params, progress) {
     if (typeof this._object.streamOrDirectory === "string")
       throw new Error("Cannot close a directory");
     const stream = this._object.streamOrDirectory;
-    await new Promise((fulfill) => stream.end(fulfill));
-    if (this._lastModifiedMs)
-      await import_fs.default.promises.utimes(this.path(), new Date(this._lastModifiedMs), new Date(this._lastModifiedMs));
+    await progress.race(new Promise((fulfill) => stream.end(fulfill)));
+    if (this._object.lastModifiedMs)
+      await progress.race(import_fs.default.promises.utimes(this.path(), new Date(this._object.lastModifiedMs), new Date(this._object.lastModifiedMs)));
   }
   path() {
     if (typeof this._object.streamOrDirectory === "string")

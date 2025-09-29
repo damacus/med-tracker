@@ -36,6 +36,7 @@ var js = __toESM(require("../javascript"));
 var dom = __toESM(require("../dom"));
 var import_protocolError = require("../protocolError");
 var import_assert = require("../../utils/isomorphic/assert");
+var import_utilityScriptSerializers = require("../../utils/isomorphic/utilityScriptSerializers");
 class WKExecutionContext {
   constructor(session, contextId) {
     this._session = session;
@@ -86,7 +87,7 @@ class WKExecutionContext {
       if (response.wasThrown)
         throw new js.JavaScriptErrorInEvaluate(response.result.description);
       if (returnByValue)
-        return js.parseEvaluationResultValue(response.result.value);
+        return (0, import_utilityScriptSerializers.parseEvaluationResultValue)(response.result.value);
       return createHandle(utilityScript._context, response.result);
     } catch (error) {
       throw rewriteError(error);

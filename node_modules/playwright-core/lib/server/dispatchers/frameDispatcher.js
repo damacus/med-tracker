@@ -32,7 +32,7 @@ var import_utilsBundle = require("../../utilsBundle");
 class FrameDispatcher extends import_dispatcher.Dispatcher {
   constructor(scope, frame) {
     const gcBucket = frame._page.mainFrame() === frame ? "MainFrame" : "Frame";
-    const pageDispatcher = (0, import_dispatcher.existingDispatcher)(frame._page);
+    const pageDispatcher = scope.connection.existingDispatcher(frame._page);
     super(pageDispatcher || scope, frame, "Frame", {
       url: frame.url(),
       name: frame.name(),
@@ -58,7 +58,7 @@ class FrameDispatcher extends import_dispatcher.Dispatcher {
     });
   }
   static from(scope, frame) {
-    const result = (0, import_dispatcher.existingDispatcher)(frame);
+    const result = scope.connection.existingDispatcher(frame);
     return result || new FrameDispatcher(scope, frame);
   }
   static fromNullable(scope, frame) {
@@ -66,156 +66,159 @@ class FrameDispatcher extends import_dispatcher.Dispatcher {
       return;
     return FrameDispatcher.from(scope, frame);
   }
-  async goto(params, metadata) {
-    return { response: import_networkDispatchers.ResponseDispatcher.fromNullable(this._browserContextDispatcher, await this._frame.goto(metadata, params.url, params)) };
+  async goto(params, progress) {
+    return { response: import_networkDispatchers.ResponseDispatcher.fromNullable(this._browserContextDispatcher, await this._frame.goto(progress, params.url, params)) };
   }
-  async frameElement() {
-    return { element: import_elementHandlerDispatcher.ElementHandleDispatcher.from(this, await this._frame.frameElement()) };
+  async frameElement(params, progress) {
+    return { element: import_elementHandlerDispatcher.ElementHandleDispatcher.from(this, await progress.race(this._frame.frameElement())) };
   }
-  async evaluateExpression(params, metadata) {
-    return { value: (0, import_jsHandleDispatcher.serializeResult)(await this._frame.evaluateExpression(params.expression, { isFunction: params.isFunction }, (0, import_jsHandleDispatcher.parseArgument)(params.arg))) };
+  async evaluateExpression(params, progress) {
+    return { value: (0, import_jsHandleDispatcher.serializeResult)(await progress.race(this._frame.evaluateExpression(params.expression, { isFunction: params.isFunction }, (0, import_jsHandleDispatcher.parseArgument)(params.arg)))) };
   }
-  async evaluateExpressionHandle(params, metadata) {
-    return { handle: import_elementHandlerDispatcher.ElementHandleDispatcher.fromJSHandle(this, await this._frame.evaluateExpressionHandle(params.expression, { isFunction: params.isFunction }, (0, import_jsHandleDispatcher.parseArgument)(params.arg))) };
+  async evaluateExpressionHandle(params, progress) {
+    return { handle: import_elementHandlerDispatcher.ElementHandleDispatcher.fromJSOrElementHandle(this, await progress.race(this._frame.evaluateExpressionHandle(params.expression, { isFunction: params.isFunction }, (0, import_jsHandleDispatcher.parseArgument)(params.arg)))) };
   }
-  async waitForSelector(params, metadata) {
-    return { element: import_elementHandlerDispatcher.ElementHandleDispatcher.fromNullable(this, await this._frame.waitForSelector(metadata, params.selector, params)) };
+  async waitForSelector(params, progress) {
+    return { element: import_elementHandlerDispatcher.ElementHandleDispatcher.fromNullable(this, await this._frame.waitForSelector(progress, params.selector, true, params)) };
   }
-  async dispatchEvent(params, metadata) {
-    return this._frame.dispatchEvent(metadata, params.selector, params.type, (0, import_jsHandleDispatcher.parseArgument)(params.eventInit), params);
+  async dispatchEvent(params, progress) {
+    return this._frame.dispatchEvent(progress, params.selector, params.type, (0, import_jsHandleDispatcher.parseArgument)(params.eventInit), params);
   }
-  async evalOnSelector(params, metadata) {
-    return { value: (0, import_jsHandleDispatcher.serializeResult)(await this._frame.evalOnSelector(params.selector, !!params.strict, params.expression, params.isFunction, (0, import_jsHandleDispatcher.parseArgument)(params.arg))) };
+  async evalOnSelector(params, progress) {
+    return { value: (0, import_jsHandleDispatcher.serializeResult)(await progress.race(this._frame.evalOnSelector(params.selector, !!params.strict, params.expression, params.isFunction, (0, import_jsHandleDispatcher.parseArgument)(params.arg)))) };
   }
-  async evalOnSelectorAll(params, metadata) {
-    return { value: (0, import_jsHandleDispatcher.serializeResult)(await this._frame.evalOnSelectorAll(params.selector, params.expression, params.isFunction, (0, import_jsHandleDispatcher.parseArgument)(params.arg))) };
+  async evalOnSelectorAll(params, progress) {
+    return { value: (0, import_jsHandleDispatcher.serializeResult)(await progress.race(this._frame.evalOnSelectorAll(params.selector, params.expression, params.isFunction, (0, import_jsHandleDispatcher.parseArgument)(params.arg)))) };
   }
-  async querySelector(params, metadata) {
-    return { element: import_elementHandlerDispatcher.ElementHandleDispatcher.fromNullable(this, await this._frame.querySelector(params.selector, params)) };
+  async querySelector(params, progress) {
+    return { element: import_elementHandlerDispatcher.ElementHandleDispatcher.fromNullable(this, await progress.race(this._frame.querySelector(params.selector, params))) };
   }
-  async querySelectorAll(params, metadata) {
-    const elements = await this._frame.querySelectorAll(params.selector);
+  async querySelectorAll(params, progress) {
+    const elements = await progress.race(this._frame.querySelectorAll(params.selector));
     return { elements: elements.map((e) => import_elementHandlerDispatcher.ElementHandleDispatcher.from(this, e)) };
   }
-  async queryCount(params) {
-    return { value: await this._frame.queryCount(params.selector) };
+  async queryCount(params, progress) {
+    return { value: await progress.race(this._frame.queryCount(params.selector, params)) };
   }
-  async content() {
-    return { value: await this._frame.content() };
+  async content(params, progress) {
+    return { value: await progress.race(this._frame.content()) };
   }
-  async setContent(params, metadata) {
-    return await this._frame.setContent(metadata, params.html, params);
+  async setContent(params, progress) {
+    return await this._frame.setContent(progress, params.html, params);
   }
-  async addScriptTag(params, metadata) {
-    return { element: import_elementHandlerDispatcher.ElementHandleDispatcher.from(this, await this._frame.addScriptTag(params)) };
+  async addScriptTag(params, progress) {
+    return { element: import_elementHandlerDispatcher.ElementHandleDispatcher.from(this, await progress.race(this._frame.addScriptTag(params))) };
   }
-  async addStyleTag(params, metadata) {
-    return { element: import_elementHandlerDispatcher.ElementHandleDispatcher.from(this, await this._frame.addStyleTag(params)) };
+  async addStyleTag(params, progress) {
+    return { element: import_elementHandlerDispatcher.ElementHandleDispatcher.from(this, await progress.race(this._frame.addStyleTag(params))) };
   }
-  async click(params, metadata) {
-    metadata.potentiallyClosesScope = true;
-    return await this._frame.click(metadata, params.selector, params);
+  async click(params, progress) {
+    progress.metadata.potentiallyClosesScope = true;
+    return await this._frame.click(progress, params.selector, params);
   }
-  async dblclick(params, metadata) {
-    return await this._frame.dblclick(metadata, params.selector, params);
+  async dblclick(params, progress) {
+    return await this._frame.dblclick(progress, params.selector, params);
   }
-  async dragAndDrop(params, metadata) {
-    return await this._frame.dragAndDrop(metadata, params.source, params.target, params);
+  async dragAndDrop(params, progress) {
+    return await this._frame.dragAndDrop(progress, params.source, params.target, params);
   }
-  async tap(params, metadata) {
-    return await this._frame.tap(metadata, params.selector, params);
+  async tap(params, progress) {
+    return await this._frame.tap(progress, params.selector, params);
   }
-  async fill(params, metadata) {
-    return await this._frame.fill(metadata, params.selector, params.value, params);
+  async fill(params, progress) {
+    return await this._frame.fill(progress, params.selector, params.value, params);
   }
-  async focus(params, metadata) {
-    await this._frame.focus(metadata, params.selector, params);
+  async focus(params, progress) {
+    await this._frame.focus(progress, params.selector, params);
   }
-  async blur(params, metadata) {
-    await this._frame.blur(metadata, params.selector, params);
+  async blur(params, progress) {
+    await this._frame.blur(progress, params.selector, params);
   }
-  async textContent(params, metadata) {
-    const value = await this._frame.textContent(metadata, params.selector, params);
+  async textContent(params, progress) {
+    const value = await this._frame.textContent(progress, params.selector, params);
     return { value: value === null ? void 0 : value };
   }
-  async innerText(params, metadata) {
-    return { value: await this._frame.innerText(metadata, params.selector, params) };
+  async innerText(params, progress) {
+    return { value: await this._frame.innerText(progress, params.selector, params) };
   }
-  async innerHTML(params, metadata) {
-    return { value: await this._frame.innerHTML(metadata, params.selector, params) };
+  async innerHTML(params, progress) {
+    return { value: await this._frame.innerHTML(progress, params.selector, params) };
   }
-  async getAttribute(params, metadata) {
-    const value = await this._frame.getAttribute(metadata, params.selector, params.name, params);
+  async resolveSelector(params, progress) {
+    return await this._frame.resolveSelector(progress, params.selector);
+  }
+  async getAttribute(params, progress) {
+    const value = await this._frame.getAttribute(progress, params.selector, params.name, params);
     return { value: value === null ? void 0 : value };
   }
-  async inputValue(params, metadata) {
-    const value = await this._frame.inputValue(metadata, params.selector, params);
+  async inputValue(params, progress) {
+    const value = await this._frame.inputValue(progress, params.selector, params);
     return { value };
   }
-  async isChecked(params, metadata) {
-    return { value: await this._frame.isChecked(metadata, params.selector, params) };
+  async isChecked(params, progress) {
+    return { value: await this._frame.isChecked(progress, params.selector, params) };
   }
-  async isDisabled(params, metadata) {
-    return { value: await this._frame.isDisabled(metadata, params.selector, params) };
+  async isDisabled(params, progress) {
+    return { value: await this._frame.isDisabled(progress, params.selector, params) };
   }
-  async isEditable(params, metadata) {
-    return { value: await this._frame.isEditable(metadata, params.selector, params) };
+  async isEditable(params, progress) {
+    return { value: await this._frame.isEditable(progress, params.selector, params) };
   }
-  async isEnabled(params, metadata) {
-    return { value: await this._frame.isEnabled(metadata, params.selector, params) };
+  async isEnabled(params, progress) {
+    return { value: await this._frame.isEnabled(progress, params.selector, params) };
   }
-  async isHidden(params, metadata) {
-    return { value: await this._frame.isHidden(metadata, params.selector, params) };
+  async isHidden(params, progress) {
+    return { value: await this._frame.isHidden(progress, params.selector, params) };
   }
-  async isVisible(params, metadata) {
-    return { value: await this._frame.isVisible(metadata, params.selector, params) };
+  async isVisible(params, progress) {
+    return { value: await this._frame.isVisible(progress, params.selector, params) };
   }
-  async hover(params, metadata) {
-    return await this._frame.hover(metadata, params.selector, params);
+  async hover(params, progress) {
+    return await this._frame.hover(progress, params.selector, params);
   }
-  async selectOption(params, metadata) {
+  async selectOption(params, progress) {
     const elements = (params.elements || []).map((e) => e._elementHandle);
-    return { values: await this._frame.selectOption(metadata, params.selector, elements, params.options || [], params) };
+    return { values: await this._frame.selectOption(progress, params.selector, elements, params.options || [], params) };
   }
-  async setInputFiles(params, metadata) {
-    return await this._frame.setInputFiles(metadata, params.selector, params);
+  async setInputFiles(params, progress) {
+    return await this._frame.setInputFiles(progress, params.selector, params);
   }
-  async type(params, metadata) {
-    return await this._frame.type(metadata, params.selector, params.text, params);
+  async type(params, progress) {
+    return await this._frame.type(progress, params.selector, params.text, params);
   }
-  async press(params, metadata) {
-    return await this._frame.press(metadata, params.selector, params.key, params);
+  async press(params, progress) {
+    return await this._frame.press(progress, params.selector, params.key, params);
   }
-  async check(params, metadata) {
-    return await this._frame.check(metadata, params.selector, params);
+  async check(params, progress) {
+    return await this._frame.check(progress, params.selector, params);
   }
-  async uncheck(params, metadata) {
-    return await this._frame.uncheck(metadata, params.selector, params);
+  async uncheck(params, progress) {
+    return await this._frame.uncheck(progress, params.selector, params);
   }
-  async waitForTimeout(params, metadata) {
-    return await this._frame.waitForTimeout(metadata, params.timeout);
+  async waitForTimeout(params, progress) {
+    return await this._frame.waitForTimeout(progress, params.waitTimeout);
   }
-  async waitForFunction(params, metadata) {
-    return { handle: import_elementHandlerDispatcher.ElementHandleDispatcher.fromJSHandle(this, await this._frame._waitForFunctionExpression(metadata, params.expression, params.isFunction, (0, import_jsHandleDispatcher.parseArgument)(params.arg), params)) };
+  async waitForFunction(params, progress) {
+    return { handle: import_elementHandlerDispatcher.ElementHandleDispatcher.fromJSOrElementHandle(this, await this._frame.waitForFunctionExpression(progress, params.expression, params.isFunction, (0, import_jsHandleDispatcher.parseArgument)(params.arg), params)) };
   }
-  async title(params, metadata) {
-    return { value: await this._frame.title() };
+  async title(params, progress) {
+    return { value: await progress.race(this._frame.title()) };
   }
-  async highlight(params, metadata) {
-    return await this._frame.highlight(params.selector);
+  async highlight(params, progress) {
+    return await this._frame.highlight(progress, params.selector);
   }
-  async expect(params, metadata) {
-    metadata.potentiallyClosesScope = true;
+  async expect(params, progress) {
+    progress.metadata.potentiallyClosesScope = true;
     let expectedValue = params.expectedValue ? (0, import_jsHandleDispatcher.parseArgument)(params.expectedValue) : void 0;
     if (params.expression === "to.match.aria" && expectedValue)
       expectedValue = (0, import_ariaSnapshot.parseAriaSnapshotUnsafe)(import_utilsBundle.yaml, expectedValue);
-    const result = await this._frame.expect(metadata, params.selector, { ...params, expectedValue });
+    const result = await this._frame.expect(progress, params.selector, { ...params, expectedValue }, params.timeout);
     if (result.received !== void 0)
       result.received = (0, import_jsHandleDispatcher.serializeResult)(result.received);
     return result;
   }
-  async ariaSnapshot(params, metadata) {
-    return { snapshot: await this._frame.ariaSnapshot(metadata, params.selector, params) };
+  async ariaSnapshot(params, progress) {
+    return { snapshot: await this._frame.ariaSnapshot(progress, params.selector) };
   }
 }
 // Annotate the CommonJS export names for ESM import in node:

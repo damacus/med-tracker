@@ -2,72 +2,32 @@
 
 ## Medicine Supply
 
-- Order tablets?
-- Keep track of supply of medicine
-- Understand lead time on ordering medicine
+- Implement inventory tracking on each `Medicine` with reorder thresholds and current stock visibility.
+- Build ordering workflow to capture supplier, quantity, expected arrival, and status.
+- Record lead time analytics from completed orders to forecast when to reorder.
 
-## Medicines to add
+## Administration & Roles
 
-- Laxido
-- Movicol
-- Vitamins (adult)
-- Vitamins (child)
+- Attach `MedicationTake` entries to the administering `User` and expose an audit log UI.
+- Enforce role-based permissions aligned with `User.role` (`child`, `carer`, `admin`) across controllers and views.
+- Deliver admin dashboards to manage users, medicines, orders, and role assignments.
 
-## Adminstration
+## Medicine Catalog
 
-- Record who adminisered the medicine - defualt to the logged in user
-- Log book / record of medicine taken
-- User types, admin, user, child, carer
-- User permissions
-- User roles
-
-Child:
-
-- Can take medicine
-- Can't order medicine
-- Can't see other users
-- Can't see other medicines
-- Can't see other orders
-
-Carer:
-
-- Can take medicine
-- Can order medicine
-- Can see other users
-- Can't see other medicines
-- Can't see other orders
-- Can't see other admin
-- Can't see other roles
-
-Admin:
-
-- Can take medicine
-- Can order medicine
-- Can see other users
-- Can see other medicines
-- Can see other orders
-- Can see other admin
-- Can see other roles
-- Can add users
-- Can add medicines
-- Can add orders
-- Can add admin
-- Can add roles
-- Can edit users
-- Can edit medicines
-- Can edit orders
-- Can edit admin
-- Can edit roles
-- Can delete users
-- Can delete medicines
-- Can delete orders
-- Can delete admin
-- Can delete roles
-- Can add users to roles
-- Can add medicines to users
-- Can add orders to users
+- Seed the database with core medicines (Laxido, Movicol, adult vitamins, child vitamins) including dosage defaults.
+- Provide UI affordances to add recommended medicines quickly without re-entering defaults.
 
 ## Notifications
 
-- Notification to take medicine
-- Notification to order medicine
+- Schedule reminders for upcoming doses using `SolidQueue` and deliver via email or push.
+- Trigger alerts for low inventory, expired medicines, and overdue orders.
+
+## PWA & UX
+
+- Generate transparent PWA icons (`icon-192.png`, `icon-512.png`) and update manifest and service worker references.
+- Improve install prompts and offline handling for the PWA experience.
+
+## Documentation & Testing
+
+- Expand `README.md` with role capabilities, PWA setup instructions, and roadmap context.
+- Add system and request specs covering admin dashboards, inventory flows, and notification delivery.

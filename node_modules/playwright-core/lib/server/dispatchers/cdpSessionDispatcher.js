@@ -30,11 +30,11 @@ class CDPSessionDispatcher extends import_dispatcher.Dispatcher {
     this.addObjectListener(import_crConnection.CDPSession.Events.Event, ({ method, params }) => this._dispatchEvent("event", { method, params }));
     this.addObjectListener(import_crConnection.CDPSession.Events.Closed, () => this._dispose());
   }
-  async send(params) {
-    return { result: await this._object.send(params.method, params.params) };
+  async send(params, progress) {
+    return { result: await progress.race(this._object.send(params.method, params.params)) };
   }
-  async detach(_, metadata) {
-    metadata.potentiallyClosesScope = true;
+  async detach(_, progress) {
+    progress.metadata.potentiallyClosesScope = true;
     await this._object.detach();
   }
 }

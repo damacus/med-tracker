@@ -34,7 +34,6 @@ module.exports = __toCommonJS(backendAdb_exports);
 var import_events = require("events");
 var import_net = __toESM(require("net"));
 var import_assert = require("../../utils/isomorphic/assert");
-var import_crypto = require("../utils/crypto");
 var import_utilsBundle = require("../../utilsBundle");
 class AdbBackend {
   async devices(options = {}) {
@@ -116,7 +115,6 @@ function encodeMessage(message) {
 class BufferedSocketWrapper extends import_events.EventEmitter {
   constructor(command, socket) {
     super();
-    this.guid = (0, import_crypto.createGuid)();
     this._buffer = Buffer.from([]);
     this._isSocket = false;
     this._isClosed = false;

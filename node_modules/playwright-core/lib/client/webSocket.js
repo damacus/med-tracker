@@ -51,24 +51,12 @@ class JsonPipeTransport {
     this._owner = owner;
   }
   async connect(params) {
-    const { pipe, headers: connectHeaders } = await this._owner._wrapApiCall(
-      async () => {
-        return await this._owner._channel.connect(params);
-      },
-      /* isInternal */
-      true
-    );
+    const { pipe, headers: connectHeaders } = await this._owner._channel.connect(params);
     this._pipe = pipe;
     return connectHeaders;
   }
   async send(message) {
-    await this._owner._wrapApiCall(
-      async () => {
-        await this._pipe.send({ message });
-      },
-      /* isInternal */
-      true
-    );
+    await this._pipe.send({ message });
   }
   onMessage(callback) {
     this._pipe.on("message", ({ message }) => callback(message));
@@ -77,14 +65,8 @@ class JsonPipeTransport {
     this._pipe.on("closed", ({ reason }) => callback(reason));
   }
   async close() {
-    await this._owner._wrapApiCall(
-      async () => {
-        await this._pipe.close().catch(() => {
-        });
-      },
-      /* isInternal */
-      true
-    );
+    await this._pipe.close().catch(() => {
+    });
   }
 }
 class WebSocketTransport {

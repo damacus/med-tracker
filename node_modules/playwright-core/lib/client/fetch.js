@@ -32,6 +32,7 @@ var import_assert = require("../utils/isomorphic/assert");
 var import_fileUtils = require("./fileUtils");
 var import_headers = require("../utils/isomorphic/headers");
 var import_rtti = require("../utils/isomorphic/rtti");
+var import_timeoutSettings = require("./timeoutSettings");
 class APIRequest {
   constructor(playwright) {
     this._contexts = /* @__PURE__ */ new Set();
@@ -40,7 +41,6 @@ class APIRequest {
   async newContext(options = {}) {
     options = {
       ...this._playwright._defaultContextOptions,
-      timeout: this._playwright._defaultContextTimeout,
       ...options
     };
     const storageState = typeof options.storageState === "string" ? JSON.parse(await this._playwright._platform.fs().promises.readFile(options.storageState, "utf8")) : options.storageState;
@@ -54,6 +54,7 @@ class APIRequest {
     })).request);
     this._contexts.add(context);
     context._request = this;
+    context._timeoutSettings.setDefaultTimeout(options.timeout ?? this._playwright._defaultContextTimeout);
     context._tracing._tracesDir = this._playwright._defaultLaunchOptions?.tracesDir;
     await context._instrumentation.runAfterCreateRequestContext(context);
     return context;
@@ -66,6 +67,7 @@ class APIRequestContext extends import_channelOwner.ChannelOwner {
   constructor(parent, type, guid, initializer) {
     super(parent, type, guid, initializer);
     this._tracing = import_tracing.Tracing.from(initializer.tracing);
+    this._timeoutSettings = new import_timeoutSettings.TimeoutSettings(this._platform);
   }
   async [Symbol.asyncDispose]() {
     await this.dispose();
@@ -205,7 +207,7 @@ class APIRequestContext extends import_channelOwner.ChannelOwner {
         jsonData,
         formData,
         multipartData,
-        timeout: options.timeout,
+        timeout: this._timeoutSettings.timeout(options),
         failOnStatusCode: options.failOnStatusCode,
         ignoreHTTPSErrors: options.ignoreHTTPSErrors,
         maxRedirects: options.maxRedirects,
@@ -288,7 +290,7 @@ class APIResponse {
           throw new Error("Response has been disposed");
         throw e;
       }
-    }, true);
+    }, { internal: true });
   }
   async text() {
     const content = await this.body();

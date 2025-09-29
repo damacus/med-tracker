@@ -25,14 +25,16 @@ var import_playwrightServer = require("./remote/playwrightServer");
 var import_playwright = require("./server/playwright");
 var import_crypto = require("./server/utils/crypto");
 var import_utilsBundle = require("./utilsBundle");
+var import_progress = require("./server/progress");
 class AndroidServerLauncherImpl {
   async launchServer(options = {}) {
     const playwright = (0, import_playwright.createPlaywright)({ sdkLanguage: "javascript", isServer: true });
-    let devices = await playwright.android.devices({
+    const controller = new import_progress.ProgressController();
+    let devices = await controller.run((progress) => playwright.android.devices(progress, {
       host: options.adbHost,
       port: options.adbPort,
       omitDriverInstall: options.omitDriverInstall
-    });
+    }));
     if (devices.length === 0)
       throw new Error("No devices found");
     if (options.deviceSerialNumber) {

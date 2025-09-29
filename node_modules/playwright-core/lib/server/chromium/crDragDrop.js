@@ -44,16 +44,16 @@ class DragManager {
     this._dragState = null;
     return true;
   }
-  async interceptDragCausedByMove(x, y, button, buttons, modifiers, moveCallback) {
+  async interceptDragCausedByMove(progress, x, y, button, buttons, modifiers, moveCallback) {
     this._lastPosition = { x, y };
     if (this._dragState) {
-      await this._crPage._mainFrameSession._client.send("Input.dispatchDragEvent", {
+      await progress.race(this._crPage._mainFrameSession._client.send("Input.dispatchDragEvent", {
         type: "dragOver",
         x,
         y,
         data: this._dragState,
         modifiers: (0, import_crProtocolHelper.toModifiersMask)(modifiers)
-      });
+      }));
       return;
     }
     if (button !== "left")
@@ -80,43 +80,48 @@ class DragManager {
         return val;
       };
     }
-    await this._crPage._page.safeNonStallingEvaluateInAllFrames(`(${setupDragListeners.toString()})()`, "utility");
-    client.on("Input.dragIntercepted", onDragIntercepted);
     try {
+      let expectingDrag = false;
+      await progress.race(this._crPage._page.safeNonStallingEvaluateInAllFrames(`(${setupDragListeners.toString()})()`, "utility"));
+      client.on("Input.dragIntercepted", onDragIntercepted);
       await client.send("Input.setInterceptDrags", { enabled: true });
-    } catch {
-      client.off("Input.dragIntercepted", onDragIntercepted);
-      return moveCallback();
+      try {
+        await progress.race(moveCallback());
+        expectingDrag = (await Promise.all(this._crPage._page.frames().map(async (frame) => {
+          return frame.nonStallingEvaluateInExistingContext("window.__cleanupDrag?.()", "utility").catch(() => false);
+        }))).some((x2) => x2);
+      } finally {
+        client.off("Input.dragIntercepted", onDragIntercepted);
+        await client.send("Input.setInterceptDrags", { enabled: false });
+      }
+      this._dragState = expectingDrag ? (await dragInterceptedPromise).data : null;
+    } catch (error) {
+      this._crPage._page.safeNonStallingEvaluateInAllFrames("window.__cleanupDrag?.()", "utility").catch(() => {
+      });
+      throw error;
     }
-    await moveCallback();
-    const expectingDrag = (await Promise.all(this._crPage._page.frames().map(async (frame) => {
-      return frame.nonStallingEvaluateInExistingContext("window.__cleanupDrag && window.__cleanupDrag()", "utility").catch(() => false);
-    }))).some((x2) => x2);
-    this._dragState = expectingDrag ? (await dragInterceptedPromise).data : null;
-    client.off("Input.dragIntercepted", onDragIntercepted);
-    await client.send("Input.setInterceptDrags", { enabled: false });
     if (this._dragState) {
-      await this._crPage._mainFrameSession._client.send("Input.dispatchDragEvent", {
+      await progress.race(this._crPage._mainFrameSession._client.send("Input.dispatchDragEvent", {
         type: "dragEnter",
         x,
         y,
         data: this._dragState,
         modifiers: (0, import_crProtocolHelper.toModifiersMask)(modifiers)
-      });
+      }));
     }
   }
   isDragging() {
     return !!this._dragState;
   }
-  async drop(x, y, modifiers) {
+  async drop(progress, x, y, modifiers) {
     (0, import_utils.assert)(this._dragState, "missing drag state");
-    await this._crPage._mainFrameSession._client.send("Input.dispatchDragEvent", {
+    await progress.race(this._crPage._mainFrameSession._client.send("Input.dispatchDragEvent", {
       type: "drop",
       x,
       y,
       data: this._dragState,
       modifiers: (0, import_crProtocolHelper.toModifiersMask)(modifiers)
-    });
+    }));
     this._dragState = null;
   }
 }

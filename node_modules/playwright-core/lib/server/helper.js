@@ -51,22 +51,18 @@ class Helper {
   }
   static waitForEvent(progress, emitter, event, predicate) {
     const listeners = [];
-    const promise = new Promise((resolve, reject) => {
+    const dispose = () => import_eventsHelper.eventsHelper.removeEventListeners(listeners);
+    const promise = progress.race(new Promise((resolve, reject) => {
       listeners.push(import_eventsHelper.eventsHelper.addEventListener(emitter, event, (eventArg) => {
         try {
           if (predicate && !predicate(eventArg))
             return;
-          import_eventsHelper.eventsHelper.removeEventListeners(listeners);
           resolve(eventArg);
         } catch (e) {
-          import_eventsHelper.eventsHelper.removeEventListeners(listeners);
           reject(e);
         }
       }));
-    });
-    const dispose = () => import_eventsHelper.eventsHelper.removeEventListeners(listeners);
-    if (progress)
-      progress.cleanupWhenAborted(dispose);
+    })).finally(() => dispose());
     return { promise, dispose };
   }
   static secondsToRoundishMillis(value) {

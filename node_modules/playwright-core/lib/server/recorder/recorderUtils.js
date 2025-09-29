@@ -21,18 +21,20 @@ __export(recorderUtils_exports, {
   buildFullSelector: () => buildFullSelector,
   collapseActions: () => collapseActions,
   frameForAction: () => frameForAction,
+  generateFrameSelector: () => generateFrameSelector,
   mainFrameForAction: () => mainFrameForAction,
-  metadataToCallLog: () => metadataToCallLog
+  metadataToCallLog: () => metadataToCallLog,
+  shouldMergeAction: () => shouldMergeAction
 });
 module.exports = __toCommonJS(recorderUtils_exports);
+var import_protocolFormatter = require("../../utils/isomorphic/protocolFormatter");
+var import_utils = require("../../utils");
+var import_timeoutRunner = require("../../utils/isomorphic/timeoutRunner");
 function buildFullSelector(framePath, selector) {
   return [...framePath, selector].join(" >> internal:control=enter-frame >> ");
 }
 function metadataToCallLog(metadata, status) {
-  let title = metadata.apiName || metadata.method;
-  if (metadata.method === "waitForEventInfo")
-    title += `(${metadata.params.info.event})`;
-  title = title.replace("object.expect", "expect");
+  const title = (0, import_protocolFormatter.renderTitleForCall)(metadata);
   if (metadata.error)
     status = "error";
   const params = {
@@ -47,7 +49,7 @@ function metadataToCallLog(metadata, status) {
   const callLog = {
     id: metadata.id,
     messages: metadata.log,
-    title,
+    title: title ?? "",
     status,
     error: metadata.error?.error?.message,
     params,
@@ -73,13 +75,33 @@ async function frameForAction(pageAliases, actionInContext, action) {
     throw new Error("Internal error: frame not found");
   return result.frame;
 }
+function isSameAction(a, b) {
+  return a.action.name === b.action.name && a.frame.pageAlias === b.frame.pageAlias && a.frame.framePath.join("|") === b.frame.framePath.join("|");
+}
+function isSameSelector(action, lastAction) {
+  return "selector" in action.action && "selector" in lastAction.action && action.action.selector === lastAction.action.selector;
+}
+function isShortlyAfter(action, lastAction) {
+  return action.startTime - lastAction.startTime < 500;
+}
+function shouldMergeAction(action, lastAction) {
+  if (!lastAction)
+    return false;
+  switch (action.action.name) {
+    case "fill":
+      return isSameAction(action, lastAction) && isSameSelector(action, lastAction);
+    case "navigate":
+      return isSameAction(action, lastAction);
+    case "click":
+      return isSameAction(action, lastAction) && isSameSelector(action, lastAction) && isShortlyAfter(action, lastAction) && action.action.clickCount > lastAction.action.clickCount;
+  }
+  return false;
+}
 function collapseActions(actions) {
   const result = [];
   for (const action of actions) {
     const lastAction = result[result.length - 1];
-    const isSameAction = lastAction && lastAction.action.name === action.action.name && lastAction.frame.pageAlias === action.frame.pageAlias && lastAction.frame.framePath.join("|") === action.frame.framePath.join("|");
-    const isSameSelector = lastAction && "selector" in lastAction.action && "selector" in action.action && action.action.selector === lastAction.action.selector;
-    const shouldMerge = isSameAction && (action.action.name === "navigate" || action.action.name === "fill" && isSameSelector);
+    const shouldMerge = shouldMergeAction(action, lastAction);
     if (!shouldMerge) {
       result.push(action);
       continue;
@@ -90,11 +112,46 @@ function collapseActions(actions) {
   }
   return result;
 }
+async function generateFrameSelector(frame) {
+  const selectorPromises = [];
+  while (frame) {
+    const parent = frame.parentFrame();
+    if (!parent)
+      break;
+    selectorPromises.push(generateFrameSelectorInParent(parent, frame));
+    frame = parent;
+  }
+  const result = await Promise.all(selectorPromises);
+  return result.reverse();
+}
+async function generateFrameSelectorInParent(parent, frame) {
+  const result = await (0, import_timeoutRunner.raceAgainstDeadline)(async () => {
+    try {
+      const frameElement = await frame.frameElement();
+      if (!frameElement || !parent)
+        return;
+      const utility = await parent._utilityContext();
+      const injected = await utility.injectedScript();
+      const selector = await injected.evaluate((injected2, element) => {
+        return injected2.generateSelectorSimple(element);
+      }, frameElement);
+      return selector;
+    } catch (e) {
+    }
+  }, (0, import_utils.monotonicTime)() + 2e3);
+  if (!result.timedOut && result.result)
+    return result.result;
+  if (frame.name())
+    return `iframe[name=${(0, import_utils.quoteCSSAttributeValue)(frame.name())}]`;
+  return `iframe[src=${(0, import_utils.quoteCSSAttributeValue)(frame.url())}]`;
+}
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   buildFullSelector,
   collapseActions,
   frameForAction,
+  generateFrameSelector,
   mainFrameForAction,
-  metadataToCallLog
+  metadataToCallLog,
+  shouldMergeAction
 });
