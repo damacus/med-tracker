@@ -15,7 +15,7 @@ module Components
       end
 
       def view_template
-        div(class: 'dashboard') do
+        div(class: 'dashboard', data: { testid: 'dashboard' }) do
           render_header
           render_quick_stats
           render_quick_actions
@@ -55,6 +55,9 @@ module Components
             if url_helpers
               link_to(url_helpers.new_medicine_path, class: 'quick-action__button') do
                 'Add Medicine'
+              end
+              link_to(url_helpers.new_user_path, class: 'quick-action__button') do
+                'Add Person'
               end
             else
               a(class: 'quick-action__button', href: '#') do

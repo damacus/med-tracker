@@ -18,44 +18,33 @@ RSpec.describe 'AdminManagesUsers', type: :system do
   end
 
   context 'when user is logged in as an admin' do
-    it 'allows admin to see the list of users', pending: 'Admin management not yet implemented' do
-      # Sign in as admin
-      visit login_path
-      fill_in 'Email address', with: admin.email_address
-      fill_in 'Password', with: 'password'
-      click_button 'Sign in'
+    it 'allows admin to see the list of users' do
+      sign_in_as(admin, password: 'adminpassword')
 
-      # Visit admin users page
       visit admin_users_path
 
-      within 'Users' do
-        aggregate_failures 'user list' do
-          expect(page).to have_content(admin.email_address)
-          expect(page).to have_content(carer.email_address)
-          expect(page).to have_content('User Management')
-        end
+      within '[data-testid="admin-users"]' do
+        expect(page).to have_content('User Management')
+        expect(page).to have_content(admin.email_address)
+        expect(page).to have_content(carer.email_address)
       end
     end
   end
 
   context 'when user is logged in as a non-admin' do
-    it 'denies access to the user list', pending: 'Admin management not yet implemented' do
-      # Sign in as carer
-      visit login_path
-      fill_in 'Email address', with: carer.email_address
-      fill_in 'Password', with: 'password'
-      click_button 'Sign in'
+    it 'denies access to the user list' do
+      sign_in_as(carer)
 
-      # Visit admin users page
       visit admin_users_path
 
-      within 'Users' do
-        aggregate_failures 'user list' do
-          expect(page).to have_content('You are not authorized to perform this action.')
-          expect(page).to have_content(carer.email_address)
-          expect(page).to have_content('User Management')
-        end
-      end
+      expect(page).to have_css('#flash', text: 'You are not authorized to perform this action.')
     end
+  end
+
+  def sign_in_as(user, password: 'password')
+    visit login_path
+    fill_in 'Email address', with: user.email_address
+    fill_in 'Password', with: password
+    click_button 'Sign in'
   end
 end

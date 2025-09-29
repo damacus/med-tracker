@@ -1,15 +1,20 @@
-class Admin::UsersController < ApplicationController
-  before_action :require_admin
+# frozen_string_literal: true
 
-  def index
-    @users = User.all
-  end
+module Admin
+  # Handles admin access to user management functionality.
+  class UsersController < ApplicationController
+    before_action :require_admin
 
-  private
+    def index
+      @users = User.order(:created_at)
+    end
 
-  def require_admin
-    return if Current.user.admin?
+    private
 
-    redirect_to root_path, alert: "You are not authorized to perform this action."
+    def require_admin
+      return if current_user&.admin?
+
+      redirect_to root_path, alert: 'You are not authorized to perform this action.'
+    end
   end
 end

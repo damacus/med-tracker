@@ -1,19 +1,27 @@
-<h1>User Management</h1>
+<div data-testid="admin-users" class="space-y-8">
+  <header class="space-y-2">
+    <h1 class="text-3xl font-semibold text-slate-900">User Management</h1>
+    <p class="text-slate-600">Review roles and access levels for everyone using MedTracker.</p>
+  </header>
 
-<table>
-  <thead>
-    <tr>
-      <th>Email</th>
-      <th>Role</th>
-    </tr>
-  </thead>
-
-  <tbody>
-    <% @users.each do |user| %>
-      <tr>
-        <td><%= user.email_address %></td>
-        <td><%= user.role.capitalize %></td>
-      </tr>
-    <% end %>
-  </tbody>
-</table>
+  <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+    <table class="min-w-full divide-y divide-slate-100">
+      <thead class="bg-slate-50">
+        <tr>
+          <th scope="col" class="px-6 py-3 text-left text-sm font-semibold text-slate-600">Name</th>
+          <th scope="col" class="px-6 py-3 text-left text-sm font-semibold text-slate-600">Email</th>
+          <th scope="col" class="px-6 py-3 text-left text-sm font-semibold text-slate-600">Role</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        <% @users.each do |user| %>
+          <tr class="hover:bg-slate-50">
+            <td class="px-6 py-4 text-sm font-medium text-slate-900"><%= user.name %></td>
+            <td class="px-6 py-4 text-sm text-slate-600"><%= user.email_address %></td>
+            <td class="px-6 py-4 text-sm capitalize text-slate-600"><%= user.role %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

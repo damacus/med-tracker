@@ -9,8 +9,8 @@ RSpec.describe 'UserSignsUps', type: :system do
     driven_by(:rack_test)
   end
 
-  it 'allows a user to sign up', pending: 'Signup not yet implemented' do
-    visit '/sign_up'
+  it 'allows a user to sign up' do
+    visit sign_up_path
 
     fill_in 'Name', with: 'New User'
     fill_in 'Date of birth', with: '1995-05-15'
@@ -20,11 +20,10 @@ RSpec.describe 'UserSignsUps', type: :system do
 
     click_button 'Sign Up'
 
-    within 'main' do
-      aggregate_failures 'user sign up' do
-        expect(page).to have_content('Welcome! You have signed up successfully.')
-        expect(User.last.email_address).to eq('newuser@example.com')
-      end
+    aggregate_failures 'user sign up' do
+      expect(page).to have_current_path(root_path)
+      expect(page).to have_css('#flash', text: 'Welcome! You have signed up successfully.')
+      expect(User.last.email_address).to eq('newuser@example.com')
     end
   end
 end

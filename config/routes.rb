@@ -17,7 +17,7 @@ Rails.application.routes.draw do
 
   # Authentication
   get "sign_up", to: "users#new"
-  resources :users, only: [:create]
+  resources :users, only: %i[new create]
 
   get "login", to: "sessions#new"
   post "login", to: "sessions#create"
