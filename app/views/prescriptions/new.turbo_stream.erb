@@ -1,9 +1,7 @@
-<%= turbo_stream.update "modal" do %>
-  <%= render "shared/modal", title: "New Prescription for #{@person.name}" do %>
-    <%= render Components::Prescriptions::Form.new(
-      prescription: @prescription,
-      person: @person,
-      medicines: @medicines
-    ) %>
-  <% end %>
+<%= turbo_stream.update "prescription_modal" do %>
+  <%= render Components::Prescriptions::Modal.new(
+    prescription: @prescription,
+    person: @person,
+    medicines: @medicines
+  ) %>
 <% end %>

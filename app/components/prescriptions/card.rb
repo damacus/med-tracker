@@ -16,7 +16,7 @@ module Components
       end
 
       def view_template
-        Card(id: "prescription_#{prescription.id}", class: 'h-full flex flex-col') do
+        RubyUI::Card(id: "prescription_#{prescription.id}", class: 'h-full flex flex-col') do
           render_card_header
           render_card_content
           render_card_footer

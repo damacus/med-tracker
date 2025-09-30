@@ -5,7 +5,6 @@ module Components
     # Person show view component
     class ShowView < Components::Base
       include Phlex::Rails::Helpers::TurboFrameTag
-      include Phlex::Rails::Helpers::DomId
       include Phlex::Rails::Helpers::FormWith
 
       attr_reader :person, :prescriptions, :editing
@@ -27,7 +26,7 @@ module Components
       private
 
       def render_person_details
-        turbo_frame_tag dom_id(person) do
+        turbo_frame_tag "person_#{person.id}" do
           Card(class: 'mb-8') do
             if editing
               render_edit_form
@@ -96,7 +95,7 @@ module Components
       def render_prescriptions_section
         div(class: 'space-y-6') do
           render_prescriptions_header
-          turbo_frame_tag 'new_prescription'
+          turbo_frame_tag 'prescription_modal'
           render_prescriptions_grid
         end
       end

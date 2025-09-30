@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_30_162149) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_30_214552) do
   create_table "dosages", force: :cascade do |t|
     t.integer "medicine_id", null: false
     t.decimal "amount"
@@ -23,11 +23,13 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_30_162149) do
   end
 
   create_table "medication_takes", force: :cascade do |t|
-    t.integer "prescription_id", null: false
+    t.integer "prescription_id"
     t.datetime "taken_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.decimal "amount_ml"
+    t.integer "person_medicine_id"
+    t.index ["person_medicine_id"], name: "index_medication_takes_on_person_medicine_id"
     t.index ["prescription_id"], name: "index_medication_takes_on_prescription_id"
   end
 
@@ -52,6 +54,19 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_30_162149) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["email"], name: "index_people_on_email", unique: true
+  end
+
+  create_table "person_medicines", force: :cascade do |t|
+    t.integer "person_id", null: false
+    t.integer "medicine_id", null: false
+    t.text "notes"
+    t.integer "max_daily_doses"
+    t.integer "min_hours_between_doses"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["medicine_id"], name: "index_person_medicines_on_medicine_id"
+    t.index ["person_id", "medicine_id"], name: "index_person_medicines_on_person_id_and_medicine_id", unique: true
+    t.index ["person_id"], name: "index_person_medicines_on_person_id"
   end
 
   create_table "prescriptions", force: :cascade do |t|
@@ -94,7 +109,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_30_162149) do
   end
 
   add_foreign_key "dosages", "medicines"
+  add_foreign_key "medication_takes", "person_medicines"
   add_foreign_key "medication_takes", "prescriptions"
+  add_foreign_key "person_medicines", "medicines"
+  add_foreign_key "person_medicines", "people"
   add_foreign_key "prescriptions", "dosages"
   add_foreign_key "prescriptions", "medicines"
   add_foreign_key "prescriptions", "people"

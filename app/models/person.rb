@@ -5,6 +5,8 @@ class Person < ApplicationRecord
   has_one :user, inverse_of: :person, dependent: :destroy
   has_many :prescriptions, dependent: :destroy
   has_many :medicines, through: :prescriptions
+  has_many :person_medicines, dependent: :destroy
+  has_many :non_prescription_medicines, through: :person_medicines, source: :medicine
   normalizes :email, with: ->(email) { email&.strip&.downcase }
 
   validates :date_of_birth, presence: true

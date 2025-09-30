@@ -3,6 +3,7 @@
 class Medicine < ApplicationRecord # :nodoc:
   has_many :dosages, dependent: :destroy
   has_many :prescriptions, dependent: :destroy
+  has_many :person_medicines, dependent: :destroy
 
   validates :name, presence: true
   validates :current_supply, presence: true, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
