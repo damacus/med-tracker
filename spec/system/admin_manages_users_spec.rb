@@ -9,7 +9,8 @@ RSpec.describe 'AdminManagesUsers', type: :system do
   let(:admin) { users(:admin) }
   # Use a unique email for the carer user to avoid conflicts
   let!(:carer) do
-    User.create!(name: 'Carer User', date_of_birth: '1990-01-01', email_address: 'test_carer@example.com',
+    person = Person.create!(name: 'Carer User', date_of_birth: '1990-01-01')
+    User.create!(person: person, email_address: 'test_carer@example.com',
                  password: 'password', password_confirmation: 'password', role: :carer)
   end
 

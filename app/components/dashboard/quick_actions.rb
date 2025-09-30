@@ -16,7 +16,7 @@ module Components
           h2(class: 'dashboard__section-title') { 'Quick Actions' }
           div(class: 'dashboard__actions-list') do
             action_links.each do |label, url|
-              Button(href: url, variant: :primary) { label }
+              a(href: url, class: button_classes) { label }
             end
           end
         end
@@ -29,8 +29,19 @@ module Components
 
         [
           ['Add Medicine', url_helpers.new_medicine_path],
-          ['Add Person', url_helpers.new_person_path]
+          ['Add Person', url_helpers.new_user_path]
         ]
+      end
+
+      def button_classes
+        [
+          'whitespace-nowrap inline-flex items-center justify-center rounded-md font-medium transition-colors',
+          'disabled:pointer-events-none disabled:opacity-50',
+          'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+          'px-4 py-2 h-9 text-sm',
+          'bg-primary text-primary-foreground shadow',
+          'hover:bg-primary/90'
+        ].join(' ')
       end
     end
   end

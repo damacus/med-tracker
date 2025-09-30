@@ -6,10 +6,10 @@ module Views
       include Phlex::Rails::Helpers::FormWith
       include Phlex::Rails::Helpers::LinkTo
 
-      def initialize(params: {}, flash: {})
+      def initialize(params: {}, alert_message: nil, notice_message: nil)
         super()
         @params = params
-        @flash = flash
+        @flash = { alert: alert_message, notice: notice_message }
       end
 
       def view_template
@@ -18,7 +18,6 @@ module Views
 
           div(class: 'relative mx-auto flex w-full max-w-5xl flex-col items-center gap-12 px-4 sm:px-6 lg:px-8') do
             header_section
-            flash_section
             form_section
           end
         end
@@ -38,8 +37,10 @@ module Views
       def flash_section
         return if flash_message.blank?
 
-        render RubyUI::Alert.new(variant: flash_variant) do
-          plain(flash_message)
+        div(id: 'login-flash') do
+          render RubyUI::Alert.new(variant: flash_variant) do
+            plain(flash_message)
+          end
         end
       end
 
@@ -52,13 +53,14 @@ module Views
       end
 
       def form_section
-        render RubyUI::Card.new(class: 'w-full max-w-xl backdrop-blur bg-white/90 shadow-2xl border border-white/70 ring-1 ring-black/5 rounded-2xl overflow-hidden') do
+        render RubyUI::Card.new(class: 'w-full max-w-xl backdrop-blur bg-white/90 shadow-2xl border border-white/70 ring-1 ring-black/5 rounded-2xl overflow-hidden', data: { test_id: 'login-card' }) do
           render RubyUI::CardHeader.new(class: 'space-y-2 bg-white/60') do
             render RubyUI::CardTitle.new(class: 'text-2xl font-semibold text-slate-900') { 'Welcome back' }
             render RubyUI::CardDescription.new(class: 'text-base text-slate-600') { 'Enter your credentials to access your personalized medication dashboard.' }
           end
 
           render RubyUI::CardContent.new(class: 'space-y-6 p-6 sm:p-8') do
+            flash_section
             render RubyUI::Form.new(action: session_path, method: :post, class: 'space-y-6') do
               authenticity_token_field
               email_field

@@ -12,8 +12,8 @@ RSpec.describe SessionsController, type: :controller do
 
   describe 'POST #create' do
     let(:user) do
-      User.create!(name: 'Test User', email_address: 'unique-test@example.com', password: 'password',
-                   date_of_birth: 30.years.ago)
+      person = Person.create!(name: 'Test User', date_of_birth: 30.years.ago)
+      User.create!(person: person, email_address: 'unique-test@example.com', password: 'password')
     end
 
     context 'with valid credentials' do

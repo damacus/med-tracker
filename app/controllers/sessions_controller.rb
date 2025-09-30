@@ -8,7 +8,11 @@ class SessionsController < ApplicationController
   }
 
   def new
-    render Views::Sessions::New.new(params: params)
+    render Views::Sessions::New.new(
+      params: params,
+      alert_message: flash[:alert],
+      notice_message: flash[:notice]
+    )
   end
 
   def create

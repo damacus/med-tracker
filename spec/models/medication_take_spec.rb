@@ -5,14 +5,7 @@ require 'rails_helper'
 RSpec.describe MedicationTake, type: :model do
   subject(:medication_take) { described_class.new(prescription: prescription, taken_at: Time.current) }
 
-  let(:user) do
-    User.create!(
-      name: 'Jane Doe',
-      email_address: 'jane@example.com',
-      password: 'password',
-      date_of_birth: '1990-01-01'
-    )
-  end
+  let(:person) { Person.create!(name: 'Jane Doe', date_of_birth: '1990-01-01') }
 
   let(:medicine) do
     Medicine.create!(
@@ -27,7 +20,7 @@ RSpec.describe MedicationTake, type: :model do
 
   let(:prescription) do
     Prescription.create!(
-      user: user,
+      person: person,
       medicine: medicine,
       dosage: dosage,
       start_date: Time.zone.today,
