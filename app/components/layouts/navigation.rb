@@ -14,7 +14,6 @@ module Components
       end
 
       # Main template method that renders the navigation bar
-      # rubocop:disable Metrics/MethodLength
       def view_template
         nav(class: 'nav') do
           div(class: 'nav__container') do
@@ -33,7 +32,6 @@ module Components
           end
         end
       end
-      # rubocop:enable Metrics/MethodLength
 
       private
 

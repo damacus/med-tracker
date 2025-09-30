@@ -5,13 +5,13 @@ require 'rails_helper'
 RSpec.describe Components::Dashboard::PersonSchedule, type: :component do
   fixtures :people, :users, :medicines, :dosages, :prescriptions
 
-  subject { described_class.new(person: person, prescriptions: prescriptions) }
+  subject(:component) { described_class.new(person: person, prescriptions: prescriptions) }
 
   let(:person) { people(:john) }
   let(:prescriptions) { person.prescriptions.where(active: true) }
 
   it 'renders the person\'s name and age' do
-    rendered = render_inline(subject)
+    rendered = render_inline(component)
     # Use Nokogiri methods instead of Capybara matchers
     name_element = rendered.css('.schedule-person__name')
     expect(name_element).to be_present
@@ -23,7 +23,7 @@ RSpec.describe Components::Dashboard::PersonSchedule, type: :component do
   end
 
   it 'renders each prescription' do
-    rendered = render_inline(subject)
+    rendered = render_inline(component)
 
     prescriptions.each do |prescription|
       prescription_element = rendered.css("#prescription_#{prescription.id}")
@@ -36,7 +36,7 @@ RSpec.describe Components::Dashboard::PersonSchedule, type: :component do
   end
 
   it 'renders take now buttons for each prescription' do
-    rendered = render_inline(subject)
+    rendered = render_inline(component)
 
     prescriptions.each do |prescription|
       button = rendered.css("[data-test-id='take-medicine-#{prescription.id}']")

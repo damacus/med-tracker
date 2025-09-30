@@ -54,7 +54,6 @@ RSpec.describe 'User Sessions', :js, type: :system do
   end
 
   describe 'logout' do
-    # rubocop:disable RSpec/MultipleExpectations
     it 'allows a logged in user to sign out' do
       visit login_path
       fill_in 'email_address', with: user.email_address
@@ -79,6 +78,5 @@ RSpec.describe 'User Sessions', :js, type: :system do
         expect(page).not_to have_button('Sign out')
       end
     end
-    # rubocop:enable RSpec/MultipleExpectations
   end
 end

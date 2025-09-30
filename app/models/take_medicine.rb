@@ -65,8 +65,6 @@ class TakeMedicine < ApplicationRecord
 
   # Count the number of doses taken in the current cycle
   def count_doses_in_cycle(validation_time)
-    # Don't count the current record if it's an update
-    new_record? ? 0 : 1
     cycle_period = prescription.get_cycle_period
 
     cycle_start = calculate_cycle_start(validation_time, cycle_period)

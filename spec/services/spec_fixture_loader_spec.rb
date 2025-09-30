@@ -9,7 +9,6 @@ RSpec.describe SpecFixtureLoader do
       Person.destroy_all
     end
 
-    # rubocop:disable RSpec/MultipleExpectations
     it 'loads the requested fixtures into the database' do
       expect do
         described_class.load(:people, :users)
@@ -21,6 +20,5 @@ RSpec.describe SpecFixtureLoader do
       expect(user.person).to be_present
       expect(user.authenticate('password')).to eq(user)
     end
-    # rubocop:enable RSpec/MultipleExpectations
   end
 end

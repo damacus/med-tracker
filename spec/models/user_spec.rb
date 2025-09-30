@@ -53,8 +53,8 @@ RSpec.describe User, type: :model do
 
   describe 'roles' do
     it {
-      expect(subject).to define_enum_for(:role).with_values(admin: 0, carer: 1,
-                                                            child: 2).backed_by_column_of_type(:integer)
+      expect(user).to define_enum_for(:role).with_values(admin: 0, carer: 1,
+                                                         child: 2).backed_by_column_of_type(:integer)
     }
   end
 

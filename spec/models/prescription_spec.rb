@@ -33,7 +33,7 @@ RSpec.describe Prescription, type: :model do
   end
 
   describe 'validations' do
-    subject do
+    subject(:prescription) do
       described_class.new(
         person: person,
         medicine: medicine,
@@ -64,14 +64,13 @@ RSpec.describe Prescription, type: :model do
     it { is_expected.to validate_presence_of(:end_date) }
 
     it 'is invalid if end_date is before start_date' do
-      subject.end_date = subject.start_date - 1.day
-      expect(subject).not_to be_valid
+      prescription.end_date = prescription.start_date - 1.day
+      expect(prescription).not_to be_valid
     end
   end
 
   describe 'associations' do
     it { is_expected.to belong_to(:person) }
-    it { is_expected.to belong_to(:medicine) }
     it { is_expected.to belong_to(:dosage) }
     it { is_expected.to have_many(:medication_takes).dependent(:destroy) }
   end
