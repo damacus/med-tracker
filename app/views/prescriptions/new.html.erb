@@ -1,11 +1,12 @@
-<div class="container">
-  <div class="page-header">
-    <h1 class="page-title">New Prescription for <%= @person.name %></h1>
+<div class="container mx-auto px-4 py-8 max-w-4xl">
+  <div class="mb-8">
+    <p class="text-sm font-medium uppercase tracking-wide text-slate-500 mb-2">New Prescription</p>
+    <h1 class="text-4xl font-bold text-slate-900">Add prescription for <%= @person.name %></h1>
   </div>
 
-  <%= render "form", prescription: @prescription, inline: false, medicines: @medicines %>
-
-  <div class="form__actions">
-    <%= link_to "Back", person_path(@person), class: "button button--secondary" %>
-  </div>
+  <%= render Components::Prescriptions::Form.new(
+    prescription: @prescription,
+    person: @person,
+    medicines: @medicines
+  ) %>
 </div>
