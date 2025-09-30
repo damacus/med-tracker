@@ -25,18 +25,19 @@ RSpec.describe User do
     it { is_expected.to allow_value('user@example.com').for(:email_address) }
     it { is_expected.not_to allow_value('user@example').for(:email_address) }
     it { is_expected.not_to allow_value('userexample.com').for(:email_address) }
-    it { is_expected.to validate_presence_of(:person) }
   end
 
   describe 'associations' do
     it { is_expected.to have_many(:sessions).dependent(:destroy) }
-    it { is_expected.to belong_to(:person).inverse_of(:user) }
+    it { is_expected.to belong_to(:person).inverse_of(:user).required }
     it { is_expected.to have_many(:prescriptions).through(:person) }
   end
 
   describe 'person linkage' do
     it 'requires an associated person' do
-      expect(user).to validate_presence_of(:person)
+      user.person = nil
+      expect(user).not_to be_valid
+      expect(user.errors[:person]).to include('must exist')
     end
   end
 

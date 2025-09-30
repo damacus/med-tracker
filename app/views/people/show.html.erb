@@ -32,23 +32,23 @@
     </div>
   <% end %>
 
-  <div class="prescriptions-section">
-    <div class="prescriptions-section__header">
-      <h2>Prescriptions</h2>
+  <div class="prescriptions-section mt-8">
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-2xl font-bold text-slate-900">Prescriptions</h2>
       <%= link_to "Add Prescription", new_person_prescription_path(@person),
-          class: "button button--primary",
+          class: "inline-flex items-center justify-center rounded-md font-medium transition-colors px-4 py-2 text-sm bg-primary text-primary-foreground shadow hover:bg-primary/90",
           data: { turbo_stream: true } %>
     </div>
 
     <%= turbo_frame_tag "new_prescription" %>
 
-    <div id="prescriptions" class="prescriptions-section__list">
+    <div id="prescriptions" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <% @prescriptions.each do |prescription| %>
         <%= render "prescriptions/prescription", prescription: prescription, person: @person %>
       <% end %>
 
       <% if @prescriptions.empty? %>
-        <p class="prescriptions-section__empty">No prescriptions yet.</p>
+        <p class="text-slate-500 italic col-span-full text-center py-8">No prescriptions yet.</p>
       <% end %>
     </div>
   </div>

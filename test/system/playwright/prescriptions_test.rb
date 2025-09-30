@@ -9,6 +9,32 @@ class PrescriptionsTest < PlaywrightSystemTest
     @medicine = medicines(:paracetamol)
   end
 
+  test 'can view a prescription with dosage information' do
+    prescription = prescriptions(:john_paracetamol)
+    visit person_path(prescription.person)
+
+    # Verify prescription details are displayed
+    assert_text prescription.medicine.name
+    assert_text "Dosage: #{prescription.dosage.amount} #{prescription.dosage.unit}"
+    assert_text prescription.frequency
+
+    # Verify the take medicine form is in a hover card (initially hidden)
+    within "#prescription_#{prescription.id}" do
+      # The form should be hidden initially
+      assert_not find('.prescription__take-form', visible: :all).visible?
+
+      # Hover over the trigger to show the form
+      find('.prescription__take-trigger').hover
+
+      # Now the form should be visible
+      assert find('.prescription__take-form').visible?
+
+      # Verify the form has the correct default amount
+      amount_field = find_field('Amount (ml)')
+      assert_equal prescription.dosage.amount.to_s, amount_field.value
+    end
+  end
+
   test 'can create a new prescription' do
     visit person_path(@person)
 

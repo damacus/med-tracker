@@ -37,3 +37,16 @@ vitamin_d_daily:
   unit: IU
   description: Daily Vitamin D supplement
   medicine: vitamin_d
+
+# Calpol dosages
+calpol_child:
+  amount: 2.5
+  unit: ml
+  description: Standard child dose
+  medicine: calpol
+
+calpol_infant:
+  amount: 5
+  unit: ml
+  description: Standard infant dose
+  medicine: calpol

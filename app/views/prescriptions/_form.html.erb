@@ -13,7 +13,7 @@
 
 <% inline ||= false %>
 <% local = !inline # Use local form submission for non-inline forms %>
-<%= form_with(model: [@person, prescription], class: "prescription-form", local: local) do |f| %>
+<%= form_with(model: [@person, prescription], class: "prescription-form", local: local, data: { controller: "prescription-form" }) do |f| %>
   <% if prescription.errors.any? %>
     <div class="form__errors">
       <h2><%= pluralize(prescription.errors.count, "error") %> prohibited this prescription from being saved:</h2>
@@ -30,12 +30,17 @@
       <%= f.label :medicine_id, "Medicine", class: "form__label" %>
       <%= f.collection_select :medicine_id, medicines, :id, :name,
           { prompt: "Select a medicine" },
-          { class: "form__input" } %>
+          { class: "form__input", data: { action: "change->prescription-form#updateDosages" } } %>
     </div>
 
     <div class="prescription-form__field">
-      <%= f.label :dosage, class: "form__label" %>
-      <%= f.text_field :dosage, class: "form__input" %>
+      <%= f.label :dosage_id, "Dosage", class: "form__label" %>
+      <%= f.collection_select :dosage_id, 
+          prescription.medicine&.dosages || [],
+          :id,
+          ->(d) { "#{d.amount} #{d.unit} - #{d.description}" },
+          { prompt: "Select a dosage" },
+          { class: "form__input", data: { prescription_form_target: "dosageSelect" } } %>
     </div>
 
     <div class="prescription-form__field">

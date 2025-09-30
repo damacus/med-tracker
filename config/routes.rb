@@ -14,7 +14,11 @@ Rails.application.routes.draw do
   get 'dashboard', to: 'dashboard#index'
 
   # Medicine management
-  resources :medicines
+  resources :medicines do
+    member do
+      get :dosages
+    end
+  end
   get 'medicine-finder', to: 'medicines#finder', as: :medicine_finder
 
   # Authentication

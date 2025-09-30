@@ -64,6 +64,11 @@ class MedicinesController < ApplicationController
     render Components::Medicines::FinderView.new
   end
 
+  def dosages
+    medicine = Medicine.find(params[:id])
+    render json: medicine.dosages.select(:id, :amount, :unit, :description)
+  end
+
   private
 
   def set_medicine

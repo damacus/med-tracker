@@ -40,7 +40,7 @@ class TakeMedicine < ApplicationRecord
 
   # Validate against prescription timing restrictions
   def check_timing_restrictions
-    return unless prescription&.has_timing_restrictions?
+    return unless prescription&.timing_restrictions?
     return if taken_at.blank?
 
     validate_timing_restrictions(taken_at)
@@ -65,7 +65,7 @@ class TakeMedicine < ApplicationRecord
 
   # Count the number of doses taken in the current cycle
   def count_doses_in_cycle(validation_time)
-    cycle_period = prescription.get_cycle_period
+    cycle_period = prescription.cycle_period
 
     cycle_start = calculate_cycle_start(validation_time, cycle_period)
 
