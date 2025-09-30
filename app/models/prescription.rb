@@ -10,6 +10,10 @@ class Prescription < ApplicationRecord
 
   has_many :medication_takes, dependent: :destroy
 
+  scope :active, lambda {
+    where('start_date <= ? AND end_date >= ?', Time.zone.today, Time.zone.today)
+  }
+
   validates :start_date, presence: true
   validates :end_date, presence: true
   validate :end_date_after_start_date
