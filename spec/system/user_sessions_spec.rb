@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'User Sessions', type: :system, js: true do
+RSpec.describe 'User Sessions', :js, type: :system do
   fixtures :users
   let(:user) { users(:jane) }
 

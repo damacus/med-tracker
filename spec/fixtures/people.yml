@@ -1,0 +1,42 @@
+---
+one:
+  name: One of Five
+  email: test@example.com
+  date_of_birth: 2025-01-01
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>
+
+john:
+  name: John Doe
+  email: john.doe@example.com
+  date_of_birth: 1980-01-01
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>
+
+jane:
+  name: Jane Doe
+  email: jane.doe@example.com
+  date_of_birth: 1980-01-02
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>
+
+damacus:
+  name: Damacus User
+  email: damacus@example.com
+  date_of_birth: 1985-05-15
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>
+
+admin:
+  name: Admin Doe
+  email: admin@example.com
+  date_of_birth: 1980-01-01
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>
+
+bob:
+  name: Bob Smith
+  email: bob.smith@example.com
+  date_of_birth: 1980-01-01
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>

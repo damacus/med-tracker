@@ -1,54 +1,48 @@
 ---
 one:
-  name: One of Five
+  person: one
   email_address: test@example.com
   password_digest: <%= BCrypt::Password.create("password") %>
   role: :child
-  date_of_birth: 2025-01-01
   created_at: <%= Time.current %>
   updated_at: <%= Time.current %>
 
 john:
-  name: John Doe
+  person: john
   email_address: john.doe@example.com
   password_digest: <%= BCrypt::Password.create('password') %>
   role: :admin
-  date_of_birth: 1980-01-01
   created_at: <%= Time.current %>
   updated_at: <%= Time.current %>
 
 jane:
-  name: Jane Doe
+  person: jane
   email_address: jane.doe@example.com
   password_digest: <%= BCrypt::Password.create('password') %>
   role: :carer
-  date_of_birth: 1980-01-02
   created_at: <%= Time.current %>
   updated_at: <%= Time.current %>
 
 damacus:
-  name: Damacus User
+  person: damacus
   email_address: damacus@example.com
   password_digest: <%= BCrypt::Password.create('password') %>
   role: :admin
-  date_of_birth: 1985-05-15
   created_at: <%= Time.current %>
   updated_at: <%= Time.current %>
 
 admin:
-  name: Admin Doe
+  person: admin
   email_address: admin@example.com
   password_digest: <%= BCrypt::Password.create("adminpassword") %>
   role: :admin
-  date_of_birth: 1980-01-01
   created_at: <%= Time.current %>
   updated_at: <%= Time.current %>
 
 bob:
-  name: Bob Smith
-  role: :carer
-  date_of_birth: 1980-01-01
+  person: bob
   email_address: bob.smith@example.com
   password_digest: <%= BCrypt::Password.create("password") %>
+  role: :carer
   created_at: <%= Time.current %>
   updated_at: <%= Time.current %>

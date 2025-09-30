@@ -1,5 +1,7 @@
+# frozen_string_literal: true
+
 class TakeMedicine < ApplicationRecord
-  self.table_name = "medication_takes"
+  self.table_name = 'medication_takes'
 
   belongs_to :prescription
 
@@ -31,9 +33,9 @@ class TakeMedicine < ApplicationRecord
   private
 
   def taken_at_not_in_future
-    if taken_at.present? && taken_at > Time.current
-      errors.add(:taken_at, "cannot be in the future")
-    end
+    return unless taken_at.present? && taken_at > Time.current
+
+    errors.add(:taken_at, 'cannot be in the future')
   end
 
   # Validate against prescription timing restrictions
@@ -51,28 +53,28 @@ class TakeMedicine < ApplicationRecord
 
   # Validate that the maximum doses per cycle hasn't been exceeded
   def validate_max_doses_per_cycle(validation_time)
-    return unless prescription.max_daily_doses.present?
+    return if prescription.max_daily_doses.blank?
 
     existing_doses = count_doses_in_cycle(validation_time)
 
-    if existing_doses >= prescription.max_daily_doses
-      cycle_name = format_cycle_name(prescription.dose_cycle)
-      errors.add(:base, "Maximum of #{prescription.max_daily_doses} doses per #{cycle_name} allowed")
-    end
+    return unless existing_doses >= prescription.max_daily_doses
+
+    cycle_name = format_cycle_name(prescription.dose_cycle)
+    errors.add(:base, "Maximum of #{prescription.max_daily_doses} doses per #{cycle_name} allowed")
   end
 
   # Count the number of doses taken in the current cycle
   def count_doses_in_cycle(validation_time)
     # Don't count the current record if it's an update
-    existing_count = new_record? ? 0 : 1
+    new_record? ? 0 : 1
     cycle_period = prescription.get_cycle_period
 
     cycle_start = calculate_cycle_start(validation_time, cycle_period)
 
     prescription.take_medicines
-      .where(taken_at: cycle_start..validation_time)
-      .where.not(id: id)
-      .count
+                .where(taken_at: cycle_start..validation_time)
+                .where.not(id: id)
+                .count
   end
 
   # Calculate the start of the current cycle
@@ -86,7 +88,7 @@ class TakeMedicine < ApplicationRecord
 
   # Validate that enough time has passed since the last dose
   def validate_minimum_time_between_doses(validation_time)
-    return unless prescription.min_hours_between_doses.present?
+    return if prescription.min_hours_between_doses.blank?
 
     validate_time_since_last_dose(validation_time)
     validate_time_until_next_dose(validation_time) if persisted?
@@ -95,43 +97,43 @@ class TakeMedicine < ApplicationRecord
   # Check if enough time has passed since the last dose
   def validate_time_since_last_dose(validation_time)
     last_dose = find_last_dose_before(validation_time)
-    return unless last_dose.present?
+    return if last_dose.blank?
 
     hours_since_last_dose = calculate_hours_between(last_dose.taken_at, validation_time)
 
-    if hours_since_last_dose < prescription.min_hours_between_doses
-      add_minimum_time_error
-    end
+    return unless hours_since_last_dose < prescription.min_hours_between_doses
+
+    add_minimum_time_error
   end
 
   # Check if there's enough time until the next dose
   def validate_time_until_next_dose(validation_time)
     next_dose = find_next_dose_after(validation_time)
-    return unless next_dose.present?
+    return if next_dose.blank?
 
     hours_until_next_dose = calculate_hours_between(validation_time, next_dose.taken_at)
 
-    if hours_until_next_dose < prescription.min_hours_between_doses
-      add_minimum_time_error
-    end
+    return unless hours_until_next_dose < prescription.min_hours_between_doses
+
+    add_minimum_time_error
   end
 
   # Find the most recent dose before the given time
   def find_last_dose_before(validation_time)
     prescription.take_medicines
-      .where.not(id: id)
-      .where("taken_at < ?", validation_time)
-      .order(taken_at: :desc)
-      .first
+                .where.not(id: id)
+                .where('taken_at < ?', validation_time)
+                .order(taken_at: :desc)
+                .first
   end
 
   # Find the next dose after the given time
   def find_next_dose_after(validation_time)
     prescription.take_medicines
-      .where.not(id: id)
-      .where("taken_at > ?", validation_time)
-      .order(taken_at: :asc)
-      .first
+                .where.not(id: id)
+                .where('taken_at > ?', validation_time)
+                .order(taken_at: :asc)
+                .first
   end
 
   # Calculate hours between two times
@@ -146,15 +148,15 @@ class TakeMedicine < ApplicationRecord
 
   # Format the cycle name for user-friendly display
   def format_cycle_name(cycle)
-    return "day" if cycle.blank?
+    return 'day' if cycle.blank?
 
     case cycle.downcase
-    when "daily"
-      "day"
-    when "weekly"
-      "week"
-    when "monthly"
-      "month"
+    when 'daily'
+      'day'
+    when 'weekly'
+      'week'
+    when 'monthly'
+      'month'
     else
       cycle
     end

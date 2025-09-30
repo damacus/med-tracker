@@ -23,9 +23,13 @@
 
   <body>
     <%= render Components::Layouts::Navigation.new %>
-    <div id="flash">
-      <%= render "shared/flash" %>
-    </div>
+    <% if content_for?(:flash) %>
+      <%= yield :flash %>
+    <% else %>
+      <div id="flash">
+        <%= render "shared/flash" %>
+      </div>
+    <% end %>
 
     <main>
 	<%= yield %>

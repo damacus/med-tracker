@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class DosageOption < ApplicationRecord
   belongs_to :medicine
 

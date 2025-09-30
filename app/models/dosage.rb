@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class Dosage < ApplicationRecord
   belongs_to :medicine
   has_many :prescriptions, dependent: :destroy

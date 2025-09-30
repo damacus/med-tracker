@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class CreateMedicationTakes < ActiveRecord::Migration[8.0]
   def change
     create_table :medication_takes do |t|

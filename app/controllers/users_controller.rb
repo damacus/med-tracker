@@ -1,7 +1,11 @@
+# frozen_string_literal: true
+
+# Controller for handling user registration and authentication
 class UsersController < ApplicationController
-  skip_before_action :require_authentication, only: [:new, :create]
+  skip_before_action :require_authentication, only: %i[new create]
   def new
     @user = User.new
+    @user.build_person
   end
 
   def create
@@ -9,8 +13,9 @@ class UsersController < ApplicationController
 
     if @user.save
       start_new_session_for(@user)
-      redirect_to root_path, notice: "Welcome! You have signed up successfully."
+      redirect_to root_path, notice: 'Welcome! You have signed up successfully.'
     else
+      @user.build_person unless @user.person
       render :new, status: :unprocessable_entity
     end
   end
@@ -18,6 +23,7 @@ class UsersController < ApplicationController
   private
 
   def user_params
-    params.require(:user).permit(:name, :date_of_birth, :email_address, :password, :password_confirmation)
+    params.require(:user).permit(:email_address, :password, :password_confirmation,
+                                 person_attributes: %i[name date_of_birth])
   end
 end

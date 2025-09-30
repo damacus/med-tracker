@@ -1,25 +1,25 @@
+# frozen_string_literal: true
+
 class MedicinesController < ApplicationController
-  before_action :set_medicine, only: [ :show, :edit, :update, :destroy ]
+  before_action :set_medicine, only: %i[show edit update destroy]
 
   def index
     @medicines = Medicine.all
   end
 
-  def show
-  end
+  def show; end
 
   def new
     @medicine = Medicine.new
   end
 
-  def edit
-  end
+  def edit; end
 
   def create
     @medicine = Medicine.new(medicine_params)
 
     if @medicine.save
-      redirect_to @medicine, notice: "Medicine was successfully created."
+      redirect_to @medicine, notice: 'Medicine was successfully created.'
     else
       render :new, status: :unprocessable_entity
     end
@@ -27,7 +27,7 @@ class MedicinesController < ApplicationController
 
   def update
     if @medicine.update(medicine_params)
-      redirect_to @medicine, notice: "Medicine was successfully updated."
+      redirect_to @medicine, notice: 'Medicine was successfully updated.'
     else
       render :edit, status: :unprocessable_entity
     end
@@ -35,7 +35,7 @@ class MedicinesController < ApplicationController
 
   def destroy
     @medicine.destroy
-    redirect_to medicines_url, notice: "Medicine was successfully deleted."
+    redirect_to medicines_url, notice: 'Medicine was successfully deleted.'
   end
 
   private
@@ -48,10 +48,11 @@ class MedicinesController < ApplicationController
     params.require(:medicine).permit(
       :name,
       :description,
-      :dosage,
-      :unit,
-      :warnings,
-      dosage_options_attributes: [ :id, :amount, :_destroy ]
+      :dosage_amount,
+      :dosage_unit,
+      :current_supply,
+      :stock,
+      :warnings
     )
   end
 end

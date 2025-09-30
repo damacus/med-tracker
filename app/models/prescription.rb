@@ -2,7 +2,7 @@
 
 # Prescription model
 class Prescription < ApplicationRecord
-  belongs_to :user
+  belongs_to :person
   belongs_to :medicine
   belongs_to :dosage
 

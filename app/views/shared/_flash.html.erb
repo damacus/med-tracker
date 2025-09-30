@@ -1,11 +1,11 @@
 <% if notice %>
-  <div class="alert alert--success">
-    <span><%= notice %></span>
-  </div>
+  <%= render RubyUI::Alert.new(variant: :success) do %>
+    <%= notice %>
+  <% end %>
 <% end %>
 
 <% if alert %>
-  <div class="alert alert--error">
-    <span><%= alert %></span>
-  </div>
+  <%= render RubyUI::Alert.new(variant: :destructive) do %>
+    <%= alert %>
+  <% end %>
 <% end %>

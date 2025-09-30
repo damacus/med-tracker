@@ -59,14 +59,14 @@ group :development, :test do
 end
 
 group :development do
-  gem 'ruby_ui', require: false
   gem 'rubocop-capybara'
   gem 'rubocop-rails'
   gem 'rubocop-rspec'
   gem 'rubocop-rspec_rails'
+  gem 'ruby_ui', require: false
   gem 'web-console'
 end
 
-gem "tailwind_merge", "~> 1.3"
+gem 'tailwind_merge', '~> 1.3'
 
-gem "tailwindcss-rails", "~> 4.3"
+gem 'tailwindcss-rails', '~> 4.3'

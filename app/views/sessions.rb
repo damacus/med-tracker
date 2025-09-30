@@ -29,7 +29,9 @@ module Views
       def header_section
         div(class: 'mx-auto max-w-xl text-center space-y-3') do
           h1(class: 'text-4xl font-bold tracking-tight text-slate-800 sm:text-5xl') { 'MedTracker' }
-          p(class: 'text-lg text-slate-600 sm:text-xl') { 'Sign in to manage your medication plan and keep every dose on track.' }
+          p(class: 'text-lg text-slate-600 sm:text-xl') do
+            'Sign in to manage your medication plan and keep every dose on track.'
+          end
         end
       end
 

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_29_081208) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_29_163001) do
   create_table "dosages", force: :cascade do |t|
     t.integer "medicine_id", null: false
     t.decimal "amount"
@@ -44,8 +44,16 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_29_081208) do
     t.integer "reorder_threshold", default: 10, null: false
   end
 
+  create_table "people", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "email"
+    t.date "date_of_birth"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["email"], name: "index_people_on_email", unique: true
+  end
+
   create_table "prescriptions", force: :cascade do |t|
-    t.integer "user_id", null: false
     t.integer "medicine_id", null: false
     t.integer "dosage_id", null: false
     t.date "start_date"
@@ -58,9 +66,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_29_081208) do
     t.integer "min_hours_between_doses"
     t.integer "dose_cycle"
     t.boolean "active", default: true
+    t.integer "person_id", null: false
     t.index ["dosage_id"], name: "index_prescriptions_on_dosage_id"
     t.index ["medicine_id"], name: "index_prescriptions_on_medicine_id"
-    t.index ["user_id"], name: "index_prescriptions_on_user_id"
+    t.index ["person_id"], name: "index_prescriptions_on_person_id"
   end
 
   create_table "sessions", force: :cascade do |t|
@@ -75,18 +84,19 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_29_081208) do
   create_table "users", force: :cascade do |t|
     t.string "email_address", null: false
     t.string "password_digest", null: false
-    t.string "name"
-    t.date "date_of_birth"
     t.integer "role", default: 0, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "person_id", null: false
     t.index ["email_address"], name: "index_users_on_email_address", unique: true
+    t.index ["person_id"], name: "index_users_on_person_id", unique: true
   end
 
   add_foreign_key "dosages", "medicines"
   add_foreign_key "medication_takes", "prescriptions"
   add_foreign_key "prescriptions", "dosages"
   add_foreign_key "prescriptions", "medicines"
-  add_foreign_key "prescriptions", "users"
+  add_foreign_key "prescriptions", "people"
   add_foreign_key "sessions", "users"
+  add_foreign_key "users", "people"
 end

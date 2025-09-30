@@ -3,14 +3,14 @@
 require 'rails_helper'
 
 RSpec.describe Prescription, type: :model do
-  fixtures :prescriptions, :users, :medicines, :dosages
+  fixtures :prescriptions, :people, :medicines, :dosages
 
   describe 'active flag' do
     let(:prescription) { prescriptions(:john_paracetamol) }
 
     it 'is active by default' do
       new_prescription = described_class.new(
-        user: users(:john),
+        person: people(:john),
         medicine: medicines(:paracetamol),
         dosage: dosages(:paracetamol_adult),
         start_date: Time.zone.today,
@@ -35,7 +35,7 @@ RSpec.describe Prescription, type: :model do
   describe 'validations' do
     subject do
       described_class.new(
-        user: user,
+        person: person,
         medicine: medicine,
         dosage: dosage,
         start_date: Time.zone.today,
@@ -43,9 +43,12 @@ RSpec.describe Prescription, type: :model do
       )
     end
 
-    let(:user) do
-      User.create!(name: 'Jane Doe', email_address: 'jane@example.com', password: 'password',
-                   date_of_birth: '1990-01-01')
+    let(:person) do
+      Person.create!(
+        name: 'Jane Doe',
+        email: 'jane@example.com',
+        date_of_birth: Date.new(1990, 1, 1)
+      )
     end
     let(:medicine) do
       Medicine.create!(
@@ -67,7 +70,7 @@ RSpec.describe Prescription, type: :model do
   end
 
   describe 'associations' do
-    it { is_expected.to belong_to(:user) }
+    it { is_expected.to belong_to(:person) }
     it { is_expected.to belong_to(:medicine) }
     it { is_expected.to belong_to(:dosage) }
     it { is_expected.to have_many(:medication_takes).dependent(:destroy) }

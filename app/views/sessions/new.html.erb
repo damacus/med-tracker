@@ -1,48 +1,7 @@
-<div class="min-h-screen flex items-center justify-center bg-muted">
-  <div class="w-full max-w-md space-y-6">
-    <div class="text-center space-y-1">
-      <h1 class="text-3xl font-semibold tracking-tight">MedTracker</h1>
-      <p class="text-muted-foreground">Sign in to manage your medication plan</p>
-    </div>
+<% content_for :flash, "" %>
 
-    <% if flash[:alert].present? %>
-      <div class="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-        <%= flash[:alert] %>
-      </div>
-    <% elsif flash[:notice].present? %>
-      <div class="rounded-md border border-success/40 bg-success/10 px-4 py-3 text-sm text-success">
-        <%= flash[:notice] %>
-      </div>
-    <% end %>
-
-    <div class="rounded-lg border bg-card p-6 shadow-sm">
-      <%= form_with url: session_path, class: "space-y-6" do |form| %>
-        <div class="space-y-2">
-          <%= form.label :email_address, class: "text-sm font-medium" %>
-          <%= form.email_field :email_address,
-                required: true,
-                autofocus: true,
-                autocomplete: "username",
-                placeholder: "Enter your email address",
-                value: params[:email_address],
-                class: "w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring focus-visible:ring-primary/40" %>
-        </div>
-
-        <div class="space-y-2">
-          <div class="flex items-center justify-between">
-            <%= form.label :password, class: "text-sm font-medium" %>
-            <%= link_to "Forgot password?", new_password_path, class: "text-sm font-medium text-primary hover:underline" %>
-          </div>
-          <%= form.password_field :password,
-                required: true,
-                autocomplete: "current-password",
-                placeholder: "Enter your password",
-                maxlength: 72,
-                class: "w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring focus-visible:ring-primary/40" %>
-        </div>
-
-        <%= form.submit "Sign in", class: "w-full inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60" %>
-      <% end %>
-    </div>
-  </div>
-</div>
+<%= render Views::Sessions::New.new(
+      params: params,
+      alert_message: flash[:alert],
+      notice_message: flash[:notice]
+    ) %>

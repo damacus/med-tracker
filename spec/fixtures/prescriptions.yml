@@ -2,7 +2,7 @@
 # Prescriptions Fixtures
 
 john_paracetamol:
-  user: john
+  person: john
   medicine: paracetamol
   dosage: paracetamol_adult
   frequency: 'As needed'
@@ -14,7 +14,7 @@ john_paracetamol:
 
 # Ibuprofen prescriptions
 jane_ibuprofen:
-  user: jane
+  person: jane
   medicine: ibuprofen
   dosage: ibuprofen_adult
   frequency: Every 6-8 hours
@@ -27,7 +27,7 @@ jane_ibuprofen:
 
 # Aspirin prescriptions
 bob_aspirin:
-  user: bob
+  person: bob
   medicine: aspirin
   dosage: aspirin_light
   frequency: Once daily
@@ -40,7 +40,7 @@ bob_aspirin:
 
 # Weekly medication
 bob_weekly_med:
-  user: bob
+  person: bob
   medicine: vitamin_d
   dosage: vitamin_d_daily
   frequency: Once weekly

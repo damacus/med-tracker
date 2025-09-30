@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class AddDetailsToMedicines < ActiveRecord::Migration[8.0]
   def change
     add_column :medicines, :dosage_amount, :float

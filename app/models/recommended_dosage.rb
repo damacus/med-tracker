@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class RecommendedDosage < ApplicationRecord
   belongs_to :medicine
 
@@ -20,6 +22,6 @@ class RecommendedDosage < ApplicationRecord
 
   # Find recommended dosage for a person based on their age
   def self.find_for_age(age)
-    where("min_age <= ? AND max_age >= ?", age, age).first
+    where('min_age <= ? AND max_age >= ?', age, age).first
   end
 end

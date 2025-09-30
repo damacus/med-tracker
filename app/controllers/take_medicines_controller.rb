@@ -1,5 +1,7 @@
+# frozen_string_literal: true
+
 class TakeMedicinesController < ApplicationController
-  before_action :set_prescription, only: [ :create ]
+  before_action :set_prescription, only: [:create]
 
   def create
     # Always use the current time when creating a new take_medicine
@@ -8,13 +10,15 @@ class TakeMedicinesController < ApplicationController
 
     if @take_medicine.save
       respond_to do |format|
-        format.html { redirect_back(fallback_location: root_path, notice: "Medication taken successfully recorded.") }
-        format.json { render json: { success: true, message: "Medication taken successfully recorded." } }
+        format.html { redirect_back(fallback_location: root_path, notice: 'Medication taken successfully recorded.') }
+        format.json { render json: { success: true, message: 'Medication taken successfully recorded.' } }
       end
     else
       respond_to do |format|
-        format.html { redirect_back(fallback_location: root_path, alert: "Failed to record medication taken.") }
-        format.json { render json: { success: false, errors: @take_medicine.errors.full_messages }, status: :unprocessable_entity }
+        format.html { redirect_back(fallback_location: root_path, alert: 'Failed to record medication taken.') }
+        format.json do
+          render json: { success: false, errors: @take_medicine.errors.full_messages }, status: :unprocessable_entity
+        end
       end
     end
   end

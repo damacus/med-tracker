@@ -46,7 +46,7 @@ module Components
                else
                  @current_user
                end
-        
+
         # Ensure we have a valid user object
         user.present? && !user.nil?
       end

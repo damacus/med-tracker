@@ -1,7 +1,8 @@
-<div class="container">
-  <div class="page-header">
-    <h1 class="page-title">New Medicine</h1>
-  </div>
+<div class="mx-auto flex max-w-3xl flex-col space-y-8">
+  <header class="space-y-3 text-center sm:text-left">
+    <h1 class="text-3xl font-semibold text-slate-900">Add a new medicine</h1>
+    <p class="text-slate-600">Capture inventory details and dosage information.</p>
+  </header>
 
   <%= render "form", medicine: @medicine %>
 </div>

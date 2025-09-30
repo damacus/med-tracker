@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "rails_helper"
+require 'rails_helper'
 
 # This module follows the approach from https://www.phlex.fun/components/testing.html
 module PhlexTestingSupport
@@ -20,10 +20,10 @@ module PhlexTestingSupport
     # Create the output
     html = component.call.to_s
     @rendered = html
-    
+
     Nokogiri::HTML::DocumentFragment.parse(html)
   end
-  
+
   # Properly delegate rendering through Rails view context
   def view_render(...)
     view_context.render(...)
@@ -33,12 +33,10 @@ module PhlexTestingSupport
   def rendered
     @rendered
   end
-  
+
   # Return a proper Rails view context
-  def view_context
-    controller.view_context
-  end
-  
+  delegate :view_context, to: :controller
+
   # Use Rails test controller for proper testing environment
   def controller
     @controller ||= ActionView::TestCase::TestController.new.tap do |controller|
