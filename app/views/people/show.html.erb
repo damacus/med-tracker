@@ -35,9 +35,11 @@
   <div class="prescriptions-section mt-8">
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-2xl font-bold text-slate-900">Prescriptions</h2>
-      <%= link_to "Add Prescription", new_person_prescription_path(@person),
-          class: "inline-flex items-center justify-center rounded-md font-medium transition-colors px-4 py-2 text-sm bg-primary text-primary-foreground shadow hover:bg-primary/90",
-          data: { turbo_stream: true } %>
+      <%= render RubyUI::Link.new(
+        href: new_person_prescription_path(@person),
+        variant: :primary,
+        data: { turbo_stream: true }
+      ) { "Add Prescription" } %>
     </div>
 
     <%= turbo_frame_tag "new_prescription" %>

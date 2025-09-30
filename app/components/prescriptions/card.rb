@@ -140,12 +140,7 @@ module Components
 
       def render_take_medicine_button
         div(class: 'relative inline-block prescription__take-hover-card') do
-          button(
-            type: 'button',
-            class: 'prescription__take-trigger inline-flex items-center justify-center rounded-md text-xs ' \
-                   'font-medium px-3 py-1.5 bg-primary text-primary-foreground shadow-sm ' \
-                   'hover:bg-primary/90 transition-colors'
-          ) { '💊 Take' }
+          Button(variant: :primary, size: :sm, class: 'prescription__take-trigger') { '💊 Take' }
           render_take_medicine_form
         end
       end
@@ -166,30 +161,45 @@ module Components
               class: 'w-full px-3 py-2 border border-slate-300 rounded-md text-sm ' \
                      'focus:outline-none focus:ring-2 focus:ring-primary'
             )
-            render f.submit(
-              'Take Now',
-              class: 'w-full inline-flex items-center justify-center rounded-md text-sm font-medium ' \
-                     'px-4 py-2 bg-primary text-primary-foreground shadow hover:bg-primary/90 ' \
-                     'transition-colors'
-            )
+            Button(type: :submit, variant: :primary, size: :md, class: 'w-full') { 'Take Now' }
           end
         end
       end
 
       def render_prescription_actions
-        a(
-          href: edit_person_prescription_path(person, prescription),
-          class: 'inline-flex items-center justify-center rounded-md text-sm font-medium ' \
-                 'px-4 py-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors'
-        ) { 'Edit' }
+        Link(href: edit_person_prescription_path(person, prescription), variant: :outline) { 'Edit' }
+        render_delete_dialog
+      end
 
-        button_to(
-          person_prescription_path(person, prescription),
-          method: :delete,
-          class: 'inline-flex items-center justify-center rounded-md text-sm font-medium ' \
-                 'px-4 py-2 bg-destructive text-white shadow-sm hover:bg-destructive/90 transition-colors',
-          form: { data: { turbo_confirm: 'Are you sure?' } }
-        ) { 'Delete' }
+      def render_delete_dialog
+        AlertDialog do
+          AlertDialogTrigger do
+            Button(variant: :destructive, size: :md) { 'Delete' }
+          end
+          AlertDialogContent do
+            AlertDialogHeader do
+              AlertDialogTitle { 'Delete Prescription' }
+              AlertDialogDescription do
+                plain "Are you sure you want to delete the #{prescription.medicine.name} prescription? "
+                plain 'This action cannot be undone.'
+              end
+            end
+            AlertDialogFooter do
+              button(
+                type: 'button',
+                onclick: 'this.closest("[data-controller=\'ruby-ui--alert-dialog\']").querySelector(\'[data-action*=close]\').click()',
+                class: 'inline-flex items-center justify-center rounded-md text-sm font-medium px-4 py-2 ' \
+                       'border border-input bg-background hover:bg-accent hover:text-accent-foreground'
+              ) { 'Cancel' }
+              button_to(
+                person_prescription_path(person, prescription),
+                method: :delete,
+                class: 'inline-flex items-center justify-center rounded-md text-sm font-medium px-4 py-2 ' \
+                       'bg-destructive text-white shadow-sm hover:bg-destructive/90'
+              ) { 'Delete' }
+            end
+          end
+        end
       end
     end
   end

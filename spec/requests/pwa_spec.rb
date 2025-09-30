@@ -10,7 +10,7 @@ RSpec.describe 'PWA' do
       expect(response).to have_http_status(:ok)
       expect(response.media_type).to eq('application/manifest+json')
 
-      manifest = JSON.parse(response.body)
+      manifest = JSON.parse(response.parsed_body)
       expect(manifest['name']).to eq('MedTracker')
       expect(manifest['short_name']).to eq('MedTracker')
       expect(manifest['icons']).to contain_exactly(

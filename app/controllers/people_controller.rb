@@ -4,11 +4,18 @@ class PeopleController < ApplicationController
   before_action :set_person, only: %i[show update destroy]
 
   def index
-    @people = Person.all
+    people = Person.all
+    render Components::People::IndexView.new(people: people)
   end
 
   def show
-    @prescriptions = @person.prescriptions.includes(:medicine)
+    prescriptions = @person.prescriptions.includes(:medicine, :dosage)
+    editing = params[:editing] == 'true'
+    render Components::People::ShowView.new(
+      person: @person,
+      prescriptions: prescriptions,
+      editing: editing
+    )
   end
 
   # GET /people/new

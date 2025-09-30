@@ -56,39 +56,56 @@ module Components
         end
       end
 
-      def render_medicine_field(f)
+      def render_medicine_field(_f)
         FormField do
           FormFieldLabel(for: 'prescription_medicine_id') { 'Medicine' }
-          render f.collection_select(
-            :medicine_id,
-            medicines,
-            :id,
-            :name,
-            { prompt: 'Select a medicine' },
-            {
-              class: 'flex h-9 w-full rounded-md border bg-background px-3 py-1 text-sm shadow-sm ' \
-                     'border-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+          Select do
+            SelectInput(
+              name: 'prescription[medicine_id]',
+              id: 'prescription_medicine_id',
+              value: prescription.medicine_id,
               data: { action: 'change->prescription-form#updateDosages' }
-            }
-          )
+            )
+            SelectTrigger do
+              SelectValue(placeholder: 'Select a medicine') do
+                prescription.medicine&.name || 'Select a medicine'
+              end
+            end
+            SelectContent do
+              medicines.each do |medicine|
+                SelectItem(value: medicine.id.to_s) { medicine.name }
+              end
+            end
+          end
         end
       end
 
-      def render_dosage_field(f)
+      def render_dosage_field(_f)
         FormField do
           FormFieldLabel(for: 'prescription_dosage_id') { 'Dosage' }
-          render f.collection_select(
-            :dosage_id,
-            prescription.medicine&.dosages || [],
-            :id,
-            ->(d) { "#{d.amount} #{d.unit} - #{d.description}" },
-            { prompt: 'Select a dosage' },
-            {
-              class: 'flex h-9 w-full rounded-md border bg-background px-3 py-1 text-sm shadow-sm ' \
-                     'border-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
-              data: { prescription_form_target: 'dosageSelect' }
-            }
-          )
+          Select(data: { prescription_form_target: 'dosageSelect' }) do
+            SelectInput(
+              name: 'prescription[dosage_id]',
+              id: 'prescription_dosage_id',
+              value: prescription.dosage_id
+            )
+            SelectTrigger do
+              SelectValue(placeholder: 'Select a dosage') do
+                if prescription.dosage
+                  "#{prescription.dosage.amount} #{prescription.dosage.unit} - #{prescription.dosage.description}"
+                else
+                  'Select a dosage'
+                end
+              end
+            end
+            SelectContent do
+              (prescription.medicine&.dosages || []).each do |dosage|
+                SelectItem(value: dosage.id.to_s) do
+                  plain "#{dosage.amount} #{dosage.unit} - #{dosage.description}"
+                end
+              end
+            end
+          end
         end
       end
 
@@ -153,46 +170,53 @@ module Components
         end
       end
 
-      def render_dose_cycle_field(f)
+      def render_dose_cycle_field(_f)
         FormField do
           FormFieldLabel(for: 'prescription_dose_cycle') { 'Dose cycle' }
           FormFieldHint { 'How often the dose cycle resets (default: daily)' }
-          render f.select(
-            :dose_cycle,
-            [['Daily', 'daily'], ['Weekly', 'weekly'], ['Monthly', 'monthly']],
-            { include_blank: 'Select a cycle (default: daily)' },
-            {
-              class: 'flex h-9 w-full rounded-md border bg-background px-3 py-1 text-sm shadow-sm ' \
-                     'border-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
-            }
-          )
+          Select do
+            SelectInput(
+              name: 'prescription[dose_cycle]',
+              id: 'prescription_dose_cycle',
+              value: prescription.dose_cycle
+            )
+            SelectTrigger do
+              SelectValue(placeholder: 'Select a cycle (default: daily)') do
+                prescription.dose_cycle&.titleize || 'Select a cycle (default: daily)'
+              end
+            end
+            SelectContent do
+              SelectItem(value: 'daily') { 'Daily' }
+              SelectItem(value: 'weekly') { 'Weekly' }
+              SelectItem(value: 'monthly') { 'Monthly' }
+            end
+          end
         end
       end
 
-      def render_notes_field(f)
+      def render_notes_field(_f)
         FormField(class: 'md:col-span-2') do
           FormFieldLabel(for: 'prescription_notes') { 'Notes' }
           FormFieldHint { 'Additional instructions or information' }
-          render f.text_area(
-            :notes,
+          Textarea(
             rows: 3,
-            class: 'flex min-h-[60px] w-full rounded-md border bg-background px-3 py-2 text-sm shadow-sm ' \
-                   'border-border placeholder:text-muted-foreground focus-visible:outline-none ' \
-                   'focus-visible:ring-1 focus-visible:ring-ring'
+            name: 'prescription[notes]',
+            id: 'prescription_notes',
+            placeholder: 'Enter any additional notes or instructions...',
+            value: prescription.notes
           )
         end
       end
 
-      def render_actions(f)
+      def render_actions(_f)
         div(class: 'flex gap-3 justify-end') do
           Link(href: person_path(person), variant: :outline) { 'Cancel' }
-          render f.submit(
-            prescription.new_record? ? 'Add Prescription' : 'Update Prescription',
-            class: 'inline-flex items-center justify-center rounded-md text-sm font-medium ' \
-                   'px-4 py-2 h-9 bg-primary text-primary-foreground shadow hover:bg-primary/90 ' \
-                   'transition-colors',
+          Button(
+            type: :submit,
+            variant: :primary,
+            size: :md,
             data: { prescription_form_target: 'submit' }
-          )
+          ) { prescription.new_record? ? 'Add Prescription' : 'Update Prescription' }
         end
       end
     end
