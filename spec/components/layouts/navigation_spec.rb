@@ -26,7 +26,7 @@ RSpec.describe 'Navigation', type: :system do
         expect(page).to have_link('Medicines')
         expect(page).to have_link('People')
         expect(page).to have_button('Sign out')
-        expect(page).not_to have_link('Login')
+        expect(page).to have_no_link('Login')
       end
     end
   end
@@ -47,9 +47,9 @@ RSpec.describe 'Navigation', type: :system do
       # Check navigation elements for unauthenticated user
       within 'nav' do
         expect(page).to have_link('Login')
-        expect(page).not_to have_button('Sign out')
-        expect(page).not_to have_link('Medicines')
-        expect(page).not_to have_link('People')
+        expect(page).to have_no_button('Sign out')
+        expect(page).to have_no_link('Medicines')
+        expect(page).to have_no_link('People')
       end
     end
   end

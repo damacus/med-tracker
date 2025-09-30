@@ -16,16 +16,16 @@ class MedicinesController < ApplicationController
     @medicine = Medicine.new
     render Components::Medicines::FormView.new(
       medicine: @medicine,
-      title: 'Add a New Medicine',
-      subtitle: 'Capture inventory details and dosage information.'
+      title: t('medicines.form.new_title'),
+      subtitle: t('medicines.form.new_subtitle')
     )
   end
 
   def edit
     render Components::Medicines::FormView.new(
       medicine: @medicine,
-      title: 'Edit Medicine',
-      subtitle: "Update #{@medicine.name}'s details."
+      title: t('medicines.form.edit_title'),
+      subtitle: t('medicines.form.edit_subtitle', name: @medicine.name)
     )
   end
 
@@ -33,31 +33,31 @@ class MedicinesController < ApplicationController
     @medicine = Medicine.new(medicine_params)
 
     if @medicine.save
-      redirect_to @medicine, notice: 'Medicine was successfully created.'
+      redirect_to @medicine, notice: t('medicines.created')
     else
       render Components::Medicines::FormView.new(
         medicine: @medicine,
-        title: 'Add a New Medicine',
-        subtitle: 'Capture inventory details and dosage information.'
+        title: t('medicines.form.new_title'),
+        subtitle: t('medicines.form.new_subtitle')
       ), status: :unprocessable_entity
     end
   end
 
   def update
     if @medicine.update(medicine_params)
-      redirect_to @medicine, notice: 'Medicine was successfully updated.'
+      redirect_to @medicine, notice: t('medicines.updated')
     else
       render Components::Medicines::FormView.new(
         medicine: @medicine,
-        title: 'Edit Medicine',
-        subtitle: "Update #{@medicine.name}'s details."
+        title: t('medicines.form.edit_title'),
+        subtitle: t('medicines.form.edit_subtitle', name: @medicine.name)
       ), status: :unprocessable_entity
     end
   end
 
   def destroy
     @medicine.destroy
-    redirect_to medicines_url, notice: 'Medicine was successfully deleted.'
+    redirect_to medicines_url, notice: t('medicines.deleted')
   end
 
   def finder
@@ -71,14 +71,14 @@ class MedicinesController < ApplicationController
   end
 
   def medicine_params
-    params.require(:medicine).permit(
-      :name,
-      :description,
-      :dosage_amount,
-      :dosage_unit,
-      :current_supply,
-      :stock,
-      :warnings
+    params.expect(
+      medicine: %i[name
+                   description
+                   dosage_amount
+                   dosage_unit
+                   current_supply
+                   stock
+                   warnings]
     )
   end
 end

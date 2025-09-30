@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Home', type: :system do
+RSpec.describe 'Home' do
   fixtures :users
 
   it 'loads the home page for a signed-in user' do

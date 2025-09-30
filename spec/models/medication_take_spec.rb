@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe MedicationTake, type: :model do
+RSpec.describe MedicationTake do
   subject(:medication_take) { described_class.new(prescription: prescription, taken_at: Time.current) }
 
   let(:person) { Person.create!(name: 'Jane Doe', date_of_birth: '1990-01-01') }

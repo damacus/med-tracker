@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'PWA', type: :request do
+RSpec.describe 'PWA' do
   describe 'GET /manifest.webmanifest' do
     it 'returns the web manifest with app metadata' do
       get '/manifest.webmanifest'
@@ -10,7 +10,7 @@ RSpec.describe 'PWA', type: :request do
       expect(response).to have_http_status(:ok)
       expect(response.media_type).to eq('application/manifest+json')
 
-      manifest = JSON.parse(response.body)
+      manifest = response.parsed_body
       expect(manifest['name']).to eq('MedTracker')
       expect(manifest['short_name']).to eq('MedTracker')
       expect(manifest['icons']).to contain_exactly(

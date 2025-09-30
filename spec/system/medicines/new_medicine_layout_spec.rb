@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'MedicineNewLayout', type: :system do
+RSpec.describe 'MedicineNewLayout' do
   fixtures :users
 
   before do

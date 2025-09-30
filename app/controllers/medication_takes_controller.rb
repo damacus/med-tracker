@@ -8,12 +8,12 @@ class MedicationTakesController < ApplicationController
 
     if @medication_take.save
       respond_to do |format|
-        format.html { redirect_back(fallback_location: root_path, notice: 'Medication taken successfully recorded.') }
+        format.html { redirect_back(fallback_location: root_path, notice: t('take_medicines.success')) }
         format.json { render json: { success: true, message: 'Medication taken successfully recorded.' } }
       end
     else
       respond_to do |format|
-        format.html { redirect_back(fallback_location: root_path, alert: 'Failed to record medication taken.') }
+        format.html { redirect_back(fallback_location: root_path, alert: t('take_medicines.failure')) }
         format.json do
           render json: { success: false, errors: @medication_take.errors.full_messages }, status: :unprocessable_entity
         end
@@ -28,7 +28,7 @@ class MedicationTakesController < ApplicationController
   end
 
   def medication_take_params
-    params.require(:medication_take).permit(:taken_at, :notes).tap do |whitelisted|
+    params.expect(medication_take: %i[taken_at notes]).tap do |whitelisted|
       whitelisted[:taken_at] ||= Time.current
     end
   end

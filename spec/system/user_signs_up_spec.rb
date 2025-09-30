@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'UserSignsUps', type: :system do
+RSpec.describe 'UserSignsUps' do
   fixtures :users
 
   before do

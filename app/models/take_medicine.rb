@@ -11,8 +11,8 @@ class TakeMedicine < ApplicationRecord
   validate :check_timing_restrictions
 
   # Scopes
-  scope :today, -> { where(taken_at: Time.current.beginning_of_day..Time.current.end_of_day) }
-  scope :this_week, -> { where(taken_at: Time.current.beginning_of_week..Time.current.end_of_week) }
+  scope :today, -> { where(taken_at: Time.current.all_day) }
+  scope :this_week, -> { where(taken_at: Time.current.all_week) }
   scope :recent, -> { order(taken_at: :desc) }
 
   # Delegate methods to access prescription details easily
@@ -120,7 +120,7 @@ class TakeMedicine < ApplicationRecord
   def find_last_dose_before(validation_time)
     prescription.take_medicines
                 .where.not(id: id)
-                .where('taken_at < ?', validation_time)
+                .where(taken_at: ...validation_time)
                 .order(taken_at: :desc)
                 .first
   end

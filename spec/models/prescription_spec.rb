@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe Prescription, type: :model do
+RSpec.describe Prescription do
   fixtures :prescriptions, :people, :medicines, :dosages
 
   describe 'active flag' do

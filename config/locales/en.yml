@@ -27,5 +27,57 @@
 #       "yes": yup
 #       enabled: "ON"
 
+---
 en:
   hello: "Hello world"
+
+  admin:
+    users:
+      unauthorized: "You are not authorized to perform this action."
+
+  medicines:
+    created: "Medicine was successfully created."
+    updated: "Medicine was successfully updated."
+    deleted: "Medicine was successfully deleted."
+    form:
+      new_title: "Add a New Medicine"
+      new_subtitle: "Capture inventory details and dosage information."
+      edit_title: "Edit Medicine"
+      edit_subtitle: "Update %{name}'s details."
+
+  passwords:
+    reset_sent: >-
+      Password reset instructions sent
+      (if user with that email address exists).
+    reset_success: "Password has been reset."
+    mismatch: "Passwords did not match."
+    invalid_token: "Password reset link is invalid or has expired."
+    mailer:
+      subject: "Reset your password"
+
+  people:
+    created: "Person was successfully created."
+    updated: "Person was successfully updated."
+    deleted: "Person was successfully deleted."
+
+  prescriptions:
+    created: "Prescription was successfully created."
+    updated: "Prescription was successfully updated."
+    deleted: "Prescription was successfully deleted."
+    medicine_taken: "Medicine taken successfully."
+    modal:
+      new_title: "New Prescription for %{person}"
+      edit_title: "Edit Prescription for %{person}"
+
+  sessions:
+    rate_limit: "Try again later."
+    signed_in: "Signed in successfully."
+    invalid_credentials: "Try another email address or password."
+    signed_out: "Signed out successfully."
+
+  take_medicines:
+    success: "Medication taken successfully recorded."
+    failure: "Failed to record medication taken."
+
+  users:
+    welcome: "Welcome! You have signed up successfully."

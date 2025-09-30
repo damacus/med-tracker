@@ -53,21 +53,39 @@ module Views
       end
 
       def form_section
-        render RubyUI::Card.new(class: 'w-full max-w-xl backdrop-blur bg-white/90 shadow-2xl border border-white/70 ring-1 ring-black/5 rounded-2xl overflow-hidden', data: { test_id: 'login-card' }) do
-          render RubyUI::CardHeader.new(class: 'space-y-2 bg-white/60') do
-            render RubyUI::CardTitle.new(class: 'text-2xl font-semibold text-slate-900') { 'Welcome back' }
-            render RubyUI::CardDescription.new(class: 'text-base text-slate-600') { 'Enter your credentials to access your personalized medication dashboard.' }
-          end
+        render RubyUI::Card.new(class: card_classes, data: { test_id: 'login-card' }) do
+          render_card_header
+          render_card_content
+        end
+      end
 
-          render RubyUI::CardContent.new(class: 'space-y-6 p-6 sm:p-8') do
-            flash_section
-            render RubyUI::Form.new(action: session_path, method: :post, class: 'space-y-6') do
-              authenticity_token_field
-              email_field
-              password_field
-              submit_button
-            end
+      def card_classes
+        'w-full max-w-xl backdrop-blur bg-white/90 shadow-2xl border border-white/70 ' \
+          'ring-1 ring-black/5 rounded-2xl overflow-hidden'
+      end
+
+      def render_card_header
+        render RubyUI::CardHeader.new(class: 'space-y-2 bg-white/60') do
+          render RubyUI::CardTitle.new(class: 'text-2xl font-semibold text-slate-900') { 'Welcome back' }
+          render RubyUI::CardDescription.new(class: 'text-base text-slate-600') do
+            plain 'Enter your credentials to access your personalized medication dashboard.'
           end
+        end
+      end
+
+      def render_card_content
+        render RubyUI::CardContent.new(class: 'space-y-6 p-6 sm:p-8') do
+          flash_section
+          render_login_form
+        end
+      end
+
+      def render_login_form
+        render RubyUI::Form.new(action: session_path, method: :post, class: 'space-y-6') do
+          authenticity_token_field
+          email_field
+          password_field
+          submit_button
         end
       end
 

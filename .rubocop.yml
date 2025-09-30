@@ -5,6 +5,9 @@ plugins:
   - rubocop-capybara
   - rubocop-rspec_rails
 
+AllCops:
+  NewCops: enable
+
 RSpec/ExampleLength:
   Max: 15
   Exclude:
@@ -25,7 +28,7 @@ Metrics/BlockLength:
     - 'spec/**/*_spec.rb'
     - 'config/routes.rb'
     - 'db/schema.rb'
-  ExcludedMethods:
+  AllowedMethods:
     - test
 
 Metrics/ClassLength:
@@ -34,6 +37,7 @@ Metrics/ClassLength:
     - 'test/system/playwright/**/*'
     - 'test/**/*_test.rb'
     - 'db/migrate/**/*'
+    - 'app/components/**/*'
 
 Metrics/MethodLength:
   Max: 15
@@ -83,3 +87,13 @@ Lint/MissingSuper:
 Naming/VariableNumber:
   Exclude:
     - 'test/**/*'
+
+# Allow useless constant scoping in PWA controller for clarity
+Lint/UselessConstantScoping:
+  Exclude:
+    - 'app/controllers/pwa_controller.rb'
+
+# Ignore boolean column constraint in existing migrations
+Rails/ThreeStateBooleanColumn:
+  Exclude:
+    - 'db/migrate/20250625135502_add_active_to_presciptions.rb'

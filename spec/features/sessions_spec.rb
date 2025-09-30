@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Sessions', type: :feature do
+RSpec.describe 'Sessions' do
   describe 'login page' do
     before do
       visit login_path

@@ -13,7 +13,7 @@ class UsersController < ApplicationController
 
     if @user.save
       start_new_session_for(@user)
-      redirect_to root_path, notice: 'Welcome! You have signed up successfully.'
+      redirect_to root_path, notice: t('users.welcome')
     else
       @user.build_person unless @user.person
       render :new, status: :unprocessable_entity
@@ -23,7 +23,7 @@ class UsersController < ApplicationController
   private
 
   def user_params
-    params.require(:user).permit(:email_address, :password, :password_confirmation,
-                                 person_attributes: %i[name date_of_birth])
+    params.expect(user: [:email_address, :password, :password_confirmation,
+                         { person_attributes: %i[name date_of_birth] }])
   end
 end

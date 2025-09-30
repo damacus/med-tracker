@@ -54,7 +54,7 @@ class TakeMedicineTest < ActiveSupport::TestCase
   test 'validates taken_at is not in the future' do
     take_medicine = TakeMedicine.new(
       prescription: @prescription,
-      taken_at: Time.current + 1.hour,
+      taken_at: 1.hour.from_now,
       amount_ml: 5
     )
     assert_not take_medicine.valid?

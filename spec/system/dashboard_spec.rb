@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Dashboard', type: :system do
+RSpec.describe 'Dashboard' do
   fixtures :users, :medicines, :dosages, :prescriptions
 
   it 'loads the dashboard for a signed-in user' do

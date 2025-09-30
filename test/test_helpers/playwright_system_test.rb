@@ -10,8 +10,8 @@ class PlaywrightSystemTest < ActionDispatch::SystemTestCase
     @page = Capybara.current_session.driver.browser
   end
 
-  def visit(*args)
-    Capybara.current_session.visit(*args)
+  def visit(*)
+    Capybara.current_session.visit(*)
     @page = Capybara.current_session.driver.browser
   end
 end

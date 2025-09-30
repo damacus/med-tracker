@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe Medicine, type: :model do
+RSpec.describe Medicine do
   subject do
     described_class.new(
       name: 'Ibuprofen',

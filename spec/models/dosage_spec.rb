@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe Dosage, type: :model do
+RSpec.describe Dosage do
   subject(:dosage) do
     described_class.new(
       medicine: medicine,

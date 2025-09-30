@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'MedicineFinder', type: :system do
+RSpec.describe 'MedicineFinder' do
   fixtures :users
 
   let(:user) { users(:john) }

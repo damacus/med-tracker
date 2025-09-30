@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe Person, type: :model do
+RSpec.describe Person do
   subject(:person) do
     described_class.new(
       name: 'Jane Smith',

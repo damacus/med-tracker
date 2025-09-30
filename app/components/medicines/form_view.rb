@@ -102,6 +102,11 @@ module Components
       end
 
       def render_dosage_fields(_form)
+        render_dosage_amount_field
+        render_dosage_unit_field
+      end
+
+      def render_dosage_amount_field
         div do
           render RubyUI::FormField.new do
             render RubyUI::FormFieldLabel.new(for: 'medicine_dosage_amount') { 'Standard Dosage' }
@@ -115,25 +120,41 @@ module Components
             )
           end
         end
+      end
 
+      def render_dosage_unit_field
         div do
           render RubyUI::FormField.new do
             render RubyUI::FormFieldLabel.new(for: 'medicine_dosage_unit') { 'Unit' }
-            select(
-              name: 'medicine[dosage_unit]',
-              id: 'medicine_dosage_unit',
-              class: input_classes
-            ) do
-              option(value: '', selected: medicine.dosage_unit.blank?) { 'Select unit' }
-              %w[tablet mg ml g mcg IU spray drop].each do |unit|
-                option(value: unit, selected: medicine.dosage_unit == unit) { unit }
-              end
-            end
+            render_dosage_unit_select
           end
         end
       end
 
+      def render_dosage_unit_select
+        select(
+          name: 'medicine[dosage_unit]',
+          id: 'medicine_dosage_unit',
+          class: input_classes
+        ) do
+          option(value: '', selected: medicine.dosage_unit.blank?) { 'Select unit' }
+          dosage_units.each do |unit|
+            option(value: unit, selected: medicine.dosage_unit == unit) { unit }
+          end
+        end
+      end
+
+      def dosage_units
+        %w[tablet mg ml g mcg IU spray drop]
+      end
+
       def render_supply_fields(_form)
+        render_current_supply_field
+        render_stock_field
+        render_reorder_threshold_field
+      end
+
+      def render_current_supply_field
         div do
           render RubyUI::FormField.new do
             render RubyUI::FormFieldLabel.new(for: 'medicine_current_supply') { 'Current Supply' }
@@ -146,7 +167,9 @@ module Components
             )
           end
         end
+      end
 
+      def render_stock_field
         div do
           render RubyUI::FormField.new do
             render RubyUI::FormFieldLabel.new(for: 'medicine_stock') { 'Stock' }
@@ -159,7 +182,9 @@ module Components
             )
           end
         end
+      end
 
+      def render_reorder_threshold_field
         div do
           render RubyUI::FormField.new do
             render RubyUI::FormFieldLabel.new(for: 'medicine_reorder_threshold') { 'Reorder Threshold' }

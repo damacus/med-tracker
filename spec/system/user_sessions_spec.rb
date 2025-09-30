@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'User Sessions', :js, type: :system do
+RSpec.describe 'User Sessions', :js do
   fixtures :users
   let(:user) { users(:jane) }
 
@@ -62,7 +62,7 @@ RSpec.describe 'User Sessions', :js, type: :system do
 
       # Wait for the login to complete and redirect
       using_wait_time(5) do
-        expect(page).not_to have_current_path(login_path)
+        expect(page).to have_no_current_path(login_path)
         expect(page).to have_content('Signed in successfully')
       end
 
@@ -75,7 +75,7 @@ RSpec.describe 'User Sessions', :js, type: :system do
       # Use Capybara's built-in waiting functionality with a longer timeout
       using_wait_time(5) do
         expect(page).to have_content('Signed out successfully.')
-        expect(page).not_to have_button('Sign out')
+        expect(page).to have_no_button('Sign out')
       end
     end
   end

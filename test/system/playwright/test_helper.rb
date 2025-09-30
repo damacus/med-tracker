@@ -7,6 +7,7 @@ require 'database_cleaner-active_record'
 
 class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
   include ActiveSupport::Testing::TimeHelpers
+
   driven_by :playwright, options: {
     browser: :chromium,
     headless: true,

@@ -12,7 +12,23 @@ class PrescriptionsController < ApplicationController
       format.html { render :new, locals: { inline: false, medicines: @medicines } }
       format.turbo_stream do
         render turbo_stream: turbo_stream.replace('modal', partial: 'shared/modal', locals: {
-                                                    title: "New Prescription for #{@person.name}",
+                                                    title: t('prescriptions.modal.new_title', person: @person.name),
+                                                    content: render_to_string(partial: 'form',
+                                                                              locals: { prescription: @prescription,
+                                                                                        inline: true, medicines: @medicines })
+                                                  })
+      end
+    end
+  end
+
+  def edit
+    @medicines = Medicine.all
+
+    respond_to do |format|
+      format.html { render :edit, locals: { medicines: @medicines } }
+      format.turbo_stream do
+        render turbo_stream: turbo_stream.replace('modal', partial: 'shared/modal', locals: {
+                                                    title: t('prescriptions.modal.edit_title', person: @person.name),
                                                     content: render_to_string(partial: 'form',
                                                                               locals: { prescription: @prescription,
                                                                                         inline: true, medicines: @medicines })
@@ -27,9 +43,9 @@ class PrescriptionsController < ApplicationController
 
     if @prescription.save
       respond_to do |format|
-        format.html { redirect_to person_path(@person), notice: 'Prescription was successfully created.' }
+        format.html { redirect_to person_path(@person), notice: t('prescriptions.created') }
         format.turbo_stream do
-          flash.now[:notice] = 'Prescription was successfully created.'
+          flash.now[:notice] = t('prescriptions.created')
           render turbo_stream: [
             turbo_stream.remove('modal'),
             turbo_stream.replace("person_#{@person.id}", partial: 'people/person', locals: { person: @person.reload }),
@@ -42,7 +58,7 @@ class PrescriptionsController < ApplicationController
         format.html { render :new, status: :unprocessable_entity, locals: { medicines: @medicines } }
         format.turbo_stream do
           render turbo_stream: turbo_stream.update('modal', partial: 'shared/modal', locals: {
-                                                     title: "New Prescription for #{@person.name}",
+                                                     title: t('prescriptions.modal.new_title', person: @person.name),
                                                      content: render_to_string(partial: 'form',
                                                                                locals: { prescription: @prescription,
                                                                                          inline: true, medicines: @medicines })
@@ -52,28 +68,12 @@ class PrescriptionsController < ApplicationController
     end
   end
 
-  def edit
-    @medicines = Medicine.all
-
-    respond_to do |format|
-      format.html { render :edit, locals: { medicines: @medicines } }
-      format.turbo_stream do
-        render turbo_stream: turbo_stream.replace('modal', partial: 'shared/modal', locals: {
-                                                    title: "Edit Prescription for #{@person.name}",
-                                                    content: render_to_string(partial: 'form',
-                                                                              locals: { prescription: @prescription,
-                                                                                        inline: true, medicines: @medicines })
-                                                  })
-      end
-    end
-  end
-
   def update
     if @prescription.update(prescription_params)
       respond_to do |format|
-        format.html { redirect_to person_path(@person), notice: 'Prescription was successfully updated.' }
+        format.html { redirect_to person_path(@person), notice: t('prescriptions.updated') }
         format.turbo_stream do
-          flash.now[:notice] = 'Prescription was successfully updated.'
+          flash.now[:notice] = t('prescriptions.updated')
           render turbo_stream: [
             turbo_stream.update('modal', ''),
             turbo_stream.update('prescriptions',
@@ -91,7 +91,7 @@ class PrescriptionsController < ApplicationController
         format.html { render :edit, status: :unprocessable_entity, locals: { medicines: @medicines } }
         format.turbo_stream do
           render turbo_stream: turbo_stream.update('modal', partial: 'shared/modal', locals: {
-                                                     title: "Edit Prescription for #{@person.name}",
+                                                     title: t('prescriptions.modal.edit_title', person: @person.name),
                                                      content: render_to_string(partial: 'form',
                                                                                locals: { prescription: @prescription,
                                                                                          inline: true, medicines: @medicines })
@@ -103,7 +103,7 @@ class PrescriptionsController < ApplicationController
 
   def destroy
     @prescription.destroy
-    redirect_to person_path(@person), notice: 'Prescription was successfully deleted.'
+    redirect_to person_path(@person), notice: t('prescriptions.deleted')
   end
 
   def take_medicine
@@ -114,7 +114,7 @@ class PrescriptionsController < ApplicationController
       taken_at: Time.current,
       amount_ml: amount
     )
-    redirect_to person_path(@person), notice: 'Medicine taken successfully.'
+    redirect_to person_path(@person), notice: t('prescriptions.medicine_taken')
   end
 
   private
@@ -128,7 +128,7 @@ class PrescriptionsController < ApplicationController
   end
 
   def prescription_params
-    params.require(:prescription).permit(:medicine_id, :dosage, :frequency,
-                                         :start_date, :end_date, :notes)
+    params.expect(prescription: %i[medicine_id dosage frequency
+                                   start_date end_date notes])
   end
 end

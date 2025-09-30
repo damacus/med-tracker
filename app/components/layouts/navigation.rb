@@ -6,6 +6,7 @@ module Components
     class Navigation < Components::Base
       # Include additional helpers needed for this component
       include Phlex::Rails::Helpers::ButtonTo
+
       # Initialize with optional current_user parameter (useful for testing)
       # @param [User, nil] current_user - The current user or nil if not authenticated
       def initialize(current_user: nil)
