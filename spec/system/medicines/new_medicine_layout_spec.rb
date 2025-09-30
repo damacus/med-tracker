@@ -14,31 +14,31 @@ RSpec.describe 'MedicineNewLayout', type: :system do
 
     visit new_medicine_path
 
-    within('header') do
-      expect(page).to have_content('Add a new medicine')
-      expect(page).to have_content('Capture inventory details and dosage information.')
-    end
+    expect(page).to have_content('Add a New Medicine')
+    expect(page).to have_content('Capture inventory details and dosage information.')
 
     within('[data-testid="medicine-form"]') do
       aggregate_failures 'form fields' do
         expect(page).to have_field('Name')
         expect(page).to have_field('Description')
-        expect(page).to have_field('Standard dosage')
+        expect(page).to have_field('Standard Dosage')
         expect(page).to have_select('Unit')
-        expect(page).to have_field('Current supply')
+        expect(page).to have_field('Current Supply')
         expect(page).to have_field('Stock')
+        expect(page).to have_field('Reorder Threshold')
         expect(page).to have_field('Warnings')
       end
 
       fill_in 'Name', with: 'Ibuprofen'
       fill_in 'Description', with: 'Pain relief'
-      fill_in 'Standard dosage', with: 200
+      fill_in 'Standard Dosage', with: 200
       select 'mg', from: 'Unit'
-      fill_in 'Current supply', with: 40
+      fill_in 'Current Supply', with: 40
       fill_in 'Stock', with: 80
+      fill_in 'Reorder Threshold', with: 10
       fill_in 'Warnings', with: 'Take with food'
 
-      click_button 'Save medicine'
+      click_button 'Save Medicine'
     end
 
     aggregate_failures 'persistence' do

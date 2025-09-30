@@ -1,27 +1,37 @@
-<div id="person_<%= person.id %>" class="person-card">
-  <h2 class="person-card__title"><%= person.name %></h2>
+<%= render RubyUI::Card.new(id: "person_#{person.id}", class: "h-full flex flex-col") do %>
+  <%= render RubyUI::CardHeader.new do %>
+    <div class="w-10 h-10 rounded-xl flex items-center justify-center bg-violet-100 text-violet-700 mb-2">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
+        <circle cx="12" cy="7" r="4"/>
+      </svg>
+    </div>
+    <%= render RubyUI::CardTitle.new(class: "text-xl") { person.name } %>
+  <% end %>
 
-  <div class="person-card__info">
-    <p>Born: <%= person.date_of_birth.strftime("%B %d, %Y") %></p>
-    <p>Age: <%= person.age %></p>
-    <p>Prescriptions:
-      <% if person.prescriptions.active.any? %>
-        <%= pluralize(person.prescriptions.active.count, 'active prescription') %>
-      <% else %>
-        No active prescriptions
-      <% end %>
-    </p>
-  </div>
+  <%= render RubyUI::CardContent.new(class: "flex-grow space-y-2") do %>
+    <div class="space-y-1 text-sm text-muted-foreground">
+      <p><strong>Born:</strong> <%= person.date_of_birth.strftime("%B %d, %Y") %></p>
+      <p><strong>Age:</strong> <%= person.age %></p>
+      <p><strong>Prescriptions:</strong>
+        <% if person.prescriptions.active.any? %>
+          <%= pluralize(person.prescriptions.active.count, 'active prescription') %>
+        <% else %>
+          No active prescriptions
+        <% end %>
+      </p>
+    </div>
+  <% end %>
 
-  <div class="person-card__actions">
+  <%= render RubyUI::CardFooter.new(class: "flex gap-2 flex-wrap") do %>
     <%= link_to "Add Prescription", new_person_prescription_path(person),
-        class: "button button--primary",
+        class: "text-sm text-primary hover:underline",
         data: { turbo_stream: true } %>
 
     <% if person.prescriptions.any? %>
       <%= link_to "View Prescriptions", person_path(person),
-          class: "button button--secondary",
+          class: "text-sm text-primary hover:underline",
           data: { turbo_stream: true} %>
     <% end %>
-  </div>
-</div>
+  <% end %>
+<% end %>

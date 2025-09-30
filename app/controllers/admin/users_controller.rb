@@ -6,7 +6,8 @@ module Admin
     before_action :require_admin
 
     def index
-      @users = User.order(:created_at)
+      users = User.order(:created_at)
+      render Components::Admin::Users::IndexView.new(users: users)
     end
 
     private

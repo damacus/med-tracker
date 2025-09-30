@@ -70,9 +70,7 @@ RSpec.describe 'People', type: :system do
       visit people_path
 
       within "#person_#{person.id}" do
-        if person.prescriptions.any?
-          expect(page).to have_link('View Prescriptions', href: person_path(person))
-        end
+        expect(page).to have_link('View Prescriptions', href: person_path(person)) if person.prescriptions.any?
       end
     end
   end
