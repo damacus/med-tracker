@@ -60,6 +60,11 @@ en:
     updated: "Person was successfully updated."
     deleted: "Person was successfully deleted."
 
+  person_medicines:
+    created: "Medicine added successfully."
+    deleted: "Medicine removed successfully."
+    medicine_taken: "Medicine taken successfully."
+
   prescriptions:
     created: "Prescription was successfully created."
     updated: "Prescription was successfully updated."

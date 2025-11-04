@@ -20,6 +20,10 @@ RSpec.describe User do
   end
 
   describe 'validations' do
+    before do
+      user.person = person
+    end
+
     it { is_expected.to validate_presence_of(:email_address) }
     it { is_expected.to validate_uniqueness_of(:email_address).case_insensitive }
     it { is_expected.to allow_value('user@example.com').for(:email_address) }
@@ -54,9 +58,40 @@ RSpec.describe User do
 
   describe 'roles' do
     it {
-      expect(user).to define_enum_for(:role).with_values(admin: 0, carer: 1,
-                                                         child: 2).backed_by_column_of_type(:integer)
+      expect(user).to define_enum_for(:role)
+        .with_values(administrator: 0, doctor: 1, nurse: 2, carer: 3, parent: 4)
+        .backed_by_column_of_type(:integer)
     }
+
+    it 'can be an administrator' do
+      user.person = person
+      user.role = :administrator
+      expect(user.administrator?).to be true
+    end
+
+    it 'can be a doctor' do
+      user.person = person
+      user.role = :doctor
+      expect(user.doctor?).to be true
+    end
+
+    it 'can be a nurse' do
+      user.person = person
+      user.role = :nurse
+      expect(user.nurse?).to be true
+    end
+
+    it 'can be a carer' do
+      user.person = person
+      user.role = :carer
+      expect(user.carer?).to be true
+    end
+
+    it 'can be a parent' do
+      user.person = person
+      user.role = :parent
+      expect(user.parent?).to be true
+    end
   end
 
   describe 'normalization' do

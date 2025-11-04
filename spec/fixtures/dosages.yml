@@ -50,3 +50,17 @@ calpol_infant:
   unit: ml
   description: Standard infant dose
   medicine: calpol
+
+# Child dosages for paracetamol
+paracetamol_child:
+  amount: 250
+  unit: mg
+  description: Standard child dose (6-12 years)
+  medicine: paracetamol
+
+# Child dosages for ibuprofen
+ibuprofen_child:
+  amount: 200
+  unit: mg
+  description: Standard child dose (6-12 years)
+  medicine: ibuprofen

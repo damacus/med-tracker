@@ -20,6 +20,12 @@ RSpec/MultipleExpectations:
   Exclude:
     - 'spec/system/**/*'
     - 'spec/features/**/*'
+    - 'spec/requests/**/*'
+
+RSpec/MultipleMemoizedHelpers:
+  Max: 5
+  Exclude:
+    - 'spec/system/authorization/**/*'
 
 Metrics/BlockLength:
   Max: 100
@@ -55,6 +61,8 @@ Metrics/AbcSize:
     - 'test/system/playwright/**/*'
     - 'db/migrate/**/*'
     - 'app/controllers/**/*'
+    - 'app/models/**/*'
+    - 'app/components/**/*'
 
 Metrics/CyclomaticComplexity:
   Exclude:
@@ -72,6 +80,7 @@ Layout/LineLength:
     - 'db/**/*'
     - 'app/views/**/*'
     - 'app/controllers/**/*'
+    - 'app/components/ruby_ui/**/*'
 
 # Allow case-when for size classes in UI components
 Style/HashLikeCase:
@@ -88,6 +97,11 @@ Naming/VariableNumber:
   Exclude:
     - 'test/**/*'
 
+# Allow single-letter form parameter names (f) in components
+Naming/MethodParameterName:
+  Exclude:
+    - 'app/components/**/*'
+
 # Allow useless constant scoping in PWA controller for clarity
 Lint/UselessConstantScoping:
   Exclude:
@@ -97,3 +111,8 @@ Lint/UselessConstantScoping:
 Rails/ThreeStateBooleanColumn:
   Exclude:
     - 'db/migrate/20250625135502_add_active_to_presciptions.rb'
+
+# Allow non-reversible migrations when intentional (cleanup migrations)
+Rails/ReversibleMigration:
+  Exclude:
+    - 'db/migrate/20250930220140_create_carer_relationships.rb'

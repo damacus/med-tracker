@@ -1,9 +1,11 @@
 <div class="container mx-auto px-4 py-8" data-testid="people-list">
   <div class="flex justify-between items-center mb-8">
 	<h1 class="text-4xl font-bold text-slate-900">People</h1>
-	<%= link_to "New Person", new_person_path,
-		class: "inline-flex items-center justify-center rounded-md font-medium transition-colors px-4 py-2 h-9 text-sm bg-primary text-primary-foreground shadow hover:bg-primary/90",
-		data: { turbo_frame: "modal" } %>
+	<% if policy(Person.new).create? %>
+	  <%= link_to "New Person", new_person_path,
+		  class: "inline-flex items-center justify-center rounded-md font-medium transition-colors px-4 py-2 h-9 text-sm bg-primary text-primary-foreground shadow hover:bg-primary/90",
+		  data: { turbo_frame: "modal" } %>
+	<% end %>
   </div>
 
   <%= turbo_frame_tag "modal" %>

@@ -1,0 +1,32 @@
+---
+jane_cares_for_child:
+  carer: jane
+  patient: child_patient
+  relationship_type: parent
+  active: true
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>
+
+nurse_cares_for_john:
+  carer: nurse_smith
+  patient: john
+  relationship_type: professional_carer
+  active: true
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>
+
+parent_cares_for_child:
+  carer: parent_person
+  patient: child_user_person
+  relationship_type: parent
+  active: true
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>
+
+carer_cares_for_patient:
+  carer: carer_person
+  patient: child_patient
+  relationship_type: professional_carer
+  active: true
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>

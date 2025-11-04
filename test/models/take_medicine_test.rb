@@ -4,19 +4,21 @@ require 'test_helper'
 
 class TakeMedicineTest < ActiveSupport::TestCase
   setup do
-    @person = people(:adult_john)
+    @person = people(:john)
     @medicine = medicines(:ibuprofen)
+    @dosage = dosages(:ibuprofen_adult)
 
     # Create a prescription with timing restrictions
     @prescription = Prescription.create!(
       person: @person,
       medicine: @medicine,
-      dosage: '200mg',
+      dosage: @dosage,
       frequency: 'As needed',
       start_date: Date.current - 1.month,
+      end_date: Date.current + 1.month,
       max_daily_doses: 3,
       min_hours_between_doses: 6,
-      dose_cycle: 'daily'
+      dose_cycle: :daily
     )
 
     # Reference time for testing
@@ -66,11 +68,12 @@ class TakeMedicineTest < ActiveSupport::TestCase
     prescription = Prescription.create!(
       person: @person,
       medicine: @medicine,
-      dosage: '200mg',
+      dosage: @dosage,
       frequency: 'As needed',
       start_date: Date.current - 1.month,
+      end_date: Date.current + 1.month,
       max_daily_doses: 3,
-      dose_cycle: 'daily'
+      dose_cycle: :daily
     )
 
     # Create 3 doses already taken today (max allowed)
@@ -134,12 +137,13 @@ class TakeMedicineTest < ActiveSupport::TestCase
     prescription = Prescription.create!(
       person: @person,
       medicine: @medicine,
-      dosage: '200mg',
+      dosage: @dosage,
       frequency: 'Daily',
       start_date: Date.current - 1.month,
+      end_date: Date.current + 1.month,
       max_daily_doses: 2,
       min_hours_between_doses: 12,
-      dose_cycle: 'daily'
+      dose_cycle: :daily
     )
 
     # Create a dose taken at 11 PM yesterday
@@ -165,11 +169,12 @@ class TakeMedicineTest < ActiveSupport::TestCase
     weekly_prescription = Prescription.create!(
       person: @person,
       medicine: @medicine,
-      dosage: '200mg',
+      dosage: @dosage,
       frequency: 'Weekly',
       start_date: Date.current - 1.month,
+      end_date: Date.current + 1.month,
       max_daily_doses: 1,
-      dose_cycle: 'weekly'
+      dose_cycle: :weekly
     )
 
     # Create a dose taken 3 days ago
@@ -192,9 +197,10 @@ class TakeMedicineTest < ActiveSupport::TestCase
     unrestricted_prescription = Prescription.create!(
       person: @person,
       medicine: @medicine,
-      dosage: '200mg',
+      dosage: @dosage,
       frequency: 'As needed',
-      start_date: Date.current - 1.month
+      start_date: Date.current - 1.month,
+      end_date: Date.current + 1.month
     )
 
     # Create multiple doses in the same day
@@ -235,11 +241,12 @@ class TakeMedicineTest < ActiveSupport::TestCase
     prescription = Prescription.create!(
       person: @person,
       medicine: @medicine,
-      dosage: '200mg',
+      dosage: @dosage,
       frequency: 'As needed',
       start_date: Date.current - 1.month,
+      end_date: Date.current + 1.month,
       max_daily_doses: 3,
-      dose_cycle: 'daily'
+      dose_cycle: :daily
     )
 
     # Create doses at different times

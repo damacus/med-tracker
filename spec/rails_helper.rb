@@ -65,7 +65,13 @@ RSpec.configure do |config|
   config.filter_rails_from_backtrace!
   # arbitrary gems may also be filtered via:
   # config.filter_gems_from_backtrace("gem name")
+
+  # Include Pundit matchers for policy specs
+  config.include Pundit::RSpec::Matchers
 end
+
+# Include Pundit matchers for policy specs after RSpec is configured
+require 'pundit/rspec'
 
 Shoulda::Matchers.configure do |config|
   config.integrate do |with|

@@ -3,7 +3,7 @@ one:
   person: one
   email_address: test@example.com
   password_digest: <%= BCrypt::Password.create("password") %>
-  role: :child
+  role: 0  # administrator
   created_at: <%= Time.current %>
   updated_at: <%= Time.current %>
 
@@ -11,7 +11,7 @@ john:
   person: john
   email_address: john.doe@example.com
   password_digest: <%= BCrypt::Password.create('password') %>
-  role: :admin
+  role: 0  # administrator
   created_at: <%= Time.current %>
   updated_at: <%= Time.current %>
 
@@ -19,7 +19,7 @@ jane:
   person: jane
   email_address: jane.doe@example.com
   password_digest: <%= BCrypt::Password.create('password') %>
-  role: :carer
+  role: 4  # parent
   created_at: <%= Time.current %>
   updated_at: <%= Time.current %>
 
@@ -27,7 +27,7 @@ damacus:
   person: damacus
   email_address: damacus@example.com
   password_digest: <%= BCrypt::Password.create('password') %>
-  role: :admin
+  role: 0  # administrator
   created_at: <%= Time.current %>
   updated_at: <%= Time.current %>
 
@@ -35,7 +35,7 @@ admin:
   person: admin
   email_address: admin@example.com
   password_digest: <%= BCrypt::Password.create("adminpassword") %>
-  role: :admin
+  role: 0  # administrator
   created_at: <%= Time.current %>
   updated_at: <%= Time.current %>
 
@@ -43,6 +43,54 @@ bob:
   person: bob
   email_address: bob.smith@example.com
   password_digest: <%= BCrypt::Password.create("password") %>
-  role: :carer
+  role: 3  # carer
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>
+
+nurse:
+  person: nurse_smith
+  email_address: nurse.smith@example.com
+  password_digest: <%= BCrypt::Password.create("password") %>
+  role: 2  # nurse
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>
+
+doctor:
+  person: doctor_jones
+  email_address: dr.jones@example.com
+  password_digest: <%= BCrypt::Password.create("password") %>
+  role: 1  # doctor
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>
+
+carer:
+  person: carer_person
+  email_address: carer@example.com
+  password_digest: <%= BCrypt::Password.create("password") %>
+  role: 3  # carer
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>
+
+parent:
+  person: parent_person
+  email_address: parent@example.com
+  password_digest: <%= BCrypt::Password.create("password") %>
+  role: 4  # parent
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>
+
+adult_patient:
+  person: adult_patient_person
+  email_address: adult.patient@example.com
+  password_digest: <%= BCrypt::Password.create("password") %>
+  role: 4  # parent (adult managing own care)
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>
+
+child_user:
+  person: child_user_person
+  email_address: child.user@example.com
+  password_digest: <%= BCrypt::Password.create("password") %>
+  role: 4  # parent (minor with account)
   created_at: <%= Time.current %>
   updated_at: <%= Time.current %>

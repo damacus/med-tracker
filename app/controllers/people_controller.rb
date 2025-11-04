@@ -4,11 +4,13 @@ class PeopleController < ApplicationController
   before_action :set_person, only: %i[show update destroy]
 
   def index
-    people = Person.all
+    authorize Person
+    people = policy_scope(Person)
     render Components::People::IndexView.new(people: people)
   end
 
   def show
+    authorize @person
     prescriptions = @person.prescriptions.includes(:medicine, :dosage)
     editing = params[:editing] == 'true'
     render Components::People::ShowView.new(
@@ -21,17 +23,20 @@ class PeopleController < ApplicationController
   # GET /people/new
   def new
     @person = Person.new
+    authorize @person
     render 'new', layout: 'modal'
   end
 
   # GET /people/:id/edit
   def edit
     @person = Person.find(params[:id])
+    authorize @person
     render 'edit', layout: 'modal'
   end
 
   def create
     @person = Person.new(person_params)
+    authorize @person
 
     respond_to do |format|
       if @person.save
@@ -51,6 +56,7 @@ class PeopleController < ApplicationController
   end
 
   def update
+    authorize @person
     respond_to do |format|
       if @person.update(person_params)
         format.html { redirect_to @person, notice: t('people.updated') }
@@ -65,6 +71,7 @@ class PeopleController < ApplicationController
 
   # DELETE /people/1 or /people/1.json
   def destroy
+    authorize @person
     @person.destroy!
 
     respond_to do |format|

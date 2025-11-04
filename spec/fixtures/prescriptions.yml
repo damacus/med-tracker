@@ -49,3 +49,39 @@ bob_weekly_med:
   notes: Weekly supplement
   max_daily_doses: 1
   dose_cycle: :weekly
+
+# Adult patient prescription
+adult_patient_prescription:
+  person: adult_patient_person
+  medicine: paracetamol
+  dosage: paracetamol_adult
+  frequency: 'As needed'
+  start_date: <%= Date.today %>
+  end_date: <%= 1.year.from_now.to_date %>
+  max_daily_doses: 4
+  min_hours_between_doses: 4
+  dose_cycle: :daily
+
+# Patient prescription (for carer test)
+patient_prescription:
+  person: child_patient
+  medicine: ibuprofen
+  dosage: ibuprofen_child
+  frequency: 'Every 6 hours'
+  start_date: <%= Date.today %>
+  end_date: <%= 1.year.from_now.to_date %>
+  max_daily_doses: 3
+  min_hours_between_doses: 6
+  dose_cycle: :daily
+
+# Child prescription (for parent test)
+child_prescription:
+  person: child_user_person
+  medicine: paracetamol
+  dosage: paracetamol_child
+  frequency: 'As needed'
+  start_date: <%= Date.today %>
+  end_date: <%= 1.year.from_now.to_date %>
+  max_daily_doses: 4
+  min_hours_between_doses: 4
+  dose_cycle: :daily

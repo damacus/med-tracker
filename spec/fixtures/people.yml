@@ -3,6 +3,8 @@ one:
   name: One of Five
   email: test@example.com
   date_of_birth: 2025-01-01
+  person_type: 0  # adult
+  has_capacity: true
   created_at: <%= Time.current %>
   updated_at: <%= Time.current %>
 
@@ -10,6 +12,8 @@ john:
   name: John Doe
   email: john.doe@example.com
   date_of_birth: 1980-01-01
+  person_type: 0  # adult
+  has_capacity: true
   created_at: <%= Time.current %>
   updated_at: <%= Time.current %>
 
@@ -17,6 +21,8 @@ jane:
   name: Jane Doe
   email: jane.doe@example.com
   date_of_birth: 1980-01-02
+  person_type: 0  # adult
+  has_capacity: true
   created_at: <%= Time.current %>
   updated_at: <%= Time.current %>
 
@@ -24,6 +30,8 @@ damacus:
   name: Damacus User
   email: damacus@example.com
   date_of_birth: 1985-05-15
+  person_type: 0  # adult
+  has_capacity: true
   created_at: <%= Time.current %>
   updated_at: <%= Time.current %>
 
@@ -31,6 +39,8 @@ admin:
   name: Admin Doe
   email: admin@example.com
   date_of_birth: 1980-01-01
+  person_type: 0  # adult
+  has_capacity: true
   created_at: <%= Time.current %>
   updated_at: <%= Time.current %>
 
@@ -38,5 +48,68 @@ bob:
   name: Bob Smith
   email: bob.smith@example.com
   date_of_birth: 1980-01-01
+  person_type: 0  # adult
+  has_capacity: true
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>
+
+child_patient:
+  name: Child Patient
+  date_of_birth: <%= 5.years.ago.to_date %>
+  person_type: 1  # minor
+  has_capacity: false
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>
+
+nurse_smith:
+  name: Nurse Smith
+  email: nurse.smith@example.com
+  date_of_birth: 1985-03-15
+  person_type: 0  # adult
+  has_capacity: true
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>
+
+doctor_jones:
+  name: Dr. Jones
+  email: dr.jones@example.com
+  date_of_birth: 1975-07-20
+  person_type: 0  # adult
+  has_capacity: true
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>
+
+parent_person:
+  name: Parent Person
+  email: parent@example.com
+  date_of_birth: 1985-06-10
+  person_type: 0  # adult
+  has_capacity: true
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>
+
+adult_patient_person:
+  name: Adult Patient
+  email: adult.patient@example.com
+  date_of_birth: 1990-03-20
+  person_type: 0  # adult
+  has_capacity: true
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>
+
+child_user_person:
+  name: Child User
+  date_of_birth: <%= 10.years.ago.to_date %>
+  person_type: 1  # minor
+  has_capacity: false
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>
+
+carer_person:
+  name: Carer Person
+  email: carer.person@example.com
+  date_of_birth: 1982-08-25
+  person_type: 0  # adult
+  has_capacity: true
   created_at: <%= Time.current %>
   updated_at: <%= Time.current %>

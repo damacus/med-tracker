@@ -23,7 +23,11 @@ RSpec.describe 'UserSignsUps' do
     aggregate_failures 'user sign up' do
       expect(page).to have_current_path(root_path)
       expect(page).to have_css('#flash', text: 'Welcome! You have signed up successfully.')
-      expect(User.last.email_address).to eq('newuser@example.com')
+
+      new_user = User.last
+      expect(new_user.email_address).to eq('newuser@example.com')
+      expect(new_user.role).to eq('parent')
+      expect(new_user.person.person_type).to eq('adult')
     end
   end
 end

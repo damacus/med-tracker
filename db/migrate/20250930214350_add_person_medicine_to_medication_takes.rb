@@ -8,7 +8,7 @@ class AddPersonMedicineToMedicationTakes < ActiveRecord::Migration[8.0]
     # Add person_medicine_id as nullable reference
     add_reference :medication_takes, :person_medicine, null: true, foreign_key: true
 
-    # Note: SQLite doesn't support ALTER TABLE ADD CONSTRAINT for CHECK constraints
+    # NOTE: SQLite doesn't support ALTER TABLE ADD CONSTRAINT for CHECK constraints
     # We'll enforce the "exactly one source" constraint at the model level instead
   end
 end

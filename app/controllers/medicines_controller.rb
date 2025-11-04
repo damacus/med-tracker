@@ -1,19 +1,23 @@
 # frozen_string_literal: true
 
 class MedicinesController < ApplicationController
+  include Pundit::Authorization
+
   before_action :set_medicine, only: %i[show edit update destroy]
 
   def index
-    medicines = Medicine.all
+    medicines = policy_scope(Medicine)
     render Components::Medicines::IndexView.new(medicines: medicines)
   end
 
   def show
+    authorize @medicine
     render Components::Medicines::ShowView.new(medicine: @medicine, notice: flash[:notice])
   end
 
   def new
     @medicine = Medicine.new
+    authorize @medicine
     render Components::Medicines::FormView.new(
       medicine: @medicine,
       title: t('medicines.form.new_title'),
@@ -22,6 +26,7 @@ class MedicinesController < ApplicationController
   end
 
   def edit
+    authorize @medicine
     render Components::Medicines::FormView.new(
       medicine: @medicine,
       title: t('medicines.form.edit_title'),
@@ -31,6 +36,7 @@ class MedicinesController < ApplicationController
 
   def create
     @medicine = Medicine.new(medicine_params)
+    authorize @medicine
 
     if @medicine.save
       redirect_to @medicine, notice: t('medicines.created')
@@ -44,6 +50,7 @@ class MedicinesController < ApplicationController
   end
 
   def update
+    authorize @medicine
     if @medicine.update(medicine_params)
       redirect_to @medicine, notice: t('medicines.updated')
     else
@@ -56,23 +63,26 @@ class MedicinesController < ApplicationController
   end
 
   def destroy
+    authorize @medicine
     @medicine.destroy
     redirect_to medicines_url, notice: t('medicines.deleted')
   end
 
   def finder
+    authorize Medicine
     render Components::Medicines::FinderView.new
   end
 
   def dosages
-    medicine = Medicine.find(params[:id])
+    medicine = policy_scope(Medicine).find(params[:id])
+    authorize medicine
     render json: medicine.dosages.select(:id, :amount, :unit, :description)
   end
 
   private
 
   def set_medicine
-    @medicine = Medicine.find(params[:id])
+    @medicine = policy_scope(Medicine).find(params[:id])
   end
 
   def medicine_params

@@ -12,8 +12,8 @@ RSpec.describe SpecFixtureLoader do
     it 'loads the requested fixtures into the database' do
       expect do
         described_class.load(:people, :users)
-      end.to change(Person, :count).from(0).to(6)
-                                   .and change(User, :count).from(0).to(6)
+      end.to change(Person, :count).from(0).to(13)
+                                   .and change(User, :count).from(0).to(12)
 
       user = User.find_by(email_address: 'john.doe@example.com')
       expect(user).to be_present
