@@ -68,7 +68,7 @@ module Components
 
       def prescription_count_text
         if person.prescriptions.active.any?
-          helpers.pluralize(person.prescriptions.active.count, 'active prescription')
+          view_context.pluralize(person.prescriptions.active.count, 'active prescription')
         else
           'No active prescriptions'
         end

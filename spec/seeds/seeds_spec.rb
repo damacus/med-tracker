@@ -15,7 +15,7 @@ RSpec.describe 'Seeds' do
 
   it 'loads an admin user' do
     user = User.find_by(email_address: email_address)
-    expect(user).to be_admin
+    expect(user).to be_administrator
   end
 
   it 'has the damacus person associated with the user' do

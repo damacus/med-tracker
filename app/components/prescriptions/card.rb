@@ -121,10 +121,12 @@ module Components
       def render_take_item(take)
         div(class: 'flex items-center gap-2 text-sm') do
           svg(
-            class: 'w-4 h-4 text-green-600',
             xmlns: 'http://www.w3.org/2000/svg',
             viewBox: '0 0 20 20',
-            fill: 'currentColor'
+            fill: 'currentColor',
+            class: 'w-4 h-4 text-green-600',
+            width: '16',
+            height: '16'
           ) do |s|
             s.path(
               fill_rule: 'evenodd',
@@ -167,6 +169,8 @@ module Components
       end
 
       def render_prescription_actions
+        return unless view_context.current_user&.administrator?
+
         Link(href: edit_person_prescription_path(person, prescription), variant: :outline) { 'Edit' }
         render_delete_dialog
       end
@@ -185,11 +189,10 @@ module Components
               end
             end
             AlertDialogFooter do
-              button(
-                type: 'button',
-                onclick: 'this.closest("[data-controller=\'ruby-ui--alert-dialog\']").querySelector(\'[data-action*=close]\').click()',
-                class: 'inline-flex items-center justify-center rounded-md text-sm font-medium px-4 py-2 ' \
-                       'border border-input bg-background hover:bg-accent hover:text-accent-foreground'
+              Button(
+                type: :button,
+                variant: :outline,
+                data: { action: 'click->ruby-ui--alert-dialog#close' }
               ) { 'Cancel' }
               button_to(
                 person_prescription_path(person, prescription),

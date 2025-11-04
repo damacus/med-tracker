@@ -10,6 +10,8 @@ class UsersController < ApplicationController
 
   def create
     @user = User.new(user_params)
+    # All users with accounts are adults (minors/dependents don't have user accounts)
+    @user.person.person_type = :adult if @user.person
 
     if @user.save
       start_new_session_for(@user)

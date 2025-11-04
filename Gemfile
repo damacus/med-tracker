@@ -3,7 +3,7 @@
 source 'https://rubygems.org'
 
 # Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
-gem 'rails', '~> 8.0.1'
+gem 'rails', '>= 8.0'
 # The modern asset pipeline for Rails [https://github.com/rails/propshaft]
 gem 'propshaft'
 # Use sqlite3 as the database for Active Record
@@ -18,24 +18,31 @@ gem 'turbo-rails'
 gem 'stimulus-rails'
 # Build JSON APIs with ease [https://github.com/rails/jbuilder]
 gem 'jbuilder'
-
 # Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
-gem 'bcrypt', '~> 3.1.7'
+gem 'bcrypt', '>= 3.1'
+# Authorization framework [https://github.com/varvet/pundit]
+gem 'pundit', '>= 2.4'
+# Passkey authentication [https://github.com/alliedcode/passkeys-rails]
+gem 'passkeys-rails'
 
+gem 'ostruct'
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
 gem 'tzinfo-data', platforms: %i[windows jruby]
-
 # Use the database-backed adapters for Rails.cache, Active Job, and Action Cable
 gem 'solid_cable'
+# Solid Cache is a database-backed Active Support cache store [https://github.com/rails/solid_cache]
 gem 'solid_cache'
+# Solid Queue is a database-based queuing backend for Active Job [https://github.com/rails/solid_queue]
 gem 'solid_queue'
-
 # Reduces boot times through caching; required in config/boot.rb
 gem 'bootsnap', require: false
 # Add HTTP asset caching/compression and X-Sendfile acceleration to Puma [https://github.com/basecamp/thruster/]
 gem 'thruster', require: false
+# Use Phlex for views [https://github.com/phlex-rb/phlex-rails]
+gem 'phlex-rails', '>= 2.3'
+gem 'tailwindcss-rails', '>= 4.3'
+gem 'tailwind_merge', '>= 1.3'
 
-gem 'phlex-rails', '~> 2.3'
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
   gem 'debug', platforms: %i[mri windows], require: 'debug/prelude'
@@ -54,8 +61,8 @@ group :development, :test do
   gem 'capybara-playwright-driver'
   gem 'rails-controller-testing'
   gem 'rspec-github', require: false
-  gem 'rspec-rails', '~> 8.0'
-  gem 'shoulda-matchers', '~> 6.0'
+  gem 'rspec-rails', '>= 8.0'
+  gem 'shoulda-matchers', '>= 6.0'
 end
 
 group :development do
@@ -66,7 +73,3 @@ group :development do
   gem 'ruby_ui', require: false
   gem 'web-console'
 end
-
-gem 'tailwind_merge', '~> 1.3'
-
-gem 'tailwindcss-rails', '~> 4.3'

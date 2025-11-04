@@ -1,0 +1,52 @@
+# frozen_string_literal: true
+
+class CarerRelationshipPolicy < ApplicationPolicy
+  def index?
+    admin_or_clinician?
+  end
+
+  def show?
+    admin_or_clinician? || carer_owns_relationship?
+  end
+
+  def create?
+    admin?
+  end
+
+  def update?
+    admin?
+  end
+
+  def destroy?
+    admin?
+  end
+
+  private
+
+  def admin?
+    user&.administrator? || false
+  end
+
+  def admin_or_clinician?
+    user&.administrator? || user&.doctor? || user&.nurse? || false
+  end
+
+  def carer_owns_relationship?
+    (user&.person && record.carer_id == user.person.id) || false
+  end
+
+  class Scope < ApplicationPolicy::Scope
+    def resolve
+      return scope.none unless user
+      return scope.all if admin_or_clinician?
+
+      scope.where(carer_id: user.person_id)
+    end
+
+    private
+
+    def admin_or_clinician?
+      user&.administrator? || user&.doctor? || user&.nurse?
+    end
+  end
+end

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 Rails.application.routes.draw do
+  mount PasskeysRails::Engine => '/passkeys'
   resource :session
   resources :passwords, param: :token
   # Defines the root path route ("/")
@@ -36,6 +37,12 @@ Rails.application.routes.draw do
 
   resources :people, except: [:edit] do
     resources :prescriptions, except: [:index] do
+      member do
+        post :take_medicine
+      end
+    end
+
+    resources :person_medicines, except: [:index] do
       member do
         post :take_medicine
       end

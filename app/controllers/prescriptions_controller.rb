@@ -1,12 +1,15 @@
 # frozen_string_literal: true
 
 class PrescriptionsController < ApplicationController
+  include Pundit::Authorization
+
   before_action :set_person
   before_action :set_prescription, only: %i[edit update destroy take_medicine]
 
   def new
     @prescription = @person.prescriptions.build
-    @medicines = Medicine.all
+    authorize @prescription
+    @medicines = policy_scope(Medicine)
 
     respond_to do |format|
       format.html { render :new, locals: { inline: false, medicines: @medicines } }
@@ -22,7 +25,8 @@ class PrescriptionsController < ApplicationController
   end
 
   def edit
-    @medicines = Medicine.all
+    authorize @prescription
+    @medicines = policy_scope(Medicine)
 
     respond_to do |format|
       format.html { render :edit, locals: { medicines: @medicines } }
@@ -39,7 +43,8 @@ class PrescriptionsController < ApplicationController
 
   def create
     @prescription = @person.prescriptions.build(prescription_params)
-    @medicines = Medicine.all
+    authorize @prescription
+    @medicines = policy_scope(Medicine)
 
     if @prescription.save
       respond_to do |format|
@@ -69,6 +74,7 @@ class PrescriptionsController < ApplicationController
   end
 
   def update
+    authorize @prescription
     if @prescription.update(prescription_params)
       respond_to do |format|
         format.html { redirect_to person_path(@person), notice: t('prescriptions.updated') }
@@ -102,11 +108,13 @@ class PrescriptionsController < ApplicationController
   end
 
   def destroy
+    authorize @prescription
     @prescription.destroy
     redirect_to person_path(@person), notice: t('prescriptions.deleted')
   end
 
   def take_medicine
+    authorize @prescription, :take_medicine?
     # Extract the amount from the prescription's dosage if not provided
     amount = params[:amount_ml] || @prescription.dosage.amount
 
@@ -124,7 +132,7 @@ class PrescriptionsController < ApplicationController
   end
 
   def set_prescription
-    @prescription = @person.prescriptions.find(params[:id])
+    @prescription = policy_scope(Prescription).find(params[:id])
   end
 
   def prescription_params

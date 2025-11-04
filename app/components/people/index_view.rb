@@ -26,11 +26,13 @@ module Components
       def render_header
         div(class: 'flex justify-between items-center mb-8') do
           h1(class: 'text-4xl font-bold text-slate-900') { 'People' }
-          Link(
-            href: new_person_path,
-            variant: :primary,
-            data: { turbo_frame: 'modal' }
-          ) { 'New Person' }
+          if view_context.policy(Person.new).create?
+            Link(
+              href: new_person_path,
+              variant: :primary,
+              data: { turbo_frame: 'modal' }
+            ) { 'New Person' }
+          end
         end
       end
 
