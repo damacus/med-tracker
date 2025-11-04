@@ -14,7 +14,7 @@ RSpec.describe 'Admin Access Authorization' do
 
   describe 'admin user management' do
     it 'allows administrators to access user management' do
-      sign_in_as(admin, password: 'adminpassword')
+      sign_in_as(admin)
       visit admin_users_path
 
       expect(page).to have_content('User Management')
@@ -32,7 +32,7 @@ RSpec.describe 'Admin Access Authorization' do
 
   describe 'people management' do
     it 'allows administrators to view all people' do
-      sign_in_as(admin, password: 'adminpassword')
+      sign_in_as(admin)
       visit people_path
 
       expect(page).to have_content('People')
@@ -40,7 +40,7 @@ RSpec.describe 'Admin Access Authorization' do
     end
 
     it 'allows administrators to create new people' do
-      sign_in_as(admin, password: 'adminpassword')
+      sign_in_as(admin)
       visit people_path
 
       click_link 'New Person'

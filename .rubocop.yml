@@ -26,6 +26,12 @@ RSpec/MultipleMemoizedHelpers:
   Max: 5
   Exclude:
     - 'spec/system/authorization/**/*'
+    - 'spec/policies/**/*'
+
+RSpec/NestedGroups:
+  Max: 3
+  Exclude:
+    - 'spec/policies/**/*'
 
 Metrics/BlockLength:
   Max: 100

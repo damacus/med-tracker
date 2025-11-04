@@ -59,6 +59,7 @@ group :development, :test do
   # Playwright for end-to-end testing
   gem 'capybara'
   gem 'capybara-playwright-driver'
+  gem 'pundit-matchers', '>= 2.0'
   gem 'rails-controller-testing'
   gem 'rspec-github', require: false
   gem 'rspec-rails', '>= 8.0'

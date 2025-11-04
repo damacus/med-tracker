@@ -1,10 +1,13 @@
 # frozen_string_literal: true
 
 class MedicationTakesController < ApplicationController
+  include Pundit::Authorization
+
   before_action :set_prescription, only: [:create]
 
   def create
     @medication_take = @prescription.medication_takes.build(medication_take_params)
+    authorize @medication_take
 
     if @medication_take.save
       respond_to do |format|
@@ -24,7 +27,7 @@ class MedicationTakesController < ApplicationController
   private
 
   def set_prescription
-    @prescription = Prescription.find(params[:prescription_id])
+    @prescription = policy_scope(Prescription).find(params[:prescription_id])
   end
 
   def medication_take_params
