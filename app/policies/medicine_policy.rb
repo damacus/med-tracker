@@ -2,15 +2,15 @@
 
 class MedicinePolicy < ApplicationPolicy
   def index?
-    admin? || doctor? || nurse? || false
+    admin? || doctor? || nurse?
   end
 
   def show?
-    admin? || doctor? || nurse? || false
+    admin? || doctor? || nurse?
   end
 
   def create?
-    admin? || doctor? || false
+    admin? || doctor?
   end
 
   def new?
@@ -18,7 +18,7 @@ class MedicinePolicy < ApplicationPolicy
   end
 
   def update?
-    admin? || doctor? || false
+    admin? || doctor?
   end
 
   def edit?
@@ -26,26 +26,13 @@ class MedicinePolicy < ApplicationPolicy
   end
 
   def destroy?
-    admin? || false
+    admin?
   end
 
   def finder?
-    admin? || doctor? || nurse? || false
+    admin? || doctor? || nurse?
   end
 
-  private
-
-  def admin?
-    user&.administrator?
-  end
-
-  def doctor?
-    user&.doctor?
-  end
-
-  def nurse?
-    user&.nurse?
-  end
 
   class Scope < ApplicationPolicy::Scope
     def resolve
@@ -53,20 +40,6 @@ class MedicinePolicy < ApplicationPolicy
       return scope.all if admin? || doctor? || nurse?
 
       scope.none
-    end
-
-    private
-
-    def admin?
-      user&.administrator?
-    end
-
-    def doctor?
-      user&.doctor?
-    end
-
-    def nurse?
-      user&.nurse?
     end
   end
 end
