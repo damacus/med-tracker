@@ -20,7 +20,7 @@ jobs:
           bundler-cache: true
 
       - name: Install Playwright
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install #--with-deps chromium
 
       - name: Set up database
         run: |

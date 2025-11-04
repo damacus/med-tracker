@@ -85,3 +85,16 @@ child_prescription:
   max_daily_doses: 4
   min_hours_between_doses: 4
   dose_cycle: :daily
+
+# Active prescription for dashboard testing
+active_prescription:
+  person: john
+  medicine: paracetamol
+  dosage: paracetamol_adult
+  frequency: 'Twice daily'
+  start_date: <%= Date.today %>
+  end_date: <%= 1.year.from_now.to_date %>
+  active: true
+  max_daily_doses: 2
+  min_hours_between_doses: 8
+  dose_cycle: :daily

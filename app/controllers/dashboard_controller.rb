@@ -14,7 +14,8 @@ class DashboardController < ApplicationController
       people: people,
       active_prescriptions: active_prescriptions,
       upcoming_prescriptions: upcoming_prescriptions,
-      url_helpers: self
+      url_helpers: self,
+      current_user: current_user
     )
   end
 

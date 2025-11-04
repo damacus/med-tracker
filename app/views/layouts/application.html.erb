@@ -27,7 +27,7 @@
       <%= yield :flash %>
     <% else %>
       <div id="flash">
-        <%= render "shared/flash" %>
+        <%= render Components::Layouts::Flash.new(notice: notice, alert: alert) %>
       </div>
     <% end %>
 
