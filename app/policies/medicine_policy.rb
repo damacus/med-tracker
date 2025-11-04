@@ -33,7 +33,6 @@ class MedicinePolicy < ApplicationPolicy
     admin? || doctor? || nurse?
   end
 
-
   class Scope < ApplicationPolicy::Scope
     def resolve
       return scope.none unless user

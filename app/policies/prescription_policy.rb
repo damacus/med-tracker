@@ -55,7 +55,6 @@ class PrescriptionPolicy < ApplicationPolicy
     admin? || doctor? || nurse?
   end
 
-
   def can_take_own_medicine?
     return false unless user&.person
 
@@ -107,7 +106,6 @@ class PrescriptionPolicy < ApplicationPolicy
     def own_prescriptions_scope
       scope.where(person_id: user.person.id)
     end
-
 
     def owns_record?
       user&.person

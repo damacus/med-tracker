@@ -33,6 +33,8 @@ class Person < ApplicationRecord
                     format: { with: URI::MailTo::EMAIL_REGEXP, allow_blank: true },
                     uniqueness: { allow_blank: true }
 
+  scope :without_carers, -> { where.missing(:carer_relationships) }
+
   def age(reference_date = Time.zone.today)
     return nil unless date_of_birth
 
@@ -50,6 +52,12 @@ class Person < ApplicationRecord
 
   def minor?(age_threshold = 18)
     !adult?(age_threshold)
+  end
+
+  def needs_carer?
+    return false if adult? && person_type == 'adult'
+
+    carers.empty?
   end
 
   private

@@ -10,23 +10,46 @@ RSpec.describe 'Navigation' do
     driven_by(:rack_test)
   end
 
-  let(:user) { users(:one) }
+  let(:user) { users(:jane) }
+  let(:admin) { users(:admin) }
 
   context 'when user is authenticated' do
-    it 'shows navigation with a sign out button' do
-      # Use our new Capybara-based helper to sign in.
+    it 'shows navigation with a profile dropdown menu' do
       sign_in(user)
 
-      # Assert that the navigation bar contains the correct elements.
       within('nav') do
         aggregate_failures 'navigation bar' do
           expect(page).to have_link('Medicines')
           expect(page).to have_link('People')
           expect(page).to have_link('Medicine Finder')
-          expect(page).to have_button('Sign out')
+          expect(page).to have_button(user.name) # Profile dropdown trigger
           expect(page).to have_no_link('Login')
         end
       end
+    end
+
+    it 'shows profile dropdown menu with correct items' do
+      sign_in(user)
+
+      # Click the profile dropdown trigger
+      click_button(user.name)
+
+      # Check dropdown menu items
+      aggregate_failures 'dropdown menu items' do
+        expect(page).to have_link('Dashboard')
+        expect(page).to have_link('Profile')
+        expect(page).to have_button('Logout')
+        # Regular user should not see Administration link
+        expect(page).to have_no_link('Administration')
+      end
+    end
+
+    it 'shows Administration link for admin users' do
+      sign_in(admin)
+
+      click_button(admin.name)
+
+      expect(page).to have_link('Administration')
     end
   end
 
@@ -44,7 +67,6 @@ RSpec.describe 'Navigation' do
           expect(page).to have_no_link('Medicine Finder')
           # But they should see the login link
           expect(page).to have_link('Login')
-          expect(page).to have_no_button('Sign out')
         end
       end
     end

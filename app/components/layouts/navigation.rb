@@ -66,20 +66,61 @@ module Components
         end
       end
 
-      # Render authentication actions (login or sign out)
+      # Render authentication actions (login or profile menu)
       def render_auth_actions
         div(class: 'nav__user-menu') do
           if authenticated?
-            # Show sign out button for authenticated users
-            button_to('Sign out',
-                      session_path,
-                      method: :delete,
-                      class: 'btn btn--secondary nav__button')
+            render_profile_menu
           else
             # Show login link for unauthenticated users
             link_to('Login', login_path, class: 'nav__link')
           end
         end
+      end
+
+      # Render profile dropdown menu for authenticated users
+      def render_profile_menu
+        render RubyUI::DropdownMenu.new do
+          render RubyUI::DropdownMenuTrigger.new(class: 'w-full') do
+            render RubyUI::Button.new(variant: :outline) { current_user_name }
+          end
+          render RubyUI::DropdownMenuContent.new do
+            render(RubyUI::DropdownMenuLabel.new { 'My Account' })
+            render RubyUI::DropdownMenuSeparator.new
+            render RubyUI::DropdownMenuItem.new(href: root_path) { 'Dashboard' }
+            render RubyUI::DropdownMenuItem.new(href: '#') { 'Profile' }
+            render_admin_menu_item if user_is_admin?
+            render RubyUI::DropdownMenuSeparator.new
+            render_logout_menu_item
+          end
+        end
+      end
+
+      # Render admin menu item if user is administrator
+      def render_admin_menu_item
+        render RubyUI::DropdownMenuItem.new(href: admin_root_path) { 'Administration' }
+      end
+
+      # Render logout menu item with form submission
+      def render_logout_menu_item
+        render RubyUI::DropdownMenuItem.new do
+          button_to('Logout',
+                    session_path,
+                    method: :delete,
+                    class: 'w-full text-left')
+        end
+      end
+
+      # Get current user name for display
+      def current_user_name
+        user = @current_user || Current.user
+        user&.name || 'Account'
+      end
+
+      # Check if current user is an administrator
+      def user_is_admin?
+        user = @current_user || Current.user
+        user&.administrator? || false
       end
     end
   end
