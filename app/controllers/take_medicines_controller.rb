@@ -1,9 +1,14 @@
 # frozen_string_literal: true
 
 class TakeMedicinesController < ApplicationController
+  include Pundit::Authorization
+
   before_action :set_prescription, only: [:create]
 
   def create
+    # Authorize using the prescription's take_medicine action
+    authorize @prescription, :take_medicine?
+
     # Always use the current time when creating a new take_medicine
     @take_medicine = @prescription.take_medicines.build(take_medicine_params)
     @take_medicine.taken_at ||= Time.current
@@ -26,7 +31,7 @@ class TakeMedicinesController < ApplicationController
   private
 
   def set_prescription
-    @prescription = Prescription.find(params[:prescription_id])
+    @prescription = policy_scope(Prescription).find(params[:prescription_id])
   end
 
   def take_medicine_params

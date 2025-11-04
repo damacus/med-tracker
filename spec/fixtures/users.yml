@@ -34,7 +34,7 @@ damacus:
 admin:
   person: admin
   email_address: admin@example.com
-  password_digest: <%= BCrypt::Password.create("adminpassword") %>
+  password_digest: <%= BCrypt::Password.create("password") %>
   role: 0  # administrator
   created_at: <%= Time.current %>
   updated_at: <%= Time.current %>

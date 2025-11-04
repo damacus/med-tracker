@@ -30,3 +30,11 @@ carer_cares_for_patient:
   active: true
   created_at: <%= Time.current %>
   updated_at: <%= Time.current %>
+
+carer_cares_for_child_user:
+  carer: carer_person
+  patient: child_user_person
+  relationship_type: professional_carer
+  active: true
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>

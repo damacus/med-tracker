@@ -20,7 +20,7 @@ RSpec.describe 'Person Medicines Authorization' do
     let(:medicine) { medicines(:vitamin_d) }
 
     it 'allows administrators to add medicines to any person' do
-      sign_in_as(admin, password: 'adminpassword')
+      sign_in_as(admin)
       visit person_path(assigned_patient)
 
       expect(page).to have_link('Add Medicine')
@@ -131,7 +131,7 @@ RSpec.describe 'Person Medicines Authorization' do
     end
 
     it 'allows administrators to remove medicines from any person' do
-      sign_in_as(admin, password: 'adminpassword')
+      sign_in_as(admin)
       visit person_path(assigned_patient)
 
       within("#person_medicine_#{person_medicine.id}") do
@@ -181,7 +181,7 @@ RSpec.describe 'Person Medicines Authorization' do
         notes: 'Test medicine'
       )
 
-      sign_in_as(admin, password: 'adminpassword')
+      sign_in_as(admin)
       visit person_path(assigned_patient)
 
       expect(page).to have_content('My Medicines')

@@ -114,10 +114,14 @@
 1. **Authorization Incomplete**
    - ✅ Pundit framework implemented
    - ✅ Policies created for User, Person, CarerRelationship, PersonMedicine
-   - ❌ **PrescriptionsController has NO authorization checks** (HIGH PRIORITY)
-   - ❌ **MedicinesController has NO authorization checks** (HIGH PRIORITY)
-   - ❌ No policy files for Prescription or Medicine models
-   - ❌ Other controllers (Dashboard, TakeMedicines, etc.) not audited for authorization
+   - ✅ **PrescriptionPolicy created and fully implemented**
+   - ✅ **PrescriptionsController fully authorized** (all actions protected)
+   - ✅ **MedicinePolicy created and fully implemented**
+   - ✅ **MedicinesController fully authorized** (all actions protected)
+   - ❌ **DashboardController has NO authorization checks** (HIGH PRIORITY)
+   - ❌ **MedicationTakesController has NO authorization checks** (HIGH PRIORITY)
+   - ❌ No policy files for Dashboard or MedicationTake
+   - ❌ Other controllers (TakeMedicines, etc.) not audited for authorization
 
 2. **Incomplete Admin Interface** (UNCHANGED)
    - ✅ Can view users with proper authorization
@@ -167,25 +171,22 @@
 
 ### 🔴 Critical Outstanding Issues
 
-1. **PrescriptionsController Missing Authorization** (URGENT)
-   - All actions (new, create, edit, update, destroy, take_medicine) are unprotected
-   - No PrescriptionPolicy exists
-   - Any authenticated user can manage any prescription
+1. **DashboardController Missing Authorization** (URGENT)
+   - Shows all people and prescriptions without scoping
+   - No DashboardPolicy exists
+   - Any authenticated user can see all data
 
-2. **MedicinesController Missing Authorization** (URGENT)
-   - All CRUD actions unprotected
-   - No MedicinePolicy exists
-   - Any authenticated user can create/edit/delete medicines
+2. **MedicationTakesController Missing Authorization** (URGENT)
+   - No authorization checks on create action
+   - No MedicationTakePolicy exists
+   - Any authenticated user can record medication takes for any prescription
 
-3. **Default Role Migration Issue**
-   - Migration has `role, default: 0` (administrator)
-   - UsersController compensates by setting person_type to carer
-   - Need data migration to fix existing users and update default
-
-4. **Incomplete Authorization Coverage**
-   - DashboardController - no authorization checks
-   - TakeMedicinesController - no authorization checks
-   - Other controllers need audit
+3. **Incomplete Authorization Coverage**
+   - TakeMedicinesController - not audited
+   - PasswordsController - not audited
+   - SessionsController - not audited (public, but needs verification)
+   - UsersController - not audited (signup, but needs verification)
+   - Other public controllers need audit
 
 ## Improvement Plan
 
@@ -194,7 +195,7 @@
 #### 1.1 Implement Authorization Framework
 **Objective**: Add comprehensive role-based access control
 
-**Status**: 🟡 **75% Complete**
+**Status**: 🟡 **85% Complete**
 
 **Tasks**:
 - [x] Add Pundit gem to Gemfile
@@ -206,14 +207,20 @@
 - [x] Add policy checks to PeopleController
 - [x] Add policy checks to PersonMedicinesController
 - [x] Add policy checks to Admin::UsersController
-- [ ] **Create PrescriptionPolicy** (URGENT)
-- [ ] **Create MedicinePolicy** (URGENT)
-- [ ] **Add authorization to PrescriptionsController** (URGENT)
-- [ ] **Add authorization to MedicinesController** (URGENT)
-- [ ] Audit remaining controllers (Dashboard, TakeMedicines, etc.)
+- [x] **Create PrescriptionPolicy** (COMPLETED)
+- [x] **Create MedicinePolicy** (COMPLETED)
+- [x] **Add authorization to PrescriptionsController** (COMPLETED)
+- [x] **Add authorization to MedicinesController** (COMPLETED)
+- [ ] **Create MedicationTakePolicy** (HIGH PRIORITY)
+- [ ] **Add authorization to MedicationTakesController** (HIGH PRIORITY)
+- [ ] **Create DashboardPolicy** (HIGH PRIORITY)
+- [ ] **Add authorization to DashboardController** (HIGH PRIORITY)
+- [ ] Audit remaining controllers (TakeMedicines, Passwords, Sessions, etc.)
 - [x] Write policy tests (RSpec) - UserPolicy, PersonPolicy, CarerRelationshipPolicy
 - [ ] Write policy tests for PrescriptionPolicy and MedicinePolicy
+- [ ] Write policy tests for MedicationTakePolicy and DashboardPolicy
 - [x] Write system authorization tests - person_medicines_authorization_spec.rb
+- [ ] Write system authorization tests - medication_takes and dashboard
 
 **User Roles & Permissions Matrix**:
 
@@ -715,9 +722,10 @@
 
 **Next Immediate Actions**:
 
-1. 🔴 **URGENT**: Create PrescriptionPolicy and add authorization to PrescriptionsController
-2. 🔴 **URGENT**: Create MedicinePolicy and add authorization to MedicinesController
+1. 🔴 **URGENT**: Create MedicationTakePolicy and add authorization to MedicationTakesController
+2. 🔴 **URGENT**: Create DashboardPolicy and add authorization/scoping to DashboardController
 3. 🟡 **MEDIUM**: Audit all remaining controllers for authorization gaps
+4. 📋 **REFERENCE**: See AUTHORIZATION_COMPLETION_PLAN.md for detailed implementation plan
 
 ### Sprint 2 (Week 3-4): Admin Interface
 1. Complete admin CRUD for users
@@ -788,17 +796,22 @@
 
 ### 🔴 Critical Blockers
 
-1. **PrescriptionsController unprotected** - Any user can manage any prescription
-2. **MedicinesController unprotected** - Any user can create/edit/delete medicines
+1. **DashboardController unprotected** - Any user can see all people and prescriptions
+2. **MedicationTakesController unprotected** - Any user can record medication takes
 
 ### 🟡 Next Sprint Priorities
 
-1. Complete authorization coverage (Prescription, Medicine policies)
-2. Audit remaining controllers
-3. Begin Admin CRUD operations (Phase 2)
+1. Complete authorization coverage (MedicationTake, Dashboard policies)
+2. Audit remaining controllers (TakeMedicines, Passwords, Sessions, etc.)
+3. Write comprehensive policy and system tests
+4. Begin Admin CRUD operations (Phase 2)
+
+**Detailed Plan**: See AUTHORIZATION_COMPLETION_PLAN.md
 
 ## Conclusion
 
-**Phase 1 (Authorization & Security) is now 100% complete!** The Pundit framework is properly integrated with comprehensive policies and tests, and the default role security issue has been resolved. However, **critical security gaps remain** in PrescriptionsController and MedicinesController that must be addressed immediately before proceeding to Phase 2.
+**Phase 1 (Authorization & Security) is now 85% complete!** The Pundit framework is properly integrated with comprehensive policies for User, Person, CarerRelationship, PersonMedicine, Prescription, and Medicine. The default role security issue has been resolved.
+
+However, **critical security gaps remain** in DashboardController and MedicationTakesController that must be addressed immediately before proceeding to Phase 2. See AUTHORIZATION_COMPLETION_PLAN.md for detailed implementation steps.
 
 The existing foundation is solid with good separation of concerns, clean models, and test coverage. The authorization implementation follows best practices with deny-by-default policies and comprehensive role-based access control.

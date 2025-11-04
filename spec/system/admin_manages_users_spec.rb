@@ -20,7 +20,7 @@ RSpec.describe 'AdminManagesUsers' do
 
   context 'when user is logged in as an admin' do
     it 'allows admin to see the list of users' do
-      sign_in_as(admin, password: 'adminpassword')
+      sign_in_as(admin)
 
       visit admin_users_path
 
