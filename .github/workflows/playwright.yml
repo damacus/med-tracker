@@ -27,6 +27,11 @@ jobs:
           bundle exec rails db:create
           bundle exec rails db:schema:load
 
+      - name: Precompile assets
+        run: bundle exec rails assets:precompile
+        env:
+          RAILS_ENV: test
+
       - name: Run all tests
         run: bundle exec rspec --format RSpec::Github::Formatter
         env:

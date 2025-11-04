@@ -1,0 +1,21 @@
+---
+version: '3'
+
+tasks:
+  playwright:
+    desc: Run Playwright tests (installs Playwright, sets up DB, runs RSpec)
+    cmds:
+      - npx playwright install --with-deps chromium
+      - bundle exec rails db:create RAILS_ENV=test
+      - bundle exec rails db:schema:load RAILS_ENV=test
+      - bundle exec rails assets:precompile RAILS_ENV=test
+      - bundle exec rspec
+    env:
+      RAILS_ENV: test
+
+  playwright:quick:
+    desc: Run Playwright tests (skips installation and DB setup)
+    cmds:
+      - bundle exec rspec
+    env:
+      RAILS_ENV: test
