@@ -8,6 +8,7 @@ tasks:
       - npx playwright install --with-deps chromium
       - bundle exec rails db:create RAILS_ENV=test
       - bundle exec rails db:schema:load RAILS_ENV=test
+      - bundle exec rails assets:precompile RAILS_ENV=test
       - bundle exec rspec
     env:
       RAILS_ENV: test
