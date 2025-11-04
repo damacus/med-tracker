@@ -21,7 +21,7 @@ RSpec.describe 'Dashboard Authorization' do
       sign_in(admin)
       visit dashboard_path
 
-      expect(page).to have_content('Medicine Tracker Dashboard')
+      expect(page).to have_content('Dashboard')
       expect(page).to have_no_content('You are not authorized')
     end
 
@@ -29,7 +29,7 @@ RSpec.describe 'Dashboard Authorization' do
       sign_in(doctor)
       visit dashboard_path
 
-      expect(page).to have_content('Medicine Tracker Dashboard')
+      expect(page).to have_content('Dashboard')
       expect(page).to have_no_content('You are not authorized')
     end
 
@@ -37,7 +37,7 @@ RSpec.describe 'Dashboard Authorization' do
       sign_in(nurse)
       visit dashboard_path
 
-      expect(page).to have_content('Medicine Tracker Dashboard')
+      expect(page).to have_content('Dashboard')
       expect(page).to have_no_content('You are not authorized')
     end
 
@@ -45,7 +45,7 @@ RSpec.describe 'Dashboard Authorization' do
       sign_in(carer)
       visit dashboard_path
 
-      expect(page).to have_content('Medicine Tracker Dashboard')
+      expect(page).to have_content('Dashboard')
       expect(page).to have_no_content('You are not authorized')
     end
 
@@ -53,7 +53,7 @@ RSpec.describe 'Dashboard Authorization' do
       sign_in(parent)
       visit dashboard_path
 
-      expect(page).to have_content('Medicine Tracker Dashboard')
+      expect(page).to have_content('Dashboard')
       expect(page).to have_no_content('You are not authorized')
     end
 
@@ -61,7 +61,7 @@ RSpec.describe 'Dashboard Authorization' do
       sign_in(adult_patient)
       visit dashboard_path
 
-      expect(page).to have_content('Medicine Tracker Dashboard')
+      expect(page).to have_content('Dashboard')
       expect(page).to have_no_content('You are not authorized')
     end
 
@@ -69,7 +69,7 @@ RSpec.describe 'Dashboard Authorization' do
       visit dashboard_path
 
       expect(page).to have_current_path(new_session_path)
-      expect(page).to have_no_content('Medicine Tracker Dashboard')
+      expect(page).to have_no_content('Dashboard')
     end
   end
 
@@ -107,9 +107,9 @@ RSpec.describe 'Dashboard Authorization' do
       visit dashboard_path
 
       # Adult patient should see the dashboard with their own data
-      expect(page).to have_content('Medicine Tracker Dashboard')
-      # They should see the People section but only their own person
-      expect(page).to have_content('Medication Schedule By Person')
+      expect(page).to have_content('Dashboard')
+      # They should see the Medication Schedule section
+      expect(page).to have_content('Medication Schedule')
     end
   end
 end

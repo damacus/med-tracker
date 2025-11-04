@@ -5,9 +5,10 @@ Rails.application.routes.draw do
   resource :session
   resources :passwords, param: :token
   # Defines the root path route ("/")
-  root 'home#index'
+  root 'dashboard#index'
 
   namespace :admin do
+    root to: 'dashboard#index'
     resources :users, only: [:index]
   end
 

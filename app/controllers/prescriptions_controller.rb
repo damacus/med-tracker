@@ -110,7 +110,7 @@ class PrescriptionsController < ApplicationController
   def destroy
     authorize @prescription
     @prescription.destroy
-    redirect_to person_path(@person), notice: t('prescriptions.deleted')
+    redirect_back fallback_location: person_path(@person), notice: t('prescriptions.deleted')
   end
 
   def take_medicine
@@ -122,7 +122,7 @@ class PrescriptionsController < ApplicationController
       taken_at: Time.current,
       amount_ml: amount
     )
-    redirect_to person_path(@person), notice: t('prescriptions.medicine_taken')
+    redirect_back fallback_location: person_path(@person), notice: t('prescriptions.medicine_taken')
   end
 
   private

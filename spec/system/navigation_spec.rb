@@ -4,7 +4,11 @@ require 'rails_helper'
 
 # This system test verifies the main site navigation using the Capybara DSL.
 RSpec.describe 'Navigation' do
-  fixtures :users
+  fixtures :users, :people
+
+  before do
+    driven_by(:rack_test)
+  end
 
   let(:user) { users(:one) }
 

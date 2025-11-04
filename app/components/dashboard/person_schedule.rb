@@ -5,34 +5,58 @@ module Components
     # Renders a person's medication schedule within the dashboard
     class PersonSchedule < Components::Base
       include Phlex::Rails::Helpers::ButtonTo
+      include Pundit::Authorization
 
-      attr_reader :person, :prescriptions, :take_medicine_url_generator
+      attr_reader :person, :prescriptions, :take_medicine_url_generator, :current_user
 
-      def initialize(person:, prescriptions:, take_medicine_url_generator: nil)
+      def initialize(person:, prescriptions:, take_medicine_url_generator: nil, current_user: nil)
         @person = person
         @prescriptions = prescriptions
         @take_medicine_url_generator = take_medicine_url_generator
+        @current_user = current_user
         super()
       end
 
       def view_template
-        div(class: 'schedule-person') do
+        div(class: 'space-y-4') do
           render_person_header
-          render_prescriptions_list
+          render_prescriptions_grid
         end
       end
 
       private
 
       def render_person_header
-        div(class: 'schedule-person__header') do
-          h3(class: 'schedule-person__name') { person.name }
-          p(class: 'schedule-person__age') { "Age: #{person.age}" }
+        div(class: 'flex items-center gap-3 mb-2') do
+          render_person_avatar
+          div do
+            h3(class: 'text-xl font-semibold text-slate-900') { person.name }
+            p(class: 'text-sm text-slate-600') { "Age: #{person.age}" }
+          end
         end
       end
 
-      def render_prescriptions_list
-        div(class: 'schedule-prescriptions') do
+      def render_person_avatar
+        div(class: 'w-12 h-12 rounded-full flex items-center justify-center bg-slate-100 text-slate-700') do
+          svg(
+            xmlns: 'http://www.w3.org/2000/svg',
+            width: '24',
+            height: '24',
+            viewBox: '0 0 24 24',
+            fill: 'none',
+            stroke: 'currentColor',
+            stroke_width: '2',
+            stroke_linecap: 'round',
+            stroke_linejoin: 'round'
+          ) do |s|
+            s.path(d: 'M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2')
+            s.circle(cx: '12', cy: '7', r: '4')
+          end
+        end
+      end
+
+      def render_prescriptions_grid
+        div(class: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4') do
           prescriptions.each do |prescription|
             render_prescription_card(prescription)
           end
@@ -40,74 +64,111 @@ module Components
       end
 
       def render_prescription_card(prescription)
-        div(id: "prescription_#{prescription.id}", class: 'prescription-card') do
-          div(class: 'prescription-card__content') do
-            render_prescription_info(prescription)
+        Card(id: "prescription_#{prescription.id}", class: 'h-full flex flex-col') do
+          CardHeader do
+            render_medicine_icon
+            CardTitle(class: 'text-lg') { prescription.medicine.name }
+          end
+
+          CardContent(class: 'flex-grow space-y-2') do
+            render_prescription_details(prescription)
+          end
+
+          CardFooter do
             render_prescription_actions(prescription)
           end
         end
       end
 
-      def render_prescription_info(prescription)
-        div(class: 'prescription-card__info') do
-          render_medicine_name(prescription)
-          render_dosage_detail(prescription)
-          render_frequency_detail(prescription)
-          render_end_date_detail(prescription)
+      def render_medicine_icon
+        div(class: 'w-10 h-10 rounded-xl flex items-center justify-center bg-green-100 text-green-700 mb-2') do
+          svg(
+            xmlns: 'http://www.w3.org/2000/svg',
+            width: '20',
+            height: '20',
+            viewBox: '0 0 24 24',
+            fill: 'none',
+            stroke: 'currentColor',
+            stroke_width: '2',
+            stroke_linecap: 'round',
+            stroke_linejoin: 'round'
+          ) do |s|
+            s.path(d: 'M10.5 20.5 10 21a2 2 0 0 1-2.828 0L4.343 18.172a2 2 0 0 1 0-2.828l.5-.5')
+            s.path(d: 'm7 17-5-5')
+            s.path(d: 'M13.5 3.5 14 3a2 2 0 0 1 2.828 0l2.829 2.828a2 2 0 0 1 0 2.829l-.5.5')
+            s.path(d: 'm17 7 5 5')
+            s.circle(cx: '12', cy: '12', r: '2')
+          end
         end
       end
 
-      def render_medicine_name(prescription)
-        h4(class: 'prescription-card__medicine') { prescription.medicine.name }
+      def render_prescription_details(prescription)
+        div(class: 'space-y-1 text-sm text-muted-foreground') do
+          render_detail_row('Dosage', format_dosage(prescription))
+          render_detail_row('Frequency', prescription.frequency) if prescription.frequency.present?
+          render_detail_row('Ends', format_end_date(prescription)) if prescription.end_date
+        end
       end
 
-      def render_dosage_detail(prescription)
+      def render_detail_row(label, value)
+        p do
+          strong { "#{label}: " }
+          plain value.to_s
+        end
+      end
+
+      def format_dosage(prescription)
         amount = prescription.dosage&.amount
         unit = prescription.dosage&.unit
-        dosage = [amount, unit].compact.join(' ')
-
-        p(class: 'prescription-card__detail') { "Dosage: #{dosage}" }
+        [amount, unit].compact.join(' ')
       end
 
-      def render_frequency_detail(prescription)
-        return if prescription.frequency.blank?
-
-        p(class: 'prescription-card__detail') { "Frequency: #{prescription.frequency}" }
-      end
-
-      def render_end_date_detail(prescription)
-        return unless prescription.end_date
-
-        formatted_date = prescription.end_date.strftime('%B %d, %Y')
-        p(class: 'prescription-card__detail') { "Ends: #{formatted_date}" }
+      def format_end_date(prescription)
+        prescription.end_date.strftime('%B %d, %Y')
       end
 
       def render_prescription_actions(prescription)
-        div(class: 'prescription-card__actions') do
-          render_take_medicine_button(prescription)
+        div(class: 'flex h-5 items-center space-x-4 text-sm') do
+          render_take_medicine_link(prescription)
+          if can_delete_prescription?(prescription)
+            Separator(orientation: :vertical)
+            render_delete_link(prescription)
+          end
         end
       end
 
-      def render_take_medicine_button(prescription)
+      def render_take_medicine_link(prescription)
         if take_medicine_url_generator
-          button_to_take_medicine(prescription)
+          url = take_medicine_url_generator.call(prescription)
+          a(
+            href: url,
+            class: 'text-primary hover:underline font-medium',
+            data: { turbo_method: :post, test_id: "take-medicine-#{prescription.id}" }
+          ) { 'Take Now' }
         else
-          button(class: 'quick-action__button', data: { test_id: "take-medicine-#{prescription.id}" }) do
+          span(class: 'text-primary font-medium', data: { test_id: "take-medicine-#{prescription.id}" }) do
             'Take Now'
           end
         end
       end
 
-      def button_to_take_medicine(prescription)
-        url = take_medicine_url_generator.call(prescription)
-        button_to(
-          url,
-          method: :post,
-          class: 'quick-action__button',
-          data: { test_id: "take-medicine-#{prescription.id}" }
-        ) do
-          'Take Now'
-        end
+      def render_delete_link(prescription)
+        a(
+          href: person_prescription_path(prescription.person, prescription),
+          class: 'text-destructive hover:underline',
+          data: {
+            turbo_method: :delete,
+            turbo_confirm: 'Are you sure you want to delete this prescription?',
+            test_id: "delete-prescription-#{prescription.id}"
+          }
+        ) { 'Delete' }
+      end
+
+      def can_delete_prescription?(prescription)
+        return false unless current_user
+
+        policy = PrescriptionPolicy.new(current_user, prescription)
+        policy.destroy?
       end
     end
   end

@@ -1,3 +1,4 @@
+---
 # SQLite. Versions 3.8.0 and up are supported.
 #   gem install sqlite3
 #
@@ -19,7 +20,7 @@ development:
 test:
   <<: *default
   database: storage/test.sqlite3
-
+  timeout: 10000
 
 # Store production database in the storage/ directory, which by default
 # is mounted as a persistent Docker volume in config/deploy.yml.
