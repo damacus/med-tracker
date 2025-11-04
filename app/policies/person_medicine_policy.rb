@@ -39,6 +39,10 @@ class PersonMedicinePolicy < ApplicationPolicy
     user&.administrator? || user&.doctor? || user&.nurse?
   end
 
+  def carer_or_parent?
+    user&.carer? || user&.parent?
+  end
+
   def carer_with_patient?
     (carer_or_parent? && user.person.patients.exists?(record.person.id)) || false
   end
