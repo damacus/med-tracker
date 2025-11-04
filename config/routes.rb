@@ -33,6 +33,7 @@ Rails.application.routes.draw do
   # People and prescriptions management
   resources :prescriptions do
     resources :take_medicines, only: [:create]
+    resources :medication_takes, only: [:create]
   end
 
   resources :people, except: [:edit] do

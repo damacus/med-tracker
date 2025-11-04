@@ -15,6 +15,13 @@ nurse_cares_for_john:
   created_at: <%= Time.current %>
   updated_at: <%= Time.current %>
 
+adult_patient_self_care:
+  carer: adult_patient_person
+  patient: adult_patient_person
+  relationship_type: 0  # self
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>
+
 parent_cares_for_child:
   carer: parent_person
   patient: child_user_person

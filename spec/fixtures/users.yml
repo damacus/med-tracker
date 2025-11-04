@@ -83,7 +83,7 @@ adult_patient:
   person: adult_patient_person
   email_address: adult.patient@example.com
   password_digest: <%= BCrypt::Password.create("password") %>
-  role: 4  # parent (adult managing own care)
+  role: 3  # carer (adult managing own care)
   created_at: <%= Time.current %>
   updated_at: <%= Time.current %>
 
