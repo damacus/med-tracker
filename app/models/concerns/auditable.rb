@@ -27,8 +27,12 @@ module Auditable
   end
 
   def audit_relevant_changes?
-    # Only audit if there are changes to track
-    saved_changes.any? && !saved_changes.keys.all? { |k| k.in?(%w[updated_at created_at]) }
+    # Only audit if there are changes to track beyond just timestamps
+    has_non_timestamp_changes?
+  end
+
+  def has_non_timestamp_changes?
+    saved_changes.keys.any? { |k| !k.in?(%w[updated_at created_at]) }
   end
 
   def auditable_changes
