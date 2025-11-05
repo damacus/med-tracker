@@ -10,7 +10,7 @@ MedTracker is a Ruby on Rails application designed to help users manage and trac
 - **Language**: Ruby 3.4.7
 - **Database**: SQLite3 (development), PostgreSQL (production via Kamal)
 - **Frontend**: Hotwire (Turbo + Stimulus), Phlex components, Tailwind CSS
-- **Testing**: Minitest with Capybara for system tests
+- **Testing**: RSpec and Minitest (dual testing frameworks) with Capybara for system tests
 - **Authorization**: Pundit
 - **Authentication**: Passkeys Rails, bcrypt
 
@@ -35,19 +35,29 @@ MedTracker is a Ruby on Rails application designed to help users manage and trac
    - Aim for 100% test coverage by testing business behavior
 
 2. **Testing Tools**
-   - Use **Minitest** (Rails default testing framework)
+   - The project uses **both RSpec and Minitest** for testing
+   - **RSpec** is used for specs in `spec/` directory (policies, services, components)
+   - **Minitest** is used for tests in `test/` directory (models, controllers, system tests)
    - Use **Capybara** for system tests to simulate user interactions
    - Use **VCR** for API mocking
-   - Use standard Rails **fixtures** for test data (located in `test/fixtures/`)
+   - Use standard Rails **fixtures** for test data (located in `test/fixtures/` and `spec/fixtures/`)
 
 3. **Test Organization**
    ```
+   spec/
+     policies/        # Pundit policy specs (RSpec)
+     services/        # Service object specs (RSpec)
+     components/      # Component specs (RSpec)
+     models/          # Model specs (RSpec)
+     requests/        # Request specs (RSpec)
+     system/          # System specs (RSpec)
+   
    test/
-     models/          # Model tests
-     controllers/     # Controller tests
-     system/          # End-to-end system tests with Capybara
-     helpers/         # Helper tests
-     integration/     # Integration tests
+     models/          # Model tests (Minitest)
+     controllers/     # Controller tests (Minitest)
+     system/          # System tests with Capybara (Minitest)
+     helpers/         # Helper tests (Minitest)
+     integration/     # Integration tests (Minitest)
    ```
 
 ### Code Style
@@ -59,7 +69,7 @@ MedTracker is a Ruby on Rails application designed to help users manage and trac
    - Classes/Modules: `PascalCase`
    - Constants: `UPPER_SNAKE_CASE`
    - Files: `snake_case.rb`
-   - Test files: `*_test.rb`
+   - Test files: `*_test.rb` (Minitest) or `*_spec.rb` (RSpec)
 
 3. **Code Quality**
    - Use guard clauses to avoid nested if/else statements
@@ -83,14 +93,15 @@ MedTracker is a Ruby on Rails application designed to help users manage and trac
 - **app/models/**: Active Record models
 - **app/policies/**: Pundit authorization policies
 - **app/services/**: Service objects for complex business logic
-- **test/**: All test files using Minitest
+- **spec/**: RSpec test files (policies, services, components)
+- **test/**: Minitest test files (models, controllers, system tests)
 
 ### Development Setup
 
 1. Clone the repository
-2. Install dependencies: Run bundle install equivalent
+2. Install dependencies: `bundle install`
 3. Set up database: `rails db:create && rails db:migrate`
-4. Run tests: `bundle exec rake test`
+4. Run tests: `bundle exec rake test` (Minitest) or `bundle exec rspec` (RSpec)
 5. Start server: `rails server` (available at http://localhost:3000)
 
 ### Important Conventions
@@ -127,7 +138,9 @@ end
 
 ### Common Tasks
 
-- **Running tests**: `bundle exec rake test`
+- **Running tests**: 
+  - Minitest: `bundle exec rake test`
+  - RSpec: `bundle exec rspec`
 - **Linting**: RuboCop is configured (`.rubocop.yml`)
 - **Database migrations**: `rails db:migrate`
 - **Console**: `rails console`
