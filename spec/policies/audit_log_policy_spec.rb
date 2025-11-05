@@ -24,7 +24,7 @@ RSpec.describe AuditLogPolicy do
     it { is_expected.not_to permit_action(:destroy) }
   end
 
-  describe 'for non-administrator' do
+  context 'when user is not an administrator' do
     let(:person) do
       Person.create!(name: 'Regular User', date_of_birth: 30.years.ago)
     end
