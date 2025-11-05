@@ -10,7 +10,7 @@ MedTracker is a Ruby on Rails application designed to help users manage and trac
 - **Language**: Ruby 3.4.7
 - **Database**: SQLite3 (development), PostgreSQL (production via Kamal)
 - **Frontend**: Hotwire (Turbo + Stimulus), Phlex components, Tailwind CSS
-- **Testing**: RSpec and Minitest (dual testing frameworks) with Capybara for system tests
+- **Testing**: RSpec with Capybara and Playwright for system tests
 - **Authorization**: Pundit
 - **Authentication**: Passkeys Rails, bcrypt
 
@@ -35,30 +35,21 @@ MedTracker is a Ruby on Rails application designed to help users manage and trac
    - Aim for 100% test coverage by testing business behavior
 
 2. **Testing Tools**
-   - The project uses **both RSpec and Minitest** for testing
-   - **Prefer RSpec for new tests** - it's more actively used in this project
-   - **RSpec** is used for specs in `spec/` directory (policies, services, components, models, system tests)
-   - **Minitest** exists in `test/` directory (some model tests, controllers, system tests)
-   - Use **Capybara** for system tests to simulate user interactions
+   - Use **RSpec** for all testing (located in `spec/` directory)
+   - Use **Capybara** with **Playwright** driver for system tests to simulate user interactions
    - Use **VCR** for API mocking
-   - Use standard Rails **fixtures** for test data (located in `test/fixtures/` and `spec/fixtures/`)
+   - Use standard Rails **fixtures** for test data (located in `spec/fixtures/`)
 
 3. **Test Organization**
    ```
    spec/
-     policies/        # Pundit policy specs (RSpec)
-     services/        # Service object specs (RSpec)
-     components/      # Component specs (RSpec)
-     models/          # Model specs (RSpec)
-     requests/        # Request specs (RSpec)
-     system/          # System specs (RSpec)
-   
-   test/
-     models/          # Model tests (Minitest)
-     controllers/     # Controller tests (Minitest)
-     system/          # System tests with Capybara (Minitest)
-     helpers/         # Helper tests (Minitest)
-     integration/     # Integration tests (Minitest)
+     policies/        # Pundit policy specs
+     services/        # Service object specs
+     components/      # Phlex component specs
+     models/          # Model specs
+     requests/        # Request specs
+     system/          # System specs with Capybara and Playwright
+     controllers/     # Controller specs
    ```
 
 ### Code Style
@@ -70,7 +61,7 @@ MedTracker is a Ruby on Rails application designed to help users manage and trac
    - Classes/Modules: `PascalCase`
    - Constants: `UPPER_SNAKE_CASE`
    - Files: `snake_case.rb`
-   - Test files: `*_test.rb` (Minitest) or `*_spec.rb` (RSpec)
+   - Test files: `*_spec.rb`
 
 3. **Code Quality**
    - Use guard clauses to avoid nested if/else statements
@@ -94,15 +85,14 @@ MedTracker is a Ruby on Rails application designed to help users manage and trac
 - **app/models/**: Active Record models
 - **app/policies/**: Pundit authorization policies
 - **app/services/**: Service objects for complex business logic
-- **spec/**: RSpec test files (policies, services, components)
-- **test/**: Minitest test files (models, controllers, system tests)
+- **spec/**: RSpec test files (all tests)
 
 ### Development Setup
 
 1. Clone the repository
 2. Install dependencies: `bundle install`
 3. Set up database: `rails db:create && rails db:migrate`
-4. Run tests: `bundle exec rake test` (Minitest) or `bundle exec rspec` (RSpec)
+4. Run tests: `bundle exec rspec`
 5. Start server: `rails server` (available at http://localhost:3000)
 
 ### Important Conventions
@@ -117,17 +107,21 @@ MedTracker is a Ruby on Rails application designed to help users manage and trac
 
 Example fixture structure:
 ```yaml
-# test/fixtures/users.yml
+# spec/fixtures/users.yml
 admin:
   email: admin@example.com
   password_digest: <%= BCrypt::Password.create('password') %>
 ```
 
-Use in tests:
+Use in RSpec tests:
 ```ruby
-test "user can log in" do
-  user = users(:admin)
-  # test logic here
+RSpec.describe User, type: :model do
+  fixtures :users
+  
+  it "allows user to log in" do
+    user = users(:admin)
+    # test logic here
+  end
 end
 ```
 
@@ -139,9 +133,8 @@ end
 
 ### Common Tasks
 
-- **Running tests**: 
-  - Minitest: `bundle exec rake test`
-  - RSpec: `bundle exec rspec`
+- **Running tests**: `bundle exec rspec`
+- **Running system tests**: `bundle exec rspec spec/system`
 - **Linting**: RuboCop is configured (`.rubocop.yml`)
 - **Database migrations**: `rails db:migrate`
 - **Console**: `rails console`
