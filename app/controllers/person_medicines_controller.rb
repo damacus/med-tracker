@@ -64,6 +64,13 @@ class PersonMedicinesController < ApplicationController
 
   def take_medicine
     authorize @person_medicine, :take_medicine?
+
+    unless @person_medicine.can_take_now?
+      redirect_to person_path(@person),
+                  alert: t('person_medicines.timing_restriction_violated')
+      return
+    end
+
     @take = @person_medicine.medication_takes.create!(
       taken_at: Time.current,
       amount_ml: params[:amount_ml] || @person_medicine.medicine.dosage_amount

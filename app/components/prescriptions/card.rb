@@ -36,6 +36,7 @@ module Components
       def render_card_content
         CardContent(class: 'flex-grow space-y-4') do
           render_date_details
+          render_timing_restrictions if prescription.timing_restrictions?
           render_notes if prescription.notes.present?
           render_takes_section
         end
@@ -94,6 +95,20 @@ module Components
         end
       end
 
+      def render_timing_restrictions
+        div(class: 'p-3 bg-amber-50 border border-amber-200 rounded-md') do
+          p(class: 'text-sm text-amber-800 font-semibold mb-1') { '⏱️ Timing Restrictions:' }
+          ul(class: 'text-sm text-amber-800 list-disc list-inside') do
+            if prescription.max_daily_doses.present?
+              li { "Maximum #{prescription.max_daily_doses} dose(s) per day" }
+            end
+            if prescription.min_hours_between_doses.present?
+              li { "Wait at least #{prescription.min_hours_between_doses} hours between doses" }
+            end
+          end
+        end
+      end
+
       def render_takes_section
         div(class: 'space-y-3') do
           div(class: 'flex items-center justify-between') do
@@ -141,9 +156,32 @@ module Components
       end
 
       def render_take_medicine_button
+        return unless view_context.policy(prescription).take_medicine?
+
+        can_take = prescription.can_take_now?
+
         div(class: 'relative inline-block prescription__take-hover-card') do
-          Button(variant: :primary, size: :sm, class: 'prescription__take-trigger') { '💊 Take' }
-          render_take_medicine_form
+          Button(
+            variant: :primary,
+            size: :sm,
+            disabled: !can_take,
+            class: 'prescription__take-trigger'
+          ) { '💊 Take' }
+
+          if can_take
+            render_take_medicine_form
+          else
+            render_disabled_reason
+          end
+        end
+      end
+
+      def render_disabled_reason
+        next_time = prescription.next_available_time
+        return unless next_time
+
+        p(class: 'text-xs text-amber-600 mt-1 font-medium') do
+          plain view_context.time_until_available(next_time)
         end
       end
 

@@ -115,6 +115,13 @@ class PrescriptionsController < ApplicationController
 
   def take_medicine
     authorize @prescription, :take_medicine?
+
+    unless @prescription.can_take_now?
+      redirect_back fallback_location: person_path(@person),
+                    alert: t('prescriptions.timing_restriction_violated')
+      return
+    end
+
     # Extract the amount from the prescription's dosage if not provided
     amount = params[:amount_ml] || @prescription.dosage.amount
 

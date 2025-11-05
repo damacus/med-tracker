@@ -167,20 +167,30 @@ module Components
         next_time = person_medicine.next_available_time
         return unless next_time
 
-        p(class: 'text-xs text-slate-500 mt-1') do
-          plain "Available at #{next_time.strftime('%l:%M %p').strip}"
+        p(class: 'text-xs text-amber-600 mt-1 font-medium') do
+          plain view_context.time_until_available(next_time)
         end
       end
 
       def render_person_medicine_actions
+        can_take = person_medicine.can_take_now?
+
         if view_context.policy(person_medicine).take_medicine?
-          button_to(
-            take_medicine_person_person_medicine_path(person, person_medicine),
-            method: :post,
-            disabled: !person_medicine.can_take_now?,
-            class: 'inline-flex items-center justify-center rounded-md text-sm font-medium px-4 py-2 ' \
-                   'bg-primary text-white shadow-sm hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed'
-          ) { '💊 Take Now' }
+          div(class: 'flex flex-col gap-1') do
+            button_to(
+              take_medicine_person_person_medicine_path(person, person_medicine),
+              method: :post,
+              disabled: !can_take,
+              class: 'inline-flex items-center justify-center rounded-md text-sm font-medium px-4 py-2 ' \
+                     'bg-primary text-white shadow-sm hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed'
+            ) { '💊 Take Now' }
+
+            if !can_take && person_medicine.next_available_time
+              p(class: 'text-xs text-amber-600 font-medium') do
+                plain view_context.time_until_available(person_medicine.next_available_time)
+              end
+            end
+          end
         end
 
         render_delete_dialog
