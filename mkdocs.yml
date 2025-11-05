@@ -19,11 +19,10 @@ theme:
     - search.highlight
 
 nav:
-  - Home: README.md
+  - Home: index.md
   - Design:
-      - Architecture: docs/design.md
-      - User Management: docs/user-management.md
-  - Contributing: CONTRIBUTING.md
+      - Architecture: design.md
+      - User Management: user-management.md
 
 markdown_extensions:
   - admonition
@@ -43,9 +42,6 @@ markdown_extensions:
 
 plugins:
   - search
-  - git-revision-date-localized:
-      type: date
-      enable_creation_date: true
 
 extra:
   social:
