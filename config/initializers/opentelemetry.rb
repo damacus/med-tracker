@@ -18,11 +18,11 @@ unless Rails.env.test?
 
     # Configure resource attributes for better filtering and grouping
     c.resource = OpenTelemetry::SDK::Resources::Resource.create({
-      'service.name' => ENV.fetch('OTEL_SERVICE_NAME', 'med-tracker'),
-      'service.version' => ENV.fetch('OTEL_SERVICE_VERSION', '1.0.0'),
-      'deployment.environment' => Rails.env.to_s,
-      'service.namespace' => ENV.fetch('OTEL_SERVICE_NAMESPACE', 'default')
-    })
+                                                                  'service.name' => ENV.fetch('OTEL_SERVICE_NAME', 'med-tracker'),
+                                                                  'service.version' => ENV.fetch('OTEL_SERVICE_VERSION', '1.0.0'),
+                                                                  'deployment.environment' => Rails.env.to_s,
+                                                                  'service.namespace' => ENV.fetch('OTEL_SERVICE_NAMESPACE', 'default')
+                                                                })
 
     # Auto-instrument all supported libraries including:
     # - Rails (ActionController, ActionView, ActiveRecord, etc.)

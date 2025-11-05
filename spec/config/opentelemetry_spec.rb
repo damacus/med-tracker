@@ -2,6 +2,7 @@
 
 require 'rails_helper'
 
+# rubocop:disable RSpec/DescribeClass
 RSpec.describe 'OpenTelemetry Configuration' do
   describe 'in non-test environment' do
     it 'does not configure OpenTelemetry in test environment' do
@@ -33,13 +34,14 @@ RSpec.describe 'OpenTelemetry Configuration' do
     it 'can create spans' do
       tracer = OpenTelemetry.tracer_provider.tracer('test-tracer')
       span = nil
-      
+
       tracer.in_span('test-span') do |current_span|
         span = current_span
         expect(current_span).not_to be_nil
       end
-      
+
       expect(span).not_to be_nil
     end
   end
 end
+# rubocop:enable RSpec/DescribeClass

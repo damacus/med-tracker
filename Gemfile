@@ -28,9 +28,9 @@ gem 'passkeys-rails'
 gem 'ostruct'
 
 # OpenTelemetry for observability and distributed tracing
-gem 'opentelemetry-sdk'
 gem 'opentelemetry-exporter-otlp'
 gem 'opentelemetry-instrumentation-all'
+gem 'opentelemetry-sdk'
 
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
 gem 'tzinfo-data', platforms: %i[windows jruby]
