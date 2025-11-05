@@ -1,0 +1,45 @@
+---
+services:
+  db_test:
+    image: postgres:17-alpine
+    hostname: dbtest
+    environment:
+      POSTGRES_USER: medtracker_test
+      POSTGRES_PASSWORD: medtracker_test_password
+      POSTGRES_DB: medtracker_test
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U medtracker_test"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+    networks:
+      default:
+        aliases:
+          - dbtest
+
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    depends_on:
+      db_test:
+        condition: service_healthy
+    environment:
+      RAILS_ENV: test
+      DATABASE_URL: >-
+        postgres://medtracker_test:medtracker_test_password@dbtest:5432/medtracker_test
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - bundle_cache:/usr/local/bundle
+      - node_modules:/app/node_modules
+    stdin_open: true
+    tty: true
+
+volumes:
+  bundle_cache:
+  node_modules:

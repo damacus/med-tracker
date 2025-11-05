@@ -59,7 +59,7 @@ RSpec.describe User do
   describe 'roles' do
     it {
       expect(user).to define_enum_for(:role)
-        .with_values(administrator: 0, doctor: 1, nurse: 2, carer: 3, parent: 4)
+        .with_values(administrator: 0, doctor: 1, nurse: 2, carer: 3, parent: 4, minor: 5)
         .backed_by_column_of_type(:integer)
     }
 
@@ -91,6 +91,12 @@ RSpec.describe User do
       user.person = person
       user.role = :parent
       expect(user.parent?).to be true
+    end
+
+    it 'can be a minor' do
+      user.person = person
+      user.role = :minor
+      expect(user.minor?).to be true
     end
   end
 

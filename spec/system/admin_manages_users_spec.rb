@@ -104,8 +104,10 @@ RSpec.describe 'AdminManagesUsers' do
       fill_in 'Search', with: 'Carer'
       click_button 'Search'
 
-      expect(page).to have_content('Carer User')
-      expect(page).to have_no_content(admin.name)
+      within '[data-testid="admin-users"]' do
+        expect(page).to have_content('Carer User')
+        expect(page).to have_no_content(admin.name)
+      end
     end
 
     it 'allows admin to search users by email' do
@@ -141,8 +143,10 @@ RSpec.describe 'AdminManagesUsers' do
       select 'Carer', from: 'Role'
       click_button 'Search'
 
-      expect(page).to have_content('Carer User')
-      expect(page).to have_no_content(admin.name)
+      within '[data-testid="admin-users"]' do
+        expect(page).to have_content('Carer User')
+        expect(page).to have_no_content(admin.name)
+      end
     end
 
     it 'shows all users when search is cleared' do

@@ -18,9 +18,10 @@ MedTracker is a Ruby on Rails application designed to help users monitor their m
 ## Tech Stack
 
 - **Backend:** Ruby on Rails
-- **Database:** SQLite3 (for development)
-- **Testing:** Minitest
-- **Frontend:** Hotwire (Turbo, Stimulus)
+- **Database:** PostgreSQL
+- **Testing:** RSpec + Capybara
+- **Frontend:** Hotwire (Turbo, Stimulus) + Phlex
+- **Deployment:** Docker Compose
 
 ## Getting Started
 
@@ -29,6 +30,7 @@ MedTracker is a Ruby on Rails application designed to help users monitor their m
 - Ruby
 - Bundler
 - Node.js
+- PostgreSQL (or Docker)
 
 ### Setup
 
@@ -39,20 +41,30 @@ MedTracker is a Ruby on Rails application designed to help users monitor their m
    cd med-tracker
    ```
 
-2. **Install dependencies:**
+2. **Start PostgreSQL:**
+
+   Using Docker (recommended):
+
+   ```bash
+   docker-compose -f docker-compose.dev.yml up -d
+   ```
+
+   Or use your local PostgreSQL installation.
+
+3. **Install dependencies:**
 
    ```bash
    bundle install
    ```
 
-3. **Set up the database:**
+4. **Set up the database:**
 
    ```bash
    rails db:create
    rails db:migrate
    ```
 
-4. **Run the application:**
+5. **Run the application:**
 
    ```bash
    rails server
@@ -60,10 +72,33 @@ MedTracker is a Ruby on Rails application designed to help users monitor their m
 
    Open your browser to `http://localhost:3000`.
 
+### Environment Variables
+
+The following environment variables can be configured:
+
+- `DB_HOST` - PostgreSQL host (default: localhost)
+- `DB_USERNAME` - PostgreSQL username (default: postgres)
+- `DB_PASSWORD` - PostgreSQL password (default: postgres)
+
 ## Running the Tests
 
 To run the full test suite, use the following command:
 
 ```bash
-bundle exec rake test
+bundle exec rspec
+```
+
+## Docker Deployment
+
+MedTracker includes Docker Compose configurations for both production and test environments. See [README.docker.md](README.docker.md) for detailed instructions.
+
+**Quick Start:**
+
+```bash
+# Production environment
+export RAILS_MASTER_KEY=$(cat config/master.key)
+docker-compose up -d
+
+# Test environment
+docker-compose -f docker-compose.test.yml up
 ```

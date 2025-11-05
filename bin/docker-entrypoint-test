@@ -1,0 +1,44 @@
+#!/bin/bash -e
+
+# Test environment entrypoint
+# Prepares database and runs tests
+
+# Install gems (uses cached volume, so only installs missing gems)
+echo "Installing gems..."
+bundle install
+
+# Wait for database to be ready
+echo "Waiting for database..."
+until pg_isready -h dbtest -U medtracker_test > /dev/null 2>&1; do
+  sleep 1
+done
+echo "Database is ready!"
+
+# Prepare test database
+echo "Preparing test database..."
+bundle exec rails db:test:prepare
+
+# Start Rails server in background for Playwright tests
+echo "Starting Rails server..."
+bundle exec rails server -b 0.0.0.0 -p 3000 > /tmp/rails-server.log 2>&1 &
+RAILS_PID=$!
+
+# Wait for server to be ready
+echo "Waiting for Rails server to start..."
+until curl -s http://localhost:3000 > /dev/null 2>&1; do
+  sleep 1
+done
+echo "Rails server is ready!"
+
+# Cleanup function to stop Rails server
+cleanup() {
+  echo "Stopping Rails server..."
+  kill $RAILS_PID 2>/dev/null || true
+  wait $RAILS_PID 2>/dev/null || true
+}
+
+# Set trap to cleanup on exit
+trap cleanup EXIT INT TERM
+
+# Execute the command passed to the container
+exec "${@}"
