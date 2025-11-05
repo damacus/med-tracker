@@ -36,8 +36,9 @@ MedTracker is a Ruby on Rails application designed to help users manage and trac
 
 2. **Testing Tools**
    - The project uses **both RSpec and Minitest** for testing
-   - **RSpec** is used for specs in `spec/` directory (policies, services, components)
-   - **Minitest** is used for tests in `test/` directory (models, controllers, system tests)
+   - **Prefer RSpec for new tests** - it's more actively used in this project
+   - **RSpec** is used for specs in `spec/` directory (policies, services, components, models, system tests)
+   - **Minitest** exists in `test/` directory (some model tests, controllers, system tests)
    - Use **Capybara** for system tests to simulate user interactions
    - Use **VCR** for API mocking
    - Use standard Rails **fixtures** for test data (located in `test/fixtures/` and `spec/fixtures/`)
