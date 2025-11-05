@@ -1,6 +1,15 @@
 # frozen_string_literal: true
 
-# Auditable concern for tracking changes to sensitive models
+# Auditable concern for tracking changes to sensitive models.
+# 
+# Usage:
+#   - Automatically creates audit logs for create, update, and destroy actions on the including model.
+#   - Requires `Current.user` and `Current.request` to be set for user, IP address, and user agent tracking.
+#   - Relies on the presence of an `AuditLog` model with appropriate fields.
+#   - Logs the action, changed data, user, IP address, and user agent.
+#   - Only audits changes beyond timestamp updates.
+#
+# Ensure that the including model and application context provide these dependencies.
 module Auditable
   extend ActiveSupport::Concern
 
