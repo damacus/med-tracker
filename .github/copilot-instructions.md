@@ -105,6 +105,32 @@ app/
 - Authorization using Pundit
 - Passkey authentication support
 
+## Commit Message Guidelines
+
+Use semantic commits (conventional commits format) for all commit messages:
+
+- `feat:` - New features
+- `fix:` - Bug fixes
+- `docs:` - Documentation changes
+- `style:` - Code style changes (formatting, missing semi-colons, etc.)
+- `refactor:` - Code refactoring without changing functionality
+- `test:` - Adding or updating tests
+- `chore:` - Maintenance tasks, dependency updates
+
+**Examples:**
+```
+feat: add prescription management feature
+fix: resolve dose timing validation error
+docs: update README with setup instructions
+refactor: extract dosage calculation to service object
+test: add tests for medication take model
+```
+
+**Important:**
+- Do NOT create "Initial plan" or "Initial commit" messages as they pollute git history
+- Start with meaningful, descriptive commits that reflect actual work completed
+- Each commit should represent a complete, logical unit of work
+
 ## Running Commands
 
 ### Setup
