@@ -22,7 +22,7 @@ RSpec.describe AuditLog, type: :model do
     end
     let(:user) do
       User.create!(
-        email_address: 'test@example.com',
+        email_address: "scope_test_#{SecureRandom.hex(4)}@example.com",
         password: 'password123',
         person: person
       )
@@ -82,7 +82,7 @@ RSpec.describe AuditLog, type: :model do
       end
       let(:other_user) do
         User.create!(
-          email_address: 'other@example.com',
+          email_address: "scope_other_#{SecureRandom.hex(4)}@example.com",
           password: 'password123',
           person: other_person
         )
@@ -156,7 +156,7 @@ RSpec.describe AuditLog, type: :model do
         date_of_birth: 20.years.ago
       )
       user = User.create!(
-        email_address: 'test@example.com',
+        email_address: "actor_test_#{SecureRandom.hex(4)}@example.com",
         password: 'password123',
         person: person
       )
