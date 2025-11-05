@@ -67,3 +67,34 @@ To run the full test suite, use the following command:
 ```bash
 bundle exec rake test
 ```
+
+## Documentation
+
+Comprehensive documentation is available in the `docs/` directory:
+
+- [Design & Architecture](docs/design.md)
+- [User Management System](docs/user-management.md)
+
+### Building Documentation
+
+This project uses mkdocs for documentation. To view the documentation locally:
+
+1. Install mkdocs:
+
+   ```bash
+   pip install mkdocs mkdocs-material
+   ```
+
+2. Serve the documentation:
+
+   ```bash
+   mkdocs serve
+   ```
+
+3. Open your browser to `http://localhost:8000`
+
+### Documentation Agent
+
+The project includes a GitHub Copilot agent that can help identify and
+create documentation opportunities. See `.github/agents/README.md` for
+more information.
