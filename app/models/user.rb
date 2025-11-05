@@ -3,6 +3,7 @@
 # User model for storing user information and authentication
 class User < ApplicationRecord
   include PasskeysRails::Authenticatable
+  include Auditable
 
   belongs_to :person, inverse_of: :user
 

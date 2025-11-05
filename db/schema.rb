@@ -10,7 +10,23 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_11_03_230827) do
+ActiveRecord::Schema[8.1].define(version: 2025_11_05_030210) do
+  create_table "audit_logs", force: :cascade do |t|
+    t.string "action", null: false
+    t.integer "auditable_id", null: false
+    t.string "auditable_type", null: false
+    t.text "change_data"
+    t.datetime "created_at", null: false
+    t.string "ip_address"
+    t.datetime "updated_at", null: false
+    t.string "user_agent"
+    t.integer "user_id"
+    t.index ["action"], name: "index_audit_logs_on_action"
+    t.index ["auditable_type", "auditable_id"], name: "index_audit_logs_on_auditable_type_and_auditable_id"
+    t.index ["created_at"], name: "index_audit_logs_on_created_at"
+    t.index ["user_id"], name: "index_audit_logs_on_user_id"
+  end
+
   create_table "carer_relationships", force: :cascade do |t|
     t.boolean "active", default: true, null: false
     t.integer "carer_id", null: false
@@ -146,6 +162,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_03_230827) do
     t.index ["person_id"], name: "index_users_on_person_id", unique: true
   end
 
+  add_foreign_key "audit_logs", "users"
   add_foreign_key "carer_relationships", "people", column: "carer_id"
   add_foreign_key "carer_relationships", "people", column: "patient_id"
   add_foreign_key "dosages", "medicines"

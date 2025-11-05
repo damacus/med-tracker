@@ -3,6 +3,8 @@
 # CarerRelationship represents the relationship between a carer and a patient.
 # This allows tracking who is responsible for administering medication to whom.
 class CarerRelationship < ApplicationRecord
+  include Auditable
+
   belongs_to :carer, class_name: 'Person'
   belongs_to :patient, class_name: 'Person'
 

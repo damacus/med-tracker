@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class MedicationTake < ApplicationRecord
+  include Auditable
+
   belongs_to :prescription, optional: true
   belongs_to :person_medicine, optional: true
 
