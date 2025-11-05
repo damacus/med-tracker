@@ -64,12 +64,14 @@ en:
     created: "Medicine added successfully."
     deleted: "Medicine removed successfully."
     medicine_taken: "Medicine taken successfully."
+    timing_restriction_violated: "Cannot take medicine yet. Please wait until the timing restrictions are satisfied."
 
   prescriptions:
     created: "Prescription was successfully created."
     updated: "Prescription was successfully updated."
     deleted: "Prescription was successfully deleted."
     medicine_taken: "Medicine taken successfully."
+    timing_restriction_violated: "Cannot take medicine yet. Please wait until the timing restrictions are satisfied."
     modal:
       new_title: "New Prescription for %{person}"
       edit_title: "Edit Prescription for %{person}"
