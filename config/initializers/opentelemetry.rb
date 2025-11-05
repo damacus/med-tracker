@@ -24,14 +24,11 @@ unless Rails.env.test?
       'service.namespace' => ENV.fetch('OTEL_SERVICE_NAMESPACE', 'default')
     })
 
-    # Configure OTLP exporter (works with Jaeger, Honeycomb, etc.)
-    # The exporter sends traces to the configured endpoint
-    c.use 'OpenTelemetry::Exporter::OTLP'
-
     # Auto-instrument all supported libraries including:
     # - Rails (ActionController, ActionView, ActiveRecord, etc.)
     # - Rack
     # - Net::HTTP
+    # - OTLP Exporter
     # - And many more
     c.use_all
   end
