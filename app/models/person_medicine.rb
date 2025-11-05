@@ -53,7 +53,7 @@ class PersonMedicine < ApplicationRecord
 
     return false if last_take.blank?
 
-    hours_since_last = ((check_time - last_take.taken_at) / 1.hour).round
+    hours_since_last = (check_time - last_take.taken_at) / 1.hour
     hours_since_last < min_hours_between_doses
   end
 
