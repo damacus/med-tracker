@@ -43,7 +43,7 @@ RSpec.describe AuditLogPolicy do
     it { is_expected.not_to permit_action(:destroy) }
   end
 
-  describe 'for nil user' do
+  context 'when user is nil' do
     let(:user) { nil }
 
     it { is_expected.not_to permit_action(:index) }
