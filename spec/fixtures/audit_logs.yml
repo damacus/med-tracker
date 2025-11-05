@@ -1,0 +1,33 @@
+---
+user_created:
+  user: admin
+  action: 'create'
+  auditable_type: 'User'
+  auditable_id: 1
+  change_data: '{"id":[null, 1], "email_address":[null, "admin@example.com"]}'
+  ip_address: '127.0.0.1'
+  user_agent: 'Test Agent'
+  created_at: <%= 2.days.ago %>
+  updated_at: <%= 2.days.ago %>
+
+person_updated:
+  user: admin
+  action: 'update'
+  auditable_type: 'Person'
+  auditable_id: 1
+  change_data: '{"name":["Old Name", "New Name"]}'
+  ip_address: '127.0.0.1'
+  user_agent: 'Test Agent'
+  created_at: <%= 1.day.ago %>
+  updated_at: <%= 1.day.ago %>
+
+medication_taken:
+  user: parent
+  action: 'create'
+  auditable_type: 'MedicationTake'
+  auditable_id: 1
+  change_data: '{"taken_at":[null, "2025-01-01 10:00:00"], "amount_ml":[null, 5]}'
+  ip_address: '192.168.1.1'
+  user_agent: 'Mobile Agent'
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>

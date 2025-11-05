@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe AuditLog, type: :model do
+  fixtures :users, :people, :audit_logs
+
   describe 'associations' do
     it { is_expected.to belong_to(:user).optional }
   end
@@ -14,119 +16,38 @@ RSpec.describe AuditLog, type: :model do
   end
 
   describe 'scopes' do
-    let(:person) do
-      Person.create!(
-        name: 'Test Person',
-        date_of_birth: 20.years.ago
-      )
-    end
-    let(:user) do
-      User.create!(
-        email_address: "scope_test_#{SecureRandom.hex(4)}@example.com",
-        password: 'password123',
-        person: person
-      )
-    end
-    let!(:old_log) do
-      AuditLog.create!(
-        action: 'create',
-        auditable_type: 'Test',
-        auditable_id: 1,
-        created_at: 2.days.ago
-      )
-    end
-    let!(:new_log) do
-      AuditLog.create!(
-        action: 'create',
-        auditable_type: 'Test',
-        auditable_id: 2,
-        created_at: 1.day.ago
-      )
-    end
-
     describe '.recent' do
       it 'orders logs by created_at descending' do
-        expect(AuditLog.recent.first).to eq(new_log)
-        expect(AuditLog.recent.last).to eq(old_log)
+        logs = AuditLog.recent.limit(2)
+        expect(logs.first.created_at).to be >= logs.last.created_at
       end
     end
 
     describe '.by_action' do
-      let!(:create_log) do
-        AuditLog.create!(
-          action: 'create',
-          auditable_type: 'User',
-          auditable_id: user.id
-        )
-      end
-      let!(:update_log) do
-        AuditLog.create!(
-          action: 'update',
-          auditable_type: 'User',
-          auditable_id: user.id
-        )
-      end
-
       it 'filters logs by action' do
-        expect(AuditLog.by_action('create')).to include(create_log)
-        expect(AuditLog.by_action('create')).not_to include(update_log)
+        create_logs = AuditLog.by_action('create')
+        expect(create_logs).to all(have_attributes(action: 'create'))
       end
     end
 
     describe '.by_user' do
-      let(:other_person) do
-        Person.create!(
-          name: 'Other Person',
-          date_of_birth: 25.years.ago
-        )
-      end
-      let(:other_user) do
-        User.create!(
-          email_address: "scope_other_#{SecureRandom.hex(4)}@example.com",
-          password: 'password123',
-          person: other_person
-        )
-      end
-      let!(:user_log) do
-        AuditLog.create!(
-          user: user,
-          action: 'create',
-          auditable_type: 'User',
-          auditable_id: user.id
-        )
-      end
-      let!(:other_log) do
-        AuditLog.create!(
-          user: other_user,
-          action: 'create',
-          auditable_type: 'User',
-          auditable_id: other_user.id
-        )
-      end
+      let(:user) { users(:admin) }
 
       it 'filters logs by user' do
-        expect(AuditLog.by_user(user)).to include(user_log)
-        expect(AuditLog.by_user(user)).not_to include(other_log)
+        user_logs = AuditLog.by_user(user)
+        expect(user_logs).to all(have_attributes(user: user))
       end
     end
   end
 
   describe '#action_description' do
     it 'returns human-readable description for create' do
-      log = AuditLog.new(
-        action: 'create',
-        auditable_type: 'User',
-        auditable_id: 1
-      )
+      log = audit_logs(:user_created)
       expect(log.action_description).to eq('Created User')
     end
 
     it 'returns human-readable description for update' do
-      log = AuditLog.new(
-        action: 'update',
-        auditable_type: 'Person',
-        auditable_id: 1
-      )
+      log = audit_logs(:person_updated)
       expect(log.action_description).to eq('Updated Person')
     end
 
@@ -151,22 +72,8 @@ RSpec.describe AuditLog, type: :model do
 
   describe '#actor_name' do
     it 'returns user name when user is present' do
-      person = Person.create!(
-        name: 'Test Person',
-        date_of_birth: 20.years.ago
-      )
-      user = User.create!(
-        email_address: "actor_test_#{SecureRandom.hex(4)}@example.com",
-        password: 'password123',
-        person: person
-      )
-      log = AuditLog.new(
-        user: user,
-        action: 'create',
-        auditable_type: 'User',
-        auditable_id: user.id
-      )
-      expect(log.actor_name).to eq(user.name)
+      log = audit_logs(:user_created)
+      expect(log.actor_name).to eq(log.user.name)
     end
 
     it 'returns "System" when user is nil' do

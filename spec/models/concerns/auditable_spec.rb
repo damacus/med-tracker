@@ -3,36 +3,10 @@
 require 'rails_helper'
 
 RSpec.describe Auditable, type: :model do
-  # Use Person as the test model since it includes Auditable
-  let(:person) do
-    Person.new(
-      name: 'Test Person',
-      date_of_birth: 20.years.ago
-    )
-  end
+  fixtures :users, :people, :sessions
 
-  let(:user_person) do
-    Person.create!(
-      name: 'Logged In User',
-      date_of_birth: 30.years.ago
-    )
-  end
-
-  let(:user) do
-    User.create!(
-      email_address: 'user@example.com',
-      password: 'password123',
-      person: user_person
-    )
-  end
-
-  let(:session) do
-    Session.create!(
-      user: user,
-      ip_address: '127.0.0.1',
-      user_agent: 'Test Agent'
-    )
-  end
+  let(:user) { users(:admin) }
+  let(:session) { sessions(:admin_session) }
 
   before do
     Current.session = session
@@ -44,6 +18,11 @@ RSpec.describe Auditable, type: :model do
 
   describe 'audit logging on create' do
     it 'creates an audit log when a person is created' do
+      person = Person.new(
+        name: 'New Test Person',
+        date_of_birth: 20.years.ago
+      )
+
       expect {
         person.save!
       }.to change(AuditLog, :count).by(1)
@@ -57,9 +36,10 @@ RSpec.describe Auditable, type: :model do
   end
 
   describe 'audit logging on update' do
+    let(:person) { people(:john) }
+
     before do
-      person.save!
-      # Clear the create audit log from the count
+      # Clear any audit logs from fixtures
       AuditLog.delete_all
     end
 
@@ -72,7 +52,7 @@ RSpec.describe Auditable, type: :model do
       expect(audit_log.action).to eq('update')
       expect(audit_log.auditable_type).to eq('Person')
       expect(audit_log.auditable_id).to eq(person.id)
-      expect(audit_log.change_data['name']).to eq(['Test Person', 'Updated Name'])
+      expect(audit_log.change_data['name']).to eq(['John Doe', 'Updated Name'])
     end
 
     it 'does not create audit log for insignificant changes' do
@@ -84,9 +64,16 @@ RSpec.describe Auditable, type: :model do
   end
 
   describe 'audit logging on destroy' do
+    let!(:person) do
+      # Create a new person not from fixtures to avoid cascade deletions
+      Person.create!(
+        name: 'Person to Delete',
+        date_of_birth: 30.years.ago
+      )
+    end
+
     before do
-      person.save!
-      # Clear the create audit log from the count
+      # Clear any audit logs from creation
       AuditLog.delete_all
     end
 
@@ -128,25 +115,13 @@ RSpec.describe Auditable, type: :model do
   end
 
   describe 'audit logging for carer relationships' do
-    let(:carer) do
-      Person.create!(
-        name: 'Carer',
-        date_of_birth: 40.years.ago
-      )
-    end
+    fixtures :carer_relationships
 
-    let(:patient) do
-      Person.create!(
-        name: 'Patient',
-        date_of_birth: 10.years.ago,
-        person_type: :minor
-      )
-    end
+    let(:carer) { people(:bob) }
+    let(:patient) { people(:child_patient) }
 
     it 'creates audit log when carer relationship is created' do
-      # Clear audit logs from creating carer and patient
-      carer
-      patient
+      # Clear audit logs
       AuditLog.delete_all
 
       expect {
@@ -164,47 +139,12 @@ RSpec.describe Auditable, type: :model do
   end
 
   describe 'audit logging for medication takes' do
-    let(:medicine) do
-      Medicine.create!(
-        name: 'Test Medicine',
-        current_supply: 100,
-        stock: 100
-      )
-    end
+    fixtures :medicines, :dosages, :prescriptions
 
-    let(:dosage) do
-      Dosage.create!(
-        medicine: medicine,
-        amount: 5,
-        unit: 'ml',
-        frequency: 'twice daily'
-      )
-    end
-
-    let(:patient) do
-      Person.create!(
-        name: 'Patient',
-        date_of_birth: 10.years.ago
-      )
-    end
-
-    let(:prescription) do
-      Prescription.create!(
-        person: patient,
-        medicine: medicine,
-        dosage: dosage,
-        start_date: Date.today,
-        end_date: Date.today + 30.days
-      )
-    end
+    let(:prescription) { prescriptions(:john_paracetamol) }
 
     it 'creates audit log when medication is taken' do
-      # Pre-create all dependencies
-      medicine
-      dosage
-      patient
-      prescription
-      # Clear audit logs from creating dependencies
+      # Clear audit logs
       AuditLog.delete_all
 
       expect {

@@ -5,18 +5,10 @@ require 'rails_helper'
 RSpec.describe AuditLogPolicy do
   subject(:policy) { described_class.new(user, AuditLog) }
 
-  describe 'for administrator' do
-    let(:person) do
-      Person.create!(name: 'Admin Person', date_of_birth: 30.years.ago)
-    end
-    let(:user) do
-      User.create!(
-        email_address: "admin_#{SecureRandom.hex(4)}@example.com",
-        password: 'password123',
-        person: person,
-        role: :administrator
-      )
-    end
+  fixtures :users, :people
+
+  context 'when user is an administrator' do
+    let(:user) { users(:admin) }
 
     it { is_expected.to permit_action(:index) }
     it { is_expected.not_to permit_action(:create) }
@@ -25,17 +17,7 @@ RSpec.describe AuditLogPolicy do
   end
 
   context 'when user is not an administrator' do
-    let(:person) do
-      Person.create!(name: 'Regular User', date_of_birth: 30.years.ago)
-    end
-    let(:user) do
-      User.create!(
-        email_address: "user_#{SecureRandom.hex(4)}@example.com",
-        password: 'password123',
-        person: person,
-        role: :parent
-      )
-    end
+    let(:user) { users(:parent) }
 
     it { is_expected.not_to permit_action(:index) }
     it { is_expected.not_to permit_action(:create) }
@@ -53,53 +35,20 @@ RSpec.describe AuditLogPolicy do
   end
 
   describe 'Scope' do
-    let(:admin_person) do
-      Person.create!(name: 'Admin', date_of_birth: 30.years.ago)
-    end
-    let(:admin_user) do
-      User.create!(
-        email_address: "admin_scope_#{SecureRandom.hex(4)}@example.com",
-        password: 'password123',
-        person: admin_person,
-        role: :administrator
-      )
-    end
-
-    let!(:audit_log1) do
-      AuditLog.create!(
-        action: 'create',
-        auditable_type: 'User',
-        auditable_id: admin_user.id
-      )
-    end
-    let!(:audit_log2) do
-      AuditLog.create!(
-        action: 'update',
-        auditable_type: 'Person',
-        auditable_id: admin_person.id
-      )
-    end
+    fixtures :users, :people, :audit_logs
 
     context 'when user is an administrator' do
+      let(:admin_user) { users(:admin) }
+
       it 'returns all audit logs' do
         resolved_scope = Pundit.policy_scope(admin_user, AuditLog)
-        expect(resolved_scope).to include(audit_log1, audit_log2)
         expect(resolved_scope.count).to be >= 2
+        expect(resolved_scope).to include(audit_logs(:user_created), audit_logs(:person_updated))
       end
     end
 
     context 'when user is not an administrator' do
-      let(:regular_person) do
-        Person.create!(name: 'Regular', date_of_birth: 25.years.ago)
-      end
-      let(:regular_user) do
-        User.create!(
-          email_address: "regular_#{SecureRandom.hex(4)}@example.com",
-          password: 'password123',
-          person: regular_person,
-          role: :parent
-        )
-      end
+      let(:regular_user) { users(:parent) }
 
       it 'returns no audit logs' do
         resolved_scope = Pundit.policy_scope(regular_user, AuditLog)
