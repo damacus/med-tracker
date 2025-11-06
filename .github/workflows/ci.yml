@@ -55,6 +55,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     name: RSpec Tests
+    timeout-minutes: 60
 
     services:
       postgres:
@@ -82,12 +83,19 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
+          ruby-version: '3.4.7'
           bundler-cache: true
+
+      - name: Install Playwright
+        run: npx playwright install
 
       - name: Set up database
         run: |
           bundle exec rails db:create
           bundle exec rails db:schema:load
 
+      - name: Precompile assets
+        run: bundle exec rails assets:precompile
+
       - name: Run tests
-        run: bundle exec rspec
+        run: bundle exec rspec --format RSpec::Github::Formatter
