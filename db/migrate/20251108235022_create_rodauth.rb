@@ -48,7 +48,7 @@ class CreateRodauth < ActiveRecord::Migration[8.0]
       t.foreign_key :accounts, column: :account_id
       t.string :provider, null: false
       t.string :uid, null: false
-      t.jsonb :info, null: false, default: {}
+      t.text :info, null: false, default: '{}'
       t.timestamps
       t.index [:provider, :uid], unique: true
       t.index :account_id

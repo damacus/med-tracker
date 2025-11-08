@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 Rails.application.routes.draw do
+  # Rodauth authentication routes
+  mount Rodauth::Rails.app(:main) => "rodauth"
+
   mount PasskeysRails::Engine => '/passkeys'
   resource :session
   resources :passwords, param: :token
