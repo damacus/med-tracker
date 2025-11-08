@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class AddMissingPersonTypes < ActiveRecord::Migration[8.1]
+class AddMissingPersonTypes < ActiveRecord::Migration[8.0]
   def up
     # Map old values to new values
     # old: patient(0), carer(1), nurse(2), doctor(3), administrator(4)

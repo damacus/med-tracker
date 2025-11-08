@@ -24,6 +24,14 @@ gem 'bcrypt', '>= 3.1'
 gem 'pundit', '>= 2.4'
 # Passkey authentication [https://github.com/alliedcode/passkeys-rails]
 gem 'passkeys-rails'
+# Authentication framework [https://github.com/janko/rodauth-rails]
+gem 'rodauth-rails', '~> 1.15'
+# OmniAuth integration for Rodauth [https://github.com/janko/rodauth-omniauth]
+gem 'rodauth-omniauth', '~> 0.3'
+# Google OAuth2 strategy for OmniAuth [https://github.com/zquestz/omniauth-google-oauth2]
+gem 'omniauth-google-oauth2', '~> 1.1'
+# CSRF protection for OmniAuth [https://github.com/cookpad/omniauth-rails_csrf_protection]
+gem 'omniauth-rails_csrf_protection', '~> 1.0'
 
 gem 'ostruct'
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
