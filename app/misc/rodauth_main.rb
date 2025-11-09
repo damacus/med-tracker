@@ -117,14 +117,27 @@ class RodauthMain < Rodauth::Rails::Auth
 
     # ==> Hooks
     # Validate custom fields in the create account form.
-    # before_create_account do
-    #   throw_error_status(422, "name", "must be present") if param("name").empty?
-    # end
+    before_create_account do
+      # We'll need to capture name and date_of_birth from the form
+      throw_error_status(422, "name", "must be present") if param("name").to_s.empty?
+      throw_error_status(422, "date_of_birth", "must be present") if param("date_of_birth").to_s.empty?
+    end
 
     # Perform additional actions after the account is created.
-    # after_create_account do
-    #   Profile.create!(account_id: account_id, name: param("name"))
-    # end
+    after_create_account do
+      # Create a person record for this account
+      person = Person.create!(
+        name: param("name"),
+        date_of_birth: param("date_of_birth"),
+        email: account[:email],
+        account_id: account_id,
+        person_type: :adult,
+        has_capacity: true
+      )
+      
+      # Store the person_id in the rails session for later use
+      rails_controller.session[:person_id] = person.id
+    end
 
     # Do additional cleanup after the account is closed.
     # after_close_account do
@@ -158,12 +171,27 @@ class RodauthMain < Rodauth::Rails::Auth
       account[:email] = omniauth_email
     end
 
-    # Automatically verify accounts created via OmniAuth
+    # Automatically verify accounts created via OmniAuth and create person
     after_omniauth_create_account do
       # Mark the account as verified (status 2 = verified)
       Account.where(id: account_id).update(status: 2)
       # Remove any verification key if it exists
       db[:account_verification_keys].where(id: account_id).delete
+      
+      # Create a person record for this account using the name from OmniAuth
+      omniauth_info = request.env['omniauth.auth']&.info || {}
+      person_name = omniauth_info['name'] || omniauth_email.split('@').first.titleize
+      
+      person = Person.create!(
+        name: person_name,
+        email: account[:email],
+        account_id: account_id,
+        person_type: :adult,
+        has_capacity: true,
+        date_of_birth: 18.years.ago.to_date # Default to adult age
+      )
+      
+      rails_controller.session[:person_id] = person.id
     end
 
     # ==> Email Configuration

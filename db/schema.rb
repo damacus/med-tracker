@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_08_235022) do
+ActiveRecord::Schema[8.0].define(version: 2025_11_08_235946) do
   create_table "account_identities", force: :cascade do |t|
     t.integer "account_id", null: false
     t.string "provider", null: false
@@ -132,6 +132,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_08_235022) do
     t.datetime "updated_at", null: false
     t.integer "person_type", default: 0, null: false
     t.boolean "has_capacity", default: true, null: false
+    t.integer "account_id"
+    t.index ["account_id"], name: "index_people_on_account_id", unique: true
     t.index ["email"], name: "index_people_on_email", unique: true
     t.index ["person_type"], name: "index_people_on_person_type"
   end
@@ -199,6 +201,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_08_235022) do
   add_foreign_key "medication_takes", "person_medicines"
   add_foreign_key "medication_takes", "prescriptions"
   add_foreign_key "passkeys_rails_passkeys", "passkeys_rails_agents", column: "agent_id"
+  add_foreign_key "people", "accounts"
   add_foreign_key "person_medicines", "medicines"
   add_foreign_key "person_medicines", "people"
   add_foreign_key "prescriptions", "dosages"

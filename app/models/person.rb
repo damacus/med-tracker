@@ -3,6 +3,7 @@
 # Person captures an individual's demographic details and their medication plan.
 class Person < ApplicationRecord
   has_one :user, inverse_of: :person, dependent: :destroy
+  belongs_to :account, optional: true
   has_many :prescriptions, dependent: :destroy
   has_many :medicines, through: :prescriptions
   has_many :person_medicines, dependent: :destroy

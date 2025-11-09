@@ -5,7 +5,7 @@ module Authentication
 
   included do
     before_action :require_authentication
-    helper_method :authenticated?, :current_user
+    helper_method :authenticated?, :current_account, :current_person
   end
 
   class_methods do
@@ -16,44 +16,30 @@ module Authentication
 
   private
 
+  # Use Rodauth's current account
+  def current_account
+    @current_account ||= rodauth.rails_account
+  end
+
+  # Get the current person associated with the account
+  def current_person
+    @current_person ||= current_account&.person
+  end
+
+  # For backwards compatibility with existing code
   def current_user
-    @current_user ||= Current.session&.user
+    current_person
   end
 
   def authenticated?
-    resume_session
+    rodauth.logged_in?
   end
 
   def require_authentication
-    resume_session || request_authentication
-  end
-
-  def resume_session
-    Current.session ||= find_session_by_cookie
-  end
-
-  def find_session_by_cookie
-    Session.find_by(id: cookies.signed[:session_id]) if cookies.signed[:session_id]
+    rodauth.require_account
   end
 
   def request_authentication
-    session[:return_to_after_authenticating] = request.url
-    redirect_to new_session_path
-  end
-
-  def after_authentication_url
-    session.delete(:return_to_after_authenticating) || root_url
-  end
-
-  def start_new_session_for(user)
-    user.sessions.create!(user_agent: request.user_agent, ip_address: request.remote_ip).tap do |session|
-      Current.session = session
-      cookies.signed.permanent[:session_id] = { value: session.id, httponly: true, same_site: :lax }
-    end
-  end
-
-  def terminate_session
-    Current.session.destroy
-    cookies.delete(:session_id)
+    redirect_to rodauth.login_path
   end
 end

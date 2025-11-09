@@ -8,6 +8,7 @@ class Account < ApplicationRecord
   has_many :account_identities, dependent: :destroy
 
   # Delegate some methods to person if needed
-  delegate :name, to: :person, allow_nil: true
+  delegate :name, to: :person, allow_nil: true, prefix: false
+  delegate :date_of_birth, to: :person, allow_nil: true
 end
 
