@@ -2,7 +2,7 @@
 
 Rails.application.routes.draw do
   # Rodauth authentication routes
-  mount Rodauth::Rails.app(:main) => "rodauth"
+  mount Rodauth::Rails.app => "rodauth"
 
   mount PasskeysRails::Engine => '/passkeys'
   resource :session
