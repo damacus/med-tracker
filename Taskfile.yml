@@ -14,8 +14,9 @@ tasks:
       RAILS_ENV: test
 
   playwright:quick:
-    desc: Run Playwright tests (skips installation and DB setup)
+    desc: Run Playwright tests using Docker Compose
     cmds:
-      - bundle exec rspec
-    env:
-      RAILS_ENV: test
+      - docker compose -f docker-compose.test.yml build
+      - docker compose -f docker-compose.test.yml up -d --force-recreate db_test
+      - docker compose -f docker-compose.test.yml up --exit-code-from test
+      - docker compose -f docker-compose.test.yml down -v

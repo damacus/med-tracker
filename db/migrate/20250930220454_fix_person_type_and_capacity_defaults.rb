@@ -4,7 +4,7 @@ class FixPersonTypeAndCapacityDefaults < ActiveRecord::Migration[8.0]
   def up
     # Update existing records
     execute 'UPDATE people SET person_type = 0 WHERE person_type IS NULL'
-    execute 'UPDATE people SET has_capacity = 1 WHERE has_capacity IS NULL'
+    execute 'UPDATE people SET has_capacity = TRUE WHERE has_capacity IS NULL'
 
     # Change column defaults and constraints
     change_column_default :people, :person_type, from: nil, to: 0

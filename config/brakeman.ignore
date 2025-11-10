@@ -1,0 +1,29 @@
+{
+  "ignored_warnings": [
+    {
+      "warning_type": "Mass Assignment",
+      "warning_code": 105,
+      "fingerprint": "08232af23c20bf8d99c9e6f64de3938ea863c6e96efe21566a482adc64c400cb",
+      "check_name": "PermitAttributes",
+      "message": "Potentially dangerous key allowed for mass assignment",
+      "file": "app/controllers/admin/users_controller.rb",
+      "line": 63,
+      "link": "https://brakemanscanner.org/docs/warning_types/mass_assignment/",
+      "code": "params.permit(:search, :role)",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Admin::UsersController",
+        "method": "search_params"
+      },
+      "user_input": ":role",
+      "confidence": "Medium",
+      "cwe_id": [
+        915
+      ],
+      "note": "False positive: :role is used for search filtering, not mass assignment. Actual user role assignment in user_params is protected by Pundit authorization."
+    }
+  ],
+  "updated": "2025-11-04 22:08:00 +0000",
+  "brakeman_version": "7.1.1"
+}

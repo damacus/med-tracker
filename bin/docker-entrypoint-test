@@ -1,0 +1,22 @@
+#!/bin/bash -e
+
+# Test environment entrypoint
+# Prepares database and runs tests
+
+# Install gems (uses cached volume, so only installs missing gems)
+echo "Installing gems..."
+bundle install
+
+# Wait for database to be ready
+echo "Waiting for database..."
+until pg_isready -h dbtest -U medtracker_test > /dev/null 2>&1; do
+  sleep 1
+done
+echo "Database is ready!"
+
+# Prepare test database
+echo "Preparing test database..."
+bundle exec rails db:test:prepare
+
+# Execute the command passed to the container
+exec "${@}"

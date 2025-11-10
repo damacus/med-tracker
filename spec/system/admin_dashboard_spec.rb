@@ -6,18 +6,40 @@ RSpec.describe 'Admin Dashboard' do
   fixtures :users
 
   context 'when user is an administrator' do
-    it 'displays the admin dashboard placeholder' do
+    it 'displays key system metrics' do
       sign_in(users(:admin))
 
       visit admin_root_path
 
       within '[data-testid="admin-dashboard"]' do
-        aggregate_failures 'admin dashboard content' do
-          expect(page).to have_content('Admin Dashboard')
-          expect(page).to have_content('Coming Soon')
-          expect(page).to have_content('This dashboard is under construction')
-        end
+        expect(page).to have_content('Admin Dashboard')
+
+        # Check for metric cards
+        expect(page).to have_css('[data-testid="metric-total-users"]')
+        expect(page).to have_css('[data-testid="metric-total-people"]')
+        expect(page).to have_css('[data-testid="metric-active-prescriptions"]')
+        expect(page).to have_css('[data-testid="metric-patients-without-carers"]')
       end
+    end
+
+    it 'displays correct user counts by role' do
+      sign_in(users(:admin))
+
+      visit admin_root_path
+
+      within '[data-testid="metric-total-users"]' do
+        expect(page).to have_content('Total Users')
+        expect(page).to have_css('[data-metric-value]')
+      end
+    end
+
+    it 'provides navigation links to management pages' do
+      sign_in(users(:admin))
+
+      visit admin_root_path
+
+      expect(page).to have_link('Manage Users', href: admin_users_path)
+      expect(page).to have_link('Manage People', href: people_path)
     end
   end
 
