@@ -15,7 +15,7 @@ module Admin
         patients_without_carers: patients_without_carers_count
       }
 
-      render Components::Admin::Dashboard::IndexView.new(metrics: metrics)
+      render Components::Admin::Dashboard::IndexView.new(metrics: metrics, url_helpers: self)
     end
 
     private

@@ -5,10 +5,11 @@ module Components
     module Dashboard
       # Admin dashboard view with system metrics
       class IndexView < Components::Base
-        attr_reader :metrics
+        attr_reader :metrics, :url_helpers
 
-        def initialize(metrics: {})
+        def initialize(metrics: {}, url_helpers: nil)
           @metrics = metrics
+          @url_helpers = url_helpers
           super()
         end
 
@@ -93,13 +94,13 @@ module Components
                 render_action_link(
                   title: 'Manage Users',
                   description: 'View and manage user accounts',
-                  href: '/admin/users',
+                  href: url_helpers&.admin_users_path || '/admin/users',
                   icon: '👥'
                 )
                 render_action_link(
                   title: 'Manage People',
                   description: 'View and manage people records',
-                  href: '/people',
+                  href: url_helpers&.people_path || '/people',
                   icon: '👤'
                 )
               end
