@@ -23,11 +23,11 @@ module Admin
     def patients_without_carers_count
       # Find people without capacity who don't have active carer relationships
       Person.where(has_capacity: false)
-            .where.missing(:patient_relationships)
+            .where.missing(:carer_relationships)
             .or(
               Person.where(has_capacity: false)
-                    .left_joins(:patient_relationships)
-                    .where(patient_relationships: { active: false })
+                    .left_joins(:carer_relationships)
+                    .where(carer_relationships: { active: false })
             )
             .distinct
             .count
