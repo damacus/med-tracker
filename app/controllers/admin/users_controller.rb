@@ -50,7 +50,7 @@ module Admin
     private
 
     def apply_search(scope)
-      search_term = "%#{params[:search]}%"
+      search_term = "%#{ActiveRecord::Base.sanitize_sql_like(params[:search])}%"
       scope.joins(:person)
            .where('people.name LIKE ? OR users.email_address LIKE ?', search_term, search_term)
     end
