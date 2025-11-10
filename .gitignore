@@ -39,3 +39,5 @@
 # Ignore key files for decrypting credentials and more.
 /config/credentials/*.key
 
+# Ignore mkdocs build output
+/site/
