@@ -11,7 +11,7 @@ services:
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U medtracker"]
+      test: ["CMD-SHELL", "pg_isready -U medtracker -d medtracker_production"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -25,17 +25,13 @@ services:
         condition: service_healthy
     environment:
       RAILS_ENV: production
-      DATABASE_URL: postgresql://medtracker:medtracker_password@db:5432/medtracker_production
-      RAILS_MASTER_KEY: ${RAILS_MASTER_KEY}
+      DATABASE_URL: >-
+        postgresql://medtracker:medtracker_password@db:5432/medtracker_production
     ports:
-      - "80:80"
+      - "3000:3000"
     volumes:
       - storage_data:/rails/storage
-    command: >
-      sh -c "
-        bin/rails db:prepare &&
-        ./bin/thrust ./bin/rails server
-      "
+      - ./config/credentials/production.key:/app/config/credentials/production.key:ro
 
 volumes:
   postgres_data:

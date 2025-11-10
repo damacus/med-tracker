@@ -1,0 +1,110 @@
+#!/usr/bin/env bash
+
+set -o errexit
+set -o pipefail
+
+DC="${DC:-exec}"
+
+# If we're not in a terminal, disable TTY allocation
+TTY="${TTY:-}"
+if [[ ! -t 1 ]]; then
+  TTY="-T"
+fi
+
+# -----------------------------------------------------------------------------
+# Helper functions
+# -----------------------------------------------------------------------------
+
+_dc() {
+  # shellcheck disable=SC2086
+  docker compose "${DC}" ${TTY} "${@}"
+}
+
+_dc_run() {
+  DC="run" _dc --no-deps --rm "${@}"
+}
+
+# -----------------------------------------------------------------------------
+# Commands
+# -----------------------------------------------------------------------------
+
+cmd() {
+  # Run any command you want in the web container
+  _dc web "${@}"
+}
+
+rails() {
+  # Run any Rails commands
+  cmd rails "${@}"
+}
+
+bundle() {
+  # Run bundle commands
+  cmd bundle "${@}"
+}
+
+shell() {
+  # Start a shell session in the web container
+  cmd bash "${@}"
+}
+
+psql() {
+  # Connect to PostgreSQL with psql
+  # shellcheck disable=SC1091
+  . .env
+  _dc db psql -U "${POSTGRES_USER:-medtracker}" "${@}"
+}
+
+db:setup() {
+  # Setup the database (create, schema load, seed)
+  rails db:setup
+}
+
+db:migrate() {
+  # Run database migrations
+  rails db:migrate
+}
+
+db:reset() {
+  # Drop, create, migrate and seed the database
+  rails db:reset
+}
+
+db:seed() {
+  # Seed the database
+  rails db:seed
+}
+
+test() {
+  # Run RSpec tests
+  _dc_run -e "RAILS_ENV=test" web bundle exec rspec "${@}"
+}
+
+format() {
+  # Format Ruby code with RuboCop
+  cmd rubocop -A "${@}"
+}
+
+lint() {
+  # Lint Ruby code with RuboCop
+  cmd rubocop "${@}"
+}
+
+clean() {
+  # Remove cache and other machine generated files
+  rm -rf node_modules/ public/assets tmp/* storage/* log/*
+}
+
+help() {
+  printf "%s <task> [args]\\n\\nTasks:\\n" "${0}"
+  
+  compgen -A function | grep -v "^_" | cat -n
+  
+  printf "\\nExtended help:\\n  Each task has comments for general usage\\n"
+}
+
+# -----------------------------------------------------------------------------
+# Main
+# -----------------------------------------------------------------------------
+
+"${@:-help}"

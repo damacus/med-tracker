@@ -90,15 +90,60 @@ bundle exec rspec
 
 ## Docker Deployment
 
-MedTracker includes Docker Compose configurations for both production and test environments. See [README.docker.md](README.docker.md) for detailed instructions.
+MedTracker includes Docker Compose configurations for development, production, and test environments.
 
-**Quick Start:**
+### Quick Start
+
+**Development (with live code reloading):**
 
 ```bash
-# Production environment
-export RAILS_MASTER_KEY=$(cat config/master.key)
-docker-compose up -d
+# First time setup
+cp .env.example .env
+docker compose -f docker-compose.dev.yml up -d
+./run db:setup
 
-# Test environment
-docker-compose -f docker-compose.test.yml up
+# Start the app
+docker compose -f docker-compose.dev.yml up
 ```
+
+Access the app at `http://localhost:3000`
+
+**Run migrations:**
+
+```bash
+./run db:migrate
+```
+
+**Access Rails console:**
+
+```bash
+./run rails console
+```
+
+**Run tests:**
+
+```bash
+./run test
+```
+
+### Production Environment
+
+```bash
+# Requires config/credentials/production.key file
+docker compose up -d
+./run db:migrate
+```
+
+### Available Commands
+
+The `./run` script provides convenient shortcuts:
+
+- `./run rails <command>` - Run Rails commands
+- `./run db:setup` - Setup database (first time)
+- `./run db:migrate` - Run migrations
+- `./run db:reset` - Reset database
+- `./run shell` - Open bash shell in container
+- `./run test` - Run RSpec tests
+- `./run format` - Auto-fix RuboCop issues
+- `./run lint` - Check code style
+- `./run help` - Show all available commands
