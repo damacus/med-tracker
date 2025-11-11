@@ -1,7 +1,7 @@
 ---
 services:
   db_test:
-    image: postgres:17-alpine
+    image: postgres:18-alpine
     hostname: dbtest
     environment:
       POSTGRES_USER: medtracker_test
