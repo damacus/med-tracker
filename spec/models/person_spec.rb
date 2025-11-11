@@ -106,87 +106,86 @@ RSpec.describe Person do
   end
 
   describe '#adult?' do
-    it 'returns true for person 18 years or older' do
+    it 'returns true for person 18 years or older with adult person_type' do
       adult = described_class.new(
         name: 'Adult Person',
-        date_of_birth: 25.years.ago
+        date_of_birth: 25.years.ago,
+        person_type: :adult
       )
 
       expect(adult.adult?).to be true
     end
 
-    it 'returns true for person exactly 18 years old' do
+    it 'returns true for person with adult person_type regardless of age' do
+      young_adult = described_class.new(
+        name: 'Young Adult',
+        date_of_birth: 10.years.ago,
+        person_type: :adult
+      )
+
+      expect(young_adult.adult?).to be true
+    end
+
+    it 'returns true for person 18 years or older even without adult person_type' do
       adult_eighteen = described_class.new(
         name: 'Just Adult',
-        date_of_birth: 18.years.ago
+        date_of_birth: 18.years.ago,
+        person_type: :minor
       )
 
       expect(adult_eighteen.adult?).to be true
     end
 
-    it 'returns false for person under 18' do
+    it 'returns false for person under 18 without adult person_type' do
       minor = described_class.new(
         name: 'Minor Person',
-        date_of_birth: 10.years.ago
+        date_of_birth: 10.years.ago,
+        person_type: :minor
       )
 
       expect(minor.adult?).to be false
     end
-
-    it 'returns false when age is nil' do
-      person_no_dob = described_class.new(name: 'No DOB')
-      expect(person_no_dob.adult?).to be false
-    end
-
-    it 'accepts custom age threshold' do
-      person_twenty = described_class.new(
-        name: 'Twenty Year Old',
-        date_of_birth: 20.years.ago
-      )
-
-      expect(person_twenty.adult?(21)).to be false
-      expect(person_twenty.adult?(20)).to be true
-      expect(person_twenty.adult?(18)).to be true
-    end
   end
 
   describe '#minor?' do
-    it 'returns false for person 18 years or older' do
-      adult = described_class.new(
-        name: 'Adult Person',
-        date_of_birth: 25.years.ago
-      )
-
-      expect(adult.minor?).to be false
-    end
-
-    it 'returns true for person under 18' do
+    it 'returns true for person under 18 with minor person_type' do
       minor = described_class.new(
         name: 'Minor Person',
-        date_of_birth: 10.years.ago
+        date_of_birth: 10.years.ago,
+        person_type: :minor
       )
 
       expect(minor.minor?).to be true
     end
 
+    it 'returns false for person 18 years or older even with minor person_type' do
+      adult_age_minor_type = described_class.new(
+        name: 'Adult Age Minor Type',
+        date_of_birth: 25.years.ago,
+        person_type: :minor
+      )
+
+      expect(adult_age_minor_type.minor?).to be false
+    end
+
+    it 'returns false for person under 18 without minor person_type' do
+      young_adult = described_class.new(
+        name: 'Young Adult',
+        date_of_birth: 10.years.ago,
+        person_type: :adult
+      )
+
+      expect(young_adult.minor?).to be false
+    end
+
     it 'returns false for person exactly 18 years old' do
       adult_eighteen = described_class.new(
         name: 'Just Adult',
-        date_of_birth: 18.years.ago
+        date_of_birth: 18.years.ago,
+        person_type: :minor
       )
 
       expect(adult_eighteen.minor?).to be false
-    end
-
-    it 'accepts custom age threshold' do
-      person_twenty = described_class.new(
-        name: 'Twenty Year Old',
-        date_of_birth: 20.years.ago
-      )
-
-      expect(person_twenty.minor?(21)).to be true
-      expect(person_twenty.minor?(20)).to be false
-      expect(person_twenty.minor?(18)).to be false
     end
   end
 
@@ -256,6 +255,115 @@ RSpec.describe Person do
       )
 
       expect(relationship.relationship_type).to eq('parent')
+    end
+  end
+
+  describe '#dependent_adult?' do
+    it 'returns true for person 18 years or older with dependent_adult person_type' do
+      dependent = described_class.new(
+        name: 'Dependent Adult',
+        date_of_birth: 70.years.ago,
+        person_type: :dependent_adult
+      )
+
+      expect(dependent.dependent_adult?).to be true
+    end
+
+    it 'returns false for person under 18 even with dependent_adult person_type' do
+      young_dependent = described_class.new(
+        name: 'Young Dependent',
+        date_of_birth: 10.years.ago,
+        person_type: :dependent_adult
+      )
+
+      expect(young_dependent.dependent_adult?).to be false
+    end
+
+    it 'returns false for person 18 years or older without dependent_adult person_type' do
+      adult = described_class.new(
+        name: 'Adult',
+        date_of_birth: 30.years.ago,
+        person_type: :adult
+      )
+
+      expect(adult.dependent_adult?).to be false
+    end
+  end
+
+  describe '#needs_carer?' do
+    context 'when person is adult type' do
+      let(:adult_person) do
+        described_class.create!(
+          name: 'Adult Person',
+          date_of_birth: 30.years.ago,
+          person_type: :adult
+        )
+      end
+
+      it 'returns false even without carers' do
+        expect(adult_person.needs_carer?).to be false
+      end
+
+      it 'returns false with carers assigned' do
+        carer = described_class.create!(
+          name: 'Carer',
+          date_of_birth: 40.years.ago,
+          person_type: :adult
+        )
+        adult_person.carer_relationships.create!(carer: carer, relationship_type: 'support')
+
+        expect(adult_person.needs_carer?).to be false
+      end
+    end
+
+    context 'when person is minor type' do
+      let(:minor_person) do
+        described_class.create!(
+          name: 'Minor Person',
+          date_of_birth: 10.years.ago,
+          person_type: :minor
+        )
+      end
+
+      it 'returns true without carers' do
+        expect(minor_person.needs_carer?).to be true
+      end
+
+      it 'returns false with carers assigned' do
+        parent = described_class.create!(
+          name: 'Parent',
+          date_of_birth: 40.years.ago,
+          person_type: :adult
+        )
+        minor_person.carer_relationships.create!(carer: parent, relationship_type: 'parent')
+
+        expect(minor_person.needs_carer?).to be false
+      end
+    end
+
+    context 'when person is dependent_adult type' do
+      let(:dependent_person) do
+        described_class.create!(
+          name: 'Dependent Adult',
+          date_of_birth: 70.years.ago,
+          person_type: :dependent_adult
+        )
+      end
+
+      it 'returns true without carers' do
+        expect(dependent_person.needs_carer?).to be true
+      end
+
+      it 'returns false with carers assigned' do
+        carer = described_class.create!(
+          name: 'Carer',
+          date_of_birth: 45.years.ago,
+          person_type: :adult
+        )
+        dependent_person.carer_relationships.create!(carer: carer, relationship_type: 'guardian')
+
+        expect(dependent_person.needs_carer?).to be false
+      end
     end
   end
 end
