@@ -39,3 +39,5 @@
 
 # Ignore mkdocs build output
 /site/
+
+config/credentials

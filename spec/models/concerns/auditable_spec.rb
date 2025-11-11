@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe Auditable, type: :model do
+RSpec.describe Auditable do
   fixtures :users, :people, :sessions
 
   let(:user) { users(:admin) }
@@ -23,9 +23,9 @@ RSpec.describe Auditable, type: :model do
         date_of_birth: 20.years.ago
       )
 
-      expect {
+      expect do
         person.save!
-      }.to change(AuditLog, :count).by(1)
+      end.to change(AuditLog, :count).by(1)
 
       audit_log = AuditLog.last
       expect(audit_log.action).to eq('create')
@@ -44,9 +44,9 @@ RSpec.describe Auditable, type: :model do
     end
 
     it 'creates an audit log when a person is updated' do
-      expect {
+      expect do
         person.update!(name: 'Updated Name')
-      }.to change(AuditLog, :count).by(1)
+      end.to change(AuditLog, :count).by(1)
 
       audit_log = AuditLog.last
       expect(audit_log.action).to eq('update')
@@ -57,9 +57,9 @@ RSpec.describe Auditable, type: :model do
 
     it 'does not create audit log for insignificant changes' do
       # Touch only updates updated_at
-      expect {
+      expect do
         person.touch
-      }.not_to change(AuditLog, :count)
+      end.not_to change(AuditLog, :count)
     end
   end
 
@@ -79,9 +79,9 @@ RSpec.describe Auditable, type: :model do
 
     it 'creates an audit log when a person is destroyed' do
       person_id = person.id
-      expect {
+      expect do
         person.destroy!
-      }.to change(AuditLog, :count).by(1)
+      end.to change(AuditLog, :count).by(1)
 
       audit_log = AuditLog.last
       expect(audit_log.action).to eq('destroy')
@@ -100,13 +100,13 @@ RSpec.describe Auditable, type: :model do
       # Clear person creation audit log
       AuditLog.delete_all
 
-      expect {
+      expect do
         User.create!(
           email_address: 'newuser@example.com',
           password: 'password123',
           person: new_person
         )
-      }.to change(AuditLog, :count).by(1)
+      end.to change(AuditLog, :count).by(1)
 
       audit_log = AuditLog.last
       expect(audit_log.action).to eq('create')
@@ -124,13 +124,13 @@ RSpec.describe Auditable, type: :model do
       # Clear audit logs
       AuditLog.delete_all
 
-      expect {
+      expect do
         CarerRelationship.create!(
           carer: carer,
           patient: patient,
           relationship_type: 'parent'
         )
-      }.to change(AuditLog, :count).by(1)
+      end.to change(AuditLog, :count).by(1)
 
       audit_log = AuditLog.last
       expect(audit_log.action).to eq('create')
@@ -147,13 +147,13 @@ RSpec.describe Auditable, type: :model do
       # Clear audit logs
       AuditLog.delete_all
 
-      expect {
+      expect do
         MedicationTake.create!(
           prescription: prescription,
           taken_at: Time.current,
           amount_ml: 5
         )
-      }.to change(AuditLog, :count).by(1)
+      end.to change(AuditLog, :count).by(1)
 
       audit_log = AuditLog.last
       expect(audit_log.action).to eq('create')

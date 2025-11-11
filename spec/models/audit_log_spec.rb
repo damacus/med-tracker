@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe AuditLog, type: :model do
+RSpec.describe AuditLog do
   fixtures :users, :people, :audit_logs
 
   describe 'associations' do
@@ -18,14 +18,14 @@ RSpec.describe AuditLog, type: :model do
   describe 'scopes' do
     describe '.recent' do
       it 'orders logs by created_at descending' do
-        logs = AuditLog.recent.limit(2)
+        logs = described_class.recent.limit(2)
         expect(logs.first.created_at).to be >= logs.last.created_at
       end
     end
 
     describe '.by_action' do
       it 'filters logs by action' do
-        create_logs = AuditLog.by_action('create')
+        create_logs = described_class.by_action('create')
         expect(create_logs).to all(have_attributes(action: 'create'))
       end
     end
@@ -34,7 +34,7 @@ RSpec.describe AuditLog, type: :model do
       let(:user) { users(:admin) }
 
       it 'filters logs by user' do
-        user_logs = AuditLog.by_user(user)
+        user_logs = described_class.by_user(user)
         expect(user_logs).to all(have_attributes(user: user))
       end
     end
@@ -52,7 +52,7 @@ RSpec.describe AuditLog, type: :model do
     end
 
     it 'returns human-readable description for destroy' do
-      log = AuditLog.new(
+      log = described_class.new(
         action: 'destroy',
         auditable_type: 'CarerRelationship',
         auditable_id: 1
@@ -61,7 +61,7 @@ RSpec.describe AuditLog, type: :model do
     end
 
     it 'returns human-readable description for take_medicine' do
-      log = AuditLog.new(
+      log = described_class.new(
         action: 'take_medicine',
         auditable_type: 'MedicationTake',
         auditable_id: 1
@@ -77,7 +77,7 @@ RSpec.describe AuditLog, type: :model do
     end
 
     it 'returns "System" when user is nil' do
-      log = AuditLog.new(
+      log = described_class.new(
         user: nil,
         action: 'create',
         auditable_type: 'User',

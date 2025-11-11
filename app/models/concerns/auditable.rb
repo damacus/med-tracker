@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auditable concern for tracking changes to sensitive models.
-# 
+#
 # Usage:
 #   - Automatically creates audit logs for create, update, and destroy actions on the including model.
 #   - Requires `Current.user` and `Current.request` to be set for user, IP address, and user agent tracking.

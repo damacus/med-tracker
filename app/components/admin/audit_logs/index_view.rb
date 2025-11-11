@@ -53,7 +53,7 @@ module Components
                   end
                   p(class: 'text-sm text-slate-600') do
                     plain "by #{audit_log.actor_name}"
-                    plain " • "
+                    plain ' • '
                     time(
                       datetime: audit_log.created_at.iso8601,
                       class: 'text-slate-600'
