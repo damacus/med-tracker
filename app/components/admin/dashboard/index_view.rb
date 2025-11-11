@@ -3,12 +3,20 @@
 module Components
   module Admin
     module Dashboard
-      # Admin dashboard placeholder view
+      # Admin dashboard view with system metrics
       class IndexView < Components::Base
+        attr_reader :metrics
+
+        def initialize(metrics: {})
+          @metrics = metrics
+          super()
+        end
+
         def view_template
-          div(data: { testid: 'admin-dashboard' }, class: 'space-y-8 p-8') do
+          div(data: { testid: 'admin-dashboard' }, class: 'container mx-auto px-4 py-8 space-y-8') do
             render_header
-            render_placeholder
+            render_metrics_grid
+            render_quick_actions
           end
         end
 
@@ -17,13 +25,66 @@ module Components
         def render_header
           header(class: 'space-y-2') do
             h1(class: 'text-3xl font-semibold text-slate-900') { 'Admin Dashboard' }
-            p(class: 'text-slate-600') { 'Administrative tools and system overview' }
+            p(class: 'text-slate-600') { 'System overview and administrative tools' }
+          end
+        end
+
+        def render_metrics_grid
+          div(class: 'grid gap-6 md:grid-cols-2 lg:grid-cols-4') do
+            render_metric_card(
+              title: 'Total Users',
+              value: metrics[:total_users] || 0,
+              testid: 'metric-total-users',
+              icon: '👥'
+            )
+            render_metric_card(
+              title: 'Total People',
+              value: metrics[:total_people] || 0,
+              testid: 'metric-total-people',
+              icon: '👤'
+            )
+            render_metric_card(
+              title: 'Active Prescriptions',
+              value: metrics[:active_prescriptions] || 0,
+              testid: 'metric-active-prescriptions',
+              icon: '💊'
+            )
+            render_metric_card(
+              title: 'Patients Without Carers',
+              value: metrics[:patients_without_carers] || 0,
+              testid: 'metric-patients-without-carers',
+              icon: '⚠️',
+              variant: metrics[:patients_without_carers]&.positive? ? :warning : :default
+            )
+          end
+        end
+
+        def render_metric_card(title:, value:, testid:, icon: nil, variant: :default)
+          card_classes = base_card_classes(variant)
+
+          div(class: card_classes, data: { testid: testid }) do
+            div(class: 'flex items-center justify-between') do
+              div do
+                p(class: 'text-sm font-medium text-slate-600') { title }
+                p(class: 'text-3xl font-bold text-slate-900 mt-2', data: { metric_value: value }) { value.to_s }
+              end
+              div(class: 'text-4xl') { icon } if icon
+            end
+          end
+        end
+
+        def base_card_classes(variant)
+          base = 'rounded-xl border bg-white p-6 shadow-sm'
+          case variant
+          when :warning
+            "#{base} border-amber-200 bg-amber-50"
+          else
+            "#{base} border-slate-200"
           end
         end
 
         def render_placeholder
           div(class: 'space-y-4') do
-            # Link to Users Management
             a(
               href: admin_users_path,
               class: 'block rounded-xl border border-slate-200 bg-white p-6 text-left shadow-sm transition hover:shadow-md'
@@ -32,13 +93,48 @@ module Components
               p(class: 'mt-2 text-slate-600') { 'Review and manage user accounts and access levels' }
             end
 
-            # Link to Audit Trail
             a(
               href: admin_audit_logs_path,
               class: 'block rounded-xl border border-slate-200 bg-white p-6 text-left shadow-sm transition hover:shadow-md'
             ) do
               h2(class: 'text-xl font-semibold text-slate-900') { 'Audit Trail' }
               p(class: 'mt-2 text-slate-600') { 'View security audit logs of sensitive actions' }
+        end
+
+        def render_quick_actions
+          Card do
+            CardHeader do
+              CardTitle { 'Quick Actions' }
+            end
+            CardContent do
+              div(class: 'grid gap-4 sm:grid-cols-2') do
+                render_action_link(
+                  title: 'Manage Users',
+                  description: 'View and manage user accounts',
+                  href: '/admin/users',
+                  icon: '👥'
+                )
+                render_action_link(
+                  title: 'Manage People',
+                  description: 'View and manage people records',
+                  href: '/people',
+                  icon: '👤'
+                )
+              end
+            end
+          end
+        end
+
+        def render_action_link(title:, description:, href:, icon: nil)
+          a(
+            href: href,
+            class: 'flex items-start gap-4 rounded-lg border border-slate-200 p-4 ' \
+                   'transition-colors hover:bg-slate-50 hover:border-slate-300'
+          ) do
+            div(class: 'text-3xl') { icon } if icon
+            div do
+              h3(class: 'font-semibold text-slate-900') { title }
+              p(class: 'text-sm text-slate-600 mt-1') { description }
             end
           end
         end

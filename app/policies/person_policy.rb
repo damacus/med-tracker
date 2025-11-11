@@ -2,45 +2,33 @@
 
 class PersonPolicy < ApplicationPolicy
   def index?
-    admin? || clinician? || carer_role? || false
+    admin? || medical_staff? || carer_or_parent?
   end
 
   def show?
-    admin? || clinician? || owns_record? || carer_with_patient? || parent_with_minor? || false
+    admin? || medical_staff? || owns_record? || carer_with_patient? || parent_with_minor?
   end
 
   def create?
-    admin? || false
+    admin?
   end
 
   def update?
-    admin? || false
+    admin?
   end
 
   def destroy?
-    admin? || false
+    admin?
   end
 
   private
-
-  def admin?
-    user&.administrator?
-  end
-
-  def clinician?
-    user&.doctor? || user&.nurse?
-  end
-
-  def carer_role?
-    user&.carer? || user&.parent?
-  end
 
   def owns_record?
     user&.person == record
   end
 
   def carer_with_patient?
-    return false unless carer_role? && user&.person
+    return false unless carer_or_parent? && user&.person
 
     user.person.patients.exists?(record.id)
   end
@@ -55,20 +43,12 @@ class PersonPolicy < ApplicationPolicy
     def resolve
       return scope.none unless user
       return scope.all if admin_or_clinician?
-      return scope.none unless carer_role? || user.parent?
+      return scope.none unless carer_or_parent? || user.parent?
 
       scope.where(id: accessible_person_ids)
     end
 
     private
-
-    def admin_or_clinician?
-      user&.administrator? || user&.doctor? || user&.nurse?
-    end
-
-    def carer_role?
-      user&.carer? || user&.parent?
-    end
 
     def accessible_person_ids
       ids = [user.person_id].compact

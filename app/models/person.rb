@@ -9,12 +9,9 @@ class Person < ApplicationRecord
   has_many :medicines, through: :prescriptions
   has_many :person_medicines, dependent: :destroy
   has_many :non_prescription_medicines, through: :person_medicines, source: :medicine
-
-  # Carer relationships - people who care for this person
   has_many :carer_relationships, foreign_key: :patient_id, dependent: :destroy, inverse_of: :patient
   has_many :carers, through: :carer_relationships, source: :carer
 
-  # Patient relationships - people this person cares for
   has_many :patient_relationships, class_name: 'CarerRelationship',
                                    foreign_key: :carer_id,
                                    dependent: :destroy,
@@ -24,9 +21,9 @@ class Person < ApplicationRecord
   normalizes :email, with: ->(email) { email&.strip&.downcase }
 
   enum :person_type, {
-    adult: 0,            # Self-managing adult
-    minor: 1,            # Child requiring parental consent
-    dependent_adult: 2   # Adult requiring carer support
+    adult: 0,
+    minor: 1,
+    dependent_adult: 2
   }
 
   validates :date_of_birth, presence: true
@@ -34,6 +31,8 @@ class Person < ApplicationRecord
   validates :email, allow_blank: true,
                     format: { with: URI::MailTo::EMAIL_REGEXP, allow_blank: true },
                     uniqueness: { allow_blank: true }
+
+  scope :without_carers, -> { where.missing(:carer_relationships) }
 
   def age(reference_date = Time.zone.today)
     return nil unless date_of_birth
@@ -44,14 +43,20 @@ class Person < ApplicationRecord
     years - 1
   end
 
-  def adult?(age_threshold = 18)
-    return false unless age
-
-    age >= age_threshold
+  def adult?
+    age >= 18 || person_type == 'adult'
   end
 
-  def minor?(age_threshold = 18)
-    !adult?(age_threshold)
+  def minor?
+    age < 18 && person_type == 'minor'
+  end
+
+  def dependent_adult?
+    age >= 18 && person_type == 'dependent_adult'
+  end
+
+  def needs_carer?
+    (minor? || dependent_adult?) && carers.empty?
   end
 
   private

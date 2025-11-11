@@ -11,6 +11,9 @@
 # It's strongly recommended that you check this file into your version control system.
 
 ActiveRecord::Schema[8.1].define(version: 2025_11_05_030210) do
+  # These are extensions that must be enabled in order to support this database
+  enable_extension "pg_catalog.plpgsql"
+
   create_table "audit_logs", force: :cascade do |t|
     t.string "action", null: false
     t.integer "auditable_id", null: false
@@ -29,9 +32,9 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_05_030210) do
 
   create_table "carer_relationships", force: :cascade do |t|
     t.boolean "active", default: true, null: false
-    t.integer "carer_id", null: false
+    t.bigint "carer_id", null: false
     t.datetime "created_at", null: false
-    t.integer "patient_id", null: false
+    t.bigint "patient_id", null: false
     t.string "relationship_type"
     t.datetime "updated_at", null: false
     t.index ["active"], name: "index_carer_relationships_on_active"
@@ -45,7 +48,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_05_030210) do
     t.datetime "created_at", null: false
     t.string "description"
     t.string "frequency"
-    t.integer "medicine_id", null: false
+    t.bigint "medicine_id", null: false
     t.string "unit"
     t.datetime "updated_at", null: false
     t.index ["medicine_id"], name: "index_dosages_on_medicine_id"
@@ -54,8 +57,8 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_05_030210) do
   create_table "medication_takes", force: :cascade do |t|
     t.decimal "amount_ml"
     t.datetime "created_at", null: false
-    t.integer "person_medicine_id"
-    t.integer "prescription_id"
+    t.bigint "person_medicine_id"
+    t.bigint "prescription_id"
     t.datetime "taken_at"
     t.datetime "updated_at", null: false
     t.index ["person_medicine_id"], name: "index_medication_takes_on_person_medicine_id"
@@ -77,7 +80,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_05_030210) do
   end
 
   create_table "passkeys_rails_agents", force: :cascade do |t|
-    t.integer "authenticatable_id"
+    t.bigint "authenticatable_id"
     t.string "authenticatable_type"
     t.datetime "created_at", null: false
     t.datetime "last_authenticated_at"
@@ -90,7 +93,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_05_030210) do
   end
 
   create_table "passkeys_rails_passkeys", force: :cascade do |t|
-    t.integer "agent_id", null: false
+    t.bigint "agent_id", null: false
     t.datetime "created_at", null: false
     t.string "identifier"
     t.string "public_key"
@@ -108,15 +111,16 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_05_030210) do
     t.integer "person_type", default: 0, null: false
     t.datetime "updated_at", null: false
     t.index ["email"], name: "index_people_on_email", unique: true
+    t.index ["person_type"], name: "index_people_on_person_type"
   end
 
   create_table "person_medicines", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.integer "max_daily_doses"
-    t.integer "medicine_id", null: false
+    t.bigint "medicine_id", null: false
     t.integer "min_hours_between_doses"
     t.text "notes"
-    t.integer "person_id", null: false
+    t.bigint "person_id", null: false
     t.datetime "updated_at", null: false
     t.index ["medicine_id"], name: "index_person_medicines_on_medicine_id"
     t.index ["person_id", "medicine_id"], name: "index_person_medicines_on_person_id_and_medicine_id", unique: true
@@ -126,15 +130,15 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_05_030210) do
   create_table "prescriptions", force: :cascade do |t|
     t.boolean "active", default: true
     t.datetime "created_at", null: false
-    t.integer "dosage_id", null: false
+    t.bigint "dosage_id", null: false
     t.integer "dose_cycle"
     t.date "end_date"
     t.string "frequency"
     t.integer "max_daily_doses", default: 4
-    t.integer "medicine_id", null: false
+    t.bigint "medicine_id", null: false
     t.integer "min_hours_between_doses"
     t.text "notes"
-    t.integer "person_id", null: false
+    t.bigint "person_id", null: false
     t.date "start_date"
     t.datetime "updated_at", null: false
     t.index ["dosage_id"], name: "index_prescriptions_on_dosage_id"
@@ -147,7 +151,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_05_030210) do
     t.string "ip_address"
     t.datetime "updated_at", null: false
     t.string "user_agent"
-    t.integer "user_id", null: false
+    t.bigint "user_id", null: false
     t.index ["user_id"], name: "index_sessions_on_user_id"
   end
 
@@ -155,7 +159,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_05_030210) do
     t.datetime "created_at", null: false
     t.string "email_address", null: false
     t.string "password_digest", null: false
-    t.integer "person_id", null: false
+    t.bigint "person_id", null: false
     t.integer "role", default: 4, null: false
     t.datetime "updated_at", null: false
     t.index ["email_address"], name: "index_users_on_email_address", unique: true

@@ -21,7 +21,7 @@ class User < ApplicationRecord
                             format: { with: /\A[\w+\-.]+@[a-z\d\-.]+\.[a-z]+\z/i }
   validates :password, length: { minimum: 8 }, allow_nil: true, if: -> { password.present? }
 
-  enum :role, { administrator: 0, doctor: 1, nurse: 2, carer: 3, parent: 4 }, validate: true
+  enum :role, { administrator: 0, doctor: 1, nurse: 2, carer: 3, parent: 4, minor: 5 }, validate: true
 
   delegate :name, :date_of_birth, :age, to: :person, allow_nil: true
 end

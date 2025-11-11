@@ -24,7 +24,10 @@ module Components
       def render_card_header
         CardHeader do
           render_person_icon
-          CardTitle(class: 'text-xl') { person.name }
+          div(class: 'flex items-center justify-between gap-2') do
+            CardTitle(class: 'text-xl') { person.name }
+            render_needs_carer_badge if person.needs_carer?
+          end
         end
       end
 
@@ -71,6 +74,17 @@ module Components
           view_context.pluralize(person.prescriptions.active.count, 'active prescription')
         else
           'No active prescriptions'
+        end
+      end
+
+      def render_needs_carer_badge
+        badge_classes = 'inline-flex items-center rounded-md bg-amber-50 px-2 py-1 text-xs ' \
+                        'font-medium text-amber-800 ring-1 ring-inset ring-amber-600/20'
+        span(
+          class: badge_classes,
+          data: { testid: 'needs-carer-badge' }
+        ) do
+          plain 'Needs Carer'
         end
       end
 

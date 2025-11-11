@@ -11,14 +11,6 @@ class MedicationTakePolicy < ApplicationPolicy
 
   private
 
-  def admin?
-    user&.administrator?
-  end
-
-  def medical_staff?
-    user&.doctor? || user&.nurse?
-  end
-
   def adult_with_own_prescription?
     return false unless user&.person
 
@@ -63,14 +55,6 @@ class MedicationTakePolicy < ApplicationPolicy
 
     def own_takes_scope
       scope.joins(:prescription).where(prescriptions: { person_id: user.person.id })
-    end
-
-    def admin?
-      user&.administrator?
-    end
-
-    def medical_staff?
-      user&.doctor? || user&.nurse?
     end
 
     def owns_record?

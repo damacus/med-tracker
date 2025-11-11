@@ -75,6 +75,66 @@ RSpec.describe 'People' do
     end
   end
 
+  describe 'patients without carers' do
+    it 'highlights dependent adults who need carer assignment' do
+      # Create a dependent adult without any carers
+      patient_without_carer = Person.create!(
+        name: 'Unassigned Patient',
+        date_of_birth: 30.years.ago,
+        person_type: :dependent_adult
+      )
+
+      visit people_path
+
+      within "#person_#{patient_without_carer.id}" do
+        expect(page).to have_css('[data-testid="needs-carer-badge"]')
+        expect(page).to have_content('Needs Carer')
+      end
+    end
+
+    it 'highlights minors who need carer assignment' do
+      # Create a minor without any carers
+      minor_without_carer = Person.create!(
+        name: 'Unassigned Child',
+        date_of_birth: 10.years.ago,
+        person_type: :minor
+      )
+
+      visit people_path
+
+      within "#person_#{minor_without_carer.id}" do
+        expect(page).to have_css('[data-testid="needs-carer-badge"]')
+        expect(page).to have_content('Needs Carer')
+      end
+    end
+
+    it 'does not highlight self-managing adults without carers' do
+      # Create a self-managing adult without carers
+      adult_without_carer = Person.create!(
+        name: 'Independent Adult',
+        date_of_birth: 30.years.ago,
+        person_type: :adult
+      )
+
+      visit people_path
+
+      within "#person_#{adult_without_carer.id}" do
+        expect(page).to have_no_css('[data-testid="needs-carer-badge"]')
+      end
+    end
+
+    it 'does not highlight patients who have carers' do
+      # John has a carer (nurse_smith) per fixtures
+      person_with_carer = people(:john)
+
+      visit people_path
+
+      within "#person_#{person_with_carer.id}" do
+        expect(page).to have_no_css('[data-testid="needs-carer-badge"]')
+      end
+    end
+  end
+
   def sign_in(user)
     visit login_path
     fill_in 'Email address', with: user.email_address

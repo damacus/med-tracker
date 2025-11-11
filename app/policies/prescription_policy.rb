@@ -2,7 +2,7 @@
 
 class PrescriptionPolicy < ApplicationPolicy
   def index?
-    admin? || doctor? || nurse? || carer_with_patient? || parent_with_minor? || false
+    admin? || doctor? || nurse? || carer_with_patient? || parent_with_minor?
   end
 
   def show?
@@ -10,7 +10,7 @@ class PrescriptionPolicy < ApplicationPolicy
   end
 
   def create?
-    admin? || doctor? || false
+    admin? || doctor?
   end
 
   def new?
@@ -18,7 +18,7 @@ class PrescriptionPolicy < ApplicationPolicy
   end
 
   def update?
-    admin? || doctor? || false
+    admin? || doctor?
   end
 
   def edit?
@@ -26,17 +26,17 @@ class PrescriptionPolicy < ApplicationPolicy
   end
 
   def destroy?
-    admin? || doctor? || false
+    admin? || doctor?
   end
 
   def take_medicine?
-    can_take_own_medicine? || minor_with_supervision? || medical_staff_or_carer? || false
+    can_take_own_medicine? || minor_with_supervision? || medical_staff_or_carer?
   end
 
   private
 
   def prescription_access?
-    admin? || doctor? || nurse? || carer_with_patient? || parent_with_minor? || false
+    admin? || doctor? || nurse? || carer_with_patient? || parent_with_minor?
   end
 
   def minor_with_supervision?
@@ -53,18 +53,6 @@ class PrescriptionPolicy < ApplicationPolicy
 
   def medical_staff?
     admin? || doctor? || nurse?
-  end
-
-  def admin?
-    user&.administrator?
-  end
-
-  def doctor?
-    user&.doctor?
-  end
-
-  def nurse?
-    user&.nurse?
   end
 
   def can_take_own_medicine?
@@ -117,18 +105,6 @@ class PrescriptionPolicy < ApplicationPolicy
 
     def own_prescriptions_scope
       scope.where(person_id: user.person.id)
-    end
-
-    def admin?
-      user&.administrator?
-    end
-
-    def doctor?
-      user&.doctor?
-    end
-
-    def nurse?
-      user&.nurse?
     end
 
     def owns_record?

@@ -6,11 +6,11 @@ class PersonMedicinePolicy < ApplicationPolicy
   end
 
   def show?
-    administrator_or_clinician? || carer_with_patient? || false
+    admin_or_clinician? || carer_with_patient?
   end
 
   def create?
-    user&.administrator? || false
+    admin?
   end
 
   def new?
@@ -18,7 +18,7 @@ class PersonMedicinePolicy < ApplicationPolicy
   end
 
   def update?
-    user&.administrator? || false
+    admin?
   end
 
   def edit?
@@ -26,22 +26,14 @@ class PersonMedicinePolicy < ApplicationPolicy
   end
 
   def destroy?
-    user&.administrator? || false
+    admin?
   end
 
   def take_medicine?
-    user&.administrator? || carer_with_patient? || false
+    admin? || carer_with_patient?
   end
 
   private
-
-  def administrator_or_clinician?
-    user&.administrator? || user&.doctor? || user&.nurse?
-  end
-
-  def carer_or_parent?
-    user&.carer? || user&.parent?
-  end
 
   def carer_with_patient?
     (carer_or_parent? && user.person.patients.exists?(record.person.id)) || false
@@ -50,21 +42,13 @@ class PersonMedicinePolicy < ApplicationPolicy
   class Scope < ApplicationPolicy::Scope
     def resolve
       return scope.none unless user
-      return scope.all if administrator_or_clinician?
+      return scope.all if admin_or_clinician?
       return scope.none unless carer_or_parent?
 
       scope.where(person_id: accessible_person_ids)
     end
 
     private
-
-    def administrator_or_clinician?
-      user&.administrator? || user&.doctor? || user&.nurse?
-    end
-
-    def carer_or_parent?
-      user&.carer? || user&.parent?
-    end
 
     def accessible_person_ids
       [user.person_id].compact + Array(user.person&.patient_ids)

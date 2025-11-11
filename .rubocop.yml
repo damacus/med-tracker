@@ -122,3 +122,9 @@ Rails/ThreeStateBooleanColumn:
 Rails/ReversibleMigration:
   Exclude:
     - 'db/migrate/20250930220140_create_carer_relationships.rb'
+
+# Allow hardcoded notice strings in admin controllers for now
+# TODO: Move to locale files when implementing full i18n
+Rails/I18nLocaleTexts:
+  Exclude:
+    - 'app/controllers/admin/**/*'

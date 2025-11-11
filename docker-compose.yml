@@ -1,0 +1,38 @@
+---
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: medtracker
+      POSTGRES_PASSWORD: medtracker_password
+      POSTGRES_DB: medtracker_production
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U medtracker -d medtracker_production"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      RAILS_ENV: production
+      DATABASE_URL: >-
+        postgresql://medtracker:medtracker_password@db:5432/medtracker_production
+    ports:
+      - "3000:3000"
+    volumes:
+      - storage_data:/rails/storage
+      - ./config/credentials/production.key:/app/config/credentials/production.key:ro
+
+volumes:
+  postgres_data:
+  storage_data:

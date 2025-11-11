@@ -23,14 +23,6 @@ class CarerRelationshipPolicy < ApplicationPolicy
 
   private
 
-  def admin?
-    user&.administrator? || false
-  end
-
-  def admin_or_clinician?
-    user&.administrator? || user&.doctor? || user&.nurse? || false
-  end
-
   def carer_owns_relationship?
     (user&.person && record.carer_id == user.person.id) || false
   end
@@ -41,12 +33,6 @@ class CarerRelationshipPolicy < ApplicationPolicy
       return scope.all if admin_or_clinician?
 
       scope.where(carer_id: user.person_id)
-    end
-
-    private
-
-    def admin_or_clinician?
-      user&.administrator? || user&.doctor? || user&.nurse?
     end
   end
 end
