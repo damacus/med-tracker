@@ -3,7 +3,6 @@
 module Components
   module Admin
     module AuditLogs
-      # Admin audit logs view
       class IndexView < Components::Base
         attr_reader :audit_logs
 

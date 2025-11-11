@@ -3,7 +3,6 @@
 module Components
   module Admin
     module Dashboard
-      # Admin dashboard view with system metrics
       class IndexView < Components::Base
         attr_reader :metrics
 
@@ -84,27 +83,35 @@ module Components
         end
 
         def render_placeholder
-          div(class: 'space-y-4') do
-            a(
-              href: admin_users_path,
-              class: 'block rounded-xl border border-slate-200 bg-white p-6 text-left shadow-sm transition hover:shadow-md'
-            ) do
-              h2(class: 'text-xl font-semibold text-slate-900') { 'User Management' }
-              p(class: 'mt-2 text-slate-600') { 'Review and manage user accounts and access levels' }
-            end
+          div(class: 'grid grid-cols-1 md:grid-cols-2 gap-6') do
+            render_card(
+              title: 'User Management',
+              description: 'Review and manage user accounts and access levels',
+              icon: '👥',
+              href: admin_users_path
+            )
 
-            a(
-              href: admin_audit_logs_path,
-              class: 'block rounded-xl border border-slate-200 bg-white p-6 text-left shadow-sm transition hover:shadow-md'
-            ) do
-              h2(class: 'text-xl font-semibold text-slate-900') { 'Audit Trail' }
-              p(class: 'mt-2 text-slate-600') { 'View security audit logs of sensitive actions' }
+            render_card(
+              title: 'Audit Trail',
+              description: 'View security audit logs of sensitive actions',
+              icon: '📋',
+              href: admin_audit_logs_path
+            )
+          end
         end
 
-        def render_quick_actions
-          Card do
-            CardHeader do
-              CardTitle { 'Quick Actions' }
+        def render_card(title:, description:, icon:, href:)
+          link_to(href, class: 'block transition hover:scale-[1.02]') do
+            Card(class: 'h-full') do
+              CardHeader do
+                div(class: 'flex items-center gap-3') do
+                  div(class: 'text-3xl') { icon }
+                  div do
+                    CardTitle(class: 'text-xl') { title }
+                    CardDescription { description }
+                  end
+                end
+              end
             end
             CardContent do
               div(class: 'grid gap-4 sm:grid-cols-2') do
