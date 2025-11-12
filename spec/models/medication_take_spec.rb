@@ -107,4 +107,93 @@ RSpec.describe MedicationTake do
       end
     end
   end
+
+  describe 'versioning' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+    fixtures :users, :people, :sessions
+
+    let(:admin) { users(:admin) }
+    let(:session) { sessions(:admin_session) }
+
+    before do # rubocop:disable RSpec/InstanceVariable
+      Current.session = session
+      PaperTrail.request.whodunnit = admin.id
+
+      # Create test data inline to reduce memoized helpers
+      @test_person = people(:john)
+      @test_medicine = Medicine.create!(
+        name: 'Test Medicine',
+        current_supply: 100,
+        stock: 100,
+        reorder_threshold: 10
+      )
+      @test_dosage = Dosage.create!(medicine: @test_medicine, amount: 10, unit: 'mg', frequency: 'daily')
+      @prescription = Prescription.create!(
+        person: @test_person,
+        medicine: @test_medicine,
+        dosage: @test_dosage,
+        start_date: Time.zone.today,
+        end_date: Time.zone.today + 30.days
+      )
+    end # rubocop:enable RSpec/InstanceVariable
+
+    after do
+      Current.reset
+      PaperTrail.request.whodunnit = nil
+    end
+
+    it 'creates version when medication is taken' do
+      expect do
+        described_class.create!(
+          prescription: @prescription,
+          taken_at: Time.current,
+          amount_ml: 5.0
+        )
+      end.to change(PaperTrail::Version, :count).by(1)
+
+      version = PaperTrail::Version.last
+      expect(version.event).to eq('create')
+      expect(version.item_type).to eq('MedicationTake')
+    end
+
+    it 'creates version on medication take update' do
+      take = described_class.create!(
+        prescription: @prescription,
+        taken_at: Time.current,
+        amount_ml: 5.0
+      )
+
+      expect do
+        take.update!(amount_ml: 10.0)
+      end.to change(PaperTrail::Version, :count).by(1)
+
+      version = take.versions.last
+      expect(version.event).to eq('update')
+      expect(version.object).to be_present
+    end
+
+    it 'tracks time changes for medication takes' do
+      original_time = 2.hours.ago
+      take = described_class.create!(
+        prescription: @prescription,
+        taken_at: original_time,
+        amount_ml: 5.0
+      )
+
+      new_time = 1.hour.ago
+      take.update!(taken_at: new_time)
+
+      version = take.versions.last
+      reified = version.reify
+      expect(reified.taken_at.to_i).to eq(original_time.to_i)
+    end
+
+    it 'associates version with current user' do
+      take = described_class.create!(
+        prescription: @prescription,
+        taken_at: Time.current,
+        amount_ml: 5.0
+      )
+      expect(take.versions.last.whodunnit).to eq(admin.id.to_s)
+    end
+  end
 end

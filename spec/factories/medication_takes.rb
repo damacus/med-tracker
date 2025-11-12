@@ -5,12 +5,12 @@ FactoryBot.define do
     taken_at { Time.current }
 
     trait :for_person_medicine do
-      association :person_medicine
+      person_medicine
       prescription { nil }
     end
 
     trait :for_prescription do
-      association :prescription
+      prescription
       person_medicine { nil }
     end
 

@@ -4,6 +4,9 @@
 class User < ApplicationRecord
   include PasskeysRails::Authenticatable
 
+  # Track all changes except sensitive password fields
+  has_paper_trail ignore: %i[password_digest recovery_password_digest]
+
   belongs_to :person, inverse_of: :user
 
   accepts_nested_attributes_for :person

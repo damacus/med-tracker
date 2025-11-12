@@ -106,4 +106,67 @@ RSpec.describe User do
       expect(user.email_address).to eq('test@example.com')
     end
   end
+
+  describe 'versioning' do
+    fixtures :users, :people, :sessions
+
+    let(:admin) { users(:admin) }
+    let(:session) { sessions(:admin_session) }
+
+    before do
+      Current.session = session
+      PaperTrail.request.whodunnit = admin.id
+    end
+
+    after do
+      Current.reset
+      PaperTrail.request.whodunnit = nil
+    end
+
+    it 'creates version on user creation' do
+      new_person = Person.create!(name: 'New User', date_of_birth: 30.years.ago)
+
+      expect do
+        described_class.create!(
+          email_address: 'newuser@example.com',
+          password: 'password',
+          person: new_person
+        )
+      end.to change(PaperTrail::Version, :count).by(1)
+
+      version = PaperTrail::Version.last
+      expect(version.event).to eq('create')
+      expect(version.item_type).to eq('User')
+    end
+
+    it 'creates version on user update' do
+      expect do
+        admin.update!(email_address: 'updated@example.com')
+      end.to change(PaperTrail::Version, :count).by(1)
+
+      version = admin.versions.last
+      expect(version.event).to eq('update')
+      # PaperTrail stores the previous state in 'object'
+      expect(version.object).to be_present
+    end
+
+    it 'associates version with current user' do
+      admin.update!(email_address: 'uniquetest@example.com')
+      expect(admin.versions.last.whodunnit).to eq(admin.id.to_s)
+    end
+
+    it 'does not track password changes' do
+      initial_version_count = admin.versions.count
+      admin.update!(password: 'newpassword')
+      # Password-only changes should not create versions
+      expect(admin.versions.count).to eq(initial_version_count)
+    end
+
+    it 'stores version when changes occur' do
+      admin.update!(email_address: 'iptest@example.com')
+      version = admin.versions.last
+      expect(version).to be_present
+      expect(version.item).to eq(admin)
+    end
+  end
 end

@@ -4,6 +4,7 @@ plugins:
   - rubocop-rails
   - rubocop-capybara
   - rubocop-rspec_rails
+  - rubocop-factory_bot
 
 AllCops:
   NewCops: enable

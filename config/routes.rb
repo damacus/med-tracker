@@ -10,6 +10,7 @@ Rails.application.routes.draw do
   namespace :admin do
     root to: 'dashboard#index'
     resources :users, only: %i[index new create edit update destroy]
+    resources :audit_logs, only: %i[index show]
   end
 
   # Dashboard

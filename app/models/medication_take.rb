@@ -1,6 +1,10 @@
 # frozen_string_literal: true
 
+# MedicationTake records when a dose of medicine was administered
 class MedicationTake < ApplicationRecord
+  # Track all medication doses (critical for safety and compliance)
+  has_paper_trail
+
   belongs_to :prescription, optional: true
   belongs_to :person_medicine, optional: true
 

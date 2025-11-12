@@ -2,6 +2,9 @@
 
 # Person captures an individual's demographic details and their medication plan.
 class Person < ApplicationRecord
+  # Track all changes to person records (sensitive personal data)
+  has_paper_trail
+
   has_one :user, inverse_of: :person, dependent: :destroy
   has_many :prescriptions, dependent: :destroy
   has_many :medicines, through: :prescriptions
