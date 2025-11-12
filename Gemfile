@@ -59,6 +59,7 @@ group :development, :test do
   # Playwright for end-to-end testing
   gem 'capybara'
   gem 'capybara-playwright-driver'
+  gem 'factory_bot_rails'
   gem 'pundit-matchers', '>= 2.0'
   gem 'rails-controller-testing'
   gem 'rspec-github', require: false
@@ -74,3 +75,5 @@ group :development do
   gem 'ruby_ui', require: false
   gem 'web-console'
 end
+
+gem 'sqlite3', '~> 2.8'

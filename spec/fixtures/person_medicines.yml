@@ -10,3 +10,9 @@ jane_vitamin_d:
   medicine: vitamin_d
   max_daily_doses: 2
   min_hours_between_doses: 12
+
+bob_vitamin_c:
+  person: bob
+  medicine: vitamin_c
+  max_daily_doses: 3
+  min_hours_between_doses: 4

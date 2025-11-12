@@ -6,6 +6,12 @@ paracetamol_adult:
   description: Standard adult dose
   medicine: paracetamol
 
+paracetamol_light:
+  amount: 500
+  unit: mg
+  description: Light adult dose
+  medicine: paracetamol
+
 # Ibuprofen dosages
 ibuprofen_adult:
   amount: 400

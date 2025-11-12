@@ -92,7 +92,7 @@ module Components
             SelectTrigger do
               SelectValue(placeholder: 'Select a dosage') do
                 if prescription.dosage
-                  "#{prescription.dosage.amount} #{prescription.dosage.unit} - #{prescription.dosage.description}"
+                  "#{prescription.dosage.amount.to_i} #{prescription.dosage.unit} - #{prescription.dosage.description}"
                 else
                   'Select a dosage'
                 end
@@ -101,7 +101,7 @@ module Components
             SelectContent do
               (prescription.medicine&.dosages || []).each do |dosage|
                 SelectItem(value: dosage.id.to_s) do
-                  plain "#{dosage.amount} #{dosage.unit} - #{dosage.description}"
+                  plain "#{dosage.amount.to_i} #{dosage.unit} - #{dosage.description}"
                 end
               end
             end

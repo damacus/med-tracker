@@ -2,4 +2,4 @@
 <%= turbo_stream.replace dom_id(@person) do %>
   <%= render @person %>
 <% end %>
-<%= turbo_stream.update "flash", partial: "shared/flash" %>
+<%= turbo_stream.update "flash", Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]) %>

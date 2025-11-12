@@ -2,6 +2,8 @@
 
 # Prescription model
 class Prescription < ApplicationRecord
+  include TimingRestrictions
+
   belongs_to :person
   belongs_to :medicine
   belongs_to :dosage
@@ -18,10 +20,6 @@ class Prescription < ApplicationRecord
   validates :start_date, presence: true
   validates :end_date, presence: true
   validate :end_date_after_start_date
-
-  def timing_restrictions?
-    max_daily_doses.present? || min_hours_between_doses.present?
-  end
 
   def cycle_period
     case dose_cycle

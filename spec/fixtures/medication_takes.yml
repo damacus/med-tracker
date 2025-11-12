@@ -1,20 +1,35 @@
 ---
 john_morning_paracetamol:
   prescription: john_paracetamol
-  taken_at: 2025-02-17 08:00:00
+  taken_at: <%= Time.current.beginning_of_day + 8.hours %>
+  amount_ml: 1000.0
 
 john_afternoon_paracetamol:
   prescription: john_paracetamol
-  taken_at: 2025-02-17 14:00:00
+  taken_at: <%= Time.current.beginning_of_day + 14.hours %>
+  amount_ml: 1000.0
 
 jane_morning_ibuprofen:
   prescription: jane_ibuprofen
-  taken_at: 2025-02-17 08:00:00
+  taken_at: <%= Time.current.beginning_of_day + 8.hours %>
+  amount_ml: 400.0
 
 jane_evening_ibuprofen:
   prescription: jane_ibuprofen
-  taken_at: 2025-02-17 20:00:00
+  taken_at: <%= Time.current.beginning_of_day + 20.hours %>
+  amount_ml: 400.0
 
 bob_morning_aspirin:
   prescription: bob_aspirin
-  taken_at: 2025-02-17 07:00:00
+  taken_at: <%= Time.current.beginning_of_day + 7.hours %>
+  amount_ml: 75.0
+
+john_vitamin_d_today:
+  person_medicine: john_vitamin_d
+  taken_at: <%= Time.current.beginning_of_day + 8.hours %>
+  amount_ml: 1000.0
+
+bob_vitamin_c_recent:
+  person_medicine: bob_vitamin_c
+  taken_at: <%= 2.hours.ago %>
+  amount_ml: 500.0

@@ -29,6 +29,7 @@ services:
         condition: service_healthy
     environment:
       RAILS_ENV: test
+      TEST_DATABASE_ADAPTER: postgresql
       DATABASE_URL: >-
         postgres://medtracker_test:medtracker_test_password@dbtest:5432/medtracker_test
     ports:

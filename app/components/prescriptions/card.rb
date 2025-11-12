@@ -29,7 +29,8 @@ module Components
         CardHeader do
           render_medicine_icon
           CardTitle(class: 'text-xl') { prescription.medicine.name }
-          CardDescription { "#{prescription.dosage.amount} #{prescription.dosage.unit} • #{prescription.frequency}" }
+          dosage_text = "#{prescription.dosage.amount.to_i} #{prescription.dosage.unit}"
+          CardDescription { "#{dosage_text} • #{prescription.frequency}" }
         end
       end
 
@@ -37,6 +38,7 @@ module Components
         CardContent(class: 'flex-grow space-y-4') do
           render_date_details
           render_notes if prescription.notes.present?
+          render_countdown_notice if !prescription.can_take_now? && prescription.countdown_display
           render_takes_section
         end
       end
@@ -94,12 +96,18 @@ module Components
         end
       end
 
+      def render_countdown_notice
+        div(class: 'p-3 bg-blue-50 border border-blue-200 rounded-md') do
+          p(class: 'text-sm text-blue-800') do
+            span(class: 'font-semibold') { '🕐 Next dose available in: ' }
+            plain prescription.countdown_display
+          end
+        end
+      end
+
       def render_takes_section
         div(class: 'space-y-3') do
-          div(class: 'flex items-center justify-between') do
-            h4(class: 'text-sm font-semibold text-slate-700') { "Today's Doses" }
-            render_take_medicine_button
-          end
+          h4(class: 'text-sm font-semibold text-slate-700') { "Today's Doses" }
           render_todays_takes
         end
       end
@@ -136,15 +144,23 @@ module Components
             )
           end
           span(class: 'text-slate-700 font-medium') { take.taken_at.strftime('%l:%M %p').strip }
-          span(class: 'text-slate-500') { "#{take.amount_ml} ml" }
+          span(class: 'text-slate-500') { "#{take.amount_ml.to_i} ml" }
         end
       end
 
       def render_take_medicine_button
-        div(class: 'relative inline-block prescription__take-hover-card') do
-          Button(variant: :primary, size: :sm, class: 'prescription__take-trigger') { '💊 Take' }
-          render_take_medicine_form
+        if prescription.can_take_now?
+          div(class: 'relative inline-block prescription__take-hover-card') do
+            Button(variant: :primary, size: :sm, class: 'prescription__take-trigger') { '💊 Take' }
+            render_take_medicine_form
+          end
+        else
+          render_disabled_button_with_countdown
         end
+      end
+
+      def render_disabled_button_with_countdown
+        Button(variant: :secondary, size: :sm, disabled: true) { '💊 Take' }
       end
 
       def render_take_medicine_form
@@ -155,20 +171,26 @@ module Components
         ) do |f|
           div(class: 'prescription__take-form-group') do
             render f.label(:amount_ml, 'Amount (ml)', class: 'text-sm font-medium text-slate-700')
-            render f.number_field(
+            render f.select(
               :amount_ml,
-              value: prescription.dosage.amount,
-              step: 0.5,
-              min: 0,
+              dosage_options,
+              { selected: prescription.dosage.amount },
               class: 'w-full px-3 py-2 border border-slate-300 rounded-md text-sm ' \
                      'focus:outline-none focus:ring-2 focus:ring-primary'
             )
-            Button(type: :submit, variant: :primary, size: :md, class: 'w-full') { 'Take Now' }
+            Button(type: :submit, variant: :primary, size: :md, class: 'w-full mt-3') { 'Take Now' }
           end
         end
       end
 
+      def dosage_options
+        prescription.medicine.dosages.map do |dosage|
+          ["#{dosage.amount.to_i} #{dosage.unit} - #{dosage.description}", dosage.amount]
+        end
+      end
+
       def render_prescription_actions
+        render_take_medicine_button
         return unless view_context.current_user&.administrator?
 
         Link(href: edit_person_prescription_path(person, prescription), variant: :outline) { 'Edit' }
