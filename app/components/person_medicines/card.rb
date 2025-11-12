@@ -37,6 +37,7 @@ module Components
         CardContent(class: 'flex-grow space-y-4') do
           render_notes if person_medicine.notes.present?
           render_timing_restrictions if person_medicine.timing_restrictions?
+          render_countdown_notice if !person_medicine.can_take_now? && person_medicine.countdown_display
           render_takes_section
         end
       end
@@ -50,7 +51,7 @@ module Components
       def medicine_description
         parts = []
         if person_medicine.medicine.dosage_amount
-          parts << "#{person_medicine.medicine.dosage_amount} #{person_medicine.medicine.dosage_unit}"
+          parts << "#{person_medicine.medicine.dosage_amount.to_i} #{person_medicine.medicine.dosage_unit}"
         end
         parts.join(' • ')
       end
@@ -100,12 +101,18 @@ module Components
         end
       end
 
+      def render_countdown_notice
+        div(class: 'p-3 bg-blue-50 border border-blue-200 rounded-md') do
+          p(class: 'text-sm text-blue-800') do
+            span(class: 'font-semibold') { '🕐 Next dose available in: ' }
+            plain person_medicine.countdown_display
+          end
+        end
+      end
+
       def render_takes_section
         div(class: 'space-y-3') do
-          div(class: 'flex items-center justify-between') do
-            h4(class: 'text-sm font-semibold text-slate-700') { "Today's Doses" }
-            render_take_medicine_button
-          end
+          h4(class: 'text-sm font-semibold text-slate-700') { "Today's Doses" }
           render_todays_takes
         end
       end
@@ -140,50 +147,32 @@ module Components
             )
           end
           span(class: 'text-slate-700 font-medium') { take.taken_at.strftime('%l:%M %p').strip }
-          span(class: 'text-slate-500') { "#{take.amount_ml} ml" } if take.amount_ml.present?
+          span(class: 'text-slate-500') { "#{take.amount_ml.to_i} ml" } if take.amount_ml.present?
         end
       end
 
       def render_take_medicine_button
         return unless view_context.policy(person_medicine).take_medicine?
 
-        can_take = person_medicine.can_take_now?
-
-        Button(
-          variant: :primary,
-          size: :sm,
-          disabled: !can_take,
-          data: { action: 'click->person-medicine#take' }
-        ) do
-          plain '💊 Take'
-        end
-
-        return if can_take
-
-        render_disabled_reason
-      end
-
-      def render_disabled_reason
-        next_time = person_medicine.next_available_time
-        return unless next_time
-
-        p(class: 'text-xs text-slate-500 mt-1') do
-          plain "Available at #{next_time.strftime('%l:%M %p').strip}"
-        end
-      end
-
-      def render_person_medicine_actions
-        if view_context.policy(person_medicine).take_medicine?
+        if person_medicine.can_take_now?
           button_to(
             take_medicine_person_person_medicine_path(person, person_medicine),
             method: :post,
-            disabled: !person_medicine.can_take_now?,
-            class: 'inline-flex items-center justify-center rounded-md text-sm font-medium px-4 py-2 ' \
-                   'bg-primary text-white shadow-sm hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed'
-          ) { '💊 Take Now' }
+            class: 'inline-flex items-center justify-center rounded-md text-sm font-medium px-3 py-1.5 ' \
+                   'bg-primary text-white shadow-sm hover:bg-primary/90'
+          ) { '💊 Take' }
+        else
+          render_disabled_button_with_countdown
         end
+      end
 
-        render_delete_dialog
+      def render_disabled_button_with_countdown
+        Button(variant: :secondary, size: :sm, disabled: true) { '💊 Take' }
+      end
+
+      def render_person_medicine_actions
+        render_take_medicine_button if view_context.policy(person_medicine).take_medicine?
+        render_delete_dialog if view_context.policy(person_medicine).destroy?
       end
 
       def render_delete_dialog
@@ -202,11 +191,10 @@ module Components
               end
             end
             AlertDialogFooter do
-              button(
-                type: 'button',
-                data: { action: 'click->ruby-ui--alert-dialog#close' },
-                class: 'inline-flex items-center justify-center rounded-md text-sm font-medium px-4 py-2 ' \
-                       'border border-input bg-background hover:bg-accent hover:text-accent-foreground'
+              Button(
+                type: :button,
+                variant: :outline,
+                data: { action: 'click->ruby-ui--alert-dialog#close' }
               ) { 'Cancel' }
               button_to(
                 person_person_medicine_path(person, person_medicine),

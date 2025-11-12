@@ -3,12 +3,20 @@
 # All environments use DATABASE_URL environment variable
 
 development:
+  adapter: postgresql
   url: <%= ENV['DATABASE_URL'] %>
 
 test:
+  <% if ENV['TEST_DATABASE_ADAPTER'] == 'postgresql' %>
+  adapter: postgresql
   url: <%= ENV['DATABASE_URL'] %>
+  <% else %>
+  adapter: sqlite3
+  database: db/test.sqlite3
+  <% end %>
 
 production:
+  adapter: postgresql
   primary:
     url: <%= ENV['DATABASE_URL'] %>
   cache:

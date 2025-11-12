@@ -54,7 +54,7 @@ class PrescriptionsController < ApplicationController
           render turbo_stream: [
             turbo_stream.remove('modal'),
             turbo_stream.replace("person_#{@person.id}", partial: 'people/person', locals: { person: @person.reload }),
-            turbo_stream.update('flash', partial: 'shared/flash')
+            turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
           ]
         end
       end
@@ -87,7 +87,7 @@ class PrescriptionsController < ApplicationController
                                                  collection: @person.reload.prescriptions,
                                                  as: :prescription,
                                                  locals: { person: @person })),
-            turbo_stream.update('flash', partial: 'shared/flash')
+            turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
           ]
         end
       end

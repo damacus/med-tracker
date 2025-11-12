@@ -76,19 +76,29 @@ module Components
 
       def render_person_info
         CardHeader do
-          div(class: 'flex justify-between items-start') do
-            div do
-              CardTitle(class: 'text-3xl') { person.name }
-              CardDescription(class: 'mt-2') do
-                div(class: 'space-y-1') do
-                  p { "Born: #{person.date_of_birth.strftime('%B %d, %Y')}" }
-                  p { "Age: #{person.age}" }
-                end
+          div(class: 'space-y-4') do
+            CardTitle(class: 'text-3xl') { person.name }
+            CardDescription do
+              div(class: 'space-y-1') do
+                p { "Born: #{person.date_of_birth.strftime('%B %d, %Y')}" }
+                p { "Age: #{person.age}" }
               end
             end
-            div(class: 'flex gap-2') do
+            div(class: 'flex flex-wrap gap-2 pt-2') do
+              Link(
+                href: new_person_prescription_path(person),
+                variant: :primary,
+                data: { turbo_stream: true }
+              ) { 'Add Prescription' }
+              if view_context.policy(PersonMedicine.new(person: person)).create?
+                Link(
+                  href: new_person_person_medicine_path(person),
+                  variant: :primary,
+                  data: { turbo_stream: true }
+                ) { 'Add Medicine' }
+              end
               if view_context.policy(person).update?
-                Link(href: person_path(person, editing: true), variant: :outline) { 'Edit' }
+                Link(href: person_path(person, editing: true), variant: :outline) { 'Edit Person' }
               end
               Link(href: people_path, variant: :outline) { 'Back' }
             end
@@ -105,14 +115,7 @@ module Components
       end
 
       def render_prescriptions_header
-        div(class: 'flex justify-between items-center') do
-          h2(class: 'text-2xl font-bold text-slate-900') { 'Prescriptions' }
-          Link(
-            href: new_person_prescription_path(person),
-            variant: :primary,
-            data: { turbo_stream: true }
-          ) { 'Add Prescription' }
-        end
+        h2(class: 'text-2xl font-bold text-slate-900 mb-6') { 'Prescriptions' }
       end
 
       def render_prescriptions_grid
@@ -151,16 +154,7 @@ module Components
       end
 
       def render_my_medicines_header
-        div(class: 'flex justify-between items-center') do
-          h2(class: 'text-2xl font-bold text-slate-900') { 'My Medicines' }
-          if view_context.policy(PersonMedicine.new(person: person)).create?
-            Link(
-              href: new_person_person_medicine_path(person),
-              variant: :primary,
-              data: { turbo_stream: true }
-            ) { 'Add Medicine' }
-          end
-        end
+        h2(class: 'text-2xl font-bold text-slate-900 mb-6') { 'My Medicines' }
       end
 
       def render_my_medicines_grid

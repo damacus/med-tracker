@@ -73,6 +73,7 @@ jobs:
           --health-retries 5
 
     env:
+      TEST_DATABASE_ADAPTER: postgresql
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/medtracker_test
       RAILS_ENV: test
 

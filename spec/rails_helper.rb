@@ -72,6 +72,9 @@ RSpec.configure do |config|
 
   # Include Pundit matchers for policy specs
   config.include Pundit::RSpec::Matchers
+
+  # Include FactoryBot syntax methods
+  config.include FactoryBot::Syntax::Methods
 end
 
 # Include Pundit matchers for policy specs after RSpec is configured

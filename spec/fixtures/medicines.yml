@@ -72,3 +72,17 @@ vitamin_d:
   warnings: >-
     Do not exceed recommended dosage. Consult your doctor before taking
     supplements.
+
+vitamin_c:
+  name: Vitamin C
+  description: >-
+    Vitamin C is an essential nutrient that supports immune function and acts
+    as an antioxidant.
+  dosage_amount: 500
+  dosage_unit: mg
+  current_supply: 60
+  stock: 100
+  expiry_date: <%= 1.year.from_now.to_date %>
+  warnings: >-
+    Do not exceed recommended dosage. May cause stomach upset if taken on an
+    empty stomach.
