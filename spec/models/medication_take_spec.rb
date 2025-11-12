@@ -114,7 +114,7 @@ RSpec.describe MedicationTake do
     let(:admin) { users(:admin) }
     let(:session) { sessions(:admin_session) }
 
-    before do # rubocop:disable RSpec/InstanceVariable
+    before do
       Current.session = session
       PaperTrail.request.whodunnit = admin.id
 
