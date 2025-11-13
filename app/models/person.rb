@@ -2,7 +2,10 @@
 
 # Person captures an individual's demographic details and their medication plan.
 class Person < ApplicationRecord
-  # Track all changes to person records (sensitive personal data)
+  # Audit trail for patient/carer demographic changes
+  # Critical for compliance: tracks all changes to personal data
+  # Tracks: name, DOB, email, person_type, has_capacity changes
+  # @see docs/audit-trail.md
   has_paper_trail
 
   has_one :user, inverse_of: :person, dependent: :destroy

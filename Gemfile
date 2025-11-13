@@ -22,8 +22,6 @@ gem 'jbuilder'
 gem 'bcrypt', '>= 3.1'
 # Authorization framework [https://github.com/varvet/pundit]
 gem 'pundit', '>= 2.4'
-# Passkey authentication [https://github.com/alliedcode/passkeys-rails]
-gem 'passkeys-rails'
 # Audit logging [https://github.com/paper-trail-gem/paper_trail]
 gem 'paper_trail'
 

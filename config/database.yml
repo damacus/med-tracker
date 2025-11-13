@@ -7,13 +7,8 @@ development:
   url: <%= ENV['DATABASE_URL'] %>
 
 test:
-  <% if ENV['TEST_DATABASE_ADAPTER'] == 'postgresql' %>
-  adapter: postgresql
-  url: <%= ENV['DATABASE_URL'] %>
-  <% else %>
   adapter: sqlite3
   database: db/test.sqlite3
-  <% end %>
 
 production:
   adapter: postgresql

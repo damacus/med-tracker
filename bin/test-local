@@ -15,10 +15,10 @@ else
 fi
 
 # Execute the command passed to the script, or run all specs by default
-if [ $# -eq 0 ]; then
+if [[ $# -eq 0 ]]; then
   echo "Running all specs..."
   bundle exec rspec
 else
-  echo "Running: $@"
-  exec "${@}"
+  echo "Running: ${*}"
+  exec "$@"
 fi

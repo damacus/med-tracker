@@ -10,7 +10,10 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_11_12_154132) do
+ActiveRecord::Schema[8.1].define(version: 2025_11_13_101500) do
+  # These are extensions that must be enabled in order to support this database
+  enable_extension "pg_catalog.plpgsql"
+
   create_table "carer_relationships", force: :cascade do |t|
     t.boolean "active", default: true, null: false
     t.bigint "carer_id", null: false
@@ -58,29 +61,6 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_12_154132) do
     t.integer "stock"
     t.datetime "updated_at", null: false
     t.text "warnings"
-  end
-
-  create_table "passkeys_rails_agents", force: :cascade do |t|
-    t.bigint "authenticatable_id"
-    t.string "authenticatable_type"
-    t.datetime "created_at", null: false
-    t.datetime "last_authenticated_at"
-    t.datetime "registered_at"
-    t.datetime "updated_at", null: false
-    t.string "username", null: false
-    t.string "webauthn_identifier"
-    t.index ["authenticatable_type", "authenticatable_id"], name: "index_passkeys_rails_agents_on_authenticatable", unique: true
-    t.index ["username"], name: "index_passkeys_rails_agents_on_username", unique: true
-  end
-
-  create_table "passkeys_rails_passkeys", force: :cascade do |t|
-    t.bigint "agent_id", null: false
-    t.datetime "created_at", null: false
-    t.string "identifier"
-    t.string "public_key"
-    t.integer "sign_count"
-    t.datetime "updated_at", null: false
-    t.index ["agent_id"], name: "index_passkeys_rails_passkeys_on_agent_id"
   end
 
   create_table "people", force: :cascade do |t|
@@ -153,7 +133,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_12_154132) do
     t.string "ip"
     t.bigint "item_id", null: false
     t.string "item_type", null: false
-    t.text "object", limit: 1073741823
+    t.text "object"
     t.string "whodunnit"
     t.index ["item_type", "item_id"], name: "index_versions_on_item_type_and_item_id"
   end
@@ -163,7 +143,6 @@ ActiveRecord::Schema[8.1].define(version: 2025_11_12_154132) do
   add_foreign_key "dosages", "medicines"
   add_foreign_key "medication_takes", "person_medicines"
   add_foreign_key "medication_takes", "prescriptions"
-  add_foreign_key "passkeys_rails_passkeys", "passkeys_rails_agents", column: "agent_id"
   add_foreign_key "person_medicines", "medicines"
   add_foreign_key "person_medicines", "people"
   add_foreign_key "prescriptions", "dosages"

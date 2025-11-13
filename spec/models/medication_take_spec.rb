@@ -113,28 +113,29 @@ RSpec.describe MedicationTake do
 
     let(:admin) { users(:admin) }
     let(:session) { sessions(:admin_session) }
-
-    before do
-      Current.session = session
-      PaperTrail.request.whodunnit = admin.id
-
-      # Create test data inline to reduce memoized helpers
-      @test_person = people(:john)
-      @test_medicine = Medicine.create!(
+    let(:prescription) do
+      person = people(:john)
+      medicine = Medicine.create!(
         name: 'Test Medicine',
         current_supply: 100,
         stock: 100,
         reorder_threshold: 10
       )
-      @test_dosage = Dosage.create!(medicine: @test_medicine, amount: 10, unit: 'mg', frequency: 'daily')
-      @prescription = Prescription.create!(
-        person: @test_person,
-        medicine: @test_medicine,
-        dosage: @test_dosage,
+      dosage = Dosage.create!(medicine: medicine, amount: 10, unit: 'mg', frequency: 'daily')
+
+      Prescription.create!(
+        person: person,
+        medicine: medicine,
+        dosage: dosage,
         start_date: Time.zone.today,
         end_date: Time.zone.today + 30.days
       )
-    end # rubocop:enable RSpec/InstanceVariable
+    end
+
+    before do
+      Current.session = session
+      PaperTrail.request.whodunnit = admin.id
+    end
 
     after do
       Current.reset
@@ -144,7 +145,7 @@ RSpec.describe MedicationTake do
     it 'creates version when medication is taken' do
       expect do
         described_class.create!(
-          prescription: @prescription,
+          prescription: prescription,
           taken_at: Time.current,
           amount_ml: 5.0
         )
@@ -157,7 +158,7 @@ RSpec.describe MedicationTake do
 
     it 'creates version on medication take update' do
       take = described_class.create!(
-        prescription: @prescription,
+        prescription: prescription,
         taken_at: Time.current,
         amount_ml: 5.0
       )
@@ -174,7 +175,7 @@ RSpec.describe MedicationTake do
     it 'tracks time changes for medication takes' do
       original_time = 2.hours.ago
       take = described_class.create!(
-        prescription: @prescription,
+        prescription: prescription,
         taken_at: original_time,
         amount_ml: 5.0
       )
@@ -189,11 +190,11 @@ RSpec.describe MedicationTake do
 
     it 'associates version with current user' do
       take = described_class.create!(
-        prescription: @prescription,
+        prescription: prescription,
         taken_at: Time.current,
         amount_ml: 5.0
       )
       expect(take.versions.last.whodunnit).to eq(admin.id.to_s)
     end
-  end
+  end # rubocop:enable RSpec/MultipleMemoizedHelpers
 end

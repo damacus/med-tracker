@@ -17,9 +17,17 @@ echo "Database is ready!"
 # Prepare test database only if needed
 if ! bundle exec rails runner "ActiveRecord::Base.connection.table_exists?('schema_migrations')" 2>/dev/null; then
   echo "Preparing test database..."
-  bundle exec rails db:test:prepare
+  ./bin/rails db:test:prepare
 else
   echo "Test database already prepared."
+fi
+
+if ./bin/rails db:migrate:status | grep down
+then
+  echo "Running migrations..."
+  ./bin/rails db:migrate
+else
+  echo "Database is up to date."
 fi
 
 # Execute the command passed to the container

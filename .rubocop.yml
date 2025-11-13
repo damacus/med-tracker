@@ -8,6 +8,10 @@ plugins:
 
 AllCops:
   NewCops: enable
+  Exclude:
+    - 'config/**/*'
+    - '**/*.yml'
+    - '**/*.yaml'
 
 RSpec/ExampleLength:
   Max: 15

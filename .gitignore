@@ -41,3 +41,4 @@
 
 # Ignore mkdocs build output
 /site/
+*.sqlite3
