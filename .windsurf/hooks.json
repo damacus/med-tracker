@@ -1,0 +1,23 @@
+{
+  "hooks": {
+    "post_write_code": [
+      {
+        "command": "ruby .windsurf/check_gemfile.rb",
+        "show_output": true,
+        "working_directory": "."
+      },
+      {
+        "command": "bundle exec rubocop -A",
+        "show_output": true,
+        "working_directory": "."
+      }
+    ],
+    "post_run_command": [
+      {
+        "command": "bundle exec rspec --format documentation",
+        "show_output": true,
+        "working_directory": "."
+      }
+    ]
+  }
+}

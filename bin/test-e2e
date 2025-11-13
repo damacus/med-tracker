@@ -1,39 +1,40 @@
 #!/usr/bin/env ruby
-require "fileutils"
+# frozen_string_literal: true
+
+require 'fileutils'
 
 # Set up test environment
-ENV["RAILS_ENV"] = "test"
+ENV['RAILS_ENV'] = 'test'
 
 # Path to the pid file
-pid_path = "tmp/pids/test_server.pid"
+pid_path = 'tmp/pids/test_server.pid'
 
 # Start the test server
 def start_server(pid_path)
-  puts "Starting test server..."
+  puts 'Starting test server...'
   system("rails server -e test -p 3000 -P #{pid_path} -d")
   sleep 2 # Give the server time to start
 end
 
 # Stop the test server
 def stop_server(pid_path)
-  if File.exist?(pid_path)
-    pid = File.read(pid_path).to_i
-    puts "Stopping test server (PID: #{pid})..."
-    Process.kill("TERM", pid)
-    File.delete(pid_path)
-  end
+  return unless File.exist?(pid_path)
+
+  pid = File.read(pid_path).to_i
+  puts "Stopping test server (PID: #{pid})..."
+  Process.kill('TERM', pid)
+  File.delete(pid_path)
 end
 
 begin
   # Ensure we start with a clean slate
   stop_server(pid_path)
-  
+
   # Start the server
   start_server(pid_path)
-  
+
   # Run the tests
-  system("rails test:system")
-  
+  system('rails test:system')
 ensure
   # Always stop the server
   stop_server(pid_path)
