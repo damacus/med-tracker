@@ -2,11 +2,13 @@
 
 class AddDetailsToMedicines < ActiveRecord::Migration[8.0]
   def change
-    add_column :medicines, :dosage_amount, :float
-    add_column :medicines, :dosage_unit, :string
-    add_column :medicines, :stock, :integer
-    add_column :medicines, :expiry_date, :date
-    add_column :medicines, :description, :text
-    add_column :medicines, :warnings, :text
+    change_table :medicines, bulk: true do |m|
+      m.float :dosage_amount
+      m.string :dosage_unit
+      m.integer :stock
+      m.date :expiry_date
+      m.text :description
+      m.text :warnings
+    end
   end
 end

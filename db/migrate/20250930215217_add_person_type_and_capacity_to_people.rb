@@ -2,8 +2,10 @@
 
 class AddPersonTypeAndCapacityToPeople < ActiveRecord::Migration[8.0]
   def change
-    add_column :people, :person_type, :integer, default: 0, null: false
-    add_column :people, :has_capacity, :boolean, default: true, null: false
+    change_table :people, bulk: true do |t|
+      t.integer :person_type, default: 0, null: false
+      t.boolean :has_capacity, default: true, null: false
+    end
 
     add_index :people, :person_type
   end

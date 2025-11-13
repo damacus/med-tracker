@@ -7,16 +7,20 @@ class FixPersonTypeAndCapacityDefaults < ActiveRecord::Migration[8.0]
     execute 'UPDATE people SET has_capacity = TRUE WHERE has_capacity IS NULL'
 
     # Change column defaults and constraints
-    change_column_default :people, :person_type, from: nil, to: 0
-    change_column_default :people, :has_capacity, from: nil, to: true
-    change_column_null :people, :person_type, false, 0
-    change_column_null :people, :has_capacity, false, true
+    change_table :people, bulk: true do |t|
+      t.change_default :person_type, 0
+      t.change_default :has_capacity, true
+      t.change_null :person_type, false, 0
+      t.change_null :has_capacity, false, true
+    end
   end
 
   def down
-    change_column_null :people, :person_type, true
-    change_column_null :people, :has_capacity, true
-    change_column_default :people, :person_type, from: 0, to: nil
-    change_column_default :people, :has_capacity, from: true, to: nil
+    change_table :people, bulk: true do |t|
+      t.change_default :person_type, nil
+      t.change_default :has_capacity, nil
+      t.change_null :person_type, true
+      t.change_null :has_capacity, true
+    end
   end
 end

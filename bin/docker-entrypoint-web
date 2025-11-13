@@ -12,7 +12,7 @@ if [[ "${*: -2:1}" == "./bin/rails" ]] && [[ "${*: -1:1}" == "server" ]]; then
   TLS_DOMAIN=ironstone.casa thrust rails serve
 fi
 
-if [[ $(./bin/rails db:migrate:status | grep -q down) ]]
+if ./bin/rails db:migrate:status | grep -q down
 then
   echo "Running migrations..."
   ./bin/rails db:migrate

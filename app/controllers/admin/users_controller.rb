@@ -5,7 +5,7 @@ module Admin
   class UsersController < ApplicationController
     def index
       authorize User
-      users = policy_scope(User)
+      users = policy_scope(User).includes(:person)
       users = apply_search(users) if params[:search].present?
       users = apply_role_filter(users) if params[:role].present?
       users = users.order(:created_at)

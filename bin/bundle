@@ -22,19 +22,36 @@ m = Module.new do
   end
 
   def cli_arg_version
-    return unless invoked_as_script? # don't want to hijack other binstubs
-    return unless 'update'.start_with?(ARGV.first || ' ') # must be running `bundle update`
+    return unless should_parse_version?
 
+    extract_bundler_version_from_args
+  end
+
+  def should_parse_version?
+    invoked_as_script? && 'update'.start_with?(ARGV.first || ' ')
+  end
+
+  def extract_bundler_version_from_args
     bundler_version = nil
     update_index = nil
-    ARGV.each_with_index do |a, i|
-      bundler_version = a if update_index && update_index.succ == i && a.match?(Gem::Version::ANCHORED_VERSION_PATTERN)
-      next unless a =~ /\A--bundler(?:[= ](#{Gem::Version::VERSION_PATTERN}))?\z/
 
-      bundler_version = Regexp.last_match(1)
-      update_index = i
+    ARGV.each_with_index do |arg, index|
+      bundler_version = arg if version_follows_update?(arg, index, update_index)
+      update_index, bundler_version = handle_bundler_arg(arg, index, update_index, bundler_version)
     end
+
     bundler_version
+  end
+
+  def version_follows_update?(arg, index, update_index)
+    update_index && update_index.succ == index && arg.match?(Gem::Version::ANCHORED_VERSION_PATTERN)
+  end
+
+  def handle_bundler_arg(arg, index, update_index, bundler_version)
+    return [update_index, bundler_version] unless arg =~ /\A--bundler(?:[= ](#{Gem::Version::VERSION_PATTERN}))?\z/
+
+    new_bundler_version = Regexp.last_match(1)
+    [index, new_bundler_version]
   end
 
   def gemfile
@@ -96,7 +113,9 @@ m = Module.new do
       return
     end
 
-    warn "Activating bundler (#{bundler_requirement}) failed:\n#{gem_error.message}\n\nTo install the version of bundler this project requires, run `gem install bundler -v '#{bundler_requirement}'`"
+    warn "Activating bundler (#{bundler_requirement}) failed:\n#{gem_error.message}\n\n" \
+         'To install the version of bundler this project requires, run ' \
+         "`gem install bundler -v '#{bundler_requirement}'`"
     exit 42
   end
 
