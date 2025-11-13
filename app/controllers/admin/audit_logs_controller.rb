@@ -13,6 +13,7 @@ module Admin
     # Lists all audit log entries with optional filtering
     def index
       @versions = PaperTrail::Version
+                  .includes(:whodunnit)
                   .order(created_at: :desc)
                   .limit(AUDIT_LOGS_PER_PAGE)
                   .offset((page_number - 1) * AUDIT_LOGS_PER_PAGE)

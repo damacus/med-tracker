@@ -7,18 +7,6 @@ module Components
       # Shows complete information about a single audit trail entry
       # @see docs/audit-trail.md
       class ShowView < Components::Base
-        # Permitted classes for safe YAML deserialization
-        # Must match config/initializers/paper_trail.rb
-        YAML_PERMITTED_CLASSES = [
-          Date,
-          Time,
-          Symbol,
-          BigDecimal,
-          ActiveSupport::HashWithIndifferentAccess,
-          ActiveSupport::TimeWithZone,
-          ActiveSupport::TimeZone
-        ].freeze
-
         attr_reader :version
 
         def initialize(version:)
@@ -106,7 +94,7 @@ module Components
         # @param object_yaml [String] YAML-serialized object data
         # @return [String] Formatted JSON or original YAML
         def format_object(object_yaml)
-          parsed = YAML.safe_load(object_yaml, permitted_classes: YAML_PERMITTED_CLASSES)
+          parsed = YAML.safe_load(object_yaml, permitted_classes: ActiveRecord.yaml_column_permitted_classes)
           JSON.pretty_generate(parsed)
         rescue StandardError => e
           # If YAML parsing fails, return original string

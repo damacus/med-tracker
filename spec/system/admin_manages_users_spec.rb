@@ -115,10 +115,10 @@ RSpec.describe 'AdminManagesUsers' do
 
       visit admin_users_path
 
-      fill_in 'Search', with: 'test_carer@example.com'
+      fill_in 'Search', with: 'carer@example.com'
       click_button 'Search'
 
-      expect(page).to have_content('test_carer@example.com')
+      expect(page).to have_content('carer@example.com')
       expect(page).to have_no_content(admin.email_address)
     end
 
