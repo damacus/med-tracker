@@ -22,8 +22,8 @@ gem 'jbuilder'
 gem 'bcrypt', '>= 3.1'
 # Authorization framework [https://github.com/varvet/pundit]
 gem 'pundit', '>= 2.4'
-# Passkey authentication [https://github.com/alliedcode/passkeys-rails]
-gem 'passkeys-rails'
+# Audit logging [https://github.com/paper-trail-gem/paper_trail]
+gem 'paper_trail'
 
 gem 'ostruct'
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
@@ -52,6 +52,9 @@ group :development, :test do
 
   # Omakase Ruby styling [https://github.com/rails/rubocop-rails-omakase/]
   gem 'rubocop-rails-omakase', require: false
+
+  # Factory Bot [https://github.com/thoughtbot/factory_bot_rails]
+  gem 'rubocop-factory_bot', require: false
 
   # Clean database between tests
   gem 'database_cleaner-active_record'

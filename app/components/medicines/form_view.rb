@@ -114,7 +114,7 @@ module Components
               type: :number,
               name: 'medicine[dosage_amount]',
               id: 'medicine_dosage_amount',
-              value: medicine.dosage_amount,
+              value: medicine.dosage_amount.to_i,
               step: 'any',
               min: '0'
             )

@@ -15,22 +15,29 @@ tasks:
     cmds:
       - bundle exec rubocop
 
-  compose:test:
+  compose:
     desc: Run RSpecs tests using Docker Compose
+    vars:
+      ENVIRONMENT: test
     cmds:
-      - docker compose -f docker-compose.test.yml build
-      - docker compose -f docker-compose.test.yml run test
-      - docker compose -f docker-compose.test.yml down
+      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml build
+      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml run {{ .ENVIRONMENT }}
+      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml down
 
   compose:dev:
     desc: Run Rails server using Docker Compose
+    vars:
+      ENVIRONMENT: dev
     cmds:
-      - docker compose -f docker-compose.dev.yml up -d
-      - docker compose -f docker-compose.dev.yml exec web rake db:prepare
-      - docker compose -f docker-compose.dev.yml exec web rake db:seed
+      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml up -d
       - echo "Visit http://localhost:3000 to see the app"
+
+  compose:dev:stop:
+    desc: Stop Rails server using Docker Compose
+    cmds:
+      - docker compose -f docker-compose.dev.yml down
 
   compose:dev:logs:
     desc: Follow logs for Rails server using Docker Compose
     cmds:
-      - docker compose -f docker-compose.dev.yml logs -f
+      - docker compose -f docker-compose.dev.yml logs

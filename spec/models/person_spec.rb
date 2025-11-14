@@ -366,4 +366,64 @@ RSpec.describe Person do
       end
     end
   end
+
+  describe 'versioning' do
+    fixtures :users, :people, :sessions
+
+    let(:admin) { users(:admin) }
+    let(:session) { sessions(:admin_session) }
+
+    before do
+      Current.session = session
+      PaperTrail.request.whodunnit = admin.id
+    end
+
+    after do
+      Current.reset
+      PaperTrail.request.whodunnit = nil
+    end
+
+    it 'creates version on person creation' do
+      expect do
+        described_class.create!(name: 'New Person', date_of_birth: 25.years.ago)
+      end.to change(PaperTrail::Version, :count).by(1)
+
+      version = PaperTrail::Version.last
+      expect(version.event).to eq('create')
+      expect(version.item_type).to eq('Person')
+    end
+
+    it 'creates version on person update' do
+      john = people(:john)
+
+      expect do
+        john.update!(name: 'John Updated')
+      end.to change(PaperTrail::Version, :count).by(1)
+
+      version = john.versions.last
+      expect(version.event).to eq('update')
+      # PaperTrail stores the previous state
+      expect(version.object).to be_present
+    end
+
+    it 'tracks sensitive field changes' do
+      john = people(:john)
+      original_dob = john.date_of_birth
+
+      new_dob = 27.years.ago.to_date
+      john.update!(date_of_birth: new_dob)
+
+      version = john.versions.last
+      # Verify the version captured the change
+      expect(version.object).to be_present
+      reified = version.reify
+      expect(reified.date_of_birth).to eq(original_dob)
+    end
+
+    it 'associates version with current user' do
+      john = people(:john)
+      john.update!(name: 'John Modified')
+      expect(john.versions.last.whodunnit).to eq(admin.id.to_s)
+    end
+  end
 end

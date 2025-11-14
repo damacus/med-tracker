@@ -1,6 +1,4 @@
 FROM ruby:3.4.7-slim-trixie AS assets
-LABEL maintainer="Nick Janetakis <nick.janetakis@gmail.com>"
-
 WORKDIR /app
 
 ARG UID=1000
@@ -43,8 +41,6 @@ CMD ["bash"]
 ###############################################################################
 
 FROM ruby:3.4.7-slim-trixie AS app
-LABEL maintainer="Nick Janetakis <nick.janetakis@gmail.com>"
-
 WORKDIR /app
 
 ARG UID=1000

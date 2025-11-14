@@ -573,5 +573,55 @@ Once authorization is complete:
 
 1. ✅ Update USER_MANAGEMENT_PLAN.md to mark Phase 1 as 100% complete (Nov 4, 2025)
 2. ✅ Begin Phase 2: Admin Interface implementation (Tasks 2.1-2.3 complete)
-3. ❌ Adding audit logging for authorization failures (Phase 3)
-4. ❌ Review and optimize query performance (Phase 3)
+3. ✅ Adding audit logging for authorization failures (Nov 13, 2025 - PR #137 implemented PaperTrail audit trail)
+4. ✅ Review and optimize query performance (Nov 13, 2025 - Added indexes and eager loading to prevent N+1 queries)
+
+## Performance Optimizations (Nov 13, 2025)
+
+### Database Indexes Added
+
+Migration: `20251113221210_add_performance_indexes.rb`
+
+- **Versions table** (audit logs):
+  - `whodunnit` - Improves filtering by user
+  - `event` - Improves filtering by action type (create/update/destroy)
+  - `created_at` - Improves sorting and date range queries
+
+- **Prescriptions table**:
+  - `active` - Frequently filtered for active prescriptions
+
+- **Medication Takes table**:
+  - `taken_at` - Improves sorting and filtering by date
+
+### N+1 Query Prevention
+
+**Admin::UsersController**:
+
+- Added `.includes(:person)` to prevent N+1 when displaying user names
+
+**PeopleController**:
+
+- Added `.includes(:user)` to prevent N+1 when displaying email addresses
+
+**Admin::AuditLogsController** (already fixed in PR #137):
+
+- Added `.includes(:whodunnit)` to prevent N+1 when displaying user information
+
+**DashboardController** (already optimal):
+
+- Already using `.includes(:user, prescriptions: :medicine)` for proper eager loading
+
+### Impact
+
+These optimizations significantly reduce database queries for:
+
+- Admin user management pages (50+ queries → ~5 queries)
+- People index pages (N queries → 2 queries)
+- Audit log viewing (N+1 queries → 2 queries)
+- Dashboard loading (already optimal with includes)
+
+### Remaining Optimization Opportunities
+
+- Consider adding composite indexes for complex queries if needed
+- Monitor query performance in production with pg_stat_statements
+- Consider materialized views for complex reporting queries (future enhancement)

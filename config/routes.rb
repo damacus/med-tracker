@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 Rails.application.routes.draw do
-  mount PasskeysRails::Engine => '/passkeys'
   resource :session
   resources :passwords, param: :token
   # Defines the root path route ("/")
@@ -10,6 +9,7 @@ Rails.application.routes.draw do
   namespace :admin do
     root to: 'dashboard#index'
     resources :users, only: %i[index new create edit update destroy]
+    resources :audit_logs, only: %i[index show]
   end
 
   # Dashboard

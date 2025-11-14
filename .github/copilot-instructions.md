@@ -142,7 +142,6 @@ app/
 - Active/inactive prescription tracking
 - Smart validations to prevent medication errors
 - Authorization using Pundit
-- Passkey authentication support
 - Non-prescription/ad-hoc medicine tracking via `PersonMedicine`
 - Carer relationships with capacity support tracking
 

@@ -120,4 +120,79 @@ RSpec.describe CarerRelationship do
       expect(relationship.reload.active).to be true
     end
   end
+
+  describe 'versioning' do
+    fixtures :users, :people, :sessions
+
+    let(:admin) { users(:admin) }
+    let(:session) { sessions(:admin_session) }
+    let(:carer) { people(:jane) }
+    let(:patient) { people(:john) }
+
+    before do
+      Current.session = session
+      PaperTrail.request.whodunnit = admin.id
+    end
+
+    after do
+      Current.reset
+      PaperTrail.request.whodunnit = nil
+    end
+
+    it 'creates version on relationship creation' do
+      expect do
+        described_class.create!(
+          carer: carer,
+          patient: patient,
+          relationship_type: 'guardian'
+        )
+      end.to change(PaperTrail::Version, :count).by(1)
+
+      version = PaperTrail::Version.last
+      expect(version.event).to eq('create')
+      expect(version.item_type).to eq('CarerRelationship')
+    end
+
+    it 'creates version on relationship update' do
+      relationship = described_class.create!(
+        carer: carer,
+        patient: patient,
+        relationship_type: 'parent'
+      )
+
+      expect do
+        relationship.update!(relationship_type: 'guardian')
+      end.to change(PaperTrail::Version, :count).by(1)
+
+      version = relationship.versions.last
+      expect(version.event).to eq('update')
+      expect(version.object).to be_present
+    end
+
+    it 'tracks activation/deactivation changes' do
+      relationship = described_class.create!(
+        carer: carer,
+        patient: patient,
+        relationship_type: 'parent',
+        active: true
+      )
+
+      expect do
+        relationship.deactivate!
+      end.to change(PaperTrail::Version, :count).by(1)
+
+      version = relationship.versions.last
+      reified = version.reify
+      expect(reified.active).to be true
+    end
+
+    it 'associates version with current user' do
+      relationship = described_class.create!(
+        carer: carer,
+        patient: patient,
+        relationship_type: 'parent'
+      )
+      expect(relationship.versions.last.whodunnit).to eq(admin.id.to_s)
+    end
+  end
 end

@@ -2,7 +2,11 @@
 
 # User model for storing user information and authentication
 class User < ApplicationRecord
-  include PasskeysRails::Authenticatable
+  # Audit trail for user account changes
+  # Excludes password fields for security - passwords are never logged
+  # Tracks: email changes, role changes, person associations
+  # @see docs/audit-trail.md
+  has_paper_trail ignore: %i[password_digest recovery_password_digest]
 
   belongs_to :person, inverse_of: :user
 
