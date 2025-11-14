@@ -3,9 +3,6 @@
 module Components
   module Admin
     module AuditLogs
-      # Phlex component for rendering the audit logs index page
-      # Displays a filterable table of all audit trail entries
-      # @see docs/audit-trail.md
       class IndexView < Components::Base
         include Phlex::Rails::Helpers::FormWith
 
