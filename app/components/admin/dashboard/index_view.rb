@@ -3,7 +3,6 @@
 module Components
   module Admin
     module Dashboard
-      # Admin dashboard view with system metrics
       class IndexView < Components::Base
         attr_reader :metrics
 
