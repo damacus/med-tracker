@@ -262,23 +262,21 @@ All critical authorization issues have been resolved:
 - Migration safely changes existing defaults
 
 #### 1.3 Add Account Security Features
-**Objective**: Improve account security
+**Objective**: Improve account security using a centralized authentication framework.
 
-**Status**: 🔴 **0% Complete** (Not Started)
+**Status**: 🔴 **Planned** – detailed implementation is tracked in `USER_SIGNUP_PLAN.md` (Rodauth signup, verification, OAuth) and `USER_SIGNUP_AND_2FA_PLAN.md` (email delivery, 2FA).
 
-**Tasks**:
-- [ ] Add email confirmation on registration
-- [ ] Add "remember me" functionality
-- [ ] Add session timeout after inactivity
-- [ ] Add failed login attempt tracking
-- [ ] Add account lockout after N failed attempts
-- [ ] Add two-factor authentication (optional)
+**Tasks** (high level):
+- [ ] Implement Rodauth-based signup, login, email verification, and Google OAuth as described in `USER_SIGNUP_PLAN.md`.
+- [ ] Enforce environment-specific email verification rules (production requires verification; non-production has a 7-day grace period) via Rodauth configuration.
+- [ ] Add session lifetime, failed login tracking, and account lockout through Rodauth features or supporting middleware.
+- [ ] Introduce optional two-factor authentication following `USER_SIGNUP_AND_2FA_PLAN.md`.
 
-**Acceptance Criteria**:
-- Users must confirm email before access
-- Sessions expire after 2 weeks or 30 min inactivity
-- Accounts lock after 5 failed attempts
-- Tests cover all security scenarios
+**Acceptance Criteria** (summary):
+- Email verification and account lifecycle behaviour match the Rodauth-based signup plan.
+- Sessions expire within defined limits; repeated failures lead to lockout.
+- 2FA is available for higher-risk roles.
+- All authentication and account security flows are covered by tests.
 
 ### Phase 2: Admin User Management (High Priority)
 
