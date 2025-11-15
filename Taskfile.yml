@@ -15,7 +15,7 @@ tasks:
     cmds:
       - bundle exec rubocop
 
-  compose:
+  compose:test:
     desc: Run RSpecs tests using Docker Compose
     vars:
       ENVIRONMENT: test

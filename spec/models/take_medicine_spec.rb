@@ -9,7 +9,7 @@ RSpec.describe TakeMedicine do
     subject(:take_medicine) do
       described_class.new(
         prescription: prescriptions(:john_paracetamol),
-        taken_at: Time.current,
+        taken_at: 1.day.ago.beginning_of_day + 20.hours,
         amount_ml: 500.0
       )
     end
@@ -46,7 +46,7 @@ RSpec.describe TakeMedicine do
     it 'saves the amount_ml value' do
       take = described_class.create!(
         prescription: prescriptions(:john_paracetamol),
-        taken_at: Time.current,
+        taken_at: 1.day.ago.beginning_of_day + 20.hours,
         amount_ml: 750.5
       )
 

@@ -85,4 +85,4 @@ en:
     failure: "Failed to record medication taken."
 
   users:
-    welcome: "Welcome! You have signed up successfully."
+    welcome: "Check your email to verify your account before signing in."

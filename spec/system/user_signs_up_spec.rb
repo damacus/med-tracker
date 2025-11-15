@@ -9,7 +9,7 @@ RSpec.describe 'UserSignsUps' do
     driven_by(:rack_test)
   end
 
-  it 'allows a user to sign up' do
+  it 'allows a user to sign up and prompts for email verification' do
     visit sign_up_path
 
     fill_in 'Name', with: 'New User'
@@ -21,8 +21,7 @@ RSpec.describe 'UserSignsUps' do
     click_button 'Sign Up'
 
     aggregate_failures 'user sign up' do
-      expect(page).to have_current_path(root_path)
-      expect(page).to have_css('#flash', text: 'Welcome! You have signed up successfully.')
+      expect(page).to have_css('#flash', text: 'Check your email to verify your account before signing in.')
 
       new_user = User.last
       expect(new_user.email_address).to eq('newuser@example.com')
