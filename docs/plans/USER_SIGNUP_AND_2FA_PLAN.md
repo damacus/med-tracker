@@ -1,10 +1,13 @@
 # User Signup and 2FA Implementation Plan
 
+**Status**: Partially superseded – see `USER_SIGNUP_PLAN.md` for the current signup implementation plan. This document now focuses on shared email infrastructure and two-factor authentication.
+
 ## Current State
 
 ### What's Already Implemented
 
 **From PR #119 (Rodauth Foundation):**
+
 - Rodauth-rails with email verification feature
 - Google OAuth integration via rodauth-omniauth
 - `accounts` table (separate from `people`)
@@ -17,6 +20,7 @@
 - All Rodauth views styled with Tailwind CSS
 
 **Existing Infrastructure:**
+
 - Action Mailer configured
 - Audit logging with paper_trail
 - Session tracking with IP addresses
@@ -44,6 +48,7 @@
 ## ✅ DECISION MADE: Rodauth (PR #119)
 
 **PR #119 already implements Rodauth with:**
+
 - Email verification on signup
 - Password reset flow
 - Google OAuth integration
@@ -51,6 +56,7 @@
 - All necessary views and mailers
 
 **What we're adding:**
+
 - Postmark for production email delivery
 - 2FA with TOTP (rodauth-otp feature)
 - Email template branding
@@ -777,8 +783,7 @@ config.action_mailer.default_url_options = {
 
 ### Questions for Discussion
 
-1. **Grace period for email verification?** Should users have X days to verify
-   before account locked?
+1. **Grace period for email verification:** Decided – in production, users must verify before login; in non-production, allow a 7-day grace period from account creation.
 2. **Mandatory 2FA?** Should administrators/doctors be required to use 2FA?
 3. **Remember device?** Should we implement "trust this device for 30 days" for 2FA?
 4. **Email branding:** Do we have email templates designed?
