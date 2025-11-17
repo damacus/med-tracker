@@ -5,7 +5,7 @@ module Authentication
 
   included do
     before_action :require_authentication
-    helper_method :authenticated?, :current_user
+    helper_method :authenticated?, :current_user, :current_account
   end
 
   class_methods do
@@ -16,16 +16,30 @@ module Authentication
 
   private
 
+  # Primary method: get current user via Rodauth account
   def current_user
-    @current_user ||= Current.session&.user
+    @current_user ||= current_account&.person&.user || legacy_current_user
+  end
+
+  # Get current Rodauth account
+  def current_account
+    @current_account ||= Account.find_by(id: rodauth.session_value) if rodauth.logged_in?
+  end
+
+  # Legacy support for existing User-based sessions
+  def legacy_current_user
+    Current.session&.user
   end
 
   def authenticated?
-    resume_session
+    rodauth.logged_in? || resume_session
   end
 
   def require_authentication
-    resume_session || request_authentication
+    return if rodauth.logged_in?
+    return if resume_session
+
+    request_authentication
   end
 
   def resume_session
@@ -38,13 +52,14 @@ module Authentication
 
   def request_authentication
     session[:return_to_after_authenticating] = request.url
-    redirect_to new_session_path
+    redirect_to rodauth.login_path
   end
 
   def after_authentication_url
     session.delete(:return_to_after_authenticating) || root_url
   end
 
+  # Legacy session management (will be removed in Phase 5)
   def start_new_session_for(user)
     user.sessions.create!(user_agent: request.user_agent, ip_address: request.remote_ip).tap do |session|
       Current.session = session
@@ -53,7 +68,7 @@ module Authentication
   end
 
   def terminate_session
-    Current.session.destroy
+    Current.session&.destroy
     cookies.delete(:session_id)
   end
 end

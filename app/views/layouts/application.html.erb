@@ -22,7 +22,7 @@
     <%= javascript_include_tag "application", "data-turbo-track": "reload", type: "module" %>
 
   <body>
-    <%= render Components::Layouts::Navigation.new %>
+    <%= render Components::Layouts::Navigation.new(current_user: current_user) %>
     <% if content_for?(:flash) %>
       <%= yield :flash %>
     <% else %>

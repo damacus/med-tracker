@@ -83,10 +83,11 @@ RSpec.describe 'Clinician Access Authorization' do
   end
 
   def sign_in_as(user, password: 'password')
+    login_as(user)
     visit login_path
     fill_in 'Email address', with: user.email_address
     fill_in 'Password', with: password
-    click_button 'Sign in'
+    click_button 'Login'
     expect(page).to have_current_path(root_path)
   end
 end

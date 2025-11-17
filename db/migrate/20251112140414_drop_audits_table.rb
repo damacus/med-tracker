@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class DropAuditsTable < ActiveRecord::Migration[8.1]
+class DropAuditsTable < ActiveRecord::Migration[8.0]
   def up
     drop_table :audits if table_exists?(:audits)
   end

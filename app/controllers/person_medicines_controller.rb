@@ -42,7 +42,7 @@ class PersonMedicinesController < ApplicationController
       end
     else
       respond_to do |format|
-        format.html { render :new, status: :unprocessable_entity, locals: { medicines: @medicines, person: @person } }
+        format.html { render :new, status: :unprocessable_content, locals: { medicines: @medicines, person: @person } }
         format.turbo_stream do
           render turbo_stream: turbo_stream.update('modal', partial: 'shared/modal', locals: {
                                                      title: "Add Medicine for #{@person.name}",
@@ -50,7 +50,7 @@ class PersonMedicinesController < ApplicationController
                                                        partial: 'form',
                                                        locals: { person_medicine: @person_medicine, inline: true, medicines: @medicines, person: @person }
                                                      )
-                                                   }), status: :unprocessable_entity
+                                                   }), status: :unprocessable_content
         end
       end
     end

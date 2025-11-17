@@ -19,7 +19,7 @@ RSpec.describe 'Navigation', type: :system do
       visit login_path
       fill_in 'email_address', with: user.email_address
       fill_in 'password', with: 'password'
-      click_button 'Sign in'
+      click_button 'Login'
 
       # Check navigation elements for authenticated user
       within 'nav' do

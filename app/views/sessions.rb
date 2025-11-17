@@ -150,7 +150,7 @@ module Views
       end
 
       def submit_button
-        render RubyUI::Button.new(type: :submit, variant: :primary, size: :md, class: 'w-full') { 'Sign in' }
+        render RubyUI::Button.new(type: :submit, variant: :primary, size: :md, class: 'w-full') { 'Login' }
       end
     end
   end

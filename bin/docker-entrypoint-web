@@ -6,18 +6,34 @@ if [[ -z "${LD_PRELOAD+x}" ]]; then
     export LD_PRELOAD
 fi
 
+echo "Installing gems..."
+bundle install
+
+# Precompile assets if needed
+if [[ ! -f "public/assets/.manifest.json" ]]; then
+  echo "Precompiling assets..."
+  ./bin/rails assets:precompile
+else
+  echo "Assets already compiled."
+fi
+
 # If running the rails server then create or migrate existing database
 if [[ "${*: -2:1}" == "./bin/rails" ]] && [[ "${*: -1:1}" == "server" ]]; then
   ./bin/rails db:prepare
   TLS_DOMAIN=ironstone.casa thrust rails serve
 fi
 
-if ./bin/rails db:migrate:status | grep -q down
-then
-  echo "Running migrations..."
-  ./bin/rails db:migrate
+if ! bundle exec rails runner "ActiveRecord::Base.connection.table_exists?('schema_migrations')" 2>/dev/null; then
+  echo "Loading schema..."
+  ./bin/rails db:schema:load
 else
-  echo "Database is up to date."
+  echo "Database exists, checking for pending migrations..."
+  if ./bin/rails db:migrate:status | grep -q "^\s*down"; then
+    echo "Running pending migrations..."
+    ./bin/rails db:migrate
+  else
+    echo "Database is up to date."
+  fi
 fi
 
 exec "${@}"

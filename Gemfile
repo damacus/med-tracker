@@ -20,6 +20,12 @@ gem 'stimulus-rails'
 gem 'jbuilder'
 # Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
 gem 'bcrypt', '>= 3.1'
+# Authentication framework [https://rodauth.jeremyevans.net/]
+gem 'rodauth-rails', '~> 1.15'
+# OAuth integration for Rodauth [https://github.com/janko/rodauth-omniauth]
+gem 'rodauth-omniauth', '~> 0.4'
+# OAuth provider for Google
+gem 'omniauth-google-oauth2', '~> 1.2'
 # Authorization framework [https://github.com/varvet/pundit]
 gem 'pundit', '>= 2.4'
 # Audit logging [https://github.com/paper-trail-gem/paper_trail]
@@ -78,5 +84,3 @@ group :development do
   gem 'ruby_ui', require: false
   gem 'web-console'
 end
-
-gem 'sqlite3', '~> 2.8'

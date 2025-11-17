@@ -10,6 +10,7 @@ if Rails.env.local?
 
   # Load fixtures in order to respect foreign key constraints
   SpecFixtureLoader.load(
+    :accounts,
     :people,
     :users,
     :medicines,

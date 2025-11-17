@@ -16,7 +16,7 @@ RSpec.describe 'Sessions::New view', type: :system do
     aggregate_failures 'login form' do
       expect(page).to have_field('email_address')
       expect(page).to have_field('password')
-      expect(page).to have_button('Sign in')
+      expect(page).to have_button('Login')
       expect(page).to have_link('Forgot password?')
     end
   end
@@ -28,7 +28,7 @@ RSpec.describe 'Sessions::New view', type: :system do
       expect(page).to have_css('h1', text: 'MedTracker')
       expect(page).to have_css('p', text: 'Sign in to manage your medication plan')
       expect(page).to have_css('form.space-y-6')
-      expect(page).to have_button('Sign in', type: 'submit')
+      expect(page).to have_button('Login', type: 'submit')
       expect(page).to have_css('div[data-controller="ruby-ui--form-field"]', count: 2)
       expect(page).to have_css('input[data-ruby-ui--form-field-target="input"]', count: 2)
       expect(page).to have_css('a.text-primary', text: 'Forgot password?')
@@ -40,7 +40,7 @@ RSpec.describe 'Sessions::New view', type: :system do
     visit new_session_path
     fill_in 'email_address', with: 'wrong@example.com'
     fill_in 'password', with: 'wrongpassword'
-    click_button 'Sign in'
+    click_button 'Login'
 
     aggregate_failures 'login form' do
       expect(page).to have_content('Try another email address or password')
@@ -51,10 +51,10 @@ RSpec.describe 'Sessions::New view', type: :system do
     user = users(:john)
 
     visit login_path
-    fill_in 'email_address', with: user.email_address
+    fill_in 'email', with: user.email_address
     fill_in 'password', with: 'password'
-    click_button 'Sign in'
+    click_button 'Login'
 
-    expect(page).to have_content('Signed in successfully.')
+    expect(page).to have_content('You have been logged in')
   end
 end

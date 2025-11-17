@@ -18,7 +18,7 @@ class UsersController < ApplicationController
       redirect_to root_path, notice: t('users.welcome')
     else
       @user.build_person unless @user.person
-      render :new, status: :unprocessable_entity
+      render :new, status: :unprocessable_content
     end
   end
 

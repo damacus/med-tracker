@@ -1,8 +1,8 @@
 ---
 services:
-  db_test:
+  db:
     image: postgres:18-alpine
-    hostname: dbtest
+    hostname: db
     environment:
       POSTGRES_USER: medtracker_test
       POSTGRES_PASSWORD: medtracker_test_password
@@ -14,24 +14,23 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
-
     networks:
       default:
         aliases:
-          - dbtest
+          - db
 
-  test:
+  web:
     build:
       context: .
       dockerfile: Dockerfile.test
     depends_on:
-      db_test:
+      db:
         condition: service_healthy
     environment:
       RAILS_ENV: test
       TEST_DATABASE_ADAPTER: postgresql
       DATABASE_URL: >-
-        postgres://medtracker_test:medtracker_test_password@dbtest:5432/medtracker_test
+        postgres://medtracker_test:medtracker_test_password@db:5432/medtracker_test
     ports:
       - "3000:3000"
     volumes:

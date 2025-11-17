@@ -60,11 +60,11 @@ ENV RAILS_ENV="${RAILS_ENV}" \
   USER="ruby" \
   PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
-COPY --chown=ruby:ruby bin/docker-entrypoint-test ./bin/
-RUN chmod +x bin/docker-entrypoint-test
+COPY --chown=ruby:ruby bin/docker-entrypoint-web ./bin/
+RUN chmod +x bin/docker-entrypoint-web
 
 COPY --chown=ruby:ruby . .
 
-ENTRYPOINT ["/app/bin/docker-entrypoint-test"]
+ENTRYPOINT ["/app/bin/docker-entrypoint-web"]
 
 CMD ["bundle", "exec", "rspec"]

@@ -60,14 +60,14 @@ class PrescriptionsController < ApplicationController
       end
     else
       respond_to do |format|
-        format.html { render :new, status: :unprocessable_entity, locals: { medicines: @medicines } }
+        format.html { render :new, status: :unprocessable_content, locals: { medicines: @medicines } }
         format.turbo_stream do
           render turbo_stream: turbo_stream.update('modal', partial: 'shared/modal', locals: {
                                                      title: t('prescriptions.modal.new_title', person: @person.name),
                                                      content: render_to_string(partial: 'form',
                                                                                locals: { prescription: @prescription,
                                                                                          inline: true, medicines: @medicines })
-                                                   }), status: :unprocessable_entity
+                                                   }), status: :unprocessable_content
         end
       end
     end
@@ -94,14 +94,14 @@ class PrescriptionsController < ApplicationController
     else
       @medicines = Medicine.all
       respond_to do |format|
-        format.html { render :edit, status: :unprocessable_entity, locals: { medicines: @medicines } }
+        format.html { render :edit, status: :unprocessable_content, locals: { medicines: @medicines } }
         format.turbo_stream do
           render turbo_stream: turbo_stream.update('modal', partial: 'shared/modal', locals: {
                                                      title: t('prescriptions.modal.edit_title', person: @person.name),
                                                      content: render_to_string(partial: 'form',
                                                                                locals: { prescription: @prescription,
                                                                                          inline: true, medicines: @medicines })
-                                                   }), status: :unprocessable_entity
+                                                   }), status: :unprocessable_content
         end
       end
     end
@@ -110,7 +110,7 @@ class PrescriptionsController < ApplicationController
   def destroy
     authorize @prescription
     @prescription.destroy
-    redirect_back fallback_location: person_path(@person), notice: t('prescriptions.deleted')
+    redirect_back_or_to person_path(@person), notice: t('prescriptions.deleted')
   end
 
   def take_medicine
@@ -122,7 +122,7 @@ class PrescriptionsController < ApplicationController
       taken_at: Time.current,
       amount_ml: amount
     )
-    redirect_back fallback_location: person_path(@person), notice: t('prescriptions.medicine_taken')
+    redirect_back_or_to person_path(@person), notice: t('prescriptions.medicine_taken')
   end
 
   private

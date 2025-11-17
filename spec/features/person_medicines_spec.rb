@@ -12,11 +12,10 @@ RSpec.describe 'Person Medicines' do
   before do
     skip 'Person medicines UI not yet implemented - models and backend are ready'
 
-    # Sign in
     visit login_path
     fill_in 'Email', with: user.email_address
     fill_in 'Password', with: 'password'
-    click_button 'Sign in'
+    click_button 'Login'
   end
 
   describe 'adding a non-prescription medicine' do

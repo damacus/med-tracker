@@ -15,6 +15,12 @@ Rails.application.routes.draw do
   # Dashboard
   get 'dashboard', to: 'dashboard#index'
 
+  # Profile
+  resource :profile, only: %i[show update]
+
+  # Test route
+  get 'test_sheet', to: ->(env) { [200, {'Content-Type' => 'text/html'}, [File.read(Rails.root.join('app/views/test_sheet.html.erb'))]] }
+
   # Medicine management
   resources :medicines do
     member do
@@ -23,15 +29,11 @@ Rails.application.routes.draw do
   end
   get 'medicine-finder', to: 'medicines#finder', as: :medicine_finder
 
-  # Authentication
-  get 'sign_up', to: 'users#new'
-  resources :users, only: %i[new create]
+  # Authentication - Rodauth handles /login, /logout, /create-account via middleware
+  # Legacy routes kept for backwards compatibility during migration
+  get 'sign_up', to: 'users#new' # TODO: Remove in Phase 5
+  resources :users, only: %i[new create] # TODO: Remove in Phase 5
 
-  get 'login', to: 'sessions#new'
-  post 'login', to: 'sessions#create'
-  delete 'logout', to: 'sessions#destroy'
-
-  # People and prescriptions management
   resources :prescriptions do
     resources :take_medicines, only: [:create]
     resources :medication_takes, only: [:create]

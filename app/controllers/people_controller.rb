@@ -43,7 +43,7 @@ class PeopleController < ApplicationController
         format.html { redirect_to @person, notice: t('people.created') }
         format.turbo_stream { redirect_to people_path, notice: t('people.created') }
       else
-        format.html { render :new, status: :unprocessable_entity }
+        format.html { render :new, status: :unprocessable_content }
         format.turbo_stream do
           render turbo_stream: turbo_stream.replace(
             'person_form',
@@ -63,8 +63,8 @@ class PeopleController < ApplicationController
         format.turbo_stream { redirect_to people_path, notice: t('people.updated') }
         format.json { render :show, status: :ok, location: @person }
       else
-        format.html { render :edit, status: :unprocessable_entity }
-        format.json { render json: @person.errors, status: :unprocessable_entity }
+        format.html { render :edit, status: :unprocessable_content }
+        format.json { render json: @person.errors, status: :unprocessable_content }
       end
     end
   end

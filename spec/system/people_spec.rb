@@ -139,6 +139,6 @@ RSpec.describe 'People' do
     visit login_path
     fill_in 'Email address', with: user.email_address
     fill_in 'Password', with: 'password'
-    click_button 'Sign in'
+    click_button 'Login'
   end
 end

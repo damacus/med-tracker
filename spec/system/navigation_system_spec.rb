@@ -13,10 +13,7 @@ RSpec.describe 'Navigation' do
     it 'shows navigation with a sign out button' do
       user = users(:john) # Admin user from fixtures
 
-      visit login_path
-      fill_in 'email_address', with: user.email_address
-      fill_in 'password', with: 'password'
-      click_button 'Sign in'
+      login_as(user)
 
       # Check navigation elements for authenticated user
       within 'nav' do

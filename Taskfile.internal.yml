@@ -1,0 +1,65 @@
+---
+version: '3'
+
+tasks:
+  rubocop:
+    desc: Run Rubocop tests (installs Playwright, sets up DB, runs RSpec)
+    internal: true
+    cmds:
+      - bundle exec rubocop
+
+  run:
+    desc: Run command
+    internal: true
+    vars:
+      ENVIRONMENT: {ref: .ENVIRONMENT}
+      SERVICE: {ref: .SERVICE}
+      COMMAND: {ref: .COMMAND}
+    cmds:
+      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml run {{ .SERVICE }} {{ .COMMAND }}
+
+  build:
+    desc: Build Docker image
+    internal: true
+    vars:
+      ENVIRONMENT: {ref: .ENVIRONMENT}
+      NO_CACHE: '{{ .NO_CACHE | default "" }}'
+    cmds:
+      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml build {{ if .NO_CACHE }}--no-cache{{ end }}
+
+  up:
+    desc: Run Rails server
+    internal: true
+    vars:
+      ENVIRONMENT: {ref: .ENVIRONMENT}
+    cmds:
+      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml up -d --remove-orphans
+      - echo "Visit http://localhost:3000 to see the app"
+
+  stop:
+    desc: Stop Rails server
+    internal: true
+    vars:
+      ENVIRONMENT: {ref: .ENVIRONMENT}
+    cmds:
+      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml down
+
+  logs:
+    desc: Follow logs for Rails server
+    internal: true
+    vars:
+      ENVIRONMENT: {ref: .ENVIRONMENT}
+    cmds:
+      - docker compose -f docker-compose.{{ .ENVIRONMENT}}.yml logs -f
+
+  seed:
+    desc: Seed the database
+    internal: true
+    vars:
+      ENVIRONMENT: {ref: .ENVIRONMENT}
+    cmds:
+      - task: run
+        args:
+          ENVIRONMENT: {ref: .ENVIRONMENT}
+          SERVICE: web
+          COMMAND: 'rails db:seed'

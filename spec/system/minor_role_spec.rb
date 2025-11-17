@@ -39,9 +39,7 @@ RSpec.describe 'Minor role in user form' do
   end
 
   def sign_in_as(user, password: 'password')
-    visit login_path
-    fill_in 'Email address', with: user.email_address
-    fill_in 'Password', with: password
-    click_button 'Sign in'
+    login_as(user)
+    login_as(user)
   end
 end

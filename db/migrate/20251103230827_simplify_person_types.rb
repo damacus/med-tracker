@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class SimplifyPersonTypes < ActiveRecord::Migration[8.1]
+class SimplifyPersonTypes < ActiveRecord::Migration[8.0]
   def up
     # Map old person types to new simplified types
     # Old: adult_patient(0), child(1), parent(2), carer(3), nurse(4), doctor(5), administrator(6)

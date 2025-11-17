@@ -32,7 +32,7 @@ module Admin
       if @user.save
         redirect_to admin_users_path, notice: 'User was successfully created.'
       else
-        render Components::Admin::Users::FormView.new(user: @user, url_helpers: self), status: :unprocessable_entity
+        render Components::Admin::Users::FormView.new(user: @user, url_helpers: self), status: :unprocessable_content
       end
     end
 
@@ -43,7 +43,7 @@ module Admin
       if @user.update(user_params)
         redirect_to admin_users_path, notice: 'User was successfully updated.'
       else
-        render Components::Admin::Users::FormView.new(user: @user, url_helpers: self), status: :unprocessable_entity
+        render Components::Admin::Users::FormView.new(user: @user, url_helpers: self), status: :unprocessable_content
       end
     end
 

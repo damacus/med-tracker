@@ -1,9 +1,11 @@
 # User Signup (Rodauth) Implementation Plan
 
 **Created**: 2025-11-15
-**Status**: Draft
+**Status**: ⚠️ SUPERSEDED by RODAUTH_SIGNUP_IMPLEMENTATION.md
 **Parent Document**: USER_MANAGEMENT_PLAN.md
-**Related**: Issue #118, PR #119, USER_SIGNUP_AND_2FA_PLAN.md
+**Related**: Issue #118, PR #119 (closed), USER_SIGNUP_AND_2FA_PLAN.md
+
+> **Note**: This plan has been superseded by `RODAUTH_SIGNUP_IMPLEMENTATION.md` which provides a more focused, actionable implementation based on learnings from PR #119.
 
 ## Objectives
 
