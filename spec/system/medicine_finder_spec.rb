@@ -9,7 +9,7 @@ RSpec.describe 'MedicineFinder' do
 
   before do
     driven_by(:rack_test)
-    sign_in_as(user)
+    login_as(user)
   end
 
   it 'displays the medicine finder page' do
@@ -23,10 +23,5 @@ RSpec.describe 'MedicineFinder' do
         expect(page).to have_content('Search for medicines by name or active ingredient')
       end
     end
-  end
-
-  def sign_in_as(user)
-    login_as(user)
-    login_as(user)
   end
 end

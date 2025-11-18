@@ -20,7 +20,7 @@ RSpec.describe 'Person Medicines Authorization' do
     let(:medicine) { medicines(:vitamin_d) }
 
     it 'allows administrators to add medicines to any person' do
-      sign_in_as(admin)
+      login_as(admin)
       visit person_path(assigned_patient)
 
       expect(page).to have_link('Add Medicine')
@@ -33,7 +33,7 @@ RSpec.describe 'Person Medicines Authorization' do
     end
 
     it 'denies doctors ability to add medicines' do
-      sign_in_as(doctor)
+      login_as(doctor)
       visit person_path(assigned_patient)
 
       expect(page).to have_content('My Medicines')
@@ -41,7 +41,7 @@ RSpec.describe 'Person Medicines Authorization' do
     end
 
     it 'denies nurses ability to add medicines' do
-      sign_in_as(nurse)
+      login_as(nurse)
       visit person_path(assigned_patient)
 
       expect(page).to have_content('My Medicines')
@@ -49,14 +49,14 @@ RSpec.describe 'Person Medicines Authorization' do
     end
 
     it 'denies carers ability to add medicines to unrelated people' do
-      sign_in_as(carer)
+      login_as(carer)
       visit person_path(unrelated_person)
 
       expect(page).to have_content('You are not authorized to perform this action')
     end
 
     it 'denies carers ability to add medicines to their assigned patients' do
-      sign_in_as(carer)
+      login_as(carer)
       visit person_path(assigned_patient)
 
       expect(page).to have_content('My Medicines')
@@ -75,7 +75,7 @@ RSpec.describe 'Person Medicines Authorization' do
     end
 
     it 'allows carers to take medicine for assigned patients' do
-      sign_in_as(carer)
+      login_as(carer)
       visit person_path(assigned_patient)
 
       within("#person_medicine_#{person_medicine.id}") do
@@ -87,7 +87,7 @@ RSpec.describe 'Person Medicines Authorization' do
     end
 
     it 'denies doctors ability to take medicines' do
-      sign_in_as(doctor)
+      login_as(doctor)
       visit person_path(assigned_patient)
 
       within("#person_medicine_#{person_medicine.id}") do
@@ -96,7 +96,7 @@ RSpec.describe 'Person Medicines Authorization' do
     end
 
     it 'denies nurses ability to take medicines' do
-      sign_in_as(nurse)
+      login_as(nurse)
       visit person_path(assigned_patient)
 
       within("#person_medicine_#{person_medicine.id}") do
@@ -113,7 +113,7 @@ RSpec.describe 'Person Medicines Authorization' do
         notes: 'Unrelated medicine'
       )
 
-      sign_in_as(carer)
+      login_as(carer)
       visit person_path(unrelated_person)
 
       expect(page).to have_content('You are not authorized to perform this action')
@@ -131,7 +131,7 @@ RSpec.describe 'Person Medicines Authorization' do
     end
 
     it 'allows administrators to remove medicines from any person' do
-      sign_in_as(admin)
+      login_as(admin)
       visit person_path(assigned_patient)
 
       within("#person_medicine_#{person_medicine.id}") do
@@ -144,7 +144,7 @@ RSpec.describe 'Person Medicines Authorization' do
     end
 
     it 'denies doctors ability to remove medicines' do
-      sign_in_as(doctor)
+      login_as(doctor)
       visit person_path(assigned_patient)
 
       within("#person_medicine_#{person_medicine.id}") do
@@ -153,7 +153,7 @@ RSpec.describe 'Person Medicines Authorization' do
     end
 
     it 'denies nurses ability to remove medicines' do
-      sign_in_as(nurse)
+      login_as(nurse)
       visit person_path(assigned_patient)
 
       within("#person_medicine_#{person_medicine.id}") do
@@ -162,7 +162,7 @@ RSpec.describe 'Person Medicines Authorization' do
     end
 
     it 'denies carers ability to remove medicines from assigned patients' do
-      sign_in_as(carer)
+      login_as(carer)
       visit person_path(assigned_patient)
 
       within("#person_medicine_#{person_medicine.id}") do
@@ -181,7 +181,7 @@ RSpec.describe 'Person Medicines Authorization' do
         notes: 'Test medicine'
       )
 
-      sign_in_as(admin)
+      login_as(admin)
       visit person_path(assigned_patient)
 
       expect(page).to have_content('My Medicines')
@@ -195,7 +195,7 @@ RSpec.describe 'Person Medicines Authorization' do
         notes: 'Test medicine'
       )
 
-      sign_in_as(doctor)
+      login_as(doctor)
       visit person_path(assigned_patient)
 
       expect(page).to have_content('My Medicines')
@@ -209,7 +209,7 @@ RSpec.describe 'Person Medicines Authorization' do
         notes: 'Test medicine'
       )
 
-      sign_in_as(nurse)
+      login_as(nurse)
       visit person_path(assigned_patient)
 
       expect(page).to have_content('My Medicines')
@@ -223,7 +223,7 @@ RSpec.describe 'Person Medicines Authorization' do
         notes: 'Test medicine'
       )
 
-      sign_in_as(carer)
+      login_as(carer)
       visit person_path(assigned_patient)
 
       expect(page).to have_content('My Medicines')
@@ -238,19 +238,10 @@ RSpec.describe 'Person Medicines Authorization' do
         pm.notes = 'Unrelated medicine'
       end
 
-      sign_in_as(carer)
+      login_as(carer)
       visit person_path(unrelated_person)
 
       expect(page).to have_content('You are not authorized to perform this action')
     end
-  end
-
-  def sign_in_as(user, password: 'password')
-    login_as(user)
-    visit login_path
-    fill_in 'Email address', with: user.email_address
-    fill_in 'Password', with: password
-    click_button 'Login'
-    expect(page).to have_current_path(dashboard_path)
   end
 end

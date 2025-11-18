@@ -14,7 +14,7 @@ RSpec.describe 'Clinician Access Authorization' do
 
   describe 'viewing people' do
     it 'allows doctors to view all people' do
-      sign_in_as(doctor)
+      login_as(doctor)
       visit people_path
 
       expect(page).to have_content('People')
@@ -22,7 +22,7 @@ RSpec.describe 'Clinician Access Authorization' do
     end
 
     it 'allows nurses to view all people' do
-      sign_in_as(nurse)
+      login_as(nurse)
       visit people_path
 
       expect(page).to have_content('People')
@@ -30,7 +30,7 @@ RSpec.describe 'Clinician Access Authorization' do
     end
 
     it 'allows doctors to view any person' do
-      sign_in_as(doctor)
+      login_as(doctor)
       person = people(:john)
       visit person_path(person)
 
@@ -40,7 +40,7 @@ RSpec.describe 'Clinician Access Authorization' do
 
   describe 'managing people' do
     it 'denies doctors ability to create new people' do
-      sign_in_as(doctor)
+      login_as(doctor)
       visit people_path
 
       expect(page).to have_css('h1', text: 'People')
@@ -48,7 +48,7 @@ RSpec.describe 'Clinician Access Authorization' do
     end
 
     it 'denies nurses ability to edit people' do
-      sign_in_as(nurse)
+      login_as(nurse)
       person = people(:john)
       visit person_path(person)
 
@@ -57,7 +57,7 @@ RSpec.describe 'Clinician Access Authorization' do
     end
 
     it 'denies doctors ability to delete people' do
-      sign_in_as(doctor)
+      login_as(doctor)
       person = people(:john)
       visit person_path(person)
 
@@ -68,21 +68,21 @@ RSpec.describe 'Clinician Access Authorization' do
 
   describe 'user management' do
     it 'denies doctors access to user management' do
-      sign_in_as(doctor)
+      login_as(doctor)
       visit admin_users_path
 
       expect(page).to have_content('You are not authorized to perform this action')
     end
 
     it 'denies nurses access to user management' do
-      sign_in_as(nurse)
+      login_as(nurse)
       visit admin_users_path
 
       expect(page).to have_content('You are not authorized to perform this action')
     end
   end
 
-  def sign_in_as(user, password: 'password')
+  def login_as(user, password: 'password')
     login_as(user)
     visit login_path
     fill_in 'Email address', with: user.email_address

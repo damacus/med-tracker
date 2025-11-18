@@ -12,7 +12,7 @@ RSpec.describe 'Minor role in user form' do
   end
 
   it 'shows minor role in the dropdown' do
-    sign_in_as(admin)
+    login_as(admin)
 
     visit new_admin_user_path
 
@@ -20,7 +20,7 @@ RSpec.describe 'Minor role in user form' do
   end
 
   it 'allows creating a user with minor role' do
-    sign_in_as(admin)
+    login_as(admin)
 
     visit new_admin_user_path
 
@@ -36,10 +36,5 @@ RSpec.describe 'Minor role in user form' do
     expect(page).to have_content('User was successfully created')
     expect(page).to have_content('minor@example.com')
     expect(page).to have_content('minor')
-  end
-
-  def sign_in_as(user, _password: 'password')
-    login_as(user)
-    login_as(user)
   end
 end
