@@ -1,92 +1,55 @@
 ---
+# Main Taskfile - Entry point for all task commands
+# See Taskfiles/README.md for detailed documentation
 version: '3'
+silent: true
+
+# Include modular taskfiles under namespaces
+# - dev: Development environment commands (task dev:up, dev:rebuild, etc.)
+# - test: Test environment commands (task test:up, test:rebuild, etc.)
+# - internal: Reusable Docker Compose operations (internal use only)
 includes:
+  dev:
+    taskfile: Taskfiles/dev.yml
+  test:
+    taskfile: Taskfiles/test.yml
   internal:
-    taskfile: Taskfile.internal.yml
+    taskfile: Taskfiles/internal.yml
 
 tasks:
+  # Default task - shows all available commands
+  default:
+    desc: List all available tasks
+    silent: true
+    cmds:
+      - task --list
+
+  # Run RSpec tests in Docker
+  # Usage: task test
+  # Usage: task test TEST_FILE=spec/models/user_spec.rb
   test:
     desc: Run tests in Docker (optionally specify TEST_FILE=path/to/spec)
+    silent: true
     cmds:
-      - task: internal:build
-        vars:
-          ENVIRONMENT: test
+      # - task: internal:build
+      #   vars:
+      #     ENVIRONMENT: test
       - task: internal:run
         vars:
           ENVIRONMENT: test
           SERVICE: web
-        COMMAND: 'bundle exec rspec {{ .TEST_FILE | default "spec" }}'
-      - task: internal:stop
-        vars:
-          ENVIRONMENT: test
+          COMMAND: 'bundle exec rspec {{ .TEST_FILE | default "spec" }}'
+          TEST_FILE: '{{ .TEST_FILE | default "spec" }}'
+      # - task: internal:stop
+      #   vars:
+      #     ENVIRONMENT: test
 
-  dev-up:
+  # Run RuboCop linter
+  # Usage: task rubocop
+  # Usage: task rubocop AUTOCORRECT=true
+  rubocop:
+    desc: Run RuboCop linter (optionally with autocorrect)
+    vars:
+      autocorrect: '{{ .AUTOCORRECT | default "false" }}'
     cmds:
-      - task: internal:up
-        vars: {ENVIRONMENT: dev}
-
-  dev-seed:
-    desc: Seed development database with fixtures
-    cmds:
-      - task: internal:seed
-        vars: {ENVIRONMENT: dev}
-
-  dev-stop:
-    desc: Stop development server
-    cmds:
-      - task: internal:stop
-        vars: {ENVIRONMENT: dev}
-
-  dev-rebuild:
-    desc: Rebuild development server
-    cmds:
-      - task: internal:stop
-        vars: {ENVIRONMENT: dev}
-      - task: internal:build
-        vars:
-          ENVIRONMENT: dev
-          NO_CACHE: true
-      - task: internal:up
-        vars: {ENVIRONMENT: dev}
-      - task: internal:seed
-        vars: {ENVIRONMENT: dev}
-
-  dev-logs:
-    desc: View development server logs
-    cmds:
-      - task: internal:logs
-        vars: {ENVIRONMENT: dev}
-
-  test-up:
-    cmds:
-      - task: internal:up
-        vars: {ENVIRONMENT: test}
-
-  test-seed:
-    desc: Seed test database with fixtures
-    cmds:
-      - task: internal:seed
-        vars: {ENVIRONMENT: test}
-
-  test-stop:
-    desc: Stop test server
-    cmds:
-      - task: internal:stop
-        vars: {ENVIRONMENT: test}
-
-  test-rebuild:
-    desc: Rebuild test server
-    cmds:
-      - task: internal:stop
-        vars: {ENVIRONMENT: test}
-      - cmd: docker compose build --no-cache web
-      - task: internal:up
-        vars: {ENVIRONMENT: test}
-      - task: internal:seed
-        vars: {ENVIRONMENT: test}
-
-  test-logs:
-    desc: View test server logs
-    cmds:
-      - task: internal:logs
-        vars: {ENVIRONMENT: test}
+      - 'bundle exec rubocop {{ if eq .autocorrect "true" }}-A{{ end }}'

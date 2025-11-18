@@ -20,7 +20,7 @@ RSpec.describe 'Navigation' do
         aggregate_failures 'navigation links and buttons' do
           expect(page).to have_link('Medicines')
           expect(page).to have_link('People')
-          expect(page).to have_button('Logout')
+          expect(page).to have_link('Logout')
           expect(page).to have_no_link('Login')
         end
       end

@@ -15,15 +15,10 @@ module RubyUI
       super(**attrs)
     end
 
-    def view_template(&block)
-      template(data: { ruby_ui__sheet_target: 'content' }) do
-        div(data: { controller: 'ruby-ui--sheet-content' }) do
-          backdrop
-          div(**attrs) do
-            block&.call
-            close_button
-          end
-        end
+    def view_template(&)
+      template(data: { 'ruby-ui--sheet-target': 'content' }) do
+        background
+        container(&)
       end
     end
 
@@ -63,6 +58,26 @@ module RubyUI
         end
         span(class: 'sr-only') { 'Close' }
       end
+    end
+
+    def background
+      div(
+        data_state: 'open',
+        class: 'fixed inset-0 z-50 bg-black/80 backdrop-blur-sm data-[state=open]:animate-in',
+        style: 'pointer-events:auto',
+        data_aria_hidden: 'true',
+        aria_hidden: 'true'
+      )
+    end
+
+    def container(&)
+      div(
+        role: 'alertdialog',
+        data_state: 'open',
+        class: 'flex flex-col fixed left-[50%] top-[50%] z-50 w-full max-w-lg max-h-screen overflow-y-auto translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:rounded-lg md:w-full',
+        style: 'pointer-events:auto',
+        &
+      )
     end
 
     def backdrop

@@ -4,8 +4,8 @@ module AuthenticationHelpers
   # Helper method to login via Rodauth
   def rodauth_login(email, password = 'password')
     visit '/login'
-    fill_in 'email', with: email
-    fill_in 'password', with: password
+    fill_in 'Email address', with: email
+    fill_in 'Password', with: password
     click_button 'Login'
 
     # Wait for login to complete

@@ -16,41 +16,42 @@ class CreateRodauth < ActiveRecord::Migration[8.0]
         t.index 'LOWER(email)', unique: true, name: 'index_accounts_on_email'
       end
       t.string :password_hash
+      t.timestamps
     end
 
     # Used by the password reset feature
     create_table :account_password_reset_keys, id: false do |t|
-      t.bigint :id, primary_key: true
-      t.foreign_key :accounts, column: :id
+      t.references :account, null: false, foreign_key: true
       t.string :key, null: false
       t.datetime :deadline, null: false
       t.datetime :email_last_sent, null: false, default: -> { 'CURRENT_TIMESTAMP' }
+      t.timestamps
     end
 
     # Used by the account verification feature
     create_table :account_verification_keys, id: false do |t|
-      t.bigint :id, primary_key: true
-      t.foreign_key :accounts, column: :id
+      t.references :account, null: false, foreign_key: true
       t.string :key, null: false
       t.datetime :requested_at, null: false, default: -> { 'CURRENT_TIMESTAMP' }
       t.datetime :email_last_sent, null: false, default: -> { 'CURRENT_TIMESTAMP' }
+      t.timestamps
     end
 
     # Used by the verify login change feature
     create_table :account_login_change_keys, id: false do |t|
-      t.bigint :id, primary_key: true
-      t.foreign_key :accounts, column: :id
+      t.references :account, null: false, foreign_key: true
       t.string :key, null: false
       t.string :login, null: false
       t.datetime :deadline, null: false
+      t.timestamps
     end
 
     # Used by the remember me feature
     create_table :account_remember_keys, id: false do |t|
-      t.bigint :id, primary_key: true
-      t.foreign_key :accounts, column: :id
+      t.references :account, null: false, foreign_key: true
       t.string :key, null: false
       t.datetime :deadline, null: false
+      t.timestamps
     end
   end
 end

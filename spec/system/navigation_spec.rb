@@ -38,7 +38,7 @@ RSpec.describe 'Navigation' do
       aggregate_failures 'dropdown menu items' do
         expect(page).to have_link('Dashboard')
         expect(page).to have_link('Profile')
-        expect(page).to have_button('Logout')
+        expect(page).to have_link('Logout')
         # Regular user should not see Administration link
         expect(page).to have_no_link('Administration')
       end

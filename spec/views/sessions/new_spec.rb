@@ -38,8 +38,8 @@ RSpec.describe 'Sessions::New view', type: :system do
 
   it 'shows alert messages when login fails' do
     visit new_session_path
-    fill_in 'email_address', with: 'wrong@example.com'
-    fill_in 'password', with: 'wrongpassword'
+    fill_in 'Email address', with: 'wrong@example.com'
+    fill_in 'Password', with: 'wrongpassword'
     click_button 'Login'
 
     aggregate_failures 'login form' do

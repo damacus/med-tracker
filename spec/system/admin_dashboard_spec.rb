@@ -58,7 +58,7 @@ RSpec.describe 'Admin Dashboard' do
     it 'redirects to login' do
       visit admin_root_path
 
-      expect(page).to have_current_path(new_session_path)
+      expect(page).to have_current_path(login_path)
     end
   end
 end

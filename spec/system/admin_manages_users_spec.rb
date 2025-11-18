@@ -9,7 +9,10 @@ RSpec.describe 'AdminManagesUsers' do
   let(:admin) { users(:admin) }
   # Use a unique email for the carer user to avoid conflicts
   let!(:carer) do
-    person = Person.create!(name: 'Carer User', date_of_birth: '1990-01-01')
+    account = Account.create!(email: 'test_carer@example.com',
+                              password_hash: RodauthApp.rodauth.allocate.password_hash('password'),
+                              status: 'verified')
+    person = Person.create!(name: 'Carer User', date_of_birth: '1990-01-01', account: account)
     User.create!(person: person, email_address: 'test_carer@example.com',
                  password: 'password', password_confirmation: 'password', role: :carer)
   end
@@ -183,10 +186,10 @@ RSpec.describe 'AdminManagesUsers' do
   end
 
   def sign_in_as(user, password: 'password')
-    login_as(user)
     visit login_path
     fill_in 'Email address', with: user.email_address
     fill_in 'Password', with: password
     click_button 'Login'
+    expect(page).to have_current_path(dashboard_path)
   end
 end

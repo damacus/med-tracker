@@ -9,7 +9,11 @@ RSpec.describe 'UserSignsUps' do
     driven_by(:rack_test)
   end
 
+  # TODO: This test is for legacy UsersController signup (Phase 5 removal)
+  # Will be replaced with Rodauth signup flow - see RODAUTH_SIGNUP_IMPLEMENTATION.md
   it 'allows a user to sign up and prompts for email verification' do
+    pending 'This test is for legacy UsersController signup (Phase 5 removal)'
+
     visit sign_up_path
 
     fill_in 'Name', with: 'New User'

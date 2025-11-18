@@ -27,7 +27,7 @@ RSpec.describe 'Admin Audit Logs', type: :system do
     it 'redirects unauthenticated users to login' do
       visit admin_audit_logs_path
 
-      expect(page).to have_current_path(new_session_path)
+      expect(page).to have_current_path(login_path)
     end
   end
 

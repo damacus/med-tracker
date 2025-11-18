@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe 'Navigation Flow' do
+  fixtures :users
+
   let(:user) { users(:damacus) }
 
   describe 'Login -> Profile -> Logout flow' do
@@ -11,8 +13,8 @@ RSpec.describe 'Navigation Flow' do
       visit '/login'
       expect(page).to have_content('Welcome back')
 
-      fill_in 'email', with: user.email_address
-      fill_in 'password', with: 'password'
+      fill_in 'Email address', with: user.email_address
+      fill_in 'Password', with: 'password'
       click_button 'Login'
 
       # Verify login successful
@@ -35,7 +37,7 @@ RSpec.describe 'Navigation Flow' do
 
       # Verify logout successful
       using_wait_time(5) do
-        expect(page).to have_current_path('/')
+        expect(page).to have_current_path('/login')
         expect(page).to have_link('Login')
         expect(page).to have_no_button(user.name)
       end

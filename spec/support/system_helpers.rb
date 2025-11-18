@@ -8,12 +8,12 @@ module SystemHelpers
   def sign_in(user)
     visit '/login'
 
-    fill_in 'email_address', with: user.email_address
-    fill_in 'password', with: 'password'
+    fill_in 'Email address', with: user.email_address
+    fill_in 'Password', with: 'password'
 
     click_button 'Login'
 
-    expect(page).to have_current_path('/')
+    expect(page).to have_current_path('/dashboard')
 
     Current.session = { user_id: user.id }
   end

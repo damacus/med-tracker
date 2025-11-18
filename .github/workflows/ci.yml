@@ -52,10 +52,53 @@ jobs:
       - name: Lint code for consistent style
         run: bin/rubocop -f github
 
-  test:
+  test_non_system:
     runs-on: ubuntu-latest
-    name: RSpec Tests
-    timeout-minutes: 60
+    name: RSpec Tests (Models, Policies, Controllers, Components)
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: medtracker_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      TEST_DATABASE_ADAPTER: postgresql
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/medtracker_test
+      RAILS_ENV: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # v5
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4.7'
+          bundler-cache: true
+
+      - name: Set up database
+        run: |
+          bundle exec rails db:create
+          bundle exec rails db:schema:load
+
+      - name: Run non-system tests
+        run: bundle exec rspec --format RSpec::Github::Formatter --exclude-pattern "spec/{system,features,views,components/layouts/navigation_spec.rb}/**/*_spec.rb"
+
+  test_system:
+    runs-on: ubuntu-latest
+    name: RSpec System Tests (Playwright)
+    timeout-minutes: 30
 
     services:
       postgres:
@@ -88,7 +131,7 @@ jobs:
           bundler-cache: true
 
       - name: Install Playwright
-        run: npx playwright install
+        run: npx playwright install --with-deps chromium
 
       - name: Set up database
         run: |
@@ -98,5 +141,5 @@ jobs:
       - name: Precompile assets
         run: bundle exec rails assets:precompile
 
-      - name: Run tests
-        run: bundle exec rspec --format RSpec::Github::Formatter
+      - name: Run system tests
+        run: bundle exec rspec --format RSpec::Github::Formatter spec/system spec/features spec/views spec/components/layouts/navigation_spec.rb

@@ -25,20 +25,6 @@ class RodauthMain < Rodauth::Rails::Auth
     # Avoid DB query that checks accounts table schema at boot time.
     convert_token_id_to_integer? { Account.columns_hash['id'].type == :integer }
 
-    # Change prefix of table and foreign key column names from default "account"
-    # accounts_table :users
-    # verify_account_table :user_verification_keys
-    # verify_login_change_table :user_login_change_keys
-    # reset_password_table :user_password_reset_keys
-    # remember_table :user_remember_keys
-
-    # The secret key used for hashing public-facing tokens for various features.
-    # Defaults to Rails `secret_key_base`, but you can use your own secret key.
-    # hmac_secret "0c94bce9ac171a1c77e330f20ef2413e961ff7da02de30975c42da2edea05dac32dd7cf25928af6c4d309e4130ebf49a95c8fd084025d3c86fdacc52d9e681ff"
-
-    # Use path prefix for all routes.
-    # prefix "/auth"
-
     # Specify the controller used for view rendering, CSRF, and callbacks.
     rails_controller { RodauthController }
 
@@ -50,56 +36,19 @@ class RodauthMain < Rodauth::Rails::Auth
 
     # Store password hash in a column instead of a separate table.
     account_password_hash_column :password_hash
-
-    # Set password when creating account instead of when verifying.
     verify_account_set_password? false
 
     # Change some default param keys.
     login_param 'email'
     login_confirm_param 'email-confirm'
-    # password_confirm_param "confirm_password"
-
-    # Redirect back to originally requested location after authentication.
-    # login_return_to_requested_location? true
-    # two_factor_auth_return_to_requested_location? true # if using MFA
-
-    # Autologin the user after they have reset their password.
-    # reset_password_autologin? true
-
-    # Delete the account record when the user has closed their account.
-    # delete_account_on_close? true
-
-    # Redirect to the app from login and registration pages if already logged in.
-    # already_logged_in { redirect login_redirect }
-
-    # ==> Emails
     send_email do |email|
       # queue email delivery on the mailer after the transaction commits
       db.after_commit { email.deliver_later }
     end
 
-    # ==> Flash
-    # Match flash keys with ones already used in the Rails app.
-    # flash_notice_key :success # default is :notice
-    # flash_error_key :error # default is :alert
-
-    # Override default flash messages.
-    # create_account_notice_flash "Your account has been created. Please verify your account by visiting the confirmation link sent to your email address."
-    # require_login_error_flash "Login is required for accessing this page"
-    # login_notice_flash nil
-
-    # ==> Validation
-    # Override default validation error messages.
-    # no_matching_login_message "user with this email address doesn't exist"
-    # already_an_account_with_this_login_message "user with this email address already exists"
-    # password_too_short_message { "needs to have at least #{password_minimum_length} characters" }
-    # login_does_not_meet_requirements_message { "invalid email#{", #{login_requirement_message}" if login_requirement_message}" }
-
-    # Passwords shorter than 8 characters are considered weak according to OWASP.
-    password_minimum_length 8
+    password_minimum_length 12
     # bcrypt has a maximum input length of 72 bytes, truncating any extra bytes.
-    password_maximum_bytes 72
-
+    password_maximum_bytes 72 # add custom password complexity rules
     # Custom password complexity requirements (alternative to password_complexity feature).
     # password_meets_requirements? do |password|
     #   super(password) && password_complex_enough?(password)
@@ -112,12 +61,7 @@ class RodauthMain < Rodauth::Rails::Auth
     #   end
     # end
 
-    # ==> Remember Feature
-    # Remember all logged in users.
-    after_login { remember_login }
-
-    # Or only remember users that have ticked a "Remember Me" checkbox on login.
-    # after_login { remember_login if param_or_nil("remember") }
+    after_login { remember_login if param_or_nil('remember') }
 
     # Extend user's remember period when remembered via a cookie
     extend_remember_deadline? true

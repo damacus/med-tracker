@@ -38,7 +38,7 @@ RSpec.describe 'Minor role in user form' do
     expect(page).to have_content('minor')
   end
 
-  def sign_in_as(user, password: 'password')
+  def sign_in_as(user, _password: 'password')
     login_as(user)
     login_as(user)
   end

@@ -57,14 +57,7 @@ module Views
       end
 
       def render_personal_info_content
-        render CardContent.new(class: 'space-y-4') do
-          render_info_row('Name', person.name)
-          render_info_row('Email', account.email)
-          render_info_row('Date of Birth', formatted_date_of_birth)
-          render_info_row('Age', person.age.to_s) if person.age
-          render_info_row('Person Type', person.person_type.humanize)
-          render_info_row('Has Capacity', person.has_capacity? ? 'Yes' : 'No')
-        end
+        render PersonalInfoContent.new(person: person, account: account)
       end
 
       def render_account_security_card
@@ -130,52 +123,16 @@ module Views
       end
 
       def render_edit_sheet(label, field, current_value, button_text: 'Edit')
-        render Sheet.new do
-          render SheetTrigger.new do
-            render Button.new(variant: :outline, size: :sm) { button_text }
-          end
-          render SheetContent.new(class: 'sm:max-w-sm') do
-            render SheetHeader.new do
-              render(SheetTitle.new { "Edit #{label}" })
-              render(SheetDescription.new { "Update your #{label.downcase} information." })
-            end
-            form_with(model: field == :email ? account : person, url: profile_path, method: :patch) do
-              render SheetMiddle.new do
-                render_field_input(field, current_value)
-              end
-              render SheetFooter.new do
-                render Button.new(variant: :outline, data: { action: 'click->ruby-ui--sheet-content#close' }) { 'Cancel' }
-                render Button.new(type: :submit) { 'Save' }
-              end
-            end
-          end
-        end
-      end
-
-      def render_field_input(field, current_value)
-        case field
-        when :email
-          label(class: 'text-sm font-medium text-slate-900 mb-2 block') { 'Email Address' }
-          render Input.new(
-            type: 'email',
-            name: 'account[email]',
-            placeholder: 'your.email@example.com',
-            value: current_value
-          )
-        when :date_of_birth
-          label(class: 'text-sm font-medium text-slate-900 mb-2 block') { 'Date of Birth' }
-          render Input.new(
-            type: 'date',
-            name: 'person[date_of_birth]',
-            value: person.date_of_birth&.strftime('%Y-%m-%d')
-          )
-        end
-      end
-
-      def formatted_date_of_birth
-        return 'Not set' unless person.date_of_birth
-
-        person.date_of_birth.strftime('%B %d, %Y')
+        render EditSheet.new(
+          person: person,
+          account: account,
+          field_config: {
+            label: label,
+            field: field,
+            current_value: current_value,
+            button_text: button_text
+          }
+        )
       end
 
       def render_email_change_sheet
@@ -203,85 +160,11 @@ module Views
       end
 
       def render_password_sheet
-        render Sheet.new do
-          render SheetTrigger.new do
-            render Button.new(variant: :outline, size: :sm) { 'Change' }
-          end
-          render SheetContent.new(class: 'sm:max-w-sm') do
-            render SheetHeader.new do
-              render(SheetTitle.new { 'Change Password' })
-              render(SheetDescription.new { 'Update your password to keep your account secure.' })
-            end
-            form_with(url: '/change-password', method: :post) do
-              render SheetMiddle.new do
-                div(class: 'space-y-4') do
-                  div do
-                    label(class: 'text-sm font-medium text-slate-900 mb-2 block') { 'Current Password' }
-                    render Input.new(
-                      type: 'password',
-                      name: 'current_password',
-                      placeholder: 'Enter current password',
-                      required: true
-                    )
-                  end
-                  div do
-                    label(class: 'text-sm font-medium text-slate-900 mb-2 block') { 'New Password' }
-                    render Input.new(
-                      type: 'password',
-                      name: 'new_password',
-                      placeholder: 'Enter new password',
-                      required: true
-                    )
-                  end
-                  div do
-                    label(class: 'text-sm font-medium text-slate-900 mb-2 block') { 'Confirm New Password' }
-                    render Input.new(
-                      type: 'password',
-                      name: 'password_confirmation',
-                      placeholder: 'Confirm new password',
-                      required: true
-                    )
-                  end
-                end
-              end
-              render SheetFooter.new do
-                render Button.new(variant: :outline, data: { action: 'click->ruby-ui--sheet-content#close' }) { 'Cancel' }
-                render Button.new(type: :submit) { 'Update Password' }
-              end
-            end
-          end
-        end
+        render PasswordSheet.new
       end
 
       def render_close_account_dialog
-        div(class: 'flex items-start justify-between p-4 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors') do
-          div(class: 'flex-1') do
-            h3(class: 'text-sm font-medium text-slate-900') { 'Close Account' }
-            p(class: 'text-sm text-slate-600 mt-1') { 'Permanently delete your account and all associated data' }
-          end
-          div(class: 'ml-4') do
-            render AlertDialog.new do
-              render AlertDialogTrigger.new do
-                render Button.new(variant: :destructive, size: :sm) { 'Close Account' }
-              end
-              render AlertDialogContent.new do
-                render AlertDialogHeader.new do
-                  render(AlertDialogTitle.new { 'Are you absolutely sure?' })
-                  render(AlertDialogDescription.new do
-                    'This action cannot be undone. This will permanently delete your account and remove all your data from our servers.'
-                  end)
-                end
-                render AlertDialogFooter.new do
-                  render(AlertDialogCancel.new { 'Cancel' })
-                  render AlertDialogAction.new(
-                    data: { turbo_method: :delete, turbo_confirm: false },
-                    href: '/close-account'
-                  ) { 'Yes, delete my account' }
-                end
-              end
-            end
-          end
-        end
+        render CloseAccountDialog.new
       end
     end
   end

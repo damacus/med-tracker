@@ -12,40 +12,56 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 20_251_115_124_451) do
+ActiveRecord::Schema[8.0].define(version: 20_251_115_121_655) do
   # These are extensions that must be enabled in order to support this database
   enable_extension 'citext'
   enable_extension 'pg_catalog.plpgsql'
 
-  create_table 'account_login_change_keys', force: :cascade do |t|
+  create_table 'account_login_change_keys', id: false, force: :cascade do |t|
+    t.bigint 'account_id', null: false
     t.string 'key', null: false
     t.string 'login', null: false
     t.datetime 'deadline', null: false
+    t.datetime 'created_at', null: false
+    t.datetime 'updated_at', null: false
+    t.index ['account_id'], name: 'index_account_login_change_keys_on_account_id'
   end
 
-  create_table 'account_password_reset_keys', force: :cascade do |t|
+  create_table 'account_password_reset_keys', id: false, force: :cascade do |t|
+    t.bigint 'account_id', null: false
     t.string 'key', null: false
     t.datetime 'deadline', null: false
     t.datetime 'email_last_sent', default: -> { 'CURRENT_TIMESTAMP' }, null: false
+    t.datetime 'created_at', null: false
+    t.datetime 'updated_at', null: false
+    t.index ['account_id'], name: 'index_account_password_reset_keys_on_account_id'
   end
 
-  create_table 'account_remember_keys', force: :cascade do |t|
+  create_table 'account_remember_keys', id: false, force: :cascade do |t|
+    t.bigint 'account_id', null: false
     t.string 'key', null: false
     t.datetime 'deadline', null: false
+    t.datetime 'created_at', null: false
+    t.datetime 'updated_at', null: false
+    t.index ['account_id'], name: 'index_account_remember_keys_on_account_id'
   end
 
-  create_table 'account_verification_keys', force: :cascade do |t|
+  create_table 'account_verification_keys', id: false, force: :cascade do |t|
+    t.bigint 'account_id', null: false
     t.string 'key', null: false
     t.datetime 'requested_at', default: -> { 'CURRENT_TIMESTAMP' }, null: false
     t.datetime 'email_last_sent', default: -> { 'CURRENT_TIMESTAMP' }, null: false
+    t.datetime 'created_at', null: false
+    t.datetime 'updated_at', null: false
+    t.index ['account_id'], name: 'index_account_verification_keys_on_account_id'
   end
 
   create_table 'accounts', force: :cascade do |t|
     t.integer 'status', default: 1, null: false
     t.citext 'email', null: false
     t.string 'password_hash'
-    t.datetime 'created_at', default: -> { 'CURRENT_TIMESTAMP' }, null: false
-    t.datetime 'updated_at', default: -> { 'CURRENT_TIMESTAMP' }, null: false
+    t.datetime 'created_at', null: false
+    t.datetime 'updated_at', null: false
     t.index ['email'], name: 'index_accounts_on_email', unique: true, where: '(status = ANY (ARRAY[1, 2]))'
   end
 
@@ -131,6 +147,7 @@ ActiveRecord::Schema[8.0].define(version: 20_251_115_124_451) do
     t.bigint 'dosage_id', null: false
     t.date 'start_date'
     t.date 'end_date'
+    t.boolean 'active', default: true, null: false
     t.datetime 'created_at', null: false
     t.datetime 'updated_at', null: false
     t.string 'frequency'
@@ -138,7 +155,6 @@ ActiveRecord::Schema[8.0].define(version: 20_251_115_124_451) do
     t.integer 'max_daily_doses', default: 4
     t.integer 'min_hours_between_doses'
     t.integer 'dose_cycle'
-    t.boolean 'active', default: true
     t.bigint 'person_id', null: false
     t.index ['active'], name: 'index_prescriptions_on_active'
     t.index ['dosage_id'], name: 'index_prescriptions_on_dosage_id'
@@ -180,10 +196,10 @@ ActiveRecord::Schema[8.0].define(version: 20_251_115_124_451) do
     t.index ['whodunnit'], name: 'index_versions_on_whodunnit'
   end
 
-  add_foreign_key 'account_login_change_keys', 'accounts', column: 'id'
-  add_foreign_key 'account_password_reset_keys', 'accounts', column: 'id'
-  add_foreign_key 'account_remember_keys', 'accounts', column: 'id'
-  add_foreign_key 'account_verification_keys', 'accounts', column: 'id'
+  add_foreign_key 'account_login_change_keys', 'accounts'
+  add_foreign_key 'account_password_reset_keys', 'accounts'
+  add_foreign_key 'account_remember_keys', 'accounts'
+  add_foreign_key 'account_verification_keys', 'accounts'
   add_foreign_key 'carer_relationships', 'people', column: 'carer_id'
   add_foreign_key 'carer_relationships', 'people', column: 'patient_id'
   add_foreign_key 'dosages', 'medicines'

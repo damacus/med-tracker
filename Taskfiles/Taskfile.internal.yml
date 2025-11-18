@@ -2,12 +2,6 @@
 version: '3'
 
 tasks:
-  rubocop:
-    desc: Run Rubocop tests (installs Playwright, sets up DB, runs RSpec)
-    internal: true
-    cmds:
-      - bundle exec rubocop
-
   run:
     desc: Run command
     internal: true
@@ -16,7 +10,7 @@ tasks:
       SERVICE: {ref: .SERVICE}
       COMMAND: {ref: .COMMAND}
     cmds:
-      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml run {{ .SERVICE }} {{ .COMMAND }}
+      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml run --remove-orphans --rm {{ .SERVICE }} {{ .COMMAND }}
 
   build:
     desc: Build Docker image
@@ -58,8 +52,9 @@ tasks:
     vars:
       ENVIRONMENT: {ref: .ENVIRONMENT}
     cmds:
+      - defer: echo "Database seeding completed!"
       - task: run
-        args:
+        vars:
           ENVIRONMENT: {ref: .ENVIRONMENT}
           SERVICE: web
           COMMAND: 'rails db:seed'

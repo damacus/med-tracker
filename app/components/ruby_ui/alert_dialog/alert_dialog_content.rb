@@ -3,7 +3,7 @@
 module RubyUI
   class AlertDialogContent < Base
     def view_template(&)
-      template(**attrs) do
+      template(data: { 'ruby-ui--alert-dialog-target': 'content' }) do
         div(data: { controller: 'ruby-ui--alert-dialog' }) do
           background
           container(&)

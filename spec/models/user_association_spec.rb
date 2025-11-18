@@ -2,22 +2,26 @@
 
 require 'rails_helper'
 
-RSpec.describe 'User Associations' do
+RSpec.describe User do
   fixtures :accounts, :people, :users
 
-  it 'correctly associates Account -> Person -> User for jane.doe@example.com' do
-    # Get the jane_doe account
+  it 'finds the jane_doe account and verifies status' do
     account = Account.find_by(email: 'jane.doe@example.com')
     expect(account).to be_present
     expect(account.status).to eq('verified')
+  end
 
-    # Verify person association
+  it 'associates account with person correctly' do
+    account = Account.find_by(email: 'jane.doe@example.com')
     person = account.person
     expect(person).to be_present
     expect(person.name).to eq('Jane Doe')
     expect(person.email).to eq('jane.doe@example.com')
+  end
 
-    # Verify user association
+  it 'associates person with user correctly' do
+    account = Account.find_by(email: 'jane.doe@example.com')
+    person = account.person
     user = person.user
     expect(user).to be_present
     expect(user.email_address).to eq('jane.doe@example.com')

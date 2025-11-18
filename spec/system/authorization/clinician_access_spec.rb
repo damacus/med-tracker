@@ -88,6 +88,6 @@ RSpec.describe 'Clinician Access Authorization' do
     fill_in 'Email address', with: user.email_address
     fill_in 'Password', with: password
     click_button 'Login'
-    expect(page).to have_current_path(root_path)
+    expect(page).to have_current_path(dashboard_path)
   end
 end
