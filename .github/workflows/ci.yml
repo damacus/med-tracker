@@ -88,9 +88,7 @@ jobs:
           bundler-cache: true
 
       - name: Set up database
-        run: |
-          bundle exec rails db:create
-          bundle exec rails db:schema:load
+        run: bundle exec rails db:migrate
 
       - name: Run non-system tests
         run: bundle exec rspec --format RSpec::Github::Formatter --exclude-pattern "spec/{system,features,views,components/layouts/navigation_spec.rb}/**/*_spec.rb"
@@ -134,9 +132,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Set up database
-        run: |
-          bundle exec rails db:create
-          bundle exec rails db:schema:load
+        run: bundle exec rails db:migrate
 
       - name: Precompile assets
         run: bundle exec rails assets:precompile

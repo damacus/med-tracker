@@ -64,7 +64,6 @@ child_patient:
   date_of_birth: <%= 5.years.ago.to_date %>
   person_type: 1  # minor
   has_capacity: false
-  account_id: null
   created_at: <%= Time.current %>
   updated_at: <%= Time.current %>
 
