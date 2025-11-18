@@ -8,7 +8,7 @@ name: CI
 
 jobs:
   scan_ruby:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, med-tracker]
     name: Ruby Security Scan
     steps:
       - name: Checkout code
@@ -23,7 +23,7 @@ jobs:
         run: bin/brakeman --no-pager
 
   scan_js:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, med-tracker]
     name: JavaScript Security Scan
     steps:
       - name: Checkout code
@@ -38,7 +38,7 @@ jobs:
         run: bin/importmap audit
 
   lint:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, med-tracker]
     name: Code Style Check
     steps:
       - name: Checkout code
@@ -53,7 +53,7 @@ jobs:
         run: bin/rubocop -f github
 
   test_non_system:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, med-tracker]
     name: RSpec Tests (Models, Policies, Controllers, Components)
     timeout-minutes: 20
 
@@ -94,7 +94,7 @@ jobs:
         run: bundle exec rspec --format RSpec::Github::Formatter --exclude-pattern "spec/{system,features,views,components/layouts/navigation_spec.rb}/**/*_spec.rb"
 
   test_system:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, med-tracker]
     name: RSpec System Tests (Playwright)
     timeout-minutes: 30
 

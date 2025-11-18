@@ -1,0 +1,24 @@
+---
+services:
+  runner:
+    image: myoung34/github-runner:latest
+    container_name: med-tracker-runner
+    environment:
+      - ACCESS_TOKEN=${GITHUB_TOKEN}
+      - REPO_URL=https://github.com/${GITHUB_REPOSITORY:-damacus/med-tracker}
+      - RUNNER_NAME=${RUNNER_NAME:-med-tracker-runner}
+      - LABELS=${RUNNER_LABELS:-self-hosted,linux,x64,med-tracker}
+      - RUNNER_WORKDIR=/tmp/runner/work
+      - RUNNER_GROUP=Default
+    volumes:
+      # Mount Docker socket for Docker-in-Docker support
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Persist runner work directory
+      - runner-work:/tmp/runner
+    restart: unless-stopped
+    security_opt:
+      # Required for Docker-in-Docker
+      - label:disable
+
+volumes:
+  runner-work:
