@@ -10,4 +10,4 @@ auto_execution_mode: 3
 
 ## Definition of Done
 
-The selected tests are all nore green
+The selected tests are all now green

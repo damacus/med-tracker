@@ -18,9 +18,6 @@ Rails.application.routes.draw do
   # Profile
   resource :profile, only: %i[show update]
 
-  # Test route
-  get 'test_sheet', to: ->(env) { [200, {'Content-Type' => 'text/html'}, [File.read(Rails.root.join('app/views/test_sheet.html.erb'))]] }
-
   # Medicine management
   resources :medicines do
     member do

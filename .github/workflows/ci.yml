@@ -61,8 +61,8 @@ jobs:
       postgres:
         image: postgres:18-alpine
         env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           POSTGRES_DB: medtracker_test
         ports:
           - 5432:5432
@@ -74,7 +74,7 @@ jobs:
 
     env:
       TEST_DATABASE_ADAPTER: postgresql
-      DATABASE_URL: postgres://postgres:postgres@localhost:5432/medtracker_test
+      DATABASE_URL: postgres://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/medtracker_test
       RAILS_ENV: test
 
     steps:
@@ -104,8 +104,8 @@ jobs:
       postgres:
         image: postgres:18-alpine
         env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           POSTGRES_DB: medtracker_test
         ports:
           - 5432:5432
@@ -117,7 +117,7 @@ jobs:
 
     env:
       TEST_DATABASE_ADAPTER: postgresql
-      DATABASE_URL: postgres://postgres:postgres@localhost:5432/medtracker_test
+      DATABASE_URL: postgres://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/medtracker_test
       RAILS_ENV: test
 
     steps:
