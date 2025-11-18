@@ -2,19 +2,19 @@
   "hooks": {
     "post_write_code": [
       {
-        "command": "ruby /Users/damacus/repos/damacus/med-tracker/.windsurf/check_gemfile.rb",
+        "command": "ruby .windsurf/check_gemfile.rb",
         "show_output": true,
-        "working_directory": "/Users/damacus/repos/damacus/med-tracker"
+        "working_directory": "."
       },
       {
         "command": "task rubocop AUTOCORRECT=true",
         "show_output": true,
-        "working_directory": "/Users/damacus/repos/damacus/med-tracker"
+        "working_directory": "."
       },
       {
         "command": "task test",
         "show_output": true,
-        "working_directory": "/Users/damacus/repos/damacus/med-tracker"
+        "working_directory": "."
       }
     ]
   }
