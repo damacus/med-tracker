@@ -8,6 +8,8 @@ module Admin
 
       metrics = {
         total_users: User.count,
+        active_users: User.active.count,
+        recent_signups: User.where(created_at: 7.days.ago..).count,
         users_by_role: User.group(:role).count,
         total_people: Person.count,
         people_by_type: Person.group(:person_type).count,

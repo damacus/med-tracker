@@ -9,7 +9,7 @@ module Admin
       users = apply_search(users) if params[:search].present?
       users = apply_role_filter(users) if params[:role].present?
       users = apply_status_filter(users) if params[:status].present?
-      users = users.order(:created_at)
+      users = apply_sorting(users)
       @pagy, users = pagy(:offset, users)
       render Components::Admin::Users::IndexView.new(
         users: users,
@@ -79,7 +79,7 @@ module Admin
     def apply_search(scope)
       search_term = "%#{ActiveRecord::Base.sanitize_sql_like(params[:search])}%"
       scope.joins(:person)
-           .where('people.name LIKE ? OR users.email_address LIKE ?', search_term, search_term)
+           .where('people.name ILIKE ? OR users.email_address ILIKE ?', search_term, search_term)
     end
 
     def apply_role_filter(scope)
@@ -94,8 +94,28 @@ module Admin
       end
     end
 
+    def apply_sorting(scope)
+      sort_column = params[:sort].presence_in(allowed_sort_columns) || 'created_at'
+      sort_direction = params[:direction].presence_in(%w[asc desc]) || 'asc'
+
+      case sort_column
+      when 'name'
+        scope.left_joins(:person).order(Arel.sql("people.name #{sort_direction}"))
+      when 'email'
+        scope.order(email_address: sort_direction.to_sym)
+      when 'role'
+        scope.order(role: sort_direction.to_sym)
+      else
+        scope.order(created_at: sort_direction.to_sym)
+      end
+    end
+
+    def allowed_sort_columns
+      %w[name email created_at role]
+    end
+
     def search_params
-      params.permit(:search, :role, :status)
+      params.permit(:search, :role, :status, :sort, :direction)
     end
 
     def user_params

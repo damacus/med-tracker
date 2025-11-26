@@ -283,22 +283,24 @@ All critical authorization issues have been resolved:
 #### 2.1 Complete Admin CRUD Operations
 **Objective**: Full user lifecycle management for admins
 
-**Status**: 🟡 **75% Complete** (Creation & editing done; deactivation/destroy outstanding)
+**Status**: ✅ **100% Complete**
 
 **Tasks**:
 - [x] `Admin::UsersController#index` with authorization and policy_scope
 - [x] Add `Admin::UsersController#new` and `#create`
 - [x] Add `Admin::UsersController#edit` and `#update`
-- [ ] Add `Admin::UsersController#destroy`
+- [x] Add `Admin::UsersController#destroy` (deactivates user account)
 - [x] Create Phlex form components for user creation/editing
 - [x] Add role selection dropdown (admin-only)
-- [ ] Add person selection/creation
-- [ ] Add user activation/deactivation toggle
+- [x] Person creation via nested attributes on user form
+- [x] Add user activation/deactivation toggle with confirmation dialog
+- [x] Add `Admin::UsersController#activate` action
 - [x] Add system tests for all admin user operations
 
 **Notes**:
 - Combined creation/editing form delivers role assignment and nested person details.
-- Next step: support deactivate/reactivate flows and admin-driven destroy.
+- Deactivation uses soft-delete pattern with `active` boolean column.
+- Confirmation dialog prevents accidental deactivation.
 
 **Acceptance Criteria**:
 - Admins can create users and assign roles
@@ -310,22 +312,23 @@ All critical authorization issues have been resolved:
 #### 2.2 Create Admin Dashboard
 **Objective**: Central admin interface for system management
 
-**Status**: 🟡 **60% Complete** (Core metrics live; additional insights pending)
+**Status**: ✅ **100% Complete**
 
 **Tasks**:
 - [x] Create `Admin::DashboardController`
 - [x] Create dashboard Phlex component with metrics:
   - [x] Total users by role
   - [x] Total people by type
-  - [ ] Recent signups
-  - [ ] Active users
+  - [x] Recent signups (last 7 days)
+  - [x] Active users count
   - [x] Patients without capacity lacking carers
 - [x] Add navigation to admin area (quick links to manage users/people)
 - [x] Add authorization (admin-only)
 - [x] Write system tests
 
 **Notes**:
-- Warning card highlights patients without carers; add additional metrics in follow-up.
+- Warning card highlights patients without carers.
+- All key metrics now displayed on dashboard.
 
 **Acceptance Criteria**:
 - Dashboard shows key metrics *(partially met; add remaining metrics)*
@@ -336,18 +339,20 @@ All critical authorization issues have been resolved:
 #### 2.3 Add User Search & Filtering
 **Objective**: Help admins find users quickly
 
-**Status**: 🟡 **55% Complete** (Search + role filter shipped; pagination/status filters pending)
+**Status**: ✅ **100% Complete**
 
 **Tasks**:
 - [x] Add search form to admin users index
 - [x] Implement search by name, email
-- [x] Add filters by role, active status *(role complete; active status pending)*
-- [ ] Add pagination (Pagy or Kaminari)
-- [ ] Add sorting by name, email, created_at
+- [x] Add filters by role and active status
+- [x] Add pagination (Pagy)
+- [x] Add sorting by name, email, created_at (clickable column headers)
 - [x] Write tests for search/filter functionality
 
 **Notes**:
-- Search persists form state and includes clear action; extend to pagination/sorting next.
+- Search persists form state and includes clear action.
+- Pagination shows 20 users per page with full navigation.
+- Column headers are clickable for ascending/descending sort.
 
 **Acceptance Criteria**:
 - Admins can search users by name/email

@@ -109,12 +109,39 @@ module Components
         def render_table_header
           render RubyUI::TableHeader.new do
             render RubyUI::TableRow.new do
-              render(RubyUI::TableHead.new { 'Name' })
-              render(RubyUI::TableHead.new { 'Email' })
-              render(RubyUI::TableHead.new { 'Role' })
+              render(RubyUI::TableHead.new { render_sortable_header('Name', 'name') })
+              render(RubyUI::TableHead.new { render_sortable_header('Email', 'email') })
+              render(RubyUI::TableHead.new { render_sortable_header('Role', 'role') })
               render(RubyUI::TableHead.new { 'Status' })
               render RubyUI::TableHead.new(class: 'text-right') { 'Actions' }
             end
+          end
+        end
+
+        def render_sortable_header(label, column)
+          current_sort = search_params[:sort]
+          current_direction = search_params[:direction] || 'asc'
+          is_active = current_sort == column
+
+          new_direction = is_active && current_direction == 'asc' ? 'desc' : 'asc'
+          sort_params = search_params.to_h.merge(sort: column, direction: new_direction)
+
+          a(href: "/admin/users?#{sort_params.to_query}", class: sortable_header_class(is_active)) do
+            span { label }
+            render_sort_indicator(is_active, current_direction)
+          end
+        end
+
+        def sortable_header_class(is_active)
+          base = 'inline-flex items-center gap-1 hover:text-slate-900 cursor-pointer'
+          is_active ? "#{base} text-slate-900 font-semibold" : "#{base} text-slate-600"
+        end
+
+        def render_sort_indicator(is_active, direction)
+          return unless is_active
+
+          span(class: 'text-xs') do
+            direction == 'asc' ? '↑' : '↓'
           end
         end
 
