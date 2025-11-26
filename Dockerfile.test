@@ -56,7 +56,7 @@ ARG RAILS_ENV="test"
 ARG NODE_ENV="test"
 ENV RAILS_ENV="${RAILS_ENV}" \
   NODE_ENV="${NODE_ENV}" \
-  PATH="${PATH}:/home/ruby/.local/bin:/node_modules/.bin" \
+  PATH="/usr/bin:/usr/local/bin:${PATH}:/home/ruby/.local/bin:/node_modules/.bin" \
   USER="ruby" \
   PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 

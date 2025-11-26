@@ -3,6 +3,7 @@
 class ApplicationController < ActionController::Base
   include Authentication
   include Pundit::Authorization
+  include Pagy::Method
 
   before_action :set_paper_trail_whodunnit
 

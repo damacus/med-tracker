@@ -21,6 +21,10 @@ class CarerRelationshipPolicy < ApplicationPolicy
     admin?
   end
 
+  def activate?
+    admin?
+  end
+
   private
 
   def carer_owns_relationship?

@@ -8,7 +8,16 @@ Rails.application.routes.draw do
 
   namespace :admin do
     root to: 'dashboard#index'
-    resources :users, only: %i[index new create edit update destroy]
+    resources :users, only: %i[index new create edit update destroy] do
+      member do
+        post :activate
+      end
+    end
+    resources :carer_relationships, only: %i[index new create destroy] do
+      member do
+        post :activate
+      end
+    end
     resources :audit_logs, only: %i[index show]
   end
 

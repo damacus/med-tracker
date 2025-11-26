@@ -65,13 +65,23 @@ tasks:
       - task: :internal:seed
         vars:
           ENVIRONMENT: dev
+      - task: :internal:open-ui
+        vars:
+          ENVIRONMENT: dev
 
-  # View and follow development server logs
-  # Press Ctrl+C to stop following
-  # Usage: task dev:logs
-  logs:
-    desc: View development server logs
-    cmds:
+    # View and follow development server logs
+    # Press Ctrl+C to stop following
+    # Usage: task dev:logs
+    logs:
+      desc: View development server logs
+      cmds:
       - task: :internal:logs
+        vars:
+          ENVIRONMENT: dev
+
+  open-ui:
+    desc: Open development server UI
+    cmds:
+      - task: :internal:open-ui
         vars:
           ENVIRONMENT: dev

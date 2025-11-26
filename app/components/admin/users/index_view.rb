@@ -4,21 +4,25 @@ module Components
   module Admin
     module Users
       class IndexView < Components::Base
+        include Phlex::Rails::Helpers::ButtonTo
         include Phlex::Rails::Helpers::FormWith
 
-        attr_reader :users, :search_params
+        attr_reader :users, :search_params, :current_user, :pagy_obj
 
-        def initialize(users:, search_params: {})
+        def initialize(users:, search_params: {}, current_user: nil, pagy: nil)
           @users = users
           @search_params = search_params
+          @current_user = current_user
+          @pagy_obj = pagy
           super()
         end
 
         def view_template
-          div(data: { testid: 'admin-users' }, class: 'space-y-8') do
+          div(data: { testid: 'admin-users' }, class: 'space-y-8 px-4 sm:px-6 lg:px-8') do
             render_header
             render_search_form
             render_users_table
+            render_pagination if pagy_obj
           end
         end
 
@@ -30,18 +34,14 @@ module Components
               h1(class: 'text-3xl font-semibold text-slate-900') { 'User Management' }
               p(class: 'text-slate-600') { 'Review roles and access levels for everyone using MedTracker.' }
             end
-            a(
-              href: '/admin/users/new',
-              class: 'inline-flex items-center justify-center rounded-md font-medium transition-colors ' \
-                     'px-4 py-2 h-10 text-sm bg-primary text-primary-foreground hover:bg-primary/90'
-            ) { 'New User' }
+            render RubyUI::Link.new(href: '/admin/users/new', variant: :primary) { 'New User' }
           end
         end
 
         def render_search_form
           Card do
             CardContent(class: 'pt-6') do
-              form_with(url: '/admin/users', method: :get, class: 'flex gap-4 items-end') do
+              render RubyUI::Form.new(action: '/admin/users', method: :get, class: 'flex gap-4 items-end') do
                 div(class: 'flex-1') do
                   render RubyUI::FormField.new do
                     render RubyUI::FormFieldLabel.new(for: 'search') { 'Search' }
@@ -58,11 +58,7 @@ module Components
                 div(class: 'w-48') do
                   render RubyUI::FormField.new do
                     render RubyUI::FormFieldLabel.new(for: 'role') { 'Role' }
-                    select(
-                      name: 'role',
-                      id: 'role',
-                      class: input_classes
-                    ) do
+                    select(name: 'role', id: 'role', class: select_classes) do
                       option(value: '', selected: search_params[:role].blank?) { 'All Roles' }
                       User.roles.each_key do |role|
                         option(value: role, selected: search_params[:role] == role) { role.titleize }
@@ -71,30 +67,39 @@ module Components
                   end
                 end
 
+                div(class: 'w-36') do
+                  render RubyUI::FormField.new do
+                    render RubyUI::FormFieldLabel.new(for: 'status') { 'Status' }
+                    select(name: 'status', id: 'status', class: select_classes) do
+                      option(value: '', selected: search_params[:status].blank?) { 'All' }
+                      option(value: 'active', selected: search_params[:status] == 'active') { 'Active' }
+                      option(value: 'inactive', selected: search_params[:status] == 'inactive') { 'Inactive' }
+                    end
+                  end
+                end
+
                 div(class: 'flex gap-2') do
                   render RubyUI::Button.new(type: :submit, variant: :primary) { 'Search' }
-                  if search_params.present? && (search_params[:search].present? || search_params[:role].present?)
-                    a(
-                      href: '/admin/users',
-                      class: 'inline-flex items-center justify-center rounded-md font-medium transition-colors ' \
-                             'px-4 py-2 h-10 text-sm border border-input bg-background hover:bg-accent ' \
-                             'hover:text-accent-foreground'
-                    ) { 'Clear' }
-                  end
+                  render RubyUI::Link.new(href: '/admin/users', variant: :outline) { 'Clear' } if active_filters?
                 end
               end
             end
           end
         end
 
-        def input_classes
-          'w-full rounded-md border border-input bg-background px-3 py-2 text-sm ' \
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+        def select_classes
+          'flex h-9 w-full items-center justify-between rounded-md border border-input ' \
+            'bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background ' \
+            'focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50'
+        end
+
+        def active_filters?
+          search_params[:search].present? || search_params[:role].present? || search_params[:status].present?
         end
 
         def render_users_table
-          div(class: 'overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm') do
-            table(class: 'min-w-full divide-y divide-slate-100') do
+          div(class: 'rounded-xl border border-border bg-card shadow-sm') do
+            render RubyUI::Table.new do
               render_table_header
               render_table_body
             end
@@ -102,18 +107,19 @@ module Components
         end
 
         def render_table_header
-          thead(class: 'bg-slate-50') do
-            tr do
-              th(scope: 'col', class: 'px-6 py-3 text-left text-sm font-semibold text-slate-600') { 'Name' }
-              th(scope: 'col', class: 'px-6 py-3 text-left text-sm font-semibold text-slate-600') { 'Email' }
-              th(scope: 'col', class: 'px-6 py-3 text-left text-sm font-semibold text-slate-600') { 'Role' }
-              th(scope: 'col', class: 'px-6 py-3 text-right text-sm font-semibold text-slate-600') { 'Actions' }
+          render RubyUI::TableHeader.new do
+            render RubyUI::TableRow.new do
+              render(RubyUI::TableHead.new { 'Name' })
+              render(RubyUI::TableHead.new { 'Email' })
+              render(RubyUI::TableHead.new { 'Role' })
+              render(RubyUI::TableHead.new { 'Status' })
+              render RubyUI::TableHead.new(class: 'text-right') { 'Actions' }
             end
           end
         end
 
         def render_table_body
-          tbody(class: 'divide-y divide-slate-100') do
+          render RubyUI::TableBody.new do
             users.each do |user|
               render_user_row(user)
             end
@@ -121,17 +127,177 @@ module Components
         end
 
         def render_user_row(user)
-          tr(class: 'hover:bg-slate-50', data: { user_id: user.id }) do
-            td(class: 'px-6 py-4 text-sm font-medium text-slate-900') { user.name }
-            td(class: 'px-6 py-4 text-sm text-slate-600') { user.email_address }
-            td(class: 'px-6 py-4 text-sm capitalize text-slate-600') { user.role }
-            td(class: 'px-6 py-4 text-sm text-right') do
-              a(
-                href: "/admin/users/#{user.id}/edit",
-                class: 'text-primary hover:text-primary/80 font-medium'
-              ) { 'Edit' }
+          row_class = user.active? ? '' : 'opacity-60'
+          render RubyUI::TableRow.new(class: row_class, data: { user_id: user.id }) do
+            render RubyUI::TableCell.new(class: 'font-medium') { user.name }
+            render(RubyUI::TableCell.new { user.email_address })
+            render RubyUI::TableCell.new(class: 'capitalize') { user.role }
+            render(RubyUI::TableCell.new { render_status_badge(user) })
+            render RubyUI::TableCell.new(class: 'text-right space-x-2') do
+              render RubyUI::Link.new(href: "/admin/users/#{user.id}/edit", variant: :link, size: :sm) { 'Edit' }
+              render_activation_button(user) unless user == current_user
             end
           end
+        end
+
+        def render_status_badge(user)
+          if user.active?
+            render RubyUI::Badge.new(variant: :green) { 'Active' }
+          else
+            render RubyUI::Badge.new(variant: :red) { 'Inactive' }
+          end
+        end
+
+        def render_activation_button(user)
+          if user.active?
+            render_deactivate_dialog(user)
+          else
+            button_to(
+              'Activate',
+              "/admin/users/#{user.id}/activate",
+              method: :post,
+              class: 'text-green-600 hover:text-green-500 font-medium'
+            )
+          end
+        end
+
+        def render_deactivate_dialog(user)
+          render RubyUI::AlertDialog.new do
+            render RubyUI::AlertDialogTrigger.new do
+              render RubyUI::Button.new(variant: :destructive, size: :sm) { 'Deactivate' }
+            end
+            render RubyUI::AlertDialogContent.new do
+              render RubyUI::AlertDialogHeader.new do
+                render(RubyUI::AlertDialogTitle.new { 'Deactivate User Account' })
+                render RubyUI::AlertDialogDescription.new do
+                  "Are you sure you want to deactivate #{user.name}'s account? They will no longer be able to sign in."
+                end
+              end
+              render RubyUI::AlertDialogFooter.new do
+                render(RubyUI::AlertDialogCancel.new { 'Cancel' })
+                form_with(url: "/admin/users/#{user.id}", method: :delete, class: 'inline') do
+                  render RubyUI::Button.new(variant: :destructive, type: :submit) { 'Deactivate' }
+                end
+              end
+            end
+          end
+        end
+
+        def render_pagination
+          div(class: 'flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3 sm:px-6') do
+            div(class: 'flex flex-1 justify-between sm:hidden') do
+              render_mobile_pagination
+            end
+            div(class: 'hidden sm:flex sm:flex-1 sm:items-center sm:justify-between') do
+              render_pagination_info
+              render_pagination_nav
+            end
+          end
+        end
+
+        def render_mobile_pagination
+          if pagy_obj.previous
+            a(href: page_url(pagy_obj.previous), class: mobile_nav_class) { 'Previous' }
+          else
+            span(class: "#{mobile_nav_class} opacity-50 cursor-not-allowed") { 'Previous' }
+          end
+
+          if pagy_obj.next
+            a(href: page_url(pagy_obj.next), class: mobile_nav_class) { 'Next' }
+          else
+            span(class: "#{mobile_nav_class} opacity-50 cursor-not-allowed") { 'Next' }
+          end
+        end
+
+        def mobile_nav_class
+          'relative inline-flex items-center rounded-md border border-slate-300 bg-white ' \
+            'px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50'
+        end
+
+        def render_pagination_info
+          div(data: { testid: 'pagination-info' }) do
+            p(class: 'text-sm text-slate-700') do
+              plain 'Showing '
+              span(class: 'font-medium') { pagy_obj.from.to_s }
+              plain ' to '
+              span(class: 'font-medium') { pagy_obj.to.to_s }
+              plain ' of '
+              span(class: 'font-medium') { pagy_obj.count.to_s }
+              plain ' results'
+            end
+          end
+        end
+
+        def render_pagination_nav
+          return if pagy_obj.pages <= 1
+
+          nav(class: 'isolate inline-flex -space-x-px rounded-md shadow-sm', aria: { label: 'Pagination' }) do
+            render_prev_button
+            render_page_numbers
+            render_next_button
+          end
+        end
+
+        def render_prev_button
+          if pagy_obj.previous
+            a(href: page_url(pagy_obj.previous), class: nav_button_class('rounded-l-md')) do
+              span(class: 'sr-only') { 'Previous' }
+              plain '‹'
+            end
+          else
+            span(class: "#{nav_button_class('rounded-l-md')} opacity-50 cursor-not-allowed") do
+              span(class: 'sr-only') { 'Previous' }
+              plain '‹'
+            end
+          end
+        end
+
+        def render_next_button
+          if pagy_obj.next
+            a(href: page_url(pagy_obj.next), class: nav_button_class('rounded-r-md')) do
+              span(class: 'sr-only') { 'Next' }
+              plain '›'
+            end
+          else
+            span(class: "#{nav_button_class('rounded-r-md')} opacity-50 cursor-not-allowed") do
+              span(class: 'sr-only') { 'Next' }
+              plain '›'
+            end
+          end
+        end
+
+        def render_page_numbers
+          pagy_obj.series.each do |item|
+            case item
+            when Integer
+              a(href: page_url(item), class: page_number_class(false)) { item.to_s }
+            when String
+              span(class: page_number_class(true)) { item }
+            when :gap
+              span(class: gap_class) { '…' }
+            end
+          end
+        end
+
+        def page_url(page)
+          params = search_params.to_h.merge(page: page)
+          "/admin/users?#{params.to_query}"
+        end
+
+        def nav_button_class(extra = '')
+          'relative inline-flex items-center px-2 py-2 text-slate-400 ring-1 ring-inset ' \
+            "ring-slate-300 hover:bg-slate-50 focus:z-20 focus:outline-offset-0 #{extra}"
+        end
+
+        def page_number_class(current)
+          base = 'relative inline-flex items-center px-4 py-2 text-sm font-semibold ' \
+                 'ring-1 ring-inset ring-slate-300 focus:z-20 focus:outline-offset-0'
+          current ? "#{base} z-10 bg-primary text-white" : "#{base} text-slate-900 hover:bg-slate-50"
+        end
+
+        def gap_class
+          'relative inline-flex items-center px-4 py-2 text-sm font-semibold ' \
+            'text-slate-700 ring-1 ring-inset ring-slate-300'
         end
       end
     end

@@ -87,3 +87,13 @@ tasks:
           SERVICE: web
           COMMAND: 'rails db:seed'
       - defer: echo "✓ Database seeding completed"
+
+  open-ui:
+    desc: Open development server UI
+    internal: true
+    vars:
+      ENVIRONMENT: {ref: .ENVIRONMENT}
+    cmds:
+      - |
+        PORT=$(docker ps --format "{{.Ports}}" -f name=med-tracker-web | grep -oE '0\.0\.0\.0:[0-9]+' | cut -d: -f2)
+        open -a "Google Chrome" "http://localhost:$PORT/admin/users"

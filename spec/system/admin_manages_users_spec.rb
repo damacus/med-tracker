@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'AdminManagesUsers' do
-  fixtures :users
+  fixtures :accounts, :people, :users
 
   # Use the admin fixture instead of creating a duplicate user
   let(:admin) { users(:admin) }
@@ -18,7 +18,7 @@ RSpec.describe 'AdminManagesUsers' do
   end
 
   before do
-    driven_by(:rack_test)
+    driven_by(:playwright)
   end
 
   context 'when user is logged in as an admin' do
@@ -53,7 +53,7 @@ RSpec.describe 'AdminManagesUsers' do
 
       expect(page).to have_content('User was successfully created')
       expect(page).to have_content('newuser@example.com')
-      expect(page).to have_content('doctor')
+      expect(page).to have_content('Doctor')
     end
 
     it 'shows validation errors when creating user with invalid data' do
@@ -61,9 +61,21 @@ RSpec.describe 'AdminManagesUsers' do
 
       visit new_admin_user_path
 
+      # Fill in required fields except email to bypass HTML5 validation
+      fill_in 'Name', with: 'Test User'
+      fill_in 'Date of birth', with: '1990-01-01'
+      fill_in 'Password', with: 'password123'
+      fill_in 'Password confirmation', with: 'password123'
+      select 'Doctor', from: 'Role'
+
+      # Clear email field and submit
+      fill_in 'Email address', with: ''
+
+      # Use JavaScript to remove required attribute and submit
+      page.execute_script("document.getElementById('user_email_address').removeAttribute('required')")
       click_button 'Create User'
 
-      expect(page).to have_content('Email address can\'t be blank')
+      expect(page).to have_content("Email address can't be blank")
     end
 
     it 'allows admin to edit an existing user' do
@@ -84,7 +96,7 @@ RSpec.describe 'AdminManagesUsers' do
 
       expect(page).to have_content('User was successfully updated')
       expect(page).to have_content('updated_carer@example.com')
-      expect(page).to have_content('nurse')
+      expect(page).to have_content('Nurse')
     end
 
     it 'shows validation errors when updating user with invalid data' do
@@ -94,9 +106,59 @@ RSpec.describe 'AdminManagesUsers' do
 
       fill_in 'Email address', with: ''
 
+      # Use JavaScript to remove required attribute and submit
+      page.execute_script("document.getElementById('user_email_address').removeAttribute('required')")
       click_button 'Update User'
 
-      expect(page).to have_content('Email address can\'t be blank')
+      expect(page).to have_content("Email address can't be blank")
+    end
+
+    it 'allows admin to deactivate a user' do
+      login_as(admin)
+
+      visit admin_users_path
+
+      within "[data-user-id='#{carer.id}']" do
+        expect(page).to have_content('Active')
+        click_button 'Deactivate'
+      end
+
+      # Confirm in the AlertDialog
+      within('[role="alertdialog"]') do
+        click_button 'Deactivate'
+      end
+
+      expect(page).to have_content('User account has been deactivated')
+      within "[data-user-id='#{carer.id}']" do
+        expect(page).to have_content('Inactive')
+      end
+    end
+
+    it 'allows admin to reactivate a deactivated user' do
+      carer.deactivate!
+      login_as(admin)
+
+      visit admin_users_path
+
+      within "[data-user-id='#{carer.id}']" do
+        expect(page).to have_content('Inactive')
+        click_button 'Activate'
+      end
+
+      expect(page).to have_content('User account has been activated')
+      within "[data-user-id='#{carer.id}']" do
+        expect(page).to have_content('Active')
+      end
+    end
+
+    it 'prevents admin from deactivating themselves' do
+      login_as(admin)
+
+      visit admin_users_path
+
+      within "[data-user-id='#{admin.id}']" do
+        expect(page).to have_no_button('Deactivate')
+      end
     end
 
     it 'allows admin to search users by name' do
@@ -135,6 +197,41 @@ RSpec.describe 'AdminManagesUsers' do
 
       expect(page).to have_content('test_carer@example.com')
       expect(page).to have_no_content(admin.email_address)
+    end
+
+    it 'allows admin to filter users by status' do
+      carer.deactivate!
+      login_as(admin)
+
+      visit admin_users_path
+
+      select 'Inactive', from: 'Status'
+      click_button 'Search'
+
+      expect(page).to have_content(carer.email_address)
+      expect(page).to have_no_content(admin.email_address)
+    end
+
+    it 'allows admin to filter active users only' do
+      carer.deactivate!
+      login_as(admin)
+
+      visit admin_users_path
+
+      select 'Active', from: 'Status'
+      click_button 'Search'
+
+      expect(page).to have_no_content(carer.email_address)
+      expect(page).to have_content(admin.email_address)
+    end
+
+    it 'shows pagination info' do
+      login_as(admin)
+
+      visit admin_users_path
+
+      # Pagination info is hidden on mobile, check for visible on desktop
+      expect(page).to have_css('[data-testid="pagination-info"]', visible: :all)
     end
 
     it 'allows admin to combine search and filter' do

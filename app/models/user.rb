@@ -26,5 +26,16 @@ class User < ApplicationRecord
 
   enum :role, { administrator: 0, doctor: 1, nurse: 2, carer: 3, parent: 4, minor: 5 }, validate: true
 
+  scope :active, -> { where(active: true) }
+  scope :inactive, -> { where(active: false) }
+
   delegate :name, :date_of_birth, :age, to: :person, allow_nil: true
+
+  def deactivate!
+    update!(active: false)
+  end
+
+  def activate!
+    update!(active: true)
+  end
 end

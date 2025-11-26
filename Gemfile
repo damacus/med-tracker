@@ -30,6 +30,8 @@ gem 'omniauth-google-oauth2', '~> 1.2'
 gem 'pundit', '>= 2.4'
 # Audit logging [https://github.com/paper-trail-gem/paper_trail]
 gem 'paper_trail'
+# Pagination [https://github.com/ddnexus/pagy]
+gem 'pagy', '>= 43.1'
 
 gem 'ostruct'
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem

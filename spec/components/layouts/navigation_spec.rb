@@ -29,8 +29,10 @@ RSpec.describe 'Navigation', type: :system do
 
         # Open the user dropdown menu to access Logout link
         click_button user.name
-        expect(page).to have_link('Logout')
       end
+
+      # Dropdown content may render outside nav, check page-wide
+      expect(page).to have_link('Logout')
     end
   end
 

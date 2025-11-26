@@ -66,6 +66,9 @@ class RodauthMain < Rodauth::Rails::Auth
     # Extend user's remember period when remembered via a cookie
     extend_remember_deadline? true
 
+    # Configure remember keys table to use account_id instead of id
+    remember_id_column :account_id
+
     # ==> Hooks
     # Validate custom fields in the create account form.
     # before_create_account do

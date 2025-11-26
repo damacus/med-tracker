@@ -13,7 +13,7 @@ class PersonMedicinesController < ApplicationController
       format.html { render :new, locals: { inline: false, medicines: @medicines, person: @person } }
       format.turbo_stream do
         render turbo_stream: turbo_stream.replace('modal', partial: 'shared/modal', locals: {
-                                                    title: "Add Medicine for #{@person.name}",
+                                                    title: t('person_medicines.modal.new_title', person: @person.name),
                                                     content: render_to_string(
                                                       partial: 'form',
                                                       locals: { person_medicine: @person_medicine, inline: true, medicines: @medicines, person: @person }
@@ -45,7 +45,7 @@ class PersonMedicinesController < ApplicationController
         format.html { render :new, status: :unprocessable_content, locals: { medicines: @medicines, person: @person } }
         format.turbo_stream do
           render turbo_stream: turbo_stream.update('modal', partial: 'shared/modal', locals: {
-                                                     title: "Add Medicine for #{@person.name}",
+                                                     title: t('person_medicines.modal.new_title', person: @person.name),
                                                      content: render_to_string(
                                                        partial: 'form',
                                                        locals: { person_medicine: @person_medicine, inline: true, medicines: @medicines, person: @person }

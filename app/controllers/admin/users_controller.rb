@@ -8,8 +8,15 @@ module Admin
       users = policy_scope(User).includes(:person)
       users = apply_search(users) if params[:search].present?
       users = apply_role_filter(users) if params[:role].present?
+      users = apply_status_filter(users) if params[:status].present?
       users = users.order(:created_at)
-      render Components::Admin::Users::IndexView.new(users: users, search_params: search_params)
+      @pagy, users = pagy(:offset, users)
+      render Components::Admin::Users::IndexView.new(
+        users: users,
+        search_params: search_params,
+        current_user: current_user,
+        pagy: @pagy
+      )
     end
 
     def new
@@ -30,7 +37,7 @@ module Admin
       authorize @user
 
       if @user.save
-        redirect_to admin_users_path, notice: 'User was successfully created.'
+        redirect_to admin_users_path, notice: t('users.created')
       else
         render Components::Admin::Users::FormView.new(user: @user, url_helpers: self), status: :unprocessable_content
       end
@@ -41,10 +48,30 @@ module Admin
       authorize @user
 
       if @user.update(user_params)
-        redirect_to admin_users_path, notice: 'User was successfully updated.'
+        redirect_to admin_users_path, notice: t('users.updated')
       else
         render Components::Admin::Users::FormView.new(user: @user, url_helpers: self), status: :unprocessable_content
       end
+    end
+
+    def destroy
+      @user = User.find(params[:id])
+      authorize @user
+
+      if @user == current_user
+        redirect_to admin_users_path, alert: t('users.cannot_deactivate_self')
+      else
+        @user.deactivate!
+        redirect_to admin_users_path, notice: t('users.deactivated')
+      end
+    end
+
+    def activate
+      @user = User.find(params[:id])
+      authorize @user
+
+      @user.activate!
+      redirect_to admin_users_path, notice: t('users.activated')
     end
 
     private
@@ -59,8 +86,16 @@ module Admin
       scope.where(role: params[:role])
     end
 
+    def apply_status_filter(scope)
+      case params[:status]
+      when 'active' then scope.active
+      when 'inactive' then scope.inactive
+      else scope
+      end
+    end
+
     def search_params
-      params.permit(:search, :role)
+      params.permit(:search, :role, :status)
     end
 
     def user_params

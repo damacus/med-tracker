@@ -1,0 +1,81 @@
+---
+es:
+  hello: "Hola mundo"
+
+  admin:
+    users:
+      unauthorized: "No está autorizado para realizar esta acción."
+
+  medicines:
+    created: "Medicamento creado correctamente."
+    updated: "Medicamento actualizado correctamente."
+    deleted: "Medicamento eliminado correctamente."
+    form:
+      new_title: "Añadir Nuevo Medicamento"
+      new_subtitle: "Registrar detalles de inventario e información de dosificación."
+      edit_title: "Editar Medicamento"
+      edit_subtitle: "Actualizar detalles de %{name}."
+
+  passwords:
+    reset_sent: >-
+      Instrucciones de restablecimiento de contraseña enviadas
+      (si existe un usuario con esa dirección de correo electrónico).
+    reset_success: "Contraseña restablecida."
+    mismatch: "Las contraseñas no coinciden."
+    invalid_token: "El enlace de restablecimiento de contraseña no es válido o ha caducado."
+    mailer:
+      subject: "Restablecer su contraseña"
+
+  people:
+    created: "Persona creada correctamente."
+    updated: "Persona actualizada correctamente."
+    deleted: "Persona eliminada correctamente."
+
+  person_medicines:
+    created: "Medicamento añadido correctamente."
+    deleted: "Medicamento eliminado correctamente."
+    medicine_taken: "Medicamento tomado correctamente."
+    modal:
+      new_title: "Añadir Medicamento para %{person}"
+
+  prescriptions:
+    created: "Receta creada correctamente."
+    updated: "Receta actualizada correctamente."
+    deleted: "Receta eliminada correctamente."
+    medicine_taken: "Medicamento tomado correctamente."
+    modal:
+      new_title: "Nueva Receta para %{person}"
+      edit_title: "Editar Receta para %{person}"
+
+  sessions:
+    rate_limit: "Inténtelo de nuevo más tarde."
+    signed_in: "Sesión iniciada correctamente."
+    invalid_credentials: "Pruebe con otra dirección de correo electrónico o contraseña."
+    signed_out: "Sesión cerrada correctamente."
+
+  take_medicines:
+    success: "Toma de medicamento registrada correctamente."
+    failure: "Error al registrar la toma de medicamento."
+    json_success: "Toma de medicamento registrada correctamente."
+
+  profiles:
+    updated: "Perfil actualizado correctamente."
+    email_updated: "Correo electrónico actualizado correctamente."
+    no_changes: "No hay cambios que guardar."
+    profile_update_failed: "Error al actualizar el perfil: %{errors}"
+    email_update_failed: "Error al actualizar el correo electrónico: %{errors}"
+    close_account:
+      title: "Cerrar Cuenta"
+      description: "Eliminar permanentemente su cuenta y todos los datos asociados"
+      dialog_title: "¿Está completamente seguro?"
+      dialog_description: "Esta acción no se puede deshacer. Esto eliminará permanentemente su cuenta y eliminará todos sus datos de nuestros servidores."
+      cancel_button: "Cancelar"
+      confirm_button: "Sí, eliminar mi cuenta"
+
+  users:
+    welcome: "¡Bienvenido! Su cuenta ha sido creada."
+    created: "Usuario creado correctamente."
+    updated: "Usuario actualizado correctamente."
+    deactivated: "Cuenta de usuario desactivada."
+    activated: "Cuenta de usuario activada."
+    cannot_deactivate_self: "No puede desactivar su propia cuenta."

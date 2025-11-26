@@ -35,6 +35,8 @@ en:
     created: "Medicine added successfully."
     deleted: "Medicine removed successfully."
     medicine_taken: "Medicine taken successfully."
+    modal:
+      new_title: "Add Medicine for %{person}"
 
   prescriptions:
     created: "Prescription was successfully created."
@@ -54,6 +56,7 @@ en:
   take_medicines:
     success: "Medication taken successfully recorded."
     failure: "Failed to record medication taken."
+    json_success: "Medication taken successfully recorded."
 
   profiles:
     updated: "Profile updated successfully."
@@ -70,3 +73,10 @@ en:
       confirm_button: "Yes, delete my account"
 
   users:
+    welcome: "Welcome! Your account has been created."
+    created: "User was successfully created."
+    updated: "User was successfully updated."
+    deactivated: "User account has been deactivated."
+    activated: "User account has been activated."
+    cannot_deactivate_self: "You cannot deactivate your own account."
+

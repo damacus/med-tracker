@@ -107,6 +107,37 @@ RSpec.describe User do
     end
   end
 
+  describe 'account activation' do
+    fixtures :users
+
+    describe '#deactivate!' do
+      it 'sets active to false' do
+        expect { users(:bob).deactivate! }.to change { users(:bob).reload.active }.from(true).to(false)
+      end
+    end
+
+    describe '#activate!' do
+      it 'sets active to true' do
+        users(:bob).update!(active: false)
+        expect { users(:bob).activate! }.to change { users(:bob).reload.active }.from(false).to(true)
+      end
+    end
+
+    describe 'scopes' do
+      it 'returns only active users with .active scope' do
+        users(:bob).deactivate!
+        expect(described_class.active).not_to include(users(:bob))
+        expect(described_class.active).to include(users(:admin))
+      end
+
+      it 'returns only inactive users with .inactive scope' do
+        users(:bob).deactivate!
+        expect(described_class.inactive).to include(users(:bob))
+        expect(described_class.inactive).not_to include(users(:admin))
+      end
+    end
+  end
+
   describe 'versioning' do
     fixtures :users, :people, :sessions
 

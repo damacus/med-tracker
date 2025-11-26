@@ -14,7 +14,7 @@ RSpec.describe UserPolicy do
     end
 
     it 'permits all actions' do
-      %i[index show create new update edit destroy].each do |action|
+      %i[index show create new update edit destroy activate].each do |action|
         expect(policy.public_send("#{action}?")).to be true
       end
     end

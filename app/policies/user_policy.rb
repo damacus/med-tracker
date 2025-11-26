@@ -21,6 +21,10 @@ class UserPolicy < ApplicationPolicy
     user&.administrator? || false
   end
 
+  def activate?
+    user&.administrator? || false
+  end
+
   class Scope < ApplicationPolicy::Scope
     def resolve
       return scope.none unless user
