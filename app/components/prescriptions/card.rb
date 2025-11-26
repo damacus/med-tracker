@@ -113,7 +113,7 @@ module Components
       end
 
       def render_todays_takes
-        todays_takes = prescription.take_medicines.where(taken_at: Time.current.beginning_of_day..)
+        todays_takes = prescription.medication_takes.where(taken_at: Time.current.beginning_of_day..)
 
         if todays_takes.any?
           div(class: 'space-y-2') do

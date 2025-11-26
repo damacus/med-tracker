@@ -11,7 +11,6 @@ class Prescription < ApplicationRecord
   enum :dose_cycle, { daily: 0, weekly: 1, monthly: 2 }
 
   has_many :medication_takes, dependent: :destroy
-  alias take_medicines medication_takes
 
   scope :active, lambda {
     where('start_date <= ? AND end_date >= ?', Time.zone.today, Time.zone.today)

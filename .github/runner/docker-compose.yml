@@ -1,13 +1,17 @@
 ---
 services:
   runner:
-    image: myoung34/github-runner:latest
-    container_name: med-tracker-runner
+    # Build from local Dockerfile to include Ruby and other dependencies
+    build:
+      context: .
+      dockerfile: Dockerfile
+    deploy:
+      replicas: 3
     environment:
-      - ACCESS_TOKEN=${GITHUB_TOKEN}
-      - REPO_URL=https://github.com/${GITHUB_REPOSITORY:-damacus/med-tracker}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - GITHUB_REPOSITORY=${GITHUB_REPOSITORY:-damacus/med-tracker}
       - RUNNER_NAME=${RUNNER_NAME:-med-tracker-runner}
-      - LABELS=${RUNNER_LABELS:-self-hosted,linux,x64,med-tracker}
+      - RUNNER_LABELS=${RUNNER_LABELS:-self-hosted,linux,x64,med-tracker}
       - RUNNER_WORKDIR=/tmp/runner/work
       - RUNNER_GROUP=Default
     volumes:

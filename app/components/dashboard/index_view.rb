@@ -239,7 +239,7 @@ module Components
         div(class: 'flex items-center justify-center gap-2') do
           if url_helpers
             button_to(
-              url_helpers.prescription_take_medicines_path(prescription),
+              url_helpers.prescription_medication_takes_path(prescription),
               method: :post,
               class: take_now_badge_classes,
               data: { test_id: "take-medicine-#{prescription.id}" }

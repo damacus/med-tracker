@@ -31,12 +31,12 @@ if ! docker info > /dev/null 2>&1; then
     exit 1
 fi
 
-echo "Pulling latest runner image..."
-docker compose pull
+echo "Building runner image..."
+docker compose build
 
 echo ""
 echo "Starting runner..."
-docker compose up -d
+docker compose up -d --force-recreate
 
 echo ""
 echo "Runner started successfully!"

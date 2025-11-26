@@ -60,7 +60,7 @@ module Components
       def take_medicine_url_generator
         return unless url_helpers
 
-        ->(prescription) { url_helpers.prescription_take_medicines_path(prescription) }
+        ->(prescription) { url_helpers.prescription_medication_takes_path(prescription) }
       end
 
       def render_empty_state(message, help_text)

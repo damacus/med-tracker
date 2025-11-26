@@ -32,7 +32,6 @@ Rails.application.routes.draw do
   resources :users, only: %i[new create] # TODO: Remove in Phase 5
 
   resources :prescriptions do
-    resources :take_medicines, only: [:create]
     resources :medication_takes, only: [:create]
   end
 

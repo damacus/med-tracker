@@ -118,7 +118,7 @@ class PrescriptionsController < ApplicationController
     # Extract the amount from the prescription's dosage if not provided
     amount = params[:amount_ml] || @prescription.dosage.amount
 
-    @take = @prescription.take_medicines.create!(
+    @take = @prescription.medication_takes.create!(
       taken_at: Time.current,
       amount_ml: amount
     )

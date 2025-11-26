@@ -7,7 +7,7 @@ class MedicinesTest < ApplicationSystemTestCase
     @medicine = medicines(:paracetamol)
     # Clean up any existing dependencies
     @medicine.prescriptions.each do |prescription|
-      prescription.take_medicines.destroy_all
+      prescription.medication_takes.destroy_all
     end
     @medicine.prescriptions.destroy_all
   end
@@ -88,7 +88,7 @@ class MedicinesTest < ApplicationSystemTestCase
 
     # Clean up any existing dependencies
     @medicine.prescriptions.each do |prescription|
-      prescription.take_medicines.destroy_all
+      prescription.medication_takes.destroy_all
     end
     @medicine.prescriptions.destroy_all
 
