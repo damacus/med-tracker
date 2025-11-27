@@ -93,10 +93,10 @@ jobs:
       - name: Run non-system tests
         run: >-
           bundle exec rspec --format RSpec::Github::Formatter
-          --exclude-pattern "spec/system/**/*_spec.rb"
-          --exclude-pattern "spec/features/**/*_spec.rb"
-          --exclude-pattern "spec/views/**/*_spec.rb"
-          --exclude-pattern "spec/components/layouts/navigation_spec.rb"
+          --exclude-pattern "./spec/system/**/*_spec.rb"
+          --exclude-pattern "./spec/features/**/*_spec.rb"
+          --exclude-pattern "./spec/views/**/*_spec.rb"
+          --exclude-pattern "./spec/components/layouts/navigation_spec.rb"
 
   test_system:
     runs-on: [ubuntu-latest]
