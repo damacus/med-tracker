@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 Rails.application.routes.draw do
-  resource :session
-  resources :passwords, param: :token
   # Defines the root path route ("/")
   root 'dashboard#index'
 
@@ -36,9 +34,6 @@ Rails.application.routes.draw do
   get 'medicine-finder', to: 'medicines#finder', as: :medicine_finder
 
   # Authentication - Rodauth handles /login, /logout, /create-account via middleware
-  # Legacy routes kept for backwards compatibility during migration
-  get 'sign_up', to: 'users#new' # TODO: Remove in Phase 5
-  resources :users, only: %i[new create] # TODO: Remove in Phase 5
 
   resources :prescriptions do
     resources :medication_takes, only: [:create]

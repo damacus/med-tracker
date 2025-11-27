@@ -147,6 +147,7 @@ The `./run` script provides convenient shortcuts:
 - `./run format` - Auto-fix RuboCop issues
 - `./run lint` - Check code style
 - `./run help` - Show all available commands
+
 ## Documentation
 
 Comprehensive documentation is available in the `docs/` directory:

@@ -15,12 +15,14 @@ We migrated from a custom-built Dockerfile to the official **myoung34/github-run
 ## What's Different
 
 ### Before (Custom Dockerfile)
+
 - Had to manually install .NET Core dependencies
 - Had to guess which packages were needed
 - Had to maintain custom entrypoint script
 - Required building image locally
 
 ### After (Official Image)
+
 - All dependencies pre-installed
 - Proven to work across many projects
 - Uses official entrypoint with better error handling
@@ -31,6 +33,7 @@ We migrated from a custom-built Dockerfile to the official **myoung34/github-run
 ### docker-compose.yml
 
 **Before:**
+
 ```yaml
 services:
   runner:
@@ -43,6 +46,7 @@ services:
 ```
 
 **After:**
+
 ```yaml
 services:
   runner:
@@ -73,6 +77,7 @@ export GITHUB_TOKEN=your_token_here
 ```
 
 The script now:
+
 1. Pulls latest image (instead of building)
 2. Starts container
 3. Runner auto-registers
@@ -89,6 +94,7 @@ The script now:
 If you need to go back to custom Dockerfile:
 
 1. Edit `docker-compose.yml`:
+
    ```yaml
    services:
      runner:
@@ -99,6 +105,7 @@ If you need to go back to custom Dockerfile:
    ```
 
 2. Rebuild:
+
    ```bash
    docker compose build
    docker compose up -d

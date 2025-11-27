@@ -226,13 +226,13 @@ docker-compose..yml: no such file or directory
 
 ## Quick Reference
 
-| Command | Purpose | Environment |
-|---------|---------|-------------|
-| `task test` | Run all tests | test |
-| `task test TEST_FILE=path` | Run specific test | test |
-| `task rubocop` | Run RuboCop | local |
-| `task dev:up` | Start dev server | dev |
-| `task dev:rebuild` | Reset dev database | dev |
-| `task test:rebuild` | Reset test database | test |
-| `task dev:logs` | View dev logs | dev |
-| `task test:logs` | View test logs | test |
+| Command                    | Purpose             | Environment |
+|----------------------------|---------------------|-------------|
+| `task test`                | Run all tests       | test        |
+| `task test TEST_FILE=path` | Run specific test   | test        |
+| `task rubocop`             | Run RuboCop         | local       |
+| `task dev:up`              | Start dev server    | dev         |
+| `task dev:rebuild`         | Reset dev database  | dev         |
+| `task test:rebuild`        | Reset test database | test        |
+| `task dev:logs`            | View dev logs       | dev         |
+| `task test:logs`           | View test logs      | test        |

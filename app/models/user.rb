@@ -13,7 +13,6 @@ class User < ApplicationRecord
   accepts_nested_attributes_for :person
 
   has_secure_password validations: false
-  has_many :sessions, dependent: :destroy
   has_many :prescriptions, through: :person
   has_many :medicines, through: :prescriptions
 
