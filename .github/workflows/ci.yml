@@ -90,13 +90,8 @@ jobs:
       - name: Set up database
         run: bundle exec rails db:migrate
 
-      - name: Run non-system tests
-        run: >-
-          bundle exec rspec --format RSpec::Github::Formatter
-          --exclude-pattern "./spec/system/**/*_spec.rb"
-          --exclude-pattern "./spec/features/**/*_spec.rb"
-          --exclude-pattern "./spec/views/**/*_spec.rb"
-          --exclude-pattern "./spec/components/layouts/navigation_spec.rb"
+      - name: Run non-browser tests
+        run: bundle exec rspec --format RSpec::Github::Formatter --tag ~browser
 
   test_system:
     runs-on: [ubuntu-latest]
@@ -142,5 +137,5 @@ jobs:
       - name: Precompile assets
         run: bundle exec rails assets:precompile
 
-      - name: Run system tests
-        run: bundle exec rspec --format RSpec::Github::Formatter spec/system spec/features spec/views spec/components/layouts/navigation_spec.rb
+      - name: Run browser tests
+        run: bundle exec rspec --format RSpec::Github::Formatter --tag browser
