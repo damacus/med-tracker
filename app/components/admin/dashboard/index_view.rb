@@ -28,6 +28,7 @@ module Components
           end
         end
 
+        # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
         def render_metrics_grid
           div(class: 'grid gap-6 md:grid-cols-2 lg:grid-cols-3') do
             render_metric_card(
@@ -70,7 +71,9 @@ module Components
             )
           end
         end
+        # rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
+        # rubocop:disable Metrics/ParameterLists
         def render_metric_card(title:, value:, testid:, icon: nil, variant: :default, subtitle: nil)
           card_classes = base_card_classes(variant)
 
@@ -85,6 +88,7 @@ module Components
             end
           end
         end
+        # rubocop:enable Metrics/ParameterLists
 
         def base_card_classes(variant)
           base = 'rounded-xl border bg-white p-6 shadow-sm'
