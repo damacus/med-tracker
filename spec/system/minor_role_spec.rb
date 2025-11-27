@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'Minor role in user form' do
-  fixtures :users
+  fixtures :accounts, :people, :users
 
   let(:admin) { users(:admin) }
 

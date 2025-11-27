@@ -128,7 +128,7 @@ RSpec.describe UserPolicy do
   describe 'Scope' do
     subject(:scope) { described_class::Scope.new(current_user, User.all).resolve }
 
-    fixtures :users
+    fixtures :accounts, :people, :users
 
     context 'when user is an administrator' do
       let(:current_user) { users(:admin) }

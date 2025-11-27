@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'Navigation' do
-  fixtures :users
+  fixtures :accounts, :people, :users
 
   before do
     driven_by(:rack_test)

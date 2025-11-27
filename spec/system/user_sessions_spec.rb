@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'User Sessions', :js do
-  fixtures :users
+  fixtures :accounts, :people, :users
   let(:user) { users(:jane) }
 
   describe 'login page' do

@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'Admin Dashboard' do
-  fixtures :users
+  fixtures :accounts, :people, :users
 
   context 'when user is an administrator' do
     it 'displays key system metrics' do

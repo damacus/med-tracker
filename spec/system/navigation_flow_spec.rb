@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'Navigation Flow' do
-  fixtures :users
+  fixtures :accounts, :people, :users
 
   let(:user) { users(:damacus) }
 

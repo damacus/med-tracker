@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe 'Sessions::New view', type: :system do
   # Load fixtures at the example group level, not inside examples
-  fixtures :users
+  fixtures :accounts, :people, :users
 
   before do
     driven_by(:playwright)

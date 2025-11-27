@@ -108,7 +108,7 @@ RSpec.describe User do
   end
 
   describe 'account activation' do
-    fixtures :users
+    fixtures :accounts, :people, :users
 
     describe '#deactivate!' do
       it 'sets active to false' do

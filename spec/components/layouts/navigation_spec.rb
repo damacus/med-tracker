@@ -5,7 +5,7 @@ require 'rails_helper'
 # Following the Red-Green-Refactor TDD cycle
 # This spec tests the navigation component through system testing
 RSpec.describe 'Navigation', type: :system do
-  fixtures :users
+  fixtures :accounts, :people, :users
 
   before do
     driven_by(:playwright)
