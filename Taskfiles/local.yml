@@ -1,0 +1,95 @@
+---
+# Local Development Tasks (CI-like environment)
+# Runs tests locally with a standalone PostgreSQL container
+# Faster than full Docker setup, mirrors CI environment
+# Usage: task local:<command>
+version: '3'
+
+vars:
+  DB_CONTAINER: medtracker-local-db
+  DB_PORT: '5433'
+  DB_USER: medtracker
+  DB_PASSWORD: medtracker
+  DB_NAME: medtracker_test
+  DATABASE_URL: 'postgres://{{.DB_USER}}:{{.DB_PASSWORD}}@localhost:{{.DB_PORT}}/{{.DB_NAME}}'
+
+tasks:
+  # Start PostgreSQL container for local testing
+  # Usage: task local:db:up
+  db:up:
+    desc: Start local PostgreSQL container
+    status:
+      - docker ps --format '{{`{{.Names}}`}}' | grep -q '^{{.DB_CONTAINER}}$'
+    cmds:
+      - |
+        docker run -d --name {{.DB_CONTAINER}} \
+          -e POSTGRES_USER={{.DB_USER}} \
+          -e POSTGRES_PASSWORD={{.DB_PASSWORD}} \
+          -e POSTGRES_DB={{.DB_NAME}} \
+          -p {{.DB_PORT}}:5432 \
+          postgres:18-alpine
+      - echo "Waiting for PostgreSQL to be ready..."
+      - sleep 3
+      - docker exec {{.DB_CONTAINER}} pg_isready -U {{.DB_USER}}
+
+  # Stop and remove PostgreSQL container
+  # Usage: task local:db:down
+  db:down:
+    desc: Stop local PostgreSQL container
+    cmds:
+      - docker stop {{.DB_CONTAINER}} 2>/dev/null || true
+      - docker rm {{.DB_CONTAINER}} 2>/dev/null || true
+
+  # Prepare database (migrate)
+  # Usage: task local:db:prepare
+  db:prepare:
+    desc: Run database migrations
+    deps: [db:up]
+    env:
+      DATABASE_URL: '{{.DATABASE_URL}}'
+      RAILS_ENV: test
+    cmds:
+      - bundle exec rails db:migrate
+
+  # Run non-browser tests locally
+  # Usage: task local:test
+  # Usage: task local:test TEST_FILE=spec/models/user_spec.rb
+  test:
+    desc: Run non-browser tests locally
+    deps: [db:prepare]
+    env:
+      DATABASE_URL: '{{.DATABASE_URL}}'
+      RAILS_ENV: test
+    cmds:
+      - bundle exec rspec --tag '~browser' {{.TEST_FILE | default ""}}
+
+  # Run browser tests locally (requires Playwright)
+  # Usage: task local:test:browser
+  test:browser:
+    desc: Run browser tests locally (requires Playwright)
+    deps: [db:prepare]
+    env:
+      DATABASE_URL: '{{.DATABASE_URL}}'
+      RAILS_ENV: test
+    cmds:
+      - bundle exec rails assets:precompile
+      - bundle exec rspec --tag browser {{.TEST_FILE | default ""}}
+
+  # Run all tests locally
+  # Usage: task local:test:all
+  test:all:
+    desc: Run all tests locally
+    deps: [db:prepare]
+    env:
+      DATABASE_URL: '{{.DATABASE_URL}}'
+      RAILS_ENV: test
+    cmds:
+      - bundle exec rails assets:precompile
+      - bundle exec rspec {{.TEST_FILE | default ""}}
+
+  # Clean up - stop database container
+  # Usage: task local:clean
+  clean:
+    desc: Stop database and clean up
+    cmds:
+      - task: db:down
