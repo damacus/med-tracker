@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'Person Medicines Authorization' do
-  fixtures :users, :people, :medicines, :carer_relationships
+  fixtures :accounts, :people, :users, :medicines, :carer_relationships
 
   before do
     driven_by(:playwright)

@@ -1,13 +1,7 @@
 ---
-# Main Taskfile - Entry point for all task commands
-# See Taskfiles/README.md for detailed documentation
 version: '3'
 silent: true
 
-# Include modular taskfiles under namespaces
-# - dev: Development environment commands (task dev:up, dev:rebuild, etc.)
-# - test: Test environment commands (task test:up, test:rebuild, etc.)
-# - internal: Reusable Docker Compose operations (internal use only)
 includes:
   dev:
     taskfile: Taskfiles/dev.yml
@@ -17,38 +11,42 @@ includes:
     taskfile: Taskfiles/internal.yml
 
 tasks:
-  # Default task - shows all available commands
   default:
     desc: List all available tasks
+    summary: Default task - shows all available commands
     silent: true
-    cmds:
-      - task --list
+    cmds: [task --list]
 
-  # Run RSpec tests in Docker
-  # Usage: task test
-  # Usage: task test TEST_FILE=spec/models/user_spec.rb
   test:
     desc: Run tests in Docker (optionally specify TEST_FILE=path/to/spec)
+    summary: |
+      Run RSpec tests in Docker environment
+      Usage: task test
+      Usage: task test TEST_FILE=spec/models/user_spec.rb
     silent: true
     cmds:
-      # - task: internal:build
-      #   vars:
-      #     ENVIRONMENT: test
       - task: internal:run
         vars:
           ENVIRONMENT: test
           SERVICE: web
           COMMAND: 'bundle exec rspec {{ .TEST_FILE | default "spec" }}'
           TEST_FILE: '{{ .TEST_FILE | default "spec" }}'
-      # - task: internal:stop
-      #   vars:
-      #     ENVIRONMENT: test
 
-  # Run RuboCop linter
-  # Usage: task rubocop
-  # Usage: task rubocop AUTOCORRECT=true
+
+  test-rebuild:
+    desc: Rebuild test server (drops database)
+    summary: |
+      Rebuild test environment and run tests (fresh database)
+      Usage: task test-rebuild
+    cmds:
+      - task: test:rebuild
+
   rubocop:
     desc: Run RuboCop linter (optionally with autocorrect)
+    summary: |
+      Run RuboCop linter with optional autocorrect
+      Usage: task rubocop
+      Usage: task rubocop AUTOCORRECT=true
     vars:
       autocorrect: '{{ .AUTOCORRECT | default "false" }}'
     cmds:

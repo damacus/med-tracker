@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe Prescription do
-  fixtures :prescriptions, :people, :medicines, :dosages
+  fixtures :accounts, :prescriptions, :people, :medicines, :dosages
 
   describe 'active flag' do
     let(:prescription) { prescriptions(:john_paracetamol) }

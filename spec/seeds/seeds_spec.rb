@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'Seeds' do
-  fixtures :people, :users
+  fixtures :accounts, :people, :users
 
   let(:email_address) { 'damacus@example.com' }
   let(:password) { 'password' }

@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe Components::Dashboard::IndexView, type: :component do
-  fixtures :people, :users, :medicines, :dosages, :prescriptions
+  fixtures :accounts, :people, :users, :medicines, :dosages, :prescriptions
 
   subject(:dashboard_view) do
     described_class.new(

@@ -5,47 +5,46 @@
 version: '3'
 
 tasks:
-  # Start the development server
-  # Creates and starts all containers in detached mode
-  # Database data persists between restarts
-  # Usage: task dev:up
   up:
     desc: Start development server
+    summary: |
+      Start the development server with all services running in detached mode.
+      Database data persists between restarts.
+      Usage: task dev:up
     cmds:
       - task: :internal:up
         vars:
           ENVIRONMENT: dev
 
-  # Seed the development database with fixtures
-  # Loads data from db/seeds.rb
-  # Safe to run multiple times (idempotent if seeds are written correctly)
-  # Usage: task dev:seed
   seed:
     desc: Seed development database with fixtures
+    summary: |
+      Seed the development database with fixtures from db/seeds.rb.
+      Safe to run multiple times (idempotent if seeds are written correctly).
+      Usage: task dev:seed
     cmds:
       - task: :internal:seed
         vars:
           ENVIRONMENT: dev
 
-  # Stop the development server
-  # Removes containers but preserves database volumes
-  # Usage: task dev:stop
   stop:
     desc: Stop development server
+    summary: |
+      Stop the development server and remove containers.
+      Database volumes are preserved.
+      Usage: task dev:stop
     cmds:
       - task: :internal:stop
         vars:
           ENVIRONMENT: dev
 
-  # Rebuild development environment from scratch
-  # WARNING: This drops the database and all data!
-  # Use this when:
-  # - Database migrations have changed
-  # - Docker images need to be rebuilt
-  # - You want a fresh start
-  # Usage: task dev:rebuild
   rebuild:
     desc: Rebuild development server (drops database)
+    summary: |
+      Rebuild the development environment from scratch.
+      WARNING: This drops the database and all data!
+      Use when database migrations have changed or you need a fresh start.
+      Usage: task dev:rebuild
     cmds:
       - task: :internal:stop
         vars:
@@ -69,11 +68,12 @@ tasks:
         vars:
           ENVIRONMENT: dev
 
-    # View and follow development server logs
-    # Press Ctrl+C to stop following
-    # Usage: task dev:logs
     logs:
       desc: View development server logs
+      summary: |
+        View and follow development server logs in real-time.
+        Press Ctrl+C to stop following.
+        Usage: task dev:logs
       cmds:
       - task: :internal:logs
         vars:
@@ -81,6 +81,9 @@ tasks:
 
   open-ui:
     desc: Open development server UI
+    summary: |
+      Open the development server UI in your default browser.
+      Usage: task dev:open-ui
     cmds:
       - task: :internal:open-ui
         vars:

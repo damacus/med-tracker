@@ -109,7 +109,7 @@ RSpec.describe MedicationTake do
   end
 
   describe 'versioning' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-    fixtures :users, :people, :sessions
+    fixtures :accounts, :people, :users, :sessions
 
     let(:admin) { users(:admin) }
     let(:session) { sessions(:admin_session) }

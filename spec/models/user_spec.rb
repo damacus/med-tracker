@@ -139,7 +139,7 @@ RSpec.describe User do
   end
 
   describe 'versioning' do
-    fixtures :users, :people, :sessions
+    fixtures :accounts, :people, :users, :sessions
 
     let(:admin) { users(:admin) }
     let(:session) { sessions(:admin_session) }
