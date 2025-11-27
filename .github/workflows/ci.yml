@@ -91,7 +91,7 @@ jobs:
         run: bundle exec rails db:migrate
 
       - name: Run non-system tests
-        run: bundle exec rspec --format RSpec::Github::Formatter --exclude-pattern "spec/{system,features,views,components/layouts/navigation_spec.rb}/**/*_spec.rb"
+        run: bundle exec rspec --format RSpec::Github::Formatter --exclude-pattern "spec/{system,features,views}/**/*_spec.rb" --exclude-pattern "spec/components/layouts/navigation_spec.rb"
 
   test_system:
     runs-on: [ubuntu-latest]
