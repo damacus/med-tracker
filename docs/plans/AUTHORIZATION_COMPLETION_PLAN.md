@@ -32,12 +32,16 @@ remaining gaps in controller authorization and policy coverage.
   - `PrescriptionsController` - **FULLY AUTHORIZED** (all actions protected)
   - `MedicinesController` - **FULLY AUTHORIZED** (all actions protected)
 
-### ⚠️ Remaining Work
+### ✅ Authorization Work Complete
 
-1. **System Authorization Tests** - Need comprehensive end-to-end tests
-   - MedicationTakes authorization scenarios
-   - Dashboard authorization scenarios
-   - Verify all role-based access controls work in practice
+All authorization tasks completed. System tests written and passing.
+
+### ⚠️ Related Work (Not in Scope)
+
+Account Security (Phase 1.3 of USER_MANAGEMENT_PLAN.md) is tracked separately:
+
+- See `USER_SIGNUP_PLAN.md` for Rodauth signup implementation (~20% complete)
+- See `RODAUTH_SIGNUP_IMPLEMENTATION.md` for detailed implementation plan
 
 ### ✅ Recently Completed (Nov 4, 2025)
 
@@ -571,7 +575,8 @@ end
 
 Once authorization is complete:
 
-1. ✅ Update USER_MANAGEMENT_PLAN.md to mark Phase 1 as 100% complete (Nov 4, 2025)
+1. ✅ Update USER_MANAGEMENT_PLAN.md to mark Phase 1 Authorization (1.1-1.2) as complete (Nov 4, 2025)
+   - ⚠️ Note: Phase 1.3 (Account Security) is NOT complete - see USER_SIGNUP_PLAN.md
 2. ✅ Begin Phase 2: Admin Interface implementation (Tasks 2.1-2.3 complete)
 3. ✅ Adding audit logging for authorization failures (Nov 13, 2025 - PR #137 implemented PaperTrail audit trail)
 4. ✅ Review and optimize query performance (Nov 13, 2025 - Added indexes and eager loading to prevent N+1 queries)

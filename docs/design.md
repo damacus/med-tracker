@@ -1,11 +1,13 @@
 # Medicine Tracker Application Design
 
 ## Overview
+
 A Rails-based application for tracking medicine administration, including dosages, people, and timing. The application will use OpenID Connect (OIDC) for authentication.
 
 ## Core Features
 
 ### Authentication
+
 - OIDC-based authentication (provider TBD)
 - User management and authorization
 - Secure session handling
@@ -13,17 +15,20 @@ A Rails-based application for tracking medicine administration, including dosage
 ### Data Models
 
 #### User
+
 - Basic user information from OIDC provider
 - Role-based access control
 - Relationships to people they manage (e.g., family members)
 
 #### Person
+
 - Name
 - Date of birth
 - Relationships to medicines
 - Associated users (caretakers/family members)
 
 #### Medicine
+
 - Name
 - Description
 - Active status
@@ -31,6 +36,7 @@ A Rails-based application for tracking medicine administration, including dosage
 - Warnings/Notes
 
 #### Prescription
+
 - Links Person to Medicine
 - Specific dosage for this person
 - Frequency of administration
@@ -39,6 +45,7 @@ A Rails-based application for tracking medicine administration, including dosage
 - Special instructions
 
 #### DosageRecord
+
 - Timestamp of administration
 - Link to Prescription
 - Actual dose given
@@ -48,12 +55,14 @@ A Rails-based application for tracking medicine administration, including dosage
 ## Technical Architecture
 
 ### Backend
+
 - Ruby on Rails API
 - SQLite3 database
 - OIDC integration
 - API versioning for future compatibility
 
 ### Security Considerations
+
 - OIDC authentication
 - Role-based access control
 - Audit logging for all medicine administration
@@ -62,11 +71,13 @@ A Rails-based application for tracking medicine administration, including dosage
 - Regular security updates
 
 ### Database Considerations
+
 - Data integrity constraints
 - Indexing for common queries
 - Audit trail for all changes
 
 ## Development Practices
+
 - End-to-End Testing with Playwright
   - Full browser automation testing
   - Cross-browser testing capabilities
@@ -81,6 +92,7 @@ A Rails-based application for tracking medicine administration, including dosage
 - Code review process
 
 ## Future Considerations
+
 - Mobile application support
 - Medication schedule reminders
 - Integration with pharmacy systems
@@ -89,6 +101,7 @@ A Rails-based application for tracking medicine administration, including dosage
 - Offline capabilities
 
 ## Next Steps
+
 1. Set up basic Rails application structure
 2. Implement OIDC authentication
 3. Create core data models

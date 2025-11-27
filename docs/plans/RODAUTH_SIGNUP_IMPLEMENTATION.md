@@ -1,12 +1,19 @@
 # Rodauth Signup Implementation Plan
 
 **Created**: 2025-11-15
-**Status**: Active Implementation
-**Related**: Issue #118, PR #119 (closed - reimplementing)
+**Updated**: 2025-11-27
+**Status**: ⚠️ Partially Implemented (~20% complete)
+**Related**: Issue #118, PR #119 (closed), USER_SIGNUP_PLAN.md (current status)
 
 ## Overview
 
 Implement user signup using Rodauth with email verification, Google OAuth, and a 7-day grace period for email verification in non-production environments.
+
+> **Current Status**: Rodauth foundation is installed but signup flow is NOT complete.
+> See `USER_SIGNUP_PLAN.md` for detailed current state assessment.
+>
+> **What Works**: Login, logout, `current_account` helper
+> **What's Missing**: Rodauth signup form, email verification, Google OAuth, Person creation on signup
 
 ## Key Decisions
 
@@ -38,17 +45,20 @@ people
 ```
 
 **Relationships**:
+
 - `Account` has_one `Person`
 - `Person` belongs_to `Account` (optional - minors/dependents have no account)
 
 ### Email Verification Policy
 
 **Production** (`RAILS_ENV=production`):
+
 - Unverified accounts CANNOT sign in
 - Must verify email before first login
 - No grace period
 
 **Non-Production** (development, test, staging):
+
 - Unverified accounts CAN sign in for 7 days after creation
 - After 7 days, verification required
 - Allows testing without email setup
@@ -57,9 +67,12 @@ people
 
 ### Phase 1: Install Rodauth and Create Account Model
 
+**Status**: ⚠️ **60% Complete**
+
 **Goal**: Set up Rodauth foundation without breaking existing auth
 
 **Tasks**:
+
 1. Add gems to Gemfile
 2. Run Rodauth generator
 3. Create accounts migration
@@ -68,6 +81,7 @@ people
 6. Configure Rodauth base features
 
 **Acceptance Criteria**:
+
 - Rodauth routes accessible
 - Account model created with proper associations
 - Existing authentication still works
@@ -77,9 +91,12 @@ people
 
 ### Phase 2: Configure Rodauth Features
 
+**Status**: ❌ **NOT STARTED** (0%)
+
 **Goal**: Configure email verification with environment-specific grace period
 
 **Features to Enable**:
+
 - `create_account` - User signup
 - `verify_account` - Email verification
 - `login` - Sign in
@@ -135,6 +152,7 @@ end
 ```
 
 **Acceptance Criteria**:
+
 - Production blocks unverified logins immediately
 - Non-production allows 7-day grace period
 - After grace period, verification required
@@ -144,9 +162,12 @@ end
 
 ### Phase 3: Implement Signup with Person Creation
 
+**Status**: ❌ **NOT STARTED** (0%)
+
 **Goal**: Create Account + Person in single signup flow
 
 **Signup Form Fields**:
+
 - Email (for Account)
 - Password (for Account)
 - Password Confirmation (for Account)
@@ -173,11 +194,13 @@ end
 ```
 
 **Views**:
+
 - Customize Rodauth signup view to include Person fields
 - Use Phlex components for consistent styling
 - Add proper validation and error handling
 
 **Acceptance Criteria**:
+
 - Signup creates both Account and Person
 - Person fields validated before account creation
 - Errors displayed clearly
@@ -187,9 +210,12 @@ end
 
 ### Phase 4: Google OAuth Integration
 
+**Status**: ❌ **NOT STARTED** (0%)
+
 **Goal**: Allow Google sign-in with account linking
 
 **Setup**:
+
 1. Add `rodauth-omniauth` gem
 2. Configure Google OAuth credentials
 3. Implement OAuth callbacks
@@ -197,6 +223,7 @@ end
 **OAuth Flows**:
 
 **New User (no existing account)**:
+
 - Sign in with Google
 - Account created automatically
 - Account marked as verified (OAuth = verified email)
@@ -204,12 +231,14 @@ end
 - Redirect to dashboard
 
 **Existing Account (matching email)**:
+
 - Sign in with Google
 - Link Google identity to existing account
 - If account unverified, mark as verified
 - Redirect to dashboard
 
 **Logged-in User Linking**:
+
 - User already logged in with email/password
 - Click "Link Google Account"
 - OAuth flow links Google identity
@@ -250,10 +279,12 @@ end
 ```
 
 **Environment Variables**:
+
 - `GOOGLE_CLIENT_ID` - Google OAuth client ID
 - `GOOGLE_CLIENT_SECRET` - Google OAuth client secret
 
 **Acceptance Criteria**:
+
 - New users can sign up with Google
 - Existing users can link Google account
 - OAuth accounts marked as verified
@@ -263,6 +294,8 @@ end
 ---
 
 ### Phase 5: Migration and Cleanup
+
+**Status**: ❌ **NOT STARTED** (0%)
 
 **Goal**: Migrate existing users and remove old auth code
 
@@ -298,6 +331,7 @@ end
 ```
 
 **Cleanup Tasks**:
+
 1. Remove `has_secure_password` from User model
 2. Deprecate `SessionsController` (use Rodauth routes)
 3. Deprecate `UsersController#create` (use Rodauth signup)
@@ -338,6 +372,7 @@ end
 ```
 
 **Acceptance Criteria**:
+
 - All existing users migrated to accounts
 - Old authentication code removed
 - All tests updated and passing
@@ -351,16 +386,19 @@ end
 ### Test Coverage
 
 **Unit Tests** (RSpec):
+
 - Account model validations
 - Account-Person associations
 - Grace period logic
 
 **Integration Tests** (RSpec):
+
 - Rodauth configuration
 - Email verification flow
 - OAuth flows
 
 **System Tests** (Capybara):
+
 - Email/password signup
 - Email verification (production mode)
 - Grace period behavior (non-production mode)
@@ -471,18 +509,21 @@ config.action_mailer.default_url_options = {
 ## Rollout Plan
 
 ### Development Phase
+
 1. Implement on feature branch
 2. Test with fixtures
 3. Code review
 4. Merge to main
 
 ### Staging Phase
+
 1. Deploy to staging
 2. Test all flows manually
 3. Verify grace period behavior
 4. Test OAuth with real Google credentials
 
 ### Production Phase
+
 1. Run data migration (off-peak hours)
 2. Monitor error rates
 3. Verify email delivery
@@ -493,13 +534,13 @@ config.action_mailer.default_url_options = {
 
 ## Success Metrics
 
-- [ ] All existing tests pass
+- [x] All existing tests pass
 - [ ] New Rodauth tests pass
 - [ ] Email verification works in production
 - [ ] Grace period works in non-production
 - [ ] Google OAuth works
 - [ ] No duplicate accounts created
-- [ ] Existing users can still log in
+- [x] Existing users can still log in (via legacy auth)
 - [ ] Documentation complete
 
 ---
