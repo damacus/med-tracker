@@ -74,9 +74,6 @@ GEM
       uri (>= 0.13.1)
     addressable (2.8.8)
       public_suffix (>= 2.0.2, < 8.0)
-    after_commit_everywhere (1.6.0)
-      activerecord (>= 4.2)
-      activesupport
     ast (2.4.3)
     base64 (0.3.0)
     bcrypt (3.1.20)
@@ -308,7 +305,7 @@ GEM
       zeitwerk (~> 2.6)
     rainbow (3.1.1)
     rake (13.3.1)
-    rdoc (6.16.0)
+    rdoc (6.16.1)
       erb
       psych (>= 4.0.0)
       tsort
@@ -327,14 +324,11 @@ GEM
     rodauth-omniauth (0.6.2)
       omniauth (~> 2.0)
       rodauth (~> 2.36)
-    rodauth-rails (1.15.2)
-      bcrypt
-      railties (>= 5.0, < 8.1)
+    rodauth-rails (2.1.2)
+      railties (>= 5.1)
       roda (~> 3.76)
       rodauth (~> 2.36)
       rodauth-model (~> 0.2)
-      sequel-activerecord_connection (~> 1.1)
-      tilt
     rspec-core (3.13.6)
       rspec-support (~> 3.13.0)
     rspec-expectations (3.13.5)
@@ -400,10 +394,6 @@ GEM
     securerandom (0.4.1)
     sequel (5.98.0)
       bigdecimal
-    sequel-activerecord_connection (1.5.1)
-      activerecord (>= 5.0, < 8.1)
-      after_commit_everywhere (~> 1.1)
-      sequel (~> 5.38)
     shoulda-matchers (7.0.1)
       activesupport (>= 7.1)
     sin_lru_redux (2.5.2)
@@ -441,7 +431,6 @@ GEM
     thruster (0.1.16-aarch64-linux)
     thruster (0.1.16-arm64-darwin)
     thruster (0.1.16-x86_64-linux)
-    tilt (2.6.1)
     timeout (0.4.4)
     tsort (0.2.0)
     turbo-rails (2.0.20)
@@ -498,7 +487,7 @@ DEPENDENCIES
   rails (>= 8.0)
   rails-controller-testing
   rodauth-omniauth (~> 0.4)
-  rodauth-rails (~> 1.15)
+  rodauth-rails (~> 2.1)
   rspec-github
   rspec-rails (>= 8.0)
   rubocop-capybara
