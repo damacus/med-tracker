@@ -199,27 +199,103 @@ RSpec.describe Person do
       expect(new_person.has_capacity).to be true
     end
 
-    it 'can be marked as lacking capacity' do
-      person_without_capacity = described_class.create!(
+    it 'can be marked as lacking capacity when carer is assigned' do
+      carer = described_class.create!(
+        name: 'Carer Person',
+        date_of_birth: 40.years.ago,
+        person_type: :adult
+      )
+
+      person_without_capacity = described_class.new(
+        name: 'Person Without Capacity',
+        date_of_birth: 5.years.ago,
+        has_capacity: false
+      )
+      person_without_capacity.carer_relationships.build(carer: carer, relationship_type: 'parent')
+      person_without_capacity.save!
+
+      expect(person_without_capacity.has_capacity).to be false
+      expect(person_without_capacity).to be_valid
+    end
+  end
+
+  describe 'carer requirement validation' do
+    it 'requires carer when has_capacity is false and no carers assigned' do
+      person_without_capacity = described_class.new(
         name: 'Person Without Capacity',
         date_of_birth: 5.years.ago,
         has_capacity: false
       )
 
-      expect(person_without_capacity.has_capacity).to be false
+      expect(person_without_capacity).not_to be_valid
+      expect(person_without_capacity.errors[:base]).to include(
+        'A person without capacity must have at least one carer assigned'
+      )
+    end
+
+    it 'allows saving when has_capacity is false and carer is assigned' do
+      carer = described_class.create!(
+        name: 'Carer Person',
+        date_of_birth: 40.years.ago,
+        person_type: :adult
+      )
+
+      person_without_capacity = described_class.new(
+        name: 'Person Without Capacity',
+        date_of_birth: 5.years.ago,
+        has_capacity: false
+      )
+      person_without_capacity.carer_relationships.build(carer: carer, relationship_type: 'parent')
+
+      expect(person_without_capacity).to be_valid
+    end
+
+    it 'allows saving when has_capacity is true without carers' do
+      person_with_capacity = described_class.new(
+        name: 'Person With Capacity',
+        date_of_birth: 30.years.ago,
+        has_capacity: true
+      )
+
+      expect(person_with_capacity).to be_valid
+    end
+
+    it 'prevents removing capacity when no carers assigned' do
+      person = described_class.create!(
+        name: 'Person',
+        date_of_birth: 30.years.ago,
+        has_capacity: true
+      )
+
+      person.has_capacity = false
+
+      expect(person).not_to be_valid
+      expect(person.errors[:base]).to include(
+        'A person without capacity must have at least one carer assigned'
+      )
+    end
+
+    it 'allows removing capacity when carer is already assigned' do
+      carer = described_class.create!(
+        name: 'Carer Person',
+        date_of_birth: 40.years.ago,
+        person_type: :adult
+      )
+
+      person = described_class.create!(
+        name: 'Person',
+        date_of_birth: 30.years.ago,
+        has_capacity: true
+      )
+      person.carer_relationships.create!(carer: carer, relationship_type: 'support')
+
+      person.has_capacity = false
+
+      expect(person).to be_valid
     end
   end
 
   describe 'carer relationships' do
-    let(:patient) do
-      described_class.create!(
-        name: 'Child Patient',
-        date_of_birth: 5.years.ago,
-        person_type: :minor,
-        has_capacity: false
-      )
-    end
-
     let(:carer) do
       described_class.create!(
         name: 'Parent Carer',
@@ -228,9 +304,19 @@ RSpec.describe Person do
       )
     end
 
-    it 'can have carers assigned' do
-      patient.carer_relationships.create!(carer: carer, relationship_type: 'parent')
+    let(:patient) do
+      p = described_class.new(
+        name: 'Child Patient',
+        date_of_birth: 5.years.ago,
+        person_type: :minor,
+        has_capacity: false
+      )
+      p.carer_relationships.build(carer: carer, relationship_type: 'parent')
+      p.save!
+      p
+    end
 
+    it 'can have carers assigned' do
       expect(patient.carers).to include(carer)
       expect(carer.patients).to include(patient)
     end
@@ -242,17 +328,13 @@ RSpec.describe Person do
         person_type: :adult
       )
 
-      patient.carer_relationships.create!(carer: carer, relationship_type: 'parent')
       patient.carer_relationships.create!(carer: carer2, relationship_type: 'guardian')
 
       expect(patient.carers.count).to eq(2)
     end
 
     it 'can specify relationship type' do
-      relationship = patient.carer_relationships.create!(
-        carer: carer,
-        relationship_type: 'parent'
-      )
+      relationship = patient.carer_relationships.first
 
       expect(relationship.relationship_type).to eq('parent')
     end

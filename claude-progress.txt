@@ -1,6 +1,32 @@
 # MedTracker - Coding Agent Progress
 
-## Latest Session: November 28, 2025 (Rodauth Signup Implementation)
+## Latest Session: November 28, 2025 (CARER-010 Implementation)
+
+### Summary
+Implemented CARER-010: Capacity validation requires carer for patients without capacity.
+All 10 carer_relationships features now pass.
+
+### Changes Made
+1. **app/models/person.rb**: Added `carer_required_when_lacking_capacity` validation
+2. **app/views/people/_form.html.erb**: Added person_type and has_capacity fields with helpful hints
+3. **app/controllers/people_controller.rb**: Added person_type and has_capacity to permitted params
+4. **spec/models/person_spec.rb**: Added 5 new tests for carer requirement validation
+5. **spec/models/carer_relationship_spec.rb**: Fixed test to use has_capacity: true
+6. **features/carer_relationships.json**: Marked CARER-010 as passing
+7. **docker-compose.dev.yml**: Added command to start Rails server
+
+### Validation Logic
+- Person with `has_capacity: false` must have at least one carer assigned
+- Validation checks `carer_relationships.any?` to allow building relationships before save
+- Error message: "A person without capacity must have at least one carer assigned"
+
+### Test Results
+- 456 examples, 0 failures, 13 pending
+- All carer_relationships features: 10/10 passing
+
+---
+
+## Previous Session: November 28, 2025 (Rodauth Signup Implementation)
 
 ### Summary
 Implemented Rodauth signup flow (AUTH-006) with Person and User creation. Verified email

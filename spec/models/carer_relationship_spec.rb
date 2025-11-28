@@ -22,7 +22,7 @@ RSpec.describe CarerRelationship do
         name: 'Patient Person',
         date_of_birth: 5.years.ago,
         person_type: :adult,
-        has_capacity: false
+        has_capacity: true
       )
     end
 
