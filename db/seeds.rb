@@ -17,6 +17,7 @@ if Rails.env.local?
     :dosages,
     :prescriptions,
     :person_medicines,
+    :carer_relationships,
     :medication_takes
   )
 

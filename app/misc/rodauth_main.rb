@@ -38,6 +38,16 @@ class RodauthMain < Rodauth::Rails::Auth
     account_password_hash_column :password_hash
     verify_account_set_password? false
 
+    # Set timestamps when creating accounts (Sequel doesn't do this automatically)
+    new_account do |login|
+      {
+        email: login,
+        status: account_initial_status_value,
+        created_at: Time.current,
+        updated_at: Time.current
+      }
+    end
+
     # Change some default param keys.
     login_param 'email'
     login_confirm_param 'email-confirm'
@@ -66,24 +76,74 @@ class RodauthMain < Rodauth::Rails::Auth
     # Extend user's remember period when remembered via a cookie
     extend_remember_deadline? true
 
-    # Configure remember keys table to use account_id instead of id
+    # Configure tables to use account_id instead of id (matches our migration)
     remember_id_column :account_id
+    verify_account_id_column :account_id
+    reset_password_id_column :account_id
+    verify_login_change_id_column :account_id
 
     # ==> Hooks
     # Validate custom fields in the create account form.
-    # before_create_account do
-    #   throw_error_status(422, "name", "must be present") if param("name").empty?
-    # end
+    before_create_account do
+      # Validate name
+      name = param_or_nil('name')
+      throw_error_status(422, 'name', 'must be present') if name.blank?
+
+      # Validate date of birth
+      date_of_birth_str = param_or_nil('date_of_birth')
+      throw_error_status(422, 'date_of_birth', 'must be present') if date_of_birth_str.blank?
+
+      begin
+        Date.parse(date_of_birth_str)
+      rescue ArgumentError, TypeError
+        throw_error_status(422, 'date_of_birth', 'must be a valid date')
+      end
+    end
 
     # Perform additional actions after the account is created.
-    # after_create_account do
-    #   Profile.create!(account_id: account_id, name: param("name"))
-    # end
+    after_create_account do
+      date_of_birth = Date.parse(param('date_of_birth'))
+
+      # Determine person_type and role based on age
+      age = calculate_age(date_of_birth)
+      person_type = age >= 18 ? :adult : :minor
+      user_role = age >= 18 ? :parent : :minor
+
+      # Create associated Person record
+      person = Person.create!(
+        account_id: account_id,
+        name: param('name'),
+        date_of_birth: date_of_birth,
+        email: account[:email],
+        person_type: person_type
+      )
+
+      # Create associated User record for authorization
+      # New users default to 'parent' role (or 'minor' if under 18)
+      User.create!(
+        person: person,
+        email_address: account[:email],
+        role: user_role,
+        active: true
+      )
+    end
+
+    # Helper method to calculate age
+    auth_class_eval do
+      def calculate_age(date_of_birth, reference_date = Time.zone.today)
+        years = reference_date.year - date_of_birth.year
+        birthday_this_year = Date.new(reference_date.year, date_of_birth.month, date_of_birth.day)
+        years -= 1 if reference_date < birthday_this_year
+        years
+      end
+    end
 
     # Do additional cleanup after the account is closed.
-    # after_close_account do
-    #   Profile.find_by!(account_id: account_id).destroy
-    # end
+    after_close_account do
+      # Nullify the account_id on the person but don't delete the person
+      # This preserves medication history for compliance
+      Person.where(account_id: account_id).update_all(account_id: nil)
+    end
 
     # ==> Views
     # Rodauth will automatically use templates in app/views/rodauth/
