@@ -29,7 +29,7 @@ module Components
 
         [
           ['Add Medicine', url_helpers.new_medicine_path],
-          ['Add Person', url_helpers.new_user_path]
+          ['Add Person', url_helpers.new_person_path]
         ]
       end
 

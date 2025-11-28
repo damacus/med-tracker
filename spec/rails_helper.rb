@@ -32,6 +32,21 @@ rescue ActiveRecord::PendingMigrationError => e
   abort e.to_s.strip
 end
 RSpec.configure do |config|
+  # Auto-tag specs that require a browser based on directory or type.
+  # This allows CI to split tests with `--tag browser` / `--tag ~browser`
+  # instead of maintaining brittle path patterns.
+  config.define_derived_metadata(file_path: %r{/spec/(system|features|views)/}) do |metadata|
+    metadata[:browser] = true
+  end
+
+  config.define_derived_metadata(type: :system) do |metadata|
+    metadata[:browser] = true
+  end
+
+  config.define_derived_metadata(type: :feature) do |metadata|
+    metadata[:browser] = true
+  end
+
   # Remove this line if you're not using ActiveRecord or ActiveRecord fixtures
   config.fixture_paths = [
     Rails.root.join('spec/fixtures')

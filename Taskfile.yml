@@ -1,43 +1,55 @@
 ---
 version: '3'
+silent: true
+
+includes:
+  dev:
+    taskfile: Taskfiles/dev.yml
+  test:
+    taskfile: Taskfiles/test.yml
+  local:
+    taskfile: Taskfiles/local.yml
+  internal:
+    taskfile: Taskfiles/internal.yml
 
 tasks:
-  local:test:
-    desc: Run Playwright tests (installs Playwright, sets up DB, runs RSpec)
-    cmds:
-      - npx playwright install --with-deps chromium
-      - bin/test-local
-    env:
-      RAILS_ENV: test
+  default:
+    desc: List all available tasks
+    summary: Default task - shows all available commands
+    silent: true
+    cmds: [task --list]
 
-  local:rubocop:
-    desc: Run Rubocop tests (installs Playwright, sets up DB, runs RSpec)
+  test:
+    desc: Run tests in Docker (optionally specify TEST_FILE=path/to/spec)
+    summary: |
+      Run RSpec tests in Docker environment
+      Usage: task test
+      Usage: task test TEST_FILE=spec/models/user_spec.rb
+    silent: true
     cmds:
-      - bundle exec rubocop
+      - task: internal:run
+        vars:
+          ENVIRONMENT: test
+          SERVICE: web
+          COMMAND: 'bundle exec rspec {{ .TEST_FILE | default "spec" }}'
+          TEST_FILE: '{{ .TEST_FILE | default "spec" }}'
 
-  compose:test:
-    desc: Run RSpecs tests using Docker Compose
+
+  test-rebuild:
+    desc: Rebuild test server (drops database)
+    summary: |
+      Rebuild test environment and run tests (fresh database)
+      Usage: task test-rebuild
+    cmds:
+      - task: test:rebuild
+
+  rubocop:
+    desc: Run RuboCop linter (optionally with autocorrect)
+    summary: |
+      Run RuboCop linter with optional autocorrect
+      Usage: task rubocop
+      Usage: task rubocop AUTOCORRECT=true
     vars:
-      ENVIRONMENT: test
+      autocorrect: '{{ .AUTOCORRECT | default "false" }}'
     cmds:
-      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml build
-      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml run {{ .ENVIRONMENT }}
-      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml down
-
-  compose:dev:
-    desc: Run Rails server using Docker Compose
-    vars:
-      ENVIRONMENT: dev
-    cmds:
-      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml up -d
-      - echo "Visit http://localhost:3000 to see the app"
-
-  compose:dev:stop:
-    desc: Stop Rails server using Docker Compose
-    cmds:
-      - docker compose -f docker-compose.dev.yml down
-
-  compose:dev:logs:
-    desc: Follow logs for Rails server using Docker Compose
-    cmds:
-      - docker compose -f docker-compose.dev.yml logs
+      - 'bundle exec rubocop {{ if eq .autocorrect "true" }}-A{{ end }}'

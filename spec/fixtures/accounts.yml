@@ -1,0 +1,65 @@
+# frozen_string_literal: true
+
+# Account fixtures for Rodauth authentication
+# These correspond to the User fixtures with matching emails
+# All use password "password" to match User fixtures
+
+damacus:
+  email: damacus@example.com
+  password_hash: <%= RodauthApp.rodauth.allocate.password_hash("password") %>
+  status: "verified"
+
+test:
+  email: test@example.com
+  password_hash: <%= RodauthApp.rodauth.allocate.password_hash("password") %>
+  status: "verified"
+
+john_doe:
+  email: john.doe@example.com
+  password_hash: <%= RodauthApp.rodauth.allocate.password_hash("password") %>
+  status: "verified"
+
+admin:
+  email: admin@example.com
+  password_hash: <%= RodauthApp.rodauth.allocate.password_hash("password") %>
+  status: "verified"
+
+dr_jones:
+  email: dr.jones@example.com
+  password_hash: <%= RodauthApp.rodauth.allocate.password_hash("password") %>
+  status: "verified"
+
+nurse_smith:
+  email: nurse.smith@example.com
+  password_hash: <%= RodauthApp.rodauth.allocate.password_hash("password") %>
+  status: "verified"
+
+bob_smith:
+  email: bob.smith@example.com
+  password_hash: <%= RodauthApp.rodauth.allocate.password_hash("password") %>
+  status: "verified"
+
+carer:
+  email: carer@example.com
+  password_hash: <%= RodauthApp.rodauth.allocate.password_hash("password") %>
+  status: "verified"
+
+adult_patient:
+  email: adult.patient@example.com
+  password_hash: <%= RodauthApp.rodauth.allocate.password_hash("password") %>
+  status: "verified"
+
+jane_doe:
+  email: jane.doe@example.com
+  password_hash: <%= RodauthApp.rodauth.allocate.password_hash("password") %>
+  status: "verified"
+
+parent:
+  email: parent@example.com
+  password_hash: <%= RodauthApp.rodauth.allocate.password_hash("password") %>
+  status: "verified"
+
+child_user:
+  email: child.user@example.com
+  password_hash: <%= RodauthApp.rodauth.allocate.password_hash("password") %>
+  status: "verified"

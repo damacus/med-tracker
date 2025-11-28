@@ -11,9 +11,14 @@ module ApplicationCable
     private
 
     def set_current_user
-      return unless (session = Session.find_by(id: cookies.signed[:session_id]))
+      # Rodauth stores account_id in the session
+      account_id = request.session[:account_id]
+      return unless account_id
 
-      self.current_user = session.user
+      account = Account.find_by(id: account_id)
+      return unless account
+
+      self.current_user = account.person&.user
     end
   end
 end

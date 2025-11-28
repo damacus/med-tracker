@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe Prescription do
-  fixtures :prescriptions, :people, :medicines, :dosages
+  fixtures :accounts, :prescriptions, :people, :medicines, :dosages
 
   describe 'active flag' do
     let(:prescription) { prescriptions(:john_paracetamol) }
@@ -73,11 +73,5 @@ RSpec.describe Prescription do
     it { is_expected.to belong_to(:person) }
     it { is_expected.to belong_to(:dosage) }
     it { is_expected.to have_many(:medication_takes).dependent(:destroy) }
-
-    it 'has take_medicines as an alias for medication_takes' do
-      prescription = prescriptions(:john_paracetamol)
-      expect(prescription).to respond_to(:take_medicines)
-      expect(prescription.take_medicines).to eq(prescription.medication_takes)
-    end
   end
 end

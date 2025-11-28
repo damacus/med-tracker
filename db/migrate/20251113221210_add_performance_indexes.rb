@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class AddPerformanceIndexes < ActiveRecord::Migration[8.1]
+class AddPerformanceIndexes < ActiveRecord::Migration[8.0]
   def change
     # Audit logs filtering - commonly filtered by whodunnit and event
     add_index :versions, :whodunnit

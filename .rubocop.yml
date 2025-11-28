@@ -12,6 +12,8 @@ AllCops:
     - 'config/**/*'
     - '**/*.yml'
     - '**/*.yaml'
+    - 'vendor/**/*'
+    - 'node_modules/**/*'
 
 RSpec/ExampleLength:
   Max: 15

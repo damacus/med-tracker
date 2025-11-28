@@ -8,6 +8,7 @@ class CreatePrescriptions < ActiveRecord::Migration[8.0]
       t.references :dosage, null: false, foreign_key: true
       t.date :start_date
       t.date :end_date
+      t.boolean :active, default: true, null: false
 
       t.timestamps
     end

@@ -28,13 +28,27 @@ module Components
           end
         end
 
+        # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
         def render_metrics_grid
-          div(class: 'grid gap-6 md:grid-cols-2 lg:grid-cols-4') do
+          div(class: 'grid gap-6 md:grid-cols-2 lg:grid-cols-3') do
             render_metric_card(
               title: 'Total Users',
               value: metrics[:total_users] || 0,
               testid: 'metric-total-users',
               icon: '👥'
+            )
+            render_metric_card(
+              title: 'Active Users',
+              value: metrics[:active_users] || 0,
+              testid: 'metric-active-users',
+              icon: '✅'
+            )
+            render_metric_card(
+              title: 'Recent Signups',
+              value: metrics[:recent_signups] || 0,
+              testid: 'metric-recent-signups',
+              icon: '🆕',
+              subtitle: 'Last 7 days'
             )
             render_metric_card(
               title: 'Total People',
@@ -57,8 +71,10 @@ module Components
             )
           end
         end
+        # rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
-        def render_metric_card(title:, value:, testid:, icon: nil, variant: :default)
+        # rubocop:disable Metrics/ParameterLists
+        def render_metric_card(title:, value:, testid:, icon: nil, variant: :default, subtitle: nil)
           card_classes = base_card_classes(variant)
 
           div(class: card_classes, data: { testid: testid }) do
@@ -66,11 +82,13 @@ module Components
               div do
                 p(class: 'text-sm font-medium text-slate-600') { title }
                 p(class: 'text-3xl font-bold text-slate-900 mt-2', data: { metric_value: value }) { value.to_s }
+                p(class: 'text-xs text-slate-500 mt-1') { subtitle } if subtitle
               end
               div(class: 'text-4xl') { icon } if icon
             end
           end
         end
+        # rubocop:enable Metrics/ParameterLists
 
         def base_card_classes(variant)
           base = 'rounded-xl border bg-white p-6 shadow-sm'

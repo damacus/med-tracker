@@ -10,7 +10,11 @@ class PersonPolicy < ApplicationPolicy
   end
 
   def create?
-    admin?
+    # SECURITY: Admins should not create people directly
+    # People should only be created through proper user signup/invitation flows
+    # to prevent abuse and ensure proper account/authentication setup
+    # See: USER_MANAGEMENT_PLAN.md Phase 5.1 for invitation system
+    false
   end
 
   def update?

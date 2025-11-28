@@ -6,6 +6,7 @@ module Components
     class Navigation < Components::Base
       # Include additional helpers needed for this component
       include Phlex::Rails::Helpers::ButtonTo
+      include Phlex::Rails::Helpers::LinkTo
 
       # Initialize with optional current_user parameter (useful for testing)
       # @param [User, nil] current_user - The current user or nil if not authenticated
@@ -39,15 +40,9 @@ module Components
       # Check if user is authenticated
       # @return [Boolean] true if user is authenticated, false otherwise
       def authenticated?
-        # Use provided user if available, otherwise use Current.user
-        user = if @current_user.nil?
-                 Current.user
-               else
-                 @current_user
-               end
-
-        # Ensure we have a valid user object
-        user.present? && !user.nil?
+        # Always check the current authentication state via view context
+        # Don't rely on cached @current_user prop for authentication state
+        view_context.current_user.present?
       end
 
       # Render the brand/logo section
@@ -73,7 +68,7 @@ module Components
             render_profile_menu
           else
             # Show login link for unauthenticated users
-            link_to('Login', login_path, class: 'nav__link')
+            link_to('Login', '/login', class: 'nav__link')
           end
         end
       end
@@ -88,7 +83,7 @@ module Components
             render(RubyUI::DropdownMenuLabel.new { 'My Account' })
             render RubyUI::DropdownMenuSeparator.new
             render RubyUI::DropdownMenuItem.new(href: root_path) { 'Dashboard' }
-            render RubyUI::DropdownMenuItem.new(href: '#') { 'Profile' }
+            render RubyUI::DropdownMenuItem.new(href: profile_path) { 'Profile' }
             render_admin_menu_item if user_is_admin?
             render RubyUI::DropdownMenuSeparator.new
             render_logout_menu_item
@@ -101,25 +96,23 @@ module Components
         render RubyUI::DropdownMenuItem.new(href: admin_root_path) { 'Administration' }
       end
 
-      # Render logout menu item with form submission
+      # Render logout menu item with link using Turbo method
       def render_logout_menu_item
-        render RubyUI::DropdownMenuItem.new do
-          button_to('Logout',
-                    session_path,
-                    method: :delete,
-                    class: 'w-full text-left')
-        end
+        render RubyUI::DropdownMenuItem.new(
+          href: '/logout',
+          data: { turbo_method: :post }
+        ) { 'Logout' }
       end
 
       # Get current user name for display
       def current_user_name
-        user = @current_user || Current.user
+        user = @current_user
         user&.name || 'Account'
       end
 
       # Check if current user is an administrator
       def user_is_admin?
-        user = @current_user || Current.user
+        user = @current_user
         user&.administrator? || false
       end
     end

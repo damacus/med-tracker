@@ -56,15 +56,15 @@ ARG RAILS_ENV="test"
 ARG NODE_ENV="test"
 ENV RAILS_ENV="${RAILS_ENV}" \
   NODE_ENV="${NODE_ENV}" \
-  PATH="${PATH}:/home/ruby/.local/bin:/node_modules/.bin" \
+  PATH="/usr/bin:/usr/local/bin:${PATH}:/home/ruby/.local/bin:/node_modules/.bin" \
   USER="ruby" \
   PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
-COPY --chown=ruby:ruby bin/docker-entrypoint-test ./bin/
-RUN chmod +x bin/docker-entrypoint-test
+COPY --chown=ruby:ruby bin/docker-entrypoint-web ./bin/
+RUN chmod +x bin/docker-entrypoint-web
 
 COPY --chown=ruby:ruby . .
 
-ENTRYPOINT ["/app/bin/docker-entrypoint-test"]
+ENTRYPOINT ["/app/bin/docker-entrypoint-web"]
 
 CMD ["bundle", "exec", "rspec"]

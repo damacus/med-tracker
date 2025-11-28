@@ -68,7 +68,7 @@ RSpec.describe 'Dashboard Authorization' do
     it 'denies unauthenticated users access to dashboard' do
       visit dashboard_path
 
-      expect(page).to have_current_path(new_session_path)
+      expect(page).to have_current_path(login_path)
       expect(page).to have_no_content('Dashboard')
     end
   end

@@ -11,14 +11,14 @@ class MedicationTakesController < ApplicationController
 
     if @medication_take.save
       respond_to do |format|
-        format.html { redirect_back(fallback_location: root_path, notice: t('take_medicines.success')) }
-        format.json { render json: { success: true, message: 'Medication taken successfully recorded.' } }
+        format.html { redirect_back_or_to(root_path, notice: t('take_medicines.success')) }
+        format.json { render json: { success: true, message: t('take_medicines.json_success') } }
       end
     else
       respond_to do |format|
-        format.html { redirect_back(fallback_location: root_path, alert: t('take_medicines.failure')) }
+        format.html { redirect_back_or_to(root_path, alert: t('take_medicines.failure')) }
         format.json do
-          render json: { success: false, errors: @medication_take.errors.full_messages }, status: :unprocessable_entity
+          render json: { success: false, errors: @medication_take.errors.full_messages }, status: :unprocessable_content
         end
       end
     end

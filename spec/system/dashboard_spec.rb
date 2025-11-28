@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'Dashboard' do
-  fixtures :users, :medicines, :dosages, :prescriptions, :people
+  fixtures :accounts, :users, :medicines, :dosages, :prescriptions, :people
 
   it 'loads the dashboard for a signed-in user' do
     sign_in(users(:john))
@@ -14,7 +14,7 @@ RSpec.describe 'Dashboard' do
       aggregate_failures 'dashboard content' do
         expect(page).to have_content('Dashboard')
         expect(page).to have_link('Add Medicine', href: new_medicine_path)
-        expect(page).to have_link('Add Person', href: new_user_path)
+        expect(page).to have_link('Add Person', href: new_person_path)
       end
     end
   end

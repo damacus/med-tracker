@@ -14,7 +14,7 @@ RSpec.describe UserPolicy do
     end
 
     it 'permits all actions' do
-      %i[index show create new update edit destroy].each do |action|
+      %i[index show create new update edit destroy activate].each do |action|
         expect(policy.public_send("#{action}?")).to be true
       end
     end
@@ -128,7 +128,7 @@ RSpec.describe UserPolicy do
   describe 'Scope' do
     subject(:scope) { described_class::Scope.new(current_user, User.all).resolve }
 
-    fixtures :users
+    fixtures :accounts, :people, :users
 
     context 'when user is an administrator' do
       let(:current_user) { users(:admin) }

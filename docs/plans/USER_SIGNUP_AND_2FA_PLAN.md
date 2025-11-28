@@ -1,6 +1,11 @@
 # User Signup and 2FA Implementation Plan
 
-**Status**: Partially superseded – see `USER_SIGNUP_PLAN.md` for the current signup implementation plan. This document now focuses on shared email infrastructure and two-factor authentication.
+**Status**: ⚠️ Partially superseded
+**Updated**: 2025-11-27
+
+> See `USER_SIGNUP_PLAN.md` for current signup status (~20% complete).
+> See `RODAUTH_SIGNUP_IMPLEMENTATION.md` for detailed implementation plan.
+> This document now focuses on **email infrastructure** and **two-factor authentication**.
 
 ## Current State
 
@@ -137,6 +142,7 @@
 ### ✅ DECISION MADE: Postmark
 
 **Chosen for:**
+
 - UK/EU data residency
 - Excellent deliverability
 - Simple transactional email focus
@@ -856,6 +862,6 @@ config.action_mailer.default_url_options = {
 ---
 
 **Document Status:** Draft for Review
-**Last Updated:** {{ current_date }}
+**Last Updated:** 2025-11-27
 **Owner:** Development Team
 **Reviewers Needed:** Product, Security, Compliance

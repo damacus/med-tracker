@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe Components::Dashboard::PersonSchedule, type: :component do
-  fixtures :people, :users, :medicines, :dosages, :prescriptions
+  fixtures :accounts, :people, :users, :medicines, :dosages, :prescriptions
 
   subject(:component) { described_class.new(person: person, prescriptions: prescriptions) }
 

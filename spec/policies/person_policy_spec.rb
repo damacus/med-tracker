@@ -4,7 +4,7 @@ require 'rails_helper'
 require 'pundit/rspec'
 
 RSpec.describe PersonPolicy do
-  fixtures :users, :people, :carer_relationships
+  fixtures :accounts, :people, :users, :carer_relationships
 
   subject(:policy) { described_class.new(current_user, person) }
 
@@ -13,10 +13,17 @@ RSpec.describe PersonPolicy do
   context 'when user is an administrator' do
     let(:current_user) { users(:admin) }
 
-    it 'permits all actions' do
-      %i[index show create new update edit destroy].each do |action|
+    it 'permits viewing and management actions except create' do
+      %i[index show update edit destroy].each do |action|
         expect(policy.public_send("#{action}?")).to be true
       end
+    end
+
+    it 'forbids creating people directly (security)' do
+      # SECURITY: Admins should not create people directly
+      # People should only be created through proper user signup/invitation flows
+      expect(policy.create?).to be false
+      expect(policy.new?).to be false
     end
   end
 

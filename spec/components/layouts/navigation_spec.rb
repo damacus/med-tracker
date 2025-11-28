@@ -5,7 +5,7 @@ require 'rails_helper'
 # Following the Red-Green-Refactor TDD cycle
 # This spec tests the navigation component through system testing
 RSpec.describe 'Navigation', type: :system do
-  fixtures :users
+  fixtures :accounts, :people, :users
 
   before do
     driven_by(:playwright)
@@ -17,9 +17,9 @@ RSpec.describe 'Navigation', type: :system do
       user = users(:john) # Admin user from fixtures
 
       visit login_path
-      fill_in 'email_address', with: user.email_address
-      fill_in 'password', with: 'password'
-      click_button 'Sign in'
+      fill_in 'Email address', with: user.email_address
+      fill_in 'Password', with: 'password'
+      click_button 'Login'
 
       # Check navigation elements for authenticated user
       within 'nav' do
@@ -27,10 +27,12 @@ RSpec.describe 'Navigation', type: :system do
         expect(page).to have_link('People')
         expect(page).to have_no_link('Login')
 
-        # Open the user dropdown menu to access Logout button
+        # Open the user dropdown menu to access Logout link
         click_button user.name
-        expect(page).to have_button('Logout')
       end
+
+      # Dropdown content may render outside nav, check page-wide
+      expect(page).to have_link('Logout')
     end
   end
 
@@ -42,7 +44,7 @@ RSpec.describe 'Navigation', type: :system do
 
       # First try to log out explicitly if we're logged in
       visit root_path
-      click_button 'Logout' if page.has_button?('Logout')
+      click_link 'Logout' if page.has_link?('Logout')
 
       # Then ensure we visit a page as a guest
       visit login_path
@@ -50,7 +52,7 @@ RSpec.describe 'Navigation', type: :system do
       # Check navigation elements for unauthenticated user
       within 'nav' do
         expect(page).to have_link('Login')
-        expect(page).to have_no_button('Logout')
+        expect(page).to have_no_link('Logout')
         expect(page).to have_no_link('Medicines')
         expect(page).to have_no_link('People')
       end

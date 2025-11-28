@@ -1,0 +1,28 @@
+---
+services:
+  runner:
+    # Build from local Dockerfile to include Ruby and other dependencies
+    build:
+      context: .
+      dockerfile: Dockerfile
+    deploy:
+      replicas: 3
+    environment:
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - GITHUB_REPOSITORY=${GITHUB_REPOSITORY:-damacus/med-tracker}
+      - RUNNER_NAME=${RUNNER_NAME:-med-tracker-runner}
+      - RUNNER_LABELS=${RUNNER_LABELS:-self-hosted,linux,x64,med-tracker}
+      - RUNNER_WORKDIR=/tmp/runner/work
+      - RUNNER_GROUP=Default
+    volumes:
+      # Mount Docker socket for Docker-in-Docker support
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Persist runner work directory
+      - runner-work:/tmp/runner
+    restart: unless-stopped
+    security_opt:
+      # Required for Docker-in-Docker
+      - label:disable
+
+volumes:
+  runner-work:

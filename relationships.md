@@ -1,3 +1,12 @@
+# Database Relationships
+
+## Overview
+
+This document describes the database relationships for the MedTracker application.
+
+## Entity Relationship Diagram
+
+```mermaid
 erDiagram
     users {
         int id PK

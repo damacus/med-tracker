@@ -4,7 +4,7 @@ require 'rails_helper'
 
 # This system test verifies the main site navigation using the Capybara DSL.
 RSpec.describe 'Navigation' do
-  fixtures :users, :people
+  fixtures :accounts, :people, :users
 
   before do
     driven_by(:rack_test)
@@ -38,7 +38,7 @@ RSpec.describe 'Navigation' do
       aggregate_failures 'dropdown menu items' do
         expect(page).to have_link('Dashboard')
         expect(page).to have_link('Profile')
-        expect(page).to have_button('Logout')
+        expect(page).to have_link('Logout')
         # Regular user should not see Administration link
         expect(page).to have_no_link('Administration')
       end

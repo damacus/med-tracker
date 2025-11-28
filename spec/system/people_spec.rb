@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'People' do
-  fixtures :users, :people, :medicines, :dosages, :prescriptions
+  fixtures :accounts, :people, :users, :medicines, :dosages, :prescriptions
 
   let(:user) { users(:john) }
 
@@ -139,6 +139,6 @@ RSpec.describe 'People' do
     visit login_path
     fill_in 'Email address', with: user.email_address
     fill_in 'Password', with: 'password'
-    click_button 'Sign in'
+    click_button 'Login'
   end
 end

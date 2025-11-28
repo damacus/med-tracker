@@ -32,7 +32,6 @@ RSpec.describe User do
   end
 
   describe 'associations' do
-    it { is_expected.to have_many(:sessions).dependent(:destroy) }
     it { is_expected.to belong_to(:person).inverse_of(:user).required }
     it { is_expected.to have_many(:prescriptions).through(:person) }
   end
@@ -107,19 +106,47 @@ RSpec.describe User do
     end
   end
 
+  describe 'account activation' do
+    fixtures :accounts, :people, :users
+
+    describe '#deactivate!' do
+      it 'sets active to false' do
+        expect { users(:bob).deactivate! }.to change { users(:bob).reload.active }.from(true).to(false)
+      end
+    end
+
+    describe '#activate!' do
+      it 'sets active to true' do
+        users(:bob).update!(active: false)
+        expect { users(:bob).activate! }.to change { users(:bob).reload.active }.from(false).to(true)
+      end
+    end
+
+    describe 'scopes' do
+      it 'returns only active users with .active scope' do
+        users(:bob).deactivate!
+        expect(described_class.active).not_to include(users(:bob))
+        expect(described_class.active).to include(users(:admin))
+      end
+
+      it 'returns only inactive users with .inactive scope' do
+        users(:bob).deactivate!
+        expect(described_class.inactive).to include(users(:bob))
+        expect(described_class.inactive).not_to include(users(:admin))
+      end
+    end
+  end
+
   describe 'versioning' do
-    fixtures :users, :people, :sessions
+    fixtures :accounts, :people, :users
 
     let(:admin) { users(:admin) }
-    let(:session) { sessions(:admin_session) }
 
     before do
-      Current.session = session
       PaperTrail.request.whodunnit = admin.id
     end
 
     after do
-      Current.reset
       PaperTrail.request.whodunnit = nil
     end
 

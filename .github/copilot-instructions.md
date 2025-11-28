@@ -1,6 +1,7 @@
 # GitHub Copilot Instructions for MedTracker
 
 ## Mission
+
 - **Overall goal** Manage and track medication schedules so carers and patients can confidently record doses and respect safety rules.
 - **Primary outcome** Accurate, auditable history of prescriptions and over-the-counter medicines for every `Person`.
 - **Source of truth** Domain logic lives on the Rails server; the front end renders server-sent HTML via Hotwire.
@@ -10,6 +11,7 @@
 MedTracker is a Ruby on Rails application for managing and tracking medication schedules. It helps users monitor medication intake, ensuring adherence to prescribed schedules with built-in validations to prevent overdose and timing violations.
 
 ## Orientation
+
 - **Read first** `README.md` for setup, `docs/design.md` for architecture, `USER_MANAGEMENT_PLAN.md` for roadmap.
 - **Key directories** `app/` (Rails MVC + Phlex components), `spec/` (RSpec and Capybara tests), `config/` (environment + routes), `db/migrate/` (schema history).
 - **Named guides** `PERSON_MEDICINES_IMPLEMENTATION.md` documents the non-prescription flow.
@@ -27,12 +29,14 @@ MedTracker is a Ruby on Rails application for managing and tracking medication s
 - **Static Assets**: Propshaft
 
 ## Domain Model Highlights
+
 - **People & Users** `Person` stores demographic data; `User` handles authentication and roles (administrator, doctor, nurse, carer, parent).
 - **Medicines** `Medicine` plus `Prescription` define formal regimens; `PersonMedicine` covers ad-hoc supplements; `MedicationTake` logs every dose.
 - **Relationships** `CarerRelationship` links carers to patients, enforcing capacity support.
 - **Constraints** Timing rules (`max_daily_doses`, `min_hours_between_doses`) enforced in models before UI.
 
 ## Application Design
+
 - **Backend** Ruby on Rails with service-style POROs when business logic grows; guard clauses preferred for early exits.
 - **Frontend** Hotwire (Turbo + Stimulus) with Phlex components under `app/components/`; dialogs lean on HTML `<dialog>` and Turbo Streams.
 - **Authentication** Cookie sessions, `has_secure_password`, IP and user-agent tracking via `Authentication` concern; future OIDC planned (`docs/design.md`).
@@ -64,6 +68,7 @@ Always follow the Red-Green-Refactor cycle:
 - Aim for exhaustive coverage of policy, model, and feature behavior
 
 Example test structure:
+
 ```ruby
 require 'rails_helper'
 require 'pundit/rspec'
@@ -146,11 +151,13 @@ app/
 - Carer relationships with capacity support tracking
 
 ## Useful Entry Points
+
 - **Authentication** `app/controllers/sessions_controller.rb`, `spec/features/sessions_spec.rb`.
 - **Medication tracking** `app/models/medication_take.rb`, `spec/features/person_medicines_spec.rb`.
 - **Admin users** `app/controllers/admin/users_controller.rb`, `spec/components/admin/`.
 
 ## Tooling & Automation
+
 - **Workflows** Review `.windsurf/workflows/` for task-specific playbooks (`/test`, `/rubocop`, `/update-dependencies`, etc.).
 - **Linting** RuboCop config lives in `.rubocop.yml`; respect enforced cops.
 - **CI** GitHub Actions (`.github/workflows/`) run tests and Playwright suites.
@@ -168,6 +175,7 @@ Use semantic commits (conventional commits format) for all commit messages:
 - `chore:` - Maintenance tasks, dependency updates
 
 **Examples:**
+
 ```
 feat: add prescription management feature
 fix: resolve dose timing validation error
@@ -177,6 +185,7 @@ test: add tests for medication take model
 ```
 
 **Important:**
+
 - Do NOT create "Initial plan" or "Initial commit" messages as they pollute git history
 - Start with meaningful, descriptive commits that reflect actual work completed
 - Each commit should represent a complete, logical unit of work
@@ -185,18 +194,21 @@ test: add tests for medication take model
 ## Running Commands
 
 ### Setup
+
 ```bash
 bundle install
 rails db:create db:migrate
 ```
 
 ### Testing
+
 ```bash
 bundle exec rspec               # Run all tests
 rails test                      # Alternative (if Minitest tests exist)
 ```
 
 ### Code Quality
+
 ```bash
 rubocop                        # Check code style
 rubocop -a                     # Auto-fix style issues
@@ -204,6 +216,7 @@ brakeman                       # Security analysis
 ```
 
 ### Development Server
+
 ```bash
 bin/dev                        # Start server (recommended)
 rails server                   # Alternative: Start server at http://localhost:3000
@@ -220,6 +233,7 @@ rails server                   # Alternative: Start server at http://localhost:3
 - Documentation: Markdown must satisfy `markdown-lint-cli2`; keep headings orderly
 
 ## Future Plans
+
 - **Roadmap** `USER_MANAGEMENT_PLAN.md` phases detail authorization, admin CRUD, carer tools, and audit logging.
 - **Design vision** `docs/design.md` notes eventual OIDC auth, audit trails, mobile support.
 - **Open tasks** Look for unchecked items in plan documents before adding new features.

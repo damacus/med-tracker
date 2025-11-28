@@ -8,11 +8,11 @@ name: CI
 
 jobs:
   scan_ruby:
-    runs-on: ubuntu-latest
+    runs-on: [ubuntu-latest]
     name: Ruby Security Scan
     steps:
       - name: Checkout code
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
@@ -23,11 +23,11 @@ jobs:
         run: bin/brakeman --no-pager
 
   scan_js:
-    runs-on: ubuntu-latest
+    runs-on: [ubuntu-latest]
     name: JavaScript Security Scan
     steps:
       - name: Checkout code
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
@@ -38,7 +38,7 @@ jobs:
         run: bin/importmap audit
 
   lint:
-    runs-on: ubuntu-latest
+    runs-on: [ubuntu-latest]
     name: Code Style Check
     steps:
       - name: Checkout code
@@ -52,17 +52,17 @@ jobs:
       - name: Lint code for consistent style
         run: bin/rubocop -f github
 
-  test:
-    runs-on: ubuntu-latest
-    name: RSpec Tests
-    timeout-minutes: 60
+  test_non_system:
+    runs-on: [ubuntu-latest]
+    name: RSpec Tests (Models, Policies, Controllers, Components)
+    timeout-minutes: 20
 
     services:
       postgres:
         image: postgres:18-alpine
         env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           POSTGRES_DB: medtracker_test
         ports:
           - 5432:5432
@@ -74,7 +74,48 @@ jobs:
 
     env:
       TEST_DATABASE_ADAPTER: postgresql
-      DATABASE_URL: postgres://postgres:postgres@localhost:5432/medtracker_test
+      DATABASE_URL: postgres://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/medtracker_test
+      RAILS_ENV: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # v5
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4.7'
+          bundler-cache: true
+
+      - name: Set up database
+        run: bundle exec rails db:migrate
+
+      - name: Run non-browser tests
+        run: bundle exec rspec --format RSpec::Github::Formatter --tag ~browser
+
+  test_system:
+    runs-on: [ubuntu-latest]
+    name: RSpec System Tests (Playwright)
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: medtracker_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      TEST_DATABASE_ADAPTER: postgresql
+      DATABASE_URL: postgres://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/medtracker_test
       RAILS_ENV: test
 
     steps:
@@ -88,15 +129,13 @@ jobs:
           bundler-cache: true
 
       - name: Install Playwright
-        run: npx playwright install
+        run: npx playwright install --with-deps chromium
 
       - name: Set up database
-        run: |
-          bundle exec rails db:create
-          bundle exec rails db:schema:load
+        run: bundle exec rails db:migrate
 
       - name: Precompile assets
         run: bundle exec rails assets:precompile
 
-      - name: Run tests
-        run: bundle exec rspec --format RSpec::Github::Formatter
+      - name: Run browser tests
+        run: bundle exec rspec --format RSpec::Github::Formatter --tag browser

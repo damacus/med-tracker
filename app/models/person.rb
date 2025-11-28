@@ -8,6 +8,7 @@ class Person < ApplicationRecord
   # @see docs/audit-trail.md
   has_paper_trail
 
+  belongs_to :account, optional: true
   has_one :user, inverse_of: :person, dependent: :destroy
   has_many :prescriptions, dependent: :destroy
   has_many :medicines, through: :prescriptions

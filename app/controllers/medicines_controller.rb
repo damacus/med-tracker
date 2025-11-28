@@ -45,7 +45,7 @@ class MedicinesController < ApplicationController
         medicine: @medicine,
         title: t('medicines.form.new_title'),
         subtitle: t('medicines.form.new_subtitle')
-      ), status: :unprocessable_entity
+      ), status: :unprocessable_content
     end
   end
 
@@ -58,7 +58,7 @@ class MedicinesController < ApplicationController
         medicine: @medicine,
         title: t('medicines.form.edit_title'),
         subtitle: t('medicines.form.edit_subtitle', name: @medicine.name)
-      ), status: :unprocessable_entity
+      ), status: :unprocessable_content
     end
   end
 

@@ -3,6 +3,7 @@
 class ApplicationController < ActionController::Base
   include Authentication
   include Pundit::Authorization
+  include Pagy::Method
 
   before_action :set_paper_trail_whodunnit
 
@@ -23,6 +24,6 @@ class ApplicationController < ActionController::Base
 
   def user_not_authorized
     flash[:alert] = t('pundit.not_authorized', default: 'You are not authorized to perform this action.')
-    redirect_back(fallback_location: root_path)
+    redirect_back_or_to(root_path)
   end
 end

@@ -1,19 +1,29 @@
 # frozen_string_literal: true
 
 Rails.application.routes.draw do
-  resource :session
-  resources :passwords, param: :token
   # Defines the root path route ("/")
   root 'dashboard#index'
 
   namespace :admin do
     root to: 'dashboard#index'
-    resources :users, only: %i[index new create edit update destroy]
+    resources :users, only: %i[index new create edit update destroy] do
+      member do
+        post :activate
+      end
+    end
+    resources :carer_relationships, only: %i[index new create destroy] do
+      member do
+        post :activate
+      end
+    end
     resources :audit_logs, only: %i[index show]
   end
 
   # Dashboard
   get 'dashboard', to: 'dashboard#index'
+
+  # Profile
+  resource :profile, only: %i[show update]
 
   # Medicine management
   resources :medicines do
@@ -23,17 +33,9 @@ Rails.application.routes.draw do
   end
   get 'medicine-finder', to: 'medicines#finder', as: :medicine_finder
 
-  # Authentication
-  get 'sign_up', to: 'users#new'
-  resources :users, only: %i[new create]
+  # Authentication - Rodauth handles /login, /logout, /create-account via middleware
 
-  get 'login', to: 'sessions#new'
-  post 'login', to: 'sessions#create'
-  delete 'logout', to: 'sessions#destroy'
-
-  # People and prescriptions management
   resources :prescriptions do
-    resources :take_medicines, only: [:create]
     resources :medication_takes, only: [:create]
   end
 

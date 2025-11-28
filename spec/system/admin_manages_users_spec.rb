@@ -3,24 +3,27 @@
 require 'rails_helper'
 
 RSpec.describe 'AdminManagesUsers' do
-  fixtures :users
+  fixtures :accounts, :people, :users
 
   # Use the admin fixture instead of creating a duplicate user
   let(:admin) { users(:admin) }
   # Use a unique email for the carer user to avoid conflicts
   let!(:carer) do
-    person = Person.create!(name: 'Carer User', date_of_birth: '1990-01-01')
+    account = Account.create!(email: 'test_carer@example.com',
+                              password_hash: RodauthApp.rodauth.allocate.password_hash('password'),
+                              status: 'verified')
+    person = Person.create!(name: 'Carer User', date_of_birth: '1990-01-01', account: account)
     User.create!(person: person, email_address: 'test_carer@example.com',
                  password: 'password', password_confirmation: 'password', role: :carer)
   end
 
   before do
-    driven_by(:rack_test)
+    driven_by(:playwright)
   end
 
   context 'when user is logged in as an admin' do
     it 'allows admin to see the list of users' do
-      sign_in_as(admin)
+      login_as(admin)
 
       visit admin_users_path
 
@@ -32,7 +35,7 @@ RSpec.describe 'AdminManagesUsers' do
     end
 
     it 'allows admin to create a new user' do
-      sign_in_as(admin)
+      login_as(admin)
 
       visit admin_users_path
       click_link 'New User'
@@ -50,21 +53,33 @@ RSpec.describe 'AdminManagesUsers' do
 
       expect(page).to have_content('User was successfully created')
       expect(page).to have_content('newuser@example.com')
-      expect(page).to have_content('doctor')
+      expect(page).to have_content('Doctor')
     end
 
     it 'shows validation errors when creating user with invalid data' do
-      sign_in_as(admin)
+      login_as(admin)
 
       visit new_admin_user_path
 
+      # Fill in required fields except email to bypass HTML5 validation
+      fill_in 'Name', with: 'Test User'
+      fill_in 'Date of birth', with: '1990-01-01'
+      fill_in 'Password', with: 'password123'
+      fill_in 'Password confirmation', with: 'password123'
+      select 'Doctor', from: 'Role'
+
+      # Clear email field and submit
+      fill_in 'Email address', with: ''
+
+      # Use JavaScript to remove required attribute and submit
+      page.execute_script("document.getElementById('user_email_address').removeAttribute('required')")
       click_button 'Create User'
 
-      expect(page).to have_content('Email address can\'t be blank')
+      expect(page).to have_content("Email address can't be blank")
     end
 
     it 'allows admin to edit an existing user' do
-      sign_in_as(admin)
+      login_as(admin)
 
       visit admin_users_path
       within "[data-user-id='#{carer.id}']" do
@@ -81,23 +96,73 @@ RSpec.describe 'AdminManagesUsers' do
 
       expect(page).to have_content('User was successfully updated')
       expect(page).to have_content('updated_carer@example.com')
-      expect(page).to have_content('nurse')
+      expect(page).to have_content('Nurse')
     end
 
     it 'shows validation errors when updating user with invalid data' do
-      sign_in_as(admin)
+      login_as(admin)
 
       visit edit_admin_user_path(carer)
 
       fill_in 'Email address', with: ''
 
+      # Use JavaScript to remove required attribute and submit
+      page.execute_script("document.getElementById('user_email_address').removeAttribute('required')")
       click_button 'Update User'
 
-      expect(page).to have_content('Email address can\'t be blank')
+      expect(page).to have_content("Email address can't be blank")
+    end
+
+    it 'allows admin to deactivate a user' do
+      login_as(admin)
+
+      visit admin_users_path
+
+      within "[data-user-id='#{carer.id}']" do
+        expect(page).to have_content('Active')
+        click_button 'Deactivate'
+      end
+
+      # Confirm in the AlertDialog
+      within('[role="alertdialog"]') do
+        click_button 'Deactivate'
+      end
+
+      expect(page).to have_content('User account has been deactivated')
+      within "[data-user-id='#{carer.id}']" do
+        expect(page).to have_content('Inactive')
+      end
+    end
+
+    it 'allows admin to reactivate a deactivated user' do
+      carer.deactivate!
+      login_as(admin)
+
+      visit admin_users_path
+
+      within "[data-user-id='#{carer.id}']" do
+        expect(page).to have_content('Inactive')
+        click_button 'Activate'
+      end
+
+      expect(page).to have_content('User account has been activated')
+      within "[data-user-id='#{carer.id}']" do
+        expect(page).to have_content('Active')
+      end
+    end
+
+    it 'prevents admin from deactivating themselves' do
+      login_as(admin)
+
+      visit admin_users_path
+
+      within "[data-user-id='#{admin.id}']" do
+        expect(page).to have_no_button('Deactivate')
+      end
     end
 
     it 'allows admin to search users by name' do
-      sign_in_as(admin)
+      login_as(admin)
 
       visit admin_users_path
 
@@ -111,7 +176,7 @@ RSpec.describe 'AdminManagesUsers' do
     end
 
     it 'allows admin to search users by email' do
-      sign_in_as(admin)
+      login_as(admin)
 
       visit admin_users_path
 
@@ -123,7 +188,7 @@ RSpec.describe 'AdminManagesUsers' do
     end
 
     it 'allows admin to filter users by role' do
-      sign_in_as(admin)
+      login_as(admin)
 
       visit admin_users_path
 
@@ -134,8 +199,43 @@ RSpec.describe 'AdminManagesUsers' do
       expect(page).to have_no_content(admin.email_address)
     end
 
+    it 'allows admin to filter users by status' do
+      carer.deactivate!
+      login_as(admin)
+
+      visit admin_users_path
+
+      select 'Inactive', from: 'Status'
+      click_button 'Search'
+
+      expect(page).to have_content(carer.email_address)
+      expect(page).to have_no_content(admin.email_address)
+    end
+
+    it 'allows admin to filter active users only' do
+      carer.deactivate!
+      login_as(admin)
+
+      visit admin_users_path
+
+      select 'Active', from: 'Status'
+      click_button 'Search'
+
+      expect(page).to have_no_content(carer.email_address)
+      expect(page).to have_content(admin.email_address)
+    end
+
+    it 'shows pagination info' do
+      login_as(admin)
+
+      visit admin_users_path
+
+      # Pagination info is hidden on mobile, check for visible on desktop
+      expect(page).to have_css('[data-testid="pagination-info"]', visible: :all)
+    end
+
     it 'allows admin to combine search and filter' do
-      sign_in_as(admin)
+      login_as(admin)
 
       visit admin_users_path
 
@@ -150,7 +250,7 @@ RSpec.describe 'AdminManagesUsers' do
     end
 
     it 'shows all users when search is cleared' do
-      sign_in_as(admin)
+      login_as(admin)
 
       visit admin_users_path
 
@@ -166,7 +266,7 @@ RSpec.describe 'AdminManagesUsers' do
 
   context 'when user is logged in as a non-admin' do
     it 'denies access to the user list' do
-      sign_in_as(carer)
+      login_as(carer)
 
       visit admin_users_path
 
@@ -174,18 +274,11 @@ RSpec.describe 'AdminManagesUsers' do
     end
 
     it 'denies access to create new users' do
-      sign_in_as(carer)
+      login_as(carer)
 
       visit new_admin_user_path
 
       expect(page).to have_css('#flash', text: 'You are not authorized to perform this action.')
     end
-  end
-
-  def sign_in_as(user, password: 'password')
-    visit login_path
-    fill_in 'Email address', with: user.email_address
-    fill_in 'Password', with: password
-    click_button 'Sign in'
   end
 end

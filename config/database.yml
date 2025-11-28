@@ -7,8 +7,8 @@ development:
   url: <%= ENV['DATABASE_URL'] %>
 
 test:
-  adapter: sqlite3
-  database: db/test.sqlite3
+  adapter: postgresql
+  url: <%= ENV['DATABASE_URL'] %>
 
 production:
   adapter: postgresql

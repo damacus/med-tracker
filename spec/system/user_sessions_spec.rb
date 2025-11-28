@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'User Sessions', :js do
-  fixtures :users
+  fixtures :accounts, :people, :users
   let(:user) { users(:jane) }
 
   describe 'login page' do
@@ -12,9 +12,9 @@ RSpec.describe 'User Sessions', :js do
 
       within 'main' do
         aggregate_failures 'login form' do
-          expect(page).to have_field('email_address')
+          expect(page).to have_field('email')
           expect(page).to have_field('password')
-          expect(page).to have_button('Sign in')
+          expect(page).to have_button('Login')
           expect(page).to have_link('Forgot password?')
         end
       end
@@ -23,30 +23,26 @@ RSpec.describe 'User Sessions', :js do
     it 'shows error messages for invalid login' do
       visit login_path
 
-      fill_in 'email_address', with: 'wrong@example.com'
+      fill_in 'email', with: 'wrong@example.com'
       fill_in 'password', with: 'wrongpass'
-      click_button 'Sign in'
+      click_button 'Login'
 
       using_wait_time(3) do
         within '#flash' do
           aggregate_failures 'flash messages' do
-            expect(page).to have_content('Try another email address or password')
+            expect(page).to have_content('error logging in')
           end
         end
       end
     end
 
     it 'allows user to login with valid credentials' do
-      visit login_path
-
-      fill_in 'email_address', with: user.email_address
-      fill_in 'password', with: 'password'
-      click_button 'Sign in'
+      login_as(user)
 
       using_wait_time(3) do
         within '#flash' do
           aggregate_failures 'flash messages' do
-            expect(page).to have_content('Signed in successfully')
+            expect(page).to have_content('You have been logged in')
           end
         end
       end
@@ -54,33 +50,20 @@ RSpec.describe 'User Sessions', :js do
   end
 
   describe 'logout' do
-    it 'allows a logged in user to sign out', pending: 'Turbo DELETE request not completing properly in Playwright' do
-      visit login_path
-      fill_in 'email_address', with: user.email_address
-      fill_in 'password', with: 'password'
-      click_button 'Sign in'
+    it 'allows a logged in user to sign out' do
+      login_as(user)
 
-      # Wait for the login to complete and redirect
       using_wait_time(5) do
-        expect(page).to have_no_current_path(login_path)
-        expect(page).to have_content('Signed in successfully')
+        expect(page).to have_current_path('/dashboard')
+        expect(page).to have_content('You have been logged in')
       end
 
-      # Open the user dropdown menu to access logout button
       click_button user.name
+      click_link 'Logout'
 
-      # Check that we can see the logout button
-      expect(page).to have_button('Logout')
-
-      # Click the logout button
-      click_button 'Logout'
-
-      # Use Capybara's built-in waiting functionality with a longer timeout
       using_wait_time(5) do
-        # Verify we can see the login link in navigation (user is logged out)
-        expect(page).to have_link('Login')
-        # Verify user is logged out (no Logout button anywhere)
-        expect(page).to have_no_button('Logout', visible: :all)
+        expect(page).to have_link('Login', href: '/login')
+        expect(page).to have_no_button(user.name)
       end
     end
   end

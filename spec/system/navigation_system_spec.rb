@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'Navigation' do
-  fixtures :users
+  fixtures :accounts, :people, :users
 
   before do
     driven_by(:rack_test)
@@ -13,17 +13,14 @@ RSpec.describe 'Navigation' do
     it 'shows navigation with a sign out button' do
       user = users(:john) # Admin user from fixtures
 
-      visit login_path
-      fill_in 'email_address', with: user.email_address
-      fill_in 'password', with: 'password'
-      click_button 'Sign in'
+      login_as(user)
 
       # Check navigation elements for authenticated user
       within 'nav' do
         aggregate_failures 'navigation links and buttons' do
           expect(page).to have_link('Medicines')
           expect(page).to have_link('People')
-          expect(page).to have_button('Logout')
+          expect(page).to have_link('Logout')
           expect(page).to have_no_link('Login')
         end
       end
@@ -34,7 +31,6 @@ RSpec.describe 'Navigation' do
     it 'shows navigation with a login link' do
       # Reset the session and ensure we're logged out
       Capybara.reset_sessions!
-      Current.session = nil
 
       # Use the login page which should always show unauthenticated navigation
       visit login_path

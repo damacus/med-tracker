@@ -1,0 +1,81 @@
+---
+pt:
+  hello: "Olá mundo"
+
+  admin:
+    users:
+      unauthorized: "Não está autorizado a realizar esta ação."
+
+  medicines:
+    created: "Medicamento criado com sucesso."
+    updated: "Medicamento atualizado com sucesso."
+    deleted: "Medicamento eliminado com sucesso."
+    form:
+      new_title: "Adicionar Novo Medicamento"
+      new_subtitle: "Registar detalhes de inventário e informação de dosagem."
+      edit_title: "Editar Medicamento"
+      edit_subtitle: "Atualizar detalhes de %{name}."
+
+  passwords:
+    reset_sent: >-
+      Instruções de redefinição de palavra-passe enviadas
+      (se existir um utilizador com esse endereço de email).
+    reset_success: "Palavra-passe redefinida."
+    mismatch: "As palavras-passe não coincidem."
+    invalid_token: "O link de redefinição de palavra-passe é inválido ou expirou."
+    mailer:
+      subject: "Redefinir a sua palavra-passe"
+
+  people:
+    created: "Pessoa criada com sucesso."
+    updated: "Pessoa atualizada com sucesso."
+    deleted: "Pessoa eliminada com sucesso."
+
+  person_medicines:
+    created: "Medicamento adicionado com sucesso."
+    deleted: "Medicamento removido com sucesso."
+    medicine_taken: "Medicamento tomado com sucesso."
+    modal:
+      new_title: "Adicionar Medicamento para %{person}"
+
+  prescriptions:
+    created: "Receita criada com sucesso."
+    updated: "Receita atualizada com sucesso."
+    deleted: "Receita eliminada com sucesso."
+    medicine_taken: "Medicamento tomado com sucesso."
+    modal:
+      new_title: "Nova Receita para %{person}"
+      edit_title: "Editar Receita para %{person}"
+
+  sessions:
+    rate_limit: "Tente novamente mais tarde."
+    signed_in: "Sessão iniciada com sucesso."
+    invalid_credentials: "Tente outro endereço de email ou palavra-passe."
+    signed_out: "Sessão terminada com sucesso."
+
+  take_medicines:
+    success: "Toma de medicamento registada com sucesso."
+    failure: "Falha ao registar toma de medicamento."
+    json_success: "Toma de medicamento registada com sucesso."
+
+  profiles:
+    updated: "Perfil atualizado com sucesso."
+    email_updated: "Email atualizado com sucesso."
+    no_changes: "Sem alterações a guardar."
+    profile_update_failed: "Falha ao atualizar perfil: %{errors}"
+    email_update_failed: "Falha ao atualizar email: %{errors}"
+    close_account:
+      title: "Encerrar Conta"
+      description: "Eliminar permanentemente a sua conta e todos os dados associados"
+      dialog_title: "Tem a certeza absoluta?"
+      dialog_description: "Esta ação não pode ser desfeita. Isto irá eliminar permanentemente a sua conta e remover todos os seus dados dos nossos servidores."
+      cancel_button: "Cancelar"
+      confirm_button: "Sim, eliminar a minha conta"
+
+  users:
+    welcome: "Bem-vindo! A sua conta foi criada."
+    created: "Utilizador criado com sucesso."
+    updated: "Utilizador atualizado com sucesso."
+    deactivated: "Conta de utilizador desativada."
+    activated: "Conta de utilizador ativada."
+    cannot_deactivate_self: "Não pode desativar a sua própria conta."

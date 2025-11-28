@@ -1,0 +1,81 @@
+---
+cy:
+  hello: "Helo byd"
+
+  admin:
+    users:
+      unauthorized: "Nid oes gennych awdurdod i gyflawni'r weithred hon."
+
+  medicines:
+    created: "Crëwyd y feddyginiaeth yn llwyddiannus."
+    updated: "Diweddarwyd y feddyginiaeth yn llwyddiannus."
+    deleted: "Dilëwyd y feddyginiaeth yn llwyddiannus."
+    form:
+      new_title: "Ychwanegu Meddyginiaeth Newydd"
+      new_subtitle: "Cofnodi manylion stoc a gwybodaeth dos."
+      edit_title: "Golygu Meddyginiaeth"
+      edit_subtitle: "Diweddaru manylion %{name}."
+
+  passwords:
+    reset_sent: >-
+      Anfonwyd cyfarwyddiadau ailosod cyfrinair
+      (os oes defnyddiwr gyda'r cyfeiriad e-bost hwnnw).
+    reset_success: "Mae'r cyfrinair wedi'i ailosod."
+    mismatch: "Nid oedd y cyfrineiriau'n cyfateb."
+    invalid_token: "Mae'r ddolen ailosod cyfrinair yn annilys neu wedi dod i ben."
+    mailer:
+      subject: "Ailosod eich cyfrinair"
+
+  people:
+    created: "Crëwyd y person yn llwyddiannus."
+    updated: "Diweddarwyd y person yn llwyddiannus."
+    deleted: "Dilëwyd y person yn llwyddiannus."
+
+  person_medicines:
+    created: "Ychwanegwyd y feddyginiaeth yn llwyddiannus."
+    deleted: "Tynnwyd y feddyginiaeth yn llwyddiannus."
+    medicine_taken: "Cymerwyd y feddyginiaeth yn llwyddiannus."
+    modal:
+      new_title: "Ychwanegu Meddyginiaeth ar gyfer %{person}"
+
+  prescriptions:
+    created: "Crëwyd y presgripsiwn yn llwyddiannus."
+    updated: "Diweddarwyd y presgripsiwn yn llwyddiannus."
+    deleted: "Dilëwyd y presgripsiwn yn llwyddiannus."
+    medicine_taken: "Cymerwyd y feddyginiaeth yn llwyddiannus."
+    modal:
+      new_title: "Presgripsiwn Newydd ar gyfer %{person}"
+      edit_title: "Golygu Presgripsiwn ar gyfer %{person}"
+
+  sessions:
+    rate_limit: "Rhowch gynnig arall yn nes ymlaen."
+    signed_in: "Mewngofnodwyd yn llwyddiannus."
+    invalid_credentials: "Rhowch gynnig ar gyfeiriad e-bost neu gyfrinair arall."
+    signed_out: "Allgofnodwyd yn llwyddiannus."
+
+  take_medicines:
+    success: "Cofnodwyd cymryd y feddyginiaeth yn llwyddiannus."
+    failure: "Methwyd â chofnodi cymryd y feddyginiaeth."
+    json_success: "Cofnodwyd cymryd y feddyginiaeth yn llwyddiannus."
+
+  profiles:
+    updated: "Diweddarwyd y proffil yn llwyddiannus."
+    email_updated: "Diweddarwyd yr e-bost yn llwyddiannus."
+    no_changes: "Dim newidiadau i'w cadw."
+    profile_update_failed: "Methwyd â diweddaru'r proffil: %{errors}"
+    email_update_failed: "Methwyd â diweddaru'r e-bost: %{errors}"
+    close_account:
+      title: "Cau Cyfrif"
+      description: "Dileu eich cyfrif a'r holl ddata cysylltiedig yn barhaol"
+      dialog_title: "Ydych chi'n hollol siŵr?"
+      dialog_description: "Ni ellir dadwneud y weithred hon. Bydd hyn yn dileu eich cyfrif yn barhaol ac yn tynnu'ch holl ddata o'n gweinyddwyr."
+      cancel_button: "Canslo"
+      confirm_button: "Ie, dilëwch fy nghyfrif"
+
+  users:
+    welcome: "Croeso! Mae eich cyfrif wedi'i greu."
+    created: "Crëwyd y defnyddiwr yn llwyddiannus."
+    updated: "Diweddarwyd y defnyddiwr yn llwyddiannus."
+    deactivated: "Mae cyfrif y defnyddiwr wedi'i ddadactifadu."
+    activated: "Mae cyfrif y defnyddiwr wedi'i actifadu."
+    cannot_deactivate_self: "Ni allwch ddadactifadu eich cyfrif eich hun."
