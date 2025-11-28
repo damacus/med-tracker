@@ -1,6 +1,39 @@
 # MedTracker - Coding Agent Progress
 
-## Latest Session: November 28, 2025 (Authorization Verification)
+## Latest Session: November 28, 2025 (Rodauth Signup Implementation)
+
+### Summary
+Implemented Rodauth signup flow (AUTH-006) with Person and User creation. Verified email
+verification grace period (AUTH-008) is working in non-production environments.
+
+### Changes Made
+1. **app/views/rodauth/create_account.rb**: New Phlex component for signup form
+2. **app/views/rodauth/create_account.html.erb**: ERB wrapper for Phlex component
+3. **app/misc/rodauth_main.rb**: Added signup hooks for Person/User creation
+4. **db/migrate/20251128215600**: Make Rodauth table timestamps nullable
+5. **db/migrate/20251128215700**: Make user password_digest nullable
+6. **features/authentication.json**: Marked AUTH-006 and AUTH-008 as passing
+
+### Signup Flow Now Works
+1. User fills in Name, Date of Birth, Email, Password
+2. Account created via Rodauth
+3. Person created with correct person_type (adult/minor based on age)
+4. User created with correct role (parent/minor based on age)
+5. Verification email sent
+6. User can login immediately (7-day grace period in non-production)
+
+### Features Completed
+- AUTH-006: Rodauth signup form creates account and person ✓
+- AUTH-008: Email verification grace period in non-production ✓
+
+### Remaining Authentication Features
+- AUTH-007: Email verification required in production (needs production testing)
+- AUTH-009: Google OAuth creates new account
+- AUTH-010: Google OAuth links to existing account
+
+---
+
+## Previous Session: November 28, 2025 (Authorization Verification)
 
 ### Summary
 Verified all 25 authorization features are working correctly. Fixed development environment issues.
