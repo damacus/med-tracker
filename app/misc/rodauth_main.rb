@@ -142,7 +142,7 @@ class RodauthMain < Rodauth::Rails::Auth
     after_close_account do
       # Nullify the account_id on the person but don't delete the person
       # This preserves medication history for compliance
-      Person.where(account_id: account_id).update_all(account_id: nil)
+      Person.where(account_id: account_id).find_each { |p| p.update!(account_id: nil) }
     end
 
     # ==> Views

@@ -16,7 +16,7 @@ RSpec.describe 'User Signup', type: :system do
       expect do
         click_button 'Create Account'
       end.to change(Account, :count).by(1)
-        .and change(Person, :count).by(1)
+                                    .and change(Person, :count).by(1)
 
       # Should redirect to dashboard or verification page
       expect(page).to have_current_path('/dashboard').or have_current_path('/verify-account-resend')
