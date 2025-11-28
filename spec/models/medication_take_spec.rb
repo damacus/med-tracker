@@ -109,10 +109,9 @@ RSpec.describe MedicationTake do
   end
 
   describe 'versioning' do # rubocop:disable RSpec/MultipleMemoizedHelpers
-    fixtures :accounts, :people, :users, :sessions
+    fixtures :accounts, :people, :users
 
     let(:admin) { users(:admin) }
-    let(:session) { sessions(:admin_session) }
     let(:prescription) do
       person = people(:john)
       medicine = Medicine.create!(
@@ -133,12 +132,10 @@ RSpec.describe MedicationTake do
     end
 
     before do
-      Current.session = session
       PaperTrail.request.whodunnit = admin.id
     end
 
     after do
-      Current.reset
       PaperTrail.request.whodunnit = nil
     end
 

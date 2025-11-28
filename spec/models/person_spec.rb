@@ -368,18 +368,15 @@ RSpec.describe Person do
   end
 
   describe 'versioning' do
-    fixtures :accounts, :people, :users, :sessions
+    fixtures :accounts, :people, :users
 
     let(:admin) { users(:admin) }
-    let(:session) { sessions(:admin_session) }
 
     before do
-      Current.session = session
       PaperTrail.request.whodunnit = admin.id
     end
 
     after do
-      Current.reset
       PaperTrail.request.whodunnit = nil
     end
 

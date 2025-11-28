@@ -42,7 +42,7 @@ module Components
             class: button_primary_classes
           ) { 'Add Medicine' }
           a(
-            href: url_helpers&.new_user_path || '#',
+            href: url_helpers&.new_person_path || '#',
             class: button_secondary_classes
           ) { 'Add Person' }
         end

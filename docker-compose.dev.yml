@@ -31,7 +31,7 @@ services:
       DATABASE_URL: >-
         postgresql://medtracker:medtracker_password@db:5432/medtracker_development
     ports:
-      - "3000"
+      - "3000:3000"
     volumes:
       - .:/app
       - bundle_cache:/usr/local/bundle

@@ -32,7 +32,6 @@ RSpec.describe User do
   end
 
   describe 'associations' do
-    it { is_expected.to have_many(:sessions).dependent(:destroy) }
     it { is_expected.to belong_to(:person).inverse_of(:user).required }
     it { is_expected.to have_many(:prescriptions).through(:person) }
   end
@@ -139,18 +138,15 @@ RSpec.describe User do
   end
 
   describe 'versioning' do
-    fixtures :accounts, :people, :users, :sessions
+    fixtures :accounts, :people, :users
 
     let(:admin) { users(:admin) }
-    let(:session) { sessions(:admin_session) }
 
     before do
-      Current.session = session
       PaperTrail.request.whodunnit = admin.id
     end
 
     after do
-      Current.reset
       PaperTrail.request.whodunnit = nil
     end
 

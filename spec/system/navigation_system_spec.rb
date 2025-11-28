@@ -31,7 +31,6 @@ RSpec.describe 'Navigation' do
     it 'shows navigation with a login link' do
       # Reset the session and ensure we're logged out
       Capybara.reset_sessions!
-      Current.session = nil
 
       # Use the login page which should always show unauthenticated navigation
       visit login_path
