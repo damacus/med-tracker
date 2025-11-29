@@ -1,0 +1,6 @@
+[
+  {"id": "PWA-001", "category": "functional", "area": "pwa", "description": "App has manifest.json", "steps": ["Check /manifest.json", "Verify valid manifest", "Verify app name set", "Verify icons defined"], "passes": true},
+  {"id": "PWA-002", "category": "functional", "area": "pwa", "description": "App has service worker", "steps": ["Check for service worker registration", "Verify service worker active"], "passes": true},
+  {"id": "PWA-003", "category": "functional", "area": "pwa", "description": "App installable on mobile", "steps": ["Open on mobile browser", "Verify install prompt available", "Install app", "Verify opens as standalone"], "passes": false},
+  {"id": "PWA-004", "category": "functional", "area": "pwa", "description": "App icons display correctly", "steps": ["Install PWA", "Check home screen icon", "Verify icon displays correctly"], "passes": true}
+]

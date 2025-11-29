@@ -1,0 +1,7 @@
+[
+  {"id": "PERF-001", "category": "functional", "area": "performance", "description": "Dashboard loads in under 500ms", "steps": ["Log in", "Navigate to /dashboard", "Measure load time", "Verify < 500ms"], "passes": false},
+  {"id": "PERF-002", "category": "functional", "area": "performance", "description": "Admin user list loads in under 500ms with 100+ users", "steps": ["Ensure 100+ users exist", "Navigate to /admin/users", "Measure load time", "Verify < 500ms"], "passes": false},
+  {"id": "PERF-003", "category": "functional", "area": "performance", "description": "No N+1 queries on dashboard", "steps": ["Enable query logging", "Load dashboard", "Verify no N+1 patterns in logs"], "passes": false},
+  {"id": "PERF-004", "category": "functional", "area": "performance", "description": "No N+1 queries on admin user list", "steps": ["Enable query logging", "Load /admin/users", "Verify no N+1 patterns in logs"], "passes": false},
+  {"id": "PERF-005", "category": "functional", "area": "performance", "description": "Prescription list loads efficiently", "steps": ["Create person with 50+ prescriptions", "Load prescription list", "Verify reasonable load time"], "passes": false}
+]

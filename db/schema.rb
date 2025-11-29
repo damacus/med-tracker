@@ -12,7 +12,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 20_251_127_231_020) do
+ActiveRecord::Schema[8.0].define(version: 20_251_128_215_700) do
   # These are extensions that must be enabled in order to support this database
   enable_extension 'citext'
   enable_extension 'pg_catalog.plpgsql'
@@ -22,8 +22,8 @@ ActiveRecord::Schema[8.0].define(version: 20_251_127_231_020) do
     t.string 'key', null: false
     t.string 'login', null: false
     t.datetime 'deadline', null: false
-    t.datetime 'created_at', null: false
-    t.datetime 'updated_at', null: false
+    t.datetime 'created_at'
+    t.datetime 'updated_at'
     t.index ['account_id'], name: 'index_account_login_change_keys_on_account_id'
   end
 
@@ -32,8 +32,8 @@ ActiveRecord::Schema[8.0].define(version: 20_251_127_231_020) do
     t.string 'key', null: false
     t.datetime 'deadline', null: false
     t.datetime 'email_last_sent', default: -> { 'CURRENT_TIMESTAMP' }, null: false
-    t.datetime 'created_at', null: false
-    t.datetime 'updated_at', null: false
+    t.datetime 'created_at'
+    t.datetime 'updated_at'
     t.index ['account_id'], name: 'index_account_password_reset_keys_on_account_id'
   end
 
@@ -51,8 +51,8 @@ ActiveRecord::Schema[8.0].define(version: 20_251_127_231_020) do
     t.string 'key', null: false
     t.datetime 'requested_at', default: -> { 'CURRENT_TIMESTAMP' }, null: false
     t.datetime 'email_last_sent', default: -> { 'CURRENT_TIMESTAMP' }, null: false
-    t.datetime 'created_at', null: false
-    t.datetime 'updated_at', null: false
+    t.datetime 'created_at'
+    t.datetime 'updated_at'
     t.index ['account_id'], name: 'index_account_verification_keys_on_account_id'
   end
 
@@ -164,7 +164,7 @@ ActiveRecord::Schema[8.0].define(version: 20_251_127_231_020) do
 
   create_table 'users', force: :cascade do |t|
     t.string 'email_address', null: false
-    t.string 'password_digest', null: false
+    t.string 'password_digest'
     t.integer 'role', default: 4, null: false
     t.datetime 'created_at', null: false
     t.datetime 'updated_at', null: false
