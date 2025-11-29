@@ -5,6 +5,9 @@ require 'rails_helper'
 RSpec.describe 'User Signup', type: :system do
   describe 'creating a new account' do
     it 'creates both an Account and a Person with valid details' do
+      initial_account_count = Account.count
+      initial_person_count = Person.count
+
       visit create_account_path
 
       fill_in 'Name', with: 'New Test User'
@@ -13,13 +16,14 @@ RSpec.describe 'User Signup', type: :system do
       fill_in 'Password', with: 'securepassword123'
       fill_in 'Confirm Password', with: 'securepassword123'
 
-      expect do
-        click_button 'Create Account'
-      end.to change(Account, :count).by(1)
-                                    .and change(Person, :count).by(1)
+      click_button 'Create Account'
 
-      # Should redirect to dashboard or verification page
+      # Wait for redirect to complete (indicates form was processed)
       expect(page).to have_current_path('/dashboard').or have_current_path('/verify-account-resend')
+
+      # Verify counts changed
+      expect(Account.count).to eq(initial_account_count + 1)
+      expect(Person.count).to eq(initial_person_count + 1)
 
       # Verify the account was created with correct email
       account = Account.find_by(email: 'newuser@example.com')
@@ -115,6 +119,9 @@ RSpec.describe 'User Signup', type: :system do
 
       click_button 'Create Account'
 
+      # Wait for redirect to complete (indicates form was processed)
+      expect(page).to have_current_path('/dashboard').or have_current_path('/verify-account-resend')
+
       person = Account.find_by(email: 'adult@example.com')&.person
       expect(person&.person_type).to eq('adult')
     end
@@ -130,6 +137,9 @@ RSpec.describe 'User Signup', type: :system do
       fill_in 'Confirm Password', with: 'securepassword123'
 
       click_button 'Create Account'
+
+      # Wait for redirect to complete (indicates form was processed)
+      expect(page).to have_current_path('/dashboard').or have_current_path('/verify-account-resend')
 
       person = Account.find_by(email: 'minor@example.com')&.person
       expect(person&.person_type).to eq('minor')

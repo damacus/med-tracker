@@ -154,6 +154,9 @@ class RodauthMain < Rodauth::Rails::Auth
     # Redirect to dashboard after successful login
     login_redirect '/dashboard'
 
+    # Redirect to dashboard after account creation (with grace period, user is auto-logged in)
+    create_account_redirect { login_redirect }
+
     # Redirect to home page after logout.
     logout_redirect '/'
 
