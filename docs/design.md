@@ -61,6 +61,14 @@ A Rails-based application for tracking medicine administration, including dosage
 - OIDC integration
 - API versioning for future compatibility
 
+### Observability
+
+- OpenTelemetry for distributed tracing
+- OTLP exporter for vendor-neutral telemetry
+- Auto-instrumentation for Rails, ActiveRecord, ActionPack, ActionView, ActiveJob
+- SQL obfuscation to protect sensitive data
+- Configurable via environment variables (OTEL_ENABLED, OTEL_EXPORTER_OTLP_ENDPOINT, OTEL_SERVICE_NAME)
+
 ### Security Considerations
 
 - OIDC authentication

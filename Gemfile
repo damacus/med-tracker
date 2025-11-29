@@ -51,6 +51,11 @@ gem 'phlex-rails', '>= 2.3'
 gem 'tailwindcss-rails', '>= 4.3'
 gem 'tailwind_merge', '>= 1.3'
 
+# OpenTelemetry for observability [https://opentelemetry.io/]
+gem 'opentelemetry-sdk'
+gem 'opentelemetry-exporter-otlp'
+gem 'opentelemetry-instrumentation-all'
+
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
   gem 'debug', platforms: %i[mri windows], require: 'debug/prelude'

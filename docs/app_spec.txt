@@ -20,6 +20,7 @@
       <authentication>Rodauth (rodauth-rails, rodauth-omniauth gems)</authentication>
       <authorization>Pundit gem with deny-by-default policies</authorization>
       <audit_logging>PaperTrail gem</audit_logging>
+      <observability>OpenTelemetry (opentelemetry-sdk, opentelemetry-exporter-otlp, opentelemetry-instrumentation-all)</observability>
     </backend>
     <frontend>
       <framework>Hotwire (Turbo + Stimulus)</framework>
@@ -598,6 +599,7 @@
       - Audit logging for all changes
       - Password fields excluded from audit logs
       - UK/EU data residency (Postmark for email)
+      - OpenTelemetry SQL obfuscation to prevent sensitive data in traces
     </data_protection>
 
     <compliance>
