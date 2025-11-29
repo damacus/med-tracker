@@ -44,7 +44,7 @@ Environment variables control OpenTelemetry behavior:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `OTEL_ENABLED` | `true` (production), `false` (other) | Enable/disable tracing |
+| `OTEL_ENABLED` | `'true'` (production), `'false'` (other) | Enable/disable tracing (string values) |
 | `OTEL_SERVICE_NAME` | `medtracker` | Service name in traces |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://localhost:4318/v1/traces` | OTLP collector endpoint |
 

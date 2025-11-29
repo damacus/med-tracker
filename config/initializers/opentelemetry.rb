@@ -4,9 +4,9 @@
 # Provides distributed tracing and observability
 #
 # Environment variables:
-#   OTEL_EXPORTER_OTLP_ENDPOINT - OTLP collector endpoint (default: http://localhost:4318)
+#   OTEL_EXPORTER_OTLP_ENDPOINT - OTLP collector endpoint (default: http://localhost:4318/v1/traces)
 #   OTEL_SERVICE_NAME - Service name for traces (default: medtracker)
-#   OTEL_ENABLED - Enable/disable OpenTelemetry (default: true in production, false otherwise)
+#   OTEL_ENABLED - Enable/disable OpenTelemetry (default: 'true' in production, 'false' otherwise)
 #   OTEL_LOG_LEVEL - Log level for OpenTelemetry (default: info)
 
 return unless ENV.fetch('OTEL_ENABLED', Rails.env.production? ? 'true' : 'false') == 'true'
@@ -43,8 +43,7 @@ OpenTelemetry::SDK.configure do |c|
     'OpenTelemetry::Instrumentation::PG' => {
       db_statement: :obfuscate
     },
-    'OpenTelemetry::Instrumentation::Rack' => {},
-    'OpenTelemetry::Instrumentation::Concurrent::Ruby' => {}
+    'OpenTelemetry::Instrumentation::Rack' => {}
   })
 end
 
