@@ -52,9 +52,9 @@ gem 'tailwindcss-rails', '>= 4.3'
 gem 'tailwind_merge', '>= 1.3'
 
 # OpenTelemetry for observability [https://opentelemetry.io/]
-gem 'opentelemetry-sdk'
-gem 'opentelemetry-exporter-otlp'
-gem 'opentelemetry-instrumentation-all'
+gem 'opentelemetry-sdk', '~> 1.0'
+gem 'opentelemetry-exporter-otlp', '~> 0.29'
+gem 'opentelemetry-instrumentation-all', '~> 0.72'
 
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
