@@ -1,21 +1,22 @@
 {
   "description": "MedTracker Feature List - Test cases organized by functional area",
-  "version": "1.0.0",
-  "updated": "2025-11-28",
+  "version": "1.2.0",
+  "updated": "2025-12-01",
   "areas": [
-    {"name": "authentication", "file": "features/authentication.json", "count": 12},
+    {"name": "authentication", "file": "features/authentication.json", "count": 18},
     {"name": "authorization", "file": "features/authorization.json", "count": 25},
-    {"name": "prescriptions", "file": "features/prescriptions.json", "count": 10},
-    {"name": "dose_tracking", "file": "features/dose_tracking.json", "count": 12},
-    {"name": "person_medicines", "file": "features/person_medicines.json", "count": 10},
+    {"name": "prescriptions", "file": "features/prescriptions.json", "count": 12},
+    {"name": "dose_tracking", "file": "features/dose_tracking.json", "count": 14},
+    {"name": "person_medicines", "file": "features/person_medicines.json", "count": 12},
+    {"name": "dosages", "file": "features/dosages.json", "count": 5},
     {"name": "dashboard", "file": "features/dashboard.json", "count": 8},
-    {"name": "admin", "file": "features/admin.json", "count": 21},
-    {"name": "carer_relationships", "file": "features/carer_relationships.json", "count": 10},
-    {"name": "audit", "file": "features/audit.json", "count": 12},
+    {"name": "admin", "file": "features/admin.json", "count": 23},
+    {"name": "carer_relationships", "file": "features/carer_relationships.json", "count": 15},
+    {"name": "audit", "file": "features/audit.json", "count": 14},
     {"name": "medicines", "file": "features/medicines.json", "count": 10},
-    {"name": "people", "file": "features/people.json", "count": 15},
+    {"name": "people", "file": "features/people.json", "count": 18},
     {"name": "profile", "file": "features/profile.json", "count": 10},
-    {"name": "security", "file": "features/security.json", "count": 15},
+    {"name": "security", "file": "features/security.json", "count": 20},
     {"name": "invitations", "file": "features/invitations.json", "count": 5},
     {"name": "navigation", "file": "features/navigation.json", "count": 7},
     {"name": "ui", "file": "features/ui.json", "count": 15},
@@ -23,13 +24,15 @@
     {"name": "performance", "file": "features/performance.json", "count": 5},
     {"name": "i18n", "file": "features/i18n.json", "count": 5},
     {"name": "pwa", "file": "features/pwa.json", "count": 4},
-    {"name": "e2e", "file": "features/e2e.json", "count": 5}
+    {"name": "e2e", "file": "features/e2e.json", "count": 12},
+    {"name": "observability", "file": "features/observability.json", "count": 16}
   ],
   "summary": {
-    "total_features": 221,
+    "total_features": 283,
     "categories": {
-      "functional": 191,
-      "style": 30
-    }
+      "functional": 258,
+      "style": 25
+    },
+    "tests_with_10plus_steps": 26
   }
 }
