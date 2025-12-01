@@ -8,7 +8,7 @@ class RodauthMain < Rodauth::Rails::Auth
     enable :create_account, :verify_account, :verify_account_grace_period,
            :login, :logout, :remember,
            :reset_password, :change_password, :change_login, :verify_login_change,
-           :close_account
+           :close_account, :omniauth
 
     # See the Rodauth documentation for the list of available config options:
     # http://rodauth.jeremyevans.net/documentation.html
@@ -82,6 +82,21 @@ class RodauthMain < Rodauth::Rails::Auth
     reset_password_id_column :account_id
     verify_login_change_id_column :account_id
 
+    # ==> OmniAuth (Google OAuth)
+    # Configure Google OAuth provider
+    # Credentials should be stored in Rails credentials or environment variables
+    if Rails.application.credentials.dig(:google, :client_id).present?
+      omniauth_provider :google_oauth2,
+                        Rails.application.credentials.google[:client_id],
+                        Rails.application.credentials.google[:client_secret],
+                        scope: 'email profile'
+    elsif ENV['GOOGLE_CLIENT_ID'].present?
+      omniauth_provider :google_oauth2,
+                        ENV.fetch('GOOGLE_CLIENT_ID', nil),
+                        ENV.fetch('GOOGLE_CLIENT_SECRET', nil),
+                        scope: 'email profile'
+    end
+
     # ==> Hooks
     # Validate custom fields in the create account form.
     before_create_account do
@@ -128,6 +143,33 @@ class RodauthMain < Rodauth::Rails::Auth
           person: person,
           email_address: account[:email],
           role: user_role,
+          active: true
+        )
+      end
+    end
+
+    # Handle OAuth account creation - create Person and User records
+    after_omniauth_create_account do
+      # Get user info from OAuth provider
+      auth_info = omniauth_info
+      name = auth_info['name'] || auth_info['email'].split('@').first
+      email = auth_info['email']
+
+      # OAuth users are assumed to be adults (we don't have DOB from OAuth)
+      # They can update their profile later
+      ActiveRecord::Base.transaction do
+        person = Person.create!(
+          account_id: account_id,
+          name: name,
+          email: email,
+          person_type: :adult,
+          date_of_birth: 18.years.ago.to_date # Default DOB for adults
+        )
+
+        User.create!(
+          person: person,
+          email_address: email,
+          role: :parent,
           active: true
         )
       end
