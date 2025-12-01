@@ -172,7 +172,11 @@ module Views
       end
 
       def oauth_enabled?
-        view_context.rodauth.respond_to?(:omniauth_request_path)
+        return false unless view_context.rodauth.respond_to?(:omniauth_request_path)
+
+        # Only show OAuth button if credentials are actually configured
+        Rails.application.credentials.dig(:google, :client_id).present? ||
+          ENV['GOOGLE_CLIENT_ID'].present?
       end
 
       def render_oauth_buttons

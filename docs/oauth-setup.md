@@ -112,7 +112,7 @@ When a user signs in with Google for the first time, MedTracker automatically:
     - Name from Google profile
     - Email from Google account
     - Person type set to `adult`
-    - Default date of birth (18 years ago)
+    - Default date of birth (100 years ago as sentinel value)
 3. Creates a **User** record with:
     - Role set to `parent`
     - Active status enabled

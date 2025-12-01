@@ -1,105 +1,131 @@
 ---
-description: Review and address PR comments (especially Copilot)
+description: Review and address GitHub PR comments (especially Copilot)
 ---
 
 # PR Review Workflow
 
-Review pull request comments and address feedback from automated reviewers like GitHub Copilot.
+Review and address comments on a GitHub Pull Request.
 
 ## Prerequisites
 
-- PR number (e.g., `170`)
-- GitHub MCP server connected OR `gh` CLI authenticated
+- PR number (e.g., 171)
+- `gh` CLI authenticated: `gh auth login`
 
-## Step 1: Retrieve PR Comments
+## Step 1: Fetch PR Review Comments
 
-### Option A: GitHub MCP (Preferred)
-
-Use the GitHub MCP tools to fetch PR details and comments:
+### Option A: MCP Tool (Recommended for Cascade)
 
 ```text
-mcp5_pull_request_read(owner: "damacus", repo: "med-tracker", pullNumber: <PR_NUMBER>, method: "get")
-mcp5_pull_request_read(owner: "damacus", repo: "med-tracker", pullNumber: <PR_NUMBER>, method: "get_review_comments")
-mcp5_pull_request_read(owner: "damacus", repo: "med-tracker", pullNumber: <PR_NUMBER>, method: "get_reviews")
+mcp5_pull_request_read with:
+  owner: damacus
+  repo: med-tracker
+  pullNumber: <PR_NUMBER>
+  method: get_review_comments
 ```
 
-### Option B: gh CLI
+Returns structured JSON with:
+
+- `body`: The comment text
+- `path`: File path the comment is on
+- `line`: Line number
+- `user.login`: Who left the comment (e.g., "Copilot")
+- `diff_hunk`: The code context
+
+### Option B: `gh` CLI (Human-readable)
 
 ```fish
-# Get PR details with all comments (no pagination)
-gh pr view <PR_NUMBER> --json title,body,comments,reviews,files | jq '.'
+# Quick overview with all comments
+gh pr view <PR_NUMBER> --comments
 
-# Filter only Copilot review comments
-gh api repos/damacus/med-tracker/pulls/<PR_NUMBER>/comments --paginate | \
-  jq '[.[] | select(.user.login == "Copilot") | {path, line, body}]'
+# Structured JSON for parsing
+gh pr view <PR_NUMBER> --json title,body,comments,reviews,files | bat -p
 
-# Get review summary
-gh pr view <PR_NUMBER> --json reviews --jq '.reviews[] | select(.author.login | test("copilot"; "i")) | .body'
+# Filter to Copilot reviews only
+gh pr view <PR_NUMBER> --json reviews --jq '.reviews[] | select(.author.login == "copilot") | .body'
 ```
 
 ## Step 2: Analyze Comments
 
-For each comment, determine:
+For each comment:
 
-| Field | Question |
-|-------|----------|
-| **Valid?** | Is the feedback technically correct? |
-| **Applicable?** | Does it apply to this project's conventions? |
-| **Priority** | Critical (blocks merge), Important (should fix), Minor (nice to have) |
-| **Action** | Fix, Acknowledge, Dismiss with reason |
+1. **Understand the concern** - Read carefully, Copilot comments are often valid
+2. **Verify against codebase** - Copilot can miss context that makes code correct
+3. **Determine action**:
+   - ✅ Code change required
+   - ✅ Test addition needed
+   - ✅ Documentation update
+   - ❌ No action (explain why in response)
 
-### Common Copilot False Positives
+### Common Copilot Issues (Rails)
 
-1. **FactoryBot vs Fixtures**: Copilot may suggest fixtures when factories are intentionally used for dynamic data
-2. **Private method testing**: Sometimes testing private methods is acceptable for complex internal logic
-3. **Missing tests**: May suggest tests that already exist elsewhere
-4. **Style preferences**: May conflict with project-specific conventions
+| Issue                      | Problem                                 | Fix                                       |
+|----------------------------|-----------------------------------------|-------------------------------------------|
+| **Enum comparisons**       | `person_type == 'adult'`                | Use `adult?` predicate or `:adult` symbol |
+| **Association names**      | Wrong association in queries            | Verify names in model definition          |
+| **Type mismatches**        | Comparing incompatible types            | Match types (symbol vs string)            |
+| **Semantic changes**       | Modifying scopes affects usages         | Check all callers of changed code         |
+| **Missing tests**          | New behavior untested                   | Add tests for specific behavior           |
+| **Validation consistency** | Related validations use different logic | Ensure consistency across model           |
+| **Unpersisted records**    | `exists?` misses built records          | Check both built and persisted            |
 
-## Step 3: Address Comments
+## Step 3: Make Changes
 
-### For Valid Comments
+Follow TDD:
 
-1. Read the relevant file(s) to understand context
-2. Make the fix following TDD (write failing test first if applicable)
-3. Run tests: `task test TEST_FILE=<spec_file>`
-4. Commit with conventional format: `fix: address PR review feedback`
+1. Write failing test for the issue (if applicable)
+2. Implement the fix
+3. Run tests: `task test`
+4. Run linter: `rubocop -A`
 
-### For Invalid/Inapplicable Comments
-
-Reply to the comment explaining why it doesn't apply:
-
-```text
-mcp5_add_issue_comment(owner: "damacus", repo: "med-tracker", issue_number: <PR_NUMBER>, body: "...")
-```
-
-## Step 4: Verify All Tests Pass
-
-```fish
-// turbo
-task test
-```
-
-## Step 5: Push Changes
+## Step 4: Commit and Push
 
 ```fish
 git add -A
-git commit -m "fix: address PR review feedback"
+git commit -m "fix: address review comments on PR #<NUMBER>"
 git push
 ```
 
-## Example: PR #170 Copilot Comments
+## Step 5: Reply to Each Comment Directly
 
-| # | Comment | Valid? | Action |
-|---|---------|--------|--------|
-| 1 | Use fixtures instead of FactoryBot | ✅ | Replace `create(:person_medicine)` with fixture |
-| 2 | Add tests for update/destroy | ✅ | Add `trace_update` and `trace_destroy` tests |
-| 3 | Add test for prescription source | ✅ | Add test with prescription fixture |
-| 4 | Don't test private methods | ✅ | Refactor to test via span attributes |
-| 5 | Clean up span processor | ✅ | Add before/after hooks for cleanup |
+Reply to each review comment individually using the comment ID from Step 1.
+
+### Using MCP Tool (Reply to Review Comment)
+
+```text
+mcp5_add_comment_to_pending_review with:
+  owner: damacus
+  repo: med-tracker
+  pullNumber: <PR_NUMBER>
+  body: <response>
+  path: <file_path from comment>
+  line: <line number from comment>
+  side: RIGHT
+  subjectType: LINE
+```
+
+**Note**: This requires a pending review. If no pending review exists, create one first or reply via `gh` CLI.
+
+### Using `gh` CLI (Simpler)
+
+```fish
+# Reply directly to a specific review comment (--silent suppresses output)
+gh api repos/damacus/med-tracker/pulls/<PR_NUMBER>/comments/<COMMENT_ID>/replies \
+  --silent \
+  -f body="✅ Fixed in commit abc123 - [explanation]"
+```
+
+### Response Format
+
+Keep replies concise and direct:
+
+- ✅ **Fixed** in `<commit>` - [brief explanation]
+- ⏭️ **Skipped** - [why no action needed]
+- ❌ **Declined** - [why suggestion is incorrect, with reasoning]
 
 ## Tips
 
-- **Batch related fixes**: Group similar changes into one commit
-- **Don't over-engineer**: Address the specific feedback, don't refactor unrelated code
-- **Test incrementally**: Run tests after each significant change
-- **Document decisions**: If dismissing feedback, explain why in the PR
+- **Don't blindly accept**: Copilot suggestions are often good but not always correct
+- **Check context**: The comment may miss context that makes the code correct as-is
+- **Add tests**: Even if the code is correct, adding tests proves it
+- **Be thorough**: Address all comments, even if just to explain why no change is needed
+- **Use `bat -p`**: Better formatting than `cat` for CLI output
