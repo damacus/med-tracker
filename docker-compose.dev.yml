@@ -39,6 +39,7 @@ services:
       - storage_data:/app/storage
     stdin_open: true
     tty: true
+    command: ["rails", "server", "-b", "0.0.0.0"]
 
 volumes:
   postgres_data_dev:

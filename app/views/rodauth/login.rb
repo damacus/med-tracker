@@ -76,7 +76,7 @@ module Views
       end
 
       def render_login_form
-        render RubyUI::Form.new(action: view_context.rodauth.login_path, method: :post, class: 'space-y-6') do
+        render RubyUI::Form.new(action: view_context.rodauth.login_path, method: :post, class: 'space-y-6', data_turbo: 'false') do
           authenticity_token_field
           email_field
           password_field

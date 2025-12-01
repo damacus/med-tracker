@@ -36,6 +36,7 @@ class Person < ApplicationRecord
   validates :email, allow_blank: true,
                     format: { with: URI::MailTo::EMAIL_REGEXP, allow_blank: true },
                     uniqueness: { allow_blank: true }
+  validate :carer_required_when_lacking_capacity
 
   scope :without_carers, -> { where.missing(:carer_relationships) }
 
@@ -72,5 +73,12 @@ class Person < ApplicationRecord
 
   def month_day(date)
     (date.month * 100) + date.day
+  end
+
+  def carer_required_when_lacking_capacity
+    return if has_capacity
+    return if carer_relationships.any?
+
+    errors.add(:base, 'A person without capacity must have at least one carer assigned')
   end
 end

@@ -1,6 +1,6 @@
 <%= form_with(model: person, id: "person_form", data: { turbo_frame: "_top" }) do |form| %>
   <% if person.errors.any? %>
-    <div style="color: red">
+    <div class="form__errors" style="color: red">
       <h2><%= pluralize(person.errors.count, "error") %> prohibited this person from being saved:</h2>
 
       <ul>
@@ -11,19 +11,35 @@
     </div>
   <% end %>
 
-  <div>
-	<%= form.label :name, style: "display: block" %>
-	<%= form.text_field :name %>
+  <div class="form__field">
+    <%= form.label :name, style: "display: block" %>
+    <%= form.text_field :name, class: "form__input" %>
   </div>
 
-   <div>
-	<%= form.label :email, style: "display: block" %>
-	<%= form.text_field :email %>
+  <div class="form__field">
+    <%= form.label :email, style: "display: block" %>
+    <%= form.text_field :email, class: "form__input" %>
   </div>
 
-    <div>
-	<%= form.label :date_of_birth, style: "display: block" %>
-	<%= form.date_field :date_of_birth %>
+  <div class="form__field">
+    <%= form.label :date_of_birth, style: "display: block" %>
+    <%= form.date_field :date_of_birth, class: "form__input" %>
+  </div>
+
+  <div class="form__field">
+    <%= form.label :person_type, style: "display: block" %>
+    <%= form.select :person_type, Person.person_types.keys.map { |k| [k.humanize, k] }, {}, class: "form__select" %>
+  </div>
+
+  <div class="form__field">
+    <%= form.label :has_capacity, "Has capacity to manage own medication", style: "display: block" %>
+    <%= form.check_box :has_capacity, class: "form__checkbox", data: { controller: "capacity-hint", action: "capacity-hint#toggleHint", capacity_hint_target: "checkbox" } %>
+    <p class="form__hint text-sm text-amber-600" data-capacity-hint-target="hint" style="<%= person.has_capacity ? 'display: none;' : '' %>">
+      <strong>Note:</strong> A person without capacity must have at least one carer assigned.
+      <% if person.persisted? && person.carers.empty? %>
+        Please assign a carer before removing capacity.
+      <% end %>
+    </p>
   </div>
 
   <div class="form__actions">
