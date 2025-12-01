@@ -1,6 +1,50 @@
 # MedTracker - Coding Agent Progress
 
-## Latest Session: November 28, 2025 (CARER-010 Implementation)
+## Latest Session: December 1, 2025 (OpenTelemetry Observability)
+
+### Summary
+Implemented OpenTelemetry observability for MedTracker. Added SDK initialization, automatic instrumentation
+for Rails/ActiveRecord/Rack/PG, and custom instrumentation for MedicationTake model.
+
+### Changes Made
+1. **Gemfile**: Added opentelemetry-sdk, opentelemetry-exporter-otlp, opentelemetry-instrumentation-all
+2. **config/initializers/opentelemetry.rb**: SDK configuration with service name 'medtracker'
+3. **app/models/concerns/otel_instrumented.rb**: Reusable concern for custom span creation
+4. **app/models/medication_take.rb**: Added OtelInstrumented concern with custom attributes
+5. **spec/config/initializers/opentelemetry_spec.rb**: Tests for SDK initialization
+6. **spec/models/concerns/otel_instrumented_spec.rb**: Tests for custom instrumentation
+7. **features/observability.json**: Marked 6 features as passing
+
+### Features Implemented
+- **OTEL-001**: SDK initialized with service name 'medtracker' ✓
+- **OTEL-002**: HTTP requests generate traces via Rack instrumentation ✓
+- **OTEL-003**: Database queries generate spans via ActiveRecord/PG instrumentation ✓
+- **OTEL-004**: Custom spans for MedicationTake with prescription/person_medicine attributes ✓
+- **OTEL-006**: W3C trace context propagation (default propagator) ✓
+- **OTEL-013**: Health check endpoints (/up, /health, etc.) excluded from tracing ✓
+
+### Configuration Highlights
+- Service name: 'medtracker'
+- Untraced endpoints: /up, /health, /healthz, /ready, /live
+- PG instrumentation includes SQL statements and peer_service attribute
+- Net::HTTP instrumentation excludes localhost requests
+
+### Test Results
+- 466 examples, 0 failures, 13 pending
+- 10 new OpenTelemetry-specific tests added
+
+### Remaining Observability Features (10)
+- OTEL-005: Error traces capture exceptions
+- OTEL-007-009: Metrics instrumentation
+- OTEL-010: Structured logging with trace correlation
+- OTEL-011-012: OTLP exporter and sampling configuration
+- OTEL-014: Sensitive data scrubbing
+- OTEL-015: Background job tracing with Solid Queue
+- OTEL-016: Complete integration test
+
+---
+
+## Previous Session: November 28, 2025 (CARER-010 Implementation)
 
 ### Summary
 Implemented CARER-010: Capacity validation requires carer for patients without capacity.
