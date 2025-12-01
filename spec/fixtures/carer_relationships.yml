@@ -45,3 +45,11 @@ carer_cares_for_child_user:
   active: true
   created_at: <%= Time.current %>
   updated_at: <%= Time.current %>
+
+inactive_relationship:
+  carer: bob
+  patient: john
+  relationship_type: family_member
+  active: false
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>

@@ -16,9 +16,11 @@ RSpec.describe Person do
     it { is_expected.to have_many(:prescriptions).dependent(:destroy) }
     it { is_expected.to have_many(:medicines).through(:prescriptions) }
     it { is_expected.to have_many(:carer_relationships).dependent(:destroy) }
-    it { is_expected.to have_many(:carers).through(:carer_relationships) }
+    it { is_expected.to have_many(:active_carer_relationships) }
+    it { is_expected.to have_many(:carers).through(:active_carer_relationships) }
     it { is_expected.to have_many(:patient_relationships).dependent(:destroy) }
-    it { is_expected.to have_many(:patients).through(:patient_relationships) }
+    it { is_expected.to have_many(:active_patient_relationships) }
+    it { is_expected.to have_many(:patients).through(:active_patient_relationships) }
   end
 
   describe 'validations' do
