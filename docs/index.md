@@ -34,6 +34,8 @@ This documentation is organized into several sections:
 - **[User Management](user-management.md)** - Comprehensive guide to the
   user management system, including roles, permissions, and capacity
   management
+- **[OAuth Setup](oauth-setup.md)** - Guide to configuring Google OAuth
+  authentication for your deployment
 
 ## Quick Start
 
