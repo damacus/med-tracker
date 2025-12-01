@@ -58,15 +58,15 @@ For each comment:
 
 ### Common Copilot Issues (Rails)
 
-| Issue | Problem | Fix |
-|-------|---------|-----|
-| **Enum comparisons** | `person_type == 'adult'` | Use `adult?` predicate or `:adult` symbol |
-| **Association names** | Wrong association in queries | Verify names in model definition |
-| **Type mismatches** | Comparing incompatible types | Match types (symbol vs string) |
-| **Semantic changes** | Modifying scopes affects usages | Check all callers of changed code |
-| **Missing tests** | New behavior untested | Add tests for specific behavior |
-| **Validation consistency** | Related validations use different logic | Ensure consistency across model |
-| **Unpersisted records** | `exists?` misses built records | Check both built and persisted |
+| Issue                      | Problem                                 | Fix                                       |
+|----------------------------|-----------------------------------------|-------------------------------------------|
+| **Enum comparisons**       | `person_type == 'adult'`                | Use `adult?` predicate or `:adult` symbol |
+| **Association names**      | Wrong association in queries            | Verify names in model definition          |
+| **Type mismatches**        | Comparing incompatible types            | Match types (symbol vs string)            |
+| **Semantic changes**       | Modifying scopes affects usages         | Check all callers of changed code         |
+| **Missing tests**          | New behavior untested                   | Add tests for specific behavior           |
+| **Validation consistency** | Related validations use different logic | Ensure consistency across model           |
+| **Unpersisted records**    | `exists?` misses built records          | Check both built and persisted            |
 
 ## Step 3: Make Changes
 
@@ -85,34 +85,41 @@ git commit -m "fix: address review comments on PR #<NUMBER>"
 git push
 ```
 
-## Step 5: Reply to Comments
+## Step 5: Reply to Each Comment Directly
 
-### Using MCP Tool
+Reply to each review comment individually using the comment ID from Step 1.
+
+### Using MCP Tool (Reply to Review Comment)
 
 ```text
-mcp5_add_issue_comment with:
+mcp5_add_comment_to_pending_review with:
   owner: damacus
   repo: med-tracker
-  issue_number: <PR_NUMBER>
+  pullNumber: <PR_NUMBER>
   body: <response>
+  path: <file_path from comment>
+  line: <line number from comment>
+  side: RIGHT
+  subjectType: LINE
 ```
 
-### Response Template
+**Note**: This requires a pending review. If no pending review exists, create one first or reply via `gh` CLI.
 
-```markdown
-## Addressed Review Comments
+### Using `gh` CLI (Simpler)
 
-### Comment 1: [Brief description]
-✅ **Fixed** - [What was done]
-
-### Comment 2: [Brief description]
-⏭️ **Skipped** - [Why no action needed]
-
-### Comment 3: [Brief description]
-❌ **Declined** - [Why suggestion is incorrect]
-
-All [N] tests pass.
+```fish
+# Reply directly to a specific review comment
+gh api repos/damacus/med-tracker/pulls/<PR_NUMBER>/comments/<COMMENT_ID>/replies \
+  -f body="✅ Fixed in commit abc123 - [explanation]"
 ```
+
+### Response Format
+
+Keep replies concise and direct:
+
+- ✅ **Fixed** in `<commit>` - [brief explanation]
+- ⏭️ **Skipped** - [why no action needed]
+- ❌ **Declined** - [why suggestion is incorrect, with reasoning]
 
 ## Tips
 
