@@ -92,8 +92,8 @@ class RodauthMain < Rodauth::Rails::Auth
                         scope: 'email profile'
     elsif ENV['GOOGLE_CLIENT_ID'].present?
       omniauth_provider :google_oauth2,
-                        ENV.fetch('GOOGLE_CLIENT_ID', nil),
-                        ENV.fetch('GOOGLE_CLIENT_SECRET', nil),
+                        ENV.fetch('GOOGLE_CLIENT_ID'),
+                        ENV.fetch('GOOGLE_CLIENT_SECRET'),
                         scope: 'email profile'
     end
 
@@ -156,14 +156,15 @@ class RodauthMain < Rodauth::Rails::Auth
       email = auth_info['email']
 
       # OAuth users are assumed to be adults (we don't have DOB from OAuth)
-      # They can update their profile later
+      # Use a sentinel DOB (100 years ago) to indicate missing data
+      # Users should be prompted to update their profile with actual DOB
       ActiveRecord::Base.transaction do
         person = Person.create!(
           account_id: account_id,
           name: name,
           email: email,
           person_type: :adult,
-          date_of_birth: 18.years.ago.to_date # Default DOB for adults
+          date_of_birth: 100.years.ago.to_date # Sentinel value - DOB unknown for OAuth users
         )
 
         User.create!(

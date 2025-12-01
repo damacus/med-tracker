@@ -1,5 +1,9 @@
 # frozen_string_literal: true
 
+# This table is managed internally by Rodauth's OmniAuth feature.
+# It stores OAuth provider identities linked to accounts.
+# No ActiveRecord model is needed as Rodauth handles all CRUD operations.
+# See: https://github.com/janko/rodauth-omniauth
 class CreateAccountIdentities < ActiveRecord::Migration[8.0]
   def change
     create_table :account_identities do |t|
