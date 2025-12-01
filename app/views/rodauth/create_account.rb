@@ -190,9 +190,7 @@ module Views
           render RubyUI::FormFieldLabel.new(for: input_attrs[:id]) { label }
           render RubyUI::Input.new(**input_attrs)
 
-          if error.present?
-            p(class: 'text-sm text-red-600 mt-1') { error }
-          end
+          p(class: 'text-sm text-red-600 mt-1') { error } if error.present?
         end
       end
 

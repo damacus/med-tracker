@@ -16,7 +16,7 @@ RSpec.describe 'User Signup', type: :system do
       expect do
         click_button 'Create Account'
       end.to change(Account, :count).by(1)
-        .and change(Person, :count).by(1)
+                                    .and change(Person, :count).by(1)
 
       # After signup, user is redirected to root path (which renders dashboard for logged-in users)
       # or verify-account-resend if email verification is pending
