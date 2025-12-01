@@ -15,13 +15,21 @@ class Person < ApplicationRecord
   has_many :person_medicines, dependent: :destroy
   has_many :non_prescription_medicines, through: :person_medicines, source: :medicine
   has_many :carer_relationships, foreign_key: :patient_id, dependent: :destroy, inverse_of: :patient
-  has_many :carers, through: :carer_relationships, source: :carer
+  has_many :active_carer_relationships, -> { active }, class_name: 'CarerRelationship',
+                                                       foreign_key: :patient_id,
+                                                       dependent: false,
+                                                       inverse_of: :patient
+  has_many :carers, through: :active_carer_relationships, source: :carer
 
   has_many :patient_relationships, class_name: 'CarerRelationship',
                                    foreign_key: :carer_id,
                                    dependent: :destroy,
                                    inverse_of: :carer
-  has_many :patients, through: :patient_relationships, source: :patient
+  has_many :active_patient_relationships, -> { active }, class_name: 'CarerRelationship',
+                                                         foreign_key: :carer_id,
+                                                         dependent: false,
+                                                         inverse_of: :carer
+  has_many :patients, through: :active_patient_relationships, source: :patient
 
   normalizes :email, with: ->(email) { email&.strip&.downcase }
 
@@ -77,8 +85,13 @@ class Person < ApplicationRecord
 
   def carer_required_when_lacking_capacity
     return if has_capacity
-    return if carer_relationships.any?
+    return if active_carer_relationship?
 
     errors.add(:base, 'A person without capacity must have at least one carer assigned')
+  end
+
+  def active_carer_relationship?
+    carer_relationships.any? { |r| r.active? || r.active.nil? } ||
+      active_carer_relationships.exists?
   end
 end
