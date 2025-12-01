@@ -105,36 +105,31 @@ class RodauthMain < Rodauth::Rails::Auth
       date_of_birth = Date.parse(param('date_of_birth'))
 
       # Determine person_type and role based on age
-      age = calculate_age(date_of_birth)
+      # Use Person's age calculation to avoid duplication
+      temp_person = Person.new(date_of_birth: date_of_birth)
+      age = temp_person.age
       person_type = age >= 18 ? :adult : :minor
       user_role = age >= 18 ? :parent : :minor
 
-      # Create associated Person record
-      person = Person.create!(
-        account_id: account_id,
-        name: param('name'),
-        date_of_birth: date_of_birth,
-        email: account[:email],
-        person_type: person_type
-      )
+      # Create associated Person and User records atomically
+      # Ensures both are created or both fail together
+      ActiveRecord::Base.transaction do
+        person = Person.create!(
+          account_id: account_id,
+          name: param('name'),
+          date_of_birth: date_of_birth,
+          email: account[:email],
+          person_type: person_type
+        )
 
-      # Create associated User record for authorization
-      # New users default to 'parent' role (or 'minor' if under 18)
-      User.create!(
-        person: person,
-        email_address: account[:email],
-        role: user_role,
-        active: true
-      )
-    end
-
-    # Helper method to calculate age
-    auth_class_eval do
-      def calculate_age(date_of_birth, reference_date = Time.zone.today)
-        years = reference_date.year - date_of_birth.year
-        birthday_this_year = Date.new(reference_date.year, date_of_birth.month, date_of_birth.day)
-        years -= 1 if reference_date < birthday_this_year
-        years
+        # Create associated User record for authorization
+        # New users default to 'parent' role (or 'minor' if under 18)
+        User.create!(
+          person: person,
+          email_address: account[:email],
+          role: user_role,
+          active: true
+        )
       end
     end
 

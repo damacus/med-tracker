@@ -35,7 +35,6 @@ gem 'paper_trail'
 # Pagination [https://github.com/ddnexus/pagy]
 gem 'pagy'
 
-gem 'ostruct'
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
 gem 'tzinfo-data', platforms: %i[windows jruby]
 # Use the database-backed adapters for Rails.cache, Active Job, and Action Cable
