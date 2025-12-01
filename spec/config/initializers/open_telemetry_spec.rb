@@ -2,18 +2,18 @@
 
 require 'rails_helper'
 
-RSpec.describe 'OpenTelemetry Configuration' do
+RSpec.describe OpenTelemetry, type: :configuration do
   describe 'SDK initialization' do
     it 'configures OpenTelemetry with service name medtracker' do
-      expect(OpenTelemetry.tracer_provider).to be_a(OpenTelemetry::SDK::Trace::TracerProvider)
+      expect(described_class.tracer_provider).to be_a(OpenTelemetry::SDK::Trace::TracerProvider)
 
-      resource = OpenTelemetry.tracer_provider.resource
+      resource = described_class.tracer_provider.resource
       service_name = resource.attribute_enumerator.find { |k, _| k == 'service.name' }&.last
       expect(service_name).to eq('medtracker')
     end
 
     it 'sets resource attributes correctly' do
-      resource = OpenTelemetry.tracer_provider.resource
+      resource = described_class.tracer_provider.resource
 
       attributes = resource.attribute_enumerator.to_h
       expect(attributes).to include('service.name' => 'medtracker')
@@ -42,7 +42,7 @@ RSpec.describe 'OpenTelemetry Configuration' do
 
   describe 'W3C trace context propagation' do
     it 'uses W3C TraceContext propagator' do
-      propagators = OpenTelemetry.propagation
+      propagators = described_class.propagation
       expect(propagators).to be_a(OpenTelemetry::Context::Propagation::CompositeTextMapPropagator)
     end
   end
