@@ -340,6 +340,72 @@ RSpec.describe Person do
 
       expect(relationship.relationship_type).to eq('parent')
     end
+
+    context 'with active and inactive relationships' do
+      let(:active_carer) do
+        described_class.create!(
+          name: 'Active Carer',
+          date_of_birth: 35.years.ago,
+          person_type: :adult
+        )
+      end
+
+      let(:inactive_carer) do
+        described_class.create!(
+          name: 'Inactive Carer',
+          date_of_birth: 40.years.ago,
+          person_type: :adult
+        )
+      end
+
+      let(:patient_with_mixed_relationships) do
+        described_class.create!(
+          name: 'Patient With Mixed',
+          date_of_birth: 30.years.ago,
+          person_type: :adult,
+          has_capacity: true
+        )
+      end
+
+      before do
+        CarerRelationship.create!(
+          carer: active_carer,
+          patient: patient_with_mixed_relationships,
+          relationship_type: 'family_member',
+          active: true
+        )
+        CarerRelationship.create!(
+          carer: inactive_carer,
+          patient: patient_with_mixed_relationships,
+          relationship_type: 'professional_carer',
+          active: false
+        )
+      end
+
+      it 'active_carer_relationships only returns active relationships' do
+        expect(patient_with_mixed_relationships.active_carer_relationships.count).to eq(1)
+        expect(patient_with_mixed_relationships.active_carer_relationships.first.carer).to eq(active_carer)
+      end
+
+      it 'carer_relationships returns all relationships' do
+        expect(patient_with_mixed_relationships.carer_relationships.count).to eq(2)
+      end
+
+      it 'carers only returns carers with active relationships' do
+        expect(patient_with_mixed_relationships.carers).to include(active_carer)
+        expect(patient_with_mixed_relationships.carers).not_to include(inactive_carer)
+      end
+
+      it 'active_patient_relationships only returns active relationships' do
+        expect(active_carer.active_patient_relationships.count).to eq(1)
+        expect(inactive_carer.active_patient_relationships.count).to eq(0)
+      end
+
+      it 'patients only returns patients with active relationships' do
+        expect(active_carer.patients).to include(patient_with_mixed_relationships)
+        expect(inactive_carer.patients).not_to include(patient_with_mixed_relationships)
+      end
+    end
   end
 
   describe '#dependent_adult?' do

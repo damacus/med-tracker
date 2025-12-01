@@ -85,8 +85,13 @@ class Person < ApplicationRecord
 
   def carer_required_when_lacking_capacity
     return if has_capacity
-    return if carer_relationships.any?
+    return if active_carer_relationship?
 
     errors.add(:base, 'A person without capacity must have at least one carer assigned')
+  end
+
+  def active_carer_relationship?
+    carer_relationships.any? { |r| r.active? || r.active.nil? } ||
+      active_carer_relationships.exists?
   end
 end
