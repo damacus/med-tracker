@@ -108,8 +108,9 @@ mcp5_add_comment_to_pending_review with:
 ### Using `gh` CLI (Simpler)
 
 ```fish
-# Reply directly to a specific review comment
+# Reply directly to a specific review comment (--silent suppresses output)
 gh api repos/damacus/med-tracker/pulls/<PR_NUMBER>/comments/<COMMENT_ID>/replies \
+  --silent \
   -f body="✅ Fixed in commit abc123 - [explanation]"
 ```
 
