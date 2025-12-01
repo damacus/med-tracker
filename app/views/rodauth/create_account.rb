@@ -82,7 +82,7 @@ module Views
       end
 
       def render_signup_form
-        render RubyUI::Form.new(action: view_context.rodauth.create_account_path, method: :post, class: 'space-y-6') do
+        render RubyUI::Form.new(action: view_context.rodauth.create_account_path, method: :post, class: 'space-y-6', data_turbo: 'false') do
           authenticity_token_field
           name_field
           date_of_birth_field

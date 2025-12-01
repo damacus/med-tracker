@@ -21,7 +21,11 @@ gem 'jbuilder'
 # Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
 gem 'bcrypt', '>= 3.1'
 # Authentication framework [https://rodauth.jeremyevans.net/]
-gem 'rodauth-rails', '~> 1.15'
+gem 'rodauth-rails', '~> 2.1'
+# Required for Rodauth to use ActiveRecord's database connection
+gem 'sequel-activerecord_connection'
+# Required for Rodauth's render plugin (used for email templates)
+gem 'tilt'
 # OAuth integration for Rodauth [https://github.com/janko/rodauth-omniauth]
 gem 'rodauth-omniauth', '~> 0.4'
 # OAuth provider for Google

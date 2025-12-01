@@ -63,3 +63,7 @@
 - **Roadmap** `USER_MANAGEMENT_PLAN.md` phases detail authorization, admin CRUD, carer tools, and audit logging.
 - **Design vision** `docs/design.md` notes eventual OIDC auth, audit trails, mobile support.
 - **Open tasks** Look for unchecked items in plan documents before adding new features.
+
+## Tooling
+
+All terminal commands and scripts should be run using fish shell.

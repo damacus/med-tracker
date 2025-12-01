@@ -142,11 +142,22 @@ class RodauthMain < Rodauth::Rails::Auth
     after_close_account do
       # Nullify the account_id on the person but don't delete the person
       # This preserves medication history for compliance
-      Person.where(account_id: account_id).update_all(account_id: nil)
+      Person.where(account_id: account_id).find_each { |p| p.update!(account_id: nil) }
     end
 
     # ==> Views
-    # Rodauth will automatically use templates in app/views/rodauth/
+    # Render Phlex components directly for speed (no ERB indirection)
+    auth_class_eval do
+      def view(page, title)
+        phlex_class = "Views::Rodauth::#{page.to_s.tr('-', '_').camelize}".safe_constantize
+        if phlex_class
+          set_title(title)
+          rails_controller_instance.render_to_string(phlex_class.new, layout: true)
+        else
+          super
+        end
+      end
+    end
 
     # ==> Redirects
     # Current.user is set in ApplicationController before_action instead of here

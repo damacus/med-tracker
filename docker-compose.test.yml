@@ -20,7 +20,6 @@ services:
           - db
 
   web:
-    image: med-tracker-test:latest
     build:
       context: .
       dockerfile: Dockerfile.test
