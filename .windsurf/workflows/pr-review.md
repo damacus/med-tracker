@@ -9,10 +9,11 @@ Review and address comments on a GitHub Pull Request.
 ## Prerequisites
 
 - PR number (e.g., 171)
+- `gh` CLI authenticated: `gh auth login`
 
 ## Step 1: Fetch PR Review Comments
 
-Use the GitHub MCP tool to get review comments:
+### Option A: MCP Tool (Recommended for Cascade)
 
 ```text
 mcp5_pull_request_read with:
@@ -22,7 +23,7 @@ mcp5_pull_request_read with:
   method: get_review_comments
 ```
 
-This returns structured JSON with:
+Returns structured JSON with:
 
 - `body`: The comment text
 - `path`: File path the comment is on
@@ -30,10 +31,17 @@ This returns structured JSON with:
 - `user.login`: Who left the comment (e.g., "Copilot")
 - `diff_hunk`: The code context
 
-Alternative using `gh` CLI (non-interactive):
+### Option B: `gh` CLI (Human-readable)
 
 ```fish
-gh pr view <PR_NUMBER> --json reviews,comments --jq '.reviews[].body, .comments[].body'
+# Quick overview with all comments
+gh pr view <PR_NUMBER> --comments
+
+# Structured JSON for parsing
+gh pr view <PR_NUMBER> --json title,body,comments,reviews,files | bat -p
+
+# Filter to Copilot reviews only
+gh pr view <PR_NUMBER> --json reviews --jq '.reviews[] | select(.author.login == "copilot") | .body'
 ```
 
 ## Step 2: Analyze Comments
@@ -41,19 +49,24 @@ gh pr view <PR_NUMBER> --json reviews,comments --jq '.reviews[].body, .comments[
 For each comment:
 
 1. **Understand the concern** - Read carefully, Copilot comments are often valid
-2. **Check if it's correct** - Copilot can make mistakes, verify against codebase
-3. **Determine action needed**:
-   - Code change required
-   - Test addition needed
-   - Documentation update
-   - No action (explain why in response)
+2. **Verify against codebase** - Copilot can miss context that makes code correct
+3. **Determine action**:
+   - ✅ Code change required
+   - ✅ Test addition needed
+   - ✅ Documentation update
+   - ❌ No action (explain why in response)
 
-### Common Copilot Concerns
+### Common Copilot Issues (Rails)
 
-- **Semantic changes**: When modifying associations/scopes, check all usages
-- **Missing tests**: Add tests that verify the specific behavior mentioned
-- **Validation consistency**: Ensure related validations use consistent logic
-- **Breaking changes**: Document and test edge cases
+| Issue | Problem | Fix |
+|-------|---------|-----|
+| **Enum comparisons** | `person_type == 'adult'` | Use `adult?` predicate or `:adult` symbol |
+| **Association names** | Wrong association in queries | Verify names in model definition |
+| **Type mismatches** | Comparing incompatible types | Match types (symbol vs string) |
+| **Semantic changes** | Modifying scopes affects usages | Check all callers of changed code |
+| **Missing tests** | New behavior untested | Add tests for specific behavior |
+| **Validation consistency** | Related validations use different logic | Ensure consistency across model |
+| **Unpersisted records** | `exists?` misses built records | Check both built and persisted |
 
 ## Step 3: Make Changes
 
@@ -74,17 +87,17 @@ git push
 
 ## Step 5: Reply to Comments
 
-Use the GitHub MCP tool to add a comment:
+### Using MCP Tool
 
 ```text
 mcp5_add_issue_comment with:
   owner: damacus
   repo: med-tracker
   issue_number: <PR_NUMBER>
-  body: <response explaining what was fixed>
+  body: <response>
 ```
 
-Format response as:
+### Response Template
 
 ```markdown
 ## Addressed Review Comments
@@ -93,9 +106,12 @@ Format response as:
 ✅ **Fixed** - [What was done]
 
 ### Comment 2: [Brief description]
-✅ **Fixed** - [What was done]
+⏭️ **Skipped** - [Why no action needed]
 
-All tests pass.
+### Comment 3: [Brief description]
+❌ **Declined** - [Why suggestion is incorrect]
+
+All [N] tests pass.
 ```
 
 ## Tips
@@ -104,3 +120,4 @@ All tests pass.
 - **Check context**: The comment may miss context that makes the code correct as-is
 - **Add tests**: Even if the code is correct, adding tests proves it
 - **Be thorough**: Address all comments, even if just to explain why no change is needed
+- **Use `bat -p`**: Better formatting than `cat` for CLI output
