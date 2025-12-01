@@ -3,8 +3,24 @@
 require 'rails_helper'
 
 RSpec.describe OtelInstrumented do
-  # Use MedicationTake as the test subject since it includes the concern
-  let(:person_medicine) { create(:person_medicine) }
+  fixtures :accounts, :people, :medicines, :person_medicines, :prescriptions
+
+  # Use fixtures instead of FactoryBot per project guidelines
+  let(:person_medicine) { person_medicines(:john_vitamin_d) }
+  let(:prescription) { prescriptions(:john_paracetamol) }
+
+  # Shared exporter setup with proper cleanup to avoid test pollution
+  let(:exporter) { OpenTelemetry::SDK::Trace::Export::InMemorySpanExporter.new }
+  let(:processor) { OpenTelemetry::SDK::Trace::Export::SimpleSpanProcessor.new(exporter) }
+
+  before do
+    OpenTelemetry.tracer_provider.add_span_processor(processor)
+  end
+
+  after do
+    OpenTelemetry.tracer_provider.force_flush
+    exporter.reset
+  end
 
   describe 'tracer configuration' do
     it 'creates a tracer with the model name' do
@@ -14,20 +30,13 @@ RSpec.describe OtelInstrumented do
   end
 
   describe 'span creation on create' do
-    it 'creates a span when a medication take is created' do
-      # Use an in-memory exporter to capture spans
-      exporter = OpenTelemetry::SDK::Trace::Export::InMemorySpanExporter.new
-      processor = OpenTelemetry::SDK::Trace::Export::SimpleSpanProcessor.new(exporter)
-      OpenTelemetry.tracer_provider.add_span_processor(processor)
-
+    it 'creates a span with person_medicine source' do
       medication_take = MedicationTake.create!(
         person_medicine: person_medicine,
         taken_at: Time.current
       )
 
-      # Force flush to ensure spans are exported
       OpenTelemetry.tracer_provider.force_flush
-
       spans = exporter.finished_spans
       create_span = spans.find { |s| s.name == 'medication_take.create' }
 
@@ -37,29 +46,77 @@ RSpec.describe OtelInstrumented do
       expect(create_span.attributes['medication_take.source_type']).to eq('person_medicine')
       expect(create_span.attributes['medication_take.person_medicine_id']).to eq(person_medicine.id.to_s)
     end
+
+    it 'creates a span with prescription source' do
+      _medication_take = MedicationTake.create!(
+        prescription: prescription,
+        taken_at: Time.current
+      )
+
+      OpenTelemetry.tracer_provider.force_flush
+      spans = exporter.finished_spans
+      create_span = spans.find { |s| s.name == 'medication_take.create' }
+
+      expect(create_span).not_to be_nil
+      expect(create_span.attributes['medication_take.source_type']).to eq('prescription')
+      expect(create_span.attributes['medication_take.prescription_id']).to eq(prescription.id.to_s)
+    end
+
+    it 'includes taken_at timestamp in span attributes' do
+      taken_time = Time.zone.parse('2025-01-15 10:30:00')
+      MedicationTake.create!(
+        person_medicine: person_medicine,
+        taken_at: taken_time
+      )
+
+      OpenTelemetry.tracer_provider.force_flush
+      spans = exporter.finished_spans
+      create_span = spans.find { |s| s.name == 'medication_take.create' }
+
+      expect(create_span.attributes['medication_take.taken_at']).to eq('2025-01-15T10:30:00Z')
+    end
   end
 
-  describe 'custom span attributes' do
-    let(:medication_take) do
-      MedicationTake.new(
+  describe 'span creation on update' do
+    it 'creates a span when a medication take is updated' do
+      medication_take = MedicationTake.create!(
         person_medicine: person_medicine,
-        taken_at: Time.zone.parse('2025-01-15 10:30:00')
+        taken_at: Time.current
       )
+      exporter.reset
+
+      medication_take.update!(taken_at: 1.hour.ago)
+
+      OpenTelemetry.tracer_provider.force_flush
+      spans = exporter.finished_spans
+      update_span = spans.find { |s| s.name == 'medication_take.update' }
+
+      expect(update_span).not_to be_nil
+      expect(update_span.attributes['model.name']).to eq('MedicationTake')
+      expect(update_span.attributes['model.id']).to eq(medication_take.id.to_s)
+      expect(update_span.attributes['model.operation']).to eq('update')
     end
+  end
 
-    it 'includes medication_take.taken_at attribute' do
-      medication_take.save!
-      attrs = medication_take.send(:otel_span_attributes, 'create')
+  describe 'span creation on destroy' do
+    it 'creates a span when a medication take is destroyed' do
+      medication_take = MedicationTake.create!(
+        person_medicine: person_medicine,
+        taken_at: Time.current
+      )
+      medication_take_id = medication_take.id
+      exporter.reset
 
-      expect(attrs['medication_take.taken_at']).to eq('2025-01-15T10:30:00Z')
-    end
+      medication_take.destroy!
 
-    it 'includes person_medicine source attributes when person_medicine is set' do
-      medication_take.save!
-      attrs = medication_take.send(:otel_span_attributes, 'create')
+      OpenTelemetry.tracer_provider.force_flush
+      spans = exporter.finished_spans
+      destroy_span = spans.find { |s| s.name == 'medication_take.destroy' }
 
-      expect(attrs['medication_take.source_type']).to eq('person_medicine')
-      expect(attrs['medication_take.person_medicine_id']).to eq(person_medicine.id.to_s)
+      expect(destroy_span).not_to be_nil
+      expect(destroy_span.attributes['model.name']).to eq('MedicationTake')
+      expect(destroy_span.attributes['model.id']).to eq(medication_take_id.to_s)
+      expect(destroy_span.attributes['model.operation']).to eq('destroy')
     end
   end
 end
