@@ -33,8 +33,8 @@ cat claude-progress.txt
 # 6. Check recent git history
 git log --oneline -20
 
-# 7. Count remaining tests
-cat feature_list.json | grep '"passes": false' | wc -l
+# 7. Count remaining tests (across all feature files)
+jq -s '[.[][] | select(.passes == false)] | length' features/*.json
 ```
 
 Understanding the `app_spec.txt` is critical - it contains the full requirements
@@ -43,6 +43,7 @@ for the application you're building.
 ### STEP 2: START SERVERS (IF NOT RUNNING)
 
 If `init.sh` exists, run it:
+
 ```bash
 chmod +x init.sh
 ./init.sh
@@ -61,17 +62,18 @@ Run 1-2 of the feature tests marked as `"passes": true` that are most core to th
 For example, if this were a chat app, you should perform a test that logs into the app, sends a message, and gets a response.
 
 **If you find ANY issues (functional or visual):**
+
 - Mark that feature as "passes": false immediately
 - Add issues to a list
 - Fix all issues BEFORE moving to new features
 - This includes UI bugs like:
-  * White-on-white text or poor contrast
-  * Random characters displayed
-  * Incorrect timestamps
-  * Layout issues or overflow
-  * Buttons too close together
-  * Missing hover states
-  * Console errors
+  - White-on-white text or poor contrast
+  - Random characters displayed
+  - Incorrect timestamps
+  - Layout issues or overflow
+  - Buttons too close together
+  - Missing hover states
+  - Console errors
 
 ### STEP 4: CHOOSE ONE FEATURE TO IMPLEMENT
 
@@ -83,6 +85,7 @@ It's ok if you only complete one feature in this session, as there will be more 
 ### STEP 5: IMPLEMENT THE FEATURE
 
 Implement the chosen feature thoroughly:
+
 1. Write the code (frontend and/or backend as needed)
 2. Test manually using browser automation (see Step 6)
 3. Fix any issues discovered
@@ -93,18 +96,21 @@ Implement the chosen feature thoroughly:
 **CRITICAL:** You MUST verify features through the actual UI.
 
 Use browser automation tools:
+
 - Navigate to the app in a real browser
 - Interact like a human user (click, type, scroll)
 - Take screenshots at each step
 - Verify both functionality AND visual appearance
 
 **DO:**
+
 - Test through the UI with clicks and keyboard input
 - Take screenshots to verify visual appearance
 - Check for console errors in browser
 - Verify complete user workflows end-to-end
 
 **DON'T:**
+
 - Only test with curl commands (backend testing alone is insufficient)
 - Use JavaScript evaluation to bypass UI (no shortcuts)
 - Skip visual verification
@@ -114,16 +120,21 @@ Use browser automation tools:
 
 **YOU CAN ONLY MODIFY ONE FIELD: "passes"**
 
-After thorough verification, change:
-```json
-"passes": false
-```
-to:
-```json
-"passes": true
+After thorough verification, use `jq` to update the JSON:
+
+```bash
+# Update by feature ID (preferred)
+jq 'map(if .id == "FEATURE-001" then .passes = true else . end)' feature_list.json > tmp.json && mv tmp.json feature_list.json
+
+# Or update by index (0-based)
+jq '.[0].passes = true' feature_list.json > tmp.json && mv tmp.json feature_list.json
+
+# Multiple updates at once
+jq 'map(if .id == "FEAT-001" or .id == "FEAT-002" then .passes = true else . end)' feature_list.json > tmp.json && mv tmp.json feature_list.json
 ```
 
 **NEVER:**
+
 - Remove tests
 - Edit test descriptions
 - Modify test steps
@@ -135,6 +146,7 @@ to:
 ### STEP 8: COMMIT YOUR PROGRESS
 
 Make a descriptive git commit:
+
 ```bash
 git add .
 git commit -m "Implement [feature name] - verified end-to-end
@@ -149,6 +161,7 @@ git commit -m "Implement [feature name] - verified end-to-end
 ### STEP 9: UPDATE PROGRESS NOTES
 
 Update `claude-progress.txt` with:
+
 - What you accomplished this session
 - Which test(s) you completed
 - Any issues discovered or fixed
@@ -158,6 +171,7 @@ Update `claude-progress.txt` with:
 ### STEP 10: END SESSION CLEANLY
 
 Before context fills up:
+
 1. Commit all working code
 2. Update claude-progress.txt
 3. Update feature_list.json if tests verified
@@ -171,14 +185,15 @@ Before context fills up:
 **ALL testing must use browser automation tools.**
 
 Available tools:
-- puppeteer_navigate - Start browser and go to URL
-- puppeteer_screenshot - Capture screenshot
-- puppeteer_click - Click elements
-- puppeteer_fill - Fill form inputs
-- puppeteer_evaluate - Execute JavaScript (use sparingly, only for debugging)
+
+- browser_navigate - Navigate to URL
+- browser_snapshot - Capture accessibility snapshot (preferred over screenshot)
+- browser_take_screenshot - Capture visual screenshot
+- browser_click - Click elements by ref
+- browser_type - Type text into elements
+- browser_fill_form - Fill multiple form fields
 
 Test like a human user with mouse and keyboard. Don't take shortcuts by using JavaScript evaluation.
-Don't use the puppeteer "active tab" tool.
 
 ---
 
@@ -191,6 +206,7 @@ Don't use the puppeteer "active tab" tool.
 **Priority:** Fix broken tests before implementing new features
 
 **Quality Bar:**
+
 - Zero console errors
 - Polished UI matching the design specified in app_spec.txt
 - All features work end-to-end through the UI
