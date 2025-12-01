@@ -17,23 +17,23 @@ gem 'turbo-rails'
 # Hotwire's modest JavaScript framework [https://stimulus.hotwired.dev]
 gem 'stimulus-rails'
 # Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
-gem 'bcrypt', '>= 3.1'
+gem 'bcrypt'
 # Authentication framework [https://rodauth.jeremyevans.net/]
-gem 'rodauth-rails', '~> 2.1'
+gem 'rodauth-rails'
 # Required for Rodauth to use ActiveRecord's database connection
 gem 'sequel-activerecord_connection'
 # Required for Rodauth's render plugin (used for email templates)
 gem 'tilt'
 # OAuth integration for Rodauth [https://github.com/janko/rodauth-omniauth]
-gem 'rodauth-omniauth', '~> 0.4'
+gem 'rodauth-omniauth'
 # OAuth provider for Google
-gem 'omniauth-google-oauth2', '~> 1.2'
+gem 'omniauth-google-oauth2'
 # Authorization framework [https://github.com/varvet/pundit]
-gem 'pundit', '>= 2.4'
+gem 'pundit'
 # Audit logging [https://github.com/paper-trail-gem/paper_trail]
 gem 'paper_trail'
 # Pagination [https://github.com/ddnexus/pagy]
-gem 'pagy', '>= 43.1'
+gem 'pagy'
 
 gem 'ostruct'
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
@@ -49,9 +49,9 @@ gem 'bootsnap', require: false
 # Add HTTP asset caching/compression and X-Sendfile acceleration to Puma [https://github.com/basecamp/thruster/]
 gem 'thruster', require: false
 # Use Phlex for views [https://github.com/phlex-rb/phlex-rails]
-gem 'phlex-rails', '>= 2.3'
-gem 'tailwindcss-rails', '>= 4.3'
-gem 'tailwind_merge', '>= 1.3'
+gem 'phlex-rails'
+gem 'tailwindcss-rails'
+gem 'tailwind_merge'
 
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
@@ -73,11 +73,11 @@ group :development, :test do
   gem 'capybara'
   gem 'capybara-playwright-driver'
   gem 'factory_bot_rails'
-  gem 'pundit-matchers', '>= 2.0'
+  gem 'pundit-matchers'
   gem 'rails-controller-testing'
   gem 'rspec-github', require: false
-  gem 'rspec-rails', '>= 8.0'
-  gem 'shoulda-matchers', '>= 6.0'
+  gem 'rspec-rails'
+  gem 'shoulda-matchers'
 end
 
 group :development do
