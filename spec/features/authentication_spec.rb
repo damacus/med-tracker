@@ -31,7 +31,7 @@ RSpec.describe 'Authentication Features', type: :system do
   end
 
   describe 'AUTH-014: Password reset flow' do
-    let!(:account) do
+    before do
       Account.create!(
         email: 'resetme@example.com',
         password_hash: RodauthApp.rodauth.allocate.password_hash('oldpassword123'),
@@ -145,7 +145,7 @@ RSpec.describe 'Authentication Features', type: :system do
   end
 
   describe 'AUTH-017: Account status closed prevents login' do
-    let!(:account) do
+    before do
       Account.create!(
         email: 'closed@example.com',
         password_hash: RodauthApp.rodauth.allocate.password_hash('securepassword123'),
@@ -166,7 +166,7 @@ RSpec.describe 'Authentication Features', type: :system do
   end
 
   describe 'AUTH-018: Verification email resend' do
-    let!(:account) do
+    before do
       Account.create!(
         email: 'resend@example.com',
         password_hash: RodauthApp.rodauth.allocate.password_hash('securepassword123'),
