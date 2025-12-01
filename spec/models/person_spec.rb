@@ -295,6 +295,28 @@ RSpec.describe Person do
 
       expect(person).to be_valid
     end
+
+    it 'requires active carer when has_capacity is false and only inactive carers exist' do
+      carer = described_class.create!(
+        name: 'Inactive Carer',
+        date_of_birth: 40.years.ago,
+        person_type: :adult
+      )
+
+      person = described_class.create!(
+        name: 'Person',
+        date_of_birth: 30.years.ago,
+        has_capacity: true
+      )
+      person.carer_relationships.create!(carer: carer, relationship_type: 'support', active: false)
+
+      person.has_capacity = false
+
+      expect(person).not_to be_valid
+      expect(person.errors[:base]).to include(
+        'A person without capacity must have at least one carer assigned'
+      )
+    end
   end
 
   describe 'carer relationships' do
