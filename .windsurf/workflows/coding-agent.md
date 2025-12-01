@@ -23,7 +23,9 @@ ls -la
 cat app_spec.txt
 
 # 4. Read the feature list to see all work
-cat feature_list.json | head -50
+I will give you a feature list file in json
+
+cat <file>.json | head -50
 
 # 5. Read progress notes from previous sessions
 cat claude-progress.txt

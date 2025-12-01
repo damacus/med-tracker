@@ -12,10 +12,20 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 20_251_128_215_700) do
+ActiveRecord::Schema[8.1].define(version: 20_251_201_214_500) do
   # These are extensions that must be enabled in order to support this database
   enable_extension 'citext'
   enable_extension 'pg_catalog.plpgsql'
+
+  create_table 'account_identities', force: :cascade do |t|
+    t.bigint 'account_id', null: false
+    t.datetime 'created_at', null: false
+    t.string 'provider', null: false
+    t.string 'uid', null: false
+    t.datetime 'updated_at', null: false
+    t.index ['account_id'], name: 'index_account_identities_on_account_id'
+    t.index %w[provider uid], name: 'index_account_identities_on_provider_and_uid', unique: true
+  end
 
   create_table 'account_login_change_keys', id: false, force: :cascade do |t|
     t.bigint 'account_id', null: false
@@ -188,6 +198,7 @@ ActiveRecord::Schema[8.1].define(version: 20_251_128_215_700) do
     t.index ['whodunnit'], name: 'index_versions_on_whodunnit'
   end
 
+  add_foreign_key 'account_identities', 'accounts', on_delete: :cascade
   add_foreign_key 'account_login_change_keys', 'accounts'
   add_foreign_key 'account_password_reset_keys', 'accounts'
   add_foreign_key 'account_remember_keys', 'accounts'

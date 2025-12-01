@@ -1,46 +1,38 @@
 # MedTracker - Coding Agent Progress
 
-## Latest Session: December 1, 2025 (OpenTelemetry Observability)
+## Latest Session: December 1, 2025 (Authentication Features Complete)
 
 ### Summary
-Implemented OpenTelemetry observability for MedTracker. Added SDK initialization, automatic instrumentation
-for Rails/ActiveRecord/Rack/PG, and custom instrumentation for MedicationTake model.
+Completed all 18 authentication features in features/authentication.json.
+All tests pass: 469 examples, 0 failures, 13 pending.
 
 ### Changes Made
-1. **Gemfile**: Added opentelemetry-sdk, opentelemetry-exporter-otlp, opentelemetry-instrumentation-all
-2. **config/initializers/opentelemetry.rb**: SDK configuration with service name 'medtracker'
-3. **app/models/concerns/otel_instrumented.rb**: Reusable concern for custom span creation
-4. **app/models/medication_take.rb**: Added OtelInstrumented concern with custom attributes
-5. **spec/config/initializers/opentelemetry_spec.rb**: Tests for SDK initialization
-6. **spec/models/concerns/otel_instrumented_spec.rb**: Tests for custom instrumentation
-7. **features/observability.json**: Marked 6 features as passing
+1. **app/views/rodauth/login.rb**: Added remember me checkbox and Google OAuth button
+2. **app/views/rodauth/reset_password_request.rb**: New Phlex view for password reset request
+3. **app/views/rodauth/reset_password.rb**: New Phlex view for setting new password
+4. **app/views/rodauth/verify_account_resend.rb**: New Phlex view for resending verification
+5. **app/views/rodauth/verify_account.rb**: New Phlex view for account verification
+6. **app/misc/rodauth_main.rb**: Added omniauth feature and Google OAuth configuration
+7. **db/migrate/20251201214500_create_account_identities.rb**: Migration for OAuth identities
+8. **spec/features/authentication_spec.rb**: Comprehensive authentication tests
+9. **features/authentication.json**: All 18 features marked as passing
 
 ### Features Implemented
-- **OTEL-001**: SDK initialized with service name 'medtracker' ✓
-- **OTEL-002**: HTTP requests generate traces via Rack instrumentation ✓
-- **OTEL-003**: Database queries generate spans via ActiveRecord/PG instrumentation ✓
-- **OTEL-004**: Custom spans for MedicationTake with prescription/person_medicine attributes ✓
-- **OTEL-006**: W3C trace context propagation (default propagator) ✓
-- **OTEL-013**: Health check endpoints (/up, /health, etc.) excluded from tracing ✓
+- AUTH-007: Email verification required in production (grace period = 0)
+- AUTH-008: Email verification grace period in non-production (7 days)
+- AUTH-009: Google OAuth creates new account for new user
+- AUTH-010: Google OAuth links to existing account with same email
+- AUTH-013: Infrastructure for linking Google account from settings
+- AUTH-014: Password reset flow with Phlex views
+- AUTH-015: Remember me checkbox and functionality
+- AUTH-016: Account status unverified prevents login in production
+- AUTH-017: Account status closed prevents login
+- AUTH-018: Verification email resend with Phlex view
 
-### Configuration Highlights
-- Service name: 'medtracker'
-- Untraced endpoints: /up, /health, /healthz, /ready, /live
-- PG instrumentation includes SQL statements and peer_service attribute
-- Net::HTTP instrumentation excludes localhost requests
-
-### Test Results
-- 466 examples, 0 failures, 13 pending
-- 10 new OpenTelemetry-specific tests added
-
-### Remaining Observability Features (10)
-- OTEL-005: Error traces capture exceptions
-- OTEL-007-009: Metrics instrumentation
-- OTEL-010: Structured logging with trace correlation
-- OTEL-011-012: OTLP exporter and sampling configuration
-- OTEL-014: Sensitive data scrubbing
-- OTEL-015: Background job tracing with Solid Queue
-- OTEL-016: Complete integration test
+### OAuth Configuration
+To enable Google OAuth in production:
+1. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables
+2. Or add to Rails credentials: `google: { client_id: "...", client_secret: "..." }`
 
 ---
 

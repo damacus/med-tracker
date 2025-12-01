@@ -3,12 +3,13 @@
 require 'sequel/core'
 
 class RodauthMain < Rodauth::Rails::Auth
+  # rubocop:disable Metrics/BlockLength -- Rodauth configuration DSL requires a single configure block
   configure do
     # List of authentication features that are loaded.
     enable :create_account, :verify_account, :verify_account_grace_period,
            :login, :logout, :remember,
            :reset_password, :change_password, :change_login, :verify_login_change,
-           :close_account
+           :close_account, :omniauth
 
     # See the Rodauth documentation for the list of available config options:
     # http://rodauth.jeremyevans.net/documentation.html
@@ -82,6 +83,21 @@ class RodauthMain < Rodauth::Rails::Auth
     reset_password_id_column :account_id
     verify_login_change_id_column :account_id
 
+    # ==> OmniAuth (Google OAuth)
+    # Configure Google OAuth provider
+    # Credentials should be stored in Rails credentials or environment variables
+    if Rails.application.credentials.dig(:google, :client_id).present?
+      omniauth_provider :google_oauth2,
+                        Rails.application.credentials.google[:client_id],
+                        Rails.application.credentials.google[:client_secret],
+                        scope: 'email profile'
+    elsif ENV['GOOGLE_CLIENT_ID'].present?
+      omniauth_provider :google_oauth2,
+                        ENV.fetch('GOOGLE_CLIENT_ID'),
+                        ENV.fetch('GOOGLE_CLIENT_SECRET'),
+                        scope: 'email profile'
+    end
+
     # ==> Hooks
     # Validate custom fields in the create account form.
     before_create_account do
@@ -133,6 +149,34 @@ class RodauthMain < Rodauth::Rails::Auth
       end
     end
 
+    # Handle OAuth account creation - create Person and User records
+    after_omniauth_create_account do
+      # Get user info from OAuth provider
+      auth_info = omniauth_info
+      name = auth_info['name'] || auth_info['email'].split('@').first
+      email = auth_info['email']
+
+      # OAuth users are assumed to be adults (we don't have DOB from OAuth)
+      # Use a sentinel DOB (100 years ago) to indicate missing data
+      # Users should be prompted to update their profile with actual DOB
+      ActiveRecord::Base.transaction do
+        person = Person.create!(
+          account_id: account_id,
+          name: name,
+          email: email,
+          person_type: :adult,
+          date_of_birth: 100.years.ago.to_date # Sentinel value - DOB unknown for OAuth users
+        )
+
+        User.create!(
+          person: person,
+          email_address: email,
+          role: :parent,
+          active: true
+        )
+      end
+    end
+
     # Do additional cleanup after the account is closed.
     after_close_account do
       # Nullify the account_id on the person but don't delete the person
@@ -177,4 +221,5 @@ class RodauthMain < Rodauth::Rails::Auth
     # verify_login_change_deadline_interval Hash[days: 2]
     # remember_deadline_interval Hash[days: 30]
   end
+  # rubocop:enable Metrics/BlockLength
 end

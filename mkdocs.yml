@@ -23,6 +23,8 @@ nav:
   - Design:
       - Architecture: design.md
       - User Management: user-management.md
+  - Guides:
+      - OAuth Setup: oauth-setup.md
 
 markdown_extensions:
   - admonition

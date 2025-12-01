@@ -43,3 +43,4 @@
 /site/
 *.sqlite3
 db/*.sqlite3-*
+claude-progress.txt
