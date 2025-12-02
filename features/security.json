@@ -638,7 +638,7 @@
       "Verify no mass assignment warnings",
       "Add brakeman to CI pipeline"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "SEC-030",
@@ -652,7 +652,7 @@
       "Add bundler-audit to CI pipeline",
       "Verify runs on every PR"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "SEC-031",
@@ -668,7 +668,7 @@
       "Check for hardcoded secrets in codebase",
       "Verify all secrets from environment variables"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "SEC-032",
