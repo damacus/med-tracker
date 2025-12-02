@@ -31,7 +31,7 @@ tasks:
         vars:
           ENVIRONMENT: test
           SERVICE: web
-          COMMAND: 'bundle exec rspec {{ .TEST_FILE | default "spec" }}'
+          COMMAND: 'bundle exec rspec --format documentation {{ .TEST_FILE | default "spec" }}'
           TEST_FILE: '{{ .TEST_FILE | default "spec" }}'
 
 
