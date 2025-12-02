@@ -32,6 +32,7 @@ module Admin
       render Components::Admin::Users::FormView.new(user: @user, url_helpers: self)
     end
 
+    # rubocop:disable Metrics/PerceivedComplexity
     def create
       @user = User.new(user_params)
       authorize @user
@@ -69,6 +70,7 @@ module Admin
       end
       render Components::Admin::Users::FormView.new(user: @user, url_helpers: self), status: :unprocessable_content
     end
+    # rubocop:enable Metrics/PerceivedComplexity
 
     def update
       @user = User.find(params[:id])

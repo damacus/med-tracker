@@ -126,7 +126,7 @@ module Components
 
         badge_class = if todays_count >= max_doses
                         'bg-red-100 text-red-800'
-                      elsif todays_count > 0
+                      elsif todays_count.positive?
                         'bg-green-100 text-green-800'
                       else
                         'bg-slate-100 text-slate-600'
