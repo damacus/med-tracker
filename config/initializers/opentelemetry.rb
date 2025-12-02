@@ -1,12 +1,20 @@
 # frozen_string_literal: true
 
+# Skip OpenTelemetry in development/test - no collector running
+# Only enable in production where OTLP endpoint is configured
+unless Rails.env.production? || ENV['OTEL_EXPORTER_OTLP_ENDPOINT'].present?
+  return
+end
+
+# Load OpenTelemetry API first and set logger to suppress deprecation warnings
+# The opentelemetry-helpers-sql-obfuscation gem emits a deprecation warning on load
+# This is harmless - the gem was renamed to opentelemetry-helpers-sql-processor
+require 'opentelemetry-api'
+OpenTelemetry.logger = Logger.new($stdout, level: Logger::ERROR)
+
 require 'opentelemetry/sdk'
 require 'opentelemetry/exporter/otlp'
 require 'opentelemetry/instrumentation/all'
-
-# Silence noisy OpenTelemetry instrumentation installation logs
-# These INFO messages obscure real errors in test/development output
-OpenTelemetry.logger = Logger.new($stdout, level: Logger::WARN)
 
 # Configure OpenTelemetry SDK for MedTracker observability
 OpenTelemetry::SDK.configure do |c|
