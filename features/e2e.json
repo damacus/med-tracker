@@ -49,7 +49,7 @@
 			"Verify recorded",
 			"Log out"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"id": "E2E-003",
