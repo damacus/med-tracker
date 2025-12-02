@@ -1,7 +1,69 @@
 [
-  {"id": "INVITE-001", "category": "functional", "area": "invitations", "description": "Admin can send user invitation", "steps": ["Log in as administrator", "Navigate to invitations", "Enter email", "Select role", "Send invitation", "Verify email sent"], "passes": false},
-  {"id": "INVITE-002", "category": "functional", "area": "invitations", "description": "Invitee can accept invitation", "steps": ["Send invitation", "Click link in email", "Complete registration form", "Verify account created with correct role"], "passes": false},
-  {"id": "INVITE-003", "category": "functional", "area": "invitations", "description": "Invitation expires after set time", "steps": ["Send invitation", "Wait for expiration", "Click link", "Verify invitation expired error"], "passes": false},
-  {"id": "INVITE-004", "category": "functional", "area": "invitations", "description": "Admin can resend invitation", "steps": ["Send invitation", "Navigate to pending invitations", "Click Resend", "Verify new email sent"], "passes": false},
-  {"id": "INVITE-005", "category": "functional", "area": "invitations", "description": "Admin can cancel invitation", "steps": ["Send invitation", "Navigate to pending invitations", "Click Cancel", "Verify invitation invalidated"], "passes": false}
+	{
+		"id": "INVITE-001",
+		"category": "functional",
+		"area": "invitations",
+		"description": "Admin can send user invitation",
+		"steps": [
+			"Log in as administrator",
+			"Navigate to invitations",
+			"Enter email",
+			"Select role",
+			"Send invitation",
+			"Verify email sent"
+		],
+		"passes": false
+	},
+	{
+		"id": "INVITE-002",
+		"category": "functional",
+		"area": "invitations",
+		"description": "Invitee can accept invitation",
+		"steps": [
+			"Send invitation",
+			"Click link in email",
+			"Complete registration form",
+			"Verify account created with correct role"
+		],
+		"passes": false
+	},
+	{
+		"id": "INVITE-003",
+		"category": "functional",
+		"area": "invitations",
+		"description": "Invitation expires after set time",
+		"steps": [
+			"Send invitation",
+			"Wait for expiration",
+			"Click link",
+			"Verify invitation expired error"
+		],
+		"passes": false
+	},
+	{
+		"id": "INVITE-004",
+		"category": "functional",
+		"area": "invitations",
+		"description": "Admin can resend invitation",
+		"steps": [
+			"Send invitation",
+			"Navigate to pending invitations",
+			"Click Resend",
+			"Verify new email sent"
+		],
+		"passes": false
+	},
+	{
+		"id": "INVITE-005",
+		"category": "functional",
+		"area": "invitations",
+		"description": "Admin can cancel invitation",
+		"steps": [
+			"Send invitation",
+			"Navigate to pending invitations",
+			"Click Cancel",
+			"Verify invitation invalidated"
+		],
+		"passes": false
+	}
 ]
