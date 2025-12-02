@@ -4,6 +4,10 @@ require 'opentelemetry/sdk'
 require 'opentelemetry/exporter/otlp'
 require 'opentelemetry/instrumentation/all'
 
+# Silence noisy OpenTelemetry instrumentation installation logs
+# These INFO messages obscure real errors in test/development output
+OpenTelemetry.logger = Logger.new($stdout, level: Logger::WARN)
+
 # Configure OpenTelemetry SDK for MedTracker observability
 OpenTelemetry::SDK.configure do |c|
   c.service_name = 'medtracker'
@@ -37,6 +41,3 @@ OpenTelemetry::SDK.configure do |c|
     'deployment.environment' => Rails.env.to_s
   )
 end
-
-# Log OpenTelemetry initialization
-Rails.logger.info '[OpenTelemetry] SDK initialized with service name: medtracker' if defined?(Rails.logger) && Rails.logger
