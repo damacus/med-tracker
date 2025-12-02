@@ -2,6 +2,9 @@
 
 require 'rails_helper'
 
+# Request specs for Admin Audit Logs
+# These test HTTP-level behavior (status codes, redirects, response format)
+# Detailed content/UI testing is in spec/features/admin/audit_logs_spec.rb
 RSpec.describe 'Admin::AuditLogs' do
   fixtures :all
 
@@ -26,32 +29,9 @@ RSpec.describe 'Admin::AuditLogs' do
         expect(response).to have_http_status(:success)
       end
 
-      it 'displays audit trail heading' do
+      it 'returns HTML content type' do
         get admin_audit_logs_path
-        expect(response.body).to include('Audit Trail')
-      end
-
-      it 'displays filter form with record type and event type dropdowns' do
-        get admin_audit_logs_path
-        expect(response.body).to include('Record Type')
-        expect(response.body).to include('Event Type')
-        expect(response.body).to include('item_type')
-        expect(response.body).to include('event')
-      end
-
-      it 'displays table headers for timestamp, record type, event, user' do
-        # Create an audit entry so the table is displayed
-        PaperTrail.request.whodunnit = admin.id
-        PaperTrail.request(enabled: true) do
-          users(:jane).update!(role: :nurse)
-        end
-
-        get admin_audit_logs_path
-        expect(response.body).to include('Timestamp')
-        expect(response.body).to include('Record Type')
-        expect(response.body).to include('Event')
-        expect(response.body).to include('User')
-        expect(response.body).to include('IP Address')
+        expect(response.content_type).to include('text/html')
       end
     end
 
@@ -72,113 +52,78 @@ RSpec.describe 'Admin::AuditLogs' do
     end
   end
 
-  # AUDIT-013: Complete audit trail review workflow
-  describe 'AUDIT-013: Complete audit trail review workflow' do
-    before { sign_in_as(admin) }
-
-    describe 'filtering' do
-      before do
-        # Create audit entries for different record types
-        PaperTrail.request.whodunnit = admin.id
-        PaperTrail.request(enabled: true) do
-          users(:jane).update!(role: :nurse)
-          people(:john).update!(name: 'John Updated')
-        end
-      end
-
-      it 'filters by record type' do
-        get admin_audit_logs_path, params: { item_type: 'User' }
-        expect(response).to have_http_status(:success)
-        expect(response.body).to include('User')
-      end
-
-      it 'filters by event type' do
-        get admin_audit_logs_path, params: { event: 'update' }
-        expect(response).to have_http_status(:success)
-        expect(response.body).to include('Update')
-      end
-
-      it 'shows clear button when filters are active' do
-        get admin_audit_logs_path, params: { item_type: 'User' }
-        expect(response.body).to include('Clear')
+  describe 'GET /admin/audit_logs with filters' do
+    before do
+      sign_in_as(admin)
+      PaperTrail.request.whodunnit = admin.id
+      PaperTrail.request(enabled: true) do
+        users(:jane).update!(role: :nurse)
       end
     end
 
-    describe 'detail view' do
-      let!(:version) do
-        PaperTrail.request.whodunnit = admin.id
-        PaperTrail.request(enabled: true) do
-          users(:jane).update!(role: :nurse)
-        end
-        PaperTrail::Version.last
-      end
+    it 'accepts item_type filter parameter' do
+      get admin_audit_logs_path, params: { item_type: 'User' }
+      expect(response).to have_http_status(:success)
+    end
 
-      it 'shows audit log details' do
+    it 'accepts event filter parameter' do
+      get admin_audit_logs_path, params: { event: 'update' }
+      expect(response).to have_http_status(:success)
+    end
+
+    it 'accepts page parameter' do
+      get admin_audit_logs_path, params: { page: 1 }
+      expect(response).to have_http_status(:success)
+    end
+  end
+
+  describe 'GET /admin/audit_logs/:id' do
+    let!(:version) do
+      PaperTrail.request.whodunnit = admin.id
+      PaperTrail.request(enabled: true) do
+        users(:jane).update!(role: :nurse)
+      end
+      PaperTrail::Version.last
+    end
+
+    context 'when authenticated as administrator' do
+      before { sign_in_as(admin) }
+
+      it 'returns success' do
         get admin_audit_log_path(version)
         expect(response).to have_http_status(:success)
-        expect(response.body).to include('Audit Log Details')
-        expect(response.body).to include('Event Information')
       end
 
-      it 'displays previous state for update events' do
+      it 'returns HTML content type' do
         get admin_audit_log_path(version)
-        expect(response.body).to include('Previous State')
-      end
-
-      it 'displays new state for update events' do
-        get admin_audit_log_path(version)
-        expect(response.body).to include('New State')
-      end
-
-      it 'shows back to audit logs link' do
-        get admin_audit_log_path(version)
-        expect(response.body).to include('Back to Audit Logs')
+        expect(response.content_type).to include('text/html')
       end
     end
 
-    describe 'pagination' do
-      before do
-        # Create more than 50 audit entries to trigger pagination.
-        # NOTE: We create PaperTrail::Version records directly here for performance.
-        # Creating 55 actual model changes would be slow and unnecessary since we're
-        # testing pagination UI, not the audit trail generation mechanism itself.
-        PaperTrail.request.whodunnit = admin.id
-        55.times do |i|
-          PaperTrail::Version.create!(
-            item_type: 'User',
-            item_id: i + 1000,
-            event: 'update',
-            whodunnit: admin.id.to_s,
-            created_at: Time.current
-          )
-        end
-      end
+    context 'when authenticated as non-administrator' do
+      before { sign_in_as(regular_user) }
 
-      it 'shows pagination controls when there are many entries' do
-        get admin_audit_logs_path
-        expect(response.body).to include('Pagination')
-        expect(response.body).to include('Showing')
-        expect(response.body).to include('results')
+      it 'denies access' do
+        get admin_audit_log_path(version)
+        # May redirect to root_path or otp-setup depending on 2FA requirements
+        expect(response).to have_http_status(:redirect)
+        expect(response).not_to have_http_status(:success)
       end
+    end
 
-      it 'shows next page link' do
-        get admin_audit_logs_path
-        expect(response.body).to include('Next')
-      end
-
-      it 'navigates to page 2' do
-        get admin_audit_logs_path, params: { page: 2 }
-        expect(response).to have_http_status(:success)
+    context 'when not authenticated' do
+      it 'redirects to login' do
+        get admin_audit_log_path(version)
+        expect(response).to redirect_to(login_path)
       end
     end
   end
 
-  # AUDIT-014: Audit trail for medication take lifecycle
-  describe 'AUDIT-014: Medication take lifecycle audit' do
+  describe 'MedicationTake audit trail' do
     before { sign_in_as(admin) }
 
-    describe 'medication take creation logging' do
-      before do
+    it 'creates audit version when MedicationTake is created' do
+      expect do
         PaperTrail.request.whodunnit = carer.id
         PaperTrail.request(enabled: true) do
           MedicationTake.create!(
@@ -186,51 +131,34 @@ RSpec.describe 'Admin::AuditLogs' do
             taken_at: Time.current
           )
         end
-      end
-
-      it 'logs medication take creation' do
-        get admin_audit_logs_path, params: { item_type: 'MedicationTake' }
-        expect(response).to have_http_status(:success)
-        expect(response.body).to include('Medication Take')
-        expect(response.body).to include('Create')
-      end
-
-      it 'shows whodunnit (carer) in audit log' do
-        version = PaperTrail::Version.where(item_type: 'MedicationTake').last
-        get admin_audit_log_path(version)
-        expect(response.body).to include(carer.name)
-      end
-
-      it 'shows prescription_id in new state' do
-        version = PaperTrail::Version.where(item_type: 'MedicationTake').last
-        get admin_audit_log_path(version)
-        expect(response.body).to include('New State')
-        expect(response.body).to include('prescription_id')
-      end
-
-      it 'shows taken_at timestamp in new state' do
-        version = PaperTrail::Version.where(item_type: 'MedicationTake').last
-        get admin_audit_log_path(version)
-        expect(response.body).to include('taken_at')
-      end
+      end.to change { PaperTrail::Version.where(item_type: 'MedicationTake').count }.by(1)
     end
 
-    describe 'IP address recording' do
-      it 'displays IP address in audit log list' do
-        # Create an actual MedicationTake with IP tracking enabled
-        # This tests the end-to-end audit trail functionality
-        PaperTrail.request.whodunnit = carer.id
-        PaperTrail.request.controller_info = { ip: '192.168.1.100' }
-        PaperTrail.request(enabled: true) do
-          MedicationTake.create!(
-            prescription: prescription,
-            taken_at: Time.current
-          )
-        end
-
-        get admin_audit_logs_path, params: { item_type: 'MedicationTake' }
-        expect(response.body).to include('192.168.1.100')
+    it 'records whodunnit in audit version' do
+      PaperTrail.request.whodunnit = carer.id
+      PaperTrail.request(enabled: true) do
+        MedicationTake.create!(
+          prescription: prescription,
+          taken_at: Time.current
+        )
       end
+
+      version = PaperTrail::Version.where(item_type: 'MedicationTake').last
+      expect(version.whodunnit).to eq(carer.id.to_s)
+    end
+
+    it 'records IP address when controller_info is set' do
+      PaperTrail.request.whodunnit = carer.id
+      PaperTrail.request.controller_info = { ip: '192.168.1.100' }
+      PaperTrail.request(enabled: true) do
+        MedicationTake.create!(
+          prescription: prescription,
+          taken_at: Time.current
+        )
+      end
+
+      version = PaperTrail::Version.where(item_type: 'MedicationTake').last
+      expect(version.ip).to eq('192.168.1.100')
     end
   end
 end
