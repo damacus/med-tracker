@@ -1,35 +1,45 @@
 # MedTracker - Coding Agent Progress
 
-## Latest Session: December 2, 2025 (Security Headers & Scanners)
+## Latest Session: December 2, 2025 (Security Features)
 
 ### Summary
-Implemented security headers and verified security scanning tools.
+Implemented security headers, scanning tools, rate limiting, and account lockout.
 All tests pass: 492 examples, 0 failures, 13 pending.
-Reduced failing features from 81 to 73.
+Reduced failing features from 81 to 71.
 
 ### Changes Made
-1. **config/initializers/security_headers.rb**: New initializer for Permissions-Policy header
-2. **Gemfile**: Added bundler-audit gem for dependency vulnerability scanning
-3. **features/security.json**: Marked 8 security features as passing
+1. **config/initializers/security_headers.rb**: Permissions-Policy header
+2. **config/initializers/rack_attack.rb**: Rate limiting configuration
+3. **config/initializers/opentelemetry.rb**: Silenced noisy INFO logs
+4. **app/misc/rodauth_main.rb**: Enabled lockout feature with 5 attempts / 30 min lockout
+5. **db/migrate/20251202083837_create_account_lockouts.rb**: Lockout tables
+6. **Gemfile**: Added rack-attack and bundler-audit gems
 
-### Security Features Verified/Implemented
+### Security Features Implemented (10 total)
+- SEC-007: Account lockout after 5 failed login attempts (Rodauth lockout)
+- SEC-010: Rate limiting via Rack::Attack (login, signup, password reset)
 - SEC-016: HSTS header (configured via force_ssl in production)
 - SEC-017: X-Frame-Options: SAMEORIGIN (Rails default)
 - SEC-018: X-Content-Type-Options: nosniff (Rails default)
 - SEC-019: Referrer-Policy: strict-origin-when-cross-origin (Rails default)
-- SEC-020: Permissions-Policy (newly implemented - disables geolocation, camera, microphone)
+- SEC-020: Permissions-Policy (disables geolocation, camera, microphone)
 - SEC-029: Brakeman security scanner passes with 0 warnings
 - SEC-030: bundler-audit passes with no vulnerabilities
 - SEC-031: No secrets committed to source control (verified)
 
+### Rate Limiting Configuration
+- Login: 5 requests per 20 seconds per IP
+- Account creation: 3 per minute per IP
+- Password reset: 5 per minute per IP (also 5 per hour per email)
+- General: 300 requests per 5 minutes per IP
+- Disabled in test environment
+
 ### Security Status
-- Security features: 23/42 passing (was 8/42)
-- Total failing features: 73 (was 81)
+- Total failing features: 71 (was 81)
 
 ### Next Steps
-1. Implement account lockout (SEC-007) - requires Rodauth lockout feature + migration
-2. Implement rate limiting (SEC-010) - requires Rack::Attack gem
-3. Enable Content-Security-Policy (SEC-009/SEC-033) - requires careful configuration
+1. Enable Content-Security-Policy (SEC-009/SEC-033)
+2. Implement 2FA features (2FA-001 through 2FA-006)
 
 ---
 
