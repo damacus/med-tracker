@@ -70,9 +70,7 @@ module Views
       def render_qr_code_section
         div(class: 'flex flex-col items-center space-y-4') do
           div(class: 'p-4 bg-white rounded-xl shadow-sm border border-slate-200') do
-            # The QR code is rendered by Rodauth - we need to constrain its size
             div(class: 'w-48 h-48 flex items-center justify-center [&_img]:max-w-full [&_img]:max-h-full [&_svg]:max-w-full [&_svg]:max-h-full') do
-              # Use safe to render the QR code HTML from Rodauth
               qr_html = view_context.rodauth.otp_qr_code
               safe(qr_html)
             end
