@@ -1,44 +1,739 @@
 [
-  {"id": "2FA-001", "category": "functional", "area": "security", "description": "Enable TOTP two-factor authentication via rotp gem", "steps": ["Log in as any user", "Navigate to /settings/security", "Click 'Enable Two-Factor Authentication'", "Verify QR code displayed with otpauth:// URI", "Verify secret key shown for manual entry", "Open authenticator app (Google Authenticator, Authy, 1Password)", "Scan QR code or enter secret manually", "Enter 6-digit TOTP code from app", "Submit form", "Verify success message '2FA enabled'", "Verify account.otp_secret stored encrypted in database"], "passes": false},
-  {"id": "2FA-002", "category": "functional", "area": "security", "description": "Login requires TOTP code when 2FA enabled", "steps": ["Enable 2FA for test user", "Log out completely", "Navigate to /login", "Enter email and password", "Submit login form", "Verify redirected to /login/otp (TOTP entry page)", "Verify session not yet authenticated", "Enter valid 6-digit TOTP code from authenticator", "Submit", "Verify redirected to dashboard", "Verify fully authenticated session"], "passes": false},
-  {"id": "2FA-003", "category": "functional", "area": "security", "description": "Generate and display 10 backup codes on 2FA setup", "steps": ["Begin 2FA setup flow", "Complete QR code scanning and TOTP verification", "Verify 10 unique backup codes displayed", "Verify each code is 8 alphanumeric characters", "Verify 'Download codes' button present", "Click download button", "Verify .txt file downloaded with all 10 codes", "Verify warning message: 'Store these codes safely. Each can only be used once.'", "Verify codes stored hashed in database (not plaintext)"], "passes": false},
-  {"id": "2FA-004", "category": "functional", "area": "security", "description": "Use backup code instead of TOTP for login", "steps": ["Enable 2FA and save backup codes", "Log out", "Log in with email and password", "On TOTP entry page, click 'Use backup code instead'", "Enter one of the 10 backup codes", "Submit", "Verify logged in successfully", "Log out and log in again", "Attempt to use same backup code", "Verify rejected with 'Code already used' error", "Verify only 9 valid backup codes remain"], "passes": false},
-  {"id": "2FA-005", "category": "functional", "area": "security", "description": "Disable 2FA with TOTP confirmation", "steps": ["Log in as user with 2FA enabled", "Navigate to /settings/security", "Click 'Disable Two-Factor Authentication'", "Verify confirmation modal appears", "Enter current TOTP code to confirm identity", "Submit", "Verify success message '2FA disabled'", "Verify otp_secret cleared from database", "Log out and log in again", "Verify no TOTP prompt on login"], "passes": false},
-  {"id": "2FA-006", "category": "functional", "area": "security", "description": "Regenerate backup codes invalidates old codes", "steps": ["Enable 2FA and note original backup codes", "Navigate to /settings/security", "Click 'Regenerate backup codes'", "Enter TOTP code to confirm", "Verify 10 new backup codes displayed", "Verify new codes are different from original", "Attempt login with old backup code", "Verify rejected", "Attempt login with new backup code", "Verify accepted"], "passes": false},
-  {"id": "2FA-007", "category": "functional", "area": "security", "description": "2FA mandatory for administrator and medical roles (Phase 5.2)", "steps": ["Create new administrator user", "Attempt to access admin dashboard", "Verify redirected to 2FA setup page", "Verify cannot proceed without enabling 2FA", "Enable 2FA", "Verify can now access admin dashboard", "Repeat for doctor role", "Repeat for nurse role", "Verify carer and parent roles can skip 2FA"], "passes": false},
-  {"id": "SEC-001", "category": "functional", "area": "security", "description": "CSRF protection enabled on all state-changing requests", "steps": ["Inspect any form HTML (e.g., /people/new)", "Verify hidden input with name='authenticity_token' present", "Verify token value is unique per session", "Use curl to POST without token", "Verify 422 Unprocessable Entity response", "Verify ActionController::InvalidAuthenticityToken in logs", "Verify CSRF token rotates on login"], "passes": true},
-  {"id": "SEC-002", "category": "functional", "area": "security", "description": "Password minimum 8 characters enforced by Rodauth", "steps": ["Navigate to /create-account (Rodauth signup)", "Enter email: test@example.com", "Enter password: 'short' (5 chars)", "Submit form", "Verify validation error: 'Password must be at least 8 characters'", "Enter password: 'exactly8' (8 chars)", "Submit form", "Verify account created successfully"], "passes": true},
-  {"id": "SEC-003", "category": "functional", "area": "security", "description": "SQL injection prevented via parameterized queries", "steps": ["Navigate to /admin/users (admin search)", "Enter search term: ' OR '1'='1' --", "Submit search", "Verify no SQL syntax error displayed", "Verify no unauthorized users returned", "Check Rails logs for parameterized query", "Verify search term escaped in SQL", "Test with UNION SELECT injection attempt", "Verify blocked"], "passes": true},
-  {"id": "SEC-004", "category": "functional", "area": "security", "description": "XSS prevented via Rails automatic HTML escaping", "steps": ["Navigate to /people/new", "Enter name: '<script>alert(\"xss\")</script>'", "Submit form", "Navigate to person show page", "View page source", "Verify script tag escaped as &lt;script&gt;", "Verify no JavaScript executed", "Test with event handler: '<img src=x onerror=alert(1)>'", "Verify onerror escaped and not executed"], "passes": true},
-  {"id": "SEC-005", "category": "functional", "area": "security", "description": "Session fixation prevented by regenerating session on login", "steps": ["Open browser and navigate to /login", "Open DevTools > Application > Cookies", "Note _medtracker_session cookie value", "Log in with valid credentials", "Check cookie value again", "Verify session ID completely changed", "Verify old session ID invalid if replayed"], "passes": true},
-  {"id": "SEC-006", "category": "functional", "area": "security", "description": "Sensitive parameters filtered from Rails logs", "steps": ["Create user with password 'SuperSecret123!'", "Check log/development.log", "Search for 'SuperSecret123'", "Verify password not present in plaintext", "Verify [FILTERED] shown for password params", "Verify password_digest not logged", "Check audit logs", "Verify password_hash excluded from PaperTrail versions"], "passes": true},
-  {"id": "SEC-007", "category": "functional", "area": "security", "description": "Account lockout after 5 failed login attempts", "steps": ["Navigate to /login", "Enter valid email with wrong password", "Submit and note error message", "Repeat 4 more times (5 total failures)", "Verify failed_login_count incremented in accounts table", "Attempt 6th login with wrong password", "Verify account locked message displayed", "Attempt login with CORRECT password", "Verify still locked out", "Verify lockout duration (e.g., 30 minutes)", "Wait for lockout to expire or admin unlock", "Verify can login again"], "passes": false},
-  {"id": "SEC-008", "category": "functional", "area": "security", "description": "Secure cookie attributes in production environment", "steps": ["Set RAILS_ENV=production", "Set SECRET_KEY_BASE environment variable", "Start Rails server", "Log in via HTTPS", "Inspect Set-Cookie response header", "Verify 'Secure' flag present (HTTPS only)", "Verify 'HttpOnly' flag present (no JS access)", "Verify 'SameSite=Lax' or 'SameSite=Strict' attribute", "Verify cookie path is '/'", "Verify no sensitive data in cookie value"], "passes": true},
-  {"id": "SEC-009", "category": "functional", "area": "security", "description": "Content Security Policy headers prevent inline scripts", "steps": ["Make GET request to any page", "Inspect response headers", "Verify Content-Security-Policy header present", "Verify default-src directive set", "Verify script-src does not include 'unsafe-inline'", "Verify style-src directive set", "Verify frame-ancestors 'self' (clickjacking protection)", "Verify report-uri or report-to configured for violations", "Attempt to inject inline script", "Verify blocked by CSP"], "passes": true},
-  {"id": "SEC-010", "category": "functional", "area": "security", "description": "Rate limiting on authentication endpoints via Rack::Attack", "steps": ["Configure Rack::Attack in config/initializers/rack_attack.rb", "Set login throttle: 5 requests per 20 seconds per IP", "Attempt 6 rapid login requests via script", "Verify 429 Too Many Requests after 5th request", "Verify Retry-After header present", "Verify rate limit applies per IP address", "Wait for throttle window to reset", "Verify can make requests again", "Test rate limiting on /create-account endpoint", "Test rate limiting on /reset-password endpoint"], "passes": false},
-  {"id": "SEC-011", "category": "functional", "area": "security", "description": "Admin user impersonation with full audit trail", "steps": ["Log in as administrator (damacus@example.com)", "Navigate to /admin/users", "Find a carer user in the list", "Click 'Impersonate' button", "Verify yellow banner: 'You are impersonating [user]. Click here to stop.'", "Verify current_user now returns impersonated user", "Navigate to dashboard", "Verify seeing carer's scoped data", "Record a medication dose as impersonated user", "Click 'Stop impersonating' in banner", "Verify returned to admin account", "Navigate to /admin/audit_logs", "Verify 'impersonation_started' event logged with admin user", "Verify 'impersonation_ended' event logged", "Verify medication_take shows impersonated user but audit shows admin"], "passes": false},
-  {"id": "SEC-012", "category": "functional", "area": "security", "description": "Bcrypt password hashing with appropriate cost factor", "steps": ["Create new account with password", "Query database: SELECT password_hash FROM accounts WHERE email = ?", "Verify hash starts with '$2a$' or '$2b$' (bcrypt identifier)", "Verify cost factor is at least 10 (e.g., $2a$12$)", "Verify hash length is 60 characters", "Verify same password produces different hash (salt)", "Verify Rodauth.password_match? works correctly"], "passes": true},
-  {"id": "SEC-013", "category": "functional", "area": "security", "description": "Remember-me tokens rotated on each use (Rodauth)", "steps": ["Navigate to /login", "Check 'Remember me' checkbox", "Log in with valid credentials", "Inspect cookies for remember token", "Note token value", "Close browser completely", "Reopen browser and navigate to app", "Verify automatically logged in", "Inspect remember token cookie", "Verify token value changed (rotated)", "Verify old token invalid if replayed"], "passes": false},
-  {"id": "SEC-014", "category": "functional", "area": "security", "description": "Strong parameters prevent mass assignment attacks", "steps": ["Attempt POST to /admin/users with role: 'administrator' in params", "Verify role not set to administrator (defaults to parent)", "Verify only permitted params accepted", "Attempt to set account.status via user form", "Verify status not modifiable via mass assignment", "Check controller for permit() calls", "Verify no permit! or permit(:all) usage"], "passes": true},
-  {"id": "SEC-015", "category": "functional", "area": "security", "description": "Encrypted database connections (TLS) in production", "steps": ["Check config/database.yml production section", "Verify sslmode: 'require' or 'verify-full'", "Check DATABASE_URL includes sslmode parameter", "Connect to production database", "Run: SELECT ssl_is_used();", "Verify returns true", "Check pg_stat_ssl for connection encryption"], "passes": true},
-  {"id": "SEC-016", "category": "functional", "area": "security", "description": "HSTS header enforces HTTPS in production", "steps": ["Make request to production app", "Inspect response headers", "Verify Strict-Transport-Security header present", "Verify max-age is at least 31536000 (1 year)", "Verify includeSubDomains directive present", "Verify preload directive if submitting to HSTS preload list"], "passes": false},
-  {"id": "SEC-017", "category": "functional", "area": "security", "description": "X-Frame-Options prevents clickjacking", "steps": ["Make request to any page", "Inspect response headers", "Verify X-Frame-Options: DENY or SAMEORIGIN", "Attempt to embed app in iframe on external site", "Verify browser blocks iframe loading", "Verify CSP frame-ancestors also set"], "passes": false},
-  {"id": "SEC-018", "category": "functional", "area": "security", "description": "X-Content-Type-Options prevents MIME sniffing", "steps": ["Make request to any page", "Inspect response headers", "Verify X-Content-Type-Options: nosniff present", "Verify applies to all responses"], "passes": false},
-  {"id": "SEC-019", "category": "functional", "area": "security", "description": "Referrer-Policy limits information leakage", "steps": ["Make request to any page", "Inspect response headers", "Verify Referrer-Policy header present", "Verify value is 'strict-origin-when-cross-origin' or stricter", "Navigate from app to external link", "Verify full URL not sent in Referer header"], "passes": false},
-  {"id": "SEC-020", "category": "functional", "area": "security", "description": "Permissions-Policy restricts browser features", "steps": ["Make request to any page", "Inspect response headers", "Verify Permissions-Policy header present", "Verify geolocation disabled: geolocation=()", "Verify camera disabled: camera=()", "Verify microphone disabled: microphone=()"], "passes": false},
-  {"id": "SEC-021", "category": "functional", "area": "security", "description": "Session timeout after inactivity period", "steps": ["Log in to application", "Note session creation time", "Wait for configured timeout period (e.g., 30 minutes)", "Attempt to navigate to protected page", "Verify redirected to login", "Verify session expired message displayed", "Verify must re-authenticate"], "passes": false},
-  {"id": "SEC-022", "category": "functional", "area": "security", "description": "Concurrent session management and device tracking", "steps": ["Log in from Device A (desktop browser)", "Log in from Device B (mobile browser) with same account", "Verify both sessions active", "Navigate to /settings/security/sessions", "Verify list of active sessions with device info", "Verify IP address and user agent shown", "Verify 'last active' timestamp shown", "Click 'Revoke' on Device A session", "Verify Device A session immediately invalidated", "Verify Device B session still active"], "passes": false},
-  {"id": "SEC-023", "category": "functional", "area": "security", "description": "Password change invalidates other sessions", "steps": ["Log in from Device A", "Log in from Device B with same account", "On Device A, navigate to /settings/security", "Change password", "Verify Device A remains logged in", "Switch to Device B", "Attempt to navigate to any page", "Verify Device B session invalidated", "Verify must log in again with new password"], "passes": false},
-  {"id": "SEC-024", "category": "functional", "area": "security", "description": "Email change requires verification of new address", "steps": ["Log in as any user", "Navigate to /settings/profile", "Change email to new-email@example.com", "Submit form", "Verify message: 'Verification email sent to new address'", "Verify old email still active until verified", "Check inbox for new-email@example.com", "Click verification link", "Verify email updated in account", "Verify can log in with new email"], "passes": false},
-  {"id": "SEC-025", "category": "functional", "area": "security", "description": "Password reset flow with secure token", "steps": ["Navigate to /reset-password", "Enter registered email address", "Submit form", "Verify message: 'If account exists, reset email sent'", "Check email inbox", "Verify reset link contains secure token", "Verify token expires after 24 hours", "Click reset link", "Enter new password (min 8 chars)", "Submit form", "Verify password changed successfully", "Attempt to reuse reset link", "Verify token invalidated after use"], "passes": false},
-  {"id": "SEC-026", "category": "functional", "area": "security", "description": "Account verification email flow (Rodauth)", "steps": ["Navigate to /create-account", "Enter email and password", "Submit form", "Verify account created with status 'unverified'", "Verify verification email sent", "In production: verify cannot log in until verified", "In development: verify can log in for 7 days grace period", "Click verification link in email", "Verify account status changed to 'verified'", "Verify can log in normally"], "passes": false},
-  {"id": "SEC-027", "category": "functional", "area": "security", "description": "Deny-by-default Pundit authorization", "steps": ["Create new controller action without policy", "Attempt to access action", "Verify Pundit::NotAuthorizedError raised", "Verify 403 Forbidden response", "Verify ApplicationPolicy defaults all actions to false", "Add explicit policy permission", "Verify action now accessible"], "passes": true},
-  {"id": "SEC-028", "category": "functional", "area": "security", "description": "Role-based data scoping prevents unauthorized access", "steps": ["Log in as carer (bob.smith@example.com)", "Attempt to access /people/[unassigned_person_id]", "Verify 403 Forbidden or redirect", "Verify cannot see unassigned patients in list", "Log in as administrator", "Verify can access all people", "Log in as parent", "Verify can only see own children"], "passes": true},
-  {"id": "SEC-029", "category": "functional", "area": "security", "description": "Brakeman security scanner passes with no warnings", "steps": ["Run: bundle exec brakeman --no-pager", "Verify exit code 0", "Verify no high confidence warnings", "Verify no SQL injection warnings", "Verify no XSS warnings", "Verify no mass assignment warnings", "Add brakeman to CI pipeline"], "passes": false},
-  {"id": "SEC-030", "category": "functional", "area": "security", "description": "Bundler-audit checks for vulnerable dependencies", "steps": ["Run: bundle exec bundler-audit check --update", "Verify no vulnerable gems found", "If vulnerabilities found, update affected gems", "Add bundler-audit to CI pipeline", "Verify runs on every PR"], "passes": false},
-  {"id": "SEC-031", "category": "functional", "area": "security", "description": "No secrets committed to source control", "steps": ["Run: git log -p | grep -i 'secret\\|password\\|api_key\\|token'", "Verify no actual secrets in git history", "Verify .env files in .gitignore", "Verify config/credentials.yml.enc is encrypted", "Verify RAILS_MASTER_KEY not in repo", "Check for hardcoded secrets in codebase", "Verify all secrets from environment variables"], "passes": false},
-  {"id": "SEC-032", "category": "functional", "area": "security", "description": "IP address and user agent tracked for security audit", "steps": ["Log in to application", "Check audit log for login event", "Verify IP address recorded", "Verify user agent string recorded", "Perform action (create person)", "Check audit log", "Verify IP and user agent on action record", "Verify data available for security investigations"], "passes": true},
-  {"id": "SEC-033", "category": "functional", "area": "security", "description": "Complete security headers integration test", "steps": ["Make request to production-like environment", "Verify Content-Security-Policy header", "Verify Strict-Transport-Security header", "Verify X-Frame-Options header", "Verify X-Content-Type-Options header", "Verify Referrer-Policy header", "Verify Permissions-Policy header", "Run Mozilla Observatory scan", "Verify grade A or higher", "Run securityheaders.com scan", "Verify all headers present"], "passes": false},
-  {"id": "SEC-034", "category": "functional", "area": "security", "description": "Timing-safe password comparison prevents timing attacks", "steps": ["Verify Rodauth uses timing-safe comparison", "Verify BCrypt.compare used (inherently timing-safe)", "Verify no early-exit on password mismatch", "Verify login response time consistent for valid/invalid users"], "passes": true},
-  {"id": "SEC-035", "category": "functional", "area": "security", "description": "Account enumeration prevented on login and signup", "steps": ["Attempt login with non-existent email", "Note error message and response time", "Attempt login with existing email, wrong password", "Verify same generic error message", "Verify similar response time (no timing leak)", "Attempt signup with existing email", "Verify generic message: 'If email available, verification sent'"], "passes": false}
+  {
+    "id": "2FA-001",
+    "category": "functional",
+    "area": "security",
+    "description": "Enable TOTP two-factor authentication via rotp gem",
+    "steps": [
+      "Log in as any user",
+      "Navigate to /settings/security",
+      "Click 'Enable Two-Factor Authentication'",
+      "Verify QR code displayed with otpauth:// URI",
+      "Verify secret key shown for manual entry",
+      "Open authenticator app (Google Authenticator, Authy, 1Password)",
+      "Scan QR code or enter secret manually",
+      "Enter 6-digit TOTP code from app",
+      "Submit form",
+      "Verify success message '2FA enabled'",
+      "Verify account.otp_secret stored encrypted in database"
+    ],
+    "passes": false
+  },
+  {
+    "id": "2FA-002",
+    "category": "functional",
+    "area": "security",
+    "description": "Login requires TOTP code when 2FA enabled",
+    "steps": [
+      "Enable 2FA for test user",
+      "Log out completely",
+      "Navigate to /login",
+      "Enter email and password",
+      "Submit login form",
+      "Verify redirected to /login/otp (TOTP entry page)",
+      "Verify session not yet authenticated",
+      "Enter valid 6-digit TOTP code from authenticator",
+      "Submit",
+      "Verify redirected to dashboard",
+      "Verify fully authenticated session"
+    ],
+    "passes": false
+  },
+  {
+    "id": "2FA-003",
+    "category": "functional",
+    "area": "security",
+    "description": "Generate and display 10 backup codes on 2FA setup",
+    "steps": [
+      "Begin 2FA setup flow",
+      "Complete QR code scanning and TOTP verification",
+      "Verify 10 unique backup codes displayed",
+      "Verify each code is 8 alphanumeric characters",
+      "Verify 'Download codes' button present",
+      "Click download button",
+      "Verify .txt file downloaded with all 10 codes",
+      "Verify warning message: 'Store these codes safely. Each can only be used once.'",
+      "Verify codes stored hashed in database (not plaintext)"
+    ],
+    "passes": false
+  },
+  {
+    "id": "2FA-004",
+    "category": "functional",
+    "area": "security",
+    "description": "Use backup code instead of TOTP for login",
+    "steps": [
+      "Enable 2FA and save backup codes",
+      "Log out",
+      "Log in with email and password",
+      "On TOTP entry page, click 'Use backup code instead'",
+      "Enter one of the 10 backup codes",
+      "Submit",
+      "Verify logged in successfully",
+      "Log out and log in again",
+      "Attempt to use same backup code",
+      "Verify rejected with 'Code already used' error",
+      "Verify only 9 valid backup codes remain"
+    ],
+    "passes": false
+  },
+  {
+    "id": "2FA-005",
+    "category": "functional",
+    "area": "security",
+    "description": "Disable 2FA with TOTP confirmation",
+    "steps": [
+      "Log in as user with 2FA enabled",
+      "Navigate to /settings/security",
+      "Click 'Disable Two-Factor Authentication'",
+      "Verify confirmation modal appears",
+      "Enter current TOTP code to confirm identity",
+      "Submit",
+      "Verify success message '2FA disabled'",
+      "Verify otp_secret cleared from database",
+      "Log out and log in again",
+      "Verify no TOTP prompt on login"
+    ],
+    "passes": false
+  },
+  {
+    "id": "2FA-006",
+    "category": "functional",
+    "area": "security",
+    "description": "Regenerate backup codes invalidates old codes",
+    "steps": [
+      "Enable 2FA and note original backup codes",
+      "Navigate to /settings/security",
+      "Click 'Regenerate backup codes'",
+      "Enter TOTP code to confirm",
+      "Verify 10 new backup codes displayed",
+      "Verify new codes are different from original",
+      "Attempt login with old backup code",
+      "Verify rejected",
+      "Attempt login with new backup code",
+      "Verify accepted"
+    ],
+    "passes": false
+  },
+  {
+    "id": "2FA-007",
+    "category": "functional",
+    "area": "security",
+    "description": "2FA mandatory for administrator and medical roles (Phase 5.2)",
+    "steps": [
+      "Create new administrator user",
+      "Attempt to access admin dashboard",
+      "Verify redirected to 2FA setup page",
+      "Verify cannot proceed without enabling 2FA",
+      "Enable 2FA",
+      "Verify can now access admin dashboard",
+      "Repeat for doctor role",
+      "Repeat for nurse role",
+      "Verify carer and parent roles can skip 2FA"
+    ],
+    "passes": false
+  },
+  {
+    "id": "SEC-001",
+    "category": "functional",
+    "area": "security",
+    "description": "CSRF protection enabled on all state-changing requests",
+    "steps": [
+      "Inspect any form HTML (e.g., /people/new)",
+      "Verify hidden input with name='authenticity_token' present",
+      "Verify token value is unique per session",
+      "Use curl to POST without token",
+      "Verify 422 Unprocessable Entity response",
+      "Verify ActionController::InvalidAuthenticityToken in logs",
+      "Verify CSRF token rotates on login"
+    ],
+    "passes": true
+  },
+  {
+    "id": "SEC-002",
+    "category": "functional",
+    "area": "security",
+    "description": "Password minimum 8 characters enforced by Rodauth",
+    "steps": [
+      "Navigate to /create-account (Rodauth signup)",
+      "Enter email: test@example.com",
+      "Enter password: 'short' (5 chars)",
+      "Submit form",
+      "Verify validation error: 'Password must be at least 8 characters'",
+      "Enter password: 'exactly8' (8 chars)",
+      "Submit form",
+      "Verify account created successfully"
+    ],
+    "passes": true
+  },
+  {
+    "id": "SEC-003",
+    "category": "functional",
+    "area": "security",
+    "description": "SQL injection prevented via parameterized queries",
+    "steps": [
+      "Navigate to /admin/users (admin search)",
+      "Enter search term: ' OR '1'='1' --",
+      "Submit search",
+      "Verify no SQL syntax error displayed",
+      "Verify no unauthorized users returned",
+      "Check Rails logs for parameterized query",
+      "Verify search term escaped in SQL",
+      "Test with UNION SELECT injection attempt",
+      "Verify blocked"
+    ],
+    "passes": true
+  },
+  {
+    "id": "SEC-004",
+    "category": "functional",
+    "area": "security",
+    "description": "XSS prevented via Rails automatic HTML escaping",
+    "steps": [
+      "Navigate to /people/new",
+      "Enter name: '<script>alert(\"xss\")</script>'",
+      "Submit form",
+      "Navigate to person show page",
+      "View page source",
+      "Verify script tag escaped as &lt;script&gt;",
+      "Verify no JavaScript executed",
+      "Test with event handler: '<img src=x onerror=alert(1)>'",
+      "Verify onerror escaped and not executed"
+    ],
+    "passes": true
+  },
+  {
+    "id": "SEC-005",
+    "category": "functional",
+    "area": "security",
+    "description": "Session fixation prevented by regenerating session on login",
+    "steps": [
+      "Open browser and navigate to /login",
+      "Open DevTools > Application > Cookies",
+      "Note _medtracker_session cookie value",
+      "Log in with valid credentials",
+      "Check cookie value again",
+      "Verify session ID completely changed",
+      "Verify old session ID invalid if replayed"
+    ],
+    "passes": true
+  },
+  {
+    "id": "SEC-006",
+    "category": "functional",
+    "area": "security",
+    "description": "Sensitive parameters filtered from Rails logs",
+    "steps": [
+      "Create user with password 'SuperSecret123!'",
+      "Check log/development.log",
+      "Search for 'SuperSecret123'",
+      "Verify password not present in plaintext",
+      "Verify [FILTERED] shown for password params",
+      "Verify password_digest not logged",
+      "Check audit logs",
+      "Verify password_hash excluded from PaperTrail versions"
+    ],
+    "passes": true
+  },
+  {
+    "id": "SEC-007",
+    "category": "functional",
+    "area": "security",
+    "description": "Account lockout after 5 failed login attempts",
+    "steps": [
+      "Navigate to /login",
+      "Enter valid email with wrong password",
+      "Submit and note error message",
+      "Repeat 4 more times (5 total failures)",
+      "Verify failed_login_count incremented in accounts table",
+      "Attempt 6th login with wrong password",
+      "Verify account locked message displayed",
+      "Attempt login with CORRECT password",
+      "Verify still locked out",
+      "Verify lockout duration (e.g., 30 minutes)",
+      "Wait for lockout to expire or admin unlock",
+      "Verify can login again"
+    ],
+    "passes": false
+  },
+  {
+    "id": "SEC-008",
+    "category": "functional",
+    "area": "security",
+    "description": "Secure cookie attributes in production environment",
+    "steps": [
+      "Set RAILS_ENV=production",
+      "Set SECRET_KEY_BASE environment variable",
+      "Start Rails server",
+      "Log in via HTTPS",
+      "Inspect Set-Cookie response header",
+      "Verify 'Secure' flag present (HTTPS only)",
+      "Verify 'HttpOnly' flag present (no JS access)",
+      "Verify 'SameSite=Lax' or 'SameSite=Strict' attribute",
+      "Verify cookie path is '/'",
+      "Verify no sensitive data in cookie value"
+    ],
+    "passes": true
+  },
+  {
+    "id": "SEC-009",
+    "category": "functional",
+    "area": "security",
+    "description": "Content Security Policy headers prevent inline scripts",
+    "steps": [
+      "Make GET request to any page",
+      "Inspect response headers",
+      "Verify Content-Security-Policy header present",
+      "Verify default-src directive set",
+      "Verify script-src does not include 'unsafe-inline'",
+      "Verify style-src directive set",
+      "Verify frame-ancestors 'self' (clickjacking protection)",
+      "Verify report-uri or report-to configured for violations",
+      "Attempt to inject inline script",
+      "Verify blocked by CSP"
+    ],
+    "passes": true
+  },
+  {
+    "id": "SEC-010",
+    "category": "functional",
+    "area": "security",
+    "description": "Rate limiting on authentication endpoints via Rack::Attack",
+    "steps": [
+      "Configure Rack::Attack in config/initializers/rack_attack.rb",
+      "Set login throttle: 5 requests per 20 seconds per IP",
+      "Attempt 6 rapid login requests via script",
+      "Verify 429 Too Many Requests after 5th request",
+      "Verify Retry-After header present",
+      "Verify rate limit applies per IP address",
+      "Wait for throttle window to reset",
+      "Verify can make requests again",
+      "Test rate limiting on /create-account endpoint",
+      "Test rate limiting on /reset-password endpoint"
+    ],
+    "passes": false
+  },
+  {
+    "id": "SEC-011",
+    "category": "functional",
+    "area": "security",
+    "description": "Admin user impersonation with full audit trail",
+    "steps": [
+      "Log in as administrator (damacus@example.com)",
+      "Navigate to /admin/users",
+      "Find a carer user in the list",
+      "Click 'Impersonate' button",
+      "Verify yellow banner: 'You are impersonating [user]. Click here to stop.'",
+      "Verify current_user now returns impersonated user",
+      "Navigate to dashboard",
+      "Verify seeing carer's scoped data",
+      "Record a medication dose as impersonated user",
+      "Click 'Stop impersonating' in banner",
+      "Verify returned to admin account",
+      "Navigate to /admin/audit_logs",
+      "Verify 'impersonation_started' event logged with admin user",
+      "Verify 'impersonation_ended' event logged",
+      "Verify medication_take shows impersonated user but audit shows admin"
+    ],
+    "passes": false
+  },
+  {
+    "id": "SEC-012",
+    "category": "functional",
+    "area": "security",
+    "description": "Bcrypt password hashing with appropriate cost factor",
+    "steps": [
+      "Create new account with password",
+      "Query database: SELECT password_hash FROM accounts WHERE email = ?",
+      "Verify hash starts with '$2a$' or '$2b$' (bcrypt identifier)",
+      "Verify cost factor is at least 10 (e.g., $2a$12$)",
+      "Verify hash length is 60 characters",
+      "Verify same password produces different hash (salt)",
+      "Verify Rodauth.password_match? works correctly"
+    ],
+    "passes": true
+  },
+  {
+    "id": "SEC-013",
+    "category": "functional",
+    "area": "security",
+    "description": "Remember-me tokens rotated on each use (Rodauth)",
+    "steps": [
+      "Navigate to /login",
+      "Check 'Remember me' checkbox",
+      "Log in with valid credentials",
+      "Inspect cookies for remember token",
+      "Note token value",
+      "Close browser completely",
+      "Reopen browser and navigate to app",
+      "Verify automatically logged in",
+      "Inspect remember token cookie",
+      "Verify token value changed (rotated)",
+      "Verify old token invalid if replayed"
+    ],
+    "passes": false
+  },
+  {
+    "id": "SEC-014",
+    "category": "functional",
+    "area": "security",
+    "description": "Strong parameters prevent mass assignment attacks",
+    "steps": [
+      "Attempt POST to /admin/users with role: 'administrator' in params",
+      "Verify role not set to administrator (defaults to parent)",
+      "Verify only permitted params accepted",
+      "Attempt to set account.status via user form",
+      "Verify status not modifiable via mass assignment",
+      "Check controller for permit() calls",
+      "Verify no permit! or permit(:all) usage"
+    ],
+    "passes": true
+  },
+  {
+    "id": "SEC-015",
+    "category": "functional",
+    "area": "security",
+    "description": "Encrypted database connections (TLS) in production",
+    "steps": [
+      "Check config/database.yml production section",
+      "Verify sslmode: 'require' or 'verify-full'",
+      "Check DATABASE_URL includes sslmode parameter",
+      "Connect to production database",
+      "Run: SELECT ssl_is_used();",
+      "Verify returns true",
+      "Check pg_stat_ssl for connection encryption"
+    ],
+    "passes": true
+  },
+  {
+    "id": "SEC-016",
+    "category": "functional",
+    "area": "security",
+    "description": "HSTS header enforces HTTPS in production",
+    "steps": [
+      "Make request to production app",
+      "Inspect response headers",
+      "Verify Strict-Transport-Security header present",
+      "Verify max-age is at least 31536000 (1 year)",
+      "Verify includeSubDomains directive present",
+      "Verify preload directive if submitting to HSTS preload list"
+    ],
+    "passes": true
+  },
+  {
+    "id": "SEC-017",
+    "category": "functional",
+    "area": "security",
+    "description": "X-Frame-Options prevents clickjacking",
+    "steps": [
+      "Make request to any page",
+      "Inspect response headers",
+      "Verify X-Frame-Options: DENY or SAMEORIGIN",
+      "Attempt to embed app in iframe on external site",
+      "Verify browser blocks iframe loading",
+      "Verify CSP frame-ancestors also set"
+    ],
+    "passes": true
+  },
+  {
+    "id": "SEC-018",
+    "category": "functional",
+    "area": "security",
+    "description": "X-Content-Type-Options prevents MIME sniffing",
+    "steps": [
+      "Make request to any page",
+      "Inspect response headers",
+      "Verify X-Content-Type-Options: nosniff present",
+      "Verify applies to all responses"
+    ],
+    "passes": true
+  },
+  {
+    "id": "SEC-019",
+    "category": "functional",
+    "area": "security",
+    "description": "Referrer-Policy limits information leakage",
+    "steps": [
+      "Make request to any page",
+      "Inspect response headers",
+      "Verify Referrer-Policy header present",
+      "Verify value is 'strict-origin-when-cross-origin' or stricter",
+      "Navigate from app to external link",
+      "Verify full URL not sent in Referer header"
+    ],
+    "passes": true
+  },
+  {
+    "id": "SEC-020",
+    "category": "functional",
+    "area": "security",
+    "description": "Permissions-Policy restricts browser features",
+    "steps": [
+      "Make request to any page",
+      "Inspect response headers",
+      "Verify Permissions-Policy header present",
+      "Verify geolocation disabled: geolocation=()",
+      "Verify camera disabled: camera=()",
+      "Verify microphone disabled: microphone=()"
+    ],
+    "passes": true
+  },
+  {
+    "id": "SEC-021",
+    "category": "functional",
+    "area": "security",
+    "description": "Session timeout after inactivity period",
+    "steps": [
+      "Log in to application",
+      "Note session creation time",
+      "Wait for configured timeout period (e.g., 30 minutes)",
+      "Attempt to navigate to protected page",
+      "Verify redirected to login",
+      "Verify session expired message displayed",
+      "Verify must re-authenticate"
+    ],
+    "passes": false
+  },
+  {
+    "id": "SEC-022",
+    "category": "functional",
+    "area": "security",
+    "description": "Concurrent session management and device tracking",
+    "steps": [
+      "Log in from Device A (desktop browser)",
+      "Log in from Device B (mobile browser) with same account",
+      "Verify both sessions active",
+      "Navigate to /settings/security/sessions",
+      "Verify list of active sessions with device info",
+      "Verify IP address and user agent shown",
+      "Verify 'last active' timestamp shown",
+      "Click 'Revoke' on Device A session",
+      "Verify Device A session immediately invalidated",
+      "Verify Device B session still active"
+    ],
+    "passes": false
+  },
+  {
+    "id": "SEC-023",
+    "category": "functional",
+    "area": "security",
+    "description": "Password change invalidates other sessions",
+    "steps": [
+      "Log in from Device A",
+      "Log in from Device B with same account",
+      "On Device A, navigate to /settings/security",
+      "Change password",
+      "Verify Device A remains logged in",
+      "Switch to Device B",
+      "Attempt to navigate to any page",
+      "Verify Device B session invalidated",
+      "Verify must log in again with new password"
+    ],
+    "passes": false
+  },
+  {
+    "id": "SEC-024",
+    "category": "functional",
+    "area": "security",
+    "description": "Email change requires verification of new address",
+    "steps": [
+      "Log in as any user",
+      "Navigate to /settings/profile",
+      "Change email to new-email@example.com",
+      "Submit form",
+      "Verify message: 'Verification email sent to new address'",
+      "Verify old email still active until verified",
+      "Check inbox for new-email@example.com",
+      "Click verification link",
+      "Verify email updated in account",
+      "Verify can log in with new email"
+    ],
+    "passes": false
+  },
+  {
+    "id": "SEC-025",
+    "category": "functional",
+    "area": "security",
+    "description": "Password reset flow with secure token",
+    "steps": [
+      "Navigate to /reset-password",
+      "Enter registered email address",
+      "Submit form",
+      "Verify message: 'If account exists, reset email sent'",
+      "Check email inbox",
+      "Verify reset link contains secure token",
+      "Verify token expires after 24 hours",
+      "Click reset link",
+      "Enter new password (min 8 chars)",
+      "Submit form",
+      "Verify password changed successfully",
+      "Attempt to reuse reset link",
+      "Verify token invalidated after use"
+    ],
+    "passes": false
+  },
+  {
+    "id": "SEC-026",
+    "category": "functional",
+    "area": "security",
+    "description": "Account verification email flow (Rodauth)",
+    "steps": [
+      "Navigate to /create-account",
+      "Enter email and password",
+      "Submit form",
+      "Verify account created with status 'unverified'",
+      "Verify verification email sent",
+      "In production: verify cannot log in until verified",
+      "In development: verify can log in for 7 days grace period",
+      "Click verification link in email",
+      "Verify account status changed to 'verified'",
+      "Verify can log in normally"
+    ],
+    "passes": false
+  },
+  {
+    "id": "SEC-027",
+    "category": "functional",
+    "area": "security",
+    "description": "Deny-by-default Pundit authorization",
+    "steps": [
+      "Create new controller action without policy",
+      "Attempt to access action",
+      "Verify Pundit::NotAuthorizedError raised",
+      "Verify 403 Forbidden response",
+      "Verify ApplicationPolicy defaults all actions to false",
+      "Add explicit policy permission",
+      "Verify action now accessible"
+    ],
+    "passes": true
+  },
+  {
+    "id": "SEC-028",
+    "category": "functional",
+    "area": "security",
+    "description": "Role-based data scoping prevents unauthorized access",
+    "steps": [
+      "Log in as carer (bob.smith@example.com)",
+      "Attempt to access /people/[unassigned_person_id]",
+      "Verify 403 Forbidden or redirect",
+      "Verify cannot see unassigned patients in list",
+      "Log in as administrator",
+      "Verify can access all people",
+      "Log in as parent",
+      "Verify can only see own children"
+    ],
+    "passes": true
+  },
+  {
+    "id": "SEC-029",
+    "category": "functional",
+    "area": "security",
+    "description": "Brakeman security scanner passes with no warnings",
+    "steps": [
+      "Run: bundle exec brakeman --no-pager",
+      "Verify exit code 0",
+      "Verify no high confidence warnings",
+      "Verify no SQL injection warnings",
+      "Verify no XSS warnings",
+      "Verify no mass assignment warnings",
+      "Add brakeman to CI pipeline"
+    ],
+    "passes": false
+  },
+  {
+    "id": "SEC-030",
+    "category": "functional",
+    "area": "security",
+    "description": "Bundler-audit checks for vulnerable dependencies",
+    "steps": [
+      "Run: bundle exec bundler-audit check --update",
+      "Verify no vulnerable gems found",
+      "If vulnerabilities found, update affected gems",
+      "Add bundler-audit to CI pipeline",
+      "Verify runs on every PR"
+    ],
+    "passes": false
+  },
+  {
+    "id": "SEC-031",
+    "category": "functional",
+    "area": "security",
+    "description": "No secrets committed to source control",
+    "steps": [
+      "Run: git log -p | grep -i 'secret\\|password\\|api_key\\|token'",
+      "Verify no actual secrets in git history",
+      "Verify .env files in .gitignore",
+      "Verify config/credentials.yml.enc is encrypted",
+      "Verify RAILS_MASTER_KEY not in repo",
+      "Check for hardcoded secrets in codebase",
+      "Verify all secrets from environment variables"
+    ],
+    "passes": false
+  },
+  {
+    "id": "SEC-032",
+    "category": "functional",
+    "area": "security",
+    "description": "IP address and user agent tracked for security audit",
+    "steps": [
+      "Log in to application",
+      "Check audit log for login event",
+      "Verify IP address recorded",
+      "Verify user agent string recorded",
+      "Perform action (create person)",
+      "Check audit log",
+      "Verify IP and user agent on action record",
+      "Verify data available for security investigations"
+    ],
+    "passes": true
+  },
+  {
+    "id": "SEC-033",
+    "category": "functional",
+    "area": "security",
+    "description": "Complete security headers integration test",
+    "steps": [
+      "Make request to production-like environment",
+      "Verify Content-Security-Policy header",
+      "Verify Strict-Transport-Security header",
+      "Verify X-Frame-Options header",
+      "Verify X-Content-Type-Options header",
+      "Verify Referrer-Policy header",
+      "Verify Permissions-Policy header",
+      "Run Mozilla Observatory scan",
+      "Verify grade A or higher",
+      "Run securityheaders.com scan",
+      "Verify all headers present"
+    ],
+    "passes": false
+  },
+  {
+    "id": "SEC-034",
+    "category": "functional",
+    "area": "security",
+    "description": "Timing-safe password comparison prevents timing attacks",
+    "steps": [
+      "Verify Rodauth uses timing-safe comparison",
+      "Verify BCrypt.compare used (inherently timing-safe)",
+      "Verify no early-exit on password mismatch",
+      "Verify login response time consistent for valid/invalid users"
+    ],
+    "passes": true
+  },
+  {
+    "id": "SEC-035",
+    "category": "functional",
+    "area": "security",
+    "description": "Account enumeration prevented on login and signup",
+    "steps": [
+      "Attempt login with non-existent email",
+      "Note error message and response time",
+      "Attempt login with existing email, wrong password",
+      "Verify same generic error message",
+      "Verify similar response time (no timing leak)",
+      "Attempt signup with existing email",
+      "Verify generic message: 'If email available, verification sent'"
+    ],
+    "passes": false
+  }
 ]
