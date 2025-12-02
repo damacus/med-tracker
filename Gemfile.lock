@@ -103,6 +103,7 @@ GEM
       addressable
       capybara
       playwright-ruby-client (>= 1.16.0)
+    chunky_png (1.4.0)
     concurrent-ruby (1.3.5)
     connection_pool (2.5.5)
     crass (1.0.6)
@@ -541,6 +542,11 @@ GEM
       roda (~> 3.76)
       rodauth (~> 2.36)
       rodauth-model (~> 0.2)
+    rotp (6.3.0)
+    rqrcode (3.1.1)
+      chunky_png (~> 1.0)
+      rqrcode_core (~> 2.0)
+    rqrcode_core (2.0.1)
     rspec-core (3.13.6)
       rspec-support (~> 3.13.0)
     rspec-expectations (3.13.5)
@@ -720,6 +726,8 @@ DEPENDENCIES
   rails-controller-testing
   rodauth-omniauth
   rodauth-rails
+  rotp
+  rqrcode
   rspec-github
   rspec-rails
   rubocop-capybara

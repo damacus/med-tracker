@@ -9,7 +9,8 @@ class RodauthMain < Rodauth::Rails::Auth
     enable :create_account, :verify_account, :verify_account_grace_period,
            :login, :logout, :remember, :lockout, :active_sessions,
            :reset_password, :change_password, :change_login, :verify_login_change,
-           :close_account, :omniauth
+           :close_account, :omniauth,
+           :otp, :recovery_codes
 
     # See the Rodauth documentation for the list of available config options:
     # http://rodauth.jeremyevans.net/documentation.html
@@ -97,6 +98,10 @@ class RodauthMain < Rodauth::Rails::Auth
     session_inactivity_deadline 30.minutes.to_i
     # Session expires after 24 hours regardless of activity
     session_lifetime_deadline 24.hours.to_i
+
+    # ==> Two-Factor Authentication (OTP) Configuration
+    # TOTP issuer name shown in authenticator apps
+    otp_issuer 'MedTracker'
 
     # ==> OmniAuth (Google OAuth)
     # Configure Google OAuth provider
