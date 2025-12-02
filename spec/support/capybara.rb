@@ -18,7 +18,7 @@ Capybara.register_driver :playwright do |app|
   Capybara::Playwright::Driver.new(
     app,
     browser_type: :chromium,
-    headless: (ENV['CI'] || ENV['PLAYWRIGHT_HEADLESS']).present?,
+    headless: (ENV.fetch('CI', nil) || ENV.fetch('PLAYWRIGHT_HEADLESS', nil)).present?,
     args: PLAYWRIGHT_BROWSER_ARGS
   )
 end
