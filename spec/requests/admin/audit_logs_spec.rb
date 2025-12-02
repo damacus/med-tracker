@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Admin::AuditLogs', type: :request do
+RSpec.describe 'Admin::AuditLogs' do
   fixtures :all
 
   let(:admin) { users(:admin) }
@@ -138,7 +138,10 @@ RSpec.describe 'Admin::AuditLogs', type: :request do
 
     describe 'pagination' do
       before do
-        # Create more than 50 audit entries to trigger pagination
+        # Create more than 50 audit entries to trigger pagination.
+        # NOTE: We create PaperTrail::Version records directly here for performance.
+        # Creating 55 actual model changes would be slow and unnecessary since we're
+        # testing pagination UI, not the audit trail generation mechanism itself.
         PaperTrail.request.whodunnit = admin.id
         55.times do |i|
           PaperTrail::Version.create!(
@@ -175,7 +178,7 @@ RSpec.describe 'Admin::AuditLogs', type: :request do
     before { sign_in_as(admin) }
 
     describe 'medication take creation logging' do
-      let!(:medication_take) do
+      before do
         PaperTrail.request.whodunnit = carer.id
         PaperTrail.request(enabled: true) do
           MedicationTake.create!(
@@ -214,15 +217,16 @@ RSpec.describe 'Admin::AuditLogs', type: :request do
 
     describe 'IP address recording' do
       it 'displays IP address in audit log list' do
-        # Create a version with IP address
-        PaperTrail::Version.create!(
-          item_type: 'MedicationTake',
-          item_id: 999,
-          event: 'create',
-          whodunnit: carer.id.to_s,
-          ip: '192.168.1.100',
-          created_at: Time.current
-        )
+        # Create an actual MedicationTake with IP tracking enabled
+        # This tests the end-to-end audit trail functionality
+        PaperTrail.request.whodunnit = carer.id
+        PaperTrail.request.controller_info = { ip: '192.168.1.100' }
+        PaperTrail.request(enabled: true) do
+          MedicationTake.create!(
+            prescription: prescription,
+            taken_at: Time.current
+          )
+        end
 
         get admin_audit_logs_path, params: { item_type: 'MedicationTake' }
         expect(response.body).to include('192.168.1.100')

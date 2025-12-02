@@ -7,6 +7,9 @@ module Components
       # Shows complete information about a single audit trail entry
       # @see docs/audit-trail.md
       class ShowView < Components::Base
+        # Fields that should never be displayed in audit logs for security
+        SENSITIVE_FIELDS = %w[password_digest password_hash].freeze
+
         attr_reader :version
 
         def initialize(version:)
@@ -148,7 +151,7 @@ module Components
           return nil unless record
 
           # Convert to hash, excluding sensitive fields
-          record.attributes.except('password_digest', 'password_hash')
+          record.attributes.except(*SENSITIVE_FIELDS)
         rescue StandardError
           nil
         end
@@ -188,8 +191,7 @@ module Components
         def filter_sensitive_fields(data)
           return data unless data.is_a?(Hash)
 
-          sensitive_keys = %w[password_digest password_hash]
-          data.except(*sensitive_keys)
+          data.except(*SENSITIVE_FIELDS)
         end
       end
     end
