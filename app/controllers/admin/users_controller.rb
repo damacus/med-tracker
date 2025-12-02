@@ -36,11 +36,38 @@ module Admin
       @user = User.new(user_params)
       authorize @user
 
-      if @user.save
+      success = false
+      ActiveRecord::Base.transaction do
+        # Create Rodauth account first
+        account = Account.create!(
+          email: @user.email_address,
+          password_hash: BCrypt::Password.create(params[:user][:password]),
+          status: :verified # Admin-created users are pre-verified
+        )
+
+        # Link person to account
+        @user.person.account = account
+
+        raise ActiveRecord::Rollback unless @user.save
+
+        success = true
+      end
+
+      if success
         redirect_to admin_users_path, notice: t('users.created')
       else
         render Components::Admin::Users::FormView.new(user: @user, url_helpers: self), status: :unprocessable_content
       end
+    rescue ActiveRecord::RecordInvalid => e
+      # Map Account email errors to User email_address errors for consistency
+      if e.record.is_a?(Account) && e.record.errors[:email].any?
+        e.record.errors[:email].each do |error|
+          @user.errors.add(:email_address, error)
+        end
+      else
+        @user.errors.add(:base, e.message)
+      end
+      render Components::Admin::Users::FormView.new(user: @user, url_helpers: self), status: :unprocessable_content
     end
 
     def update

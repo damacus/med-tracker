@@ -1,6 +1,41 @@
 # MedTracker - Coding Agent Progress
 
-## Latest Session: December 2, 2025 (Security Features Complete)
+## Latest Session: December 2, 2025 (E2E-001 Verified + Policy Fixes)
+
+### Summary
+Verified E2E-001 (complete user signup to medication recording flow) and fixed PersonMedicinePolicy
+to allow self-management of OTC medicines. Added dose counter badge to person medicine cards.
+All tests pass: 529 examples, 0 failures, 25 pending.
+
+### Changes Made This Session
+1. **app/policies/person_medicine_policy.rb**: Allow self-management (create/update/destroy/show)
+2. **app/components/person_medicines/card.rb**: Added dose counter badge (e.g., "1/2")
+3. **spec/policies/person_medicine_policy_spec.rb**: New comprehensive policy spec (31 tests)
+
+### E2E-001 Verification Steps Completed
+- ✅ Navigate to /create-account
+- ✅ Fill in email, password, name, date of birth
+- ✅ Submit signup form
+- ✅ Verify redirect to dashboard
+- ✅ Navigate to person medicines
+- ✅ Add new OTC medicine (Vitamin D)
+- ✅ Set max_daily_doses to 2
+- ✅ Click Take Medicine
+- ✅ Verify MedicationTake created
+- ✅ Verify dose count shows 1/2
+- ✅ Log out
+- ✅ Verify redirect to home page
+
+### Policy Changes
+- **create?**: admin OR self (was: admin only)
+- **update?**: admin OR self (was: admin only)
+- **destroy?**: admin OR self (was: admin only)
+- **show?**: admin/clinician OR self OR carer_with_patient
+- **take_medicine?**: admin OR self OR carer_with_patient
+
+---
+
+## Previous Session: December 2, 2025 (Security Features Complete)
 
 ### Summary
 Implemented comprehensive security features including 2FA, session management, CSP, and more.
