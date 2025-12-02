@@ -131,7 +131,7 @@
       "Repeat for nurse role",
       "Verify carer and parent roles can skip 2FA"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "SEC-001",
@@ -335,7 +335,9 @@
       "Verify 'impersonation_ended' event logged",
       "Verify medication_take shows impersonated user but audit shows admin"
     ],
-    "passes": false
+    "passes": false,
+    "deferred": true,
+    "deferred_reason": "Nice-to-have admin feature, not critical for core medication tracking. Defer to later phase."
   },
   {
     "id": "SEC-012",
@@ -733,6 +735,68 @@
       "Verify similar response time (no timing leak)",
       "Attempt signup with existing email",
       "Verify generic message: 'If email available, verification sent'"
+    ],
+    "passes": true
+  },
+  {
+    "id": "PROF-001",
+    "category": "functional",
+    "area": "profile",
+    "description": "Change email via sheet modal",
+    "steps": [
+      "Navigate to /profile",
+      "Click Change button for email",
+      "Verify sheet modal opens",
+      "Verify current email is pre-filled",
+      "Enter new email address",
+      "Click Save",
+      "Verify success message",
+      "Verify email updated in database"
+    ],
+    "passes": true
+  },
+  {
+    "id": "PROF-002",
+    "category": "functional",
+    "area": "profile",
+    "description": "Change password via sheet modal",
+    "steps": [
+      "Navigate to /profile",
+      "Click Change button for password",
+      "Verify sheet modal opens",
+      "Verify current password field present",
+      "Verify new password field present",
+      "Verify confirm password field present"
+    ],
+    "passes": true
+  },
+  {
+    "id": "PROF-003",
+    "category": "functional",
+    "area": "profile",
+    "description": "Close account confirmation dialog",
+    "steps": [
+      "Navigate to /profile",
+      "Click Close Account button",
+      "Verify AlertDialog opens",
+      "Verify warning message displayed",
+      "Verify Cancel button present",
+      "Verify Yes delete my account button present"
+    ],
+    "passes": true
+  },
+  {
+    "id": "PROF-004",
+    "category": "functional",
+    "area": "profile",
+    "description": "Cancel account closure",
+    "steps": [
+      "Navigate to /profile",
+      "Click Close Account button",
+      "Verify AlertDialog opens",
+      "Click Cancel button",
+      "Verify dialog closes",
+      "Verify still on profile page"
     ],
     "passes": true
   }

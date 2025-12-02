@@ -2,6 +2,7 @@
 services:
   db:
     image: postgres:18-alpine
+    hostname: db
     environment:
       POSTGRES_USER: medtracker
       POSTGRES_PASSWORD: medtracker_password
@@ -32,6 +33,12 @@ services:
     volumes:
       - storage_data:/rails/storage
       - ./config/credentials/production.key:/app/config/credentials/production.key:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/up || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
 volumes:
   postgres_data:
