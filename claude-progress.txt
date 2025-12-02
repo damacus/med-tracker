@@ -11,6 +11,7 @@ All tests pass: 529 examples, 0 failures, 25 pending.
 1. **app/policies/person_medicine_policy.rb**: Allow self-management (create/update/destroy/show)
 2. **app/components/person_medicines/card.rb**: Added dose counter badge (e.g., "1/2")
 3. **spec/policies/person_medicine_policy_spec.rb**: New comprehensive policy spec (31 tests)
+4. **app/controllers/admin/users_controller.rb**: Create Rodauth account when admin creates user
 
 ### E2E-001 Verification Steps Completed
 - ✅ Navigate to /create-account
@@ -25,6 +26,17 @@ All tests pass: 529 examples, 0 failures, 25 pending.
 - ✅ Verify dose count shows 1/2
 - ✅ Log out
 - ✅ Verify redirect to home page
+
+### E2E-002 Verification Steps Completed
+- ✅ Login as admin (damacus@example.com)
+- ✅ Navigate to /admin/users/new
+- ✅ Create new user with carer role
+- ✅ Navigate to /admin/carer_relationships/new
+- ✅ Assign carer to Adult Patient
+- ✅ Log out
+- ✅ Log in as new carer
+- ✅ Verify carer can see assigned patient on dashboard
+- ✅ Verify carer can see patient's prescriptions
 
 ### Policy Changes
 - **create?**: admin OR self (was: admin only)
