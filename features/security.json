@@ -17,7 +17,7 @@
       "Verify success message '2FA enabled'",
       "Verify account.otp_secret stored encrypted in database"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "2FA-002",
@@ -37,7 +37,7 @@
       "Verify redirected to dashboard",
       "Verify fully authenticated session"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "2FA-003",
@@ -55,7 +55,7 @@
       "Verify warning message: 'Store these codes safely. Each can only be used once.'",
       "Verify codes stored hashed in database (not plaintext)"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "2FA-004",
@@ -75,7 +75,7 @@
       "Verify rejected with 'Code already used' error",
       "Verify only 9 valid backup codes remain"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "2FA-005",
@@ -94,7 +94,7 @@
       "Log out and log in again",
       "Verify no TOTP prompt on login"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "2FA-006",
@@ -113,7 +113,7 @@
       "Attempt login with new backup code",
       "Verify accepted"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "2FA-007",
@@ -371,7 +371,7 @@
       "Verify token value changed (rotated)",
       "Verify old token invalid if replayed"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "SEC-014",
@@ -492,7 +492,7 @@
       "Verify session expired message displayed",
       "Verify must re-authenticate"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "SEC-022",
@@ -511,7 +511,7 @@
       "Verify Device A session immediately invalidated",
       "Verify Device B session still active"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "SEC-023",
@@ -529,7 +529,7 @@
       "Verify Device B session invalidated",
       "Verify must log in again with new password"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "SEC-024",
@@ -548,7 +548,7 @@
       "Verify email updated in account",
       "Verify can log in with new email"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "SEC-025",
@@ -570,7 +570,7 @@
       "Attempt to reuse reset link",
       "Verify token invalidated after use"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "SEC-026",
@@ -589,7 +589,7 @@
       "Verify account status changed to 'verified'",
       "Verify can log in normally"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "SEC-027",
@@ -705,7 +705,7 @@
       "Run securityheaders.com scan",
       "Verify all headers present"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "SEC-034",
@@ -734,6 +734,6 @@
       "Attempt signup with existing email",
       "Verify generic message: 'If email available, verification sent'"
     ],
-    "passes": false
+    "passes": true
   }
 ]
