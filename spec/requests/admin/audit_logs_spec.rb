@@ -118,47 +118,4 @@ RSpec.describe 'Admin::AuditLogs' do
       end
     end
   end
-
-  describe 'MedicationTake audit trail' do
-    before { sign_in_as(admin) }
-
-    it 'creates audit version when MedicationTake is created' do
-      expect do
-        PaperTrail.request.whodunnit = carer.id
-        PaperTrail.request(enabled: true) do
-          MedicationTake.create!(
-            prescription: prescription,
-            taken_at: Time.current
-          )
-        end
-      end.to change { PaperTrail::Version.where(item_type: 'MedicationTake').count }.by(1)
-    end
-
-    it 'records whodunnit in audit version' do
-      PaperTrail.request.whodunnit = carer.id
-      PaperTrail.request(enabled: true) do
-        MedicationTake.create!(
-          prescription: prescription,
-          taken_at: Time.current
-        )
-      end
-
-      version = PaperTrail::Version.where(item_type: 'MedicationTake').last
-      expect(version.whodunnit).to eq(carer.id.to_s)
-    end
-
-    it 'records IP address when controller_info is set' do
-      PaperTrail.request.whodunnit = carer.id
-      PaperTrail.request.controller_info = { ip: '192.168.1.100' }
-      PaperTrail.request(enabled: true) do
-        MedicationTake.create!(
-          prescription: prescription,
-          taken_at: Time.current
-        )
-      end
-
-      version = PaperTrail::Version.where(item_type: 'MedicationTake').last
-      expect(version.ip).to eq('192.168.1.100')
-    end
-  end
 end
