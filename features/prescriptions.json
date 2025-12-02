@@ -1,14 +1,195 @@
 [
-  {"id": "PRESC-001", "category": "functional", "area": "prescriptions", "description": "Create prescription with required fields", "steps": ["Log in as doctor", "Navigate to person prescriptions", "Fill medicine, dosage, frequency, start date", "Submit", "Verify created"], "passes": true},
-  {"id": "PRESC-002", "category": "functional", "area": "prescriptions", "description": "Create prescription with timing restrictions", "steps": ["Log in as doctor", "Create prescription", "Set max_daily_doses=4", "Set min_hours_between_doses=4", "Submit", "Verify restrictions saved"], "passes": true},
-  {"id": "PRESC-003", "category": "functional", "area": "prescriptions", "description": "Create prescription with end date", "steps": ["Log in as doctor", "Create prescription", "Set end date", "Submit", "Verify end date saved"], "passes": true},
-  {"id": "PRESC-004", "category": "functional", "area": "prescriptions", "description": "Create prescription with special instructions", "steps": ["Log in as doctor", "Create prescription", "Add special instructions", "Submit", "Verify instructions saved"], "passes": true},
-  {"id": "PRESC-005", "category": "functional", "area": "prescriptions", "description": "Edit existing prescription", "steps": ["Log in as doctor", "Navigate to prescription", "Click Edit", "Modify dosage", "Submit", "Verify changes saved"], "passes": true},
-  {"id": "PRESC-006", "category": "functional", "area": "prescriptions", "description": "Deactivate prescription", "steps": ["Log in as doctor", "Navigate to prescription", "Click Deactivate", "Verify marked inactive", "Verify not in active list"], "passes": true},
-  {"id": "PRESC-007", "category": "functional", "area": "prescriptions", "description": "View prescription details", "steps": ["Log in", "Navigate to prescription", "Verify medicine name", "Verify dosage", "Verify frequency", "Verify timing restrictions"], "passes": true},
-  {"id": "PRESC-008", "category": "functional", "area": "prescriptions", "description": "List all prescriptions for a person", "steps": ["Log in", "Navigate to person prescriptions", "Verify all prescriptions listed", "Verify active/inactive status shown"], "passes": true},
-  {"id": "PRESC-009", "category": "functional", "area": "prescriptions", "description": "Prescription validates required fields", "steps": ["Log in as doctor", "Submit without medicine", "Verify error", "Submit without start date", "Verify error"], "passes": true},
-  {"id": "PRESC-010", "category": "functional", "area": "prescriptions", "description": "Prescription links to correct person and medicine", "steps": ["Create prescription for specific person", "Select specific medicine", "Verify person_id correct", "Verify medicine_id correct"], "passes": true},
-  {"id": "PRESC-011", "category": "functional", "area": "prescriptions", "description": "Complete prescription creation with all fields", "steps": ["Log in as doctor (dr.jones@example.com)", "Navigate to /people", "Select patient from list", "Click View Prescriptions", "Click New Prescription", "Select medicine from dropdown", "Enter dosage: 500mg", "Enter frequency: Every 6 hours", "Set start_date to today", "Set end_date to 30 days from now", "Set max_daily_doses: 4", "Set min_hours_between_doses: 6", "Enter special instructions: Take with food", "Submit form", "Verify success message", "Verify prescription appears in list", "Click on prescription to view details", "Verify all fields displayed correctly"], "passes": false},
-  {"id": "PRESC-012", "category": "functional", "area": "prescriptions", "description": "Prescription edit and deactivation workflow", "steps": ["Log in as doctor", "Navigate to existing prescription", "Click Edit", "Change dosage from 500mg to 250mg", "Change frequency to Every 8 hours", "Update special instructions", "Submit changes", "Verify success message", "Verify changes saved", "Navigate back to prescription", "Click Deactivate", "Confirm deactivation dialog", "Verify prescription marked inactive", "Navigate to prescription list", "Verify prescription shows as inactive", "Verify inactive prescription not shown in active filter"], "passes": false}
+	{
+		"id": "PRESC-001",
+		"category": "functional",
+		"area": "prescriptions",
+		"description": "Create prescription with required fields",
+		"steps": [
+			"Log in as doctor",
+			"Navigate to person prescriptions",
+			"Fill medicine, dosage, frequency, start date",
+			"Submit",
+			"Verify created"
+		],
+		"passes": true
+	},
+	{
+		"id": "PRESC-002",
+		"category": "functional",
+		"area": "prescriptions",
+		"description": "Create prescription with timing restrictions",
+		"steps": [
+			"Log in as doctor",
+			"Create prescription",
+			"Set max_daily_doses=4",
+			"Set min_hours_between_doses=4",
+			"Submit",
+			"Verify restrictions saved"
+		],
+		"passes": true
+	},
+	{
+		"id": "PRESC-003",
+		"category": "functional",
+		"area": "prescriptions",
+		"description": "Create prescription with end date",
+		"steps": [
+			"Log in as doctor",
+			"Create prescription",
+			"Set end date",
+			"Submit",
+			"Verify end date saved"
+		],
+		"passes": true
+	},
+	{
+		"id": "PRESC-004",
+		"category": "functional",
+		"area": "prescriptions",
+		"description": "Create prescription with special instructions",
+		"steps": [
+			"Log in as doctor",
+			"Create prescription",
+			"Add special instructions",
+			"Submit",
+			"Verify instructions saved"
+		],
+		"passes": true
+	},
+	{
+		"id": "PRESC-005",
+		"category": "functional",
+		"area": "prescriptions",
+		"description": "Edit existing prescription",
+		"steps": [
+			"Log in as doctor",
+			"Navigate to prescription",
+			"Click Edit",
+			"Modify dosage",
+			"Submit",
+			"Verify changes saved"
+		],
+		"passes": true
+	},
+	{
+		"id": "PRESC-006",
+		"category": "functional",
+		"area": "prescriptions",
+		"description": "Deactivate prescription",
+		"steps": [
+			"Log in as doctor",
+			"Navigate to prescription",
+			"Click Deactivate",
+			"Verify marked inactive",
+			"Verify not in active list"
+		],
+		"passes": true
+	},
+	{
+		"id": "PRESC-007",
+		"category": "functional",
+		"area": "prescriptions",
+		"description": "View prescription details",
+		"steps": [
+			"Log in",
+			"Navigate to prescription",
+			"Verify medicine name",
+			"Verify dosage",
+			"Verify frequency",
+			"Verify timing restrictions"
+		],
+		"passes": true
+	},
+	{
+		"id": "PRESC-008",
+		"category": "functional",
+		"area": "prescriptions",
+		"description": "List all prescriptions for a person",
+		"steps": [
+			"Log in",
+			"Navigate to person prescriptions",
+			"Verify all prescriptions listed",
+			"Verify active/inactive status shown"
+		],
+		"passes": true
+	},
+	{
+		"id": "PRESC-009",
+		"category": "functional",
+		"area": "prescriptions",
+		"description": "Prescription validates required fields",
+		"steps": [
+			"Log in as doctor",
+			"Submit without medicine",
+			"Verify error",
+			"Submit without start date",
+			"Verify error"
+		],
+		"passes": true
+	},
+	{
+		"id": "PRESC-010",
+		"category": "functional",
+		"area": "prescriptions",
+		"description": "Prescription links to correct person and medicine",
+		"steps": [
+			"Create prescription for specific person",
+			"Select specific medicine",
+			"Verify person_id correct",
+			"Verify medicine_id correct"
+		],
+		"passes": true
+	},
+	{
+		"id": "PRESC-011",
+		"category": "functional",
+		"area": "prescriptions",
+		"description": "Complete prescription creation with all fields",
+		"steps": [
+			"Log in as doctor (dr.jones@example.com)",
+			"Navigate to /people",
+			"Select patient from list",
+			"Click View Prescriptions",
+			"Click New Prescription",
+			"Select medicine from dropdown",
+			"Enter dosage: 500mg",
+			"Enter frequency: Every 6 hours",
+			"Set start_date to today",
+			"Set end_date to 30 days from now",
+			"Set max_daily_doses: 4",
+			"Set min_hours_between_doses: 6",
+			"Enter special instructions: Take with food",
+			"Submit form",
+			"Verify success message",
+			"Verify prescription appears in list",
+			"Click on prescription to view details",
+			"Verify all fields displayed correctly"
+		],
+		"passes": false
+	},
+	{
+		"id": "PRESC-012",
+		"category": "functional",
+		"area": "prescriptions",
+		"description": "Prescription edit and deactivation workflow",
+		"steps": [
+			"Log in as doctor",
+			"Navigate to existing prescription",
+			"Click Edit",
+			"Change dosage from 500mg to 250mg",
+			"Change frequency to Every 8 hours",
+			"Update special instructions",
+			"Submit changes",
+			"Verify success message",
+			"Verify changes saved",
+			"Navigate back to prescription",
+			"Click Deactivate",
+			"Confirm deactivation dialog",
+			"Verify prescription marked inactive",
+			"Navigate to prescription list",
+			"Verify prescription shows as inactive",
+			"Verify inactive prescription not shown in active filter"
+		],
+		"passes": false
+	}
 ]
