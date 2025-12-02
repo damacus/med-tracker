@@ -33,7 +33,7 @@ tasks:
         vars:
           ENVIRONMENT: test
           SERVICE: web-test
-          COMMAND: 'bundle exec rspec --format RSpec::Github::Formatter {{ .TEST_FILE | default "spec" }}'
+          COMMAND: 'bundle exec rspec --format documentation {{ .TEST_FILE | default "spec" }}'
           TEST_FILE: '{{ .TEST_FILE | default "spec" }}'
 
   test-rebuild:

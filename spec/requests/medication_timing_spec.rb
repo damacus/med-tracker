@@ -36,8 +36,7 @@ RSpec.describe 'Medication Timing Restrictions' do
         end.to change(MedicationTake, :count).by(1)
 
         expect(response).to redirect_to(person_path(person))
-        follow_redirect!
-        expect(response.body).to include('Medicine taken')
+        expect(flash[:notice]).to include('Medicine taken')
       end
     end
 
@@ -58,8 +57,7 @@ RSpec.describe 'Medication Timing Restrictions' do
         end.not_to change(MedicationTake, :count)
 
         expect(response).to redirect_to(person_path(person))
-        follow_redirect!
-        expect(response.body).to include('Cannot take medicine')
+        expect(flash[:alert]).to include('Cannot take medicine')
       end
     end
 
@@ -78,8 +76,7 @@ RSpec.describe 'Medication Timing Restrictions' do
         end.not_to change(MedicationTake, :count)
 
         expect(response).to redirect_to(person_path(person))
-        follow_redirect!
-        expect(response.body).to include('Cannot take medicine')
+        expect(flash[:alert]).to include('Cannot take medicine')
       end
     end
   end
@@ -101,8 +98,7 @@ RSpec.describe 'Medication Timing Restrictions' do
         end.to change(MedicationTake, :count).by(1)
 
         expect(response).to redirect_to(person_path(person))
-        follow_redirect!
-        expect(response.body).to include('Medicine taken')
+        expect(flash[:notice]).to include('Medicine taken')
       end
     end
 
@@ -123,8 +119,7 @@ RSpec.describe 'Medication Timing Restrictions' do
         end.not_to change(MedicationTake, :count)
 
         expect(response).to redirect_to(person_path(person))
-        follow_redirect!
-        expect(response.body).to include('Cannot take medicine')
+        expect(flash[:alert]).to include('Cannot take medicine')
       end
     end
 
@@ -143,8 +138,7 @@ RSpec.describe 'Medication Timing Restrictions' do
         end.not_to change(MedicationTake, :count)
 
         expect(response).to redirect_to(person_path(person))
-        follow_redirect!
-        expect(response.body).to include('Cannot take medicine')
+        expect(flash[:alert]).to include('Cannot take medicine')
       end
     end
   end
