@@ -12,16 +12,20 @@ module Admin
     # GET /admin/audit_logs
     # Lists all audit log entries with optional filtering
     def index
-      @versions = PaperTrail::Version
-                  .order(created_at: :desc)
+      base_query = PaperTrail::Version.order(created_at: :desc)
+      base_query = apply_filters_to_query(base_query)
+
+      @total_count = base_query.count
+      @versions = base_query
                   .limit(AUDIT_LOGS_PER_PAGE)
                   .offset((page_number - 1) * AUDIT_LOGS_PER_PAGE)
 
-      apply_filters
-
       render Components::Admin::AuditLogs::IndexView.new(
         versions: @versions,
-        filter_params: params.slice(:item_type, :event, :whodunnit)
+        filter_params: params.slice(:item_type, :event, :whodunnit),
+        current_page: page_number,
+        total_count: @total_count,
+        per_page: AUDIT_LOGS_PER_PAGE
       )
     end
 
@@ -46,10 +50,13 @@ module Admin
     end
 
     # Applies filter parameters to the versions query
-    def apply_filters
-      @versions = @versions.where(item_type: params[:item_type]) if params[:item_type].present?
-      @versions = @versions.where(event: params[:event]) if params[:event].present?
-      @versions = @versions.where(whodunnit: params[:whodunnit]) if params[:whodunnit].present?
+    # @param query [ActiveRecord::Relation] Base query to filter
+    # @return [ActiveRecord::Relation] Filtered query
+    def apply_filters_to_query(query)
+      query = query.where(item_type: params[:item_type]) if params[:item_type].present?
+      query = query.where(event: params[:event]) if params[:event].present?
+      query = query.where(whodunnit: params[:whodunnit]) if params[:whodunnit].present?
+      query
     end
   end
 end

@@ -11,11 +11,14 @@ module Components
         # Available event types for filtering
         EVENT_TYPES = %w[create update destroy].freeze
 
-        attr_reader :versions, :filter_params
+        attr_reader :versions, :filter_params, :current_page, :total_count, :per_page
 
-        def initialize(versions:, filter_params: {})
+        def initialize(versions:, filter_params: {}, current_page: 1, total_count: 0, per_page: 50)
           @versions = versions
           @filter_params = filter_params
+          @current_page = current_page
+          @total_count = total_count
+          @per_page = per_page
           @user_cache = {}
           super()
         end
@@ -25,6 +28,7 @@ module Components
             render_header
             render_filter_form
             render_versions_table
+            render_pagination if total_pages > 1
           end
         end
 
@@ -210,6 +214,84 @@ module Components
           user = @user_cache[whodunnit]
 
           user ? user.name : "User ##{whodunnit}"
+        end
+
+        # Pagination helpers
+        def total_pages
+          return 1 if total_count.zero?
+
+          (total_count.to_f / per_page).ceil
+        end
+
+        def render_pagination
+          nav(class: 'flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3 sm:px-6',
+              'aria-label': 'Pagination') do
+            render_pagination_info
+            render_pagination_controls
+          end
+        end
+
+        def render_pagination_info
+          div(class: 'hidden sm:block') do
+            p(class: 'text-sm text-slate-700') do
+              plain 'Showing '
+              span(class: 'font-medium') { first_item_number.to_s }
+              plain ' to '
+              span(class: 'font-medium') { last_item_number.to_s }
+              plain ' of '
+              span(class: 'font-medium') { total_count.to_s }
+              plain ' results'
+            end
+          end
+        end
+
+        def first_item_number
+          ((current_page - 1) * per_page) + 1
+        end
+
+        def last_item_number
+          [current_page * per_page, total_count].min
+        end
+
+        def render_pagination_controls
+          div(class: 'flex flex-1 justify-between sm:justify-end gap-2') do
+            render_previous_button
+            render_next_button
+          end
+        end
+
+        def render_previous_button
+          if current_page > 1
+            a(
+              href: pagination_url(current_page - 1),
+              class: pagination_button_classes
+            ) { 'Previous' }
+          else
+            span(class: "#{pagination_button_classes} opacity-50 cursor-not-allowed") { 'Previous' }
+          end
+        end
+
+        def render_next_button
+          if current_page < total_pages
+            a(
+              href: pagination_url(current_page + 1),
+              class: pagination_button_classes
+            ) { 'Next' }
+          else
+            span(class: "#{pagination_button_classes} opacity-50 cursor-not-allowed") { 'Next' }
+          end
+        end
+
+        def pagination_button_classes
+          'relative inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold ' \
+            'text-slate-900 ring-1 ring-inset ring-slate-300 hover:bg-slate-50'
+        end
+
+        def pagination_url(page)
+          # Handle both ActionController::Parameters and regular Hash
+          base_params = filter_params.respond_to?(:to_unsafe_h) ? filter_params.to_unsafe_h : filter_params.to_h
+          params = base_params.merge(page: page).compact
+          "/admin/audit_logs?#{params.to_query}"
         end
       end
     end

@@ -60,4 +60,115 @@ RSpec.describe Components::Admin::AuditLogs::IndexView, type: :component do
       end
     end
   end
+
+  describe 'pagination' do
+    subject(:view) do
+      described_class.new(
+        versions: versions,
+        filter_params: {},
+        current_page: current_page,
+        total_count: total_count,
+        per_page: per_page
+      )
+    end
+
+    let(:current_page) { 1 }
+    let(:per_page) { 50 }
+
+    describe '#total_pages' do
+      context 'when total_count is 0' do
+        let(:total_count) { 0 }
+
+        it 'returns 1' do
+          expect(view.send(:total_pages)).to eq(1)
+        end
+      end
+
+      context 'when total_count is less than per_page' do
+        let(:total_count) { 25 }
+
+        it 'returns 1' do
+          expect(view.send(:total_pages)).to eq(1)
+        end
+      end
+
+      context 'when total_count is greater than per_page' do
+        let(:total_count) { 75 }
+
+        it 'returns correct number of pages' do
+          expect(view.send(:total_pages)).to eq(2)
+        end
+      end
+
+      context 'when total_count is exactly per_page' do
+        let(:total_count) { 50 }
+
+        it 'returns 1' do
+          expect(view.send(:total_pages)).to eq(1)
+        end
+      end
+    end
+
+    describe '#first_item_number' do
+      let(:total_count) { 100 }
+
+      context 'on page 1' do
+        let(:current_page) { 1 }
+
+        it 'returns 1' do
+          expect(view.send(:first_item_number)).to eq(1)
+        end
+      end
+
+      context 'on page 2' do
+        let(:current_page) { 2 }
+
+        it 'returns 51' do
+          expect(view.send(:first_item_number)).to eq(51)
+        end
+      end
+    end
+
+    describe '#last_item_number' do
+      context 'when on last page with partial results' do
+        let(:total_count) { 75 }
+        let(:current_page) { 2 }
+
+        it 'returns total_count' do
+          expect(view.send(:last_item_number)).to eq(75)
+        end
+      end
+
+      context 'when on full page' do
+        let(:total_count) { 100 }
+        let(:current_page) { 1 }
+
+        it 'returns per_page' do
+          expect(view.send(:last_item_number)).to eq(50)
+        end
+      end
+    end
+
+    describe '#pagination_url' do
+      let(:total_count) { 100 }
+
+      it 'generates URL with page parameter' do
+        url = view.send(:pagination_url, 2)
+        expect(url).to include('page=2')
+      end
+
+      it 'preserves filter parameters' do
+        view_with_filters = described_class.new(
+          versions: versions,
+          filter_params: { item_type: 'User' },
+          current_page: 1,
+          total_count: 100,
+          per_page: 50
+        )
+        url = view_with_filters.send(:pagination_url, 2)
+        expect(url).to include('item_type=User')
+        expect(url).to include('page=2')
+      end
+    end
+  end
 end
