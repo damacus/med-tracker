@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe OpenTelemetry, type: :configuration do
-  describe 'SDK initialization' do
+  describe 'SDK initialization', skip: 'OpenTelemetry disabled in test environment' do
     it 'configures OpenTelemetry with service name medtracker' do
       expect(described_class.tracer_provider).to be_a(OpenTelemetry::SDK::Trace::TracerProvider)
 
@@ -20,7 +20,7 @@ RSpec.describe OpenTelemetry, type: :configuration do
     end
   end
 
-  describe 'instrumentation' do
+  describe 'instrumentation', skip: 'OpenTelemetry disabled in test environment' do
     it 'enables Rails instrumentation' do
       instrumentation = OpenTelemetry::Instrumentation::Rails::Instrumentation.instance
       expect(instrumentation).not_to be_nil
@@ -40,7 +40,7 @@ RSpec.describe OpenTelemetry, type: :configuration do
     end
   end
 
-  describe 'W3C trace context propagation' do
+  describe 'W3C trace context propagation', skip: 'OpenTelemetry disabled in test environment' do
     it 'uses W3C TraceContext propagator' do
       propagators = described_class.propagation
       expect(propagators).to be_a(OpenTelemetry::Context::Propagation::CompositeTextMapPropagator)

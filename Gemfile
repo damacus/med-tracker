@@ -34,6 +34,12 @@ gem 'pundit'
 gem 'paper_trail'
 # Pagination [https://github.com/ddnexus/pagy]
 gem 'pagy'
+# Rate limiting and throttling [https://github.com/rack/rack-attack]
+gem 'rack-attack'
+# TOTP for two-factor authentication [https://github.com/mdp/rotp]
+gem 'rotp'
+# QR code generation for OTP setup [https://github.com/whomwah/rqrcode]
+gem 'rqrcode'
 
 # OpenTelemetry for observability [https://opentelemetry.io/docs/languages/ruby/]
 gem 'opentelemetry-exporter-otlp'
@@ -63,6 +69,9 @@ group :development, :test do
 
   # Static analysis for security vulnerabilities [https://brakemanscanner.org/]
   gem 'brakeman', require: false
+
+  # Check for vulnerable dependencies [https://github.com/rubysec/bundler-audit]
+  gem 'bundler-audit', require: false
 
   # Omakase Ruby styling [https://github.com/rails/rubocop-rails-omakase/]
   gem 'rubocop-rails-omakase', require: false

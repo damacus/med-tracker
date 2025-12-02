@@ -6,14 +6,15 @@ version: '3'
 
 tasks:
   # Execute arbitrary commands in Docker containers
-  # Required vars: ENVIRONMENT, SERVICE, COMMAND
-  # Example: task internal:run ENVIRONMENT=test SERVICE=web COMMAND='rails console'
+  # Required vars: ENVIRONMENT, COMMAND
+  # SERVICE is auto-derived: test->web-test, dev->web-dev, production->web
+  # Example: task internal:run ENVIRONMENT=test COMMAND='rails console'
   run:
     desc: Run arbitrary command in Docker container
     internal: true
     vars:
       ENVIRONMENT: {ref: .ENVIRONMENT}
-      SERVICE: {ref: .SERVICE}
+      SERVICE: '{{ if eq .ENVIRONMENT "test" }}web-test{{ else if eq .ENVIRONMENT "dev" }}web-dev{{ else }}web{{ end }}'
       COMMAND: {ref: .COMMAND}
     cmds:
       - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml run --rm --remove-orphans {{ .SERVICE }} {{ .COMMAND }}
@@ -84,7 +85,6 @@ tasks:
       - task: run
         vars:
           ENVIRONMENT: {ref: .ENVIRONMENT}
-          SERVICE: web
           COMMAND: 'rails db:seed'
       - defer: echo "✓ Database seeding completed"
 

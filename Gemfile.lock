@@ -87,6 +87,9 @@ GEM
     brakeman (7.1.1)
       racc
     builder (3.3.0)
+    bundler-audit (0.9.3)
+      bundler (>= 1.2.0)
+      thor (~> 1.0)
     capybara (3.40.0)
       addressable
       matrix
@@ -100,6 +103,7 @@ GEM
       addressable
       capybara
       playwright-ruby-client (>= 1.16.0)
+    chunky_png (1.4.0)
     concurrent-ruby (1.3.5)
     connection_pool (2.5.5)
     crass (1.0.6)
@@ -465,6 +469,8 @@ GEM
     raabro (1.4.0)
     racc (1.8.1)
     rack (3.2.4)
+    rack-attack (6.8.0)
+      rack (>= 1.0, < 4)
     rack-protection (4.2.1)
       base64 (>= 0.1.0)
       logger (>= 1.6.0)
@@ -536,6 +542,11 @@ GEM
       roda (~> 3.76)
       rodauth (~> 2.36)
       rodauth-model (~> 0.2)
+    rotp (6.3.0)
+    rqrcode (3.1.1)
+      chunky_png (~> 1.0)
+      rqrcode_core (~> 2.0)
+    rqrcode_core (2.0.1)
     rspec-core (3.13.6)
       rspec-support (~> 3.13.0)
     rspec-expectations (3.13.5)
@@ -691,6 +702,7 @@ DEPENDENCIES
   bcrypt
   bootsnap
   brakeman
+  bundler-audit
   capybara
   capybara-playwright-driver
   database_cleaner-active_record
@@ -709,10 +721,13 @@ DEPENDENCIES
   puma (>= 5.0)
   pundit
   pundit-matchers
+  rack-attack
   rails (>= 8.0)
   rails-controller-testing
   rodauth-omniauth
   rodauth-rails
+  rotp
+  rqrcode
   rspec-github
   rspec-rails
   rubocop-capybara

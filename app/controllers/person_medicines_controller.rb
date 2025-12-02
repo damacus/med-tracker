@@ -64,6 +64,15 @@ class PersonMedicinesController < ApplicationController
 
   def take_medicine
     authorize @person_medicine, :take_medicine?
+
+    # SECURITY: Enforce timing restrictions server-side
+    # This prevents bypassing UI-disabled buttons via direct API calls
+    unless @person_medicine.can_take_now?
+      return redirect_to person_path(@person),
+                         alert: t('person_medicines.cannot_take_medicine',
+                                  default: 'Cannot take medicine: timing restrictions not met')
+    end
+
     @take = @person_medicine.medication_takes.create!(
       taken_at: Time.current,
       amount_ml: params[:amount_ml] || @person_medicine.medicine.dosage_amount

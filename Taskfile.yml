@@ -11,6 +11,8 @@ includes:
     taskfile: Taskfiles/local.yml
   internal:
     taskfile: Taskfiles/internal.yml
+  jq:
+    taskfile: Taskfiles/jq.yml
 
 tasks:
   default:
@@ -30,10 +32,9 @@ tasks:
       - task: internal:run
         vars:
           ENVIRONMENT: test
-          SERVICE: web
-          COMMAND: 'bundle exec rspec {{ .TEST_FILE | default "spec" }}'
+          SERVICE: web-test
+          COMMAND: 'bundle exec rspec --format documentation {{ .TEST_FILE | default "spec" }}'
           TEST_FILE: '{{ .TEST_FILE | default "spec" }}'
-
 
   test-rebuild:
     desc: Rebuild test server (drops database)

@@ -97,7 +97,6 @@ jobs:
     runs-on: [ubuntu-latest]
     name: RSpec System Tests (Playwright)
     timeout-minutes: 30
-
     services:
       postgres:
         image: postgres:18-alpine
