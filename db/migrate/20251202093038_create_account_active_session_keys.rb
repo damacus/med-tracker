@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-# Migration for Rodauth active_sessions feature
-# Tracks active sessions per account for session management
 class CreateAccountActiveSessionKeys < ActiveRecord::Migration[8.1]
   def change
     create_table :account_active_session_keys, id: false do |t|
@@ -13,5 +11,6 @@ class CreateAccountActiveSessionKeys < ActiveRecord::Migration[8.1]
 
     add_index :account_active_session_keys, %i[account_id session_id], unique: true
     add_index :account_active_session_keys, :account_id
+    add_foreign_key :account_active_session_keys, :accounts
   end
 end

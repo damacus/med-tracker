@@ -2,9 +2,6 @@
 
 require 'rails_helper'
 
-# These tests verify the OpenTelemetry configuration that would be applied in production.
-# Since OpenTelemetry is disabled in test environment (no OTLP endpoint), we skip these tests.
-# The configuration is tested implicitly when OTEL_EXPORTER_OTLP_ENDPOINT is set.
 RSpec.describe OpenTelemetry, type: :configuration do
   describe 'SDK initialization', skip: 'OpenTelemetry disabled in test environment' do
     it 'configures OpenTelemetry with service name medtracker' do
