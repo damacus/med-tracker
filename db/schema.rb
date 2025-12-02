@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_12_01_214500) do
+ActiveRecord::Schema[8.1].define(version: 2025_12_02_083837) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -25,6 +25,15 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_01_214500) do
     t.index ["provider", "uid"], name: "index_account_identities_on_provider_and_uid", unique: true
   end
 
+  create_table "account_lockouts", primary_key: "account_id", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "deadline", null: false
+    t.datetime "email_last_sent"
+    t.string "key", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_account_lockouts_on_account_id"
+  end
+
   create_table "account_login_change_keys", id: false, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.datetime "created_at"
@@ -33,6 +42,13 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_01_214500) do
     t.string "login", null: false
     t.datetime "updated_at"
     t.index ["account_id"], name: "index_account_login_change_keys_on_account_id"
+  end
+
+  create_table "account_login_failures", primary_key: "account_id", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "number", default: 1, null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_account_login_failures_on_account_id"
   end
 
   create_table "account_password_reset_keys", id: false, force: :cascade do |t|
