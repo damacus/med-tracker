@@ -97,24 +97,18 @@ RSpec.describe Components::Admin::AuditLogs::ShowView, type: :component do
     end
 
     describe '#compute_new_state' do
-      context 'when there is a next version' do
-        let!(:next_version) do
-          person.update!(name: 'Another Update')
-          person.versions.last
-        end
+      it 'returns the next version object when there is a next version' do
+        # Create a next version
+        person.update!(name: 'Another Update')
 
-        it 'returns the next version object' do
-          result = view.send(:compute_new_state)
-          expect(result).to be_present
-        end
+        result = view.send(:compute_new_state)
+        expect(result).to be_present
       end
 
-      context 'when there is no next version' do
-        it 'returns the current record attributes' do
-          result = view.send(:compute_new_state)
-          expect(result).to be_a(Hash)
-          expect(result['name']).to eq(person.name)
-        end
+      it 'returns the current record attributes when there is no next version' do
+        result = view.send(:compute_new_state)
+        expect(result).to be_a(Hash)
+        expect(result['name']).to eq(person.name)
       end
     end
 
