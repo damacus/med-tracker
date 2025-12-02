@@ -254,7 +254,7 @@
       "Wait for lockout to expire or admin unlock",
       "Verify can login again"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "SEC-008",
@@ -311,7 +311,7 @@
       "Test rate limiting on /create-account endpoint",
       "Test rate limiting on /reset-password endpoint"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "SEC-011",
