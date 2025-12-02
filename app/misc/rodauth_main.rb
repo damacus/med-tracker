@@ -7,7 +7,7 @@ class RodauthMain < Rodauth::Rails::Auth
   configure do
     # List of authentication features that are loaded.
     enable :create_account, :verify_account, :verify_account_grace_period,
-           :login, :logout, :remember, :lockout,
+           :login, :logout, :remember, :lockout, :active_sessions,
            :reset_password, :change_password, :change_login, :verify_login_change,
            :close_account, :omniauth
 
@@ -90,6 +90,13 @@ class RodauthMain < Rodauth::Rails::Auth
     max_invalid_logins 5
     # Unlock account after 30 minutes
     account_lockouts_deadline_interval(minutes: 30)
+
+    # ==> Active Sessions Configuration
+    # Track active sessions for session management
+    # Session expires after 30 minutes of inactivity
+    session_inactivity_deadline 30.minutes.to_i
+    # Session expires after 24 hours regardless of activity
+    session_lifetime_deadline 24.hours.to_i
 
     # ==> OmniAuth (Google OAuth)
     # Configure Google OAuth provider
