@@ -60,7 +60,7 @@ RSpec.describe 'Admin::AuditLogs' do
 
       it 'denies access' do
         get admin_audit_logs_path
-        expect(response).to have_http_status(:forbidden).or redirect_to(root_path)
+        expect(response).to redirect_to(root_path)
       end
     end
 
