@@ -16,7 +16,7 @@
     {"name": "medicines", "file": "features/medicines.json", "count": 10},
     {"name": "people", "file": "features/people.json", "count": 18},
     {"name": "profile", "file": "features/profile.json", "count": 10},
-    {"name": "security", "file": "features/security.json", "count": 20},
+    {"name": "security", "file": "features/security.json", "count": 42},
     {"name": "invitations", "file": "features/invitations.json", "count": 5},
     {"name": "navigation", "file": "features/navigation.json", "count": 7},
     {"name": "ui", "file": "features/ui.json", "count": 15},
@@ -28,11 +28,14 @@
     {"name": "observability", "file": "features/observability.json", "count": 16}
   ],
   "summary": {
-    "total_features": 283,
+    "total_features": 305,
+    "passing": 224,
+    "failing": 81,
+    "pass_rate": "73%",
     "categories": {
-      "functional": 258,
+      "functional": 280,
       "style": 25
     },
-    "tests_with_10plus_steps": 26
+    "tests_with_10plus_steps": 42
   }
 }
