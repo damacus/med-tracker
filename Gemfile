@@ -34,6 +34,8 @@ gem 'pundit'
 gem 'paper_trail'
 # Pagination [https://github.com/ddnexus/pagy]
 gem 'pagy'
+# Rate limiting and throttling [https://github.com/rack/rack-attack]
+gem 'rack-attack'
 
 # OpenTelemetry for observability [https://opentelemetry.io/docs/languages/ruby/]
 gem 'opentelemetry-exporter-otlp'
