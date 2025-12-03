@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Person Medicines' do
+RSpec.describe 'Person Medicines', type: :system do
   fixtures :accounts, :people, :medicines, :users
 
   let(:person) { people(:john) }
