@@ -1,0 +1,124 @@
+# Code Review Progress
+
+## Session: December 3, 2025
+
+### Baseline
+- Tests: 540 examples, 0 failures, 25 pending
+- RuboCop: 314 files inspected, no offenses
+
+---
+
+## 1. Deduplication Findings
+
+### Policy Method Duplication (Medium Priority)
+
+The following methods are duplicated across multiple policy files with slight variations:
+
+**`carer_with_patient?`** - Duplicated in 4 policies:
+- `PersonPolicy` - checks `record.id`
+- `PrescriptionPolicy` - checks `record.person_id`
+- `PersonMedicinePolicy` - checks `record.person.id`
+- `MedicationTakePolicy` - checks `record.prescription.person_id`
+
+**`parent_with_minor?`** - Duplicated in 3 policies:
+- `PersonPolicy` - checks `record.id`
+- `PrescriptionPolicy` - checks `record.person_id`
+- `MedicationTakePolicy` - checks `record.prescription.person_id`
+
+**`accessible_patient_ids`** - Duplicated in 2 Scope classes:
+- `PrescriptionPolicy::Scope`
+- `MedicationTakePolicy::Scope`
+
+**Recommendation**: Consider extracting shared authorization logic to a concern or module.
+The variation is in how each policy accesses the person_id from the record.
+A possible approach:
+1. Add a `person_id_for_authorization` method to each policy
+2. Extract shared logic to `ApplicationPolicy`
+
+**Risk**: Low - refactoring won't change behavior
+**Effort**: Medium - requires careful testing of all authorization paths
+
+---
+
+## 2. Browser Tag Compliance
+
+### Fixed
+- `spec/features/person_medicines_spec.rb` - Added missing `type: :system` tag
+
+---
+
+## 3. Incorrect Code / Potential Bugs
+
+### Nil Safety in Person Model (Low Priority)
+
+The `adult?`, `minor?`, and `dependent_adult?` methods in `Person` model can raise
+`NoMethodError` when `date_of_birth` is nil:
+
+```ruby
+def adult?
+  age >= 18 || person_type == 'adult'  # age can be nil!
+end
+```
+
+**Impact**: Low - `date_of_birth` is validated as required, so this only affects
+unsaved/invalid records. However, defensive coding would be better.
+
+**Fix**: Add nil guards:
+```ruby
+def adult?
+  return person_type == 'adult' if age.nil?
+  age >= 18 || person_type == 'adult'
+end
+```
+
+---
+
+## 4. Dead Code Found
+
+### Unused Models (High Priority - should be removed)
+The following models exist but have NO migrations and are NOT used anywhere:
+- `app/models/dosage_option.rb` - no migration, not referenced
+- `app/models/medicine_dosage.rb` - no migration, not referenced
+- `app/models/recommended_dosage.rb` - no migration, not referenced
+
+**Recommendation**: Remove these dead model files or create migrations if they are needed.
+
+### Coverage Gaps
+- Models: 13 files, 14 specs (some models share specs)
+- Controllers: 14 files, 3 request specs
+- Components: ~90 files, 6 component specs
+
+---
+
+## 5. Changes Made This Session
+
+### Commits
+1. `ffcff626c` - `test: add type: :system to person_medicines_spec.rb`
+   - Fixed browser tag compliance issue
+
+---
+
+## Next Steps (Priority Order)
+
+1. **High Priority**: Remove dead model files or create migrations
+   - `app/models/dosage_option.rb`
+   - `app/models/medicine_dosage.rb`
+   - `app/models/recommended_dosage.rb`
+
+2. **Medium Priority**: Extract shared policy authorization logic
+   - `carer_with_patient?` duplicated in 4 policies
+   - `parent_with_minor?` duplicated in 3 policies
+   - `accessible_patient_ids` duplicated in 2 Scope classes
+
+3. **Low Priority**: Add nil guards to Person model age methods
+   - `adult?`, `minor?`, `dependent_adult?` can raise NoMethodError
+
+---
+
+## Session Summary
+
+- **Tests**: 540 examples, 0 failures, 25 pending (unchanged)
+- **RuboCop**: 314 files, no offenses
+- **Browser Tag Fix**: 1 spec file fixed
+- **Dead Code Found**: 3 unused model files
+- **Duplication Found**: Policy methods duplicated across 4 files
