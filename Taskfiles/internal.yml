@@ -75,7 +75,7 @@ tasks:
     desc: Get current status of Docker Compose Stack
     internal: true
     vars:
-    ENVIRONMENT: {ref: .ENVIRONMENT}
+      ENVIRONMENT: {ref: .ENVIRONMENT}
     cmds:
       - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml ps
 
