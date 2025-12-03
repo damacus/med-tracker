@@ -134,11 +134,4 @@ RSpec.describe 'People' do
       end
     end
   end
-
-  def sign_in(user)
-    visit login_path
-    fill_in 'Email address', with: user.email_address
-    fill_in 'Password', with: 'password'
-    click_button 'Login'
-  end
 end

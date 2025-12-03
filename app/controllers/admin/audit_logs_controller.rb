@@ -15,10 +15,10 @@ module Admin
       base_query = PaperTrail::Version.order(created_at: :desc)
       base_query = apply_filters_to_query(base_query)
 
-      @total_count = base_query.count
       @versions = base_query
                   .limit(AUDIT_LOGS_PER_PAGE)
                   .offset((page_number - 1) * AUDIT_LOGS_PER_PAGE)
+      @total_count = @versions.unscope(:limit, :offset).count
 
       render Components::Admin::AuditLogs::IndexView.new(
         versions: @versions,

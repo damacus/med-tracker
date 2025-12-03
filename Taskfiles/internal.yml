@@ -71,12 +71,21 @@ tasks:
     cmds:
       - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml logs -f
 
-  # Seed database with fixtures
-  # Required vars: ENVIRONMENT
-  # Loads data from db/seeds.rb
-  # Example: task internal:seed ENVIRONMENT=test
+  ps:
+    desc: Get current status of Docker Compose Stack
+    internal: true
+    vars:
+    ENVIRONMENT: {ref: .ENVIRONMENT}
+    cmds:
+      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml ps
+
   seed:
     desc: Seed database with fixtures
+    summary: |
+      Seed database with fixtures
+      Required vars: ENVIRONMENT
+      Loads data from db/seeds.rb
+      Example: task internal:seed ENVIRONMENT=test
     internal: true
     vars:
       ENVIRONMENT: {ref: .ENVIRONMENT}

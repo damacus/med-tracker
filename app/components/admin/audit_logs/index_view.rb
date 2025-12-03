@@ -288,10 +288,8 @@ module Components
         end
 
         def pagination_url(page)
-          # Handle both ActionController::Parameters and regular Hash
           base_params = filter_params.respond_to?(:to_unsafe_h) ? filter_params.to_unsafe_h : filter_params.to_h
-          params = base_params.merge(page: page).compact
-          "/admin/audit_logs?#{params.to_query}"
+          Rails.application.routes.url_helpers.admin_audit_logs_path(base_params.merge(page: page))
         end
       end
     end

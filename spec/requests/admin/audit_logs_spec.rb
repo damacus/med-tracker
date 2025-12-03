@@ -13,16 +13,9 @@ RSpec.describe 'Admin::AuditLogs' do
   let(:carer) { users(:bob) }
   let(:prescription) { prescriptions(:john_paracetamol) }
 
-  # Helper to sign in via Rodauth
-  def sign_in_as(user)
-    account = Account.find_by(email: user.email_address)
-    post '/login', params: { email: account.email, password: 'password' }
-    follow_redirect! if response.redirect?
-  end
-
   describe 'GET /admin/audit_logs' do
     context 'when authenticated as administrator' do
-      before { sign_in_as(admin) }
+      before { sign_in(admin) }
 
       it 'returns success' do
         get admin_audit_logs_path
@@ -36,7 +29,7 @@ RSpec.describe 'Admin::AuditLogs' do
     end
 
     context 'when authenticated as non-administrator' do
-      before { sign_in_as(regular_user) }
+      before { sign_in(regular_user) }
 
       it 'denies access' do
         get admin_audit_logs_path
@@ -54,7 +47,7 @@ RSpec.describe 'Admin::AuditLogs' do
 
   describe 'GET /admin/audit_logs with filters' do
     before do
-      sign_in_as(admin)
+      sign_in(admin)
       PaperTrail.request.whodunnit = admin.id
       PaperTrail.request(enabled: true) do
         users(:jane).update!(role: :nurse)
@@ -87,7 +80,7 @@ RSpec.describe 'Admin::AuditLogs' do
     end
 
     context 'when authenticated as administrator' do
-      before { sign_in_as(admin) }
+      before { sign_in(admin) }
 
       it 'returns success' do
         get admin_audit_log_path(version)
@@ -101,7 +94,7 @@ RSpec.describe 'Admin::AuditLogs' do
     end
 
     context 'when authenticated as non-administrator' do
-      before { sign_in_as(regular_user) }
+      before { sign_in(regular_user) }
 
       it 'denies access' do
         get admin_audit_log_path(version)

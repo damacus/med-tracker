@@ -10,8 +10,7 @@ PLAYWRIGHT_BROWSER_ARGS = [
   '--disable-background-timer-throttling',
   '--disable-backgrounding-occluded-windows',
   '--disable-renderer-backgrounding',
-  '--disable-dev-shm-usage',
-  '--no-sandbox'
+  '--disable-dev-shm-usage'
 ].freeze
 
 Capybara.register_driver :playwright do |app|
@@ -46,7 +45,7 @@ RSpec.configure do |config|
         document.head.appendChild(style);
       JS
     end
-  rescue StandardError
-    # Ignore if page not ready yet
+  rescue StandardError => e
+    Rails.logger.debug { "Playwright page not ready for init script: #{e.message}" }
   end
 end
