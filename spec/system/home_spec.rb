@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'Home' do
-  fixtures :accounts, :people, :users, :medicines, :dosages, :prescriptions
+  fixtures :accounts, :account_otp_keys, :people, :users, :medicines, :dosages, :prescriptions
 
   it 'loads the dashboard as the home page for a signed-in user' do
     # Sign in the user from fixtures
