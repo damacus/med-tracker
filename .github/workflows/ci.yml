@@ -90,6 +90,9 @@ jobs:
       - name: Set up database
         run: bundle exec rails db:migrate
 
+      - name: Precompile assets
+        run: bundle exec rails assets:precompile
+
       - name: Run non-browser tests
         run: bundle exec rspec --format RSpec::Github::Formatter --tag ~browser
 
@@ -158,24 +161,24 @@ jobs:
         run: bundle exec rails assets:precompile
 
       - name: Run browser tests (shard ${{ matrix.shard }}/2)
+        shell: bash
         run: |
           # Get all browser test files and split them for this shard
-          files=$(find spec/features spec/system -name '*_spec.rb' | sort)
+          mapfile -t file_array < <(find spec/features spec/system -name '*_spec.rb' | sort)
           total_shards=2
           shard=${{ matrix.shard }}
 
           # Split files across shards using modulo
-          file_array=($files)
-          shard_files=""
+          shard_files=()
           for i in "${!file_array[@]}"; do
             if (( (i % total_shards) + 1 == shard )); then
-              shard_files="$shard_files ${file_array[$i]}"
+              shard_files+=("${file_array[$i]}")
             fi
           done
 
-          if [ -n "$shard_files" ]; then
-            echo "Running tests for shard $shard: $shard_files"
-            bundle exec rspec --format RSpec::Github::Formatter $shard_files
+          if [ ${#shard_files[@]} -gt 0 ]; then
+            echo "Running tests for shard $shard: ${shard_files[*]}"
+            bundle exec rspec --format RSpec::Github::Formatter "${shard_files[@]}"
           else
             echo "No files for this shard"
           fi
