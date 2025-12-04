@@ -25,9 +25,16 @@ description: When writing tests, modifying spec files, or adding new features
 - Policy methods require tests for: admin, clinician, self, carer, parent, and unauthorized users
 - When adding conditional checks like [self_or_dependent?](cci:1://file:///Users/damacus/repos/damacus/med-tracker.worktrees/end-to-end/app/policies/person_medicine_policy.rb:37:2-45:5), test ALL branches
 - New model validations require both positive and negative test cases
+- Admin CRUD flows need tests for: success path, validation errors, duplicate handling, and immediate usability
 
 ## Fixture Guidelines
 
 - Fixtures must represent realistic data
 - Validate all relationships in fixtures
 - Ensure no duplicate fixtures with same unique attributes
+
+## Capybara Guidelines
+
+- Use exact element text/labels from the actual views (check view files, not assumptions)
+- Prefer `click_link` for `<a>` tags, `click_button` for `<button>` tags
+- Use `fill_in` with the actual field label or `name` attribute

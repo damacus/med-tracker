@@ -114,6 +114,7 @@ module Components
         todays_takes = person_medicine.medication_takes
                                       .where('taken_at >= ?', Time.current.beginning_of_day)
                                       .order(taken_at: :desc)
+                                      .load
 
         div(class: 'space-y-3') do
           div(class: 'flex items-center justify-between') do
@@ -125,7 +126,7 @@ module Components
       end
 
       def render_dose_counter(todays_takes)
-        todays_count = todays_takes.size
+        todays_count = todays_takes.length
         max_doses = person_medicine.max_daily_doses
 
         badge_class = if todays_count >= max_doses

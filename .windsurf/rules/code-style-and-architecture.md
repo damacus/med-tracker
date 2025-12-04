@@ -18,6 +18,12 @@ description: When writing or modifying Ruby code in app/, lib/, or spec/
 - **Thin Controllers**: Controllers should only handle HTTP concerns; delegate business logic to models or services
 - **Phlex Components**: Use Phlex for view components in `app/components/`
 
+## Defensive Coding
+
+- Add nil checks before accessing associations in policy methods
+- Use `respond_to?` guards when record might be a Class (e.g., [new](cci:1://file:///Users/damacus/repos/damacus/med-tracker.worktrees/end-to-end/app/controllers/admin/users_controller.rb:21:4-26:7) action)
+- Prefer `record&.association` or explicit guard clauses over assuming presence
+
 ## Comment Accuracy
 
 - If code behavior changes, update or remove related comments immediately
