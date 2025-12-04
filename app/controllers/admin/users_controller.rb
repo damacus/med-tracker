@@ -32,45 +32,18 @@ module Admin
       render Components::Admin::Users::FormView.new(user: @user, url_helpers: self)
     end
 
-    # rubocop:disable Metrics/PerceivedComplexity
     def create
       @user = User.new(user_params)
       authorize @user
 
-      success = false
-      ActiveRecord::Base.transaction do
-        # Create Rodauth account first
-        account = Account.create!(
-          email: @user.email_address,
-          password_hash: BCrypt::Password.create(params[:user][:password]),
-          status: :verified # Admin-created users are pre-verified
-        )
+      return render_user_form_with_errors if account_already_exists?
 
-        # Link person to account
-        @user.person.account = account
-
-        raise ActiveRecord::Rollback unless @user.save
-
-        success = true
-      end
-
-      if success
-        redirect_to admin_users_path, notice: t('users.created')
-      else
-        render Components::Admin::Users::FormView.new(user: @user, url_helpers: self), status: :unprocessable_content
-      end
+      create_user_with_account!
+      redirect_to admin_users_path, notice: t('users.created')
     rescue ActiveRecord::RecordInvalid => e
-      # Map Account email errors to User email_address errors for consistency
-      if e.record.is_a?(Account) && e.record.errors[:email].any?
-        e.record.errors[:email].each do |error|
-          @user.errors.add(:email_address, error)
-        end
-      else
-        @user.errors.add(:base, e.message)
-      end
-      render Components::Admin::Users::FormView.new(user: @user, url_helpers: self), status: :unprocessable_content
+      handle_record_invalid_error(e)
+      render_user_form_with_errors
     end
-    # rubocop:enable Metrics/PerceivedComplexity
 
     def update
       @user = User.find(params[:id])
@@ -104,6 +77,38 @@ module Admin
     end
 
     private
+
+    def account_already_exists?
+      return false unless Account.exists?(email: @user.email_address)
+
+      @user.errors.add(:email_address, 'has already been taken')
+      true
+    end
+
+    def create_user_with_account!
+      ActiveRecord::Base.transaction do
+        account = Account.create!(
+          email: @user.email_address,
+          password_hash: BCrypt::Password.create(params[:user][:password]),
+          status: :verified
+        )
+        @user.person.account = account
+        @user.save!
+      end
+    end
+
+    def handle_record_invalid_error(exception)
+      @user ||= User.new(user_params)
+      return unless exception.record.is_a?(Account) && exception.record.errors[:email].any?
+
+      exception.record.errors[:email].each do |error|
+        @user.errors.add(:email_address, error)
+      end
+    end
+
+    def render_user_form_with_errors
+      render Components::Admin::Users::FormView.new(user: @user, url_helpers: self), status: :unprocessable_content
+    end
 
     def apply_search(scope)
       search_term = "%#{ActiveRecord::Base.sanitize_sql_like(params[:search])}%"

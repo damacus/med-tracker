@@ -54,7 +54,7 @@ class PersonMedicinePolicy < ApplicationPolicy
       return scope.none unless user
       return scope.all if admin_or_clinician?
 
-      # Users can see their own person medicines and those of their dependents
+      # Users can see only their own person medicines (not dependents)
       scope.where(person_id: accessible_person_ids)
     end
 

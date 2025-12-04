@@ -51,6 +51,13 @@ RSpec.describe PersonMedicinePolicy do
 
       it { is_expected.not_to permit_action(:show) }
     end
+
+    context 'when user views their own person medicine' do
+      let(:user) { adult_patient_user }
+      let(:person_medicine) { PersonMedicine.create!(person: adult_patient, medicine: medicines(:vitamin_d)) }
+
+      it { is_expected.to permit_action(:show) }
+    end
   end
 
   describe '#create?' do
