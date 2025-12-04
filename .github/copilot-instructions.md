@@ -19,7 +19,7 @@ MedTracker is a Ruby on Rails application for managing and tracking medication s
 ## Tech Stack
 
 - **Language**: Ruby 3.4.7
-- **Framework**: Ruby on Rails 8.0+
+- **Framework**: Ruby on Rails 8.1+
 - **Database**: SQLite3 (development)
 - **Frontend**: Hotwire (Turbo, Stimulus), Phlex views, TailwindCSS
 - **Testing**: RSpec + Capybara (for system tests)
@@ -80,7 +80,7 @@ RSpec.describe UserPolicy do
 
   context 'when user is an administrator' do
     let(:current_user) { User.new(person: Person.new(name: 'Admin', date_of_birth: 30.years.ago), role: 'administrator') }
-    
+
     it { is_expected.to permit_action(:update) }
   end
 end
