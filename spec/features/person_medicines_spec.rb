@@ -2,8 +2,8 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Person Medicines' do
-  fixtures :accounts, :people, :medicines, :users
+RSpec.describe 'Person Medicines', type: :system do
+  fixtures :accounts, :account_otp_keys, :people, :medicines, :users
 
   let(:person) { people(:john) }
   let(:medicine) { medicines(:vitamin_d) }

@@ -91,6 +91,9 @@ group :development, :test do
   gem 'rspec-github', require: false
   gem 'rspec-rails'
   gem 'shoulda-matchers'
+
+  # Parallel test execution for local development [https://github.com/grosser/parallel_tests]
+  gem 'parallel_tests'
 end
 
 group :development do

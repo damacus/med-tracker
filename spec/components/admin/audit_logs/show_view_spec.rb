@@ -60,5 +60,74 @@ RSpec.describe Components::Admin::AuditLogs::ShowView, type: :component do
         expect(result).to eq(invalid_yaml)
       end
     end
+
+    describe '#filter_sensitive_fields' do
+      it 'removes password_digest from data' do
+        data = { 'name' => 'Test', 'password_digest' => 'secret123' }
+        result = view.send(:filter_sensitive_fields, data)
+
+        expect(result).not_to have_key('password_digest')
+        expect(result).to have_key('name')
+      end
+
+      it 'removes password_hash from data' do
+        data = { 'name' => 'Test', 'password_hash' => 'secret123' }
+        result = view.send(:filter_sensitive_fields, data)
+
+        expect(result).not_to have_key('password_hash')
+        expect(result).to have_key('name')
+      end
+
+      it 'returns non-hash data unchanged' do
+        expect(view.send(:filter_sensitive_fields, 'string')).to eq('string')
+        expect(view.send(:filter_sensitive_fields, nil)).to be_nil
+      end
+    end
+
+    describe '#description_for_new_state' do
+      it 'returns create description for create events' do
+        allow(version).to receive(:event).and_return('create')
+        expect(view.send(:description_for_new_state)).to eq('The state of the record when it was created')
+      end
+
+      it 'returns update description for update events' do
+        allow(version).to receive(:event).and_return('update')
+        expect(view.send(:description_for_new_state)).to eq('The state of the record after this change')
+      end
+    end
+
+    describe '#compute_new_state' do
+      it 'returns the next version object when there is a next version' do
+        # Create a next version
+        person.update!(name: 'Another Update')
+
+        result = view.send(:compute_new_state)
+        expect(result).to be_present
+      end
+
+      it 'returns the current record attributes when there is no next version' do
+        result = view.send(:compute_new_state)
+        expect(result).to be_a(Hash)
+        expect(result['name']).to eq(person.name)
+      end
+    end
+
+    describe '#format_new_state' do
+      it 'formats YAML string as JSON' do
+        yaml_string = "---\nname: Test\n"
+        result = view.send(:format_new_state, yaml_string)
+        expect(result).to include('"name"')
+      end
+
+      it 'formats Hash as JSON' do
+        hash = { 'name' => 'Test' }
+        result = view.send(:format_new_state, hash)
+        expect(result).to include('"name"')
+      end
+
+      it 'converts other types to string' do
+        expect(view.send(:format_new_state, 123)).to eq('123')
+      end
+    end
   end
 end

@@ -7,7 +7,7 @@ version: '3'
 
 vars:
   DB_CONTAINER: medtracker-local-db
-  DB_PORT: '5433'
+  DB_PORT: '5432'
   DB_USER: medtracker
   DB_PASSWORD: medtracker
   DB_NAME: medtracker_test

@@ -54,3 +54,9 @@ tasks:
       autocorrect: '{{ .AUTOCORRECT | default "false" }}'
     cmds:
       - 'bundle exec rubocop {{ if eq .autocorrect "true" }}-A{{ end }}'
+
+  count-remaining-tests:
+    desc: Count remaining tests (across all feature files)
+    summary: Count remaining tests (across all feature files)
+    cmds:
+      - 'jq -s ''[.[][] | select(.passes == false)] | length'' features/*.json'

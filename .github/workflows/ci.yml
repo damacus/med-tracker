@@ -90,13 +90,20 @@ jobs:
       - name: Set up database
         run: bundle exec rails db:migrate
 
+      - name: Precompile assets
+        run: bundle exec rails assets:precompile
+
       - name: Run non-browser tests
         run: bundle exec rspec --format RSpec::Github::Formatter --tag ~browser
 
   test_system:
     runs-on: [ubuntu-latest]
-    name: RSpec System Tests (Playwright)
-    timeout-minutes: 30
+    name: RSpec System Tests (Playwright) - Shard ${{ matrix.shard }}/2
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     services:
       postgres:
         image: postgres:18-alpine
@@ -116,6 +123,7 @@ jobs:
       TEST_DATABASE_ADAPTER: postgresql
       DATABASE_URL: postgres://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/medtracker_test
       RAILS_ENV: test
+      CI: true
 
     steps:
       - name: Checkout code
@@ -127,8 +135,24 @@ jobs:
           ruby-version: '3.4.7'
           bundler-cache: true
 
-      - name: Install Playwright
+      - name: Get Playwright version
+        id: playwright-version
+        run: echo "version=$(node -e "console.log(require('./package.json').devDependencies.playwright)")" >> $GITHUB_OUTPUT
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+
+      - name: Install Playwright (with deps)
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright deps only
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
 
       - name: Set up database
         run: bundle exec rails db:migrate
@@ -136,5 +160,25 @@ jobs:
       - name: Precompile assets
         run: bundle exec rails assets:precompile
 
-      - name: Run browser tests
-        run: bundle exec rspec --format RSpec::Github::Formatter --tag browser
+      - name: Run browser tests (shard ${{ matrix.shard }}/2)
+        shell: bash
+        run: |
+          # Get all browser test files and split them for this shard
+          mapfile -t file_array < <(find spec/features spec/system -name '*_spec.rb' | sort)
+          total_shards=2
+          shard=${{ matrix.shard }}
+
+          # Split files across shards using modulo
+          shard_files=()
+          for i in "${!file_array[@]}"; do
+            if (( (i % total_shards) + 1 == shard )); then
+              shard_files+=("${file_array[$i]}")
+            fi
+          done
+
+          if [ ${#shard_files[@]} -gt 0 ]; then
+            echo "Running tests for shard $shard: ${shard_files[*]}"
+            bundle exec rspec --format RSpec::Github::Formatter "${shard_files[@]}"
+          else
+            echo "No files for this shard"
+          fi

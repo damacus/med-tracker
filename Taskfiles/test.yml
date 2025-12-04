@@ -1,78 +1,81 @@
 ---
-# Test Environment Tasks
-# All tasks operate on the 'test' environment (docker-compose.test.yml)
-# Usage: task test:<command>
 version: '3'
 
 tasks:
-  # Start the test server
-  # Creates and starts all containers in detached mode
-  # Database data persists between restarts
-  # Usage: task test:up
   up:
     desc: Start test server
+    summary: |
+        Start the test server
+        Creates and starts all containers in detached mode
+        Database data persists between restarts
+        Usage: task test:up
     cmds:
       - task: :internal:up
-        vars:
-          ENVIRONMENT: test
+        vars: {ENVIRONMENT: test}
 
-  # Seed the test database with fixtures
-  # Loads data from db/seeds.rb
-  # Safe to run multiple times (idempotent if seeds are written correctly)
-  # Usage: task test:seed
   seed:
     desc: Seed test database with fixtures
+    summary: |
+      Seed test database with fixtures
+      Loads data from db/seeds.rb
+      Safe to run multiple times (idempotent if seeds are written correctly)
+      Usage: task test:seed
     cmds:
       - task: :internal:seed
-        vars:
-          ENVIRONMENT: test
+        vars: {ENVIRONMENT: test}
 
-  # Stop the test server
-  # Removes containers but preserves database volumes
-  # Usage: task test:stop
   stop:
     desc: Stop test server
+    summary: |
+      Stop the test server
+      Removes containers but preserves database volumes
+      Usage: task test:stop
     cmds:
       - task: :internal:stop
-        vars:
-          ENVIRONMENT: test
+        vars: {ENVIRONMENT: test}
 
-  # Rebuild test environment from scratch
-  # WARNING: This drops the database and all data!
-  # Use this when:
-  # - Database migrations have changed
-  # - Docker images need to be rebuilt
-  # - Testing migration changes
-  # - You want a fresh test environment
-  # Usage: task test:rebuild
+  ps:
+    desc: List current status of Docker Compose Stack
+    summary: |
+      List current status of Docker Compose Stack
+      Usage: task test:ps
+    cmds:
+      - task: :internal:ps
+        vars: {ENVIRONMENT: test}
+
   rebuild:
     desc: Rebuild test server (drops database)
+    summary: |
+      Rebuild test environment from scratch
+      WARNING: This drops the database and all data!
+      Use this when:
+      - Database migrations have changed
+      - Docker images need to be rebuilt
+      - Testing migration changes
+      - You want a fresh test environment
+      Usage: task test:rebuild
     cmds:
       - task: :internal:stop
-        vars:
-          ENVIRONMENT: test
+        vars: {ENVIRONMENT: test}
       - docker compose -f docker-compose.test.yml down -v  # Remove volumes (drops database)
       - task: :internal:build
-        vars:
-          ENVIRONMENT: test
+        vars: {ENVIRONMENT: test}
       - task: :internal:up
-        vars:
-          ENVIRONMENT: test
+        vars: {ENVIRONMENT: test}
       - task: :internal:run
         vars:
           ENVIRONMENT: test
           SERVICE: web
           COMMAND: 'rails db:create db:migrate'
       - task: :internal:seed
-        vars:
-          ENVIRONMENT: test
+        vars: {ENVIRONMENT: test}
 
-  # View and follow test server logs
-  # Press Ctrl+C to stop following
-  # Usage: task test:logs
   logs:
     desc: View test server logs
+    summary: |
+      View and follow test server logs
+      Press Ctrl+C to stop following
+      Usage: task test:logs
     cmds:
       - task: :internal:logs
-        vars:
-          ENVIRONMENT: test
+        vars: {ENVIRONMENT: test}

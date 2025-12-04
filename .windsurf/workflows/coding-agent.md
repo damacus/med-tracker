@@ -12,7 +12,7 @@ This is a FRESH context window - you have no memory of previous sessions.
 
 Start by orienting yourself:
 
-```bash
+```fish
 # 1. See your working directory
 pwd
 
@@ -20,12 +20,11 @@ pwd
 ls -la
 
 # 3. Read the project specification to understand what you're building
-cat app_spec.txt
+cat docs/app_spec.txt
 
 # 4. Read the feature list to see all work
-I will give you a feature list file in json
-
-cat <file>.json | head -50
+# Require I give you a feature file:
+task jq:list-failing FILE=<feature>
 
 # 5. Read progress notes from previous sessions
 cat claude-progress.txt
@@ -34,22 +33,21 @@ cat claude-progress.txt
 git log --oneline -20
 
 # 7. Count remaining tests (across all feature files)
-jq -s '[.[][] | select(.passes == false)] | length' features/*.json
+task count-remaining-tests
 ```
 
-Understanding the `app_spec.txt` is critical - it contains the full requirements
+Understanding the `docs/app_spec.txt` is critical - it contains the full requirements
 for the application you're building.
 
-### STEP 2: START SERVERS (IF NOT RUNNING)
+### STEP 2: START TEST SERVERS (IF NOT RUNNING)
 
-If `init.sh` exists, run it:
+```fish
+# Start test environment (Docker-based with PostgreSQL)
+task test:up
 
-```bash
-chmod +x init.sh
-./init.sh
+# Or for local development with standalone PostgreSQL container
+task local:db:up
 ```
-
-Otherwise, start servers manually and document the process.
 
 ### STEP 3: VERIFICATION TEST (CRITICAL!)
 
@@ -120,17 +118,17 @@ Use browser automation tools:
 
 **YOU CAN ONLY MODIFY ONE FIELD: "passes"**
 
-After thorough verification, use `jq` to update the JSON:
+After thorough verification, use the task commands to update the JSON:
 
-```bash
-# Update by feature ID (preferred)
-jq 'map(if .id == "FEATURE-001" then .passes = true else . end)' feature_list.json > tmp.json && mv tmp.json feature_list.json
+```fish
+# Update by feature ID using task command (preferred)
+task jq:update-field FILE=features/security.json ID=SEC-001 FIELD=passes VALUE=true
 
-# Or update by index (0-based)
-jq '.[0].passes = true' feature_list.json > tmp.json && mv tmp.json feature_list.json
+# Or use raw jq for complex updates
+jq 'map(if .id == "FEATURE-001" then .passes = true else . end)' feature_list.json | sponge feature_list.json
 
 # Multiple updates at once
-jq 'map(if .id == "FEAT-001" or .id == "FEAT-002" then .passes = true else . end)' feature_list.json > tmp.json && mv tmp.json feature_list.json
+jq 'map(if .id == "FEAT-001" or .id == "FEAT-002" then .passes = true else . end)' feature_list.json | sponge feature_list.json
 ```
 
 **NEVER:**
@@ -147,7 +145,7 @@ jq 'map(if .id == "FEAT-001" or .id == "FEAT-002" then .passes = true else . end
 
 Make a descriptive git commit:
 
-```bash
+```fish
 git add .
 git commit -m "Implement [feature name] - verified end-to-end
 
@@ -180,9 +178,101 @@ Before context fills up:
 
 ---
 
+## AVAILABLE TASK COMMANDS
+
+Run `task --list` to see all available commands. Key commands:
+
+### Testing
+
+```fish
+# Run all tests in Docker (PostgreSQL)
+task test
+
+# Run specific test file
+task test TEST_FILE=spec/models/user_spec.rb
+
+# Rebuild test environment (drops database)
+task test-rebuild
+
+# Start/stop test server
+task test:up
+task test:stop
+
+# View test logs
+task test:logs
+```
+
+### Local Testing (faster, standalone PostgreSQL)
+
+```fish
+# Start local PostgreSQL container
+task local:db:up
+
+# Run non-browser tests locally
+task local:test
+task local:test TEST_FILE=spec/models/user_spec.rb
+
+# Run browser tests locally (requires Playwright)
+task local:test:browser
+
+# Run all tests locally
+task local:test:all
+
+# Stop local database
+task local:clean
+```
+
+### Development
+
+```fish
+# Start development server
+task dev:up
+
+# Seed development database
+task dev:seed
+
+# View logs / stop server
+task dev:logs
+task dev:stop
+
+# Rebuild (drops database)
+task dev:rebuild
+
+# Open UI in browser
+task dev:open-ui
+```
+
+### Feature JSON Management
+
+```fish
+# List failing tests in a feature file
+task jq:list-failing FILE=security
+
+# Update a field by ID
+task jq:update-field FILE=features/security.json ID=SEC-001 FIELD=passes VALUE=true
+
+# Run arbitrary jq query
+task jq:query FILE=features/security.json QUERY='.[] | select(.passes == false) | .id'
+
+# Count remaining failing tests across all features
+task count-remaining-tests
+```
+
+### Linting
+
+```fish
+# Run RuboCop
+task rubocop
+
+# Run RuboCop with autocorrect
+task rubocop AUTOCORRECT=true
+```
+
+---
+
 ## TESTING REQUIREMENTS
 
-**ALL testing must use browser automation tools.**
+All testing must use browser automation tools.
 
 Available tools:
 

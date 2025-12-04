@@ -16,10 +16,8 @@ class SpecFixtureLoader
 
   def load
     ActiveRecord::FixtureSet.reset_cache
-    ActiveRecord::Base.connection.disable_referential_integrity do
-      # Load all fixtures at once to avoid foreign key validation issues
-      ActiveRecord::FixtureSet.create_fixtures(FIXTURES_PATH, fixture_names)
-    end
+    # Load fixtures - foreign keys are deferrable so order doesn't matter within a transaction
+    ActiveRecord::FixtureSet.create_fixtures(FIXTURES_PATH, fixture_names)
   end
 
   private

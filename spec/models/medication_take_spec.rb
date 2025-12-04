@@ -193,5 +193,19 @@ RSpec.describe MedicationTake do
       )
       expect(take.versions.last.whodunnit).to eq(admin.id.to_s)
     end
+
+    it 'records IP address when controller_info is set' do
+      PaperTrail.request.controller_info = { ip: '192.168.1.100' }
+
+      take = described_class.create!(
+        prescription: prescription,
+        taken_at: Time.current,
+        amount_ml: 5.0
+      )
+
+      expect(take.versions.last.ip).to eq('192.168.1.100')
+    ensure
+      PaperTrail.request.controller_info = nil
+    end
   end # rubocop:enable RSpec/MultipleMemoizedHelpers
 end
