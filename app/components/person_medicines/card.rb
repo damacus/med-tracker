@@ -111,9 +111,9 @@ module Components
       end
 
       def render_takes_section
-        todays_takes = person_medicine.medication_takes.select do |take|
-          take.taken_at >= Time.current.beginning_of_day
-        end
+        todays_takes = person_medicine.medication_takes
+                                      .where('taken_at >= ?', Time.current.beginning_of_day)
+                                      .order(taken_at: :desc)
 
         div(class: 'space-y-3') do
           div(class: 'flex items-center justify-between') do
@@ -144,7 +144,7 @@ module Components
       def render_todays_takes(todays_takes)
         if todays_takes.any?
           div(class: 'space-y-2') do
-            todays_takes.sort_by(&:taken_at).reverse_each do |take|
+            todays_takes.each do |take|
               render_take_item(take)
             end
           end
