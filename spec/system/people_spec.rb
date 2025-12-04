@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'People' do
-  fixtures :accounts, :people, :users, :medicines, :dosages, :prescriptions
+  fixtures :accounts, :account_otp_keys, :people, :users, :medicines, :dosages, :prescriptions
 
   let(:user) { users(:john) }
 
@@ -133,12 +133,5 @@ RSpec.describe 'People' do
         expect(page).to have_no_css('[data-testid="needs-carer-badge"]')
       end
     end
-  end
-
-  def sign_in(user)
-    visit login_path
-    fill_in 'Email address', with: user.email_address
-    fill_in 'Password', with: 'password'
-    click_button 'Login'
   end
 end

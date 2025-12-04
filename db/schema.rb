@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_12_02_112302) do
+ActiveRecord::Schema[8.1].define(version: 2025_12_03_164512) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -242,16 +242,16 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_02_112302) do
   add_foreign_key "account_recovery_codes", "accounts", column: "id"
   add_foreign_key "account_remember_keys", "accounts"
   add_foreign_key "account_verification_keys", "accounts"
-  add_foreign_key "carer_relationships", "people", column: "carer_id"
-  add_foreign_key "carer_relationships", "people", column: "patient_id"
-  add_foreign_key "dosages", "medicines"
-  add_foreign_key "medication_takes", "person_medicines"
-  add_foreign_key "medication_takes", "prescriptions"
-  add_foreign_key "people", "accounts"
-  add_foreign_key "person_medicines", "medicines"
-  add_foreign_key "person_medicines", "people"
-  add_foreign_key "prescriptions", "dosages"
-  add_foreign_key "prescriptions", "medicines"
-  add_foreign_key "prescriptions", "people"
-  add_foreign_key "users", "people"
+  add_foreign_key "carer_relationships", "people", column: "carer_id", deferrable: :deferred
+  add_foreign_key "carer_relationships", "people", column: "patient_id", deferrable: :deferred
+  add_foreign_key "dosages", "medicines", deferrable: :deferred
+  add_foreign_key "medication_takes", "person_medicines", deferrable: :deferred
+  add_foreign_key "medication_takes", "prescriptions", deferrable: :deferred
+  add_foreign_key "people", "accounts", deferrable: :deferred
+  add_foreign_key "person_medicines", "medicines", deferrable: :deferred
+  add_foreign_key "person_medicines", "people", deferrable: :deferred
+  add_foreign_key "prescriptions", "dosages", deferrable: :deferred
+  add_foreign_key "prescriptions", "medicines", deferrable: :deferred
+  add_foreign_key "prescriptions", "people", deferrable: :deferred
+  add_foreign_key "users", "people", deferrable: :deferred
 end

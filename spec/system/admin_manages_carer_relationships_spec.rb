@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'AdminManagesCarerRelationships' do
-  fixtures :accounts, :people, :users, :carer_relationships
+  fixtures :accounts, :account_otp_keys, :people, :users, :carer_relationships
 
   let(:admin) { users(:admin) }
   let(:carer) { users(:carer) }

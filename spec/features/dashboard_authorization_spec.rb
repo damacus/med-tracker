@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'Dashboard Authorization', type: :system do
-  fixtures :accounts, :people, :users, :prescriptions, :medicines, :dosages, :carer_relationships
+  fixtures :accounts, :account_otp_keys, :people, :users, :prescriptions, :medicines, :dosages, :carer_relationships
 
   describe 'viewing the dashboard' do
     context 'when signed in as an administrator' do

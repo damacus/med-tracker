@@ -57,10 +57,7 @@ RSpec.configure do |config|
   # instead of true.
   config.use_transactional_fixtures = true
 
-  # For system tests, share the database connection with the server thread
-  config.before(:each, type: :system) do
-    driven_by :playwright, using: :chromium, screen_size: [1400, 1400]
-  end
+  # System test driver configuration is handled in spec/support/capybara.rb
 
   # You can uncomment this line to turn off ActiveRecord support entirely.
   # config.use_active_record = false
