@@ -98,9 +98,7 @@ RSpec.describe Components::Admin::AuditLogs::ShowView, type: :component do
 
     describe '#compute_new_state' do
       it 'returns the next version object when there is a next version' do
-        # Create a next version
         person.update!(name: 'Another Update')
-
         result = view.send(:compute_new_state)
         expect(result).to be_present
       end
