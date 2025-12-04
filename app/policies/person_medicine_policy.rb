@@ -6,11 +6,11 @@ class PersonMedicinePolicy < ApplicationPolicy
   end
 
   def show?
-    admin_or_clinician? || carer_with_patient?
+    admin_or_clinician? || self_or_dependent? || carer_with_patient?
   end
 
   def create?
-    admin?
+    admin? || self_or_dependent?
   end
 
   def new?
@@ -18,7 +18,7 @@ class PersonMedicinePolicy < ApplicationPolicy
   end
 
   def update?
-    admin?
+    admin? || self_or_dependent?
   end
 
   def edit?
@@ -26,32 +26,44 @@ class PersonMedicinePolicy < ApplicationPolicy
   end
 
   def destroy?
-    admin?
+    admin? || self_or_dependent?
   end
 
   def take_medicine?
-    admin? || carer_with_patient?
+    admin? || self_or_dependent? || carer_with_patient?
   end
 
   private
 
+  def self_or_dependent?
+    return false unless user&.person
+
+    person = record.is_a?(Class) ? nil : record.person
+    return true if person.nil? # For new? action with PersonMedicine class - actual authorization happens in create?
+    return true if person.id == user.person_id # Self
+
+    false
+  end
+
   def carer_with_patient?
-    (carer_or_parent? && user.person.patients.exists?(record.person.id)) || false
+    return false unless record.respond_to?(:person) && record.person
+
+    (carer_or_parent? && user.person.patients.exists?(id: record.person.id)) || false
   end
 
   class Scope < ApplicationPolicy::Scope
     def resolve
       return scope.none unless user
       return scope.all if admin_or_clinician?
-      return scope.none unless carer_or_parent?
 
+      # Users can see only their own person medicines (not dependents)
       scope.where(person_id: accessible_person_ids)
     end
 
     private
 
     def accessible_person_ids
-      [user.person_id].compact + Array(user.person&.patient_ids)
+      [user.person_id].compact
     end
   end
 end

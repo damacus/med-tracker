@@ -78,6 +78,52 @@ RSpec.describe 'AdminManagesUsers' do
       expect(page).to have_content("Email address can't be blank")
     end
 
+    it 'shows error when creating user with duplicate email' do
+      login_as(admin)
+
+      visit new_admin_user_path
+
+      fill_in 'Name', with: 'Duplicate User'
+      fill_in 'Date of birth', with: '1985-05-15'
+      fill_in 'Email address', with: admin.email_address
+      fill_in 'Password', with: 'password123'
+      fill_in 'Password confirmation', with: 'password123'
+      select 'Doctor', from: 'Role'
+
+      click_button 'Create User'
+
+      expect(page).to have_content('has already been taken')
+    end
+
+    it 'creates user that can immediately log in' do
+      login_as(admin)
+
+      visit new_admin_user_path
+
+      fill_in 'Name', with: 'Loginable User'
+      fill_in 'Date of birth', with: '1985-05-15'
+      fill_in 'Email address', with: 'loginable@example.com'
+      fill_in 'Password', with: 'securepassword123'
+      fill_in 'Password confirmation', with: 'securepassword123'
+      select 'Carer', from: 'Role'
+
+      click_button 'Create User'
+
+      expect(page).to have_content('User was successfully created')
+
+      # Log out admin
+      click_button admin.name
+      click_link 'Logout'
+
+      # Log in as newly created user
+      visit login_path
+      fill_in 'email', with: 'loginable@example.com'
+      fill_in 'password', with: 'securepassword123'
+      click_button 'Login'
+
+      expect(page).to have_content('Loginable User')
+    end
+
     it 'allows admin to edit an existing user' do
       login_as(admin)
 

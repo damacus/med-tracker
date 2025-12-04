@@ -111,18 +111,41 @@ module Components
       end
 
       def render_takes_section
+        todays_takes = person_medicine.medication_takes
+                                      .where(taken_at: Time.current.beginning_of_day..)
+                                      .order(taken_at: :desc)
+                                      .load
+
         div(class: 'space-y-3') do
-          h4(class: 'text-sm font-semibold text-slate-700') { "Today's Doses" }
-          render_todays_takes
+          div(class: 'flex items-center justify-between') do
+            h4(class: 'text-sm font-semibold text-slate-700') { "Today's Doses" }
+            render_dose_counter(todays_takes) if person_medicine.max_daily_doses.present?
+          end
+          render_todays_takes(todays_takes)
         end
       end
 
-      def render_todays_takes
-        todays_takes = person_medicine.medication_takes.where(taken_at: Time.current.beginning_of_day..)
+      def render_dose_counter(todays_takes)
+        todays_count = todays_takes.length
+        max_doses = person_medicine.max_daily_doses
 
+        badge_class = if todays_count >= max_doses
+                        'bg-red-100 text-red-800'
+                      elsif todays_count.positive?
+                        'bg-green-100 text-green-800'
+                      else
+                        'bg-slate-100 text-slate-600'
+                      end
+
+        span(class: "text-xs font-medium px-2 py-1 rounded-full #{badge_class}") do
+          "#{todays_count}/#{max_doses}"
+        end
+      end
+
+      def render_todays_takes(todays_takes)
         if todays_takes.any?
           div(class: 'space-y-2') do
-            todays_takes.order(taken_at: :desc).each do |take|
+            todays_takes.each do |take|
               render_take_item(take)
             end
           end

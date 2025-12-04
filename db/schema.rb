@@ -232,8 +232,11 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_03_164512) do
     t.index ["whodunnit"], name: "index_versions_on_whodunnit"
   end
 
+  add_foreign_key "account_active_session_keys", "accounts"
   add_foreign_key "account_identities", "accounts", on_delete: :cascade
+  add_foreign_key "account_lockouts", "accounts"
   add_foreign_key "account_login_change_keys", "accounts"
+  add_foreign_key "account_login_failures", "accounts"
   add_foreign_key "account_otp_keys", "accounts", column: "id"
   add_foreign_key "account_password_reset_keys", "accounts"
   add_foreign_key "account_recovery_codes", "accounts", column: "id"
