@@ -112,7 +112,7 @@ module Components
 
       def render_takes_section
         todays_takes = person_medicine.medication_takes
-                                      .where('taken_at >= ?', Time.current.beginning_of_day)
+                                      .where(taken_at: Time.current.beginning_of_day..)
                                       .order(taken_at: :desc)
                                       .load
 

@@ -39,7 +39,7 @@ class PersonMedicinePolicy < ApplicationPolicy
     return false unless user&.person
 
     person = record.is_a?(Class) ? nil : record.person
-    return true if person.nil? # Class-level authorization (new action) - will be checked again in create
+    return true if person.nil? # For new? action with PersonMedicine class - actual authorization happens in create?
     return true if person.id == user.person_id # Self
 
     false
@@ -48,7 +48,7 @@ class PersonMedicinePolicy < ApplicationPolicy
   def carer_with_patient?
     return false unless record.respond_to?(:person) && record.person
 
-    (carer_or_parent? && user.person.patients.exists?(record.person.id)) || false
+    (carer_or_parent? && user.person.patients.exists?(id: record.person.id)) || false
   end
 
   class Scope < ApplicationPolicy::Scope
