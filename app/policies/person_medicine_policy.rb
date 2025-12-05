@@ -46,9 +46,7 @@ class PersonMedicinePolicy < ApplicationPolicy
   end
 
   def carer_with_patient?
-    return false unless record.respond_to?(:person) && record.person
-
-    (carer_or_parent? && user.person.patients.exists?(id: record.person.id)) || false
+    caregiver_has_patient?(record_person_id)
   end
 
   class Scope < ApplicationPolicy::Scope

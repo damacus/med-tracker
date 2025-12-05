@@ -32,15 +32,11 @@ class PersonPolicy < ApplicationPolicy
   end
 
   def carer_with_patient?
-    return false unless carer_or_parent? && user&.person
-
-    user.person.patients.exists?(record.id)
+    caregiver_has_patient?(record_person_id)
   end
 
   def parent_with_minor?
-    return false unless user&.parent? && user.person
-
-    user.person.patients.where(person_type: :minor).exists?(record.id)
+    parent_has_minor_patient?(record_person_id)
   end
 
   class Scope < ApplicationPolicy::Scope
