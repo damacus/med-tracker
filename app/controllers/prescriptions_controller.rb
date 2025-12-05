@@ -12,14 +12,23 @@ class PrescriptionsController < ApplicationController
     @medicines = policy_scope(Medicine)
 
     respond_to do |format|
-      format.html { render :new, locals: { inline: false, medicines: @medicines } }
+      format.html do
+        render Components::Prescriptions::NewView.new(
+          prescription: @prescription,
+          person: @person,
+          medicines: @medicines
+        )
+      end
       format.turbo_stream do
-        render turbo_stream: turbo_stream.replace('modal', partial: 'shared/modal', locals: {
-                                                    title: t('prescriptions.modal.new_title', person: @person.name),
-                                                    content: render_to_string(partial: 'form',
-                                                                              locals: { prescription: @prescription,
-                                                                                        inline: true, medicines: @medicines })
-                                                  })
+        render turbo_stream: turbo_stream.replace(
+          'modal',
+          Components::Prescriptions::Modal.new(
+            prescription: @prescription,
+            person: @person,
+            medicines: @medicines,
+            title: t('prescriptions.modal.new_title', person: @person.name)
+          )
+        )
       end
     end
   end
@@ -29,14 +38,23 @@ class PrescriptionsController < ApplicationController
     @medicines = policy_scope(Medicine)
 
     respond_to do |format|
-      format.html { render :edit, locals: { medicines: @medicines } }
+      format.html do
+        render Components::Prescriptions::EditView.new(
+          prescription: @prescription,
+          person: @person,
+          medicines: @medicines
+        )
+      end
       format.turbo_stream do
-        render turbo_stream: turbo_stream.replace('modal', partial: 'shared/modal', locals: {
-                                                    title: t('prescriptions.modal.edit_title', person: @person.name),
-                                                    content: render_to_string(partial: 'form',
-                                                                              locals: { prescription: @prescription,
-                                                                                        inline: true, medicines: @medicines })
-                                                  })
+        render turbo_stream: turbo_stream.replace(
+          'modal',
+          Components::Prescriptions::Modal.new(
+            prescription: @prescription,
+            person: @person,
+            medicines: @medicines,
+            title: t('prescriptions.modal.edit_title', person: @person.name)
+          )
+        )
       end
     end
   end
@@ -60,14 +78,23 @@ class PrescriptionsController < ApplicationController
       end
     else
       respond_to do |format|
-        format.html { render :new, status: :unprocessable_content, locals: { medicines: @medicines } }
+        format.html do
+          render Components::Prescriptions::NewView.new(
+            prescription: @prescription,
+            person: @person,
+            medicines: @medicines
+          ), status: :unprocessable_content
+        end
         format.turbo_stream do
-          render turbo_stream: turbo_stream.update('modal', partial: 'shared/modal', locals: {
-                                                     title: t('prescriptions.modal.new_title', person: @person.name),
-                                                     content: render_to_string(partial: 'form',
-                                                                               locals: { prescription: @prescription,
-                                                                                         inline: true, medicines: @medicines })
-                                                   }), status: :unprocessable_content
+          render turbo_stream: turbo_stream.update(
+            'modal',
+            Components::Prescriptions::Modal.new(
+              prescription: @prescription,
+              person: @person,
+              medicines: @medicines,
+              title: t('prescriptions.modal.new_title', person: @person.name)
+            )
+          ), status: :unprocessable_content
         end
       end
     end
@@ -92,16 +119,25 @@ class PrescriptionsController < ApplicationController
         end
       end
     else
-      @medicines = Medicine.all
+      @medicines = policy_scope(Medicine)
       respond_to do |format|
-        format.html { render :edit, status: :unprocessable_content, locals: { medicines: @medicines } }
+        format.html do
+          render Components::Prescriptions::EditView.new(
+            prescription: @prescription,
+            person: @person,
+            medicines: @medicines
+          ), status: :unprocessable_content
+        end
         format.turbo_stream do
-          render turbo_stream: turbo_stream.update('modal', partial: 'shared/modal', locals: {
-                                                     title: t('prescriptions.modal.edit_title', person: @person.name),
-                                                     content: render_to_string(partial: 'form',
-                                                                               locals: { prescription: @prescription,
-                                                                                         inline: true, medicines: @medicines })
-                                                   }), status: :unprocessable_content
+          render turbo_stream: turbo_stream.update(
+            'modal',
+            Components::Prescriptions::Modal.new(
+              prescription: @prescription,
+              person: @person,
+              medicines: @medicines,
+              title: t('prescriptions.modal.edit_title', person: @person.name)
+            )
+          ), status: :unprocessable_content
         end
       end
     end
