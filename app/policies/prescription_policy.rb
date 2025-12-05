@@ -68,15 +68,11 @@ class PrescriptionPolicy < ApplicationPolicy
   end
 
   def carer_with_patient?
-    return false unless user&.carer? && user.person
-
-    user.person.patients.exists?(record.person_id)
+    caregiver_has_patient?(record_person_id)
   end
 
   def parent_with_minor?
-    return false unless user&.parent? && user.person
-
-    user.person.patients.where(person_type: :minor).exists?(record.person_id)
+    parent_has_minor_patient?(record_person_id)
   end
 
   class Scope < ApplicationPolicy::Scope
@@ -96,11 +92,11 @@ class PrescriptionPolicy < ApplicationPolicy
     end
 
     def care_relationships?
-      accessible_patient_ids.any?
+      care_relationship_patient_ids.any?
     end
 
     def carer_parent_scope
-      scope.where(person_id: accessible_patient_ids)
+      scope.where(person_id: care_relationship_patient_ids)
     end
 
     def own_prescriptions_scope
@@ -109,29 +105,6 @@ class PrescriptionPolicy < ApplicationPolicy
 
     def owns_record?
       user&.person
-    end
-
-    def carer_with_patient?
-      user&.carer? && user.person
-    end
-
-    def parent_with_minor?
-      user&.parent? && user.person
-    end
-
-    def accessible_patient_ids
-      [].tap do |ids|
-        ids.concat(carer_patient_ids) if user.carer?
-        ids.concat(parent_minor_patient_ids) if user.parent?
-      end
-    end
-
-    def carer_patient_ids
-      Array(user.person&.patient_ids)
-    end
-
-    def parent_minor_patient_ids
-      Array(Person.where(id: user.person&.patient_ids, person_type: :minor).pluck(:id))
     end
   end
 end
