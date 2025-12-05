@@ -7,6 +7,7 @@ class ProfilesController < ApplicationController
   def show
     @person = current_user.person
     @account = current_account
+    render Views::Profiles::Show.new(person: @person, account: @account)
   end
 
   def update
