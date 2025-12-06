@@ -120,7 +120,7 @@ module Components
               end
             end
             SelectContent do
-              Person.person_types.keys.each do |type|
+              Person.person_types.each_key do |type|
                 SelectItem(value: type) { type.humanize }
               end
             end
@@ -157,9 +157,7 @@ module Components
         ) do
           strong { 'Note: ' }
           plain 'A person without capacity must have at least one carer assigned.'
-          if person.persisted? && person.carers.empty?
-            plain ' Please assign a carer before removing capacity.'
-          end
+          plain ' Please assign a carer before removing capacity.' if person.persisted? && person.carers.empty?
         end
       end
 

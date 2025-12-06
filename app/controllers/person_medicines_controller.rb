@@ -10,15 +10,23 @@ class PersonMedicinesController < ApplicationController
     @medicines = Medicine.all
 
     respond_to do |format|
-      format.html { render :new, locals: { inline: false, medicines: @medicines, person: @person } }
+      format.html do
+        render Components::PersonMedicines::FormView.new(
+          person_medicine: @person_medicine,
+          person: @person,
+          medicines: @medicines
+        )
+      end
       format.turbo_stream do
-        render turbo_stream: turbo_stream.replace('modal', partial: 'shared/modal', locals: {
-                                                    title: t('person_medicines.modal.new_title', person: @person.name),
-                                                    content: render_to_string(
-                                                      partial: 'form',
-                                                      locals: { person_medicine: @person_medicine, inline: true, medicines: @medicines, person: @person }
-                                                    )
-                                                  })
+        render turbo_stream: turbo_stream.replace(
+          'person_medicine_modal',
+          Components::PersonMedicines::Modal.new(
+            person_medicine: @person_medicine,
+            person: @person,
+            medicines: @medicines,
+            title: t('person_medicines.modal.new_title', person: @person.name)
+          )
+        )
       end
     end
   end
@@ -34,7 +42,7 @@ class PersonMedicinesController < ApplicationController
         format.turbo_stream do
           flash.now[:notice] = t('person_medicines.created')
           render turbo_stream: [
-            turbo_stream.remove('modal'),
+            turbo_stream.remove('person_medicine_modal'),
             turbo_stream.replace("person_#{@person.id}", Components::People::PersonCard.new(person: @person.reload)),
             turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
           ]
@@ -42,15 +50,23 @@ class PersonMedicinesController < ApplicationController
       end
     else
       respond_to do |format|
-        format.html { render :new, status: :unprocessable_content, locals: { medicines: @medicines, person: @person } }
+        format.html do
+          render Components::PersonMedicines::FormView.new(
+            person_medicine: @person_medicine,
+            person: @person,
+            medicines: @medicines
+          ), status: :unprocessable_content
+        end
         format.turbo_stream do
-          render turbo_stream: turbo_stream.update('modal', partial: 'shared/modal', locals: {
-                                                     title: t('person_medicines.modal.new_title', person: @person.name),
-                                                     content: render_to_string(
-                                                       partial: 'form',
-                                                       locals: { person_medicine: @person_medicine, inline: true, medicines: @medicines, person: @person }
-                                                     )
-                                                   }), status: :unprocessable_content
+          render turbo_stream: turbo_stream.update(
+            'person_medicine_modal',
+            Components::PersonMedicines::Modal.new(
+              person_medicine: @person_medicine,
+              person: @person,
+              medicines: @medicines,
+              title: t('person_medicines.modal.new_title', person: @person.name)
+            )
+          ), status: :unprocessable_content
         end
       end
     end
