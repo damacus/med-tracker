@@ -92,15 +92,19 @@ module Components
               required: true,
               data: { action: 'change->prescription-form#validate' }
             )
-            SelectTrigger(data: { testid: 'dosage-trigger', prescription_form_target: 'dosageTrigger' }) do
+            SelectTrigger(
+              disabled: prescription.medicine.nil?,
+              aria_disabled: prescription.medicine.nil?,
+              data: { testid: 'dosage-trigger', prescription_form_target: 'dosageTrigger' }
+            ) do
               SelectValue(
-                placeholder: 'Select a dosage',
+                placeholder: 'Select a medicine first',
                 data: { prescription_form_target: 'dosageValue' }
               ) do
                 if prescription.dosage
                   "#{prescription.dosage.amount} #{prescription.dosage.unit} - #{prescription.dosage.description}"
                 else
-                  'Select a dosage'
+                  'Select a medicine first'
                 end
               end
             end

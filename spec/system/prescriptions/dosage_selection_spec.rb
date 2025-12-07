@@ -12,20 +12,24 @@ RSpec.describe 'Prescription dosage selection' do
   let(:admin) { users(:admin) }
   let(:person) { people(:one) }
 
-  it 'loads dosage options after selecting a medicine' do
+  it 'disables dosage select until medicine is selected' do
     login_as(admin)
     visit person_path(person)
 
     click_link 'Add Prescription'
 
-    # RubyUI Select for medicine - click trigger then option
+    # Dosage trigger should be disabled initially
+    expect(page).to have_css('[data-testid="dosage-trigger"][disabled]')
+    expect(page).to have_content('Select a medicine first')
+
+    # Select a medicine
     find('[data-testid="medicine-trigger"]').click
     find('div[role="option"]', text: 'Ibuprofen').click
 
-    # Wait for dosage options to load dynamically
-    expect(page).to have_css('[data-testid="dosage-trigger"]', wait: 5)
+    # Dosage trigger should now be enabled
+    expect(page).to have_css('[data-testid="dosage-trigger"]:not([disabled])', wait: 5)
 
-    # RubyUI Select for dosage - click the trigger using testid
+    # RubyUI Select for dosage - click the trigger
     find('[data-testid="dosage-trigger"]').click
     expect(page).to have_selector('div[role="option"]', text: '400.0 mg - Standard adult dose')
     find('div[role="option"]', text: '400.0 mg - Standard adult dose').click

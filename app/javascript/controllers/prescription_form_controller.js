@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["submit", "dosageSelect", "medicineSelect", "dosageContent", "dosageValue"]
+  static targets = ["submit", "dosageSelect", "medicineSelect", "dosageContent", "dosageValue", "dosageTrigger"]
 
   connect() {
     this.validate()
@@ -40,9 +40,15 @@ export default class extends Controller {
       dosageInput.value = ''
     }
 
-    // Reset the displayed value
+    // Reset the displayed value and disable trigger if no medicine
     if (this.hasDosageValueTarget) {
-      this.dosageValueTarget.textContent = 'Select a dosage'
+      this.dosageValueTarget.textContent = medicineId ? 'Select a dosage' : 'Select a medicine first'
+    }
+
+    // Enable/disable the dosage trigger based on medicine selection
+    if (this.hasDosageTriggerTarget) {
+      this.dosageTriggerTarget.disabled = !medicineId
+      this.dosageTriggerTarget.setAttribute('aria-disabled', !medicineId)
     }
 
     if (!medicineId) {
