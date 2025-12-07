@@ -64,6 +64,7 @@ module Components
               name: 'prescription[medicine_id]',
               id: 'prescription_medicine_id',
               value: prescription.medicine_id,
+              required: true,
               data: { action: 'change->prescription-form#updateDosages' }
             )
             SelectTrigger do
@@ -83,11 +84,12 @@ module Components
       def render_dosage_field(_f)
         FormField do
           FormFieldLabel(for: 'prescription_dosage_id') { 'Dosage' }
-          Select(data: { prescription_form_target: 'dosageSelect' }) do
+          Select do
             SelectInput(
               name: 'prescription[dosage_id]',
               id: 'prescription_dosage_id',
-              value: prescription.dosage_id
+              value: prescription.dosage_id,
+              required: true
             )
             SelectTrigger do
               SelectValue(placeholder: 'Select a dosage') do
@@ -98,7 +100,7 @@ module Components
                 end
               end
             end
-            SelectContent do
+            SelectContent(data: { prescription_form_target: 'dosageSelect' }) do
               (prescription.medicine&.dosages || []).each do |dosage|
                 SelectItem(value: dosage.id.to_s) do
                   plain "#{dosage.amount.to_i} #{dosage.unit} - #{dosage.description}"
@@ -218,6 +220,12 @@ module Components
             data: { prescription_form_target: 'submit' }
           ) { prescription.new_record? ? 'Add Prescription' : 'Update Prescription' }
         end
+      end
+
+      def select_classes
+        'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ' \
+          'ring-offset-background focus-visible:outline-none focus-visible:ring-2 ' \
+          'focus-visible:ring-ring focus-visible:ring-offset-2'
       end
     end
   end

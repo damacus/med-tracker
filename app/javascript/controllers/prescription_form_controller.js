@@ -26,31 +26,41 @@ export default class extends Controller {
   }
 
   async updateDosages(event) {
-	const medicineId = event.target.value
-	
-	if (!medicineId || !this.hasDosageSelectTarget) {
-	  return
-	}
+    const medicineId = event.target.value
 
-	try {
-	  const response = await fetch(`/medicines/${medicineId}/dosages.json`)
-	  const dosages = await response.json()
-	  
-	  // Clear existing options
-	  this.dosageSelectTarget.innerHTML = '<option value="">Select a dosage</option>'
-	  
-	  // Add new options
-	  dosages.forEach(dosage => {
-		const option = document.createElement('option')
-		option.value = dosage.id
-		option.text = `${dosage.amount} ${dosage.unit} - ${dosage.description}`
-		this.dosageSelectTarget.appendChild(option)
-	  })
-	  
-	  this.validate()
-	} catch (error) {
-	  console.error('Error fetching dosages:', error)
-	}
+    if (!medicineId || !this.hasDosageSelectTarget) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/medicines/${medicineId}/dosages.json`)
+      const dosages = await response.json()
+
+      // Build RubyUI SelectItem markup
+      const items = dosages.map((dosage) => {
+        const text = `${dosage.amount} ${dosage.unit} - ${dosage.description}`
+        return `
+          <div
+            role="option"
+            tabindex="0"
+            data-value="${dosage.id}"
+            aria-selected="false"
+            data-orientation="vertical"
+            data-controller="ruby-ui--select-item"
+            data-action="click->ruby-ui--select#selectItem keydown.enter->ruby-ui--select#selectItem keydown.down->ruby-ui--select#handleKeyDown keydown.up->ruby-ui--select#handleKeyUp keydown.esc->ruby-ui--select#handleEsc"
+            data-ruby-ui__select-target="item"
+            class="item group relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground hover:bg-accent hover:text-accent-foreground"
+          >
+            ${text}
+          </div>
+        `
+      }).join('')
+
+      this.dosageSelectTarget.innerHTML = items
+      this.validate()
+    } catch (error) {
+      console.error('Error fetching dosages:', error)
+    }
   }
 
   cancel(event) {

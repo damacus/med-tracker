@@ -21,7 +21,7 @@ class PrescriptionsController < ApplicationController
       end
       format.turbo_stream do
         render turbo_stream: turbo_stream.replace(
-          'modal',
+          'prescription_modal',
           Components::Prescriptions::Modal.new(
             prescription: @prescription,
             person: @person,
@@ -47,7 +47,7 @@ class PrescriptionsController < ApplicationController
       end
       format.turbo_stream do
         render turbo_stream: turbo_stream.replace(
-          'modal',
+          'prescription_modal',
           Components::Prescriptions::Modal.new(
             prescription: @prescription,
             person: @person,
@@ -70,7 +70,7 @@ class PrescriptionsController < ApplicationController
         format.turbo_stream do
           flash.now[:notice] = t('prescriptions.created')
           render turbo_stream: [
-            turbo_stream.remove('modal'),
+            turbo_stream.remove('prescription_modal'),
             turbo_stream.replace("person_#{@person.id}", Components::People::PersonCard.new(person: @person.reload)),
             turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
           ]
@@ -87,7 +87,7 @@ class PrescriptionsController < ApplicationController
         end
         format.turbo_stream do
           render turbo_stream: turbo_stream.update(
-            'modal',
+            'prescription_modal',
             Components::Prescriptions::Modal.new(
               prescription: @prescription,
               person: @person,
@@ -111,7 +111,7 @@ class PrescriptionsController < ApplicationController
             view_context.render(Components::Prescriptions::Card.new(prescription: prescription, person: @person))
           end.join
           render turbo_stream: [
-            turbo_stream.update('modal', ''),
+            turbo_stream.update('prescription_modal', ''),
             turbo_stream.update('prescriptions', prescriptions_html),
             turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
           ]
@@ -129,7 +129,7 @@ class PrescriptionsController < ApplicationController
         end
         format.turbo_stream do
           render turbo_stream: turbo_stream.update(
-            'modal',
+            'prescription_modal',
             Components::Prescriptions::Modal.new(
               prescription: @prescription,
               person: @person,
