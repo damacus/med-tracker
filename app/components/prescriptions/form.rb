@@ -133,25 +133,44 @@ module Components
         end
       end
 
-      def render_start_date_field(f)
+      def render_start_date_field(_f)
         FormField do
           FormFieldLabel(for: 'prescription_start_date') { 'Start date' }
-          render f.date_field(
-            :start_date,
-            class: 'flex h-9 w-full rounded-md border bg-background px-3 py-1 text-sm shadow-sm ' \
-                   'border-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
-            data: { action: 'change->prescription-form#validate' }
+          Input(
+            type: :string,
+            name: 'prescription[start_date]',
+            id: 'prescription_start_date',
+            value: prescription.start_date&.to_fs(:db),
+            required: true,
+            placeholder: 'Select a date',
+            data: {
+              controller: 'ruby-ui--calendar-input',
+              action: 'input->prescription-form#validate'
+            }
+          )
+          Calendar(
+            input_id: '#prescription_start_date',
+            date_format: 'PPPP',
+            class: 'rounded-md border shadow'
           )
         end
       end
 
-      def render_end_date_field(f)
+      def render_end_date_field(_f)
         FormField do
           FormFieldLabel(for: 'prescription_end_date') { 'End date' }
-          render f.date_field(
-            :end_date,
-            class: 'flex h-9 w-full rounded-md border bg-background px-3 py-1 text-sm shadow-sm ' \
-                   'border-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+          Input(
+            type: :string,
+            name: 'prescription[end_date]',
+            id: 'prescription_end_date',
+            value: prescription.end_date&.to_fs(:db),
+            placeholder: 'Select a date',
+            data: { controller: 'ruby-ui--calendar-input' }
+          )
+          Calendar(
+            input_id: '#prescription_end_date',
+            date_format: 'PPPP',
+            class: 'rounded-md border shadow'
           )
         end
       end

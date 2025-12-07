@@ -8,7 +8,7 @@ name: CI
 
 jobs:
   scan_ruby:
-    runs-on: [ubuntu-latest]
+    runs-on: [ubuntu-slim]
     name: Ruby Security Scan
     steps:
       - name: Checkout code
@@ -23,7 +23,7 @@ jobs:
         run: bin/brakeman --no-pager
 
   scan_js:
-    runs-on: [ubuntu-latest]
+    runs-on: [ubuntu-slim]
     name: JavaScript Security Scan
     steps:
       - name: Checkout code
@@ -38,7 +38,7 @@ jobs:
         run: bin/importmap audit
 
   lint:
-    runs-on: [ubuntu-latest]
+    runs-on: [ubuntu-slim]
     name: Code Style Check
     steps:
       - name: Checkout code
@@ -53,7 +53,7 @@ jobs:
         run: bin/rubocop -f github
 
   test_non_system:
-    runs-on: [ubuntu-latest]
+    runs-on: [ubuntu-slim]
     name: RSpec Tests (Models, Policies, Controllers, Components)
     timeout-minutes: 20
 
@@ -97,7 +97,7 @@ jobs:
         run: bundle exec rspec --format RSpec::Github::Formatter --tag ~browser
 
   test_system:
-    runs-on: [ubuntu-latest]
+    runs-on: [ubuntu-slim]
     name: RSpec System Tests (Playwright) - Shard ${{ matrix.shard }}/2
     timeout-minutes: 20
     strategy:
