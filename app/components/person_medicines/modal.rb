@@ -140,7 +140,7 @@ module Components
       def render_actions
         div(class: 'flex justify-end gap-3 pt-4') do
           a(
-            href: helpers.person_path(person),
+            href: person_path(person),
             class: button_outline_classes,
             data: { turbo_frame: 'person_medicine_modal' }
           ) { 'Cancel' }
