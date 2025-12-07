@@ -18,13 +18,17 @@ RSpec.describe 'Prescription dosage selection' do
 
     click_link 'Add Prescription'
 
-    # Native select for medicine
-    select 'Ibuprofen', from: 'prescription_medicine_id'
+    # RubyUI Select for medicine - click trigger then option
+    find('[data-testid="medicine-trigger"]').click
+    find('div[role="option"]', text: 'Ibuprofen').click
 
-    # Dosage options load dynamically after medicine selection
-    # Wait for the dosage select to be populated
-    expect(page).to have_select('prescription_dosage_id', with_options: ['400.0 mg - Standard adult dose'])
-    select '400.0 mg - Standard adult dose', from: 'prescription_dosage_id'
+    # Wait for dosage options to load dynamically
+    expect(page).to have_css('[data-testid="dosage-trigger"]', wait: 5)
+
+    # RubyUI Select for dosage - click the trigger using testid
+    find('[data-testid="dosage-trigger"]').click
+    expect(page).to have_selector('div[role="option"]', text: '400.0 mg - Standard adult dose')
+    find('div[role="option"]', text: '400.0 mg - Standard adult dose').click
 
     fill_in 'Frequency', with: 'Once daily'
     fill_in 'Start date', with: Date.current.strftime('%Y-%m-%d')

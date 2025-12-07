@@ -59,23 +59,23 @@ module Components
       def render_medicine_field(_f)
         FormField do
           FormFieldLabel(for: 'prescription_medicine_id') { 'Medicine' }
-          select(
-            name: 'prescription[medicine_id]',
-            id: 'prescription_medicine_id',
-            required: true,
-            class: select_classes,
-            data: {
-              action: 'change->prescription-form#updateDosages',
-              prescription_form_target: 'medicineSelect',
-              testid: 'medicine-select'
-            }
-          ) do
-            option(value: '') { 'Select a medicine' }
-            medicines.each do |medicine|
-              option(
-                value: medicine.id,
-                selected: prescription.medicine_id == medicine.id
-              ) { medicine.name }
+          Select(data: { prescription_form_target: 'medicineSelect', testid: 'medicine-select' }) do
+            SelectInput(
+              name: 'prescription[medicine_id]',
+              id: 'prescription_medicine_id',
+              value: prescription.medicine_id,
+              required: true,
+              data: { action: 'change->prescription-form#updateDosages' }
+            )
+            SelectTrigger(data: { testid: 'medicine-trigger' }) do
+              SelectValue(placeholder: 'Select a medicine') do
+                prescription.medicine&.name || 'Select a medicine'
+              end
+            end
+            SelectContent do
+              medicines.each do |medicine|
+                SelectItem(value: medicine.id.to_s) { medicine.name }
+              end
             end
           end
         end
@@ -84,23 +84,32 @@ module Components
       def render_dosage_field(_f)
         FormField do
           FormFieldLabel(for: 'prescription_dosage_id') { 'Dosage' }
-          select(
-            name: 'prescription[dosage_id]',
-            id: 'prescription_dosage_id',
-            required: true,
-            class: select_classes,
-            data: {
-              prescription_form_target: 'dosageSelect',
-              action: 'change->prescription-form#validate',
-              testid: 'dosage-select'
-            }
-          ) do
-            option(value: '') { 'Select a dosage' }
-            (prescription.medicine&.dosages || []).each do |dosage|
-              option(
-                value: dosage.id,
-                selected: prescription.dosage_id == dosage.id
-              ) { "#{dosage.amount} #{dosage.unit} - #{dosage.description}" }
+          Select(data: { prescription_form_target: 'dosageSelect', testid: 'dosage-select' }) do
+            SelectInput(
+              name: 'prescription[dosage_id]',
+              id: 'prescription_dosage_id',
+              value: prescription.dosage_id,
+              required: true,
+              data: { action: 'change->prescription-form#validate' }
+            )
+            SelectTrigger(data: { testid: 'dosage-trigger', prescription_form_target: 'dosageTrigger' }) do
+              SelectValue(
+                placeholder: 'Select a dosage',
+                data: { prescription_form_target: 'dosageValue' }
+              ) do
+                if prescription.dosage
+                  "#{prescription.dosage.amount} #{prescription.dosage.unit} - #{prescription.dosage.description}"
+                else
+                  'Select a dosage'
+                end
+              end
+            end
+            SelectContent(data: { prescription_form_target: 'dosageContent' }) do
+              (prescription.medicine&.dosages || []).each do |dosage|
+                SelectItem(value: dosage.id.to_s) do
+                  "#{dosage.amount} #{dosage.unit} - #{dosage.description}"
+                end
+              end
             end
           end
         end

@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["submit", "dosageSelect", "medicineSelect"]
+  static targets = ["submit", "dosageSelect", "medicineSelect", "dosageContent", "dosageValue"]
 
   connect() {
     this.validate()
@@ -26,16 +26,28 @@ export default class extends Controller {
   }
 
   async updateDosages(event) {
-    const medicineId = event.target.value
+    // Get the medicine ID from the hidden input within the RubyUI Select
+    const medicineInput = this.element.querySelector('[name="prescription[medicine_id]"]')
+    const medicineId = medicineInput?.value
 
-    if (!this.hasDosageSelectTarget) {
+    if (!this.hasDosageContentTarget) {
       return
     }
 
-    // Clear existing options and add placeholder
-    this.dosageSelectTarget.innerHTML = '<option value="">Select a dosage</option>'
+    // Reset the dosage select value
+    const dosageInput = this.element.querySelector('[name="prescription[dosage_id]"]')
+    if (dosageInput) {
+      dosageInput.value = ''
+    }
+
+    // Reset the displayed value
+    if (this.hasDosageValueTarget) {
+      this.dosageValueTarget.textContent = 'Select a dosage'
+    }
 
     if (!medicineId) {
+      // Clear dosage options
+      this.dosageContentTarget.querySelector('div').innerHTML = ''
       this.validate()
       return
     }
@@ -44,13 +56,32 @@ export default class extends Controller {
       const response = await fetch(`/medicines/${medicineId}/dosages.json`)
       const dosages = await response.json()
 
-      // Build native select options
-      dosages.forEach((dosage) => {
-        const option = document.createElement('option')
-        option.value = dosage.id
-        option.textContent = `${dosage.amount} ${dosage.unit} - ${dosage.description}`
-        this.dosageSelectTarget.appendChild(option)
-      })
+      // Build RubyUI SelectItem markup
+      const items = dosages.map((dosage) => {
+        const text = `${dosage.amount} ${dosage.unit} - ${dosage.description}`
+        return `
+          <div
+            role="option"
+            tabindex="0"
+            data-value="${dosage.id}"
+            aria-selected="false"
+            data-orientation="vertical"
+            data-controller="ruby-ui--select-item"
+            data-action="click->ruby-ui--select#selectItem keydown.enter->ruby-ui--select#selectItem keydown.down->ruby-ui--select#handleKeyDown keydown.up->ruby-ui--select#handleKeyUp keydown.esc->ruby-ui--select#handleEsc"
+            data-ruby-ui__select-target="item"
+            class="item group relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground hover:bg-accent hover:text-accent-foreground"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="invisible group-aria-selected:visible mr-2 h-4 w-4 flex-none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
+            ${text}
+          </div>
+        `
+      }).join('')
+
+      // Update the inner div of SelectContent
+      const innerDiv = this.dosageContentTarget.querySelector('div')
+      if (innerDiv) {
+        innerDiv.innerHTML = items
+      }
 
       this.validate()
     } catch (error) {
