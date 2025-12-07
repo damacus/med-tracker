@@ -180,7 +180,8 @@ class PrescriptionsController < ApplicationController
   end
 
   def prescription_params
-    params.expect(prescription: %i[medicine_id dosage frequency
-                                   start_date end_date notes])
+    params.expect(prescription: %i[medicine_id dosage_id frequency
+                                   start_date end_date notes max_daily_doses
+                                   min_hours_between_doses dose_cycle])
   end
 end

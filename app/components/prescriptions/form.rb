@@ -59,23 +59,23 @@ module Components
       def render_medicine_field(_f)
         FormField do
           FormFieldLabel(for: 'prescription_medicine_id') { 'Medicine' }
-          Select do
-            SelectInput(
-              name: 'prescription[medicine_id]',
-              id: 'prescription_medicine_id',
-              value: prescription.medicine_id,
-              required: true,
-              data: { action: 'change->prescription-form#updateDosages' }
-            )
-            SelectTrigger do
-              SelectValue(placeholder: 'Select a medicine') do
-                prescription.medicine&.name || 'Select a medicine'
-              end
-            end
-            SelectContent do
-              medicines.each do |medicine|
-                SelectItem(value: medicine.id.to_s) { medicine.name }
-              end
+          select(
+            name: 'prescription[medicine_id]',
+            id: 'prescription_medicine_id',
+            required: true,
+            class: select_classes,
+            data: {
+              action: 'change->prescription-form#updateDosages',
+              prescription_form_target: 'medicineSelect',
+              testid: 'medicine-select'
+            }
+          ) do
+            option(value: '') { 'Select a medicine' }
+            medicines.each do |medicine|
+              option(
+                value: medicine.id,
+                selected: prescription.medicine_id == medicine.id
+              ) { medicine.name }
             end
           end
         end
@@ -84,28 +84,23 @@ module Components
       def render_dosage_field(_f)
         FormField do
           FormFieldLabel(for: 'prescription_dosage_id') { 'Dosage' }
-          Select do
-            SelectInput(
-              name: 'prescription[dosage_id]',
-              id: 'prescription_dosage_id',
-              value: prescription.dosage_id,
-              required: true
-            )
-            SelectTrigger do
-              SelectValue(placeholder: 'Select a dosage') do
-                if prescription.dosage
-                  "#{prescription.dosage.amount.to_i} #{prescription.dosage.unit} - #{prescription.dosage.description}"
-                else
-                  'Select a dosage'
-                end
-              end
-            end
-            SelectContent(data: { prescription_form_target: 'dosageSelect' }) do
-              (prescription.medicine&.dosages || []).each do |dosage|
-                SelectItem(value: dosage.id.to_s) do
-                  plain "#{dosage.amount.to_i} #{dosage.unit} - #{dosage.description}"
-                end
-              end
+          select(
+            name: 'prescription[dosage_id]',
+            id: 'prescription_dosage_id',
+            required: true,
+            class: select_classes,
+            data: {
+              prescription_form_target: 'dosageSelect',
+              action: 'change->prescription-form#validate',
+              testid: 'dosage-select'
+            }
+          ) do
+            option(value: '') { 'Select a dosage' }
+            (prescription.medicine&.dosages || []).each do |dosage|
+              option(
+                value: dosage.id,
+                selected: prescription.dosage_id == dosage.id
+              ) { "#{dosage.amount} #{dosage.unit} - #{dosage.description}" }
             end
           end
         end
@@ -119,7 +114,8 @@ module Components
             class: 'flex h-9 w-full rounded-md border bg-background px-3 py-1 text-sm shadow-sm ' \
                    'border-border placeholder:text-muted-foreground focus-visible:outline-none ' \
                    'focus-visible:ring-1 focus-visible:ring-ring',
-            placeholder: 'e.g., Once daily, Every 4-6 hours'
+            placeholder: 'e.g., Once daily, Every 4-6 hours',
+            data: { action: 'input->prescription-form#validate' }
           )
         end
       end
@@ -130,7 +126,8 @@ module Components
           render f.date_field(
             :start_date,
             class: 'flex h-9 w-full rounded-md border bg-background px-3 py-1 text-sm shadow-sm ' \
-                   'border-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+                   'border-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+            data: { action: 'change->prescription-form#validate' }
           )
         end
       end
