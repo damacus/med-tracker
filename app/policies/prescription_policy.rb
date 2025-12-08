@@ -13,13 +13,13 @@ class PrescriptionPolicy < ApplicationPolicy
     admin? || doctor?
   end
 
-  alias_method :new?, :create?
+  alias new? create?
 
   def update?
     admin? || doctor?
   end
 
-  alias_method :edit?, :update?
+  alias edit? update?
 
   def destroy?
     admin? || doctor?

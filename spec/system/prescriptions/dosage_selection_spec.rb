@@ -31,7 +31,7 @@ RSpec.describe 'Prescription dosage selection' do
 
     # RubyUI Select for dosage - click the trigger
     find('[data-testid="dosage-trigger"]').click
-    expect(page).to have_selector('div[role="option"]', text: '400.0 mg - Standard adult dose')
+    expect(page).to have_css('div[role="option"]', text: '400.0 mg - Standard adult dose')
     find('div[role="option"]', text: '400.0 mg - Standard adult dose').click
 
     fill_in 'Frequency', with: 'Once daily'

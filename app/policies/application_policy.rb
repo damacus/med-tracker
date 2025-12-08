@@ -20,13 +20,13 @@ class ApplicationPolicy
     false
   end
 
-  alias_method :new?, :create?
+  alias new? create?
 
   def update?
     false
   end
 
-  alias_method :edit?, :update?
+  alias edit? update?
 
   def destroy?
     false

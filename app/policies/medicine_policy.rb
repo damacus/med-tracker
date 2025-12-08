@@ -9,19 +9,19 @@ class MedicinePolicy < ApplicationPolicy
     admin? || doctor? || nurse?
   end
 
-  alias_method :dosages?, :show?
+  alias dosages? show?
 
   def create?
     admin? || doctor?
   end
 
-  alias_method :new?, :create?
+  alias new? create?
 
   def update?
     admin? || doctor?
   end
 
-  alias_method :edit?, :update?
+  alias edit? update?
 
   def destroy?
     admin?
