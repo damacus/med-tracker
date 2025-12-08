@@ -198,40 +198,7 @@ module Components
       end
 
       def render_delete_button_mobile(prescription)
-        AlertDialog do
-          AlertDialogTrigger do
-            Button(
-              variant: :destructive,
-              size: :sm,
-              class: delete_badge_classes,
-              data: { test_id: "delete-prescription-#{prescription.id}" }
-            ) { 'Delete' }
-          end
-
-          AlertDialogContent do
-            AlertDialogHeader do
-              AlertDialogTitle { 'Delete Prescription?' }
-              AlertDialogDescription do
-                plain "Are you sure you want to delete #{prescription.medicine.name} "
-                plain "for #{prescription.person.name}? This action cannot be undone."
-              end
-            end
-
-            AlertDialogFooter do
-              AlertDialogCancel { 'Cancel' }
-              Link(
-                href: url_helpers.person_prescription_path(prescription.person, prescription),
-                variant: :destructive,
-                data: {
-                  turbo_method: :delete,
-                  turbo_frame: '_top',
-                  test_id: "confirm-delete-#{prescription.id}",
-                  action: 'click->ruby-ui--alert-dialog#close'
-                }
-              ) { 'Delete' }
-            end
-          end
-        end
+        render_delete_confirmation_dialog(prescription, button_class: delete_badge_classes)
       end
 
       def render_prescription_row(person, prescription)
@@ -295,12 +262,16 @@ module Components
       end
 
       def render_delete_dialog(prescription)
+        render_delete_confirmation_dialog(prescription, button_class: delete_badge_classes)
+      end
+
+      def render_delete_confirmation_dialog(prescription, button_class:)
         AlertDialog do
           AlertDialogTrigger do
             Button(
               variant: :destructive,
               size: :sm,
-              class: delete_badge_classes,
+              class: button_class,
               data: { test_id: "delete-prescription-#{prescription.id}" }
             ) { 'Delete' }
           end
