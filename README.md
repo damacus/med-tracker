@@ -197,7 +197,7 @@ This project uses mkdocs for documentation. To view the documentation locally:
 1. Install mkdocs:
 
    ```bash
-   pip install mkdocs mkdocs-material
+   pip install -r requirements.txt
    ```
 
 2. Serve the documentation:
@@ -207,6 +207,8 @@ This project uses mkdocs for documentation. To view the documentation locally:
    ```
 
 3. Open your browser to `http://localhost:8000`
+
+The documentation is automatically deployed to GitHub Pages when changes are pushed to the main branch. View the live documentation at: https://damacus.github.io/med-tracker/
 
 ### Documentation Agent
 
