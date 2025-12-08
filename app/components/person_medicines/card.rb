@@ -204,7 +204,8 @@ module Components
                 variant: :destructive,
                 data: {
                   turbo_method: :delete,
-                  turbo_confirm: "Are you sure you want to remove #{person_medicine.medicine.name}? This action cannot be undone.",
+                  turbo_confirm: "Are you sure you want to remove #{person_medicine.medicine.name}? '\
+                  'This action cannot be undone.",
                   action: 'click->ruby-ui--alert-dialog#close'
                 }
               ) { 'Remove' }
