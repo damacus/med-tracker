@@ -79,8 +79,8 @@ module Components
                 end
 
                 div(class: 'flex gap-2') do
-                  render RubyUI::Button.new(type: :submit, variant: :primary) { 'Search' }
-                  render RubyUI::Link.new(href: '/admin/users', variant: :outline) { 'Clear' } if active_filters?
+                  Button(type: :submit, variant: :primary) { 'Search' }
+                  Link(href: '/admin/users', variant: :outline) { 'Clear' } if active_filters?
                 end
               end
             end
@@ -183,19 +183,24 @@ module Components
           if user.active?
             render_deactivate_dialog(user)
           else
-            button_to(
-              'Activate',
-              "/admin/users/#{user.id}/activate",
+            form_with(
+              url: "/admin/users/#{user.id}/activate",
               method: :post,
-              class: 'text-green-600 hover:text-green-500 font-medium'
-            )
+              class: 'inline-block'
+            ) do
+              Button(
+                type: :submit,
+                variant: :link,
+                class: 'text-green-600 hover:text-green-500 font-medium'
+              ) { 'Activate' }
+            end
           end
         end
 
         def render_deactivate_dialog(user)
           render RubyUI::AlertDialog.new do
             render RubyUI::AlertDialogTrigger.new do
-              render RubyUI::Button.new(variant: :destructive, size: :sm) { 'Deactivate' }
+              Button(variant: :destructive, size: :sm) { 'Deactivate' }
             end
             render RubyUI::AlertDialogContent.new do
               render RubyUI::AlertDialogHeader.new do
@@ -207,7 +212,7 @@ module Components
               render RubyUI::AlertDialogFooter.new do
                 render(RubyUI::AlertDialogCancel.new { 'Cancel' })
                 form_with(url: "/admin/users/#{user.id}", method: :delete, class: 'inline') do
-                  render RubyUI::Button.new(variant: :destructive, type: :submit) { 'Deactivate' }
+                  Button(variant: :destructive, type: :submit) { 'Deactivate' }
                 end
               end
             end

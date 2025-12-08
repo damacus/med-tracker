@@ -285,27 +285,27 @@ end
 
 ## STEP 3: FIND RAW HTML TO REPLACE
 
-Search for raw HTML elements that should be RubyUI components:
+Search for raw HTML elements that should be RubyUI components using the Grep tool:
 
-```fish
+```ruby
 # Find raw heading tags
-rg '\bh1\(' app/components/ --type ruby -g '!ruby_ui/*'
-rg '\bh2\(' app/components/ --type ruby -g '!ruby_ui/*'
-rg '\bh3\(' app/components/ --type ruby -g '!ruby_ui/*'
+Grep(pattern: '\bh1\(', path: 'app/components/', type: 'ruby', glob: '!ruby_ui/*')
+Grep(pattern: '\bh2\(', path: 'app/components/', type: 'ruby', glob: '!ruby_ui/*')
+Grep(pattern: '\bh3\(', path: 'app/components/', type: 'ruby', glob: '!ruby_ui/*')
 
 # Find raw paragraph tags (check context - some are fine)
-rg '\bp\(' app/components/ --type ruby -g '!ruby_ui/*'
+Grep(pattern: '\bp\(', path: 'app/components/', type: 'ruby', glob: '!ruby_ui/*')
 
 # Find raw anchor tags
-rg '\ba\(' app/components/ --type ruby -g '!ruby_ui/*'
+Grep(pattern: '\ba\(', path: 'app/components/', type: 'ruby', glob: '!ruby_ui/*')
 
 # Find raw form elements
-rg form_with app/components/ --type ruby -g '!ruby_ui/*'
-rg '\binput\(' app/components/ --type ruby -g '!ruby_ui/*'
-rg '\bselect\(' app/components/ --type ruby -g '!ruby_ui/*'
+Grep(pattern: 'form_with', path: 'app/components/', type: 'ruby', glob: '!ruby_ui/*')
+Grep(pattern: '\binput\(', path: 'app/components/', type: 'ruby', glob: '!ruby_ui/*')
+Grep(pattern: '\bselect\(', path: 'app/components/', type: 'ruby', glob: '!ruby_ui/*')
 
 # Find raw button tags
-rg '\bbutton\(' app/components/ --type ruby -g '!ruby_ui/*'
+Grep(pattern: '\bbutton\(', path: 'app/components/', type: 'ruby', glob: '!ruby_ui/*')
 ```
 
 **Exclusions:** Skip files in `app/components/ruby_ui/` - those ARE the component implementations.
