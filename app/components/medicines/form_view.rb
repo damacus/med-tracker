@@ -219,7 +219,6 @@ module Components
           Button(type: :submit, variant: :primary) { 'Save Medicine' }
         end
       end
-
     end
   end
 end

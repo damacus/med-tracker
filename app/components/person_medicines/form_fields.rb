@@ -97,7 +97,6 @@ module Components
           FormFieldHint { 'Minimum time between doses' }
         end
       end
-
     end
   end
 end

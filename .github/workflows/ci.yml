@@ -182,3 +182,124 @@ jobs:
           else
             echo "No files for this shard"
           fi
+
+  lighthouse:
+    runs-on: [ubuntu-latest]
+    name: Lighthouse Mobile Audit
+    needs: [test_non_system]
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: medtracker_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgres://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/medtracker_test
+      RAILS_ENV: production
+      SECRET_KEY_BASE: test-secret-key-base-for-ci-lighthouse-audit
+      RAILS_SERVE_STATIC_FILES: true
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4.7'
+          bundler-cache: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
+      - name: Set up database
+        run: bundle exec rails db:create db:migrate
+
+      - name: Seed database
+        run: bundle exec rails db:seed
+
+      - name: Precompile assets
+        run: bundle exec rails assets:precompile
+
+      - name: Start Rails server
+        run: |
+          bundle exec rails server -p 3000 -d
+          sleep 5
+          curl -s http://localhost:3000/up || (echo "Server failed to start" && exit 1)
+
+      - name: Run Lighthouse audit
+        run: |
+          npx lighthouse http://localhost:3000/login \
+            --output=json,html \
+            --output-path=./lighthouse-report \
+            --chrome-flags="--headless --no-sandbox --disable-gpu" \
+            --form-factor=mobile \
+            --screenEmulation.mobile=true \
+            --screenEmulation.width=375 \
+            --screenEmulation.height=812 \
+            --only-categories=accessibility,best-practices,performance
+
+      - name: Check Lighthouse scores
+        run: |
+          PERF=$(cat lighthouse-report.json | jq '.categories.performance.score * 100 | floor')
+          A11Y=$(cat lighthouse-report.json | jq '.categories.accessibility.score * 100 | floor')
+          BP=$(cat lighthouse-report.json | jq '.categories["best-practices"].score * 100 | floor')
+
+          echo "═══════════════════════════════════════════"
+          echo "         LIGHTHOUSE MOBILE SCORES          "
+          echo "═══════════════════════════════════════════"
+          echo "Performance:     ${PERF}% (threshold: 60%)"
+          echo "Accessibility:   ${A11Y}% (threshold: 80%)"
+          echo "Best Practices:  ${BP}% (threshold: 80%)"
+          echo "═══════════════════════════════════════════"
+
+          FAILED=0
+          if [ "$PERF" -lt 60 ]; then
+            echo "❌ Performance score below 60% threshold!"
+            FAILED=1
+          fi
+          if [ "$A11Y" -lt 80 ]; then
+            echo "❌ Accessibility score below 80% threshold!"
+            FAILED=1
+          fi
+          if [ "$BP" -lt 80 ]; then
+            echo "❌ Best Practices score below 80% threshold!"
+            FAILED=1
+          fi
+
+          if [ "$FAILED" -eq 1 ]; then
+            echo ""
+            echo "Failed audits:"
+            cat lighthouse-report.json | jq -r '[.audits | to_entries[] | select(.value.score != null and .value.score < 1) | {title: .value.title, score: (.value.score * 100 | floor)}] | sort_by(.score) | .[0:10] | .[] | "  [\(.score)%] \(.title)"'
+            exit 1
+          else
+            echo "✅ All scores meet thresholds!"
+          fi
+
+      - name: Upload Lighthouse report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lighthouse-report
+          path: |
+            lighthouse-report.json
+            lighthouse-report.html
+          retention-days: 30

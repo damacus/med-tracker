@@ -123,5 +123,36 @@
 			"Verify title changes per page"
 		],
 		"passes": true
+	},
+	{
+		"id": "A11Y-011",
+		"category": "style",
+		"area": "accessibility",
+		"priority": "high",
+		"description": "HTML element has lang attribute",
+		"rationale": "Screen readers use the lang attribute to determine pronunciation",
+		"steps": [
+			"Inspect HTML element",
+			"Verify lang attribute is present (e.g., lang='en')",
+			"Run Lighthouse accessibility audit",
+			"Verify html-has-lang audit passes"
+		],
+		"passes": false
+	},
+	{
+		"id": "A11Y-012",
+		"category": "style",
+		"area": "accessibility",
+		"priority": "medium",
+		"description": "Heading elements are in sequentially-descending order",
+		"rationale": "Screen reader users navigate by headings; skipping levels is confusing",
+		"steps": [
+			"Inspect page heading structure",
+			"Verify h1 -> h2 -> h3 order (no skipping)",
+			"Fix any h1 -> h3 jumps by using h2",
+			"Run Lighthouse accessibility audit",
+			"Verify heading-order audit passes"
+		],
+		"passes": false
 	}
 ]
