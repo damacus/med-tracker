@@ -230,6 +230,14 @@ jobs:
         with:
           chrome-version: stable
 
+      - name: Install Task
+        uses: arduino/setup-task@v2
+        with:
+          version: 3.x
+
+      - name: Install Node dependencies
+        run: npm ci
+
       - name: Set up database
         run: bundle exec rails db:create db:migrate
 
@@ -246,53 +254,7 @@ jobs:
           curl -s http://localhost:3000/up || (echo "Server failed to start" && exit 1)
 
       - name: Run Lighthouse audit
-        run: |
-          npx lighthouse http://localhost:3000/login \
-            --output=json,html \
-            --output-path=./lighthouse-report \
-            --chrome-flags="--headless --no-sandbox --disable-gpu" \
-            --form-factor=mobile \
-            --screenEmulation.mobile=true \
-            --screenEmulation.width=375 \
-            --screenEmulation.height=812 \
-            --only-categories=accessibility,best-practices,performance
-
-      - name: Check Lighthouse scores
-        run: |
-          PERF=$(cat lighthouse-report.json | jq '.categories.performance.score * 100 | floor')
-          A11Y=$(cat lighthouse-report.json | jq '.categories.accessibility.score * 100 | floor')
-          BP=$(cat lighthouse-report.json | jq '.categories["best-practices"].score * 100 | floor')
-
-          echo "═══════════════════════════════════════════"
-          echo "         LIGHTHOUSE MOBILE SCORES          "
-          echo "═══════════════════════════════════════════"
-          echo "Performance:     ${PERF}% (threshold: 60%)"
-          echo "Accessibility:   ${A11Y}% (threshold: 80%)"
-          echo "Best Practices:  ${BP}% (threshold: 80%)"
-          echo "═══════════════════════════════════════════"
-
-          FAILED=0
-          if [ "$PERF" -lt 60 ]; then
-            echo "❌ Performance score below 60% threshold!"
-            FAILED=1
-          fi
-          if [ "$A11Y" -lt 80 ]; then
-            echo "❌ Accessibility score below 80% threshold!"
-            FAILED=1
-          fi
-          if [ "$BP" -lt 80 ]; then
-            echo "❌ Best Practices score below 80% threshold!"
-            FAILED=1
-          fi
-
-          if [ "$FAILED" -eq 1 ]; then
-            echo ""
-            echo "Failed audits:"
-            cat lighthouse-report.json | jq -r '[.audits | to_entries[] | select(.value.score != null and .value.score < 1) | {title: .value.title, score: (.value.score * 100 | floor)}] | sort_by(.score) | .[0:10] | .[] | "  [\(.score)%] \(.title)"'
-            exit 1
-          else
-            echo "✅ All scores meet thresholds!"
-          fi
+        run: task lighthouse:ci
 
       - name: Upload Lighthouse report
         uses: actions/upload-artifact@v4
