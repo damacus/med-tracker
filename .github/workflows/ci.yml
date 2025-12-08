@@ -97,7 +97,7 @@ jobs:
         run: bundle exec rspec --format RSpec::Github::Formatter --tag ~browser
 
   test_system:
-    runs-on: [ubuntu-slim]
+    runs-on: [ubuntu-latest]
     name: RSpec System Tests (Playwright) - Shard ${{ matrix.shard }}/2
     timeout-minutes: 20
     strategy:
