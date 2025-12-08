@@ -150,12 +150,20 @@ module Components
         return unless view_context.policy(person_medicine).take_medicine?
 
         if person_medicine.can_take_now?
-          button_to(
-            take_medicine_person_person_medicine_path(person, person_medicine),
+          form_with(
+            url: take_medicine_person_person_medicine_path(person, person_medicine),
             method: :post,
-            class: 'inline-flex items-center justify-center rounded-md text-sm font-medium px-3 py-1.5 ' \
-                   'bg-primary text-white shadow-sm hover:bg-primary/90'
-          ) { '💊 Take' }
+            class: 'inline-block'
+          ) do
+            Button(
+              type: :submit,
+              variant: :primary,
+              size: :sm,
+              class: 'inline-flex items-center gap-1'
+            ) do
+              plain '💊 Take'
+            end
+          end
         else
           render_disabled_button_with_countdown
         end
@@ -191,11 +199,14 @@ module Components
                 variant: :outline,
                 data: { action: 'click->ruby-ui--alert-dialog#close' }
               ) { 'Cancel' }
-              button_to(
-                person_person_medicine_path(person, person_medicine),
-                method: :delete,
-                class: 'inline-flex items-center justify-center rounded-md text-sm font-medium px-4 py-2 ' \
-                       'bg-destructive text-white shadow-sm hover:bg-destructive/90'
+              Link(
+                href: person_person_medicine_path(person, person_medicine),
+                variant: :destructive,
+                data: {
+                  turbo_method: :delete,
+                  turbo_confirm: "Are you sure you want to remove #{person_medicine.medicine.name}? This action cannot be undone.",
+                  action: 'click->ruby-ui--alert-dialog#close'
+                }
               ) { 'Remove' }
             end
           end

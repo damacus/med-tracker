@@ -77,7 +77,7 @@ module Components
       def render_profile_menu
         render RubyUI::DropdownMenu.new do
           render RubyUI::DropdownMenuTrigger.new(class: 'w-full') do
-            render RubyUI::Button.new(variant: :outline) { current_user_name }
+            Button(variant: :outline) { current_user_name }
           end
           render RubyUI::DropdownMenuContent.new do
             render(RubyUI::DropdownMenuLabel.new { 'My Account' })

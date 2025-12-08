@@ -98,19 +98,24 @@ module Components
           if relationship.active?
             render_deactivate_dialog(relationship)
           else
-            button_to(
-              'Activate',
-              "/admin/carer_relationships/#{relationship.id}/activate",
+            form_with(
+              url: "/admin/carer_relationships/#{relationship.id}/activate",
               method: :post,
-              class: 'text-green-600 hover:text-green-500 font-medium'
-            )
+              class: 'inline-block'
+            ) do
+              Button(
+                type: :submit,
+                variant: :link,
+                class: 'text-green-600 hover:text-green-500 font-medium'
+              ) { 'Activate' }
+            end
           end
         end
 
         def render_deactivate_dialog(relationship)
           render RubyUI::AlertDialog.new do
             render RubyUI::AlertDialogTrigger.new do
-              render RubyUI::Button.new(variant: :destructive, size: :sm) { 'Deactivate' }
+              Button(variant: :destructive, size: :sm) { 'Deactivate' }
             end
             render RubyUI::AlertDialogContent.new do
               render RubyUI::AlertDialogHeader.new do
@@ -123,7 +128,7 @@ module Components
               render RubyUI::AlertDialogFooter.new do
                 render(RubyUI::AlertDialogCancel.new { 'Cancel' })
                 form_with(url: "/admin/carer_relationships/#{relationship.id}", method: :delete, class: 'inline') do
-                  render RubyUI::Button.new(variant: :destructive, type: :submit) { 'Deactivate' }
+                  Button(variant: :destructive, type: :submit) { 'Deactivate' }
                 end
               end
             end

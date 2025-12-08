@@ -100,7 +100,7 @@ module Components
 
         def render_filter_actions
           div(class: 'flex gap-2') do
-            render RubyUI::Button.new(type: :submit, variant: :primary, class: 'hidden') { 'Filter' }
+            Button(type: :submit, variant: :primary, class: 'hidden') { 'Filter' }
             render_clear_button if filters_active?
           end
         end

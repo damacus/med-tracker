@@ -6,6 +6,7 @@ module Components
     class IndexView < Components::Base
       include Pundit::Authorization
       include Phlex::Rails::Helpers::ButtonTo
+      include Phlex::Rails::Helpers::FormWith
 
       attr_reader :people, :active_prescriptions, :upcoming_prescriptions, :url_helpers, :current_user
 
@@ -170,12 +171,19 @@ module Components
       def render_prescription_actions(prescription)
         div(class: 'flex items-center justify-center gap-2') do
           if url_helpers
-            button_to(
-              url_helpers.prescription_medication_takes_path(prescription),
+            form_with(
+              url: url_helpers.prescription_medication_takes_path(prescription),
               method: :post,
-              class: take_now_badge_classes,
-              data: { test_id: "take-medicine-#{prescription.id}" }
-            ) { 'Take Now' }
+              class: 'inline-block'
+            ) do
+              Button(
+                type: :submit,
+                variant: :primary,
+                size: :sm,
+                class: take_now_badge_classes,
+                data: { test_id: "take-medicine-#{prescription.id}" }
+              ) { 'Take Now' }
+            end
           end
 
           render_delete_dialog(prescription) if can_delete_prescription?(prescription)
@@ -185,7 +193,9 @@ module Components
       def render_delete_dialog(prescription)
         AlertDialog do
           AlertDialogTrigger do
-            button(
+            Button(
+              variant: :destructive,
+              size: :sm,
               class: delete_badge_classes,
               data: { test_id: "delete-prescription-#{prescription.id}" }
             ) { 'Delete' }
@@ -202,13 +212,15 @@ module Components
 
             AlertDialogFooter do
               AlertDialogCancel { 'Cancel' }
-              button_to(
-                url_helpers.person_prescription_path(prescription.person, prescription),
-                method: :delete,
-                form: { data: { turbo_frame: '_top' } },
-                class: 'inline-flex items-center justify-center rounded-md text-sm font-medium px-4 py-2 ' \
-                       'bg-destructive text-destructive-foreground hover:bg-destructive/90',
-                data: { test_id: "confirm-delete-#{prescription.id}" }
+              Link(
+                href: url_helpers.person_prescription_path(prescription.person, prescription),
+                variant: :destructive,
+                data: {
+                  turbo_method: :delete,
+                  turbo_frame: '_top',
+                  test_id: "confirm-delete-#{prescription.id}",
+                  action: 'click->ruby-ui--alert-dialog#close'
+                }
               ) { 'Delete' }
             end
           end

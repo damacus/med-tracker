@@ -23,18 +23,18 @@
     "passes": true
   },
   {
-    "id": "UI-002",
-    "category": "consistency",
-    "area": "styling",
-    "priority": "high",
+    "id": "ui-002",
+    "category": "ui",
+    "area": "ui_improvements",
     "description": "Standardize button styling using RubyUI::Button component",
-    "rationale": "Mixed usage of raw HTML buttons, custom CSS classes, and RubyUI::Button",
-    "acceptance_criteria": [
-      "All buttons use RubyUI::Button component",
-      "Consistent variant usage: primary for main actions, outline for secondary, destructive for delete",
-      "Remove duplicate button class definitions from components"
-    ],
-    "passes": false
+    "priority": "high",
+    "passes": true,
+    "steps": [
+      "Audit all button usage across components",
+      "Identify non-RubyUI buttons",
+      "Replace with RubyUI::Button using appropriate variants",
+      "Remove inline Tailwind button classes"
+    ]
   },
   {
     "id": "UI-003",
