@@ -73,33 +73,39 @@ module Components
         end
       end
 
-      def render_name_field(f)
+      def render_name_field(_f)
         FormField do
           FormFieldLabel(for: 'person_name') { 'Name' }
-          render f.text_field(
-            :name,
-            class: input_classes,
+          Input(
+            type: :text,
+            name: 'person[name]',
+            id: 'person_name',
+            value: person.name,
             required: true
           )
         end
       end
 
-      def render_email_field(f)
+      def render_email_field(_f)
         FormField do
           FormFieldLabel(for: 'person_email') { 'Email' }
-          render f.email_field(
-            :email,
-            class: input_classes
+          Input(
+            type: :email,
+            name: 'person[email]',
+            id: 'person_email',
+            value: person.email
           )
         end
       end
 
-      def render_date_of_birth_field(f)
+      def render_date_of_birth_field(_f)
         FormField do
           FormFieldLabel(for: 'person_date_of_birth') { 'Date of Birth' }
-          render f.date_field(
-            :date_of_birth,
-            class: input_classes,
+          Input(
+            type: :date,
+            name: 'person[date_of_birth]',
+            id: 'person_date_of_birth',
+            value: person.date_of_birth&.to_s,
             required: true
           )
         end
@@ -128,12 +134,21 @@ module Components
         end
       end
 
-      def render_capacity_field(f)
+      def render_capacity_field(_f)
         FormField do
           div(class: 'flex items-center gap-3') do
-            render f.check_box(
-              :has_capacity,
-              class: 'h-4 w-4 rounded border-border text-primary focus:ring-ring',
+            input(
+              type: 'hidden',
+              name: 'person[has_capacity]',
+              value: '0'
+            )
+            input(
+              type: 'checkbox',
+              name: 'person[has_capacity]',
+              id: 'person_has_capacity',
+              value: '1',
+              checked: person.has_capacity,
+              class: checkbox_classes,
               data: {
                 controller: 'capacity-hint',
                 action: 'capacity-hint#toggleHint',
@@ -168,12 +183,6 @@ module Components
             person.new_record? ? 'Create Person' : 'Update Person'
           end
         end
-      end
-
-      def input_classes
-        'flex h-9 w-full rounded-md border bg-background px-3 py-1 text-sm shadow-sm ' \
-          'border-border placeholder:text-muted-foreground focus-visible:outline-none ' \
-          'focus-visible:ring-1 focus-visible:ring-ring'
       end
     end
   end

@@ -13,6 +13,8 @@ includes:
     taskfile: Taskfiles/internal.yml
   jq:
     taskfile: Taskfiles/jq.yml
+  lighthouse:
+    taskfile: Taskfiles/lighthouse.yml
 
 tasks:
   default:

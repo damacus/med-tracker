@@ -88,6 +88,41 @@ To run the full test suite, use the following command:
 bundle exec rspec
 ```
 
+## Lighthouse Audits
+
+MedTracker includes Lighthouse mobile auditing for performance, accessibility, and best practices.
+
+### Running Locally
+
+```bash
+# Start the dev server first
+task dev:up
+
+# Run Lighthouse audit on dashboard
+task lighthouse:run
+
+# Run on a specific page
+task lighthouse:run URL=http://localhost:3000/medicines
+
+# View score summary
+task lighthouse:summary
+
+# List failed audits
+task lighthouse:failed-audits
+```
+
+### CI Integration
+
+Lighthouse runs automatically in CI after tests pass with the following thresholds:
+
+| Category | Threshold |
+|----------|-----------|
+| Performance | 70% |
+| Accessibility | 85% |
+| Best Practices | 85% |
+
+Reports are uploaded as artifacts and retained for 30 days.
+
 ## Docker Deployment
 
 MedTracker includes Docker Compose configurations for development, production, and test environments.

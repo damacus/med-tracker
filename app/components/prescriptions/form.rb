@@ -38,11 +38,6 @@ module Components
                 li { message }
               end
             end
-            TypographyList(items: [
-                             'Phlex is fast',
-                             'Phlex is easy to use',
-                             'Phlex is awesome'
-                           ])
           end
         end
       end
@@ -124,14 +119,14 @@ module Components
         end
       end
 
-      def render_frequency_field(f)
+      def render_frequency_field(_f)
         FormField do
           FormFieldLabel(for: 'prescription_frequency') { 'Frequency' }
-          render f.text_field(
-            :frequency,
-            class: 'flex h-9 w-full rounded-md border bg-background px-3 py-1 text-sm shadow-sm ' \
-                   'border-border placeholder:text-muted-foreground focus-visible:outline-none ' \
-                   'focus-visible:ring-1 focus-visible:ring-ring',
+          Input(
+            type: :text,
+            name: 'prescription[frequency]',
+            id: 'prescription_frequency',
+            value: prescription.frequency,
             placeholder: 'e.g., Once daily, Every 4-6 hours',
             data: { action: 'input->prescription-form#validate' }
           )
@@ -180,28 +175,30 @@ module Components
         end
       end
 
-      def render_max_doses_field(f)
+      def render_max_doses_field(_f)
         FormField do
           FormFieldLabel(for: 'prescription_max_daily_doses') { 'Max doses per cycle' }
           FormFieldHint { 'Maximum number of doses allowed per cycle' }
-          render f.number_field(
-            :max_daily_doses,
-            min: 1,
-            class: 'flex h-9 w-full rounded-md border bg-background px-3 py-1 text-sm shadow-sm ' \
-                   'border-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+          Input(
+            type: :number,
+            name: 'prescription[max_daily_doses]',
+            id: 'prescription_max_daily_doses',
+            value: prescription.max_daily_doses,
+            min: 1
           )
         end
       end
 
-      def render_min_hours_field(f)
+      def render_min_hours_field(_f)
         FormField do
           FormFieldLabel(for: 'prescription_min_hours_between_doses') { 'Minimum hours between doses' }
           FormFieldHint { 'Minimum time required between doses' }
-          render f.number_field(
-            :min_hours_between_doses,
-            min: 1,
-            class: 'flex h-9 w-full rounded-md border bg-background px-3 py-1 text-sm shadow-sm ' \
-                   'border-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+          Input(
+            type: :number,
+            name: 'prescription[min_hours_between_doses]',
+            id: 'prescription_min_hours_between_doses',
+            value: prescription.min_hours_between_doses,
+            min: 1
           )
         end
       end

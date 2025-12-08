@@ -60,5 +60,50 @@
 			"Verify reasonable load time"
 		],
 		"passes": false
+	},
+	{
+		"id": "PERF-006",
+		"category": "functional",
+		"area": "performance",
+		"priority": "low",
+		"description": "JavaScript is minified in production",
+		"rationale": "Lighthouse reports unminified JavaScript; ensure production builds are optimized",
+		"steps": [
+			"Build assets for production (RAILS_ENV=production)",
+			"Verify JS files in public/assets are minified",
+			"Run Lighthouse audit in production mode",
+			"Verify unminified-javascript audit passes or has minimal impact"
+		],
+		"passes": false
+	},
+	{
+		"id": "PERF-007",
+		"category": "functional",
+		"area": "performance",
+		"priority": "medium",
+		"description": "Lighthouse performance score >= 80%",
+		"rationale": "Mobile performance is critical for medication tracking app used in various conditions",
+		"steps": [
+			"Run Lighthouse mobile audit on dashboard",
+			"Verify performance score >= 80%",
+			"Address any critical performance issues",
+			"Re-run audit to confirm improvements"
+		],
+		"passes": false
+	},
+	{
+		"id": "PERF-008",
+		"category": "functional",
+		"area": "performance",
+		"priority": "high",
+		"description": "Lighthouse accessibility score >= 90%",
+		"rationale": "Accessibility is critical for healthcare applications",
+		"steps": [
+			"Run Lighthouse mobile audit on key pages",
+			"Verify accessibility score >= 90%",
+			"Address any accessibility issues",
+			"Re-run audit to confirm improvements"
+		],
+		"passes": false
 	}
 ]

@@ -44,3 +44,8 @@
 *.sqlite3
 db/*.sqlite3-*
 claude-progress.txt
+feedback.txt
+
+# Lighthouse reports
+lighthouse-*
+node_modules

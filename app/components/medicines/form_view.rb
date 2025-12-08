@@ -74,9 +74,9 @@ module Components
 
       def render_name_field(_form)
         div(class: 'sm:col-span-2') do
-          render RubyUI::FormField.new do
-            render RubyUI::FormFieldLabel.new(for: 'medicine_name') { 'Name' }
-            render RubyUI::Input.new(
+          FormField do
+            FormFieldLabel(for: 'medicine_name') { 'Name' }
+            Input(
               type: :text,
               name: 'medicine[name]',
               id: 'medicine_name',
@@ -89,13 +89,12 @@ module Components
 
       def render_description_field(_form)
         div(class: 'sm:col-span-2') do
-          render RubyUI::FormField.new do
-            render RubyUI::FormFieldLabel.new(for: 'medicine_description') { 'Description' }
-            textarea(
+          FormField do
+            FormFieldLabel(for: 'medicine_description') { 'Description' }
+            Textarea(
               name: 'medicine[description]',
               id: 'medicine_description',
-              rows: '3',
-              class: input_classes
+              rows: 3
             ) { medicine.description }
           end
         end
@@ -108,9 +107,9 @@ module Components
 
       def render_dosage_amount_field
         div do
-          render RubyUI::FormField.new do
-            render RubyUI::FormFieldLabel.new(for: 'medicine_dosage_amount') { 'Standard Dosage' }
-            render RubyUI::Input.new(
+          FormField do
+            FormFieldLabel(for: 'medicine_dosage_amount') { 'Standard Dosage' }
+            Input(
               type: :number,
               name: 'medicine[dosage_amount]',
               id: 'medicine_dosage_amount',
@@ -124,22 +123,18 @@ module Components
 
       def render_dosage_unit_field
         div do
-          render RubyUI::FormField.new do
-            render RubyUI::FormFieldLabel.new(for: 'medicine_dosage_unit') { 'Unit' }
-            render_dosage_unit_select
-          end
-        end
-      end
-
-      def render_dosage_unit_select
-        select(
-          name: 'medicine[dosage_unit]',
-          id: 'medicine_dosage_unit',
-          class: input_classes
-        ) do
-          option(value: '', selected: medicine.dosage_unit.blank?) { 'Select unit' }
-          dosage_units.each do |unit|
-            option(value: unit, selected: medicine.dosage_unit == unit) { unit }
+          FormField do
+            FormFieldLabel(for: 'medicine_dosage_unit') { 'Unit' }
+            select(
+              name: 'medicine[dosage_unit]',
+              id: 'medicine_dosage_unit',
+              class: select_classes
+            ) do
+              option(value: '', selected: medicine.dosage_unit.blank?) { 'Select unit' }
+              dosage_units.each do |unit|
+                option(value: unit, selected: medicine.dosage_unit == unit) { unit }
+              end
+            end
           end
         end
       end
@@ -156,9 +151,9 @@ module Components
 
       def render_current_supply_field
         div do
-          render RubyUI::FormField.new do
-            render RubyUI::FormFieldLabel.new(for: 'medicine_current_supply') { 'Current Supply' }
-            render RubyUI::Input.new(
+          FormField do
+            FormFieldLabel(for: 'medicine_current_supply') { 'Current Supply' }
+            Input(
               type: :number,
               name: 'medicine[current_supply]',
               id: 'medicine_current_supply',
@@ -171,9 +166,9 @@ module Components
 
       def render_stock_field
         div do
-          render RubyUI::FormField.new do
-            render RubyUI::FormFieldLabel.new(for: 'medicine_stock') { 'Stock' }
-            render RubyUI::Input.new(
+          FormField do
+            FormFieldLabel(for: 'medicine_stock') { 'Stock' }
+            Input(
               type: :number,
               name: 'medicine[stock]',
               id: 'medicine_stock',
@@ -186,9 +181,9 @@ module Components
 
       def render_reorder_threshold_field
         div do
-          render RubyUI::FormField.new do
-            render RubyUI::FormFieldLabel.new(for: 'medicine_reorder_threshold') { 'Reorder Threshold' }
-            render RubyUI::Input.new(
+          FormField do
+            FormFieldLabel(for: 'medicine_reorder_threshold') { 'Reorder Threshold' }
+            Input(
               type: :number,
               name: 'medicine[reorder_threshold]',
               id: 'medicine_reorder_threshold',
@@ -201,13 +196,12 @@ module Components
 
       def render_warnings_field(_form)
         div(class: 'sm:col-span-2') do
-          render RubyUI::FormField.new do
-            render RubyUI::FormFieldLabel.new(for: 'medicine_warnings') { 'Warnings' }
-            textarea(
+          FormField do
+            FormFieldLabel(for: 'medicine_warnings') { 'Warnings' }
+            Textarea(
               name: 'medicine[warnings]',
               id: 'medicine_warnings',
-              rows: '3',
-              class: input_classes
+              rows: 3
             ) { medicine.warnings }
           end
         end
@@ -218,16 +212,6 @@ module Components
           Link(href: medicines_path, variant: :outline) { 'Back to Medicines' }
           Button(type: :submit, variant: :primary) { 'Save Medicine' }
         end
-      end
-
-      def input_classes
-        'w-full rounded-md border border-input bg-background px-3 py-2 text-sm ' \
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
-      end
-
-      def button_secondary_classes
-        'inline-flex items-center justify-center rounded-md font-medium transition-colors ' \
-          'px-4 py-2 h-10 text-sm border border-input bg-background hover:bg-accent hover:text-accent-foreground'
       end
     end
   end

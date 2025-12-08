@@ -799,5 +799,21 @@
       "Verify still on profile page"
     ],
     "passes": true
+  },
+  {
+    "id": "SEC-CSP-001",
+    "category": "security",
+    "area": "csp",
+    "priority": "medium",
+    "description": "Fix CSP violations for inline styles",
+    "rationale": "Console shows CSP warnings for inline styles which should be addressed",
+    "steps": [
+      "Review browser console for CSP violations",
+      "Identify sources of inline styles (RubyUI components, etc.)",
+      "Either add nonces to inline styles or move to external stylesheets",
+      "Update CSP policy if needed with appropriate hashes",
+      "Verify no CSP violations in console after fix"
+    ],
+    "passes": false
   }
 ]

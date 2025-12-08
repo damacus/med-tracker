@@ -1,0 +1,136 @@
+---
+version: '3'
+
+tasks:
+  run:
+    desc: Run Lighthouse audit on dashboard (requires dev server running)
+    summary: |
+      Run Lighthouse mobile audit on the dashboard page
+      Requires: task dev:up to be running
+      Output: lighthouse-report.json and lighthouse-report.html
+      Usage: task lighthouse:run
+      Usage: task lighthouse:run URL=http://localhost:3000/medicines
+    vars:
+      URL: '{{ .URL | default "http://localhost:3000/dashboard" }}'
+    cmds:
+      - |
+        echo "Running Lighthouse audit on {{ .URL }}..."
+        npx lighthouse {{ .URL }} \
+          --output=json,html \
+          --output-path=./lighthouse-report \
+          --chrome-flags="--headless --no-sandbox" \
+          --form-factor=mobile \
+          --screenEmulation.mobile=true \
+          --screenEmulation.width=375 \
+          --screenEmulation.height=812 \
+          --only-categories=accessibility,best-practices,performance
+      - task: summary
+
+  summary:
+    desc: Display Lighthouse score summary
+    summary: |
+      Parse and display Lighthouse scores from the latest report
+      Usage: task lighthouse:summary
+    cmds:
+      - |
+        if [ -f lighthouse-report.json ]; then
+          echo ""
+          echo "═══════════════════════════════════════════"
+          echo "         LIGHTHOUSE MOBILE SCORES          "
+          echo "═══════════════════════════════════════════"
+          cat lighthouse-report.json | jq -r '
+            "Performance:     \((.categories.performance.score * 100 | floor))%",
+            "Accessibility:   \((.categories.accessibility.score * 100 | floor))%",
+            "Best Practices:  \((.categories["best-practices"].score * 100 | floor))%"
+          '
+          echo "═══════════════════════════════════════════"
+          echo ""
+          echo "Full report: lighthouse-report.html"
+        else
+          echo "No lighthouse-report.json found. Run 'task lighthouse:run' first."
+          exit 1
+        fi
+
+  ci:
+    desc: Run Lighthouse audit for CI (fails if scores below threshold)
+    summary: |
+      Run Lighthouse audit and fail if scores are below thresholds
+      Default thresholds: Performance 70%, Accessibility 85%, Best Practices 85%
+      Usage: task lighthouse:ci
+      Usage: task lighthouse:ci URL=http://localhost:3000/login
+      Usage: task lighthouse:ci PERF_THRESHOLD=60 A11Y_THRESHOLD=80 BP_THRESHOLD=80
+    vars:
+      URL: '{{ .URL | default "http://localhost:3000/login" }}'
+      PERF_THRESHOLD: '{{ .PERF_THRESHOLD | default "70" }}'
+      A11Y_THRESHOLD: '{{ .A11Y_THRESHOLD | default "85" }}'
+      BP_THRESHOLD: '{{ .BP_THRESHOLD | default "85" }}'
+      REPORT_PATH: '{{ .REPORT_PATH | default "./lighthouse-report" }}'
+    cmds:
+      - |
+        set -euo pipefail
+        echo "Running Lighthouse CI audit on {{ .URL }}..."
+        npx lighthouse {{ .URL }} \
+          --output=json,html \
+          --output-path={{ .REPORT_PATH }} \
+          --chrome-flags="--headless --no-sandbox --disable-gpu" \
+          --form-factor=mobile \
+          --screenEmulation.mobile=true \
+          --screenEmulation.width=375 \
+          --screenEmulation.height=812 \
+          --only-categories=accessibility,best-practices,performance
+      - |
+        set -euo pipefail
+        REPORT_FILE="{{ .REPORT_PATH }}.json"
+        echo ""
+        echo "═══════════════════════════════════════════"
+        echo "         LIGHTHOUSE MOBILE SCORES          "
+        echo "═══════════════════════════════════════════"
+
+        PERF=$(cat "$REPORT_FILE" | jq '.categories.performance.score * 100 | floor')
+        A11Y=$(cat "$REPORT_FILE" | jq '.categories.accessibility.score * 100 | floor')
+        BP=$(cat "$REPORT_FILE" | jq '.categories["best-practices"].score * 100 | floor')
+
+        echo "Performance:     ${PERF}% (threshold: {{ .PERF_THRESHOLD }}%)"
+        echo "Accessibility:   ${A11Y}% (threshold: {{ .A11Y_THRESHOLD }}%)"
+        echo "Best Practices:  ${BP}% (threshold: {{ .BP_THRESHOLD }}%)"
+        echo "═══════════════════════════════════════════"
+
+        FAILED=0
+        if [ "$PERF" -lt "{{ .PERF_THRESHOLD }}" ]; then
+          echo "❌ Performance score below threshold!"
+          FAILED=1
+        fi
+        if [ "$A11Y" -lt "{{ .A11Y_THRESHOLD }}" ]; then
+          echo "❌ Accessibility score below threshold!"
+          FAILED=1
+        fi
+        if [ "$BP" -lt "{{ .BP_THRESHOLD }}" ]; then
+          echo "❌ Best Practices score below threshold!"
+          FAILED=1
+        fi
+
+        if [ "$FAILED" -eq 1 ]; then
+          echo ""
+          echo "Top 10 failed audits:"
+          cat "$REPORT_FILE" | jq -r '[.audits | to_entries[] | select(.value.score != null and .value.score < 1) | {title: .value.title, score: (.value.score * 100 | floor)}] | sort_by(.score) | .[0:10] | .[] | "  [\(.score)%] \(.title)"'
+          exit 1
+        else
+          echo "✅ All scores meet thresholds!"
+        fi
+
+  failed-audits:
+    desc: List failed Lighthouse audits
+    summary: |
+      Show details of failed audits from the latest report
+      Usage: task lighthouse:failed-audits
+    cmds:
+      - |
+        if [ -f lighthouse-report.json ]; then
+          echo "Failed audits:"
+          cat lighthouse-report.json | jq -r '
+            [.audits | to_entries[] | select(.value.score != null and .value.score < 1) | {id: .key, score: (.value.score * 100 | floor | tostring + "%"), title: .value.title}] | .[] | "  [\(.score)] \(.title)"
+          '
+        else
+          echo "No lighthouse-report.json found. Run 'task lighthouse:run' first."
+          exit 1
+        fi
