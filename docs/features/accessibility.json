@@ -1,0 +1,158 @@
+[
+	{
+		"id": "A11Y-001",
+		"category": "style",
+		"area": "accessibility",
+		"description": "All images have alt text",
+		"steps": [
+			"Inspect all images",
+			"Verify alt attributes present",
+			"Verify alt text is descriptive"
+		],
+		"passes": true
+	},
+	{
+		"id": "A11Y-002",
+		"category": "style",
+		"area": "accessibility",
+		"description": "Form inputs have labels",
+		"steps": [
+			"Inspect all forms",
+			"Verify each input has associated label",
+			"Verify labels are visible or sr-only"
+		],
+		"passes": true
+	},
+	{
+		"id": "A11Y-003",
+		"category": "style",
+		"area": "accessibility",
+		"description": "Buttons have accessible names",
+		"steps": [
+			"Inspect all buttons",
+			"Verify text content or aria-label",
+			"Verify icon-only buttons have aria-label"
+		],
+		"passes": true
+	},
+	{
+		"id": "A11Y-004",
+		"category": "style",
+		"area": "accessibility",
+		"description": "Color contrast meets WCAG AA",
+		"steps": [
+			"Run contrast checker on key pages",
+			"Verify text contrast >= 4.5:1",
+			"Verify large text contrast >= 3:1"
+		],
+		"passes": true
+	},
+	{
+		"id": "A11Y-005",
+		"category": "style",
+		"area": "accessibility",
+		"description": "Keyboard navigation works",
+		"steps": [
+			"Navigate using Tab key only",
+			"Verify all interactive elements focusable",
+			"Verify focus visible",
+			"Verify logical tab order"
+		],
+		"passes": true
+	},
+	{
+		"id": "A11Y-006",
+		"category": "style",
+		"area": "accessibility",
+		"description": "Skip to main content link exists",
+		"steps": [
+			"Focus on page load",
+			"Verify skip link appears",
+			"Click skip link",
+			"Verify focus moves to main content"
+		],
+		"passes": false
+	},
+	{
+		"id": "A11Y-007",
+		"category": "style",
+		"area": "accessibility",
+		"description": "ARIA landmarks used correctly",
+		"steps": [
+			"Inspect page structure",
+			"Verify main landmark",
+			"Verify navigation landmark",
+			"Verify no duplicate main landmarks"
+		],
+		"passes": true
+	},
+	{
+		"id": "A11Y-008",
+		"category": "style",
+		"area": "accessibility",
+		"description": "Error messages announced to screen readers",
+		"steps": [
+			"Submit form with errors",
+			"Verify aria-live region or role=alert",
+			"Verify errors announced"
+		],
+		"passes": false
+	},
+	{
+		"id": "A11Y-009",
+		"category": "style",
+		"area": "accessibility",
+		"description": "Dialogs trap focus correctly",
+		"steps": [
+			"Open dialog",
+			"Tab through dialog",
+			"Verify focus stays within dialog",
+			"Close dialog",
+			"Verify focus returns to trigger"
+		],
+		"passes": true
+	},
+	{
+		"id": "A11Y-010",
+		"category": "style",
+		"area": "accessibility",
+		"description": "Page titles are descriptive",
+		"steps": [
+			"Navigate to each page",
+			"Verify title element is descriptive",
+			"Verify title changes per page"
+		],
+		"passes": true
+	},
+	{
+		"id": "A11Y-011",
+		"category": "style",
+		"area": "accessibility",
+		"priority": "high",
+		"description": "HTML element has lang attribute",
+		"rationale": "Screen readers use the lang attribute to determine pronunciation",
+		"steps": [
+			"Inspect HTML element",
+			"Verify lang attribute is present (e.g., lang='en')",
+			"Run Lighthouse accessibility audit",
+			"Verify html-has-lang audit passes"
+		],
+		"passes": false
+	},
+	{
+		"id": "A11Y-012",
+		"category": "style",
+		"area": "accessibility",
+		"priority": "medium",
+		"description": "Heading elements are in sequentially-descending order",
+		"rationale": "Screen reader users navigate by headings; skipping levels is confusing",
+		"steps": [
+			"Inspect page heading structure",
+			"Verify h1 -> h2 -> h3 order (no skipping)",
+			"Fix any h1 -> h3 jumps by using h2",
+			"Run Lighthouse accessibility audit",
+			"Verify heading-order audit passes"
+		],
+		"passes": false
+	}
+]

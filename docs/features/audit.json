@@ -1,0 +1,213 @@
+[
+  {
+    "id": "AUDIT-001",
+    "category": "functional",
+    "area": "audit",
+    "description": "User creation is logged",
+    "steps": [
+      "Create new user",
+      "Log in as administrator",
+      "Navigate to /admin/audit_logs",
+      "Verify create event for User logged",
+      "Verify timestamp recorded"
+    ],
+    "passes": true
+  },
+  {
+    "id": "AUDIT-002",
+    "category": "functional",
+    "area": "audit",
+    "description": "User update is logged",
+    "steps": [
+      "Update existing user",
+      "Log in as administrator",
+      "Navigate to /admin/audit_logs",
+      "Verify update event logged",
+      "Verify changes recorded"
+    ],
+    "passes": true
+  },
+  {
+    "id": "AUDIT-003",
+    "category": "functional",
+    "area": "audit",
+    "description": "Person creation is logged",
+    "steps": [
+      "Create new person",
+      "Log in as administrator",
+      "Navigate to /admin/audit_logs",
+      "Verify create event for Person logged"
+    ],
+    "passes": true
+  },
+  {
+    "id": "AUDIT-004",
+    "category": "functional",
+    "area": "audit",
+    "description": "CarerRelationship creation is logged",
+    "steps": [
+      "Create new carer relationship",
+      "Log in as administrator",
+      "Navigate to /admin/audit_logs",
+      "Verify create event logged"
+    ],
+    "passes": true
+  },
+  {
+    "id": "AUDIT-005",
+    "category": "functional",
+    "area": "audit",
+    "description": "MedicationTake creation is logged",
+    "steps": [
+      "Record medication take",
+      "Log in as administrator",
+      "Navigate to /admin/audit_logs",
+      "Verify create event logged"
+    ],
+    "passes": true
+  },
+  {
+    "id": "AUDIT-006",
+    "category": "functional",
+    "area": "audit",
+    "description": "Audit log shows who made changes (whodunnit)",
+    "steps": [
+      "Log in as specific user",
+      "Make a change",
+      "Log in as administrator",
+      "Navigate to /admin/audit_logs",
+      "Verify whodunnit shows correct user"
+    ],
+    "passes": true
+  },
+  {
+    "id": "AUDIT-007",
+    "category": "functional",
+    "area": "audit",
+    "description": "Audit log shows IP address",
+    "steps": [
+      "Make a change",
+      "Log in as administrator",
+      "Navigate to /admin/audit_logs",
+      "Verify IP address recorded"
+    ],
+    "passes": true
+  },
+  {
+    "id": "AUDIT-008",
+    "category": "functional",
+    "area": "audit",
+    "description": "Audit log can be filtered by record type",
+    "steps": [
+      "Log in as administrator",
+      "Navigate to /admin/audit_logs",
+      "Select User from filter",
+      "Verify only User entries shown"
+    ],
+    "passes": true
+  },
+  {
+    "id": "AUDIT-009",
+    "category": "functional",
+    "area": "audit",
+    "description": "Audit log can be filtered by event type",
+    "steps": [
+      "Log in as administrator",
+      "Navigate to /admin/audit_logs",
+      "Select update from filter",
+      "Verify only update events shown"
+    ],
+    "passes": true
+  },
+  {
+    "id": "AUDIT-010",
+    "category": "functional",
+    "area": "audit",
+    "description": "Audit log shows previous state before changes",
+    "steps": [
+      "Update user role from carer to nurse",
+      "Log in as administrator",
+      "Navigate to /admin/audit_logs",
+      "Find update event",
+      "Verify previous state shows carer"
+    ],
+    "passes": true
+  },
+  {
+    "id": "AUDIT-011",
+    "category": "functional",
+    "area": "audit",
+    "description": "Audit logs cannot be edited or deleted",
+    "steps": [
+      "Log in as administrator",
+      "Navigate to /admin/audit_logs",
+      "Verify no edit/delete buttons",
+      "Attempt direct endpoint access",
+      "Verify denied"
+    ],
+    "passes": true
+  },
+  {
+    "id": "AUDIT-012",
+    "category": "functional",
+    "area": "audit",
+    "description": "Password fields excluded from audit logs",
+    "steps": [
+      "Create user with password",
+      "Log in as administrator",
+      "Navigate to /admin/audit_logs",
+      "Find create event",
+      "Verify password_digest not in logged data"
+    ],
+    "passes": true
+  },
+  {
+    "id": "AUDIT-013",
+    "category": "functional",
+    "area": "audit",
+    "description": "Complete audit trail review workflow",
+    "steps": [
+      "Log in as administrator",
+      "Navigate to /admin/audit_logs",
+      "Verify list of audit entries displayed",
+      "Verify columns: timestamp, record type, event, user",
+      "Click on a specific audit entry",
+      "Verify detailed view shows all changes",
+      "Verify previous state displayed",
+      "Verify new state displayed",
+      "Navigate back to list",
+      "Select filter: record type = User",
+      "Verify only User entries shown",
+      "Select filter: event type = update",
+      "Verify only update events shown",
+      "Clear all filters",
+      "Verify all entries shown again",
+      "Verify pagination works if many entries"
+    ],
+    "passes": true
+  },
+  {
+    "id": "AUDIT-014",
+    "category": "functional",
+    "area": "audit",
+    "description": "Audit trail for medication take lifecycle",
+    "steps": [
+      "Log in as carer",
+      "Navigate to assigned patient prescription",
+      "Click Take Medicine",
+      "Add notes: Test dose",
+      "Submit",
+      "Log out",
+      "Log in as administrator",
+      "Navigate to /admin/audit_logs",
+      "Filter by record type: MedicationTake",
+      "Find the create event",
+      "Verify whodunnit shows carer user",
+      "Verify IP address recorded",
+      "Verify timestamp matches dose time",
+      "Verify prescription_id in logged data",
+      "Verify notes in logged data"
+    ],
+    "passes": true
+  }
+]

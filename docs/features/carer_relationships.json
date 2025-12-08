@@ -1,0 +1,222 @@
+[
+	{
+		"id": "CARER-001",
+		"category": "functional",
+		"area": "carer_relationships",
+		"description": "Create carer-patient relationship",
+		"steps": [
+			"Log in as administrator",
+			"Navigate to carer relationships",
+			"Click New",
+			"Select carer from dropdown",
+			"Select patient from dropdown",
+			"Select relationship type",
+			"Submit",
+			"Verify created",
+			"Verify appears in list"
+		],
+		"passes": true
+	},
+	{
+		"id": "CARER-002",
+		"category": "functional",
+		"area": "carer_relationships",
+		"description": "View carer's assigned patients",
+		"steps": [
+			"Log in as carer",
+			"Navigate to dashboard",
+			"Verify assigned patients listed",
+			"Verify unassigned patients not visible"
+		],
+		"passes": true
+	},
+	{
+		"id": "CARER-003",
+		"category": "functional",
+		"area": "carer_relationships",
+		"description": "Deactivate carer-patient relationship",
+		"steps": [
+			"Log in as administrator",
+			"Find existing relationship",
+			"Click Deactivate",
+			"Confirm action",
+			"Verify marked inactive",
+			"Log in as carer",
+			"Verify patient no longer accessible"
+		],
+		"passes": true
+	},
+	{
+		"id": "CARER-004",
+		"category": "functional",
+		"area": "carer_relationships",
+		"description": "Unique constraint on carer-patient pair",
+		"steps": [
+			"Create relationship carer A - patient B",
+			"Attempt to create duplicate relationship",
+			"Verify validation error displayed",
+			"Verify duplicate not created"
+		],
+		"passes": true
+	},
+	{
+		"id": "CARER-005",
+		"category": "functional",
+		"area": "carer_relationships",
+		"description": "Relationship type is selectable",
+		"steps": [
+			"Log in as administrator",
+			"Navigate to new relationship form",
+			"Verify relationship type dropdown present",
+			"Select Family member",
+			"Submit",
+			"Verify type saved correctly"
+		],
+		"passes": true
+	},
+	{
+		"id": "CARER-006",
+		"category": "functional",
+		"area": "carer_relationships",
+		"description": "Patient can have multiple carers",
+		"steps": [
+			"Create carer A - patient X relationship",
+			"Create carer B - patient X relationship",
+			"Verify both relationships exist",
+			"Query patient X carers",
+			"Verify count is 2"
+		],
+		"passes": true
+	},
+	{
+		"id": "CARER-007",
+		"category": "functional",
+		"area": "carer_relationships",
+		"description": "Carer can have multiple patients",
+		"steps": [
+			"Create carer A - patient X relationship",
+			"Create carer A - patient Y relationship",
+			"Verify both relationships exist",
+			"Query carer A patients",
+			"Verify count is 2"
+		],
+		"passes": true
+	},
+	{
+		"id": "CARER-008",
+		"category": "functional",
+		"area": "carer_relationships",
+		"description": "Carer dashboard shows patient medication schedules",
+		"steps": [
+			"Create carer with patient who has prescriptions",
+			"Log in as carer",
+			"Navigate to dashboard",
+			"Verify patient prescriptions shown",
+			"Verify timing restrictions displayed",
+			"Verify next dose time shown"
+		],
+		"passes": true
+	},
+	{
+		"id": "CARER-009",
+		"category": "functional",
+		"area": "carer_relationships",
+		"description": "Carer can quickly record medication from dashboard",
+		"steps": [
+			"Log in as carer",
+			"Navigate to dashboard",
+			"Find patient prescription",
+			"Click Take Medicine button",
+			"Verify MedicationTake created",
+			"Verify administered_by set to carer"
+		],
+		"passes": true
+	},
+	{
+		"id": "CARER-010",
+		"category": "functional",
+		"area": "carer_relationships",
+		"description": "Capacity validation requires carer for patients without capacity",
+		"steps": [
+			"Create patient with has_capacity=false and no carer",
+			"Verify warning displayed",
+			"Navigate to carer relationships",
+			"Assign carer to patient",
+			"Verify warning no longer displayed"
+		],
+		"passes": true
+	},
+	{
+		"id": "CARER-011",
+		"category": "functional",
+		"area": "carer_relationships",
+		"description": "Doctor can create carer relationships",
+		"steps": [
+			"Log in as doctor",
+			"Navigate to carer relationships",
+			"Click New",
+			"Fill in relationship details",
+			"Submit",
+			"Verify relationship created"
+		],
+		"passes": true
+	},
+	{
+		"id": "CARER-012",
+		"category": "functional",
+		"area": "carer_relationships",
+		"description": "Nurse can create carer relationships",
+		"steps": [
+			"Log in as nurse",
+			"Navigate to carer relationships",
+			"Click New",
+			"Fill in relationship details",
+			"Submit",
+			"Verify relationship created"
+		],
+		"passes": true
+	},
+	{
+		"id": "CARER-013",
+		"category": "functional",
+		"area": "carer_relationships",
+		"description": "Carer cannot create carer relationships",
+		"steps": [
+			"Log in as carer",
+			"Attempt to navigate to new relationship form",
+			"Verify access denied",
+			"Verify redirected or error shown"
+		],
+		"passes": true
+	},
+	{
+		"id": "CARER-014",
+		"category": "functional",
+		"area": "carer_relationships",
+		"description": "Parent-child relationship type available",
+		"steps": [
+			"Log in as administrator",
+			"Navigate to new relationship form",
+			"Verify Parent relationship type in dropdown",
+			"Select Parent",
+			"Create relationship",
+			"Verify saved with Parent type"
+		],
+		"passes": true
+	},
+	{
+		"id": "CARER-015",
+		"category": "functional",
+		"area": "carer_relationships",
+		"description": "Reactivate deactivated relationship",
+		"steps": [
+			"Deactivate existing relationship",
+			"Log in as administrator",
+			"Find deactivated relationship",
+			"Click Activate",
+			"Verify marked active",
+			"Verify carer can access patient again"
+		],
+		"passes": true
+	}
+]

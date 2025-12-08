@@ -20,6 +20,7 @@ theme:
 
 nav:
   - Home: index.md
+  - Feature Dashboard: dashboard.md
   - Design:
       - Architecture: design.md
       - User Management: user-management.md
@@ -45,6 +46,11 @@ markdown_extensions:
 plugins:
   - search
 
+# Hook to copy feature JSON files
+hooks:
+  - docs_hooks.py
+
+# Copy static JSON files to the site
 extra:
   social:
     - icon: fontawesome/brands/github
