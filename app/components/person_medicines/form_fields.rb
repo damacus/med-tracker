@@ -41,12 +41,6 @@ module Components
         end
       end
 
-      def select_classes
-        'flex h-9 w-full items-center justify-between rounded-md border border-input ' \
-          'bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background ' \
-          'focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50'
-      end
-
       def render_notes_field
         FormField do
           FormFieldLabel(for: 'person_medicine_notes') { 'Notes' }
