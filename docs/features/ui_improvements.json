@@ -1,0 +1,392 @@
+[
+  {
+    "id": "UI-001",
+    "category": "consistency",
+    "area": "styling",
+    "priority": "high",
+    "description": "Migrate all ERB views to Phlex components",
+    "rationale": "29 ERB files exist alongside Phlex components creating inconsistent patterns",
+    "affected_files": [
+      "app/views/people/*.erb",
+      "app/views/prescriptions/*.erb",
+      "app/views/medicines/*.erb",
+      "app/views/person_medicines/*.erb",
+      "app/views/profiles/*.erb",
+      "app/views/sessions/*.erb",
+      "app/views/users/*.erb"
+    ],
+    "acceptance_criteria": [
+      "All views use Phlex components",
+      "No ERB files in app/views except layouts/application.html.erb and mailer templates",
+      "Consistent component patterns across all views"
+    ],
+    "passes": true
+  },
+  {
+    "id": "ui-002",
+    "category": "ui",
+    "area": "ui_improvements",
+    "description": "Standardize button styling using RubyUI::Button component",
+    "priority": "high",
+    "passes": true,
+    "steps": [
+      "Audit all button usage across components",
+      "Identify non-RubyUI buttons",
+      "Replace with RubyUI::Button using appropriate variants",
+      "Remove inline Tailwind button classes"
+    ]
+  },
+  {
+    "id": "UI-003",
+    "category": "consistency",
+    "area": "styling",
+    "priority": "high",
+    "description": "Standardize form styling using RubyUI::Form components",
+    "rationale": "Forms use mix of raw form helpers and RubyUI form components",
+    "acceptance_criteria": [
+      "All forms use FormField, FormFieldLabel, FormFieldHint components",
+      "Consistent input styling via RubyUI::Input",
+      "Remove inline Tailwind classes for form elements"
+    ],
+    "passes": true
+  },
+  {
+    "id": "UI-004",
+    "category": "mobile",
+    "area": "responsive",
+    "priority": "high",
+    "description": "Optimize dashboard for mobile-first experience",
+    "rationale": "Dashboard should prioritize quick actions on mobile devices",
+    "acceptance_criteria": [
+      "Quick actions (Take Medicine) prominently displayed at top",
+      "Stats cards stack vertically on mobile",
+      "Table converts to card layout on mobile",
+      "Touch-friendly button sizes (min 44x44px)"
+    ],
+    "passes": true
+  },
+  {
+    "id": "UI-005",
+    "category": "mobile",
+    "area": "responsive",
+    "priority": "high",
+    "description": "Implement mobile-friendly navigation",
+    "rationale": "Navigation should be easily accessible on mobile devices",
+    "acceptance_criteria": [
+      "Hamburger menu on mobile viewports",
+      "Slide-out drawer for navigation links",
+      "Bottom navigation bar for primary actions",
+      "Sticky header on scroll"
+    ],
+    "passes": false
+  },
+  {
+    "id": "UI-006",
+    "category": "ux",
+    "area": "information_hierarchy",
+    "priority": "high",
+    "description": "Prioritize quick actions and summary info at page headers",
+    "rationale": "Users need immediate access to primary actions without scrolling",
+    "acceptance_criteria": [
+      "Page headers include primary action button",
+      "Key metrics/counts shown in header area",
+      "Secondary actions in dropdown or below fold",
+      "Breadcrumbs for navigation context"
+    ],
+    "passes": false
+  },
+  {
+    "id": "UI-007",
+    "category": "ux",
+    "area": "deduplication",
+    "priority": "medium",
+    "description": "Remove duplicate action buttons",
+    "rationale": "Multiple buttons performing same action confuse users",
+    "acceptance_criteria": [
+      "Single 'Add' button per resource type per page",
+      "Edit/Delete actions consolidated in dropdown or action column",
+      "No duplicate navigation links",
+      "Consistent action placement across all pages"
+    ],
+    "passes": false
+  },
+  {
+    "id": "UI-008",
+    "category": "ux",
+    "area": "navigation",
+    "priority": "high",
+    "description": "Return to previous page after form submission",
+    "rationale": "Users expect to return to their previous context after editing",
+    "acceptance_criteria": [
+      "Store referrer URL before showing edit form",
+      "Redirect to referrer after successful save",
+      "Fall back to resource index if no referrer",
+      "Cancel button returns to previous page"
+    ],
+    "passes": false
+  },
+  {
+    "id": "UI-009",
+    "category": "performance",
+    "area": "turbo",
+    "priority": "high",
+    "description": "Minimize full page reloads using Turbo Frames and Streams",
+    "rationale": "Full page reloads create jarring UX and slow perceived performance",
+    "acceptance_criteria": [
+      "CRUD operations use Turbo Streams for inline updates",
+      "Modal forms use Turbo Frames",
+      "Flash messages update via Turbo Stream",
+      "Pagination uses Turbo Frames"
+    ],
+    "passes": false
+  },
+  {
+    "id": "UI-010",
+    "category": "performance",
+    "area": "turbo",
+    "priority": "medium",
+    "description": "Implement optimistic UI updates",
+    "rationale": "Immediate feedback improves perceived performance",
+    "acceptance_criteria": [
+      "Button shows loading state on click",
+      "Form disables during submission",
+      "Skeleton loaders for async content",
+      "Instant visual feedback for actions"
+    ],
+    "passes": false
+  },
+  {
+    "id": "UI-011",
+    "category": "consistency",
+    "area": "ruby_ui",
+    "priority": "high",
+    "description": "Maximize RubyUI component usage",
+    "rationale": "RubyUI provides consistent, accessible components",
+    "components_to_use": [
+      "Alert, AlertDialog for confirmations",
+      "Badge for status indicators",
+      "Button for all actions",
+      "Card for content containers",
+      "Dialog for modals",
+      "DropdownMenu for action menus",
+      "Form components for all inputs",
+      "Select for dropdowns",
+      "Sheet for mobile drawers",
+      "Table for data display"
+    ],
+    "acceptance_criteria": [
+      "All UI elements use RubyUI components where available",
+      "Custom components extend RubyUI base patterns",
+      "Consistent component API across application"
+    ],
+    "passes": false
+  },
+  {
+    "id": "UI-012",
+    "category": "cleanup",
+    "area": "files",
+    "priority": "medium",
+    "description": "Remove unused files and dead code",
+    "rationale": "Unused files add confusion and maintenance burden",
+    "files_to_review": [
+      "app/views/test_sheet.html.erb",
+      "Unused CSS classes in application.css",
+      "Orphaned Stimulus controllers",
+      "Unused helper methods"
+    ],
+    "acceptance_criteria": [
+      "No orphaned view files",
+      "No unused CSS classes",
+      "No unused JavaScript controllers",
+      "No unused helper methods"
+    ],
+    "passes": false
+  },
+  {
+    "id": "UI-013",
+    "category": "consistency",
+    "area": "styling",
+    "priority": "medium",
+    "description": "Create shared component library for common patterns",
+    "rationale": "Repeated patterns should be extracted to reusable components",
+    "components_to_create": [
+      "PageHeader - title, breadcrumbs, actions",
+      "PageLayout - consistent page structure",
+      "ActionMenu - dropdown for edit/delete actions",
+      "EmptyState - consistent empty state messaging",
+      "LoadingState - skeleton loaders",
+      "StatusBadge - prescription/medicine status"
+    ],
+    "acceptance_criteria": [
+      "Common patterns extracted to shared components",
+      "Components documented with examples",
+      "Consistent usage across all views"
+    ],
+    "passes": false
+  },
+  {
+    "id": "UI-014",
+    "category": "mobile",
+    "area": "responsive",
+    "priority": "medium",
+    "description": "Implement swipe gestures for mobile actions",
+    "rationale": "Mobile users expect gesture-based interactions",
+    "acceptance_criteria": [
+      "Swipe left to reveal delete action on list items",
+      "Swipe right to reveal quick action (e.g., Take Medicine)",
+      "Pull to refresh on list pages",
+      "Gesture hints for discoverability"
+    ],
+    "passes": false
+  },
+  {
+    "id": "UI-015",
+    "category": "ux",
+    "area": "feedback",
+    "priority": "medium",
+    "description": "Improve form validation feedback",
+    "rationale": "Users need clear, immediate feedback on form errors",
+    "acceptance_criteria": [
+      "Inline validation on blur",
+      "Clear error messages near fields",
+      "Success states for valid fields",
+      "Focus management on error"
+    ],
+    "passes": false
+  },
+  {
+    "id": "UI-016",
+    "category": "consistency",
+    "area": "icons",
+    "priority": "low",
+    "description": "Standardize icon usage with Lucide icons",
+    "rationale": "Consistent iconography improves visual coherence",
+    "acceptance_criteria": [
+      "All icons from Lucide icon set",
+      "Consistent icon sizes per context",
+      "Icon + text pattern for buttons",
+      "Accessible icon labels"
+    ],
+    "passes": false
+  },
+  {
+    "id": "UI-017",
+    "category": "ux",
+    "area": "navigation",
+    "priority": "medium",
+    "description": "Add breadcrumb navigation",
+    "rationale": "Users need context of their location in the app",
+    "acceptance_criteria": [
+      "Breadcrumbs on all nested pages",
+      "Clickable breadcrumb links",
+      "Current page not linked",
+      "Mobile-friendly truncation"
+    ],
+    "passes": false
+  },
+  {
+    "id": "UI-018",
+    "category": "mobile",
+    "area": "responsive",
+    "priority": "medium",
+    "description": "Implement bottom sheet for mobile forms",
+    "rationale": "Bottom sheets are more ergonomic on mobile",
+    "acceptance_criteria": [
+      "Forms open in bottom sheet on mobile",
+      "Drag to dismiss gesture",
+      "Full screen option for complex forms",
+      "Keyboard-aware positioning"
+    ],
+    "passes": false
+  },
+  {
+    "id": "UI-019",
+    "category": "ux",
+    "area": "search",
+    "priority": "low",
+    "description": "Add global search functionality",
+    "rationale": "Quick access to any resource improves efficiency",
+    "acceptance_criteria": [
+      "Command palette (Cmd+K) for search",
+      "Search across people, medicines, prescriptions",
+      "Recent searches saved",
+      "Keyboard navigation in results"
+    ],
+    "passes": false
+  },
+  {
+    "id": "UI-020",
+    "category": "consistency",
+    "area": "theming",
+    "priority": "low",
+    "description": "Implement dark mode support",
+    "rationale": "Dark mode reduces eye strain and is expected by users",
+    "acceptance_criteria": [
+      "System preference detection",
+      "Manual toggle in settings",
+      "All components support dark mode",
+      "Persistent preference storage"
+    ],
+    "passes": false
+  },
+  {
+    "id": "UI-021",
+    "category": "cleanup",
+    "area": "css",
+    "priority": "medium",
+    "description": "Consolidate and clean up CSS",
+    "rationale": "Mixed CSS approaches create maintenance burden",
+    "acceptance_criteria": [
+      "Remove unused custom CSS classes",
+      "Migrate custom styles to Tailwind utilities",
+      "Document any required custom CSS",
+      "Remove duplicate style definitions"
+    ],
+    "passes": false
+  },
+  {
+    "id": "UI-022",
+    "category": "ux",
+    "area": "accessibility",
+    "priority": "high",
+    "description": "Ensure keyboard navigation works throughout",
+    "rationale": "Keyboard users must be able to navigate all features",
+    "acceptance_criteria": [
+      "All interactive elements focusable",
+      "Visible focus indicators",
+      "Logical tab order",
+      "Escape closes modals/dropdowns"
+    ],
+    "passes": false
+  },
+  {
+    "id": "UI-023",
+    "category": "ux",
+    "area": "feedback",
+    "priority": "medium",
+    "description": "Add toast notifications for async actions",
+    "rationale": "Users need feedback for background operations",
+    "acceptance_criteria": [
+      "Toast appears for successful actions",
+      "Error toasts for failed actions",
+      "Auto-dismiss after timeout",
+      "Dismissible by user"
+    ],
+    "passes": false
+  },
+  {
+    "id": "UI-024",
+    "category": "mobile",
+    "area": "pwa",
+    "priority": "low",
+    "description": "Enhance PWA experience",
+    "rationale": "PWA provides native-like experience on mobile",
+    "acceptance_criteria": [
+      "Offline support for viewing data",
+      "Add to home screen prompt",
+      "Push notifications for medication reminders",
+      "App-like navigation transitions"
+    ],
+    "passes": false
+  }
+]

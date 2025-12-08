@@ -1,0 +1,70 @@
+[
+	{
+		"id": "DOSAGE-001",
+		"category": "functional",
+		"area": "dosages",
+		"description": "View dosage information for prescription",
+		"steps": [
+			"Log in",
+			"Navigate to prescription",
+			"Verify dosage amount displayed",
+			"Verify dosage unit displayed"
+		],
+		"passes": true
+	},
+	{
+		"id": "DOSAGE-002",
+		"category": "functional",
+		"area": "dosages",
+		"description": "Dosage linked to prescription",
+		"steps": [
+			"Create prescription with dosage",
+			"Verify dosage_id set on prescription",
+			"Verify dosage details accessible"
+		],
+		"passes": true
+	},
+	{
+		"id": "DOSAGE-003",
+		"category": "functional",
+		"area": "dosages",
+		"description": "Dosage validates required fields",
+		"steps": [
+			"Attempt create dosage without amount",
+			"Verify validation error",
+			"Attempt create dosage without unit",
+			"Verify validation error"
+		],
+		"passes": true
+	},
+	{
+		"id": "DOSAGE-004",
+		"category": "functional",
+		"area": "dosages",
+		"description": "Dosage amount must be positive",
+		"steps": [
+			"Attempt create dosage with amount 0",
+			"Verify validation error",
+			"Attempt create dosage with negative amount",
+			"Verify validation error",
+			"Create dosage with positive amount",
+			"Verify accepted"
+		],
+		"passes": true
+	},
+	{
+		"id": "DOSAGE-005",
+		"category": "functional",
+		"area": "dosages",
+		"description": "Dosage supports various units",
+		"steps": [
+			"Create dosage with unit mg",
+			"Verify saved",
+			"Create dosage with unit ml",
+			"Verify saved",
+			"Create dosage with unit tablets",
+			"Verify saved"
+		],
+		"passes": true
+	}
+]

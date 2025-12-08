@@ -1,0 +1,139 @@
+[
+	{
+		"id": "PROFILE-001",
+		"category": "functional",
+		"area": "profile",
+		"description": "User can view own profile",
+		"steps": [
+			"Log in",
+			"Navigate to profile page",
+			"Verify name displayed",
+			"Verify email displayed"
+		],
+		"passes": true
+	},
+	{
+		"id": "PROFILE-002",
+		"category": "functional",
+		"area": "profile",
+		"description": "User can edit own name",
+		"steps": [
+			"Log in",
+			"Navigate to profile",
+			"Click Edit",
+			"Change name",
+			"Submit",
+			"Verify saved"
+		],
+		"passes": true
+	},
+	{
+		"id": "PROFILE-003",
+		"category": "functional",
+		"area": "profile",
+		"description": "User can change email (with confirmation)",
+		"steps": [
+			"Log in",
+			"Navigate to profile",
+			"Change email",
+			"Submit",
+			"Verify confirmation required"
+		],
+		"passes": true
+	},
+	{
+		"id": "PROFILE-004",
+		"category": "functional",
+		"area": "profile",
+		"description": "User can change password",
+		"steps": [
+			"Log in",
+			"Navigate to profile",
+			"Enter current password",
+			"Enter new password",
+			"Submit",
+			"Verify password changed"
+		],
+		"passes": true
+	},
+	{
+		"id": "PROFILE-005",
+		"category": "functional",
+		"area": "profile",
+		"description": "User cannot edit other users' profiles",
+		"steps": [
+			"Log in as user A",
+			"Attempt to access user B profile edit",
+			"Verify denied"
+		],
+		"passes": true
+	},
+	{
+		"id": "PROFILE-006",
+		"category": "functional",
+		"area": "profile",
+		"description": "User can view notification preferences",
+		"steps": [
+			"Log in",
+			"Navigate to settings",
+			"Verify notification preferences visible"
+		],
+		"passes": false
+	},
+	{
+		"id": "PROFILE-007",
+		"category": "functional",
+		"area": "profile",
+		"description": "User can set timezone",
+		"steps": [
+			"Log in",
+			"Navigate to settings",
+			"Select timezone",
+			"Submit",
+			"Verify saved"
+		],
+		"passes": false
+	},
+	{
+		"id": "PROFILE-008",
+		"category": "functional",
+		"area": "profile",
+		"description": "User can delete own account (soft delete)",
+		"steps": [
+			"Log in",
+			"Navigate to settings",
+			"Click Delete Account",
+			"Confirm",
+			"Verify account deactivated",
+			"Verify cannot log in"
+		],
+		"passes": false
+	},
+	{
+		"id": "PROFILE-009",
+		"category": "functional",
+		"area": "profile",
+		"description": "Admin can reactivate deleted account",
+		"steps": [
+			"Soft delete user account",
+			"Log in as administrator",
+			"Find user",
+			"Click Activate",
+			"Verify user can log in again"
+		],
+		"passes": true
+	},
+	{
+		"id": "PROFILE-010",
+		"category": "functional",
+		"area": "profile",
+		"description": "Profile shows linked person information",
+		"steps": [
+			"Log in",
+			"Navigate to profile",
+			"Verify person name shown",
+			"Verify person DOB shown"
+		],
+		"passes": true
+	}
+]

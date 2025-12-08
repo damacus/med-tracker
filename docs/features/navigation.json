@@ -1,0 +1,88 @@
+[
+	{
+		"id": "NAV-001",
+		"category": "functional",
+		"area": "navigation",
+		"description": "Navigation shows Dashboard link for all users",
+		"steps": [
+			"Log in",
+			"Verify Dashboard link in navigation"
+		],
+		"passes": true
+	},
+	{
+		"id": "NAV-002",
+		"category": "functional",
+		"area": "navigation",
+		"description": "Navigation shows Admin link only for administrators",
+		"steps": [
+			"Log in as administrator",
+			"Verify Admin link visible",
+			"Log in as carer",
+			"Verify Admin link not visible"
+		],
+		"passes": true
+	},
+	{
+		"id": "NAV-003",
+		"category": "functional",
+		"area": "navigation",
+		"description": "Navigation shows People link for clinical roles",
+		"steps": [
+			"Log in as doctor",
+			"Verify People link visible",
+			"Log in as nurse",
+			"Verify People link visible"
+		],
+		"passes": true
+	},
+	{
+		"id": "NAV-004",
+		"category": "functional",
+		"area": "navigation",
+		"description": "Navigation shows Medicines link for all users",
+		"steps": [
+			"Log in",
+			"Verify Medicines link in navigation"
+		],
+		"passes": true
+	},
+	{
+		"id": "NAV-005",
+		"category": "functional",
+		"area": "navigation",
+		"description": "Navigation shows logout button",
+		"steps": [
+			"Log in",
+			"Verify Logout button visible",
+			"Click Logout",
+			"Verify logged out"
+		],
+		"passes": true
+	},
+	{
+		"id": "NAV-006",
+		"category": "functional",
+		"area": "navigation",
+		"description": "Navigation shows user name/email",
+		"steps": [
+			"Log in",
+			"Verify user identifier shown in navigation"
+		],
+		"passes": true
+	},
+	{
+		"id": "NAV-007",
+		"category": "functional",
+		"area": "navigation",
+		"description": "Mobile navigation hamburger menu works",
+		"steps": [
+			"Resize to mobile width",
+			"Verify hamburger menu visible",
+			"Click hamburger",
+			"Verify menu opens",
+			"Verify links accessible"
+		],
+		"passes": true
+	}
+]

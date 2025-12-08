@@ -1,0 +1,197 @@
+[
+	{
+		"id": "STYLE-001",
+		"category": "style",
+		"area": "ui",
+		"description": "Login page has modern, clean design",
+		"steps": [
+			"Navigate to /login",
+			"Take screenshot",
+			"Verify centered form",
+			"Verify TailwindCSS styling",
+			"Verify accessible contrast"
+		],
+		"passes": true
+	},
+	{
+		"id": "STYLE-002",
+		"category": "style",
+		"area": "ui",
+		"description": "Dashboard has card-based layout",
+		"steps": [
+			"Log in",
+			"Navigate to /dashboard",
+			"Take screenshot",
+			"Verify card components",
+			"Verify consistent spacing"
+		],
+		"passes": true
+	},
+	{
+		"id": "STYLE-003",
+		"category": "style",
+		"area": "ui",
+		"description": "Forms have consistent styling",
+		"steps": [
+			"Navigate to any form",
+			"Verify input styling consistent",
+			"Verify button styling consistent",
+			"Verify error message styling"
+		],
+		"passes": true
+	},
+	{
+		"id": "STYLE-004",
+		"category": "style",
+		"area": "ui",
+		"description": "Tables have proper styling and hover states",
+		"steps": [
+			"Navigate to /admin/users",
+			"Verify table has headers",
+			"Verify row hover effect",
+			"Verify zebra striping or borders"
+		],
+		"passes": true
+	},
+	{
+		"id": "STYLE-005",
+		"category": "style",
+		"area": "ui",
+		"description": "Buttons have consistent styling by type",
+		"steps": [
+			"View primary buttons",
+			"Verify consistent primary color",
+			"View secondary buttons",
+			"Verify consistent secondary color",
+			"View danger buttons",
+			"Verify red/danger color"
+		],
+		"passes": true
+	},
+	{
+		"id": "STYLE-006",
+		"category": "style",
+		"area": "ui",
+		"description": "Flash messages styled appropriately",
+		"steps": [
+			"Trigger success message",
+			"Verify green/success styling",
+			"Trigger error message",
+			"Verify red/error styling"
+		],
+		"passes": true
+	},
+	{
+		"id": "STYLE-007",
+		"category": "style",
+		"area": "ui",
+		"description": "Responsive design works on mobile",
+		"steps": [
+			"Resize to 375px width",
+			"Verify layout adapts",
+			"Verify no horizontal scroll",
+			"Verify text readable"
+		],
+		"passes": true
+	},
+	{
+		"id": "STYLE-008",
+		"category": "style",
+		"area": "ui",
+		"description": "Responsive design works on tablet",
+		"steps": [
+			"Resize to 768px width",
+			"Verify layout adapts",
+			"Verify navigation works"
+		],
+		"passes": true
+	},
+	{
+		"id": "STYLE-009",
+		"category": "style",
+		"area": "ui",
+		"description": "Icons from Lucide are used consistently",
+		"steps": [
+			"View navigation",
+			"Verify Lucide icons used",
+			"View action buttons",
+			"Verify consistent icon usage"
+		],
+		"passes": true
+	},
+	{
+		"id": "STYLE-010",
+		"category": "style",
+		"area": "ui",
+		"description": "Dialog modals styled correctly",
+		"steps": [
+			"Trigger a dialog (e.g., delete confirmation)",
+			"Verify modal overlay",
+			"Verify centered dialog",
+			"Verify close button works"
+		],
+		"passes": true
+	},
+	{
+		"id": "STYLE-011",
+		"category": "style",
+		"area": "ui",
+		"description": "Loading states shown appropriately",
+		"steps": [
+			"Submit a form",
+			"Verify loading indicator or disabled state",
+			"Verify button text changes or spinner shown"
+		],
+		"passes": false
+	},
+	{
+		"id": "STYLE-012",
+		"category": "style",
+		"area": "ui",
+		"description": "Empty states have helpful messages",
+		"steps": [
+			"View page with no data",
+			"Verify helpful empty state message",
+			"Verify call to action if appropriate"
+		],
+		"passes": true
+	},
+	{
+		"id": "STYLE-013",
+		"category": "style",
+		"area": "ui",
+		"description": "Pagination controls styled consistently",
+		"steps": [
+			"Navigate to paginated list",
+			"Verify pagination controls visible",
+			"Verify current page highlighted",
+			"Verify previous/next buttons styled"
+		],
+		"passes": true
+	},
+	{
+		"id": "STYLE-014",
+		"category": "style",
+		"area": "ui",
+		"description": "Form validation errors displayed inline",
+		"steps": [
+			"Submit form with errors",
+			"Verify errors shown near fields",
+			"Verify error styling (red border, message)"
+		],
+		"passes": true
+	},
+	{
+		"id": "STYLE-015",
+		"category": "style",
+		"area": "ui",
+		"description": "Admin dashboard has metric cards",
+		"steps": [
+			"Log in as administrator",
+			"Navigate to /admin/dashboard",
+			"Verify metric cards with counts",
+			"Verify cards have icons"
+		],
+		"passes": true
+	}
+]
