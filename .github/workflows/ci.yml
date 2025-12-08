@@ -8,7 +8,7 @@ name: CI
 
 jobs:
   scan_ruby:
-    runs-on: [ubuntu-slim]
+    runs-on: [ubuntu-latest]
     name: Ruby Security Scan
     steps:
       - name: Checkout code
