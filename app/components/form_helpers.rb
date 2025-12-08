@@ -13,5 +13,14 @@ module Components
         'bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background ' \
         'focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50'
     end
+
+    # Standard styling for checkbox inputs
+    # Matches the design system with proper focus states and sizing
+    def checkbox_classes
+      'h-4 w-4 shrink-0 rounded border border-primary shadow ' \
+        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ' \
+        'disabled:cursor-not-allowed disabled:opacity-50 ' \
+        'checked:bg-primary checked:text-primary-foreground'
+    end
   end
 end

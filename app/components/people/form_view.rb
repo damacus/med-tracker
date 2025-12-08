@@ -148,7 +148,7 @@ module Components
               id: 'person_has_capacity',
               value: '1',
               checked: person.has_capacity,
-              class: 'h-4 w-4 rounded border-border text-primary focus:ring-ring',
+              class: checkbox_classes,
               data: {
                 controller: 'capacity-hint',
                 action: 'capacity-hint#toggleHint',
