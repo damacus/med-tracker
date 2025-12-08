@@ -23,7 +23,7 @@ jobs:
         run: bin/brakeman --no-pager
 
   scan_js:
-    runs-on: [ubuntu-slim]
+    runs-on: [ubuntu-latest]
     name: JavaScript Security Scan
     steps:
       - name: Checkout code
@@ -38,7 +38,7 @@ jobs:
         run: bin/importmap audit
 
   lint:
-    runs-on: [ubuntu-slim]
+    runs-on: [ubuntu-latest]
     name: Code Style Check
     steps:
       - name: Checkout code
@@ -53,7 +53,7 @@ jobs:
         run: bin/rubocop -f github
 
   test_non_system:
-    runs-on: [ubuntu-slim]
+    runs-on: [ubuntu-latest]
     name: RSpec Tests (Models, Policies, Controllers, Components)
     timeout-minutes: 20
 
