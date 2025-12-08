@@ -107,7 +107,7 @@ module Components
                 data: { prescription_form_target: 'dosageValue' }
               ) do
                 if prescription.dosage
-                  "#{prescription.dosage.amount} #{prescription.dosage.unit} - #{prescription.dosage.description}"
+                  format_dosage_option(prescription.dosage)
                 else
                   'Select a medicine first'
                 end
@@ -116,7 +116,7 @@ module Components
             SelectContent(data: { prescription_form_target: 'dosageContent' }) do
               (prescription.medicine&.dosages || []).each do |dosage|
                 SelectItem(value: dosage.id.to_s) do
-                  "#{dosage.amount} #{dosage.unit} - #{dosage.description}"
+                  format_dosage_option(dosage)
                 end
               end
             end
@@ -256,10 +256,8 @@ module Components
         end
       end
 
-      def select_classes
-        'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ' \
-          'ring-offset-background focus-visible:outline-none focus-visible:ring-2 ' \
-          'focus-visible:ring-ring focus-visible:ring-offset-2'
+      def format_dosage_option(dosage)
+        "#{dosage.amount.to_f} #{dosage.unit} - #{dosage.description}"
       end
     end
   end

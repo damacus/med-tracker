@@ -181,7 +181,6 @@ export default class extends Controller {
       });
       start = end + 1;
       end = end + 7;
-      end = start === 1 && end === 8 ? 1 : end;
       if (end > numDays && start <= numDays) {
         end = end - numDays;
         weeks.push({

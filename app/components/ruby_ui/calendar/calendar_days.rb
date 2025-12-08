@@ -72,7 +72,7 @@ module RubyUI
       date_template('otherMonthDateTemplate') do
         button(
           data_day: '{{day}}',
-          data_action: ' click->ruby-ui--calendar#selectDay',
+          data_action: 'click->ruby-ui--calendar#selectDay',
           name: 'day',
           class:
                 [

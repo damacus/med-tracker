@@ -53,7 +53,10 @@ export default class extends Controller {
 
     if (!medicineId) {
       // Clear dosage options
-      this.dosageContentTarget.querySelector('div').innerHTML = ''
+      const innerDiv = this.dosageContentTarget.querySelector('div')
+      if (innerDiv) {
+        innerDiv.innerHTML = ''
+      }
       this.validate()
       return
     }
