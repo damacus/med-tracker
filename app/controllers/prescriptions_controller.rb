@@ -12,14 +12,23 @@ class PrescriptionsController < ApplicationController
     @medicines = policy_scope(Medicine)
 
     respond_to do |format|
-      format.html { render :new, locals: { inline: false, medicines: @medicines } }
+      format.html do
+        render Components::Prescriptions::NewView.new(
+          prescription: @prescription,
+          person: @person,
+          medicines: @medicines
+        )
+      end
       format.turbo_stream do
-        render turbo_stream: turbo_stream.replace('modal', partial: 'shared/modal', locals: {
-                                                    title: t('prescriptions.modal.new_title', person: @person.name),
-                                                    content: render_to_string(partial: 'form',
-                                                                              locals: { prescription: @prescription,
-                                                                                        inline: true, medicines: @medicines })
-                                                  })
+        render turbo_stream: turbo_stream.replace(
+          'prescription_modal',
+          Components::Prescriptions::Modal.new(
+            prescription: @prescription,
+            person: @person,
+            medicines: @medicines,
+            title: t('prescriptions.modal.new_title', person: @person.name)
+          )
+        )
       end
     end
   end
@@ -29,14 +38,23 @@ class PrescriptionsController < ApplicationController
     @medicines = policy_scope(Medicine)
 
     respond_to do |format|
-      format.html { render :edit, locals: { medicines: @medicines } }
+      format.html do
+        render Components::Prescriptions::EditView.new(
+          prescription: @prescription,
+          person: @person,
+          medicines: @medicines
+        )
+      end
       format.turbo_stream do
-        render turbo_stream: turbo_stream.replace('modal', partial: 'shared/modal', locals: {
-                                                    title: t('prescriptions.modal.edit_title', person: @person.name),
-                                                    content: render_to_string(partial: 'form',
-                                                                              locals: { prescription: @prescription,
-                                                                                        inline: true, medicines: @medicines })
-                                                  })
+        render turbo_stream: turbo_stream.replace(
+          'prescription_modal',
+          Components::Prescriptions::Modal.new(
+            prescription: @prescription,
+            person: @person,
+            medicines: @medicines,
+            title: t('prescriptions.modal.edit_title', person: @person.name)
+          )
+        )
       end
     end
   end
@@ -52,22 +70,31 @@ class PrescriptionsController < ApplicationController
         format.turbo_stream do
           flash.now[:notice] = t('prescriptions.created')
           render turbo_stream: [
-            turbo_stream.remove('modal'),
-            turbo_stream.replace("person_#{@person.id}", partial: 'people/person', locals: { person: @person.reload }),
+            turbo_stream.remove('prescription_modal'),
+            turbo_stream.replace("person_#{@person.id}", Components::People::PersonCard.new(person: @person.reload)),
             turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
           ]
         end
       end
     else
       respond_to do |format|
-        format.html { render :new, status: :unprocessable_content, locals: { medicines: @medicines } }
+        format.html do
+          render Components::Prescriptions::NewView.new(
+            prescription: @prescription,
+            person: @person,
+            medicines: @medicines
+          ), status: :unprocessable_content
+        end
         format.turbo_stream do
-          render turbo_stream: turbo_stream.update('modal', partial: 'shared/modal', locals: {
-                                                     title: t('prescriptions.modal.new_title', person: @person.name),
-                                                     content: render_to_string(partial: 'form',
-                                                                               locals: { prescription: @prescription,
-                                                                                         inline: true, medicines: @medicines })
-                                                   }), status: :unprocessable_content
+          render turbo_stream: turbo_stream.update(
+            'prescription_modal',
+            Components::Prescriptions::Modal.new(
+              prescription: @prescription,
+              person: @person,
+              medicines: @medicines,
+              title: t('prescriptions.modal.new_title', person: @person.name)
+            )
+          ), status: :unprocessable_content
         end
       end
     end
@@ -80,28 +107,36 @@ class PrescriptionsController < ApplicationController
         format.html { redirect_to person_path(@person), notice: t('prescriptions.updated') }
         format.turbo_stream do
           flash.now[:notice] = t('prescriptions.updated')
+          prescriptions_html = @person.reload.prescriptions.map do |prescription|
+            view_context.render(Components::Prescriptions::Card.new(prescription: prescription, person: @person))
+          end.join
           render turbo_stream: [
-            turbo_stream.update('modal', ''),
-            turbo_stream.update('prescriptions',
-                                render_to_string(partial: 'prescriptions/prescription',
-                                                 collection: @person.reload.prescriptions,
-                                                 as: :prescription,
-                                                 locals: { person: @person })),
+            turbo_stream.update('prescription_modal', ''),
+            turbo_stream.update('prescriptions', prescriptions_html),
             turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
           ]
         end
       end
     else
-      @medicines = Medicine.all
+      @medicines = policy_scope(Medicine)
       respond_to do |format|
-        format.html { render :edit, status: :unprocessable_content, locals: { medicines: @medicines } }
+        format.html do
+          render Components::Prescriptions::EditView.new(
+            prescription: @prescription,
+            person: @person,
+            medicines: @medicines
+          ), status: :unprocessable_content
+        end
         format.turbo_stream do
-          render turbo_stream: turbo_stream.update('modal', partial: 'shared/modal', locals: {
-                                                     title: t('prescriptions.modal.edit_title', person: @person.name),
-                                                     content: render_to_string(partial: 'form',
-                                                                               locals: { prescription: @prescription,
-                                                                                         inline: true, medicines: @medicines })
-                                                   }), status: :unprocessable_content
+          render turbo_stream: turbo_stream.update(
+            'prescription_modal',
+            Components::Prescriptions::Modal.new(
+              prescription: @prescription,
+              person: @person,
+              medicines: @medicines,
+              title: t('prescriptions.modal.edit_title', person: @person.name)
+            )
+          ), status: :unprocessable_content
         end
       end
     end
@@ -145,7 +180,8 @@ class PrescriptionsController < ApplicationController
   end
 
   def prescription_params
-    params.expect(prescription: %i[medicine_id dosage frequency
-                                   start_date end_date notes])
+    params.expect(prescription: %i[medicine_id dosage_id frequency
+                                   start_date end_date notes max_daily_doses
+                                   min_hours_between_doses dose_cycle])
   end
 end

@@ -14,9 +14,9 @@ module Components
 
       def view_template
         section(class: 'dashboard__section dashboard__section--stats') do
-          table(class: 'dashboard__stats-table') do
+          Table(class: 'dashboard__stats-table') do
             caption(class: 'dashboard__section-title text-left') { 'Quick stats' }
-            tbody do
+            TableBody do
               render_stat_row('People', people.count)
               render_stat_row('Active prescriptions', active_prescriptions.count)
             end
@@ -27,9 +27,9 @@ module Components
       private
 
       def render_stat_row(label, value)
-        tr do
+        TableRow do
           th(scope: 'row', class: 'dashboard__stats-label') { "#{label}:" }
-          td(class: 'dashboard__stats-value') { value }
+          TableCell(class: 'dashboard__stats-value') { value }
         end
       end
     end

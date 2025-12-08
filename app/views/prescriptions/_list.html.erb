@@ -1,7 +1,0 @@
-<% if prescriptions.any? %>
-  <% prescriptions.each do |prescription| %>
-    <%= render "prescriptions/prescription", prescription: prescription, person: person %>
-  <% end %>
-<% else %>
-  <p class="prescriptions-section__empty">No prescriptions yet.</p>
-<% end %>

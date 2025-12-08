@@ -29,8 +29,8 @@ module Components
         def render_header
           header(class: 'flex items-center justify-between') do
             div(class: 'space-y-2') do
-              h1(class: 'text-3xl font-semibold text-slate-900') { 'Carer Relationships' }
-              p(class: 'text-slate-600') { 'Manage carer-patient assignments.' }
+              Heading(level: 1) { 'Carer Relationships' }
+              Text(weight: 'muted') { 'Manage carer-patient assignments.' }
             end
             render RubyUI::Link.new(href: '/admin/carer_relationships/new', variant: :primary) { 'New Relationship' }
           end
@@ -133,7 +133,7 @@ module Components
         def render_pagination
           div(class: 'flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3 sm:px-6') do
             div(data: { testid: 'pagination-info' }) do
-              p(class: 'text-sm text-slate-700') do
+              Text(size: '2', class: 'text-slate-700') do
                 plain 'Showing '
                 span(class: 'font-medium') { pagy_obj.from.to_s }
                 plain ' to '

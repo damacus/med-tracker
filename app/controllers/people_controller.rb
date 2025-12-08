@@ -20,18 +20,16 @@ class PeopleController < ApplicationController
     )
   end
 
-  # GET /people/new
   def new
     @person = Person.new
     authorize @person
-    render 'new', layout: 'modal'
+    render Components::People::FormView.new(person: @person)
   end
 
-  # GET /people/:id/edit
   def edit
     @person = Person.find(params[:id])
     authorize @person
-    render 'edit', layout: 'modal'
+    render Components::People::FormView.new(person: @person)
   end
 
   def create
@@ -43,12 +41,13 @@ class PeopleController < ApplicationController
         format.html { redirect_to @person, notice: t('people.created') }
         format.turbo_stream { redirect_to people_path, notice: t('people.created') }
       else
-        format.html { render :new, status: :unprocessable_content }
+        format.html do
+          render Components::People::FormView.new(person: @person), status: :unprocessable_content
+        end
         format.turbo_stream do
           render turbo_stream: turbo_stream.replace(
             'person_form',
-            partial: 'form',
-            locals: { person: @person }
+            Components::People::FormView.new(person: @person)
           )
         end
       end
@@ -63,7 +62,9 @@ class PeopleController < ApplicationController
         format.turbo_stream { redirect_to people_path, notice: t('people.updated') }
         format.json { render :show, status: :ok, location: @person }
       else
-        format.html { render :edit, status: :unprocessable_content }
+        format.html do
+          render Components::People::FormView.new(person: @person), status: :unprocessable_content
+        end
         format.json { render json: @person.errors, status: :unprocessable_content }
       end
     end

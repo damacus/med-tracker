@@ -33,11 +33,16 @@ module Components
         Alert(variant: :destructive, class: 'mb-6') do
           AlertTitle { "#{prescription.errors.count} error(s) prohibited this prescription from being saved:" }
           AlertDescription do
-            ul(class: 'list-disc list-inside space-y-1') do
+            ul(class: 'my-2 ml-6 list-disc [&>li]:mt-1') do
               prescription.errors.full_messages.each do |message|
                 li { message }
               end
             end
+            TypographyList(items: [
+                             'Phlex is fast',
+                             'Phlex is easy to use',
+                             'Phlex is awesome'
+                           ])
           end
         end
       end
@@ -59,14 +64,15 @@ module Components
       def render_medicine_field(_f)
         FormField do
           FormFieldLabel(for: 'prescription_medicine_id') { 'Medicine' }
-          Select do
+          Select(data: { prescription_form_target: 'medicineSelect', testid: 'medicine-select' }) do
             SelectInput(
               name: 'prescription[medicine_id]',
               id: 'prescription_medicine_id',
               value: prescription.medicine_id,
+              required: true,
               data: { action: 'change->prescription-form#updateDosages' }
             )
-            SelectTrigger do
+            SelectTrigger(data: { testid: 'medicine-trigger' }) do
               SelectValue(placeholder: 'Select a medicine') do
                 prescription.medicine&.name || 'Select a medicine'
               end
@@ -83,25 +89,34 @@ module Components
       def render_dosage_field(_f)
         FormField do
           FormFieldLabel(for: 'prescription_dosage_id') { 'Dosage' }
-          Select(data: { prescription_form_target: 'dosageSelect' }) do
+          Select(data: { prescription_form_target: 'dosageSelect', testid: 'dosage-select' }) do
             SelectInput(
               name: 'prescription[dosage_id]',
               id: 'prescription_dosage_id',
-              value: prescription.dosage_id
+              value: prescription.dosage_id,
+              required: true,
+              data: { action: 'change->prescription-form#validate' }
             )
-            SelectTrigger do
-              SelectValue(placeholder: 'Select a dosage') do
+            SelectTrigger(
+              disabled: prescription.medicine.nil?,
+              aria_disabled: prescription.medicine.nil?,
+              data: { testid: 'dosage-trigger', prescription_form_target: 'dosageTrigger' }
+            ) do
+              SelectValue(
+                placeholder: 'Select a medicine first',
+                data: { prescription_form_target: 'dosageValue' }
+              ) do
                 if prescription.dosage
-                  "#{prescription.dosage.amount.to_i} #{prescription.dosage.unit} - #{prescription.dosage.description}"
+                  format_dosage_option(prescription.dosage)
                 else
-                  'Select a dosage'
+                  'Select a medicine first'
                 end
               end
             end
-            SelectContent do
+            SelectContent(data: { prescription_form_target: 'dosageContent' }) do
               (prescription.medicine&.dosages || []).each do |dosage|
                 SelectItem(value: dosage.id.to_s) do
-                  plain "#{dosage.amount.to_i} #{dosage.unit} - #{dosage.description}"
+                  format_dosage_option(dosage)
                 end
               end
             end
@@ -117,29 +132,50 @@ module Components
             class: 'flex h-9 w-full rounded-md border bg-background px-3 py-1 text-sm shadow-sm ' \
                    'border-border placeholder:text-muted-foreground focus-visible:outline-none ' \
                    'focus-visible:ring-1 focus-visible:ring-ring',
-            placeholder: 'e.g., Once daily, Every 4-6 hours'
+            placeholder: 'e.g., Once daily, Every 4-6 hours',
+            data: { action: 'input->prescription-form#validate' }
           )
         end
       end
 
-      def render_start_date_field(f)
+      def render_start_date_field(_f)
         FormField do
           FormFieldLabel(for: 'prescription_start_date') { 'Start date' }
-          render f.date_field(
-            :start_date,
-            class: 'flex h-9 w-full rounded-md border bg-background px-3 py-1 text-sm shadow-sm ' \
-                   'border-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+          Input(
+            type: :string,
+            name: 'prescription[start_date]',
+            id: 'prescription_start_date',
+            value: prescription.start_date&.to_fs(:db),
+            required: true,
+            placeholder: 'Select a date',
+            data: {
+              controller: 'ruby-ui--calendar-input',
+              action: 'input->prescription-form#validate'
+            }
+          )
+          Calendar(
+            input_id: '#prescription_start_date',
+            date_format: 'yyyy-MM-dd',
+            class: 'rounded-md border shadow'
           )
         end
       end
 
-      def render_end_date_field(f)
+      def render_end_date_field(_f)
         FormField do
           FormFieldLabel(for: 'prescription_end_date') { 'End date' }
-          render f.date_field(
-            :end_date,
-            class: 'flex h-9 w-full rounded-md border bg-background px-3 py-1 text-sm shadow-sm ' \
-                   'border-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+          Input(
+            type: :string,
+            name: 'prescription[end_date]',
+            id: 'prescription_end_date',
+            value: prescription.end_date&.to_fs(:db),
+            placeholder: 'Select a date',
+            data: { controller: 'ruby-ui--calendar-input' }
+          )
+          Calendar(
+            input_id: '#prescription_end_date',
+            date_format: 'yyyy-MM-dd',
+            class: 'rounded-md border shadow'
           )
         end
       end
@@ -218,6 +254,10 @@ module Components
             data: { prescription_form_target: 'submit' }
           ) { prescription.new_record? ? 'Add Prescription' : 'Update Prescription' }
         end
+      end
+
+      def format_dosage_option(dosage)
+        "#{dosage.amount.to_f} #{dosage.unit} - #{dosage.description}"
       end
     end
   end

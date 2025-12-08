@@ -31,17 +31,10 @@ module Components
         def render_header
           header(class: 'flex items-center justify-between') do
             div(class: 'space-y-2') do
-              h1(class: 'text-3xl font-semibold text-slate-900') { 'Audit Log Details' }
-              p(class: 'text-slate-600') do
-                "#{version.item_type} ##{version.item_id} - #{version.event.titleize}"
-              end
+              Heading(level: 1) { 'Audit Log Details' }
+              Text(weight: 'muted') { "#{version.item_type} ##{version.item_id} - #{version.event.titleize}" }
             end
-            a(
-              href: '/admin/audit_logs',
-              class: 'inline-flex items-center justify-center rounded-md font-medium transition-colors ' \
-                     'px-4 py-2 h-10 text-sm border border-input bg-background hover:bg-accent ' \
-                     'hover:text-accent-foreground'
-            ) { '← Back to Audit Logs' }
+            Link(href: '/admin/audit_logs', variant: :outline) { '← Back to Audit Logs' }
           end
         end
 
@@ -94,9 +87,6 @@ module Components
         end
 
         def render_new_state_section
-          # For create events, show the created record
-          # For update events, show the current state or use object_changes
-          # For destroy events, there is no new state
           return if version.event == 'destroy'
 
           new_state = compute_new_state

@@ -6,8 +6,8 @@ module Components
       def view_template
         div(class: 'container mx-auto px-4 py-8') do
           div(class: 'mb-8 text-center') do
-            h1(class: 'text-4xl font-bold text-slate-900 mb-2') { 'Medicine Tracker' }
-            p(class: 'text-lg text-slate-600') { 'Welcome to your personal medicine tracking application.' }
+            Heading(level: 1, class: 'mb-2') { 'Medicine Tracker' }
+            Text(size: '4', weight: 'muted') { 'Welcome to your personal medicine tracking application.' }
           end
 
           div(class: 'grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto') do
@@ -20,7 +20,7 @@ module Components
       private
 
       def medicines_card
-        a(href: medicines_path, class: 'block transition-transform hover:scale-105') do
+        Link(href: medicines_path, variant: :ghost, class: 'block transition-transform hover:scale-105 h-auto p-0') do
           Card(class: 'h-full') do
             CardHeader do
               div(class: 'w-12 h-12 rounded-xl flex items-center justify-center bg-blue-100 text-blue-700 mb-2') do
@@ -36,7 +36,7 @@ module Components
       end
 
       def people_card
-        a(href: people_path, class: 'block transition-transform hover:scale-105') do
+        Link(href: people_path, variant: :ghost, class: 'block transition-transform hover:scale-105 h-auto p-0') do
           Card(class: 'h-full') do
             CardHeader do
               div(class: 'w-12 h-12 rounded-xl flex items-center justify-center bg-violet-100 text-violet-700 mb-2') do
@@ -52,46 +52,11 @@ module Components
       end
 
       def render_medicine_icon
-        svg(
-          xmlns: 'http://www.w3.org/2000/svg',
-          width: '24',
-          height: '24',
-          viewBox: '0 0 24 24',
-          fill: 'none',
-          stroke: 'currentColor',
-          stroke_width: '2',
-          stroke_linecap: 'round',
-          stroke_linejoin: 'round'
-        ) do |s|
-          s.path(d: 'M10.5 20.5 10 21a2 2 0 0 1-2.828 0L4.343 18.172a2 2 0 0 1 0-2.828l.5-.5')
-          s.path(d: 'm7 17-5-5')
-          s.path(
-            d: 'M13.5 3.5 14 3a2 2 0 0 1 2.828 0l2.829 2.828a2 2 0 0 1 0 2.829l-.5.5'
-          )
-          s.path(d: 'm17 7 5 5')
-          s.path(d: 'M9 11 4 6')
-          s.path(d: 'm13 15 5-5')
-          s.circle(cx: '12', cy: '12', r: '2')
-        end
+        render Icons::Pill.new(size: 24)
       end
 
       def render_people_icon
-        svg(
-          xmlns: 'http://www.w3.org/2000/svg',
-          width: '24',
-          height: '24',
-          viewBox: '0 0 24 24',
-          fill: 'none',
-          stroke: 'currentColor',
-          stroke_width: '2',
-          stroke_linecap: 'round',
-          stroke_linejoin: 'round'
-        ) do |s|
-          s.path(d: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2')
-          s.circle(cx: '9', cy: '7', r: '4')
-          s.path(d: 'M22 21v-2a4 4 0 0 0-3-3.87')
-          s.path(d: 'M16 3.13a4 4 0 0 1 0 7.75')
-        end
+        render Icons::Users.new(size: 24)
       end
     end
   end

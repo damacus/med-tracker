@@ -37,8 +37,8 @@ module Components
         def render_header
           header(class: 'flex items-center justify-between') do
             div(class: 'space-y-2') do
-              h1(class: 'text-3xl font-semibold text-slate-900') { 'Audit Trail' }
-              p(class: 'text-slate-600') { 'Complete history of all changes made in MedTracker.' }
+              Heading(level: 1) { 'Audit Trail' }
+              Text(weight: 'muted') { 'Complete history of all changes made in MedTracker.' }
             end
           end
         end
@@ -110,12 +110,13 @@ module Components
         end
 
         def render_clear_button
-          a(
+          Link(
             href: '/admin/audit_logs',
+            variant: :link,
             class: 'inline-flex items-center justify-center rounded-md font-medium transition-colors ' \
                    'px-4 py-2 h-10 text-sm border border-input bg-background hover:bg-accent ' \
                    'hover:text-accent-foreground'
-          ) { 'Clear' }
+          ) { 'Clear filters' }
         end
 
         def input_classes
@@ -127,8 +128,8 @@ module Components
           if versions.empty?
             render_empty_state
           else
-            div(class: 'overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm') do
-              table(class: 'min-w-full divide-y divide-slate-100') do
+            div(class: 'rounded-xl border border-border bg-card shadow-sm') do
+              Table do
                 render_table_header
                 render_table_body
               end
@@ -138,26 +139,26 @@ module Components
 
         def render_empty_state
           div(class: 'rounded-xl border border-slate-200 bg-white p-12 text-center shadow-sm') do
-            p(class: 'text-slate-600 text-lg') { 'No audit logs found' }
-            p(class: 'text-slate-500 text-sm mt-2') { 'Try adjusting your filters' }
+            Text(size: '4', class: 'text-slate-600') { 'No audit logs found' }
+            Text(size: '2', weight: 'muted', class: 'mt-2') { 'Try adjusting your filters' }
           end
         end
 
         def render_table_header
-          thead(class: 'bg-slate-50') do
-            tr do
-              th(scope: 'col', class: 'px-6 py-3 text-left text-sm font-semibold text-slate-600') { 'Timestamp' }
-              th(scope: 'col', class: 'px-6 py-3 text-left text-sm font-semibold text-slate-600') { 'Record Type' }
-              th(scope: 'col', class: 'px-6 py-3 text-left text-sm font-semibold text-slate-600') { 'Event' }
-              th(scope: 'col', class: 'px-6 py-3 text-left text-sm font-semibold text-slate-600') { 'User' }
-              th(scope: 'col', class: 'px-6 py-3 text-left text-sm font-semibold text-slate-600') { 'IP Address' }
-              th(scope: 'col', class: 'px-6 py-3 text-right text-sm font-semibold text-slate-600') { 'Actions' }
+          TableHeader(class: 'bg-slate-50') do
+            TableRow do
+              TableHead { 'Timestamp' }
+              TableHead { 'Record Type' }
+              TableHead { 'Event' }
+              TableHead { 'User' }
+              TableHead { 'IP Address' }
+              TableHead(class: 'text-right') { 'Actions' }
             end
           end
         end
 
         def render_table_body
-          tbody(class: 'divide-y divide-slate-100') do
+          TableBody do
             versions.each do |version|
               render_version_row(version)
             end
@@ -165,21 +166,22 @@ module Components
         end
 
         def render_version_row(version)
-          tr(class: 'hover:bg-slate-50', data: { version_id: version.id }) do
-            td(class: 'px-6 py-4 text-sm text-slate-900') do
+          TableRow(class: 'hover:bg-slate-50', data: { version_id: version.id }) do
+            TableCell(class: 'text-slate-900') do
               version.created_at.strftime('%Y-%m-%d %H:%M:%S')
             end
-            td(class: 'px-6 py-4 text-sm text-slate-600') { version.item_type.titleize }
-            td(class: 'px-6 py-4 text-sm') do
+            TableCell(class: 'text-slate-600') { version.item_type.titleize }
+            TableCell do
               render_event_badge(version.event)
             end
-            td(class: 'px-6 py-4 text-sm text-slate-600') do
+            TableCell(class: 'text-slate-600') do
               render_user_info(version.whodunnit)
             end
-            td(class: 'px-6 py-4 text-sm text-slate-600 font-mono') { version.ip || 'N/A' }
-            td(class: 'px-6 py-4 text-sm text-right') do
-              a(
+            TableCell(class: 'text-slate-600 font-mono') { version.ip || 'N/A' }
+            TableCell(class: 'text-right') do
+              Link(
                 href: "/admin/audit_logs/#{version.id}",
+                variant: :link,
                 class: 'text-primary hover:text-primary/80 font-medium'
               ) { 'View Details' }
             end
@@ -233,7 +235,7 @@ module Components
 
         def render_pagination_info
           div(class: 'hidden sm:block') do
-            p(class: 'text-sm text-slate-700') do
+            Text(size: '2', class: 'text-slate-700') do
               plain 'Showing '
               span(class: 'font-medium') { first_item_number.to_s }
               plain ' to '
@@ -262,8 +264,9 @@ module Components
 
         def render_previous_button
           if current_page > 1
-            a(
+            Link(
               href: pagination_url(current_page - 1),
+              variant: :link,
               class: pagination_button_classes
             ) { 'Previous' }
           else
@@ -273,8 +276,9 @@ module Components
 
         def render_next_button
           if current_page < total_pages
-            a(
+            Link(
               href: pagination_url(current_page + 1),
+              variant: :link,
               class: pagination_button_classes
             ) { 'Next' }
           else

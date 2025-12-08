@@ -13,17 +13,13 @@ class PrescriptionPolicy < ApplicationPolicy
     admin? || doctor?
   end
 
-  def new?
-    create?
-  end
+  alias new? create?
 
   def update?
     admin? || doctor?
   end
 
-  def edit?
-    update?
-  end
+  alias edit? update?
 
   def destroy?
     admin? || doctor?

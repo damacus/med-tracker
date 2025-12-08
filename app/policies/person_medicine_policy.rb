@@ -13,17 +13,13 @@ class PersonMedicinePolicy < ApplicationPolicy
     admin? || self_or_dependent?
   end
 
-  def new?
-    create?
-  end
+  alias new? create?
 
   def update?
     admin? || self_or_dependent?
   end
 
-  def edit?
-    update?
-  end
+  alias edit? update?
 
   def destroy?
     admin? || self_or_dependent?

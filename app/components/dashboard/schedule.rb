@@ -16,7 +16,7 @@ module Components
 
       def view_template
         div(class: 'space-y-6') do
-          h2(class: 'text-2xl font-bold text-slate-900') { 'Medication Schedule' }
+          Heading(level: 2) { 'Medication Schedule' }
           render_schedule_section
         end
       end
@@ -66,8 +66,8 @@ module Components
       def render_empty_state(message, help_text)
         Card(class: 'text-center py-12') do
           CardContent do
-            p(class: 'text-xl font-semibold text-slate-700 mb-2') { message }
-            p(class: 'text-slate-600') { help_text }
+            Text(size: '5', weight: 'semibold', class: 'text-slate-700 mb-2') { message }
+            Text(class: 'text-slate-600') { help_text }
           end
         end
       end

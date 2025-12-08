@@ -39,7 +39,7 @@ Rails.application.routes.draw do
     resources :medication_takes, only: [:create]
   end
 
-  resources :people, except: [:edit] do
+  resources :people do
     resources :prescriptions, except: [:index] do
       member do
         post :take_medicine

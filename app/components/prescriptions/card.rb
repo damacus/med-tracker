@@ -51,37 +51,25 @@ module Components
 
       def render_medicine_icon
         div(class: 'w-10 h-10 rounded-xl flex items-center justify-center bg-violet-100 text-violet-700 mb-2') do
-          svg(
-            xmlns: 'http://www.w3.org/2000/svg',
-            width: '20',
-            height: '20',
-            viewBox: '0 0 24 24',
-            fill: 'none',
-            stroke: 'currentColor',
-            stroke_width: '2',
-            stroke_linecap: 'round',
-            stroke_linejoin: 'round'
-          ) do |s|
-            s.path(d: 'M10.5 20.5 10 21a2 2 0 0 1-2.828 0L4.343 18.172a2 2 0 0 1 0-2.828l.5-.5')
-            s.path(d: 'm7 17-5-5')
-            s.path(d: 'M13.5 3.5 14 3a2 2 0 0 1 2.828 0l2.829 2.828a2 2 0 0 1 0 2.829l-.5.5')
-            s.path(d: 'm17 7 5 5')
-            s.circle(cx: '12', cy: '12', r: '2')
-          end
+          render Icons::Pill.new(size: 20)
         end
       end
 
       def render_date_details
         div(class: 'space-y-1 text-sm') do
           div(class: 'flex items-center gap-2') do
-            span(class: 'text-slate-500') { '📅 Started:' }
-            span(class: 'text-slate-700 font-medium') { prescription.start_date.strftime('%B %d, %Y') }
+            Text(as: 'span', class: 'text-slate-500') { '📅 Started:' }
+            Text(as: 'span', weight: 'medium', class: 'text-slate-700') do
+              prescription.start_date.strftime('%B %d, %Y')
+            end
           end
 
           if prescription.end_date
             div(class: 'flex items-center gap-2') do
-              span(class: 'text-slate-500') { '🏁 Ends:' }
-              span(class: 'text-slate-700 font-medium') { prescription.end_date.strftime('%B %d, %Y') }
+              Text(as: 'span', class: 'text-slate-500') { '🏁 Ends:' }
+              Text(as: 'span', weight: 'medium', class: 'text-slate-700') do
+                prescription.end_date.strftime('%B %d, %Y')
+              end
             end
           end
         end
@@ -89,7 +77,7 @@ module Components
 
       def render_notes
         div(class: 'p-3 bg-amber-50 border border-amber-200 rounded-md') do
-          p(class: 'text-sm text-amber-800') do
+          Text(size: '2', class: 'text-amber-800') do
             span(class: 'font-semibold') { '📝 Notes: ' }
             plain prescription.notes
           end
@@ -98,7 +86,7 @@ module Components
 
       def render_countdown_notice
         div(class: 'p-3 bg-blue-50 border border-blue-200 rounded-md') do
-          p(class: 'text-sm text-blue-800') do
+          Text(size: '2', class: 'text-blue-800') do
             span(class: 'font-semibold') { '🕐 Next dose available in: ' }
             plain prescription.countdown_display
           end
@@ -107,7 +95,7 @@ module Components
 
       def render_takes_section
         div(class: 'space-y-3') do
-          h4(class: 'text-sm font-semibold text-slate-700') { "Today's Doses" }
+          Heading(level: 4, size: '2', class: 'font-semibold text-slate-700') { "Today's Doses" }
           render_todays_takes
         end
       end
@@ -122,29 +110,15 @@ module Components
             end
           end
         else
-          p(class: 'text-sm text-slate-500 italic') { 'No doses taken today' }
+          Text(size: '2', weight: 'muted', class: 'italic') { 'No doses taken today' }
         end
       end
 
       def render_take_item(take)
         div(class: 'flex items-center gap-2 text-sm') do
-          svg(
-            xmlns: 'http://www.w3.org/2000/svg',
-            viewBox: '0 0 20 20',
-            fill: 'currentColor',
-            class: 'w-4 h-4 text-green-600',
-            width: '16',
-            height: '16'
-          ) do |s|
-            s.path(
-              fill_rule: 'evenodd',
-              d: 'M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 ' \
-                 '12.586l7.293-7.293a1 1 0 011.414 0z',
-              clip_rule: 'evenodd'
-            )
-          end
-          span(class: 'text-slate-700 font-medium') { take.taken_at.strftime('%l:%M %p').strip }
-          span(class: 'text-slate-500') { "#{take.amount_ml.to_i} ml" }
+          render Icons::CheckCircle.new(size: 16, class: 'w-4 h-4 text-green-600')
+          Text(as: 'span', weight: 'medium', class: 'text-slate-700') { take.taken_at.strftime('%l:%M %p').strip }
+          Text(as: 'span', class: 'text-slate-500') { "#{take.amount_ml.to_i} ml" }
         end
       end
 

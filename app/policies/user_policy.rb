@@ -13,9 +13,13 @@ class UserPolicy < ApplicationPolicy
     user&.administrator? || false
   end
 
+  alias new? create?
+
   def update?
     user&.administrator? || user == record || false
   end
+
+  alias edit? update?
 
   def destroy?
     user&.administrator? || false

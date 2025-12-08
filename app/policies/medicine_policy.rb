@@ -9,21 +9,19 @@ class MedicinePolicy < ApplicationPolicy
     admin? || doctor? || nurse?
   end
 
+  alias dosages? show?
+
   def create?
     admin? || doctor?
   end
 
-  def new?
-    create?
-  end
+  alias new? create?
 
   def update?
     admin? || doctor?
   end
 
-  def edit?
-    update?
-  end
+  alias edit? update?
 
   def destroy?
     admin?

@@ -20,17 +20,13 @@ class ApplicationPolicy
     false
   end
 
-  def new?
-    create?
-  end
+  alias new? create?
 
   def update?
     false
   end
 
-  def edit?
-    update?
-  end
+  alias edit? update?
 
   def destroy?
     false

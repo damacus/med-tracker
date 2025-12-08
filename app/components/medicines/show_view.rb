@@ -30,8 +30,8 @@ module Components
 
       def render_header
         div(class: 'mb-8') do
-          p(class: 'text-sm font-medium uppercase tracking-wide text-slate-500 mb-2') { 'Medicine Profile' }
-          h1(class: 'text-4xl font-bold text-slate-900') { medicine.name }
+          Text(size: '2', weight: 'medium', class: 'uppercase tracking-wide text-slate-500 mb-2') { 'Medicine Profile' }
+          Heading(level: 1) { medicine.name }
         end
       end
 
@@ -52,7 +52,7 @@ module Components
             CardTitle(class: 'text-lg') { 'Description' }
           end
           CardContent do
-            p(class: 'text-slate-700') { medicine.description.presence || 'No description provided.' }
+            Text(class: 'text-slate-700') { medicine.description.presence || 'No description provided.' }
           end
         end
       end
@@ -72,7 +72,7 @@ module Components
         if dosage_specified?
           render_dosage_display
         else
-          p(class: 'text-slate-600') { 'Not specified' }
+          Text(class: 'text-slate-600') { 'Not specified' }
         end
       end
 
@@ -81,7 +81,7 @@ module Components
       end
 
       def render_dosage_display
-        p(class: 'text-3xl font-bold text-slate-900') do
+        Text(size: '7', weight: 'bold', class: 'text-slate-900') do
           plain medicine.dosage_amount.to_s
           span(class: 'text-lg font-medium text-slate-600 ml-2') { medicine.dosage_unit }
         end
@@ -93,7 +93,7 @@ module Components
             CardTitle(class: 'text-lg') { 'Current Supply' }
           end
           CardContent do
-            p(class: 'text-3xl font-bold text-slate-900') { (medicine.current_supply || 0).to_s }
+            Text(size: '7', weight: 'bold', class: 'text-slate-900') { (medicine.current_supply || 0).to_s }
           end
         end
       end
@@ -104,8 +104,12 @@ module Components
             CardTitle(class: 'text-lg') { 'Stock on Hand' }
           end
           CardContent do
-            p(class: 'text-3xl font-bold text-slate-900') { (medicine.stock || 0).to_s }
-            p(class: 'text-sm text-destructive font-semibold mt-2') { '⚠️ Low Stock' } if medicine.low_stock?
+            Text(size: '7', weight: 'bold', class: 'text-slate-900') { (medicine.stock || 0).to_s }
+            if medicine.low_stock?
+              Text(size: '2', weight: 'semibold', class: 'text-destructive mt-2') do
+                '⚠️ Low Stock'
+              end
+            end
           end
         end
       end
@@ -116,7 +120,7 @@ module Components
             CardTitle(class: 'text-lg') { 'Reorder Threshold' }
           end
           CardContent do
-            p(class: 'text-3xl font-bold text-slate-900') { (medicine.reorder_threshold || 0).to_s }
+            Text(size: '7', weight: 'bold', class: 'text-slate-900') { (medicine.reorder_threshold || 0).to_s }
           end
         end
       end
@@ -127,22 +131,15 @@ module Components
             CardTitle(class: 'text-lg text-amber-700') { '⚠️ Warnings' }
           end
           CardContent do
-            p(class: 'text-amber-800') { medicine.warnings }
+            Text(class: 'text-amber-800') { medicine.warnings }
           end
         end
       end
 
       def render_actions
         div(class: 'flex gap-3') do
-          a(
-            href: edit_medicine_path(medicine),
-            class: button_primary_classes
-          ) { 'Edit Medicine' }
-
-          a(
-            href: medicines_path,
-            class: button_secondary_classes
-          ) { 'Back to List' }
+          Link(href: edit_medicine_path(medicine), variant: :primary) { 'Edit Medicine' }
+          Link(href: medicines_path, variant: :outline) { 'Back to List' }
         end
       end
 

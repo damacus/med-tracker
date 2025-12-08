@@ -22,6 +22,7 @@ export default class extends Controller {
 
   selectItem(event) {
     event.preventDefault();
+    event.stopPropagation();
 
     this.rubyUiSelectItemOutlets.forEach((item) =>
       item.handleSelectItem(event),

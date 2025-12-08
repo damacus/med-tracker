@@ -26,8 +26,8 @@ module Components
 
       def render_header
         div(class: 'mb-8 text-center sm:text-left') do
-          h1(class: 'text-3xl font-bold text-slate-900 mb-2') { title }
-          p(class: 'text-slate-600') { subtitle } if subtitle
+          Heading(level: 1, class: 'mb-2') { title }
+          Text(weight: 'muted') { subtitle } if subtitle
         end
       end
 
@@ -46,10 +46,10 @@ module Components
       def render_errors(_form)
         render RubyUI::Alert.new(variant: :destructive, class: 'mb-6') do
           div do
-            h2(class: 'font-semibold mb-2') do
+            Heading(level: 2, size: '3', class: 'font-semibold mb-2') do
               plain "#{pluralize(medicine.errors.count, 'error')} prevented this medicine from being saved:"
             end
-            ul(class: 'list-disc space-y-1 pl-5') do
+            ul(class: 'my-2 ml-6 list-disc [&>li]:mt-1') do
               medicine.errors.full_messages.each do |message|
                 li { message }
               end
@@ -215,12 +215,8 @@ module Components
 
       def render_form_actions(_form)
         div(class: 'flex items-center justify-between') do
-          a(
-            href: medicines_path,
-            class: button_secondary_classes
-          ) { 'Back to Medicines' }
-
-          render RubyUI::Button.new(type: :submit, variant: :primary) { 'Save Medicine' }
+          Link(href: medicines_path, variant: :outline) { 'Back to Medicines' }
+          Button(type: :submit, variant: :primary) { 'Save Medicine' }
         end
       end
 
