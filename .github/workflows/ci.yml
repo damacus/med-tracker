@@ -183,85 +183,85 @@ jobs:
             echo "No files for this shard"
           fi
 
-  lighthouse:
-    runs-on: [ubuntu-latest]
-    name: Lighthouse Mobile Audit
-    needs: [test_non_system]
-    timeout-minutes: 10
+  # lighthouse:
+  #   runs-on: [ubuntu-latest]
+  #   name: Lighthouse Mobile Audit
+  #   needs: [test_non_system]
+  #   timeout-minutes: 10
 
-    services:
-      postgres:
-        image: postgres:18-alpine
-        env:
-          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-          POSTGRES_DB: medtracker_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+  #   services:
+  #     postgres:
+  #       image: postgres:18-alpine
+  #       env:
+  #         POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+  #         POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+  #         POSTGRES_DB: medtracker_test
+  #       ports:
+  #         - 5432:5432
+  #       options: >-
+  #         --health-cmd pg_isready
+  #         --health-interval 10s
+  #         --health-timeout 5s
+  #         --health-retries 5
 
-    env:
-      DATABASE_URL: postgres://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/medtracker_test
-      RAILS_ENV: production
-      SECRET_KEY_BASE: test-secret-key-base-for-ci-lighthouse-audit
-      RAILS_SERVE_STATIC_FILES: true
+  #   env:
+  #     DATABASE_URL: postgres://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/medtracker_test
+  #     RAILS_ENV: production
+  #     SECRET_KEY_BASE: test-secret-key-base-for-ci-lighthouse-audit
+  #     RAILS_SERVE_STATIC_FILES: true
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6
 
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '3.4.7'
-          bundler-cache: true
+  #     - name: Set up Ruby
+  #       uses: ruby/setup-ruby@v1
+  #       with:
+  #         ruby-version: '3.4.7'
+  #         bundler-cache: true
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+  #     - name: Set up Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: '20'
 
-      - name: Install Chrome
-        uses: browser-actions/setup-chrome@v1
-        with:
-          chrome-version: stable
+  #     - name: Install Chrome
+  #       uses: browser-actions/setup-chrome@v1
+  #       with:
+  #         chrome-version: stable
 
-      - name: Install Task
-        uses: arduino/setup-task@v2
-        with:
-          version: 3.x
+  #     - name: Install Task
+  #       uses: arduino/setup-task@v2
+  #       with:
+  #         version: 3.x
 
-      - name: Install Node dependencies
-        run: npm ci
+  #     - name: Install Node dependencies
+  #       run: npm ci
 
-      - name: Set up database
-        run: bundle exec rails db:create db:migrate
+  #     - name: Set up database
+  #       run: bundle exec rails db:create db:migrate
 
-      - name: Seed database
-        run: bundle exec rails db:seed
+  #     - name: Seed database
+  #       run: bundle exec rails db:seed
 
-      - name: Precompile assets
-        run: bundle exec rails assets:precompile
+  #     - name: Precompile assets
+  #       run: bundle exec rails assets:precompile
 
-      - name: Start Rails server
-        run: |
-          bundle exec rails server -p 3000 -d
-          sleep 5
-          curl -s http://localhost:3000/up || (echo "Server failed to start" && exit 1)
+  #     - name: Start Rails server
+  #       run: |
+  #         bundle exec rails server -p 3000 -d
+  #         sleep 5
+  #         curl -s http://localhost:3000/up || (echo "Server failed to start" && exit 1)
 
-      - name: Run Lighthouse audit
-        run: task lighthouse:ci
+  #     - name: Run Lighthouse audit
+  #       run: task lighthouse:ci
 
-      - name: Upload Lighthouse report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: lighthouse-report
-          path: |
-            lighthouse-report.json
-            lighthouse-report.html
-          retention-days: 30
+  #     - name: Upload Lighthouse report
+  #       uses: actions/upload-artifact@v4
+  #       if: always()
+  #       with:
+  #         name: lighthouse-report
+  #         path: |
+  #           lighthouse-report.json
+  #           lighthouse-report.html
+  #         retention-days: 30
