@@ -83,9 +83,9 @@ module Components
         end
 
         def render_name_field(_person_form)
-          render RubyUI::FormField.new do
-            render RubyUI::FormFieldLabel.new(for: 'user_person_attributes_name') { 'Name' }
-            render RubyUI::Input.new(
+          FormField do
+            FormFieldLabel(for: 'user_person_attributes_name') { 'Name' }
+            Input(
               type: :text,
               name: 'user[person_attributes][name]',
               id: 'user_person_attributes_name',
@@ -96,9 +96,9 @@ module Components
         end
 
         def render_date_of_birth_field(_person_form)
-          render RubyUI::FormField.new do
-            render RubyUI::FormFieldLabel.new(for: 'user_person_attributes_date_of_birth') { 'Date of birth' }
-            render RubyUI::Input.new(
+          FormField do
+            FormFieldLabel(for: 'user_person_attributes_date_of_birth') { 'Date of birth' }
+            Input(
               type: :date,
               name: 'user[person_attributes][date_of_birth]',
               id: 'user_person_attributes_date_of_birth',
@@ -109,9 +109,9 @@ module Components
         end
 
         def render_email_field(_form)
-          render RubyUI::FormField.new do
-            render RubyUI::FormFieldLabel.new(for: 'user_email_address') { 'Email address' }
-            render RubyUI::Input.new(
+          FormField do
+            FormFieldLabel(for: 'user_email_address') { 'Email address' }
+            Input(
               type: :email,
               name: 'user[email_address]',
               id: 'user_email_address',
@@ -129,9 +129,9 @@ module Components
         end
 
         def render_password_field
-          render RubyUI::FormField.new do
-            render RubyUI::FormFieldLabel.new(for: 'user_password') { 'Password' }
-            render RubyUI::Input.new(
+          FormField do
+            FormFieldLabel(for: 'user_password') { 'Password' }
+            Input(
               type: :password,
               name: 'user[password]',
               id: 'user_password',
@@ -141,9 +141,9 @@ module Components
         end
 
         def render_password_confirmation_field
-          render RubyUI::FormField.new do
-            render RubyUI::FormFieldLabel.new(for: 'user_password_confirmation') { 'Password confirmation' }
-            render RubyUI::Input.new(
+          FormField do
+            FormFieldLabel(for: 'user_password_confirmation') { 'Password confirmation' }
+            Input(
               type: :password,
               name: 'user[password_confirmation]',
               id: 'user_password_confirmation',
@@ -153,12 +153,12 @@ module Components
         end
 
         def render_role_field(_form)
-          render RubyUI::FormField.new do
-            render RubyUI::FormFieldLabel.new(for: 'user_role') { 'Role' }
+          FormField do
+            FormFieldLabel(for: 'user_role') { 'Role' }
             select(
               name: 'user[role]',
               id: 'user_role',
-              class: input_classes,
+              class: select_classes,
               required: true
             ) do
               option(value: '', selected: user.role.blank?) { 'Select role' }
@@ -167,6 +167,12 @@ module Components
               end
             end
           end
+        end
+
+        def select_classes
+          'flex h-9 w-full items-center justify-between rounded-md border border-input ' \
+            'bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background ' \
+            'focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50'
         end
 
         def render_form_actions
@@ -178,15 +184,6 @@ module Components
           end
         end
 
-        def input_classes
-          'w-full rounded-md border border-input bg-background px-3 py-2 text-sm ' \
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
-        end
-
-        def button_secondary_classes
-          'inline-flex items-center justify-center rounded-md font-medium transition-colors ' \
-            'px-4 py-2 h-10 text-sm border border-input bg-background hover:bg-accent hover:text-accent-foreground'
-        end
       end
     end
   end

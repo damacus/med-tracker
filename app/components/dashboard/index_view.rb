@@ -30,21 +30,21 @@ module Components
       private
 
       def render_header
-        div(class: 'flex justify-between items-center mb-8') do
+        div(class: 'flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8') do
           Heading(level: 1) { 'Dashboard' }
           render_quick_actions
         end
       end
 
       def render_quick_actions
-        div(class: 'flex gap-3') do
+        div(class: 'flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto') do
           Link(
             href: url_helpers&.new_medicine_path || '#',
-            class: button_primary_classes
+            class: "#{button_primary_classes} w-full sm:w-auto justify-center min-h-[44px]"
           ) { 'Add Medicine' }
           Link(
             href: url_helpers&.new_person_path || '#',
-            class: button_secondary_classes
+            class: "#{button_secondary_classes} w-full sm:w-auto justify-center min-h-[44px]"
           ) { 'Add Person' }
         end
       end
@@ -107,24 +107,128 @@ module Components
         div(class: 'space-y-4') do
           Heading(level: 2) { 'Medication Schedule' }
 
-          Table do
-            TableHeader do
-              TableRow do
-                TableHead { 'Person' }
-                TableHead { 'Medicine' }
-                TableHead { 'Dosage' }
-                TableHead { 'Frequency' }
-                TableHead { 'End Date' }
-                TableHead(class: 'text-center') { 'Actions' }
+          # Mobile card layout
+          div(class: 'md:hidden space-y-3') do
+            upcoming_prescriptions.each do |person, prescriptions|
+              prescriptions.each do |prescription|
+                render_prescription_card(person, prescription)
+              end
+            end
+          end
+
+          # Desktop table layout
+          div(class: 'hidden md:block') do
+            Table do
+              TableHeader do
+                TableRow do
+                  TableHead { 'Person' }
+                  TableHead { 'Medicine' }
+                  TableHead { 'Dosage' }
+                  TableHead { 'Frequency' }
+                  TableHead { 'End Date' }
+                  TableHead(class: 'text-center') { 'Actions' }
+                end
+              end
+
+              TableBody do
+                upcoming_prescriptions.each do |person, prescriptions|
+                  prescriptions.each do |prescription|
+                    render_prescription_row(person, prescription)
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+
+      def render_prescription_card(person, prescription)
+        Card(class: 'p-4', id: "prescription_#{prescription.id}") do
+          div(class: 'flex items-start justify-between gap-3') do
+            div(class: 'flex-1 min-w-0') do
+              # Person and medicine info
+              div(class: 'flex items-center gap-2 mb-2') do
+                render_person_avatar_small
+                span(class: 'font-semibold text-slate-900 truncate') { person.name }
+              end
+
+              div(class: 'flex items-center gap-2 mb-3') do
+                render_medicine_icon_small
+                span(class: 'font-medium text-slate-700') { prescription.medicine.name }
+              end
+
+              # Details in a compact grid
+              div(class: 'grid grid-cols-2 gap-2 text-sm text-slate-600') do
+                div do
+                  span(class: 'text-slate-500') { 'Dosage: ' }
+                  span(class: 'font-medium') { format_dosage(prescription) }
+                end
+                div do
+                  span(class: 'text-slate-500') { 'Frequency: ' }
+                  span(class: 'font-medium') { prescription.frequency || '—' }
+                end
+                div(class: 'col-span-2') do
+                  span(class: 'text-slate-500') { 'Ends: ' }
+                  span(class: 'font-medium') { format_end_date(prescription) }
+                end
+              end
+            end
+          end
+
+          # Actions at bottom with full-width Take Now button
+          div(class: 'mt-4 flex gap-2') do
+            if url_helpers
+              form_with(
+                url: url_helpers.prescription_medication_takes_path(prescription),
+                method: :post,
+                class: 'flex-1'
+              ) do
+                Button(
+                  type: :submit,
+                  variant: :primary,
+                  class: 'w-full min-h-[44px]',
+                  data: { test_id: "take-medicine-#{prescription.id}" }
+                ) { 'Take Now' }
               end
             end
 
-            TableBody do
-              upcoming_prescriptions.each do |person, prescriptions|
-                prescriptions.each do |prescription|
-                  render_prescription_row(person, prescription)
-                end
+            render_delete_button_mobile(prescription) if can_delete_prescription?(prescription)
+          end
+        end
+      end
+
+      def render_delete_button_mobile(prescription)
+        AlertDialog do
+          AlertDialogTrigger do
+            Button(
+              variant: :destructive,
+              size: :sm,
+              class: delete_badge_classes,
+              data: { test_id: "delete-prescription-#{prescription.id}" }
+            ) { 'Delete' }
+          end
+
+          AlertDialogContent do
+            AlertDialogHeader do
+              AlertDialogTitle { 'Delete Prescription?' }
+              AlertDialogDescription do
+                plain "Are you sure you want to delete #{prescription.medicine.name} "
+                plain "for #{prescription.person.name}? This action cannot be undone."
               end
+            end
+
+            AlertDialogFooter do
+              AlertDialogCancel { 'Cancel' }
+              Link(
+                href: url_helpers.person_prescription_path(prescription.person, prescription),
+                variant: :destructive,
+                data: {
+                  turbo_method: :delete,
+                  turbo_frame: '_top',
+                  test_id: "confirm-delete-#{prescription.id}",
+                  action: 'click->ruby-ui--alert-dialog#close'
+                }
+              ) { 'Delete' }
             end
           end
         end

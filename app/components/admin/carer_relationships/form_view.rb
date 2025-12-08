@@ -55,83 +55,85 @@ module Components
         end
 
         def render_errors
-          div(class: 'rounded-md bg-red-50 p-4') do
-            div(class: 'flex') do
-              div(class: 'ml-3') do
-                Heading(level: 3, size: '2', class: 'font-medium text-red-800') do
-                  "#{relationship.errors.count} error(s) prohibited this relationship from being saved:"
-                end
-                div(class: 'mt-2 text-sm text-red-700') do
-                  ul(class: 'my-2 ml-6 list-disc [&>li]:mt-1') do
-                    relationship.errors.full_messages.each do |message|
-                      li { message }
-                    end
-                  end
+          Alert(variant: :destructive, class: 'mb-6') do
+            AlertTitle { "#{relationship.errors.count} error(s) prohibited this relationship from being saved:" }
+            AlertDescription do
+              ul(class: 'my-2 ml-6 list-disc [&>li]:mt-1') do
+                relationship.errors.full_messages.each do |message|
+                  li { message }
                 end
               end
             end
           end
         end
 
-        def render_carer_field(form)
+        def render_carer_field(_form)
           div do
-            render RubyUI::FormField.new do
-              render RubyUI::FormFieldLabel.new(for: 'carer_relationship_carer_id') { 'Carer' }
-              form.select(
-                :carer_id,
-                carers.map { |p| [p.name, p.id] },
-                { prompt: 'Select a carer...' },
-                class: input_classes,
-                id: 'carer_relationship_carer_id'
-              )
+            FormField do
+              FormFieldLabel(for: 'carer_relationship_carer_id') { 'Carer' }
+              select(
+                name: 'carer_relationship[carer_id]',
+                id: 'carer_relationship_carer_id',
+                class: select_classes
+              ) do
+                option(value: '', selected: relationship.carer_id.blank?) { 'Select a carer...' }
+                carers.each do |carer|
+                  option(value: carer.id, selected: relationship.carer_id == carer.id) { carer.name }
+                end
+              end
             end
           end
         end
 
-        def render_patient_field(form)
+        def render_patient_field(_form)
           div do
-            render RubyUI::FormField.new do
-              render RubyUI::FormFieldLabel.new(for: 'carer_relationship_patient_id') { 'Patient' }
-              form.select(
-                :patient_id,
-                patients.map { |p| [p.name, p.id] },
-                { prompt: 'Select a patient...' },
-                class: input_classes,
-                id: 'carer_relationship_patient_id'
-              )
+            FormField do
+              FormFieldLabel(for: 'carer_relationship_patient_id') { 'Patient' }
+              select(
+                name: 'carer_relationship[patient_id]',
+                id: 'carer_relationship_patient_id',
+                class: select_classes
+              ) do
+                option(value: '', selected: relationship.patient_id.blank?) { 'Select a patient...' }
+                patients.each do |patient|
+                  option(value: patient.id, selected: relationship.patient_id == patient.id) { patient.name }
+                end
+              end
             end
           end
         end
 
-        def render_relationship_type_field(form)
+        def render_relationship_type_field(_form)
           div do
-            render RubyUI::FormField.new do
-              render RubyUI::FormFieldLabel.new(for: 'carer_relationship_relationship_type') { 'Relationship type' }
-              form.select(
-                :relationship_type,
-                RELATIONSHIP_TYPES,
-                { prompt: 'Select relationship type...' },
-                class: input_classes,
-                id: 'carer_relationship_relationship_type'
-              )
+            FormField do
+              FormFieldLabel(for: 'carer_relationship_relationship_type') { 'Relationship type' }
+              select(
+                name: 'carer_relationship[relationship_type]',
+                id: 'carer_relationship_relationship_type',
+                class: select_classes
+              ) do
+                option(value: '', selected: relationship.relationship_type.blank?) { 'Select relationship type...' }
+                RELATIONSHIP_TYPES.each do |label, value|
+                  option(value: value, selected: relationship.relationship_type == value) { label }
+                end
+              end
             end
           end
         end
 
-        def render_submit_button(form)
+        def select_classes
+          'flex h-9 w-full items-center justify-between rounded-md border border-input ' \
+            'bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background ' \
+            'focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50'
+        end
+
+        def render_submit_button(_form)
           div(class: 'flex items-center gap-4') do
-            form.submit(
-              relationship.new_record? ? 'Create Relationship' : 'Update Relationship',
-              class: 'inline-flex items-center justify-center rounded-md font-medium transition-colors ' \
-                     'px-4 py-2 h-10 text-sm bg-primary text-primary-foreground hover:bg-primary/90'
-            )
+            Button(type: :submit, variant: :primary) do
+              relationship.new_record? ? 'Create Relationship' : 'Update Relationship'
+            end
             Link(href: '/admin/carer_relationships', variant: :link) { 'Cancel' }
           end
-        end
-
-        def input_classes
-          'w-full rounded-md border border-input bg-background px-3 py-2 text-sm ' \
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
         end
       end
     end

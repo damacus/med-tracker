@@ -48,7 +48,7 @@
       "Consistent input styling via RubyUI::Input",
       "Remove inline Tailwind classes for form elements"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "UI-004",
@@ -63,7 +63,7 @@
       "Table converts to card layout on mobile",
       "Touch-friendly button sizes (min 44x44px)"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "UI-005",
