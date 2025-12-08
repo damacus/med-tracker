@@ -17,9 +17,13 @@ class PersonPolicy < ApplicationPolicy
     false
   end
 
+  alias new? create?
+
   def update?
     admin?
   end
+
+  alias edit? update?
 
   def destroy?
     admin?

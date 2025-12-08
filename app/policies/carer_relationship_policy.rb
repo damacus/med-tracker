@@ -13,9 +13,13 @@ class CarerRelationshipPolicy < ApplicationPolicy
     admin?
   end
 
+  alias new? create?
+
   def update?
     admin?
   end
+
+  alias edit? update?
 
   def destroy?
     admin?

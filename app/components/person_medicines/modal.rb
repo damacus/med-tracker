@@ -40,7 +40,7 @@ module Components
           model: person_medicine,
           url: person_person_medicines_path(person),
           class: 'space-y-6'
-        ) do |_form|
+        ) do
           render_form_fields
           render_actions
         end
