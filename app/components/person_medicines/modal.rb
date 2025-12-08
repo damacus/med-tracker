@@ -37,25 +37,26 @@ module Components
 
       def render_header
         div(class: 'mb-4') do
-          h2(class: 'text-lg font-semibold') { title }
-          p(class: 'text-sm text-muted-foreground') { 'Add a vitamin, supplement, or over-the-counter medicine' }
+          Heading(level: 2) { title }
+          Text(size: '2', class: 'text-muted-foreground') { 'Add a vitamin, supplement, or over-the-counter medicine' }
         end
       end
 
       def render_close_button
-        a(
-          href: helpers.person_path(person),
-          class: 'absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100',
+        Link(
+          href: person_path(person),
+          variant: :ghost,
+          size: :sm,
+          icon: true,
+          class: 'absolute right-4 top-4 opacity-70 hover:opacity-100',
           data: { turbo_frame: 'person_medicine_modal' }
-        ) do
-          plain '×'
-        end
+        ) { plain '×' }
       end
 
       def render_form
         form_with(
           model: person_medicine,
-          url: helpers.person_person_medicines_path(person),
+          url: person_person_medicines_path(person),
           class: 'space-y-6'
         ) do |_form|
           render_form_fields
@@ -142,9 +143,9 @@ module Components
 
       def render_actions
         div(class: 'flex justify-end gap-3 pt-4') do
-          a(
+          Link(
             href: person_path(person),
-            class: button_outline_classes,
+            variant: :outline,
             data: { turbo_frame: 'person_medicine_modal' }
           ) { 'Cancel' }
           Button(type: :submit, variant: :primary) { 'Add Medicine' }

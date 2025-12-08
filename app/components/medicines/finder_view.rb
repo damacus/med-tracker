@@ -15,7 +15,7 @@ module Components
 
       def render_header
         div(class: 'mb-8') do
-          h1(class: 'text-4xl font-bold text-slate-900 mb-2') { 'Medicine Finder' }
+          Heading(level: 1, class: 'mb-2') { 'Medicine Finder' }
         end
       end
 
@@ -29,14 +29,10 @@ module Components
               class: 'flex-1 rounded-md border border-slate-300 px-4 py-2 text-sm ' \
                      'focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20'
             )
-            button(
-              class: 'inline-flex items-center justify-center rounded-md font-medium ' \
-                     'transition-colors px-4 py-2 text-sm bg-primary text-primary-foreground ' \
-                     'shadow hover:bg-primary/90'
-            ) { 'Search' }
+            Button(size: :sm) { 'Search' }
           end
 
-          p(class: 'text-sm text-slate-600') do
+          Text(size: '2', class: 'text-slate-600') do
             plain 'Search for medicines by name or active ingredient. ' \
                   'Results will be provided by an online medicine database.'
           end
@@ -46,7 +42,7 @@ module Components
       def render_coming_soon
         render RubyUI::Card.new(class: 'bg-slate-50') do
           render RubyUI::CardContent.new(class: 'py-8 text-center') do
-            p(class: 'text-slate-600') do
+            Text(class: 'text-slate-600') do
               plain "This feature is coming soon! We'll integrate with a medicine database API " \
                     'to provide detailed information about medications.'
             end

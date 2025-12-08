@@ -30,28 +30,15 @@ module Components
         div(class: 'flex items-center gap-3 mb-2') do
           render_person_avatar
           div do
-            h3(class: 'text-xl font-semibold text-slate-900') { person.name }
-            p(class: 'text-sm text-slate-600') { "Age: #{person.age}" }
+            Heading(level: 3) { person.name }
+            Text(size: '2', weight: 'muted') { "Age: #{person.age}" }
           end
         end
       end
 
       def render_person_avatar
         div(class: 'w-12 h-12 rounded-full flex items-center justify-center bg-slate-100 text-slate-700') do
-          svg(
-            xmlns: 'http://www.w3.org/2000/svg',
-            width: '24',
-            height: '24',
-            viewBox: '0 0 24 24',
-            fill: 'none',
-            stroke: 'currentColor',
-            stroke_width: '2',
-            stroke_linecap: 'round',
-            stroke_linejoin: 'round'
-          ) do |s|
-            s.path(d: 'M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2')
-            s.circle(cx: '12', cy: '7', r: '4')
-          end
+          render Icons::User.new(size: 24)
         end
       end
 
@@ -82,23 +69,7 @@ module Components
 
       def render_medicine_icon
         div(class: 'w-10 h-10 rounded-xl flex items-center justify-center bg-green-100 text-green-700 mb-2') do
-          svg(
-            xmlns: 'http://www.w3.org/2000/svg',
-            width: '20',
-            height: '20',
-            viewBox: '0 0 24 24',
-            fill: 'none',
-            stroke: 'currentColor',
-            stroke_width: '2',
-            stroke_linecap: 'round',
-            stroke_linejoin: 'round'
-          ) do |s|
-            s.path(d: 'M10.5 20.5 10 21a2 2 0 0 1-2.828 0L4.343 18.172a2 2 0 0 1 0-2.828l.5-.5')
-            s.path(d: 'm7 17-5-5')
-            s.path(d: 'M13.5 3.5 14 3a2 2 0 0 1 2.828 0l2.829 2.828a2 2 0 0 1 0 2.829l-.5.5')
-            s.path(d: 'm17 7 5 5')
-            s.circle(cx: '12', cy: '12', r: '2')
-          end
+          render Icons::Pill.new(size: 20)
         end
       end
 
@@ -140,8 +111,9 @@ module Components
       def render_take_medicine_link(prescription)
         if take_medicine_url_generator
           url = take_medicine_url_generator.call(prescription)
-          a(
+          Link(
             href: url,
+            variant: :link,
             class: 'text-primary hover:underline font-medium',
             data: { turbo_method: :post, test_id: "take-medicine-#{prescription.id}" }
           ) { 'Take Now' }
@@ -153,9 +125,9 @@ module Components
       end
 
       def render_delete_link(prescription)
-        a(
+        Link(
           href: person_prescription_path(prescription.person, prescription),
-          class: 'text-destructive hover:underline',
+          variant: :destructive,
           data: {
             turbo_method: :delete,
             turbo_confirm: 'Are you sure you want to delete this prescription?',

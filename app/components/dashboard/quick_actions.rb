@@ -13,10 +13,10 @@ module Components
 
       def view_template
         section(class: 'dashboard__section dashboard__section--actions') do
-          h2(class: 'dashboard__section-title') { 'Quick Actions' }
+          Heading(level: 2, class: 'dashboard__section-title') { 'Quick Actions' }
           div(class: 'dashboard__actions-list') do
             action_links.each do |label, url|
-              a(href: url, class: button_classes) { label }
+              Link(href: url, variant: :primary) { label }
             end
           end
         end

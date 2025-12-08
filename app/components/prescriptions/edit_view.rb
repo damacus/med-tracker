@@ -24,12 +24,10 @@ module Components
 
       def render_header
         div(class: 'mb-8') do
-          p(class: 'text-sm font-medium uppercase tracking-wide text-slate-500 mb-2') do
+          Text(size: '2', weight: 'medium', class: 'uppercase tracking-wide text-slate-500 mb-2') do
             'Edit Prescription'
           end
-          h1(class: 'text-4xl font-bold text-slate-900') do
-            "Update prescription for #{person.name}"
-          end
+          Heading(level: 1) { "Update prescription for #{person.name}" }
         end
       end
     end

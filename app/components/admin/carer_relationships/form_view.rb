@@ -34,10 +34,10 @@ module Components
 
         def render_header
           header(class: 'mb-8') do
-            h1(class: 'text-3xl font-semibold text-slate-900') do
+            Heading(level: 1) do
               relationship.new_record? ? 'New Carer Relationship' : 'Edit Carer Relationship'
             end
-            p(class: 'text-slate-600 mt-2') { 'Assign a carer to a patient.' }
+            Text(weight: 'muted', class: 'mt-2') { 'Assign a carer to a patient.' }
           end
         end
 
@@ -58,11 +58,11 @@ module Components
           div(class: 'rounded-md bg-red-50 p-4') do
             div(class: 'flex') do
               div(class: 'ml-3') do
-                h3(class: 'text-sm font-medium text-red-800') do
+                Heading(level: 3, size: '2', class: 'font-medium text-red-800') do
                   "#{relationship.errors.count} error(s) prohibited this relationship from being saved:"
                 end
                 div(class: 'mt-2 text-sm text-red-700') do
-                  ul(class: 'list-disc space-y-1 pl-5') do
+                  ul(class: 'my-2 ml-6 list-disc [&>li]:mt-1') do
                     relationship.errors.full_messages.each do |message|
                       li { message }
                     end
@@ -125,10 +125,7 @@ module Components
               class: 'inline-flex items-center justify-center rounded-md font-medium transition-colors ' \
                      'px-4 py-2 h-10 text-sm bg-primary text-primary-foreground hover:bg-primary/90'
             )
-            a(
-              href: '/admin/carer_relationships',
-              class: 'text-sm text-slate-600 hover:text-slate-900'
-            ) { 'Cancel' }
+            Link(href: '/admin/carer_relationships', variant: :link) { 'Cancel' }
           end
         end
 

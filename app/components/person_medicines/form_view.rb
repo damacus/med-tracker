@@ -28,19 +28,17 @@ module Components
 
       def render_header
         div(class: 'mb-8') do
-          p(class: 'text-sm font-medium uppercase tracking-wide text-slate-500 mb-2') do
+          Text(size: '2', weight: 'medium', class: 'uppercase tracking-wide text-slate-500 mb-2') do
             'Add Medicine'
           end
-          h1(class: 'text-4xl font-bold text-slate-900') do
-            "Add Medicine for #{person.name}"
-          end
+          Heading(level: 1) { "Add Medicine for #{person.name}" }
         end
       end
 
       def render_form
         form_with(
           model: person_medicine,
-          url: helpers.person_person_medicines_path(person),
+          url: person_person_medicines_path(person),
           class: 'space-y-6'
         ) do |form|
           render_errors if person_medicine.errors.any?
@@ -55,7 +53,7 @@ module Components
             "#{pluralize(person_medicine.errors.count, 'error')} prohibited this medicine from being saved:"
           end
           AlertDescription do
-            ul(class: 'list-disc list-inside space-y-1') do
+            ul(class: 'my-2 ml-6 list-disc [&>li]:mt-1') do
               person_medicine.errors.full_messages.each do |message|
                 li { message }
               end

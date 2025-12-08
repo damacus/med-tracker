@@ -23,8 +23,8 @@ module Components
 
         def render_header
           header(class: 'space-y-2') do
-            h1(class: 'text-3xl font-semibold text-slate-900') { 'Admin Dashboard' }
-            p(class: 'text-slate-600') { 'System overview and administrative tools' }
+            Heading(level: 1) { 'Admin Dashboard' }
+            Text(weight: 'muted') { 'System overview and administrative tools' }
           end
         end
 
@@ -80,9 +80,9 @@ module Components
           div(class: card_classes, data: { testid: testid }) do
             div(class: 'flex items-center justify-between') do
               div do
-                p(class: 'text-sm font-medium text-slate-600') { title }
-                p(class: 'text-3xl font-bold text-slate-900 mt-2', data: { metric_value: value }) { value.to_s }
-                p(class: 'text-xs text-slate-500 mt-1') { subtitle } if subtitle
+                Text(size: '2', weight: 'medium', class: 'text-slate-600') { title }
+                Text(size: '7', weight: 'bold', class: 'mt-2', data: { metric_value: value }) { value.to_s }
+                Text(size: '1', weight: 'muted', class: 'mt-1') { subtitle } if subtitle
               end
               div(class: 'text-4xl') { icon } if icon
             end
@@ -131,15 +131,16 @@ module Components
         end
 
         def render_action_link(title:, description:, href:, icon: nil)
-          a(
+          Link(
             href: href,
-            class: 'flex items-start gap-4 rounded-lg border border-slate-200 p-4 ' \
+            variant: :ghost,
+            class: 'flex items-start gap-4 rounded-lg border border-slate-200 p-4 h-auto ' \
                    'transition-colors hover:bg-slate-50 hover:border-slate-300'
           ) do
             div(class: 'text-3xl') { icon } if icon
             div do
-              h3(class: 'font-semibold text-slate-900') { title }
-              p(class: 'text-sm text-slate-600 mt-1') { description }
+              Heading(level: 3) { title }
+              Text(size: '2', weight: 'muted', class: 'mt-1') { description }
             end
           end
         end

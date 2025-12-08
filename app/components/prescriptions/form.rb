@@ -33,11 +33,16 @@ module Components
         Alert(variant: :destructive, class: 'mb-6') do
           AlertTitle { "#{prescription.errors.count} error(s) prohibited this prescription from being saved:" }
           AlertDescription do
-            ul(class: 'list-disc list-inside space-y-1') do
+            ul(class: 'my-2 ml-6 list-disc [&>li]:mt-1') do
               prescription.errors.full_messages.each do |message|
                 li { message }
               end
             end
+            TypographyList(items: [
+                             'Phlex is fast',
+                             'Phlex is easy to use',
+                             'Phlex is awesome'
+                           ])
           end
         end
       end

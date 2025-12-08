@@ -115,7 +115,7 @@ module Components
       end
 
       def render_prescriptions_header
-        h2(class: 'text-2xl font-bold text-slate-900 mb-6') { 'Prescriptions' }
+        Heading(level: 2, class: 'mb-6') { 'Prescriptions' }
       end
 
       def render_prescriptions_grid
@@ -134,7 +134,7 @@ module Components
         div(class: 'col-span-full') do
           Card(class: 'text-center py-12') do
             CardContent do
-              p(class: 'text-slate-500 italic mb-4') { 'No prescriptions yet.' }
+              Text(size: '2', class: 'text-muted-foreground') { 'No prescriptions yet.' }
               Link(
                 href: new_person_prescription_path(person),
                 variant: :primary,
@@ -154,7 +154,7 @@ module Components
       end
 
       def render_my_medicines_header
-        h2(class: 'text-2xl font-bold text-slate-900 mb-6') { 'My Medicines' }
+        Heading(level: 2, class: 'mb-6') { 'My Medicines' }
       end
 
       def render_my_medicines_grid
@@ -178,10 +178,8 @@ module Components
         div(class: 'col-span-full') do
           Card(class: 'text-center py-12') do
             CardContent do
-              p(class: 'text-slate-500 italic mb-4') { 'No medicines added yet.' }
-              p(class: 'text-slate-600 text-sm mb-4') do
-                'Add vitamins, supplements, or over-the-counter medicines here.'
-              end
+              Text(size: '2', class: 'text-muted-foreground') { 'No medicines added yet.' }
+              Text(size: '2') { 'Add vitamins, supplements, or over-the-counter medicines here.' }
               if view_context.policy(PersonMedicine.new(person: person)).create?
                 Link(
                   href: new_person_person_medicine_path(person),

@@ -35,39 +35,11 @@ module Components
       end
 
       def check_icon
-        svg(
-          xmlns: 'http://www.w3.org/2000/svg',
-          width: '16',
-          height: '16',
-          viewBox: '0 0 24 24',
-          fill: 'none',
-          stroke: 'currentColor',
-          stroke_width: '2',
-          stroke_linecap: 'round',
-          stroke_linejoin: 'round',
-          class: 'lucide lucide-check'
-        ) do |s|
-          s.path(d: 'M20 6 9 17l-5-5')
-        end
+        render Icons::Check.new(size: 16, class: 'lucide lucide-check')
       end
 
       def alert_icon
-        svg(
-          xmlns: 'http://www.w3.org/2000/svg',
-          width: '16',
-          height: '16',
-          viewBox: '0 0 24 24',
-          fill: 'none',
-          stroke: 'currentColor',
-          stroke_width: '2',
-          stroke_linecap: 'round',
-          stroke_linejoin: 'round',
-          class: 'lucide lucide-alert-circle'
-        ) do |s|
-          s.circle(cx: '12', cy: '12', r: '10')
-          s.path(d: 'M12 8v4')
-          s.path(d: 'M12 16h.01')
-        end
+        render Icons::AlertCircle.new(size: 16, class: 'lucide lucide-alert-circle')
       end
     end
   end

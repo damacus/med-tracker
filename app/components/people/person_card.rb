@@ -33,20 +33,7 @@ module Components
 
       def render_person_icon
         div(class: 'w-10 h-10 rounded-xl flex items-center justify-center bg-violet-100 text-violet-700 mb-2') do
-          svg(
-            xmlns: 'http://www.w3.org/2000/svg',
-            width: '20',
-            height: '20',
-            viewBox: '0 0 24 24',
-            fill: 'none',
-            stroke: 'currentColor',
-            stroke_width: '2',
-            stroke_linecap: 'round',
-            stroke_linejoin: 'round'
-          ) do |s|
-            s.path(d: 'M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2')
-            s.circle(cx: '12', cy: '7', r: '4')
-          end
+          render Icons::User.new(size: 20)
         end
       end
 

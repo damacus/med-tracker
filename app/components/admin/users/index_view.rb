@@ -31,8 +31,8 @@ module Components
         def render_header
           header(class: 'flex items-center justify-between') do
             div(class: 'space-y-2') do
-              h1(class: 'text-3xl font-semibold text-slate-900') { 'User Management' }
-              p(class: 'text-slate-600') { 'Review roles and access levels for everyone using MedTracker.' }
+              Heading(level: 1) { 'User Management' }
+              Text(weight: 'muted') { 'Review roles and access levels for everyone using MedTracker.' }
             end
             render RubyUI::Link.new(href: '/admin/users/new', variant: :primary) { 'New User' }
           end
@@ -126,7 +126,11 @@ module Components
           new_direction = is_active && current_direction == 'asc' ? 'desc' : 'asc'
           sort_params = search_params.to_h.merge(sort: column, direction: new_direction)
 
-          a(href: "/admin/users?#{sort_params.to_query}", class: sortable_header_class(is_active)) do
+          Link(
+            href: "/admin/users?#{sort_params.to_query}",
+            variant: :link,
+            class: sortable_header_class(is_active)
+          ) do
             span { label }
             render_sort_indicator(is_active, current_direction)
           end
@@ -224,13 +228,13 @@ module Components
 
         def render_mobile_pagination
           if pagy_obj.previous
-            a(href: page_url(pagy_obj.previous), class: mobile_nav_class) { 'Previous' }
+            Link(href: page_url(pagy_obj.previous), variant: :link, class: mobile_nav_class) { 'Previous' }
           else
             span(class: "#{mobile_nav_class} opacity-50 cursor-not-allowed") { 'Previous' }
           end
 
           if pagy_obj.next
-            a(href: page_url(pagy_obj.next), class: mobile_nav_class) { 'Next' }
+            Link(href: page_url(pagy_obj.next), variant: :link, class: mobile_nav_class) { 'Next' }
           else
             span(class: "#{mobile_nav_class} opacity-50 cursor-not-allowed") { 'Next' }
           end
@@ -243,7 +247,7 @@ module Components
 
         def render_pagination_info
           div(data: { testid: 'pagination-info' }) do
-            p(class: 'text-sm text-slate-700') do
+            Text(size: '2', class: 'text-slate-700') do
               plain 'Showing '
               span(class: 'font-medium') { pagy_obj.from.to_s }
               plain ' to '
@@ -267,7 +271,7 @@ module Components
 
         def render_prev_button
           if pagy_obj.previous
-            a(href: page_url(pagy_obj.previous), class: nav_button_class('rounded-l-md')) do
+            Link(href: page_url(pagy_obj.previous), variant: :link, class: nav_button_class('rounded-l-md')) do
               span(class: 'sr-only') { 'Previous' }
               plain '‹'
             end
@@ -281,7 +285,7 @@ module Components
 
         def render_next_button
           if pagy_obj.next
-            a(href: page_url(pagy_obj.next), class: nav_button_class('rounded-r-md')) do
+            Link(href: page_url(pagy_obj.next), variant: :link, class: nav_button_class('rounded-r-md')) do
               span(class: 'sr-only') { 'Next' }
               plain '›'
             end
@@ -297,7 +301,7 @@ module Components
           pagy_obj.series.each do |item|
             case item
             when Integer
-              a(href: page_url(item), class: page_number_class(false)) { item.to_s }
+              Link(href: page_url(item), variant: :link, class: page_number_class(false)) { item.to_s }
             when String
               span(class: page_number_class(true)) { item }
             when :gap

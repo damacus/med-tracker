@@ -37,8 +37,8 @@ module Components
 
       def render_header
         div(class: 'mb-8') do
-          p(class: 'text-sm font-medium uppercase tracking-wide text-slate-500 mb-2') { subtitle }
-          h1(class: 'text-4xl font-bold text-slate-900') { title }
+          Text(size: '2', weight: 'medium', class: 'uppercase tracking-wide text-slate-500 mb-2') { subtitle }
+          Heading(level: 1) { title }
         end
       end
 
@@ -54,7 +54,7 @@ module Components
         Alert(variant: :destructive, class: 'mb-6') do
           AlertTitle { "#{person.errors.count} error(s) prohibited this person from being saved:" }
           AlertDescription do
-            ul(class: 'list-disc list-inside space-y-1') do
+            ul(class: 'my-2 ml-6 list-disc [&>li]:mt-1') do
               person.errors.full_messages.each do |message|
                 li { message }
               end
