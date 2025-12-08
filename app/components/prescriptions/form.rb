@@ -150,7 +150,7 @@ module Components
           )
           Calendar(
             input_id: '#prescription_start_date',
-            date_format: 'PPPP',
+            date_format: 'yyyy-MM-dd',
             class: 'rounded-md border shadow'
           )
         end
@@ -169,7 +169,7 @@ module Components
           )
           Calendar(
             input_id: '#prescription_end_date',
-            date_format: 'PPPP',
+            date_format: 'yyyy-MM-dd',
             class: 'rounded-md border shadow'
           )
         end

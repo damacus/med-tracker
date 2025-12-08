@@ -19,12 +19,15 @@ module Components
 
       def view_template
         turbo_frame_tag 'person_medicine_modal' do
-          div(class: 'fixed inset-0 z-50 flex items-center justify-center') do
-            div(class: 'fixed inset-0 bg-background/80 backdrop-blur-sm')
-            div(class: 'relative z-50 w-full max-w-lg border bg-background p-6 shadow-lg rounded-lg') do
-              render_header
-              render_form
-              render_close_button
+          Dialog(open: true) do
+            DialogContent(size: :lg) do
+              DialogHeader do
+                DialogTitle { title }
+                DialogDescription { 'Add a vitamin, supplement, or over-the-counter medicine' }
+              end
+              DialogMiddle do
+                render_form
+              end
             end
           end
         end
