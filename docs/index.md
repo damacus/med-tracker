@@ -29,6 +29,17 @@ like taking too much medication or taking doses too close together.
 
 This documentation is organized into several sections:
 
+### Getting Started
+
+- **[Quick Start Guide](quick-start.md)** - Get MedTracker up and running
+  in minutes with setup instructions and prerequisites
+- **[Deployment Guide](deployment.md)** - Docker deployment options for
+  development and production environments
+- **[Testing Guide](testing.md)** - Running tests, Lighthouse audits,
+  and testing best practices
+
+### Configuration & Architecture
+
 - **[Design & Architecture](design.md)** - Overview of the application
   architecture, data models, and technical decisions
 - **[User Management](user-management.md)** - Comprehensive guide to the
@@ -36,12 +47,6 @@ This documentation is organized into several sections:
   management
 - **[OAuth Setup](oauth-setup.md)** - Guide to configuring Google OAuth
   authentication for your deployment
-
-## Quick Start
-
-For setup instructions and development information, please see the
-[README](https://github.com/damacus/med-tracker/blob/main/README.md)
-in the main repository.
 
 ## Contributing
 

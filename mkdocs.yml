@@ -21,6 +21,10 @@ theme:
 nav:
   - Home: index.md
   - Feature Dashboard: dashboard.md
+  - Getting Started:
+      - Quick Start: quick-start.md
+      - Deployment: deployment.md
+      - Testing: testing.md
   - Design:
       - Architecture: design.md
       - User Management: user-management.md
