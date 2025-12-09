@@ -25,190 +25,72 @@ MedTracker is a Ruby on Rails application designed to help users monitor their m
 
 ## Getting Started
 
-### Prerequisites
+Ready to start using MedTracker? Check out our comprehensive [Quick Start Guide](https://damacus.github.io/med-tracker/quick-start/) for detailed setup instructions.
 
-- Ruby
-- Bundler
-- Node.js
-- PostgreSQL (or Docker)
+### Quick Setup
 
-### Setup
+```bash
+# Clone the repository
+git clone https://github.com/damacus/med-tracker.git
+cd med-tracker
 
-1. **Clone the repository:**
+# Install dependencies
+bundle install
 
-   ```bash
-   git clone https://github.com/damacus/med-tracker.git
-   cd med-tracker
-   ```
+# Setup database (requires PostgreSQL)
+rails db:create db:migrate
 
-2. **Start PostgreSQL:**
+# Start the application
+bin/dev
+```
 
-   Using Docker (recommended):
+Visit `http://localhost:3000` to access the application.
 
-   ```bash
-   docker-compose -f docker-compose.dev.yml up -d
-   ```
+For Docker deployment, environment variables, and troubleshooting, see the [Quick Start Guide](https://damacus.github.io/med-tracker/quick-start/).
 
-   Or use your local PostgreSQL installation.
-
-3. **Install dependencies:**
-
-   ```bash
-   bundle install
-   ```
-
-4. **Set up the database:**
-
-   ```bash
-   rails db:create
-   rails db:migrate
-   ```
-
-5. **Run the application:**
-
-   ```bash
-   rails server
-   ```
-
-   Open your browser to `http://localhost:3000`.
-
-### Environment Variables
-
-The following environment variables can be configured:
-
-- `DB_HOST` - PostgreSQL host (default: localhost)
-- `DB_USERNAME` - PostgreSQL username (default: postgres)
-- `DB_PASSWORD` - PostgreSQL password (default: postgres)
-
-## Running the Tests
-
-To run the full test suite, use the following command:
+## Running Tests
 
 ```bash
 bundle exec rspec
 ```
 
-## Lighthouse Audits
+For comprehensive testing information including Lighthouse audits, see the [Testing Guide](https://damacus.github.io/med-tracker/testing/).
 
-MedTracker includes Lighthouse mobile auditing for performance, accessibility, and best practices.
+## Deployment
 
-### Running Locally
+MedTracker supports multiple deployment options:
 
-```bash
-# Start the dev server first
-task dev:up
+- **Docker Compose** - Recommended for most deployments
+- **Kamal** - Zero-downtime deployments
+- **Traditional VPS** - Standard Rails deployment
 
-# Run Lighthouse audit on dashboard
-task lighthouse:run
-
-# Run on a specific page
-task lighthouse:run URL=http://localhost:3000/medicines
-
-# View score summary
-task lighthouse:summary
-
-# List failed audits
-task lighthouse:failed-audits
-```
-
-### CI Integration
-
-Lighthouse runs automatically in CI after tests pass with the following thresholds:
-
-| Category | Threshold |
-|----------|-----------|
-| Performance | 70% |
-| Accessibility | 85% |
-| Best Practices | 85% |
-
-Reports are uploaded as artifacts and retained for 30 days.
-
-## Docker Deployment
-
-MedTracker includes Docker Compose configurations for development, production, and test environments.
-
-### Quick Start
-
-**Development (with live code reloading):**
-
-```bash
-# First time setup
-cp .env.example .env
-docker compose -f docker-compose.dev.yml up -d
-./run db:setup
-
-# Start the app
-docker compose -f docker-compose.dev.yml up
-```
-
-Access the app at `http://localhost:3000`
-
-**Run migrations:**
-
-```bash
-./run db:migrate
-```
-
-**Access Rails console:**
-
-```bash
-./run rails console
-```
-
-**Run tests:**
-
-```bash
-./run test
-```
-
-### Production Environment
-
-```bash
-# Requires config/credentials/production.key file
-docker compose up -d
-./run db:migrate
-```
-
-### Available Commands
-
-The `./run` script provides convenient shortcuts:
-
-- `./run rails <command>` - Run Rails commands
-- `./run db:setup` - Setup database (first time)
-- `./run db:migrate` - Run migrations
-- `./run db:reset` - Reset database
-- `./run shell` - Open bash shell in container
-- `./run test` - Run RSpec tests
-- `./run format` - Auto-fix RuboCop issues
-- `./run lint` - Check code style
-- `./run help` - Show all available commands
+See the [Deployment Guide](https://damacus.github.io/med-tracker/deployment/) for detailed instructions.
 
 ## Documentation
 
-Comprehensive documentation is available in the `docs/` directory:
+Comprehensive documentation is available at **[https://damacus.github.io/med-tracker/](https://damacus.github.io/med-tracker/)**
 
-- [Design & Architecture](docs/design.md)
-- [User Management System](docs/user-management.md)
+Key documentation sections:
 
-### Building Documentation
+- **[Quick Start Guide](https://damacus.github.io/med-tracker/quick-start/)** - Setup instructions and prerequisites
+- **[Deployment Guide](https://damacus.github.io/med-tracker/deployment/)** - Docker and production deployment
+- **[Testing Guide](https://damacus.github.io/med-tracker/testing/)** - Running tests and Lighthouse audits
+- **[Design & Architecture](https://damacus.github.io/med-tracker/design/)** - Technical decisions and data models
+- **[User Management](https://damacus.github.io/med-tracker/user-management/)** - Roles, permissions, and capacity management
 
-This project uses mkdocs for documentation. To view the documentation locally:
+### Building Documentation Locally
 
-1. Install mkdocs:
+To view the documentation locally:
 
-   ```bash
-   pip install -r requirements.txt
-   ```
+```bash
+# Install dependencies
+pip install -r requirements.txt
 
-2. Serve the documentation:
+# Serve the documentation
+mkdocs serve
+```
 
-   ```bash
-   mkdocs serve
-   ```
-
-3. Open your browser to `http://localhost:8000`
-
-The documentation is automatically deployed to GitHub Pages when changes are pushed to the main branch. View the live documentation at: https://damacus.github.io/med-tracker/
+Open your browser to `http://localhost:8000`.
 
 ### Documentation Agent
 
