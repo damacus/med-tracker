@@ -71,7 +71,9 @@
       "Click skip link",
       "Verify focus moves to main content"
     ],
-    "passes": true
+    "passes": false,
+    "deferred": true,
+    "deferred_reason": "No current good implementation of this"
   },
   {
     "id": "A11Y-007",
