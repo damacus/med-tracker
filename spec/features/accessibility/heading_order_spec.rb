@@ -48,8 +48,9 @@ RSpec.describe 'Heading Order Accessibility', type: :system do
     return true if levels.empty?
 
     current_level = 0
-    levels.each do |level|
+    levels.each_with_index do |level, index|
       level_num = level[1].to_i
+      
       if current_level.zero?
         expect(level_num).to eq(1), "Page should start with H1, but starts with #{level}"
         current_level = 1
@@ -57,7 +58,7 @@ RSpec.describe 'Heading Order Accessibility', type: :system do
         expect(level_num).to eq(current_level + 1),
                               "Heading skips from H#{current_level} to #{level} (expected H#{current_level + 1})"
         current_level = level_num
-      elsif level_num <= current_level
+      else
         current_level = level_num
       end
     end
