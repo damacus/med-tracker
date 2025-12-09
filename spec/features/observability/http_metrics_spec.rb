@@ -2,12 +2,6 @@
 
 require 'rails_helper'
 
-# NOTE: OTEL-007 implemented using trace spans as proxy for metrics
-# OpenTelemetry Ruby v1.10.0 has unstable metrics API (missing exporter classes)
-# HTTP request duration is captured via Rack instrumentation spans which contain
-# timing data, route information, and status codes - satisfying the requirements
-# until the metrics API stabilizes in future SDK versions.
-
 RSpec.describe 'OTEL-007: Metrics for HTTP request duration', type: :feature do
   context 'HTTP request instrumentation' do
     it 'enables HTTP request duration tracking via spans' do
