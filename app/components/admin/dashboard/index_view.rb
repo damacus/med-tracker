@@ -101,30 +101,30 @@ module Components
         end
 
         def render_quick_actions
-          Card do
-            CardHeader do
-              CardTitle { 'Quick Actions' }
-            end
-            CardContent do
-              div(class: 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3') do
-                render_action_link(
-                  title: 'Manage Users',
-                  description: 'View and manage user accounts',
-                  href: '/admin/users',
-                  icon: '👥'
-                )
-                render_action_link(
-                  title: 'Manage People',
-                  description: 'View and manage people records',
-                  href: '/people',
-                  icon: '👤'
-                )
-                render_action_link(
-                  title: 'Audit Trail',
-                  description: 'View system audit logs and change history',
-                  href: '/admin/audit_logs',
-                  icon: '📋'
-                )
+          div do
+            Heading(level: 2) { 'Quick Actions' }
+            Card(class: 'mt-4') do
+              CardContent(class: 'pt-6') do
+                div(class: 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3') do
+                  render_action_link(
+                    title: 'Manage Users',
+                    description: 'View and manage user accounts',
+                    href: '/admin/users',
+                    icon: '👥'
+                  )
+                  render_action_link(
+                    title: 'Manage People',
+                    description: 'View and manage people records',
+                    href: '/people',
+                    icon: '👤'
+                  )
+                  render_action_link(
+                    title: 'Audit Trail',
+                    description: 'View system audit logs and change history',
+                    href: '/admin/audit_logs',
+                    icon: '📋'
+                  )
+                end
               end
             end
           end
@@ -139,7 +139,7 @@ module Components
           ) do
             div(class: 'text-3xl') { icon } if icon
             div do
-              Heading(level: 3) { title }
+              Text(size: '4', weight: 'semibold', class: 'text-slate-900') { title }
               Text(size: '2', weight: 'muted', class: 'mt-1') { description }
             end
           end

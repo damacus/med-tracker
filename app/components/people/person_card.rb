@@ -25,7 +25,7 @@ module Components
         CardHeader do
           render_person_icon
           div(class: 'flex items-center justify-between gap-2') do
-            CardTitle(class: 'text-xl') { person.name }
+            Heading(level: 2, size: '5', class: 'leading-none tracking-tight') { person.name }
             render_needs_carer_badge if person.needs_carer?
           end
         end
