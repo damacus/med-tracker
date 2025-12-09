@@ -2,8 +2,8 @@
 
 require 'rails_helper'
 
-RSpec.describe 'OTEL-007: Metrics for HTTP request duration', type: :feature do
-  context 'HTTP request instrumentation' do
+RSpec.describe 'OTEL-007: Metrics for HTTP request duration' do
+  context 'when handling HTTP requests' do
     it 'enables HTTP request duration tracking via spans' do
       visit '/'
       sleep(0.2)
@@ -37,7 +37,7 @@ RSpec.describe 'OTEL-007: Metrics for HTTP request duration', type: :feature do
     end
   end
 
-  context 'OpenTelemetry HTTP instrumentation verification' do
+  context 'when verifying HTTP instrumentation' do
     it 'has Rack instrumentation enabled' do
       instrumentation = OpenTelemetry::Instrumentation::Rack::Instrumentation.instance
       expect(instrumentation).not_to be_nil
@@ -61,20 +61,20 @@ RSpec.describe 'OTEL-007: Metrics for HTTP request duration', type: :feature do
     end
   end
 
-  context 'Request duration analysis' do
+  context 'when analyzing request durations' do
     it 'measures response times for core endpoint' do
       endpoints = ['/']
       durations = []
 
       endpoints.each do |endpoint|
-        start_time = Time.now
+        start_time = Time.zone.now
         visit endpoint
-        duration = Time.now - start_time
+        duration = Time.zone.now - start_time
         durations << duration
 
         expect(page.status_code).to eq(200)
         expect(duration).to be > 0
-        expect(duration).to be < 5.0  # Reasonable upper bound
+        expect(duration).to be < 5.0 # Reasonable upper bound
       end
 
       # Verify we have duration data for all endpoints
@@ -87,9 +87,9 @@ RSpec.describe 'OTEL-007: Metrics for HTTP request duration', type: :feature do
       durations = []
 
       10.times do
-        start_time = Time.now
+        start_time = Time.zone.now
         visit '/'
-        duration = Time.now - start_time
+        duration = Time.zone.now - start_time
         durations << duration
       end
 
@@ -102,7 +102,7 @@ RSpec.describe 'OTEL-007: Metrics for HTTP request duration', type: :feature do
       # Verify reasonable timing characteristics
       expect(min_duration).to be > 0
       expect(max_duration).to be < 5.0
-      expect(avg_duration).to be_between(0.001, 2.0)  # More realistic range
+      expect(avg_duration).to be_between(0.001, 2.0) # More realistic range
 
       # Verify variation exists (requests aren't all identical)
       expect(max_duration - min_duration).to be > 0

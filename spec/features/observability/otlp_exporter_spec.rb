@@ -2,8 +2,8 @@
 
 require 'rails_helper'
 
-RSpec.describe 'OTEL-011: OTLP exporter configuration', type: :feature do
-  context 'OpenTelemetry SDK configuration' do
+RSpec.describe 'OTEL-011: OTLP exporter configuration' do
+  context 'when configuring the OpenTelemetry SDK' do
     it 'configures OpenTelemetry with service name medtracker-test' do
       expect(OpenTelemetry.tracer_provider).to be_a(OpenTelemetry::SDK::Trace::TracerProvider)
 
@@ -47,7 +47,7 @@ RSpec.describe 'OTEL-011: OTLP exporter configuration', type: :feature do
     end
   end
 
-  context 'OTLP headers parsing' do
+  context 'when parsing OTLP headers' do
     it 'parses headers string correctly' do
       headers_string = 'authorization=Bearer token123,x-custom-header=value'
       expected = {
@@ -81,7 +81,7 @@ RSpec.describe 'OTEL-011: OTLP exporter configuration', type: :feature do
     end
   end
 
-  context 'sampling configuration' do
+  context 'when reading sampling configuration' do
     it 'configures parentbased_always_on sampler by default' do
       # Test that the helper method works without needing to create a config object
       expect(ENV.fetch('OTEL_TRACES_SAMPLER', 'parentbased_always_on')).to eq('parentbased_always_on')
@@ -122,7 +122,7 @@ RSpec.describe 'OTEL-011: OTLP exporter configuration', type: :feature do
     end
   end
 
-  context 'environment variable validation' do
+  context 'when validating environment variables' do
     it 'uses default timeout when not specified' do
       ENV.delete('OTEL_EXPORTER_OTLP_TIMEOUT')
 
@@ -140,7 +140,7 @@ RSpec.describe 'OTEL-011: OTLP exporter configuration', type: :feature do
     end
   end
 
-  context 'HTTP request tracing' do
+  context 'when tracing HTTP requests' do
     it 'creates spans for regular requests' do
       # Make a regular request
       visit '/'
