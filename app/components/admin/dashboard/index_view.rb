@@ -101,30 +101,32 @@ module Components
         end
 
         def render_quick_actions
-          div do
-            Heading(level: 2) { 'Quick Actions' }
-            Card(class: 'mt-4') do
-              CardContent(class: 'pt-6') do
-                div(class: 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3') do
-                  render_action_link(
-                    title: 'Manage Users',
-                    description: 'View and manage user accounts',
-                    href: '/admin/users',
-                    icon: '👥'
-                  )
-                  render_action_link(
-                    title: 'Manage People',
-                    description: 'View and manage people records',
-                    href: '/people',
-                    icon: '👤'
-                  )
-                  render_action_link(
-                    title: 'Audit Trail',
-                    description: 'View system audit logs and change history',
-                    href: '/admin/audit_logs',
-                    icon: '📋'
-                  )
-                end
+          Card do
+            CardHeader do
+              Heading(level: 2, size: '4', class: 'font-semibold leading-none tracking-tight') do
+                'Quick Actions'
+              end
+            end
+            CardContent do
+              div(class: 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3') do
+                render_action_link(
+                  title: 'Manage Users',
+                  description: 'View and manage user accounts',
+                  href: '/admin/users',
+                  icon: '👥'
+                )
+                render_action_link(
+                  title: 'Manage People',
+                  description: 'View and manage people records',
+                  href: '/people',
+                  icon: '👤'
+                )
+                render_action_link(
+                  title: 'Audit Trail',
+                  description: 'View system audit logs and change history',
+                  href: '/admin/audit_logs',
+                  icon: '📋'
+                )
               end
             end
           end
