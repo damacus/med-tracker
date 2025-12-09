@@ -145,7 +145,8 @@
   body {
     @apply bg-background text-foreground antialiased;
   }
-}
+
+  }
 
 @layer components {
   .nav {
