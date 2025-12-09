@@ -108,15 +108,143 @@
 		"passes": true
 	},
 	{
+		"id": "OIDC-001",
+		"category": "functional",
+		"area": "authentication",
+		"description": "OIDC configuration: Verify Google OAuth 2.0 configured as OIDC provider",
+		"steps": [
+			"Check Rodauth configuration in app/misc/rodauth_main.rb",
+			"Verify omniauth_provider :google_oauth2 configured",
+			"Verify OIDC scopes requested: 'email profile'",
+			"Verify client_id and client_secret configured from credentials or ENV",
+			"Verify callback URL configured: /auth/google_oauth2/callback"
+		],
+		"passes": true
+	},
+	{
+		"id": "OIDC-002",
+		"category": "functional",
+		"area": "authentication",
+		"description": "OIDC ID token validation: Verify ID token signature and claims",
+		"steps": [
+			"Initiate OIDC login with Google",
+			"Complete authentication flow",
+			"Capture ID token from OIDC response",
+			"Verify ID token signature using Google's public keys",
+			"Verify required claims present: iss, sub, aud, exp, iat",
+			"Verify iss matches https://accounts.google.com",
+			"Verify aud matches configured client_id",
+			"Verify exp (expiration) is in the future",
+			"Verify email claim matches account email",
+			"Verify email_verified claim is true"
+		],
+		"passes": true
+	},
+	{
+		"id": "OIDC-003",
+		"category": "functional",
+		"area": "authentication",
+		"description": "OIDC userinfo endpoint: Verify profile data retrieval",
+		"steps": [
+			"Complete OIDC authentication flow",
+			"Access userinfo endpoint with access token",
+			"Verify profile data received: sub, email, name, picture",
+			"Verify data matches ID token claims",
+			"Verify Person record populated with OIDC profile data"
+		],
+		"passes": true
+	},
+	{
+		"id": "OIDC-004",
+		"category": "functional",
+		"area": "authentication",
+		"description": "OIDC provider metadata discovery: Verify OpenID configuration",
+		"steps": [
+			"Access Google's OIDC discovery endpoint: https://accounts.google.com/.well-known/openid-configuration",
+			"Verify authorization_endpoint present",
+			"Verify token_endpoint present",
+			"Verify userinfo_endpoint present",
+			"Verify jwks_uri present for token verification",
+			"Verify supported scopes include openid, email, profile",
+			"Verify supported response_types include code"
+		],
+		"passes": true
+	},
+	{
+		"id": "OIDC-005",
+		"category": "functional",
+		"area": "authentication",
+		"description": "OIDC account identity persistence: Verify provider identity storage",
+		"steps": [
+			"Complete OIDC sign-up with Google",
+			"Query account_identities table",
+			"Verify record exists with provider='google_oauth2'",
+			"Verify uid contains Google's subject identifier (sub claim)",
+			"Verify account_id links to Account record",
+			"Verify created_at and updated_at timestamps set",
+			"Attempt duplicate OIDC login",
+			"Verify existing identity reused, not duplicated"
+		],
+		"passes": true
+	},
+	{
+		"id": "OIDC-006",
+		"category": "functional",
+		"area": "authentication",
+		"description": "OIDC sign-up with email claim: Verify automatic email population",
+		"steps": [
+			"Initiate OIDC sign-up with Google account",
+			"Complete authentication without manually entering email",
+			"Verify Account created with email from OIDC email claim",
+			"Verify email_verified status set to verified",
+			"Verify Person record created with email matching OIDC claim",
+			"Verify no email verification email sent (already verified by OIDC provider)"
+		],
+		"passes": true
+	},
+	{
+		"id": "OIDC-007",
+		"category": "functional",
+		"area": "authentication",
+		"description": "OIDC state parameter CSRF protection: Verify state validation",
+		"steps": [
+			"Initiate OIDC flow and capture state parameter",
+			"Complete flow with valid state",
+			"Verify authentication succeeds",
+			"Attempt OIDC callback with invalid state parameter",
+			"Verify authentication rejected with CSRF error",
+			"Verify state parameter is unique per request",
+			"Verify state parameter timeout after reasonable period"
+		],
+		"passes": true
+	},
+	{
+		"id": "OIDC-008",
+		"category": "functional",
+		"area": "authentication",
+		"description": "OIDC multiple identity providers: Verify extensibility for additional providers",
+		"steps": [
+			"Review Rodauth OmniAuth configuration structure",
+			"Verify multiple omniauth_provider calls supported",
+			"Verify account_identities schema supports multiple providers per account",
+			"Document steps to add additional OIDC providers (GitHub, Microsoft, etc.)",
+			"Verify provider selection UI accommodates multiple providers"
+		],
+		"passes": true
+	},
+	{
 		"id": "AUTH-009",
 		"category": "functional",
 		"area": "authentication",
-		"description": "Google OAuth creates new account for new user",
+		"description": "OIDC sign-up: Google OAuth creates new account for new user",
 		"steps": [
 			"Click Sign in with Google",
-			"Complete OAuth flow with new email",
+			"Complete OIDC/OAuth flow with new email",
+			"Verify OIDC ID token received and validated",
 			"Verify Account created with verified status",
-			"Verify Person created and linked"
+			"Verify Person created with data from OIDC claims (name, email)",
+			"Verify User created with parent role",
+			"Verify account_identities record created linking OIDC provider"
 		],
 		"passes": true
 	},
@@ -124,12 +252,14 @@
 		"id": "AUTH-010",
 		"category": "functional",
 		"area": "authentication",
-		"description": "Google OAuth links to existing account with same email",
+		"description": "OIDC account linking: Google OAuth links to existing account with same email",
 		"steps": [
-			"Create account with email@example.com",
+			"Create account with email@example.com via email/password",
 			"Sign in with Google using email@example.com",
-			"Verify Google identity linked to existing account",
-			"Verify no duplicate account created"
+			"Verify OIDC provider identity linked to existing account",
+			"Verify no duplicate account created",
+			"Verify account_identities record created with provider and uid",
+			"Verify can subsequently login with either method"
 		],
 		"passes": true
 	},
@@ -162,13 +292,16 @@
 		"id": "AUTH-013",
 		"category": "functional",
 		"area": "authentication",
-		"description": "Logged-in user can link Google account from settings",
+		"description": "OIDC account linking: Logged-in user can link Google account from settings",
 		"steps": [
 			"Log in with email/password",
 			"Navigate to account settings",
 			"Click Link Google Account",
-			"Complete OAuth flow",
-			"Verify Google identity linked"
+			"Complete OIDC/OAuth flow",
+			"Verify OIDC identity linked to existing account",
+			"Verify account_identities record created",
+			"Log out and log in with Google",
+			"Verify access to same account and data"
 		],
 		"passes": true
 	},

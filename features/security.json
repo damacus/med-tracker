@@ -801,6 +801,194 @@
     "passes": true
   },
   {
+    "id": "OIDC-SEC-001",
+    "category": "security",
+    "area": "oidc",
+    "description": "OIDC token signature verification prevents token tampering",
+    "steps": [
+      "Complete OIDC authentication and capture ID token",
+      "Verify token is a signed JWT (three base64 segments)",
+      "Fetch Google's public keys from JWKS endpoint",
+      "Verify token signature using appropriate public key",
+      "Attempt to modify token claims and re-sign with invalid key",
+      "Verify modified token rejected",
+      "Verify unsigned tokens rejected",
+      "Verify tokens signed with wrong algorithm rejected"
+    ],
+    "passes": true
+  },
+  {
+    "id": "OIDC-SEC-002",
+    "category": "security",
+    "area": "oidc",
+    "description": "OIDC token expiration prevents replay attacks",
+    "steps": [
+      "Complete OIDC authentication flow",
+      "Capture ID token and note exp claim",
+      "Verify token accepted when exp is in future",
+      "Wait for token to expire or manually set exp to past",
+      "Attempt authentication with expired token",
+      "Verify authentication rejected",
+      "Verify appropriate error message shown"
+    ],
+    "passes": true
+  },
+  {
+    "id": "OIDC-SEC-003",
+    "category": "security",
+    "area": "oidc",
+    "description": "OIDC audience claim validation prevents token misuse",
+    "steps": [
+      "Configure application with specific client_id",
+      "Complete OIDC flow and receive ID token",
+      "Verify aud claim matches configured client_id",
+      "Attempt to use ID token with different aud claim",
+      "Verify authentication rejected",
+      "Verify error logged about audience mismatch"
+    ],
+    "passes": true
+  },
+  {
+    "id": "OIDC-SEC-004",
+    "category": "security",
+    "area": "oidc",
+    "description": "OIDC issuer validation prevents phishing attacks",
+    "steps": [
+      "Complete OIDC flow with Google",
+      "Verify iss claim is https://accounts.google.com",
+      "Attempt to use token with different issuer",
+      "Verify authentication rejected",
+      "Verify only trusted issuers accepted",
+      "Document trusted issuer whitelist"
+    ],
+    "passes": true
+  },
+  {
+    "id": "OIDC-SEC-005",
+    "category": "security",
+    "area": "oidc",
+    "description": "OIDC state parameter prevents CSRF attacks",
+    "steps": [
+      "Initiate OIDC flow and capture state parameter",
+      "Verify state is cryptographically random",
+      "Verify state stored in session",
+      "Complete flow with matching state",
+      "Verify authentication succeeds",
+      "Attempt callback with different state value",
+      "Verify authentication rejected with CSRF error",
+      "Verify state is single-use and expires"
+    ],
+    "passes": true
+  },
+  {
+    "id": "OIDC-SEC-006",
+    "category": "security",
+    "area": "oidc",
+    "description": "OIDC nonce prevents token replay attacks",
+    "steps": [
+      "Initiate OIDC flow with nonce parameter",
+      "Verify nonce included in authorization request",
+      "Receive ID token and verify nonce claim present",
+      "Verify nonce in token matches sent nonce",
+      "Attempt to replay token with same nonce",
+      "Verify replay rejected",
+      "Verify nonce is unique per authentication request"
+    ],
+    "passes": true
+  },
+  {
+    "id": "OIDC-SEC-007",
+    "category": "security",
+    "area": "oidc",
+    "description": "OIDC access token not stored long-term",
+    "steps": [
+      "Complete OIDC authentication",
+      "Verify access token used only for immediate userinfo request",
+      "Check database for access_token storage",
+      "Verify access tokens not persisted in account_identities",
+      "Verify only uid and provider stored",
+      "Document token storage policy"
+    ],
+    "passes": true
+  },
+  {
+    "id": "OIDC-SEC-008",
+    "category": "security",
+    "area": "oidc",
+    "description": "OIDC authorization code flow used (not implicit)",
+    "steps": [
+      "Review OIDC configuration",
+      "Verify response_type is 'code' not 'token' or 'id_token'",
+      "Verify authorization code exchanged server-side for tokens",
+      "Verify tokens never exposed in browser URL",
+      "Verify PKCE used if available for additional security",
+      "Document why authorization code flow is preferred"
+    ],
+    "passes": true
+  },
+  {
+    "id": "OIDC-SEC-009",
+    "category": "security",
+    "area": "oidc",
+    "description": "OIDC client secret stored securely",
+    "steps": [
+      "Verify client_secret not hardcoded in source",
+      "Verify stored in Rails credentials or environment variables",
+      "Verify .env files in .gitignore",
+      "Verify no client_secret in git history",
+      "Verify client_secret not logged",
+      "Verify client_secret transmission only over HTTPS",
+      "Document secret rotation procedure"
+    ],
+    "passes": true
+  },
+  {
+    "id": "OIDC-SEC-010",
+    "category": "security",
+    "area": "oidc",
+    "description": "OIDC redirect URI validation prevents open redirects",
+    "steps": [
+      "Configure specific redirect URI in Google Console",
+      "Verify redirect_uri in OIDC config matches exactly",
+      "Attempt authentication with different redirect_uri",
+      "Verify Google rejects mismatched redirect_uri",
+      "Verify application validates redirect_uri on callback",
+      "Test with various manipulations (http vs https, different port, path traversal)",
+      "Verify all variations rejected"
+    ],
+    "passes": true
+  },
+  {
+    "id": "OIDC-SEC-011",
+    "category": "security",
+    "area": "oidc",
+    "description": "OIDC account hijacking prevention via email verification",
+    "steps": [
+      "Create account A with email test@example.com",
+      "Attempt OIDC login with Google account for test@example.com",
+      "Verify email_verified claim from OIDC provider checked",
+      "If email_verified is false, reject or require additional verification",
+      "If email_verified is true, allow linking to existing account",
+      "Document email verification policy"
+    ],
+    "passes": true
+  },
+  {
+    "id": "OIDC-SEC-012",
+    "category": "security",
+    "area": "oidc",
+    "description": "OIDC session fixation prevention",
+    "steps": [
+      "Note session ID before OIDC authentication",
+      "Complete OIDC login successfully",
+      "Verify session ID completely changed after authentication",
+      "Verify old session ID invalid",
+      "Verify new session associated with authenticated user",
+      "Test with remember_me enabled"
+    ],
+    "passes": true
+  },
+  {
     "id": "SEC-CSP-001",
     "category": "security",
     "area": "csp",
