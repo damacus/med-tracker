@@ -40,7 +40,7 @@ Install Ruby and JavaScript dependencies:
 
 ```bash
 bundle install
-npm install
+yarn install
 ```
 
 ### 4. Set Up the Database
