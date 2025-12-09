@@ -200,7 +200,7 @@ docker compose logs -f
 
 # Specific service
 docker compose logs -f web
-docker compose logs -f postgres
+docker compose logs -f db
 ```
 
 ## Backup and Restore
