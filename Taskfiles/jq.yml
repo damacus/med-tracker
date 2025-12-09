@@ -56,3 +56,36 @@ tasks:
     cmds:
       - |
         jq -r '.[] | select(.passes == false) | "\(.id): \(.description)"' "features/{{ .FILE }}.json"
+
+  failing-by-area:
+    desc: Show failing tests grouped by area
+    summary: |
+      Shows count of failing tests by area, sorted by priority.
+
+      Usage:
+        task jq:failing-by-area
+    cmds:
+      - |
+        jq -s '[.[][] | select(.passes == false)] | map(.area) | group_by(.) | map({area: .[0], count: length}) | sort_by(.count) | reverse' features/*.json
+
+  failing-by-category:
+    desc: Show failing tests grouped by category
+    summary: |
+      Shows count of failing tests by category (functional, ux, style, etc.).
+
+      Usage:
+        task jq:failing-by-category
+    cmds:
+      - |
+        jq -s '[.[][] | select(.passes == false)] | group_by(.category) | map({category: .[0].category, count: length}) | sort_by(.count) | reverse' features/*.json
+
+  next-features:
+    desc: Show next 10 failing features to work on
+    summary: |
+      Lists the next 10 failing features by area and ID.
+
+      Usage:
+        task jq:next-features
+    cmds:
+      - |
+        jq -s '[.[][] | select(.passes == false)] | sort_by(.area, .id) | .[0:10] | .[] | "\(.area)/\(.id): \(.description)"' features/*.json
