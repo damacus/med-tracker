@@ -134,7 +134,7 @@ RSpec.describe 'User Signup', type: :system do
 
       person = Account.find_by(email: 'minor@example.com')&.person
       expect(person&.person_type).to eq('minor')
-      expect(person.has_capacity).to be true
+      expect(person&.has_capacity).to be true
     end
   end
 end
