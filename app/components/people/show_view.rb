@@ -42,7 +42,7 @@ module Components
       def render_edit_form
         form_with(model: person, class: 'space-y-6', data: { controller: 'auto-submit' }) do |f|
           CardHeader do
-            Heading(level: 2, size: '6', class: 'leading-none tracking-tight') { 'Edit Person' }
+            Heading(level: 2, size: '6', class: 'font-semibold leading-none tracking-tight') { 'Edit Person' }
           end
 
           CardContent(class: 'space-y-4') do
@@ -77,7 +77,7 @@ module Components
       def render_person_info
         CardHeader do
           div(class: 'space-y-4') do
-            Heading(level: 1, size: '8', class: 'tracking-tight') { person.name }
+            Heading(level: 1, size: '7', class: 'font-semibold tracking-tight') { person.name }
             CardDescription do
               div(class: 'space-y-1') do
                 p { "Born: #{person.date_of_birth.strftime('%B %d, %Y')}" }
