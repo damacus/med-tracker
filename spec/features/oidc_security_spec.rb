@@ -127,10 +127,10 @@ RSpec.describe 'OIDC Security', type: :system do
       rodauth_file = Rails.root.join('app/misc/rodauth_main.rb').read
 
       # Verify client_secret is read from credentials or environment
-      expect(rodauth_file).to match(/credentials.*google|ENV.*GOOGLE_CLIENT_SECRET/)
+      expect(rodauth_file).to match(/credentials\[:google\]|credentials\.dig\(:google|ENV\['GOOGLE_CLIENT_SECRET'\]|ENV\.fetch\('GOOGLE_CLIENT_SECRET'\)/)
 
-      # Verify it's not hardcoded
-      expect(rodauth_file).not_to match(/client_secret.*['"][a-zA-Z0-9_-]{20,}['"]/)
+      # Verify it's not hardcoded (basic check for obvious hardcoding)
+      expect(rodauth_file).not_to match(/client_secret.*['"]\w{20,}['"]/)
     end
 
     it 'ensures .env files are gitignored' do

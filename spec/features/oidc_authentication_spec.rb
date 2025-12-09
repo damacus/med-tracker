@@ -223,9 +223,15 @@ RSpec.describe 'OIDC Authentication', type: :system do
   describe 'OIDC callback endpoint configuration' do
     it 'has OIDC callback route configured' do
       # Verify the callback route exists for Google OAuth
-      # The route is automatically created by Rodauth OmniAuth at /auth/:provider/callback
-      routes = Rails.application.routes.routes.map(&:path).map(&:spec).map(&:to_s)
-      expect(routes).to include('/auth/:provider/callback(.:format)')
+      # Try to recognize the path - if it doesn't raise an error, the route exists
+      begin
+        Rails.application.routes.recognize_path('/auth/google_oauth2/callback', method: :get)
+        callback_route_exists = true
+      rescue ActionController::RoutingError
+        callback_route_exists = false
+      end
+
+      expect(callback_route_exists).to be true
     end
   end
 
@@ -260,8 +266,9 @@ RSpec.describe 'OIDC Authentication', type: :system do
       # Verify omniauth_info is accessed
       expect(rodauth_file).to include('omniauth_info')
 
-      # Verify name and email are extracted
-      expect(rodauth_file).to match(/auth_info\['name'\]|auth_info\['email'\]/)
+      # Verify name and email are extracted (check for both string and symbol access)
+      expect(rodauth_file).to match(/auth_info\[['"]?name['"]?\]/)
+      expect(rodauth_file).to match(/auth_info\[['"]?email['"]?\]/)
     end
   end
 end
