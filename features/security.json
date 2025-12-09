@@ -815,7 +815,7 @@
       "Verify unsigned tokens rejected",
       "Verify tokens signed with wrong algorithm rejected"
     ],
-    "passes": true
+    "passes": false
   },
   {
     "id": "OIDC-SEC-002",
@@ -831,7 +831,7 @@
       "Verify authentication rejected",
       "Verify appropriate error message shown"
     ],
-    "passes": true
+    "passes": false
   },
   {
     "id": "OIDC-SEC-003",
@@ -846,7 +846,7 @@
       "Verify authentication rejected",
       "Verify error logged about audience mismatch"
     ],
-    "passes": true
+    "passes": false
   },
   {
     "id": "OIDC-SEC-004",
@@ -861,7 +861,7 @@
       "Verify only trusted issuers accepted",
       "Document trusted issuer whitelist"
     ],
-    "passes": true
+    "passes": false
   },
   {
     "id": "OIDC-SEC-005",
@@ -878,7 +878,7 @@
       "Verify authentication rejected with CSRF error",
       "Verify state is single-use and expires"
     ],
-    "passes": true
+    "passes": false
   },
   {
     "id": "OIDC-SEC-006",
@@ -894,7 +894,7 @@
       "Verify replay rejected",
       "Verify nonce is unique per authentication request"
     ],
-    "passes": true
+    "passes": false
   },
   {
     "id": "OIDC-SEC-007",
@@ -909,7 +909,7 @@
       "Verify only uid and provider stored",
       "Document token storage policy"
     ],
-    "passes": true
+    "passes": false
   },
   {
     "id": "OIDC-SEC-008",
@@ -924,7 +924,7 @@
       "Verify PKCE used if available for additional security",
       "Document why authorization code flow is preferred"
     ],
-    "passes": true
+    "passes": false
   },
   {
     "id": "OIDC-SEC-009",
@@ -940,7 +940,7 @@
       "Verify client_secret transmission only over HTTPS",
       "Document secret rotation procedure"
     ],
-    "passes": true
+    "passes": false
   },
   {
     "id": "OIDC-SEC-010",
@@ -956,7 +956,7 @@
       "Test with various manipulations (http vs https, different port, path traversal)",
       "Verify all variations rejected"
     ],
-    "passes": true
+    "passes": false
   },
   {
     "id": "OIDC-SEC-011",
@@ -971,7 +971,7 @@
       "If email_verified is true, allow linking to existing account",
       "Document email verification policy"
     ],
-    "passes": true
+    "passes": false
   },
   {
     "id": "OIDC-SEC-012",
@@ -986,7 +986,7 @@
       "Verify new session associated with authenticated user",
       "Test with remember_me enabled"
     ],
-    "passes": true
+    "passes": false
   },
   {
     "id": "PASSKEY-SEC-001",
