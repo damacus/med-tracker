@@ -95,7 +95,7 @@
 			"Verify metrics include route and status_code labels",
 			"Verify percentiles calculated correctly"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"id": "OTEL-008",
@@ -146,13 +146,13 @@
 		"area": "observability",
 		"description": "OTLP exporter configuration",
 		"steps": [
-			"Set OTEL_EXPORTER_OTLP_ENDPOINT environment variable",
+			"Configure OTLP endpoint via OTEL_EXPORTER_OTLP_ENDPOINT",
 			"Set OTEL_EXPORTER_OTLP_HEADERS for authentication",
 			"Start application",
 			"Verify traces exported to configured endpoint",
 			"Verify metrics exported to configured endpoint"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"id": "OTEL-012",
