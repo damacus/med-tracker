@@ -134,7 +134,7 @@ If you encounter database connection errors:
 
 If styles or JavaScript aren't loading:
 
-1. Ensure Node.js dependencies are installed: `npm install`
+1. Ensure Node.js dependencies are installed: `yarn install`
 2. Restart the development server: `bin/dev`
 
 ### Port Already in Use
