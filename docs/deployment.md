@@ -260,7 +260,7 @@ docker compose logs web
 Verify PostgreSQL is running and healthy:
 
 ```bash
-docker compose ps postgres
+docker compose ps db
 ```
 
 Check database connection from web container:
