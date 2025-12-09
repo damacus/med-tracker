@@ -60,7 +60,9 @@ module Components
         Card(class: 'h-full') do
           CardHeader do
             div(class: 'flex items-center justify-between') do
-              Heading(level: 2, size: '4', class: 'font-medium text-slate-600') { title }
+              Heading(level: 2, size: '4', class: 'leading-none tracking-tight font-medium text-slate-600') do
+                title
+              end
               render_stat_icon(icon_type)
             end
           end

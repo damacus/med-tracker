@@ -42,7 +42,7 @@ module Components
         Card(id: "medicine_#{medicine.id}", class: 'h-full flex flex-col') do
           CardHeader do
             render_medicine_icon
-            Heading(level: 2, size: '5', class: 'leading-none tracking-tight') { medicine.name }
+            Heading(level: 2, size: '5', class: 'font-semibold leading-none tracking-tight') { medicine.name }
           end
 
           CardContent(class: 'flex-grow space-y-2') do
