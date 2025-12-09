@@ -2,23 +2,26 @@
 
 ## Overview
 
-A Rails-based application for tracking medicine administration, including dosages, people, and timing. The application will use OpenID Connect (OIDC) for authentication.
+A Rails-based application for tracking medicine administration, including dosages, people, and timing. The application uses OpenID Connect (OIDC) for authentication, currently implemented via Google OAuth 2.0.
 
 ## Core Features
 
 ### Authentication
 
-- OIDC-based authentication (provider TBD)
+- **OIDC-based authentication** (implemented via Google OAuth 2.0)
+- Email/password authentication via Rodauth
 - User management and authorization
 - Secure session handling
+- Two-factor authentication (TOTP)
 
 ### Data Models
 
 #### User
 
-- Basic user information from OIDC provider
-- Role-based access control
+- Basic user information from OIDC provider (Google) or email signup
+- Role-based access control (administrator, doctor, nurse, carer, parent, minor)
 - Relationships to people they manage (e.g., family members)
+- Authentication via Rodauth (email/password or OIDC)
 
 #### Person
 
@@ -56,19 +59,23 @@ A Rails-based application for tracking medicine administration, including dosage
 
 ### Backend
 
-- Ruby on Rails API
-- SQLite3 database
-- OIDC integration
+- Ruby on Rails (8.1+) with Hotwire (Turbo + Stimulus)
+- SQLite3 database (development), PostgreSQL (production recommended)
+- OIDC integration via Rodauth and OmniAuth
 - API versioning for future compatibility
 
 ### Security Considerations
 
-- OIDC authentication
-- Role-based access control
-- Audit logging for all medicine administration
+- **OIDC authentication** with ID token verification (signature, issuer, audience, expiration)
+- **Email/password authentication** with bcrypt hashing and account lockout
+- **Two-factor authentication** (TOTP) via Rodauth
+- Role-based access control via Pundit policies
+- Audit logging for all medicine administration via PaperTrail
 - Secure data storage following healthcare data best practices
-- CSRF protection
-- Regular security updates
+- CSRF protection via Rails authenticity tokens
+- Session management with Rodauth (active sessions, remember me)
+- Security headers (CSP, HSTS, X-Frame-Options, etc.)
+- Regular security updates and dependency scanning
 
 ### Database Considerations
 
@@ -102,12 +109,14 @@ A Rails-based application for tracking medicine administration, including dosage
 
 ## Next Steps
 
-1. Set up basic Rails application structure
-2. Implement OIDC authentication
-3. Create core data models
-4. Implement basic CRUD operations
-5. Add authorization layer
-6. Create user interface
-7. Implement audit logging
-8. Add automated tests
-9. Set up CI/CD pipeline
+1. ✅ Set up basic Rails application structure
+2. ✅ Implement OIDC authentication (Google OAuth 2.0)
+3. ✅ Implement email/password authentication (Rodauth)
+4. ✅ Create core data models (Person, Medicine, Prescription, MedicationTake)
+5. ✅ Implement basic CRUD operations
+6. ✅ Add authorization layer (Pundit)
+7. ✅ Create user interface (Phlex components with Hotwire)
+8. ✅ Implement audit logging (PaperTrail)
+9. ✅ Add automated tests (RSpec + Capybara)
+10. ✅ Set up CI/CD pipeline (GitHub Actions)
+11. 🚧 Enhanced features (2FA, additional OIDC providers, mobile optimization)
