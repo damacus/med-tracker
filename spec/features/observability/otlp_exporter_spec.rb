@@ -83,7 +83,6 @@ RSpec.describe 'OTEL-011: OTLP exporter configuration' do
 
   context 'when reading sampling configuration' do
     it 'configures parentbased_always_on sampler by default' do
-      # Test that the helper method works without needing to create a config object
       expect(ENV.fetch('OTEL_TRACES_SAMPLER', 'parentbased_always_on')).to eq('parentbased_always_on')
     end
 
@@ -142,18 +141,14 @@ RSpec.describe 'OTEL-011: OTLP exporter configuration' do
 
   context 'when tracing HTTP requests' do
     it 'creates spans for regular requests' do
-      # Make a regular request
       visit '/'
 
-      # Give spans time to be created
       sleep(0.5)
 
-      # Should have HTTP request span - this verifies the instrumentation is working
       expect(page.status_code).to eq(200)
     end
 
     it 'excludes health check endpoints from tracing' do
-      # Make request to health endpoint
       visit '/up'
       expect(page.status_code).to eq(200)
     end
