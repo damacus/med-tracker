@@ -989,6 +989,216 @@
     "passes": true
   },
   {
+    "id": "PASSKEY-SEC-001",
+    "category": "security",
+    "area": "passkey",
+    "description": "WebAuthn attestation verification prevents cloned authenticators",
+    "steps": [
+      "Register passkey with attestation",
+      "Verify attestation statement present in registration response",
+      "Verify attestation signature using FIDO Metadata Service",
+      "Verify authenticator is not on revocation list",
+      "Store attestation format and AAGUID in database",
+      "Document trusted authenticator policy"
+    ],
+    "passes": false,
+    "deferred": true,
+    "deferred_reason": "WebAuthn/passkey support not currently implemented"
+  },
+  {
+    "id": "PASSKEY-SEC-002",
+    "category": "security",
+    "area": "passkey",
+    "description": "WebAuthn challenge prevents replay attacks",
+    "steps": [
+      "Initiate WebAuthn authentication/registration",
+      "Verify cryptographically random challenge generated",
+      "Verify challenge stored in session",
+      "Complete WebAuthn ceremony",
+      "Verify signed challenge matches stored challenge",
+      "Verify challenge is single-use and expires",
+      "Attempt to reuse challenge",
+      "Verify replay rejected"
+    ],
+    "passes": false,
+    "deferred": true,
+    "deferred_reason": "WebAuthn/passkey support not currently implemented"
+  },
+  {
+    "id": "PASSKEY-SEC-003",
+    "category": "security",
+    "area": "passkey",
+    "description": "WebAuthn origin validation prevents phishing",
+    "steps": [
+      "Attempt WebAuthn from valid origin",
+      "Verify authentication succeeds",
+      "Attempt WebAuthn from different origin",
+      "Verify authentication rejected",
+      "Verify origin matches RP ID exactly",
+      "Verify no subdomain attacks possible",
+      "Document RP ID configuration"
+    ],
+    "passes": false,
+    "deferred": true,
+    "deferred_reason": "WebAuthn/passkey support not currently implemented"
+  },
+  {
+    "id": "PASSKEY-SEC-004",
+    "category": "security",
+    "area": "passkey",
+    "description": "User verification ensures biometric or PIN authentication",
+    "steps": [
+      "Configure WebAuthn to require user verification",
+      "Attempt authentication without user verification",
+      "Verify authentication rejected",
+      "Complete biometric or PIN verification",
+      "Verify authentication succeeds",
+      "Verify userVerified flag set in authenticator data",
+      "Document user verification policy"
+    ],
+    "passes": false,
+    "deferred": true,
+    "deferred_reason": "WebAuthn/passkey support not currently implemented"
+  },
+  {
+    "id": "PASSKEY-SEC-005",
+    "category": "security",
+    "area": "passkey",
+    "description": "Passkey credential IDs are cryptographically unique",
+    "steps": [
+      "Register multiple passkeys",
+      "Verify each credential ID is unique",
+      "Verify credential IDs are randomly generated",
+      "Verify credential IDs are not enumerable",
+      "Attempt to guess credential ID",
+      "Verify rejected without leaking information"
+    ],
+    "passes": false,
+    "deferred": true,
+    "deferred_reason": "WebAuthn/passkey support not currently implemented"
+  },
+  {
+    "id": "PASSKEY-SEC-006",
+    "category": "security",
+    "area": "passkey",
+    "description": "Public key cryptography prevents credential theft",
+    "steps": [
+      "Register passkey",
+      "Verify private key never leaves authenticator",
+      "Verify only public key stored in database",
+      "Verify authentication uses digital signature",
+      "Verify server cannot impersonate user",
+      "Document key algorithm (ES256, RS256, etc.)"
+    ],
+    "passes": false,
+    "deferred": true,
+    "deferred_reason": "WebAuthn/passkey support not currently implemented"
+  },
+  {
+    "id": "PASSKEY-SEC-007",
+    "category": "security",
+    "area": "passkey",
+    "description": "Counter validation prevents cloned credentials",
+    "steps": [
+      "Register passkey with signature counter",
+      "Note initial counter value",
+      "Use passkey to authenticate",
+      "Verify counter incremented",
+      "Store new counter value",
+      "Attempt authentication with old counter value",
+      "Verify rejected as potential cloned credential",
+      "Alert user of potential security issue"
+    ],
+    "passes": false,
+    "deferred": true,
+    "deferred_reason": "WebAuthn/passkey support not currently implemented"
+  },
+  {
+    "id": "PASSKEY-SEC-008",
+    "category": "security",
+    "area": "passkey",
+    "description": "Timeout prevents long-running WebAuthn ceremonies",
+    "steps": [
+      "Initiate WebAuthn authentication",
+      "Wait longer than timeout period (e.g., 2 minutes)",
+      "Attempt to complete authentication",
+      "Verify authentication rejected",
+      "Verify timeout error message shown",
+      "Verify session state cleaned up"
+    ],
+    "passes": false,
+    "deferred": true,
+    "deferred_reason": "WebAuthn/passkey support not currently implemented"
+  },
+  {
+    "id": "PASSKEY-SEC-009",
+    "category": "security",
+    "area": "passkey",
+    "description": "Resident credentials protected from unauthorized access",
+    "steps": [
+      "Store resident credential on authenticator",
+      "Verify credential requires user presence/verification to access",
+      "Verify credential not accessible to other domains",
+      "Verify credential isolated per RP ID",
+      "Document privacy implications of resident credentials"
+    ],
+    "passes": false,
+    "deferred": true,
+    "deferred_reason": "WebAuthn/passkey support not currently implemented"
+  },
+  {
+    "id": "PASSKEY-SEC-010",
+    "category": "security",
+    "area": "passkey",
+    "description": "Passkey removal requires current authentication",
+    "steps": [
+      "Navigate to passkey management",
+      "Attempt to remove passkey without authentication",
+      "Verify operation blocked",
+      "Authenticate with password, 2FA, or another passkey",
+      "Attempt passkey removal",
+      "Verify removal succeeds",
+      "Verify audit log records removal with actor"
+    ],
+    "passes": false,
+    "deferred": true,
+    "deferred_reason": "WebAuthn/passkey support not currently implemented"
+  },
+  {
+    "id": "PASSKEY-SEC-011",
+    "category": "security",
+    "area": "passkey",
+    "description": "Transport-specific security for different authenticator types",
+    "steps": [
+      "Test with USB security key",
+      "Test with platform authenticator (Touch ID, Windows Hello)",
+      "Test with Bluetooth authenticator",
+      "Test with NFC authenticator",
+      "Verify each transport type properly secured",
+      "Document supported transports and security properties"
+    ],
+    "passes": false,
+    "deferred": true,
+    "deferred_reason": "WebAuthn/passkey support not currently implemented"
+  },
+  {
+    "id": "PASSKEY-SEC-012",
+    "category": "security",
+    "area": "passkey",
+    "description": "Passkey authentication is phishing-resistant",
+    "steps": [
+      "Create phishing site mimicking application",
+      "Attempt to capture passkey authentication",
+      "Verify origin validation prevents attack",
+      "Verify credential not usable on phishing site",
+      "Verify user cannot be tricked into authentication",
+      "Document why passkeys are phishing-resistant"
+    ],
+    "passes": false,
+    "deferred": true,
+    "deferred_reason": "WebAuthn/passkey support not currently implemented"
+  },
+  {
     "id": "SEC-CSP-001",
     "category": "security",
     "area": "csp",

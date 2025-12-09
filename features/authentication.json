@@ -375,5 +375,189 @@
 			"Verify new verification email sent"
 		],
 		"passes": true
+	},
+	{
+		"id": "PASSKEY-001",
+		"category": "functional",
+		"area": "authentication",
+		"description": "WebAuthn/Passkey configuration: Verify Rodauth WebAuthn support can be enabled",
+		"steps": [
+			"Check Rodauth supports :webauthn_login feature",
+			"Verify :webauthn_autofill feature available for autofill UI",
+			"Document WebAuthn relying party configuration (RP ID, RP name)",
+			"Verify webauthn gem can be added to Gemfile",
+			"Document database tables needed (account_webauthn_user_ids, account_webauthn_keys)"
+		],
+		"passes": false,
+		"deferred": true,
+		"deferred_reason": "WebAuthn/passkey support not currently implemented but planned for future enhancement"
+	},
+	{
+		"id": "PASSKEY-002",
+		"category": "functional",
+		"area": "authentication",
+		"description": "Passkey registration: User can register a passkey during account creation",
+		"steps": [
+			"Navigate to /create-account",
+			"Fill in email, password, name, date of birth",
+			"Submit account creation form",
+			"See prompt: 'Secure your account with a passkey'",
+			"Click 'Register Passkey' button",
+			"Browser shows WebAuthn dialog for biometric/security key",
+			"Complete authentication (fingerprint, Face ID, security key)",
+			"Verify passkey registered and stored in account_webauthn_keys",
+			"Verify user can login with passkey on next visit"
+		],
+		"passes": false,
+		"deferred": true,
+		"deferred_reason": "WebAuthn/passkey support not currently implemented"
+	},
+	{
+		"id": "PASSKEY-003",
+		"category": "functional",
+		"area": "authentication",
+		"description": "Passkey login: User can login with registered passkey",
+		"steps": [
+			"User has previously registered a passkey",
+			"Navigate to /login",
+			"See 'Sign in with passkey' button",
+			"Click 'Sign in with passkey'",
+			"Browser shows WebAuthn authentication dialog",
+			"Authenticate with biometric or security key",
+			"Verify logged in successfully",
+			"Verify redirected to dashboard",
+			"Verify no password required"
+		],
+		"passes": false,
+		"deferred": true,
+		"deferred_reason": "WebAuthn/passkey support not currently implemented"
+	},
+	{
+		"id": "PASSKEY-004",
+		"category": "functional",
+		"area": "authentication",
+		"description": "Passkey autofill: Browser autofills passkey credential on login page",
+		"steps": [
+			"User has registered passkey",
+			"Navigate to /login",
+			"Click on email/username field",
+			"Browser shows autofill dropdown with passkey option",
+			"Select passkey from autofill",
+			"Browser prompts for biometric authentication",
+			"Complete authentication",
+			"Verify logged in without entering password"
+		],
+		"passes": false,
+		"deferred": true,
+		"deferred_reason": "Requires :webauthn_autofill Rodauth feature"
+	},
+	{
+		"id": "PASSKEY-005",
+		"category": "functional",
+		"area": "authentication",
+		"description": "Passkey management: User can add additional passkeys from settings",
+		"steps": [
+			"Log in with password or existing passkey",
+			"Navigate to /settings/security",
+			"See 'Passkeys' section",
+			"Click 'Add new passkey' button",
+			"Enter nickname for passkey (e.g., 'iPhone', 'YubiKey')",
+			"Complete WebAuthn registration",
+			"Verify new passkey appears in list with nickname and creation date",
+			"Verify can use any registered passkey to login"
+		],
+		"passes": false,
+		"deferred": true,
+		"deferred_reason": "WebAuthn/passkey support not currently implemented"
+	},
+	{
+		"id": "PASSKEY-006",
+		"category": "functional",
+		"area": "authentication",
+		"description": "Passkey management: User can remove passkeys",
+		"steps": [
+			"Navigate to /settings/security",
+			"See list of registered passkeys",
+			"Click 'Remove' next to a passkey",
+			"Confirm removal in dialog",
+			"Verify passkey removed from list",
+			"Verify removed passkey can no longer be used to login",
+			"Verify at least one authentication method remains (password or other passkey)"
+		],
+		"passes": false,
+		"deferred": true,
+		"deferred_reason": "WebAuthn/passkey support not currently implemented"
+	},
+	{
+		"id": "PASSKEY-007",
+		"category": "functional",
+		"area": "authentication",
+		"description": "Passkey + password combination: User can have both password and passkey",
+		"steps": [
+			"Create account with password",
+			"Add passkey from settings",
+			"Verify can login with password",
+			"Verify can login with passkey",
+			"Change password",
+			"Verify passkey still works",
+			"Remove password (keep only passkey)",
+			"Verify can still login with passkey"
+		],
+		"passes": false,
+		"deferred": true,
+		"deferred_reason": "WebAuthn/passkey support not currently implemented"
+	},
+	{
+		"id": "PASSKEY-008",
+		"category": "functional",
+		"area": "authentication",
+		"description": "Passkey cross-device registration: User can register passkey from another device",
+		"steps": [
+			"On desktop: Navigate to passkey registration",
+			"Select 'Use a phone, tablet, or security key'",
+			"See QR code displayed",
+			"On mobile: Scan QR code with camera",
+			"On mobile: Complete biometric authentication",
+			"Verify passkey registered successfully",
+			"Verify passkey works for login on desktop"
+		],
+		"passes": false,
+		"deferred": true,
+		"deferred_reason": "Requires cross-device WebAuthn support"
+	},
+	{
+		"id": "PASSKEY-009",
+		"category": "functional",
+		"area": "authentication",
+		"description": "Passkey discoverable credentials: Passkeys work without username",
+		"steps": [
+			"Register passkey as discoverable/resident credential",
+			"Navigate to /login (empty form)",
+			"Click 'Sign in with passkey' without entering email",
+			"Browser shows list of available passkeys",
+			"Select passkey",
+			"Complete authentication",
+			"Verify logged in to correct account"
+		],
+		"passes": false,
+		"deferred": true,
+		"deferred_reason": "Requires WebAuthn resident credentials support"
+	},
+	{
+		"id": "PASSKEY-010",
+		"category": "functional",
+		"area": "authentication",
+		"description": "Passkey security: User verification required for sensitive operations",
+		"steps": [
+			"Register passkey with user verification (biometric/PIN)",
+			"Attempt to use passkey without user verification",
+			"Verify authentication rejected",
+			"Complete user verification",
+			"Verify authentication succeeds",
+			"Verify user verification status stored in webauthn key record"
+		],
+		"passes": false,
+		"deferred": true,
+		"deferred_reason": "WebAuthn/passkey support not currently implemented"
 	}
 ]
