@@ -100,18 +100,22 @@ elsif Rails.env.production? || ENV['OTEL_EXPORTER_OTLP_ENDPOINT'].present?
   end
 end
 
-# Helper methods for OpenTelemetry configuration
-def parse_otlp_headers(headers_string)
-  return {} unless headers_string.present?
+module OpenTelemetryConfig
+  module_function
 
-  # Parse headers in format "key1=value1,key2=value2"
-  headers_string.split(',').each_with_object({}) do |header, hash|
-    key, value = header.split('=', 2)
-    if key && value
-      hash[key.strip] = value.strip
-    elsif key
-      # Handle case where there's no equals sign - treat as empty value
-      hash[key.strip] = ''
+  # Helper methods for OpenTelemetry configuration
+  def parse_otlp_headers(headers_string)
+    return {} unless headers_string.present?
+
+    # Parse headers in format "key1=value1,key2=value2"
+    headers_string.split(',').each_with_object({}) do |header, hash|
+      key, value = header.split('=', 2)
+      if key && value
+        hash[key.strip] = value.strip
+      elsif key
+        # Handle case where there's no equals sign - treat as empty value
+        hash[key.strip] = ''
+      end
     end
   end
 end

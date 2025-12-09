@@ -55,17 +55,17 @@ RSpec.describe 'OTEL-011: OTLP exporter configuration', type: :feature do
         'x-custom-header' => 'value'
       }
 
-      result = parse_otlp_headers(headers_string)
+      result = OpenTelemetryConfig.parse_otlp_headers(headers_string)
       expect(result).to eq(expected)
     end
 
     it 'handles empty headers string' do
-      result = parse_otlp_headers('')
+      result = OpenTelemetryConfig.parse_otlp_headers('')
       expect(result).to eq({})
     end
 
     it 'handles nil headers string' do
-      result = parse_otlp_headers(nil)
+      result = OpenTelemetryConfig.parse_otlp_headers(nil)
       expect(result).to eq({})
     end
 
@@ -76,7 +76,7 @@ RSpec.describe 'OTEL-011: OTLP exporter configuration', type: :feature do
         'noequals' => ''
       }
 
-      result = parse_otlp_headers(headers_string)
+      result = OpenTelemetryConfig.parse_otlp_headers(headers_string)
       expect(result).to eq(expected)
     end
   end
