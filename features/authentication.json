@@ -108,15 +108,143 @@
 		"passes": true
 	},
 	{
+		"id": "OIDC-001",
+		"category": "functional",
+		"area": "authentication",
+		"description": "OIDC configuration: Verify Google OAuth 2.0 configured as OIDC provider",
+		"steps": [
+			"Check Rodauth configuration in app/misc/rodauth_main.rb",
+			"Verify omniauth_provider :google_oauth2 configured",
+			"Verify OIDC scopes requested: 'email profile'",
+			"Verify client_id and client_secret configured from credentials or ENV",
+			"Verify callback URL configured: /auth/google_oauth2/callback"
+		],
+		"passes": false
+	},
+	{
+		"id": "OIDC-002",
+		"category": "functional",
+		"area": "authentication",
+		"description": "OIDC ID token validation: Verify ID token signature and claims",
+		"steps": [
+			"Initiate OIDC login with Google",
+			"Complete authentication flow",
+			"Capture ID token from OIDC response",
+			"Verify ID token signature using Google's public keys",
+			"Verify required claims present: iss, sub, aud, exp, iat",
+			"Verify iss matches https://accounts.google.com",
+			"Verify aud matches configured client_id",
+			"Verify exp (expiration) is in the future",
+			"Verify email claim matches account email",
+			"Verify email_verified claim is true"
+		],
+		"passes": false
+	},
+	{
+		"id": "OIDC-003",
+		"category": "functional",
+		"area": "authentication",
+		"description": "OIDC userinfo endpoint: Verify profile data retrieval",
+		"steps": [
+			"Complete OIDC authentication flow",
+			"Access userinfo endpoint with access token",
+			"Verify profile data received: sub, email, name, picture",
+			"Verify data matches ID token claims",
+			"Verify Person record populated with OIDC profile data"
+		],
+		"passes": false
+	},
+	{
+		"id": "OIDC-004",
+		"category": "functional",
+		"area": "authentication",
+		"description": "OIDC provider metadata discovery: Verify OpenID configuration",
+		"steps": [
+			"Access Google's OIDC discovery endpoint: https://accounts.google.com/.well-known/openid-configuration",
+			"Verify authorization_endpoint present",
+			"Verify token_endpoint present",
+			"Verify userinfo_endpoint present",
+			"Verify jwks_uri present for token verification",
+			"Verify supported scopes include openid, email, profile",
+			"Verify supported response_types include code"
+		],
+		"passes": false
+	},
+	{
+		"id": "OIDC-005",
+		"category": "functional",
+		"area": "authentication",
+		"description": "OIDC account identity persistence: Verify provider identity storage",
+		"steps": [
+			"Complete OIDC sign-up with Google",
+			"Query account_identities table",
+			"Verify record exists with provider='google_oauth2'",
+			"Verify uid contains Google's subject identifier (sub claim)",
+			"Verify account_id links to Account record",
+			"Verify created_at and updated_at timestamps set",
+			"Attempt duplicate OIDC login",
+			"Verify existing identity reused, not duplicated"
+		],
+		"passes": false
+	},
+	{
+		"id": "OIDC-006",
+		"category": "functional",
+		"area": "authentication",
+		"description": "OIDC sign-up with email claim: Verify automatic email population",
+		"steps": [
+			"Initiate OIDC sign-up with Google account",
+			"Complete authentication without manually entering email",
+			"Verify Account created with email from OIDC email claim",
+			"Verify email_verified status set to verified",
+			"Verify Person record created with email matching OIDC claim",
+			"Verify no email verification email sent (already verified by OIDC provider)"
+		],
+		"passes": false
+	},
+	{
+		"id": "OIDC-007",
+		"category": "functional",
+		"area": "authentication",
+		"description": "OIDC state parameter CSRF protection: Verify state validation",
+		"steps": [
+			"Initiate OIDC flow and capture state parameter",
+			"Complete flow with valid state",
+			"Verify authentication succeeds",
+			"Attempt OIDC callback with invalid state parameter",
+			"Verify authentication rejected with CSRF error",
+			"Verify state parameter is unique per request",
+			"Verify state parameter timeout after reasonable period"
+		],
+		"passes": false
+	},
+	{
+		"id": "OIDC-008",
+		"category": "functional",
+		"area": "authentication",
+		"description": "OIDC multiple identity providers: Verify extensibility for additional providers",
+		"steps": [
+			"Review Rodauth OmniAuth configuration structure",
+			"Verify multiple omniauth_provider calls supported",
+			"Verify account_identities schema supports multiple providers per account",
+			"Document steps to add additional OIDC providers (GitHub, Microsoft, etc.)",
+			"Verify provider selection UI accommodates multiple providers"
+		],
+		"passes": false
+	},
+	{
 		"id": "AUTH-009",
 		"category": "functional",
 		"area": "authentication",
-		"description": "Google OAuth creates new account for new user",
+		"description": "OIDC sign-up: Google OAuth creates new account for new user",
 		"steps": [
 			"Click Sign in with Google",
-			"Complete OAuth flow with new email",
+			"Complete OIDC/OAuth flow with new email",
+			"Verify OIDC ID token received and validated",
 			"Verify Account created with verified status",
-			"Verify Person created and linked"
+			"Verify Person created with data from OIDC claims (name, email)",
+			"Verify User created with parent role",
+			"Verify account_identities record created linking OIDC provider"
 		],
 		"passes": true
 	},
@@ -124,12 +252,14 @@
 		"id": "AUTH-010",
 		"category": "functional",
 		"area": "authentication",
-		"description": "Google OAuth links to existing account with same email",
+		"description": "OIDC account linking: Google OAuth links to existing account with same email",
 		"steps": [
-			"Create account with email@example.com",
+			"Create account with email@example.com via email/password",
 			"Sign in with Google using email@example.com",
-			"Verify Google identity linked to existing account",
-			"Verify no duplicate account created"
+			"Verify OIDC provider identity linked to existing account",
+			"Verify no duplicate account created",
+			"Verify account_identities record created with provider and uid",
+			"Verify can subsequently login with either method"
 		],
 		"passes": true
 	},
@@ -162,13 +292,16 @@
 		"id": "AUTH-013",
 		"category": "functional",
 		"area": "authentication",
-		"description": "Logged-in user can link Google account from settings",
+		"description": "OIDC account linking: Logged-in user can link Google account from settings",
 		"steps": [
 			"Log in with email/password",
 			"Navigate to account settings",
 			"Click Link Google Account",
-			"Complete OAuth flow",
-			"Verify Google identity linked"
+			"Complete OIDC/OAuth flow",
+			"Verify OIDC identity linked to existing account",
+			"Verify account_identities record created",
+			"Log out and log in with Google",
+			"Verify access to same account and data"
 		],
 		"passes": true
 	},
@@ -242,5 +375,189 @@
 			"Verify new verification email sent"
 		],
 		"passes": true
+	},
+	{
+		"id": "PASSKEY-001",
+		"category": "functional",
+		"area": "authentication",
+		"description": "WebAuthn/Passkey configuration: Verify Rodauth WebAuthn support can be enabled",
+		"steps": [
+			"Check Rodauth supports :webauthn_login feature",
+			"Verify :webauthn_autofill feature available for autofill UI",
+			"Document WebAuthn relying party configuration (RP ID, RP name)",
+			"Verify webauthn gem can be added to Gemfile",
+			"Document database tables needed (account_webauthn_user_ids, account_webauthn_keys)"
+		],
+		"passes": false,
+		"deferred": true,
+		"deferred_reason": "WebAuthn/passkey support not currently implemented but planned for future enhancement"
+	},
+	{
+		"id": "PASSKEY-002",
+		"category": "functional",
+		"area": "authentication",
+		"description": "Passkey registration: User can register a passkey during account creation",
+		"steps": [
+			"Navigate to /create-account",
+			"Fill in email, password, name, date of birth",
+			"Submit account creation form",
+			"See prompt: 'Secure your account with a passkey'",
+			"Click 'Register Passkey' button",
+			"Browser shows WebAuthn dialog for biometric/security key",
+			"Complete authentication (fingerprint, Face ID, security key)",
+			"Verify passkey registered and stored in account_webauthn_keys",
+			"Verify user can login with passkey on next visit"
+		],
+		"passes": false,
+		"deferred": true,
+		"deferred_reason": "WebAuthn/passkey support not currently implemented"
+	},
+	{
+		"id": "PASSKEY-003",
+		"category": "functional",
+		"area": "authentication",
+		"description": "Passkey login: User can login with registered passkey",
+		"steps": [
+			"User has previously registered a passkey",
+			"Navigate to /login",
+			"See 'Sign in with passkey' button",
+			"Click 'Sign in with passkey'",
+			"Browser shows WebAuthn authentication dialog",
+			"Authenticate with biometric or security key",
+			"Verify logged in successfully",
+			"Verify redirected to dashboard",
+			"Verify no password required"
+		],
+		"passes": false,
+		"deferred": true,
+		"deferred_reason": "WebAuthn/passkey support not currently implemented"
+	},
+	{
+		"id": "PASSKEY-004",
+		"category": "functional",
+		"area": "authentication",
+		"description": "Passkey autofill: Browser autofills passkey credential on login page",
+		"steps": [
+			"User has registered passkey",
+			"Navigate to /login",
+			"Click on email/username field",
+			"Browser shows autofill dropdown with passkey option",
+			"Select passkey from autofill",
+			"Browser prompts for biometric authentication",
+			"Complete authentication",
+			"Verify logged in without entering password"
+		],
+		"passes": false,
+		"deferred": true,
+		"deferred_reason": "Requires :webauthn_autofill Rodauth feature"
+	},
+	{
+		"id": "PASSKEY-005",
+		"category": "functional",
+		"area": "authentication",
+		"description": "Passkey management: User can add additional passkeys from settings",
+		"steps": [
+			"Log in with password or existing passkey",
+			"Navigate to /settings/security",
+			"See 'Passkeys' section",
+			"Click 'Add new passkey' button",
+			"Enter nickname for passkey (e.g., 'iPhone', 'YubiKey')",
+			"Complete WebAuthn registration",
+			"Verify new passkey appears in list with nickname and creation date",
+			"Verify can use any registered passkey to login"
+		],
+		"passes": false,
+		"deferred": true,
+		"deferred_reason": "WebAuthn/passkey support not currently implemented"
+	},
+	{
+		"id": "PASSKEY-006",
+		"category": "functional",
+		"area": "authentication",
+		"description": "Passkey management: User can remove passkeys",
+		"steps": [
+			"Navigate to /settings/security",
+			"See list of registered passkeys",
+			"Click 'Remove' next to a passkey",
+			"Confirm removal in dialog",
+			"Verify passkey removed from list",
+			"Verify removed passkey can no longer be used to login",
+			"Verify at least one authentication method remains (password or other passkey)"
+		],
+		"passes": false,
+		"deferred": true,
+		"deferred_reason": "WebAuthn/passkey support not currently implemented"
+	},
+	{
+		"id": "PASSKEY-007",
+		"category": "functional",
+		"area": "authentication",
+		"description": "Passkey + password combination: User can have both password and passkey",
+		"steps": [
+			"Create account with password",
+			"Add passkey from settings",
+			"Verify can login with password",
+			"Verify can login with passkey",
+			"Change password",
+			"Verify passkey still works",
+			"Remove password (keep only passkey)",
+			"Verify can still login with passkey"
+		],
+		"passes": false,
+		"deferred": true,
+		"deferred_reason": "WebAuthn/passkey support not currently implemented"
+	},
+	{
+		"id": "PASSKEY-008",
+		"category": "functional",
+		"area": "authentication",
+		"description": "Passkey cross-device registration: User can register passkey from another device",
+		"steps": [
+			"On desktop: Navigate to passkey registration",
+			"Select 'Use a phone, tablet, or security key'",
+			"See QR code displayed",
+			"On mobile: Scan QR code with camera",
+			"On mobile: Complete biometric authentication",
+			"Verify passkey registered successfully",
+			"Verify passkey works for login on desktop"
+		],
+		"passes": false,
+		"deferred": true,
+		"deferred_reason": "Requires cross-device WebAuthn support"
+	},
+	{
+		"id": "PASSKEY-009",
+		"category": "functional",
+		"area": "authentication",
+		"description": "Passkey discoverable credentials: Passkeys work without username",
+		"steps": [
+			"Register passkey as discoverable/resident credential",
+			"Navigate to /login (empty form)",
+			"Click 'Sign in with passkey' without entering email",
+			"Browser shows list of available passkeys",
+			"Select passkey",
+			"Complete authentication",
+			"Verify logged in to correct account"
+		],
+		"passes": false,
+		"deferred": true,
+		"deferred_reason": "Requires WebAuthn resident credentials support"
+	},
+	{
+		"id": "PASSKEY-010",
+		"category": "functional",
+		"area": "authentication",
+		"description": "Passkey security: User verification required for sensitive operations",
+		"steps": [
+			"Register passkey with user verification (biometric/PIN)",
+			"Attempt to use passkey without user verification",
+			"Verify authentication rejected",
+			"Complete user verification",
+			"Verify authentication succeeds",
+			"Verify user verification status stored in webauthn key record"
+		],
+		"passes": false,
+		"deferred": true,
+		"deferred_reason": "WebAuthn/passkey support not currently implemented"
 	}
 ]

@@ -801,6 +801,404 @@
     "passes": true
   },
   {
+    "id": "OIDC-SEC-001",
+    "category": "security",
+    "area": "oidc",
+    "description": "OIDC token signature verification prevents token tampering",
+    "steps": [
+      "Complete OIDC authentication and capture ID token",
+      "Verify token is a signed JWT (three base64 segments)",
+      "Fetch Google's public keys from JWKS endpoint",
+      "Verify token signature using appropriate public key",
+      "Attempt to modify token claims and re-sign with invalid key",
+      "Verify modified token rejected",
+      "Verify unsigned tokens rejected",
+      "Verify tokens signed with wrong algorithm rejected"
+    ],
+    "passes": false
+  },
+  {
+    "id": "OIDC-SEC-002",
+    "category": "security",
+    "area": "oidc",
+    "description": "OIDC token expiration prevents replay attacks",
+    "steps": [
+      "Complete OIDC authentication flow",
+      "Capture ID token and note exp claim",
+      "Verify token accepted when exp is in future",
+      "Wait for token to expire or manually set exp to past",
+      "Attempt authentication with expired token",
+      "Verify authentication rejected",
+      "Verify appropriate error message shown"
+    ],
+    "passes": false
+  },
+  {
+    "id": "OIDC-SEC-003",
+    "category": "security",
+    "area": "oidc",
+    "description": "OIDC audience claim validation prevents token misuse",
+    "steps": [
+      "Configure application with specific client_id",
+      "Complete OIDC flow and receive ID token",
+      "Verify aud claim matches configured client_id",
+      "Attempt to use ID token with different aud claim",
+      "Verify authentication rejected",
+      "Verify error logged about audience mismatch"
+    ],
+    "passes": false
+  },
+  {
+    "id": "OIDC-SEC-004",
+    "category": "security",
+    "area": "oidc",
+    "description": "OIDC issuer validation prevents phishing attacks",
+    "steps": [
+      "Complete OIDC flow with Google",
+      "Verify iss claim is https://accounts.google.com",
+      "Attempt to use token with different issuer",
+      "Verify authentication rejected",
+      "Verify only trusted issuers accepted",
+      "Document trusted issuer whitelist"
+    ],
+    "passes": false
+  },
+  {
+    "id": "OIDC-SEC-005",
+    "category": "security",
+    "area": "oidc",
+    "description": "OIDC state parameter prevents CSRF attacks",
+    "steps": [
+      "Initiate OIDC flow and capture state parameter",
+      "Verify state is cryptographically random",
+      "Verify state stored in session",
+      "Complete flow with matching state",
+      "Verify authentication succeeds",
+      "Attempt callback with different state value",
+      "Verify authentication rejected with CSRF error",
+      "Verify state is single-use and expires"
+    ],
+    "passes": false
+  },
+  {
+    "id": "OIDC-SEC-006",
+    "category": "security",
+    "area": "oidc",
+    "description": "OIDC nonce prevents token replay attacks",
+    "steps": [
+      "Initiate OIDC flow with nonce parameter",
+      "Verify nonce included in authorization request",
+      "Receive ID token and verify nonce claim present",
+      "Verify nonce in token matches sent nonce",
+      "Attempt to replay token with same nonce",
+      "Verify replay rejected",
+      "Verify nonce is unique per authentication request"
+    ],
+    "passes": false
+  },
+  {
+    "id": "OIDC-SEC-007",
+    "category": "security",
+    "area": "oidc",
+    "description": "OIDC access token not stored long-term",
+    "steps": [
+      "Complete OIDC authentication",
+      "Verify access token used only for immediate userinfo request",
+      "Check database for access_token storage",
+      "Verify access tokens not persisted in account_identities",
+      "Verify only uid and provider stored",
+      "Document token storage policy"
+    ],
+    "passes": false
+  },
+  {
+    "id": "OIDC-SEC-008",
+    "category": "security",
+    "area": "oidc",
+    "description": "OIDC authorization code flow used (not implicit)",
+    "steps": [
+      "Review OIDC configuration",
+      "Verify response_type is 'code' not 'token' or 'id_token'",
+      "Verify authorization code exchanged server-side for tokens",
+      "Verify tokens never exposed in browser URL",
+      "Verify PKCE used if available for additional security",
+      "Document why authorization code flow is preferred"
+    ],
+    "passes": false
+  },
+  {
+    "id": "OIDC-SEC-009",
+    "category": "security",
+    "area": "oidc",
+    "description": "OIDC client secret stored securely",
+    "steps": [
+      "Verify client_secret not hardcoded in source",
+      "Verify stored in Rails credentials or environment variables",
+      "Verify .env files in .gitignore",
+      "Verify no client_secret in git history",
+      "Verify client_secret not logged",
+      "Verify client_secret transmission only over HTTPS",
+      "Document secret rotation procedure"
+    ],
+    "passes": false
+  },
+  {
+    "id": "OIDC-SEC-010",
+    "category": "security",
+    "area": "oidc",
+    "description": "OIDC redirect URI validation prevents open redirects",
+    "steps": [
+      "Configure specific redirect URI in Google Console",
+      "Verify redirect_uri in OIDC config matches exactly",
+      "Attempt authentication with different redirect_uri",
+      "Verify Google rejects mismatched redirect_uri",
+      "Verify application validates redirect_uri on callback",
+      "Test with various manipulations (http vs https, different port, path traversal)",
+      "Verify all variations rejected"
+    ],
+    "passes": false
+  },
+  {
+    "id": "OIDC-SEC-011",
+    "category": "security",
+    "area": "oidc",
+    "description": "OIDC account hijacking prevention via email verification",
+    "steps": [
+      "Create account A with email test@example.com",
+      "Attempt OIDC login with Google account for test@example.com",
+      "Verify email_verified claim from OIDC provider checked",
+      "If email_verified is false, reject or require additional verification",
+      "If email_verified is true, allow linking to existing account",
+      "Document email verification policy"
+    ],
+    "passes": false
+  },
+  {
+    "id": "OIDC-SEC-012",
+    "category": "security",
+    "area": "oidc",
+    "description": "OIDC session fixation prevention",
+    "steps": [
+      "Note session ID before OIDC authentication",
+      "Complete OIDC login successfully",
+      "Verify session ID completely changed after authentication",
+      "Verify old session ID invalid",
+      "Verify new session associated with authenticated user",
+      "Test with remember_me enabled"
+    ],
+    "passes": false
+  },
+  {
+    "id": "PASSKEY-SEC-001",
+    "category": "security",
+    "area": "passkey",
+    "description": "WebAuthn attestation verification prevents cloned authenticators",
+    "steps": [
+      "Register passkey with attestation",
+      "Verify attestation statement present in registration response",
+      "Verify attestation signature using FIDO Metadata Service",
+      "Verify authenticator is not on revocation list",
+      "Store attestation format and AAGUID in database",
+      "Document trusted authenticator policy"
+    ],
+    "passes": false,
+    "deferred": true,
+    "deferred_reason": "WebAuthn/passkey support not currently implemented"
+  },
+  {
+    "id": "PASSKEY-SEC-002",
+    "category": "security",
+    "area": "passkey",
+    "description": "WebAuthn challenge prevents replay attacks",
+    "steps": [
+      "Initiate WebAuthn authentication/registration",
+      "Verify cryptographically random challenge generated",
+      "Verify challenge stored in session",
+      "Complete WebAuthn ceremony",
+      "Verify signed challenge matches stored challenge",
+      "Verify challenge is single-use and expires",
+      "Attempt to reuse challenge",
+      "Verify replay rejected"
+    ],
+    "passes": false,
+    "deferred": true,
+    "deferred_reason": "WebAuthn/passkey support not currently implemented"
+  },
+  {
+    "id": "PASSKEY-SEC-003",
+    "category": "security",
+    "area": "passkey",
+    "description": "WebAuthn origin validation prevents phishing",
+    "steps": [
+      "Attempt WebAuthn from valid origin",
+      "Verify authentication succeeds",
+      "Attempt WebAuthn from different origin",
+      "Verify authentication rejected",
+      "Verify origin matches RP ID exactly",
+      "Verify no subdomain attacks possible",
+      "Document RP ID configuration"
+    ],
+    "passes": false,
+    "deferred": true,
+    "deferred_reason": "WebAuthn/passkey support not currently implemented"
+  },
+  {
+    "id": "PASSKEY-SEC-004",
+    "category": "security",
+    "area": "passkey",
+    "description": "User verification ensures biometric or PIN authentication",
+    "steps": [
+      "Configure WebAuthn to require user verification",
+      "Attempt authentication without user verification",
+      "Verify authentication rejected",
+      "Complete biometric or PIN verification",
+      "Verify authentication succeeds",
+      "Verify userVerified flag set in authenticator data",
+      "Document user verification policy"
+    ],
+    "passes": false,
+    "deferred": true,
+    "deferred_reason": "WebAuthn/passkey support not currently implemented"
+  },
+  {
+    "id": "PASSKEY-SEC-005",
+    "category": "security",
+    "area": "passkey",
+    "description": "Passkey credential IDs are cryptographically unique",
+    "steps": [
+      "Register multiple passkeys",
+      "Verify each credential ID is unique",
+      "Verify credential IDs are randomly generated",
+      "Verify credential IDs are not enumerable",
+      "Attempt to guess credential ID",
+      "Verify rejected without leaking information"
+    ],
+    "passes": false,
+    "deferred": true,
+    "deferred_reason": "WebAuthn/passkey support not currently implemented"
+  },
+  {
+    "id": "PASSKEY-SEC-006",
+    "category": "security",
+    "area": "passkey",
+    "description": "Public key cryptography prevents credential theft",
+    "steps": [
+      "Register passkey",
+      "Verify private key never leaves authenticator",
+      "Verify only public key stored in database",
+      "Verify authentication uses digital signature",
+      "Verify server cannot impersonate user",
+      "Document key algorithm (ES256, RS256, etc.)"
+    ],
+    "passes": false,
+    "deferred": true,
+    "deferred_reason": "WebAuthn/passkey support not currently implemented"
+  },
+  {
+    "id": "PASSKEY-SEC-007",
+    "category": "security",
+    "area": "passkey",
+    "description": "Counter validation prevents cloned credentials",
+    "steps": [
+      "Register passkey with signature counter",
+      "Note initial counter value",
+      "Use passkey to authenticate",
+      "Verify counter incremented",
+      "Store new counter value",
+      "Attempt authentication with old counter value",
+      "Verify rejected as potential cloned credential",
+      "Alert user of potential security issue"
+    ],
+    "passes": false,
+    "deferred": true,
+    "deferred_reason": "WebAuthn/passkey support not currently implemented"
+  },
+  {
+    "id": "PASSKEY-SEC-008",
+    "category": "security",
+    "area": "passkey",
+    "description": "Timeout prevents long-running WebAuthn ceremonies",
+    "steps": [
+      "Initiate WebAuthn authentication",
+      "Wait longer than timeout period (e.g., 2 minutes)",
+      "Attempt to complete authentication",
+      "Verify authentication rejected",
+      "Verify timeout error message shown",
+      "Verify session state cleaned up"
+    ],
+    "passes": false,
+    "deferred": true,
+    "deferred_reason": "WebAuthn/passkey support not currently implemented"
+  },
+  {
+    "id": "PASSKEY-SEC-009",
+    "category": "security",
+    "area": "passkey",
+    "description": "Resident credentials protected from unauthorized access",
+    "steps": [
+      "Store resident credential on authenticator",
+      "Verify credential requires user presence/verification to access",
+      "Verify credential not accessible to other domains",
+      "Verify credential isolated per RP ID",
+      "Document privacy implications of resident credentials"
+    ],
+    "passes": false,
+    "deferred": true,
+    "deferred_reason": "WebAuthn/passkey support not currently implemented"
+  },
+  {
+    "id": "PASSKEY-SEC-010",
+    "category": "security",
+    "area": "passkey",
+    "description": "Passkey removal requires current authentication",
+    "steps": [
+      "Navigate to passkey management",
+      "Attempt to remove passkey without authentication",
+      "Verify operation blocked",
+      "Authenticate with password, 2FA, or another passkey",
+      "Attempt passkey removal",
+      "Verify removal succeeds",
+      "Verify audit log records removal with actor"
+    ],
+    "passes": false,
+    "deferred": true,
+    "deferred_reason": "WebAuthn/passkey support not currently implemented"
+  },
+  {
+    "id": "PASSKEY-SEC-011",
+    "category": "security",
+    "area": "passkey",
+    "description": "Transport-specific security for different authenticator types",
+    "steps": [
+      "Test with USB security key",
+      "Test with platform authenticator (Touch ID, Windows Hello)",
+      "Test with Bluetooth authenticator",
+      "Test with NFC authenticator",
+      "Verify each transport type properly secured",
+      "Document supported transports and security properties"
+    ],
+    "passes": false,
+    "deferred": true,
+    "deferred_reason": "WebAuthn/passkey support not currently implemented"
+  },
+  {
+    "id": "PASSKEY-SEC-012",
+    "category": "security",
+    "area": "passkey",
+    "description": "Passkey authentication is phishing-resistant",
+    "steps": [
+      "Create phishing site mimicking application",
+      "Attempt to capture passkey authentication",
+      "Verify origin validation prevents attack",
+      "Verify credential not usable on phishing site",
+      "Verify user cannot be tricked into authentication",
+      "Document why passkeys are phishing-resistant"
+    ],
+    "passes": false,
+    "deferred": true,
+    "deferred_reason": "WebAuthn/passkey support not currently implemented"
+  },
+  {
     "id": "SEC-CSP-001",
     "category": "security",
     "area": "csp",
