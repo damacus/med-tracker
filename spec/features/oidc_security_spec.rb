@@ -86,13 +86,13 @@ RSpec.describe 'OIDC Security', type: :system do
 
   describe 'OIDC-SEC-007: Access tokens not stored long-term' do
     it 'verifies access tokens are not persisted in database' do
-      # Check AccountIdentity model doesn't store access tokens
-      account_identity_columns = AccountIdentity.column_names
-      expect(account_identity_columns).not_to include('access_token')
-      expect(account_identity_columns).not_to include('refresh_token')
+      # Check account_identities table doesn't store access tokens
+      columns = ActiveRecord::Base.connection.columns(:account_identities).map(&:name)
+      expect(columns).not_to include('access_token')
+      expect(columns).not_to include('refresh_token')
 
       # Only provider, uid, and account_id are stored
-      expect(account_identity_columns).to include('provider', 'uid', 'account_id')
+      expect(columns).to include('provider', 'uid', 'account_id')
     end
 
     it 'verifies Rodauth OIDC hook does not store tokens' do

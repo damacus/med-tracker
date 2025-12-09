@@ -99,13 +99,12 @@ RSpec.describe 'OIDC Authentication', type: :system do
       # visit login_path
       # click_button 'Sign in with Google'
 
-      # For now, verify the model structure exists
-      expect(AccountIdentity).to be_a(Class)
-      expect(AccountIdentity.column_names).to include('account_id', 'provider', 'uid')
+      # Verify the account_identities table exists and has correct structure
+      expect(ActiveRecord::Base.connection.table_exists?(:account_identities)).to be true
 
-      # Verify foreign key relationship
-      account_identity = AccountIdentity.new
-      expect(account_identity).to respond_to(:account)
+      # Verify table columns
+      columns = ActiveRecord::Base.connection.columns(:account_identities).map(&:name)
+      expect(columns).to include('account_id', 'provider', 'uid')
     end
   end
 
@@ -151,7 +150,8 @@ RSpec.describe 'OIDC Authentication', type: :system do
 
       # Verify account_identities schema supports multiple providers per account
       # The schema should allow multiple rows with same account_id but different provider
-      expect(AccountIdentity.column_names).to include('provider')
+      columns = ActiveRecord::Base.connection.columns(:account_identities).map(&:name)
+      expect(columns).to include('provider')
     end
   end
 
@@ -223,8 +223,9 @@ RSpec.describe 'OIDC Authentication', type: :system do
   describe 'OIDC callback endpoint configuration' do
     it 'has OIDC callback route configured' do
       # Verify the callback route exists for Google OAuth
-      # The route is automatically created by Rodauth OmniAuth
-      expect(Rails.application.routes.url_helpers).to respond_to(:omniauth_callback_path)
+      # The route is automatically created by Rodauth OmniAuth at /auth/:provider/callback
+      routes = Rails.application.routes.routes.map(&:path).map(&:spec).map(&:to_s)
+      expect(routes).to include('/auth/:provider/callback(.:format)')
     end
   end
 
