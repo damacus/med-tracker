@@ -49,7 +49,7 @@ RSpec.describe 'Heading Order Accessibility', type: :system do
 
     current_level = 0
     levels.each_with_index do |level, index|
-      level_num = level[1].to_i
+      level_num = level.gsub(/[^\d]/, '').to_i
       
       if current_level.zero?
         expect(level_num).to eq(1), "Page should start with H1, but starts with #{level}"
@@ -81,7 +81,7 @@ RSpec.describe 'Heading Order Accessibility', type: :system do
       levels = extract_heading_levels(page)
       h1_indices = levels.each_index.select { |i| levels[i] == 'H1' }
       h1_indices.each do |h1_idx|
-        next_headings = levels[(h1_idx + 1)..]
+        next_headings = levels[(h1_idx + 1)..-1]
         next if next_headings.empty?
 
         first_non_h1 = next_headings.find { |h| h != 'H1' }
@@ -109,7 +109,7 @@ RSpec.describe 'Heading Order Accessibility', type: :system do
       levels = extract_heading_levels(page)
       h1_indices = levels.each_index.select { |i| levels[i] == 'H1' }
       h1_indices.each do |h1_idx|
-        next_headings = levels[(h1_idx + 1)..]
+        next_headings = levels[(h1_idx + 1)..-1]
         next if next_headings.empty?
 
         first_non_h1 = next_headings.find { |h| h != 'H1' }
