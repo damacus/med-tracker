@@ -34,6 +34,18 @@ tasks:
       - task: :internal:stop
         vars: {ENVIRONMENT: test}
 
+  build:
+    desc: Build test Docker images
+    summary: |
+      Build Docker images for the test environment.
+      Usage: task test:build
+      Usage: task test:build NO_CACHE=true
+    cmds:
+      - task: :internal:build
+        vars:
+          ENVIRONMENT: test
+          NO_CACHE: '{{ .NO_CACHE | default "" }}'
+
   ps:
     desc: List current status of Docker Compose Stack
     summary: |
@@ -56,8 +68,9 @@ tasks:
       Usage: task test:rebuild
     cmds:
       - task: :internal:stop
-        vars: {ENVIRONMENT: test}
-      - docker compose -f docker-compose.test.yml down -v  # Remove volumes (drops database)
+        vars:
+          ENVIRONMENT: test
+          REMOVE_VOLUMES: true
       - task: :internal:build
         vars: {ENVIRONMENT: test}
       - task: :internal:up

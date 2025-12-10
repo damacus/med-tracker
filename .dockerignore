@@ -51,3 +51,30 @@
 /Dockerfile*
 /docker-compose*.yml
 /README.docker.md
+
+# Ignore Kubernetes manifests
+/kubernetes/
+
+# Ignore test files
+/spec/
+/test/
+/coverage/
+
+# Ignore documentation
+/docs/
+/*.md
+!README.md
+
+# Ignore IDE and editor files
+/.vscode/
+/.idea/
+/.windsurf/
+
+# Ignore misc
+/Taskfile*.yml
+/Taskfiles/
+/renovate.json
+/mkdocs.yml
+/requirements.txt
+/.yamllint.yaml
+/.markdownlintignore

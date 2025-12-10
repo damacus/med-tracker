@@ -7,6 +7,8 @@ includes:
     taskfile: Taskfiles/dev.yml
   test:
     taskfile: Taskfiles/test.yml
+  production:
+    taskfile: Taskfiles/production.yml
   local:
     taskfile: Taskfiles/local.yml
   internal:

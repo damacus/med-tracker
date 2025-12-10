@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+# ruby_ui gem is only available in development/test
+return unless Rails.env.local?
+
 require 'ruby_ui'
 
 module RubyUI

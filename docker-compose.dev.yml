@@ -1,8 +1,7 @@
 ---
 services:
-  db-dev:
+  db:
     image: postgres:18-alpine
-    hostname: db-dev
     environment:
       POSTGRES_USER: medtracker
       POSTGRES_PASSWORD: medtracker_password
@@ -17,20 +16,20 @@ services:
       timeout: 5s
       retries: 5
 
-  web-dev:
+  web:
     build:
       context: .
       dockerfile: Dockerfile
       args:
         RAILS_ENV: development
     depends_on:
-      db-dev:
+      db:
         condition: service_healthy
     environment:
       RAILS_ENV: development
       RAILS_FORCE_SSL: "false"
       DATABASE_URL: >-
-        postgresql://medtracker:medtracker_password@db-dev:5432/medtracker_development
+        postgresql://medtracker:medtracker_password@db:5432/medtracker_development
     ports:
       - "3000:3000"
     volumes:
@@ -40,13 +39,6 @@ services:
       - storage_data:/app/storage
     stdin_open: true
     tty: true
-    command: ["rails", "server", "-b", "0.0.0.0"]
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3000/up || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
 
 volumes:
   postgres_data_dev:

@@ -38,6 +38,18 @@ tasks:
         vars:
           ENVIRONMENT: dev
 
+  build:
+    desc: Build development Docker images
+    summary: |
+      Build Docker images for the development environment.
+      Usage: task dev:build
+      Usage: task dev:build NO_CACHE=true
+    cmds:
+      - task: :internal:build
+        vars:
+          ENVIRONMENT: dev
+          NO_CACHE: '{{ .NO_CACHE | default "" }}'
+
   rebuild:
     desc: Rebuild development server (drops database)
     summary: |
@@ -49,7 +61,7 @@ tasks:
       - task: :internal:stop
         vars:
           ENVIRONMENT: dev
-      - docker compose -f docker-compose.dev.yml down -v  # Remove volumes (drops database)
+          REMOVE_VOLUMES: true
       - task: :internal:build
         vars:
           ENVIRONMENT: dev

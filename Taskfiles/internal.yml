@@ -14,10 +14,10 @@ tasks:
     internal: true
     vars:
       ENVIRONMENT: {ref: .ENVIRONMENT}
-      SERVICE: '{{ if eq .ENVIRONMENT "test" }}web-test{{ else if eq .ENVIRONMENT "dev" }}web-dev{{ else }}web{{ end }}'
+      SERVICE: web
       COMMAND: {ref: .COMMAND}
     cmds:
-      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml run --rm --remove-orphans {{ .SERVICE }} {{ .COMMAND }}
+      - docker compose -f docker-compose{{ if ne .ENVIRONMENT "production" }}.{{ .ENVIRONMENT }}{{ end }}.yml run --rm --remove-orphans {{ .SERVICE }} {{ .COMMAND }}
 
   # Build Docker images for specified environment
   # Required vars: ENVIRONMENT
@@ -30,7 +30,7 @@ tasks:
       ENVIRONMENT: {ref: .ENVIRONMENT}
       NO_CACHE: '{{ .NO_CACHE | default "" }}'
     cmds:
-      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml build {{ if .NO_CACHE }}--no-cache{{ end }}
+      - docker compose -f docker-compose{{ if ne .ENVIRONMENT "production" }}.{{ .ENVIRONMENT }}{{ end }}.yml build {{ if .NO_CACHE }}--no-cache{{ end }}
 
   # Start Docker containers in detached mode
   # Required vars: ENVIRONMENT
@@ -42,7 +42,7 @@ tasks:
     vars:
       ENVIRONMENT: {ref: .ENVIRONMENT}
     cmds:
-      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml up -d --remove-orphans
+      - docker compose -f docker-compose{{ if ne .ENVIRONMENT "production" }}.{{ .ENVIRONMENT }}{{ end }}.yml up -d --remove-orphans
       - echo "✓ {{ .ENVIRONMENT | title }} environment started"
       - echo "Visit http://localhost:3000 to see the app"
 
@@ -55,8 +55,9 @@ tasks:
     internal: true
     vars:
       ENVIRONMENT: {ref: .ENVIRONMENT}
+      REMOVE_VOLUMES: '{{ .REMOVE_VOLUMES | default "" }}'
     cmds:
-      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml down
+      - docker compose -f docker-compose{{ if ne .ENVIRONMENT "production" }}.{{ .ENVIRONMENT }}{{ end }}.yml down {{ if .REMOVE_VOLUMES }}-v{{ end }}
       - echo "✓ {{ .ENVIRONMENT | title }} environment stopped"
 
   # Follow logs from Docker containers
@@ -69,7 +70,7 @@ tasks:
     vars:
       ENVIRONMENT: {ref: .ENVIRONMENT}
     cmds:
-      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml logs -f
+      - docker compose -f docker-compose{{ if ne .ENVIRONMENT "production" }}.{{ .ENVIRONMENT }}{{ end }}.yml logs -f
 
   ps:
     desc: Get current status of Docker Compose Stack
@@ -77,7 +78,7 @@ tasks:
     vars:
       ENVIRONMENT: {ref: .ENVIRONMENT}
     cmds:
-      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml ps
+      - docker compose -f docker-compose{{ if ne .ENVIRONMENT "production" }}.{{ .ENVIRONMENT }}{{ end }}.yml ps
 
   seed:
     desc: Seed database with fixtures

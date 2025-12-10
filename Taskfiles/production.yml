@@ -1,0 +1,88 @@
+---
+# Production Environment Tasks
+# All tasks operate on the 'production' environment (docker-compose.yml)
+# Usage: task production:<command>
+version: '3'
+
+tasks:
+  up:
+    desc: Start production server
+    summary: |
+      Start the production server with all services running in detached mode.
+      Database data persists between restarts.
+      Usage: task production:up
+    cmds:
+      - task: :internal:up
+        vars:
+          ENVIRONMENT: production
+
+  stop:
+    desc: Stop production server
+    summary: |
+      Stop the production server and remove containers.
+      Database volumes are preserved.
+      Usage: task production:stop
+    cmds:
+      - task: :internal:stop
+        vars:
+          ENVIRONMENT: production
+
+  build:
+    desc: Build production Docker images
+    summary: |
+      Build Docker images for the production environment.
+      Usage: task production:build
+      Usage: task production:build NO_CACHE=true
+    cmds:
+      - task: :internal:build
+        vars:
+          ENVIRONMENT: production
+          NO_CACHE: '{{ .NO_CACHE | default "" }}'
+
+  rebuild:
+    desc: Rebuild production server (drops database)
+    summary: |
+      Rebuild the production environment from scratch.
+      WARNING: This drops the database and all data!
+      Use when database migrations have changed or you need a fresh start.
+      Usage: task production:rebuild
+    cmds:
+      - task: :internal:stop
+        vars:
+          ENVIRONMENT: production
+          REMOVE_VOLUMES: true
+      - task: :internal:build
+        vars:
+          ENVIRONMENT: production
+      - task: :internal:up
+        vars:
+          ENVIRONMENT: production
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: production
+          SERVICE: web
+          COMMAND: 'rails db:create db:migrate'
+      - task: :internal:open-ui
+        vars:
+          ENVIRONMENT: production
+
+  logs:
+    desc: View production server logs
+    summary: |
+      View and follow production server logs in real-time.
+      Press Ctrl+C to stop following.
+      Usage: task production:logs
+    cmds:
+    - task: :internal:logs
+      vars:
+        ENVIRONMENT: production
+
+  open-ui:
+    desc: Open production server UI
+    summary: |
+      Open the production server UI in your default browser.
+      Usage: task production:open-ui
+    cmds:
+      - task: :internal:open-ui
+        vars:
+          ENVIRONMENT: production
