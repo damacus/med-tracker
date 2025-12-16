@@ -3,7 +3,7 @@ one:
   person: one
   email_address: test@example.com
   password_digest: <%= BCrypt::Password.create("password") %>
-  role: 0  # administrator
+  role: 5  # minor
   created_at: <%= Time.current %>
   updated_at: <%= Time.current %>
 

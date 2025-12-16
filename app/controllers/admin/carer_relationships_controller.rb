@@ -16,7 +16,7 @@ module Admin
     end
 
     def new
-      @relationship = CarerRelationship.new
+      @relationship = CarerRelationship.new(patient_id: params[:patient_id])
       authorize @relationship
       render Components::Admin::CarerRelationships::FormView.new(
         relationship: @relationship,
