@@ -25,7 +25,9 @@ module Components
         CardHeader do
           render_person_icon
           div(class: 'flex items-center justify-between gap-2') do
-            CardTitle(class: 'text-xl') { person.name }
+            CardTitle(class: 'text-xl') do
+              Link(href: person_path(person), variant: :link, class: 'text-xl font-semibold') { person.name }
+            end
             render_needs_carer_badge if person.needs_carer?
           end
         end
@@ -92,7 +94,18 @@ module Components
               data: { turbo_stream: true }
             ) { 'View Prescriptions' }
           end
+
+          render_assign_carer_link if person.needs_carer?
         end
+      end
+
+      def render_assign_carer_link
+        Link(
+          href: new_admin_carer_relationship_path(patient_id: person.id),
+          variant: :outline,
+          size: :sm,
+          class: 'text-amber-700 border-amber-300 hover:bg-amber-50'
+        ) { 'Assign Carer' }
       end
 
       def helpers
