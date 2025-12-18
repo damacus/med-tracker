@@ -1,4 +1,4 @@
-FROM ruby:3.4.7-slim-trixie AS assets
+FROM ruby:3.4.8-slim-trixie AS assets
 WORKDIR /app
 
 ARG UID=1000
@@ -40,7 +40,7 @@ CMD ["bash"]
 
 ###############################################################################
 
-FROM ruby:3.4.7-slim-trixie AS app
+FROM ruby:3.4.8-slim-trixie AS app
 WORKDIR /app
 
 ARG UID=1000
