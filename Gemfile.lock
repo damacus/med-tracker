@@ -642,7 +642,7 @@ GEM
     stimulus-rails (1.3.4)
       railties (>= 6.0.0)
     stringio (3.1.9)
-    tailwind_merge (1.3.1)
+    tailwind_merge (1.3.2)
       sin_lru_redux (~> 2.5)
     tailwindcss-rails (4.4.0)
       railties (>= 7.0.0)
