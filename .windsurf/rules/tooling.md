@@ -13,8 +13,16 @@ description: When running commands, setting up environment, or using project too
 - **Testing**: RSpec + Capybara
 - **Test Data**: Rails Fixtures
 - **Code Style**: RuboCop
-- **Views**: Phlex components + Hotwire (Turbo/Stimulus)
+- **Views**: RubyUI (Phlex) + Hotwire
+  - **STRICT:** All views must be `.rb` files.
+  - **FORBIDDEN:** Do NOT create `.erb` files.
 - **Static Assets**: Propshaft
+
+## Data Inspection (Strict)
+
+- **JSON**: Always use `jq` to search or filter JSON files.
+- **Method**: Run `jq` commands directly in the shell.
+- **Forbidden**: Do not write Ruby/Python scripts to parse JSON. Do not read raw JSON text.
 
 ## Task Commands
 
