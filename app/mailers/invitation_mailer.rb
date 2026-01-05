@@ -1,14 +1,12 @@
 # frozen_string_literal: true
 
-require 'securerandom'
-
 class InvitationMailer < ApplicationMailer
   def invite
     @invitation = params[:invitation]
     @token = @invitation.token
 
     body = <<~TEXT
-      You have been invited to join MedTracker.
+      You have been invited to join MedTracker as a #{@invitation.role}.
 
       Accept your invitation:
       #{accept_invitation_url(token: @token)}

@@ -4,7 +4,6 @@ FactoryBot.define do
   factory :invitation do
     sequence(:email) { |n| "invitee#{n}@example.com" }
     role { :parent }
-    token { SecureRandom.urlsafe_base64(32) }
     expires_at { 7.days.from_now }
     accepted_at { nil }
 

@@ -14,7 +14,7 @@ module Admin
       @invitation = Invitation.new(invitation_params)
 
       if @invitation.save
-        InvitationMailer.with(invitation: @invitation).invite.deliver_now
+        InvitationMailer.with(invitation: @invitation).invite.deliver_later
         redirect_to admin_invitations_path, notice: 'Invitation sent'
       else
         render Components::Admin::Invitations::IndexView.new(invitation: @invitation), status: :unprocessable_content

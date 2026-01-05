@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'AdminInvitesUsers' do
+RSpec.describe 'Admin invites users' do
   fixtures :accounts, :account_otp_keys, :people, :users
 
   let(:admin) { users(:admin) }

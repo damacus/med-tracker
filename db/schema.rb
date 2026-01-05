@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_12_28_210254) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_05_160155) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -141,7 +141,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_28_210254) do
     t.integer "role"
     t.string "token"
     t.datetime "updated_at", null: false
-    t.index ["token"], name: "index_invitations_on_token"
+    t.index ["token"], name: "index_invitations_on_token", unique: true
   end
 
   create_table "medication_takes", force: :cascade do |t|

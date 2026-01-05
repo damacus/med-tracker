@@ -138,11 +138,11 @@ class RodauthMain < Rodauth::Rails::Auth
         throw_error_status(422, 'date_of_birth', 'must be a valid date')
       end
 
-      # Validate invitation token if present
+      # Validate invitation token if present and lock down email
       if (token = param_or_nil('invitation_token'))
-        invitation = Invitation.pending.find_by(token: token)
-        throw_error_status(422, 'invitation_token', 'is invalid or expired') unless invitation
-        throw_error_status(422, 'email', 'does not match invitation') if invitation.email != param('email')
+        @invitation = Invitation.pending.find_by(token: token)
+        throw_error_status(422, 'invitation_token', 'is invalid or expired') unless @invitation
+        request.params[login_param] = @invitation.email
       end
     end
 
@@ -156,16 +156,13 @@ class RodauthMain < Rodauth::Rails::Auth
       age = temp_person.age
       person_type = age >= 18 ? :adult : :minor
 
-      # Default role based on age
+      # Determine role based on age when not created via invitation
       user_role = age >= 18 ? :parent : :minor
 
-      # If created via invitation, override the role
-      if (token = param_or_nil('invitation_token'))
-        invitation = Invitation.pending.find_by(token: token)
-        if invitation
-          user_role = invitation.role
-          invitation.update!(accepted_at: Time.current)
-        end
+      # If created via invitation, use cached invitation and override role
+      if @invitation
+        user_role = @invitation.role
+        @invitation.update!(accepted_at: Time.current)
       end
 
       # Create associated Person and User records atomically

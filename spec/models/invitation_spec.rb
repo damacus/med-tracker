@@ -11,10 +11,12 @@ RSpec.describe Invitation do
   end
 
   describe 'enums' do
-    it {
-      expect(subject).to define_enum_for(:role)
+    subject(:invitation) { described_class.new }
+
+    it 'defines role enum' do
+      expect(invitation).to define_enum_for(:role)
         .with_values(administrator: 0, doctor: 1, nurse: 2, carer: 3, parent: 4, minor: 5)
-    }
+    end
   end
 
   describe 'callbacks' do
