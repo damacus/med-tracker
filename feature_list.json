@@ -126,9 +126,9 @@
   ],
   "summary": {
     "total_features": 325,
-    "passing": 224,
-    "failing": 101,
-    "pass_rate": "68%",
+    "passing": 226,
+    "failing": 99,
+    "pass_rate": "69%",
     "categories": {
       "functional": 300,
       "style": 25

@@ -40,6 +40,9 @@ class RodauthMain < Rodauth::Rails::Auth
     account_password_hash_column :password_hash
     verify_account_set_password? false
 
+    # Autologin after account creation
+    create_account_autologin? true
+
     # Set timestamps when creating accounts (Sequel doesn't do this automatically)
     new_account do |login|
       {
@@ -134,6 +137,13 @@ class RodauthMain < Rodauth::Rails::Auth
       rescue ArgumentError, TypeError
         throw_error_status(422, 'date_of_birth', 'must be a valid date')
       end
+
+      # Validate invitation token if present
+      if (token = param_or_nil('invitation_token'))
+        invitation = Invitation.pending.find_by(token: token)
+        throw_error_status(422, 'invitation_token', 'is invalid or expired') unless invitation
+        throw_error_status(422, 'email', 'does not match invitation') if invitation.email != param('email')
+      end
     end
 
     # Perform additional actions after the account is created.
@@ -145,7 +155,18 @@ class RodauthMain < Rodauth::Rails::Auth
       temp_person = Person.new(date_of_birth: date_of_birth)
       age = temp_person.age
       person_type = age >= 18 ? :adult : :minor
+
+      # Default role based on age
       user_role = age >= 18 ? :parent : :minor
+
+      # If created via invitation, override the role
+      if (token = param_or_nil('invitation_token'))
+        invitation = Invitation.pending.find_by(token: token)
+        if invitation
+          user_role = invitation.role
+          invitation.update!(accepted_at: Time.current)
+        end
+      end
 
       # Create associated Person and User records atomically
       # Ensures both are created or both fail together
@@ -223,6 +244,9 @@ class RodauthMain < Rodauth::Rails::Auth
 
     # Redirect to dashboard after successful login
     login_redirect '/dashboard'
+
+    # Redirect to dashboard after account creation (since autologin is enabled)
+    create_account_redirect { login_redirect }
 
     # Redirect to home page after logout.
     logout_redirect '/'

@@ -12,7 +12,7 @@
 			"Send invitation",
 			"Verify email sent"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"id": "INVITE-002",
@@ -25,7 +25,7 @@
 			"Complete registration form",
 			"Verify account created with correct role"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"id": "INVITE-003",

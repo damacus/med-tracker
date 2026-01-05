@@ -6,6 +6,9 @@ en:
     users:
       unauthorized: "You are not authorized to perform this action."
 
+  invitation_mailer:
+    subject: "Invitation to join MedTracker"
+
   medicines:
     created: "Medicine was successfully created."
     updated: "Medicine was successfully updated."
