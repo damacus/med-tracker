@@ -16,14 +16,17 @@ RSpec.describe 'Navigation' do
       login_as(user)
 
       # Check navigation elements for authenticated user
-      within 'nav' do
+      within 'nav.nav' do
         aggregate_failures 'navigation links and buttons' do
           expect(page).to have_link('Medicines')
           expect(page).to have_link('People')
-          expect(page).to have_link('Logout')
           expect(page).to have_no_link('Login')
         end
       end
+
+      # Logout is in the dropdown menu, not directly visible in nav
+      click_button(user.name)
+      expect(page).to have_link('Logout')
     end
   end
 
@@ -36,7 +39,7 @@ RSpec.describe 'Navigation' do
       visit login_path
 
       # Check navigation elements for unauthenticated user
-      within 'nav' do
+      within 'nav.nav' do
         aggregate_failures 'navigation links and buttons' do
           expect(page).to have_link('Login')
           expect(page).to have_no_button('Logout')

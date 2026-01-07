@@ -15,9 +15,9 @@ RSpec.describe 'Home' do
     # Assert that the dashboard is shown
     aggregate_failures 'dashboard content' do
       expect(page).to have_content('Dashboard')
-      expect(page).to have_link('Medicines', href: medicines_path)
-      expect(page).to have_link('People', href: people_path)
+      # Dashboard quick actions are visible on all viewports
       expect(page).to have_link('Add Medicine', href: new_medicine_path)
+      expect(page).to have_link('Add Person', href: new_person_path)
     end
   end
 end

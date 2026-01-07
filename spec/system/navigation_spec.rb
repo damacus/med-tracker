@@ -17,7 +17,7 @@ RSpec.describe 'Navigation' do
     it 'shows navigation with a profile dropdown menu' do
       sign_in(user)
 
-      within('nav') do
+      within('nav.nav') do
         aggregate_failures 'navigation bar' do
           expect(page).to have_link('Medicines')
           expect(page).to have_link('People')
@@ -59,7 +59,7 @@ RSpec.describe 'Navigation' do
       visit root_path
 
       # Assert that the navigation bar contains the correct elements for a guest.
-      within('nav') do
+      within('nav.nav') do
         aggregate_failures 'navigation bar' do
           # Unauthenticated users should not see navigation links
           expect(page).to have_no_link('Medicines')

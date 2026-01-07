@@ -114,6 +114,12 @@ module Components
                   icon: '👥'
                 )
                 render_action_link(
+                  title: 'Invitations',
+                  description: 'Invite new users to join MedTracker',
+                  href: '/admin/invitations',
+                  icon: '✉️'
+                )
+                render_action_link(
                   title: 'Manage People',
                   description: 'View and manage people records',
                   href: '/people',

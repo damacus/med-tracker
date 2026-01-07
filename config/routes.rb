@@ -11,6 +11,7 @@ Rails.application.routes.draw do
         post :activate
       end
     end
+    resources :invitations, only: %i[index create]
     resources :carer_relationships, only: %i[index new create destroy] do
       member do
         post :activate
@@ -18,6 +19,8 @@ Rails.application.routes.draw do
     end
     resources :audit_logs, only: %i[index show]
   end
+
+  get 'invitations/accept', to: 'invitations#accept', as: :accept_invitation
 
   # Dashboard
   get 'dashboard', to: 'dashboard#index'

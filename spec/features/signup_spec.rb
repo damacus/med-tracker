@@ -18,9 +18,8 @@ RSpec.describe 'User Signup', type: :system do
       end.to change(Account, :count).by(1)
                                     .and change(Person, :count).by(1)
 
-      # After signup, user is redirected to root path (which renders dashboard for logged-in users)
-      # or verify-account-resend if email verification is pending
-      expect(page).to have_current_path('/').or have_current_path('/verify-account-resend')
+      # After signup, user is redirected to dashboard or verify-account-resend if email verification is pending
+      expect(page).to have_current_path('/dashboard').or have_current_path('/verify-account-resend')
 
       # Verify the account was created with correct email
       account = Account.find_by(email: 'newuser@example.com')
