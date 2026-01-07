@@ -5,6 +5,7 @@ module Components
     module Invitations
       class IndexView < Components::Base
         include Phlex::Rails::Helpers::FormWith
+        include Components::FormHelpers
 
         def initialize(invitation: Invitation.new)
           @invitation = invitation
