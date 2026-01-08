@@ -107,6 +107,10 @@ Audit logs are retained **indefinitely** for regulatory compliance and legal req
 - **Administrator access only**: Only users with `administrator` role can view audit logs
 - **IP tracking**: All changes include the originating IP address
 - **Password exclusion**: Password fields are never stored in audit logs
+- **Rate limiting**: To prevent abuse and DoS attacks on sensitive audit data:
+  - 100 requests per minute per IP address
+  - 200 requests per minute per authenticated user
+  - Violations are logged for monitoring
 
 ## Testing
 
