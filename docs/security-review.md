@@ -82,6 +82,7 @@
 - [x] Login throttling (5/20 sec per IP and email)
 - [x] Account creation throttling (3/min per IP)
 - [x] Password reset throttling (5/min per IP, 5/hour per email)
+- [x] Audit log throttling (100/min per IP, 200/min per user)
 
 ### Audit Trail
 
