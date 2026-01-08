@@ -49,7 +49,8 @@ class Rack::Attack
     now = match_data[:epoch_time]
     retry_after = match_data[:period] - (now % match_data[:period])
 
-    # Log rate limit violations for monitoring
+    # Log all rate limit violations for monitoring and security analysis
+    # throttle_type will be the name of the throttle (e.g., 'admin/audit_logs/ip', 'logins/ip')
     throttle_type = request.env['rack.attack.matched']
     Rails.logger.warn("Rate limit exceeded: #{throttle_type} from IP #{request.ip}")
 
