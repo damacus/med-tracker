@@ -10,7 +10,7 @@ module Components
       end
 
       def view_template
-        div(class: 'container mx-auto px-4 py-4') do
+        div(class: 'container mx-auto px-4 py-4 relative z-40') do
           render_notice if @notice
           render_alert if @alert
         end
@@ -19,18 +19,22 @@ module Components
       private
 
       def render_notice
-        Alert(variant: :success) do
-          check_icon
-          AlertTitle { 'Success' }
-          AlertDescription { @notice }
+        div(data: { controller: 'flash', flash_dismiss_after_value: 5000 }) do
+          Alert(variant: :success) do
+            check_icon
+            AlertTitle { 'Success' }
+            AlertDescription { @notice }
+          end
         end
       end
 
       def render_alert
-        Alert(variant: :destructive) do
-          alert_icon
-          AlertTitle { 'Error' }
-          AlertDescription { @alert }
+        div(data: { controller: 'flash', flash_dismiss_after_value: 0 }) do
+          Alert(variant: :destructive) do
+            alert_icon
+            AlertTitle { 'Error' }
+            AlertDescription { @alert }
+          end
         end
       end
 

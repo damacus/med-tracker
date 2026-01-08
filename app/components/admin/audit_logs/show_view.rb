@@ -41,7 +41,9 @@ module Components
         def render_version_details
           Card do
             CardHeader do
-              CardTitle { 'Event Information' }
+              Heading(level: 2, size: '4', class: 'font-semibold leading-none tracking-tight') do
+                'Event Information'
+              end
             end
             CardContent do
               dl(class: 'grid grid-cols-1 gap-4 sm:grid-cols-2') do
@@ -75,7 +77,9 @@ module Components
 
           Card do
             CardHeader do
-              CardTitle { 'Previous State' }
+              Heading(level: 2, size: '4', class: 'font-semibold leading-none tracking-tight') do
+                'Previous State'
+              end
               CardDescription { 'The state of the record before this change' }
             end
             CardContent do
@@ -94,7 +98,7 @@ module Components
 
           Card do
             CardHeader do
-              CardTitle { 'New State' }
+              Heading(level: 2, size: '4', class: 'font-semibold leading-none tracking-tight') { 'New State' }
               CardDescription { description_for_new_state }
             end
             CardContent do

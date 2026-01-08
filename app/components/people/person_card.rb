@@ -25,7 +25,7 @@ module Components
         CardHeader do
           render_person_icon
           div(class: 'flex items-center justify-between gap-2') do
-            CardTitle(class: 'text-xl') do
+            Heading(level: 2, size: '5', class: 'font-semibold leading-none tracking-tight') do
               Link(href: person_path(person), variant: :link, class: 'text-xl font-semibold') { person.name }
             end
             render_needs_carer_badge if person.needs_carer?
