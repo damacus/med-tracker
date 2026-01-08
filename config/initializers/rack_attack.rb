@@ -31,16 +31,14 @@ class Rack::Attack
     end
   end
 
-  # Audit log endpoints rate limiting
-  # Protects sensitive audit data from excessive access and potential DoS attacks
   throttle('admin/audit_logs/ip', limit: 100, period: 1.minute) do |req|
     req.ip if req.path.start_with?('/admin/audit_logs')
   end
 
   throttle('admin/audit_logs/user', limit: 200, period: 1.minute) do |req|
     if req.path.start_with?('/admin/audit_logs')
-      # Extract user ID from Rodauth session if authenticated
-      req.env['rodauth']&.session_value
+      session = req.env['rack.session']
+      session && session['account_id']
     end
   end
 
@@ -49,8 +47,6 @@ class Rack::Attack
     now = match_data[:epoch_time]
     retry_after = match_data[:period] - (now % match_data[:period])
 
-    # Log all rate limit violations for monitoring and security analysis
-    # throttle_type will be the name of the throttle (e.g., 'admin/audit_logs/ip', 'logins/ip')
     throttle_type = request.env['rack.attack.matched']
     Rails.logger.warn("Rate limit exceeded: #{throttle_type} from IP #{request.ip}")
 
