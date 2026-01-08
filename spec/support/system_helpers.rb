@@ -19,4 +19,5 @@ end
 RSpec.configure do |config|
   # Include these helpers in all system tests.
   config.include SystemHelpers, type: :system
+  config.include SystemHelpers, type: :feature
 end
