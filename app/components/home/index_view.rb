@@ -28,7 +28,7 @@ module Components
               end
             end
             CardContent(class: 'space-y-2') do
-              CardTitle(class: 'text-2xl') { 'Medicines' }
+              Heading(level: 2, size: '6', class: 'font-semibold leading-none tracking-tight') { 'Medicines' }
               CardDescription { 'Manage your medicine inventory, track stock levels, and view dosage information' }
             end
           end
@@ -44,7 +44,7 @@ module Components
               end
             end
             CardContent(class: 'space-y-2') do
-              CardTitle(class: 'text-2xl') { 'People' }
+              Heading(level: 2, size: '6', class: 'font-semibold leading-none tracking-tight') { 'People' }
               CardDescription { 'Manage people and their prescriptions, track medication schedules' }
             end
           end
