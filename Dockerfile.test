@@ -2,7 +2,7 @@
 # Test environment Dockerfile with Playwright
 # Based on main Dockerfile with test modifications
 
-FROM ruby:4.0.0-slim AS test-assets
+FROM ruby:4.0.1-slim AS test-assets
 LABEL maintainer="Nick Janetakis <nick.janetakis@gmail.com>"
 
 WORKDIR /app
