@@ -31,10 +31,24 @@ class Rack::Attack
     end
   end
 
+  throttle('admin/audit_logs/ip', limit: 100, period: 1.minute) do |req|
+    req.ip if req.path.start_with?('/admin/audit_logs')
+  end
+
+  throttle('admin/audit_logs/user', limit: 200, period: 1.minute) do |req|
+    if req.path.start_with?('/admin/audit_logs')
+      session = req.env['rack.session']
+      session && session['account_id']
+    end
+  end
+
   self.throttled_responder = lambda do |request|
     match_data = request.env['rack.attack.match_data']
     now = match_data[:epoch_time]
     retry_after = match_data[:period] - (now % match_data[:period])
+
+    throttle_type = request.env['rack.attack.matched']
+    Rails.logger.warn("Rate limit exceeded: #{throttle_type} from IP #{request.ip}")
 
     [
       429,
