@@ -117,6 +117,7 @@ GEM
       reline (>= 0.3.8)
     diff-lcs (1.6.2)
     drb (2.2.3)
+    ecs-logging (1.0.0)
     erb (6.0.1)
     erubi (1.13.1)
     et-orbi (1.4.0)
@@ -179,6 +180,11 @@ GEM
     language_server-protocol (3.17.0.5)
     lint_roller (1.1.0)
     logger (1.7.0)
+    lograge (0.14.0)
+      actionpack (>= 4)
+      activesupport (>= 4)
+      railties (>= 4)
+      request_store (~> 1.0)
     loofah (2.25.0)
       crass (~> 1.0.2)
       nokogiri (>= 1.12.0)
@@ -717,8 +723,10 @@ DEPENDENCIES
   capybara-playwright-driver
   database_cleaner-active_record
   debug
+  ecs-logging
   factory_bot_rails
   importmap-rails
+  lograge
   omniauth-google-oauth2
   opentelemetry-exporter-otlp
   opentelemetry-instrumentation-all
