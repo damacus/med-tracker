@@ -1,5 +1,51 @@
 # Code Review Progress
 
+## Session: January 2026 (Continuation)
+
+### Completed This Session
+
+1. **Fixed Rack::Attack test configuration**
+   - Removed early return for test environment, use enabled flag instead
+   - Disabled localhost safelist in test environment for rate limiting tests
+   - Fixed around block to ensure proper cache isolation between tests
+   - Updated test expectation: IP limit (100) triggers before user limit (200)
+
+2. **Removed dead model files** (High Priority - DONE)
+   - Deleted `app/models/dosage_option.rb`
+   - Deleted `app/models/medicine_dosage.rb`
+   - Deleted `app/models/recommended_dosage.rb`
+   - Deleted associated test files from `test/models/`
+   - Confirmed no backing tables exist in schema.rb
+
+3. **Extracted shared policy authorization logic** (Medium Priority - DONE)
+   - Added `person_id_for_authorization` abstract method to ApplicationPolicy
+   - Moved `carer_with_patient?` and `parent_with_minor?` to ApplicationPolicy
+   - Moved `accessible_patient_ids` helpers to ApplicationPolicy::Scope
+   - Removed duplicated methods from PersonPolicy, PrescriptionPolicy,
+     PersonMedicinePolicy, and MedicationTakePolicy
+   - Net reduction: 25 lines of code
+
+4. **Added nil guards to Person model** (Low Priority - DONE)
+   - `adult?` returns person_type check when age is nil
+   - `minor?` returns false when age is nil
+   - `dependent_adult?` returns false when age is nil
+
+5. **Fixed RuboCop offense**
+   - Converted unused `let!` to `before` block in rate limiting spec
+
+### Commits This Session
+- `f805964e4` - fix: correct Rack::Attack test environment configuration
+- `31d6d6dec` - refactor: remove dead model files without backing tables
+- `cd8ca5828` - refactor: extract shared policy authorization logic to ApplicationPolicy
+- `ca68ca8a8` - fix: add nil guards to Person model age-related methods
+- `2fd865553` - style: fix RuboCop let! setup offense in rate limiting spec
+
+### Test Results
+- **Tests**: 646 examples, 0 failures, 25 pending
+- **RuboCop**: 367 files inspected, no offenses
+
+---
+
 ## Session: December 3, 2025
 
 ### Baseline
