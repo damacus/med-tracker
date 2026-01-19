@@ -79,12 +79,11 @@ RSpec.describe 'Admin::AuditLogs Rate Limiting' do
   end
 
   describe 'user-based rate limiting' do
-    let!(:version) do
+    before do
       PaperTrail.request.whodunnit = admin.id
       PaperTrail.request(enabled: true) do
         users(:jane).update!(role: :nurse)
       end
-      PaperTrail::Version.last
     end
 
     it 'allows different users to have separate rate limit counters' do
