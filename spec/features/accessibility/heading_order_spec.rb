@@ -48,15 +48,15 @@ RSpec.describe 'Heading Order Accessibility', type: :system do
     return true if levels.empty?
 
     current_level = 0
-    levels.each_with_index do |level, index|
+    levels.each_with_index do |level, _index|
       level_num = level.gsub(/[^\d]/, '').to_i
-      
+
       if current_level.zero?
         expect(level_num).to eq(1), "Page should start with H1, but starts with #{level}"
         current_level = 1
       elsif level_num > current_level
         expect(level_num).to eq(current_level + 1),
-                              "Heading skips from H#{current_level} to #{level} (expected H#{current_level + 1})"
+                             "Heading skips from H#{current_level} to #{level} (expected H#{current_level + 1})"
         current_level = level_num
       else
         current_level = level_num
@@ -81,7 +81,7 @@ RSpec.describe 'Heading Order Accessibility', type: :system do
       levels = extract_heading_levels(page)
       h1_indices = levels.each_index.select { |i| levels[i] == 'H1' }
       h1_indices.each do |h1_idx|
-        next_headings = levels[(h1_idx + 1)..-1]
+        next_headings = levels[(h1_idx + 1)..]
         next if next_headings.empty?
 
         first_non_h1 = next_headings.find { |h| h != 'H1' }
@@ -109,7 +109,7 @@ RSpec.describe 'Heading Order Accessibility', type: :system do
       levels = extract_heading_levels(page)
       h1_indices = levels.each_index.select { |i| levels[i] == 'H1' }
       h1_indices.each do |h1_idx|
-        next_headings = levels[(h1_idx + 1)..-1]
+        next_headings = levels[(h1_idx + 1)..]
         next if next_headings.empty?
 
         first_non_h1 = next_headings.find { |h| h != 'H1' }
