@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-return if Rails.env.test?
-
 class Rack::Attack
   Rack::Attack.cache.store = ActiveSupport::Cache::MemoryStore.new
 
@@ -60,13 +58,17 @@ class Rack::Attack
     ]
   end
 
-  safelist('allow from localhost') do |req|
-    req.ip == '127.0.0.1' || req.ip == '::1'
+  unless Rails.env.test?
+    safelist('allow from localhost') do |req|
+      req.ip == '127.0.0.1' || req.ip == '::1'
+    end
   end
 
   safelist('allow health checks') do |req|
     req.path == '/up' || req.path == '/health'
   end
 end
+
+Rack::Attack.enabled = !Rails.env.test?
 
 Rails.application.config.middleware.use Rack::Attack

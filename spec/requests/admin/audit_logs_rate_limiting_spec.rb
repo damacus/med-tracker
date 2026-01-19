@@ -10,16 +10,16 @@ RSpec.describe 'Admin::AuditLogs Rate Limiting' do
 
   around do |example|
     original_cache_store = Rack::Attack.cache.store
+    original_enabled = Rack::Attack.enabled
 
-    Rack::Attack.cache.store = ActiveSupport::Cache::MemoryStore.new
+    fresh_cache = ActiveSupport::Cache::MemoryStore.new
+    Rack::Attack.cache.store = fresh_cache
     Rack::Attack.enabled = true
 
     example.run
-
-    Rack::Attack.cache.store.clear
-
+  ensure
     Rack::Attack.cache.store = original_cache_store
-    Rack::Attack.enabled = false
+    Rack::Attack.enabled = original_enabled
   end
 
   before do
@@ -101,8 +101,8 @@ RSpec.describe 'Admin::AuditLogs Rate Limiting' do
       end
     end
 
-    it 'throttles user-based requests exceeding 200 per minute' do
-      200.times do
+    it 'throttles at IP limit (100) before reaching user limit (200)' do
+      100.times do
         get admin_audit_logs_path
         expect(response).to have_http_status(:success)
       end
@@ -129,7 +129,7 @@ RSpec.describe 'Admin::AuditLogs Rate Limiting' do
 
       101.times { get admin_audit_logs_path }
 
-      expect(Rails.logger).to have_received(:warn).with(/Rate limit exceeded: admin\/audit_logs\/ip/)
+      expect(Rails.logger).to have_received(:warn).with(%r{Rate limit exceeded: admin/audit_logs/ip})
     end
   end
 end
