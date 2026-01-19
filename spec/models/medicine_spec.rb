@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe Medicine do
-  subject do
+  subject(:medicine) do
     described_class.new(
       name: 'Ibuprofen',
       current_supply: 200,
@@ -16,9 +16,12 @@ RSpec.describe Medicine do
     it { is_expected.to validate_presence_of(:name) }
     it { is_expected.not_to validate_presence_of(:current_supply) }
 
-    it {
-      expect(subject).to validate_numericality_of(:current_supply).only_integer.is_greater_than_or_equal_to(0).allow_nil
-    }
+    it do
+      expect(medicine).to validate_numericality_of(:current_supply)
+        .only_integer
+        .is_greater_than_or_equal_to(0)
+        .allow_nil
+    end
 
     it { is_expected.to validate_numericality_of(:stock).only_integer.is_greater_than_or_equal_to(0).allow_nil }
     it { is_expected.to validate_numericality_of(:reorder_threshold).only_integer.is_greater_than_or_equal_to(0) }
