@@ -58,14 +58,20 @@ class Person < ApplicationRecord
   end
 
   def adult?
+    return person_type == 'adult' if age.nil?
+
     age >= 18 || person_type == 'adult'
   end
 
   def minor?
+    return false if age.nil?
+
     age < 18 && person_type == 'minor'
   end
 
   def dependent_adult?
+    return false if age.nil?
+
     age >= 18 && person_type == 'dependent_adult'
   end
 
