@@ -84,7 +84,7 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '4.0.0'
+          ruby-version: '4.0.1'
           bundler-cache: true
 
       - name: Set up database
@@ -132,7 +132,7 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '4.0.0'
+          ruby-version: '4.0.1'
           bundler-cache: true
 
       - name: Get Playwright version
