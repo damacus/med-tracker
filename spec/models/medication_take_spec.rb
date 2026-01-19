@@ -109,14 +109,8 @@ RSpec.describe MedicationTake do
   end
 
   describe 'stock tracking' do
-    let(:initial_stock) { 100 }
-    let(:medicine) do
-      Medicine.create!(
-        name: 'Stock Medicine',
-        current_supply: initial_stock,
-        stock: initial_stock,
-        reorder_threshold: 10
-      )
+    before do
+      medicine.update!(stock: 100, current_supply: 100)
     end
 
     context 'when taking a dose from a prescription' do
@@ -126,7 +120,16 @@ RSpec.describe MedicationTake do
             prescription: prescription,
             taken_at: Time.current
           )
-        end.to change { medicine.reload.stock }.by(-1)
+        end.to change { medicine.reload.stock }.from(100).to(99)
+      end
+
+      it 'deducts 1 from the medicine current_supply' do
+        expect do
+          described_class.create!(
+            prescription: prescription,
+            taken_at: Time.current
+          )
+        end.to change { medicine.reload.current_supply }.from(100).to(99)
       end
     end
 
@@ -137,7 +140,7 @@ RSpec.describe MedicationTake do
             person_medicine: person_medicine,
             taken_at: Time.current
           )
-        end.to change { medicine.reload.stock }.by(-1)
+        end.to change { medicine.reload.stock }.from(100).to(99)
       end
     end
   end
