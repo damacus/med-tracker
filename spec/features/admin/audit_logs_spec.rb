@@ -253,10 +253,8 @@ RSpec.describe 'Admin Audit Logs', type: :system do
         )
       end
 
-      visit admin_audit_logs_path
-
-      # Filter by MedicationTake
-      select 'Medication Take', from: 'item_type'
+      # Visit with filter applied directly to avoid Turbo timing issues
+      visit admin_audit_logs_path(item_type: 'MedicationTake')
 
       # Verify create event is logged
       within('tbody') do
@@ -265,7 +263,7 @@ RSpec.describe 'Admin Audit Logs', type: :system do
       end
 
       # View details
-      first('a', text: 'View').click
+      click_link 'View', match: :first
 
       # Verify whodunnit shows carer user
       expect(page).to have_content(carer.name)

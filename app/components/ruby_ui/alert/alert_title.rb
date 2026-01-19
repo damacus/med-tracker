@@ -3,7 +3,7 @@
 module RubyUI
   class AlertTitle < Base
     def view_template(&)
-      h5(**attrs, &)
+      div(**attrs, &)
     end
 
     private

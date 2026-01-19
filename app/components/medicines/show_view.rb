@@ -49,7 +49,7 @@ module Components
       def render_description_card
         Card(class: 'md:col-span-2') do
           CardHeader do
-            CardTitle(class: 'text-lg') { 'Description' }
+            Heading(level: 2, size: '4', class: 'font-semibold leading-none tracking-tight') { 'Description' }
           end
           CardContent do
             Text(class: 'text-slate-700') { medicine.description.presence || 'No description provided.' }
@@ -60,7 +60,7 @@ module Components
       def render_dosage_card
         Card do
           CardHeader do
-            CardTitle(class: 'text-lg') { 'Standard Dosage' }
+            Heading(level: 2, size: '4', class: 'font-semibold leading-none tracking-tight') { 'Standard Dosage' }
           end
           CardContent do
             render_dosage_content
@@ -90,7 +90,7 @@ module Components
       def render_supply_card
         Card do
           CardHeader do
-            CardTitle(class: 'text-lg') { 'Current Supply' }
+            Heading(level: 2, size: '4', class: 'font-semibold leading-none tracking-tight') { 'Current Supply' }
           end
           CardContent do
             Text(size: '7', weight: 'bold', class: 'text-slate-900') { (medicine.current_supply || 0).to_s }
@@ -101,7 +101,7 @@ module Components
       def render_stock_card
         Card do
           CardHeader do
-            CardTitle(class: 'text-lg') { 'Stock on Hand' }
+            Heading(level: 2, size: '4', class: 'font-semibold leading-none tracking-tight') { 'Stock on Hand' }
           end
           CardContent do
             Text(size: '7', weight: 'bold', class: 'text-slate-900') { (medicine.stock || 0).to_s }
@@ -117,7 +117,7 @@ module Components
       def render_reorder_card
         Card do
           CardHeader do
-            CardTitle(class: 'text-lg') { 'Reorder Threshold' }
+            Heading(level: 2, size: '4', class: 'font-semibold leading-none tracking-tight') { 'Reorder Threshold' }
           end
           CardContent do
             Text(size: '7', weight: 'bold', class: 'text-slate-900') { (medicine.reorder_threshold || 0).to_s }
@@ -128,7 +128,9 @@ module Components
       def render_warnings_card
         Card(class: 'md:col-span-2 border-amber-200 bg-amber-50') do
           CardHeader do
-            CardTitle(class: 'text-lg text-amber-700') { '⚠️ Warnings' }
+            Heading(level: 2, size: '4', class: 'font-semibold leading-none tracking-tight text-amber-700') do
+              '⚠️ Warnings'
+            end
           end
           CardContent do
             Text(class: 'text-amber-800') { medicine.warnings }
