@@ -40,7 +40,7 @@ class MedicationTake < ApplicationRecord
     # Use atomic updates to avoid race conditions
     medicine.class.where(id: medicine.id).update_all('stock = GREATEST(COALESCE(stock, 0) - 1, 0)')
 
-    return unless medicine.current_supply.present?
+    return if medicine.current_supply.blank?
 
     medicine.class.where(id: medicine.id).update_all('current_supply = GREATEST(COALESCE(current_supply, 0) - 1, 0)')
   end
