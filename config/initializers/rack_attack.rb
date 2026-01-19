@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-return if Rails.env.test?
-
 class Rack::Attack
   Rack::Attack.cache.store = ActiveSupport::Cache::MemoryStore.new
 
@@ -31,10 +29,24 @@ class Rack::Attack
     end
   end
 
+  throttle('admin/audit_logs/ip', limit: 100, period: 1.minute) do |req|
+    req.ip if req.path.start_with?('/admin/audit_logs')
+  end
+
+  throttle('admin/audit_logs/user', limit: 200, period: 1.minute) do |req|
+    if req.path.start_with?('/admin/audit_logs')
+      session = req.env['rack.session']
+      session && session['account_id']
+    end
+  end
+
   self.throttled_responder = lambda do |request|
     match_data = request.env['rack.attack.match_data']
     now = match_data[:epoch_time]
     retry_after = match_data[:period] - (now % match_data[:period])
+
+    throttle_type = request.env['rack.attack.matched']
+    Rails.logger.warn("Rate limit exceeded: #{throttle_type} from IP #{request.ip}")
 
     [
       429,
@@ -46,13 +58,17 @@ class Rack::Attack
     ]
   end
 
-  safelist('allow from localhost') do |req|
-    req.ip == '127.0.0.1' || req.ip == '::1'
+  unless Rails.env.test?
+    safelist('allow from localhost') do |req|
+      req.ip == '127.0.0.1' || req.ip == '::1'
+    end
   end
 
   safelist('allow health checks') do |req|
     req.path == '/up' || req.path == '/health'
   end
 end
+
+Rack::Attack.enabled = !Rails.env.test?
 
 Rails.application.config.middleware.use Rack::Attack
