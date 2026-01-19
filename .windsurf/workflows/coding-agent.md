@@ -22,18 +22,11 @@ ls -la
 # 3. Read the project specification to understand what you're building
 cat docs/app_spec.txt
 
-# 4. Read the feature list to see all work
-# Require I give you a feature file:
-task jq:list-failing FILE=<feature>
+# 4. Check Beads for assigned work and roadmap
+bd ready
 
-# 5. Read progress notes from previous sessions
-cat claude-progress.txt
-
-# 6. Check recent git history
+# 5. Check recent git history
 git log --oneline -20
-
-# 7. Count remaining tests (across all feature files)
-task count-remaining-tests
 ```
 
 Understanding the `docs/app_spec.txt` is critical - it contains the full requirements
@@ -56,12 +49,11 @@ task local:db:up
 The previous session may have introduced bugs. Before implementing anything
 new, you MUST run verification tests.
 
-Run 1-2 of the feature tests marked as `"passes": true` that are most core to the app's functionality to verify they still work.
-For example, if this were a chat app, you should perform a test that logs into the app, sends a message, and gets a response.
+Run 1-2 core functionality tests to verify the system is stable. Check `bd list` for tasks that were recently closed to identify regression risks.
 
 **If you find ANY issues (functional or visual):**
 
-- Mark that feature as "passes": false immediately
+- Update the corresponding issue in Beads using `bd update <issue_id> notes="..."`
 - Add issues to a list
 - Fix all issues BEFORE moving to new features
 - This includes UI bugs like:
@@ -73,12 +65,12 @@ For example, if this were a chat app, you should perform a test that logs into t
   - Missing hover states
   - Console errors
 
-### STEP 4: CHOOSE ONE FEATURE TO IMPLEMENT
+### STEP 4: CHOOSE ONE TASK TO IMPLEMENT
 
-Look at feature_list.json and find the highest-priority feature with "passes": false.
+Use `bd ready` to find the highest-priority task that is ready to be worked on.
 
-Focus on completing one feature perfectly and completing its testing steps in this session before moving on to other features.
-It's ok if you only complete one feature in this session, as there will be more sessions later that continue to make progress.
+Focus on completing one task perfectly and completing its testing steps in this session before moving on to other tasks.
+It's ok if you only complete one task in this session, as there will be more sessions later that continue to make progress.
 
 ### STEP 5: IMPLEMENT THE FEATURE
 
@@ -114,32 +106,19 @@ Use browser automation tools:
 - Skip visual verification
 - Mark tests passing without thorough verification
 
-### STEP 7: UPDATE feature_list.json (CAREFULLY!)
+### STEP 7: UPDATE ISSUE STATUS (MANDATORY)
 
-**YOU CAN ONLY MODIFY ONE FIELD: "passes"**
-
-After thorough verification, use the task commands to update the JSON:
+After thorough verification, update the issue status using `bd update` or `bd close`.
 
 ```fish
-# Update by feature ID using task command (preferred)
-task jq:update-field FILE=features/security.json ID=SEC-001 FIELD=passes VALUE=true
+# Claim the task
+bd update <issue_id> status=in_progress
 
-# Or use raw jq for complex updates
-jq 'map(if .id == "FEATURE-001" then .passes = true else . end)' feature_list.json | sponge feature_list.json
-
-# Multiple updates at once
-jq 'map(if .id == "FEAT-001" or .id == "FEAT-002" then .passes = true else . end)' feature_list.json | sponge feature_list.json
+# Close the task after completion
+bd close <issue_id>
 ```
 
-**NEVER:**
-
-- Remove tests
-- Edit test descriptions
-- Modify test steps
-- Combine or consolidate tests
-- Reorder tests
-
-**ONLY CHANGE "passes" FIELD AFTER VERIFICATION WITH SCREENSHOTS.**
+**ONLY CLOSE THE ISSUE AFTER VERIFICATION WITH SCREENSHOTS AND TESTS PASSING.**
 
 ### STEP 8: COMMIT YOUR PROGRESS
 
@@ -151,30 +130,48 @@ git commit -m "Implement [feature name] - verified end-to-end
 
 - Added [specific changes]
 - Tested with browser automation
-- Updated feature_list.json: marked test #X as passing
+- Updated Beads: closed issue #X
 - Screenshots in verification/ directory
 "
 ```
 
 ### STEP 9: UPDATE PROGRESS NOTES
 
-Update `claude-progress.txt` with:
+Update progress notes using `bd update` to add notes to relevant issues:
 
 - What you accomplished this session
-- Which test(s) you completed
 - Any issues discovered or fixed
 - What should be worked on next
-- Current completion status (e.g., "45/200 tests passing")
+- Current status from `bd stats`
 
-### STEP 10: END SESSION CLEANLY
+### STEP 10: END SESSION CLEANLY (LANDING THE PLANE)
 
-Before context fills up:
+**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
 
-1. Commit all working code
-2. Update claude-progress.txt
-3. Update feature_list.json if tests verified
-4. Ensure no uncommitted changes
-5. Leave app in working state (no broken features)
+**MANDATORY WORKFLOW:**
+
+1. **File issues for remaining work** - Use `bd create` for anything that needs follow-up
+2. **Run quality gates** (if code changed) - `task test`, `task rubocop`
+3. **Update issue status** - Use `bd close` for finished work, `bd update` for in-progress items
+4. **PUSH TO REMOTE** - This is MANDATORY:
+
+   ```fish
+   git pull --rebase
+   bd sync
+   git push
+   git status  # MUST show "up to date with origin"
+   ```
+
+5. **Clean up** - Clear stashes, prune remote branches
+6. **Verify** - All changes committed AND pushed
+7. **Hand off** - Update issue notes using `bd update`
+
+**CRITICAL RULES:**
+
+- Work is NOT complete until `git push` succeeds
+- NEVER stop before pushing - that leaves work stranded locally
+- NEVER say "ready to push when you are" - YOU must push
+- If push fails, resolve and retry until it succeeds
 
 ---
 
@@ -242,20 +239,29 @@ task dev:rebuild
 task dev:open-ui
 ```
 
-### Feature JSON Management
+### Beads (Issue Tracking)
 
 ```fish
-# List failing tests in a feature file
-task jq:list-failing FILE=security
+# List all issues
+bd list
 
-# Update a field by ID
-task jq:update-field FILE=features/security.json ID=SEC-001 FIELD=passes VALUE=true
+# Find tasks ready to be worked on
+bd ready
 
-# Run arbitrary jq query
-task jq:query FILE=features/security.json QUERY='.[] | select(.passes == false) | .id'
+# Show details of a specific issue
+bd show <issue_id>
 
-# Count remaining failing tests across all features
-task count-remaining-tests
+# Update issue status/priority/assignee
+bd update <issue_id> status=in_progress priority=1
+
+# Close an issue
+bd close <issue_id>
+
+# Create a new issue
+bd create "Title" description="..." issue_type=bug
+
+# Get statistics
+bd stats
 ```
 
 ### Linting
