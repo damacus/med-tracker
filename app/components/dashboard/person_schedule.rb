@@ -54,7 +54,9 @@ module Components
         Card(id: "prescription_#{prescription.id}", class: 'h-full flex flex-col') do
           CardHeader do
             render_medicine_icon
-            CardTitle(class: 'text-lg') { prescription.medicine.name }
+            Text(size: '4', weight: 'semibold', class: 'leading-none tracking-tight text-slate-900') do
+              prescription.medicine.name
+            end
           end
 
           CardContent(class: 'flex-grow space-y-2') do

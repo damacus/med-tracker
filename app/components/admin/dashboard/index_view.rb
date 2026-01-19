@@ -103,7 +103,9 @@ module Components
         def render_quick_actions
           Card do
             CardHeader do
-              CardTitle { 'Quick Actions' }
+              Heading(level: 2, size: '4', class: 'font-semibold leading-none tracking-tight') do
+                'Quick Actions'
+              end
             end
             CardContent do
               div(class: 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3') do
@@ -145,7 +147,7 @@ module Components
           ) do
             div(class: 'text-3xl') { icon } if icon
             div do
-              Heading(level: 3) { title }
+              Text(size: '4', weight: 'semibold', class: 'text-slate-900') { title }
               Text(size: '2', weight: 'muted', class: 'mt-1') { description }
             end
           end
