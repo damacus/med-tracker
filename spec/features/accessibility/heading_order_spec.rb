@@ -3,43 +3,13 @@
 require 'rails_helper'
 
 RSpec.describe 'Heading Order Accessibility', type: :system do
-  let(:user) do
-    person = Person.create!(
-      name: 'Test User',
-      date_of_birth: 30.years.ago
-    )
-    User.create!(
-      person: person,
-      email_address: 'test@example.com',
-      password: 'password123',
-      password_confirmation: 'password123',
-      role: 'carer'
-    )
-  end
+  fixtures :accounts, :account_otp_keys, :people, :users
 
-  let(:admin_user) do
-    person = Person.create!(
-      name: 'Admin User',
-      date_of_birth: 35.years.ago
-    )
-    User.create!(
-      person: person,
-      email_address: 'admin@example.com',
-      password: 'password123',
-      password_confirmation: 'password123',
-      role: 'administrator'
-    )
-  end
-
-  def sign_in_as(user)
-    visit new_session_path
-    fill_in 'Email address', with: user.email_address
-    fill_in 'Password', with: 'password123'
-    click_button 'Sign in'
-  end
+  let(:user) { users(:carer) }
+  let(:admin_user) { users(:admin) }
 
   def extract_heading_levels(page)
-    page.all('h1, h2, h3, h4, h5, h6', visible: :all).map do |heading|
+    page.all('h1, h2, h3, h4, h5, h6', visible: true).map do |heading|
       heading.tag_name.upcase
     end
   end
@@ -66,8 +36,7 @@ RSpec.describe 'Heading Order Accessibility', type: :system do
 
   describe 'Dashboard page' do
     before do
-      sign_in_as(user)
-      visit dashboard_path
+      sign_in(user)
     end
 
     it 'has proper heading hierarchy' do
@@ -94,8 +63,8 @@ RSpec.describe 'Heading Order Accessibility', type: :system do
 
   describe 'Admin Dashboard page' do
     before do
-      sign_in_as(admin_user)
-      visit admin_root_path
+      sign_in(admin_user)
+      visit '/admin'
     end
 
     it 'has proper heading hierarchy' do
@@ -122,8 +91,8 @@ RSpec.describe 'Heading Order Accessibility', type: :system do
 
   describe 'Medicines index page' do
     before do
-      sign_in_as(user)
-      visit medicines_path
+      sign_in(user)
+      visit '/medicines'
     end
 
     it 'has proper heading hierarchy' do
@@ -136,8 +105,8 @@ RSpec.describe 'Heading Order Accessibility', type: :system do
 
   describe 'People index page' do
     before do
-      sign_in_as(user)
-      visit people_path
+      sign_in(user)
+      visit '/people'
     end
 
     it 'has proper heading hierarchy' do
@@ -150,8 +119,8 @@ RSpec.describe 'Heading Order Accessibility', type: :system do
 
   describe 'Admin Users index page' do
     before do
-      sign_in_as(admin_user)
-      visit admin_users_path
+      sign_in(admin_user)
+      visit '/admin/users'
     end
 
     it 'has proper heading hierarchy' do
