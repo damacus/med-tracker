@@ -41,10 +41,8 @@ class PersonMedicinePolicy < ApplicationPolicy
     false
   end
 
-  def carer_with_patient?
-    return false unless record.respond_to?(:person) && record.person
-
-    (carer_or_parent? && user.person.patients.exists?(id: record.person.id)) || false
+  def person_id_for_authorization
+    record.respond_to?(:person) && record.person ? record.person.id : nil
   end
 
   class Scope < ApplicationPolicy::Scope
