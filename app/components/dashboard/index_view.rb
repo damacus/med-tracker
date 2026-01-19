@@ -154,7 +154,7 @@ module Components
                   render_person_avatar_small
                   span(class: 'font-semibold text-slate-900 truncate') { person.name }
                 end
-                render_stock_badge(prescription.medicine) if prescription.medicine.stock.present?
+                render Components::Shared::StockBadge.new(medicine: prescription.medicine)
               end
 
               div(class: 'flex items-center gap-2 mb-3') do
@@ -221,7 +221,7 @@ module Components
                 render_medicine_icon_small
                 span(class: 'font-medium') { prescription.medicine.name }
               end
-              render_stock_badge(prescription.medicine) if prescription.medicine.stock.present?
+              render Components::Shared::StockBadge.new(medicine: prescription.medicine)
             end
           end
 
@@ -232,24 +232,6 @@ module Components
           TableCell(class: 'text-center') do
             render_prescription_actions(prescription)
           end
-        end
-      end
-
-      def render_stock_badge(medicine)
-        badge_variant = if medicine.out_of_stock?
-                          :destructive
-                        else
-                          (medicine.low_stock? ? :warning : :outline)
-                        end
-        badge_text = if medicine.out_of_stock?
-                       'Out of Stock'
-                     else
-                       (medicine.low_stock? ? 'Low Stock' : 'In Stock')
-                     end
-
-        div(class: 'flex flex-col items-end gap-1') do
-          render RubyUI::Badge.new(variant: badge_variant) { badge_text }
-          span(class: 'text-xs text-slate-500 font-medium') { "Qty: #{medicine.stock}" }
         end
       end
 
