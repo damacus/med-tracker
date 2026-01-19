@@ -27,10 +27,34 @@ module Components
 
       def render_card_header
         CardHeader do
-          render_medicine_icon
-          CardTitle(class: 'text-xl') { prescription.medicine.name }
-          dosage_text = "#{prescription.dosage.amount.to_i} #{prescription.dosage.unit}"
-          CardDescription { "#{dosage_text} • #{prescription.frequency}" }
+          div(class: 'flex justify-between items-start w-full') do
+            div do
+              render_medicine_icon
+              CardTitle(class: 'text-xl') { prescription.medicine.name }
+              dosage_text = "#{prescription.dosage.amount.to_i} #{prescription.dosage.unit}"
+              CardDescription { "#{dosage_text} • #{prescription.frequency}" }
+            end
+            render_stock_badge if prescription.medicine.stock.present?
+          end
+        end
+      end
+
+      def render_stock_badge
+        medicine = prescription.medicine
+        badge_variant = if medicine.out_of_stock?
+                          :destructive
+                        else
+                          (medicine.low_stock? ? :warning : :outline)
+                        end
+        badge_text = if medicine.out_of_stock?
+                       'Out of Stock'
+                     else
+                       (medicine.low_stock? ? 'Low Stock' : 'In Stock')
+                     end
+
+        div(class: 'flex flex-col items-end gap-1') do
+          render RubyUI::Badge.new(variant: badge_variant) { badge_text }
+          span(class: 'text-xs text-slate-500 font-medium') { "Qty: #{medicine.stock}" }
         end
       end
 

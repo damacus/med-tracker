@@ -108,6 +108,40 @@ RSpec.describe MedicationTake do
     end
   end
 
+  describe 'stock tracking' do
+    let(:initial_stock) { 100 }
+    let(:medicine) do
+      Medicine.create!(
+        name: 'Stock Medicine',
+        current_supply: initial_stock,
+        stock: initial_stock,
+        reorder_threshold: 10
+      )
+    end
+
+    context 'when taking a dose from a prescription' do
+      it 'deducts 1 from the medicine stock' do
+        expect do
+          described_class.create!(
+            prescription: prescription,
+            taken_at: Time.current
+          )
+        end.to change { medicine.reload.stock }.by(-1)
+      end
+    end
+
+    context 'when taking a dose from a person_medicine' do
+      it 'deducts 1 from the medicine stock' do
+        expect do
+          described_class.create!(
+            person_medicine: person_medicine,
+            taken_at: Time.current
+          )
+        end.to change { medicine.reload.stock }.by(-1)
+      end
+    end
+  end
+
   describe 'versioning' do # rubocop:disable RSpec/MultipleMemoizedHelpers
     fixtures :accounts, :people, :users
 

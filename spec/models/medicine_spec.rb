@@ -14,10 +14,14 @@ RSpec.describe Medicine do
 
   describe 'validations' do
     it { is_expected.to validate_presence_of(:name) }
-    it { is_expected.to validate_presence_of(:current_supply) }
-    it { is_expected.to validate_numericality_of(:current_supply).only_integer.is_greater_than_or_equal_to(0) }
-    it { is_expected.to validate_numericality_of(:stock).only_integer.is_greater_than_or_equal_to(0) }
-    it { is_expected.to validate_numericality_of(:reorder_threshold).only_integer.is_greater_than(0) }
+    it { is_expected.not_to validate_presence_of(:current_supply) }
+
+    it {
+      expect(subject).to validate_numericality_of(:current_supply).only_integer.is_greater_than_or_equal_to(0).allow_nil
+    }
+
+    it { is_expected.to validate_numericality_of(:stock).only_integer.is_greater_than_or_equal_to(0).allow_nil }
+    it { is_expected.to validate_numericality_of(:reorder_threshold).only_integer.is_greater_than_or_equal_to(0) }
   end
 
   describe 'associations' do
@@ -46,8 +50,8 @@ RSpec.describe Medicine do
     context 'when stock meets the reorder threshold' do
       let(:stock) { 50 }
 
-      it 'returns false' do
-        expect(medicine.low_stock?).to be(false)
+      it 'returns true' do
+        expect(medicine.low_stock?).to be(true)
       end
     end
 
@@ -57,6 +61,22 @@ RSpec.describe Medicine do
       it 'returns false' do
         expect(medicine.low_stock?).to be(false)
       end
+    end
+  end
+
+  describe '#out_of_stock?' do
+    subject(:medicine) { described_class.new(stock: stock) }
+
+    context 'when stock is 0' do
+      let(:stock) { 0 }
+
+      it { is_expected.to be_out_of_stock }
+    end
+
+    context 'when stock is positive' do
+      let(:stock) { 1 }
+
+      it { is_expected.not_to be_out_of_stock }
     end
   end
 end

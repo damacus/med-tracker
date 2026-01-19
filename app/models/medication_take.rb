@@ -17,6 +17,8 @@ class MedicationTake < ApplicationRecord
   validates :taken_at, presence: true
   validate :exactly_one_source
 
+  after_create :decrement_medicine_stock
+
   # Delegate to get the source (prescription or person_medicine)
   def source
     prescription || person_medicine
@@ -31,6 +33,17 @@ class MedicationTake < ApplicationRecord
   end
 
   private
+
+  def decrement_medicine_stock
+    return unless medicine
+
+    # Use atomic updates to avoid race conditions
+    medicine.class.where(id: medicine.id).update_all('stock = GREATEST(COALESCE(stock, 0) - 1, 0)')
+
+    return unless medicine.current_supply.present?
+
+    medicine.class.where(id: medicine.id).update_all('current_supply = GREATEST(COALESCE(current_supply, 0) - 1, 0)')
+  end
 
   def exactly_one_source
     sources = [prescription_id, person_medicine_id].compact

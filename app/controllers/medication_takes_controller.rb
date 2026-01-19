@@ -7,6 +7,7 @@ class MedicationTakesController < ApplicationController
 
   def create
     @medication_take = @prescription.medication_takes.build(medication_take_params)
+    @medication_take.amount_ml ||= @prescription.dosage.amount
     authorize @medication_take
 
     if @medication_take.save
@@ -31,8 +32,12 @@ class MedicationTakesController < ApplicationController
   end
 
   def medication_take_params
-    params.expect(medication_take: %i[taken_at notes]).tap do |whitelisted|
-      whitelisted[:taken_at] ||= Time.current
+    if params[:medication_take].present?
+      params.expect(medication_take: %i[taken_at notes]).tap do |whitelisted|
+        whitelisted[:taken_at] ||= Time.current
+      end
+    else
+      { taken_at: Time.current }
     end
   end
 end

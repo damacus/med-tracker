@@ -36,12 +36,14 @@
 
 ## Testing Expectations
 
+- **Environment**: ALWAYS use the test environment for testing. Use `task test` to run the full suite or targeted `task` commands if available.
 - **Framework** RSpec (`spec/`) with Capybara system specs; fixtures in `spec/fixtures/` must remain realistic and unique.
 - **Coverage** Policy, model, and feature behavior require exhaustive examples; use VCR for external HTTP if introduced.
-- **Workflow** Running `bundle exec rspec` is standard; follow `/test` workflow if more guidance is needed.
+- **Workflow** Use `task test` or specific model/feature test tasks defined in the Taskfile. Do not run `bundle exec rspec` directly.
 
 ## Tooling & Automation
 
+- **Taskfile**: ALWAYS use `task` commands from `Taskfile.yml` instead of running bare commands (like `rspec` or `docker compose`). This ensures environment consistency.
 - **Workflows** Review `.windsurf/workflows/` for task-specific playbooks (`/test`, `/rubocop`, `/update-dependencies`, etc.).
 - **Linting** RuboCop config lives in `.rubocop.yml`; respect enforced cops.
 - **CI** GitHub Actions (`.github/workflows/`) run tests and Playwright suites.
@@ -78,17 +80,20 @@ All terminal commands and scripts should be run using fish shell.
 2. **Run quality gates** (if code changed) - Tests, linters, builds
 3. **Update issue status** - Close finished work, update in-progress items
 4. **PUSH TO REMOTE** - This is MANDATORY:
+
    ```bash
    git pull --rebase
    bd sync
    git push
    git status  # MUST show "up to date with origin"
    ```
+
 5. **Clean up** - Clear stashes, prune remote branches
 6. **Verify** - All changes committed AND pushed
 7. **Hand off** - Provide context for next session
 
 **CRITICAL RULES:**
+
 - Work is NOT complete until `git push` succeeds
 - NEVER stop before pushing - that leaves work stranded locally
 - NEVER say "ready to push when you are" - YOU must push
