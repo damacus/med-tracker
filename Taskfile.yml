@@ -1,5 +1,5 @@
 ---
-version: '3'
+version: "3"
 silent: true
 
 includes:
@@ -11,8 +11,6 @@ includes:
     taskfile: Taskfiles/local.yml
   internal:
     taskfile: Taskfiles/internal.yml
-  jq:
-    taskfile: Taskfiles/jq.yml
   lighthouse:
     taskfile: Taskfiles/lighthouse.yml
 
@@ -56,9 +54,3 @@ tasks:
       autocorrect: '{{ .AUTOCORRECT | default "false" }}'
     cmds:
       - 'bundle exec rubocop {{ if eq .autocorrect "true" }}-A{{ end }}'
-
-  count-remaining-tests:
-    desc: Count remaining tests (across all feature files)
-    summary: Count remaining tests (across all feature files)
-    cmds:
-      - 'jq -s ''[.[][] | select(.passes == false)] | length'' features/*.json'

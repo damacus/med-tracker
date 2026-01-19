@@ -43,6 +43,7 @@
 
 ## Tooling & Automation
 
+- **Beads (bd)**: ALL task and issue tracking is done via Beads. Use `bd list` to see open issues, `bd show <id>` for details, `bd create` to file new work, and `bd close <id>` when done. Never use JSON feature files.
 - **Taskfile**: ALWAYS use `task` commands from `Taskfile.yml` instead of running bare commands (like `rspec` or `docker compose`). This ensures environment consistency.
 - **Workflows** Review `.windsurf/workflows/` for task-specific playbooks (`/test`, `/rubocop`, `/update-dependencies`, etc.).
 - **Linting** RuboCop config lives in `.rubocop.yml`; respect enforced cops.
