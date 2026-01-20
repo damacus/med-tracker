@@ -2,19 +2,5 @@
 
 require 'ruby_ui'
 
-module RubyUI
-  extend Phlex::Kit
-end
-
-# Allow using RubyUI instead RubyUi
-Rails.autoloaders.main.inflector.inflect(
-  'ruby_ui' => 'RubyUI'
-)
-
-# Allow using RubyUI::ComponentName instead Components::RubyUI::ComponentName
-Rails.autoloaders.main.push_dir(
-  Rails.root.join('app/components/ruby_ui'), namespace: RubyUI
-)
-
-# Allow using RubyUI::ComponentName instead RubyUI::ComponentName::ComponentName
-Rails.autoloaders.main.collapse(Rails.root.join('app/components/ruby_ui/*'))
+# RubyUI autoloading configuration has been moved to config/application.rb
+# to prevent frozen array errors in Rails 8 with eager loading
