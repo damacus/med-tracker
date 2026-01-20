@@ -1,6 +1,14 @@
 ---
 pre-push:
   jobs:
+    - name: protect-main
+      run: |
+        current_branch=$(git rev-parse --abbrev-ref HEAD)
+        if [ "$current_branch" = "main" ]; then
+          echo "❌ Direct pushes to main are not allowed. Use a feature branch and PR."
+          exit 1
+        fi
+
     - name: gems audit
       tags:
         - backend
@@ -19,3 +27,6 @@ pre-commit:
         - config/application.rb
         - config/routes.rb
       run: bundle exec rubocop --force-exclusion {all_files}
+
+    - name: beads
+      run: bd hook pre-commit "$@"

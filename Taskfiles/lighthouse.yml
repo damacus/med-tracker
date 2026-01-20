@@ -1,5 +1,5 @@
 ---
-version: '3'
+version: "3"
 
 tasks:
   run:
@@ -38,11 +38,12 @@ tasks:
           echo "═══════════════════════════════════════════"
           echo "         LIGHTHOUSE MOBILE SCORES          "
           echo "═══════════════════════════════════════════"
-          cat lighthouse-report.json | jq -r '
-            "Performance:     \((.categories.performance.score * 100 | floor))%",
-            "Accessibility:   \((.categories.accessibility.score * 100 | floor))%",
-            "Best Practices:  \((.categories["best-practices"].score * 100 | floor))%"
-          '
+          node -e "
+            const r = require('./lighthouse-report.json');
+            console.log('Performance:     ' + Math.floor(r.categories.performance.score * 100) + '%');
+            console.log('Accessibility:   ' + Math.floor(r.categories.accessibility.score * 100) + '%');
+            console.log('Best Practices:  ' + Math.floor(r.categories['best-practices'].score * 100) + '%');
+          "
           echo "═══════════════════════════════════════════"
           echo ""
           echo "Full report: lighthouse-report.html"
@@ -86,9 +87,9 @@ tasks:
         echo "         LIGHTHOUSE MOBILE SCORES          "
         echo "═══════════════════════════════════════════"
 
-        PERF=$(cat "$REPORT_FILE" | jq '.categories.performance.score * 100 | floor')
-        A11Y=$(cat "$REPORT_FILE" | jq '.categories.accessibility.score * 100 | floor')
-        BP=$(cat "$REPORT_FILE" | jq '.categories["best-practices"].score * 100 | floor')
+        PERF=$(node -e "console.log(Math.floor(require('$REPORT_FILE').categories.performance.score * 100))")
+        A11Y=$(node -e "console.log(Math.floor(require('$REPORT_FILE').categories.accessibility.score * 100))")
+        BP=$(node -e "console.log(Math.floor(require('$REPORT_FILE').categories['best-practices'].score * 100))")
 
         echo "Performance:     ${PERF}% (threshold: {{ .PERF_THRESHOLD }}%)"
         echo "Accessibility:   ${A11Y}% (threshold: {{ .A11Y_THRESHOLD }}%)"
@@ -112,7 +113,7 @@ tasks:
         if [ "$FAILED" -eq 1 ]; then
           echo ""
           echo "Top 10 failed audits:"
-          cat "$REPORT_FILE" | jq -r '[.audits | to_entries[] | select(.value.score != null and .value.score < 1) | {title: .value.title, score: (.value.score * 100 | floor)}] | sort_by(.score) | .[0:10] | .[] | "  [\(.score)%] \(.title)"'
+          node -e "const r=require('$REPORT_FILE');Object.entries(r.audits).filter(([k,v])=>v.score!=null&&v.score<1).map(([k,v])=>({title:v.title,score:Math.floor(v.score*100)})).sort((a,b)=>a.score-b.score).slice(0,10).forEach(a=>console.log('  ['+a.score+'%] '+a.title))"
           exit 1
         else
           echo "✅ All scores meet thresholds!"
@@ -127,9 +128,7 @@ tasks:
       - |
         if [ -f lighthouse-report.json ]; then
           echo "Failed audits:"
-          cat lighthouse-report.json | jq -r '
-            [.audits | to_entries[] | select(.value.score != null and .value.score < 1) | {id: .key, score: (.value.score * 100 | floor | tostring + "%"), title: .value.title}] | .[] | "  [\(.score)] \(.title)"
-          '
+          node -e "const r=require('./lighthouse-report.json');Object.entries(r.audits).filter(([k,v])=>v.score!=null&&v.score<1).forEach(([k,v])=>console.log('  ['+Math.floor(v.score*100)+'%] '+v.title))"
         else
           echo "No lighthouse-report.json found. Run 'task lighthouse:run' first."
           exit 1

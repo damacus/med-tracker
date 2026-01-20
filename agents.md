@@ -43,6 +43,7 @@
 
 ## Tooling & Automation
 
+- **Beads (bd)**: ALL task and issue tracking is done via Beads. Use `bd list` to see open issues, `bd show <id>` for details, `bd create` to file new work, and `bd close <id>` when done. Never use JSON feature files.
 - **Taskfile**: ALWAYS use `task` commands from `Taskfile.yml` instead of running bare commands (like `rspec` or `docker compose`). This ensures environment consistency.
 - **Workflows** Review `.windsurf/workflows/` for task-specific playbooks (`/test`, `/rubocop`, `/update-dependencies`, etc.).
 - **Linting** RuboCop config lives in `.rubocop.yml`; respect enforced cops.
@@ -50,6 +51,7 @@
 
 ## Collaboration Notes
 
+- **GitHub Flow** We use GitHub Flow: create feature branches from `main`, open PRs, merge after review. **Never push directly to main** - lefthook enforces this.
 - **Branches & commits** Conventional Commits (`feat:`, `fix:`, etc.), small atomic changes, always green tests before merge.
 - **Environment** rails server via `bin/dev`; avoid destructive commands without confirmation.
 - **Documentation** Markdown must satisfy `markdown-lint-cli2`; keep headings orderly.
