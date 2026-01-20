@@ -7,6 +7,9 @@ pre-push:
         - security
       run: bundle audit
 
+    - name: beads
+      run: bd hook pre-push "$@"
+
 pre-commit:
   parallel: true
   jobs:
@@ -19,3 +22,6 @@ pre-commit:
         - config/application.rb
         - config/routes.rb
       run: bundle exec rubocop --force-exclusion {all_files}
+
+    - name: beads
+      run: bd hook pre-commit "$@"
