@@ -3,12 +3,12 @@ description: Coding Agent
 auto_execution_mode: 1
 ---
 
-## YOUR ROLE - CODING AGENT
+# YOUR ROLE - CODING AGENT
 
 You are continuing work on a long-running autonomous development task.
 This is a FRESH context window - you have no memory of previous sessions.
 
-### STEP 1: GET YOUR BEARINGS (MANDATORY)
+## STEP 1: GET YOUR BEARINGS (MANDATORY)
 
 Start by orienting yourself:
 
@@ -32,7 +32,7 @@ git log --oneline -20
 Understanding the `docs/app_spec.txt` is critical - it contains the full requirements
 for the application you're building.
 
-### STEP 2: START TEST SERVERS (IF NOT RUNNING)
+## STEP 2: START TEST SERVERS (IF NOT RUNNING)
 
 ```fish
 # Start test environment (Docker-based with PostgreSQL)
@@ -42,7 +42,7 @@ task test:up
 task local:db:up
 ```
 
-### STEP 3: VERIFICATION TEST (CRITICAL!)
+## STEP 3: VERIFICATION TEST (CRITICAL!)
 
 **MANDATORY BEFORE NEW WORK:**
 
@@ -65,14 +65,14 @@ Run 1-2 core functionality tests to verify the system is stable. Check `bd list`
   - Missing hover states
   - Console errors
 
-### STEP 4: CHOOSE ONE TASK TO IMPLEMENT
+## STEP 4: CHOOSE ONE TASK TO IMPLEMENT
 
 Use `bd ready` to find the highest-priority task that is ready to be worked on.
 
 Focus on completing one task perfectly and completing its testing steps in this session before moving on to other tasks.
 It's ok if you only complete one task in this session, as there will be more sessions later that continue to make progress.
 
-### STEP 5: IMPLEMENT THE FEATURE
+## STEP 5: IMPLEMENT THE FEATURE
 
 Implement the chosen feature thoroughly:
 
@@ -81,7 +81,7 @@ Implement the chosen feature thoroughly:
 3. Fix any issues discovered
 4. Verify the feature works end-to-end
 
-### STEP 6: VERIFY WITH BROWSER AUTOMATION
+## STEP 6: VERIFY WITH BROWSER AUTOMATION
 
 **CRITICAL:** You MUST verify features through the actual UI.
 
@@ -106,7 +106,7 @@ Use browser automation tools:
 - Skip visual verification
 - Mark tests passing without thorough verification
 
-### STEP 7: UPDATE ISSUE STATUS (MANDATORY)
+## STEP 7: UPDATE ISSUE STATUS (MANDATORY)
 
 After thorough verification, update the issue status using `bd update` or `bd close`.
 
@@ -120,7 +120,7 @@ bd close <issue_id>
 
 **ONLY CLOSE THE ISSUE AFTER VERIFICATION WITH SCREENSHOTS AND TESTS PASSING.**
 
-### STEP 8: COMMIT YOUR PROGRESS
+## STEP 8: COMMIT YOUR PROGRESS
 
 Make a descriptive git commit:
 
@@ -135,7 +135,7 @@ git commit -m "Implement [feature name] - verified end-to-end
 "
 ```
 
-### STEP 9: UPDATE PROGRESS NOTES
+## STEP 9: UPDATE PROGRESS NOTES
 
 Update progress notes using `bd update` to add notes to relevant issues:
 
@@ -144,7 +144,7 @@ Update progress notes using `bd update` to add notes to relevant issues:
 - What should be worked on next
 - Current status from `bd stats`
 
-### STEP 10: END SESSION CLEANLY (LANDING THE PLANE)
+## STEP 10: END SESSION CLEANLY (LANDING THE PLANE)
 
 **When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
 
@@ -175,11 +175,11 @@ Update progress notes using `bd update` to add notes to relevant issues:
 
 ---
 
-## AVAILABLE TASK COMMANDS
+# AVAILABLE TASK COMMANDS
 
 Run `task --list` to see all available commands. Key commands:
 
-### Testing
+## Testing
 
 ```fish
 # Run all tests in Docker (PostgreSQL)
@@ -199,7 +199,7 @@ task test:stop
 task test:logs
 ```
 
-### Local Testing (faster, standalone PostgreSQL)
+## Local Testing (faster, standalone PostgreSQL)
 
 ```fish
 # Start local PostgreSQL container
@@ -219,7 +219,7 @@ task local:test:all
 task local:clean
 ```
 
-### Development
+## Development
 
 ```fish
 # Start development server
@@ -239,7 +239,7 @@ task dev:rebuild
 task dev:open-ui
 ```
 
-### Beads (Issue Tracking)
+## Beads (Issue Tracking)
 
 ```fish
 # List all issues
@@ -264,7 +264,7 @@ bd create "Title" description="..." issue_type=bug
 bd stats
 ```
 
-### Linting
+## Linting
 
 ```fish
 # Run RuboCop

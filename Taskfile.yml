@@ -36,6 +36,20 @@ tasks:
           COMMAND: 'bundle exec rspec --format documentation {{ .TEST_FILE | default "spec" }}'
           TEST_FILE: '{{ .TEST_FILE | default "spec" }}'
 
+  status:
+    desc: Get current status of the project
+    summary: |
+      Run RSpec tests in Docker and verify project readiness with bd ready
+      Usage: task status
+    silent: true
+    cmds:
+      - task: internal:run
+        vars:
+          ENVIRONMENT: test
+          SERVICE: web-test
+          COMMAND: "bundle exec rspec --format json"
+      - cmd: bd ready
+
   test-rebuild:
     desc: Rebuild test server (drops database)
     summary: |
