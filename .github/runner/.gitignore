@@ -1,5 +1,0 @@
-# GitHub token and sensitive configuration
-.env
-
-# Runner work directory (if mounted locally)
-_work/

@@ -1,0 +1,15 @@
+{
+	"packages": {
+		".": {
+			"release-type": "ruby",
+			"package-name": "med-tracker",
+			"changelog-path": "CHANGELOG.md",
+			"version-file": "lib/med_tracker/version.rb",
+			"prerelease": true,
+			"initial-version": "0.1.0"
+		}
+	},
+	"release-search-depth": 100,
+	"bump-minor-pre-major": true,
+	"bump-patch-for-minor-pre-major": true
+}

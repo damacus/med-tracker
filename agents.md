@@ -52,7 +52,7 @@
 ## Collaboration Notes
 
 - **GitHub Flow** We use GitHub Flow: create feature branches from `main`, open PRs, merge after review. **Never push directly to main** - lefthook enforces this.
-- **Branches & commits** Conventional Commits (`feat:`, `fix:`, etc.), small atomic changes, always green tests before merge.
+- **Branches & commits** Conventional Commits (`feat:`, `fix:`, etc.), small atomic changes, always green tests before merge. **All commits must be GPG signed.**
 - **Environment** rails server via `bin/dev`; avoid destructive commands without confirmation.
 - **Documentation** Markdown must satisfy `markdown-lint-cli2`; keep headings orderly.
 
