@@ -38,7 +38,7 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=sha,format=long
-            type=raw,value=beta,enable=${{ github.ref_type != 'tag' && github.ref_name != 'main' }}
+            type=raw,value=beta,enable=${{ github.ref_type != 'tag' && github.ref_name == 'main' }}
             type=raw,value=latest,enable=${{ github.ref_type == 'tag' }}
 
       - name: Build and push Docker image

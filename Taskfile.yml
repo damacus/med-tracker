@@ -39,7 +39,7 @@ tasks:
   status:
     desc: Get current status of the project
     summary: |
-      Run RSpec tests in Docker environment
+      Run RSpec tests in Docker and verify project readiness with bd ready
       Usage: task status
     silent: true
     cmds:

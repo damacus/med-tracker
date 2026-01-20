@@ -8,7 +8,7 @@ auto_execution_mode: 1
 - Run `task test`
 - Identify existing errors
 - Batch fix
-- When fixing make sure that we follow the rubocop stlye guidelines
+- When fixing make sure that we follow the rubocop style guidelines
 - Make sure we do not break existing tests
 - If there are tests missing create new ones
 

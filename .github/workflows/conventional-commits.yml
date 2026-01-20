@@ -2,9 +2,12 @@
 name: "Validate PR"
 
 "on":
-  workflow_call:
-    secrets:
-      token: { required: false }
+  pull_request:
+    types:
+      - opened
+      - edited
+      - reopened
+      - synchronize
 
 jobs:
   main:
@@ -16,7 +19,7 @@ jobs:
       - uses: amannn/action-semantic-pull-request@v6
         id: lint_pr_title
         env:
-          GITHUB_TOKEN: ${{ secrets.token || secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: marocchino/sticky-pull-request-comment@v2
         if: always() && (steps.lint_pr_title.outputs.error_message != null)
