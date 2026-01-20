@@ -15,9 +15,6 @@ pre-push:
         - security
       run: bundle audit
 
-    - name: beads
-      run: bd hook pre-push "$@"
-
 pre-commit:
   parallel: true
   jobs:
