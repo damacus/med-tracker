@@ -37,14 +37,14 @@ module Components
       end
 
       def render_quick_actions
-        div(class: 'flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto') do
+        div(class: 'flex flex-row flex-wrap gap-2 sm:gap-3') do
           Link(
             href: url_helpers&.new_medicine_path || '#',
-            class: "#{button_primary_classes} w-full sm:w-auto justify-center min-h-[44px]"
+            class: "#{button_primary_classes} min-h-[44px]"
           ) { 'Add Medicine' }
           Link(
             href: url_helpers&.new_person_path || '#',
-            class: "#{button_secondary_classes} w-full sm:w-auto justify-center min-h-[44px]"
+            class: "#{button_secondary_classes} min-h-[44px]"
           ) { 'Add Person' }
         end
       end
@@ -180,18 +180,19 @@ module Components
             end
           end
 
-          # Actions at bottom with full-width Take Now button
-          div(class: 'mt-4 flex gap-2') do
+          # Actions at bottom with consistent button styling
+          div(class: 'mt-4 flex flex-wrap gap-2') do
             if url_helpers
               form_with(
                 url: url_helpers.prescription_medication_takes_path(prescription),
                 method: :post,
-                class: 'flex-1'
+                class: 'inline-block'
               ) do
                 Button(
                   type: :submit,
                   variant: :primary,
-                  class: 'w-full min-h-[44px]',
+                  size: :sm,
+                  class: take_now_badge_classes,
                   data: { test_id: "take-medicine-#{prescription.id}" }
                 ) { 'Take Now' }
               end
