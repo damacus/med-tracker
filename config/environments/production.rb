@@ -38,7 +38,11 @@ Rails.application.configure do
 
   # Log to STDOUT with ECS-formatted JSON logs for production observability.
   config.log_tags = [:request_id]
-  config.logger = EcsLogging::Logger.new($stdout)
+  if defined?(EcsLogging::Logger)
+    config.logger = EcsLogging::Logger.new($stdout)
+  else
+    config.logger = ActiveSupport::Logger.new($stdout)
+  end
 
   # Change to "debug" to log everything (including potentially personally-identifiable information!)
   config.log_level = ENV.fetch('RAILS_LOG_LEVEL', 'info')
