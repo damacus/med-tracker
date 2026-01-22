@@ -1,1 +1,68 @@
 # Changelog
+
+## [0.2.0](https://github.com/damacus/med-tracker/compare/med-tracker-v0.1.0...med-tracker/v0.2.0) (2026-01-22)
+
+
+### ⚠ BREAKING CHANGES
+
+* **auth:** Person type simplified from 7 types to 3 (adult, minor, dependent_adult)
+
+### Features
+
+* Add OpenTelemetry OTLP exporter and HTTP metrics instrumentation ([#194](https://github.com/damacus/med-tracker/issues/194)) ([74e4ad9](https://github.com/damacus/med-tracker/commit/74e4ad9f56bff9274143294139c33b62b90fb2cb))
+* add timing restriction enforcement to prescription cards ([a207295](https://github.com/damacus/med-tracker/commit/a207295eaaba7f659caaf225c0ce4d8fd4bee8a8))
+* **admin:** add user management controller ([f816104](https://github.com/damacus/med-tracker/commit/f816104a04987b788edc9b92cd854eaf2e448a01))
+* Audit trail ([#137](https://github.com/damacus/med-tracker/issues/137)) ([edf5882](https://github.com/damacus/med-tracker/commit/edf58826a2585d3c924190ae1ec9d606cf8a1ac3))
+* **audit:** implement AUDIT-013 and AUDIT-014 features ([#175](https://github.com/damacus/med-tracker/issues/175)) ([39d9b3b](https://github.com/damacus/med-tracker/commit/39d9b3b730941fe6c57ef358a95e828c9201c1fc))
+* **auth:** add passkeys-rails for passwordless authentication ([f816104](https://github.com/damacus/med-tracker/commit/f816104a04987b788edc9b92cd854eaf2e448a01))
+* **auth:** add Pundit authorisation and passkey authentication ([f816104](https://github.com/damacus/med-tracker/commit/f816104a04987b788edc9b92cd854eaf2e448a01))
+* **auth:** add Pundit authorisation framework ([f816104](https://github.com/damacus/med-tracker/commit/f816104a04987b788edc9b92cd854eaf2e448a01))
+* **auth:** implement Rodauth authentication with Google OAuth support ([#172](https://github.com/damacus/med-tracker/issues/172)) ([fce0332](https://github.com/damacus/med-tracker/commit/fce03325008e1357038c103c889d30ffab987c6e))
+* **auth:** implement Rodauth signup with capacity-based carer validation ([#164](https://github.com/damacus/med-tracker/issues/164)) ([38009c5](https://github.com/damacus/med-tracker/commit/38009c5c5e403e4ae905f977cc3e9525f9f63cdf))
+* **auth:** implement role-based authorisation policies ([f816104](https://github.com/damacus/med-tracker/commit/f816104a04987b788edc9b92cd854eaf2e448a01))
+* **carer:** implement relationship reactivation (CARER-015) ([#171](https://github.com/damacus/med-tracker/issues/171)) ([809890d](https://github.com/damacus/med-tracker/commit/809890d1ccdbc3ba8ef779e3b4ec7bcb2771ad35))
+* complete admin interface with dashboard, user crud, and search ([#104](https://github.com/damacus/med-tracker/issues/104)) ([7a21a51](https://github.com/damacus/med-tracker/commit/7a21a51f72d0909a1caf65335c94eedb5c22ea66))
+* complete authorization implementation for medication tracking ([#101](https://github.com/damacus/med-tracker/issues/101)) ([28d6711](https://github.com/damacus/med-tracker/commit/28d6711f813aed393a38cda352bf2c4d744eb186))
+* consolidate action buttons in card footers ([a207295](https://github.com/damacus/med-tracker/commit/a207295eaaba7f659caaf225c0ce4d8fd4bee8a8))
+* **domain:** simplify person_type model ([f816104](https://github.com/damacus/med-tracker/commit/f816104a04987b788edc9b92cd854eaf2e448a01))
+* Enable self-management of OTC medicines and admin user creation with Rodauth accounts ([#176](https://github.com/damacus/med-tracker/issues/176)) ([b9519d8](https://github.com/damacus/med-tracker/commit/b9519d86ff72fcd31ce0921a93e52303133cbb7e))
+* extract timing restrictions logic into reusable concern ([#129](https://github.com/damacus/med-tracker/issues/129)) ([a207295](https://github.com/damacus/med-tracker/commit/a207295eaaba7f659caaf225c0ce4d8fd4bee8a8))
+* implement comprehensive authorization system with Pundit and passkey authentication ([#76](https://github.com/damacus/med-tracker/issues/76)) ([f816104](https://github.com/damacus/med-tracker/commit/f816104a04987b788edc9b92cd854eaf2e448a01))
+* implement ECS logging format for production observability ([fd77f01](https://github.com/damacus/med-tracker/commit/fd77f014eff511e801754721ad0ae8d6a58d3ee3))
+* implement medicine stock tracking and visibility ([6db5f17](https://github.com/damacus/med-tracker/commit/6db5f17b4daab3ce2dded1b7a07566dba48397dd))
+* Implement user invitation system (INVITE-001, INVITE-002) ([#226](https://github.com/damacus/med-tracker/issues/226)) ([4d5fe62](https://github.com/damacus/med-tracker/commit/4d5fe6208b5eac7e6a9810edfcf5e244907ea239))
+* improve people page navigation and carer assignment ([#206](https://github.com/damacus/med-tracker/issues/206)) ([a79026e](https://github.com/damacus/med-tracker/commit/a79026e0252bac002ab09ca823038a4ad8759e0d))
+* Improve prescription form selects and calendar picker ([#184](https://github.com/damacus/med-tracker/issues/184)) ([8b4a448](https://github.com/damacus/med-tracker/commit/8b4a4482acc9f81fb09d9c6288aa6b44f4e1557d))
+* **medications:** add non-prescription medication support ([f816104](https://github.com/damacus/med-tracker/commit/f816104a04987b788edc9b92cd854eaf2e448a01))
+* move countdown display to prominent notice section ([a207295](https://github.com/damacus/med-tracker/commit/a207295eaaba7f659caaf225c0ce4d8fd4bee8a8))
+* OpenTelemetry observability ([#170](https://github.com/damacus/med-tracker/issues/170)) ([563b54b](https://github.com/damacus/med-tracker/commit/563b54bb76be3405a2199314034dcb4e56678fcc))
+* reorganise person page layout ([a207295](https://github.com/damacus/med-tracker/commit/a207295eaaba7f659caaf225c0ce4d8fd4bee8a8))
+* **security:** comprehensive security hardening pass ([#173](https://github.com/damacus/med-tracker/issues/173)) ([097776c](https://github.com/damacus/med-tracker/commit/097776cb0f986b7b1dfc53bc8436430d0dac5e79))
+* Simplify and refactor database schema ([#9](https://github.com/damacus/med-tracker/issues/9)) ([3aab84f](https://github.com/damacus/med-tracker/commit/3aab84f93a81817e0530d6e2b6c01f246adaf6ce))
+* **ui:** add authorisation-aware UI components ([f816104](https://github.com/damacus/med-tracker/commit/f816104a04987b788edc9b92cd854eaf2e448a01))
+* **ui:** Standardize forms with RubyUI components and optimize mobile dashboard ([#186](https://github.com/damacus/med-tracker/issues/186)) ([e07d66c](https://github.com/damacus/med-tracker/commit/e07d66cc8309dc50215fad40f3ffd975cba237be))
+* update coding-agent workflow to use Beads (bd) ([f795593](https://github.com/damacus/med-tracker/commit/f795593d68e8aadc684564a762c4f79101e21804))
+* User Management ([#148](https://github.com/damacus/med-tracker/issues/148)) ([27aac4c](https://github.com/damacus/med-tracker/commit/27aac4c3381707d9af6c9c27eafcdb6e3b3aeb6c))
+
+
+### Bug Fixes
+
+* Add tests ([#20](https://github.com/damacus/med-tracker/issues/20)) ([b72cb79](https://github.com/damacus/med-tracker/commit/b72cb7959700326eba247618ff81ab0fc75dcf4b))
+* **auth:** fix critical authorisation policy bugs ([f816104](https://github.com/damacus/med-tracker/commit/f816104a04987b788edc9b92cd854eaf2e448a01))
+* **auth:** resolve authorization test failures and fixture issues ([#102](https://github.com/damacus/med-tracker/issues/102)) ([2068e37](https://github.com/damacus/med-tracker/commit/2068e37d84dd6df01ec7b6539982d7afdc3767ac))
+* correct heading hierarchy for screen reader accessibility (A11Y-012) ([#199](https://github.com/damacus/med-tracker/issues/199)) ([9c47315](https://github.com/damacus/med-tracker/commit/9c47315feb324f0243474222a2e6a8eafa336591))
+* correct stock tracking tests to use existing medicine ([bafa5f0](https://github.com/damacus/med-tracker/commit/bafa5f0754d64cbe2beb74c892da65d301efa3ab))
+* **deps:** update playwright monorepo to v1.56.1 ([#77](https://github.com/damacus/med-tracker/issues/77)) ([4583160](https://github.com/damacus/med-tracker/commit/4583160897f439cfbc290d8a42b7ba4235e98dd8))
+* **deps:** update playwright monorepo to v1.57.0 ([#153](https://github.com/damacus/med-tracker/issues/153)) ([d8dd871](https://github.com/damacus/med-tracker/commit/d8dd8719d16ba59ccd11a05b40e8ee4bdd7b1005))
+* disable Rails/SkipsModelValidations for atomic stock updates ([bc20cb0](https://github.com/damacus/med-tracker/commit/bc20cb012ad57ffd4189ebf424e43219a0dcdf01))
+* guard EcsLogging::Logger for asset precompilation ([#391](https://github.com/damacus/med-tracker/issues/391)) ([5ff5bc7](https://github.com/damacus/med-tracker/commit/5ff5bc710f54735909615e2f1fd790f9f8a2dab8))
+* Person medicine policy ([#99](https://github.com/damacus/med-tracker/issues/99)) ([380d99f](https://github.com/damacus/med-tracker/commit/380d99fc2b64ad2ec2bea1534df7767046b01535))
+* remove decimal places from all dosage displays ([a207295](https://github.com/damacus/med-tracker/commit/a207295eaaba7f659caaf225c0ce4d8fd4bee8a8))
+* remove stale PID file before starting Rails server in dev ([#388](https://github.com/damacus/med-tracker/issues/388)) ([e32e17b](https://github.com/damacus/med-tracker/commit/e32e17bb63650c0223380db6c417a3590c6938b9))
+* resolve merge conflicts in audit logs components and specs ([#182](https://github.com/damacus/med-tracker/issues/182)) ([1c20380](https://github.com/damacus/med-tracker/commit/1c20380f37b93134757ce7cb0aa7ca25fe0e9195))
+* **security:** change default user role from administrator to parent ([f816104](https://github.com/damacus/med-tracker/commit/f816104a04987b788edc9b92cd854eaf2e448a01))
+* update AlertDialog cancel buttons to use Button component ([a207295](https://github.com/damacus/med-tracker/commit/a207295eaaba7f659caaf225c0ce4d8fd4bee8a8))
+* use blank? instead of unless present? in medication_take ([a725912](https://github.com/damacus/med-tracker/commit/a7259121f3c9c5f6459e057e881ae53b491e3882))
+* use named subject and fix line length in medicine spec ([74ba483](https://github.com/damacus/med-tracker/commit/74ba4839b75539df9c0fc150df5e542b13190570))
+
+## Changelog
