@@ -94,13 +94,13 @@ module Components
       end
 
       def take_now_badge_classes
-        'inline-flex items-center justify-center rounded-full text-xs font-medium transition-colors ' \
-          'px-3 py-1 bg-green-100 text-green-700 hover:bg-green-200'
+        'inline-flex items-center justify-center rounded-full text-sm font-medium transition-colors ' \
+          'min-h-[44px] min-w-[44px] px-4 py-2 bg-green-100 text-green-700 hover:bg-green-200'
       end
 
       def delete_badge_classes
-        'inline-flex items-center justify-center rounded-full text-xs font-medium transition-colors ' \
-          'px-3 py-1 bg-red-100 text-red-700 hover:bg-red-200'
+        'inline-flex items-center justify-center rounded-full text-sm font-medium transition-colors ' \
+          'min-h-[44px] min-w-[44px] px-4 py-2 bg-red-100 text-red-700 hover:bg-red-200'
       end
 
       def render_prescriptions_table
