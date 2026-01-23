@@ -2,9 +2,22 @@
 # Development Environment Tasks
 # All tasks operate on the 'dev' environment (docker-compose.dev.yml)
 # Usage: task dev:<command>
-version: '3'
+version: "3"
 
 tasks:
+  build:
+    desc: Build development Docker images
+    summary: |
+      Build Docker images for development environment.
+      Use NO_CACHE=true to force a fresh build.
+      Usage: task dev:build
+      Usage: task dev:build NO_CACHE=true
+    cmds:
+      - task: :internal:build
+        vars:
+          ENVIRONMENT: dev
+          NO_CACHE: '{{ .NO_CACHE | default "" }}'
+
   up:
     desc: Start development server
     summary: |
@@ -49,7 +62,7 @@ tasks:
       - task: :internal:stop
         vars:
           ENVIRONMENT: dev
-      - docker compose -f docker-compose.dev.yml down -v  # Remove volumes (drops database)
+      - docker compose -p medtracker-dev -f docker-compose.dev.yml down -v # Remove volumes (drops database)
       - task: :internal:build
         vars:
           ENVIRONMENT: dev
@@ -60,7 +73,7 @@ tasks:
         vars:
           ENVIRONMENT: dev
           SERVICE: web
-          COMMAND: 'rails db:create db:migrate'
+          COMMAND: "rails db:create db:migrate"
       - task: :internal:seed
         vars:
           ENVIRONMENT: dev
@@ -75,9 +88,9 @@ tasks:
       Press Ctrl+C to stop following.
       Usage: task dev:logs
     cmds:
-    - task: :internal:logs
-      vars:
-        ENVIRONMENT: dev
+      - task: :internal:logs
+        vars:
+          ENVIRONMENT: dev
 
   open-ui:
     desc: Open development server UI

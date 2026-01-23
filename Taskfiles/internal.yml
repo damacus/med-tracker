@@ -2,7 +2,7 @@
 # Internal Tasks - Reusable Docker Compose operations
 # These tasks are marked 'internal: true' and should only be called by other taskfiles
 # They require ENVIRONMENT variable (dev or test) to determine which docker-compose file to use
-version: '3'
+version: "3"
 
 tasks:
   # Execute arbitrary commands in Docker containers
@@ -13,11 +13,11 @@ tasks:
     desc: Run arbitrary command in Docker container
     internal: true
     vars:
-      ENVIRONMENT: {ref: .ENVIRONMENT}
+      ENVIRONMENT: { ref: .ENVIRONMENT }
       SERVICE: '{{ if eq .ENVIRONMENT "test" }}web-test{{ else if eq .ENVIRONMENT "dev" }}web-dev{{ else }}web{{ end }}'
-      COMMAND: {ref: .COMMAND}
+      COMMAND: { ref: .COMMAND }
     cmds:
-      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml run --rm --remove-orphans {{ .SERVICE }} {{ .COMMAND }}
+      - docker compose -p medtracker-{{ .ENVIRONMENT }} -f docker-compose.{{ .ENVIRONMENT }}.yml run --rm {{ .SERVICE }} {{ .COMMAND }}
 
   # Build Docker images for specified environment
   # Required vars: ENVIRONMENT
@@ -27,10 +27,10 @@ tasks:
     desc: Build Docker images
     internal: true
     vars:
-      ENVIRONMENT: {ref: .ENVIRONMENT}
+      ENVIRONMENT: { ref: .ENVIRONMENT }
       NO_CACHE: '{{ .NO_CACHE | default "" }}'
     cmds:
-      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml build {{ if .NO_CACHE }}--no-cache{{ end }}
+      - docker compose -p medtracker-{{ .ENVIRONMENT }} -f docker-compose.{{ .ENVIRONMENT }}.yml build {{ if .NO_CACHE }}--no-cache{{ end }}
 
   # Start Docker containers in detached mode
   # Required vars: ENVIRONMENT
@@ -40,9 +40,9 @@ tasks:
     desc: Start Docker containers
     internal: true
     vars:
-      ENVIRONMENT: {ref: .ENVIRONMENT}
+      ENVIRONMENT: { ref: .ENVIRONMENT }
     cmds:
-      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml up -d --remove-orphans
+      - docker compose -p medtracker-{{ .ENVIRONMENT }} -f docker-compose.{{ .ENVIRONMENT }}.yml up -d
       - echo "✓ {{ .ENVIRONMENT | title }} environment started"
       - echo "Visit http://localhost:3000 to see the app"
 
@@ -54,9 +54,9 @@ tasks:
     desc: Stop and remove Docker containers
     internal: true
     vars:
-      ENVIRONMENT: {ref: .ENVIRONMENT}
+      ENVIRONMENT: { ref: .ENVIRONMENT }
     cmds:
-      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml down
+      - docker compose -p medtracker-{{ .ENVIRONMENT }} -f docker-compose.{{ .ENVIRONMENT }}.yml down
       - echo "✓ {{ .ENVIRONMENT | title }} environment stopped"
 
   # Follow logs from Docker containers
@@ -67,17 +67,17 @@ tasks:
     desc: Follow container logs
     internal: true
     vars:
-      ENVIRONMENT: {ref: .ENVIRONMENT}
+      ENVIRONMENT: { ref: .ENVIRONMENT }
     cmds:
-      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml logs -f
+      - docker compose -p medtracker-{{ .ENVIRONMENT }} -f docker-compose.{{ .ENVIRONMENT }}.yml logs -f
 
   ps:
     desc: Get current status of Docker Compose Stack
     internal: true
     vars:
-      ENVIRONMENT: {ref: .ENVIRONMENT}
+      ENVIRONMENT: { ref: .ENVIRONMENT }
     cmds:
-      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml ps
+      - docker compose -p medtracker-{{ .ENVIRONMENT }} -f docker-compose.{{ .ENVIRONMENT }}.yml ps
 
   seed:
     desc: Seed database with fixtures
@@ -88,20 +88,20 @@ tasks:
       Example: task internal:seed ENVIRONMENT=test
     internal: true
     vars:
-      ENVIRONMENT: {ref: .ENVIRONMENT}
+      ENVIRONMENT: { ref: .ENVIRONMENT }
     cmds:
       - echo "Seeding {{ .ENVIRONMENT }} database..."
       - task: run
         vars:
-          ENVIRONMENT: {ref: .ENVIRONMENT}
-          COMMAND: 'rails db:seed'
+          ENVIRONMENT: { ref: .ENVIRONMENT }
+          COMMAND: "rails db:seed"
       - defer: echo "✓ Database seeding completed"
 
   open-ui:
     desc: Open development server UI
     internal: true
     vars:
-      ENVIRONMENT: {ref: .ENVIRONMENT}
+      ENVIRONMENT: { ref: .ENVIRONMENT }
     cmds:
       - |
         PORT=$(docker ps --format "{{.Ports}}" -f name=med-tracker-web | grep -oE '0\.0\.0\.0:[0-9]+' | cut -d: -f2)

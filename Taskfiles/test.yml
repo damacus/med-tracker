@@ -1,17 +1,30 @@
 ---
-version: '3'
+version: "3"
 
 tasks:
+  build:
+    desc: Build test Docker images
+    summary: |
+      Build Docker images for test environment.
+      Use NO_CACHE=true to force a fresh build.
+      Usage: task test:build
+      Usage: task test:build NO_CACHE=true
+    cmds:
+      - task: :internal:build
+        vars:
+          ENVIRONMENT: test
+          NO_CACHE: '{{ .NO_CACHE | default "" }}'
+
   up:
     desc: Start test server
     summary: |
-        Start the test server
-        Creates and starts all containers in detached mode
-        Database data persists between restarts
-        Usage: task test:up
+      Start the test server
+      Creates and starts all containers in detached mode
+      Database data persists between restarts
+      Usage: task test:up
     cmds:
       - task: :internal:up
-        vars: {ENVIRONMENT: test}
+        vars: { ENVIRONMENT: test }
 
   seed:
     desc: Seed test database with fixtures
@@ -22,7 +35,7 @@ tasks:
       Usage: task test:seed
     cmds:
       - task: :internal:seed
-        vars: {ENVIRONMENT: test}
+        vars: { ENVIRONMENT: test }
 
   stop:
     desc: Stop test server
@@ -32,7 +45,7 @@ tasks:
       Usage: task test:stop
     cmds:
       - task: :internal:stop
-        vars: {ENVIRONMENT: test}
+        vars: { ENVIRONMENT: test }
 
   ps:
     desc: List current status of Docker Compose Stack
@@ -41,7 +54,7 @@ tasks:
       Usage: task test:ps
     cmds:
       - task: :internal:ps
-        vars: {ENVIRONMENT: test}
+        vars: { ENVIRONMENT: test }
 
   rebuild:
     desc: Rebuild test server (drops database)
@@ -56,19 +69,19 @@ tasks:
       Usage: task test:rebuild
     cmds:
       - task: :internal:stop
-        vars: {ENVIRONMENT: test}
-      - docker compose -f docker-compose.test.yml down -v  # Remove volumes (drops database)
+        vars: { ENVIRONMENT: test }
+      - docker compose -p medtracker-test -f docker-compose.test.yml down -v # Remove volumes (drops database)
       - task: :internal:build
-        vars: {ENVIRONMENT: test}
+        vars: { ENVIRONMENT: test }
       - task: :internal:up
-        vars: {ENVIRONMENT: test}
+        vars: { ENVIRONMENT: test }
       - task: :internal:run
         vars:
           ENVIRONMENT: test
           SERVICE: web
-          COMMAND: 'rails db:create db:migrate'
+          COMMAND: "rails db:create db:migrate"
       - task: :internal:seed
-        vars: {ENVIRONMENT: test}
+        vars: { ENVIRONMENT: test }
 
   logs:
     desc: View test server logs
@@ -78,4 +91,4 @@ tasks:
       Usage: task test:logs
     cmds:
       - task: :internal:logs
-        vars: {ENVIRONMENT: test}
+        vars: { ENVIRONMENT: test }

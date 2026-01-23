@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: medtracker_password
       POSTGRES_DB: medtracker_production
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - medtracker_prod_postgres:/var/lib/postgresql/data
     ports:
       - "5432"
     healthcheck:
@@ -31,7 +31,7 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - storage_data:/rails/storage
+      - medtracker_prod_storage:/rails/storage
       - ./config/credentials/production.key:/app/config/credentials/production.key:ro
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:3000/up || exit 1"]
@@ -41,5 +41,9 @@ services:
       start_period: 60s
 
 volumes:
-  postgres_data:
-  storage_data:
+  medtracker_prod_postgres:
+  medtracker_prod_storage:
+
+networks:
+  default:
+    name: medtracker-prod-network
