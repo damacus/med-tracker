@@ -14,10 +14,6 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
-    networks:
-      default:
-        aliases:
-          - db-test
 
   web-test:
     build:
@@ -35,12 +31,16 @@ services:
       - "3001:3000"
     volumes:
       - .:/app
-      - bundle_cache:/usr/local/bundle
-      - node_modules:/app/node_modules
+      - medtracker_test_bundle:/usr/local/bundle
+      - medtracker_test_node_modules:/app/node_modules
       - ./tmp/capybara:/app/tmp/capybara
     stdin_open: true
     tty: true
 
 volumes:
-  bundle_cache:
-  node_modules:
+  medtracker_test_bundle:
+  medtracker_test_node_modules:
+
+networks:
+  default:
+    name: medtracker-test-network

@@ -7,6 +7,19 @@ vars:
   ENVIRONMENT: dev
 
 tasks:
+  build:
+    desc: Build development Docker images
+    summary: |
+      Build Docker images for development environment.
+      Use NO_CACHE=true to force a fresh build.
+      Usage: task dev:build
+      Usage: task dev:build NO_CACHE=true
+    cmds:
+      - task: :internal:build
+        vars:
+          ENVIRONMENT: dev
+          NO_CACHE: '{{ .NO_CACHE | default "" }}'
+
   up:
     desc: Start development server
     summary: |
