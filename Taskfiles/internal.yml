@@ -12,7 +12,8 @@ tasks:
   run:
     desc: Run arbitrary command in Docker container
     internal: true
-    requires: { vars: ENVIRONMENT, COMMAND }
+    requires:
+      vars: [ENVIRONMENT, COMMAND]
     vars:
       SERVICE: '{{ if eq .ENVIRONMENT "test" }}web-test{{ else if eq .ENVIRONMENT "dev" }}web-dev{{ else }}web{{ end }}'
     cmds:
@@ -26,7 +27,8 @@ tasks:
   build:
     desc: Build Docker images
     internal: true
-    requires: { vars: ENVIRONMENT }
+    requires:
+      vars: [ENVIRONMENT]
     sources:
       - app/**/*
       - config/**/*
@@ -45,7 +47,8 @@ tasks:
   up:
     desc: Start Docker containers
     internal: true
-    requires: { vars: ENVIRONMENT }
+    requires:
+      vars: [ENVIRONMENT]
     cmds:
       - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml up -d --remove-orphans
       - echo "✓ {{ .ENVIRONMENT | title }} environment started"
@@ -58,7 +61,8 @@ tasks:
   stop:
     desc: Stop and remove Docker containers
     internal: true
-    requires: { vars: ENVIRONMENT }
+    requires:
+      vars: [ENVIRONMENT]
     cmds:
       - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml down
       - echo "✓ {{ .ENVIRONMENT | title }} environment stopped"
@@ -69,14 +73,16 @@ tasks:
   logs:
     desc: Follow container logs
     internal: true
-    requires: { vars: ENVIRONMENT }
+    requires:
+      vars: [ENVIRONMENT]
     cmds:
       - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml logs -f
 
   ps:
     desc: Get current status of Docker Compose Stack
     internal: true
-    requires: { vars: ENVIRONMENT }
+    requires:
+      vars: [ENVIRONMENT]
     cmds:
       - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml ps
 
@@ -88,7 +94,8 @@ tasks:
       Loads data from db/seeds.rb
       Example: task internal:seed ENVIRONMENT=test
     internal: true
-    requires: { vars: ENVIRONMENT }
+    requires:
+      vars: [ENVIRONMENT]
     cmds:
       - echo "Seeding {{ .ENVIRONMENT }} database..."
       - task: run
@@ -100,7 +107,8 @@ tasks:
   open-ui:
     desc: Open development server UI
     internal: true
-    requires: { vars: ENVIRONMENT }
+    requires:
+      vars: [ENVIRONMENT]
     cmds:
       - |
         PORT=$(docker ps --format "{{.Ports}}" -f name=med-tracker-web | grep -oE '0\.0\.0\.0:[0-9]+' | cut -d: -f2)
