@@ -26,17 +26,17 @@ module RubyUI
     def size_classes
       if @icon
         case @size
-        when :sm then 'h-6 w-6'
-        when :md then 'h-9 w-9'
-        when :lg then 'h-10 w-10'
-        when :xl then 'h-12 w-12'
+        when :sm then 'h-8 w-8 min-h-[32px] min-w-[32px]'
+        when :md then 'h-9 w-9 min-h-[36px] min-w-[36px]'
+        when :lg then 'h-10 w-10 min-h-[40px] min-w-[40px]'
+        when :xl then 'h-12 w-12 min-h-[48px] min-w-[48px]'
         end
       else
         case @size
-        when :sm then 'px-3 py-1.5 h-8 text-xs'
-        when :md then 'px-4 py-2 h-9 text-sm'
-        when :lg then 'px-4 py-2 h-10 text-base'
-        when :xl then 'px-6 py-3 h-12 text-base'
+        when :sm then 'px-3 py-1.5 h-8 min-h-[32px] text-xs'
+        when :md then 'px-4 py-2 h-9 min-h-[36px] text-sm'
+        when :lg then 'px-4 py-2 h-10 min-h-[40px] text-base'
+        when :xl then 'px-6 py-3 h-12 min-h-[48px] text-base'
         end
       end
     end
@@ -107,7 +107,7 @@ module RubyUI
     end
 
     def default_attrs
-      { type: 'button', class: default_classes }
+      { class: default_classes }
     end
   end
 end

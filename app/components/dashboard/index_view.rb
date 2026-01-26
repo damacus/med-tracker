@@ -85,12 +85,12 @@ module Components
 
       def button_primary_classes
         'inline-flex items-center justify-center rounded-md font-medium transition-colors ' \
-          'px-4 py-2 h-9 text-sm bg-primary text-primary-foreground shadow hover:bg-primary/90'
+          'px-4 py-2 h-9 min-h-[36px] text-sm bg-primary text-primary-foreground shadow hover:bg-primary/90'
       end
 
       def button_secondary_classes
         'inline-flex items-center justify-center rounded-md font-medium transition-colors ' \
-          'px-4 py-2 h-9 text-sm bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80'
+          'px-4 py-2 h-9 min-h-[36px] text-sm bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80'
       end
 
       def take_now_badge_classes
