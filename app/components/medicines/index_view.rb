@@ -3,6 +3,8 @@
 module Components
   module Medicines
     class IndexView < Components::Base
+      include Phlex::Rails::Helpers::FormWith
+
       attr_reader :medicines
 
       def initialize(medicines:)
@@ -84,12 +86,29 @@ module Components
           Separator(orientation: :vertical)
           Link(href: edit_medicine_path(medicine), variant: :ghost, size: :sm) { 'Edit' }
           Separator(orientation: :vertical)
-          Link(
-            href: medicine_path(medicine),
-            variant: :destructive,
-            size: :sm,
-            data: { turbo_method: :delete, turbo_confirm: 'Are you sure?' }
-          ) { 'Delete' }
+          render_delete_dialog(medicine)
+        end
+      end
+
+      def render_delete_dialog(medicine)
+        AlertDialog do
+          AlertDialogTrigger do
+            Button(variant: :destructive, size: :sm) { 'Delete' }
+          end
+          AlertDialogContent do
+            AlertDialogHeader do
+              AlertDialogTitle { 'Delete Medicine' }
+              AlertDialogDescription do
+                "Are you sure you want to delete #{medicine.name}? This action cannot be undone."
+              end
+            end
+            AlertDialogFooter do
+              AlertDialogCancel { 'Cancel' }
+              form_with(url: medicine_path(medicine), method: :delete, class: 'inline') do
+                Button(variant: :destructive, type: :submit) { 'Delete' }
+              end
+            end
+          end
         end
       end
     end

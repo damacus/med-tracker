@@ -127,15 +127,34 @@ module Components
       end
 
       def render_delete_link(prescription)
-        Link(
-          href: person_prescription_path(prescription.person, prescription),
-          variant: :destructive,
-          data: {
-            turbo_method: :delete,
-            turbo_confirm: 'Are you sure you want to delete this prescription?',
-            test_id: "delete-prescription-#{prescription.id}"
-          }
-        ) { 'Delete' }
+        AlertDialog do
+          AlertDialogTrigger do
+            Button(
+              variant: :destructive,
+              size: :sm,
+              data: { test_id: "delete-prescription-#{prescription.id}" }
+            ) { 'Delete' }
+          end
+          AlertDialogContent do
+            AlertDialogHeader do
+              AlertDialogTitle { 'Delete Prescription' }
+              AlertDialogDescription do
+                "Are you sure you want to delete this prescription for #{prescription.medicine.name}? " \
+                  'This action cannot be undone.'
+              end
+            end
+            AlertDialogFooter do
+              AlertDialogCancel { 'Cancel' }
+              form_with(
+                url: person_prescription_path(prescription.person, prescription),
+                method: :delete,
+                class: 'inline'
+              ) do
+                Button(variant: :destructive, type: :submit) { 'Delete' }
+              end
+            end
+          end
+        end
       end
 
       def can_delete_prescription?(prescription)

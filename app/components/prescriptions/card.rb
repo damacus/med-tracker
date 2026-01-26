@@ -190,20 +190,14 @@ module Components
               end
             end
             AlertDialogFooter do
-              Button(
-                type: :button,
-                variant: :outline,
-                data: { action: 'click->ruby-ui--alert-dialog#close' }
-              ) { 'Cancel' }
-              Link(
-                href: person_prescription_path(person, prescription),
-                variant: :destructive,
-                data: {
-                  turbo_method: :delete,
-                  turbo_confirm: 'Are you sure you want to delete this prescription? This action cannot be undone.',
-                  action: 'click->ruby-ui--alert-dialog#close'
-                }
-              ) { 'Delete' }
+              AlertDialogCancel { 'Cancel' }
+              form_with(
+                url: person_prescription_path(person, prescription),
+                method: :delete,
+                class: 'inline'
+              ) do
+                Button(variant: :destructive, type: :submit) { 'Delete' }
+              end
             end
           end
         end
