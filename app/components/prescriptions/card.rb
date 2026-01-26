@@ -129,9 +129,19 @@ module Components
 
       def render_take_medicine_button
         if prescription.can_take_now?
-          div(class: 'relative inline-block prescription__take-hover-card') do
-            Button(variant: :primary, size: :sm, class: 'prescription__take-trigger') { '💊 Take' }
-            render_take_medicine_form
+          form_with(
+            url: take_medicine_person_prescription_path(person, prescription),
+            method: :post,
+            class: 'inline-block'
+          ) do
+            Button(
+              type: :submit,
+              variant: :primary,
+              size: :md,
+              class: 'inline-flex items-center gap-1'
+            ) do
+              plain '💊 Take'
+            end
           end
         else
           render_disabled_button_with_countdown
@@ -139,33 +149,7 @@ module Components
       end
 
       def render_disabled_button_with_countdown
-        Button(variant: :secondary, size: :sm, disabled: true) { '💊 Take' }
-      end
-
-      def render_take_medicine_form
-        form_with(
-          url: take_medicine_person_prescription_path(person, prescription),
-          method: :post,
-          class: 'prescription__take-form'
-        ) do |f|
-          div(class: 'prescription__take-form-group') do
-            render f.label(:amount_ml, 'Amount (ml)', class: 'text-sm font-medium text-slate-700')
-            render f.select(
-              :amount_ml,
-              dosage_options,
-              { selected: prescription.dosage.amount },
-              class: 'w-full px-3 py-2 border border-slate-300 rounded-md text-sm ' \
-                     'focus:outline-none focus:ring-2 focus:ring-primary'
-            )
-            Button(type: :submit, variant: :primary, size: :md, class: 'w-full mt-3') { 'Take Now' }
-          end
-        end
-      end
-
-      def dosage_options
-        prescription.medicine.dosages.map do |dosage|
-          ["#{dosage.amount.to_i} #{dosage.unit} - #{dosage.description}", dosage.amount]
-        end
+        Button(variant: :secondary, size: :md, disabled: true) { '💊 Take' }
       end
 
       def render_prescription_actions
