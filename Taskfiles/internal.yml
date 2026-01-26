@@ -23,18 +23,12 @@ tasks:
   # Required vars: ENVIRONMENT
   # Optional vars: NO_CACHE (set to "true" to force rebuild)
   # Example: task internal:build ENVIRONMENT=test NO_CACHE=true
-  # Example: task internal:build ENVIRONMENT=dev --watch (to watch for changes)
   build:
     desc: Build Docker images
+    silent: false
     internal: true
     requires:
       vars: [ENVIRONMENT]
-    sources:
-      - app/**/*
-      - config/**/*
-      - lib/**/*
-      - Gemfile
-      - Gemfile.lock
     vars:
       NO_CACHE: '{{ .NO_CACHE | default "" }}'
     cmds:

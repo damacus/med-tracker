@@ -10,6 +10,11 @@ tasks:
     summary: |
       Start the development server with all services running in detached mode.
       Database data persists between restarts.
+
+      File changes are automatically synced via bind mount (.:/app).
+      Code changes in app/, config/, lib/ are immediately reflected.
+      For Gemfile changes, rebuild with: task dev:build && task dev:up
+
       Usage: task dev:up
     cmds:
       - task: :internal:up
@@ -42,9 +47,8 @@ tasks:
     desc: Build development Docker images
     summary: |
       Build Docker images for the development environment.
-      Use --watch flag to automatically rebuild on file changes.
+      For automatic rebuilds on file changes, use 'task dev:watch' instead.
       Usage: task dev:build
-      Usage: task dev:build --watch
     cmds:
       - task: :internal:build
         vars:
