@@ -50,14 +50,6 @@ tasks:
           COMMAND: "bundle exec rspec --format json"
       - cmd: bd ready
 
-  test-rebuild:
-    desc: Rebuild test server (drops database)
-    summary: |
-      Rebuild test environment and run tests (fresh database)
-      Usage: task test-rebuild
-    cmds:
-      - task: test:rebuild
-
   rubocop:
     desc: Run RuboCop linter (optionally with autocorrect)
     summary: |

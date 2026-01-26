@@ -184,10 +184,7 @@ module Views
           h3(class: 'text-sm font-medium text-slate-700') { 'Or sign in with' }
           form(action: view_context.rodauth.omniauth_request_path(:google_oauth2), method: 'post', data: { turbo: 'false' }) do
             input(type: 'hidden', name: 'authenticity_token', value: view_context.form_authenticity_token)
-            button(
-              type: 'submit',
-              class: 'flex w-full items-center justify-center gap-3 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2'
-            ) do
+            render RubyUI::Button.new(type: :submit, variant: :outline, size: :xl, class: 'w-full gap-3') do
               google_icon
               span { 'Continue with Google' }
             end
