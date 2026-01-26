@@ -103,7 +103,7 @@ module Views
             p(class: 'text-sm text-slate-600 mt-1') { description }
           end
           div(class: 'ml-4') do
-            render RubyUI::Button.new(
+            render RubyUI::Link.new(
               variant: variant,
               size: :sm,
               href: href

@@ -80,11 +80,11 @@ module Components
 
       def render_medicine_actions(medicine)
         div(class: 'flex h-5 items-center space-x-4 text-sm') do
-          Button(href: medicine_path(medicine), variant: :ghost, size: :sm) { 'View' }
+          Link(href: medicine_path(medicine), variant: :ghost, size: :sm) { 'View' }
           Separator(orientation: :vertical)
-          Button(href: edit_medicine_path(medicine), variant: :ghost, size: :sm) { 'Edit' }
+          Link(href: edit_medicine_path(medicine), variant: :ghost, size: :sm) { 'Edit' }
           Separator(orientation: :vertical)
-          Button(
+          Link(
             href: medicine_path(medicine),
             variant: :destructive,
             size: :sm,
