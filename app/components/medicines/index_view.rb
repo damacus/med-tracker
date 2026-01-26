@@ -3,6 +3,8 @@
 module Components
   module Medicines
     class IndexView < Components::Base
+      include Phlex::Rails::Helpers::FormWith
+
       attr_reader :medicines
 
       def initialize(medicines:)
@@ -11,7 +13,7 @@ module Components
       end
 
       def view_template
-        div(class: 'container mx-auto px-4 py-8', data: { testid: 'medicines-list' }) do
+        div(class: 'container mx-auto px-4 py-8 pb-24 md:pb-8', data: { testid: 'medicines-list' }) do
           render_header
           render_medicines_grid
         end
@@ -80,21 +82,34 @@ module Components
 
       def render_medicine_actions(medicine)
         div(class: 'flex h-5 items-center space-x-4 text-sm') do
-          Link(href: medicine_path(medicine), variant: :link) { 'View' }
+          Link(href: medicine_path(medicine), variant: :ghost, size: :sm) { 'View' }
           Separator(orientation: :vertical)
-          Link(href: edit_medicine_path(medicine), variant: :link) { 'Edit' }
+          Link(href: edit_medicine_path(medicine), variant: :ghost, size: :sm) { 'Edit' }
           Separator(orientation: :vertical)
-          Link(
-            href: medicine_path(medicine),
-            variant: :destructive,
-            data: { turbo_method: :delete, turbo_confirm: 'Are you sure?' }
-          ) { 'Delete' }
+          render_delete_dialog(medicine)
         end
       end
 
-      def button_primary_classes
-        'inline-flex items-center justify-center rounded-md font-medium transition-colors ' \
-          'px-4 py-2 h-9 text-sm bg-primary text-primary-foreground shadow hover:bg-primary/90'
+      def render_delete_dialog(medicine)
+        AlertDialog do
+          AlertDialogTrigger do
+            Button(variant: :destructive, size: :sm) { 'Delete' }
+          end
+          AlertDialogContent do
+            AlertDialogHeader do
+              AlertDialogTitle { 'Delete Medicine' }
+              AlertDialogDescription do
+                "Are you sure you want to delete #{medicine.name}? This action cannot be undone."
+              end
+            end
+            AlertDialogFooter do
+              AlertDialogCancel { 'Cancel' }
+              form_with(url: medicine_path(medicine), method: :delete, class: 'inline') do
+                Button(variant: :destructive, type: :submit) { 'Delete' }
+              end
+            end
+          end
+        end
       end
     end
   end

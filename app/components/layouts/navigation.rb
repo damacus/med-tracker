@@ -85,16 +85,18 @@ module Components
 
       def render_mobile_navigation_links
         div(class: 'flex flex-col gap-2') do
-          link_to(medicines_path, class: 'flex items-center gap-2 px-2 py-1 text-lg font-semibold') do
-            render Icons::Pill.new(class: 'h-5 w-5')
+          render RubyUI::Link.new(href: medicines_path, variant: :ghost, size: :xl,
+                                  class: 'justify-start gap-4 px-4') do
+            render Icons::Pill.new(class: 'h-6 w-6')
             plain 'Medicines'
           end
-          link_to(people_path, class: 'flex items-center gap-2 px-2 py-1 text-lg font-semibold') do
-            render Icons::Users.new(class: 'h-5 w-5')
+          render RubyUI::Link.new(href: people_path, variant: :ghost, size: :xl, class: 'justify-start gap-4 px-4') do
+            render Icons::Users.new(class: 'h-6 w-6')
             plain 'People'
           end
-          link_to(medicine_finder_path, class: 'flex items-center gap-2 px-2 py-1 text-lg font-semibold') do
-            render Icons::Search.new(class: 'h-5 w-5')
+          render RubyUI::Link.new(href: medicine_finder_path, variant: :ghost, size: :xl,
+                                  class: 'justify-start gap-4 px-4') do
+            render Icons::Search.new(class: 'h-6 w-6')
             plain 'Medicine Finder'
           end
         end
@@ -102,21 +104,26 @@ module Components
 
       def render_mobile_auth_actions
         div(class: 'flex flex-col gap-2 w-full') do
-          link_to(profile_path, class: 'flex items-center gap-2 px-2 py-1 text-lg font-semibold') do
-            render Icons::User.new(class: 'h-5 w-5')
+          render RubyUI::Link.new(href: profile_path, variant: :ghost, size: :xl, class: 'justify-start gap-4 px-4') do
+            render Icons::User.new(class: 'h-6 w-6')
             plain 'Profile'
           end
           if user_is_admin?
-            link_to(admin_root_path, class: 'flex items-center gap-2 px-2 py-1 text-lg font-semibold') do
-              render Icons::Settings.new(class: 'h-5 w-5')
+            render RubyUI::Link.new(href: admin_root_path, variant: :ghost, size: :xl,
+                                    class: 'justify-start gap-4 px-4') do
+              render Icons::Settings.new(class: 'h-6 w-6')
               plain 'Administration'
             end
           end
-          button_to('/logout', method: :post,
-                               class: 'flex items-center gap-2 px-2 py-1 text-lg font-semibold text-destructive ' \
-                                      'w-full text-left') do
-            render Icons::LogOut.new(class: 'h-5 w-5')
-            plain 'Logout'
+          form(action: '/logout', method: 'post') do
+            input(type: 'hidden', name: 'authenticity_token', value: view_context.form_authenticity_token)
+            render RubyUI::Button.new(
+              type: :submit, variant: :ghost, size: :xl,
+              class: 'w-full justify-start gap-4 px-4 text-destructive hover:text-destructive'
+            ) do
+              render Icons::LogOut.new(class: 'h-6 w-6')
+              plain 'Logout'
+            end
           end
         end
       end

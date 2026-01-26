@@ -20,7 +20,7 @@ module Components
       end
 
       def view_template
-        div(class: 'container mx-auto px-4 py-8', data: { testid: 'dashboard' }) do
+        div(class: 'container mx-auto px-4 py-8 pb-24 md:pb-8', data: { testid: 'dashboard' }) do
           render_header
           render_stats_section
           render_prescriptions_table
@@ -37,14 +37,14 @@ module Components
       end
 
       def render_quick_actions
-        div(class: 'flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto') do
+        div(class: 'flex flex-row flex-wrap gap-2 sm:gap-3') do
           Link(
             href: url_helpers&.new_medicine_path || '#',
-            class: "#{button_primary_classes} w-full sm:w-auto justify-center min-h-[44px]"
+            class: "#{button_primary_classes} min-h-[44px]"
           ) { 'Add Medicine' }
           Link(
             href: url_helpers&.new_person_path || '#',
-            class: "#{button_secondary_classes} w-full sm:w-auto justify-center min-h-[44px]"
+            class: "#{button_secondary_classes} min-h-[44px]"
           ) { 'Add Person' }
         end
       end
@@ -85,22 +85,22 @@ module Components
 
       def button_primary_classes
         'inline-flex items-center justify-center rounded-md font-medium transition-colors ' \
-          'px-4 py-2 h-9 text-sm bg-primary text-primary-foreground shadow hover:bg-primary/90'
+          'px-4 py-2 h-9 min-h-[36px] text-sm bg-primary text-primary-foreground shadow hover:bg-primary/90'
       end
 
       def button_secondary_classes
         'inline-flex items-center justify-center rounded-md font-medium transition-colors ' \
-          'px-4 py-2 h-9 text-sm bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80'
+          'px-4 py-2 h-9 min-h-[36px] text-sm bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80'
       end
 
       def take_now_badge_classes
-        'inline-flex items-center justify-center rounded-full text-xs font-medium transition-colors ' \
-          'px-3 py-1 bg-green-100 text-green-700 hover:bg-green-200'
+        'inline-flex items-center justify-center rounded-full text-sm font-medium transition-colors ' \
+          'min-h-[44px] min-w-[44px] px-4 py-2 bg-green-100 text-green-700 hover:bg-green-200'
       end
 
       def delete_badge_classes
-        'inline-flex items-center justify-center rounded-full text-xs font-medium transition-colors ' \
-          'px-3 py-1 bg-red-100 text-red-700 hover:bg-red-200'
+        'inline-flex items-center justify-center rounded-full text-sm font-medium transition-colors ' \
+          'min-h-[44px] min-w-[44px] px-4 py-2 bg-red-100 text-red-700 hover:bg-red-200'
       end
 
       def render_prescriptions_table
@@ -180,18 +180,17 @@ module Components
             end
           end
 
-          # Actions at bottom with full-width Take Now button
-          div(class: 'mt-4 flex gap-2') do
+          # Actions at bottom with consistent button styling
+          div(class: 'mt-4 flex flex-wrap gap-2') do
             if url_helpers
               form_with(
                 url: url_helpers.prescription_medication_takes_path(prescription),
                 method: :post,
-                class: 'flex-1'
+                class: 'inline-block'
               ) do
                 Button(
                   type: :submit,
-                  variant: :primary,
-                  class: 'w-full min-h-[44px]',
+                  class: take_now_badge_classes,
                   data: { test_id: "take-medicine-#{prescription.id}" }
                 ) { 'Take Now' }
               end
@@ -295,16 +294,18 @@ module Components
 
             AlertDialogFooter do
               AlertDialogCancel { 'Cancel' }
-              Link(
-                href: url_helpers.person_prescription_path(prescription.person, prescription),
-                variant: :destructive,
-                data: {
-                  turbo_method: :delete,
-                  turbo_frame: '_top',
-                  test_id: "confirm-delete-#{prescription.id}",
-                  action: 'click->ruby-ui--alert-dialog#close'
-                }
-              ) { 'Delete' }
+              form_with(
+                url: url_helpers.person_prescription_path(prescription.person, prescription),
+                method: :delete,
+                class: 'inline',
+                data: { turbo_frame: '_top' }
+              ) do
+                Button(
+                  variant: :destructive,
+                  type: :submit,
+                  data: { test_id: "confirm-delete-#{prescription.id}" }
+                ) { 'Delete' }
+              end
             end
           end
         end

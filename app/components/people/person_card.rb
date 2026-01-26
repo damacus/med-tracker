@@ -81,16 +81,16 @@ module Components
         CardFooter(class: 'flex gap-2 flex-wrap') do
           Link(
             href: new_person_prescription_path(person),
-            variant: :link,
-            size: :sm,
+            variant: :primary,
+            size: :md,
             data: { turbo_stream: true }
           ) { 'Add Prescription' }
 
           if person.prescriptions.any?
             Link(
               href: person_path(person),
-              variant: :link,
-              size: :sm,
+              variant: :outline,
+              size: :md,
               data: { turbo_stream: true }
             ) { 'View Prescriptions' }
           end
@@ -103,7 +103,7 @@ module Components
         Link(
           href: new_admin_carer_relationship_path(patient_id: person.id),
           variant: :outline,
-          size: :sm,
+          size: :md,
           class: 'text-amber-700 border-amber-300 hover:bg-amber-50'
         ) { 'Assign Carer' }
       end

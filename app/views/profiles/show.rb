@@ -17,7 +17,7 @@ module Views
       end
 
       def view_template
-        div(class: 'container mx-auto px-4 py-8 max-w-4xl') do
+        div(class: 'container mx-auto px-4 py-8 pb-24 md:pb-8 max-w-4xl') do
           render_header
           render_profile_sections
         end
@@ -103,7 +103,7 @@ module Views
             p(class: 'text-sm text-slate-600 mt-1') { description }
           end
           div(class: 'ml-4') do
-            render RubyUI::Button.new(
+            render RubyUI::Link.new(
               variant: variant,
               size: :sm,
               href: href

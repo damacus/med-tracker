@@ -3,6 +3,8 @@
 # All tasks operate on the 'dev' environment (docker-compose.dev.yml)
 # Usage: task dev:<command>
 version: "3"
+vars:
+  ENVIRONMENT: dev
 
 tasks:
   build:
@@ -23,11 +25,14 @@ tasks:
     summary: |
       Start the development server with all services running in detached mode.
       Database data persists between restarts.
+
+      File changes are automatically synced via bind mount (.:/app).
+      Code changes in app/, config/, lib/ are immediately reflected.
+      For Gemfile changes, rebuild with: task dev:build && task dev:up
+
       Usage: task dev:up
     cmds:
       - task: :internal:up
-        vars:
-          ENVIRONMENT: dev
 
   seed:
     desc: Seed development database with fixtures
@@ -37,8 +42,6 @@ tasks:
       Usage: task dev:seed
     cmds:
       - task: :internal:seed
-        vars:
-          ENVIRONMENT: dev
 
   stop:
     desc: Stop development server
@@ -48,8 +51,15 @@ tasks:
       Usage: task dev:stop
     cmds:
       - task: :internal:stop
-        vars:
-          ENVIRONMENT: dev
+
+  build:
+    desc: Build development Docker images
+    summary: |
+      Build Docker images for the development environment.
+      For automatic rebuilds on file changes, use 'task dev:watch' instead.
+      Usage: task dev:build
+    cmds:
+      - task: :internal:build
 
   rebuild:
     desc: Rebuild development server (drops database)
@@ -60,26 +70,15 @@ tasks:
       Usage: task dev:rebuild
     cmds:
       - task: :internal:stop
-        vars:
-          ENVIRONMENT: dev
-      - docker compose -p medtracker-dev -f docker-compose.dev.yml down -v # Remove volumes (drops database)
+      - docker compose -f docker-compose.dev.yml down -v # Remove volumes (drops database)
       - task: :internal:build
-        vars:
-          ENVIRONMENT: dev
       - task: :internal:up
-        vars:
-          ENVIRONMENT: dev
       - task: :internal:run
         vars:
-          ENVIRONMENT: dev
           SERVICE: web
           COMMAND: "rails db:create db:migrate"
       - task: :internal:seed
-        vars:
-          ENVIRONMENT: dev
       - task: :internal:open-ui
-        vars:
-          ENVIRONMENT: dev
 
   logs:
     desc: View development server logs
@@ -89,8 +88,6 @@ tasks:
       Usage: task dev:logs
     cmds:
       - task: :internal:logs
-        vars:
-          ENVIRONMENT: dev
 
   open-ui:
     desc: Open development server UI
@@ -99,5 +96,3 @@ tasks:
       Usage: task dev:open-ui
     cmds:
       - task: :internal:open-ui
-        vars:
-          ENVIRONMENT: dev

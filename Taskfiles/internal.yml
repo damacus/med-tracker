@@ -12,12 +12,12 @@ tasks:
   run:
     desc: Run arbitrary command in Docker container
     internal: true
+    requires:
+      vars: [ENVIRONMENT, COMMAND]
     vars:
-      ENVIRONMENT: { ref: .ENVIRONMENT }
       SERVICE: '{{ if eq .ENVIRONMENT "test" }}web-test{{ else if eq .ENVIRONMENT "dev" }}web-dev{{ else }}web{{ end }}'
-      COMMAND: { ref: .COMMAND }
     cmds:
-      - docker compose -p medtracker-{{ .ENVIRONMENT }} -f docker-compose.{{ .ENVIRONMENT }}.yml run --rm {{ .SERVICE }} {{ .COMMAND }}
+      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml run --rm {{ .SERVICE }} {{ .COMMAND }}
 
   # Build Docker images for specified environment
   # Required vars: ENVIRONMENT
@@ -25,9 +25,11 @@ tasks:
   # Example: task internal:build ENVIRONMENT=test NO_CACHE=true
   build:
     desc: Build Docker images
+    silent: false
     internal: true
+    requires:
+      vars: [ENVIRONMENT]
     vars:
-      ENVIRONMENT: { ref: .ENVIRONMENT }
       NO_CACHE: '{{ .NO_CACHE | default "" }}'
     cmds:
       - docker compose -p medtracker-{{ .ENVIRONMENT }} -f docker-compose.{{ .ENVIRONMENT }}.yml build {{ if .NO_CACHE }}--no-cache{{ end }}
@@ -39,12 +41,11 @@ tasks:
   up:
     desc: Start Docker containers
     internal: true
-    vars:
-      ENVIRONMENT: { ref: .ENVIRONMENT }
+    requires:
+      vars: [ENVIRONMENT]
     cmds:
-      - docker compose -p medtracker-{{ .ENVIRONMENT }} -f docker-compose.{{ .ENVIRONMENT }}.yml up -d
+      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml up -d
       - echo "✓ {{ .ENVIRONMENT | title }} environment started"
-      - echo "Visit http://localhost:3000 to see the app"
 
   # Stop and remove Docker containers
   # Required vars: ENVIRONMENT
@@ -53,29 +54,28 @@ tasks:
   stop:
     desc: Stop and remove Docker containers
     internal: true
-    vars:
-      ENVIRONMENT: { ref: .ENVIRONMENT }
+    requires:
+      vars: [ENVIRONMENT]
     cmds:
       - docker compose -p medtracker-{{ .ENVIRONMENT }} -f docker-compose.{{ .ENVIRONMENT }}.yml down
       - echo "✓ {{ .ENVIRONMENT | title }} environment stopped"
 
   # Follow logs from Docker containers
-  # Required vars: ENVIRONMENT
   # Press Ctrl+C to stop following logs
   # Example: task internal:logs ENVIRONMENT=dev
   logs:
     desc: Follow container logs
     internal: true
-    vars:
-      ENVIRONMENT: { ref: .ENVIRONMENT }
+    requires:
+      vars: [ENVIRONMENT]
     cmds:
       - docker compose -p medtracker-{{ .ENVIRONMENT }} -f docker-compose.{{ .ENVIRONMENT }}.yml logs -f
 
   ps:
     desc: Get current status of Docker Compose Stack
     internal: true
-    vars:
-      ENVIRONMENT: { ref: .ENVIRONMENT }
+    requires:
+      vars: [ENVIRONMENT]
     cmds:
       - docker compose -p medtracker-{{ .ENVIRONMENT }} -f docker-compose.{{ .ENVIRONMENT }}.yml ps
 
@@ -87,8 +87,8 @@ tasks:
       Loads data from db/seeds.rb
       Example: task internal:seed ENVIRONMENT=test
     internal: true
-    vars:
-      ENVIRONMENT: { ref: .ENVIRONMENT }
+    requires:
+      vars: [ENVIRONMENT]
     cmds:
       - echo "Seeding {{ .ENVIRONMENT }} database..."
       - task: run
@@ -98,11 +98,18 @@ tasks:
       - defer: echo "✓ Database seeding completed"
 
   open-ui:
-    desc: Open development server UI
+    desc: Open WebUI
     internal: true
-    vars:
-      ENVIRONMENT: { ref: .ENVIRONMENT }
+    requires:
+      vars: [ENVIRONMENT]
     cmds:
       - |
-        PORT=$(docker ps --format "{{.Ports}}" -f name=med-tracker-web | grep -oE '0\.0\.0\.0:[0-9]+' | cut -d: -f2)
+        PORT=$(docker ps --format {{`"{{.Ports}}"`}} -f name=med-tracker-web-{{ .ENVIRONMENT }} | grep -oE '0\.0\.0\.0:[0-9]+' | cut -d':' -f2)
+        if [ -z "$PORT" ]; then
+          echo "Error: Could not find running container med-tracker-web-{{ .ENVIRONMENT }}"
+          echo "Run 'task {{.ENVIRONMENT}}:up' first to start the {{.ENVIRONMENT}} server"
+          exit 1
+        fi
+        echo "Opening http://localhost:$PORT/admin/users in Google Chrome..."
+        sleep 2
         open -a "Google Chrome" "http://localhost:$PORT/admin/users"

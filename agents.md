@@ -10,7 +10,7 @@
 
 - **Read first** `README.md` for setup, `docs/design.md` for architecture, `USER_MANAGEMENT_PLAN.md` for roadmap.
 - **Key directories** `app/` (Rails MVC + Phlex components), `spec/` (RSpec and Capybara tests), `config/` (environment + routes), `db/migrate/` (schema history).
-- **Named guides** `PERSON_MEDICINES_IMPLEMENTATION.md` documents the non-prescription flow.
+- **Named guides** `PERSON_MEDICINES_IMPLEMENTATION.md` documents the non-prescription flow, `docs/theming.md` for UI and theming rules.
 
 ## Domain Model Highlights
 
@@ -22,7 +22,7 @@
 ## Application Design
 
 - **Backend** Ruby on Rails with service-style POROs when business logic grows; guard clauses preferred for early exits.
-- **Frontend** Hotwire (Turbo + Stimulus) with Phlex components under `app/components/`; dialogs lean on HTML `<dialog>` and Turbo Streams.
+- **Frontend** Hotwire (Turbo + Stimulus) with Phlex components under `app/components/`; dialogs lean on HTML `<dialog>` and Turbo Streams. Styling follows `docs/theming.md`.
 - **Authentication** Cookie sessions, `has_secure_password`, IP and user-agent tracking via `Authentication` concern; future OIDC planned (`docs/design.md`).
 - **Admin area** Namespaced controllers (`app/controllers/admin/`) and Phlex views manage users.
 
