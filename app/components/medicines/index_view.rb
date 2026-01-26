@@ -11,7 +11,7 @@ module Components
       end
 
       def view_template
-        div(class: 'container mx-auto px-4 py-8', data: { testid: 'medicines-list' }) do
+        div(class: 'container mx-auto px-4 py-8 pb-24 md:pb-8', data: { testid: 'medicines-list' }) do
           render_header
           render_medicines_grid
         end
@@ -90,11 +90,6 @@ module Components
             data: { turbo_method: :delete, turbo_confirm: 'Are you sure?' }
           ) { 'Delete' }
         end
-      end
-
-      def button_primary_classes
-        'inline-flex items-center justify-center rounded-md font-medium transition-colors ' \
-          'px-4 py-2 h-9 text-sm bg-primary text-primary-foreground shadow hover:bg-primary/90'
       end
     end
   end

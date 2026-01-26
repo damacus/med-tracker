@@ -20,7 +20,7 @@ module Components
       end
 
       def view_template
-        div(class: 'container mx-auto px-4 py-8', data: { testid: 'dashboard' }) do
+        div(class: 'container mx-auto px-4 py-8 pb-24 md:pb-8', data: { testid: 'dashboard' }) do
           render_header
           render_stats_section
           render_prescriptions_table

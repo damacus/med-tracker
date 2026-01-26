@@ -12,7 +12,7 @@ module Components
       end
 
       def view_template
-        div(class: 'container mx-auto px-4 py-8 max-w-4xl') do
+        div(class: 'container mx-auto px-4 py-8 pb-24 md:pb-8 max-w-4xl') do
           render_notice if notice.present?
           render_header
           render_details
