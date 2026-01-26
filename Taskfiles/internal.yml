@@ -17,7 +17,7 @@ tasks:
     vars:
       SERVICE: '{{ if eq .ENVIRONMENT "test" }}web-test{{ else if eq .ENVIRONMENT "dev" }}web-dev{{ else }}web{{ end }}'
     cmds:
-      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml run --rm --remove-orphans {{ .SERVICE }} {{ .COMMAND }}
+      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml run --rm {{ .SERVICE }} {{ .COMMAND }}
 
   # Build Docker images for specified environment
   # Required vars: ENVIRONMENT
@@ -44,9 +44,8 @@ tasks:
     requires:
       vars: [ENVIRONMENT]
     cmds:
-      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml up -d --remove-orphans
+      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml up -d
       - echo "✓ {{ .ENVIRONMENT | title }} environment started"
-      - echo "Visit http://localhost:3000 to see the app"
 
   # Stop and remove Docker containers
   # Required vars: ENVIRONMENT
@@ -99,11 +98,18 @@ tasks:
       - defer: echo "✓ Database seeding completed"
 
   open-ui:
-    desc: Open development server UI
+    desc: Open WebUI
     internal: true
     requires:
       vars: [ENVIRONMENT]
     cmds:
       - |
-        PORT=$(docker ps --format "{{.Ports}}" -f name=med-tracker-web | grep -oE '0\.0\.0\.0:[0-9]+' | cut -d: -f2)
+        PORT=$(docker ps --format {{`"{{.Ports}}"`}} -f name=med-tracker-web-{{ .ENVIRONMENT }} | grep -oE '0\.0\.0\.0:[0-9]+' | cut -d':' -f2)
+        if [ -z "$PORT" ]; then
+          echo "Error: Could not find running container med-tracker-web-{{ .ENVIRONMENT }}"
+          echo "Run 'task {{.ENVIRONMENT}}:up' first to start the {{.ENVIRONMENT}} server"
+          exit 1
+        fi
+        echo "Opening http://localhost:$PORT/admin/users in Google Chrome..."
+        sleep 2
         open -a "Google Chrome" "http://localhost:$PORT/admin/users"
