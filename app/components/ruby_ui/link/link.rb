@@ -45,7 +45,7 @@ module RubyUI
       [
         BASE_CLASSES,
         size_classes,
-        'bg-primary text-primary-foreground shadow',
+        'bg-primary text-primary-foreground shadow no-underline',
         'hover:bg-primary/90'
       ]
     end
@@ -63,7 +63,7 @@ module RubyUI
       [
         BASE_CLASSES,
         size_classes,
-        'bg-secondary text-secondary-foreground',
+        'bg-secondary text-secondary-foreground no-underline',
         'hover:bg-opacity-80'
       ]
     end
@@ -72,7 +72,7 @@ module RubyUI
       [
         BASE_CLASSES,
         size_classes,
-        'bg-destructive text-white shadow-sm',
+        'bg-destructive text-white shadow-sm no-underline',
         '[a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20',
         'dark:focus-visible:ring-destructive/40 dark:bg-destructive/60'
       ]
@@ -82,7 +82,7 @@ module RubyUI
       [
         BASE_CLASSES,
         size_classes,
-        'border border-input bg-background shadow-sm',
+        'border border-input bg-background shadow-sm no-underline',
         'hover:bg-accent hover:text-accent-foreground'
       ]
     end
@@ -91,7 +91,7 @@ module RubyUI
       [
         BASE_CLASSES,
         size_classes,
-        'hover:bg-accent hover:text-accent-foreground'
+        'no-underline hover:bg-accent hover:text-accent-foreground'
       ]
     end
 
