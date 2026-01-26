@@ -160,7 +160,7 @@ module Components
             render(RubyUI::TableCell.new { render_status_badge(user) })
             render RubyUI::TableCell.new(class: 'text-right space-x-2') do
               render RubyUI::Link.new(href: "/admin/users/#{user.id}/edit", variant: :outline, size: :sm) { 'Edit' }
-              render_activation_button(user) unless user == current_user
+              render_activation_button(user)
             end
           end
         end
@@ -174,8 +174,15 @@ module Components
         end
 
         def render_activation_button(user)
+          is_current_user = user == current_user
+
           if user.active?
-            render_deactivate_dialog(user)
+            if is_current_user
+              # Show disabled button for current user
+              render RubyUI::Button.new(variant: :destructive, size: :sm, disabled: true) { 'Deactivate' }
+            else
+              render_deactivate_dialog(user)
+            end
           else
             form_with(
               url: "/admin/users/#{user.id}/activate",
@@ -184,8 +191,9 @@ module Components
             ) do
               Button(
                 type: :submit,
-                variant: :link,
-                class: 'text-green-600 hover:text-green-500 font-medium'
+                variant: :outline,
+                size: :sm,
+                class: 'text-green-600 hover:text-green-500 border-green-600'
               ) { 'Activate' }
             end
           end
