@@ -2,7 +2,7 @@
 # Internal Tasks - Reusable Docker Compose operations
 # These tasks are marked 'internal: true' and should only be called by other taskfiles
 # They require ENVIRONMENT variable (dev or test) to determine which docker-compose file to use
-version: '3'
+version: "3"
 
 tasks:
   # Execute arbitrary commands in Docker containers
@@ -12,25 +12,32 @@ tasks:
   run:
     desc: Run arbitrary command in Docker container
     internal: true
+    requires: { vars: ENVIRONMENT, COMMAND }
     vars:
-      ENVIRONMENT: {ref: .ENVIRONMENT}
       SERVICE: '{{ if eq .ENVIRONMENT "test" }}web-test{{ else if eq .ENVIRONMENT "dev" }}web-dev{{ else }}web{{ end }}'
-      COMMAND: {ref: .COMMAND}
     cmds:
       - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml run --rm --remove-orphans {{ .SERVICE }} {{ .COMMAND }}
 
   # Build Docker images for specified environment
   # Required vars: ENVIRONMENT
-  # Optional vars: NO_CACHE (set to "true" to force rebuild)
+  # Optional vars: NO_CACHE (set to "true" to force rebuild), WATCH (set to "true" to watch for changes)
   # Example: task internal:build ENVIRONMENT=test NO_CACHE=true
+  # Example: task internal:build ENVIRONMENT=dev WATCH=true
   build:
     desc: Build Docker images
     internal: true
+    requires: { vars: ENVIRONMENT }
+    sources:
+      - app/**/*
+      - config/**/*
+      - lib/**/*
+      - Gemfile
+      - Gemfile.lock
     vars:
-      ENVIRONMENT: {ref: .ENVIRONMENT}
       NO_CACHE: '{{ .NO_CACHE | default "" }}'
+      WATCH: '{{ .WATCH | default "" }}'
     cmds:
-      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml build {{ if .NO_CACHE }}--no-cache{{ end }}
+      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml build {{ if .NO_CACHE }}--no-cache{{ end }} {{ if .WATCH }}--watch{{ end }}
 
   # Start Docker containers in detached mode
   # Required vars: ENVIRONMENT
@@ -39,8 +46,7 @@ tasks:
   up:
     desc: Start Docker containers
     internal: true
-    vars:
-      ENVIRONMENT: {ref: .ENVIRONMENT}
+    requires: { vars: ENVIRONMENT }
     cmds:
       - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml up -d --remove-orphans
       - echo "✓ {{ .ENVIRONMENT | title }} environment started"
@@ -53,29 +59,25 @@ tasks:
   stop:
     desc: Stop and remove Docker containers
     internal: true
-    vars:
-      ENVIRONMENT: {ref: .ENVIRONMENT}
+    requires: { vars: ENVIRONMENT }
     cmds:
       - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml down
       - echo "✓ {{ .ENVIRONMENT | title }} environment stopped"
 
   # Follow logs from Docker containers
-  # Required vars: ENVIRONMENT
   # Press Ctrl+C to stop following logs
   # Example: task internal:logs ENVIRONMENT=dev
   logs:
     desc: Follow container logs
     internal: true
-    vars:
-      ENVIRONMENT: {ref: .ENVIRONMENT}
+    requires: { vars: ENVIRONMENT }
     cmds:
       - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml logs -f
 
   ps:
     desc: Get current status of Docker Compose Stack
     internal: true
-    vars:
-      ENVIRONMENT: {ref: .ENVIRONMENT}
+    requires: { vars: ENVIRONMENT }
     cmds:
       - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml ps
 
@@ -87,21 +89,19 @@ tasks:
       Loads data from db/seeds.rb
       Example: task internal:seed ENVIRONMENT=test
     internal: true
-    vars:
-      ENVIRONMENT: {ref: .ENVIRONMENT}
+    requires: { vars: ENVIRONMENT }
     cmds:
       - echo "Seeding {{ .ENVIRONMENT }} database..."
       - task: run
         vars:
-          ENVIRONMENT: {ref: .ENVIRONMENT}
-          COMMAND: 'rails db:seed'
+          ENVIRONMENT: { ref: .ENVIRONMENT }
+          COMMAND: "rails db:seed"
       - defer: echo "✓ Database seeding completed"
 
   open-ui:
     desc: Open development server UI
     internal: true
-    vars:
-      ENVIRONMENT: {ref: .ENVIRONMENT}
+    requires: { vars: ENVIRONMENT }
     cmds:
       - |
         PORT=$(docker ps --format "{{.Ports}}" -f name=med-tracker-web | grep -oE '0\.0\.0\.0:[0-9]+' | cut -d: -f2)
