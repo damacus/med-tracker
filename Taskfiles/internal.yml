@@ -20,9 +20,9 @@ tasks:
 
   # Build Docker images for specified environment
   # Required vars: ENVIRONMENT
-  # Optional vars: NO_CACHE (set to "true" to force rebuild), WATCH (set to "true" to watch for changes)
+  # Optional vars: NO_CACHE (set to "true" to force rebuild)
   # Example: task internal:build ENVIRONMENT=test NO_CACHE=true
-  # Example: task internal:build ENVIRONMENT=dev WATCH=true
+  # Example: task internal:build ENVIRONMENT=dev --watch (to watch for changes)
   build:
     desc: Build Docker images
     internal: true
@@ -35,9 +35,8 @@ tasks:
       - Gemfile.lock
     vars:
       NO_CACHE: '{{ .NO_CACHE | default "" }}'
-      WATCH: '{{ .WATCH | default "" }}'
     cmds:
-      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml build {{ if .NO_CACHE }}--no-cache{{ end }} {{ if .WATCH }}--watch{{ end }}
+      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml build {{ if .NO_CACHE }}--no-cache{{ end }}
 
   # Start Docker containers in detached mode
   # Required vars: ENVIRONMENT
