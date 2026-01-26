@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 class WebauthnController < ApplicationController
-  before_action :authenticate_account!
-  before_action :set_webauthn_service
+  before_action :set_webauthn_service, except: %i[authentication_options authenticate]
+  allow_unauthenticated_access only: %i[authentication_options authenticate]
 
   # Show registration options for new passkey
   def registration_options
@@ -27,7 +27,7 @@ class WebauthnController < ApplicationController
   def authentication_options
     # For discoverable credentials, we don't need to specify allow_credentials
     options = WebAuthn::Credential.options_for_get(
-      userVerification: 'required',
+      user_verification: 'required',
       timeout: 120_000 # 2 minutes
     )
 

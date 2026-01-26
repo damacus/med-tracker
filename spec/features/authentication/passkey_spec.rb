@@ -15,7 +15,7 @@ RSpec.describe 'PASSKEY-001: WebAuthn/Passkey configuration' do
     # Check indexes
     indexes = ActiveRecord::Base.connection.indexes('account_webauthn_keys')
     expect(indexes.map(&:name)).to include('index_account_webauthn_keys_on_account_id')
-    expect(indexes.map(&:name)).to include('index_account_webauthn_keys_on_webauthn_id')
+    expect(indexes.map(&:name)).to include('index_account_webauthn_keys_on_webauthn_id_and_account_id')
   end
 
   scenario 'WebAuthn models are defined' do

@@ -14,9 +14,10 @@ module AuthenticationHelpers
     end
   end
 
-  # Helper method to login using a user fixture
+  # Helper method to login using a user fixture or account
   def login_as(user)
-    rodauth_login(user.email_address)
+    email = user.respond_to?(:email_address) ? user.email_address : user.email
+    rodauth_login(email)
   end
 
   # Helper method for logout
