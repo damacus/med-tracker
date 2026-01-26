@@ -105,8 +105,9 @@ module Components
             ) do
               Button(
                 type: :submit,
-                variant: :link,
-                class: 'text-green-600 hover:text-green-500 font-medium'
+                variant: :outline,
+                size: :sm,
+                class: 'text-green-600 hover:text-green-500 border-green-600'
               ) { 'Activate' }
             end
           end

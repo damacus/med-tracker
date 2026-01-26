@@ -80,13 +80,14 @@ module Components
 
       def render_medicine_actions(medicine)
         div(class: 'flex h-5 items-center space-x-4 text-sm') do
-          Link(href: medicine_path(medicine), variant: :link) { 'View' }
+          Button(href: medicine_path(medicine), variant: :ghost, size: :sm) { 'View' }
           Separator(orientation: :vertical)
-          Link(href: edit_medicine_path(medicine), variant: :link) { 'Edit' }
+          Button(href: edit_medicine_path(medicine), variant: :ghost, size: :sm) { 'Edit' }
           Separator(orientation: :vertical)
-          Link(
+          Button(
             href: medicine_path(medicine),
             variant: :destructive,
+            size: :sm,
             data: { turbo_method: :delete, turbo_confirm: 'Are you sure?' }
           ) { 'Delete' }
         end
