@@ -19,12 +19,14 @@ All interactive elements (buttons, links, form controls) must meet **WCAG 2.5.8 
 
 #### Button Component Sizes
 
-| Size  | Height        | WCAG Status            |
-|-------|---------------|------------------------|
-| `:sm` | 32px (`h-8`)  | ✅ Passes 2.5.8         |
-| `:md` | 36px (`h-9`)  | ✅ Passes 2.5.8         |
-| `:lg` | 40px (`h-10`) | ✅ Passes 2.5.8         |
-| `:xl` | 48px (`h-12`) | ✅ Passes 2.5.8 + 2.5.5 |
+| Size  | Height        | WCAG 2.5.8 (24px min) | Touch Recommendation (44px) |
+|:------|:--------------|:----------------------|:----------------------------|
+| `:sm` | 32px (`h-8`)  | ✅ Passes              | ⚠️ Below recommended        |
+| `:md` | 36px (`h-9`)  | ✅ Passes              | ⚠️ Below recommended        |
+| `:lg` | 40px (`h-10`) | ✅ Passes              | ⚠️ Below recommended        |
+| `:xl` | 48px (`h-12`) | ✅ Passes + 2.5.5      | ✅ Meets recommendation      |
+
+**Note:** Use `:xl` or add `min-h-[44px]` for primary mobile/touch targets.
 
 #### Touch Target Guidelines
 
@@ -44,8 +46,9 @@ When using compact badge styling, ensure minimum dimensions:
 
 ```ruby
 def accessible_badge_classes
+  # Touch target: min-h-[44px] min-w-[44px]
   'inline-flex items-center justify-center rounded-full ' \
-    'min-h-[44px] min-w-[44px] ' \  # Touch target
+    'min-h-[44px] min-w-[44px] ' \
     'px-4 py-2 text-sm font-medium'
 end
 ```

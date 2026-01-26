@@ -4,7 +4,7 @@ module Components
   module Medicines
     class FinderView < Components::Base
       def view_template
-        div(data: { testid: 'medicine-finder' }, class: 'container mx-auto px-4 py-8 pb-24 md:pb-8 max-w-4xl') do
+        div(data: { testid: 'medicine-finder' }, class: 'container mx-auto px-4 py-8 max-w-4xl') do
           render_header
           render_search_section
           render_coming_soon

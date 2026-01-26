@@ -141,7 +141,6 @@ RSpec.describe 'Prescription Card' do
 
         within("#prescription_#{prescription.id}") do
           click_button '💊 Take'
-          sleep 0.5
         end
 
         latest_take = prescription.medication_takes.order(taken_at: :desc).first

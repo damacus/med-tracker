@@ -190,8 +190,6 @@ module Components
               ) do
                 Button(
                   type: :submit,
-                  variant: :primary,
-                  size: :sm,
                   class: take_now_badge_classes,
                   data: { test_id: "take-medicine-#{prescription.id}" }
                 ) { 'Take Now' }
