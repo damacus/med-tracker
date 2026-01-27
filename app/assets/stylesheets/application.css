@@ -1,4 +1,5 @@
-@import "../tailwind/application.css";
-
 /* Project-specific overrides should live alongside RubyUI tokens.
-   Keep this file minimal to avoid conflicting with the default theme. */
+   Keep this file minimal to avoid conflicting with the default theme.
+
+   Note: Tailwind CSS is loaded separately via stylesheet_link_tag "tailwind"
+   which loads the compiled app/assets/builds/tailwind.css file. */
