@@ -2,6 +2,7 @@
 
 module Views
   module Profiles
+    # rubocop:disable Metrics/ClassLength
     class TwoFactorCard < Views::Base
       include Phlex::Rails::Helpers::ButtonTo
       include Phlex::Rails::Helpers::Routes
@@ -11,6 +12,10 @@ module Views
       def initialize(account:)
         super()
         @account = account
+      end
+
+      def otp_disable_path
+        view_context.rodauth.otp_disable_path
       end
 
       def view_template
@@ -45,7 +50,7 @@ module Views
         if totp_enabled?
           render_enabled_method(
             'Authenticator app is active',
-            disable_path: '/otp-disable',
+            disable_path: otp_disable_path,
             disable_text: 'Disable'
           )
         else
@@ -228,5 +233,6 @@ module Views
         0
       end
     end
+    # rubocop:enable Metrics/ClassLength
   end
 end
