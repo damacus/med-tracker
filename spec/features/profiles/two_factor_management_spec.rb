@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Two-Factor Authentication Management' do
+RSpec.describe 'Two-Factor Authentication Management', type: :system do
   fixtures :accounts, :people, :users
 
   let(:user) { users(:damacus) }
@@ -28,6 +28,11 @@ RSpec.describe 'Two-Factor Authentication Management' do
 
   describe 'TOTP Management' do
     context 'when TOTP is not enabled' do
+      before do
+        AccountOtpKey.where(id: account.id).delete_all
+        visit profile_path
+      end
+
       it 'shows setup button' do
         expect(page).to have_content('Not configured')
         expect(page).to have_link('Set up authenticator app', href: '/otp-setup')
@@ -35,18 +40,30 @@ RSpec.describe 'Two-Factor Authentication Management' do
     end
 
     context 'when TOTP is enabled' do
+      before do
+        AccountOtpKey.find_or_create_by!(id: account.id) do |key|
+          key.key = 'test_otp_key_secret'
+        end
+        visit profile_path
+      end
+
       it 'shows authenticator app enabled status' do
-        skip 'OTP setup requires database interaction'
+        expect(page).to have_content('Authenticator app is active')
       end
 
       it 'shows authenticator app disable button' do
-        skip 'OTP setup requires database interaction'
+        expect(page).to have_link('Disable', href: '/otp-disable')
       end
     end
   end
 
   describe 'Recovery Codes Management' do
     context 'when recovery codes are not generated' do
+      before do
+        AccountRecoveryCode.where(id: account.id).delete_all
+        visit profile_path
+      end
+
       it 'shows setup button' do
         expect(page).to have_content('Not generated')
         expect(page).to have_link('Generate recovery codes', href: '/recovery-codes')
@@ -54,12 +71,24 @@ RSpec.describe 'Two-Factor Authentication Management' do
     end
 
     context 'when recovery codes exist' do
+      before do
+        ActiveRecord::Base.connection.execute(
+          "DELETE FROM account_recovery_codes WHERE id = #{account.id}"
+        )
+        5.times do |i|
+          ActiveRecord::Base.connection.execute(
+            "INSERT INTO account_recovery_codes (id, code) VALUES (#{account.id}, 'recovery-code-#{i}')"
+          )
+        end
+        visit profile_path
+      end
+
       it 'shows recovery codes view button' do
-        skip 'Recovery codes setup requires database interaction'
+        expect(page).to have_link('View codes', href: '/recovery-codes')
       end
 
       it 'shows recovery codes regenerate button' do
-        skip 'Recovery codes setup requires database interaction'
+        expect(page).to have_button('Regenerate')
       end
     end
   end
@@ -108,6 +137,11 @@ RSpec.describe 'Two-Factor Authentication Management' do
   end
 
   describe 'Navigation' do
+    before do
+      AccountOtpKey.where(id: account.id).delete_all
+      visit profile_path
+    end
+
     it 'has link to TOTP setup page' do
       expect(page).to have_link('Set up authenticator app', href: '/otp-setup')
     end

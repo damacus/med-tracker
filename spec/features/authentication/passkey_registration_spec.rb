@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'PASSKEY-002: Passkey registration' do
+RSpec.describe 'PASSKEY-002: Passkey registration', type: :system do
   fixtures :all
 
   let(:account) { accounts(:damacus) }

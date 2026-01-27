@@ -2,7 +2,6 @@
 
 module Views
   module Profiles
-    # rubocop:disable Metrics/ClassLength
     class TwoFactorCard < Views::Base
       include Phlex::Rails::Helpers::ButtonTo
       include Phlex::Rails::Helpers::Routes
@@ -206,19 +205,17 @@ module Views
       end
 
       def totp_enabled?
-        account.respond_to?(:account_otp_keys) &&
-          ActiveRecord::Base.connection.table_exists?('account_otp_keys') &&
-          ActiveRecord::Base.connection.execute(
-            "SELECT COUNT(*) FROM account_otp_keys WHERE id = #{account.id}"
-          ).first['count'].to_i.positive?
+        return false unless ActiveRecord::Base.connection.table_exists?('account_otp_keys')
+
+        AccountOtpKey.exists?(id: account.id)
       rescue StandardError
         false
       end
 
       def recovery_codes_exist?
-        account.respond_to?(:account_recovery_codes) &&
-          ActiveRecord::Base.connection.table_exists?('account_recovery_codes') &&
-          recovery_codes_count.positive?
+        return false unless ActiveRecord::Base.connection.table_exists?('account_recovery_codes')
+
+        recovery_codes_count.positive?
       rescue StandardError
         false
       end
@@ -226,13 +223,10 @@ module Views
       def recovery_codes_count
         return 0 unless ActiveRecord::Base.connection.table_exists?('account_recovery_codes')
 
-        ActiveRecord::Base.connection.execute(
-          "SELECT COUNT(*) FROM account_recovery_codes WHERE id = #{account.id}"
-        ).first['count'].to_i
+        AccountRecoveryCode.where(id: account.id).count
       rescue StandardError
         0
       end
     end
-    # rubocop:enable Metrics/ClassLength
   end
 end
