@@ -56,6 +56,14 @@ tasks:
       - task: :internal:ps
         vars: { ENVIRONMENT: test }
 
+  run-migrations:
+    desc: Run Rails migrations
+    summary: |
+      Run Rails migrations on the test database
+      Usage: task test:run-migrations
+    cmds:
+      - task: :internal:run-migrations
+
   rebuild:
     desc: Rebuild test server (drops database)
     summary: |

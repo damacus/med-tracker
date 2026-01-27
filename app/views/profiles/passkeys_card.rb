@@ -61,8 +61,8 @@ module Views
           end
           button_to(
             'Remove',
-            webauthn_remove_path(passkey),
-            method: :delete,
+            "/webauthn-remove?id=#{passkey.id}",
+            method: :post,
             class: 'text-sm text-destructive hover:text-destructive/80',
             data: { turbo_confirm: 'Are you sure you want to remove this passkey?' }
           )
@@ -71,13 +71,10 @@ module Views
 
       def render_add_passkey_button
         div(class: 'pt-2') do
-          render RubyUI::Button.new(
+          render RubyUI::Link.new(
             variant: :outline,
             size: :sm,
-            data: {
-              controller: 'webauthn-registration',
-              action: 'click->webauthn-registration#register'
-            }
+            href: '/webauthn-setup'
           ) { 'Add a passkey' }
         end
       end

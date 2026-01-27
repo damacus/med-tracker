@@ -21,6 +21,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: assets
       args:
         RAILS_ENV: development
     depends_on:

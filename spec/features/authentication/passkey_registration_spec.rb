@@ -31,5 +31,24 @@ RSpec.describe 'PASSKEY-002: Passkey registration' do
 
       expect(page).to have_content('My MacBook')
     end
+
+    scenario 'User can navigate to add passkey page' do
+      visit profile_path
+
+      expect(page).to have_link('Add a passkey', href: '/webauthn-setup')
+    end
+
+    scenario 'User sees remove button for registered passkeys' do
+      account.account_webauthn_keys.create!(
+        webauthn_id: 'test-credential-id',
+        public_key: 'test-public-key',
+        sign_count: 0,
+        nickname: 'My MacBook'
+      )
+
+      visit profile_path
+
+      expect(page).to have_button('Remove')
+    end
   end
 end

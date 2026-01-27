@@ -38,12 +38,7 @@ Rails.application.routes.draw do
 
   # Authentication - Rodauth handles /login, /logout, /create-account via middleware
 
-  # WebAuthn/Passkey routes
-  get 'webauthn/registration-options', to: 'webauthn#registration_options'
-  post 'webauthn/register', to: 'webauthn#register'
-  get 'webauthn/authentication-options', to: 'webauthn#authentication_options'
-  post 'webauthn/authenticate', to: 'webauthn#authenticate'
-  delete 'webauthn/:id', to: 'webauthn#remove', as: :webauthn_remove
+  # WebAuthn/Passkey routes are handled by Rodauth
 
   resources :prescriptions do
     resources :medication_takes, only: [:create]
