@@ -75,9 +75,10 @@ tasks:
       WARNING: This drops the database and all data!
       Use when database migrations have changed or you need a fresh start.
       Usage: task dev:rebuild
+    prompt: This removes all data and rebuilds the development environment. Are you sure?
     cmds:
       - task: :internal:stop
-      - docker compose -f docker-compose.dev.yml down -v # Remove volumes (drops database)
+        vars: { REMOVE_VOLUMES: "true" }
       - task: :internal:build
       - task: :internal:up
       - task: :internal:run

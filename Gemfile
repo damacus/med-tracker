@@ -109,9 +109,4 @@ group :development do
   gem 'rubocop-rspec_rails'
   gem 'ruby_ui', require: false
   gem 'web-console'
-  # Ruby 4.0+ requires ostruct as a separate gem (was removed from stdlib)
-  gem 'ostruct'
-
-  gem 'guard', '~> 2.20'
-  gem 'guard-rspec', '~> 4.7'
 end

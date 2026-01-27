@@ -3,6 +3,19 @@
 require 'rails_helper'
 
 RSpec.describe 'Authentication Features', type: :system do
+  fixtures :accounts, :people, :users, :account_otp_keys
+
+  describe 'AUTH-019: Additional factor required for 2FA accounts' do
+    it 'redirects to TOTP authentication after password login' do
+      visit login_path
+      fill_in 'Email address', with: 'damacus@example.com'
+      fill_in 'Password', with: 'password'
+      click_button 'Login'
+
+      expect(page).to have_current_path('/otp-auth')
+    end
+  end
+
   describe 'AUTH-007: Email verification grace period configuration' do
     it 'has environment-aware grace period configuration' do
       # In test/development: 7 days grace period allows unverified users to login

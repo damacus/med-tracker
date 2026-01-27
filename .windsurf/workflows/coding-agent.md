@@ -1,6 +1,6 @@
 ---
 description: Coding Agent
-auto_execution_mode: 1
+auto_execution_mode: 2
 ---
 
 # YOUR ROLE - CODING AGENT
@@ -302,7 +302,7 @@ Test like a human user with mouse and keyboard. Don't take shortcuts by using Ja
 
 ## IMPORTANT REMINDERS
 
-**Your Goal:** Production-quality application with all 200+ tests passing
+**Your Goal:** Production-quality application with all tests passing
 
 **This Session's Goal:** Complete at least one feature perfectly
 

@@ -56,8 +56,10 @@ tasks:
     internal: true
     requires:
       vars: [ENVIRONMENT]
+    vars:
+      REMOVE_VOLUMES: '{{ .REMOVE_VOLUMES | default "false" }}'
     cmds:
-      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml down
+      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml down {{ if eq .REMOVE_VOLUMES "true" }}-v{{ end }}
       - echo "✓ {{ .ENVIRONMENT | title }} environment stopped"
 
   run-migrations:

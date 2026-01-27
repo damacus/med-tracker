@@ -27,13 +27,11 @@ module Authentication
   end
 
   def authenticated?
-    rodauth.logged_in?
+    rodauth.authenticated?
   end
 
   def require_authentication
-    return if rodauth.logged_in?
-
-    request_authentication
+    rodauth.require_authentication
   end
 
   def request_authentication

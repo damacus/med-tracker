@@ -3,6 +3,14 @@
 require 'rails_helper'
 
 RSpec.describe 'PASSKEY-001: WebAuthn/Passkey configuration' do
+  scenario 'WebAuthn key timestamps default to current timestamp' do
+    columns = ActiveRecord::Base.connection.columns('account_webauthn_keys')
+    defaults = columns.index_by(&:name).transform_values(&:default_function)
+
+    expect(defaults['created_at']).to eq('CURRENT_TIMESTAMP')
+    expect(defaults['updated_at']).to eq('CURRENT_TIMESTAMP')
+  end
+
   scenario 'WebAuthn gem is available' do
     expect { WebAuthn }.not_to raise_error
   end

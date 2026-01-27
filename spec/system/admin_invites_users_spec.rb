@@ -57,6 +57,8 @@ RSpec.describe 'Admin invites users' do
 
     using_wait_time(5) do
       expect(page).to have_current_path('/dashboard')
+      # Wait for flash message to dismiss before clicking
+      expect(page).to have_no_content('You have been logged in')
     end
 
     click_button 'Invited Parent'

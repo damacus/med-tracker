@@ -122,7 +122,7 @@ class RodauthMain < Rodauth::Rails::Auth
     # Allow setting up the first 2FA method without requiring existing 2FA
     # This fixes the chicken-and-egg problem where users can't set up TOTP
     # because they don't have any 2FA method yet
-    two_factor_auth_required_redirect { otp_setup_path }
+    two_factor_auth_required_redirect { two_factor_auth_path }
     before_otp_setup_route do
       # Allow OTP setup if user has no 2FA methods configured yet
       # Only require 2FA auth if they already have a method set up
