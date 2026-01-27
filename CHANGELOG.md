@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.1](https://github.com/damacus/med-tracker/compare/med-tracker/v0.2.0...med-tracker/v0.2.1) (2026-01-26)
+
+
+### Bug Fixes
+
+* **deps:** update playwright monorepo to v1.58.0 ([#393](https://github.com/damacus/med-tracker/issues/393)) ([9d8cce1](https://github.com/damacus/med-tracker/commit/9d8cce1d65b88261c9daff218a0438340233a242))
+* improve mobile button styling and layout ([#392](https://github.com/damacus/med-tracker/issues/392)) ([4874155](https://github.com/damacus/med-tracker/commit/4874155a1c6c149633896230d0dbc8b25fd54ab4))
+
 ## [0.2.0](https://github.com/damacus/med-tracker/compare/med-tracker-v0.1.0...med-tracker/v0.2.0) (2026-01-22)
 
 
