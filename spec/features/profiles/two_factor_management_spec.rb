@@ -73,13 +73,9 @@ RSpec.describe 'Two-Factor Authentication Management', type: :system do
 
     context 'when recovery codes exist' do
       before do
-        ActiveRecord::Base.connection.execute(
-          "DELETE FROM account_recovery_codes WHERE id = #{account.id}"
-        )
+        AccountRecoveryCode.where(id: account.id).delete_all
         5.times do |i|
-          ActiveRecord::Base.connection.execute(
-            "INSERT INTO account_recovery_codes (id, code) VALUES (#{account.id}, 'recovery-code-#{i}')"
-          )
+          AccountRecoveryCode.create!(id: account.id, code: "recovery-code-#{i}")
         end
         visit profile_path
       end
