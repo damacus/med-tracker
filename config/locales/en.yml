@@ -6,6 +6,9 @@ en:
     users:
       unauthorized: "You are not authorized to perform this action."
 
+  authentication:
+    two_factor_required: "For enhanced security, please set up two-factor authentication for your account."
+
   invitation_mailer:
     subject: "Invitation to join MedTracker"
 
