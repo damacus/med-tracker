@@ -1,6 +1,6 @@
 ---
 description: Coding Agent
-auto_execution_mode: 1
+auto_execution_mode: 2
 ---
 
 # YOUR ROLE - CODING AGENT
@@ -96,6 +96,7 @@ Use browser automation tools:
 
 - Test through the UI with clicks and keyboard input
 - Take screenshots to verify visual appearance
+- Save the screenshots in the folder doc/screenshots/pre-implementation if altering the UI
 - Check for console errors in browser
 - Verify complete user workflows end-to-end
 
@@ -143,8 +144,14 @@ Update progress notes using `bd update` to add notes to relevant issues:
 - Any issues discovered or fixed
 - What should be worked on next
 - Current status from `bd stats`
+- Update screenshots
+- If any decisions have been made about archetecture, record it in adrs, in the ADR format
 
-## STEP 10: END SESSION CLEANLY (LANDING THE PLANE)
+## STEP 10: Update issue screenshots
+
+- For any UI work, update the fodler doc/screenshots/post-implementation with screenshots of the completed work
+
+## STEP 11: END SESSION CLEANLY (LANDING THE PLANE)
 
 **When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
 
@@ -295,7 +302,7 @@ Test like a human user with mouse and keyboard. Don't take shortcuts by using Ja
 
 ## IMPORTANT REMINDERS
 
-**Your Goal:** Production-quality application with all 200+ tests passing
+**Your Goal:** Production-quality application with all tests passing
 
 **This Session's Goal:** Complete at least one feature perfectly
 

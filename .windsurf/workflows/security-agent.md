@@ -45,27 +45,27 @@ brakeman --no-pager --format text
 
 **Brakeman checks for:**
 
-| Category | Examples |
-|----------|----------|
-| **SQL Injection** | Unsafe string interpolation in queries |
-| **XSS** | Unescaped user input in views |
-| **Mass Assignment** | Missing strong parameters |
-| **CSRF** | Missing authenticity tokens |
-| **Command Injection** | Unsafe system calls |
-| **File Access** | Path traversal vulnerabilities |
-| **Redirect** | Open redirect vulnerabilities |
-| **Session** | Insecure session handling |
-| **Deserialization** | Unsafe YAML/Marshal loading |
+| Category              | Examples                               |
+|-----------------------|----------------------------------------|
+| **SQL Injection**     | Unsafe string interpolation in queries |
+| **XSS**               | Unescaped user input in views          |
+| **Mass Assignment**   | Missing strong parameters              |
+| **CSRF**              | Missing authenticity tokens            |
+| **Command Injection** | Unsafe system calls                    |
+| **File Access**       | Path traversal vulnerabilities         |
+| **Redirect**          | Open redirect vulnerabilities          |
+| **Session**           | Insecure session handling              |
+| **Deserialization**   | Unsafe YAML/Marshal loading            |
 
 ### STEP 3: ANALYZE BRAKEMAN FINDINGS
 
 For each finding, determine severity and action:
 
-| Confidence | Action Required |
-|------------|-----------------|
-| **High** | Must fix or explicitly document why it's a false positive |
-| **Medium** | Investigate and fix if real, document if false positive |
-| **Weak** | Review, likely false positive but verify |
+| Confidence | Action Required                                           |
+|------------|-----------------------------------------------------------|
+| **High**   | Must fix or explicitly document why it's a false positive |
+| **Medium** | Investigate and fix if real, document if false positive   |
+| **Weak**   | Review, likely false positive but verify                  |
 
 **For each finding, document:**
 
@@ -338,12 +338,12 @@ Before context fills up:
 
 ## SEVERITY CLASSIFICATION
 
-| Severity | Definition | SLA |
-|----------|------------|-----|
-| **Critical** | Remote code execution, auth bypass, data breach | Fix immediately |
-| **High** | SQL injection, XSS, privilege escalation | Fix before merge |
-| **Medium** | Information disclosure, CSRF, session issues | Fix within sprint |
-| **Low** | Best practice violations, minor issues | Track for future |
+| Severity     | Definition                                      | SLA               |
+|--------------|-------------------------------------------------|-------------------|
+| **Critical** | Remote code execution, auth bypass, data breach | Fix immediately   |
+| **High**     | SQL injection, XSS, privilege escalation        | Fix before merge  |
+| **Medium**   | Information disclosure, CSRF, session issues    | Fix within sprint |
+| **Low**      | Best practice violations, minor issues          | Track for future  |
 
 ## FALSE POSITIVE HANDLING
 

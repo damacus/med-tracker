@@ -154,6 +154,7 @@ module Views
             data_turbo: 'false'
           ) do
             authenticity_token_field
+            otp_secret_field
             password_field
             otp_code_field
             submit_button
@@ -163,6 +164,12 @@ module Views
 
       def authenticity_token_field
         input(type: 'hidden', name: 'authenticity_token', value: view_context.form_authenticity_token)
+      end
+
+      def otp_secret_field
+        rodauth = view_context.rodauth
+        input(type: 'hidden', name: rodauth.otp_setup_param, value: rodauth.otp_user_key)
+        input(type: 'hidden', name: rodauth.otp_setup_raw_param, value: rodauth.otp_key) if rodauth.otp_keys_use_hmac?
       end
 
       def password_field

@@ -12,19 +12,19 @@ RSpec.describe RubyUI::Alert, type: :component do
   it 'renders destructive variant with correct classes' do
     rendered = render_inline(described_class.new(variant: :destructive))
 
-    expect(rendered.css('.text-destructive')).to be_present
+    expect(rendered.css('.text-red-900')).to be_present
   end
 
   it 'renders warning variant with correct classes' do
     rendered = render_inline(described_class.new(variant: :warning))
 
-    expect(rendered.css('.text-warning')).to be_present
+    expect(rendered.css('.text-amber-900')).to be_present
   end
 
   it 'renders success variant with correct classes' do
     rendered = render_inline(described_class.new(variant: :success))
 
-    expect(rendered.css('.text-success')).to be_present
+    expect(rendered.css('.text-green-900')).to be_present
   end
 
   it 'merges custom classes' do

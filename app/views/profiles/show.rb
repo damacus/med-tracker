@@ -38,6 +38,7 @@ module Views
         div(class: 'space-y-6') do
           render_personal_info_card
           render_account_security_card
+          render_two_factor_card
           render_danger_zone_card
         end
       end
@@ -165,6 +166,10 @@ module Views
 
       def render_close_account_dialog
         render CloseAccountDialog.new
+      end
+
+      def render_two_factor_card
+        render TwoFactorCard.new(account: account)
       end
     end
   end

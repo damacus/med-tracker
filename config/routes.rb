@@ -38,6 +38,8 @@ Rails.application.routes.draw do
 
   # Authentication - Rodauth handles /login, /logout, /create-account via middleware
 
+  # WebAuthn/Passkey routes are handled by Rodauth
+
   resources :prescriptions do
     resources :medication_takes, only: [:create]
   end

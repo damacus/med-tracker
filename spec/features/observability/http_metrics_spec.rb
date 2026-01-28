@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'OTEL-007: Metrics for HTTP request duration' do
+RSpec.describe 'OTEL-007: Metrics for HTTP request duration', type: :system do
   context 'when handling HTTP requests' do
     it 'enables HTTP request duration tracking via spans' do
       visit '/'

@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Prescription Card' do
+RSpec.describe 'Prescription Card', type: :system do
   fixtures :all
 
   let(:admin_user) { users(:admin) }
@@ -226,7 +226,7 @@ RSpec.describe 'Prescription Card' do
         end
 
         expect(page).to have_current_path(edit_person_prescription_path(person, prescription))
-        expect(page).to have_content('Edit Prescription')
+        expect(page).to have_content(/edit prescription/i)
       end
     end
 

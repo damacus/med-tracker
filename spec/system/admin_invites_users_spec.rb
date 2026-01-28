@@ -55,8 +55,11 @@ RSpec.describe 'Admin invites users' do
 
     click_button 'Create Account'
 
+    expect(page).to have_current_path('/dashboard')
+
+    # Wait for flash message to auto-dismiss and be removed from DOM
     using_wait_time(5) do
-      expect(page).to have_current_path('/dashboard')
+      expect(page).to have_no_css('[data-controller="flash"]')
     end
 
     click_button 'Invited Parent'
