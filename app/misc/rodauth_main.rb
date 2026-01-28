@@ -111,11 +111,12 @@ class RodauthMain < Rodauth::Rails::Auth
     webauthn_rp_name 'MedTracker'
     webauthn_rp_id do
       if Rails.env.production?
-        URI.parse(ENV.fetch('APP_URL', 'https://medtracker.com')).host
+        URI.parse(ENV.fetch('APP_URL')).host
       else
         'localhost'
       end
     end
+
     webauthn_origin { ENV.fetch('APP_URL', request.base_url) }
 
     # Configure WebAuthn table column mappings for Rails conventions
