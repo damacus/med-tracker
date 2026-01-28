@@ -109,8 +109,14 @@ class RodauthMain < Rodauth::Rails::Auth
 
     # ==> WebAuthn (Passkey) Configuration
     webauthn_rp_name 'MedTracker'
-    webauthn_rp_id { Rails.env.production? ? 'medtracker.com' : 'localhost' }
-    webauthn_origin { Rails.env.production? ? 'https://medtracker.com' : request.base_url }
+    webauthn_rp_id do
+      if Rails.env.production?
+        URI.parse(ENV.fetch('APP_URL', 'https://medtracker.com')).host
+      else
+        'localhost'
+      end
+    end
+    webauthn_origin { ENV.fetch('APP_URL', request.base_url) }
 
     # Configure WebAuthn table column mappings for Rails conventions
     webauthn_user_ids_account_id_column :account_id
