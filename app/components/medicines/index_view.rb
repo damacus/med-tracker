@@ -22,13 +22,15 @@ module Components
       private
 
       def render_header
-        div(class: 'flex justify-between items-center mb-8') do
-          Heading(level: 1) { 'Medicines' }
-          Link(
-            href: new_medicine_path,
-            variant: :primary,
-            data: { turbo_stream: true }
-          ) { 'Add Medicine' }
+        render Components::Shared::PageHeader.new(title: 'Medicines') do |section|
+          if section == :actions
+            Link(
+              href: new_medicine_path,
+              variant: :primary,
+              class: 'min-h-[44px]',
+              data: { turbo_stream: true }
+            ) { 'Add Medicine' }
+          end
         end
       end
 

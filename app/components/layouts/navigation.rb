@@ -84,33 +84,48 @@ module Components
       end
 
       def render_mobile_navigation_links
-        div(class: 'flex flex-col gap-2') do
-          render RubyUI::Link.new(href: medicines_path, variant: :ghost, size: :xl,
-                                  class: 'justify-start gap-4 px-4') do
-            render Icons::Pill.new(class: 'h-6 w-6')
-            plain 'Medicines'
-          end
-          render RubyUI::Link.new(href: people_path, variant: :ghost, size: :xl, class: 'justify-start gap-4 px-4') do
-            render Icons::Users.new(class: 'h-6 w-6')
-            plain 'People'
-          end
-          render RubyUI::Link.new(href: medicine_finder_path, variant: :ghost, size: :xl,
-                                  class: 'justify-start gap-4 px-4') do
-            render Icons::Search.new(class: 'h-6 w-6')
-            plain 'Medicine Finder'
-          end
+        div(class: 'flex flex-col gap-1') do
+          render_mobile_nav_link(medicines_path, Icons::Pill, 'Medicines', active_path?('/medicines'))
+          render_mobile_nav_link(people_path, Icons::Users, 'People', active_path?('/people'))
+          render_mobile_nav_link(medicine_finder_path, Icons::Search, 'Medicine Finder',
+                                 active_path?('/medicine_finder'))
+        end
+      end
+
+      def render_mobile_nav_link(path, icon_class, label, active)
+        base_classes = 'justify-start gap-4 px-4 min-h-[48px] w-full'
+        active_classes = active ? 'bg-accent text-accent-foreground font-semibold' : ''
+
+        render RubyUI::Link.new(
+          href: path,
+          variant: :ghost,
+          size: :xl,
+          class: "#{base_classes} #{active_classes}",
+          aria: { current: active ? 'page' : nil }
+        ) do
+          render icon_class.new(class: 'h-6 w-6')
+          plain label
         end
       end
 
       def render_mobile_auth_actions
-        div(class: 'flex flex-col gap-2 w-full') do
-          render RubyUI::Link.new(href: profile_path, variant: :ghost, size: :xl, class: 'justify-start gap-4 px-4') do
+        div(class: 'flex flex-col gap-1 w-full') do
+          render RubyUI::Link.new(
+            href: profile_path,
+            variant: :ghost,
+            size: :xl,
+            class: 'justify-start gap-4 px-4 min-h-[48px] w-full'
+          ) do
             render Icons::User.new(class: 'h-6 w-6')
             plain 'Profile'
           end
           if user_is_admin?
-            render RubyUI::Link.new(href: admin_root_path, variant: :ghost, size: :xl,
-                                    class: 'justify-start gap-4 px-4') do
+            render RubyUI::Link.new(
+              href: admin_root_path,
+              variant: :ghost,
+              size: :xl,
+              class: 'justify-start gap-4 px-4 min-h-[48px] w-full'
+            ) do
               render Icons::Settings.new(class: 'h-6 w-6')
               plain 'Administration'
             end
@@ -118,8 +133,10 @@ module Components
           form(action: '/logout', method: 'post') do
             input(type: 'hidden', name: 'authenticity_token', value: view_context.form_authenticity_token)
             render RubyUI::Button.new(
-              type: :submit, variant: :ghost, size: :xl,
-              class: 'w-full justify-start gap-4 px-4 text-destructive hover:text-destructive'
+              type: :submit,
+              variant: :ghost,
+              size: :xl,
+              class: 'w-full justify-start gap-4 px-4 min-h-[48px] text-destructive hover:text-destructive'
             ) do
               render Icons::LogOut.new(class: 'h-6 w-6')
               plain 'Logout'
@@ -142,24 +159,33 @@ module Components
       # Render bottom navigation bar for mobile
       def render_bottom_navigation
         nav(class: 'mobile-nav fixed bottom-0 left-0 z-50 w-full h-16 bg-background border-t md:hidden ' \
-                   'flex items-center justify-around px-4 pb-safe') do
-          link_to(root_path, class: 'flex flex-col items-center gap-1 text-muted-foreground hover:text-primary') do
-            render Icons::Home.new(class: 'h-5 w-5')
-            span(class: 'text-[10px] font-medium') { 'Home' }
-          end
-          link_to(medicines_path, class: 'flex flex-col items-center gap-1 text-muted-foreground hover:text-primary') do
-            render Icons::Pill.new(class: 'h-5 w-5')
-            span(class: 'text-[10px] font-medium') { 'Medicines' }
-          end
-          link_to(people_path, class: 'flex flex-col items-center gap-1 text-muted-foreground hover:text-primary') do
-            render Icons::Users.new(class: 'h-5 w-5')
-            span(class: 'text-[10px] font-medium') { 'People' }
-          end
-          link_to(profile_path, class: 'flex flex-col items-center gap-1 text-muted-foreground hover:text-primary') do
-            render Icons::User.new(class: 'h-5 w-5')
-            span(class: 'text-[10px] font-medium') { 'Profile' }
-          end
+                   'flex items-center justify-around px-2 pb-safe',
+            role: 'navigation',
+            aria: { label: 'Mobile navigation' }) do
+          render_bottom_nav_item(root_path, Icons::Home, 'Home', active_path?('/'))
+          render_bottom_nav_item(medicines_path, Icons::Pill, 'Medicines', active_path?('/medicines'))
+          render_bottom_nav_item(people_path, Icons::Users, 'People', active_path?('/people'))
+          render_bottom_nav_item(profile_path, Icons::User, 'Profile', active_path?('/profile'))
         end
+      end
+
+      def render_bottom_nav_item(path, icon_class, label, active)
+        base_classes = 'flex flex-col items-center justify-center gap-0.5 min-w-[64px] min-h-[44px] ' \
+                       'rounded-lg transition-colors active:bg-accent'
+        state_classes = active ? 'text-primary' : 'text-muted-foreground hover:text-primary'
+
+        link_to(path, class: "#{base_classes} #{state_classes}", aria: { current: active ? 'page' : nil }) do
+          render icon_class.new(class: "h-5 w-5#{' scale-110' if active}")
+          span(class: "text-[10px] font-medium#{' font-semibold' if active}") { label }
+          div(class: 'h-0.5 w-4 rounded-full bg-primary mt-0.5') if active
+        end
+      end
+
+      def active_path?(path)
+        current_path = view_context.request.path
+        return current_path == '/' if path == '/'
+
+        current_path.start_with?(path)
       end
 
       # Render authentication actions (login or profile menu)

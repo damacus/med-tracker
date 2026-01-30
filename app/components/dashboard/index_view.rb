@@ -30,23 +30,20 @@ module Components
       private
 
       def render_header
-        div(class: 'flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8') do
-          Heading(level: 1) { 'Dashboard' }
-          render_quick_actions
+        render Components::Shared::PageHeader.new(title: 'Dashboard') do |section|
+          render_quick_actions if section == :actions
         end
       end
 
       def render_quick_actions
-        div(class: 'flex flex-row flex-wrap gap-2 sm:gap-3') do
-          Link(
-            href: url_helpers&.new_medicine_path || '#',
-            class: "#{button_primary_classes} min-h-[44px]"
-          ) { 'Add Medicine' }
-          Link(
-            href: url_helpers&.new_person_path || '#',
-            class: "#{button_secondary_classes} min-h-[44px]"
-          ) { 'Add Person' }
-        end
+        Link(
+          href: url_helpers&.new_medicine_path || '#',
+          class: "#{button_primary_classes} min-h-[44px]"
+        ) { 'Add Medicine' }
+        Link(
+          href: url_helpers&.new_person_path || '#',
+          class: "#{button_secondary_classes} min-h-[44px]"
+        ) { 'Add Person' }
       end
 
       def render_stats_section
