@@ -24,6 +24,7 @@ if Rails.env.local?
 
   Rails.logger.debug 'Fixtures loaded successfully!'
   Rails.logger.debug "\nYou can now login with:"
-  Rails.logger.debug '  Email: damacus@example.com'
+  Rails.logger.debug '  Email: jane.doe@example.com (no 2FA)'
   Rails.logger.debug '  Password: password'
+  Rails.logger.debug '  Note: damacus@example.com has TOTP enabled'
 end

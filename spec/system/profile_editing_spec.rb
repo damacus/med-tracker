@@ -10,7 +10,7 @@ RSpec.describe 'Profile Editing' do
   let(:user) { users(:damacus) }
 
   before do
-    rodauth_login(account.email, 'password')
+    login_as(user)
     visit profile_path
   end
 

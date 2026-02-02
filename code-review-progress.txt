@@ -1,5 +1,41 @@
 # Code Review Progress
 
+## Session: January 27, 2026
+
+### Completed This Session
+
+1. **Removed dead PasskeysCard component** (Deduplication)
+   - Deleted `app/views/profiles/passkeys_card.rb` (84 lines)
+   - Functionality already exists in `TwoFactorCard`
+
+2. **Fixed SQL injection vulnerability** (Security)
+   - Replaced raw SQL interpolation in `TwoFactorCard` with ActiveRecord queries
+   - Created `AccountOtpKey` and `AccountRecoveryCode` models for Rodauth tables
+
+3. **Fixed 2FA management tests** (Test Coverage)
+   - Updated tests to properly set up database state for TOTP and recovery codes
+   - Reduced pending tests from 4 to 0
+
+4. **Browser tag compliance** (Test Quality)
+   - Added `type: :system` to 4 feature specs:
+     - `spec/features/profiles/two_factor_management_spec.rb`
+     - `spec/features/authentication/passkey_registration_spec.rb`
+     - `spec/features/observability/http_metrics_spec.rb`
+     - `spec/features/prescriptions/prescription_card_spec.rb`
+
+5. **Fixed case-sensitivity test failure**
+   - Updated prescription card spec to use case-insensitive regex match
+
+### Commits This Session
+- `5b4a65000` - feat: add comprehensive 2FA management interface to profile page
+- `ea17cdfaa` - refactor: code review improvements for 2FA management
+
+### Test Results
+- **Tests**: 754 examples, 0 failures, 25 pending
+- **RuboCop**: 391 files inspected, no offenses
+
+---
+
 ## Session: January 2026 (Continuation)
 
 ### Completed This Session

@@ -2,39 +2,21 @@
 
 module Views
   module Rodauth
-    class OtpSetup < Views::Base
+    class OtpSetup < Views::Rodauth::Base
       include Phlex::Rails::Helpers::FormWith
       include Phlex::Rails::Helpers::LinkTo
 
       def view_template
-        div(class: 'relative min-h-screen bg-gradient-to-br from-sky-50 via-white to-indigo-100 py-16 sm:py-20') do
-          decorative_glow
-
-          div(class: 'relative mx-auto flex w-full max-w-2xl flex-col items-center gap-8 px-4 sm:px-6 lg:px-8') do
-            header_section
-            form_section
-          end
+        page_layout do
+          render_page_header(
+            title: 'Set Up Two-Factor Authentication',
+            subtitle: 'Scan the QR code with your authenticator app to enable 2FA.'
+          )
+          form_section
         end
       end
 
       private
-
-      def header_section
-        div(class: 'mx-auto max-w-xl text-center space-y-3') do
-          h1(class: 'text-3xl font-bold tracking-tight text-slate-800 sm:text-4xl') do
-            'Set Up Two-Factor Authentication'
-          end
-          p(class: 'text-lg text-slate-600') do
-            'Scan the QR code with your authenticator app to enable 2FA.'
-          end
-        end
-      end
-
-      def decorative_glow
-        div(class: 'pointer-events-none absolute inset-x-0 top-24 flex justify-center opacity-60') do
-          div(class: 'h-64 w-64 rounded-full bg-sky-200 blur-3xl sm:h-80 sm:w-80')
-        end
-      end
 
       def form_section
         render RubyUI::Card.new(class: card_classes) do
@@ -44,8 +26,7 @@ module Views
       end
 
       def card_classes
-        'w-full backdrop-blur bg-white/90 shadow-2xl border border-white/70 ' \
-          'ring-1 ring-black/5 rounded-2xl overflow-hidden'
+        "#{CARD_CLASSES} overflow-hidden"
       end
 
       def render_card_header
@@ -154,6 +135,7 @@ module Views
             data_turbo: 'false'
           ) do
             authenticity_token_field
+            otp_secret_field
             password_field
             otp_code_field
             submit_button
@@ -161,8 +143,10 @@ module Views
         end
       end
 
-      def authenticity_token_field
-        input(type: 'hidden', name: 'authenticity_token', value: view_context.form_authenticity_token)
+      def otp_secret_field
+        rodauth = view_context.rodauth
+        input(type: 'hidden', name: rodauth.otp_setup_param, value: rodauth.otp_user_key)
+        input(type: 'hidden', name: rodauth.otp_setup_raw_param, value: rodauth.otp_key) if rodauth.otp_keys_use_hmac?
       end
 
       def password_field

@@ -10,7 +10,8 @@ class RodauthMain < Rodauth::Rails::Auth
            :login, :logout, :remember, :lockout, :active_sessions,
            :reset_password, :change_password, :change_login, :verify_login_change,
            :close_account, :omniauth,
-           :otp, :recovery_codes
+           :otp, :recovery_codes,
+           :webauthn, :webauthn_login
 
     # See the Rodauth documentation for the list of available config options:
     # http://rodauth.jeremyevans.net/documentation.html
@@ -105,6 +106,53 @@ class RodauthMain < Rodauth::Rails::Auth
     # ==> Two-Factor Authentication (OTP) Configuration
     # TOTP issuer name shown in authenticator apps
     otp_issuer 'MedTracker'
+
+    # ==> WebAuthn (Passkey) Configuration
+    webauthn_rp_name 'MedTracker'
+    webauthn_rp_id do
+      if Rails.env.production?
+        URI.parse(ENV.fetch('APP_URL')).host
+      else
+        'localhost'
+      end
+    end
+
+    webauthn_origin { ENV.fetch('APP_URL', request.base_url) }
+
+    # Configure WebAuthn table column mappings for Rails conventions
+    webauthn_user_ids_account_id_column :account_id
+
+    # Allow WebAuthn setup without requiring existing MFA
+    # This enables users to add their first passkey without needing TOTP first
+    two_factor_modifications_require_password? true
+
+    # Allow setting up the first 2FA method without requiring existing 2FA
+    # This fixes the chicken-and-egg problem where users can't set up TOTP
+    # because they don't have any 2FA method yet
+    two_factor_auth_required_redirect { two_factor_auth_path }
+    before_otp_setup_route do
+      # Allow OTP setup if user has no 2FA methods configured yet
+      # Only require 2FA auth if they already have a method set up
+      next unless two_factor_authentication_setup?
+
+      require_two_factor_authenticated
+    end
+    before_webauthn_setup_route do
+      # Allow WebAuthn setup if user has no 2FA methods configured yet
+      next unless two_factor_authentication_setup?
+
+      require_two_factor_authenticated
+    end
+    before_recovery_codes_route do
+      # Recovery codes require at least one 2FA method to be set up first
+      # If no 2FA is set up, redirect to OTP setup with a message
+      unless two_factor_authentication_setup?
+        set_redirect_error_flash 'You need to set up an authenticator app or passkey before generating recovery codes'
+        redirect otp_setup_path
+      end
+      # If 2FA is set up but not authenticated in this session, require auth
+      require_two_factor_authenticated
+    end
 
     # ==> OmniAuth (Google OAuth)
     # Configure Google OAuth provider

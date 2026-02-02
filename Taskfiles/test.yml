@@ -1,6 +1,9 @@
 ---
 version: "3"
 
+vars:
+  ENVIRONMENT: test
+
 tasks:
   build:
     desc: Build test Docker images
@@ -24,7 +27,6 @@ tasks:
       Usage: task test:up
     cmds:
       - task: :internal:up
-        vars: { ENVIRONMENT: test }
 
   seed:
     desc: Seed test database with fixtures
@@ -35,7 +37,6 @@ tasks:
       Usage: task test:seed
     cmds:
       - task: :internal:seed
-        vars: { ENVIRONMENT: test }
 
   stop:
     desc: Stop test server
@@ -45,7 +46,6 @@ tasks:
       Usage: task test:stop
     cmds:
       - task: :internal:stop
-        vars: { ENVIRONMENT: test }
 
   ps:
     desc: List current status of Docker Compose Stack
@@ -54,10 +54,18 @@ tasks:
       Usage: task test:ps
     cmds:
       - task: :internal:ps
-        vars: { ENVIRONMENT: test }
+
+  run-migrations:
+    desc: Run Rails migrations
+    summary: |
+      Run Rails migrations on the test database
+      Usage: task test:run-migrations
+    cmds:
+      - task: :internal:run-migrations
 
   rebuild:
     desc: Rebuild test server (drops database)
+    prompt: This removes all data and rebuilds the test environment. Are you sure?
     summary: |
       Rebuild test environment from scratch
       WARNING: This drops the database and all data!
@@ -69,19 +77,14 @@ tasks:
       Usage: task test:rebuild
     cmds:
       - task: :internal:stop
-        vars: { ENVIRONMENT: test }
-      - docker compose -p medtracker-test -f docker-compose.test.yml down -v # Remove volumes (drops database)
+        vars: { REMOVE_VOLUMES: "true" }
       - task: :internal:build
-        vars: { ENVIRONMENT: test }
       - task: :internal:up
-        vars: { ENVIRONMENT: test }
       - task: :internal:run
         vars:
-          ENVIRONMENT: test
           SERVICE: web
           COMMAND: "rails db:create db:migrate"
       - task: :internal:seed
-        vars: { ENVIRONMENT: test }
 
   logs:
     desc: View test server logs
@@ -91,4 +94,3 @@ tasks:
       Usage: task test:logs
     cmds:
       - task: :internal:logs
-        vars: { ENVIRONMENT: test }

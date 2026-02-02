@@ -100,3 +100,67 @@ All terminal commands and scripts should be run using fish shell.
 - NEVER stop before pushing - that leaves work stranded locally
 - NEVER say "ready to push when you are" - YOU must push
 - If push fails, resolve and retry until it succeeds
+
+## Database Strategy
+
+**PostgreSQL Only**: MedTracker uses PostgreSQL exclusively for all environments (development, test, production) to ensure dev/test/prod parity and leverage advanced features like `citext` for case-insensitive email comparisons, partial indexes, and JSON/JSONB columns.
+
+### PostgreSQL Version
+
+Always use **PostgreSQL 18** (not 17 or earlier) when specifying database versions in Docker Compose files, configuration, or documentation.
+
+## Development Fixtures
+
+The development database is seeded with fixtures from `spec/fixtures/` via `db/seeds.rb`. All test users have password: `password`.
+
+**Critical Loading Order**: accounts → people → users → medicines → dosages → prescriptions → person_medicines → medication_takes (must respect foreign keys).
+
+## Shell Preference
+
+**Always use Fish shell syntax** for all CLI commands and scripts:
+
+- Variables: `set VAR value` not `VAR=value`
+- Export: `set -x VAR value` not `export VAR=value`
+- Command substitution: `(command)` not `$(command)`
+- Conditionals: `if ... end` not `if ... fi`
+
+## Person Types and Capacity
+
+**Person Model Enum Values:**
+
+- `adult: 0` - Self-managing adult
+- `minor: 1` - Child requiring parental consent
+- `dependent_adult: 2` - Adult requiring carer support
+
+**Key Logic:**
+
+- **Minors**: `person_type: 1`, `has_capacity: false` - always lack capacity due to age
+- **Dependent Adults**: `person_type: 2`, `has_capacity: false` - adults requiring carer support
+- **User role** (authentication) vs **Person type** (care requirements) are distinct concepts
+
+## Accessibility Requirements
+
+**WCAG 2.2 SC 2.5.8**: Interactive targets must be at least **24x24 CSS pixels**, with 44x44px recommended for touch targets. Use `min-h-[24px]`/`min-w-[24px]` minimum, `min-h-[44px]` for important controls.
+
+## Quick Commands for PR Review
+
+```bash
+# Fetch PR details
+gh pr view <PR_NUMBER> --comments
+gh pr view <PR_NUMBER> --json title,body,comments,reviews,files | bat -p
+
+# Filter Copilot reviews
+gh pr view <PR_NUMBER> --json reviews --jq '.reviews[] | select(.author.login == "copilot") | .body' | bat -p
+```
+
+**Common Copilot Issues:**
+
+1. Enum comparisons: Use predicate methods (e.g., `person_type_adult?`) instead of string comparisons
+2. Association names: Verify correct association names in models
+3. Type mismatches: Ensure types match (symbol vs string, etc.)
+
+## Local Testing
+
+Use PostgreSQL for testing via `task test` (Docker) or `task local:test:all` (local). Use `task local:test` for non-browser tests and `task local:test:browser` for browser tests with Playwright. Use `task rubocop` for linting.
+
+**Task Commands**: Always use `task` commands from `Taskfile.yml` instead of running bare commands to ensure environment consistency.

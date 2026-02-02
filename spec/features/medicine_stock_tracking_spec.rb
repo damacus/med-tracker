@@ -14,11 +14,8 @@ RSpec.describe 'Medicine Stock Tracking', type: :system do
     # Ensure medicine has known stock level
     medicine.update!(stock: 10, reorder_threshold: 5)
 
-    # Login as admin
-    visit login_path
-    fill_in 'Email', with: admin.email_address
-    fill_in 'Password', with: 'password'
-    click_button 'Login'
+    # Login as admin using helper that clears 2FA
+    login_as(admin)
   end
 
   it 'displays current stock on the dashboard' do

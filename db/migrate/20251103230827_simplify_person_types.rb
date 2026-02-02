@@ -7,7 +7,7 @@ class SimplifyPersonTypes < ActiveRecord::Migration[8.0]
     # New: adult(0), minor(1), dependent_adult(2)
 
     # Map all adults (parent, carer, nurse, doctor, administrator, adult_patient) to adult(0)
-    execute <<-SQL.squish
+    execute <<~SQL.squish
       UPDATE people#{' '}
       SET person_type = 0#{' '}
       WHERE person_type IN (0, 2, 3, 4, 5, 6);

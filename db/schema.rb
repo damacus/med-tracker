@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_05_160155) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_02_074737) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -98,6 +98,28 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_05_160155) do
     t.datetime "requested_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
     t.datetime "updated_at"
     t.index ["account_id"], name: "index_account_verification_keys_on_account_id"
+  end
+
+  create_table "account_webauthn_keys", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.datetime "last_use"
+    t.string "nickname"
+    t.string "public_key", null: false
+    t.integer "sign_count", default: 0, null: false
+    t.datetime "updated_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.string "webauthn_id", null: false
+    t.index ["account_id"], name: "index_account_webauthn_keys_on_account_id"
+    t.index ["webauthn_id", "account_id"], name: "index_account_webauthn_keys_on_webauthn_id_and_account_id", unique: true
+  end
+
+  create_table "account_webauthn_user_ids", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.datetime "updated_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.string "webauthn_id", null: false
+    t.index ["account_id"], name: "index_account_webauthn_user_ids_on_account_id"
+    t.index ["webauthn_id"], name: "index_account_webauthn_user_ids_on_webauthn_id", unique: true
   end
 
   create_table "accounts", force: :cascade do |t|
@@ -253,6 +275,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_05_160155) do
   add_foreign_key "account_recovery_codes", "accounts", column: "id"
   add_foreign_key "account_remember_keys", "accounts"
   add_foreign_key "account_verification_keys", "accounts"
+  add_foreign_key "account_webauthn_keys", "accounts", on_delete: :cascade
+  add_foreign_key "account_webauthn_user_ids", "accounts", on_delete: :cascade
   add_foreign_key "carer_relationships", "people", column: "carer_id", deferrable: :deferred
   add_foreign_key "carer_relationships", "people", column: "patient_id", deferrable: :deferred
   add_foreign_key "dosages", "medicines", deferrable: :deferred

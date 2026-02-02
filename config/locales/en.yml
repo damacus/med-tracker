@@ -6,6 +6,9 @@ en:
     users:
       unauthorized: "You are not authorized to perform this action."
 
+  authentication:
+    two_factor_required: "For enhanced security, please set up two-factor authentication for your account."
+
   invitation_mailer:
     subject: "Invitation to join MedTracker"
 
@@ -83,3 +86,6 @@ en:
     activated: "User account has been activated."
     cannot_deactivate_self: "You cannot deactivate your own account."
 
+  webauthn:
+    passkey_removed: "Passkey removed successfully"
+    passkey_registered: "Passkey registered successfully"

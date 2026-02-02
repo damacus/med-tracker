@@ -111,6 +111,11 @@ RSpec.describe 'AdminManagesUsers' do
 
       expect(page).to have_content('User was successfully created')
 
+      # Wait for flash message to dismiss before clicking
+      using_wait_time(5) do
+        expect(page).to have_no_content('User was successfully created')
+      end
+
       # Log out admin
       click_button admin.name
       click_link 'Logout'

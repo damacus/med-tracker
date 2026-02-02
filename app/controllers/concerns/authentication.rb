@@ -3,23 +3,23 @@
 module Authentication
   extend ActiveSupport::Concern
 
-  # Roles that require 2FA to be enabled
+  # Roles that should have 2FA enabled for security
   ROLES_REQUIRING_2FA = %w[administrator doctor nurse].freeze
 
   included do
     before_action :require_authentication
-    before_action :require_two_factor_setup
-    helper_method :authenticated?, :current_user, :current_account
+    before_action :check_two_factor_setup
+    helper_method :authenticated?, :current_user, :current_account, :should_setup_two_factor?
   end
 
   class_methods do
     def allow_unauthenticated_access(**)
       skip_before_action(:require_authentication, **)
-      skip_before_action(:require_two_factor_setup, **)
+      skip_before_action(:check_two_factor_setup, **)
     end
 
-    def skip_two_factor_requirement(**)
-      skip_before_action(:require_two_factor_setup, **)
+    def skip_two_factor_check(**)
+      skip_before_action(:check_two_factor_setup, **)
     end
   end
 
@@ -36,13 +36,11 @@ module Authentication
   end
 
   def authenticated?
-    rodauth.logged_in?
+    rodauth.authenticated?
   end
 
   def require_authentication
-    return if rodauth.logged_in?
-
-    request_authentication
+    rodauth.require_authentication
   end
 
   def request_authentication
@@ -54,26 +52,35 @@ module Authentication
     session.delete(:return_to_after_authenticating) || root_url
   end
 
-  # Require 2FA setup for roles that need it (administrator, doctor, nurse)
-  def require_two_factor_setup
-    return unless rodauth.logged_in?
-    return unless current_user
-    return unless role_requires_two_factor?
-    return if two_factor_enabled?
+  # Soft enforcement: Show flash notice to privileged users without 2FA
+  # Does NOT block access - just reminds them to set it up
+  def check_two_factor_setup
+    return unless should_setup_two_factor?
+    return if request.path.start_with?('/otp-setup', '/webauthn-setup', '/recovery-codes', '/multifactor')
+    return if flash[:notice].present? # Don't overwrite existing flash messages
 
-    # Don't redirect if already on 2FA setup page
-    return if request.path == rodauth.otp_setup_path
-
-    flash[:alert] = t('authentication.two_factor_required',
-                      default: 'Your role requires two-factor authentication. Please set it up to continue.')
-    redirect_to rodauth.otp_setup_path
+    flash.now[:notice] = I18n.t('authentication.two_factor_required')
   end
 
-  def role_requires_two_factor?
+  # Check if current user should have 2FA set up
+  def should_setup_two_factor?
+    return false unless rodauth.logged_in?
+    return false unless current_user
+    return false if two_factor_configured?
+
     ROLES_REQUIRING_2FA.include?(current_user.role)
   end
 
-  def two_factor_enabled?
-    rodauth.uses_two_factor_authentication?
+  # Check if user has any 2FA method configured
+  def two_factor_configured?
+    return false unless current_account
+
+    # Check for TOTP
+    return true if AccountOtpKey.exists?(id: current_account.id)
+
+    # Check for WebAuthn/Passkeys
+    return true if current_account.account_webauthn_keys.exists?
+
+    false
   end
 end
