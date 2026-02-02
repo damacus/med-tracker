@@ -3,12 +3,16 @@
 require 'rails_helper'
 
 RSpec.describe 'Navigation Flow' do
-  fixtures :accounts, :account_otp_keys, :people, :users
+  fixtures :accounts, :people, :users
 
   let(:user) { users(:damacus) }
 
   describe 'Login -> Profile -> Logout flow' do
     it 'allows user to login, visit profile, and logout successfully' do
+      # Clear any 2FA setup to allow direct login
+      account = user.person.account
+      AccountOtpKey.where(id: account.id).delete_all
+
       # Step 1: Login
       visit '/login'
       expect(page).to have_content('Welcome back')
@@ -30,7 +34,8 @@ RSpec.describe 'Navigation Flow' do
       expect(page).to have_content('Personal Information')
       expect(page).to have_content('Account Security')
 
-      # Step 3: Logout - use the logout button form
+      # Step 3: Logout - wait for flash to disappear first, then use the logout button form
+      expect(page).to have_no_css('[data-controller="flash"]', wait: 5)
       click_button user.name
       click_link 'Logout'
 

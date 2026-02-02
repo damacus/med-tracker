@@ -4,7 +4,12 @@
 module SystemHelpers
   # Signs in a user using the login form.
   # This helper uses standard Capybara methods to interact with the page.
+  # Clears any 2FA setup to allow direct login without TOTP.
   def sign_in(user)
+    # Clear 2FA to allow direct login
+    account = user.respond_to?(:person) ? user.person.account : user
+    clear_2fa_for_account(account) if account.respond_to?(:id)
+
     visit '/login'
 
     fill_in 'Email address', with: user.email_address

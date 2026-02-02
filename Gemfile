@@ -40,6 +40,8 @@ gem 'rack-attack'
 gem 'rotp'
 # QR code generation for OTP setup [https://github.com/whomwah/rqrcode]
 gem 'rqrcode'
+# WebAuthn support for passkeys [https://github.com/cedarcode/webauthn-ruby]
+gem 'webauthn'
 
 # OpenTelemetry for observability [https://opentelemetry.io/docs/languages/ruby/]
 gem 'opentelemetry-exporter-otlp'

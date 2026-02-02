@@ -83,6 +83,16 @@ RSpec.describe 'Clinician Access Authorization' do
   end
 
   def login_as(user, password: 'password')
+    clear_2fa_for_user(user)
+    perform_login(user, password)
+  end
+
+  def clear_2fa_for_user(user)
+    account = user.person.account
+    clear_2fa_for_account(account)
+  end
+
+  def perform_login(user, password)
     visit login_path
     fill_in 'Email address', with: user.email_address
     fill_in 'Password', with: password

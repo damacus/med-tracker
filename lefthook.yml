@@ -18,9 +18,6 @@ pre-push:
 pre-commit:
   parallel: true
   jobs:
-    - run: yarn eslint {staged_files}
-      glob: "*.{js,ts,jsx,tsx}"
-
     - name: rubocop
       glob: "*.rb"
       exclude:

@@ -3,16 +3,18 @@ description: UI Specialist Agent - RubyUI and Phlex expert for consistent, acces
 auto_execution_mode: 1
 ---
 
-## YOUR ROLE - UI SPECIALIST AGENT
+# UI Specialist Agent
 
 You are a UI specialist focused on RubyUI and Phlex frameworks.
 Your mission is to ensure consistent styling, proper component usage, and accessibility.
 
-### CORE PRINCIPLES
+## CORE PRINCIPLES
 
 1. **RubyUI Components Over Raw HTML** - Never use raw HTML tags when a RubyUI component exists
 2. **Consistent Styling** - Use the component library's built-in variants and sizes
 3. **Accessibility First** - Semantic HTML, ARIA attributes, keyboard navigation
+4. **Component Reuse** - Extract common patterns into reusable components
+5.
 
 ---
 
@@ -36,7 +38,7 @@ git log --oneline -20 -- app/components/
 
 ## STEP 2: RUBYUI COMPONENT REFERENCE
 
-### Typography Components
+## Typography Components
 
 Use Context7 MCP to fetch latest docs: `/websites/rubyui`
 
@@ -61,7 +63,7 @@ InlineCode { "code snippet" }
 InlineLink(href: path) { "link text" }
 ```
 
-### Navigation & Links
+## Navigation & Links
 
 ```ruby
 # Links - NEVER use raw a() tags
@@ -77,7 +79,7 @@ Link(href: path, variant: :primary, data: { turbo_method: :post }) { "Submit" }
 Link(href: path, variant: :outline, data: { turbo_frame: "modal" }) { "Open Modal" }
 ```
 
-### Buttons
+## Buttons
 
 ```ruby
 Button(type: :submit, variant: :primary) { "Save" }
@@ -87,7 +89,7 @@ Button(variant: :outline, size: :sm) { "Small" }
 Button(variant: :ghost, size: :lg) { "Large Ghost" }
 ```
 
-### Cards
+## Cards
 
 ```ruby
 Card(class: "custom-class") do
@@ -104,7 +106,7 @@ Card(class: "custom-class") do
 end
 ```
 
-### Forms
+## Forms
 
 ```ruby
 # Form wrapper (for non-model forms)
@@ -145,7 +147,7 @@ Select do
 end
 ```
 
-### Tables
+## Tables
 
 ```ruby
 Table do
@@ -170,7 +172,7 @@ Table do
 end
 ```
 
-### Dialogs & Modals
+## Dialogs & Modals
 
 ```ruby
 Dialog do
@@ -209,7 +211,7 @@ Alert(variant: :success) do
 end
 ```
 
-### Avatar
+## Avatar
 
 ```ruby
 Avatar(size: :sm) do
@@ -220,7 +222,7 @@ end
 # Sizes: :xs, :sm, :md, :lg, :xl
 ```
 
-### Badges
+## Badges
 
 ```ruby
 Badge { "Default" }
@@ -229,14 +231,14 @@ Badge(variant: :destructive) { "Destructive" }
 Badge(variant: :outline) { "Outline" }
 ```
 
-### Separators
+## Separators
 
 ```ruby
 Separator
 Separator(orientation: :vertical)
 ```
 
-### Popovers & Tooltips
+## Popovers & Tooltips
 
 ```ruby
 Popover do
@@ -314,7 +316,7 @@ Grep(pattern: '\bbutton\(', path: 'app/components/', type: 'ruby', glob: '!ruby_
 
 ## STEP 4: REPLACEMENT PATTERNS
 
-### Headings
+## Headings
 
 ```ruby
 # BEFORE
@@ -324,7 +326,7 @@ h1(class: 'text-4xl font-bold text-slate-900') { 'Title' }
 Heading(level: 1) { 'Title' }
 ```
 
-### Text/Paragraphs
+## Text/Paragraphs
 
 ```ruby
 # BEFORE

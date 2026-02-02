@@ -52,14 +52,21 @@ tasks:
     cmds:
       - task: :internal:stop
 
-  build:
-    desc: Build development Docker images
+  ps:
+    desc: List current status of Docker Compose Stack
     summary: |
-      Build Docker images for the development environment.
-      For automatic rebuilds on file changes, use 'task dev:watch' instead.
-      Usage: task dev:build
+      List current status of Docker Compose Stack
+      Usage: task dev:ps
     cmds:
-      - task: :internal:build
+      - task: :internal:ps
+
+  run-migrations:
+    desc: Run Rails migrations
+    summary: |
+      Run Rails migrations on the development database
+      Usage: task dev:run-migrations
+    cmds:
+      - task: :internal:run-migrations
 
   rebuild:
     desc: Rebuild development server (drops database)
@@ -68,9 +75,10 @@ tasks:
       WARNING: This drops the database and all data!
       Use when database migrations have changed or you need a fresh start.
       Usage: task dev:rebuild
+    prompt: This removes all data and rebuilds the development environment. Are you sure?
     cmds:
       - task: :internal:stop
-      - docker compose -f docker-compose.dev.yml down -v # Remove volumes (drops database)
+        vars: { REMOVE_VOLUMES: "true" }
       - task: :internal:build
       - task: :internal:up
       - task: :internal:run
