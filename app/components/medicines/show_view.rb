@@ -30,6 +30,13 @@ module Components
 
       def render_header
         div(class: 'mb-8') do
+          # Mobile: Quick actions first for thumb accessibility
+          div(class: 'md:hidden mb-4') do
+            div(class: 'flex flex-wrap gap-2') do
+              render_action_buttons
+            end
+          end
+
           Text(size: '2', weight: 'medium', class: 'uppercase tracking-wide text-slate-500 mb-2') { 'Medicine Profile' }
           Heading(level: 1) { medicine.name }
         end
@@ -139,10 +146,15 @@ module Components
       end
 
       def render_actions
-        div(class: 'flex gap-3') do
-          Link(href: edit_medicine_path(medicine), variant: :primary) { 'Edit Medicine' }
-          Link(href: medicines_path, variant: :outline) { 'Back to List' }
+        # Desktop only - mobile actions are in header
+        div(class: 'hidden md:flex gap-3') do
+          render_action_buttons
         end
+      end
+
+      def render_action_buttons
+        Link(href: edit_medicine_path(medicine), variant: :primary, class: 'min-h-[44px]') { 'Edit Medicine' }
+        Link(href: medicines_path, variant: :outline, class: 'min-h-[44px]') { 'Back to List' }
       end
 
       def button_primary_classes
