@@ -18,7 +18,7 @@ module Components
       end
 
       def view_template
-        div(class: 'container mx-auto px-4 py-8 max-w-7xl') do
+        div(class: 'container mx-auto px-4 py-8 pb-24 md:pb-8 max-w-7xl') do
           render_person_details
           render_prescriptions_section
           render_my_medicines_section
@@ -77,6 +77,13 @@ module Components
       def render_person_info
         CardHeader do
           div(class: 'space-y-4') do
+            # Mobile: Quick actions first for thumb accessibility
+            div(class: 'md:hidden') do
+              div(class: 'flex flex-wrap gap-2 mb-4') do
+                render_person_quick_actions
+              end
+            end
+
             Heading(level: 1, size: '7', class: 'font-semibold tracking-tight') { person.name }
             CardDescription do
               div(class: 'space-y-1') do
@@ -84,26 +91,34 @@ module Components
                 p { "Age: #{person.age}" }
               end
             end
-            div(class: 'flex flex-wrap gap-2 pt-2') do
-              Link(
-                href: new_person_prescription_path(person),
-                variant: :primary,
-                data: { turbo_stream: true }
-              ) { 'Add Prescription' }
-              if view_context.policy(PersonMedicine.new(person: person)).create?
-                Link(
-                  href: new_person_person_medicine_path(person),
-                  variant: :primary,
-                  data: { turbo_stream: true }
-                ) { 'Add Medicine' }
-              end
-              if view_context.policy(person).update?
-                Link(href: person_path(person, editing: true), variant: :outline) { 'Edit Person' }
-              end
-              Link(href: people_path, variant: :outline) { 'Back' }
+
+            # Desktop: Actions below info
+            div(class: 'hidden md:flex flex-wrap gap-2 pt-2') do
+              render_person_quick_actions
             end
           end
         end
+      end
+
+      def render_person_quick_actions
+        Link(
+          href: new_person_prescription_path(person),
+          variant: :primary,
+          class: 'min-h-[44px]',
+          data: { turbo_stream: true }
+        ) { 'Add Prescription' }
+        if view_context.policy(PersonMedicine.new(person: person)).create?
+          Link(
+            href: new_person_person_medicine_path(person),
+            variant: :primary,
+            class: 'min-h-[44px]',
+            data: { turbo_stream: true }
+          ) { 'Add Medicine' }
+        end
+        if view_context.policy(person).update?
+          Link(href: person_path(person, editing: true), variant: :outline, class: 'min-h-[44px]') { 'Edit Person' }
+        end
+        Link(href: people_path, variant: :outline, class: 'min-h-[44px]') { 'Back' }
       end
 
       def render_prescriptions_section
