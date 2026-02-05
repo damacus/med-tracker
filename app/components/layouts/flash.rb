@@ -3,9 +3,10 @@
 module Components
   module Layouts
     class Flash < Components::Base
-      def initialize(notice: nil, alert: nil)
+      def initialize(notice: nil, alert: nil, warning: nil)
         @notice = notice
         @alert = alert
+        @warning = warning
         super()
       end
 
@@ -13,6 +14,7 @@ module Components
         div(class: 'fixed inset-x-0 top-4 z-[60] pointer-events-none') do
           div(class: 'container mx-auto px-4') do
             render_notice if @notice
+            render_warning if @warning
             render_alert if @alert
           end
         end
@@ -29,6 +31,15 @@ module Components
         end
       end
 
+      def render_warning
+        div(data: { controller: 'flash', flash_dismiss_after_value: 0 }, class: 'pointer-events-auto') do
+          Alert(variant: :warning) do
+            warning_icon
+            AlertDescription { @warning }
+          end
+        end
+      end
+
       def render_alert
         div(data: { controller: 'flash', flash_dismiss_after_value: 0 }, class: 'pointer-events-auto') do
           Alert(variant: :destructive) do
@@ -40,6 +51,10 @@ module Components
 
       def check_icon
         render Icons::Check.new(size: 16, class: 'lucide lucide-check')
+      end
+
+      def warning_icon
+        render Icons::AlertCircle.new(size: 16, class: 'lucide lucide-alert-circle')
       end
 
       def alert_icon
