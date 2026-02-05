@@ -28,12 +28,7 @@ module Components
           end
 
           body(class: 'bg-slate-50') do
-            div(id: 'flash') do
-              render Components::Layouts::Flash.new(
-                notice: flash[:notice],
-                alert: flash[:alert]
-              )
-            end
+            div(id: 'flash')
 
             main do
               render @component if @component
