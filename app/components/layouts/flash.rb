@@ -24,7 +24,6 @@ module Components
         div(data: { controller: 'flash', flash_dismiss_after_value: 3000 }, class: 'pointer-events-auto') do
           Alert(variant: :success) do
             check_icon
-            AlertTitle { 'Success' }
             AlertDescription { @notice }
           end
         end
@@ -34,7 +33,6 @@ module Components
         div(data: { controller: 'flash', flash_dismiss_after_value: 0 }, class: 'pointer-events-auto') do
           Alert(variant: :destructive) do
             alert_icon
-            AlertTitle { 'Error' }
             AlertDescription { @alert }
           end
         end
