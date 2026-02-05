@@ -123,7 +123,7 @@ module Components
         div(class: 'flex items-center gap-2 text-sm') do
           render Icons::CheckCircle.new(size: 16, class: 'w-4 h-4 text-green-600')
           Text(as: 'span', weight: 'medium', class: 'text-slate-700') { take.taken_at.strftime('%l:%M %p').strip }
-          Text(as: 'span', class: 'text-slate-500') { "#{take.amount_ml.to_i} ml" }
+          Text(as: 'span', class: 'text-slate-500') { "#{take.amount_ml.to_i} #{prescription.dosage.unit}" }
         end
       end
 
