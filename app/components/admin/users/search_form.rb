@@ -46,10 +46,22 @@ module Components
           div(class: 'w-48') do
             render RubyUI::FormField.new do
               render RubyUI::FormFieldLabel.new(for: 'role') { 'Role' }
-              select(name: 'role', id: 'role', class: select_classes) do
-                option(value: '', selected: search_params[:role].blank?) { 'All Roles' }
-                User.roles.each_key do |role|
-                  option(value: role, selected: search_params[:role] == role) { role.titleize }
+              Select do
+                SelectInput(
+                  name: 'role',
+                  id: 'role',
+                  value: search_params[:role]
+                )
+                SelectTrigger do
+                  SelectValue(placeholder: 'All Roles') do
+                    search_params[:role]&.titleize || 'All Roles'
+                  end
+                end
+                SelectContent do
+                  SelectItem(value: '') { 'All Roles' }
+                  User.roles.each_key do |role|
+                    SelectItem(value: role) { role.titleize }
+                  end
                 end
               end
             end
@@ -60,10 +72,22 @@ module Components
           div(class: 'w-36') do
             render RubyUI::FormField.new do
               render RubyUI::FormFieldLabel.new(for: 'status') { 'Status' }
-              select(name: 'status', id: 'status', class: select_classes) do
-                option(value: '', selected: search_params[:status].blank?) { 'All' }
-                option(value: 'active', selected: search_params[:status] == 'active') { 'Active' }
-                option(value: 'inactive', selected: search_params[:status] == 'inactive') { 'Inactive' }
+              Select do
+                SelectInput(
+                  name: 'status',
+                  id: 'status',
+                  value: search_params[:status]
+                )
+                SelectTrigger do
+                  SelectValue(placeholder: 'All') do
+                    search_params[:status]&.titleize || 'All'
+                  end
+                end
+                SelectContent do
+                  SelectItem(value: '') { 'All' }
+                  SelectItem(value: 'active') { 'Active' }
+                  SelectItem(value: 'inactive') { 'Inactive' }
+                end
               end
             end
           end

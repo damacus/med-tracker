@@ -40,7 +40,7 @@ RSpec.describe 'OTP Login', :browser do
     expect(page).to have_current_path('/otp-auth')
 
     totp = ROTP::TOTP.new('JBSWY3DPEHPK3PXP')
-    otp_code = totp.at(Time.current - 20.seconds)
+    otp_code = totp.at(20.seconds.ago)
 
     fill_in 'otp-auth-code', with: otp_code
     click_button 'Authenticate'
