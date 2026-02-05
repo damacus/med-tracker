@@ -12,7 +12,7 @@ class MedicinesController < ApplicationController
 
   def show
     authorize @medicine
-    render Components::Medicines::ShowView.new(medicine: @medicine, notice: flash[:notice])
+    render Components::Medicines::ShowView.new(medicine: @medicine, notice: flash.delete(:notice))
   end
 
   def new
