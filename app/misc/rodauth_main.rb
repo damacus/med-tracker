@@ -107,6 +107,18 @@ class RodauthMain < Rodauth::Rails::Auth
     # TOTP issuer name shown in authenticator apps
     otp_issuer 'MedTracker'
 
+    # Allow for clock drift (±30 seconds = 1 interval before/after current)
+    # This helps with timing issues between server and client
+    otp_drift 30
+
+    # Disable HMAC encryption for OTP keys
+    # OTP keys are stored as raw Base32 strings in the database
+    otp_keys_use_hmac? false
+
+    # HMAC secret for other Rodauth features (remember tokens, etc.)
+    # In production, this should be a secure random value from ENV
+    hmac_secret ENV.fetch('RODAUTH_HMAC_SECRET', Rails.application.secret_key_base)
+
     # ==> WebAuthn (Passkey) Configuration
     webauthn_rp_name 'MedTracker'
     webauthn_rp_id do

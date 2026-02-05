@@ -104,3 +104,14 @@ tasks:
       Usage: task dev:open-ui
     cmds:
       - task: :internal:open-ui
+
+  console:
+    desc: Open Rails console in development environment
+    summary: |
+      Open an interactive Rails console in the development Docker container.
+      Usage: task dev:console
+    cmds:
+      - task: :internal:run
+        vars:
+          SERVICE: web
+          COMMAND: "rails console"

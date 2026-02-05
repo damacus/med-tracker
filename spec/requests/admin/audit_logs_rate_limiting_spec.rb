@@ -46,8 +46,13 @@ RSpec.describe 'Admin::AuditLogs Rate Limiting' do
     end
 
     it 'includes Retry-After header when throttled' do
-      101.times { get admin_audit_logs_path }
+      100.times do
+        get admin_audit_logs_path
+        expect(response).to have_http_status(:success)
+      end
 
+      get admin_audit_logs_path
+      expect(response).to have_http_status(:too_many_requests)
       expect(response.headers['Retry-After']).to be_present
       expect(response.headers['Retry-After'].to_i).to be > 0
     end

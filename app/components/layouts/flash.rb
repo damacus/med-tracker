@@ -21,7 +21,15 @@ module Components
       private
 
       def render_notice
-        div(data: { controller: 'flash', flash_dismiss_after_value: 3000 }, class: 'pointer-events-auto') do
+        div(
+          data: {
+            controller: 'flash',
+            flash_dismiss_after_value: 3000,
+            action: 'click->flash#dismiss'
+          },
+          class: 'pointer-events-auto cursor-pointer',
+          title: 'Click to dismiss'
+        ) do
           Alert(variant: :success) do
             check_icon
             AlertTitle { 'Success' }
@@ -31,7 +39,15 @@ module Components
       end
 
       def render_alert
-        div(data: { controller: 'flash', flash_dismiss_after_value: 0 }, class: 'pointer-events-auto') do
+        div(
+          data: {
+            controller: 'flash',
+            flash_dismiss_after_value: 0,
+            action: 'click->flash#dismiss'
+          },
+          class: 'pointer-events-auto cursor-pointer',
+          title: 'Click to dismiss'
+        ) do
           Alert(variant: :destructive) do
             alert_icon
             AlertTitle { 'Error' }

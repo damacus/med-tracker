@@ -36,24 +36,64 @@
 
 ## Testing Expectations
 
-- **Environment**: ALWAYS use the test environment for testing. Use `task test` to run the full suite or targeted `task` commands if available.
+- **Environment**: ALWAYS use the test environment for testing.
+- **Primary Method**: Use `task test` to run the full suite or `task test TEST_FILE=spec/models/user_spec.rb` for specific files.
+- **Alternative Local**: Use `task local:test:all` for faster local testing, `task local:test` for non-browser tests, `task local:test:browser` for browser tests.
 - **Framework** RSpec (`spec/`) with Capybara system specs; fixtures in `spec/fixtures/` must remain realistic and unique.
 - **Coverage** Policy, model, and feature behavior require exhaustive examples; use VCR for external HTTP if introduced.
-- **Workflow** Use `task test` or specific model/feature test tasks defined in the Taskfile. Do not run `bundle exec rspec` directly.
+- **FORBIDDEN**: Never run `bundle exec rspec` directly - always use task commands.
 
 ## Tooling & Automation
 
-- **Beads (bd)**: ALL task and issue tracking is done via Beads. Use `bd list` to see open issues, `bd show <id>` for details, `bd create` to file new work, and `bd close <id>` when done. Never use JSON feature files.
-- **Taskfile**: ALWAYS use `task` commands from `Taskfile.yml` instead of running bare commands (like `rspec` or `docker compose`). This ensures environment consistency.
-- **Workflows** Review `.windsurf/workflows/` for task-specific playbooks (`/test`, `/rubocop`, `/update-dependencies`, etc.).
-- **Linting** RuboCop config lives in `.rubocop.yml`; respect enforced cops.
-- **CI** GitHub Actions (`.github/workflows/`) run tests and Playwright suites.
+### CRITICAL: Use Task Files ONLY
+
+- **NEVER use `docker compose` directly** - This causes failures and environment inconsistencies
+- **ALWAYS use `task` commands** from Taskfile.yml and included Taskfiles for all operations
+- **Task files provide**: Environment consistency, proper variable handling, error prevention
+
+### Essential Task Commands
+
+**Development:**
+
+- `task dev:up` - Start development server
+- `task dev:stop` - Stop development server  
+- `task dev:seed` - Seed development database
+- `task dev:console` - Open Rails console
+- `task dev:logs` - View development logs
+- `task dev:rebuild` - Rebuild development environment (WARNING: drops data)
+
+**Testing:**
+
+- `task test` - Run tests in Docker (primary method)
+- `task test:up` - Start test environment
+- `task test:seed` - Seed test database
+- `task test:stop` - Stop test environment
+
+**Local Testing (faster, CI-like):**
+
+- `task local:test:all` - Run all tests locally
+- `task local:test` - Run non-browser tests locally
+- `task local:test:browser` - Run browser tests locally
+- `task local:clean` - Clean up local database
+
+**Quality & Utilities:**
+
+- `task rubocop` - Run linter
+- `task rubocop AUTOCORRECT=true` - Run linter with fixes
+- `task status` - Check project readiness
+
+**Other Tools:**
+
+- **Beads (bd)**: ALL task and issue tracking via Beads. Use `bd list`, `bd show <id>`, `bd create`, `bd close <id>`.
+- **Workflows**: Review `.windsurf/workflows/` for task-specific playbooks.
+- **Linting**: RuboCop config in `.rubocop.yml`.
+- **CI**: GitHub Actions (`.github/workflows/`) run tests and Playwright suites.
 
 ## Collaboration Notes
 
 - **GitHub Flow** We use GitHub Flow: create feature branches from `main`, open PRs, merge after review. **Never push directly to main** - lefthook enforces this.
 - **Branches & commits** Conventional Commits (`feat:`, `fix:`, etc.), small atomic changes, always green tests before merge. GPG-signed commits are strongly recommended and may be required by future branch protection rules, but are not currently enforced by tooling.
-- **Environment** rails server via `bin/dev`; avoid destructive commands without confirmation.
+- **Environment** Rails server via `task dev:up`; avoid destructive commands without confirmation.
 - **Documentation** Markdown must satisfy `markdown-lint-cli2`; keep headings orderly.
 
 ## Useful Entry Points
@@ -161,6 +201,22 @@ gh pr view <PR_NUMBER> --json reviews --jq '.reviews[] | select(.author.login ==
 
 ## Local Testing
 
-Use PostgreSQL for testing via `task test` (Docker) or `task local:test:all` (local). Use `task local:test` for non-browser tests and `task local:test:browser` for browser tests with Playwright. Use `task rubocop` for linting.
+### PRIMARY METHODS (use these)
 
-**Task Commands**: Always use `task` commands from `Taskfile.yml` instead of running bare commands to ensure environment consistency.
+- `task test` - Run tests in Docker environment (recommended)
+- `task local:test:all` - Run all tests locally with PostgreSQL container
+- `task local:test` - Run non-browser tests locally (faster)
+- `task local:test:browser` - Run browser tests locally with Playwright
+
+### QUALITY GATES
+
+- `task rubocop` - Run RuboCop linter
+- `task rubocop AUTOCORRECT=true` - Fix RuboCop issues
+- `task status` - Check project readiness with tests and Beads
+
+### FORBIDDEN
+
+- NEVER use `docker compose` directly - always use task commands
+- NEVER run `bundle exec rspec` directly - use `task test` or local testing tasks
+
+**Task Commands**: All operations must use `task` commands from Taskfile.yml to ensure environment consistency and prevent configuration errors.

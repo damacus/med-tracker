@@ -19,6 +19,16 @@ module SystemHelpers
 
     expect(page).to have_current_path('/dashboard')
   end
+
+  # Dismiss any visible flash messages by clicking them
+  # Useful in tests to avoid waiting for auto-dismiss timers
+  def dismiss_flash
+    return unless page.has_css?('[data-controller="flash"]', wait: 0)
+
+    page.find('[data-controller="flash"]').click
+    # Wait for fade-out animation to complete
+    expect(page).to have_no_css('[data-controller="flash"]', wait: 1)
+  end
 end
 
 RSpec.configure do |config|

@@ -9,6 +9,8 @@ services:
       POSTGRES_DB: medtracker_test
     ports:
       - "5432"
+    volumes:
+      - medtracker_test_postgres:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U medtracker_test"]
       interval: 5s
@@ -40,6 +42,7 @@ services:
 volumes:
   medtracker_test_bundle:
   medtracker_test_node_modules:
+  medtracker_test_postgres:
 
 networks:
   default:

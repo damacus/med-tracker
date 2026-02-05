@@ -34,8 +34,8 @@ RSpec.describe 'Navigation Flow' do
       expect(page).to have_content('Personal Information')
       expect(page).to have_content('Account Security')
 
-      # Step 3: Logout - wait for flash to disappear first, then use the logout button form
-      expect(page).to have_no_css('[data-controller="flash"]', wait: 5)
+      # Step 3: Logout - dismiss flash first, then use the logout button form
+      dismiss_flash
       click_button user.name
       click_link 'Logout'
 

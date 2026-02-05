@@ -48,13 +48,13 @@
       - Docker for containerized development and testing
     </environment_setup>
     <task_commands>
-      - task dev-up: Start development server
-      - task dev-stop: Stop development server
-      - task dev-logs: View development server logs
-      - task dev-seed: Seed database with fixtures
-      - task dev-rebuild: Rebuild development server
+      - task dev:up: Start development server
+      - task dev:stop: Stop development server
+      - task dev:logs: View development server logs
+      - task dev:seed: Seed database with fixtures
+      - task dev:rebuild: Rebuild development server
       - task test: Run tests in Docker
-      - task test-rebuild: Rebuild test server
+      - task test:rebuild: Rebuild test server
     </task_commands>
     <test_users>
       All users have password: password
