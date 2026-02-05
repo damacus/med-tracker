@@ -3,7 +3,9 @@
 require 'rails_helper'
 
 RSpec.describe Components::Medicines::ShowView, type: :component do
-  let(:medicine) { create(:medicine, name: 'Paracetamol') }
+  fixtures :medicines
+
+  let(:medicine) { medicines(:paracetamol) }
 
   it 'renders the medicine name' do
     rendered = render_inline(described_class.new(medicine: medicine))
