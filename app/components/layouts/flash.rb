@@ -32,9 +32,9 @@ module Components
       end
 
       def render_warning
-        div(data: { controller: 'flash', flash_dismiss_after_value: 0 }, class: 'pointer-events-auto') do
+        div(data: { controller: 'flash', flash_dismiss_after_value: 8000 }, class: 'pointer-events-auto') do
           Alert(variant: :warning) do
-            warning_icon
+            alert_circle_icon
             AlertDescription { @warning }
           end
         end
@@ -43,7 +43,7 @@ module Components
       def render_alert
         div(data: { controller: 'flash', flash_dismiss_after_value: 0 }, class: 'pointer-events-auto') do
           Alert(variant: :destructive) do
-            alert_icon
+            alert_circle_icon
             AlertDescription { @alert }
           end
         end
@@ -53,11 +53,7 @@ module Components
         render Icons::Check.new(size: 16, class: 'lucide lucide-check')
       end
 
-      def warning_icon
-        render Icons::AlertCircle.new(size: 16, class: 'lucide lucide-alert-circle')
-      end
-
-      def alert_icon
+      def alert_circle_icon
         render Icons::AlertCircle.new(size: 16, class: 'lucide lucide-alert-circle')
       end
     end
