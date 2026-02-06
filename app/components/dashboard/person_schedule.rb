@@ -70,7 +70,7 @@ module Components
       end
 
       def render_medicine_icon
-        div(class: 'w-10 h-10 rounded-xl flex items-center justify-center bg-green-100 text-green-700 mb-2') do
+        div(class: 'w-10 h-10 rounded-xl flex items-center justify-center bg-success-light text-success mb-2') do
           render Icons::Pill.new(size: 20)
         end
       end
@@ -130,7 +130,7 @@ module Components
         AlertDialog do
           AlertDialogTrigger do
             Button(
-              variant: :destructive,
+              variant: :destructive_outline,
               size: :sm,
               data: { test_id: "delete-prescription-#{prescription.id}" }
             ) { 'Delete' }

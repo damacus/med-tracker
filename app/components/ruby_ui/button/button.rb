@@ -87,6 +87,24 @@ module RubyUI
       ]
     end
 
+    def destructive_outline_classes
+      [
+        BASE_CLASSES,
+        size_classes,
+        'border border-input bg-background shadow-sm',
+        'text-destructive hover:bg-destructive-light'
+      ]
+    end
+
+    def success_outline_classes
+      [
+        BASE_CLASSES,
+        size_classes,
+        'border border-input bg-background shadow-sm',
+        'text-success hover:bg-success-light'
+      ]
+    end
+
     def ghost_classes
       [
         BASE_CLASSES,
@@ -102,6 +120,8 @@ module RubyUI
       when :secondary then secondary_classes
       when :destructive then destructive_classes
       when :outline then outline_classes
+      when :destructive_outline then destructive_outline_classes
+      when :success_outline then success_outline_classes
       when :ghost then ghost_classes
       end
     end

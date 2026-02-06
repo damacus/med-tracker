@@ -32,22 +32,6 @@ RSpec.describe Components::Dashboard::PrescriptionHelpers do
   let(:user) { instance_double(User, email_address: 'test@example.com', role: :administrator) }
   let(:instance) { test_class.new(prescription: prescription, current_user: user) }
 
-  describe '#take_now_classes' do
-    it 'returns the correct CSS classes for take now button' do
-      expected_classes = 'inline-flex items-center justify-center rounded-full text-sm font-medium transition-colors ' \
-                         'min-h-[44px] min-w-[44px] px-4 py-2 bg-green-100 text-green-700 hover:bg-green-200'
-      expect(instance.take_now_classes).to eq(expected_classes)
-    end
-  end
-
-  describe '#delete_classes' do
-    it 'uses visually subordinate styling (not filled red background)' do
-      classes = instance.delete_classes
-      expect(classes).not_to include('bg-red-100')
-      expect(classes).to include('text-red-600')
-    end
-  end
-
   describe '#format_dosage' do
     context 'when dosage has amount and unit' do
       it 'formats integer amounts without decimal' do

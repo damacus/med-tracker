@@ -1,33 +1,30 @@
 # PLAN
 
-## Medicine Supply
+## Theme Buttons with CSS Variables (RubyUI Theming)
 
-- Implement inventory tracking on each `Medicine` with reorder thresholds and current stock visibility.
-- Build ordering workflow to capture supplier, quantity, expected arrival, and status.
-- Record lead time analytics from completed orders to forecast when to reorder.
+Replace all hard-coded Tailwind color classes in Button/Link variants and components with semantic CSS variables, following the [RubyUI theming convention](https://rubyui.com/docs/theming).
 
-## Administration & Roles
+### New CSS Variables
 
-- Attach `MedicationTake` entries to the administering `User` and expose an audit log UI.
-- Enforce role-based permissions aligned with `User.role` (`child`, `carer`, `admin`) across controllers and views.
-- Deliver admin dashboards to manage users, medicines, orders, and role assignments.
+| Variable              | Purpose                                                      |
+|-----------------------|--------------------------------------------------------------|
+| `--destructive-light` | Light tint background for outline destructive buttons/badges |
+| `--destructive-text`  | Dark text on light destructive backgrounds (alerts, badges)  |
+| `--success-light`     | Light tint background for outline success buttons/badges     |
+| `--success-text`      | Dark text on light success backgrounds                       |
+| `--warning-text`      | Dark text on light warning backgrounds                       |
 
-## Medicine Catalog
+### Button Variants (all use CSS variables, zero hard-coded colors)
 
-- Seed the database with core medicines (Laxido, Movicol, adult vitamins, child vitamins) including dosage defaults.
-- Provide UI affordances to add recommended medicines quickly without re-entering defaults.
+- `:primary` — `bg-primary text-primary-foreground`
+- `:destructive` — `bg-destructive text-white`
+- `:destructive_outline` — `text-destructive hover:bg-destructive-light`
+- `:success_outline` — `text-success hover:bg-success-light`
+- `:outline` — `border bg-background hover:bg-accent`
+- `:secondary` — `bg-secondary text-secondary-foreground`
+- `:ghost` — `hover:bg-accent`
+- `:link` — `text-primary hover:underline`
 
-## Notifications
+### Principle
 
-- Schedule reminders for upcoming doses using `SolidQueue` and deliver via email or push.
-- Trigger alerts for low inventory, expired medicines, and overdue orders.
-
-## PWA & UX
-
-- Generate transparent PWA icons (`icon-192.png`, `icon-512.png`) and update manifest and service worker references.
-- Improve install prompts and offline handling for the PWA experience.
-
-## Documentation & Testing
-
-- Expand `README.md` with role capabilities, PWA setup instructions, and roadmap context.
-- Add system and request specs covering admin dashboards, inventory flows, and notification delivery.
+Changing the theme in `app/assets/tailwind/application.css` updates every button, alert, badge, and icon in the app — no Ruby component changes needed.

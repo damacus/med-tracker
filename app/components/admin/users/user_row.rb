@@ -44,7 +44,7 @@ module Components
 
           if user.active?
             if is_current_user
-              render RubyUI::Button.new(variant: :destructive, size: :sm, disabled: true) { 'Deactivate' }
+              render RubyUI::Button.new(variant: :destructive_outline, size: :sm, disabled: true) { 'Deactivate' }
             else
               render_deactivate_dialog
             end
@@ -61,9 +61,8 @@ module Components
           ) do
             Button(
               type: :submit,
-              variant: :outline,
-              size: :sm,
-              class: 'text-green-600 hover:text-green-500 border-green-600'
+              variant: :success_outline,
+              size: :sm
             ) { 'Activate' }
           end
         end
@@ -71,7 +70,9 @@ module Components
         def render_deactivate_dialog
           render RubyUI::AlertDialog.new do
             render RubyUI::AlertDialogTrigger.new do
-              Button(variant: :destructive, size: :sm) { 'Deactivate' }
+              Button(variant: :destructive_outline, size: :sm) do
+                'Deactivate'
+              end
             end
             render RubyUI::AlertDialogContent.new do
               render RubyUI::AlertDialogHeader.new do

@@ -60,7 +60,7 @@ module Components
       end
 
       def render_medicine_icon
-        div(class: 'w-8 h-8 rounded-lg flex items-center justify-center bg-green-100 text-green-700 flex-shrink-0') do
+        div(class: 'w-8 h-8 rounded-lg flex items-center justify-center bg-success-light text-success flex-shrink-0') do
           render Icons::Pill.new(size: 16)
         end
       end
@@ -97,7 +97,8 @@ module Components
         ) do
           Button(
             type: :submit,
-            class: take_now_classes,
+            variant: :success_outline,
+            size: :md,
             data: { test_id: "take-medicine-#{prescription.id}" }
           ) { 'Take Now' }
         end
@@ -106,8 +107,7 @@ module Components
       def render_delete_button
         render Components::Dashboard::DeleteConfirmationDialog.new(
           prescription: prescription,
-          url_helpers: url_helpers,
-          button_class: delete_classes
+          url_helpers: url_helpers
         )
       end
     end

@@ -93,7 +93,7 @@ module Components
       def render_delete_dialog(medicine)
         AlertDialog do
           AlertDialogTrigger do
-            Button(variant: :destructive, size: :sm) { 'Delete' }
+            Button(variant: :destructive_outline, size: :sm) { 'Delete' }
           end
           AlertDialogContent do
             AlertDialogHeader do

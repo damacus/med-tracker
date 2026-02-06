@@ -23,8 +23,13 @@ The application's theme is defined in `app/assets/tailwind/application.css` usin
 ### Semantic Colors
 
 - `--destructive`: Used for dangerous actions (delete, remove).
+- `--destructive-light`: Light tint background for outline destructive buttons and badges.
+- `--destructive-text`: Dark text color for use on light destructive backgrounds (alerts, badges).
 - `--warning`: Used for cautionary alerts.
+- `--warning-text`: Dark text color for use on light warning backgrounds.
 - `--success`: Used for positive feedback.
+- `--success-light`: Light tint background for outline success buttons and badges.
+- `--success-text`: Dark text color for use on light success backgrounds.
 
 ## Button Styling
 
@@ -42,13 +47,18 @@ render RubyUI::Button.new(variant: :primary, size: :md) { "Save Changes" }
 - `:primary` (default): Main actions.
 - `:secondary`: Alternative actions.
 - `:outline`: Subtle actions with a border.
+- `:destructive_outline`: Subordinate destructive actions (delete triggers, deactivate).
+- `:success_outline`: Subordinate positive actions (activate, take now).
 - `:ghost`: Low-emphasis actions.
-- `:destructive`: Dangerous actions.
+- `:destructive`: Dangerous actions (confirmation dialogs).
 - `:link`: Actions styled as text links.
+
+All variants use CSS variables exclusively — no hard-coded Tailwind color classes. This means changing the theme in `application.css` updates every button in the app.
 
 ### Accessibility Requirements
 
 Buttons must follow the [WCAG 2.2 Target Size](accessibility.md#target-size-requirements-sc-258) standards:
+
 - **Minimum size**: 24×24px (standard for `sm`, `md`, `lg`, `xl` sizes in `RubyUI::Button`).
 - **Recommended touch target**: 44×44px (use `size: :xl` or `min-h-[44px]`).
 
@@ -56,10 +66,10 @@ Buttons must follow the [WCAG 2.2 Target Size](accessibility.md#target-size-requ
 
 To update the application's look and feel:
 
-1.  Open `app/assets/tailwind/application.css`.
-2.  Modify the `oklch` or `hsl` values in the `:root` block for light mode.
-3.  Modify the corresponding values in the `.dark` block for dark mode.
-4.  Ensure the `@theme inline` block correctly maps these variables to Tailwind theme colors.
+1. Open `app/assets/tailwind/application.css`.
+2. Modify the `oklch` or `hsl` values in the `:root` block for light mode.
+3. Modify the corresponding values in the `.dark` block for dark mode.
+4. Ensure the `@theme inline` block correctly maps these variables to Tailwind theme colors.
 
 Example:
 ```css
@@ -71,7 +81,7 @@ Example:
 ## CSS Architecture
 
 - **Base Styles**: Reset and standard element styles live in the `@layer base` block.
-- **Components**: Shared class patterns (like legacy `.btn` if still needed) live in the `@layer components` block.
+- **Components**: Shared class patterns (like `.nav` classes) live in the `@layer components` block.
 - **Utilities**: Custom utility classes live in the `@layer utilities` block.
 
 **Note**: Prefer Phlex components over creating new CSS classes in `@layer components`.

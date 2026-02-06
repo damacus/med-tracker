@@ -32,8 +32,8 @@ RSpec.describe Components::Layouts::Flash, type: :component do
 
       alert = rendered.css('[role="alert"]').first
       expect(rendered.text).to include('Please set up 2FA')
-      expect(alert['class']).to include('amber'),
-                                'Expected warning flash to use amber (warning) styling, not green (success)'
+      expect(alert['class']).to include('warning'),
+                                'Expected warning flash to use warning styling, not green (success)'
     end
 
     it 'renders the warning icon' do
