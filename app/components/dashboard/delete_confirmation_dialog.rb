@@ -19,9 +19,9 @@ module Components
         AlertDialog do
           AlertDialogTrigger do
             Button(
-              variant: :destructive,
+              variant: :outline,
               size: :sm,
-              class: button_class,
+              class: "text-red-600 hover:bg-red-50 hover:text-red-700 #{button_class}",
               data: { test_id: "delete-prescription-#{prescription.id}" }
             ) { 'Delete' }
           end
@@ -62,7 +62,7 @@ module Components
 
       def default_button_class
         'inline-flex items-center justify-center rounded-full text-sm font-medium transition-colors ' \
-          'min-h-[44px] min-w-[44px] px-4 py-2 bg-red-100 text-red-700 hover:bg-red-200'
+          'min-h-[44px] min-w-[44px] px-4 py-2'
       end
     end
   end
