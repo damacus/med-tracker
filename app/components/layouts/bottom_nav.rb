@@ -19,7 +19,8 @@ module Components
       private
 
       def render_nav_item(path, icon_class, label)
-        link_to(path, class: 'flex flex-col items-center gap-1 text-muted-foreground hover:text-primary') do
+        link_to(path, class: 'flex flex-col items-center justify-center gap-1 min-h-[44px] min-w-[44px] ' \
+                             'text-muted-foreground hover:text-primary') do
           render icon_class.new(class: 'h-5 w-5')
           span(class: 'text-[10px] font-medium') { label }
         end
