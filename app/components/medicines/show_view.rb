@@ -39,7 +39,6 @@ module Components
         div(class: 'grid grid-cols-1 md:grid-cols-2 gap-6 mb-8') do
           render_description_card
           render_dosage_card
-          render_supply_card
           render_stock_card
           render_reorder_card
           render_warnings_card if medicine.warnings.present?
