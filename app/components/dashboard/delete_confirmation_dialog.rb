@@ -11,7 +11,7 @@ module Components
       def initialize(prescription:, url_helpers:, button_class: nil)
         @prescription = prescription
         @url_helpers = url_helpers
-        @button_class = button_class || default_button_class
+        @button_class = button_class
         super()
       end
 
@@ -19,9 +19,9 @@ module Components
         AlertDialog do
           AlertDialogTrigger do
             Button(
-              variant: :outline,
+              variant: :destructive_outline,
               size: :sm,
-              class: "text-red-600 hover:bg-red-50 hover:text-red-700 #{button_class}",
+              class: button_class,
               data: { test_id: "delete-prescription-#{prescription.id}" }
             ) { 'Delete' }
           end
@@ -58,11 +58,6 @@ module Components
             data: { test_id: "confirm-delete-#{prescription.id}" }
           ) { 'Delete' }
         end
-      end
-
-      def default_button_class
-        'inline-flex items-center justify-center rounded-full text-sm font-medium transition-colors ' \
-          'min-h-[44px] min-w-[44px] px-4 py-2'
       end
     end
   end

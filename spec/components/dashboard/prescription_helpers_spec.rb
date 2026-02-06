@@ -41,10 +41,12 @@ RSpec.describe Components::Dashboard::PrescriptionHelpers do
   end
 
   describe '#delete_classes' do
-    it 'uses visually subordinate styling (not filled red background)' do
+    it 'returns only sizing overrides (color handled by :destructive_outline variant)' do
       classes = instance.delete_classes
+      expect(classes).to include('rounded-full')
+      expect(classes).to include('min-h-[44px]')
+      expect(classes).not_to include('text-red-600')
       expect(classes).not_to include('bg-red-100')
-      expect(classes).to include('text-red-600')
     end
   end
 

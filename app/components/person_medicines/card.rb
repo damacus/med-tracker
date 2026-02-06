@@ -183,7 +183,7 @@ module Components
 
         AlertDialog do
           AlertDialogTrigger do
-            Button(variant: :outline, size: :md, class: 'text-red-600 hover:bg-red-50 hover:text-red-700') { 'Remove' }
+            Button(variant: :destructive_outline, size: :md) { 'Remove' }
           end
           AlertDialogContent do
             AlertDialogHeader do
