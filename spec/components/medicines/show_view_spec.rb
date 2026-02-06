@@ -11,6 +11,13 @@ RSpec.describe Components::Medicines::ShowView, type: :component do
     expect(rendered.text).to include('Paracetamol')
   end
 
+  it 'does not define unused button class methods (signal-to-noise)' do
+    view = described_class.new(medicine: medicine)
+
+    expect(view.private_methods).not_to include(:button_primary_classes)
+    expect(view.private_methods).not_to include(:button_secondary_classes)
+  end
+
   it 'does not show both Current Supply and Stock cards (signal-to-noise)' do
     rendered = render_inline(described_class.new(medicine: medicine))
 
