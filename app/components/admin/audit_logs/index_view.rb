@@ -191,11 +191,11 @@ module Components
         def render_event_badge(event)
           badge_class = case event
                         when 'create'
-                          'bg-green-100 text-green-800'
+                          'bg-success-light text-success-text'
                         when 'update'
-                          'bg-blue-100 text-blue-800'
+                          'bg-accent text-accent-foreground'
                         when 'destroy'
-                          'bg-red-100 text-red-800'
+                          'bg-destructive-light text-destructive-text'
                         else
                           'bg-slate-100 text-slate-800'
                         end

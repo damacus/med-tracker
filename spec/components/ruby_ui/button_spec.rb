@@ -29,30 +29,30 @@ RSpec.describe RubyUI::Button, type: :component do
     expect(rendered.css('.bg-background')).to be_present
   end
 
-  it 'renders destructive_outline variant with border and red text' do
+  it 'renders destructive_outline variant with border and semantic destructive text' do
     rendered = render_inline(described_class.new(variant: :destructive_outline)) { 'Delete' }
 
     button = rendered.css('button').first
     classes = button['class']
 
     expect(classes).to include('border')
-    expect(classes).to include('text-red-600')
-    expect(classes).to include('hover:bg-red-50')
-    expect(classes).to include('hover:text-red-700')
-    expect(classes).not_to include('bg-destructive')
+    expect(classes).to include('text-destructive')
+    expect(classes).to include('hover:bg-destructive-light')
+    expect(classes).not_to include('text-red-600')
+    expect(classes.split).not_to include('bg-destructive')
   end
 
-  it 'renders success_outline variant with border and green text' do
+  it 'renders success_outline variant with border and semantic success text' do
     rendered = render_inline(described_class.new(variant: :success_outline)) { 'Activate' }
 
     button = rendered.css('button').first
     classes = button['class']
 
     expect(classes).to include('border')
-    expect(classes).to include('text-green-600')
-    expect(classes).to include('hover:bg-green-50')
-    expect(classes).to include('hover:text-green-700')
-    expect(classes).not_to include('bg-primary')
+    expect(classes).to include('text-success')
+    expect(classes).to include('hover:bg-success-light')
+    expect(classes).not_to include('text-green-600')
+    expect(classes.split).not_to include('bg-primary')
   end
 
   it 'merges custom classes' do

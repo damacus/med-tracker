@@ -19,11 +19,11 @@ module RubyUI
       when nil
         'ring-border bg-muted/20 text-foreground [&>svg]:opacity-80'
       when :warning
-        'ring-warning/50 bg-warning/10 text-amber-900 [&>svg]:text-warning'
+        'ring-warning/50 bg-warning/10 text-warning-text [&>svg]:text-warning'
       when :success
-        'ring-success/50 bg-success/10 text-green-900 [&>svg]:text-success'
+        'ring-success/50 bg-success/10 text-success-text [&>svg]:text-success'
       when :destructive
-        'ring-destructive/50 bg-destructive/10 text-red-900 [&>svg]:text-destructive'
+        'ring-destructive/50 bg-destructive/10 text-destructive-text [&>svg]:text-destructive'
       end
     end
 

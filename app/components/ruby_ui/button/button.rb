@@ -92,7 +92,7 @@ module RubyUI
         BASE_CLASSES,
         size_classes,
         'border border-input bg-background shadow-sm',
-        'text-red-600 hover:bg-red-50 hover:text-red-700'
+        'text-destructive hover:bg-destructive-light'
       ]
     end
 
@@ -101,7 +101,7 @@ module RubyUI
         BASE_CLASSES,
         size_classes,
         'border border-input bg-background shadow-sm',
-        'text-green-600 hover:bg-green-50 hover:text-green-700'
+        'text-success hover:bg-success-light'
       ]
     end
 

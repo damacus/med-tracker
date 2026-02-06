@@ -57,7 +57,7 @@ module Components
       end
 
       def render_medicine_icon
-        div(class: 'w-10 h-10 rounded-xl flex items-center justify-center bg-green-100 text-green-700 mb-2') do
+        div(class: 'w-10 h-10 rounded-xl flex items-center justify-center bg-success-light text-success mb-2') do
           render Icons::Pill.new(size: 20)
         end
       end
@@ -114,9 +114,9 @@ module Components
         max_doses = person_medicine.max_daily_doses
 
         badge_class = if todays_count >= max_doses
-                        'bg-red-100 text-red-800'
+                        'bg-destructive-light text-destructive-text'
                       elsif todays_count.positive?
-                        'bg-green-100 text-green-800'
+                        'bg-success-light text-success-text'
                       else
                         'bg-slate-100 text-slate-600'
                       end
@@ -140,7 +140,7 @@ module Components
 
       def render_take_item(take)
         div(class: 'flex items-center gap-2 text-sm') do
-          render Icons::CheckCircle.new(size: 16, class: 'w-4 h-4 text-green-600')
+          render Icons::CheckCircle.new(size: 16, class: 'w-4 h-4 text-success')
           Text(as: 'span', weight: 'medium', class: 'text-slate-700') { take.taken_at.strftime('%l:%M %p').strip }
           Text(as: 'span', class: 'text-slate-500') { "#{take.amount_ml.to_i} ml" } if take.amount_ml.present?
         end

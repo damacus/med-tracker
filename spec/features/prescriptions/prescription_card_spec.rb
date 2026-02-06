@@ -159,7 +159,7 @@ RSpec.describe 'Prescription Card', type: :system do
 
         within("#prescription_#{prescription.id}") do
           expect(page).to have_no_content('No doses taken today')
-          expect(page).to have_css('.text-green-600') # Check icon
+          expect(page).to have_css('.text-success') # Check icon
         end
       end
     end
@@ -255,12 +255,12 @@ RSpec.describe 'Prescription Card', type: :system do
         end
       end
 
-      it 'has subordinate outline styling with red text' do
+      it 'has subordinate outline styling with destructive text' do
         within("#prescription_#{prescription.id}") do
           button = find_button('Delete')
           expect(button[:class]).to include('border')
-          expect(button[:class]).to include('text-red-600')
-          expect(button[:class]).not_to include('bg-destructive')
+          expect(button[:class]).to include('text-destructive')
+          expect(button[:class]).not_to include('text-red-600')
         end
       end
     end
@@ -376,7 +376,7 @@ RSpec.describe 'Prescription Card', type: :system do
       visit person_path(person)
 
       within("#prescription_#{prescription.id}") do
-        takes = all('.text-green-600').map { |el| el.find(:xpath, '..').text }
+        takes = all('.text-success').map { |el| el.find(:xpath, '..').text }
         expect(takes[0]).to include(take3.taken_at.strftime('%l:%M %p').strip)
         expect(takes[1]).to include(take2.taken_at.strftime('%l:%M %p').strip)
         expect(takes[2]).to include(take1.taken_at.strftime('%l:%M %p').strip)
