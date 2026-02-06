@@ -270,9 +270,21 @@ class RodauthMain < Rodauth::Rails::Auth
       Person.where(account_id: account_id).find_each { |p| p.update!(account_id: nil) }
     end
 
+    # ==> Flash overrides
+    # Login redirect is routine, not an error — use notice instead of alert
+    require_login_error_flash { I18n.t('authentication.login_required', default: 'Please login to continue') }
+
     # ==> Views
     # Render Phlex components directly for speed (no ERB indirection)
     auth_class_eval do
+      def set_redirect_error_flash(message) # rubocop:disable Naming/AccessorMethodName
+        if message == require_login_error_flash
+          set_notice_flash(message)
+        else
+          super
+        end
+      end
+
       def view(page, title)
         phlex_class = "Views::Rodauth::#{page.to_s.tr('-', '_').camelize}".safe_constantize
         if phlex_class
