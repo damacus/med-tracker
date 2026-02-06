@@ -85,7 +85,7 @@ RSpec.describe 'Prescription Card', type: :system do
 
       within("#prescription_#{prescription.id}") do
         expect(page).to have_content(take.taken_at.strftime('%l:%M %p').strip)
-        expect(page).to have_content("#{take.amount_ml.to_i} ml")
+        expect(page).to have_content("#{take.amount_ml.to_i} #{prescription.dosage.unit}")
       end
     end
   end
@@ -255,10 +255,12 @@ RSpec.describe 'Prescription Card', type: :system do
         end
       end
 
-      it 'has destructive variant styling' do
+      it 'has subordinate outline styling with red text' do
         within("#prescription_#{prescription.id}") do
           button = find_button('Delete')
-          expect(button[:class]).to include('bg-destructive')
+          expect(button[:class]).to include('border')
+          expect(button[:class]).to include('text-red-600')
+          expect(button[:class]).not_to include('bg-destructive')
         end
       end
     end

@@ -123,7 +123,7 @@ module Components
         div(class: 'flex items-center gap-2 text-sm') do
           render Icons::CheckCircle.new(size: 16, class: 'w-4 h-4 text-green-600')
           Text(as: 'span', weight: 'medium', class: 'text-slate-700') { take.taken_at.strftime('%l:%M %p').strip }
-          Text(as: 'span', class: 'text-slate-500') { "#{take.amount_ml.to_i} ml" }
+          Text(as: 'span', class: 'text-slate-500') { "#{take.amount_ml.to_i} #{prescription.dosage.unit}" }
         end
       end
 
@@ -163,7 +163,7 @@ module Components
       def render_delete_dialog
         AlertDialog do
           AlertDialogTrigger do
-            Button(variant: :destructive, size: :md) { 'Delete' }
+            Button(variant: :outline, size: :md, class: 'text-red-600 hover:bg-red-50 hover:text-red-700') { 'Delete' }
           end
           AlertDialogContent do
             AlertDialogHeader do
