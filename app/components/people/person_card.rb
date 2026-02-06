@@ -67,14 +67,11 @@ module Components
       end
 
       def render_needs_carer_badge
-        badge_classes = 'inline-flex items-center rounded-md bg-amber-50 px-2 py-1 text-xs ' \
-                        'font-medium text-amber-800 ring-1 ring-inset ring-amber-600/20'
-        span(
-          class: badge_classes,
+        render RubyUI::Badge.new(
+          variant: :warning,
+          size: :md,
           data: { testid: 'needs-carer-badge' }
-        ) do
-          plain 'Needs Carer'
-        end
+        ) { 'Needs Carer' }
       end
 
       def render_card_footer
