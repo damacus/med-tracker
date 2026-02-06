@@ -26,6 +26,23 @@ RSpec.describe Components::Layouts::Flash, type: :component do
     end
   end
 
+  describe 'warning flash' do
+    it 'renders the warning message with warning variant (amber styling)' do
+      rendered = render_inline(described_class.new(warning: 'Please set up 2FA'))
+
+      alert = rendered.css('[role="alert"]').first
+      expect(rendered.text).to include('Please set up 2FA')
+      expect(alert['class']).to include('amber'),
+                                'Expected warning flash to use amber (warning) styling, not green (success)'
+    end
+
+    it 'renders the warning icon' do
+      rendered = render_inline(described_class.new(warning: 'Set up 2FA'))
+
+      expect(rendered.css('svg').any?).to be true
+    end
+  end
+
   describe 'alert flash' do
     it 'renders the alert message directly without redundant title' do
       rendered = render_inline(described_class.new(alert: 'Something went wrong'))

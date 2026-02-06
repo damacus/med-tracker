@@ -57,9 +57,9 @@ module Authentication
   def check_two_factor_setup
     return unless should_setup_two_factor?
     return if request.path.start_with?('/otp-setup', '/webauthn-setup', '/recovery-codes', '/multifactor')
-    return if flash[:notice].present? # Don't overwrite existing flash messages
+    return if flash.any? # Don't overwrite existing flash messages
 
-    flash.now[:notice] = I18n.t('authentication.two_factor_required')
+    flash.now[:warning] = I18n.t('authentication.two_factor_required')
   end
 
   # Check if current user should have 2FA set up
