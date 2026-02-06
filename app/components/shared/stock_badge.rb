@@ -17,7 +17,7 @@ module Components
 
         div(class: 'flex flex-col items-end gap-1') do
           render RubyUI::Badge.new(variant: badge_variant) { badge_text }
-          span(class: 'text-xs text-slate-500 font-medium') { "Qty: #{medicine.stock}" }
+          span(class: 'text-sm text-slate-500 font-medium') { "Qty: #{medicine.stock}" }
         end
       end
 

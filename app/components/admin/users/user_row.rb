@@ -22,7 +22,7 @@ module Components
             render(RubyUI::TableCell.new { user.email_address })
             render RubyUI::TableCell.new(class: 'capitalize') { user.role }
             render(RubyUI::TableCell.new { render_status_badge })
-            render RubyUI::TableCell.new(class: 'text-right space-x-2') do
+            render RubyUI::TableCell.new(class: 'text-right flex gap-2 justify-end') do
               render RubyUI::Link.new(href: "/admin/users/#{user.id}/edit", variant: :outline, size: :sm) { 'Edit' }
               render_activation_button
             end

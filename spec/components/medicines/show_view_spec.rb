@@ -11,6 +11,21 @@ RSpec.describe Components::Medicines::ShowView, type: :component do
     expect(rendered.text).to include('Paracetamol')
   end
 
+  it 'uses gap-2 for actions footer consistent with other card footers' do
+    rendered = render_inline(described_class.new(medicine: medicine))
+
+    actions_div = rendered.css('a').first&.parent
+    expect(actions_div['class']).to include('gap-2')
+    expect(actions_div['class']).not_to include('gap-3')
+  end
+
+  it 'does not define unused button class methods (signal-to-noise)' do
+    view = described_class.new(medicine: medicine)
+
+    expect(view.private_methods).not_to include(:button_primary_classes)
+    expect(view.private_methods).not_to include(:button_secondary_classes)
+  end
+
   it 'does not show both Current Supply and Stock cards (signal-to-noise)' do
     rendered = render_inline(described_class.new(medicine: medicine))
 
