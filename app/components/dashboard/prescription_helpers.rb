@@ -3,15 +3,6 @@
 module Components
   module Dashboard
     module PrescriptionHelpers
-      def take_now_classes
-        'inline-flex items-center justify-center rounded-full text-sm font-medium transition-colors ' \
-          'min-h-[44px] min-w-[44px] px-4 py-2 bg-green-100 text-green-700 hover:bg-green-200'
-      end
-
-      def delete_classes
-        'rounded-full min-h-[44px] min-w-[44px]'
-      end
-
       def format_dosage
         amount = prescription.dosage&.amount
         unit = prescription.dosage&.unit

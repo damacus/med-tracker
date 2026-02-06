@@ -78,9 +78,8 @@ module Components
         ) do
           Button(
             type: :submit,
-            variant: :primary,
+            variant: :success_outline,
             size: :sm,
-            class: take_now_classes,
             data: { test_id: "take-medicine-#{prescription.id}" }
           ) { 'Take Now' }
         end
@@ -89,8 +88,7 @@ module Components
       def render_delete_button
         render Components::Dashboard::DeleteConfirmationDialog.new(
           prescription: prescription,
-          url_helpers: url_helpers,
-          button_class: delete_classes
+          url_helpers: url_helpers
         )
       end
     end
