@@ -159,7 +159,7 @@ module Components
               type: :submit,
               variant: :primary,
               size: :sm,
-              class: 'inline-flex items-center gap-1'
+              class: 'inline-flex items-center gap-1 min-w-[80px]'
             ) do
               plain '💊 Take'
             end
