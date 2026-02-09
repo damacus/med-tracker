@@ -4,7 +4,7 @@ export default class extends Controller {
   static targets = ["content"]
 
   open() {
-    if (this.wrapper) return
+    if (this.wrapper && this.wrapper.isConnected) return
 
     const trigger = this.element.querySelector('.hamburger')
     if (trigger) {
@@ -14,7 +14,7 @@ export default class extends Controller {
 
     const wrapper = document.createElement("div")
     wrapper.setAttribute("data-controller", "ruby-ui--sheet-content")
-    wrapper.setAttribute("data-ruby-ui--sheet-content-sheet-outlet", `[data-controller="ruby-ui--sheet"]`)
+    wrapper.setAttribute("data-ruby-ui--sheet-content-sheet-id", this.element.id || "")
     wrapper.style.cssText = "position:fixed;inset:0;z-index:50;pointer-events:none;"
     wrapper.innerHTML = this.contentTarget.innerHTML
     document.body.appendChild(wrapper)

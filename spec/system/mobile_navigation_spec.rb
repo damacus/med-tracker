@@ -115,6 +115,20 @@ RSpec.describe 'Mobile Navigation' do
     expect(drawer[:'aria-label']).to be_present
   end
 
+  scenario 'Drawer can be reopened after dismissal' do
+    page.current_window.resize_to(375, 667)
+    visit root_path
+
+    find('button[aria-label="Open menu"]').click
+    expect(page).to have_css('[role="dialog"]')
+
+    find('body').send_keys(:escape)
+    expect(page).to have_no_css('[role="dialog"]')
+
+    find('button[aria-label="Open menu"]').click
+    expect(page).to have_css('[role="dialog"]')
+  end
+
   scenario 'Touch targets in drawer meet WCAG minimum size' do
     page.current_window.resize_to(375, 667)
     visit root_path

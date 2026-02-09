@@ -1,8 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static outlets = ["ruby-ui--sheet"]
-
   connect() {
     this.handleKeydown = this.handleKeydown.bind(this)
     document.addEventListener('keydown', this.handleKeydown)
@@ -25,9 +23,17 @@ export default class extends Controller {
     if (backdrop) backdrop.setAttribute('data-state', 'closed')
     if (panel) panel.setAttribute('data-state', 'closed')
 
-    if (this.hasRubyUiSheetOutlet) {
-      this.rubyUiSheetOutlet.close()
+    const trigger = document.querySelector('.hamburger.is-active')
+    if (trigger) {
+      trigger.classList.remove('is-active')
+      trigger.setAttribute('aria-expanded', 'false')
     }
+
+    const sheetController = this.application.getControllerForElementAndIdentifier(
+      document.querySelector('[data-controller="ruby-ui--sheet"]'),
+      'ruby-ui--sheet'
+    )
+    if (sheetController) sheetController.close()
 
     const duration = 300
     setTimeout(() => {
