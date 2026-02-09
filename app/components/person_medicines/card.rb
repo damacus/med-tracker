@@ -158,7 +158,7 @@ module Components
             Button(
               type: :submit,
               variant: :primary,
-              size: :sm,
+              size: :md,
               class: 'inline-flex items-center gap-1 min-w-[80px]'
             ) do
               plain '💊 Take'
@@ -170,7 +170,7 @@ module Components
       end
 
       def render_disabled_button_with_countdown
-        Button(variant: :secondary, size: :sm, disabled: true) { '💊 Take' }
+        Button(variant: :secondary, size: :md, disabled: true) { '💊 Take' }
       end
 
       def render_person_medicine_actions
