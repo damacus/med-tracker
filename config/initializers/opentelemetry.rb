@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'opentelemetry-api'
+require 'otel/span_sanitizing_processor'
 
 OpenTelemetry.logger = Logger.new($stdout, level: Rails.env.test? ? Logger::WARN : Logger::ERROR)
 
@@ -20,10 +21,12 @@ if Rails.env.test?
         record_frontend_span: true
       },
       'OpenTelemetry::Instrumentation::PG' => {
-        db_statement: :include,
+        db_statement: :obfuscate,
         peer_service: 'postgresql'
       }
     )
+
+    c.add_span_processor(Otel::SpanSanitizingProcessor.new)
 
     c.resource = OpenTelemetry::SDK::Resources::Resource.create(
       'service.name' => 'medtracker-test',
@@ -41,9 +44,7 @@ elsif Rails.env.production? || ENV['OTEL_EXPORTER_OTLP_ENDPOINT'].present?
   otlp_headers = ENV.fetch('OTEL_EXPORTER_OTLP_HEADERS', nil)
   otlp_timeout = ENV.fetch('OTEL_EXPORTER_OTLP_TIMEOUT', '10').to_i
 
-  if otlp_endpoint.present?
-    Rails.logger.info "[OpenTelemetry] Configuring OTLP exporter: #{otlp_endpoint}"
-  end
+  Rails.logger.info "[OpenTelemetry] Configuring OTLP exporter: #{otlp_endpoint}" if otlp_endpoint.present?
 
   OpenTelemetry::SDK.configure do |c|
     c.service_name = 'medtracker'
@@ -74,13 +75,15 @@ elsif Rails.env.production? || ENV['OTEL_EXPORTER_OTLP_ENDPOINT'].present?
         record_frontend_span: true
       },
       'OpenTelemetry::Instrumentation::PG' => {
-        db_statement: :include,
+        db_statement: :obfuscate,
         peer_service: 'postgresql'
       },
       'OpenTelemetry::Instrumentation::Net::HTTP' => {
         untraced_hosts: ['127.0.0.1', 'localhost']
       }
     )
+
+    c.add_span_processor(Otel::SpanSanitizingProcessor.new)
 
     c.resource = OpenTelemetry::SDK::Resources::Resource.create(
       'service.name' => 'medtracker',
