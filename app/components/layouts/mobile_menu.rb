@@ -34,7 +34,7 @@ module Components
                 close_drawer_button
               end
 
-              div(class: 'grid gap-4 py-4') do
+              div(class: 'py-4') do
                 render_navigation_links
               end
 
