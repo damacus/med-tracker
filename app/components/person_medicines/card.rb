@@ -121,7 +121,7 @@ module Components
                         'bg-slate-100 text-slate-600'
                       end
 
-        span(class: "text-xs font-medium px-2 py-1 rounded-full #{badge_class}") do
+        span(class: "text-xs font-medium px-2 py-1 rounded-full min-h-[24px] #{badge_class}") do
           "#{todays_count}/#{max_doses}"
         end
       end
