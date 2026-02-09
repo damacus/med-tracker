@@ -62,10 +62,11 @@ module RubyUI
 
     def background
       div(
-        data_state: 'open',
-        class: 'fixed inset-0 z-50 bg-black/80 backdrop-blur-sm data-[state=open]:animate-in',
+        data_testid: 'drawer-backdrop',
+        data_action: 'click->ruby-ui--sheet-content#close',
+        class: 'fixed inset-0 z-50 bg-black/80 backdrop-blur-sm transition-opacity duration-300 ' \
+               'data-[state=open]:opacity-100 data-[state=closed]:opacity-0',
         style: 'pointer-events:auto',
-        data_aria_hidden: 'true',
         aria_hidden: 'true'
       )
     end
@@ -73,20 +74,30 @@ module RubyUI
     def container(&)
       div(
         role: 'dialog',
-        data_state: 'open',
-        class: 'flex flex-col fixed left-[50%] top-[50%] z-50 w-full max-w-lg max-h-screen overflow-y-auto translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:rounded-lg md:w-full',
+        aria_modal: 'true',
+        aria_label: 'Navigation menu',
+        tabindex: '-1',
+        class: [
+          'flex flex-col fixed z-50 h-full w-[80vw] max-w-[300px] overflow-y-auto bg-background p-6 shadow-lg transition-transform duration-300 ease-in-out',
+          'data-[state=open]:translate-x-0',
+          side_transform_class
+        ],
         style: 'pointer-events:auto',
         &
       )
     end
 
-    def backdrop
-      div(
-        data_state: 'open',
-        data_action: 'click->ruby-ui--sheet-content#close',
-        class:
-              'fixed pointer-events-auto inset-0 z-50 bg-background/80 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0'
-      )
+    def side_transform_class
+      case @side
+      when :left
+        'top-0 left-0 border-r data-[state=closed]:-translate-x-full'
+      when :right
+        'top-0 right-0 border-l data-[state=closed]:translate-x-full'
+      when :top
+        'top-0 left-0 w-full h-auto border-b data-[state=closed]:-translate-y-full'
+      when :bottom
+        'bottom-0 left-0 w-full h-auto border-t data-[state=closed]:translate-y-full'
+      end
     end
   end
 end
