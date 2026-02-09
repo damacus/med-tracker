@@ -191,7 +191,7 @@
 	}
 
 	.nav__link {
-		@apply inline-flex items-center rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900 hover:bg-slate-100;
+		@apply inline-flex items-center rounded-md px-3 py-2 min-h-[24px] text-sm font-medium text-slate-600 transition-colors hover:text-slate-900 hover:bg-slate-100;
 	}
 
 	.nav__user-menu {
