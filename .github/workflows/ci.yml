@@ -1,7 +1,7 @@
 ---
 name: CI
 
-'on':
+"on":
   pull_request:
   push:
     branches: [main]
@@ -42,7 +42,7 @@ jobs:
     name: Code Style Check
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
@@ -79,12 +79,12 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '4.0.1'
+          ruby-version: "4.0.1"
           bundler-cache: true
 
       - name: Set up database
@@ -127,32 +127,31 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '4.0.1'
+          ruby-version: "4.0.1"
           bundler-cache: true
 
-      - name: Get Playwright version
-        id: playwright-version
-        run: echo "version=$(node -e "console.log(require('./package.json').devDependencies.playwright)")" >> $GITHUB_OUTPUT
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install Node dependencies
+        run: npm ci
 
       - name: Cache Playwright browsers
-        id: playwright-cache
         uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
-      - name: Install Playwright (with deps)
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
+      - name: Install Playwright browsers and deps
         run: npx playwright install --with-deps chromium
-
-      - name: Install Playwright deps only
-        if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: npx playwright install-deps chromium
 
       - name: Set up database
         run: bundle exec rails db:migrate
@@ -178,7 +177,7 @@ jobs:
 
           if [ ${#shard_files[@]} -gt 0 ]; then
             echo "Running tests for shard $shard: ${shard_files[*]}"
-            bundle exec rspec --format RSpec::Github::Formatter "${shard_files[@]}"
+            bundle exec rspec --format RSpec::Github::Formatter --format documentation "${shard_files[@]}"
           else
             echo "No files for this shard"
           fi
@@ -283,13 +282,13 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.x'
-          cache: 'pip'
+          python-version: "3.x"
+          cache: "pip"
 
       - name: Install dependencies
         run: pip install -r requirements.txt
@@ -303,7 +302,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
         with:
-          path: 'site'
+          path: "site"
 
       - name: Deploy to GitHub Pages
         id: deployment

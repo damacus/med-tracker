@@ -3,6 +3,7 @@
 # Controller for user profile management
 class ProfilesController < ApplicationController
   before_action :require_authentication
+  before_action :check_two_factor_setup
 
   def show
     @person = current_user.person

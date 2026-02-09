@@ -29,6 +29,14 @@ RSpec.describe Components::Shared::StockBadge, type: :component do
         expect(result.text).to include('In Stock')
         expect(result.text).to include('Qty: 100')
       end
+
+      it 'uses text-sm for quantity text readability instead of text-xs' do
+        result = render_inline(component)
+        qty_span = result.css('span').find { |s| s.text.include?('Qty:') }
+        expect(qty_span).to be_present
+        expect(qty_span['class']).to include('text-sm')
+        expect(qty_span['class']).not_to include('text-xs')
+      end
     end
 
     context 'when medicine is low stock' do
