@@ -36,11 +36,13 @@ module Components
         div(class: 'flex flex-row flex-wrap gap-2 sm:gap-3') do
           Link(
             href: url_helpers&.new_medicine_path || '#',
-            class: "#{button_primary_classes} min-h-[44px]"
+            variant: :primary,
+            class: 'min-h-[44px]'
           ) { 'Add Medicine' }
           Link(
             href: url_helpers&.new_person_path || '#',
-            class: "#{button_secondary_classes} min-h-[44px]"
+            variant: :secondary,
+            class: 'min-h-[44px]'
           ) { 'Add Person' }
         end
       end
@@ -51,16 +53,6 @@ module Components
           render Components::Dashboard::StatCard.new(title: 'Active Prescriptions', value: active_prescriptions.count,
                                                      icon_type: 'pill')
         end
-      end
-
-      def button_primary_classes
-        'inline-flex items-center justify-center rounded-md font-medium transition-colors ' \
-          'px-4 py-2 h-9 min-h-[36px] text-sm bg-primary text-primary-foreground shadow hover:bg-primary/90'
-      end
-
-      def button_secondary_classes
-        'inline-flex items-center justify-center rounded-md font-medium transition-colors ' \
-          'px-4 py-2 h-9 min-h-[36px] text-sm bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80'
       end
 
       def render_prescriptions_section
