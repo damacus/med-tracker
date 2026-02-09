@@ -9,7 +9,7 @@ module Components
         return '—' unless amount && unit
 
         formatted_amount = amount == amount.to_i ? amount.to_i : amount
-        "#{formatted_amount}#{unit}"
+        "#{formatted_amount} #{unit}"
       end
 
       def format_end_date
