@@ -81,8 +81,8 @@ module Components
       end
 
       def render_notes
-        div(class: 'p-3 bg-amber-50 border border-amber-200 rounded-md') do
-          Text(size: '2', class: 'text-amber-800') do
+        div(class: 'p-3 bg-blue-50 border border-blue-200 rounded-md') do
+          Text(size: '2', class: 'text-blue-800') do
             span(class: 'font-semibold') { '📝 Notes: ' }
             plain prescription.notes
           end
@@ -90,8 +90,8 @@ module Components
       end
 
       def render_countdown_notice
-        div(class: 'p-3 bg-blue-50 border border-blue-200 rounded-md') do
-          Text(size: '2', class: 'text-blue-800') do
+        div(class: 'p-3 bg-amber-50 border border-amber-200 rounded-md') do
+          Text(size: '2', class: 'text-amber-800') do
             span(class: 'font-semibold') { '🕐 Next dose available in: ' }
             plain prescription.countdown_display
           end
