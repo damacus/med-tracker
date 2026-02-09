@@ -35,7 +35,7 @@ RSpec.describe Components::Dashboard::PrescriptionHelpers do
   describe '#format_dosage' do
     context 'when dosage has amount and unit' do
       it 'formats integer amounts without decimal' do
-        expect(instance.format_dosage).to eq('500mg')
+        expect(instance.format_dosage).to eq('500 mg')
       end
 
       it 'formats decimal amounts with decimal' do
@@ -45,7 +45,7 @@ RSpec.describe Components::Dashboard::PrescriptionHelpers do
         custom_prescription = Prescription.new(person: person, medicine: medicine, dosage: dosage)
         custom_instance = test_class.new(prescription: custom_prescription, current_user: user)
 
-        expect(custom_instance.format_dosage).to eq('2.5ml')
+        expect(custom_instance.format_dosage).to eq('2.5 ml')
       end
     end
 

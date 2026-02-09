@@ -57,7 +57,7 @@ module Components
       end
 
       def render_medicine_icon
-        div(class: 'w-10 h-10 rounded-xl flex items-center justify-center bg-success-light text-success mb-2') do
+        div(class: 'w-10 h-10 rounded-xl flex items-center justify-center bg-violet-100 text-violet-700 mb-2') do
           render Icons::Pill.new(size: 20)
         end
       end
@@ -86,8 +86,8 @@ module Components
       end
 
       def render_countdown_notice
-        div(class: 'p-3 bg-blue-50 border border-blue-200 rounded-md') do
-          Text(size: '2', class: 'text-blue-800') do
+        div(class: 'p-3 bg-amber-50 border border-amber-200 rounded-md') do
+          Text(size: '2', class: 'text-amber-800') do
             span(class: 'font-semibold') { '🕐 Next dose available in: ' }
             plain person_medicine.countdown_display
           end
@@ -121,7 +121,7 @@ module Components
                         'bg-slate-100 text-slate-600'
                       end
 
-        span(class: "text-xs font-medium px-2 py-1 rounded-full #{badge_class}") do
+        span(class: "text-xs font-medium px-2 py-1 rounded-full min-h-[24px] #{badge_class}") do
           "#{todays_count}/#{max_doses}"
         end
       end
@@ -159,7 +159,7 @@ module Components
               type: :submit,
               variant: :primary,
               size: :md,
-              class: 'inline-flex items-center gap-1'
+              class: 'inline-flex items-center gap-1 min-w-[80px]'
             ) do
               plain '💊 Take'
             end
