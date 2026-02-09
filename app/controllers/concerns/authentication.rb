@@ -8,18 +8,12 @@ module Authentication
 
   included do
     before_action :require_authentication
-    before_action :check_two_factor_setup
     helper_method :authenticated?, :current_user, :current_account, :should_setup_two_factor?
   end
 
   class_methods do
     def allow_unauthenticated_access(**)
       skip_before_action(:require_authentication, **)
-      skip_before_action(:check_two_factor_setup, **)
-    end
-
-    def skip_two_factor_check(**)
-      skip_before_action(:check_two_factor_setup, **)
     end
   end
 
@@ -56,7 +50,6 @@ module Authentication
   # Does NOT block access - just reminds them to set it up
   def check_two_factor_setup
     return unless should_setup_two_factor?
-    return if request.path.start_with?('/otp-setup', '/webauthn-setup', '/recovery-codes', '/multifactor')
     return if flash.any? # Don't overwrite existing flash messages
 
     flash.now[:warning] = I18n.t('authentication.two_factor_required')

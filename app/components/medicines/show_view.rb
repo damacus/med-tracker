@@ -86,17 +86,6 @@ module Components
         end
       end
 
-      def render_supply_card
-        Card do
-          CardHeader do
-            Heading(level: 2, size: '4', class: 'font-semibold leading-none tracking-tight') { 'Current Supply' }
-          end
-          CardContent do
-            Text(size: '7', weight: 'bold', class: 'text-slate-900') { (medicine.current_supply || 0).to_s }
-          end
-        end
-      end
-
       def render_stock_card
         Card do
           CardHeader do
@@ -138,20 +127,10 @@ module Components
       end
 
       def render_actions
-        div(class: 'flex gap-3') do
+        div(class: 'flex gap-2') do
           Link(href: edit_medicine_path(medicine), variant: :primary) { 'Edit Medicine' }
           Link(href: medicines_path, variant: :outline) { 'Back to List' }
         end
-      end
-
-      def button_primary_classes
-        'inline-flex items-center justify-center rounded-md font-medium transition-colors ' \
-          'px-4 py-2 h-10 text-sm bg-primary text-primary-foreground shadow hover:bg-primary/90'
-      end
-
-      def button_secondary_classes
-        'inline-flex items-center justify-center rounded-md font-medium transition-colors ' \
-          'px-4 py-2 h-10 text-sm border border-input bg-background hover:bg-accent hover:text-accent-foreground'
       end
     end
   end
