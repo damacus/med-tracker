@@ -1,5 +1,41 @@
 # Changelog
 
+## [0.2.2](https://github.com/damacus/med-tracker/compare/med-tracker/v0.2.1...med-tracker/v0.2.2) (2026-02-09)
+
+
+### Features
+
+* add passkey/WebAuthn authentication support ([#398](https://github.com/damacus/med-tracker/issues/398)) ([4f5744a](https://github.com/damacus/med-tracker/commit/4f5744ac7d302dcab72253ca7b3973c9282d62c2))
+* scrub sensitive data from OpenTelemetry traces [OTEL-014] ([#438](https://github.com/damacus/med-tracker/issues/438)) ([428524a](https://github.com/damacus/med-tracker/commit/428524a2bf37fef4156bfdc418ff8f40a02dcb5a))
+
+
+### Bug Fixes
+
+* add 44px minimum touch targets to bottom nav ([#419](https://github.com/damacus/med-tracker/issues/419)) ([7478f53](https://github.com/damacus/med-tracker/commit/7478f53b529569a1e1e3302618597dabecf9d5b1))
+* add min-h-[24px] to desktop nav links for WCAG 2.5.8 compliance ([#435](https://github.com/damacus/med-tracker/issues/435)) ([770f011](https://github.com/damacus/med-tracker/commit/770f011ce434953ccbb4b27dbfa28957b19bd73a))
+* add min-h-[24px] to dose counter badge for WCAG 2.5.8 compliance ([#434](https://github.com/damacus/med-tracker/issues/434)) ([207d566](https://github.com/damacus/med-tracker/commit/207d5667357cf4bb01f5231275a7540f1ea09ec4))
+* add min-w-[80px] to card footer Take buttons for visual stability ([#437](https://github.com/damacus/med-tracker/issues/437)) ([9681deb](https://github.com/damacus/med-tracker/commit/9681debfe8c67974efd1c2d4674f48b9341a9bc5))
+* add space between dosage amount and unit for consistency ([#430](https://github.com/damacus/med-tracker/issues/430)) ([f7825ac](https://github.com/damacus/med-tracker/commit/f7825ac0bf39f183905417be0d7e4b774b78dad7))
+* apply subordinate outline style to all destructive trigger buttons ([#423](https://github.com/damacus/med-tracker/issues/423)) ([064ff87](https://github.com/damacus/med-tracker/commit/064ff87f1bbe25641af252ade897b0407c9e1f39))
+* clean UI audit folder ([32dd40e](https://github.com/damacus/med-tracker/commit/32dd40e3669d989b569d3e19e871e8d85f5058b8))
+* **deps:** update playwright monorepo to v1.58.1 ([#401](https://github.com/damacus/med-tracker/issues/401)) ([d56d0a4](https://github.com/damacus/med-tracker/commit/d56d0a4a8c6bf65845daf2a8e776e035d1365067))
+* **deps:** update playwright monorepo to v1.58.2 ([#424](https://github.com/damacus/med-tracker/issues/424)) ([02ae409](https://github.com/damacus/med-tracker/commit/02ae40914d0f322f4d1975510fe83cd514d217cd))
+* display correct dosage unit instead of hardcoded ml ([#421](https://github.com/damacus/med-tracker/issues/421)) ([61b778e](https://github.com/damacus/med-tracker/commit/61b778ee01d7ea21264e6e24addf4eab94c1c699))
+* redesign mobile hamburger menu as slide-out drawer ([#439](https://github.com/damacus/med-tracker/issues/439)) ([2f7370c](https://github.com/damacus/med-tracker/commit/2f7370c4c60db3b6ff9da0c5efa5555db8095deb))
+* reduce Delete button prominence on prescription cards ([#422](https://github.com/damacus/med-tracker/issues/422)) ([231042d](https://github.com/damacus/med-tracker/commit/231042dc00cff3441a2c0484f2a395a3ccb7242d))
+* reduce Delete button visual weight on dashboard ([#417](https://github.com/damacus/med-tracker/issues/417)) ([cbb9835](https://github.com/damacus/med-tracker/commit/cbb98357424bf838d1f53b3b7e2a4c0d49829aae))
+* remove duplicate flash on login page (keep inline, suppress global) ([#413](https://github.com/damacus/med-tracker/issues/413)) ([4269349](https://github.com/damacus/med-tracker/commit/426934961a6aeae16393ee5803ef2d46e02dae3e))
+* remove redundant Current Supply card from medicine show ([#418](https://github.com/damacus/med-tracker/issues/418)) ([1068c99](https://github.com/damacus/med-tracker/commit/1068c99b4bbb4ac93b11963c01bde9c4fe4786c3))
+* remove redundant Success/Error titles from flash messages ([#411](https://github.com/damacus/med-tracker/issues/411)) ([d6f6960](https://github.com/damacus/med-tracker/commit/d6f69605f12ce997af41615291afce9f5ecc918c))
+* replace raw CSS button classes with RubyUI Link variants in dashboard ([#433](https://github.com/damacus/med-tracker/issues/433)) ([f57b372](https://github.com/damacus/med-tracker/commit/f57b3725a1d2e037046694ebc86d78498832895d))
+* standardize medicine icon color to violet across medication cards ([#436](https://github.com/damacus/med-tracker/issues/436)) ([c6b5f21](https://github.com/damacus/med-tracker/commit/c6b5f21036334d653b4f92e8eb31fed1f35e4dc6))
+* standardize Take button size to :md across medication cards ([#432](https://github.com/damacus/med-tracker/issues/432)) ([678b307](https://github.com/damacus/med-tracker/commit/678b3070d39804627f026a9ad55115b1065eb4d8))
+* UI quick fixes batch - accessibility, consistency, and cleanup ([#425](https://github.com/damacus/med-tracker/issues/425)) ([2df3672](https://github.com/damacus/med-tracker/commit/2df367234efbfec0898e2d62c6d28900332fab88))
+* use amber/warning styling for countdown notices distinct from notes ([#431](https://github.com/damacus/med-tracker/issues/431)) ([00b2503](https://github.com/damacus/med-tracker/commit/00b250336ce88d86d2cf7ef2c5ec4a9b294afef2))
+* use notice flash for login redirect instead of error ([#416](https://github.com/damacus/med-tracker/issues/416)) ([12c69e3](https://github.com/damacus/med-tracker/commit/12c69e3857b1bd8854d88a6d58aff103fd312b09))
+* use RubyUI::Badge for Needs Carer badge instead of inline styles ([#420](https://github.com/damacus/med-tracker/issues/420)) ([b7578bc](https://github.com/damacus/med-tracker/commit/b7578bcf2d7742889ca7aa2957d34829c178ec41))
+* use warning variant for 2FA setup notice instead of success ([#415](https://github.com/damacus/med-tracker/issues/415)) ([81ab60f](https://github.com/damacus/med-tracker/commit/81ab60fd4e1c06aea29872b23149d5d926a8a1ac))
+
 ## [0.2.1](https://github.com/damacus/med-tracker/compare/med-tracker/v0.2.0...med-tracker/v0.2.1) (2026-01-26)
 
 
