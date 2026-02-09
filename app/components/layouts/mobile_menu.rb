@@ -17,12 +17,18 @@ module Components
         div(class: 'md:hidden') do
           render RubyUI::Sheet.new do
             render RubyUI::SheetTrigger.new do
-              render RubyUI::Button.new(variant: :ghost, size: :icon, aria: { label: 'Open menu' }) do
-                render Icons::Menu.new(class: 'h-6 w-6')
+              button(
+                type: 'button',
+                class: 'hamburger hamburger--spring',
+                aria: { label: 'Open menu', expanded: 'false' }
+              ) do
+                span(class: 'hamburger-box') do
+                  span(class: 'hamburger-inner')
+                end
               end
             end
 
-            render RubyUI::SheetContent.new(side: :left, class: 'w-[300px] sm:w-[400px]') do
+            render RubyUI::SheetContent.new(side: :left) do
               render RubyUI::SheetHeader.new do
                 render(RubyUI::SheetTitle.new { 'MedTracker' })
               end

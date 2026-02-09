@@ -4,11 +4,21 @@ export default class extends Controller {
   static targets = ["content"]
 
   open() {
+    if (this.wrapper) return
+
+    const trigger = this.element.querySelector('.hamburger')
+    if (trigger) {
+      trigger.classList.add('is-active')
+      trigger.setAttribute('aria-expanded', 'true')
+    }
+
     const wrapper = document.createElement("div")
     wrapper.setAttribute("data-controller", "ruby-ui--sheet-content")
+    wrapper.setAttribute("data-ruby-ui--sheet-content-sheet-outlet", `[data-controller="ruby-ui--sheet"]`)
     wrapper.style.cssText = "position:fixed;inset:0;z-index:50;pointer-events:none;"
     wrapper.innerHTML = this.contentTarget.innerHTML
     document.body.appendChild(wrapper)
+    this.wrapper = wrapper
 
     const backdrop = wrapper.querySelector('[data-testid="drawer-backdrop"]')
     const panel = wrapper.querySelector('[role="dialog"]')
@@ -30,5 +40,15 @@ export default class extends Controller {
         panel.focus()
       }
     })
+  }
+
+  close() {
+    this.wrapper = null
+
+    const trigger = this.element.querySelector('.hamburger')
+    if (trigger) {
+      trigger.classList.remove('is-active')
+      trigger.setAttribute('aria-expanded', 'false')
+    }
   }
 }
