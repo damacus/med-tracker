@@ -55,17 +55,16 @@ tasks:
     cmds:
       - task: :internal:ps
 
-  run-migrations:
+  db-migrate:
     desc: Run Rails migrations
     summary: |
       Run Rails migrations on the test database
-      Usage: task test:run-migrations
+      Usage: task test:db-migrate
     cmds:
-      - task: :internal:run-migrations
+      - task: :internal:db-migrate
 
   rebuild:
     desc: Rebuild test server (drops database)
-    prompt: This removes all data and rebuilds the test environment. Are you sure?
     summary: |
       Rebuild test environment from scratch
       WARNING: This drops the database and all data!

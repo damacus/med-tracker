@@ -17,7 +17,6 @@ tasks:
     cmds:
       - task: :internal:build
         vars:
-          ENVIRONMENT: dev
           NO_CACHE: '{{ .NO_CACHE | default "" }}'
 
   up:
@@ -60,13 +59,13 @@ tasks:
     cmds:
       - task: :internal:ps
 
-  run-migrations:
+  db-migrate:
     desc: Run Rails migrations
     summary: |
       Run Rails migrations on the development database
-      Usage: task dev:run-migrations
+      Usage: task dev:db-migrate
     cmds:
-      - task: :internal:run-migrations
+      - task: :internal:db-migrate
 
   rebuild:
     desc: Rebuild development server (drops database)
@@ -75,7 +74,7 @@ tasks:
       WARNING: This drops the database and all data!
       Use when database migrations have changed or you need a fresh start.
       Usage: task dev:rebuild
-    prompt: This removes all data and rebuilds the development environment. Are you sure?
+    # prompt: This removes all data and rebuilds the development environment. Are you sure?
     cmds:
       - task: :internal:stop
         vars: { REMOVE_VOLUMES: "true" }

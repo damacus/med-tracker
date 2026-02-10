@@ -70,7 +70,7 @@ tasks:
       - '{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} down {{ if eq .REMOVE_VOLUMES "true" }}-v{{ end }}'
       - echo "✓ {{ .ENVIRONMENT | title }} environment stopped"
 
-  run-migrations:
+  db-migrate:
     desc: Run Rails migrations
     internal: true
     requires:
