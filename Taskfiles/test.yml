@@ -82,10 +82,6 @@ tasks:
         vars: { ENVIRONMENT: test }
       - task: :internal:up-db
         vars: { ENVIRONMENT: test }
-      - task: :internal:run
-        vars:
-          ENVIRONMENT: test
-          COMMAND: "rails db:create db:migrate"
       - task: :internal:seed
         vars: { ENVIRONMENT: test }
 

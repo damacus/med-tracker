@@ -52,6 +52,8 @@ RUN npx playwright install --with-deps chromium && \
 USER ruby
 
 COPY --chown=ruby:ruby Gemfile* ./
+RUN bundle install
+
 ARG RAILS_ENV="test"
 ARG NODE_ENV="test"
 ENV RAILS_ENV="${RAILS_ENV}" \

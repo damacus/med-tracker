@@ -84,15 +84,9 @@ tasks:
         vars: { ENVIRONMENT: dev, REMOVE_VOLUMES: "true" }
       - task: :internal:build
         vars: { ENVIRONMENT: dev }
-      - task: :internal:up-db
-        vars: { ENVIRONMENT: dev }
-      - task: :internal:run
-        vars:
-          ENVIRONMENT: dev
-          COMMAND: "rails db:create db:migrate"
-      - task: :internal:seed
-        vars: { ENVIRONMENT: dev }
       - task: :internal:up
+        vars: { ENVIRONMENT: dev }
+      - task: :internal:seed
         vars: { ENVIRONMENT: dev }
       - task: :internal:open-ui
         vars: { ENVIRONMENT: dev }

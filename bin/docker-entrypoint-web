@@ -6,34 +6,24 @@ if [[ -z "${LD_PRELOAD+x}" ]]; then
     export LD_PRELOAD
 fi
 
-echo "Installing gems..."
-bundle install
-
-# Detect if the command involves running the rails server
-is_server=false
-if [[ "$*" == *"rails server"* ]] || [[ "$*" == *"rails s"* ]]; then
-  is_server=true
-fi
+# Remove stale PID file from previous unclean shutdown
+rm -f tmp/pids/server.pid
 
 # In development, remove stale precompiled assets so Propshaft serves dynamically.
-# In other environments, precompile if not already done.
-if [[ "$is_server" == "true" ]]; then
-  if [[ "$RAILS_ENV" == "development" ]]; then
-    if [[ -f "public/assets/.manifest.json" ]]; then
-      echo "Removing stale precompiled assets (development uses dynamic serving)..."
-      rm -rf public/assets
-    fi
-  else
-    if [[ ! -f "public/assets/.manifest.json" ]]; then
-      echo "Precompiling assets..."
-      ./bin/rails assets:precompile
-    else
-      echo "Assets already compiled."
-    fi
+# In production/test, precompile if the manifest is missing (Dockerfile handles this
+# at build time for non-dev, so this is a safety net only).
+if [[ "$RAILS_ENV" == "development" ]]; then
+  if [[ -f "public/assets/.manifest.json" ]]; then
+    echo "Removing stale precompiled assets (development uses dynamic serving)..."
+    rm -rf public/assets
   fi
+elif [[ ! -f "public/assets/.manifest.json" ]]; then
+  echo "Precompiling assets..."
+  SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile
 fi
 
-# Database preparation (create if missing, migrate if pending)
+# Database: create if missing, load schema if empty, run pending migrations.
+# Idempotent — safe to run on every container start.
 echo "Preparing database..."
 ./bin/rails db:prepare
 

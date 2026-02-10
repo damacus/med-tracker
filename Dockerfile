@@ -36,6 +36,8 @@ COPY --chown=ruby:ruby . .
 RUN if [ "${RAILS_ENV}" != "development" ]; then \
   SECRET_KEY_BASE_DUMMY=1 rails assets:precompile; fi
 
+ENTRYPOINT ["/app/bin/docker-entrypoint-web"]
+
 CMD ["bash"]
 
 ###############################################################################
