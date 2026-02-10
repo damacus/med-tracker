@@ -79,11 +79,12 @@ tasks:
       - task: :internal:stop
         vars: { REMOVE_VOLUMES: "true" }
       - task: :internal:build
-      - task: :internal:up
+      - task: :internal:up-db
       - task: :internal:run
         vars:
           COMMAND: "rails db:create db:migrate"
       - task: :internal:seed
+      - task: :internal:up
       - task: :internal:open-ui
 
   logs:

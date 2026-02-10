@@ -78,7 +78,7 @@ tasks:
       - task: :internal:stop
         vars: { REMOVE_VOLUMES: "true" }
       - task: :internal:build
-      - task: :internal:up
+      - task: :internal:up-db
       - task: :internal:run
         vars:
           COMMAND: "rails db:create db:migrate"

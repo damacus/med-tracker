@@ -9,7 +9,7 @@ version: "3"
 
 vars:
   COMPOSE_PROJECT:
-    sh: basename (pwd)
+    sh: basename $PWD
   COMPOSE_CMD: docker compose -p {{ .COMPOSE_PROJECT }}
 
 tasks:
@@ -55,9 +55,11 @@ tasks:
       - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} up -d"
       - echo "✓ {{ .ENVIRONMENT | title }} environment started"
 
-  # Stop and remove Docker containers
+  # Stop and remove containers for a single profile
   # Required vars: ENVIRONMENT
-  # This removes containers but preserves volumes (database data)
+  # NOTE: 'docker compose down' ignores --profile and removes ALL project containers.
+  # We use stop + rm to target only the profile's services.
+  # When REMOVE_VOLUMES=true, only removes volumes prefixed with the environment name.
   # Example: task internal:stop ENVIRONMENT=test
   stop:
     desc: Stop and remove Docker containers
@@ -66,9 +68,33 @@ tasks:
       vars: [ENVIRONMENT]
     vars:
       REMOVE_VOLUMES: '{{ .REMOVE_VOLUMES | default "false" }}'
+      DB_SERVICE: "db-{{ .ENVIRONMENT }}"
+      WEB_SERVICE: "web-{{ .ENVIRONMENT }}"
     cmds:
-      - '{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} down {{ if eq .REMOVE_VOLUMES "true" }}-v{{ end }}'
+      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} stop {{ .WEB_SERVICE }} {{ .DB_SERVICE }}"
+      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} rm -f {{ .WEB_SERVICE }} {{ .DB_SERVICE }}"
+      - docker network rm {{ .COMPOSE_PROJECT }}_{{ .ENVIRONMENT }} 2>/dev/null || true
+      - |
+        {{ if eq .REMOVE_VOLUMES "true" }}
+        for vol in $(docker volume ls -q --filter "name={{ .COMPOSE_PROJECT }}_medtracker_{{ .ENVIRONMENT }}_"); do
+          echo "Removing volume: $vol"
+          docker volume rm "$vol"
+        done
+        {{ end }}
       - echo "✓ {{ .ENVIRONMENT | title }} environment stopped"
+
+  # Start only the database container for a profile
+  # Used by rebuild to prepare DB before starting the web service
+  up-db:
+    desc: Start database container only
+    internal: true
+    requires:
+      vars: [ENVIRONMENT]
+    vars:
+      DB_SERVICE: "db-{{ .ENVIRONMENT }}"
+    cmds:
+      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} up -d {{ .DB_SERVICE }}"
+      - echo "✓ {{ .ENVIRONMENT | title }} database started"
 
   db-migrate:
     desc: Run Rails migrations
