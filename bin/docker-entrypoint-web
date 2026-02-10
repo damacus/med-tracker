@@ -9,34 +9,32 @@ fi
 echo "Installing gems..."
 bundle install
 
-# Detect if the final command is "rails server"
+# Detect if the command involves running the rails server
 is_server=false
-if [[ "${*: -2:1}" == "rails" ]] && [[ "${*: -1:1}" == "server" ]]; then
+if [[ "$*" == *"rails server"* ]] || [[ "$*" == *"rails s"* ]]; then
   is_server=true
 fi
 
-# Asset precompilation only needed for server mode
+# In development, remove stale precompiled assets so Propshaft serves dynamically.
+# In other environments, precompile if not already done.
 if [[ "$is_server" == "true" ]]; then
-  if [[ ! -f "public/assets/.manifest.json" ]]; then
-    echo "Precompiling assets..."
-    ./bin/rails assets:precompile
+  if [[ "$RAILS_ENV" == "development" ]]; then
+    if [[ -f "public/assets/.manifest.json" ]]; then
+      echo "Removing stale precompiled assets (development uses dynamic serving)..."
+      rm -rf public/assets
+    fi
   else
-    echo "Assets already compiled."
+    if [[ ! -f "public/assets/.manifest.json" ]]; then
+      echo "Precompiling assets..."
+      ./bin/rails assets:precompile
+    else
+      echo "Assets already compiled."
+    fi
   fi
 fi
 
-# Database preparation
-if ! bundle exec rails runner "ActiveRecord::Base.connection.table_exists?('schema_migrations')" 2>/dev/null; then
-  echo "Loading schema..."
-  ./bin/rails db:schema:load
-else
-  echo "Database exists, checking for pending migrations..."
-  if ./bin/rails db:migrate:status | grep -q "^\s*down"; then
-    echo "Running pending migrations..."
-    ./bin/rails db:migrate
-  else
-    echo "Database is up to date."
-  fi
-fi
+# Database preparation (create if missing, migrate if pending)
+echo "Preparing database..."
+./bin/rails db:prepare
 
 exec "${@}"
