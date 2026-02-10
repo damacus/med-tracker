@@ -1,0 +1,139 @@
+---
+services:
+  # === Development (profile: dev) ===
+  db-dev:
+    extends:
+      file: compose/base.yml
+      service: postgres
+    profiles: [dev]
+    hostname: db-dev
+    environment:
+      POSTGRES_USER: medtracker
+      POSTGRES_PASSWORD: medtracker_password
+      POSTGRES_DB: medtracker_development
+    volumes:
+      - medtracker_dev_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U medtracker -d medtracker_development"]
+
+  web-dev:
+    extends:
+      file: compose/base.yml
+      service: rails
+    profiles: [dev]
+    build:
+      target: assets
+      args:
+        RAILS_ENV: development
+    depends_on:
+      db-dev:
+        condition: service_healthy
+    environment:
+      RAILS_ENV: development
+      RAILS_FORCE_SSL: "false"
+      DATABASE_URL: >-
+        postgresql://medtracker:medtracker_password@db-dev:5432/medtracker_development
+    ports:
+      - "3000"
+    volumes:
+      - .:/app
+      - medtracker_dev_bundle:/usr/local/bundle
+      - medtracker_dev_node_modules:/app/node_modules
+      - medtracker_dev_storage:/app/storage
+    command:
+      ["bash", "-c", "rm -f tmp/pids/server.pid && rails server -b 0.0.0.0"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/up || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # === Test (profile: test) ===
+  db-test:
+    extends:
+      file: compose/base.yml
+      service: postgres
+    profiles: [test]
+    hostname: db-test
+    environment:
+      POSTGRES_USER: medtracker_test
+      POSTGRES_PASSWORD: medtracker_test_password
+      POSTGRES_DB: medtracker_test
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U medtracker_test"]
+      interval: 5s
+      timeout: 3s
+
+  web-test:
+    extends:
+      file: compose/base.yml
+      service: rails
+    profiles: [test]
+    build:
+      dockerfile: Dockerfile.test
+    depends_on:
+      db-test:
+        condition: service_healthy
+    environment:
+      RAILS_ENV: test
+      TEST_DATABASE_ADAPTER: postgresql
+      DATABASE_URL: >-
+        postgres://medtracker_test:medtracker_test_password@db-test:5432/medtracker_test
+    ports:
+      - "3000"
+    volumes:
+      - .:/app
+      - medtracker_test_bundle:/usr/local/bundle
+      - medtracker_test_node_modules:/app/node_modules
+      - ./tmp/capybara:/app/tmp/capybara
+
+  # === Production (profile: prod) ===
+  db:
+    extends:
+      file: compose/base.yml
+      service: postgres
+    profiles: [prod]
+    hostname: db
+    environment:
+      POSTGRES_USER: medtracker
+      POSTGRES_PASSWORD: medtracker_password
+      POSTGRES_DB: medtracker_production
+    volumes:
+      - medtracker_prod_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U medtracker -d medtracker_production"]
+
+  web:
+    extends:
+      file: compose/base.yml
+      service: rails
+    profiles: [prod]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      RAILS_ENV: production
+      DATABASE_URL: >-
+        postgresql://medtracker:medtracker_password@db:5432/medtracker_production
+    ports:
+      - "3000"
+    volumes:
+      - medtracker_prod_storage:/rails/storage
+      - ./config/credentials/production.key:/app/config/credentials/production.key:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/up || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  medtracker_dev_postgres:
+  medtracker_dev_bundle:
+  medtracker_dev_node_modules:
+  medtracker_dev_storage:
+  medtracker_test_bundle:
+  medtracker_test_node_modules:
+  medtracker_prod_postgres:
+  medtracker_prod_storage:

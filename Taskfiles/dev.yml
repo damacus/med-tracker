@@ -1,6 +1,6 @@
 ---
 # Development Environment Tasks
-# All tasks operate on the 'dev' environment (docker-compose.dev.yml)
+# All tasks operate on the 'dev' profile (compose.yaml)
 # Usage: task dev:<command>
 version: "3"
 vars:
@@ -83,7 +83,6 @@ tasks:
       - task: :internal:up
       - task: :internal:run
         vars:
-          SERVICE: web
           COMMAND: "rails db:create db:migrate"
       - task: :internal:seed
       - task: :internal:open-ui

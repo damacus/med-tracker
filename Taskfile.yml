@@ -34,7 +34,6 @@ tasks:
       - task: internal:run
         vars:
           ENVIRONMENT: test
-          SERVICE: web-test
           COMMAND: 'bundle exec rspec --format documentation {{ .TEST_FILE | default "spec" }}'
           TEST_FILE: '{{ .TEST_FILE | default "spec" }}'
 
@@ -48,7 +47,6 @@ tasks:
       - task: internal:run
         vars:
           ENVIRONMENT: test
-          SERVICE: web-test
           COMMAND: "bundle exec rspec --format json"
       - cmd: bd ready
 

@@ -82,7 +82,6 @@ tasks:
       - task: :internal:up
       - task: :internal:run
         vars:
-          SERVICE: web
           COMMAND: "rails db:create db:migrate"
       - task: :internal:seed
 
