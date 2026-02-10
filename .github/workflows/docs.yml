@@ -1,0 +1,60 @@
+---
+name: Docs
+
+"on":
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - docs/**
+      - zensical.toml
+      - requirements.txt
+      - README.md
+      - Taskfile.yml
+      - Taskfiles/docs.yml
+      - .github/workflows/docs.yml
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: [ubuntu-latest]
+    name: Deploy docs to GitHub Pages
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.x"
+          cache: "pip"
+
+      - name: Install docs dependencies
+        run: pip install -r requirements.txt
+
+      - name: Build docs site
+        run: zensical build --clean
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

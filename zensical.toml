@@ -1,0 +1,69 @@
+[project]
+site_name = "MedTracker Documentation"
+site_description = "Documentation for the MedTracker medication tracking application"
+site_author = "MedTracker Team"
+repo_url = "https://github.com/damacus/med-tracker"
+repo_name = "damacus/med-tracker"
+docs_dir = "docs"
+site_dir = "site"
+
+nav = [
+  { Home = "index.md" },
+  { "Getting Started" = [
+    { "Quick Start" = "quick-start.md" },
+    { Deployment = "deployment.md" },
+    { Testing = "testing.md" }
+  ] },
+  { "User Guides" = [
+    { "Carer Onboarding: First Dose" = "user-onboarding-carer-first-dose.md" },
+    { "User Management" = "user-management.md" },
+    { "OAuth Setup" = "oauth-setup.md" },
+    { "Passkey Setup" = "passkey-setup.md" },
+    { "Two-Factor Authentication" = "two-factor-authentication.md" }
+  ] },
+  { Architecture = [
+    { Design = "design.md" },
+    { "Database Relationships" = "database-relationships.md" },
+    { "Audit Trail" = "audit-trail.md" },
+    { Accessibility = "accessibility.md" },
+    { Theming = "theming.md" }
+  ] }
+]
+
+[project.theme]
+features = [
+  "navigation.tabs",
+  "navigation.sections",
+  "navigation.expand",
+  "search.suggest",
+  "search.highlight"
+]
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme)"
+toggle.icon = "lucide/sun-moon"
+toggle.name = "Switch to light mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: light)"
+scheme = "default"
+primary = "blue"
+accent = "light blue"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: dark)"
+scheme = "slate"
+primary = "blue"
+accent = "light blue"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to system preference"
+
+[project.markdown_extensions]
+admonition = {}
+codehilite = {}
+toc = { permalink = true }
+"pymdownx.details" = {}
+"pymdownx.tabbed" = {}
+"pymdownx.superfences" = { custom_fences = [{ name = "mermaid", class = "mermaid" }] }

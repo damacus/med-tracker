@@ -1,122 +1,65 @@
-# Medicine Tracker Application Design
+# Design
 
-## Overview
+## Purpose
 
-A Rails-based application for tracking medicine administration, including dosages, people, and timing. The application uses OpenID Connect (OIDC) for authentication, currently implemented via Google OAuth 2.0.
+MedTracker records medication schedules and administrations with guardrails
+for timing and daily-dose safety, while preserving an auditable history.
 
-## Core Features
+## Architecture
 
-### Authentication
+- Backend: Ruby on Rails
+- Frontend: Hotwire (Turbo + Stimulus) with Phlex components
+- Authentication: account-based auth with password + OIDC + passkey support
+- Database: PostgreSQL in development, test, and production
+- Audit trail: PaperTrail on critical clinical and identity models
 
-- **OIDC-based authentication** (implemented via Google OAuth 2.0)
-- Email/password authentication via Rodauth
-- User management and authorization
-- Secure session handling
-- Two-factor authentication (TOTP)
+Domain logic is enforced on the server. UI forms and pages render server-sent
+HTML and use Turbo Streams for updates.
 
-### Data Models
+## Core domain entities
 
-#### User
+- `Person`: demographic and care-capacity record for an individual
+- `User`: login-enabled identity linked one-to-one to `Person`
+- `Medicine`: medicine catalog and supply attributes
+- `Prescription`: prescribed regimen for a person
+- `PersonMedicine`: non-prescription/ad-hoc medicine assignment
+- `MedicationTake`: immutable dose record for safety and compliance
+- `CarerRelationship`: mapping of carers to dependent people
 
-- Basic user information from OIDC provider (Google) or email signup
-- Role-based access control (administrator, doctor, nurse, carer, parent, minor)
-- Relationships to people they manage (e.g., family members)
-- Authentication via Rodauth (email/password or OIDC)
+## Safety rules
 
-#### Person
+Timing restrictions are enforced in model logic:
 
-- Name
-- Date of birth
-- Relationships to medicines
-- Associated users (caretakers/family members)
+- `max_daily_doses`
+- `min_hours_between_doses`
 
-#### Medicine
+These rules apply before a dose is persisted to prevent unsafe administration.
 
-- Name
-- Description
-- Active status
-- Standard dosage information
-- Warnings/Notes
+## Person types vs user roles
 
-#### Prescription
+Person type models care needs:
 
-- Links Person to Medicine
-- Specific dosage for this person
-- Frequency of administration
-- Start date
-- End date (optional)
-- Special instructions
+- `adult`
+- `minor`
+- `dependent_adult`
 
-#### DosageRecord
+User role models application permissions:
 
-- Timestamp of administration
-- Link to Prescription
-- Actual dose given
-- Administered by (User)
-- Notes
+- `administrator`
+- `doctor`
+- `nurse`
+- `carer`
+- `parent`
+- `minor`
 
-## Technical Architecture
+## Auditing and compliance
 
-### Backend
+Critical model changes are versioned for traceability, including medication
+administrations and identity/relationship updates. See [Audit Trail](audit-trail.md).
 
-- Ruby on Rails (8.1+) with Hotwire (Turbo + Stimulus)
-- SQLite3 database (development), PostgreSQL (production recommended)
-- OIDC integration via Rodauth and OmniAuth
-- API versioning for future compatibility
+## UI and accessibility direction
 
-### Security Considerations
+UI behavior and styling are guided by:
 
-- **OIDC authentication** with ID token verification (signature, issuer, audience, expiration)
-- **Email/password authentication** with bcrypt hashing and account lockout
-- **Two-factor authentication** (TOTP) via Rodauth
-- Role-based access control via Pundit policies
-- Audit logging for all medicine administration via PaperTrail
-- Secure data storage following healthcare data best practices
-- CSRF protection via Rails authenticity tokens
-- Session management with Rodauth (active sessions, remember me)
-- Security headers (CSP, HSTS, X-Frame-Options, etc.)
-- Regular security updates and dependency scanning
-
-### Database Considerations
-
-- Data integrity constraints
-- Indexing for common queries
-- Audit trail for all changes
-
-## Development Practices
-
-- End-to-End Testing with Playwright
-  - Full browser automation testing
-  - Cross-browser testing capabilities
-  - Automatic waiting and retry mechanisms
-  - Test recording and debugging tools
-- Code linting and formatting
-- Comprehensive documentation
-- Git version control
-- GitHub Actions for CI/CD
-  - Automated Playwright tests in CI pipeline
-  - Cross-browser testing in CI
-- Code review process
-
-## Future Considerations
-
-- Mobile application support
-- Medication schedule reminders
-- Integration with pharmacy systems
-- Export/reporting capabilities
-- Multiple timezone support
-- Offline capabilities
-
-## Next Steps
-
-1. ✅ Set up basic Rails application structure
-2. ✅ Implement OIDC authentication (Google OAuth 2.0)
-3. ✅ Implement email/password authentication (Rodauth)
-4. ✅ Create core data models (Person, Medicine, Prescription, MedicationTake)
-5. ✅ Implement basic CRUD operations
-6. ✅ Add authorization layer (Pundit)
-7. ✅ Create user interface (Phlex components with Hotwire)
-8. ✅ Implement audit logging (PaperTrail)
-9. ✅ Add automated tests (RSpec + Capybara)
-10. ✅ Set up CI/CD pipeline (GitHub Actions)
-11. 🚧 Enhanced features (2FA, additional OIDC providers, mobile optimization)
+- [Accessibility](accessibility.md)
+- [Theming](theming.md)

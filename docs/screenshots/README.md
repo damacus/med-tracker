@@ -1,81 +1,31 @@
-# Screenshots for 2FA Management PR
+# Documentation Screenshots
 
-## Required Screenshots
+This directory stores screenshots referenced by user-facing documentation.
 
-To complete the GitHub PR, please take the following screenshots manually:
+## Structure
 
-### 1. Profile Page - Full 2FA Management Card
+- `post-implementation/`: product state captures
+- `pr-425/`: historical UI captures retained for context
+- `ui-audit/`: targeted UI review captures
 
-**URL:** `http://localhost:3000/profile` (after logging in as damacus@example.com)
+## Rules
 
-**What to capture:**
-- The entire "Two-Factor Authentication" card showing all three sections:
-  - Authenticator App (TOTP) - showing "Not configured" state
-  - Recovery Codes - showing "Not generated" state  
-  - Passkeys - showing any registered passkeys
+- Keep screenshots that support current docs.
+- Delete screenshots older than 30 days unless still referenced by docs.
+- Prefer PNG format.
+- Use clear filenames that describe screen and state.
 
-**Filename:** `profile-2fa-overview.png`
+## Capture workflow
 
-### 2. TOTP Setup Page
+1. Start the app locally.
+2. Navigate to the documented user flow.
+3. Capture the smallest area that still shows the behavior clearly.
+4. Save into an appropriate subdirectory under `docs/screenshots/`.
 
-**URL:** `http://localhost:3000/otp-setup`
+## Cleanup command
 
-**What to capture:**
-- QR code for authenticator app setup
-- Manual entry code option
-- Setup form
+Review files older than 30 days:
 
-**Filename:** `totp-setup.png`
-
-### 3. Recovery Codes Page
-
-**URL:** `http://localhost:3000/recovery-codes`
-
-**What to capture:**
-- List of generated recovery codes
-- Warning messages about saving codes securely
-
-**Filename:** `recovery-codes.png`
-
-### 4. Passkey Setup Flow
-
-**URL:** `http://localhost:3000/webauthn-setup`
-
-**What to capture:**
-- Browser's passkey creation dialog (if possible)
-- Or the setup page before the browser dialog appears
-
-**Filename:** `passkey-setup.png`
-
-### 5. Profile Page - With 2FA Enabled
-
-**What to capture:**
-- Same view as #1 but with:
-  - TOTP showing "Enabled" status
-  - Recovery codes showing count
-  - Multiple passkeys listed
-
-**Filename:** `profile-2fa-enabled.png`
-
-## How to Take Screenshots
-
-1. Start the development server:
-   ```bash
-   docker compose -f docker-compose.dev.yml up -d
-   ```
-
-2. Log in with test credentials:
-   - Email: `damacus@example.com`
-   - Password: `password`
-
-3. Navigate to each URL and capture screenshots
-
-4. Save screenshots to this directory (`docs/screenshots/`)
-
-## Screenshot Guidelines
-
-- Use a viewport size of approximately 1280x1024
-- Capture full page or relevant card sections
-- Ensure text is readable
-- Include browser chrome if showing native dialogs (like passkey setup)
-- Use PNG format for clarity
+```bash
+find docs/screenshots -type f -mtime +30
+```
