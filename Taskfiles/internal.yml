@@ -15,7 +15,7 @@ vars:
 tasks:
   # Execute arbitrary commands in Docker containers
   # Required vars: ENVIRONMENT, COMMAND
-  # SERVICE is auto-derived: test->web-test, dev->web-dev, prod->web
+  # SERVICE is auto-derived as web-{{ .ENVIRONMENT }}
   # Example: task internal:run ENVIRONMENT=test COMMAND='rails console'
   run:
     desc: Run arbitrary command in Docker container
@@ -23,7 +23,7 @@ tasks:
     requires:
       vars: [ENVIRONMENT, COMMAND]
     vars:
-      SERVICE: '{{ if eq .ENVIRONMENT "test" }}web-test{{ else if eq .ENVIRONMENT "dev" }}web-dev{{ else }}web{{ end }}'
+      SERVICE: "web-{{ .ENVIRONMENT }}"
     cmds:
       - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} run --rm {{ .SERVICE }} {{ .COMMAND }}"
 
@@ -76,7 +76,7 @@ tasks:
     requires:
       vars: [ENVIRONMENT]
     vars:
-      SERVICE: '{{ if eq .ENVIRONMENT "test" }}web-test{{ else if eq .ENVIRONMENT "dev" }}web-dev{{ else }}web{{ end }}'
+      SERVICE: "web-{{ .ENVIRONMENT }}"
     cmds:
       - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} run --rm {{ .SERVICE }} rails db:migrate"
 

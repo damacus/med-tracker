@@ -6,11 +6,6 @@ services:
       file: compose/base.yml
       service: postgres
     profiles: [dev]
-    hostname: db-dev
-    environment:
-      POSTGRES_USER: medtracker
-      POSTGRES_PASSWORD: medtracker_password
-      POSTGRES_DB: medtracker_development
     volumes:
       - medtracker_dev_postgres:/var/lib/postgresql/data
 
@@ -29,8 +24,7 @@ services:
     environment:
       RAILS_ENV: development
       RAILS_FORCE_SSL: "false"
-      DATABASE_URL: >-
-        postgresql://medtracker:medtracker_password@db-dev:5432/medtracker_development
+      DATABASE_URL: postgresql://medtracker:medtracker_password@db-dev:5432/medtracker
     volumes:
       - .:/app
       - medtracker_dev_bundle:/usr/local/bundle
@@ -45,11 +39,6 @@ services:
       file: compose/base.yml
       service: postgres
     profiles: [test]
-    hostname: db-test
-    environment:
-      POSTGRES_USER: medtracker_test
-      POSTGRES_PASSWORD: medtracker_test_password
-      POSTGRES_DB: medtracker_test
     healthcheck:
       interval: 5s
       timeout: 3s
@@ -66,9 +55,7 @@ services:
         condition: service_healthy
     environment:
       RAILS_ENV: test
-      TEST_DATABASE_ADAPTER: postgresql
-      DATABASE_URL: >-
-        postgres://medtracker_test:medtracker_test_password@db-test:5432/medtracker_test
+      DATABASE_URL: postgresql://medtracker:medtracker_password@db-test:5432/medtracker
     volumes:
       - .:/app
       - medtracker_test_bundle:/usr/local/bundle
@@ -76,31 +63,25 @@ services:
       - ./tmp/capybara:/app/tmp/capybara
 
   # === Production (profile: prod) ===
-  db:
+  db-prod:
     extends:
       file: compose/base.yml
       service: postgres
     profiles: [prod]
-    hostname: db
-    environment:
-      POSTGRES_USER: medtracker
-      POSTGRES_PASSWORD: medtracker_password
-      POSTGRES_DB: medtracker_production
     volumes:
       - medtracker_prod_postgres:/var/lib/postgresql/data
 
-  web:
+  web-prod:
     extends:
       file: compose/base.yml
       service: rails
     profiles: [prod]
     depends_on:
-      db:
+      db-prod:
         condition: service_healthy
     environment:
       RAILS_ENV: production
-      DATABASE_URL: >-
-        postgresql://medtracker:medtracker_password@db:5432/medtracker_production
+      DATABASE_URL: postgresql://medtracker:medtracker_password@db-prod:5432/medtracker
     volumes:
       - medtracker_prod_storage:/rails/storage
       - ./config/credentials/production.key:/app/config/credentials/production.key:ro

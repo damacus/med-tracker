@@ -2,6 +2,10 @@
 services:
   postgres:
     image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: medtracker
+      POSTGRES_PASSWORD: medtracker_password
+      POSTGRES_DB: medtracker
     ports:
       - "5432"
     healthcheck:
