@@ -23,9 +23,9 @@ tasks:
     requires:
       vars: [ENVIRONMENT, COMMAND]
     vars:
-      SERVICE: "web-{{ .ENVIRONMENT }}"
+      WEB_SERVICE: "web-{{ .ENVIRONMENT }}"
     cmds:
-      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} run --rm {{ .SERVICE }} {{ .COMMAND }}"
+      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} run --rm {{ .WEB_SERVICE }} {{ .COMMAND }}"
 
   # Build Docker images for specified environment
   # Required vars: ENVIRONMENT
@@ -39,8 +39,9 @@ tasks:
       vars: [ENVIRONMENT]
     vars:
       NO_CACHE: '{{ .NO_CACHE | default "" }}'
+      WEB_SERVICE: "web-{{ .ENVIRONMENT }}"
     cmds:
-      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} build {{ if .NO_CACHE }}--no-cache{{ end }}"
+      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} build {{ if .NO_CACHE }}--no-cache{{ end }} {{ .WEB_SERVICE }}"
 
   # Start Docker containers in detached mode
   # Required vars: ENVIRONMENT
@@ -51,8 +52,11 @@ tasks:
     internal: true
     requires:
       vars: [ENVIRONMENT]
+    vars:
+      DB_SERVICE: "db-{{ .ENVIRONMENT }}"
+      WEB_SERVICE: "web-{{ .ENVIRONMENT }}"
     cmds:
-      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} up -d"
+      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} up -d {{ .DB_SERVICE }} {{ .WEB_SERVICE }}"
       - echo "✓ {{ .ENVIRONMENT | title }} environment started"
 
   # Stop and remove containers for a single profile
@@ -102,9 +106,9 @@ tasks:
     requires:
       vars: [ENVIRONMENT]
     vars:
-      SERVICE: "web-{{ .ENVIRONMENT }}"
+      WEB_SERVICE: "web-{{ .ENVIRONMENT }}"
     cmds:
-      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} run --rm {{ .SERVICE }} rails db:migrate"
+      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} run --rm {{ .WEB_SERVICE }} rails db:migrate"
 
   # Follow logs from Docker containers
   # Press Ctrl+C to stop following logs
@@ -114,16 +118,22 @@ tasks:
     internal: true
     requires:
       vars: [ENVIRONMENT]
+    vars:
+      DB_SERVICE: "db-{{ .ENVIRONMENT }}"
+      WEB_SERVICE: "web-{{ .ENVIRONMENT }}"
     cmds:
-      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} logs -f"
+      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} logs -f {{ .DB_SERVICE }} {{ .WEB_SERVICE }}"
 
   ps:
     desc: Get current status of Docker Compose Stack
     internal: true
     requires:
       vars: [ENVIRONMENT]
+    vars:
+      DB_SERVICE: "db-{{ .ENVIRONMENT }}"
+      WEB_SERVICE: "web-{{ .ENVIRONMENT }}"
     cmds:
-      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} ps"
+      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} ps {{ .DB_SERVICE }} {{ .WEB_SERVICE }}"
 
   seed:
     desc: Seed database with fixtures

@@ -17,6 +17,7 @@ tasks:
     cmds:
       - task: :internal:build
         vars:
+          ENVIRONMENT: dev
           NO_CACHE: '{{ .NO_CACHE | default "" }}'
 
   up:
@@ -32,6 +33,7 @@ tasks:
       Usage: task dev:up
     cmds:
       - task: :internal:up
+        vars: { ENVIRONMENT: dev }
 
   seed:
     desc: Seed development database with fixtures
@@ -41,6 +43,7 @@ tasks:
       Usage: task dev:seed
     cmds:
       - task: :internal:seed
+        vars: { ENVIRONMENT: dev }
 
   stop:
     desc: Stop development server
@@ -50,6 +53,7 @@ tasks:
       Usage: task dev:stop
     cmds:
       - task: :internal:stop
+        vars: { ENVIRONMENT: dev }
 
   ps:
     desc: List current status of Docker Compose Stack
@@ -58,6 +62,7 @@ tasks:
       Usage: task dev:ps
     cmds:
       - task: :internal:ps
+        vars: { ENVIRONMENT: dev }
 
   db-migrate:
     desc: Run Rails migrations
@@ -66,6 +71,7 @@ tasks:
       Usage: task dev:db-migrate
     cmds:
       - task: :internal:db-migrate
+        vars: { ENVIRONMENT: dev }
 
   rebuild:
     desc: Rebuild development server (drops database)
@@ -77,15 +83,21 @@ tasks:
     # prompt: This removes all data and rebuilds the development environment. Are you sure?
     cmds:
       - task: :internal:stop
-        vars: { REMOVE_VOLUMES: "true" }
+        vars: { ENVIRONMENT: dev, REMOVE_VOLUMES: "true" }
       - task: :internal:build
+        vars: { ENVIRONMENT: dev }
       - task: :internal:up-db
+        vars: { ENVIRONMENT: dev }
       - task: :internal:run
         vars:
+          ENVIRONMENT: dev
           COMMAND: "rails db:create db:migrate"
       - task: :internal:seed
+        vars: { ENVIRONMENT: dev }
       - task: :internal:up
+        vars: { ENVIRONMENT: dev }
       - task: :internal:open-ui
+        vars: { ENVIRONMENT: dev }
 
   logs:
     desc: View development server logs
@@ -95,6 +107,7 @@ tasks:
       Usage: task dev:logs
     cmds:
       - task: :internal:logs
+        vars: { ENVIRONMENT: dev }
 
   open-ui:
     desc: Open development server UI
@@ -103,3 +116,4 @@ tasks:
       Usage: task dev:open-ui
     cmds:
       - task: :internal:open-ui
+        vars: { ENVIRONMENT: dev }
