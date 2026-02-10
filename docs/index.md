@@ -1,62 +1,34 @@
 # MedTracker Documentation
 
-Welcome to the MedTracker documentation! This documentation covers the
-design, architecture, and usage of the MedTracker medication tracking
-application.
+MedTracker helps carers, families, and clinicians record medication
+administration safely with auditability and timing safeguards.
 
-## What is MedTracker?
+## Start Here
 
-MedTracker is a Ruby on Rails application designed to help users monitor
-their medication intake, ensuring they adhere to their prescribed schedules
-and restrictions. It provides a clear interface for managing prescriptions
-and logging doses, with built-in validations to prevent common mistakes
-like taking too much medication or taking doses too close together.
+- [Quick Start](quick-start.md): run MedTracker locally with Docker.
+- [Carer Onboarding: First Dose](user-onboarding-carer-first-dose.md): first-time
+  user flow from invite to recording a dose.
+- [Testing](testing.md): run the full suite with project `task` commands.
 
-## Key Features
+## Core Guides
 
-- **Prescription Management:** Create and manage prescriptions with details
-  like dosage, frequency, and start/end dates
-- **Dose Tracking:** Easily log each dose of medication taken
-- **Timing Restrictions:** Set rules for maximum daily doses and minimum
-  hours between doses to prevent accidental overdose
-- **Dose Cycles:** Supports daily, weekly, and monthly dosing schedules
-- **Active/Inactive Prescriptions:** Automatically tracks which prescriptions
-  are currently active
-- **Validation:** Smart validations to ensure doses are taken according to
-  prescription rules
+- [Deployment](deployment.md): run app and database in development and production.
+- [User Management](user-management.md): person types, user roles, and carer links.
+- [OAuth Setup](oauth-setup.md): configure Google OIDC sign-in.
+- [Passkey Setup](passkey-setup.md): configure and operate WebAuthn passkeys.
+- [Two-Factor Authentication](two-factor-authentication.md): TOTP and recovery flow.
 
-## Documentation Structure
+## Architecture
 
-This documentation is organized into several sections:
+- [Design](design.md): architecture, domain model, and guardrails.
+- [Database Relationships](database-relationships.md): current schema relationships.
+- [Audit Trail](audit-trail.md): PaperTrail model coverage and access rules.
+- [Accessibility](accessibility.md): WCAG guidance used in the UI.
+- [Theming](theming.md): styling and design consistency rules.
 
-### Getting Started
+## Docs Tooling
 
-- **[Quick Start Guide](quick-start.md)** - Get MedTracker up and running
-  in minutes with setup instructions and prerequisites
-- **[Deployment Guide](deployment.md)** - Docker deployment options for
-  development and production environments
-- **[Testing Guide](testing.md)** - Running tests, Lighthouse audits,
-  and testing best practices
+- Local preview: `task docs:serve`
+- Static build: `task docs:build`
 
-### Configuration & Architecture
-
-- **[Design & Architecture](design.md)** - Overview of the application
-  architecture, data models, and technical decisions
-- **[User Management](user-management.md)** - Comprehensive guide to the
-  user management system, including roles, permissions, and capacity
-  management
-- **[OAuth Setup](oauth-setup.md)** - Guide to configuring Google OAuth
-  authentication for your deployment
-
-## Contributing
-
-Interested in contributing? Check out the
-[Contributing Guide](https://github.com/damacus/med-tracker/blob/main/CONTRIBUTING.md)
-for information on how to get started.
-
-## GitHub Copilot Agent
-
-This project includes a documentation agent that can help identify
-opportunities to improve and expand this documentation. See the
-[agents documentation](https://github.com/damacus/med-tracker/blob/main/.github/agents/README.md)
-for more information.
+Published docs: <https://damacus.github.io/med-tracker/>

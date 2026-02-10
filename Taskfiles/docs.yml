@@ -1,0 +1,19 @@
+---
+version: "3"
+
+tasks:
+  serve:
+    desc: Serve documentation locally with live reload
+    summary: |
+      Build and serve documentation locally for preview.
+      Usage: task docs:serve
+    cmds:
+      - zensical serve
+
+  build:
+    desc: Build static documentation site
+    summary: |
+      Build documentation into the site output directory.
+      Usage: task docs:build
+    cmds:
+      - zensical build --clean

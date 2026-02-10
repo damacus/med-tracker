@@ -12,7 +12,8 @@ Taskfiles/
   ├── README.md          # This file - documentation for LLMs and developers
   ├── internal.yml       # Reusable Docker Compose operations (internal use only)
   ├── dev.yml            # Development environment commands
-  └── test.yml           # Test environment commands
+  ├── test.yml           # Test environment commands
+  └── docs.yml           # Documentation build/serve commands
 ```
 
 ## How It Works
@@ -21,7 +22,7 @@ Taskfiles/
 
 The root `Taskfile.yml` includes the modular taskfiles and defines top-level commands:
 
-- **includes**: Imports taskfiles under namespaces (dev:, test:, internal:)
+- **includes**: Imports taskfiles under namespaces (dev:, test:, docs:, internal:)
 - **tasks**: Defines user-facing commands like `task test` and `task rubocop`
 
 ### 2. Internal Tasks (Taskfiles/internal.yml)
@@ -61,6 +62,13 @@ Commands for running tests:
 - `task test:rebuild` - Rebuild test environment (drops database)
 - `task test:seed` - Seed test database
 - `task test:logs` - View test logs
+
+#### docs.yml - Documentation Environment
+
+Commands for docs authoring:
+
+- `task docs:serve` - Serve docs locally with live reload
+- `task docs:build` - Build static docs site
 
 ## Common Usage Patterns
 
@@ -236,3 +244,5 @@ docker-compose..yml: no such file or directory
 | `task test:rebuild`        | Reset test database | test        |
 | `task dev:logs`            | View dev logs       | dev         |
 | `task test:logs`           | View test logs      | test        |
+| `task docs:serve`          | Serve docs locally  | local       |
+| `task docs:build`          | Build docs site     | local       |

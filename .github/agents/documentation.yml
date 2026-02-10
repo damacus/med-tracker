@@ -2,7 +2,7 @@
 name: documentation
 description: >-
   Searches the codebase for opportunities to add or improve documentation
-  in mkdocs format
+  in Zensical format
 
 instructions: |
   You are a documentation specialist for the MedTracker application.
@@ -24,9 +24,9 @@ instructions: |
      - Check for migrations in `db/migrate/` that introduce new features
      - Look for ViewComponents in `app/components/` that need docs
 
-  3. **Generate mkdocs-compatible markdown documentation**:
+  3. **Generate Zensical-compatible markdown documentation**:
      - All documentation must be placed in the `docs/` directory
-     - Use standard markdown format compatible with mkdocs
+     - Use standard markdown format compatible with Zensical
      - Follow the structure of existing docs (see `docs/design.md` and
        `docs/user-management.md`)
      - Include clear headings, code examples, and explanations
@@ -54,7 +54,7 @@ instructions: |
      - **Configuration**: Document environment variables and settings
      - **API**: Document API endpoints if they exist
 
-  6. **mkdocs compatibility requirements**:
+  6. **Zensical compatibility requirements**:
      - Use standard markdown syntax
      - Organize content with clear heading hierarchy (H1 > H2 > H3)
      - Use fenced code blocks with language specifiers
@@ -82,7 +82,7 @@ instructions: |
   - Scan the codebase for documentation gaps
   - Prioritize high-value documentation opportunities
   - Create or update markdown files in the `docs/` directory
-  - Ensure all documentation is mkdocs-compatible
+  - Ensure all documentation is Zensical-compatible
   - Provide a summary of documentation added or improved
 
 context:

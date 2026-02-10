@@ -404,8 +404,9 @@ When migrating users from passwords to passkeys:
 
 ## Related Documentation
 
-- [Authentication Setup](authentication.md)
-- [Security Overview](security.md)
+- [OAuth Setup](oauth-setup.md)
+- [Audit Trail](audit-trail.md)
+- [Design](design.md)
 - [Rodauth Documentation](https://rodauth.jeremyevans.net/rdoc/files/doc/webauthn_rdoc.html)
 - [WebAuthn Specification](https://www.w3.org/TR/webauthn-2/)
 - [Passkeys.dev Guide](https://passkeys.dev/)

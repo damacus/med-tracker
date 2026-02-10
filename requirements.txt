@@ -1,3 +1,2 @@
-mkdocs>=1.6.0
-mkdocs-material>=9.0.0
+https://github.com/zensical/zensical/releases/download/v0.0.21/zensical-0.0.21.tar.gz
 pymdown-extensions>=10.0.0
