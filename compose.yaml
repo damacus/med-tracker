@@ -6,6 +6,7 @@ services:
       file: compose/base.yml
       service: postgres
     profiles: [dev]
+    networks: [dev]
     volumes:
       - medtracker_dev_postgres:/var/lib/postgresql/data
 
@@ -14,6 +15,7 @@ services:
       file: compose/base.yml
       service: rails
     profiles: [dev]
+    networks: [dev]
     build:
       target: assets
       args:
@@ -39,6 +41,7 @@ services:
       file: compose/base.yml
       service: postgres
     profiles: [test]
+    networks: [test]
     healthcheck:
       interval: 5s
       timeout: 3s
@@ -48,6 +51,7 @@ services:
       file: compose/base.yml
       service: rails
     profiles: [test]
+    networks: [test]
     build:
       dockerfile: Dockerfile.test
     depends_on:
@@ -68,6 +72,7 @@ services:
       file: compose/base.yml
       service: postgres
     profiles: [prod]
+    networks: [prod]
     volumes:
       - medtracker_prod_postgres:/var/lib/postgresql/data
 
@@ -76,6 +81,7 @@ services:
       file: compose/base.yml
       service: rails
     profiles: [prod]
+    networks: [prod]
     depends_on:
       db-prod:
         condition: service_healthy
@@ -89,6 +95,11 @@ services:
       interval: 30s
       timeout: 10s
       start_period: 60s
+
+networks:
+  dev:
+  test:
+  prod:
 
 volumes:
   medtracker_dev_postgres:
