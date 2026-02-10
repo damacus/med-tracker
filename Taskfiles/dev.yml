@@ -3,8 +3,6 @@
 # All tasks operate on the 'dev' profile (compose.yaml)
 # Usage: task dev:<command>
 version: "3"
-vars:
-  ENVIRONMENT: dev
 
 tasks:
   build:

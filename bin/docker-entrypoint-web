@@ -9,20 +9,23 @@ fi
 echo "Installing gems..."
 bundle install
 
-# Precompile assets if needed
-if [[ ! -f "public/assets/.manifest.json" ]]; then
-  echo "Precompiling assets..."
-  ./bin/rails assets:precompile
-else
-  echo "Assets already compiled."
-fi
-
-# If running the rails server then create or migrate existing database
+# Detect if the final command is "rails server"
+is_server=false
 if [[ "${*: -2:1}" == "rails" ]] && [[ "${*: -1:1}" == "server" ]]; then
-  ./bin/rails db:prepare
-  TLS_DOMAIN=ironstone.casa thrust rails serve
+  is_server=true
 fi
 
+# Asset precompilation only needed for server mode
+if [[ "$is_server" == "true" ]]; then
+  if [[ ! -f "public/assets/.manifest.json" ]]; then
+    echo "Precompiling assets..."
+    ./bin/rails assets:precompile
+  else
+    echo "Assets already compiled."
+  fi
+fi
+
+# Database preparation
 if ! bundle exec rails runner "ActiveRecord::Base.connection.table_exists?('schema_migrations')" 2>/dev/null; then
   echo "Loading schema..."
   ./bin/rails db:schema:load

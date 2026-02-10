@@ -1,9 +1,6 @@
 ---
 version: "3"
 
-vars:
-  ENVIRONMENT: test
-
 tasks:
   build:
     desc: Build test Docker images
@@ -19,14 +16,13 @@ tasks:
           NO_CACHE: '{{ .NO_CACHE | default "" }}'
 
   up:
-    desc: Start test server
+    desc: Start test database
     summary: |
-      Start the test server
-      Creates and starts all containers in detached mode
-      Database data persists between restarts
+      Start the test database container.
+      The web-test container is ephemeral — use 'task test' to run tests.
       Usage: task test:up
     cmds:
-      - task: :internal:up
+      - task: :internal:up-db
         vars: { ENVIRONMENT: test }
 
   seed:
@@ -51,9 +47,9 @@ tasks:
         vars: { ENVIRONMENT: test }
 
   ps:
-    desc: List current status of Docker Compose Stack
+    desc: List current status of test containers
     summary: |
-      List current status of Docker Compose Stack
+      List current status of test containers
       Usage: task test:ps
     cmds:
       - task: :internal:ps
@@ -94,9 +90,9 @@ tasks:
         vars: { ENVIRONMENT: test }
 
   logs:
-    desc: View test server logs
+    desc: View test container logs
     summary: |
-      View and follow test server logs
+      View and follow test container logs
       Press Ctrl+C to stop following
       Usage: task test:logs
     cmds:
