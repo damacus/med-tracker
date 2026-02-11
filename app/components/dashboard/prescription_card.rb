@@ -89,18 +89,33 @@ module Components
       end
 
       def render_take_now_button
-        form_with(
-          url: url_helpers.prescription_medication_takes_path(prescription),
-          method: :post,
-          class: 'inline-block'
-        ) do
-          Button(
-            type: :submit,
-            variant: :success_outline,
-            size: :md,
-            data: { test_id: "take-medicine-#{prescription.id}" }
-          ) { 'Take Now' }
+        if prescription.can_administer?
+          form_with(
+            url: url_helpers.prescription_medication_takes_path(prescription),
+            method: :post,
+            class: 'inline-block'
+          ) do
+            Button(
+              type: :submit,
+              variant: :success_outline,
+              size: :md,
+              data: { test_id: "take-medicine-#{prescription.id}" }
+            ) { 'Take Now' }
+          end
+        else
+          render_disabled_take_button
         end
+      end
+
+      def render_disabled_take_button
+        reason = prescription.administration_blocked_reason
+        label = reason == :out_of_stock ? 'Out of Stock' : 'On Cooldown'
+        Button(
+          variant: :secondary,
+          size: :md,
+          disabled: true,
+          data: { test_id: "take-medicine-#{prescription.id}" }
+        ) { label }
       end
 
       def render_delete_button
