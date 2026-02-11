@@ -88,6 +88,7 @@ module Components
                 TableHead { 'Person' }
                 TableHead { 'Medicine' }
                 TableHead { 'Dosage' }
+                TableHead { 'Quantity' }
                 TableHead { 'Frequency' }
                 TableHead { 'End Date' }
                 TableHead(class: 'text-center') { 'Actions' }

@@ -85,6 +85,32 @@ RSpec.describe Components::Dashboard::PrescriptionHelpers do
     end
   end
 
+  describe '#format_quantity' do
+    context 'when medicine has stock' do
+      it 'returns the stock as a string' do
+        prescription.medicine.stock = 44
+        expect(instance.format_quantity).to eq('44')
+      end
+    end
+
+    context 'when medicine stock is nil' do
+      it 'returns em dash' do
+        prescription.medicine.stock = nil
+        expect(instance.format_quantity).to eq('—')
+      end
+    end
+
+    context 'when medicine is nil' do
+      it 'returns em dash' do
+        person = create(:person)
+        custom_prescription = Prescription.new(person: person, medicine: nil, dosage: nil)
+        custom_instance = test_class.new(prescription: custom_prescription, current_user: user)
+
+        expect(custom_instance.format_quantity).to eq('—')
+      end
+    end
+  end
+
   describe '#format_end_date' do
     context 'when prescription has end_date' do
       it 'formats the date' do

@@ -47,6 +47,13 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
     end
   end
 
+  describe 'medication schedule table headers' do
+    it 'renders a Quantity column header' do
+      rendered = render_inline(dashboard_view)
+      expect(rendered.css('th').map(&:text)).to include('Quantity')
+    end
+  end
+
   context 'when there are people but no prescriptions' do
     let(:active_prescriptions) { [] }
     let(:upcoming_prescriptions) { {} }

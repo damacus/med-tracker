@@ -68,10 +68,9 @@ module Components
       def render_details
         div(class: 'grid grid-cols-2 gap-2 text-sm text-slate-600') do
           render_detail('Dosage', format_dosage)
+          render_detail('Quantity', format_quantity)
           render_detail('Frequency', prescription.frequency || '—')
-          div(class: 'col-span-2') do
-            render_detail('Ends', format_end_date)
-          end
+          render_detail('Ends', format_end_date)
         end
       end
 
