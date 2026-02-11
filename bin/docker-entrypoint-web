@@ -6,34 +6,22 @@ if [[ -z "${LD_PRELOAD+x}" ]]; then
     export LD_PRELOAD
 fi
 
-echo "Installing gems..."
-bundle install
-
-# Precompile assets if needed
-if [[ ! -f "public/assets/.manifest.json" ]]; then
-  echo "Precompiling assets..."
-  ./bin/rails assets:precompile
-else
-  echo "Assets already compiled."
-fi
-
-# If running the rails server then create or migrate existing database
-if [[ "${*: -2:1}" == "rails" ]] && [[ "${*: -1:1}" == "server" ]]; then
-  ./bin/rails db:prepare
-  TLS_DOMAIN=ironstone.casa thrust rails serve
-fi
-
-if ! bundle exec rails runner "ActiveRecord::Base.connection.table_exists?('schema_migrations')" 2>/dev/null; then
-  echo "Loading schema..."
-  ./bin/rails db:schema:load
-else
-  echo "Database exists, checking for pending migrations..."
-  if ./bin/rails db:migrate:status | grep -q "^\s*down"; then
-    echo "Running pending migrations..."
-    ./bin/rails db:migrate
-  else
-    echo "Database is up to date."
+# In development, remove stale precompiled assets so Propshaft serves dynamically.
+# In production/test, precompile if the manifest is missing (Dockerfile handles this
+# at build time for non-dev, so this is a safety net only).
+if [[ "$RAILS_ENV" == "development" ]]; then
+  if [[ -f "public/assets/.manifest.json" ]]; then
+    echo "Removing stale precompiled assets (development uses dynamic serving)..."
+    rm -rf public/assets
   fi
+elif [[ ! -f "public/assets/.manifest.json" ]]; then
+  echo "Precompiling assets..."
+  SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile
 fi
+
+# Database: create if missing, load schema if empty, run pending migrations.
+# Idempotent — safe to run on every container start.
+echo "Preparing database..."
+./bin/rails db:prepare
 
 exec "${@}"

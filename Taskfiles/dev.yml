@@ -1,10 +1,8 @@
 ---
 # Development Environment Tasks
-# All tasks operate on the 'dev' environment (docker-compose.dev.yml)
+# All tasks operate on the 'dev' profile (compose.yaml)
 # Usage: task dev:<command>
 version: "3"
-vars:
-  ENVIRONMENT: dev
 
 tasks:
   build:
@@ -33,6 +31,7 @@ tasks:
       Usage: task dev:up
     cmds:
       - task: :internal:up
+        vars: { ENVIRONMENT: dev }
 
   seed:
     desc: Seed development database with fixtures
@@ -42,6 +41,7 @@ tasks:
       Usage: task dev:seed
     cmds:
       - task: :internal:seed
+        vars: { ENVIRONMENT: dev }
 
   stop:
     desc: Stop development server
@@ -51,6 +51,7 @@ tasks:
       Usage: task dev:stop
     cmds:
       - task: :internal:stop
+        vars: { ENVIRONMENT: dev }
 
   ps:
     desc: List current status of Docker Compose Stack
@@ -59,14 +60,16 @@ tasks:
       Usage: task dev:ps
     cmds:
       - task: :internal:ps
+        vars: { ENVIRONMENT: dev }
 
-  run-migrations:
+  db-migrate:
     desc: Run Rails migrations
     summary: |
       Run Rails migrations on the development database
-      Usage: task dev:run-migrations
+      Usage: task dev:db-migrate
     cmds:
-      - task: :internal:run-migrations
+      - task: :internal:db-migrate
+        vars: { ENVIRONMENT: dev }
 
   rebuild:
     desc: Rebuild development server (drops database)
@@ -75,18 +78,18 @@ tasks:
       WARNING: This drops the database and all data!
       Use when database migrations have changed or you need a fresh start.
       Usage: task dev:rebuild
-    prompt: This removes all data and rebuilds the development environment. Are you sure?
+    # prompt: This removes all data and rebuilds the development environment. Are you sure?
     cmds:
       - task: :internal:stop
-        vars: { REMOVE_VOLUMES: "true" }
+        vars: { ENVIRONMENT: dev, REMOVE_VOLUMES: "true" }
       - task: :internal:build
+        vars: { ENVIRONMENT: dev }
       - task: :internal:up
-      - task: :internal:run
-        vars:
-          SERVICE: web
-          COMMAND: "rails db:create db:migrate"
+        vars: { ENVIRONMENT: dev }
       - task: :internal:seed
+        vars: { ENVIRONMENT: dev }
       - task: :internal:open-ui
+        vars: { ENVIRONMENT: dev }
 
   logs:
     desc: View development server logs
@@ -96,6 +99,7 @@ tasks:
       Usage: task dev:logs
     cmds:
       - task: :internal:logs
+        vars: { ENVIRONMENT: dev }
 
   open-ui:
     desc: Open development server UI
@@ -104,3 +108,4 @@ tasks:
       Usage: task dev:open-ui
     cmds:
       - task: :internal:open-ui
+        vars: { ENVIRONMENT: dev }

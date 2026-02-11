@@ -1,0 +1,121 @@
+---
+services:
+  # === Development (profile: dev) ===
+  db-dev:
+    extends:
+      file: compose/base.yml
+      service: postgres
+    profiles: [dev]
+    networks: [dev]
+    volumes:
+      - medtracker_dev_postgres:/var/lib/postgresql/data
+
+  web-dev:
+    extends:
+      file: compose/base.yml
+      service: rails
+    profiles: [dev]
+    networks: [dev]
+    build:
+      target: assets
+      args:
+        RAILS_ENV: development
+    depends_on:
+      db-dev:
+        condition: service_healthy
+    environment:
+      RAILS_ENV: development
+      RAILS_FORCE_SSL: "false"
+      DATABASE_URL: postgresql://medtracker:medtracker_password@db-dev:5432/medtracker
+    volumes:
+      - .:/app
+      - medtracker_dev_bundle:/usr/local/bundle
+      - medtracker_dev_node_modules:/app/node_modules
+      - medtracker_dev_storage:/app/storage
+
+  # === Test (profile: test) ===
+  db-test:
+    extends:
+      file: compose/base.yml
+      service: postgres
+    profiles: [test]
+    networks: [test]
+    healthcheck:
+      interval: 5s
+      timeout: 3s
+
+  web-test:
+    extends:
+      file: compose/base.yml
+      service: rails
+    profiles: [test]
+    networks: [test]
+    build:
+      dockerfile: Dockerfile.test
+    depends_on:
+      db-test:
+        condition: service_healthy
+    environment:
+      RAILS_ENV: test
+      DATABASE_URL: postgresql://medtracker:medtracker_password@db-test:5432/medtracker
+    volumes:
+      - .:/app
+      - medtracker_test_bundle:/usr/local/bundle
+      - medtracker_test_node_modules:/app/node_modules
+      - ./tmp/capybara:/app/tmp/capybara
+    healthcheck:
+      disable: true
+
+  # === Production (profile: prod) ===
+  db-prod:
+    extends:
+      file: compose/base.yml
+      service: postgres
+    profiles: [prod]
+    networks: [prod]
+    environment:
+      POSTGRES_MULTIPLE_DATABASES: medtracker_production_queue,medtracker_production_cache,medtracker_production_cable
+    volumes:
+      - medtracker_prod_postgres:/var/lib/postgresql/data
+      - ./compose/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh:ro
+
+  web-prod:
+    extends:
+      file: compose/base.yml
+      service: rails
+    profiles: [prod]
+    networks: [prod]
+    depends_on:
+      db-prod:
+        condition: service_healthy
+    environment:
+      RAILS_ENV: production
+      DATABASE_URL: postgresql://medtracker:medtracker_password@db-prod:5432/medtracker
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE:-local-prod-testing-only-not-for-real-use}
+      SOLID_QUEUE_DATABASE_URL: postgresql://medtracker:medtracker_password@db-prod:5432/medtracker_production_queue
+      SOLID_CACHE_DATABASE_URL: postgresql://medtracker:medtracker_password@db-prod:5432/medtracker_production_cache
+      SOLID_CABLE_DATABASE_URL: postgresql://medtracker:medtracker_password@db-prod:5432/medtracker_production_cable
+    ports:
+      - "80"
+    volumes:
+      - medtracker_prod_storage:/app/storage
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:80/up || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+
+networks:
+  dev:
+  test:
+  prod:
+
+volumes:
+  medtracker_dev_postgres:
+  medtracker_dev_bundle:
+  medtracker_dev_node_modules:
+  medtracker_dev_storage:
+  medtracker_test_bundle:
+  medtracker_test_node_modules:
+  medtracker_prod_postgres:
+  medtracker_prod_storage:
