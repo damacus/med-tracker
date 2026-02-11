@@ -22,5 +22,15 @@ module Components
         'disabled:cursor-not-allowed disabled:opacity-50 ' \
         'checked:bg-primary checked:text-primary-foreground'
     end
+
+    def field_error_class(model, field)
+      model.errors[field].any? ? 'border-destructive focus-visible:ring-destructive' : ''
+    end
+
+    def render_field_error(model, field)
+      return unless model.errors[field].any?
+
+      FormFieldError { model.errors[field].first }
+    end
   end
 end

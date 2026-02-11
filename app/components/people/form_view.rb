@@ -81,8 +81,10 @@ module Components
             name: 'person[name]',
             id: 'person_name',
             value: person.name,
-            required: true
+            required: true,
+            class: field_error_class(person, :name)
           )
+          render_field_error(person, :name)
         end
       end
 
@@ -93,8 +95,10 @@ module Components
             type: :email,
             name: 'person[email]',
             id: 'person_email',
-            value: person.email
+            value: person.email,
+            class: field_error_class(person, :email)
           )
+          render_field_error(person, :email)
         end
       end
 
@@ -106,8 +110,10 @@ module Components
             name: 'person[date_of_birth]',
             id: 'person_date_of_birth',
             value: person.date_of_birth&.to_s,
-            required: true
+            required: true,
+            class: field_error_class(person, :date_of_birth)
           )
+          render_field_error(person, :date_of_birth)
         end
       end
 
