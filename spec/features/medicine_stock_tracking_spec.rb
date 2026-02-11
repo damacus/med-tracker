@@ -14,6 +14,9 @@ RSpec.describe 'Medicine Stock Tracking', type: :system do
     # Ensure medicine has known stock level
     medicine.update!(stock: 10, reorder_threshold: 5)
 
+    # Clear any fixture medication_takes to avoid cooldown interference
+    prescription.medication_takes.delete_all
+
     # Login as admin using helper that clears 2FA
     login_as(admin)
   end
