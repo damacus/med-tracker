@@ -81,8 +81,10 @@ module Components
               name: 'medicine[name]',
               id: 'medicine_name',
               value: medicine.name,
-              required: true
+              required: true,
+              class: field_error_class(medicine, :name)
             )
+            render_field_error(medicine, :name)
           end
         end
       end

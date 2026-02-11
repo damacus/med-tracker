@@ -90,8 +90,10 @@ module Components
               name: 'user[person_attributes][name]',
               id: 'user_person_attributes_name',
               value: user.person&.name,
-              required: true
+              required: true,
+              class: person_field_error_class(:name)
             )
+            render_person_field_error(:name)
           end
         end
 
@@ -116,8 +118,10 @@ module Components
               name: 'user[email_address]',
               id: 'user_email_address',
               value: user.email_address,
-              required: true
+              required: true,
+              class: field_error_class(user, :email_address)
             )
+            render_field_error(user, :email_address)
           end
         end
 
@@ -135,8 +139,10 @@ module Components
               type: :password,
               name: 'user[password]',
               id: 'user_password',
-              required: user.new_record?
+              required: user.new_record?,
+              class: field_error_class(user, :password)
             )
+            render_field_error(user, :password)
           end
         end
 
@@ -176,6 +182,20 @@ module Components
               user.new_record? ? 'Create User' : 'Update User'
             end
           end
+        end
+
+        def person_field_error_class(field)
+          person = user.person
+          return '' unless person
+
+          field_error_class(person, field)
+        end
+
+        def render_person_field_error(field)
+          person = user.person
+          return unless person
+
+          render_field_error(person, field)
         end
       end
     end
