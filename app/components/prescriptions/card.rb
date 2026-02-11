@@ -132,13 +132,15 @@ module Components
           form_with(
             url: take_medicine_person_prescription_path(person, prescription),
             method: :post,
-            class: 'inline-block'
+            class: 'inline-block',
+            data: { controller: 'optimistic-take', action: 'submit->optimistic-take#submit' }
           ) do
             Button(
               type: :submit,
               variant: :primary,
               size: :md,
-              class: 'inline-flex items-center gap-1 min-w-[80px]'
+              class: 'inline-flex items-center gap-1 min-w-[80px]',
+              data: { optimistic_take_target: 'button' }
             ) do
               plain '💊 Take'
             end
