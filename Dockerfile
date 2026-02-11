@@ -69,6 +69,6 @@ COPY --chown=ruby:ruby --from=assets /usr/local/bundle /usr/local/bundle
 COPY --chown=ruby:ruby --from=assets /app/public /public
 COPY --chown=ruby:ruby . .
 
-EXPOSE 3000
+EXPOSE 80
 ENTRYPOINT ["/app/bin/docker-entrypoint-web"]
-CMD ["rails", "server", "-b", "0.0.0.0"]
+CMD ["./bin/thrust", "./bin/rails", "server"]

@@ -88,10 +88,13 @@ services:
     environment:
       RAILS_ENV: production
       DATABASE_URL: postgresql://medtracker:medtracker_password@db-prod:5432/medtracker
+    ports:
+      - "80"
     volumes:
       - medtracker_prod_storage:/rails/storage
       - ./config/credentials/production.key:/app/config/credentials/production.key:ro
     healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:80/up || exit 1"]
       interval: 30s
       timeout: 10s
       start_period: 60s
