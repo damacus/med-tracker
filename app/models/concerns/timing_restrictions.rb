@@ -17,6 +17,19 @@ module TimingRestrictions
     !would_violate_restrictions?(Time.current)
   end
 
+  def can_administer?
+    return false if medicine.out_of_stock?
+
+    can_take_now?
+  end
+
+  def administration_blocked_reason
+    return :out_of_stock if medicine.out_of_stock?
+    return :cooldown unless can_take_now?
+
+    nil
+  end
+
   def next_available_time
     return nil unless timing_restrictions?
     return Time.current if can_take_now?

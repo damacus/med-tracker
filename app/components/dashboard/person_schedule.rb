@@ -111,6 +111,8 @@ module Components
       end
 
       def render_take_medicine_link(prescription)
+        return render_disabled_take_label(prescription) unless prescription.can_administer?
+
         if take_medicine_url_generator
           url = take_medicine_url_generator.call(prescription)
           Link(
@@ -124,6 +126,15 @@ module Components
             'Take Now'
           end
         end
+      end
+
+      def render_disabled_take_label(prescription)
+        reason = prescription.administration_blocked_reason
+        label = reason == :out_of_stock ? 'Out of Stock' : 'On Cooldown'
+        span(
+          class: 'text-muted-foreground font-medium cursor-not-allowed',
+          data: { test_id: "take-medicine-#{prescription.id}" }
+        ) { label }
       end
 
       def render_delete_link(prescription)

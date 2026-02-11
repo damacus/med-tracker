@@ -17,6 +17,8 @@ class Medicine < ApplicationRecord # :nodoc:
   end
 
   def out_of_stock?
-    stock.to_i <= 0
+    return false if stock.nil?
+
+    stock <= 0
   end
 end

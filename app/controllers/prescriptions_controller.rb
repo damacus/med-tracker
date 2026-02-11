@@ -153,16 +153,16 @@ class PrescriptionsController < ApplicationController
 
     # SECURITY: Enforce timing restrictions server-side
     # This prevents bypassing UI-disabled buttons via direct API calls
-    unless @prescription.can_take_now?
+    unless @prescription.can_administer?
+      reason = @prescription.administration_blocked_reason
+      message = reason == :out_of_stock ? 'Cannot take medicine: out of stock' : 'Cannot take medicine: timing restrictions not met'
       respond_to do |format|
         format.html do
           redirect_back_or_to person_path(@person),
-                              alert: t('prescriptions.cannot_take_medicine',
-                                       default: 'Cannot take medicine: timing restrictions not met')
+                              alert: t('prescriptions.cannot_take_medicine', default: message)
         end
         format.turbo_stream do
-          flash.now[:alert] = t('prescriptions.cannot_take_medicine',
-                                default: 'Cannot take medicine: timing restrictions not met')
+          flash.now[:alert] = t('prescriptions.cannot_take_medicine', default: message)
           render turbo_stream: turbo_stream.update('flash',
                                                    Components::Layouts::Flash.new(alert: flash[:alert]))
         end
