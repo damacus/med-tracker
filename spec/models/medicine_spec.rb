@@ -81,5 +81,11 @@ RSpec.describe Medicine do
 
       it { is_expected.not_to be_out_of_stock }
     end
+
+    context 'when stock is nil (untracked)' do
+      let(:stock) { nil }
+
+      it { is_expected.not_to be_out_of_stock }
+    end
   end
 end

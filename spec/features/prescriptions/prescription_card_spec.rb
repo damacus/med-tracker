@@ -164,6 +164,29 @@ RSpec.describe 'Prescription Card', type: :system do
       end
     end
 
+    context 'when medicine is out of stock' do
+      before do
+        medicine.update!(stock: 0)
+      end
+
+      it 'displays disabled Out of Stock button' do
+        visit person_path(person)
+
+        within("#prescription_#{prescription.id}") do
+          expect(page).to have_button('💊 Out of Stock', disabled: true)
+        end
+      end
+
+      it 'has secondary variant styling when out of stock' do
+        visit person_path(person)
+
+        within("#prescription_#{prescription.id}") do
+          button = find_button('💊 Out of Stock', disabled: true)
+          expect(button[:class]).to include('bg-secondary')
+        end
+      end
+    end
+
     context 'when prescription cannot be taken (cooldown)' do
       before do
         prescription.medication_takes.create!(

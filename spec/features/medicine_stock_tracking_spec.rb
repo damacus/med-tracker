@@ -47,6 +47,16 @@ RSpec.describe 'Medicine Stock Tracking', type: :system do
     end
   end
 
+  it 'disables the Take Now button when out of stock' do
+    medicine.update!(stock: 0)
+    visit root_path
+
+    within "#prescription_#{prescription.id}" do
+      expect(page).to have_button('Out of Stock', disabled: true)
+      expect(page).to have_no_button('Take Now')
+    end
+  end
+
   it 'deducts stock when taking a dose' do
     visit root_path
 

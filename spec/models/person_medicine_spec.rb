@@ -121,6 +121,91 @@ RSpec.describe PersonMedicine do
     end
   end
 
+  describe '#can_administer?' do
+    context 'when can take now and medicine in stock' do
+      let(:person_medicine) { create(:person_medicine) }
+
+      it 'returns true' do
+        expect(person_medicine.can_administer?).to be true
+      end
+    end
+
+    context 'when on cooldown' do
+      let(:person_medicine) { create(:person_medicine, min_hours_between_doses: 4) }
+
+      it 'returns false' do
+        create(:medication_take, :for_person_medicine, :recent, person_medicine: person_medicine)
+        expect(person_medicine.can_administer?).to be false
+      end
+    end
+
+    context 'when medicine is out of stock' do
+      let(:medicine) { create(:medicine, stock: 0) }
+      let(:person_medicine) { create(:person_medicine, medicine: medicine) }
+
+      it 'returns false' do
+        expect(person_medicine.can_administer?).to be false
+      end
+    end
+
+    context 'when both on cooldown and out of stock' do
+      let(:medicine) { create(:medicine, stock: 0) }
+      let(:person_medicine) { create(:person_medicine, medicine: medicine, min_hours_between_doses: 4) }
+
+      it 'returns false' do
+        create(:medication_take, :for_person_medicine, :recent, person_medicine: person_medicine)
+        expect(person_medicine.can_administer?).to be false
+      end
+    end
+
+    context 'when medicine stock is nil (untracked)' do
+      let(:medicine) { create(:medicine, stock: nil) }
+      let(:person_medicine) { create(:person_medicine, medicine: medicine) }
+
+      it 'returns true (nil stock means untracked)' do
+        expect(person_medicine.can_administer?).to be true
+      end
+    end
+  end
+
+  describe '#administration_blocked_reason' do
+    context 'when can administer' do
+      let(:person_medicine) { create(:person_medicine) }
+
+      it 'returns nil' do
+        expect(person_medicine.administration_blocked_reason).to be_nil
+      end
+    end
+
+    context 'when on cooldown' do
+      let(:person_medicine) { create(:person_medicine, min_hours_between_doses: 4) }
+
+      it 'returns :cooldown' do
+        create(:medication_take, :for_person_medicine, :recent, person_medicine: person_medicine)
+        expect(person_medicine.administration_blocked_reason).to eq(:cooldown)
+      end
+    end
+
+    context 'when out of stock' do
+      let(:medicine) { create(:medicine, stock: 0) }
+      let(:person_medicine) { create(:person_medicine, medicine: medicine) }
+
+      it 'returns :out_of_stock' do
+        expect(person_medicine.administration_blocked_reason).to eq(:out_of_stock)
+      end
+    end
+
+    context 'when both on cooldown and out of stock' do
+      let(:medicine) { create(:medicine, stock: 0) }
+      let(:person_medicine) { create(:person_medicine, medicine: medicine, min_hours_between_doses: 4) }
+
+      it 'returns :out_of_stock (stock takes priority)' do
+        create(:medication_take, :for_person_medicine, :recent, person_medicine: person_medicine)
+        expect(person_medicine.administration_blocked_reason).to eq(:out_of_stock)
+      end
+    end
+  end
+
   describe '#countdown_display' do
     context 'when can take now' do
       let(:person_medicine) { create(:person_medicine, :with_both_restrictions) }

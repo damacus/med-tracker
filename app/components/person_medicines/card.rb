@@ -149,7 +149,7 @@ module Components
       def render_take_medicine_button
         return unless view_context.policy(person_medicine).take_medicine?
 
-        if person_medicine.can_take_now?
+        if person_medicine.can_administer?
           form_with(
             url: take_medicine_person_person_medicine_path(person, person_medicine),
             method: :post,
@@ -167,12 +167,14 @@ module Components
             end
           end
         else
-          render_disabled_button_with_countdown
+          render_disabled_button_with_reason
         end
       end
 
-      def render_disabled_button_with_countdown
-        Button(variant: :secondary, size: :md, disabled: true) { '💊 Take' }
+      def render_disabled_button_with_reason
+        reason = person_medicine.administration_blocked_reason
+        label = reason == :out_of_stock ? '💊 Out of Stock' : '💊 Take'
+        Button(variant: :secondary, size: :md, disabled: true) { label }
       end
 
       def render_person_medicine_actions

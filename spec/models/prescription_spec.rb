@@ -69,6 +69,60 @@ RSpec.describe Prescription do
     end
   end
 
+  describe '#can_administer?' do
+    let(:medicine) { Medicine.create!(name: 'TestMed', stock: 10, reorder_threshold: 2) }
+    let(:person) do
+      Person.create!(name: 'Test Person', email: 'test-administer@example.com', date_of_birth: Date.new(1990, 1, 1))
+    end
+    let(:dosage) { Dosage.create!(medicine: medicine, amount: 10, unit: 'mg', frequency: 'daily') }
+    let(:prescription) do
+      described_class.create!(
+        person: person, medicine: medicine, dosage: dosage,
+        start_date: Time.zone.today, end_date: Time.zone.today + 30.days
+      )
+    end
+
+    context 'when can take now and medicine in stock' do
+      it 'returns true' do
+        expect(prescription.can_administer?).to be true
+      end
+    end
+
+    context 'when medicine is out of stock' do
+      before { medicine.update!(stock: 0) }
+
+      it 'returns false' do
+        expect(prescription.can_administer?).to be false
+      end
+    end
+
+    context 'when medicine stock is nil (untracked)' do
+      before { medicine.update!(stock: nil) }
+
+      it 'returns true' do
+        expect(prescription.can_administer?).to be true
+      end
+    end
+  end
+
+  describe '#administration_blocked_reason' do
+    let(:medicine) { Medicine.create!(name: 'TestMed2', stock: 0, reorder_threshold: 2) }
+    let(:person) do
+      Person.create!(name: 'Test Person2', email: 'test-reason@example.com', date_of_birth: Date.new(1990, 1, 1))
+    end
+    let(:dosage) { Dosage.create!(medicine: medicine, amount: 10, unit: 'mg', frequency: 'daily') }
+    let(:prescription) do
+      described_class.create!(
+        person: person, medicine: medicine, dosage: dosage,
+        start_date: Time.zone.today, end_date: Time.zone.today + 30.days
+      )
+    end
+
+    it 'returns :out_of_stock when medicine has no stock' do
+      expect(prescription.administration_blocked_reason).to eq(:out_of_stock)
+    end
+  end
+
   describe 'associations' do
     it { is_expected.to belong_to(:person) }
     it { is_expected.to belong_to(:dosage) }
