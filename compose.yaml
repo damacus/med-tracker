@@ -32,7 +32,6 @@ services:
       - medtracker_dev_bundle:/usr/local/bundle
       - medtracker_dev_node_modules:/app/node_modules
       - medtracker_dev_storage:/app/storage
-    command: ["rails", "server", "-b", "0.0.0.0"]
 
   # === Test (profile: test) ===
   db-test:

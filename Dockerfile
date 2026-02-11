@@ -37,8 +37,7 @@ RUN if [ "${RAILS_ENV}" != "development" ]; then \
   SECRET_KEY_BASE_DUMMY=1 rails assets:precompile; fi
 
 ENTRYPOINT ["/app/bin/docker-entrypoint-web"]
-
-CMD ["bash"]
+CMD ["rails", "server", "-b", "0.0.0.0"]
 
 ###############################################################################
 
@@ -70,8 +69,6 @@ COPY --chown=ruby:ruby --from=assets /usr/local/bundle /usr/local/bundle
 COPY --chown=ruby:ruby --from=assets /app/public /public
 COPY --chown=ruby:ruby . .
 
-ENTRYPOINT ["/app/bin/docker-entrypoint-web"]
-
 EXPOSE 3000
-
+ENTRYPOINT ["/app/bin/docker-entrypoint-web"]
 CMD ["rails", "server", "-b", "0.0.0.0"]
