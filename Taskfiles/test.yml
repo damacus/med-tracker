@@ -1,9 +1,6 @@
 ---
 version: "3"
 
-vars:
-  ENVIRONMENT: test
-
 tasks:
   build:
     desc: Build test Docker images
@@ -19,14 +16,14 @@ tasks:
           NO_CACHE: '{{ .NO_CACHE | default "" }}'
 
   up:
-    desc: Start test server
+    desc: Start test database
     summary: |
-      Start the test server
-      Creates and starts all containers in detached mode
-      Database data persists between restarts
+      Start the test database container.
+      The web-test container is ephemeral — use 'task test' to run tests.
       Usage: task test:up
     cmds:
-      - task: :internal:up
+      - task: :internal:up-db
+        vars: { ENVIRONMENT: test }
 
   seed:
     desc: Seed test database with fixtures
@@ -37,6 +34,7 @@ tasks:
       Usage: task test:seed
     cmds:
       - task: :internal:seed
+        vars: { ENVIRONMENT: test }
 
   stop:
     desc: Stop test server
@@ -46,26 +44,28 @@ tasks:
       Usage: task test:stop
     cmds:
       - task: :internal:stop
+        vars: { ENVIRONMENT: test }
 
   ps:
-    desc: List current status of Docker Compose Stack
+    desc: List current status of test containers
     summary: |
-      List current status of Docker Compose Stack
+      List current status of test containers
       Usage: task test:ps
     cmds:
       - task: :internal:ps
+        vars: { ENVIRONMENT: test }
 
-  run-migrations:
+  db-migrate:
     desc: Run Rails migrations
     summary: |
       Run Rails migrations on the test database
-      Usage: task test:run-migrations
+      Usage: task test:db-migrate
     cmds:
-      - task: :internal:run-migrations
+      - task: :internal:db-migrate
+        vars: { ENVIRONMENT: test }
 
   rebuild:
     desc: Rebuild test server (drops database)
-    prompt: This removes all data and rebuilds the test environment. Are you sure?
     summary: |
       Rebuild test environment from scratch
       WARNING: This drops the database and all data!
@@ -77,20 +77,20 @@ tasks:
       Usage: task test:rebuild
     cmds:
       - task: :internal:stop
-        vars: { REMOVE_VOLUMES: "true" }
+        vars: { ENVIRONMENT: test, REMOVE_VOLUMES: "true" }
       - task: :internal:build
-      - task: :internal:up
-      - task: :internal:run
-        vars:
-          SERVICE: web
-          COMMAND: "rails db:create db:migrate"
+        vars: { ENVIRONMENT: test }
+      - task: :internal:up-db
+        vars: { ENVIRONMENT: test }
       - task: :internal:seed
+        vars: { ENVIRONMENT: test }
 
   logs:
-    desc: View test server logs
+    desc: View test container logs
     summary: |
-      View and follow test server logs
+      View and follow test container logs
       Press Ctrl+C to stop following
       Usage: task test:logs
     cmds:
       - task: :internal:logs
+        vars: { ENVIRONMENT: test }

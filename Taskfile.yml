@@ -9,6 +9,8 @@ includes:
     taskfile: Taskfiles/test.yml
   local:
     taskfile: Taskfiles/local.yml
+  prod:
+    taskfile: Taskfiles/prod.yml
   internal:
     taskfile: Taskfiles/internal.yml
   lighthouse:
@@ -34,7 +36,6 @@ tasks:
       - task: internal:run
         vars:
           ENVIRONMENT: test
-          SERVICE: web-test
           COMMAND: 'bundle exec rspec --format documentation {{ .TEST_FILE | default "spec" }}'
           TEST_FILE: '{{ .TEST_FILE | default "spec" }}'
 
@@ -48,9 +49,22 @@ tasks:
       - task: internal:run
         vars:
           ENVIRONMENT: test
-          SERVICE: web-test
           COMMAND: "bundle exec rspec --format json"
       - cmd: bd ready
+
+  stop-all:
+    desc: Stop all services for this worktree (dev, test, prod)
+    summary: |
+      Stop all Docker containers, networks, and services for this branch/worktree.
+      Use when finished with a branch or worktree.
+      Usage: task stop-all
+    cmds:
+      - task: internal:stop
+        vars: { ENVIRONMENT: dev }
+      - task: internal:stop
+        vars: { ENVIRONMENT: test }
+      - task: internal:stop
+        vars: { ENVIRONMENT: prod }
 
   rubocop:
     desc: Run RuboCop linter (optionally with autocorrect)

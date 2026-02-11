@@ -1,13 +1,21 @@
 ---
 # Internal Tasks - Reusable Docker Compose operations
 # These tasks are marked 'internal: true' and should only be called by other taskfiles
-# They require ENVIRONMENT variable (dev or test) to determine which docker-compose file to use
+# They require ENVIRONMENT variable (dev, test, or prod) to select the compose profile
+#
+# Uses a single compose.yaml with profiles instead of separate docker-compose.*.yml files.
+# COMPOSE_PROJECT_NAME is derived from the directory basename to support multiple worktrees.
 version: "3"
+
+vars:
+  COMPOSE_PROJECT:
+    sh: basename $PWD
+  COMPOSE_CMD: docker compose -p {{ .COMPOSE_PROJECT }}
 
 tasks:
   # Execute arbitrary commands in Docker containers
   # Required vars: ENVIRONMENT, COMMAND
-  # SERVICE is auto-derived: test->web-test, dev->web-dev, production->web
+  # SERVICE is auto-derived as web-{{ .ENVIRONMENT }}
   # Example: task internal:run ENVIRONMENT=test COMMAND='rails console'
   run:
     desc: Run arbitrary command in Docker container
@@ -15,9 +23,9 @@ tasks:
     requires:
       vars: [ENVIRONMENT, COMMAND]
     vars:
-      SERVICE: '{{ if eq .ENVIRONMENT "test" }}web-test{{ else if eq .ENVIRONMENT "dev" }}web-dev{{ else }}web{{ end }}'
+      WEB_SERVICE: "web-{{ .ENVIRONMENT }}"
     cmds:
-      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml run --rm {{ .SERVICE }} {{ .COMMAND }}
+      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} run --rm {{ .WEB_SERVICE }} {{ .COMMAND }}"
 
   # Build Docker images for specified environment
   # Required vars: ENVIRONMENT
@@ -31,8 +39,9 @@ tasks:
       vars: [ENVIRONMENT]
     vars:
       NO_CACHE: '{{ .NO_CACHE | default "" }}'
+      WEB_SERVICE: "web-{{ .ENVIRONMENT }}"
     cmds:
-      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml build {{ if .NO_CACHE }}--no-cache{{ end }}
+      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} build {{ if .NO_CACHE }}--no-cache{{ end }} {{ .WEB_SERVICE }}"
 
   # Start Docker containers in detached mode
   # Required vars: ENVIRONMENT
@@ -43,13 +52,18 @@ tasks:
     internal: true
     requires:
       vars: [ENVIRONMENT]
+    vars:
+      DB_SERVICE: "db-{{ .ENVIRONMENT }}"
+      WEB_SERVICE: "web-{{ .ENVIRONMENT }}"
     cmds:
-      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml up -d
+      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} up -d --wait {{ .DB_SERVICE }} {{ .WEB_SERVICE }}"
       - echo "✓ {{ .ENVIRONMENT | title }} environment started"
 
-  # Stop and remove Docker containers
+  # Stop and remove containers for a single profile
   # Required vars: ENVIRONMENT
-  # This removes containers but preserves volumes (database data)
+  # NOTE: 'docker compose down' ignores --profile and removes ALL project containers.
+  # We use stop + rm to target only the profile's services.
+  # When REMOVE_VOLUMES=true, only removes volumes prefixed with the environment name.
   # Example: task internal:stop ENVIRONMENT=test
   stop:
     desc: Stop and remove Docker containers
@@ -58,17 +72,43 @@ tasks:
       vars: [ENVIRONMENT]
     vars:
       REMOVE_VOLUMES: '{{ .REMOVE_VOLUMES | default "false" }}'
+      DB_SERVICE: "db-{{ .ENVIRONMENT }}"
+      WEB_SERVICE: "web-{{ .ENVIRONMENT }}"
     cmds:
-      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml down {{ if eq .REMOVE_VOLUMES "true" }}-v{{ end }}
+      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} stop {{ .WEB_SERVICE }} {{ .DB_SERVICE }}"
+      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} rm -f {{ .WEB_SERVICE }} {{ .DB_SERVICE }}"
+      - docker network rm {{ .COMPOSE_PROJECT }}_{{ .ENVIRONMENT }} 2>/dev/null || true
+      - |
+        {{ if eq .REMOVE_VOLUMES "true" }}
+        for vol in $(docker volume ls -q --filter "name={{ .COMPOSE_PROJECT }}_medtracker_{{ .ENVIRONMENT }}_"); do
+          echo "Removing volume: $vol"
+          docker volume rm "$vol"
+        done
+        {{ end }}
       - echo "✓ {{ .ENVIRONMENT | title }} environment stopped"
 
-  run-migrations:
+  # Start only the database container for a profile
+  # Used by rebuild to prepare DB before starting the web service
+  up-db:
+    desc: Start database container only
+    internal: true
+    requires:
+      vars: [ENVIRONMENT]
+    vars:
+      DB_SERVICE: "db-{{ .ENVIRONMENT }}"
+    cmds:
+      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} up -d {{ .DB_SERVICE }}"
+      - echo "✓ {{ .ENVIRONMENT | title }} database started"
+
+  db-migrate:
     desc: Run Rails migrations
     internal: true
     requires:
       vars: [ENVIRONMENT]
+    vars:
+      WEB_SERVICE: "web-{{ .ENVIRONMENT }}"
     cmds:
-      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml run --rm {{ if eq .ENVIRONMENT "dev" }}web-dev{{ else if eq .ENVIRONMENT "test" }}web-test{{ else }}web{{ end }} rails db:migrate
+      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} run --rm {{ .WEB_SERVICE }} rails db:migrate"
 
   # Follow logs from Docker containers
   # Press Ctrl+C to stop following logs
@@ -78,16 +118,22 @@ tasks:
     internal: true
     requires:
       vars: [ENVIRONMENT]
+    vars:
+      DB_SERVICE: "db-{{ .ENVIRONMENT }}"
+      WEB_SERVICE: "web-{{ .ENVIRONMENT }}"
     cmds:
-      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml logs -f
+      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} logs -f {{ .DB_SERVICE }} {{ .WEB_SERVICE }}"
 
   ps:
     desc: Get current status of Docker Compose Stack
     internal: true
     requires:
       vars: [ENVIRONMENT]
+    vars:
+      DB_SERVICE: "db-{{ .ENVIRONMENT }}"
+      WEB_SERVICE: "web-{{ .ENVIRONMENT }}"
     cmds:
-      - docker compose -f docker-compose.{{ .ENVIRONMENT }}.yml ps
+      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} ps {{ .DB_SERVICE }} {{ .WEB_SERVICE }}"
 
   seed:
     desc: Seed database with fixtures
@@ -114,9 +160,9 @@ tasks:
       vars: [ENVIRONMENT]
     cmds:
       - |
-        PORT=$(docker ps --format {{`"{{.Ports}}"`}} -f name=med-tracker-web-{{ .ENVIRONMENT }} | grep -oE '0\.0\.0\.0:[0-9]+' | cut -d':' -f2)
+        PORT=$(docker ps --format {{`"{{.Ports}}"`}} -f name={{ .COMPOSE_PROJECT }}-web-{{ .ENVIRONMENT }} | grep -oE '0\.0\.0\.0:[0-9]+' | cut -d':' -f2)
         if [ -z "$PORT" ]; then
-          echo "Error: Could not find running container med-tracker-web-{{ .ENVIRONMENT }}"
+          echo "Error: Could not find running container {{ .COMPOSE_PROJECT }}-web-{{ .ENVIRONMENT }}"
           echo "Run 'task {{.ENVIRONMENT}}:up' first to start the {{.ENVIRONMENT}} server"
           exit 1
         fi
