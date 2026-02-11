@@ -39,7 +39,7 @@ class MedicinesController < ApplicationController
     authorize @medicine
 
     if @medicine.save
-      redirect_to @medicine, notice: t('medicines.created')
+      redirect_back_or_to @medicine, notice: t('medicines.created')
     else
       render Components::Medicines::FormView.new(
         medicine: @medicine,
@@ -52,7 +52,7 @@ class MedicinesController < ApplicationController
   def update
     authorize @medicine
     if @medicine.update(medicine_params)
-      redirect_to @medicine, notice: t('medicines.updated')
+      redirect_back_or_to @medicine, notice: t('medicines.updated')
     else
       render Components::Medicines::FormView.new(
         medicine: @medicine,
