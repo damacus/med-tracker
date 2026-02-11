@@ -14,6 +14,7 @@ module Components
       def view_template
         header(class: 'sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur ' \
                       'supports-[backdrop-filter]:bg-background/60') do
+          render_skip_link
           nav(class: 'nav') do
             div(class: 'nav__container flex h-16 items-center justify-between px-4') do
               render_left_section
@@ -26,6 +27,14 @@ module Components
       end
 
       private
+
+      def render_skip_link
+        a(
+          href: '#main-content',
+          class: 'sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 ' \
+                 'focus:bg-background focus:text-foreground focus:ring-2 focus:ring-ring focus:rounded-md'
+        ) { 'Skip to content' }
+      end
 
       def authenticated?
         view_context.current_user.present?
