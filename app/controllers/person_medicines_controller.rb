@@ -84,16 +84,37 @@ class PersonMedicinesController < ApplicationController
     # SECURITY: Enforce timing restrictions server-side
     # This prevents bypassing UI-disabled buttons via direct API calls
     unless @person_medicine.can_take_now?
-      return redirect_to person_path(@person),
-                         alert: t('person_medicines.cannot_take_medicine',
-                                  default: 'Cannot take medicine: timing restrictions not met')
+      respond_to do |format|
+        format.html do
+          redirect_back_or_to person_path(@person),
+                              alert: t('person_medicines.cannot_take_medicine',
+                                       default: 'Cannot take medicine: timing restrictions not met')
+        end
+        format.turbo_stream do
+          flash.now[:alert] = t('person_medicines.cannot_take_medicine',
+                                default: 'Cannot take medicine: timing restrictions not met')
+          render turbo_stream: turbo_stream.update('flash',
+                                                   Components::Layouts::Flash.new(alert: flash[:alert]))
+        end
+      end
+      return
     end
 
     @take = @person_medicine.medication_takes.create!(
       taken_at: Time.current,
       amount_ml: params[:amount_ml] || @person_medicine.medicine.dosage_amount
     )
-    redirect_to person_path(@person), notice: t('person_medicines.medicine_taken')
+    respond_to do |format|
+      format.html { redirect_back_or_to person_path(@person), notice: t('person_medicines.medicine_taken') }
+      format.turbo_stream do
+        flash.now[:notice] = t('person_medicines.medicine_taken')
+        render turbo_stream: [
+          turbo_stream.replace("person_#{@person.id}",
+                               Components::People::PersonCard.new(person: @person.reload)),
+          turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice]))
+        ]
+      end
+    end
   end
 
   private

@@ -154,9 +154,20 @@ class PrescriptionsController < ApplicationController
     # SECURITY: Enforce timing restrictions server-side
     # This prevents bypassing UI-disabled buttons via direct API calls
     unless @prescription.can_take_now?
-      return redirect_back_or_to person_path(@person),
-                                 alert: t('prescriptions.cannot_take_medicine',
-                                          default: 'Cannot take medicine: timing restrictions not met')
+      respond_to do |format|
+        format.html do
+          redirect_back_or_to person_path(@person),
+                              alert: t('prescriptions.cannot_take_medicine',
+                                       default: 'Cannot take medicine: timing restrictions not met')
+        end
+        format.turbo_stream do
+          flash.now[:alert] = t('prescriptions.cannot_take_medicine',
+                                default: 'Cannot take medicine: timing restrictions not met')
+          render turbo_stream: turbo_stream.update('flash',
+                                                   Components::Layouts::Flash.new(alert: flash[:alert]))
+        end
+      end
+      return
     end
 
     # Extract the amount from the prescription's dosage if not provided
@@ -166,7 +177,17 @@ class PrescriptionsController < ApplicationController
       taken_at: Time.current,
       amount_ml: amount
     )
-    redirect_back_or_to person_path(@person), notice: t('prescriptions.medicine_taken')
+    respond_to do |format|
+      format.html { redirect_back_or_to person_path(@person), notice: t('prescriptions.medicine_taken') }
+      format.turbo_stream do
+        flash.now[:notice] = t('prescriptions.medicine_taken')
+        render turbo_stream: [
+          turbo_stream.replace("prescription_#{@prescription.id}",
+                               Components::Prescriptions::Card.new(prescription: @prescription.reload, person: @person)),
+          turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice]))
+        ]
+      end
+    end
   end
 
   private
