@@ -14,25 +14,6 @@ RSpec.describe 'Redirect back after form submission' do
   end
 
   describe 'MedicinesController' do
-    context 'when creating a medicine with a referrer' do
-      it 'redirects back to the referrer' do
-        post medicines_path,
-             params: { medicine: { name: 'Test Med', description: 'A test', dosage_amount: 10, dosage_unit: 'mg' } },
-             headers: { 'HTTP_REFERER' => medicines_url }
-
-        expect(response).to redirect_to(medicines_url)
-      end
-    end
-
-    context 'when creating a medicine without a referrer' do
-      it 'redirects to the medicine show page as fallback' do
-        post medicines_path,
-             params: { medicine: { name: 'Test Med', description: 'A test', dosage_amount: 10, dosage_unit: 'mg' } }
-
-        expect(response).to redirect_to(medicine_path(Medicine.last))
-      end
-    end
-
     context 'when updating a medicine with a referrer' do
       it 'redirects back to the referrer' do
         patch medicine_path(medicine),

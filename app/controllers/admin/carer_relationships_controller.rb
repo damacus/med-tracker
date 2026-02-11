@@ -31,7 +31,7 @@ module Admin
       authorize @relationship
 
       if @relationship.save
-        redirect_back_or_to admin_carer_relationships_path, notice: 'Carer relationship was successfully created.'
+        redirect_to admin_carer_relationships_path, notice: 'Carer relationship was successfully created.'
       else
         render Components::Admin::CarerRelationships::FormView.new(
           relationship: @relationship,

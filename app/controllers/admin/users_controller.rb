@@ -39,7 +39,7 @@ module Admin
       return render_user_form_with_errors if account_already_exists?
 
       create_user_with_account!
-      redirect_back_or_to admin_users_path, notice: t('users.created')
+      redirect_to admin_users_path, notice: t('users.created')
     rescue ActiveRecord::RecordInvalid => e
       handle_record_invalid_error(e)
       render_user_form_with_errors
@@ -50,7 +50,7 @@ module Admin
       authorize @user
 
       if @user.update(user_params)
-        redirect_back_or_to admin_users_path, notice: t('users.updated')
+        redirect_to admin_users_path, notice: t('users.updated')
       else
         render Components::Admin::Users::FormView.new(user: @user, url_helpers: self), status: :unprocessable_content
       end
@@ -61,10 +61,10 @@ module Admin
       authorize @user
 
       if @user == current_user
-        redirect_back_or_to admin_users_path, alert: t('users.cannot_deactivate_self')
+        redirect_to admin_users_path, alert: t('users.cannot_deactivate_self')
       else
         @user.deactivate!
-        redirect_back_or_to admin_users_path, notice: t('users.deactivated')
+        redirect_to admin_users_path, notice: t('users.deactivated')
       end
     end
 
@@ -73,7 +73,7 @@ module Admin
       authorize @user
 
       @user.activate!
-      redirect_back_or_to admin_users_path, notice: t('users.activated')
+      redirect_to admin_users_path, notice: t('users.activated')
     end
 
     private
