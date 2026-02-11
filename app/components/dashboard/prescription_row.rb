@@ -22,6 +22,7 @@ module Components
           render_person_cell
           render_medicine_cell
           TableCell { format_dosage }
+          TableCell { format_quantity }
           TableCell { prescription.frequency || '—' }
           TableCell { format_end_date }
           TableCell(class: 'text-center') { render_actions }

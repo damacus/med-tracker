@@ -12,6 +12,13 @@ module Components
         "#{formatted_amount} #{unit}"
       end
 
+      def format_quantity
+        stock = prescription.medicine&.stock
+        return '—' if stock.nil?
+
+        stock.to_s
+      end
+
       def format_end_date
         prescription.end_date ? prescription.end_date.strftime('%b %d, %Y') : '—'
       end

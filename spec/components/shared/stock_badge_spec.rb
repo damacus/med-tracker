@@ -27,15 +27,11 @@ RSpec.describe Components::Shared::StockBadge, type: :component do
       it 'renders In Stock badge' do
         result = render_inline(component)
         expect(result.text).to include('In Stock')
-        expect(result.text).to include('Qty: 100')
       end
 
-      it 'uses text-sm for quantity text readability instead of text-xs' do
+      it 'does not render a quantity line' do
         result = render_inline(component)
-        qty_span = result.css('span').find { |s| s.text.include?('Qty:') }
-        expect(qty_span).to be_present
-        expect(qty_span['class']).to include('text-sm')
-        expect(qty_span['class']).not_to include('text-xs')
+        expect(result.text).not_to include('Qty:')
       end
     end
 
@@ -46,7 +42,7 @@ RSpec.describe Components::Shared::StockBadge, type: :component do
       it 'renders Low Stock badge' do
         result = render_inline(component)
         expect(result.text).to include('Low Stock')
-        expect(result.text).to include('Qty: 5')
+        expect(result.text).not_to include('Qty:')
       end
     end
 
@@ -57,7 +53,7 @@ RSpec.describe Components::Shared::StockBadge, type: :component do
       it 'renders Out of Stock badge' do
         result = render_inline(component)
         expect(result.text).to include('Out of Stock')
-        expect(result.text).to include('Qty: 0')
+        expect(result.text).not_to include('Qty:')
       end
     end
   end

@@ -15,10 +15,7 @@ module Components
       def view_template
         return if medicine.stock.blank?
 
-        div(class: 'flex flex-col items-end gap-1') do
-          render RubyUI::Badge.new(variant: badge_variant) { badge_text }
-          span(class: 'text-sm text-slate-500 font-medium') { "Qty: #{medicine.stock}" }
-        end
+        render RubyUI::Badge.new(variant: badge_variant) { badge_text }
       end
 
       private

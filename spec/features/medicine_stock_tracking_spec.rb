@@ -23,7 +23,7 @@ RSpec.describe 'Medicine Stock Tracking', type: :system do
 
     within "#prescription_#{prescription.id}" do
       expect(page).to have_content('In Stock')
-      expect(page).to have_content('Qty: 10')
+      expect(page).to have_content('10')
     end
   end
 
@@ -33,7 +33,7 @@ RSpec.describe 'Medicine Stock Tracking', type: :system do
 
     within "#prescription_#{prescription.id}" do
       expect(page).to have_content('Low Stock')
-      expect(page).to have_content('Qty: 5')
+      expect(page).to have_content('5')
     end
   end
 
@@ -43,7 +43,7 @@ RSpec.describe 'Medicine Stock Tracking', type: :system do
 
     within "#prescription_#{prescription.id}" do
       expect(page).to have_content('Out of Stock')
-      expect(page).to have_content('Qty: 0')
+      expect(page).to have_content('0')
     end
   end
 
@@ -51,7 +51,7 @@ RSpec.describe 'Medicine Stock Tracking', type: :system do
     visit root_path
 
     within "#prescription_#{prescription.id}" do
-      expect(page).to have_content('Qty: 10')
+      expect(page).to have_content('10')
 
       # Use the specific test ID for the Take Now button
       click_button 'Take Now', match: :first
@@ -60,7 +60,7 @@ RSpec.describe 'Medicine Stock Tracking', type: :system do
     expect(page).to have_content(I18n.t('take_medicines.success'))
 
     within "#prescription_#{prescription.id}" do
-      expect(page).to have_content('Qty: 9')
+      expect(page).to have_content('9')
     end
   end
 end
