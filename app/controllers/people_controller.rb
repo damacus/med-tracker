@@ -38,8 +38,8 @@ class PeopleController < ApplicationController
 
     respond_to do |format|
       if @person.save
-        format.html { redirect_to @person, notice: t('people.created') }
-        format.turbo_stream { redirect_to people_path, notice: t('people.created') }
+        format.html { redirect_back_or_to @person, notice: t('people.created') }
+        format.turbo_stream { redirect_back_or_to people_path, notice: t('people.created') }
       else
         format.html do
           render Components::People::FormView.new(person: @person), status: :unprocessable_content
@@ -58,8 +58,8 @@ class PeopleController < ApplicationController
     authorize @person
     respond_to do |format|
       if @person.update(person_params)
-        format.html { redirect_to @person, notice: t('people.updated') }
-        format.turbo_stream { redirect_to people_path, notice: t('people.updated') }
+        format.html { redirect_back_or_to @person, notice: t('people.updated') }
+        format.turbo_stream { redirect_back_or_to people_path, notice: t('people.updated') }
         format.json { render :show, status: :ok, location: @person }
       else
         format.html do
