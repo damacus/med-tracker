@@ -56,7 +56,7 @@ tasks:
       DB_SERVICE: "db-{{ .ENVIRONMENT }}"
       WEB_SERVICE: "web-{{ .ENVIRONMENT }}"
     cmds:
-      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} up -d {{ .DB_SERVICE }} {{ .WEB_SERVICE }}"
+      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} up -d --wait {{ .DB_SERVICE }} {{ .WEB_SERVICE }}"
       - echo "✓ {{ .ENVIRONMENT | title }} environment started"
 
   # Stop and remove containers for a single profile

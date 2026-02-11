@@ -9,6 +9,8 @@ includes:
     taskfile: Taskfiles/test.yml
   local:
     taskfile: Taskfiles/local.yml
+  prod:
+    taskfile: Taskfiles/prod.yml
   internal:
     taskfile: Taskfiles/internal.yml
   lighthouse:

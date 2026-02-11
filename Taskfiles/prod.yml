@@ -1,0 +1,74 @@
+---
+# Production Environment Tasks (local validation only)
+# All tasks operate on the 'prod' profile (compose.yaml)
+# This is NOT for real production deployments — it validates
+# the production image builds and runs correctly.
+# Usage: task prod:<command>
+version: "3"
+
+tasks:
+  build:
+    desc: Build production Docker images
+    summary: |
+      Build Docker images for production environment (app stage).
+      Use NO_CACHE=true to force a fresh build.
+      Usage: task prod:build
+      Usage: task prod:build NO_CACHE=true
+    cmds:
+      - task: :internal:build
+        vars:
+          ENVIRONMENT: prod
+          NO_CACHE: '{{ .NO_CACHE | default "" }}'
+
+  up:
+    desc: Start production server (local validation)
+    summary: |
+      Start the production server locally for validation.
+      Uses Thruster (HTTP/2 proxy) wrapping Puma on port 80.
+      Usage: task prod:up
+    cmds:
+      - task: :internal:up
+        vars: { ENVIRONMENT: prod }
+
+  stop:
+    desc: Stop production server
+    summary: |
+      Stop the production server and remove containers.
+      Database volumes are preserved.
+      Usage: task prod:stop
+    cmds:
+      - task: :internal:stop
+        vars: { ENVIRONMENT: prod }
+
+  ps:
+    desc: List production container status
+    summary: |
+      List current status of production Docker Compose stack.
+      Usage: task prod:ps
+    cmds:
+      - task: :internal:ps
+        vars: { ENVIRONMENT: prod }
+
+  rebuild:
+    desc: Rebuild production server (drops database)
+    summary: |
+      Rebuild the production environment from scratch.
+      WARNING: This drops the database and all data!
+      Usage: task prod:rebuild
+    cmds:
+      - task: :internal:stop
+        vars: { ENVIRONMENT: prod, REMOVE_VOLUMES: "true" }
+      - task: :internal:build
+        vars: { ENVIRONMENT: prod }
+      - task: :internal:up
+        vars: { ENVIRONMENT: prod }
+
+  logs:
+    desc: View production server logs
+    summary: |
+      View and follow production server logs in real-time.
+      Press Ctrl+C to stop following.
+      Usage: task prod:logs
+    cmds:
+      - task: :internal:logs
+        vars: { ENVIRONMENT: prod }

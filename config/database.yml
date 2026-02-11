@@ -11,15 +11,18 @@ test:
   url: <%= ENV['DATABASE_URL'] %>
 
 production:
-  adapter: postgresql
   primary:
+    adapter: postgresql
     url: <%= ENV['DATABASE_URL'] %>
   cache:
-    url: <%= ENV['DATABASE_URL']&.gsub(/\/[^\/]+$/, '/medtracker_production_cache') %>
+    adapter: postgresql
+    url: <%= ENV.fetch('SOLID_CACHE_DATABASE_URL') { ENV['DATABASE_URL']&.gsub(/\/[^\/]+$/, '/medtracker_production_cache') } %>
     migrations_paths: db/cache_migrate
   queue:
-    url: <%= ENV['DATABASE_URL']&.gsub(/\/[^\/]+$/, '/medtracker_production_queue') %>
+    adapter: postgresql
+    url: <%= ENV.fetch('SOLID_QUEUE_DATABASE_URL') { ENV['DATABASE_URL']&.gsub(/\/[^\/]+$/, '/medtracker_production_queue') } %>
     migrations_paths: db/queue_migrate
   cable:
-    url: <%= ENV['DATABASE_URL']&.gsub(/\/[^\/]+$/, '/medtracker_production_cable') %>
+    adapter: postgresql
+    url: <%= ENV.fetch('SOLID_CABLE_DATABASE_URL') { ENV['DATABASE_URL']&.gsub(/\/[^\/]+$/, '/medtracker_production_cable') } %>
     migrations_paths: db/cable_migrate
