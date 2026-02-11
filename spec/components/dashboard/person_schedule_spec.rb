@@ -10,6 +10,10 @@ RSpec.describe Components::Dashboard::PersonSchedule, type: :component do
   let(:person) { people(:john) }
   let(:prescriptions) { person.prescriptions.where(active: true) }
 
+  before do
+    MedicationTake.where(prescription: prescriptions).delete_all
+  end
+
   it 'renders the person\'s name' do
     rendered = render_inline(component)
     expect(rendered.text).to include(person.name)
