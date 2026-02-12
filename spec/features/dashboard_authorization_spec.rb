@@ -2,8 +2,12 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Dashboard Authorization', type: :system do
+RSpec.describe 'Dashboard Authorization', browser: false, type: :system do
   fixtures :accounts, :account_otp_keys, :people, :users, :prescriptions, :medicines, :dosages, :carer_relationships
+
+  before do
+    driven_by(:rack_test)
+  end
 
   describe 'viewing the dashboard' do
     context 'when signed in as an administrator' do

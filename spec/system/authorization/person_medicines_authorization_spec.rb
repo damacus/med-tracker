@@ -2,11 +2,11 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Person Medicines Authorization' do
+RSpec.describe 'Person Medicines Authorization', browser: false do
   fixtures :accounts, :account_otp_keys, :people, :users, :medicines, :carer_relationships
 
   before do
-    driven_by(:playwright)
+    driven_by(:rack_test)
   end
 
   let(:admin) { users(:admin) }

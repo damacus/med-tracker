@@ -2,8 +2,12 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Home' do
+RSpec.describe 'Home', browser: false do
   fixtures :accounts, :account_otp_keys, :people, :users, :medicines, :dosages, :prescriptions
+
+  before do
+    driven_by(:rack_test)
+  end
 
   it 'loads the dashboard as the home page for a signed-in user' do
     # Sign in the user from fixtures

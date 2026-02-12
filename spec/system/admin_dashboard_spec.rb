@@ -2,8 +2,12 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Admin Dashboard' do
+RSpec.describe 'Admin Dashboard', browser: false do
   fixtures :accounts, :account_otp_keys, :people, :users
+
+  before do
+    driven_by(:rack_test)
+  end
 
   context 'when user is an administrator' do
     it 'displays key system metrics' do

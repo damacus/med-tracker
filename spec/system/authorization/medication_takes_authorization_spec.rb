@@ -2,11 +2,11 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Medication Takes Authorization' do
+RSpec.describe 'Medication Takes Authorization', browser: false do
   fixtures :all
 
   before do
-    driven_by(:playwright)
+    driven_by(:rack_test)
   end
 
   let(:admin) { users(:admin) }
