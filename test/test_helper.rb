@@ -19,8 +19,11 @@ Minitest.extensions << 'minitest_reporter' unless Minitest.extensions.include?('
 
 module ActiveSupport
   class TestCase
-    # Parallelization disabled: suite is small and parallel forks crash
-    # with heavy fixture/DB usage. Re-enable when suite grows large enough.
+    # Parallelization disabled due to upstream bugs in Ruby 4.0.1 + pg 1.6.3:
+    #   - Forks: pg native C connect_start segfaults after fork
+    #   - Threads: ActiveRecord connection pool uses NullLock, causing
+    #     connection ownership errors across threads
+    # Re-enable when pg gem or Rails 8.1 ships fixes.
     parallelize(workers: 1)
 
     # Setup all fixtures in test/fixtures/*.yml for all tests in alphabetical order.
