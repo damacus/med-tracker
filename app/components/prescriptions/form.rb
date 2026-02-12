@@ -30,16 +30,7 @@ module Components
       private
 
       def render_errors
-        Alert(variant: :destructive, class: 'mb-6') do
-          AlertTitle { "#{prescription.errors.count} error(s) prohibited this prescription from being saved:" }
-          AlertDescription do
-            ul(class: 'my-2 ml-6 list-disc [&>li]:mt-1') do
-              prescription.errors.full_messages.each do |message|
-                li { message }
-              end
-            end
-          end
-        end
+        render Components::Shared::ErrorSummary.new(model: prescription, resource_name: 'prescription')
       end
 
       def render_form_fields(f)

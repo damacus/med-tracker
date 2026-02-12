@@ -51,16 +51,7 @@ module Components
       end
 
       def render_errors
-        Alert(variant: :destructive, class: 'mb-6') do
-          AlertTitle { "#{person.errors.count} error(s) prohibited this person from being saved:" }
-          AlertDescription do
-            ul(class: 'my-2 ml-6 list-disc [&>li]:mt-1') do
-              person.errors.full_messages.each do |message|
-                li { message }
-              end
-            end
-          end
-        end
+        render Components::Shared::ErrorSummary.new(model: person, resource_name: 'person')
       end
 
       def render_form_fields(f)

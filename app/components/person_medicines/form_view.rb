@@ -48,18 +48,7 @@ module Components
       end
 
       def render_errors
-        Alert(variant: :destructive, class: 'mb-6') do
-          AlertTitle do
-            "#{pluralize(person_medicine.errors.count, 'error')} prohibited this medicine from being saved:"
-          end
-          AlertDescription do
-            ul(class: 'my-2 ml-6 list-disc [&>li]:mt-1') do
-              person_medicine.errors.full_messages.each do |message|
-                li { message }
-              end
-            end
-          end
-        end
+        render Components::Shared::ErrorSummary.new(model: person_medicine, resource_name: 'medicine')
       end
 
       def render_form_fields(_form)

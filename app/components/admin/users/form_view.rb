@@ -48,18 +48,7 @@ module Components
         end
 
         def render_errors
-          render RubyUI::Alert.new(variant: :destructive, class: 'mb-6') do
-            div do
-              Heading(level: 2, size: '3', class: 'font-semibold mb-2') do
-                plain "#{pluralize(user.errors.count, 'error')} prevented this user from being saved:"
-              end
-              ul(class: 'my-2 ml-6 list-disc [&>li]:mt-1') do
-                user.errors.full_messages.each do |message|
-                  li { message }
-                end
-              end
-            end
-          end
+          render Components::Shared::ErrorSummary.new(model: user, resource_name: 'user')
         end
 
         def render_form_fields(form)
