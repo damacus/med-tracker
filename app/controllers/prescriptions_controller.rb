@@ -2,8 +2,8 @@
 
 class PrescriptionsController < ApplicationController
   include Pundit::Authorization
+  include PersonScoped
 
-  before_action :set_person
   before_action :set_prescription, only: %i[edit update destroy take_medicine]
 
   def new
@@ -151,18 +151,16 @@ class PrescriptionsController < ApplicationController
   def take_medicine
     authorize @prescription, :take_medicine?
 
-    # SECURITY: Enforce timing restrictions server-side
-    # This prevents bypassing UI-disabled buttons via direct API calls
-    unless @prescription.can_administer?
-      reason = @prescription.administration_blocked_reason
-      message = reason == :out_of_stock ? 'Cannot take medicine: out of stock' : 'Cannot take medicine: timing restrictions not met'
+    result = MedicineAdministrationService.call(takeable: @prescription, amount_ml: params[:amount_ml])
+
+    if result.failure?
       respond_to do |format|
         format.html do
           redirect_back_or_to person_path(@person),
-                              alert: t('prescriptions.cannot_take_medicine', default: message)
+                              alert: t('prescriptions.cannot_take_medicine', default: result.message)
         end
         format.turbo_stream do
-          flash.now[:alert] = t('prescriptions.cannot_take_medicine', default: message)
+          flash.now[:alert] = t('prescriptions.cannot_take_medicine', default: result.message)
           render turbo_stream: turbo_stream.update('flash',
                                                    Components::Layouts::Flash.new(alert: flash[:alert]))
         end
@@ -170,13 +168,6 @@ class PrescriptionsController < ApplicationController
       return
     end
 
-    # Extract the amount from the prescription's dosage if not provided
-    amount = params[:amount_ml] || @prescription.dosage.amount
-
-    @take = @prescription.medication_takes.create!(
-      taken_at: Time.current,
-      amount_ml: amount
-    )
     respond_to do |format|
       format.html { redirect_back_or_to person_path(@person), notice: t('prescriptions.medicine_taken') }
       format.turbo_stream do
@@ -191,10 +182,6 @@ class PrescriptionsController < ApplicationController
   end
 
   private
-
-  def set_person
-    @person = Person.find(params[:person_id])
-  end
 
   def set_prescription
     @prescription = policy_scope(Prescription).find(params[:id])

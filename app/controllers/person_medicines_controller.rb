@@ -1,7 +1,8 @@
 # frozen_string_literal: true
 
 class PersonMedicinesController < ApplicationController
-  before_action :set_person
+  include PersonScoped
+
   before_action :set_person_medicine, only: %i[destroy take_medicine]
 
   def new
@@ -81,18 +82,16 @@ class PersonMedicinesController < ApplicationController
   def take_medicine
     authorize @person_medicine, :take_medicine?
 
-    # SECURITY: Enforce timing restrictions server-side
-    # This prevents bypassing UI-disabled buttons via direct API calls
-    unless @person_medicine.can_administer?
-      reason = @person_medicine.administration_blocked_reason
-      message = reason == :out_of_stock ? 'Cannot take medicine: out of stock' : 'Cannot take medicine: timing restrictions not met'
+    result = MedicineAdministrationService.call(takeable: @person_medicine, amount_ml: params[:amount_ml])
+
+    if result.failure?
       respond_to do |format|
         format.html do
           redirect_back_or_to person_path(@person),
-                              alert: t('person_medicines.cannot_take_medicine', default: message)
+                              alert: t('person_medicines.cannot_take_medicine', default: result.message)
         end
         format.turbo_stream do
-          flash.now[:alert] = t('person_medicines.cannot_take_medicine', default: message)
+          flash.now[:alert] = t('person_medicines.cannot_take_medicine', default: result.message)
           render turbo_stream: turbo_stream.update('flash',
                                                    Components::Layouts::Flash.new(alert: flash[:alert]))
         end
@@ -100,10 +99,6 @@ class PersonMedicinesController < ApplicationController
       return
     end
 
-    @take = @person_medicine.medication_takes.create!(
-      taken_at: Time.current,
-      amount_ml: params[:amount_ml] || @person_medicine.medicine.dosage_amount
-    )
     respond_to do |format|
       format.html { redirect_back_or_to person_path(@person), notice: t('person_medicines.medicine_taken') }
       format.turbo_stream do
@@ -120,7 +115,7 @@ class PersonMedicinesController < ApplicationController
   private
 
   def set_person
-    @person = Person.find(params[:person_id])
+    super
     authorize @person, :show?
   end
 
