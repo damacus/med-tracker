@@ -4,9 +4,6 @@ module Components
   module PersonMedicines
     # Renders a person medicine card with take medicine functionality
     class Card < Components::Base
-      include Phlex::Rails::Helpers::FormWith
-      include Phlex::Rails::Helpers::ButtonTo
-
       attr_reader :person_medicine, :person
 
       def initialize(person_medicine:, person:)
@@ -27,7 +24,7 @@ module Components
 
       def render_card_header
         CardHeader do
-          render_medicine_icon
+          render Components::Shared::MedicineIcon.new
           CardTitle(class: 'text-xl') { person_medicine.medicine.name }
           CardDescription { medicine_description }
         end
@@ -35,9 +32,9 @@ module Components
 
       def render_card_content
         CardContent(class: 'flex-grow space-y-4') do
-          render_notes if person_medicine.notes.present?
+          render Components::Shared::NotesSection.new(notes: person_medicine.notes)
           render_timing_restrictions if person_medicine.timing_restrictions?
-          render_countdown_notice if !person_medicine.can_take_now? && person_medicine.countdown_display
+          render_countdown_notice
           render_takes_section
         end
       end
@@ -56,21 +53,6 @@ module Components
         parts.join(' • ')
       end
 
-      def render_medicine_icon
-        div(class: 'w-10 h-10 rounded-xl flex items-center justify-center bg-violet-100 text-violet-700 mb-2') do
-          render Icons::Pill.new(size: 20)
-        end
-      end
-
-      def render_notes
-        div(class: 'p-3 bg-blue-50 border border-blue-200 rounded-md') do
-          Text(size: '2', class: 'text-blue-800') do
-            span(class: 'font-semibold') { '📝 Notes: ' }
-            plain person_medicine.notes
-          end
-        end
-      end
-
       def render_timing_restrictions
         div(class: 'p-3 bg-amber-50 border border-amber-200 rounded-md') do
           Text(size: '2', weight: 'semibold', class: 'text-amber-800 mb-1') { '⏱️ Timing Restrictions:' }
@@ -86,12 +68,9 @@ module Components
       end
 
       def render_countdown_notice
-        div(class: 'p-3 bg-amber-50 border border-amber-200 rounded-md') do
-          Text(size: '2', class: 'text-amber-800') do
-            span(class: 'font-semibold') { '🕐 Next dose available in: ' }
-            plain person_medicine.countdown_display
-          end
-        end
+        return if person_medicine.can_take_now? || person_medicine.countdown_display.blank?
+
+        render Components::Shared::CountdownNotice.new(countdown_display: person_medicine.countdown_display)
       end
 
       def render_takes_section
@@ -146,69 +125,24 @@ module Components
         end
       end
 
-      def render_take_medicine_button
-        return unless view_context.policy(person_medicine).take_medicine?
-
-        if person_medicine.can_administer?
-          form_with(
-            url: take_medicine_person_person_medicine_path(person, person_medicine),
-            method: :post,
-            class: 'inline-block',
-            data: { controller: 'optimistic-take', action: 'submit->optimistic-take#submit' }
-          ) do
-            Button(
-              type: :submit,
-              variant: :primary,
-              size: :md,
-              class: 'inline-flex items-center gap-1 min-w-[80px]',
-              data: { optimistic_take_target: 'button' }
-            ) do
-              plain '💊 Take'
-            end
-          end
-        else
-          render_disabled_button_with_reason
-        end
-      end
-
-      def render_disabled_button_with_reason
-        reason = person_medicine.administration_blocked_reason
-        label = reason == :out_of_stock ? '💊 Out of Stock' : '💊 Take'
-        Button(variant: :secondary, size: :md, disabled: true) { label }
-      end
-
       def render_person_medicine_actions
-        render_take_medicine_button if view_context.policy(person_medicine).take_medicine?
-        render_delete_dialog if view_context.policy(person_medicine).destroy?
-      end
-
-      def render_delete_dialog
+        if view_context.policy(person_medicine).take_medicine?
+          render Components::Shared::TakeMedicineButton.new(
+            takeable: person_medicine,
+            take_url: take_medicine_person_person_medicine_path(person, person_medicine)
+          )
+        end
         return unless view_context.policy(person_medicine).destroy?
 
-        AlertDialog do
-          AlertDialogTrigger do
-            Button(variant: :destructive_outline, size: :md) { 'Remove' }
-          end
-          AlertDialogContent do
-            AlertDialogHeader do
-              AlertDialogTitle { 'Remove Medicine' }
-              AlertDialogDescription do
-                plain "Are you sure you want to remove #{person_medicine.medicine.name}? "
-                plain 'This action cannot be undone.'
-              end
-            end
-            AlertDialogFooter do
-              AlertDialogCancel { 'Cancel' }
-              form_with(
-                url: person_person_medicine_path(person, person_medicine),
-                method: :delete,
-                class: 'inline'
-              ) do
-                Button(variant: :destructive, type: :submit) { 'Remove' }
-              end
-            end
-          end
-        end
+        medicine_name = person_medicine.medicine.name
+        render Components::Shared::DeleteConfirmDialog.new(
+          title: 'Remove Medicine',
+          description: "Are you sure you want to remove #{medicine_name}? " \
+                       'This action cannot be undone.',
+          delete_url: person_person_medicine_path(person, person_medicine),
+          trigger_label: 'Remove',
+          confirm_label: 'Remove'
+        )
       end
     end
   end
