@@ -32,5 +32,25 @@ module Components
 
       FormFieldError { model.errors[field].first }
     end
+
+    def render_input_field(label:, name:, id:, **opts)
+      model = opts.delete(:model)
+      field = opts.delete(:field)
+      opts[:type] ||= :text
+      opts[:class] = model && field ? field_error_class(model, field) : ''
+
+      FormField do
+        FormFieldLabel(for: id) { label }
+        Input(name: name, id: id, **opts)
+        render_field_error(model, field) if model && field
+      end
+    end
+
+    def render_textarea_field(label:, name:, id:, value: nil, rows: 3)
+      FormField do
+        FormFieldLabel(for: id) { label }
+        Textarea(name: name, id: id, rows: rows) { value }
+      end
+    end
   end
 end

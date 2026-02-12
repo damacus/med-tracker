@@ -74,31 +74,19 @@ module Components
 
       def render_name_field(_form)
         div(class: 'sm:col-span-2') do
-          FormField do
-            FormFieldLabel(for: 'medicine_name') { 'Name' }
-            Input(
-              type: :text,
-              name: 'medicine[name]',
-              id: 'medicine_name',
-              value: medicine.name,
-              required: true,
-              class: field_error_class(medicine, :name)
-            )
-            render_field_error(medicine, :name)
-          end
+          render_input_field(
+            label: 'Name', name: 'medicine[name]', id: 'medicine_name',
+            value: medicine.name, required: true, model: medicine, field: :name
+          )
         end
       end
 
       def render_description_field(_form)
         div(class: 'sm:col-span-2') do
-          FormField do
-            FormFieldLabel(for: 'medicine_description') { 'Description' }
-            Textarea(
-              name: 'medicine[description]',
-              id: 'medicine_description',
-              rows: 3
-            ) { medicine.description }
-          end
+          render_textarea_field(
+            label: 'Description', name: 'medicine[description]',
+            id: 'medicine_description', value: medicine.description
+          )
         end
       end
 
@@ -109,17 +97,11 @@ module Components
 
       def render_dosage_amount_field
         div do
-          FormField do
-            FormFieldLabel(for: 'medicine_dosage_amount') { 'Standard Dosage' }
-            Input(
-              type: :number,
-              name: 'medicine[dosage_amount]',
-              id: 'medicine_dosage_amount',
-              value: medicine.dosage_amount.to_i,
-              step: 'any',
-              min: '0'
-            )
-          end
+          render_input_field(
+            label: 'Standard Dosage', name: 'medicine[dosage_amount]',
+            id: 'medicine_dosage_amount', type: :number,
+            value: medicine.dosage_amount.to_i, step: 'any', min: '0'
+          )
         end
       end
 
@@ -153,59 +135,40 @@ module Components
 
       def render_current_supply_field
         div do
-          FormField do
-            FormFieldLabel(for: 'medicine_current_supply') { 'Current Supply' }
-            Input(
-              type: :number,
-              name: 'medicine[current_supply]',
-              id: 'medicine_current_supply',
-              value: medicine.current_supply,
-              min: '0'
-            )
-          end
+          render_input_field(
+            label: 'Current Supply', name: 'medicine[current_supply]',
+            id: 'medicine_current_supply', type: :number,
+            value: medicine.current_supply, min: '0'
+          )
         end
       end
 
       def render_stock_field
         div do
-          FormField do
-            FormFieldLabel(for: 'medicine_stock') { 'Stock' }
-            Input(
-              type: :number,
-              name: 'medicine[stock]',
-              id: 'medicine_stock',
-              value: medicine.stock,
-              min: '0'
-            )
-          end
+          render_input_field(
+            label: 'Stock', name: 'medicine[stock]',
+            id: 'medicine_stock', type: :number,
+            value: medicine.stock, min: '0'
+          )
         end
       end
 
       def render_reorder_threshold_field
         div do
-          FormField do
-            FormFieldLabel(for: 'medicine_reorder_threshold') { 'Reorder Threshold' }
-            Input(
-              type: :number,
-              name: 'medicine[reorder_threshold]',
-              id: 'medicine_reorder_threshold',
-              value: medicine.reorder_threshold,
-              min: '1'
-            )
-          end
+          render_input_field(
+            label: 'Reorder Threshold', name: 'medicine[reorder_threshold]',
+            id: 'medicine_reorder_threshold', type: :number,
+            value: medicine.reorder_threshold, min: '1'
+          )
         end
       end
 
       def render_warnings_field(_form)
         div(class: 'sm:col-span-2') do
-          FormField do
-            FormFieldLabel(for: 'medicine_warnings') { 'Warnings' }
-            Textarea(
-              name: 'medicine[warnings]',
-              id: 'medicine_warnings',
-              rows: 3
-            ) { medicine.warnings }
-          end
+          render_textarea_field(
+            label: 'Warnings', name: 'medicine[warnings]',
+            id: 'medicine_warnings', value: medicine.warnings
+          )
         end
       end
 
