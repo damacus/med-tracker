@@ -2,6 +2,7 @@
 
 require 'rails_helper'
 
+# rubocop:disable RSpec/DescribeClass
 RSpec.describe 'PASSKEY-001: WebAuthn/Passkey configuration' do
   fixtures :accounts
   scenario 'WebAuthn key timestamps default to current timestamp' do
@@ -45,3 +46,4 @@ RSpec.describe 'PASSKEY-001: WebAuthn/Passkey configuration' do
     expect(RodauthMain.instance_methods).to include(:webauthn_auth_path)
   end
 end
+# rubocop:enable RSpec/DescribeClass

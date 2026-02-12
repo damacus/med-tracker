@@ -2,8 +2,12 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Authentication Features', type: :system do
+RSpec.describe 'Authentication Features', browser: false, type: :system do
   fixtures :accounts, :people, :users, :account_otp_keys
+
+  before do
+    driven_by(:rack_test)
+  end
 
   describe 'AUTH-019: Additional factor required for 2FA accounts' do
     it 'redirects to TOTP authentication after password login' do

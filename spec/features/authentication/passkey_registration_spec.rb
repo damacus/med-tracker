@@ -2,8 +2,12 @@
 
 require 'rails_helper'
 
-RSpec.describe 'PASSKEY-002: Passkey registration', type: :system do
+RSpec.describe 'PASSKEY-002: Passkey registration', browser: false, type: :system do
   fixtures :all
+
+  before do
+    driven_by(:rack_test)
+  end
 
   let(:account) { accounts(:damacus) }
 
