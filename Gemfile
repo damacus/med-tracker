@@ -100,6 +100,9 @@ group :development, :test do
 
   # Parallel test execution for local development [https://github.com/grosser/parallel_tests]
   gem 'parallel_tests'
+
+  # Better Minitest output with color and slow test reporting [https://github.com/minitest-reporters/minitest-reporters]
+  gem 'minitest-reporters'
 end
 
 group :development do

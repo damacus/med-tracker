@@ -97,7 +97,7 @@ jobs:
         run: bundle exec rspec --format RSpec::Github::Formatter --tag ~browser
 
       - name: Run Minitest suite
-        run: bundle exec rails test -v test/models/ test/controllers/
+        run: bundle exec rails test
 
   test_system:
     runs-on: [ubuntu-latest]
