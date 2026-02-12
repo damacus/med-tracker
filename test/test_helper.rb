@@ -3,6 +3,7 @@
 ENV['RAILS_ENV'] ||= 'test'
 require_relative '../config/environment'
 require 'rails/test_help'
+require_relative 'test_helpers/sign_in_helper'
 
 module ActiveSupport
   class TestCase
@@ -14,5 +15,11 @@ module ActiveSupport
     fixtures :all
 
     # Add more helper methods to be used by all tests here...
+  end
+end
+
+module ActionDispatch
+  class IntegrationTest
+    include SignInHelper
   end
 end
