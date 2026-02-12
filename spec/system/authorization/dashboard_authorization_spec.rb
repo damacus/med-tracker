@@ -2,11 +2,11 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Dashboard Authorization' do
+RSpec.describe 'Dashboard Authorization', browser: false do
   fixtures :all
 
   before do
-    driven_by(:playwright)
+    driven_by(:rack_test)
   end
 
   let(:admin) { users(:admin) }

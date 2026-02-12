@@ -2,14 +2,14 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Admin User Edit Button', type: :system do
+RSpec.describe 'Admin User Edit Button', browser: false, type: :system do
   fixtures :all
 
   let(:admin) { users(:damacus) }
   let(:target_user) { users(:john) }
 
   before do
-    driven_by(:playwright)
+    driven_by(:rack_test)
     sign_in(admin)
     visit admin_users_path
   end

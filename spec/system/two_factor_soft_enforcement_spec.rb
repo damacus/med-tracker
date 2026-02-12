@@ -3,8 +3,12 @@
 require 'rails_helper'
 
 # rubocop:disable Capybara/NegationMatcherAfterVisit
-RSpec.describe 'Two-Factor Soft Enforcement' do
+RSpec.describe 'Two-Factor Soft Enforcement', browser: false do
   fixtures :accounts, :people, :users
+
+  before do
+    driven_by(:rack_test)
+  end
 
   describe 'privileged users without 2FA' do
     it 'shows notice to administrator on profile page' do

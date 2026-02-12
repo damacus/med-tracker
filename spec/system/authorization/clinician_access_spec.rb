@@ -2,11 +2,11 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Clinician Access Authorization' do
+RSpec.describe 'Clinician Access Authorization', browser: false do
   fixtures :accounts, :account_otp_keys, :people, :users
 
   before do
-    driven_by(:playwright)
+    driven_by(:rack_test)
   end
 
   let(:doctor) { users(:doctor) }

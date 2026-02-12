@@ -2,11 +2,11 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Carer Access Authorization' do
+RSpec.describe 'Carer Access Authorization', browser: false do
   fixtures :accounts, :account_otp_keys, :people, :users, :carer_relationships
 
   before do
-    driven_by(:playwright)
+    driven_by(:rack_test)
   end
 
   let(:carer) { users(:carer) }

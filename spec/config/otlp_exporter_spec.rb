@@ -2,6 +2,7 @@
 
 require 'rails_helper'
 
+# rubocop:disable RSpec/DescribeClass
 RSpec.describe 'OTEL-011: OTLP exporter configuration' do
   context 'when configuring the OpenTelemetry SDK' do
     it 'configures OpenTelemetry with service name medtracker-test' do
@@ -81,3 +82,4 @@ RSpec.describe 'OTEL-011: OTLP exporter configuration' do
     end
   end
 end
+# rubocop:enable RSpec/DescribeClass

@@ -2,7 +2,11 @@
 
 require 'rails_helper'
 
-RSpec.describe 'User Signup', type: :system do
+RSpec.describe 'User Signup', browser: false, type: :system do
+  before do
+    driven_by(:rack_test)
+  end
+
   describe 'creating a new account' do
     it 'creates both an Account and a Person with valid details' do
       visit create_account_path
