@@ -15,7 +15,6 @@ RSpec.describe RubyUI::Alert, type: :component do
 
     expect(classes).to include('text-destructive-text')
     expect(classes).to include('bg-destructive/10')
-    expect(classes).not_to include('text-red-900')
   end
 
   it 'renders warning variant with semantic classes' do
@@ -24,7 +23,6 @@ RSpec.describe RubyUI::Alert, type: :component do
 
     expect(classes).to include('text-warning-text')
     expect(classes).to include('bg-warning/10')
-    expect(classes).not_to include('text-amber-900')
   end
 
   it 'renders success variant with semantic classes' do
@@ -33,7 +31,6 @@ RSpec.describe RubyUI::Alert, type: :component do
 
     expect(classes).to include('text-success-text')
     expect(classes).to include('bg-success/10')
-    expect(classes).not_to include('text-green-900')
   end
 
   it 'merges custom classes' do

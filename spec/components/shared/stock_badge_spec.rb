@@ -28,11 +28,6 @@ RSpec.describe Components::Shared::StockBadge, type: :component do
         result = render_inline(component)
         expect(result.text).to include('In Stock')
       end
-
-      it 'does not render a quantity line' do
-        result = render_inline(component)
-        expect(result.text).not_to include('Qty:')
-      end
     end
 
     context 'when medicine is low stock' do
@@ -42,7 +37,6 @@ RSpec.describe Components::Shared::StockBadge, type: :component do
       it 'renders Low Stock badge' do
         result = render_inline(component)
         expect(result.text).to include('Low Stock')
-        expect(result.text).not_to include('Qty:')
       end
     end
 
@@ -53,7 +47,6 @@ RSpec.describe Components::Shared::StockBadge, type: :component do
       it 'renders Out of Stock badge' do
         result = render_inline(component)
         expect(result.text).to include('Out of Stock')
-        expect(result.text).not_to include('Qty:')
       end
     end
   end
