@@ -138,19 +138,10 @@ module Components
         end
 
         def render_pagination
-          div(class: 'flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3 sm:px-6') do
-            div(data: { testid: 'pagination-info' }) do
-              Text(size: '2', class: 'text-slate-700') do
-                plain 'Showing '
-                span(class: 'font-medium') { pagy_obj.from.to_s }
-                plain ' to '
-                span(class: 'font-medium') { pagy_obj.to.to_s }
-                plain ' of '
-                span(class: 'font-medium') { pagy_obj.count.to_s }
-                plain ' results'
-              end
-            end
-          end
+          render Components::Shared::Pagination.new(
+            pagy: pagy_obj,
+            base_url: '/admin/carer_relationships'
+          )
         end
       end
     end
