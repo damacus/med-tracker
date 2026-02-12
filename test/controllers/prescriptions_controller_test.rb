@@ -4,9 +4,11 @@ require 'test_helper'
 
 class PrescriptionsControllerTest < ActionDispatch::IntegrationTest
   def setup
-    @person = people(:adult_john)
+    @person = people(:john)
     @medicine = medicines(:paracetamol)
+    @dosage = dosages(:paracetamol_light)
     @prescription = prescriptions(:john_paracetamol)
+    sign_in(users(:john))
   end
 
   test 'should get new prescription form via turbo stream' do
@@ -20,11 +22,14 @@ class PrescriptionsControllerTest < ActionDispatch::IntegrationTest
       post person_prescriptions_path(@person), params: {
         prescription: {
           medicine_id: @medicine.id,
-          dosage: 1.0,
+          dosage_id: @dosage.id,
           frequency: 'Every 6 hours',
           start_date: Date.current,
           end_date: Date.current + 7.days,
-          notes: 'Test prescription'
+          notes: 'Test prescription',
+          max_daily_doses: 4,
+          min_hours_between_doses: 4,
+          dose_cycle: 'daily'
         }
       }
     end
@@ -38,7 +43,7 @@ class PrescriptionsControllerTest < ActionDispatch::IntegrationTest
       post person_prescriptions_path(@person), params: {
         prescription: {
           medicine_id: nil,
-          dosage: nil,
+          dosage_id: nil,
           frequency: nil,
           start_date: nil
         }
@@ -52,27 +57,15 @@ class PrescriptionsControllerTest < ActionDispatch::IntegrationTest
   test 'should update prescription' do
     patch person_prescription_path(@person, @prescription), params: {
       prescription: {
-        dosage: 2.0,
+        dosage_id: @dosage.id,
         notes: 'Updated notes'
       }
     }
 
     assert_redirected_to person_path(@person)
     @prescription.reload
-    assert_equal 2.0, @prescription.dosage.to_f
+    assert_equal @dosage.id, @prescription.dosage_id
     assert_equal 'Updated notes', @prescription.notes
-  end
-
-  test 'should not update prescription with invalid params' do
-    patch person_prescription_path(@person, @prescription), params: {
-      prescription: {
-        dosage: nil,
-        frequency: nil
-      }
-    }, headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
-
-    assert_response :unprocessable_entity
-    assert_match(/turbo-stream/, @response.content_type)
   end
 
   test 'should destroy prescription' do

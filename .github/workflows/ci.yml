@@ -93,8 +93,11 @@ jobs:
       - name: Precompile assets
         run: bundle exec rails assets:precompile
 
-      - name: Run non-browser tests
+      - name: Run non-browser RSpec tests
         run: bundle exec rspec --format RSpec::Github::Formatter --tag ~browser
+
+      - name: Run Minitest suite
+        run: bundle exec rails test test/models/ test/controllers/
 
   test_system:
     runs-on: [ubuntu-latest]

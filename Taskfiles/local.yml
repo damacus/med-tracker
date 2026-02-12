@@ -87,6 +87,18 @@ tasks:
       - bundle exec rails assets:precompile
       - bundle exec rspec {{.TEST_FILE | default ""}}
 
+  # Run Minitest suite locally
+  # Usage: task local:minitest
+  # Usage: task local:minitest TEST_FILE=test/models/medicine_test.rb
+  minitest:
+    desc: Run Minitest suite locally
+    deps: [db:prepare]
+    env:
+      DATABASE_URL: '{{.DATABASE_URL}}'
+      RAILS_ENV: test
+    cmds:
+      - bundle exec rails test {{.TEST_FILE | default ""}}
+
   # Clean up - stop database container
   # Usage: task local:clean
   clean:
