@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'Dashboard' do
-  fixtures :accounts, :account_otp_keys, :users, :medicines, :dosages, :prescriptions, :people
+  fixtures :accounts, :users, :medicines, :dosages, :prescriptions, :people
 
   it 'loads the dashboard for a signed-in user' do
     sign_in(users(:john))

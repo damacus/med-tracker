@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'Clinician Access Authorization' do
-  fixtures :accounts, :account_otp_keys, :people, :users
+  fixtures :accounts, :people, :users
 
   before do
     driven_by(:playwright)

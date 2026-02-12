@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'MedicineFinder' do
-  fixtures :accounts, :account_otp_keys, :people, :users
+  fixtures :accounts, :people, :users
 
   let(:user) { users(:john) }
 
