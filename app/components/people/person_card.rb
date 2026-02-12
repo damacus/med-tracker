@@ -104,10 +104,6 @@ module Components
           class: 'text-amber-700 border-amber-300 hover:bg-amber-50'
         ) { 'Assign Carer' }
       end
-
-      def helpers
-        @helpers ||= ApplicationController.helpers
-      end
     end
   end
 end
