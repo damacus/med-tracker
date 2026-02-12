@@ -53,8 +53,6 @@ RSpec.describe 'Profile Editing' do
 
   describe 'changing email', :js do
     it 'opens sheet modal when clicking change' do
-      skip 'Will fix in next phase'
-      # Click the first Change button (for email)
       first('button', text: 'Change').click
 
       # Wait for Stimulus to insert sheet content into DOM
@@ -62,17 +60,14 @@ RSpec.describe 'Profile Editing' do
     end
 
     it 'updates email when saving' do
-      skip 'Will fix in next phase'
-      # Wait for Stimulus controllers to connect properly
       expect(page).to have_css('[data-ruby-ui--sheet-target="content"]', visible: :hidden, wait: 5)
 
       first('button', text: 'Change').click
 
-      # Wait for sheet content to appear
       expect(page).to have_field('your.email@example.com', with: account.email, wait: 10)
 
       fill_in 'your.email@example.com', with: 'newemail@example.com'
-      click_button 'Save'
+      find('input[name="account[email]"]').send_keys(:enter)
 
       expect(page).to have_content('Email updated successfully')
       expect(account.reload.email).to eq('newemail@example.com')
@@ -81,8 +76,6 @@ RSpec.describe 'Profile Editing' do
 
   describe 'changing password', :js do
     it 'opens sheet modal when clicking change' do
-      skip 'Will fix in next phase'
-      # Wait for Stimulus controllers to connect properly
       expect(page).to have_css('[data-ruby-ui--sheet-target="content"]', visible: :hidden, wait: 5)
 
       # Click the second Change button (for password)
@@ -97,8 +90,6 @@ RSpec.describe 'Profile Editing' do
 
   describe 'closing account', :js do
     it 'shows confirmation dialog when clicking close account' do
-      skip 'Will fix in next phase'
-      # Wait for Stimulus controllers to connect properly
       expect(page).to have_css('[data-ruby-ui--alert-dialog-target="content"]', visible: :hidden, wait: 5)
 
       click_button 'Close Account'
@@ -111,8 +102,6 @@ RSpec.describe 'Profile Editing' do
     end
 
     it 'can cancel account closure' do
-      skip 'Will fix in next phase'
-      # Wait for Stimulus controllers to connect properly
       expect(page).to have_css('[data-ruby-ui--alert-dialog-target="content"]', visible: :hidden, wait: 5)
 
       click_button 'Close Account'

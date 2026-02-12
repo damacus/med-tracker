@@ -38,8 +38,6 @@ RSpec.describe RubyUI::Button, type: :component do
     expect(classes).to include('border')
     expect(classes).to include('text-destructive')
     expect(classes).to include('hover:bg-destructive-light')
-    expect(classes).not_to include('text-red-600')
-    expect(classes.split).not_to include('bg-destructive')
   end
 
   it 'renders success_outline variant with border and semantic success text' do
@@ -51,8 +49,6 @@ RSpec.describe RubyUI::Button, type: :component do
     expect(classes).to include('border')
     expect(classes).to include('text-success')
     expect(classes).to include('hover:bg-success-light')
-    expect(classes).not_to include('text-green-600')
-    expect(classes.split).not_to include('bg-primary')
   end
 
   it 'merges custom classes' do

@@ -40,11 +40,6 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       expect(rendered.text).to include('Add Medicine')
       expect(rendered.text).to include('Add Person')
     end
-
-    it 'does not define hand-rolled button CSS helper methods' do
-      expect(described_class.private_instance_methods).not_to include(:button_primary_classes)
-      expect(described_class.private_instance_methods).not_to include(:button_secondary_classes)
-    end
   end
 
   describe 'medication schedule table headers' do

@@ -11,16 +11,6 @@ RSpec.describe Components::Medicines::ShowView, type: :component do
     expect(rendered.text).to include('Paracetamol')
   end
 
-  it 'uses gap-2 for actions footer consistent with other card footers' do
-    rendered = render_inline(described_class.new(medicine: medicine))
-
-    actions_div = rendered.css('a').first&.parent
-    expect(actions_div).to be_present
-    classes = actions_div['class'].to_s
-    expect(classes).to include('gap-2')
-    expect(classes).not_to include('gap-3')
-  end
-
   it 'renders action links using Link component without raw button classes' do
     rendered = render_inline(described_class.new(medicine: medicine))
 

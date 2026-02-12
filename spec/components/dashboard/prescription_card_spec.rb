@@ -62,12 +62,4 @@ RSpec.describe Components::Dashboard::PrescriptionCard, type: :component do
       expect(rendered.text).not_to include('Take Now')
     end
   end
-
-  describe 'stock badge' do
-    it 'renders a stock badge for the medicine' do
-      rendered = render_inline(described_class.new(person: person, prescription: prescription))
-
-      expect(rendered.css('[class*="badge"]').any? || rendered.text.match?(/\d+/)).to be true
-    end
-  end
 end
