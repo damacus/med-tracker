@@ -7,8 +7,9 @@ require_relative 'test_helpers/sign_in_helper'
 
 module ActiveSupport
   class TestCase
-    # Run tests in parallel with specified workers
-    parallelize(workers: :number_of_processors)
+    # Parallelization disabled: suite is small and parallel forks crash
+    # with heavy fixture/DB usage. Re-enable when suite grows large enough.
+    parallelize(workers: 1)
 
     # Setup all fixtures in test/fixtures/*.yml for all tests in alphabetical order.
     self.fixture_paths = [Rails.root.join('spec/fixtures')]
