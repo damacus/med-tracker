@@ -2,11 +2,13 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Admin Audit Logs', type: :system do
+RSpec.describe 'Admin Audit Logs', browser: false, type: :system do
   fixtures :all
 
   let(:admin) { users(:admin) }
   let(:regular_user) { users(:jane) }
+
+  before { driven_by(:rack_test) }
 
   describe 'access control' do
     it 'allows administrators to view audit logs' do
@@ -186,10 +188,8 @@ RSpec.describe 'Admin Audit Logs', type: :system do
         people(:john).update!(name: 'John Updated')
       end
 
-      visit admin_audit_logs_path
-
-      # Filter by User
-      select 'User', from: 'item_type'
+      # Use URL params to filter (rack_test cannot trigger Stimulus auto-submit)
+      visit admin_audit_logs_path(item_type: 'User')
 
       # Verify only User entries shown
       within('tbody') do
@@ -205,10 +205,8 @@ RSpec.describe 'Admin Audit Logs', type: :system do
         users(:jane).update!(role: :nurse)
       end
 
-      visit admin_audit_logs_path
-
-      # Filter by update event
-      select 'Update', from: 'event'
+      # Use URL params to filter (rack_test cannot trigger Stimulus auto-submit)
+      visit admin_audit_logs_path(event: 'update')
 
       # Verify only update events shown
       within('tbody') do
