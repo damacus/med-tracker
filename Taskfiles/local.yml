@@ -3,15 +3,15 @@
 # Runs tests locally with a standalone PostgreSQL container
 # Faster than full Docker setup, mirrors CI environment
 # Usage: task local:<command>
-version: '3'
+version: "3"
 
 vars:
   DB_CONTAINER: medtracker-local-db
-  DB_PORT: '5432'
+  DB_PORT: "5432"
   DB_USER: medtracker
   DB_PASSWORD: medtracker
   DB_NAME: medtracker_test
-  DATABASE_URL: 'postgres://{{.DB_USER}}:{{.DB_PASSWORD}}@localhost:{{.DB_PORT}}/{{.DB_NAME}}'
+  DATABASE_URL: "postgres://{{.DB_USER}}:{{.DB_PASSWORD}}@localhost:{{.DB_PORT}}/{{.DB_NAME}}"
 
 tasks:
   # Start PostgreSQL container for local testing
@@ -46,7 +46,7 @@ tasks:
     desc: Run database migrations
     deps: [db:up]
     env:
-      DATABASE_URL: '{{.DATABASE_URL}}'
+      DATABASE_URL: "{{.DATABASE_URL}}"
       RAILS_ENV: test
     cmds:
       - bundle exec rails db:migrate
@@ -58,7 +58,7 @@ tasks:
     desc: Run non-browser tests locally
     deps: [db:prepare]
     env:
-      DATABASE_URL: '{{.DATABASE_URL}}'
+      DATABASE_URL: "{{.DATABASE_URL}}"
       RAILS_ENV: test
     cmds:
       - bundle exec rspec --tag '~browser' {{.TEST_FILE | default ""}}
@@ -69,7 +69,7 @@ tasks:
     desc: Run browser tests locally (requires Playwright)
     deps: [db:prepare]
     env:
-      DATABASE_URL: '{{.DATABASE_URL}}'
+      DATABASE_URL: "{{.DATABASE_URL}}"
       RAILS_ENV: test
     cmds:
       - bundle exec rails assets:precompile
@@ -81,7 +81,7 @@ tasks:
     desc: Run all tests locally
     deps: [db:prepare]
     env:
-      DATABASE_URL: '{{.DATABASE_URL}}'
+      DATABASE_URL: "{{.DATABASE_URL}}"
       RAILS_ENV: test
     cmds:
       - bundle exec rails assets:precompile
@@ -94,10 +94,10 @@ tasks:
     desc: Run Minitest suite locally
     deps: [db:prepare]
     env:
-      DATABASE_URL: '{{.DATABASE_URL}}'
+      DATABASE_URL: "{{.DATABASE_URL}}"
       RAILS_ENV: test
     cmds:
-      - bundle exec rails test {{.TEST_FILE | default ""}}
+      - bundle exec rails test -v {{.TEST_FILE | default ""}}
 
   # Clean up - stop database container
   # Usage: task local:clean
