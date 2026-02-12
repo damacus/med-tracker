@@ -5,178 +5,178 @@ require 'test_helper'
 class PersonTest < ActiveSupport::TestCase
   # -- associations --
 
-  test 'has_one user' do
+  test 'a person can have a user account' do
     person = people(:john)
     assert_respond_to person, :user
     assert_instance_of User, person.user
   end
 
-  test 'has_many prescriptions' do
+  test 'a person can have multiple prescriptions' do
     person = people(:john)
     assert_respond_to person, :prescriptions
     assert_kind_of ActiveRecord::Associations::CollectionProxy, person.prescriptions
   end
 
-  test 'has_many medicines through prescriptions' do
+  test 'a person can access their medicines via prescriptions' do
     person = people(:john)
     assert_respond_to person, :medicines
   end
 
-  test 'has_many carer_relationships' do
+  test 'a person can have carer relationships' do
     person = people(:john)
     assert_respond_to person, :carer_relationships
   end
 
-  test 'has_many carers through active_carer_relationships' do
+  test 'a person can have carers assigned to them' do
     person = people(:john)
     assert_respond_to person, :carers
   end
 
-  test 'has_many patient_relationships' do
+  test 'a person can be a carer for others' do
     person = people(:john)
     assert_respond_to person, :patient_relationships
   end
 
-  test 'has_many patients through active_patient_relationships' do
+  test 'a carer can access their patients' do
     person = people(:nurse_smith)
     assert_respond_to person, :patients
   end
 
   # -- validations --
 
-  test 'requires name' do
+  test 'a person must have a name' do
     person = Person.new(date_of_birth: 25.years.ago)
     assert_not person.valid?
     assert_includes person.errors[:name], "can't be blank"
   end
 
-  test 'requires date_of_birth' do
+  test 'a person must have a date of birth' do
     person = Person.new(name: 'Test')
     assert_not person.valid?
     assert_includes person.errors[:date_of_birth], "can't be blank"
   end
 
-  test 'validates email uniqueness case-insensitively' do
+  test 'two people cannot share the same email address regardless of case' do
     Person.create!(name: 'Existing', email: 'duplicate@example.com', date_of_birth: 30.years.ago)
     person = Person.new(name: 'New', email: 'DUPLICATE@example.com', date_of_birth: 25.years.ago)
     assert_not person.valid?
     assert_includes person.errors[:email], 'has already been taken'
   end
 
-  test 'allows blank email' do
+  test 'a person does not need an email address' do
     person = Person.new(name: 'No Email', email: '', date_of_birth: 25.years.ago)
     assert person.valid?
   end
 
-  test 'allows person without user account' do
+  test 'a person does not need a user account' do
     person = Person.new(name: 'Solo', date_of_birth: 25.years.ago)
     assert person.valid?
   end
 
   # -- person types --
 
-  test 'defaults to adult type' do
+  test 'new people default to adult type' do
     person = Person.create!(name: 'Default', date_of_birth: 20.years.ago)
     assert person.adult?
   end
 
-  test 'can be a minor' do
+  test 'a person can be recorded as a minor' do
     person = Person.create!(name: 'Minor', date_of_birth: 10.years.ago, person_type: :minor)
     assert_equal 'minor', person.person_type
   end
 
-  test 'can be a dependent adult' do
+  test 'a person can be recorded as a dependent adult' do
     person = Person.create!(name: 'Dependent', date_of_birth: 75.years.ago, person_type: :dependent_adult)
     assert_equal 'dependent_adult', person.person_type
   end
 
   # -- #age --
 
-  test 'age calculates correctly' do
+  test 'age is calculated from date of birth' do
     person = Person.new(name: 'Test', date_of_birth: 25.years.ago)
     assert_equal 25, person.age
   end
 
-  test 'age handles birthdays correctly' do
+  test 'age does not increment until the birthday has passed' do
     today = Date.new(2024, 6, 15)
     person = Person.new(name: 'Test', date_of_birth: Date.new(2000, 6, 16))
     assert_equal 23, person.age(today)
   end
 
-  test 'age returns nil when date_of_birth is nil' do
+  test 'age is nil when date of birth is missing' do
     person = Person.new(name: 'Test')
     assert_nil person.age
   end
 
   # -- #adult? --
 
-  test 'adult? returns true for person 18+ with adult person_type' do
+  test 'a person over 18 with adult type is considered an adult' do
     person = Person.new(name: 'Adult', date_of_birth: 25.years.ago, person_type: :adult)
     assert person.adult?
   end
 
-  test 'adult? returns true for adult person_type regardless of age' do
+  test 'a person with adult type is considered an adult regardless of age' do
     person = Person.new(name: 'Young Adult', date_of_birth: 10.years.ago, person_type: :adult)
     assert person.adult?
   end
 
-  test 'adult? returns true for 18+ even with minor person_type' do
+  test 'a person over 18 is considered an adult even if typed as minor' do
     person = Person.new(name: 'Grown Minor', date_of_birth: 18.years.ago, person_type: :minor)
     assert person.adult?
   end
 
-  test 'adult? returns false for under-18 without adult person_type' do
+  test 'a person under 18 without adult type is not considered an adult' do
     person = Person.new(name: 'Kid', date_of_birth: 10.years.ago, person_type: :minor)
     assert_not person.adult?
   end
 
   # -- #minor? --
 
-  test 'minor? returns true for under-18 with minor person_type' do
+  test 'a child under 18 typed as minor is considered a minor' do
     person = Person.new(name: 'Kid', date_of_birth: 10.years.ago, person_type: :minor)
     assert person.minor?
   end
 
-  test 'minor? returns false for 18+ even with minor person_type' do
+  test 'a person over 18 is never considered a minor' do
     person = Person.new(name: 'Grown', date_of_birth: 25.years.ago, person_type: :minor)
     assert_not person.minor?
   end
 
-  test 'minor? returns false for under-18 without minor person_type' do
+  test 'a child under 18 typed as adult is not considered a minor' do
     person = Person.new(name: 'Young Adult Type', date_of_birth: 10.years.ago, person_type: :adult)
     assert_not person.minor?
   end
 
-  test 'minor? returns false for exactly 18' do
+  test 'a person who just turned 18 is no longer a minor' do
     person = Person.new(name: 'Just 18', date_of_birth: 18.years.ago, person_type: :minor)
     assert_not person.minor?
   end
 
   # -- #dependent_adult? --
 
-  test 'dependent_adult? returns true for 18+ with dependent_adult type' do
+  test 'a person over 18 typed as dependent adult is considered dependent' do
     person = Person.new(name: 'Dependent', date_of_birth: 70.years.ago, person_type: :dependent_adult)
     assert person.dependent_adult?
   end
 
-  test 'dependent_adult? returns false for under-18 with dependent_adult type' do
+  test 'a person under 18 is not considered a dependent adult' do
     person = Person.new(name: 'Young Dependent', date_of_birth: 10.years.ago, person_type: :dependent_adult)
     assert_not person.dependent_adult?
   end
 
-  test 'dependent_adult? returns false for 18+ without dependent_adult type' do
+  test 'a regular adult is not considered a dependent adult' do
     person = Person.new(name: 'Adult', date_of_birth: 30.years.ago, person_type: :adult)
     assert_not person.dependent_adult?
   end
 
   # -- capacity --
 
-  test 'has capacity by default' do
+  test 'people have capacity by default' do
     person = Person.create!(name: 'Capable', date_of_birth: 20.years.ago)
     assert person.has_capacity
   end
 
-  test 'can lack capacity when carer is assigned' do
+  test 'a person can lack capacity when they have a carer' do
     carer = Person.create!(name: 'Carer', date_of_birth: 40.years.ago, person_type: :adult)
     person = Person.new(name: 'No Capacity', date_of_birth: 5.years.ago, has_capacity: false)
     person.carer_relationships.build(carer: carer, relationship_type: 'parent')
@@ -188,32 +188,32 @@ class PersonTest < ActiveSupport::TestCase
 
   # -- carer requirement validation --
 
-  test 'requires carer when has_capacity is false and no carers' do
+  test 'a person without capacity must have at least one carer' do
     person = Person.new(name: 'No Capacity', date_of_birth: 5.years.ago, has_capacity: false)
     assert_not person.valid?
     assert_includes person.errors[:base], 'A person without capacity must have at least one carer assigned'
   end
 
-  test 'valid when has_capacity is false and carer assigned' do
+  test 'a person without capacity is valid when a carer is assigned' do
     carer = Person.create!(name: 'Carer', date_of_birth: 40.years.ago, person_type: :adult)
     person = Person.new(name: 'No Capacity', date_of_birth: 5.years.ago, has_capacity: false)
     person.carer_relationships.build(carer: carer, relationship_type: 'parent')
     assert person.valid?
   end
 
-  test 'valid when has_capacity is true without carers' do
+  test 'a person with capacity does not need a carer' do
     person = Person.new(name: 'Capable', date_of_birth: 30.years.ago, has_capacity: true)
     assert person.valid?
   end
 
-  test 'prevents removing capacity when no carers assigned' do
+  test 'capacity cannot be removed unless a carer is assigned first' do
     person = Person.create!(name: 'Person', date_of_birth: 30.years.ago, has_capacity: true)
     person.has_capacity = false
     assert_not person.valid?
     assert_includes person.errors[:base], 'A person without capacity must have at least one carer assigned'
   end
 
-  test 'allows removing capacity when carer already assigned' do
+  test 'capacity can be removed when a carer is already assigned' do
     carer = Person.create!(name: 'Carer', date_of_birth: 40.years.ago, person_type: :adult)
     person = Person.create!(name: 'Person', date_of_birth: 30.years.ago, has_capacity: true)
     person.carer_relationships.create!(carer: carer, relationship_type: 'support')
@@ -221,7 +221,7 @@ class PersonTest < ActiveSupport::TestCase
     assert person.valid?
   end
 
-  test 'requires active carer when only inactive carers exist' do
+  test 'inactive carers do not count for capacity requirements' do
     carer = Person.create!(name: 'Inactive Carer', date_of_birth: 40.years.ago, person_type: :adult)
     person = Person.create!(name: 'Person', date_of_birth: 30.years.ago, has_capacity: true)
     person.carer_relationships.create!(carer: carer, relationship_type: 'support', active: false)
@@ -232,7 +232,7 @@ class PersonTest < ActiveSupport::TestCase
 
   # -- carer relationships --
 
-  test 'can have carers assigned' do
+  test 'assigning a carer links both patient and carer' do
     carer = Person.create!(name: 'Parent Carer', date_of_birth: 35.years.ago, person_type: :adult)
     patient = Person.new(name: 'Child', date_of_birth: 5.years.ago, person_type: :minor, has_capacity: false)
     patient.carer_relationships.build(carer: carer, relationship_type: 'parent')
@@ -242,7 +242,7 @@ class PersonTest < ActiveSupport::TestCase
     assert_includes carer.patients, patient
   end
 
-  test 'can have multiple carers' do
+  test 'a patient can have more than one carer' do
     carer1 = Person.create!(name: 'Carer 1', date_of_birth: 35.years.ago, person_type: :adult)
     carer2 = Person.create!(name: 'Carer 2', date_of_birth: 40.years.ago, person_type: :adult)
     patient = Person.new(name: 'Child', date_of_birth: 5.years.ago, person_type: :minor, has_capacity: false)
@@ -252,7 +252,7 @@ class PersonTest < ActiveSupport::TestCase
     assert_equal 2, patient.carers.count
   end
 
-  test 'can specify relationship type' do
+  test 'carer relationships record the type of relationship' do
     carer = Person.create!(name: 'Carer', date_of_birth: 35.years.ago, person_type: :adult)
     patient = Person.new(name: 'Child', date_of_birth: 5.years.ago, person_type: :minor, has_capacity: false)
     patient.carer_relationships.build(carer: carer, relationship_type: 'parent')
@@ -260,7 +260,7 @@ class PersonTest < ActiveSupport::TestCase
     assert_equal 'parent', patient.carer_relationships.first.relationship_type
   end
 
-  test 'active_carer_relationships only returns active relationships' do
+  test 'only active carer relationships are counted as current' do
     person = Person.create!(name: 'Patient', date_of_birth: 30.years.ago, person_type: :adult, has_capacity: true)
     active_carer = Person.create!(name: 'Active', date_of_birth: 35.years.ago, person_type: :adult)
     inactive_carer = Person.create!(name: 'Inactive', date_of_birth: 40.years.ago, person_type: :adult)
@@ -272,7 +272,7 @@ class PersonTest < ActiveSupport::TestCase
     assert_equal active_carer, person.active_carer_relationships.first.carer
   end
 
-  test 'carer_relationships returns all relationships' do
+  test 'all carer relationships are retained including inactive ones' do
     person = Person.create!(name: 'Patient', date_of_birth: 30.years.ago, person_type: :adult, has_capacity: true)
     carer1 = Person.create!(name: 'Active', date_of_birth: 35.years.ago, person_type: :adult)
     carer2 = Person.create!(name: 'Inactive', date_of_birth: 40.years.ago, person_type: :adult)
@@ -282,7 +282,7 @@ class PersonTest < ActiveSupport::TestCase
     assert_equal 2, person.carer_relationships.count
   end
 
-  test 'carers only returns carers with active relationships' do
+  test 'a person only sees their currently active carers' do
     person = Person.create!(name: 'Patient', date_of_birth: 30.years.ago, person_type: :adult, has_capacity: true)
     active_carer = Person.create!(name: 'Active', date_of_birth: 35.years.ago, person_type: :adult)
     inactive_carer = Person.create!(name: 'Inactive', date_of_birth: 40.years.ago, person_type: :adult)
@@ -294,7 +294,7 @@ class PersonTest < ActiveSupport::TestCase
     assert_not_includes person.carers, inactive_carer
   end
 
-  test 'active_patient_relationships only returns active' do
+  test 'a carer only sees patients from active relationships' do
     person = Person.create!(name: 'Patient', date_of_birth: 30.years.ago, person_type: :adult, has_capacity: true)
     active_carer = Person.create!(name: 'Active', date_of_birth: 35.years.ago, person_type: :adult)
     inactive_carer = Person.create!(name: 'Inactive', date_of_birth: 40.years.ago, person_type: :adult)
@@ -306,7 +306,7 @@ class PersonTest < ActiveSupport::TestCase
     assert_equal 0, inactive_carer.active_patient_relationships.count
   end
 
-  test 'patients only returns patients with active relationships' do
+  test 'inactive carer relationships are excluded from the patient list' do
     person = Person.create!(name: 'Patient', date_of_birth: 30.years.ago, person_type: :adult, has_capacity: true)
     active_carer = Person.create!(name: 'Active', date_of_birth: 35.years.ago, person_type: :adult)
     inactive_carer = Person.create!(name: 'Inactive', date_of_birth: 40.years.ago, person_type: :adult)
@@ -320,36 +320,36 @@ class PersonTest < ActiveSupport::TestCase
 
   # -- #needs_carer? --
 
-  test 'needs_carer? returns false for adult type without carers' do
+  test 'an adult does not need a carer' do
     person = Person.create!(name: 'Adult', date_of_birth: 30.years.ago, person_type: :adult)
     assert_not person.needs_carer?
   end
 
-  test 'needs_carer? returns false for adult type with carers' do
+  test 'an adult with carers still does not need one' do
     carer = Person.create!(name: 'Carer', date_of_birth: 40.years.ago, person_type: :adult)
     person = Person.create!(name: 'Adult', date_of_birth: 30.years.ago, person_type: :adult)
     person.carer_relationships.create!(carer: carer, relationship_type: 'support')
     assert_not person.needs_carer?
   end
 
-  test 'needs_carer? returns true for minor without carers' do
+  test 'a minor without carers needs one assigned' do
     person = Person.create!(name: 'Minor', date_of_birth: 10.years.ago, person_type: :minor)
     assert person.needs_carer?
   end
 
-  test 'needs_carer? returns false for minor with carers' do
+  test 'a minor with a carer does not need another' do
     parent = Person.create!(name: 'Parent', date_of_birth: 40.years.ago, person_type: :adult)
     person = Person.create!(name: 'Minor', date_of_birth: 10.years.ago, person_type: :minor)
     person.carer_relationships.create!(carer: parent, relationship_type: 'parent')
     assert_not person.needs_carer?
   end
 
-  test 'needs_carer? returns true for dependent_adult without carers' do
+  test 'a dependent adult without carers needs one assigned' do
     person = Person.create!(name: 'Dependent', date_of_birth: 70.years.ago, person_type: :dependent_adult)
     assert person.needs_carer?
   end
 
-  test 'needs_carer? returns false for dependent_adult with carers' do
+  test 'a dependent adult with a carer does not need another' do
     carer = Person.create!(name: 'Carer', date_of_birth: 45.years.ago, person_type: :adult)
     person = Person.create!(name: 'Dependent', date_of_birth: 70.years.ago, person_type: :dependent_adult)
     person.carer_relationships.create!(carer: carer, relationship_type: 'guardian')
@@ -358,7 +358,7 @@ class PersonTest < ActiveSupport::TestCase
 
   # -- versioning (PaperTrail) --
 
-  test 'creates version on person creation' do
+  test 'creating a person records an audit trail entry' do
     PaperTrail.request.whodunnit = users(:admin).id
     assert_difference('PaperTrail::Version.count', 1) do
       Person.create!(name: 'New Person', date_of_birth: 25.years.ago)
@@ -370,7 +370,7 @@ class PersonTest < ActiveSupport::TestCase
     PaperTrail.request.whodunnit = nil
   end
 
-  test 'creates version on person update' do
+  test 'updating a person records an audit trail entry' do
     PaperTrail.request.whodunnit = users(:admin).id
     john = people(:john)
     assert_difference('PaperTrail::Version.count', 1) do
@@ -383,7 +383,7 @@ class PersonTest < ActiveSupport::TestCase
     PaperTrail.request.whodunnit = nil
   end
 
-  test 'tracks sensitive field changes' do
+  test 'audit trail preserves the previous value of sensitive fields' do
     PaperTrail.request.whodunnit = users(:admin).id
     john = people(:john)
     original_dob = john.date_of_birth
@@ -394,7 +394,7 @@ class PersonTest < ActiveSupport::TestCase
     PaperTrail.request.whodunnit = nil
   end
 
-  test 'associates version with current user' do
+  test 'audit trail records which user made the change' do
     admin = users(:admin)
     PaperTrail.request.whodunnit = admin.id
     john = people(:john)
