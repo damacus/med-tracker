@@ -6,6 +6,13 @@ cy:
     users:
       unauthorized: "Nid oes gennych awdurdod i gyflawni'r weithred hon."
 
+  authentication:
+    login_required: "Mewngofnodwch i barhau"
+    two_factor_required: "Er mwy o ddiogelwch, gosodwch ddilysu dau ffactor ar gyfer eich cyfrif."
+
+  invitation_mailer:
+    subject: "Gwahoddiad i ymuno â MedTracker"
+
   medicines:
     created: "Crëwyd y feddyginiaeth yn llwyddiannus."
     updated: "Diweddarwyd y feddyginiaeth yn llwyddiannus."
@@ -79,3 +86,7 @@ cy:
     deactivated: "Mae cyfrif y defnyddiwr wedi'i ddadactifadu."
     activated: "Mae cyfrif y defnyddiwr wedi'i actifadu."
     cannot_deactivate_self: "Ni allwch ddadactifadu eich cyfrif eich hun."
+
+  webauthn:
+    passkey_removed: "Allwedd mynediad wedi'i dynnu'n llwyddiannus"
+    passkey_registered: "Allwedd mynediad wedi'i chofrestru'n llwyddiannus"

@@ -6,6 +6,13 @@ pt:
     users:
       unauthorized: "Não está autorizado a realizar esta ação."
 
+  authentication:
+    login_required: "Por favor, inicie sessão para continuar"
+    two_factor_required: "Para maior segurança, configure a autenticação de dois fatores para a sua conta."
+
+  invitation_mailer:
+    subject: "Convite para aderir ao MedTracker"
+
   medicines:
     created: "Medicamento criado com sucesso."
     updated: "Medicamento atualizado com sucesso."
@@ -79,3 +86,7 @@ pt:
     deactivated: "Conta de utilizador desativada."
     activated: "Conta de utilizador ativada."
     cannot_deactivate_self: "Não pode desativar a sua própria conta."
+
+  webauthn:
+    passkey_removed: "Chave de acesso removida com sucesso"
+    passkey_registered: "Chave de acesso registada com sucesso"
