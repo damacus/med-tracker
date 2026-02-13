@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'Prescription dosage selection' do
-  fixtures :accounts, :account_otp_keys, :users, :people, :medicines, :dosages
+  fixtures :accounts, :users, :people, :medicines, :dosages
 
   before do
     driven_by(:playwright)

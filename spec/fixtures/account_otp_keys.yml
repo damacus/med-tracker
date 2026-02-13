@@ -9,33 +9,3 @@ damacus:
   key: JBSWY3DPEHPK3PXP
   num_failures: 0
   last_use: <%= Time.current %>
-
-test:
-  id: <%= ActiveRecord::FixtureSet.identify(:test) %>
-  key: JBSWY3DPEHPK3PXP
-  num_failures: 0
-  last_use: <%= Time.current %>
-
-john_doe:
-  id: <%= ActiveRecord::FixtureSet.identify(:john_doe) %>
-  key: JBSWY3DPEHPK3PXP
-  num_failures: 0
-  last_use: <%= Time.current %>
-
-admin:
-  id: <%= ActiveRecord::FixtureSet.identify(:admin) %>
-  key: JBSWY3DPEHPK3PXP
-  num_failures: 0
-  last_use: <%= Time.current %>
-
-dr_jones:
-  id: <%= ActiveRecord::FixtureSet.identify(:dr_jones) %>
-  key: JBSWY3DPEHPK3PXP
-  num_failures: 0
-  last_use: <%= Time.current %>
-
-nurse_smith:
-  id: <%= ActiveRecord::FixtureSet.identify(:nurse_smith) %>
-  key: JBSWY3DPEHPK3PXP
-  num_failures: 0
-  last_use: <%= Time.current %>

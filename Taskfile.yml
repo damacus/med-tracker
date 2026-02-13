@@ -36,7 +36,7 @@ tasks:
       - task: internal:run
         vars:
           ENVIRONMENT: test
-          COMMAND: 'bundle exec rspec --format documentation {{ .TEST_FILE | default "spec" }}'
+          COMMAND: 'bundle exec rspec --profile 20 --format documentation {{ .TEST_FILE | default "spec" }}'
           TEST_FILE: '{{ .TEST_FILE | default "spec" }}'
 
   status:

@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'Carer Access Authorization' do
-  fixtures :accounts, :account_otp_keys, :people, :users, :carer_relationships
+  fixtures :accounts, :people, :users, :carer_relationships
 
   before do
     driven_by(:playwright)

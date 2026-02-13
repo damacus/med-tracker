@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'MedicineNewLayout' do
-  fixtures :accounts, :account_otp_keys, :people, :users
+  fixtures :accounts, :people, :users
 
   before do
     driven_by(:rack_test)
