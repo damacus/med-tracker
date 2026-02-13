@@ -3,6 +3,7 @@
 class PrescriptionsController < ApplicationController
   include Pundit::Authorization
   include PersonScoped
+  include TakeMedicineResponder
 
   before_action :set_prescription, only: %i[edit update destroy take_medicine]
 
@@ -150,35 +151,15 @@ class PrescriptionsController < ApplicationController
 
   def take_medicine
     authorize @prescription, :take_medicine?
+    handle_take_medicine(takeable: @prescription, i18n_scope: 'prescriptions')
+  end
 
-    result = MedicineAdministrationService.call(takeable: @prescription, amount_ml: params[:amount_ml])
-
-    if result.failure?
-      respond_to do |format|
-        format.html do
-          redirect_back_or_to person_path(@person),
-                              alert: t('prescriptions.cannot_take_medicine', default: result.message)
-        end
-        format.turbo_stream do
-          flash.now[:alert] = t('prescriptions.cannot_take_medicine', default: result.message)
-          render turbo_stream: turbo_stream.update('flash',
-                                                   Components::Layouts::Flash.new(alert: flash[:alert]))
-        end
-      end
-      return
-    end
-
-    respond_to do |format|
-      format.html { redirect_back_or_to person_path(@person), notice: t('prescriptions.medicine_taken') }
-      format.turbo_stream do
-        flash.now[:notice] = t('prescriptions.medicine_taken')
-        render turbo_stream: [
-          turbo_stream.replace("prescription_#{@prescription.id}",
-                               Components::Prescriptions::Card.new(prescription: @prescription.reload, person: @person)),
-          turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice]))
-        ]
-      end
-    end
+  def take_success_turbo_streams(takeable)
+    [
+      turbo_stream.replace("prescription_#{takeable.id}",
+                           Components::Prescriptions::Card.new(prescription: takeable.reload, person: @person)),
+      turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice]))
+    ]
   end
 
   private

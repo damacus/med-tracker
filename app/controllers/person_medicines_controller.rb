@@ -2,6 +2,7 @@
 
 class PersonMedicinesController < ApplicationController
   include PersonScoped
+  include TakeMedicineResponder
 
   before_action :set_person_medicine, only: %i[destroy take_medicine]
 
@@ -81,35 +82,15 @@ class PersonMedicinesController < ApplicationController
 
   def take_medicine
     authorize @person_medicine, :take_medicine?
+    handle_take_medicine(takeable: @person_medicine, i18n_scope: 'person_medicines')
+  end
 
-    result = MedicineAdministrationService.call(takeable: @person_medicine, amount_ml: params[:amount_ml])
-
-    if result.failure?
-      respond_to do |format|
-        format.html do
-          redirect_back_or_to person_path(@person),
-                              alert: t('person_medicines.cannot_take_medicine', default: result.message)
-        end
-        format.turbo_stream do
-          flash.now[:alert] = t('person_medicines.cannot_take_medicine', default: result.message)
-          render turbo_stream: turbo_stream.update('flash',
-                                                   Components::Layouts::Flash.new(alert: flash[:alert]))
-        end
-      end
-      return
-    end
-
-    respond_to do |format|
-      format.html { redirect_back_or_to person_path(@person), notice: t('person_medicines.medicine_taken') }
-      format.turbo_stream do
-        flash.now[:notice] = t('person_medicines.medicine_taken')
-        render turbo_stream: [
-          turbo_stream.replace("person_#{@person.id}",
-                               Components::People::PersonCard.new(person: @person.reload)),
-          turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice]))
-        ]
-      end
-    end
+  def take_success_turbo_streams(_takeable)
+    [
+      turbo_stream.replace("person_#{@person.id}",
+                           Components::People::PersonCard.new(person: @person.reload)),
+      turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice]))
+    ]
   end
 
   private
