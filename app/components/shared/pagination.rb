@@ -74,33 +74,24 @@ module Components
       end
 
       def render_prev_button
-        if pagy_obj.previous
-          Link(href: page_url(pagy_obj.previous), variant: :link,
-               class: nav_button_class('rounded-l-md')) do
-            span(class: 'sr-only') { 'Previous' }
-            plain '‹'
-          end
-        else
-          span(class: "#{nav_button_class('rounded-l-md')} opacity-50 " \
-                      'cursor-not-allowed') do
-            span(class: 'sr-only') { 'Previous' }
-            plain '‹'
-          end
-        end
+        render_nav_button(page: pagy_obj.previous, label: 'Previous', icon: '‹', rounding: 'rounded-l-md')
       end
 
       def render_next_button
-        if pagy_obj.next
-          Link(href: page_url(pagy_obj.next), variant: :link,
-               class: nav_button_class('rounded-r-md')) do
-            span(class: 'sr-only') { 'Next' }
-            plain '›'
+        render_nav_button(page: pagy_obj.next, label: 'Next', icon: '›', rounding: 'rounded-r-md')
+      end
+
+      def render_nav_button(page:, label:, icon:, rounding:)
+        if page
+          Link(href: page_url(page), variant: :link,
+               class: nav_button_class(rounding)) do
+            span(class: 'sr-only') { label }
+            plain icon
           end
         else
-          span(class: "#{nav_button_class('rounded-r-md')} opacity-50 " \
-                      'cursor-not-allowed') do
-            span(class: 'sr-only') { 'Next' }
-            plain '›'
+          span(class: "#{nav_button_class(rounding)} opacity-50 cursor-not-allowed") do
+            span(class: 'sr-only') { label }
+            plain icon
           end
         end
       end

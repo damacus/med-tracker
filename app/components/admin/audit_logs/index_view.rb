@@ -61,37 +61,27 @@ module Components
         end
 
         def render_item_type_filter
-          div(class: 'w-48') do
-            render RubyUI::FormField.new do
-              render RubyUI::FormFieldLabel.new(for: 'item_type') { 'Record Type' }
-              select(
-                name: 'item_type',
-                id: 'item_type',
-                class: input_classes,
-                data: { action: 'change->filter-form#submit' }
-              ) do
-                option(value: '', selected: filter_params[:item_type].blank?) { 'All Types' }
-                AUDITED_MODELS.each do |type|
-                  option(value: type, selected: filter_params[:item_type] == type) { type.titleize }
-                end
-              end
-            end
-          end
+          render_select_filter(name: 'item_type', label: 'Record Type', default_label: 'All Types',
+                               options: AUDITED_MODELS)
         end
 
         def render_event_type_filter
+          render_select_filter(name: 'event', label: 'Event Type', default_label: 'All Events', options: EVENT_TYPES)
+        end
+
+        def render_select_filter(name:, label:, default_label:, options:)
           div(class: 'w-48') do
             render RubyUI::FormField.new do
-              render RubyUI::FormFieldLabel.new(for: 'event') { 'Event Type' }
+              render RubyUI::FormFieldLabel.new(for: name) { label }
               select(
-                name: 'event',
-                id: 'event',
+                name: name,
+                id: name,
                 class: input_classes,
                 data: { action: 'change->filter-form#submit' }
               ) do
-                option(value: '', selected: filter_params[:event].blank?) { 'All Events' }
-                EVENT_TYPES.each do |event|
-                  option(value: event, selected: filter_params[:event] == event) { event.titleize }
+                option(value: '', selected: filter_params[name.to_sym].blank?) { default_label }
+                options.each do |opt|
+                  option(value: opt, selected: filter_params[name.to_sym] == opt) { opt.titleize }
                 end
               end
             end
