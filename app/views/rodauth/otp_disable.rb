@@ -16,19 +16,10 @@ module Views
       private
 
       def form_section
-        render RubyUI::Card.new(class: card_classes) do
-          render RubyUI::CardHeader.new(class: 'space-y-2 bg-white/60') do
-            render RubyUI::CardTitle.new(class: 'text-xl font-semibold text-slate-900') do
-              'Turn off two-factor codes'
-            end
-            render RubyUI::CardDescription.new(class: 'text-base text-slate-600') do
-              'You can re-enable your authenticator app at any time.'
-            end
-          end
-          render RubyUI::CardContent.new(class: 'space-y-6 p-6 sm:p-8') do
-            otp_disable_form
-          end
-        end
+        render_card_section(
+          title: 'Turn off two-factor codes',
+          description: 'You can re-enable your authenticator app at any time.'
+        ) { otp_disable_form }
       end
 
       def otp_disable_form

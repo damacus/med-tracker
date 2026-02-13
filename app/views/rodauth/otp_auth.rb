@@ -16,19 +16,10 @@ module Views
       private
 
       def form_section
-        render RubyUI::Card.new(class: card_classes) do
-          render RubyUI::CardHeader.new(class: 'space-y-2 bg-white/60') do
-            render RubyUI::CardTitle.new(class: 'text-xl font-semibold text-slate-900') do
-              'Authenticator code'
-            end
-            render RubyUI::CardDescription.new(class: 'text-base text-slate-600') do
-              'Enter the 6-digit code to finish signing in.'
-            end
-          end
-          render RubyUI::CardContent.new(class: 'space-y-6 p-6 sm:p-8') do
-            otp_form
-          end
-        end
+        render_card_section(
+          title: 'Authenticator code',
+          description: 'Enter the 6-digit code to finish signing in.'
+        ) { otp_form }
       end
 
       def otp_form

@@ -36,6 +36,16 @@ module Views
         CARD_CLASSES
       end
 
+      def render_card_section(title:, description:, &)
+        render RubyUI::Card.new(class: card_classes) do
+          render RubyUI::CardHeader.new(class: 'space-y-2 bg-white/60') do
+            render RubyUI::CardTitle.new(class: 'text-xl font-semibold text-slate-900') { title }
+            render RubyUI::CardDescription.new(class: 'text-base text-slate-600') { description }
+          end
+          render RubyUI::CardContent.new(class: 'space-y-6 p-6 sm:p-8', &)
+        end
+      end
+
       def authenticity_token_field
         input(type: 'hidden', name: 'authenticity_token', value: view_context.form_authenticity_token)
       end

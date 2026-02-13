@@ -16,19 +16,10 @@ module Views
       private
 
       def form_section
-        render RubyUI::Card.new(class: card_classes) do
-          render RubyUI::CardHeader.new(class: 'space-y-2 bg-white/60') do
-            render RubyUI::CardTitle.new(class: 'text-xl font-semibold text-slate-900') do
-              'Passkey authentication'
-            end
-            render RubyUI::CardDescription.new(class: 'text-base text-slate-600') do
-              'Tap continue to use your passkey for verification.'
-            end
-          end
-          render RubyUI::CardContent.new(class: 'space-y-6 p-6 sm:p-8') do
-            webauthn_form
-          end
-        end
+        render_card_section(
+          title: 'Passkey authentication',
+          description: 'Tap continue to use your passkey for verification.'
+        ) { webauthn_form }
       end
 
       def webauthn_form

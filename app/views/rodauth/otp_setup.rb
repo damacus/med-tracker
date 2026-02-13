@@ -19,29 +19,10 @@ module Views
       private
 
       def form_section
-        render RubyUI::Card.new(class: card_classes) do
-          render_card_header
-          render_card_content
-        end
-      end
-
-      def card_classes
-        "#{CARD_CLASSES} overflow-hidden"
-      end
-
-      def render_card_header
-        render RubyUI::CardHeader.new(class: 'space-y-2 bg-white/60') do
-          render RubyUI::CardTitle.new(class: 'text-xl font-semibold text-slate-900') do
-            'Authenticator Setup'
-          end
-          render RubyUI::CardDescription.new(class: 'text-base text-slate-600') do
-            plain 'Use an authenticator app like Google Authenticator, Authy, or 1Password to scan the QR code below.'
-          end
-        end
-      end
-
-      def render_card_content
-        render RubyUI::CardContent.new(class: 'space-y-6 p-6 sm:p-8') do
+        render_card_section(
+          title: 'Authenticator Setup',
+          description: 'Use an authenticator app like Google Authenticator, Authy, or 1Password to scan the QR code below.'
+        ) do
           render_qr_code_section
           render_manual_entry_section
           render_setup_form

@@ -31,25 +31,10 @@ module Views
       end
 
       def content_section
-        render RubyUI::Card.new(class: "#{CARD_CLASSES} overflow-hidden") do
-          render_card_header
-          render_card_content
-        end
-      end
-
-      def render_card_header
-        render RubyUI::CardHeader.new(class: 'space-y-2 bg-white/60') do
-          render RubyUI::CardTitle.new(class: 'text-xl font-semibold text-slate-900') do
-            'Authentication Methods'
-          end
-          render RubyUI::CardDescription.new(class: 'text-base text-slate-600') do
-            plain 'Choose how you want to verify your identity when signing in.'
-          end
-        end
-      end
-
-      def render_card_content
-        render RubyUI::CardContent.new(class: 'space-y-4 p-6 sm:p-8') do
+        render_card_section(
+          title: 'Authentication Methods',
+          description: 'Choose how you want to verify your identity when signing in.'
+        ) do
           render_webauthn_option
           render_totp_option
           render_recovery_codes_option if rodauth.two_factor_authentication_setup?
