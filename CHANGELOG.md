@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.2.3](https://github.com/damacus/med-tracker/compare/med-tracker/v0.2.2...med-tracker/v0.2.3) (2026-02-13)
+
+
+### Features
+
+* add authentication translations for es, cy, and pt ([#457](https://github.com/damacus/med-tracker/issues/457)) ([fbde3bd](https://github.com/damacus/med-tracker/commit/fbde3bd35e895c01cb4f2d6bd3c1df055a4946d5))
+* add component tests and keyboard navigation improvements ([542fc4c](https://github.com/damacus/med-tracker/commit/542fc4cd1963c57221121cefb3536438b4d23bba))
+* add optimistic UI updates for take medicine buttons [UI-010] ([1e639b7](https://github.com/damacus/med-tracker/commit/1e639b7a4c8a62d44e966dbc19de52773adbfa1b))
+* add Quantity column to dashboard Medication Schedule ([#444](https://github.com/damacus/med-tracker/issues/444)) ([b7b7c2f](https://github.com/damacus/med-tracker/commit/b7b7c2f07ea555bcc2cffcffd02119a74d168527))
+* add toast notifications for async take medicine actions [UI-023] ([3880412](https://github.com/damacus/med-tracker/commit/3880412b4d3651b28049193c74ef88e61b886dc0))
+* disable take button when on cooldown or out of stock ([59735e3](https://github.com/damacus/med-tracker/commit/59735e3d8d4caf9a66d705c79db927be315e7acf))
+* **docs:** Update documentation ([#440](https://github.com/damacus/med-tracker/issues/440)) ([9eb6c18](https://github.com/damacus/med-tracker/commit/9eb6c18cd44f4c788679bcbab96581445bef333b))
+* improve form validation feedback with inline errors [UI-015] ([69d452b](https://github.com/damacus/med-tracker/commit/69d452b53f379c02534c03cff786c28e3ef45312))
+* return to previous page after form submission [UI-008] ([6f33523](https://github.com/damacus/med-tracker/commit/6f33523f7ea16d4519cf0bd702e88845c7dc3732))
+
+
+### Bug Fixes
+
+* clear fixture medication_takes to prevent cooldown interference in specs ([654fa20](https://github.com/damacus/med-tracker/commit/654fa2040e0930b5c0443046647a63772669c3fe))
+* revert redirect_back_or_to for create actions and admin controllers ([e93e525](https://github.com/damacus/med-tracker/commit/e93e52540fccfc49156d2e07ac0bf9e9eb9e65b5))
+
+
+### Performance Improvements
+
+* reduce test suite runtime by 19% ([#455](https://github.com/damacus/med-tracker/issues/455)) ([e4ff77e](https://github.com/damacus/med-tracker/commit/e4ff77e6a671a4b22590aa569c828825d6b8063d))
+
 ## [0.2.2](https://github.com/damacus/med-tracker/compare/med-tracker/v0.2.1...med-tracker/v0.2.2) (2026-02-09)
 
 
