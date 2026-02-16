@@ -163,6 +163,7 @@ en:
       upcoming: "Upcoming"
       cooldown: "Wait"
       missed: "Missed"
+      out_of_stock: "Out of Stock"
     delete_confirmation:
       delete: "Delete"
       delete_prescription: "Delete Prescription?"

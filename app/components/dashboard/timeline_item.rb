@@ -68,6 +68,8 @@ module Components
           render Icons::Pill.new(class: 'text-blue-500 h-6 w-6')
         when :cooldown
           render Icons::AlertCircle.new(class: 'text-amber-500 h-6 w-6')
+        when :out_of_stock
+          render Icons::XCircle.new(class: 'text-red-500 h-6 w-6')
         else
           render Icons::AlertCircle.new(class: 'text-red-500 h-6 w-6')
         end
@@ -78,11 +80,18 @@ module Components
                   when :taken then :success
                   when :upcoming then :default
                   when :cooldown then :warning
+                  when :out_of_stock then :destructive
                   else :destructive
                   end
 
+        label = if dose[:status] == :cooldown && dose[:source].respond_to?(:countdown_display)
+                  "#{t('dashboard.statuses.cooldown')} (#{dose[:source].countdown_display})"
+                else
+                  t("dashboard.statuses.#{dose[:status]}")
+                end
+
         render RubyUI::Badge.new(variant: variant) do
-          t("dashboard.statuses.#{dose[:status]}")
+          label
         end
       end
     end

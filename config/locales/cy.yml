@@ -162,6 +162,7 @@ cy:
       upcoming: "Ar ddod"
       cooldown: "Aros"
       missed: "Wedi colli"
+      out_of_stock: "Allan o Stoc"
     delete_confirmation:
       delete: "Dileu"
       delete_prescription: "Dileu Trwyddedriad?"

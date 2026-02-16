@@ -51,12 +51,13 @@ module FamilyDashboard
       # We show the "next available" dose if it falls within today
       next_time = source.next_available_time
       if next_time&.today?
+        status = source.administration_blocked_reason || :upcoming
         doses << {
           person: person,
           source: source,
           scheduled_at: next_time,
           taken_at: nil,
-          status: source.can_take_now? ? :upcoming : :cooldown
+          status: status
         }
       end
 

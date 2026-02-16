@@ -41,10 +41,10 @@ Connect the components to a controller and the main application navigation.
 ## Phase 4: Safety & Polishing
 Add safety warnings and refine the mobile experience.
 
-- [ ] Task: Add Safety Warnings
-    - [ ] Visual indicators for daily limit thresholds.
-- [ ] Task: Mobile UI Audit
-    - [ ] Ensure all touch targets are >44px and one-handed use is easy.
-- [ ] Task: Final Quality Gate Check
-    - [ ] Verify >80% coverage and no linting errors.
+- [x] Task: Add Safety Warnings [19d5ae5]
+    - [x] Visual indicators for daily limit thresholds.
+- [x] Task: Mobile UI Audit [19d5ae5]
+    - [x] Ensure all touch targets are >44px and one-handed use is easy.
+- [x] Task: Final Quality Gate Check [19d5ae5]
+    - [x] Verify >80% coverage and no linting errors.
 - [ ] Task: Conductor - User Manual Verification 'Polishing' (Protocol in workflow.md)
