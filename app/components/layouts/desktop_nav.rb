@@ -5,6 +5,7 @@ module Components
     # Desktop navigation links
     class DesktopNav < Components::Base
       include Phlex::Rails::Helpers::LinkTo
+      include Phlex::Rails::Helpers::T
 
       def view_template
         div(class: 'hidden md:flex items-center gap-6') do

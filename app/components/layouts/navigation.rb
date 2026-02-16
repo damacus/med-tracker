@@ -5,6 +5,7 @@ module Components
     # Navigation component that renders differently based on authentication state
     class Navigation < Components::Base
       include Phlex::Rails::Helpers::LinkTo
+      include Phlex::Rails::Helpers::T
 
       def initialize(current_user: nil)
         @current_user = current_user

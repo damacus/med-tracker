@@ -5,6 +5,7 @@ module Components
     # Renders a delete confirmation dialog for prescriptions
     class DeleteConfirmationDialog < Components::Base
       include Phlex::Rails::Helpers::FormWith
+      include Phlex::Rails::Helpers::T
 
       attr_reader :prescription, :url_helpers, :button_class
 
