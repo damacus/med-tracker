@@ -11,15 +11,22 @@ module Components
       end
 
       def view_template
-        render RubyUI::Card.new(class: 'mb-4', data: { id: "dose_#{dose_id}" }) do
+        render RubyUI::Card.new(class: 'mb-4', id: "prescription_#{dose[:source].id}",
+                                data: { id: "dose_#{dose_id}" }) do
           div(class: 'flex items-center justify-between p-4') do
             div(class: 'flex items-center space-x-4') do
               status_icon
 
               div do
-                render RubyUI::Heading.new(level: 4) { dose[:source].medicine.name }
+                render RubyUI::Heading.new(level: 3) { dose[:source].medicine.name }
                 render RubyUI::Text.new(size: '2', weight: 'muted') do
                   "#{dose[:person].name} • #{dose[:scheduled_at].strftime('%H:%M')}"
+                end
+                render Components::Shared::StockBadge.new(medicine: dose[:source].medicine)
+                if dose[:source].medicine.stock.present?
+                  render RubyUI::Text.new(size: '1', weight: 'muted') do
+                    dose[:source].medicine.stock.to_s
+                  end
                 end
               end
             end

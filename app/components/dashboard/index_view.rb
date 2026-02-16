@@ -4,12 +4,15 @@ module Components
   module Dashboard
     # Dashboard index view component that renders the main dashboard page
     class IndexView < Components::Base
-      attr_reader :people, :active_prescriptions, :upcoming_prescriptions, :url_helpers, :current_user
+      attr_reader :people, :active_prescriptions, :upcoming_prescriptions, :url_helpers, :current_user, :doses
 
-      def initialize(people:, active_prescriptions:, upcoming_prescriptions:, url_helpers: nil, current_user: nil)
+      def initialize(people:, active_prescriptions:, upcoming_prescriptions:, doses:, **options)
+        url_helpers = options[:url_helpers]
+        current_user = options[:current_user]
         @people = people
         @active_prescriptions = active_prescriptions
         @upcoming_prescriptions = upcoming_prescriptions
+        @doses = doses
         @url_helpers = url_helpers
         @current_user = current_user
         super()
@@ -19,7 +22,7 @@ module Components
         div(class: 'container mx-auto px-4 py-8 pb-24 md:pb-8', data: { testid: 'dashboard' }) do
           render_header
           render_stats_section
-          render_prescriptions_section
+          render_timeline_section
         end
       end
 
@@ -27,7 +30,7 @@ module Components
 
       def render_header
         div(class: 'flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8') do
-          Heading(level: 1) { 'Dashboard' }
+          Heading(level: 1) { t('dashboard.title') }
           render_quick_actions
         end
       end
@@ -38,12 +41,12 @@ module Components
             href: url_helpers&.new_medicine_path || '#',
             variant: :primary,
             class: 'min-h-[44px]'
-          ) { 'Add Medicine' }
+          ) { t('dashboard.quick_actions.add_medicine') }
           Link(
             href: url_helpers&.new_person_path || '#',
             variant: :secondary,
             class: 'min-h-[44px]'
-          ) { 'Add Person' }
+          ) { t('dashboard.quick_actions.add_person') }
         end
       end
 
@@ -55,13 +58,19 @@ module Components
         end
       end
 
-      def render_prescriptions_section
-        return render_empty_state if upcoming_prescriptions.empty?
-
+      def render_timeline_section
         div(class: 'space-y-4') do
           Heading(level: 2) { 'Medication Schedule' }
-          render_mobile_cards
-          render_desktop_table
+
+          if doses.any?
+            div(class: 'grid grid-cols-1 gap-4') do
+              doses.each do |dose|
+                render Components::Dashboard::TimelineItem.new(dose: dose)
+              end
+            end
+          else
+            render_empty_state
+          end
         end
       end
 

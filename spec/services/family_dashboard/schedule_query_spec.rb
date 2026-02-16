@@ -7,7 +7,7 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
 
   let(:jane) { people(:jane) }
   let(:child) { people(:child_patient) }
-  let(:query) { described_class.new(jane) }
+  let(:query) { described_class.new([jane, child]) }
 
   describe '#call' do
     it 'returns an aggregated list of doses for the person and their dependents' do
