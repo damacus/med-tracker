@@ -25,7 +25,8 @@ RSpec.describe 'Medicine Stock Tracking', type: :system do
     visit root_path
 
     within "#prescription_#{prescription.id}" do
-      expect(page).to have_content('In Stock')
+      # Badge doesn't show when adequately stocked (only for low/out of stock)
+      expect(page).to have_no_content('In Stock')
       expect(page).to have_content('10')
     end
   end

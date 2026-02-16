@@ -31,9 +31,12 @@ RSpec.describe 'Prescription Card', type: :system do
       end
     end
 
-    it 'displays stock badge' do
+    it 'does not display stock badge when adequately stocked' do
       within("#prescription_#{prescription.id}") do
-        expect(page).to have_content('In Stock')
+        # Badge only shows for low stock or out of stock
+        expect(page).to have_no_content('In Stock')
+        expect(page).to have_no_content('Low Stock')
+        expect(page).to have_no_content('Out of Stock')
       end
     end
 
