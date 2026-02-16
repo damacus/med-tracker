@@ -6,6 +6,7 @@ module Components
     class Card < Components::Base
       include Phlex::Rails::Helpers::FormWith
       include Phlex::Rails::Helpers::ButtonTo
+      include Phlex::Rails::Helpers::T
 
       attr_reader :person_medicine, :person
 

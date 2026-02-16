@@ -4,16 +4,14 @@ require 'rails_helper'
 
 RSpec.describe Components::Layouts::Navigation, type: :component do
   describe 'i18n translations' do
-    it 'renders with translated brand name' do
+    it 'renders navigation with default locale translations' do
       component = described_class.new(current_user: nil)
 
-      allow(component).to receive(:t).with('layouts.navigation.brand').and_return('MedTracker')
-      allow(component).to receive(:t).with('layouts.navigation.skip_to_content').and_return('Skip to content')
-      allow(component).to receive(:t).with('layouts.navigation.login').and_return('Login').twice
+      rendered = render_inline(component)
 
-      render_inline(component)
-
-      expect(rendered_content).to include('MedTracker')
+      expect(rendered.to_html).to include('MedTracker')
+      expect(rendered.to_html).to include('Skip to content')
+      expect(rendered.to_html).to include('Login')
     end
   end
 end

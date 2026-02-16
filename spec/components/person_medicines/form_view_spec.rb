@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe Components::PersonMedicines::FormView, type: :component do
   describe 'i18n translations' do
-    it 'renders form with translated title' do
+    it 'renders form with default locale translations' do
       person_medicine = PersonMedicine.new
       person = instance_double(Person, name: 'John Doe')
       medicines = []
@@ -15,14 +15,11 @@ RSpec.describe Components::PersonMedicines::FormView, type: :component do
         medicines: medicines
       )
 
-      allow(component).to receive(:t).with('person_medicines.form.add_medicine').and_return('Add Medicine')
-      allow(component).to receive(:t).with('person_medicines.form.add_medicine_for',
-                                           person: 'John Doe').and_return('Add Medicine for John Doe')
+      rendered = render_inline(component)
 
-      render_inline(component)
-
-      expect(rendered_content).to include('Add Medicine')
-      expect(rendered_content).to include('Add Medicine for John Doe')
+      expect(rendered.to_html).to include('Add Medicine')
+      expect(rendered.to_html).to include('Add Medicine for John Doe')
+      expect(rendered.to_html).to include('Cancel')
     end
   end
 end

@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe Components::PersonMedicines::Card, type: :component do
   describe 'i18n translations' do
-    it 'renders card with translated notes section' do
+    it 'renders card with default locale translations' do
       medicine = instance_double(Medicine, name: 'Aspirin')
       person = instance_double(Person, name: 'John Doe')
       person_medicine = instance_double(PersonMedicine,
@@ -18,11 +18,11 @@ RSpec.describe Components::PersonMedicines::Card, type: :component do
 
       component = described_class.new(person_medicine: person_medicine, person: person)
 
-      allow(component).to receive(:t).with('person_medicines.card.notes').and_return('📝 Notes: ')
+      rendered = render_inline(component)
 
-      render_inline(component)
-
-      expect(rendered_content).to include('📝 Notes:')
+      expect(rendered.to_html).to include('📝 Notes:')
+      expect(rendered.to_html).to include('Today\'s Doses')
+      expect(rendered.to_html).to include('No doses taken today')
     end
   end
 end

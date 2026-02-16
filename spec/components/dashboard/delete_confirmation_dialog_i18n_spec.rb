@@ -4,20 +4,20 @@ require 'rails_helper'
 
 RSpec.describe Components::Dashboard::DeleteConfirmationDialog, type: :component do
   describe 'i18n translations' do
-    it 'renders delete dialog with translated delete button' do
-      prescription = instance_double(Prescription, id: 1)
-      url_helpers = instance_double(UrlHelpers)
-
+    it 'renders delete dialog with default locale translations' do
+      medicine = instance_double(Medicine, name: 'Aspirin')
+      person = instance_double(Person, name: 'John Doe')
+      prescription = instance_double(Prescription, id: 1, medicine: medicine, person: person)
       component = described_class.new(
         prescription: prescription,
-        url_helpers: url_helpers
+        url_helpers: nil
       )
 
-      allow(component).to receive(:t).with('dashboard.delete_confirmation.delete').and_return('Delete')
+      rendered = render_inline(component)
 
-      render_inline(component)
-
-      expect(rendered_content).to include('Delete')
+      expect(rendered.to_html).to include('Delete')
+      expect(rendered.to_html).to include('Delete Prescription?')
+      expect(rendered.to_html).to include('Cancel')
     end
   end
 end

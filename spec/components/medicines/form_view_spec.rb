@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe Components::Medicines::FormView, type: :component do
   describe 'i18n translations' do
-    it 'renders form with translated name field' do
+    it 'renders form with default locale translations' do
       medicine = Medicine.new(name: 'Test Medicine')
       component = described_class.new(
         medicine: medicine,
@@ -12,11 +12,11 @@ RSpec.describe Components::Medicines::FormView, type: :component do
         subtitle: 'Test Subtitle'
       )
 
-      allow(component).to receive(:t).with('forms.medicines.name').and_return('Name')
+      rendered = render_inline(component)
 
-      render_inline(component)
-
-      expect(rendered_content).to include('Name')
+      expect(rendered.to_html).to include('Name')
+      expect(rendered.to_html).to include('Description')
+      expect(rendered.to_html).to include('Save Medicine')
     end
   end
 end
