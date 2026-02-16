@@ -6,13 +6,13 @@ module Components
     class IndexView < Components::Base
       attr_reader :people, :active_prescriptions, :upcoming_prescriptions, :url_helpers, :current_user, :doses
 
-      def initialize(people:, active_prescriptions:, upcoming_prescriptions:, doses:, url_helpers: nil, current_user: nil)
+      def initialize(people:, active_prescriptions:, upcoming_prescriptions:, doses:, **options)
         @people = people
         @active_prescriptions = active_prescriptions
         @upcoming_prescriptions = upcoming_prescriptions
         @doses = doses
-        @url_helpers = url_helpers
-        @current_user = current_user
+        @url_helpers = options[:url_helpers]
+        @current_user = options[:current_user]
         super()
       end
 
@@ -79,7 +79,7 @@ module Components
         return if upcoming_prescriptions.empty?
 
         div(class: 'space-y-4') do
-          Heading(level: 2) { 'Medication Details' }
+          Heading(level: 2) { 'Medication Schedule' }
           render_mobile_cards
           render_desktop_table
         end

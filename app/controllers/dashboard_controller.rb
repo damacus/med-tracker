@@ -19,7 +19,7 @@ class DashboardController < ApplicationController
       people: @people,
       active_prescriptions: @active_prescriptions,
       upcoming_prescriptions: @upcoming_prescriptions,
-      doses: @doses, # New field
+      doses: @doses,
       url_helpers: self,
       current_user: current_user
     )
