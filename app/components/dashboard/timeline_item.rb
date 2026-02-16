@@ -66,7 +66,7 @@ module Components
           Button(
             type: :submit,
             variant: :outline,
-            size: :sm,
+            size: :md,
             data: { optimistic_take_target: 'button', testid: "take-dose-#{dose_id}" }
           ) { t('person_medicines.card.take') }
         end
