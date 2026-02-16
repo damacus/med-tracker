@@ -6,15 +6,15 @@ if [[ -z "${LD_PRELOAD+x}" ]]; then
     export LD_PRELOAD
 fi
 
-# In development, remove stale precompiled assets so Propshaft serves dynamically.
-# In production/test, precompile if the manifest is missing (Dockerfile handles this
-# at build time for non-dev, so this is a safety net only).
+# Asset handling (skip for test — tests don't serve compiled assets).
 if [[ "$RAILS_ENV" == "development" ]]; then
+  # Development uses Propshaft dynamic serving; remove stale precompiled assets.
   if [[ -f "public/assets/.manifest.json" ]]; then
     echo "Removing stale precompiled assets (development uses dynamic serving)..."
     rm -rf public/assets
   fi
-elif [[ ! -f "public/assets/.manifest.json" ]]; then
+elif [[ "$RAILS_ENV" != "test" && ! -f "public/assets/.manifest.json" ]]; then
+  # Production safety net — Dockerfile precompiles at build time.
   echo "Precompiling assets..."
   SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile
 fi

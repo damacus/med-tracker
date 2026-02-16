@@ -32,6 +32,9 @@ services:
       - medtracker_dev_bundle:/usr/local/bundle
       - medtracker_dev_node_modules:/app/node_modules
       - medtracker_dev_storage:/app/storage
+    tmpfs:
+      - /app/tmp/pids:uid=1000,gid=1000
+      - /app/tmp/cache:uid=1000,gid=1000
 
   # === Test (profile: test) ===
   db-test:
@@ -51,7 +54,7 @@ services:
     profiles: [test]
     networks: [test]
     build:
-      dockerfile: Dockerfile.test
+      target: test
     depends_on:
       db-test:
         condition: service_healthy
@@ -63,6 +66,9 @@ services:
       - medtracker_test_bundle:/usr/local/bundle
       - medtracker_test_node_modules:/app/node_modules
       - ./tmp/capybara:/app/tmp/capybara
+    tmpfs:
+      - /app/tmp/pids:uid=1000,gid=1000
+      - /app/tmp/cache:uid=1000,gid=1000
     healthcheck:
       disable: true
 
@@ -85,6 +91,8 @@ services:
       service: rails
     profiles: [prod]
     networks: [prod]
+    build:
+      target: app
     depends_on:
       db-prod:
         condition: service_healthy

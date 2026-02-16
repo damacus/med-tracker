@@ -10,7 +10,7 @@ MedTracker uses a **Dockerized PostgreSQL-based test environment** with RSpec, C
 
 | Component       | Tool                          | Version   |
 |-----------------|-------------------------------|-----------|
-| Language        | Ruby                          | 3.4.7     |
+| Language        | Ruby                          | 4.0.1     |
 | Framework       | Rails                         | 8.0+      |
 | Test Framework  | RSpec                         | 8.0+      |
 | Browser Testing | Capybara + Playwright         | chromium  |
@@ -39,53 +39,21 @@ group :development, :test do
 end
 ```
 
-### docker-compose.test.yml
+### Docker Setup
+
+Tests use the `test` stage from the unified multi-stage `Dockerfile` and the `test` profile in `compose.yaml`.
 
 ```yaml
-services:
-  db:
-    image: postgres:18-alpine
-    environment:
-      POSTGRES_USER: medtracker_test
-      POSTGRES_PASSWORD: medtracker_test_password
-      POSTGRES_DB: medtracker_test
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U medtracker_test"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-
-  web:
-    build:
-      context: .
-      dockerfile: Dockerfile.test
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      RAILS_ENV: test
-      DATABASE_URL: postgres://medtracker_test:medtracker_test_password@db:5432/medtracker_test
-    volumes:
-      - .:/app
-      - bundle_cache:/usr/local/bundle
-      - ./tmp/capybara:/app/tmp/capybara
+# compose.yaml (test profile)
+web-test:
+  build:
+    target: test       # Uses 'test' stage from Dockerfile
+  environment:
+    RAILS_ENV: test
+    DATABASE_URL: postgresql://medtracker:medtracker_password@db-test:5432/medtracker
 ```
 
-### Dockerfile.test (key sections)
-
-```dockerfile
-FROM ruby:3.4.7-slim AS test-assets
-
-# Install Playwright dependencies
-RUN apt-get install -y libnss3 libatk-bridge2.0-0 libdrm2 libxkbcommon0 \
-    libxcomposite1 libxdamage1 libxrandr2 libgbm1 libxss1 libasound2
-
-# Install Playwright browsers
-ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-RUN npx playwright install --with-deps chromium && chmod -R 755 /ms-playwright
-
-CMD ["bundle", "exec", "rspec"]
-```
+The `test` stage extends the `assets` stage (which has all build tools and gems) and adds Playwright browser dependencies.
 
 ---
 
@@ -238,8 +206,8 @@ Fixtures are loaded via `config.fixture_paths` and used with transactional tests
 ## Replication Checklist
 
 1. **Add gems** to Gemfile (capybara-playwright-driver, rspec-rails, shoulda-matchers, pundit-matchers, factory_bot_rails)
-2. **Create Dockerfile.test** with Playwright dependencies and browser installation
-3. **Create docker-compose.test.yml** with PostgreSQL service and healthcheck
+2. **Add `test` stage** to multi-stage Dockerfile with Playwright dependencies
+3. **Add `test` profile** to compose.yaml with PostgreSQL service and healthcheck
 4. **Configure spec/rails_helper.rb** with Playwright driver for system tests
 5. **Add spec/support/** helpers (capybara.rb, authentication_helpers.rb)
 6. **Set up Taskfile** for `task test` command

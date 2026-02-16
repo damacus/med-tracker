@@ -41,6 +41,34 @@ CMD ["rails", "server", "-b", "0.0.0.0"]
 
 ###############################################################################
 
+FROM assets AS test
+
+USER root
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends \
+    postgresql-client ca-certificates \
+    libnss3 libatk-bridge2.0-0 libdrm2 libxkbcommon0 \
+    libxcomposite1 libxdamage1 libxrandr2 libgbm1 libxss1 libasound2 \
+  && rm -rf /var/lib/apt/lists/* /usr/share/doc /usr/share/man \
+  && apt-get clean
+
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
+RUN npx playwright install --with-deps chromium \
+  && chmod -R 755 /ms-playwright
+
+USER ruby
+
+ENV RAILS_ENV=test \
+  NODE_ENV=test \
+  PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
+ENTRYPOINT ["/app/bin/docker-entrypoint-web"]
+CMD ["bundle", "exec", "rspec"]
+
+###############################################################################
+
 FROM ruby:4.0.1-slim-trixie AS app
 WORKDIR /app
 
