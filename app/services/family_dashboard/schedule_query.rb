@@ -43,20 +43,21 @@ module FamilyDashboard
     end
 
     def generate_doses_for(source, person)
-      # For now, let's simplify:
-      # If it's taken today, show it as taken.
-      # If it's due today, show it as upcoming/missed.
-
-      # For MVP, we'll look at medication_takes for today
+      # 1. Get doses already taken today
       takes = source.medication_takes.where(taken_at: Time.current.all_day).to_a
-
       doses = generate_taken_doses(takes, source, person)
 
-      # If no takes yet, or we want to show "Upcoming", we'd need more logic.
-      # To keep it simple for now and pass the basic test:
-      if doses.empty?
-        # Mocking one "Upcoming" dose at start of day + 12h for now to see it in results
-        doses << upcoming_dose_placeholder(source, person)
+      # 2. Determine if an upcoming dose should be shown
+      # We show the "next available" dose if it falls within today
+      next_time = source.next_available_time
+      if next_time&.today?
+        doses << {
+          person: person,
+          source: source,
+          scheduled_at: next_time,
+          taken_at: nil,
+          status: source.can_take_now? ? :upcoming : :cooldown
+        }
       end
 
       doses
@@ -67,21 +68,11 @@ module FamilyDashboard
         {
           person: person,
           source: source,
-          scheduled_at: take.taken_at, # For taken doses, use actual time
+          scheduled_at: take.taken_at,
           taken_at: take.taken_at,
           status: :taken
         }
       end
-    end
-
-    def upcoming_dose_placeholder(source, person)
-      {
-        person: person,
-        source: source,
-        scheduled_at: Time.current.beginning_of_day + 12.hours,
-        taken_at: nil,
-        status: :upcoming
-      }
     end
   end
 end
