@@ -43,7 +43,28 @@ es:
     deleted: "Medicamento eliminado correctamente."
     medicine_taken: "Medicamento tomado correctamente."
     modal:
-      new_title: "Añadir Medicamento para %{person}"
+      new_title: "Agregar Medicamento para %{person}"
+    card:
+      notes: "📝 Notas: "
+      timing_restrictions: "⏱️ Restricciones de Tiempo:"
+      max_doses_per_day: "Máximo %{count} dosis(es) por día"
+      wait_hours: "Esperar al menos %{hours} horas entre dosis"
+      next_dose_available: "🕐 Próxima dosis disponible en: "
+      todays_doses: "Dosis de Hoy"
+      no_doses_today: "No se han tomado dosis hoy"
+      take: "💊 Tomar"
+      out_of_stock: "💊 Sin Stock"
+      remove: "Eliminar"
+      remove_medicine: "Eliminar Medicamento"
+      remove_confirmation: "¿Está seguro de que desea eliminar %{medicine}? Esta acción no se puede deshacer."
+    form:
+      add_medicine: "Agregar Medicamento"
+      add_medicine_for: "Agregar Medicamento para %{person}"
+      validation_errors:
+        one: "1 error impidió que este medicamento se guardara:"
+        other: "%{count} errores impidieron que este medicamento se guardara:"
+      cancel: "Cancelar"
+      add_medicine_button: "Agregar Medicamento"
 
   prescriptions:
     created: "Receta creada correctamente."
