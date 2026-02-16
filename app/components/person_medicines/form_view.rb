@@ -29,9 +29,9 @@ module Components
       def render_header
         div(class: 'mb-8') do
           Text(size: '2', weight: 'medium', class: 'uppercase tracking-wide text-slate-500 mb-2') do
-            'Add Medicine'
+            t('person_medicines.form.add_medicine')
           end
-          Heading(level: 1) { "Add Medicine for #{person.name}" }
+          Heading(level: 1) { t('person_medicines.form.add_medicine_for', person: person.name) }
         end
       end
 
@@ -50,7 +50,7 @@ module Components
       def render_errors
         Alert(variant: :destructive, class: 'mb-6') do
           AlertTitle do
-            "#{pluralize(person_medicine.errors.count, 'error')} prohibited this medicine from being saved:"
+            t('person_medicines.form.validation_errors', count: person_medicine.errors.count)
           end
           AlertDescription do
             ul(class: 'my-2 ml-6 list-disc [&>li]:mt-1') do
@@ -68,8 +68,8 @@ module Components
 
       def render_actions
         div(class: 'flex justify-end gap-3 pt-4') do
-          Link(href: helpers.person_path(person), variant: :outline) { 'Cancel' }
-          Button(type: :submit, variant: :primary) { 'Add Medicine' }
+          Link(href: helpers.person_path(person), variant: :outline) { t('person_medicines.form.cancel') }
+          Button(type: :submit, variant: :primary) { t('person_medicines.form.add_medicine_button') }
         end
       end
     end

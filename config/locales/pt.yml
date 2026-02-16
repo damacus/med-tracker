@@ -44,6 +44,27 @@ pt:
     medicine_taken: "Medicamento tomado com sucesso."
     modal:
       new_title: "Adicionar Medicamento para %{person}"
+    card:
+      notes: "📝 Notas: "
+      timing_restrictions: "⏱️ Restrições de Tempo:"
+      max_doses_per_day: "Máximo %{count} dose(s) por dia"
+      wait_hours: "Esperar pelo menos %{hours} horas entre doses"
+      next_dose_available: "🕐 Próxima dose disponível em: "
+      todays_doses: "Doses de Hoje"
+      no_doses_today: "Nenhuma dose tomada hoje"
+      take: "💊 Tomar"
+      out_of_stock: "💊 Sem Stock"
+      remove: "Remover"
+      remove_medicine: "Remover Medicamento"
+      remove_confirmation: "Tem certeza de que deseja remover %{medicine}? Esta ação não pode ser desfeita."
+    form:
+      add_medicine: "Adicionar Medicamento"
+      add_medicine_for: "Adicionar Medicamento para %{person}"
+      validation_errors:
+        one: "1 erro impediu que este medicamento fosse guardado:"
+        other: "%{count} erros impediram que este medicamento fosse guardado:"
+      cancel: "Cancelar"
+      add_medicine_button: "Adicionar Medicamento"
 
   prescriptions:
     created: "Receita criada com sucesso."

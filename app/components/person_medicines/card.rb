@@ -65,7 +65,7 @@ module Components
       def render_notes
         div(class: 'p-3 bg-blue-50 border border-blue-200 rounded-md') do
           Text(size: '2', class: 'text-blue-800') do
-            span(class: 'font-semibold') { '📝 Notes: ' }
+            span(class: 'font-semibold') { t('person_medicines.card.notes') }
             plain person_medicine.notes
           end
         end
@@ -73,13 +73,15 @@ module Components
 
       def render_timing_restrictions
         div(class: 'p-3 bg-amber-50 border border-amber-200 rounded-md') do
-          Text(size: '2', weight: 'semibold', class: 'text-amber-800 mb-1') { '⏱️ Timing Restrictions:' }
+          Text(size: '2', weight: 'semibold', class: 'text-amber-800 mb-1') do
+            t('person_medicines.card.timing_restrictions')
+          end
           ul(class: 'my-1 ml-4 text-sm text-amber-800 list-disc [&>li]:mt-0.5') do
             if person_medicine.max_daily_doses.present?
-              li { "Maximum #{person_medicine.max_daily_doses} dose(s) per day" }
+              li { t('person_medicines.card.max_doses_per_day', count: person_medicine.max_daily_doses) }
             end
             if person_medicine.min_hours_between_doses.present?
-              li { "Wait at least #{person_medicine.min_hours_between_doses} hours between doses" }
+              li { t('person_medicines.card.wait_hours', hours: person_medicine.min_hours_between_doses) }
             end
           end
         end
@@ -88,7 +90,7 @@ module Components
       def render_countdown_notice
         div(class: 'p-3 bg-amber-50 border border-amber-200 rounded-md') do
           Text(size: '2', class: 'text-amber-800') do
-            span(class: 'font-semibold') { '🕐 Next dose available in: ' }
+            span(class: 'font-semibold') { t('person_medicines.card.next_dose_available') }
             plain person_medicine.countdown_display
           end
         end
@@ -102,7 +104,9 @@ module Components
 
         div(class: 'space-y-3') do
           div(class: 'flex items-center justify-between') do
-            Heading(level: 4, size: '2', class: 'font-semibold text-slate-700') { "Today's Doses" }
+            Heading(level: 4, size: '2', class: 'font-semibold text-slate-700') do
+              t('person_medicines.card.todays_doses')
+            end
             render_dose_counter(todays_takes) if person_medicine.max_daily_doses.present?
           end
           render_todays_takes(todays_takes)
@@ -134,7 +138,7 @@ module Components
             end
           end
         else
-          Text(size: '2', weight: 'muted', class: 'italic') { 'No doses taken today' }
+          Text(size: '2', weight: 'muted', class: 'italic') { t('person_medicines.card.no_doses_today') }
         end
       end
 
@@ -163,7 +167,7 @@ module Components
               class: 'inline-flex items-center gap-1 min-w-[80px]',
               data: { optimistic_take_target: 'button' }
             ) do
-              plain '💊 Take'
+              plain t('person_medicines.card.take')
             end
           end
         else
@@ -173,7 +177,7 @@ module Components
 
       def render_disabled_button_with_reason
         reason = person_medicine.administration_blocked_reason
-        label = reason == :out_of_stock ? '💊 Out of Stock' : '💊 Take'
+        label = reason == :out_of_stock ? t('person_medicines.card.out_of_stock') : t('person_medicines.card.take')
         Button(variant: :secondary, size: :md, disabled: true) { label }
       end
 
@@ -187,24 +191,23 @@ module Components
 
         AlertDialog do
           AlertDialogTrigger do
-            Button(variant: :destructive_outline, size: :md) { 'Remove' }
+            Button(variant: :destructive_outline, size: :md) { t('person_medicines.card.remove') }
           end
           AlertDialogContent do
             AlertDialogHeader do
-              AlertDialogTitle { 'Remove Medicine' }
+              AlertDialogTitle { t('person_medicines.card.remove_medicine') }
               AlertDialogDescription do
-                plain "Are you sure you want to remove #{person_medicine.medicine.name}? "
-                plain 'This action cannot be undone.'
+                plain t('person_medicines.card.remove_confirmation', medicine: person_medicine.medicine.name)
               end
             end
             AlertDialogFooter do
-              AlertDialogCancel { 'Cancel' }
+              AlertDialogCancel { t('dashboard.delete_confirmation.cancel') }
               form_with(
                 url: person_person_medicine_path(person, person_medicine),
                 method: :delete,
                 class: 'inline'
               ) do
-                Button(variant: :destructive, type: :submit) { 'Remove' }
+                Button(variant: :destructive, type: :submit) { t('person_medicines.card.remove') }
               end
             end
           end

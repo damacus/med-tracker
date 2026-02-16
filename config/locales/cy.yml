@@ -44,6 +44,27 @@ cy:
     medicine_taken: "Cymerwyd y feddyginiaeth yn llwyddiannus."
     modal:
       new_title: "Ychwanegu Meddyginiaeth ar gyfer %{person}"
+    card:
+      notes: "📝 Nodiadau: "
+      timing_restrictions: "⏱️ Cyfyngiadau Amseru:"
+      max_doses_per_day: "Uchafswm %{count} dos(au) y dydd"
+      wait_hours: "Aros o leia %{hours} awr rhwng dosau"
+      next_dose_available: "🕐 Dos nesaf ar gael mewn: "
+      todays_doses: "Dosau Heddiw"
+      no_doses_today: "Dim dosau wedi'u cymryd heddiw"
+      take: "💊 Cymryd"
+      out_of_stock: "💊 Allan o Stoc"
+      remove: "Tynnu"
+      remove_medicine: "Tynnu Meddyginiaeth"
+      remove_confirmation: "Ydych chi'n sicr eich bod am dynnu %{medicine}? Ni all y weithred hon gael ei dadwneud."
+    form:
+      add_medicine: "Ychwanegu Meddyginiaeth"
+      add_medicine_for: "Ychwanegu Meddyginiaeth ar gyfer %{person}"
+      validation_errors:
+        one: "1 gwall wedi atal y feddyginiaeth hon rhag cael ei chadw:"
+        other: "%{count} gwall wedi atal y feddyginiaeth hon rhag cael ei chadw:"
+      cancel: "Canslo"
+      add_medicine_button: "Ychwanegu Meddyginiaeth"
 
   prescriptions:
     created: "Crëwyd y presgripsiwn yn llwyddiannus."
