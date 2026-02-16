@@ -4,7 +4,7 @@ require 'rails_helper'
 require 'pundit/rspec'
 
 RSpec.describe CarerRelationshipPolicy do
-  fixtures :accounts, :people, :users, :carer_relationships
+  fixtures :accounts, :people, :users, :carer_relationships, :person_medicines, :medication_takes
 
   subject(:policy) { described_class.new(current_user, relationship) }
 

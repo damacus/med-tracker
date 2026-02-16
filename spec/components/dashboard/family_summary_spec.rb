@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe Components::Dashboard::FamilySummary, type: :component do
-  fixtures :people, :medicines, :prescriptions
+  fixtures :all
 
   let(:jane) { people(:jane) }
   let(:doses) do
