@@ -116,3 +116,29 @@ en:
       profile: "Profile"
       administration: "Administration"
       logout: "Logout"
+  forms:
+    medicines:
+      name: "Name"
+      description: "Description"
+      standard_dosage: "Standard Dosage"
+      unit: "Unit"
+      select_unit: "Select unit"
+      current_supply: "Current Supply"
+      stock: "Stock"
+      reorder_threshold: "Reorder Threshold"
+      warnings: "Warnings"
+      save_medicine: "Save Medicine"
+      back_to_medicines: "Back to Medicines"
+      validation_errors:
+        one: "1 error prevented this medicine from being saved:"
+        other: "%{count} errors prevented this medicine from being saved:"
+  dashboard:
+    delete_confirmation:
+      delete: "Delete"
+      delete_prescription: "Delete Prescription?"
+      are_you_sure: "Are you sure you want to delete %{medicine} for %{person}? This action cannot be undone."
+      cancel: "Cancel"
+    quick_actions:
+      title: "Quick Actions"
+      add_medicine: "Add Medicine"
+      add_person: "Add Person"

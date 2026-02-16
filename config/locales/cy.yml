@@ -116,3 +116,29 @@ cy:
       profile: "Proffil"
       administration: "Gweinyddu"
       logout: "Allgofnodi"
+  forms:
+    medicines:
+      name: "Enw"
+      description: "Disgrifiad"
+      standard_dosage: "Dosio Safonol"
+      unit: "Uned"
+      select_unit: "Dewis uned"
+      current_supply: "Cyflenwyd Cyfredol"
+      stock: "Stoc"
+      reorder_threshold: "Trothwy Yn ail-drefnu"
+      warnings: "Rhybuddion"
+      save_medicine: "Cadw Meddyginiaeth"
+      back_to_medicines: "Yn ôl i Feddyginiaethau"
+      validation_errors:
+        one: "1 gwall wedi atal y meddyginiaeth hon rhag cael ei chadw:"
+        other: "%{count} wall wedi atal y meddyginiaeth hon rhag cael ei chadw:"
+  dashboard:
+    delete_confirmation:
+      delete: "Dileu"
+      delete_prescription: "Dileu Trwyddedriad?"
+      are_you_sure: "Ydych chi'n sicr eich bod am dileu %{medicine} ar gyfer %{person}? Ni all y weithred hon gael ei dadwneud."
+      cancel: "Canslo"
+    quick_actions:
+      title: "Gweithredoedd Cyflym"
+      add_medicine: "Ychwanegu Meddyginiaeth"
+      add_person: "Ychwanegu Person"

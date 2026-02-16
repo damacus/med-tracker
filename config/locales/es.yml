@@ -116,3 +116,29 @@ es:
       profile: "Perfil"
       administration: "Administración"
       logout: "Cerrar sesión"
+  forms:
+    medicines:
+      name: "Nombre"
+      description: "Descripción"
+      standard_dosage: "Dosis Estándar"
+      unit: "Unidad"
+      select_unit: "Seleccionar unidad"
+      current_supply: "Suministro Actual"
+      stock: "Stock"
+      reorder_threshold: "Umbral de Reorden"
+      warnings: "Advertencias"
+      save_medicine: "Guardar Medicamento"
+      back_to_medicines: "Volver a Medicamentos"
+      validation_errors:
+        one: "1 error impidió que este medicamento se guardara:"
+        other: "%{count} errores impidieron que este medicamento se guardara:"
+  dashboard:
+    delete_confirmation:
+      delete: "Eliminar"
+      delete_prescription: "¿Eliminar Prescripción?"
+      are_you_sure: "¿Está seguro de que desea eliminar %{medicine} para %{person}? Esta acción no se puede deshacer."
+      cancel: "Cancelar"
+    quick_actions:
+      title: "Acciones Rápidas"
+      add_medicine: "Agregar Medicamento"
+      add_person: "Agregar Persona"
