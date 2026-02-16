@@ -126,5 +126,11 @@ class ApplicationPolicy
     def parent_minor_patient_ids
       Array(Person.where(id: user.person&.patient_ids, person_type: :minor).pluck(:id))
     end
+
+    def accessible_person_ids
+      [user.person_id].compact.tap do |ids|
+        ids.concat(accessible_patient_ids)
+      end.uniq
+    end
   end
 end

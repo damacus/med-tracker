@@ -177,13 +177,20 @@ class PrescriptionsController < ApplicationController
       taken_at: Time.current,
       amount_ml: amount
     )
+    flash[:notice] = t('prescriptions.medicine_taken')
+    
     respond_to do |format|
-      format.html { redirect_back_or_to person_path(@person), notice: t('prescriptions.medicine_taken') }
+      format.html { redirect_to dashboard_path }
       format.turbo_stream do
-        flash.now[:notice] = t('prescriptions.medicine_taken')
         render turbo_stream: [
-          turbo_stream.replace("prescription_#{@prescription.id}",
-                               Components::Prescriptions::Card.new(prescription: @prescription.reload, person: @person)),
+          turbo_stream.replace("dose_prescription_#{@prescription.id}",
+                               Components::Dashboard::TimelineItem.new(dose: {
+                                 person: @person,
+                                 source: @prescription.reload,
+                                 scheduled_at: @take.taken_at,
+                                 taken_at: @take.taken_at,
+                                 status: :taken
+                               })),
           turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice]))
         ]
       end
