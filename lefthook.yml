@@ -15,6 +15,37 @@ pre-push:
         - security
       run: bundle audit
 
+    - name: rubocop
+      tags:
+        - backend
+        - linting
+      run: bundle exec rubocop --force-exclusion
+
+    - name: rspec
+      tags:
+        - backend
+        - testing
+      run: |
+        echo "🧪 Running RSpec tests..."
+        if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+          task test
+        else
+          echo "⚠️  Docker not available, skipping RSpec tests"
+          echo "Please start Docker daemon to run full test suite"
+        fi
+
+    - name: markdown-lint
+      tags:
+        - docs
+        - linting
+      run: |
+        echo "📝 Running markdown linting on critical files..."
+        if command -v markdownlint-cli2 >/dev/null 2>&1; then
+          markdownlint-cli2 "README.md" "CONTRIBUTING.md" "CHANGELOG.md" "agents.md" "AGENTS.md" || true
+        else
+          echo "⚠️  markdownlint-cli2 not found, skipping markdown checks"
+        fi
+
 pre-commit:
   parallel: true
   jobs:

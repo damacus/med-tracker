@@ -11,7 +11,7 @@ RSpec.describe 'Dashboard' do
     visit dashboard_path
 
     expect(page).to have_content('Family Dashboard')
-    
+
     # Jane's medication
     expect(page).to have_content('Ibuprofen')
     expect(page).to have_content('Jane Doe')
@@ -24,11 +24,8 @@ RSpec.describe 'Dashboard' do
     sign_in(users(:jane))
     visit dashboard_path
 
-    # Debug: print statuses found
-    puts "Statuses found: #{all('.mb-4').map(&:text).join(' | ')}"
-
     # Find an upcoming dose
-    within find('.mb-4', text: 'Upcoming', match: :first) do
+    within first('.mb-4', text: 'Upcoming') do
       click_on '💊 Take'
     end
 
