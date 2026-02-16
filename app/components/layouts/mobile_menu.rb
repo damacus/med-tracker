@@ -5,7 +5,6 @@ module Components
     # Mobile hamburger menu using RubyUI::Sheet
     class MobileMenu < Components::Base
       include Phlex::Rails::Helpers::LinkTo
-      include Phlex::Rails::Helpers::T
 
       attr_reader :current_user
 

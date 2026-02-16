@@ -7,7 +7,6 @@ module Components
       include Phlex::Rails::Helpers::FormWith
       include Phlex::Rails::Helpers::OptionsFromCollectionForSelect
       include Phlex::Rails::Helpers::Pluralize
-      include Phlex::Rails::Helpers::T
 
       attr_reader :person_medicine, :person, :medicines
 

@@ -4,8 +4,6 @@ module Components
   module Dashboard
     # Renders the dashboard quick actions section
     class QuickActions < Components::Base
-      include Phlex::Rails::Helpers::T
-
       attr_reader :url_helpers
 
       def initialize(url_helpers: nil)
