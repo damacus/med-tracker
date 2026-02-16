@@ -129,6 +129,7 @@ en:
       logout: "Logout"
       account: "Account"
     mobile_menu:
+      brand: "MedTracker"
       open_menu: "Open menu"
       close_menu: "Close menu"
       medicines: "Medicines"

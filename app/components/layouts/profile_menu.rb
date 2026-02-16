@@ -5,7 +5,6 @@ module Components
     # Profile dropdown menu for authenticated users
     class ProfileMenu < Components::Base
       include Phlex::Rails::Helpers::LinkTo
-      include Phlex::Rails::Helpers::T
 
       attr_reader :current_user
 
