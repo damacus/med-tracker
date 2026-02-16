@@ -134,20 +134,6 @@ module Components
           end
         end
       end
-
-      def render_empty_state
-        div(class: 'space-y-6') do
-          Heading(level: 2) { t('dashboard.medication_schedule') }
-          Card(class: 'text-center py-12') do
-            render RubyUI::CardContent.new do
-              Text(size: '5', weight: 'semibold', class: 'text-slate-700 mb-2') do
-                t('dashboard.no_active_prescriptions')
-              end
-              Text(class: 'text-slate-600') { t('dashboard.add_prescriptions_hint') }
-            end
-          end
-        end
-      end
     end
   end
 end
