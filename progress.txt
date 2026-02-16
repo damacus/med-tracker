@@ -1,0 +1,18 @@
+# I18n Epic Progress - med-tracker-b45f
+
+## Current Plan (PR < 200 lines)
+1. Set up basic i18n configuration
+2. Create locale files for en, cy, es, pt
+3. Identify ~10 hardcoded strings in views/components
+4. Replace with t() calls and add translations
+5. Add basic tests for i18n setup
+
+## Focus Areas for First PR
+- Views and components (most visible impact)
+- Common UI strings (buttons, labels, navigation)
+- Establish translation pattern for future PRs
+
+## Next Steps
+- grep for hardcoded strings in app/views/
+- grep for hardcoded strings in app/components/
+- Set up config/locales/ structure

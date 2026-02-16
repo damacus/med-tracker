@@ -8,10 +8,11 @@ module Components
 
       def view_template
         div(class: 'hidden md:flex items-center gap-6') do
-          link_to('Medicines', medicines_path,
+          link_to(t('layouts.desktop_nav.medicines'), medicines_path,
                   class: 'nav__link text-sm font-medium transition-colors hover:text-primary')
-          link_to('People', people_path, class: 'nav__link text-sm font-medium transition-colors hover:text-primary')
-          link_to('Medicine Finder', medicine_finder_path,
+          link_to(t('layouts.desktop_nav.people'), people_path,
+                  class: 'nav__link text-sm font-medium transition-colors hover:text-primary')
+          link_to(t('layouts.desktop_nav.medicine_finder'), medicine_finder_path,
                   class: 'nav__link text-sm font-medium transition-colors hover:text-primary')
         end
       end

@@ -17,10 +17,10 @@ module Components
             Button(variant: :outline) { current_user_name }
           end
           render RubyUI::DropdownMenuContent.new do
-            render(RubyUI::DropdownMenuLabel.new { 'My Account' })
+            render(RubyUI::DropdownMenuLabel.new { t('layouts.profile_menu.my_account') })
             render RubyUI::DropdownMenuSeparator.new
-            render RubyUI::DropdownMenuItem.new(href: root_path) { 'Dashboard' }
-            render RubyUI::DropdownMenuItem.new(href: profile_path) { 'Profile' }
+            render RubyUI::DropdownMenuItem.new(href: root_path) { t('layouts.profile_menu.dashboard') }
+            render RubyUI::DropdownMenuItem.new(href: profile_path) { t('layouts.profile_menu.profile') }
             render_admin_menu_item if user_is_admin?
             render RubyUI::DropdownMenuSeparator.new
             render_logout_menu_item
@@ -31,18 +31,18 @@ module Components
       private
 
       def render_admin_menu_item
-        render RubyUI::DropdownMenuItem.new(href: admin_root_path) { 'Administration' }
+        render RubyUI::DropdownMenuItem.new(href: admin_root_path) { t('layouts.profile_menu.administration') }
       end
 
       def render_logout_menu_item
         render RubyUI::DropdownMenuItem.new(
           href: '/logout',
           data: { turbo_method: :post }
-        ) { 'Logout' }
+        ) { t('layouts.profile_menu.logout') }
       end
 
       def current_user_name
-        current_user&.name || 'Account'
+        current_user&.name || t('layouts.profile_menu.account')
       end
 
       def user_is_admin?
