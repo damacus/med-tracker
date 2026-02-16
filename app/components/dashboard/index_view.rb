@@ -51,18 +51,22 @@ module Components
 
       def render_stats_section
         div(class: 'grid grid-cols-1 md:grid-cols-2 gap-6 mb-8') do
-          render Components::Dashboard::StatCard.new(title: 'People', value: people.count, icon_type: 'users')
-          render Components::Dashboard::StatCard.new(title: 'Active Prescriptions', value: active_prescriptions.count,
-                                                     icon_type: 'pill')
+          render Components::Dashboard::StatCard.new(title: t('dashboard.stats.people'), value: people.count,
+                                                     icon_type: 'users')
+          render Components::Dashboard::StatCard.new(
+            title: t('dashboard.stats.active_prescriptions'),
+            value: active_prescriptions.count,
+            icon_type: 'pill'
+          )
         end
       end
 
       def render_timeline_section
         div(class: 'space-y-4 mb-12') do
-          Heading(level: 2) { 'Timeline' }
+          Heading(level: 2) { t('dashboard.todays_schedule') }
 
           if doses.any?
-            div(class: 'grid grid-cols-1 gap-4') do
+            div(class: 'grid grid-cols-1 md:grid-cols-2 gap-4') do
               doses.each do |dose|
                 render Components::Dashboard::TimelineItem.new(dose: dose)
               end
@@ -79,7 +83,7 @@ module Components
         return if upcoming_prescriptions.empty?
 
         div(class: 'space-y-4') do
-          Heading(level: 2) { 'Medication Schedule' }
+          Heading(level: 2) { t('dashboard.medication_schedule') }
           render_mobile_cards
           render_desktop_table
         end
@@ -105,13 +109,13 @@ module Components
           Table do
             TableHeader do
               TableRow do
-                TableHead { 'Person' }
-                TableHead { 'Medicine' }
-                TableHead { 'Dosage' }
-                TableHead { 'Quantity' }
-                TableHead { 'Frequency' }
-                TableHead { 'End Date' }
-                TableHead(class: 'text-center') { 'Actions' }
+                TableHead { t('dashboard.table.person') }
+                TableHead { t('dashboard.table.medicine') }
+                TableHead { t('dashboard.table.dosage') }
+                TableHead { t('dashboard.table.quantity') }
+                TableHead { t('dashboard.table.frequency') }
+                TableHead { t('dashboard.table.end_date') }
+                TableHead(class: 'text-center') { t('dashboard.table.actions') }
               end
             end
 
@@ -133,11 +137,13 @@ module Components
 
       def render_empty_state
         div(class: 'space-y-6') do
-          Heading(level: 2) { 'Medication Schedule' }
+          Heading(level: 2) { t('dashboard.medication_schedule') }
           Card(class: 'text-center py-12') do
             render RubyUI::CardContent.new do
-              Text(size: '5', weight: 'semibold', class: 'text-slate-700 mb-2') { 'No active prescriptions found' }
-              Text(class: 'text-slate-600') { 'Add prescriptions to see them here' }
+              Text(size: '5', weight: 'semibold', class: 'text-slate-700 mb-2') do
+                t('dashboard.no_active_prescriptions')
+              end
+              Text(class: 'text-slate-600') { t('dashboard.add_prescriptions_hint') }
             end
           end
         end

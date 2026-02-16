@@ -157,13 +157,28 @@ en:
   dashboard:
     title: "Family Dashboard"
     subtitle: "Your family's medication schedule for today."
+    todays_schedule: "Today's Schedule"
+    medication_schedule: "Medication Schedule"
+    no_active_prescriptions: "No active prescriptions found"
+    add_prescriptions_hint: "Add prescriptions to see them here"
     empty_state: "No medications scheduled for today."
+    stats:
+      people: "People"
+      active_prescriptions: "Active Prescriptions"
     statuses:
       taken: "Taken"
       upcoming: "Upcoming"
       cooldown: "Wait"
       missed: "Missed"
       out_of_stock: "Out of Stock"
+    table:
+      person: "Person"
+      medicine: "Medicine"
+      dosage: "Dosage"
+      quantity: "Quantity"
+      frequency: "Frequency"
+      end_date: "End Date"
+      actions: "Actions"
     delete_confirmation:
       delete: "Delete"
       delete_prescription: "Delete Prescription?"

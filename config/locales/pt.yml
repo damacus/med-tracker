@@ -154,6 +154,30 @@ pt:
         one: "1 erro impediu que este medicamento fosse guardado:"
         other: "%{count} erros impediram que este medicamento fosse guardado:"
   dashboard:
+    title: "Painel Familiar"
+    subtitle: "O horário de medicamentos da sua família para hoje."
+    todays_schedule: "Horário de Hoje"
+    medication_schedule: "Horário de Medicamentos"
+    no_active_prescriptions: "Nenhuma prescrição ativa encontrada"
+    add_prescriptions_hint: "Adicione prescrições para vê-las aqui"
+    empty_state: "Nenhum medicamento agendado para hoje."
+    stats:
+      people: "Pessoas"
+      active_prescriptions: "Prescrições Ativas"
+    statuses:
+      taken: "Tomado"
+      upcoming: "Próximo"
+      cooldown: "Aguardar"
+      missed: "Perdido"
+      out_of_stock: "Sem Stock"
+    table:
+      person: "Pessoa"
+      medicine: "Medicamento"
+      dosage: "Dose"
+      quantity: "Quantidade"
+      frequency: "Frequência"
+      end_date: "Data de Fim"
+      actions: "Ações"
     delete_confirmation:
       delete: "Eliminar"
       delete_prescription: "Eliminar Prescrição?"

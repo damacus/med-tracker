@@ -24,11 +24,6 @@ module Components
                   "#{dose[:person].name} • #{dose[:scheduled_at].strftime('%H:%M')}"
                 end
                 render Components::Shared::StockBadge.new(medicine: dose[:source].medicine)
-                if dose[:source].medicine.stock.present?
-                  Text(size: '1', weight: 'muted') do
-                    dose[:source].medicine.stock.to_s
-                  end
-                end
               end
             end
 
@@ -47,32 +42,24 @@ module Components
       end
 
       def render_action_button
-        path = if dose[:source].is_a?(Prescription)
+        prescription = dose[:source].is_a?(Prescription)
+        path = if prescription
                  take_medicine_person_prescription_path(dose[:person], dose[:source])
                else
                  take_medicine_person_person_medicine_path(dose[:person], dose[:source])
                end
-
-        amount = if dose[:source].is_a?(Prescription)
-                   dose[:source].dosage.amount
-                 else
-                   dose[:source].medicine.dosage_amount
-                 end
+        amount = prescription ? dose[:source].dosage.amount : dose[:source].medicine.dosage_amount
 
         form_with(url: path, method: :post,
                   data: { controller: 'optimistic-take', action: 'submit->optimistic-take#submit' }) do |f|
           input(type: :hidden, name: 'authenticity_token', value: view_context.form_authenticity_token)
           f.hidden_field :amount_ml, value: amount
-          button_classes = [
-            'inline-flex items-center justify-center rounded-md text-sm font-medium',
-            'ring-offset-background transition-colors focus-visible:outline-none',
-            'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-            'disabled:pointer-events-none disabled:opacity-50 border border-input',
-            'bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3'
-          ].join(' ')
-          f.button(type: :submit, class: button_classes, data: { optimistic_take_target: 'button' }) do
-            t('person_medicines.card.take')
-          end
+          Button(
+            type: :submit,
+            variant: :outline,
+            size: :sm,
+            data: { optimistic_take_target: 'button', testid: "take-dose-#{dose_id}" }
+          ) { t('person_medicines.card.take') }
         end
       end
 
