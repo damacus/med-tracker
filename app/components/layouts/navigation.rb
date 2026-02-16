@@ -33,7 +33,7 @@ module Components
           href: '#main-content',
           class: 'sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 ' \
                  'focus:bg-background focus:text-foreground focus:ring-2 focus:ring-ring focus:rounded-md'
-        ) { 'Skip to content' }
+        ) { t('layouts.navigation.skip_to_content') }
       end
 
       def authenticated?
@@ -56,7 +56,7 @@ module Components
 
       def render_brand
         div(class: 'nav__brand') do
-          link_to('MedTracker', root_path, class: 'nav__brand-link')
+          link_to(t('layouts.navigation.brand'), root_path, class: 'nav__brand-link')
         end
       end
 
@@ -65,14 +65,14 @@ module Components
           if authenticated?
             render Components::Layouts::ProfileMenu.new(current_user: @current_user)
           else
-            link_to('Login', '/login', class: 'nav__link text-sm font-medium')
+            link_to(t('layouts.navigation.login'), '/login', class: 'nav__link text-sm font-medium')
           end
         end
 
         return if authenticated?
 
         div(class: 'md:hidden') do
-          link_to('Login', '/login', class: 'nav__link text-sm font-medium')
+          link_to(t('layouts.navigation.login'), '/login', class: 'nav__link text-sm font-medium')
         end
       end
     end

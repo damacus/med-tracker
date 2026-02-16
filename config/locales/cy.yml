@@ -90,3 +90,29 @@ cy:
   webauthn:
     passkey_removed: "Allwedd mynediad wedi'i dynnu'n llwyddiannus"
     passkey_registered: "Allwedd mynediad wedi'i chofrestru'n llwyddiannus"
+
+  layouts:
+    navigation:
+      skip_to_content: "Neidio i'r cynnwys"
+      brand: "MedTracker"
+      login: "Mewngofnodi"
+    desktop_nav:
+      medicines: "Meddyginiaethau"
+      people: "Pobl"
+      medicine_finder: "Darganfyddwr Meddyginiaethau"
+    profile_menu:
+      my_account: "Fy Nghyfrif"
+      dashboard: "Bordd"
+      profile: "Proffil"
+      administration: "Gweinyddu"
+      logout: "Allgofnodi"
+      account: "Cyfrif"
+    mobile_menu:
+      open_menu: "Agor y ddewislen"
+      close_menu: "Cau y ddewislen"
+      medicines: "Meddyginiaethau"
+      people: "Pobl"
+      medicine_finder: "Darganfyddwr Meddyginiaethau"
+      profile: "Proffil"
+      administration: "Gweinyddu"
+      logout: "Allgofnodi"

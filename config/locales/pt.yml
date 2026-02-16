@@ -90,3 +90,29 @@ pt:
   webauthn:
     passkey_removed: "Chave de acesso removida com sucesso"
     passkey_registered: "Chave de acesso registada com sucesso"
+
+  layouts:
+    navigation:
+      skip_to_content: "Saltar para o conteúdo"
+      brand: "MedTracker"
+      login: "Iniciar sessão"
+    desktop_nav:
+      medicines: "Medicamentos"
+      people: "Pessoas"
+      medicine_finder: "Pesquisador de Medicamentos"
+    profile_menu:
+      my_account: "A Minha Conta"
+      dashboard: "Painel"
+      profile: "Perfil"
+      administration: "Administração"
+      logout: "Terminar sessão"
+      account: "Conta"
+    mobile_menu:
+      open_menu: "Abrir menu"
+      close_menu: "Fechar menu"
+      medicines: "Medicamentos"
+      people: "Pessoas"
+      medicine_finder: "Pesquisador de Medicamentos"
+      profile: "Perfil"
+      administration: "Administração"
+      logout: "Terminar sessão"

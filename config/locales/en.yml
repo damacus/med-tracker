@@ -90,3 +90,29 @@ en:
   webauthn:
     passkey_removed: "Passkey removed successfully"
     passkey_registered: "Passkey registered successfully"
+
+  layouts:
+    navigation:
+      skip_to_content: "Skip to content"
+      brand: "MedTracker"
+      login: "Login"
+    desktop_nav:
+      medicines: "Medicines"
+      people: "People"
+      medicine_finder: "Medicine Finder"
+    profile_menu:
+      my_account: "My Account"
+      dashboard: "Dashboard"
+      profile: "Profile"
+      administration: "Administration"
+      logout: "Logout"
+      account: "Account"
+    mobile_menu:
+      open_menu: "Open menu"
+      close_menu: "Close menu"
+      medicines: "Medicines"
+      people: "People"
+      medicine_finder: "Medicine Finder"
+      profile: "Profile"
+      administration: "Administration"
+      logout: "Logout"
