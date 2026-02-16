@@ -9,7 +9,8 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
     described_class.new(
       people: people,
       active_prescriptions: active_prescriptions,
-      upcoming_prescriptions: upcoming_prescriptions
+      upcoming_prescriptions: upcoming_prescriptions,
+      doses: []
     )
   end
 
@@ -55,7 +56,7 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
 
     it 'renders the empty prescriptions message' do
       rendered = render_inline(dashboard_view)
-      expect(rendered.text).to include('No active prescriptions found')
+      expect(rendered.text).to include('No medications scheduled for today')
     end
   end
 
@@ -66,7 +67,7 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
 
     it 'renders the empty prescriptions message' do
       rendered = render_inline(dashboard_view)
-      expect(rendered.text).to include('No active prescriptions found')
+      expect(rendered.text).to include('No medications scheduled for today')
     end
   end
 end

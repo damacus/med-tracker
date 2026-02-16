@@ -6,9 +6,7 @@ module Components
     class IndexView < Components::Base
       attr_reader :people, :active_prescriptions, :upcoming_prescriptions, :url_helpers, :current_user, :doses
 
-      def initialize(people:, active_prescriptions:, upcoming_prescriptions:, doses:, **options)
-        url_helpers = options[:url_helpers]
-        current_user = options[:current_user]
+      def initialize(people:, active_prescriptions:, upcoming_prescriptions:, doses:, url_helpers: nil, current_user: nil)
         @people = people
         @active_prescriptions = active_prescriptions
         @upcoming_prescriptions = upcoming_prescriptions
@@ -23,6 +21,7 @@ module Components
           render_header
           render_stats_section
           render_timeline_section
+          render_prescriptions_section
         end
       end
 
@@ -37,12 +36,12 @@ module Components
 
       def render_quick_actions
         div(class: 'flex flex-row flex-wrap gap-2 sm:gap-3') do
-          Link(
+          render RubyUI::Link.new(
             href: url_helpers&.new_medicine_path || '#',
             variant: :primary,
             class: 'min-h-[44px]'
           ) { t('dashboard.quick_actions.add_medicine') }
-          Link(
+          render RubyUI::Link.new(
             href: url_helpers&.new_person_path || '#',
             variant: :secondary,
             class: 'min-h-[44px]'
@@ -59,8 +58,8 @@ module Components
       end
 
       def render_timeline_section
-        div(class: 'space-y-4') do
-          Heading(level: 2) { 'Medication Schedule' }
+        div(class: 'space-y-4 mb-12') do
+          Heading(level: 2) { 'Timeline' }
 
           if doses.any?
             div(class: 'grid grid-cols-1 gap-4') do
@@ -69,8 +68,20 @@ module Components
               end
             end
           else
-            render_empty_state
+            render RubyUI::Card.new(class: 'p-8 text-center') do
+              Text(weight: :muted) { t('dashboard.empty_state') }
+            end
           end
+        end
+      end
+
+      def render_prescriptions_section
+        return if upcoming_prescriptions.empty?
+
+        div(class: 'space-y-4') do
+          Heading(level: 2) { 'Medication Details' }
+          render_mobile_cards
+          render_desktop_table
         end
       end
 
@@ -124,7 +135,7 @@ module Components
         div(class: 'space-y-6') do
           Heading(level: 2) { 'Medication Schedule' }
           Card(class: 'text-center py-12') do
-            CardContent do
+            render RubyUI::CardContent.new do
               Text(size: '5', weight: 'semibold', class: 'text-slate-700 mb-2') { 'No active prescriptions found' }
               Text(class: 'text-slate-600') { 'Add prescriptions to see them here' }
             end
