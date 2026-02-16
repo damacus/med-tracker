@@ -14,6 +14,7 @@ module Components
 
       def view_template
         return if medicine.stock.blank?
+        return unless medicine.low_stock? || medicine.out_of_stock?
 
         render RubyUI::Badge.new(variant: badge_variant) { badge_text }
       end

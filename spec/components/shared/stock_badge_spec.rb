@@ -24,9 +24,9 @@ RSpec.describe Components::Shared::StockBadge, type: :component do
     context 'when medicine is in stock' do
       let(:stock) { 100 }
 
-      it 'renders In Stock badge' do
+      it 'renders nothing (badge only shows for low/out of stock)' do
         result = render_inline(component)
-        expect(result.text).to include('In Stock')
+        expect(result.to_html).to be_empty
       end
     end
 
