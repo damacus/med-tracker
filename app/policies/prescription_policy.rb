@@ -70,41 +70,9 @@ class PrescriptionPolicy < ApplicationPolicy
   class Scope < ApplicationPolicy::Scope
     def resolve
       return scope.none unless user
-      return scope.all if full_access?
-      return carer_parent_scope if care_relationships?
-      return own_prescriptions_scope if owns_record?
+      return scope.all if admin_or_clinician?
 
-      scope.none
-    end
-
-    private
-
-    def full_access?
-      admin? || doctor?
-    end
-
-    def care_relationships?
-      accessible_patient_ids.any?
-    end
-
-    def carer_parent_scope
-      scope.where(person_id: accessible_patient_ids)
-    end
-
-    def own_prescriptions_scope
-      scope.where(person_id: user.person.id)
-    end
-
-    def owns_record?
-      user&.person
-    end
-
-    def carer_with_patient?
-      user&.carer? && user.person
-    end
-
-    def parent_with_minor?
-      user&.parent? && user.person
+      scope.where(person_id: accessible_person_ids)
     end
   end
 end
