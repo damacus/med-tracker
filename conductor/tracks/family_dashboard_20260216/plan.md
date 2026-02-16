@@ -3,15 +3,15 @@
 ## Phase 1: Data Architecture & Querying
 Implement the logic to aggregate medication schedules across the care team.
 
-- [ ] Task: Conductor - Define `FamilyDashboard::ScheduleQuery` requirements
-    - [ ] Define the interface for fetching a 24-hour window of doses.
-- [ ] Task: TDD - `FamilyDashboard::ScheduleQuery`
-    - [ ] Write tests in `spec/services/family_dashboard/schedule_query_spec.rb`.
-    - [ ] Verify failure (Red).
-- [ ] Task: Implement `FamilyDashboard::ScheduleQuery`
-    - [ ] Aggregate `Prescription` and `PersonMedicine` schedules.
-    - [ ] Join with `MedicationTake` to determine status.
-    - [ ] Verify tests pass (Green).
+- [x] Task: Conductor - Define `FamilyDashboard::ScheduleQuery` requirements
+    - [x] Define the interface for fetching a 24-hour window of doses.
+- [x] Task: TDD - `FamilyDashboard::ScheduleQuery`
+    - [x] Write tests in `spec/services/family_dashboard/schedule_query_spec.rb`.
+    - [x] Verify failure (Red).
+- [x] Task: Implement `FamilyDashboard::ScheduleQuery`
+    - [x] Aggregate `Prescription` and `PersonMedicine` schedules.
+    - [x] Join with `MedicationTake` to determine status.
+    - [x] Verify tests pass (Green).
 - [ ] Task: Conductor - User Manual Verification 'Data Architecture' (Protocol in workflow.md)
 
 ## Phase 2: View Components
