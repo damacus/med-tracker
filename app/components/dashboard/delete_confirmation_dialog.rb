@@ -23,20 +23,20 @@ module Components
               size: :sm,
               class: button_class,
               data: { test_id: "delete-prescription-#{prescription.id}" }
-            ) { 'Delete' }
+            ) { t('dashboard.delete_confirmation.delete') }
           end
 
           AlertDialogContent do
             AlertDialogHeader do
-              AlertDialogTitle { 'Delete Prescription?' }
+              AlertDialogTitle { t('dashboard.delete_confirmation.delete_prescription') }
               AlertDialogDescription do
-                plain "Are you sure you want to delete #{prescription.medicine.name} "
-                plain "for #{prescription.person.name}? This action cannot be undone."
+                plain t('dashboard.delete_confirmation.are_you_sure', medicine: prescription.medicine.name,
+                                                                      person: prescription.person.name)
               end
             end
 
             AlertDialogFooter do
-              AlertDialogCancel { 'Cancel' }
+              AlertDialogCancel { t('dashboard.delete_confirmation.cancel') }
               render_delete_form
             end
           end
@@ -56,7 +56,7 @@ module Components
             variant: :destructive,
             type: :submit,
             data: { test_id: "confirm-delete-#{prescription.id}" }
-          ) { 'Delete' }
+          ) { t('dashboard.delete_confirmation.delete') }
         end
       end
     end

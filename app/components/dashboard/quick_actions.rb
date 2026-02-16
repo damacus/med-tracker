@@ -13,7 +13,7 @@ module Components
 
       def view_template
         section(class: 'dashboard__section dashboard__section--actions') do
-          Heading(level: 2, class: 'dashboard__section-title') { 'Quick Actions' }
+          Heading(level: 2, class: 'dashboard__section-title') { t('dashboard.quick_actions.title') }
           div(class: 'dashboard__actions-list') do
             action_links.each do |label, url|
               Link(href: url, variant: :primary) { label }
@@ -25,11 +25,11 @@ module Components
       private
 
       def action_links
-        return [['Add Medicine', '#']] unless url_helpers
+        return [[t('dashboard.quick_actions.add_medicine'), '#']] unless url_helpers
 
         [
-          ['Add Medicine', url_helpers.new_medicine_path],
-          ['Add Person', url_helpers.new_person_path]
+          [t('dashboard.quick_actions.add_medicine'), url_helpers.new_medicine_path],
+          [t('dashboard.quick_actions.add_person'), url_helpers.new_person_path]
         ]
       end
     end

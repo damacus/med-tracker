@@ -47,7 +47,7 @@ module Components
         render RubyUI::Alert.new(variant: :destructive, class: 'mb-6') do
           div do
             Heading(level: 2, size: '3', class: 'font-semibold mb-2') do
-              plain "#{pluralize(medicine.errors.count, 'error')} prevented this medicine from being saved:"
+              plain t('forms.medicines.validation_errors', count: medicine.errors.count)
             end
             ul(class: 'my-2 ml-6 list-disc [&>li]:mt-1') do
               medicine.errors.full_messages.each do |message|
@@ -75,7 +75,7 @@ module Components
       def render_name_field(_form)
         div(class: 'sm:col-span-2') do
           FormField do
-            FormFieldLabel(for: 'medicine_name') { 'Name' }
+            FormFieldLabel(for: 'medicine_name') { t('forms.medicines.name') }
             Input(
               type: :text,
               name: 'medicine[name]',
@@ -92,7 +92,7 @@ module Components
       def render_description_field(_form)
         div(class: 'sm:col-span-2') do
           FormField do
-            FormFieldLabel(for: 'medicine_description') { 'Description' }
+            FormFieldLabel(for: 'medicine_description') { t('forms.medicines.description') }
             Textarea(
               name: 'medicine[description]',
               id: 'medicine_description',
@@ -110,7 +110,7 @@ module Components
       def render_dosage_amount_field
         div do
           FormField do
-            FormFieldLabel(for: 'medicine_dosage_amount') { 'Standard Dosage' }
+            FormFieldLabel(for: 'medicine_dosage_amount') { t('forms.medicines.standard_dosage') }
             Input(
               type: :number,
               name: 'medicine[dosage_amount]',
@@ -126,13 +126,13 @@ module Components
       def render_dosage_unit_field
         div do
           FormField do
-            FormFieldLabel(for: 'medicine_dosage_unit') { 'Unit' }
+            FormFieldLabel(for: 'medicine_dosage_unit') { t('forms.medicines.unit') }
             select(
               name: 'medicine[dosage_unit]',
               id: 'medicine_dosage_unit',
               class: select_classes
             ) do
-              option(value: '', selected: medicine.dosage_unit.blank?) { 'Select unit' }
+              option(value: '', selected: medicine.dosage_unit.blank?) { t('forms.medicines.select_unit') }
               dosage_units.each do |unit|
                 option(value: unit, selected: medicine.dosage_unit == unit) { unit }
               end
@@ -154,7 +154,7 @@ module Components
       def render_current_supply_field
         div do
           FormField do
-            FormFieldLabel(for: 'medicine_current_supply') { 'Current Supply' }
+            FormFieldLabel(for: 'medicine_current_supply') { t('forms.medicines.current_supply') }
             Input(
               type: :number,
               name: 'medicine[current_supply]',
@@ -169,7 +169,7 @@ module Components
       def render_stock_field
         div do
           FormField do
-            FormFieldLabel(for: 'medicine_stock') { 'Stock' }
+            FormFieldLabel(for: 'medicine_stock') { t('forms.medicines.stock') }
             Input(
               type: :number,
               name: 'medicine[stock]',
@@ -184,7 +184,7 @@ module Components
       def render_reorder_threshold_field
         div do
           FormField do
-            FormFieldLabel(for: 'medicine_reorder_threshold') { 'Reorder Threshold' }
+            FormFieldLabel(for: 'medicine_reorder_threshold') { t('forms.medicines.reorder_threshold') }
             Input(
               type: :number,
               name: 'medicine[reorder_threshold]',
@@ -199,7 +199,7 @@ module Components
       def render_warnings_field(_form)
         div(class: 'sm:col-span-2') do
           FormField do
-            FormFieldLabel(for: 'medicine_warnings') { 'Warnings' }
+            FormFieldLabel(for: 'medicine_warnings') { t('forms.medicines.warnings') }
             Textarea(
               name: 'medicine[warnings]',
               id: 'medicine_warnings',
@@ -211,8 +211,8 @@ module Components
 
       def render_form_actions(_form)
         div(class: 'flex items-center justify-between') do
-          Link(href: medicines_path, variant: :outline) { 'Back to Medicines' }
-          Button(type: :submit, variant: :primary) { 'Save Medicine' }
+          Link(href: medicines_path, variant: :outline) { t('forms.medicines.back_to_medicines') }
+          Button(type: :submit, variant: :primary) { t('forms.medicines.save_medicine') }
         end
       end
     end
