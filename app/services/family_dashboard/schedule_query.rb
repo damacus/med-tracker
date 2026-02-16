@@ -3,18 +3,15 @@
 module FamilyDashboard
   # Query object to fetch a 24-hour medication schedule for a person and their dependents
   class ScheduleQuery
-    def initialize(person)
-      @person = person
+    def initialize(people)
+      @people = Array(people)
     end
 
     def call
-      # 1. Identify all people in the "family" (self + active patient relationships)
-      family_members = [@person] + @person.patients.to_a
+      # 1. Fetch all active prescriptions and person_medicines for these people
+      doses = aggregate_family_doses(@people)
 
-      # 2. Fetch all active prescriptions and person_medicines for these people
-      doses = aggregate_family_doses(family_members)
-
-      # 3. Sort by time and return
+      # 2. Sort by time and return
       doses.sort_by { |d| d[:scheduled_at] }
     end
 
