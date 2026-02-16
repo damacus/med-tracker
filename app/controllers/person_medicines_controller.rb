@@ -106,41 +106,34 @@ class PersonMedicinesController < ApplicationController
     )
     flash.now[:notice] = t('person_medicines.medicine_taken')
 
-        respond_to do |format|
+    respond_to do |format|
+      format.html { redirect_back_or_to person_path(@person), notice: t('person_medicines.medicine_taken') }
 
-          format.html { redirect_back_or_to person_path(@person), notice: t('person_medicines.medicine_taken') }
+      format.turbo_stream do
+        flash.now[:notice] = t('person_medicines.medicine_taken')
 
-          format.turbo_stream do
+        render turbo_stream: [
 
-            flash.now[:notice] = t('person_medicines.medicine_taken')
+          turbo_stream.replace("timeline_person_medicine_#{@person_medicine.id}",
+                               Components::Dashboard::TimelineItem.new(dose: {
 
-            render turbo_stream: [
+                                                                         person: @person,
 
-              turbo_stream.replace("dose_personmedicine_#{@person_medicine.id}",
+                                                                         source: @person_medicine.reload,
 
-                                   Components::Dashboard::TimelineItem.new(dose: {
+                                                                         scheduled_at: @take.taken_at,
 
-                                                                             person: @person,
+                                                                         taken_at: @take.taken_at,
 
-                                                                             source: @person_medicine.reload,
+                                                                         status: :taken
 
-                                                                             scheduled_at: @take.taken_at,
+                                                                       })),
 
-                                                                             taken_at: @take.taken_at,
+          turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice]))
 
-                                                                             status: :taken
-
-                                                                           })),
-
-              turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice]))
-
-            ]
-
-          end
-
-        end
-
-    
+        ]
+      end
+    end
   end
 
   private

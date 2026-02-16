@@ -128,9 +128,9 @@ class ApplicationPolicy
     end
 
     def accessible_person_ids
-      [user.person_id].compact.tap do |ids|
-        ids.concat(accessible_patient_ids)
-      end.uniq
+      ids = Set.new([user.person_id].compact)
+      ids.merge(accessible_patient_ids)
+      ids.to_a
     end
   end
 end

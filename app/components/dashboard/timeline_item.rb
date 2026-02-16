@@ -11,7 +11,7 @@ module Components
       end
 
       def view_template
-        render RubyUI::Card.new(class: 'mb-4', id: "timeline_prescription_#{dose[:source].id}",
+        render RubyUI::Card.new(class: 'mb-4', id: "timeline_#{dose[:source].class.name.underscore}_#{dose[:source].id}",
                                 data: { id: "dose_#{dose_id}" }) do
           div(class: 'flex items-center justify-between p-4') do
             div(class: 'flex items-center space-x-4') do
