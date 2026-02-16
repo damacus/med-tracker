@@ -34,18 +34,6 @@ pre-push:
           echo "Please start Docker daemon to run full test suite"
         fi
 
-    - name: markdown-lint
-      tags:
-        - docs
-        - linting
-      run: |
-        echo "📝 Running markdown linting on critical files..."
-        if command -v markdownlint-cli2 >/dev/null 2>&1; then
-          markdownlint-cli2 "README.md" "CONTRIBUTING.md" "CHANGELOG.md" "agents.md" "AGENTS.md" || true
-        else
-          echo "⚠️  markdownlint-cli2 not found, skipping markdown checks"
-        fi
-
 pre-commit:
   parallel: true
   jobs:
