@@ -161,6 +161,7 @@ cy:
     medication_schedule: "Amserlen Meddyginiaeth"
     no_active_prescriptions: "Dim presgripsiynau gweithredol wedi'u canfod"
     add_prescriptions_hint: "Ychwanegwch bresgripsiynau i'w gweld yma"
+    dose_taken_at: "%{person} • Cymerwyd am %{time}"
     empty_state: "Dim meddyginiaethau wedi'u trefnu ar gyfer heddiw."
     stats:
       people: "Pobl"
