@@ -154,6 +154,14 @@ cy:
         one: "1 gwall wedi atal y meddyginiaeth hon rhag cael ei chadw:"
         other: "%{count} wall wedi atal y meddyginiaeth hon rhag cael ei chadw:"
   dashboard:
+    title: "Bwrdd Rheoli Teulu"
+    subtitle: "Amserlen meddyginiaeth eich teulu am heddiw."
+    empty_state: "Dim meddyginiaethau wedi'u trefnu ar gyfer heddiw."
+    statuses:
+      taken: "Wedi cymryd"
+      upcoming: "Ar ddod"
+      cooldown: "Aros"
+      missed: "Wedi colli"
     delete_confirmation:
       delete: "Dileu"
       delete_prescription: "Dileu Trwyddedriad?"

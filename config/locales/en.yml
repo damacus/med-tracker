@@ -155,6 +155,14 @@ en:
         one: "1 error prevented this medicine from being saved:"
         other: "%{count} errors prevented this medicine from being saved:"
   dashboard:
+    title: "Family Dashboard"
+    subtitle: "Your family's medication schedule for today."
+    empty_state: "No medications scheduled for today."
+    statuses:
+      taken: "Taken"
+      upcoming: "Upcoming"
+      cooldown: "Wait"
+      missed: "Missed"
     delete_confirmation:
       delete: "Delete"
       delete_prescription: "Delete Prescription?"
