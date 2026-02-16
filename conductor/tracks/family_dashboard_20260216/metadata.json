@@ -1,0 +1,8 @@
+{
+  "track_id": "family_dashboard_20260216",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-02-16T12:00:00Z",
+  "updated_at": "2026-02-16T12:00:00Z",
+  "description": "Implementation of the Unified Family Dashboard showing upcoming and missed doses for all family members, integrated with existing models."
+}
