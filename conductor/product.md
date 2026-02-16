@@ -13,7 +13,7 @@ Parents recording their own and their childs medication schedule
 - **Schedule Management:** Simplify the coordination of multiple medication schedules (e.g., child's antibiotics and parent's maintenance meds) in one place.
 
 ## Key Features (MVP)
-- **Unified Family Dashboard:** A single view showing upcoming, taken, and missed doses for all family members.
+- **Unified Family Dashboard:** A chronological timeline of all family medication doses (prescription and non-prescription) with quick-recording actions and safety status tracking.
 - **Simple Dose Recording:** An intuitive interface for quickly logging doses as they are administered.
 
 ## Security & Privacy
