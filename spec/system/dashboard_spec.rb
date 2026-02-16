@@ -12,6 +12,7 @@ RSpec.describe 'Dashboard' do
     visit dashboard_path
 
     expect(page).to have_content('Family Dashboard')
+    expect(page).to have_content("Today's Schedule")
 
     # Jane's medication
     expect(page).to have_content('Ibuprofen')
@@ -25,10 +26,7 @@ RSpec.describe 'Dashboard' do
     sign_in(users(:jane))
     visit dashboard_path
 
-    # Find an upcoming dose
-    within first('.mb-4', text: 'Upcoming') do
-      click_on '💊 Take'
-    end
+    first('[data-testid^="take-dose-"]').click
 
     expect(page).to have_content('Medicine taken successfully', wait: 10)
   end

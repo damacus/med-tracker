@@ -20,7 +20,12 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
 
   it 'renders the dashboard title' do
     rendered = render_inline(dashboard_view)
-    expect(rendered.text).to include('Dashboard')
+    expect(rendered.text).to include('Family Dashboard')
+  end
+
+  it 'renders the schedule heading' do
+    rendered = render_inline(dashboard_view)
+    expect(rendered.text).to include("Today's Schedule")
   end
 
   describe 'stats display' do

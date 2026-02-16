@@ -129,6 +129,7 @@ cy:
       logout: "Allgofnodi"
       account: "Cyfrif"
     mobile_menu:
+      brand: "MedTracker"
       open_menu: "Agor y ddewislen"
       close_menu: "Cau y ddewislen"
       medicines: "Meddyginiaethau"
@@ -156,13 +157,28 @@ cy:
   dashboard:
     title: "Bwrdd Rheoli Teulu"
     subtitle: "Amserlen meddyginiaeth eich teulu am heddiw."
+    todays_schedule: "Amserlen Heddiw"
+    medication_schedule: "Amserlen Meddyginiaeth"
+    no_active_prescriptions: "Dim presgripsiynau gweithredol wedi'u canfod"
+    add_prescriptions_hint: "Ychwanegwch bresgripsiynau i'w gweld yma"
     empty_state: "Dim meddyginiaethau wedi'u trefnu ar gyfer heddiw."
+    stats:
+      people: "Pobl"
+      active_prescriptions: "Presgripsiynau Gweithredol"
     statuses:
       taken: "Wedi cymryd"
       upcoming: "Ar ddod"
       cooldown: "Aros"
       missed: "Wedi colli"
       out_of_stock: "Allan o Stoc"
+    table:
+      person: "Person"
+      medicine: "Meddyginiaeth"
+      dosage: "Dos"
+      quantity: "Swm"
+      frequency: "Amlder"
+      end_date: "Dyddiad Gorffen"
+      actions: "Gweithredoedd"
     delete_confirmation:
       delete: "Dileu"
       delete_prescription: "Dileu Trwyddedriad?"

@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class PersonMedicinesController < ApplicationController
+  include TimelineRefreshable
+
   before_action :set_person
   before_action :set_person_medicine, only: %i[destroy take_medicine]
 
@@ -111,27 +113,9 @@ class PersonMedicinesController < ApplicationController
 
       format.turbo_stream do
         flash.now[:notice] = t('person_medicines.medicine_taken')
-
-        render turbo_stream: [
-
-          turbo_stream.replace("timeline_person_medicine_#{@person_medicine.id}",
-                               Components::Dashboard::TimelineItem.new(dose: {
-
-                                                                         person: @person,
-
-                                                                         source: @person_medicine.reload,
-
-                                                                         scheduled_at: @take.taken_at,
-
-                                                                         taken_at: @take.taken_at,
-
-                                                                         status: :taken
-
-                                                                       })),
-
-          turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice]))
-
-        ]
+        streams = build_timeline_streams_for(@person_medicine.reload, @take)
+        streams << turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice]))
+        render turbo_stream: streams
       end
     end
   end

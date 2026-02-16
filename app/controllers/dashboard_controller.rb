@@ -42,8 +42,7 @@ class DashboardController < ApplicationController
   end
 
   def scoped_prescriptions
-    person_ids = scoped_people.pluck(:id)
-    Prescription.where(active: true, person_id: person_ids)
+    Prescription.where(active: true, person_id: @people.select(:id))
                 .includes(person: :user, medicine: [])
   end
 

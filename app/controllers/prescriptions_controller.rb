@@ -2,6 +2,7 @@
 
 class PrescriptionsController < ApplicationController
   include Pundit::Authorization
+  include TimelineRefreshable
 
   before_action :set_person
   before_action :set_prescription, only: %i[edit update destroy take_medicine]
@@ -183,17 +184,9 @@ class PrescriptionsController < ApplicationController
       format.html { redirect_back_or_to person_path(@person), notice: t('prescriptions.medicine_taken') }
       format.turbo_stream do
         flash.now[:notice] = t('prescriptions.medicine_taken')
-        render turbo_stream: [
-          turbo_stream.replace("timeline_prescription_#{@prescription.id}",
-                               Components::Dashboard::TimelineItem.new(dose: {
-                                                                         person: @person,
-                                                                         source: @prescription.reload,
-                                                                         scheduled_at: @take.taken_at,
-                                                                         taken_at: @take.taken_at,
-                                                                         status: :taken
-                                                                       })),
-          turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice]))
-        ]
+        streams = build_timeline_streams_for(@prescription.reload, @take)
+        streams << turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice]))
+        render turbo_stream: streams
       end
     end
   end
