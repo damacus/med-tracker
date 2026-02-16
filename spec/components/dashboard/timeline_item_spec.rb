@@ -40,5 +40,14 @@ RSpec.describe Components::Dashboard::TimelineItem, type: :component do
     rendered = render_inline(component)
 
     expect(rendered.to_html).to include('Taken')
+    expect(rendered.to_html).to include('Taken at')
+  end
+
+  it 'shows only the person name for upcoming doses' do
+    component = described_class.new(dose: dose)
+    rendered = render_inline(component)
+
+    expect(rendered.to_html).to include('Jane Doe')
+    expect(rendered.to_html).not_to include('Taken at')
   end
 end

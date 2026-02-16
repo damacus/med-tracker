@@ -20,9 +20,7 @@ module Components
 
               div do
                 Heading(level: 3) { dose[:source].medicine.name }
-                Text(size: '2', weight: 'muted') do
-                  "#{dose[:person].name} • #{dose[:scheduled_at].strftime('%H:%M')}"
-                end
+                Text(size: '2', weight: 'muted') { subtitle_text }
                 render Components::Shared::StockBadge.new(medicine: dose[:source].medicine)
               end
             end
@@ -39,6 +37,17 @@ module Components
 
       def dose_id
         "#{dose[:source].class.name.downcase}_#{dose[:source].id}"
+      end
+
+      def subtitle_text
+        person_name = dose[:person].name
+
+        if dose[:status] == :taken && dose[:taken_at]
+          time = dose[:taken_at].strftime('%l:%M %p').strip
+          t('dashboard.dose_taken_at', person: person_name, time: time)
+        else
+          person_name
+        end
       end
 
       def render_action_button

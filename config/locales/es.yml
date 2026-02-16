@@ -160,6 +160,7 @@ es:
     medication_schedule: "Horario de Medicamentos"
     no_active_prescriptions: "No se encontraron prescripciones activas"
     add_prescriptions_hint: "Agregue prescripciones para verlas aquí"
+    dose_taken_at: "%{person} • Tomado a las %{time}"
     empty_state: "No hay medicamentos programados para hoy."
     stats:
       people: "Personas"

@@ -161,6 +161,7 @@ en:
     medication_schedule: "Medication Schedule"
     no_active_prescriptions: "No active prescriptions found"
     add_prescriptions_hint: "Add prescriptions to see them here"
+    dose_taken_at: "%{person} • Taken at %{time}"
     empty_state: "No medications scheduled for today."
     stats:
       people: "People"
