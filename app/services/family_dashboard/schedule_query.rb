@@ -20,20 +20,23 @@ module FamilyDashboard
 
     def preload_todays_takes
       person_ids = @people.map(&:id)
-      
-      # Fetch all takes for prescriptions and person_medicines associated with the group of people
-      prescription_takes = MedicationTake.where(taken_at: Time.current.all_day)
-                                         .where(prescription_id: Prescription.where(person_id: person_ids).select(:id))
-      
-      pm_takes = MedicationTake.where(taken_at: Time.current.all_day)
-                               .where(person_medicine_id: PersonMedicine.where(person_id: person_ids).select(:id))
 
-      all_takes = prescription_takes.to_a + pm_takes.to_a
-      
+      all_takes = fetch_todays_takes(person_ids)
+
       # Group by [source_type, source_id] for fast lookup
       @takes_by_source = all_takes.group_by do |t|
         t.prescription_id ? ['Prescription', t.prescription_id] : ['PersonMedicine', t.person_medicine_id]
       end
+    end
+
+    def fetch_todays_takes(person_ids)
+      prescription_takes = MedicationTake.where(taken_at: Time.current.all_day)
+                                         .where(prescription_id: Prescription.where(person_id: person_ids).select(:id))
+
+      pm_takes = MedicationTake.where(taken_at: Time.current.all_day)
+                               .where(person_medicine_id: PersonMedicine.where(person_id: person_ids).select(:id))
+
+      prescription_takes.to_a + pm_takes.to_a
     end
 
     def aggregate_family_doses(family_members)
