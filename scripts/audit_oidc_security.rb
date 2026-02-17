@@ -2,6 +2,7 @@
 # frozen_string_literal: true
 
 require 'pathname'
+require 'shellwords'
 
 class OidcSecurityAudit
   CHECKS = %i[
@@ -105,7 +106,7 @@ class OidcSecurityAudit
 
   def check_master_key_not_tracked
     puts "\n🔍 Checking master key is not tracked..."
-    tracked = `git -C #{@root} ls-files config/master.key 2>/dev/null`.strip
+    tracked = `git -C #{@root.to_s.shellescape} ls-files config/master.key 2>/dev/null`.strip
     if tracked.empty?
       record_pass 'config/master.key is not tracked in git'
     else
@@ -115,7 +116,7 @@ class OidcSecurityAudit
 
   def check_env_files_not_tracked
     puts "\n🔍 Checking .env files are not tracked..."
-    tracked_env = `git -C #{@root} ls-files .env .env.local .env.production 2>/dev/null`.strip
+    tracked_env = `git -C #{@root.to_s.shellescape} ls-files .env .env.local .env.production 2>/dev/null`.strip
 
     if tracked_env.empty?
       record_pass 'No .env files tracked in git'
