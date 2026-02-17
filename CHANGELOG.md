@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.2.4](https://github.com/damacus/med-tracker/compare/med-tracker/v0.2.3...med-tracker/v0.2.4) (2026-02-17)
+
+
+### Features
+
+* add i18n for form components and dashboard actions ([2896c4c](https://github.com/damacus/med-tracker/commit/2896c4cbd2931cd7cf8fc14e6dc7a43a3444f1c5))
+* add i18n for person medicine components ([c32a073](https://github.com/damacus/med-tracker/commit/c32a073e3a397331ee2e2a74b3807ee38a0d413f))
+* add i18n translations for navigation components ([480cbcf](https://github.com/damacus/med-tracker/commit/480cbcfa7446aeb58cc4e690a5ca2affe708443f))
+* **dashboard:** Finalize Family Dashboard implementation ([2334dcc](https://github.com/damacus/med-tracker/commit/2334dcc23b523d85d7a660f31b32a6288211e869))
+* **dashboard:** Finalize Unified Family Dashboard with full test compatibility ([a204000](https://github.com/damacus/med-tracker/commit/a2040006fb85e1ab9ea5f3addf7e796b51df21b5))
+* **dashboard:** Implement dashboard view components and translations ([0095dec](https://github.com/damacus/med-tracker/commit/0095dec46cab5d5928c6e56bf2a2844981679745))
+* **dashboard:** Implement FamilyDashboard::ScheduleQuery ([35a15e3](https://github.com/damacus/med-tracker/commit/35a15e338a8ad52e788dd909658dd740d47014be))
+* **dashboard:** Implementation of Family Dashboard ([665c1e9](https://github.com/damacus/med-tracker/commit/665c1e9c1cdba5d24d124471216f1304fba9a21e))
+* **dashboard:** Improve ScheduleQuery with actual upcoming dose logic ([42b75b2](https://github.com/damacus/med-tracker/commit/42b75b25754be6d0b0444ef76cba2ed60167d1b3))
+
+
+### Bug Fixes
+
+* add Phlex::Rails::Helpers::T to components for i18n support ([599b1af](https://github.com/damacus/med-tracker/commit/599b1afa9b0360bc42f051affeb7dc43997db28c))
+* **dashboard:** replace raw timestamp with contextual subtitle ([fa8552f](https://github.com/damacus/med-tracker/commit/fa8552fbee26b3411e158d95ab24045e3795a0f7))
+* properly implement i18n support for components ([9baac95](https://github.com/damacus/med-tracker/commit/9baac95839b7bd2802b2b6f9812468ee18bdca50))
+* remove markdown linting from pre-push hook ([8d255b0](https://github.com/damacus/med-tracker/commit/8d255b02ec868d5527d84f169d908ba67b9064f4))
+* resolve RuboCop offenses and add comprehensive pre-push lefthook ([3a72d2d](https://github.com/damacus/med-tracker/commit/3a72d2d86b0c6780792ed982f8682710a2054fa1))
+* resolve RuboCop offenses in dashboard components ([60863f0](https://github.com/damacus/med-tracker/commit/60863f0d0e0348478709b6ebe734fb18da13e5f2))
+* resolve stale PID file crash on dev container startup ([fa1f80c](https://github.com/damacus/med-tracker/commit/fa1f80c182e970e7d80c841a500288d4d1d0a093))
+* **tests:** Fix foreign key violations in fixtures by loading all dependencies ([183858d](https://github.com/damacus/med-tracker/commit/183858d383d13120971278306bf47c7140c53763))
+
 ## [0.2.3](https://github.com/damacus/med-tracker/compare/med-tracker/v0.2.2...med-tracker/v0.2.3) (2026-02-13)
 
 
