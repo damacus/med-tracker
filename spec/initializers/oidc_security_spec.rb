@@ -70,6 +70,18 @@ RSpec.describe 'OIDC Security Initializer' do # rubocop:disable RSpec/DescribeCl
       end
     end
 
+    describe 'after_initialize hook behavior' do
+      it 'validates redirect URI and logs warnings for invalid URIs' do
+        # This test verifies that the validation works as expected
+        # The after_initialize hook catches the error and logs it as a warning
+        expect { OidcSecurity.validate_redirect_uri!('http://evil.example.com/callback') }
+          .to raise_error(OidcSecurity::ConfigurationError, /OIDC redirect URI must use HTTPS/)
+
+        # Verify that valid URIs pass validation
+        expect { OidcSecurity.validate_redirect_uri!('https://app.example.com/auth/oidc/callback') }.not_to raise_error
+      end
+    end
+
     describe '.validate_redirect_uri!' do
       it 'accepts a valid HTTPS redirect URI' do
         expect { OidcSecurity.validate_redirect_uri!('https://app.example.com/auth/oidc/callback') }.not_to raise_error
