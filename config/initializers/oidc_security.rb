@@ -22,8 +22,23 @@ module OidcSecurity
 
     raise ConfigurationError, "Invalid OIDC issuer URL: #{url}" unless uri.is_a?(URI::HTTP)
 
-    localhost = %w[localhost 127.0.0.1 ::1].include?(uri.host)
+    localhost = %w[localhost 127.0.0.1 ::1].include?(uri.host&.delete_prefix('[')&.delete_suffix(']'))
     raise ConfigurationError, "OIDC issuer URL must use HTTPS: #{url}" if uri.scheme == 'http' && !localhost
+  end
+
+  def validate_redirect_uri!(uri_string)
+    raise ConfigurationError, 'OIDC redirect URI cannot be blank' if uri_string.blank?
+
+    begin
+      uri = URI.parse(uri_string)
+    rescue URI::InvalidURIError
+      raise ConfigurationError, "Invalid OIDC redirect URI: #{uri_string}"
+    end
+
+    raise ConfigurationError, "Invalid OIDC redirect URI: #{uri_string}" unless uri.is_a?(URI::HTTP)
+
+    localhost = %w[localhost 127.0.0.1 ::1].include?(uri.host&.delete_prefix('[')&.delete_suffix(']'))
+    raise ConfigurationError, "OIDC redirect URI must use HTTPS: #{uri_string}" if uri.scheme == 'http' && !localhost
   end
 
   def secret_not_in_source?
