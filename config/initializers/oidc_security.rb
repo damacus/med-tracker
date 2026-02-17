@@ -57,9 +57,16 @@ Rails.application.config.after_initialize do
   next unless OidcSecurity.configured?
 
   issuer_url = Rails.application.credentials.dig(:oidc, :issuer_url) || ENV.fetch('OIDC_ISSUER_URL', nil)
+  redirect_uri = ENV.fetch('OIDC_REDIRECT_URI', nil)
 
   begin
     OidcSecurity.validate_issuer_url!(issuer_url)
+  rescue OidcSecurity::ConfigurationError => e
+    Rails.logger.warn("[OIDC] Configuration warning: #{e.message}")
+  end
+
+  begin
+    OidcSecurity.validate_redirect_uri!(redirect_uri) if redirect_uri
   rescue OidcSecurity::ConfigurationError => e
     Rails.logger.warn("[OIDC] Configuration warning: #{e.message}")
   end
