@@ -1,5 +1,6 @@
 ---
 pre-push:
+  parallel: true
   jobs:
     - name: protect-main
       run: |
