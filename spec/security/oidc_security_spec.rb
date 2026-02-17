@@ -79,6 +79,13 @@ RSpec.describe 'OIDC Security' do # rubocop:disable RSpec/DescribeClass
     end
   end
 
+  describe 'OIDC-SEC-011: Account hijacking prevention via email verification' do
+    it 'marks OIDC accounts as verified to prevent hijacking' do
+      rodauth_file = Rails.root.join('app/misc/rodauth_main.rb').read
+      expect(rodauth_file).to include('verify_account_login_status: :verified')
+    end
+  end
+
   describe 'OIDC-SEC-012: Session fixation prevention' do
     it 'has active_sessions feature enabled for session management' do
       rodauth_file = Rails.root.join('app/misc/rodauth_main.rb').read
