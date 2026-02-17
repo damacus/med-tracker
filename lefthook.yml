@@ -43,6 +43,3 @@ pre-commit:
         - config/application.rb
         - config/routes.rb
       run: bundle exec rubocop --force-exclusion {all_files}
-
-    - name: beads
-      run: bd hook pre-commit "$@"

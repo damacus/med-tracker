@@ -75,4 +75,4 @@ tasks:
     vars:
       autocorrect: '{{ .AUTOCORRECT | default "false" }}'
     cmds:
-      - 'bundle exec rubocop {{ if eq .autocorrect "true" }}-A{{ end }}'
+      - 'bundle exec rubocop --force-exclusion {{ if eq .autocorrect "true" }}-A{{ end }}'
