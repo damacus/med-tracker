@@ -23,14 +23,10 @@ module RubyUI
       {
         class: [
           'z-50 hidden group-[.is-absolute]/dropdown-menu:absolute',
-          'group-[.is-fixed]/dropdown-menu:fixed'
+          'group-[.is-fixed]/dropdown-menu:fixed',
+          'w-max top-0 left-0'
         ],
-        data: { ruby_ui__dropdown_menu_target: 'content' },
-        style: {
-          width: 'max-content',
-          top: '0',
-          left: '0'
-        }
+        data: { ruby_ui__dropdown_menu_target: 'content' }
       }
     end
   end

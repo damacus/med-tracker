@@ -64,9 +64,8 @@ module RubyUI
       div(
         data_testid: 'drawer-backdrop',
         data_action: 'click->ruby-ui--sheet-content#close',
-        class: 'fixed inset-0 z-50 bg-black/80 backdrop-blur-sm transition-opacity duration-300 ' \
+        class: 'fixed inset-0 z-50 bg-black/80 backdrop-blur-sm transition-opacity duration-300 pointer-events-auto ' \
                'data-[state=open]:opacity-100 data-[state=closed]:opacity-0',
-        style: 'pointer-events:auto',
         aria_hidden: 'true'
       )
     end
@@ -78,11 +77,10 @@ module RubyUI
         aria_label: 'Navigation menu',
         tabindex: '-1',
         class: [
-          'flex flex-col fixed z-50 h-full w-[80vw] max-w-[300px] overflow-y-auto bg-background p-6 shadow-lg transition-transform duration-300 ease-in-out',
+          'flex flex-col fixed z-50 h-full w-[80vw] max-w-[300px] overflow-y-auto bg-background p-6 shadow-lg transition-transform duration-300 ease-in-out pointer-events-auto',
           'data-[state=open]:translate-x-0',
           side_transform_class
         ],
-        style: 'pointer-events:auto',
         &
       )
     end
