@@ -68,7 +68,7 @@ module Components
 
       def render_actions
         div(class: 'flex justify-end gap-3 pt-4') do
-          Link(href: helpers.person_path(person), variant: :outline) { t('person_medicines.form.cancel') }
+          Link(href: person_path(person), variant: :outline) { t('person_medicines.form.cancel') }
           Button(type: :submit, variant: :primary) { t('person_medicines.form.add_medicine_button') }
         end
       end

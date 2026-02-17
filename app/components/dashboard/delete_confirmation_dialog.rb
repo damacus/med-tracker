@@ -6,11 +6,10 @@ module Components
     class DeleteConfirmationDialog < Components::Base
       include Phlex::Rails::Helpers::FormWith
 
-      attr_reader :prescription, :url_helpers, :button_class
+      attr_reader :prescription, :button_class
 
-      def initialize(prescription:, url_helpers:, button_class: nil)
+      def initialize(prescription:, button_class: nil)
         @prescription = prescription
-        @url_helpers = url_helpers
         @button_class = button_class
         super()
       end
@@ -47,7 +46,7 @@ module Components
 
       def render_delete_form
         form_with(
-          url: url_helpers.person_prescription_path(prescription.person, prescription),
+          url: person_prescription_path(prescription.person, prescription),
           method: :delete,
           class: 'inline',
           data: { turbo_frame: '_top' }

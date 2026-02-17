@@ -2,11 +2,10 @@
 
 # Presenter for the dashboard view that encapsulates data preparation logic
 class DashboardPresenter
-  attr_reader :current_user, :url_helpers
+  attr_reader :current_user
 
-  def initialize(current_user:, url_helpers: nil)
+  def initialize(current_user:)
     @current_user = current_user
-    @url_helpers = url_helpers
   end
 
   def people

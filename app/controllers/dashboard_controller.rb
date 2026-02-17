@@ -7,8 +7,7 @@ class DashboardController < ApplicationController
     authorize :dashboard, :index?
 
     presenter = DashboardPresenter.new(
-      current_user: current_user,
-      url_helpers: self
+      current_user: current_user
     )
 
     render Components::Dashboard::IndexView.new(presenter: presenter)

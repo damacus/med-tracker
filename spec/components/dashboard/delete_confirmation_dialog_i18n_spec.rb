@@ -8,14 +8,9 @@ RSpec.describe Components::Dashboard::DeleteConfirmationDialog, type: :component
       medicine = instance_double(Medicine, name: 'Aspirin')
       person = instance_double(Person, name: 'John Doe')
       prescription = instance_double(Prescription, id: 1, medicine: medicine, person: person)
-      url_helpers = instance_double(Rails.application.routes.url_helpers)
-      allow(url_helpers).to receive(:person_prescription_path)
-        .with(person, prescription)
-        .and_return('/people/john-doe/prescriptions/1')
 
       component = described_class.new(
-        prescription: prescription,
-        url_helpers: url_helpers
+        prescription: prescription
       )
 
       rendered = render_inline(component)

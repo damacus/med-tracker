@@ -54,12 +54,4 @@ RSpec.describe Components::Dashboard::PrescriptionCard, type: :component do
       expect(rendered.text).to include('Ends')
     end
   end
-
-  describe 'actions' do
-    it 'does not render take now button without url_helpers' do
-      rendered = render_inline(described_class.new(person: person, prescription: prescription))
-
-      expect(rendered.text).not_to include('Take Now')
-    end
-  end
 end

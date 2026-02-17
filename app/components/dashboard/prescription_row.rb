@@ -7,12 +7,11 @@ module Components
       include Phlex::Rails::Helpers::FormWith
       include PrescriptionHelpers
 
-      attr_reader :person, :prescription, :url_helpers, :current_user
+      attr_reader :person, :prescription, :current_user
 
-      def initialize(person:, prescription:, url_helpers: nil, current_user: nil)
+      def initialize(person:, prescription:, current_user: nil)
         @person = person
         @prescription = prescription
-        @url_helpers = url_helpers
         @current_user = current_user
         super()
       end
@@ -66,7 +65,7 @@ module Components
 
       def render_actions
         div(class: 'flex items-center justify-center gap-2') do
-          render_take_now_button if url_helpers
+          render_take_now_button
           render_delete_button if can_delete?
         end
       end
@@ -74,7 +73,7 @@ module Components
       def render_take_now_button
         if prescription.can_administer?
           form_with(
-            url: url_helpers.prescription_medication_takes_path(prescription),
+            url: prescription_medication_takes_path(prescription),
             method: :post,
             class: 'inline-block'
           ) do
@@ -103,8 +102,7 @@ module Components
 
       def render_delete_button
         render Components::Dashboard::DeleteConfirmationDialog.new(
-          prescription: prescription,
-          url_helpers: url_helpers
+          prescription: prescription
         )
       end
     end

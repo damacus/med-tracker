@@ -13,13 +13,12 @@ module Components
           ['Self', 'self']
         ].freeze
 
-        attr_reader :relationship, :carers, :patients, :url_helpers
+        attr_reader :relationship, :carers, :patients
 
-        def initialize(relationship:, carers:, patients:, url_helpers:)
+        def initialize(relationship:, carers:, patients:)
           @relationship = relationship
           @carers = carers
           @patients = patients
-          @url_helpers = url_helpers
           super()
         end
 

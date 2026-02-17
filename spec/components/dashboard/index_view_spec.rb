@@ -10,7 +10,7 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
   end
 
   let(:admin_user) { users(:admin) }
-  let(:presenter) { DashboardPresenter.new(current_user: admin_user, url_helpers: controller) }
+  let(:presenter) { DashboardPresenter.new(current_user: admin_user) }
 
   it 'renders the dashboard title' do
     rendered = render_inline(dashboard_view)
