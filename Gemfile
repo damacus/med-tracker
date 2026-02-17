@@ -26,8 +26,8 @@ gem 'sequel-activerecord_connection'
 gem 'tilt'
 # OAuth integration for Rodauth [https://github.com/janko/rodauth-omniauth]
 gem 'rodauth-omniauth'
-# OAuth provider for Google
-gem 'omniauth-google-oauth2'
+# Generic OpenID Connect provider support
+gem 'omniauth_openid_connect'
 # Authorization framework [https://github.com/varvet/pundit]
 gem 'pundit'
 # Audit logging [https://github.com/paper-trail-gem/paper_trail]

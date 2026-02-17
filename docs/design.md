@@ -9,7 +9,7 @@ for timing and daily-dose safety, while preserving an auditable history.
 
 - Backend: Ruby on Rails
 - Frontend: Hotwire (Turbo + Stimulus) with Phlex components
-- Authentication: account-based auth with password + OIDC + passkey support
+- Authentication: account-based auth with password + generic OIDC (any provider) + passkey support
 - Database: PostgreSQL in development, test, and production
 - Audit trail: PaperTrail on critical clinical and identity models
 
