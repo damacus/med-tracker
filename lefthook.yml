@@ -19,12 +19,13 @@ pre-push:
       tags:
         - backend
         - linting
-      run: bundle exec rubocop --force-exclusion
+      run: bundle exec rubocop {staged_files}
 
     - name: rspec
       tags:
         - backend
         - testing
+      glob: "*.rb"
       run: |
         echo "🧪 Running RSpec tests..."
         if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
