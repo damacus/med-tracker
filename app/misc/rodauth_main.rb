@@ -154,19 +154,28 @@ class RodauthMain < Rodauth::Rails::Auth
       require_two_factor_authenticated
     end
 
-    # ==> OmniAuth (Google OAuth)
-    # Configure Google OAuth provider
-    # Credentials should be stored in Rails credentials or environment variables
-    if Rails.application.credentials.dig(:google, :client_id).present?
-      omniauth_provider :google_oauth2,
-                        Rails.application.credentials.google[:client_id],
-                        Rails.application.credentials.google[:client_secret],
-                        scope: 'email profile'
-    elsif ENV['GOOGLE_CLIENT_ID'].present?
-      omniauth_provider :google_oauth2,
-                        ENV.fetch('GOOGLE_CLIENT_ID'),
-                        ENV.fetch('GOOGLE_CLIENT_SECRET'),
-                        scope: 'email profile'
+    # ==> OmniAuth (Generic OIDC)
+    # Configure OpenID Connect provider
+    # Credentials from Rails credentials or environment variables
+    oidc_issuer = Rails.application.credentials.dig(:oidc, :issuer_url) || ENV.fetch('OIDC_ISSUER_URL', nil)
+    oidc_client_id = Rails.application.credentials.dig(:oidc, :client_id) || ENV.fetch('OIDC_CLIENT_ID', nil)
+    oidc_client_secret = Rails.application.credentials.dig(:oidc,
+                                                           :client_secret) || ENV.fetch('OIDC_CLIENT_SECRET', nil)
+
+    if oidc_client_id.present? && oidc_issuer.present?
+      omniauth_provider :openid_connect,
+                        name: :oidc,
+                        scope: %i[openid email profile],
+                        response_type: :code,
+                        uid_field: 'sub',
+                        discovery: true,
+                        issuer: oidc_issuer,
+                        client_options: {
+                          identifier: oidc_client_id,
+                          secret: oidc_client_secret,
+                          redirect_uri: ENV.fetch('OIDC_REDIRECT_URI',
+                                                  "#{ENV.fetch('APP_URL', 'http://localhost:3000')}/auth/oidc/callback")
+                        }
     end
 
     # ==> Hooks

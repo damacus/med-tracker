@@ -201,29 +201,23 @@ RSpec.describe 'Authentication Features', type: :system do
     end
   end
 
-  describe 'AUTH-009/010: Google OAuth configuration' do
+  describe 'AUTH-009/010: OIDC configuration' do
     it 'has omniauth feature enabled in Rodauth configuration' do
-      # Verify the omniauth feature is listed in the enabled features
-      # The feature is enabled but provider may not be configured in test
       rodauth_file = Rails.root.join('app/misc/rodauth_main.rb').read
       expect(rodauth_file).to include(':omniauth')
     end
 
-    it 'has account_identities table for storing OAuth identities' do
-      # Verify the migration created the table
+    it 'has account_identities table for storing OIDC identities' do
       expect(ActiveRecord::Base.connection.table_exists?(:account_identities)).to be true
     end
 
-    it 'shows login page with OAuth section or other options' do
+    it 'shows login page with OIDC section or other options' do
       visit login_path
-      # The page should have either OAuth button or other options section
       expect(page).to have_content('Other Options')
     end
   end
 
-  describe 'AUTH-013: Link Google account from settings' do
-    # This feature requires a profile/settings page with OAuth linking
-    # The infrastructure is in place via rodauth-omniauth
+  describe 'AUTH-013: Link OIDC account from settings' do
     it 'has omniauth configuration in Rodauth' do
       rodauth_file = Rails.root.join('app/misc/rodauth_main.rb').read
       expect(rodauth_file).to include(':omniauth')
