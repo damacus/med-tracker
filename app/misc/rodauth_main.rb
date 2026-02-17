@@ -170,6 +170,7 @@ class RodauthMain < Rodauth::Rails::Auth
                         uid_field: 'sub',
                         discovery: true,
                         issuer: oidc_issuer,
+                        verify_account_login_status: :verified,
                         client_options: {
                           identifier: oidc_client_id,
                           secret: oidc_client_secret,
