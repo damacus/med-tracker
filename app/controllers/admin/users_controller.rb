@@ -23,13 +23,13 @@ module Admin
       @user = User.new
       @user.build_person
       authorize @user
-      render Components::Admin::Users::FormView.new(user: @user, url_helpers: self)
+      render Components::Admin::Users::FormView.new(user: @user)
     end
 
     def edit
       @user = User.find(params[:id])
       authorize @user
-      render Components::Admin::Users::FormView.new(user: @user, url_helpers: self)
+      render Components::Admin::Users::FormView.new(user: @user)
     end
 
     def create
@@ -52,7 +52,7 @@ module Admin
       if @user.update(user_params)
         redirect_to admin_users_path, notice: t('users.updated')
       else
-        render Components::Admin::Users::FormView.new(user: @user, url_helpers: self), status: :unprocessable_content
+        render Components::Admin::Users::FormView.new(user: @user), status: :unprocessable_content
       end
     end
 
@@ -107,7 +107,7 @@ module Admin
     end
 
     def render_user_form_with_errors
-      render Components::Admin::Users::FormView.new(user: @user, url_helpers: self), status: :unprocessable_content
+      render Components::Admin::Users::FormView.new(user: @user), status: :unprocessable_content
     end
 
     def apply_search(scope)

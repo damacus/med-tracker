@@ -4,12 +4,11 @@ module Components
   module Dashboard
     # Renders the medication schedule section of the dashboard
     class Schedule < Components::Base
-      attr_reader :people, :upcoming_prescriptions, :url_helpers, :current_user
+      attr_reader :people, :upcoming_prescriptions, :current_user
 
-      def initialize(people:, upcoming_prescriptions:, url_helpers: nil, current_user: nil)
+      def initialize(people:, upcoming_prescriptions:, current_user: nil)
         @people = people
         @upcoming_prescriptions = upcoming_prescriptions
-        @url_helpers = url_helpers
         @current_user = current_user
         super()
       end

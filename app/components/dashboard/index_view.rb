@@ -22,7 +22,7 @@ module Components
 
       private
 
-      delegate :people, :active_prescriptions, :upcoming_prescriptions, :url_helpers,
+      delegate :people, :active_prescriptions, :upcoming_prescriptions,
                :current_user, :doses, to: :presenter
 
       def render_header
@@ -35,12 +35,12 @@ module Components
       def render_quick_actions
         div(class: 'flex flex-row flex-wrap gap-2 sm:gap-3') do
           render RubyUI::Link.new(
-            href: url_helpers&.new_medicine_path || '#',
+            href: new_medicine_path,
             variant: :primary,
             class: 'min-h-[44px]'
           ) { t('dashboard.quick_actions.add_medicine') }
           render RubyUI::Link.new(
-            href: url_helpers&.new_person_path || '#',
+            href: new_person_path,
             variant: :secondary,
             class: 'min-h-[44px]'
           ) { t('dashboard.quick_actions.add_person') }

@@ -21,8 +21,7 @@ module Admin
       render Components::Admin::CarerRelationships::FormView.new(
         relationship: @relationship,
         carers: available_carers,
-        patients: available_patients,
-        url_helpers: self
+        patients: available_patients
       )
     end
 
@@ -36,8 +35,7 @@ module Admin
         render Components::Admin::CarerRelationships::FormView.new(
           relationship: @relationship,
           carers: available_carers,
-          patients: available_patients,
-          url_helpers: self
+          patients: available_patients
         ), status: :unprocessable_content
       end
     end

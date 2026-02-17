@@ -6,7 +6,6 @@ RSpec.describe Components::Dashboard::DeleteConfirmationDialog, type: :component
   fixtures :accounts, :people, :users, :medicines, :dosages, :prescriptions
 
   let(:prescription) { prescriptions(:active_prescription) }
-  let(:url_helpers) { Rails.application.routes.url_helpers }
 
   describe 'rendering' do
     it 'renders a delete trigger button' do

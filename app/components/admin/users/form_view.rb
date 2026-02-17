@@ -7,11 +7,10 @@ module Components
         include Phlex::Rails::Helpers::FormWith
         include Phlex::Rails::Helpers::Pluralize
 
-        attr_reader :user, :url_helpers
+        attr_reader :user
 
-        def initialize(user:, url_helpers:)
+        def initialize(user:)
           @user = user
-          @url_helpers = url_helpers
           super()
         end
 
