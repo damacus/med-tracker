@@ -9,7 +9,7 @@ class PersonMedicinesController < ApplicationController
   def new
     authorize PersonMedicine
     @person_medicine = @person.person_medicines.build
-    @medicines = Medicine.all
+    @medicines = policy_scope(Medicine)
 
     respond_to do |format|
       format.html do
@@ -36,7 +36,7 @@ class PersonMedicinesController < ApplicationController
   def create
     @person_medicine = @person.person_medicines.build(person_medicine_params)
     authorize @person_medicine
-    @medicines = Medicine.all
+    @medicines = policy_scope(Medicine)
 
     if @person_medicine.save
       respond_to do |format|

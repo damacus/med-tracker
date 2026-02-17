@@ -4,6 +4,10 @@ require 'rails_helper'
 
 RSpec.describe 'User Signup', type: :system do
   describe 'creating a new account' do
+    before do
+      User.administrator.destroy_all
+    end
+
     it 'requires an invitation token when an administrator already exists' do
       admin_account = Account.create!(
         email: 'admin-existing@example.com',

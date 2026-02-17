@@ -4,6 +4,10 @@ require 'rails_helper'
 
 RSpec.describe Admin::BootstrapService do
   describe '.call' do
+    before do
+      User.administrator.destroy_all
+    end
+
     let(:params) do
       {
         email: 'first.admin@example.com',
