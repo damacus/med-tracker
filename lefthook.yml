@@ -19,12 +19,13 @@ pre-push:
       tags:
         - backend
         - linting
-      run: bundle exec rubocop --force-exclusion
+      run: bundle exec rubocop {staged_files}
 
     - name: rspec
       tags:
         - backend
         - testing
+      glob: "*.rb"
       run: |
         echo "🧪 Running RSpec tests..."
         if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
@@ -33,6 +34,9 @@ pre-push:
           echo "⚠️  Docker not available, skipping RSpec tests"
           echo "Please start Docker daemon to run full test suite"
         fi
+
+    - name: bd hooks
+      run: bd hooks run pre-push
 
 pre-commit:
   parallel: true
@@ -43,3 +47,5 @@ pre-commit:
         - config/application.rb
         - config/routes.rb
       run: bundle exec rubocop --force-exclusion {all_files}
+    - name: bd hooks
+      run: bd hooks run pre-commit
