@@ -14,8 +14,7 @@ RSpec.describe Components::Dashboard::DeleteConfirmationDialog, type: :component
         .and_return('/people/john-doe/prescriptions/1')
 
       component = described_class.new(
-        prescription: prescription,
-        url_helpers: url_helpers
+        prescription: prescription
       )
 
       rendered = render_inline(component)

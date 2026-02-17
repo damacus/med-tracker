@@ -94,7 +94,6 @@ module Components
               render Components::Dashboard::PrescriptionCard.new(
                 person: person,
                 prescription: prescription,
-                url_helpers: url_helpers,
                 current_user: current_user
               )
             end
@@ -123,7 +122,6 @@ module Components
                   render Components::Dashboard::PrescriptionRow.new(
                     person: person,
                     prescription: prescription,
-                    url_helpers: url_helpers,
                     current_user: current_user
                   )
                 end

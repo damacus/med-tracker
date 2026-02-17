@@ -177,7 +177,7 @@ module Components
 
         def render_form_actions
           div(class: 'flex items-center justify-between pt-6') do
-            Link(href: url_helpers.admin_users_path, variant: :outline) { 'Cancel' }
+            Link(href: admin_users_path, variant: :outline) { 'Cancel' }
             Button(type: :submit, variant: :primary) do
               user.new_record? ? 'Create User' : 'Update User'
             end
