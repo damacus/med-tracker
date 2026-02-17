@@ -4,15 +4,10 @@ module Components
   module Dashboard
     # Dashboard index view component that renders the main dashboard page
     class IndexView < Components::Base
-      attr_reader :people, :active_prescriptions, :upcoming_prescriptions, :url_helpers, :current_user, :doses
+      attr_reader :presenter
 
-      def initialize(people:, active_prescriptions:, upcoming_prescriptions:, doses:, **options)
-        @people = people
-        @active_prescriptions = active_prescriptions
-        @upcoming_prescriptions = upcoming_prescriptions
-        @doses = doses
-        @url_helpers = options[:url_helpers]
-        @current_user = options[:current_user]
+      def initialize(presenter:)
+        @presenter = presenter
         super()
       end
 
@@ -26,6 +21,9 @@ module Components
       end
 
       private
+
+      delegate :people, :active_prescriptions, :upcoming_prescriptions, :url_helpers,
+               :current_user, :doses, to: :presenter
 
       def render_header
         div(class: 'flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8') do
