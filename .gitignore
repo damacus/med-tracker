@@ -50,3 +50,4 @@ feedback.txt
 # Lighthouse reports
 lighthouse-*
 node_modules
+.worktrees/

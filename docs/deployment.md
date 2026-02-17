@@ -62,6 +62,53 @@ docker compose -f docker-compose.yml run --rm web rails db:migrate
 - PostgreSQL version target is `18`.
 - Use Rails credentials and environment variables for secrets; never commit them.
 
+## Flux GitOps: bootstrap first administrator
+
+For Kubernetes production environments managed by Flux, bootstrap the first admin
+using a one-off Job manifest committed through the normal GitOps repo path.
+
+1. Ensure the application release containing `med_tracker:bootstrap_admin` is
+   deployed.
+2. Add a Secret manifest (or SOPS-encrypted Secret) with:
+   - `ADMIN_EMAIL`
+   - `ADMIN_PASSWORD`
+   - `ADMIN_NAME`
+   - `ADMIN_DOB` (`YYYY-MM-DD`)
+3. Add a one-off Job manifest that runs:
+
+```yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: med-tracker-bootstrap-admin
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: bootstrap-admin
+          image: ghcr.io/your-org/med-tracker:<release-tag>
+          command: ["bundle", "exec", "rails", "med_tracker:bootstrap_admin"]
+          envFrom:
+            - secretRef:
+                name: med-tracker-bootstrap-admin
+```
+
+1. Commit/push the manifests and reconcile Flux for the target Kustomization.
+2. Verify completion:
+
+```bash
+kubectl get jobs -n <namespace>
+kubectl logs job/med-tracker-bootstrap-admin -n <namespace>
+```
+
+1. Confirm the admin can sign in and access `/admin`.
+2. Remove/disable bootstrap manifests in Git and reconcile Flux again.
+
+After the first admin exists, self-registration without invitations is blocked.
+
 ## Rebuild environments
 
 Development rebuild (destructive to dev volumes):

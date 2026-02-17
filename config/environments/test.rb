@@ -57,6 +57,9 @@ Rails.application.configure do
   # Raises error for missing translations.
   # config.i18n.raise_on_missing_translations = true
 
+  # Prevent db:migrate in test tasks from rewriting db/schema.rb.
+  config.active_record.dump_schema_after_migration = false
+
   # Annotate rendered view with file names.
   # config.action_view.annotate_rendered_view_with_filenames = true
 

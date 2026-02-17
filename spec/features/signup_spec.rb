@@ -4,6 +4,41 @@ require 'rails_helper'
 
 RSpec.describe 'User Signup', type: :system do
   describe 'creating a new account' do
+    it 'requires an invitation token when an administrator already exists' do
+      admin_account = Account.create!(
+        email: 'admin-existing@example.com',
+        password_hash: RodauthApp.rodauth.allocate.password_hash('securepassword123'),
+        status: :verified
+      )
+      admin_person = Person.create!(
+        account: admin_account,
+        name: 'Existing Admin',
+        date_of_birth: Date.new(1980, 1, 1),
+        email: admin_account.email,
+        person_type: :adult
+      )
+      User.create!(
+        person: admin_person,
+        email_address: admin_account.email,
+        role: :administrator,
+        active: true
+      )
+
+      visit create_account_path
+
+      fill_in 'Name', with: 'Blocked User'
+      fill_in 'Date of birth', with: '1990-01-15'
+      fill_in 'Email', with: 'blocked@example.com'
+      fill_in 'Password', with: 'securepassword123'
+      fill_in 'Confirm Password', with: 'securepassword123'
+
+      expect do
+        click_button 'Create Account'
+      end.not_to change(Account, :count)
+
+      expect(page).to have_content('There was an error creating your account')
+    end
+
     it 'creates both an Account and a Person with valid details' do
       visit create_account_path
 

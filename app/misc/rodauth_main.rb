@@ -192,6 +192,10 @@ class RodauthMain < Rodauth::Rails::Auth
         throw_error_status(422, 'invitation_token', 'is invalid or expired') unless @invitation
         request.params[login_param] = @invitation.email
       end
+
+      if @invitation.nil? && User.administrator.exists?
+        throw_error_status(422, 'invitation_token', 'is required when registration is invitation-only')
+      end
     end
 
     # Perform additional actions after the account is created.
