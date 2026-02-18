@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'CSP Compliance', type: :system do
+RSpec.describe 'CSP Compliance', type: :unit do
   describe 'inline styles' do
     it 'does not use inline styles in RubyUI components' do
       # Check dropdown menu content

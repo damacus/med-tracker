@@ -172,7 +172,7 @@ module Components
       def render_capacity_hint
         hint_visible = !person.has_capacity
         div(
-          class: "mt-2 text-sm text-amber-600 #{'hidden' unless hint_visible}",
+          class: ['mt-2 text-sm text-amber-600', ('hidden' unless hint_visible)],
           data: { capacity_hint_target: 'hint' }
         ) do
           strong { 'Note: ' }
