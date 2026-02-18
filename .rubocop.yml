@@ -14,8 +14,7 @@ AllCops:
     - "**/*.yaml"
     - "vendor/**/*"
     - "node_modules/**/*"
-    - "db/**/*_schema.rb"
-    - "db/schema.rb"
+    - "db/migrate/**/*"
 
 RSpec/ExampleLength:
   Max: 15
