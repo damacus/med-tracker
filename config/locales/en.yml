@@ -5,6 +5,54 @@ en:
   admin:
     users:
       unauthorized: "You are not authorized to perform this action."
+    audit_logs:
+      index:
+        title: "Audit Trail"
+        subtitle: "Complete history of all changes made in MedTracker."
+        filter:
+          record_type: "Record Type"
+          all_types: "All Types"
+          event_type: "Event Type"
+          all_events: "All Events"
+          filter_button: "Filter"
+          clear_filters: "Clear filters"
+        table:
+          timestamp: "Timestamp"
+          record_type: "Record Type"
+          event: "Event"
+          user: "User"
+          ip_address: "IP Address"
+          actions: "Actions"
+          view_details: "View Details"
+        empty:
+          no_logs: "No audit logs found"
+          adjust_filters: "Try adjusting your filters"
+        pagination:
+          showing: "Showing"
+          to: "to"
+          of: "of"
+          results: "results"
+          previous: "Previous"
+          next: "Next"
+        system: "System"
+      show:
+        title: "Audit Log Details"
+        back: "← Back to Audit Logs"
+        event_information: "Event Information"
+        timestamp: "Timestamp"
+        record_type: "Record Type"
+        record_id: "Record ID"
+        event_type: "Event Type"
+        user: "User"
+        ip_address: "IP Address"
+        na: "N/A"
+        system: "System"
+        previous_state: "Previous State"
+        previous_state_description: "The state of the record before this change"
+        new_state: "New State"
+        new_state_create: "The state of the record when it was created"
+        new_state_update: "The state of the record after this change"
+        new_state_other: "The current state of the record"
 
   authentication:
     login_required: "Please login to continue"

@@ -5,6 +5,54 @@ pt:
   admin:
     users:
       unauthorized: "Não está autorizado a realizar esta ação."
+    audit_logs:
+      index:
+        title: "Registo de Auditoria"
+        subtitle: "Histórico completo de todas as alterações feitas no MedTracker."
+        filter:
+          record_type: "Tipo de Registo"
+          all_types: "Todos os Tipos"
+          event_type: "Tipo de Evento"
+          all_events: "Todos os Eventos"
+          filter_button: "Filtrar"
+          clear_filters: "Limpar filtros"
+        table:
+          timestamp: "Data/Hora"
+          record_type: "Tipo de Registo"
+          event: "Evento"
+          user: "Utilizador"
+          ip_address: "Endereço IP"
+          actions: "Ações"
+          view_details: "Ver Detalhes"
+        empty:
+          no_logs: "Nenhum registo de auditoria encontrado"
+          adjust_filters: "Tente ajustar os seus filtros"
+        pagination:
+          showing: "A mostrar"
+          to: "a"
+          of: "de"
+          results: "resultados"
+          previous: "Anterior"
+          next: "Seguinte"
+        system: "Sistema"
+      show:
+        title: "Detalhes do Registo de Auditoria"
+        back: "← Voltar aos Registos de Auditoria"
+        event_information: "Informação do Evento"
+        timestamp: "Data/Hora"
+        record_type: "Tipo de Registo"
+        record_id: "ID do Registo"
+        event_type: "Tipo de Evento"
+        user: "Utilizador"
+        ip_address: "Endereço IP"
+        na: "N/D"
+        system: "Sistema"
+        previous_state: "Estado Anterior"
+        previous_state_description: "O estado do registo antes desta alteração"
+        new_state: "Novo Estado"
+        new_state_create: "O estado do registo quando foi criado"
+        new_state_update: "O estado do registo após esta alteração"
+        new_state_other: "O estado atual do registo"
 
   authentication:
     login_required: "Por favor, inicie sessão para continuar"

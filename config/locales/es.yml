@@ -5,6 +5,54 @@ es:
   admin:
     users:
       unauthorized: "No está autorizado para realizar esta acción."
+    audit_logs:
+      index:
+        title: "Registro de Auditoría"
+        subtitle: "Historial completo de todos los cambios realizados en MedTracker."
+        filter:
+          record_type: "Tipo de Registro"
+          all_types: "Todos los Tipos"
+          event_type: "Tipo de Evento"
+          all_events: "Todos los Eventos"
+          filter_button: "Filtrar"
+          clear_filters: "Limpiar filtros"
+        table:
+          timestamp: "Marca de Tiempo"
+          record_type: "Tipo de Registro"
+          event: "Evento"
+          user: "Usuario"
+          ip_address: "Dirección IP"
+          actions: "Acciones"
+          view_details: "Ver Detalles"
+        empty:
+          no_logs: "No se encontraron registros de auditoría"
+          adjust_filters: "Intente ajustar sus filtros"
+        pagination:
+          showing: "Mostrando"
+          to: "a"
+          of: "de"
+          results: "resultados"
+          previous: "Anterior"
+          next: "Siguiente"
+        system: "Sistema"
+      show:
+        title: "Detalles del Registro de Auditoría"
+        back: "← Volver a Registros de Auditoría"
+        event_information: "Información del Evento"
+        timestamp: "Marca de Tiempo"
+        record_type: "Tipo de Registro"
+        record_id: "ID de Registro"
+        event_type: "Tipo de Evento"
+        user: "Usuario"
+        ip_address: "Dirección IP"
+        na: "N/D"
+        system: "Sistema"
+        previous_state: "Estado Anterior"
+        previous_state_description: "El estado del registro antes de este cambio"
+        new_state: "Nuevo Estado"
+        new_state_create: "El estado del registro cuando fue creado"
+        new_state_update: "El estado del registro después de este cambio"
+        new_state_other: "El estado actual del registro"
 
   authentication:
     login_required: "Por favor, inicie sesión para continuar"

@@ -35,7 +35,7 @@ RSpec.describe Components::Admin::AuditLogs::ShowView, type: :component do
 
       it 'returns System when whodunnit is blank' do
         allow(version).to receive(:whodunnit).and_return(nil)
-        expect(view.send(:user_name)).to eq('System')
+        expect(view.send(:user_name)).to eq(I18n.t('admin.audit_logs.show.system'))
       end
 
       it 'returns User #ID when user is not found' do
@@ -87,12 +87,12 @@ RSpec.describe Components::Admin::AuditLogs::ShowView, type: :component do
     describe '#description_for_new_state' do
       it 'returns create description for create events' do
         allow(version).to receive(:event).and_return('create')
-        expect(view.send(:description_for_new_state)).to eq('The state of the record when it was created')
+        expect(view.send(:description_for_new_state)).to eq(I18n.t('admin.audit_logs.show.new_state_create'))
       end
 
       it 'returns update description for update events' do
         allow(version).to receive(:event).and_return('update')
-        expect(view.send(:description_for_new_state)).to eq('The state of the record after this change')
+        expect(view.send(:description_for_new_state)).to eq(I18n.t('admin.audit_logs.show.new_state_update'))
       end
     end
 

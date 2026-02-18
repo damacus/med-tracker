@@ -5,6 +5,54 @@ cy:
   admin:
     users:
       unauthorized: "Nid oes gennych awdurdod i gyflawni'r weithred hon."
+    audit_logs:
+      index:
+        title: "Llwybr Archwilio"
+        subtitle: "Hanes cyflawn o bob newid a wnaed yn MedTracker."
+        filter:
+          record_type: "Math o Gofnod"
+          all_types: "Pob Math"
+          event_type: "Math o Ddigwyddiad"
+          all_events: "Pob Digwyddiad"
+          filter_button: "Hidlo"
+          clear_filters: "Clirio hidlwyr"
+        table:
+          timestamp: "Amser"
+          record_type: "Math o Gofnod"
+          event: "Digwyddiad"
+          user: "Defnyddiwr"
+          ip_address: "Cyfeiriad IP"
+          actions: "Gweithredoedd"
+          view_details: "Gweld Manylion"
+        empty:
+          no_logs: "Dim logiau archwilio wedi'u canfod"
+          adjust_filters: "Rhowch gynnig ar addasu eich hidlwyr"
+        pagination:
+          showing: "Yn dangos"
+          to: "i"
+          of: "o"
+          results: "canlyniad"
+          previous: "Blaenorol"
+          next: "Nesaf"
+        system: "System"
+      show:
+        title: "Manylion Log Archwilio"
+        back: "← Yn ôl i Logiau Archwilio"
+        event_information: "Gwybodaeth Digwyddiad"
+        timestamp: "Amser"
+        record_type: "Math o Gofnod"
+        record_id: "ID Cofnod"
+        event_type: "Math o Ddigwyddiad"
+        user: "Defnyddiwr"
+        ip_address: "Cyfeiriad IP"
+        na: "Amh"
+        system: "System"
+        previous_state: "Cyflwr Blaenorol"
+        previous_state_description: "Cyflwr y cofnod cyn y newid hwn"
+        new_state: "Cyflwr Newydd"
+        new_state_create: "Cyflwr y cofnod pan gafodd ei greu"
+        new_state_update: "Cyflwr y cofnod ar ôl y newid hwn"
+        new_state_other: "Cyflwr cyfredol y cofnod"
 
   authentication:
     login_required: "Mewngofnodwch i barhau"
