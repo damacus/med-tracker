@@ -37,6 +37,26 @@ cy:
     created: "Crëwyd y person yn llwyddiannus."
     updated: "Diweddarwyd y person yn llwyddiannus."
     deleted: "Dilëwyd y person yn llwyddiannus."
+    show:
+      edit_person: "Golygu Person"
+      add_prescription: "Ychwanegu Presgripsiwn"
+      add_medicine: "Ychwanegu Meddyginiaeth"
+      back: "Yn ôl"
+      born: "Ganwyd:"
+      age: "Oedran:"
+      prescriptions_heading: "Presgripsiynau"
+      no_prescriptions: "Dim presgripsiynau eto."
+      add_first_prescription: "Ychwanegu Presgripsiwn Cyntaf"
+      my_medicines_heading: "Fy Meddyginiaethau"
+      no_medicines: "Dim meddyginiaethau wedi'u hychwanegu eto."
+      medicines_hint: "Ychwanegwch fitaminau, atchwanegion, neu feddyginiaethau dros y cownter yma."
+      add_first_medicine: "Ychwanegu Meddyginiaeth Gyntaf"
+    form:
+      edit_heading: "Golygu Person"
+      name: "Enw"
+      date_of_birth: "Dyddiad Geni"
+      save: "Cadw"
+      cancel: "Canslo"
 
   person_medicines:
     created: "Ychwanegwyd y feddyginiaeth yn llwyddiannus."
@@ -74,6 +94,22 @@ cy:
     modal:
       new_title: "Presgripsiwn Newydd ar gyfer %{person}"
       edit_title: "Golygu Presgripsiwn ar gyfer %{person}"
+    card:
+      started: "📅 Dechreuodd:"
+      ends: "🏁 Yn gorffen:"
+      notes: "📝 Nodiadau: "
+      next_dose_available: "🕐 Dos nesaf ar gael mewn: "
+      todays_doses: "Dosau Heddiw"
+      no_doses_today: "Dim dosau wedi'u cymryd heddiw"
+      take: "💊 Cymryd"
+      out_of_stock: "💊 Allan o Stoc"
+      edit: "Golygu"
+      delete: "Dileu"
+      delete_dialog:
+        title: "Dileu Presgripsiwn"
+        confirm: "Ydych chi'n sicr eich bod am ddileu presgripsiwn %{medicine}? Ni all y weithred hon gael ei dadwneud."
+        cancel: "Canslo"
+        submit: "Dileu"
 
   sessions:
     rate_limit: "Rhowch gynnig arall yn nes ymlaen."

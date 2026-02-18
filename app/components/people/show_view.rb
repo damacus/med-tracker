@@ -45,12 +45,14 @@ module Components
       def render_edit_form
         form_with(model: person, class: 'space-y-6', data: { controller: 'auto-submit' }) do |f|
           CardHeader do
-            Heading(level: 2, size: '6', class: 'font-semibold leading-none tracking-tight') { 'Edit Person' }
+            Heading(level: 2, size: '6', class: 'font-semibold leading-none tracking-tight') do
+              t('people.form.edit_heading')
+            end
           end
 
           CardContent(class: 'space-y-4') do
             FormField do
-              FormFieldLabel(for: 'person_name') { 'Name' }
+              FormFieldLabel(for: 'person_name') { t('people.form.name') }
               render f.text_field(
                 :name,
                 class: 'flex h-9 w-full rounded-md border bg-background px-3 py-1 text-sm shadow-sm ' \
@@ -60,7 +62,7 @@ module Components
             end
 
             FormField do
-              FormFieldLabel(for: 'person_date_of_birth') { 'Date of Birth' }
+              FormFieldLabel(for: 'person_date_of_birth') { t('people.form.date_of_birth') }
               render f.date_field(
                 :date_of_birth,
                 class: 'flex h-9 w-full rounded-md border bg-background px-3 py-1 text-sm shadow-sm ' \
@@ -71,8 +73,8 @@ module Components
           end
 
           CardFooter(class: 'flex gap-2') do
-            Button(type: :submit, variant: :primary) { 'Save' }
-            Link(href: person_path(person), variant: :outline) { 'Cancel' }
+            Button(type: :submit, variant: :primary) { t('people.form.save') }
+            Link(href: person_path(person), variant: :outline) { t('people.form.cancel') }
           end
         end
       end
@@ -83,8 +85,8 @@ module Components
             Heading(level: 1, size: '7', class: 'font-semibold tracking-tight') { person.name }
             CardDescription do
               div(class: 'space-y-1') do
-                p { "Born: #{person.date_of_birth.strftime('%B %d, %Y')}" }
-                p { "Age: #{person.age}" }
+                p { "#{t('people.show.born')} #{person.date_of_birth.strftime('%B %d, %Y')}" }
+                p { "#{t('people.show.age')} #{person.age}" }
               end
             end
             div(class: 'flex flex-wrap gap-2 pt-2') do
@@ -92,18 +94,18 @@ module Components
                 href: new_person_prescription_path(person),
                 variant: :primary,
                 data: { turbo_stream: true }
-              ) { 'Add Prescription' }
+              ) { t('people.show.add_prescription') }
               if view_context.policy(PersonMedicine.new(person: person)).create?
                 Link(
                   href: new_person_person_medicine_path(person),
                   variant: :primary,
                   data: { turbo_stream: true }
-                ) { 'Add Medicine' }
+                ) { t('people.show.add_medicine') }
               end
               if view_context.policy(person).update?
-                Link(href: person_path(person, editing: true), variant: :outline) { 'Edit Person' }
+                Link(href: person_path(person, editing: true), variant: :outline) { t('people.show.edit_person') }
               end
-              Link(href: people_path, variant: :outline) { 'Back' }
+              Link(href: people_path, variant: :outline) { t('people.show.back') }
             end
           end
         end
@@ -118,7 +120,7 @@ module Components
       end
 
       def render_prescriptions_header
-        Heading(level: 2, class: 'mb-6') { 'Prescriptions' }
+        Heading(level: 2, class: 'mb-6') { t('people.show.prescriptions_heading') }
       end
 
       def render_prescriptions_grid
@@ -141,12 +143,12 @@ module Components
         div(class: 'col-span-full') do
           Card(class: 'text-center py-12') do
             CardContent do
-              Text(size: '2', class: 'text-muted-foreground') { 'No prescriptions yet.' }
+              Text(size: '2', class: 'text-muted-foreground') { t('people.show.no_prescriptions') }
               Link(
                 href: new_person_prescription_path(person),
                 variant: :primary,
                 data: { turbo_stream: true }
-              ) { 'Add First Prescription' }
+              ) { t('people.show.add_first_prescription') }
             end
           end
         end
@@ -161,7 +163,7 @@ module Components
       end
 
       def render_my_medicines_header
-        Heading(level: 2, class: 'mb-6') { 'My Medicines' }
+        Heading(level: 2, class: 'mb-6') { t('people.show.my_medicines_heading') }
       end
 
       def render_my_medicines_grid
@@ -189,14 +191,14 @@ module Components
         div(class: 'col-span-full') do
           Card(class: 'text-center py-12') do
             CardContent do
-              Text(size: '2', class: 'text-muted-foreground') { 'No medicines added yet.' }
-              Text(size: '2') { 'Add vitamins, supplements, or over-the-counter medicines here.' }
+              Text(size: '2', class: 'text-muted-foreground') { t('people.show.no_medicines') }
+              Text(size: '2') { t('people.show.medicines_hint') }
               if view_context.policy(PersonMedicine.new(person: person)).create?
                 Link(
                   href: new_person_person_medicine_path(person),
                   variant: :primary,
                   data: { turbo_stream: true }
-                ) { 'Add First Medicine' }
+                ) { t('people.show.add_first_medicine') }
               end
             end
           end

@@ -37,6 +37,26 @@ en:
     created: "Person was successfully created."
     updated: "Person was successfully updated."
     deleted: "Person was successfully deleted."
+    show:
+      edit_person: "Edit Person"
+      add_prescription: "Add Prescription"
+      add_medicine: "Add Medicine"
+      back: "Back"
+      born: "Born:"
+      age: "Age:"
+      prescriptions_heading: "Prescriptions"
+      no_prescriptions: "No prescriptions yet."
+      add_first_prescription: "Add First Prescription"
+      my_medicines_heading: "My Medicines"
+      no_medicines: "No medicines added yet."
+      medicines_hint: "Add vitamins, supplements, or over-the-counter medicines here."
+      add_first_medicine: "Add First Medicine"
+    form:
+      edit_heading: "Edit Person"
+      name: "Name"
+      date_of_birth: "Date of Birth"
+      save: "Save"
+      cancel: "Cancel"
 
   person_medicines:
     created: "Medicine added successfully."
@@ -74,6 +94,22 @@ en:
     modal:
       new_title: "New Prescription for %{person}"
       edit_title: "Edit Prescription for %{person}"
+    card:
+      started: "📅 Started:"
+      ends: "🏁 Ends:"
+      notes: "📝 Notes: "
+      next_dose_available: "🕐 Next dose available in: "
+      todays_doses: "Today's Doses"
+      no_doses_today: "No doses taken today"
+      take: "💊 Take"
+      out_of_stock: "💊 Out of Stock"
+      edit: "Edit"
+      delete: "Delete"
+      delete_dialog:
+        title: "Delete Prescription"
+        confirm: "Are you sure you want to delete the %{medicine} prescription? This action cannot be undone."
+        cancel: "Cancel"
+        submit: "Delete"
 
   sessions:
     rate_limit: "Try again later."

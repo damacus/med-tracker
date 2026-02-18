@@ -37,6 +37,26 @@ pt:
     created: "Pessoa criada com sucesso."
     updated: "Pessoa atualizada com sucesso."
     deleted: "Pessoa eliminada com sucesso."
+    show:
+      edit_person: "Editar Pessoa"
+      add_prescription: "Adicionar Receita"
+      add_medicine: "Adicionar Medicamento"
+      back: "Voltar"
+      born: "Nascido:"
+      age: "Idade:"
+      prescriptions_heading: "Receitas"
+      no_prescriptions: "Sem receitas ainda."
+      add_first_prescription: "Adicionar Primeira Receita"
+      my_medicines_heading: "Os Meus Medicamentos"
+      no_medicines: "Sem medicamentos ainda."
+      medicines_hint: "Adicione vitaminas, suplementos ou medicamentos de venda livre aqui."
+      add_first_medicine: "Adicionar Primeiro Medicamento"
+    form:
+      edit_heading: "Editar Pessoa"
+      name: "Nome"
+      date_of_birth: "Data de Nascimento"
+      save: "Guardar"
+      cancel: "Cancelar"
 
   person_medicines:
     created: "Medicamento adicionado com sucesso."
@@ -74,6 +94,22 @@ pt:
     modal:
       new_title: "Nova Receita para %{person}"
       edit_title: "Editar Receita para %{person}"
+    card:
+      started: "📅 Iniciado:"
+      ends: "🏁 Termina:"
+      notes: "📝 Notas: "
+      next_dose_available: "🕐 Próxima dose disponível em: "
+      todays_doses: "Doses de Hoje"
+      no_doses_today: "Nenhuma dose tomada hoje"
+      take: "💊 Tomar"
+      out_of_stock: "💊 Sem Stock"
+      edit: "Editar"
+      delete: "Eliminar"
+      delete_dialog:
+        title: "Eliminar Receita"
+        confirm: "Tem certeza de que deseja eliminar a receita de %{medicine}? Esta ação não pode ser desfeita."
+        cancel: "Cancelar"
+        submit: "Eliminar"
 
   sessions:
     rate_limit: "Tente novamente mais tarde."
