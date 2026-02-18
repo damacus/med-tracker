@@ -24,6 +24,12 @@ RSpec.describe DashboardPresenter do
         presenter = described_class.new(current_user: carer_user)
         expect(presenter.people).to eq(carer_user.person.patients)
       end
+
+      it 'returns Person.none when carer has no associated person' do
+        allow(carer_user).to receive(:person).and_return(nil)
+        presenter = described_class.new(current_user: carer_user)
+        expect(presenter.people).to eq(Person.none)
+      end
     end
 
     context 'when user is a parent' do
@@ -31,12 +37,31 @@ RSpec.describe DashboardPresenter do
         presenter = described_class.new(current_user: parent_user)
         expect(presenter.people).to eq(parent_user.person.patients.where(person_type: :minor))
       end
+
+      it 'returns Person.none when parent has no associated person' do
+        allow(parent_user).to receive(:person).and_return(nil)
+        presenter = described_class.new(current_user: parent_user)
+        expect(presenter.people).to eq(Person.none)
+      end
     end
 
     context 'when user is a minor (no special access)' do
       it 'returns only their own person record' do
         presenter = described_class.new(current_user: minor_user)
         expect(presenter.people).to eq(Person.where(id: minor_user.person.id))
+      end
+
+      it 'returns Person.none when minor has no associated person' do
+        allow(minor_user).to receive(:person).and_return(nil)
+        presenter = described_class.new(current_user: minor_user)
+        expect(presenter.people).to eq(Person.none)
+      end
+    end
+
+    context 'when current_user is nil' do
+      it 'returns Person.none' do
+        presenter = described_class.new(current_user: nil)
+        expect(presenter.people).to eq(Person.none)
       end
     end
 
