@@ -9,6 +9,7 @@ RSpec.describe DashboardPresenter do
   let(:carer_user) { users(:carer) }
   let(:parent_user) { users(:parent) }
   let(:minor_user) { users(:one) } # role: 5 (minor) - falls into else branch
+  let(:userless_person_user) { users(:carer) }
 
   describe '#people' do
     context 'when user is an administrator' do
@@ -38,12 +39,53 @@ RSpec.describe DashboardPresenter do
         expect(presenter.people).to eq(Person.where(id: minor_user.person.id))
       end
     end
+
+    context 'when carer user has no associated person' do
+      it 'returns Person.none without raising' do
+        allow(carer_user).to receive(:person).and_return(nil)
+        presenter = described_class.new(current_user: carer_user)
+        expect(presenter.people).to eq(Person.none)
+      end
+    end
+
+    context 'when parent user has no associated person' do
+      it 'returns Person.none without raising' do
+        allow(parent_user).to receive(:person).and_return(nil)
+        presenter = described_class.new(current_user: parent_user)
+        expect(presenter.people).to eq(Person.none)
+      end
+    end
+
+    context 'when non-privileged user has no associated person' do
+      it 'returns Person.none without raising' do
+        allow(minor_user).to receive(:person).and_return(nil)
+        presenter = described_class.new(current_user: minor_user)
+        expect(presenter.people).to eq(Person.none)
+      end
+    end
   end
 
   describe '#active_prescriptions' do
-    it 'returns active prescriptions for scoped people' do
+    it 'returns date-active prescriptions for scoped people' do
       presenter = described_class.new(current_user: admin_user)
-      expect(presenter.active_prescriptions).to all(have_attributes(active: true))
+      today = Time.zone.today
+      expect(presenter.active_prescriptions).to all(
+        satisfy { |p| today.between?(p.start_date, p.end_date) }
+      )
+    end
+
+    it 'excludes prescriptions whose end_date is in the past' do
+      past_prescription = prescriptions(:john_paracetamol)
+      past_prescription.update!(start_date: 2.years.ago.to_date, end_date: 1.year.ago.to_date)
+      presenter = described_class.new(current_user: admin_user)
+      expect(presenter.active_prescriptions).not_to include(past_prescription)
+    end
+
+    it 'excludes prescriptions whose start_date is in the future' do
+      future_prescription = prescriptions(:john_paracetamol)
+      future_prescription.update!(start_date: 1.year.from_now.to_date, end_date: 2.years.from_now.to_date)
+      presenter = described_class.new(current_user: admin_user)
+      expect(presenter.active_prescriptions).not_to include(future_prescription)
     end
   end
 
