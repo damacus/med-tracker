@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.2.5](https://github.com/damacus/med-tracker/compare/med-tracker/v0.2.4...med-tracker/v0.2.5) (2026-02-17)
+
+
+### Features
+
+* replace Google OAuth with generic OIDC provider support ([#472](https://github.com/damacus/med-tracker/issues/472)) ([20a8892](https://github.com/damacus/med-tracker/commit/20a8892e2e35ff2e60116cdf209d0626b3854a6e))
+
+
+### Bug Fixes
+
+* add OCI annotations for GHCR package metadata ([#465](https://github.com/damacus/med-tracker/issues/465)) ([4690b7a](https://github.com/damacus/med-tracker/commit/4690b7a97d3acf1da4fbcff286570fd467372ff4))
+* BD tidy ([#470](https://github.com/damacus/med-tracker/issues/470)) ([b179c32](https://github.com/damacus/med-tracker/commit/b179c32f5b0e19cbc3ef745a3c496537f52499a2))
+* enforce OIDC redirect URI validation (OIDC-SEC-010) ([#477](https://github.com/damacus/med-tracker/issues/477)) ([3f0a051](https://github.com/damacus/med-tracker/commit/3f0a0515fb1937b824cf6ffcc8afcef0d9156515))
+* enhance OIDC security validation for SEC-009 and SEC-010 ([#475](https://github.com/damacus/med-tracker/issues/475)) ([7eab489](https://github.com/damacus/med-tracker/commit/7eab489d2f46cd122ff045b33789c48956c6fee1))
+* mark OIDC accounts as verified to prevent hijacking (OIDC-SEC-011) ([#476](https://github.com/damacus/med-tracker/issues/476)) ([d40938a](https://github.com/damacus/med-tracker/commit/d40938a018435c66ec0d887e2254992eab9724cc))
+* MedicationTakePolicy handles person_medicine-based takes ([#474](https://github.com/damacus/med-tracker/issues/474)) ([2609fa7](https://github.com/damacus/med-tracker/commit/2609fa76d461af7468da1f5841858cdd892f82db))
+* remove deprecated phlex-rails helpers method usage ([#473](https://github.com/damacus/med-tracker/issues/473)) ([87b2559](https://github.com/damacus/med-tracker/commit/87b255995256b1fd038f0edd069516a53172f9c6))
+* use policy_scope(Medicine) in PersonMedicinesController ([#471](https://github.com/damacus/med-tracker/issues/471)) ([187fef2](https://github.com/damacus/med-tracker/commit/187fef29aae827a443146a4cc58e27b60b6671ec))
+
 ## [0.2.4](https://github.com/damacus/med-tracker/compare/med-tracker/v0.2.3...med-tracker/v0.2.4) (2026-02-17)
 
 
