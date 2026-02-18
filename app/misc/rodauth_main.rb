@@ -180,6 +180,18 @@ class RodauthMain < Rodauth::Rails::Auth
     end
 
     # ==> Hooks
+    # Block the create-account page entirely when an administrator exists and no
+    # valid invitation token is present. This prevents unauthenticated users from
+    # even seeing the registration form in invite-only mode.
+    before_create_account_route do
+      next if param_or_nil('invitation_token').present?
+      next unless User.administrator.exists?
+
+      set_notice_flash I18n.t('authentication.invite_only',
+                              default: 'Registration is by invitation only. Please contact an administrator.')
+      redirect login_path
+    end
+
     # Validate custom fields in the create account form.
     before_create_account do
       # Validate name

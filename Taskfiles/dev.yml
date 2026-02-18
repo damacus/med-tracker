@@ -101,6 +101,31 @@ tasks:
       - task: :internal:logs
         vars: { ENVIRONMENT: dev }
 
+  seed-medicines:
+    desc: Seed medicines from db/seeds/medicines.yml
+    summary: |
+      Seed the development database with medicines from db/seeds/medicines.yml.
+      Idempotent — safe to run multiple times.
+      Usage: task dev:seed-medicines
+    cmds:
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: dev
+          COMMAND: 'rails runner ''load Rails.root.join("db/seeds/seed_medicines.rb")'''
+
+  seed-users:
+    desc: Seed initial users via invitations from db/seeds/users.yml
+    summary: |
+      Send invitation emails to users listed in db/seeds/users.yml.
+      Idempotent — skips emails that already have an account or pending invitation.
+      Emails are delivered to letter_opener / mailcatcher in development.
+      Usage: task dev:seed-users
+    cmds:
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: dev
+          COMMAND: 'rails runner ''load Rails.root.join("db/seeds/seed_users.rb")'''
+
   open-ui:
     desc: Open development server UI
     summary: |

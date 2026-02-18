@@ -1,0 +1,12 @@
+# Initial users to invite on first boot.
+# Replace these placeholder emails with real addresses before running in production.
+# Roles: administrator, doctor, nurse, carer, parent
+#
+# This file is intentionally kept in the repository so it can be mounted as a
+# k8s ConfigMap volume at /app/db/seeds/users.yml to override defaults.
+#
+# Running `rails db:seed` is idempotent: users with an existing Account or a
+# pending invitation are skipped automatically.
+---
+- email: admin@yourdomain.example
+  role: administrator

@@ -63,6 +63,32 @@ tasks:
       - task: :internal:up
         vars: { ENVIRONMENT: prod }
 
+  seed-medicines:
+    desc: Seed medicines from db/seeds/medicines.yml (production)
+    summary: |
+      Seed the production database with medicines from db/seeds/medicines.yml.
+      Idempotent — safe to run multiple times.
+      Usage: task prod:seed-medicines
+    cmds:
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: prod
+          COMMAND: 'rails runner ''load Rails.root.join("db/seeds/seed_medicines.rb")'''
+
+  seed-users:
+    desc: Send invitations to initial users from db/seeds/users.yml (production)
+    summary: |
+      Send invitation emails to users listed in db/seeds/users.yml.
+      Idempotent — skips emails that already have an account or pending invitation.
+      Requires APP_URL env var for invitation links.
+      For k8s: run as a one-off Job or init container with: rails db:seed
+      Usage: task prod:seed-users
+    cmds:
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: prod
+          COMMAND: 'rails runner ''load Rails.root.join("db/seeds/seed_users.rb")'''
+
   logs:
     desc: View production server logs
     summary: |
