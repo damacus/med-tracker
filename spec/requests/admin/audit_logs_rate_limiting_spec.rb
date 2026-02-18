@@ -12,8 +12,7 @@ RSpec.describe 'Admin::AuditLogs Rate Limiting' do
     original_cache_store = Rack::Attack.cache.store
     original_enabled = Rack::Attack.enabled
 
-    fresh_cache = ActiveSupport::Cache::MemoryStore.new
-    Rack::Attack.cache.store = fresh_cache
+    Rack::Attack.cache.store = ActiveSupport::Cache::MemoryStore.new
     Rack::Attack.enabled = true
 
     example.run
