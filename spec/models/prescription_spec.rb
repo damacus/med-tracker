@@ -70,7 +70,7 @@ RSpec.describe Prescription do
   end
 
   describe '#can_administer?' do
-    let(:medicine) { Medicine.create!(name: 'TestMed', stock: 10, reorder_threshold: 2) }
+    let(:medicine) { Medicine.create!(name: 'TestMed', current_supply: 10, stock: 10, reorder_threshold: 2) }
     let(:person) do
       Person.create!(name: 'Test Person', email: 'test-administer@example.com', date_of_birth: Date.new(1990, 1, 1))
     end
@@ -89,15 +89,15 @@ RSpec.describe Prescription do
     end
 
     context 'when medicine is out of stock' do
-      before { medicine.update!(stock: 0) }
+      before { medicine.update!(current_supply: 0) }
 
       it 'returns false' do
         expect(prescription.can_administer?).to be false
       end
     end
 
-    context 'when medicine stock is nil (untracked)' do
-      before { medicine.update!(stock: nil) }
+    context 'when medicine current_supply is nil (untracked)' do
+      before { medicine.update!(current_supply: nil) }
 
       it 'returns true' do
         expect(prescription.can_administer?).to be true
@@ -106,7 +106,7 @@ RSpec.describe Prescription do
   end
 
   describe '#administration_blocked_reason' do
-    let(:medicine) { Medicine.create!(name: 'TestMed2', stock: 0, reorder_threshold: 2) }
+    let(:medicine) { Medicine.create!(name: 'TestMed2', current_supply: 0, stock: 10, reorder_threshold: 2) }
     let(:person) do
       Person.create!(name: 'Test Person2', email: 'test-reason@example.com', date_of_birth: Date.new(1990, 1, 1))
     end
@@ -118,7 +118,7 @@ RSpec.describe Prescription do
       )
     end
 
-    it 'returns :out_of_stock when medicine has no stock' do
+    it 'returns :out_of_stock when medicine has no supply' do
       expect(prescription.administration_blocked_reason).to eq(:out_of_stock)
     end
   end

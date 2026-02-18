@@ -13,7 +13,7 @@ module Components
 
       def view_template
         header(class: 'sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur ' \
-                      'supports-[backdrop-filter]:bg-background/60') do
+                      'supports-[backdrop-filter]:bg-background/60 md:hidden') do
           render_skip_link
           nav(class: 'nav') do
             div(class: 'nav__container flex h-16 items-center justify-between px-4') do
@@ -44,7 +44,6 @@ module Components
         div(class: 'nav__left flex items-center gap-6') do
           render Components::Layouts::MobileMenu.new(current_user: @current_user) if authenticated?
           render_brand
-          render Components::Layouts::DesktopNav.new if authenticated?
         end
       end
 

@@ -24,10 +24,10 @@ RSpec.describe Components::Layouts::MobileMenu, type: :component do
   end
 
   describe 'navigation links' do
-    it 'renders Medicines link' do
+    it 'renders Inventory link' do
       rendered = render_inline(described_class.new)
 
-      expect(rendered.text).to include('Medicines')
+      expect(rendered.text).to include('Inventory')
     end
 
     it 'renders People link' do

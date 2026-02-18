@@ -12,125 +12,178 @@ module Components
       end
 
       def view_template
-        div(class: 'container mx-auto px-4 py-8 pb-24 md:pb-8 max-w-4xl') do
+        div(class: 'container mx-auto px-4 py-12 max-w-6xl space-y-12') do
           render_notice if notice.present?
           render_header
-          render_details
-          render_actions
+
+          div(class: 'grid grid-cols-1 lg:grid-cols-3 gap-12') do
+            div(class: 'lg:col-span-2 space-y-8') do
+              render_description_section
+              render_warnings_section if medicine.warnings.present?
+            end
+
+            div(class: 'space-y-8') do
+              render_stock_card
+              render_dosage_card
+              render_actions_card
+            end
+          end
         end
       end
 
       private
 
       def render_notice
-        render RubyUI::Alert.new(variant: :success, class: 'mb-6') do
+        render RubyUI::Alert.new(variant: :success, class: 'mb-8 rounded-2xl border-none shadow-sm') do
           plain(notice)
         end
       end
 
       def render_header
-        div(class: 'mb-8') do
-          Text(size: '2', weight: 'medium', class: 'uppercase tracking-wide text-slate-500 mb-2') { 'Medicine Profile' }
-          Heading(level: 1) { medicine.name }
-        end
-      end
-
-      def render_details
-        div(class: 'grid grid-cols-1 md:grid-cols-2 gap-6 mb-8') do
-          render_description_card
-          render_dosage_card
-          render_stock_card
-          render_reorder_card
-          render_warnings_card if medicine.warnings.present?
-        end
-      end
-
-      def render_description_card
-        Card(class: 'md:col-span-2') do
-          CardHeader do
-            Heading(level: 2, size: '4', class: 'font-semibold leading-none tracking-tight') { 'Description' }
+        div(class: 'flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-slate-100') do
+          div(class: 'flex items-center gap-6') do
+            div(
+              class: 'w-20 h-20 rounded-[2rem] bg-primary/10 flex items-center justify-center text-primary shadow-inner'
+            ) do
+              render Icons::Pill.new(size: 32)
+            end
+            div(class: 'space-y-1') do
+              Text(size: '2', weight: 'black', class: 'uppercase tracking-[0.2em] font-bold opacity-40 block mb-1') do
+                'Medicine Profile'
+              end
+              Heading(level: 1, size: '8', class: 'font-black tracking-tight') { medicine.name }
+            end
           end
-          CardContent do
-            Text(class: 'text-slate-700') { medicine.description.presence || 'No description provided.' }
-          end
-        end
-      end
 
-      def render_dosage_card
-        Card do
-          CardHeader do
-            Heading(level: 2, size: '4', class: 'font-semibold leading-none tracking-tight') { 'Standard Dosage' }
-          end
-          CardContent do
-            render_dosage_content
+          div(class: 'flex gap-3') do
+            Link(href: edit_medicine_path(medicine), variant: :outline, size: :lg,
+                 class: 'rounded-2xl font-bold text-sm bg-white') do
+              'Edit Details'
+            end
+            Link(href: medicines_path, variant: :ghost, size: :lg,
+                 class: 'rounded-2xl font-bold text-sm text-slate-400 hover:text-slate-600') do
+              'Inventory'
+            end
           end
         end
       end
 
-      def render_dosage_content
-        if dosage_specified?
-          render_dosage_display
-        else
-          Text(class: 'text-slate-600') { 'Not specified' }
+      def render_description_section
+        div(class: 'space-y-4') do
+          Heading(level: 2, size: '5', class: 'font-bold tracking-tight') { 'Overview' }
+          Card(class: 'p-8') do
+            Text(size: '3', class: 'text-slate-600 leading-relaxed') do
+              medicine.description.presence || 'No description provided.'
+            end
+          end
         end
       end
 
-      def dosage_specified?
-        medicine.dosage_amount.present? && medicine.dosage_unit.present?
-      end
-
-      def render_dosage_display
-        Text(size: '7', weight: 'bold', class: 'text-slate-900') do
-          plain medicine.dosage_amount.to_s
-          span(class: 'text-lg font-medium text-slate-600 ml-2') { medicine.dosage_unit }
+      def render_warnings_section
+        div(class: 'space-y-4') do
+          div(class: 'flex items-center gap-2') do
+            render Icons::AlertCircle.new(size: 20, class: 'text-rose-500')
+            Heading(level: 2, size: '5', class: 'font-bold tracking-tight text-rose-500') { 'Safety Warnings' }
+          end
+          Card(class: 'bg-rose-50 border-rose-100 p-8') do
+            Text(size: '3', class: 'text-rose-800 leading-relaxed font-medium') { medicine.warnings }
+          end
         end
       end
 
       def render_stock_card
-        Card do
-          CardHeader do
-            Heading(level: 2, size: '4', class: 'font-semibold leading-none tracking-tight') { 'Stock on Hand' }
-          end
-          CardContent do
-            Text(size: '7', weight: 'bold', class: 'text-slate-900') { (medicine.stock || 0).to_s }
+        Card(class: 'p-8 space-y-6 overflow-hidden relative') do
+          Heading(level: 3, size: '4', class: 'font-bold') { 'Inventory Status' }
+
+          current = medicine.current_supply || 0
+          total = [medicine.stock || 1, 1].max
+          percentage = (current.to_f / total * 100).round
+
+          div(class: 'space-y-4') do
+            div(class: 'flex items-baseline gap-2') do
+              span(class: "text-5xl font-black #{medicine.low_stock? ? 'text-rose-600' : 'text-primary'}") do
+                current.to_s
+              end
+              Text(size: '2', weight: 'bold', class: 'text-slate-400') { "/ #{total} units" }
+            end
+
+            div(class: 'space-y-2') do
+              div(class: 'h-2 w-full bg-slate-50 rounded-full overflow-hidden') do
+                div(class: "h-full #{medicine.low_stock? ? 'bg-rose-500' : 'bg-primary'} rounded-full",
+                    style: "width: #{percentage}%")
+              end
+              div(
+                class: 'flex justify-between items-center text-[10px] font-black uppercase ' \
+                       'tracking-widest text-slate-400'
+              ) do
+                span { 'Current Stock Level' }
+                span { "#{percentage}%" }
+              end
+            end
+
             if medicine.low_stock?
-              Text(size: '2', weight: 'semibold', class: 'text-destructive mt-2') do
-                '⚠️ Low Stock'
+              div(class: 'pt-2') do
+                Badge(variant: :destructive, class: 'w-full py-2 rounded-xl justify-center text-xs tracking-wide') do
+                  '⚠️ Low Stock Alert'
+                end
               end
             end
           end
         end
       end
 
-      def render_reorder_card
-        Card do
-          CardHeader do
-            Heading(level: 2, size: '4', class: 'font-semibold leading-none tracking-tight') { 'Reorder Threshold' }
-          end
-          CardContent do
-            Text(size: '7', weight: 'bold', class: 'text-slate-900') { (medicine.reorder_threshold || 0).to_s }
-          end
-        end
-      end
+      def render_dosage_card
+        Card(class: 'p-8 space-y-6') do
+          Heading(level: 3, size: '4', class: 'font-bold') { 'Standard Dosage' }
 
-      def render_warnings_card
-        Card(class: 'md:col-span-2 border-amber-200 bg-amber-50') do
-          CardHeader do
-            Heading(level: 2, size: '4', class: 'font-semibold leading-none tracking-tight text-amber-700') do
-              '⚠️ Warnings'
+          if dosage_specified?
+            div(class: 'flex items-center gap-4') do
+              div(
+                class: 'w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 shadow-sm'
+              ) do
+                render Icons::CheckCircle.new(size: 24)
+              end
+              div do
+                span(class: 'text-3xl font-black text-slate-900') { medicine.dosage_amount.to_s }
+                span(class: 'text-lg font-bold text-slate-400 ml-1') { medicine.dosage_unit }
+              end
             end
+          else
+            Text(size: '2', class: 'text-slate-400 italic') { 'No standard dosage specified.' }
           end
-          CardContent do
-            Text(class: 'text-amber-800') { medicine.warnings }
+
+          div(class: 'pt-4 border-t border-slate-50') do
+            overview_item('Reorder At', "#{medicine.reorder_threshold} units", Icons::Settings)
           end
         end
       end
 
-      def render_actions
-        div(class: 'flex gap-2') do
-          Link(href: edit_medicine_path(medicine), variant: :primary) { 'Edit Medicine' }
-          Link(href: medicines_path, variant: :outline) { 'Back to List' }
+      def render_actions_card
+        div(class: 'space-y-4') do
+          render Button.new(variant: :primary, class: 'w-full py-7 rounded-2xl shadow-xl shadow-primary/20') {
+            'Log Administration'
+          }
+          render Button.new(variant: :outline, class: 'w-full py-7 rounded-2xl bg-white') { 'Refill Inventory' }
         end
+      end
+
+      def overview_item(label, value, icon_class)
+        div(class: 'flex items-center gap-4 group') do
+          div(
+            class: 'w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 ' \
+                   'group-hover:bg-primary/5 group-hover:text-primary transition-colors'
+          ) do
+            render icon_class.new(size: 20)
+          end
+          div do
+            Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-slate-400') { label }
+            Text(size: '2', weight: 'semibold') { value }
+          end
+        end
+      end
+
+      def dosage_specified?
+        medicine.dosage_amount.present? && medicine.dosage_unit.present?
       end
     end
   end

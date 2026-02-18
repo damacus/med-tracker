@@ -20,6 +20,8 @@ class Prescription < ApplicationRecord
   validates :end_date, presence: true
   validate :end_date_after_start_date
 
+  delegate :out_of_stock?, to: :medicine
+
   def cycle_period
     case dose_cycle
     when 'weekly'

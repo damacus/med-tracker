@@ -114,13 +114,13 @@ RSpec.describe MedicationTake do
     end
 
     context 'when taking a dose from a prescription' do
-      it 'deducts 1 from the medicine stock' do
+      it 'does not deduct from the medicine stock (baseline capacity)' do
         expect do
           described_class.create!(
             prescription: prescription,
             taken_at: Time.current
           )
-        end.to change { medicine.reload.stock }.from(100).to(99)
+        end.not_to(change { medicine.reload.stock })
       end
 
       it 'deducts 1 from the medicine current_supply' do
@@ -134,13 +134,13 @@ RSpec.describe MedicationTake do
     end
 
     context 'when taking a dose from a person_medicine' do
-      it 'deducts 1 from the medicine stock' do
+      it 'deducts 1 from the medicine current_supply' do
         expect do
           described_class.create!(
             person_medicine: person_medicine,
             taken_at: Time.current
           )
-        end.to change { medicine.reload.stock }.from(100).to(99)
+        end.to change { medicine.reload.current_supply }.from(100).to(99)
       end
     end
   end

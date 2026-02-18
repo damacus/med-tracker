@@ -41,7 +41,7 @@ RSpec.describe 'Invite-only sign-up', type: :system do
     it 'shows the Create Account link on the login page' do
       visit login_path
 
-      expect(page).to have_link('Create a New Account')
+      expect(page).to have_link('Create one')
     end
   end
 end

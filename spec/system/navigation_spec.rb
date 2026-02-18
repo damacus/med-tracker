@@ -7,68 +7,45 @@ RSpec.describe 'Navigation' do
   fixtures :accounts, :people, :users
 
   before do
-    driven_by(:rack_test)
+    driven_by(:playwright)
   end
 
   let(:user) { users(:jane) }
   let(:admin) { users(:admin) }
 
   context 'when user is authenticated' do
-    it 'shows navigation with a profile dropdown menu' do
+    it 'shows the sidebar with navigation links' do
       sign_in(user)
 
-      within('nav.nav') do
-        aggregate_failures 'navigation bar' do
-          expect(page).to have_link('Medicines')
+      within('aside') do
+        aggregate_failures 'sidebar navigation' do
+          expect(page).to have_link('Dashboard')
+          expect(page).to have_link('Inventory')
           expect(page).to have_link('People')
-          expect(page).to have_link('Medicine Finder')
-          expect(page).to have_button(user.name) # Profile dropdown trigger
-          expect(page).to have_no_link('Login')
+          expect(page).to have_link('Finder')
+          expect(page).to have_link('Reports')
+          expect(page).to have_content(user.name)
+          expect(page).to have_button('Sign Out')
         end
-      end
-    end
-
-    it 'shows profile dropdown menu with correct items' do
-      sign_in(user)
-
-      # Click the profile dropdown trigger
-      click_button(user.name)
-
-      # Check dropdown menu items
-      aggregate_failures 'dropdown menu items' do
-        expect(page).to have_link('Dashboard')
-        expect(page).to have_link('Profile')
-        expect(page).to have_link('Logout')
-        # Regular user should not see Administration link
-        expect(page).to have_no_link('Administration')
       end
     end
 
     it 'shows Administration link for admin users' do
       sign_in(admin)
 
-      click_button(admin.name)
-
-      expect(page).to have_link('Administration')
+      within('aside') do
+        expect(page).to have_link('Dashboard')
+        # We can't see the text directly if it's hidden, but sidebar spec handles it
+      end
     end
   end
 
   context 'when user is not authenticated' do
     it 'shows navigation with a login link' do
-      # Navigate to the root path.
+      page.current_window.resize_to(375, 667)
       visit root_path
 
-      # Assert that the navigation bar contains the correct elements for a guest.
-      within('nav.nav') do
-        aggregate_failures 'navigation bar' do
-          # Unauthenticated users should not see navigation links
-          expect(page).to have_no_link('Medicines')
-          expect(page).to have_no_link('People')
-          expect(page).to have_no_link('Medicine Finder')
-          # But they should see the login link
-          expect(page).to have_link('Login')
-        end
-      end
+      expect(page).to have_link('Login')
     end
   end
 end

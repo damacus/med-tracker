@@ -135,12 +135,13 @@ RSpec.describe 'Person Medicines Authorization' do
       visit person_path(assigned_patient)
 
       within("#person_medicine_#{person_medicine.id}") do
-        expect(page).to have_button('Remove')
-        click_button 'Remove'
+        # Trigger is an icon button
+        expect(page).to have_css('button svg')
+        find('button svg').click
       end
 
       # Should show confirmation dialog
-      expect(page).to have_content('Remove')
+      expect(page).to have_content('Remove Medicine')
     end
 
     it 'denies doctors ability to remove medicines' do
@@ -148,7 +149,7 @@ RSpec.describe 'Person Medicines Authorization' do
       visit person_path(assigned_patient)
 
       within("#person_medicine_#{person_medicine.id}") do
-        expect(page).to have_no_button('Remove')
+        expect(page).to have_no_css('button svg')
       end
     end
 
@@ -157,7 +158,7 @@ RSpec.describe 'Person Medicines Authorization' do
       visit person_path(assigned_patient)
 
       within("#person_medicine_#{person_medicine.id}") do
-        expect(page).to have_no_button('Remove')
+        expect(page).to have_no_css('button svg')
       end
     end
 
@@ -166,7 +167,7 @@ RSpec.describe 'Person Medicines Authorization' do
       visit person_path(assigned_patient)
 
       within("#person_medicine_#{person_medicine.id}") do
-        expect(page).to have_no_button('Remove')
+        expect(page).to have_no_css('button svg')
       end
     end
   end

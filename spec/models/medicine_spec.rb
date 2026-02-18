@@ -36,30 +36,30 @@ RSpec.describe Medicine do
     subject(:medicine) do
       described_class.new(
         name: 'Ibuprofen',
-        current_supply: 200,
-        stock: stock,
+        current_supply: current_supply,
+        stock: 200,
         reorder_threshold: 50
       )
     end
 
-    context 'when stock is below the reorder threshold' do
-      let(:stock) { 25 }
+    context 'when current_supply is below the reorder threshold' do
+      let(:current_supply) { 25 }
 
       it 'returns true' do
         expect(medicine.low_stock?).to be(true)
       end
     end
 
-    context 'when stock meets the reorder threshold' do
-      let(:stock) { 50 }
+    context 'when current_supply meets the reorder threshold' do
+      let(:current_supply) { 50 }
 
       it 'returns true' do
         expect(medicine.low_stock?).to be(true)
       end
     end
 
-    context 'when stock is above the reorder threshold' do
-      let(:stock) { 75 }
+    context 'when current_supply is above the reorder threshold' do
+      let(:current_supply) { 75 }
 
       it 'returns false' do
         expect(medicine.low_stock?).to be(false)
@@ -68,22 +68,22 @@ RSpec.describe Medicine do
   end
 
   describe '#out_of_stock?' do
-    subject(:medicine) { described_class.new(stock: stock) }
+    subject(:medicine) { described_class.new(current_supply: current_supply) }
 
-    context 'when stock is 0' do
-      let(:stock) { 0 }
+    context 'when current_supply is 0' do
+      let(:current_supply) { 0 }
 
       it { is_expected.to be_out_of_stock }
     end
 
-    context 'when stock is positive' do
-      let(:stock) { 1 }
+    context 'when current_supply is positive' do
+      let(:current_supply) { 1 }
 
       it { is_expected.not_to be_out_of_stock }
     end
 
-    context 'when stock is nil (untracked)' do
-      let(:stock) { nil }
+    context 'when current_supply is nil (untracked)' do
+      let(:current_supply) { nil }
 
       it { is_expected.not_to be_out_of_stock }
     end

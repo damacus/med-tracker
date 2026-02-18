@@ -36,11 +36,16 @@ module Views
 
       def render_profile_sections
         div(class: 'space-y-6') do
+          render_theme_picker_card
           render_personal_info_card
           render_account_security_card
           render_two_factor_card
           render_danger_zone_card
         end
+      end
+
+      def render_theme_picker_card
+        render ThemePickerCard.new
       end
 
       def render_personal_info_card

@@ -18,8 +18,8 @@ RSpec.describe 'Mobile Navigation' do
     expect(page).to have_css('button[aria-label="Open menu"]')
     expect(page).to have_css('nav.mobile-nav')
     expect(page).to have_link('Home', href: root_path)
-    expect(page).to have_link('Medicines', href: medicines_path)
-    expect(page).to have_link('People', href: people_path)
+    expect(page).to have_link('Inventory', href: medicines_path)
+    expect(page).to have_link('Reports', href: reports_path)
   end
 
   scenario 'Desktop navigation is hidden on mobile viewport' do
@@ -28,7 +28,7 @@ RSpec.describe 'Mobile Navigation' do
 
     # Wait for page to stabilize before checking absence
     expect(page).to have_css('nav.mobile-nav')
-    expect(page).to have_no_link('Medicines', class: 'nav__link')
+    expect(page).to have_no_css('aside') # Sidebar is hidden
   end
 
   scenario 'User can open the mobile menu' do
@@ -40,7 +40,7 @@ RSpec.describe 'Mobile Navigation' do
 
     # Links in the drawer
     within('[role="dialog"]') do
-      expect(page).to have_link('Medicines', href: medicines_path)
+      expect(page).to have_link('Inventory', href: medicines_path)
       expect(page).to have_link('People', href: people_path)
       expect(page).to have_link('Medicine Finder', href: medicine_finder_path)
       expect(page).to have_link('Profile', href: profile_path)

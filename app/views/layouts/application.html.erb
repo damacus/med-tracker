@@ -13,6 +13,17 @@
 
     <%= yield :head %>
 
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Lexend:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&family=Figtree:wght@400;500;600;700&family=Urbanist:wght@400;500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+      const savedTheme = localStorage.getItem("med-tracker-theme")
+      if (savedTheme && savedTheme !== "default") {
+        document.documentElement.classList.add(`theme-${savedTheme}`)
+      }
+    </script>
+
     <%= favicon_link_tag "/favicon.svg", type: "image/svg+xml" %>
     <%= favicon_link_tag "/favicon.svg", rel: "apple-touch-icon", type: "image/svg+xml" %>
     <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
@@ -20,8 +31,10 @@
     <%= stylesheet_link_tag "hamburgers", "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
 
-  <body>
+  <body class="bg-background">
+    <%= render Components::Layouts::Sidebar.new(current_user: current_user) %>
     <%= render Components::Layouts::Navigation.new(current_user: current_user) %>
+    
     <% if content_for?(:flash) %>
       <%= yield :flash %>
     <% else %>
@@ -30,8 +43,10 @@
       </div>
     <% end %>
 
-    <main class="pb-20 md:pb-0">
-	<%= yield %>
+    <main class="<%= current_user ? 'sm:ml-20 md:ml-64' : '' %> pb-24 md:pb-0 transition-all duration-500">
+      <div id="main-content">
+        <%= yield %>
+      </div>
     </main>
     <div id="modal"></div>
   </body>

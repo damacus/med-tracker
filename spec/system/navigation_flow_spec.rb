@@ -19,11 +19,11 @@ RSpec.describe 'Navigation Flow' do
 
       fill_in 'Email address', with: user.email_address
       fill_in 'Password', with: 'password'
-      click_button 'Login'
+      click_button 'Sign In to Dashboard'
 
       # Verify login successful
       expect(page).to have_current_path('/dashboard')
-      expect(page).to have_button(user.name)
+      expect(page).to have_content(user.name)
 
       # Step 2: Visit Profile via direct navigation (dropdown may be obscured by flash)
       visit '/profile'
@@ -36,13 +36,12 @@ RSpec.describe 'Navigation Flow' do
 
       # Step 3: Logout - wait for warning flash to auto-dismiss before clicking nav
       expect(page).to have_no_css('[data-controller="flash"]', wait: 10)
-      click_button user.name
-      click_link 'Logout'
+      click_button 'Sign Out'
 
       # Verify logout successful
       using_wait_time(5) do
         expect(page).to have_current_path('/login')
-        expect(page).to have_link('Login')
+        expect(page).to have_button('Sign In to Dashboard')
       end
     end
   end

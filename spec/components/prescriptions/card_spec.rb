@@ -27,7 +27,7 @@ RSpec.describe Components::Prescriptions::Card, type: :component do
     rendered = Nokogiri::HTML::DocumentFragment.parse(html)
 
     take_text = rendered.text
-    expect(take_text).to include('400 mg')
+    expect(take_text).to include('400mg')
     expect(take_text).not_to match(/400\s*ml/i)
   end
 end

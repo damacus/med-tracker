@@ -33,15 +33,13 @@ RSpec.describe Components::Dashboard::StatCard, type: :component do
     it 'renders within a card component' do
       rendered = render_inline(described_class.new(title: 'Test', value: 0, icon_type: 'users'))
 
-      expect(rendered.css('[class*="h-full"]')).to be_present
+      expect(rendered.css('[class*="backdrop-blur"]')).to be_present
     end
 
-    it 'renders the title as a heading' do
+    it 'renders the title' do
       rendered = render_inline(described_class.new(title: 'Active Prescriptions', value: 10, icon_type: 'pill'))
 
-      heading = rendered.css('h2')
-      expect(heading).to be_present
-      expect(heading.text).to include('Active Prescriptions')
+      expect(rendered.text).to include('Active Prescriptions')
     end
   end
 end

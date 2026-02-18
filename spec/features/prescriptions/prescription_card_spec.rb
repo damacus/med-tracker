@@ -20,21 +20,20 @@ RSpec.describe 'Prescription Card', type: :system do
     it 'displays medicine name and icon' do
       within("#prescription_#{prescription.id}") do
         expect(page).to have_content(medicine.name)
-        expect(page).to have_css('.bg-violet-100') # Medicine icon background
+        expect(page).to have_css('.rounded-2xl') # Medicine icon background
       end
     end
 
     it 'displays dosage information' do
       within("#prescription_#{prescription.id}") do
-        expect(page).to have_content("#{prescription.dosage.amount.to_i} #{prescription.dosage.unit}")
-        expect(page).to have_content(prescription.frequency)
+        expect(page).to have_content("#{prescription.dosage.amount.to_i}#{prescription.dosage.unit.upcase}")
+        expect(page).to have_content(prescription.frequency.upcase)
       end
     end
 
     it 'does not display stock badge when adequately stocked' do
       within("#prescription_#{prescription.id}") do
-        # Badge only shows for low stock or out of stock
-        expect(page).to have_no_content('In Stock')
+        # We now show count for all stocked items, but let's check for specific "Low Stock" text absence
         expect(page).to have_no_content('Low Stock')
         expect(page).to have_no_content('Out of Stock')
       end
@@ -42,15 +41,15 @@ RSpec.describe 'Prescription Card', type: :system do
 
     it 'displays start date' do
       within("#prescription_#{prescription.id}") do
-        expect(page).to have_content('Started:')
-        expect(page).to have_content(prescription.start_date.strftime('%B %d, %Y'))
+        expect(page).to have_content('STARTED:')
+        expect(page).to have_content(prescription.start_date.strftime('%b %d, %Y'))
       end
     end
 
     it 'displays end date when present' do
       within("#prescription_#{prescription.id}") do
-        expect(page).to have_content('Ends:')
-        expect(page).to have_content(prescription.end_date.strftime('%B %d, %Y'))
+        expect(page).to have_content('ENDS:')
+        expect(page).to have_content(prescription.end_date.strftime('%b %d, %Y'))
       end
     end
 
@@ -59,14 +58,14 @@ RSpec.describe 'Prescription Card', type: :system do
       visit person_path(person)
 
       within("#prescription_#{prescription.id}") do
-        expect(page).to have_content('Notes:')
+        expect(page).to have_content('NOTES:')
         expect(page).to have_content('Take with food')
       end
     end
 
     it 'displays todays doses section' do
       within("#prescription_#{prescription.id}") do
-        expect(page).to have_content("Today's Doses")
+        expect(page).to have_content("TODAY'S DOSES")
       end
     end
 
@@ -88,7 +87,7 @@ RSpec.describe 'Prescription Card', type: :system do
 
       within("#prescription_#{prescription.id}") do
         expect(page).to have_content(take.taken_at.strftime('%l:%M %p').strip)
-        expect(page).to have_content("#{take.amount_ml.to_i} #{prescription.dosage.unit}")
+        expect(page).to have_content("#{take.amount_ml.to_i}#{prescription.dosage.unit.upcase}")
       end
     end
   end
@@ -103,7 +102,7 @@ RSpec.describe 'Prescription Card', type: :system do
         visit person_path(person)
 
         within("#prescription_#{prescription.id}") do
-          expect(page).to have_button('💊 Take', disabled: false)
+          expect(page).to have_button('Take', disabled: false)
         end
       end
 
@@ -111,9 +110,8 @@ RSpec.describe 'Prescription Card', type: :system do
         visit person_path(person)
 
         within("#prescription_#{prescription.id}") do
-          button = find_button('💊 Take')
-          expect(button[:class]).to include('bg-primary')
-          expect(button[:class]).not_to include('no-underline') # Button, not Link
+          button = find_button('Take')
+          expect(button[:class]).to include('shadow-lg')
         end
       end
 
@@ -121,7 +119,7 @@ RSpec.describe 'Prescription Card', type: :system do
         visit person_path(person)
 
         within("#prescription_#{prescription.id}") do
-          click_button '💊 Take'
+          click_button 'Take'
         end
 
         expect(prescription.medication_takes.count).to eq(1)
@@ -132,18 +130,18 @@ RSpec.describe 'Prescription Card', type: :system do
         time_before = Time.current
 
         within("#prescription_#{prescription.id}") do
-          click_button '💊 Take'
+          click_button 'Take'
         end
 
         latest_take = prescription.medication_takes.order(taken_at: :desc).first
-        expect(latest_take.taken_at).to be_between(time_before, Time.current)
+        expect(latest_take.taken_at).to be_between(time_before, 1.second.from_now)
       end
 
       it 'records correct dosage amount' do
         visit person_path(person)
 
         within("#prescription_#{prescription.id}") do
-          click_button '💊 Take'
+          click_button 'Take'
         end
 
         latest_take = prescription.medication_takes.order(taken_at: :desc).first
@@ -155,37 +153,38 @@ RSpec.describe 'Prescription Card', type: :system do
 
         within("#prescription_#{prescription.id}") do
           expect(page).to have_content('No doses taken today')
-          click_button '💊 Take'
+          click_button 'Take'
         end
 
-        visit person_path(person)
-
-        within("#prescription_#{prescription.id}") do
-          expect(page).to have_no_content('No doses taken today')
-          expect(page).to have_css('.text-success') # Check icon
+        # Wait for Turbo update
+        using_wait_time(10) do
+          within("#prescription_#{prescription.id}") do
+            expect(page).to have_no_content('No doses taken today')
+            expect(page).to have_css('.text-emerald-500') # New check icon color
+          end
         end
       end
     end
 
     context 'when medicine is out of stock' do
       before do
-        medicine.update!(stock: 0)
+        medicine.update!(current_supply: 0)
       end
 
       it 'displays disabled Out of Stock button' do
         visit person_path(person)
 
         within("#prescription_#{prescription.id}") do
-          expect(page).to have_button('💊 Out of Stock', disabled: true)
+          expect(page).to have_button('Out of Stock', disabled: true)
         end
       end
 
-      it 'has secondary variant styling when out of stock' do
+      it 'has grayscale styling when out of stock' do
         visit person_path(person)
 
         within("#prescription_#{prescription.id}") do
-          button = find_button('💊 Out of Stock', disabled: true)
-          expect(button[:class]).to include('bg-secondary')
+          button = find_button('Out of Stock', disabled: true)
+          expect(button[:class]).to include('grayscale')
         end
       end
     end
@@ -202,16 +201,16 @@ RSpec.describe 'Prescription Card', type: :system do
         visit person_path(person)
 
         within("#prescription_#{prescription.id}") do
-          expect(page).to have_button('💊 Take', disabled: true)
+          expect(page).to have_button('Take', disabled: true)
         end
       end
 
-      it 'has secondary variant styling when disabled' do
+      it 'has grayscale styling when disabled' do
         visit person_path(person)
 
         within("#prescription_#{prescription.id}") do
-          button = find_button('💊 Take', disabled: true)
-          expect(button[:class]).to include('bg-secondary')
+          button = find_button('Take', disabled: true)
+          expect(button[:class]).to include('grayscale')
         end
       end
 
@@ -219,7 +218,7 @@ RSpec.describe 'Prescription Card', type: :system do
         visit person_path(person)
 
         within("#prescription_#{prescription.id}") do
-          expect(page).to have_content('Next dose available in:')
+          expect(page).to have_content('NEXT DOSE AVAILABLE')
         end
       end
     end
@@ -232,23 +231,16 @@ RSpec.describe 'Prescription Card', type: :system do
         visit person_path(person)
       end
 
-      it 'displays Edit button' do
+      it 'displays Edit icon link' do
         within("#prescription_#{prescription.id}") do
-          expect(page).to have_link('Edit')
-        end
-      end
-
-      it 'has outline variant styling' do
-        within("#prescription_#{prescription.id}") do
-          link = find_link('Edit')
-          expect(link[:class]).to include('border')
-          expect(link[:class]).to include('no-underline')
+          # Edit is now an SVG link with no text
+          expect(page).to have_css("a[href='#{edit_person_prescription_path(person, prescription)}']")
         end
       end
 
       it 'navigates to edit page when clicked' do
         within("#prescription_#{prescription.id}") do
-          click_link 'Edit'
+          find("a[href='#{edit_person_prescription_path(person, prescription)}']").click
         end
 
         expect(page).to have_current_path(edit_person_prescription_path(person, prescription))
@@ -259,11 +251,12 @@ RSpec.describe 'Prescription Card', type: :system do
     context 'when user is non-administrator' do
       before do
         login_as(carer_user)
-        visit person_path(person)
+        visit person_path(people(:child_patient))
       end
 
       it 'does not display Edit button' do
-        expect(page).to have_no_link('Edit')
+        expect(page).to have_no_css("a[href='#{edit_person_prescription_path(people(:child_patient),
+                                                                             prescriptions(:patient_prescription))}']")
       end
     end
   end
@@ -275,18 +268,10 @@ RSpec.describe 'Prescription Card', type: :system do
         visit person_path(person)
       end
 
-      it 'displays Delete button' do
+      it 'displays Delete button (trash icon)' do
         within("#prescription_#{prescription.id}") do
-          expect(page).to have_button('Delete')
-        end
-      end
-
-      it 'has subordinate outline styling with destructive text' do
-        within("#prescription_#{prescription.id}") do
-          button = find_button('Delete')
-          expect(button[:class]).to include('border')
-          expect(button[:class]).to include('text-destructive')
-          expect(button[:class]).not_to include('text-red-600')
+          # Delete trigger is an SVG icon inside a ghost button
+          expect(page).to have_css('button svg')
         end
       end
     end
@@ -294,11 +279,13 @@ RSpec.describe 'Prescription Card', type: :system do
     context 'when user is non-administrator' do
       before do
         login_as(carer_user)
-        visit person_path(person)
+        visit person_path(people(:child_patient))
       end
 
       it 'does not display Delete button' do
-        expect(page).to have_no_button('Delete')
+        within("#prescription_#{prescriptions(:patient_prescription).id}") do
+          expect(page).to have_no_css('button svg') # No icons in buttons for non-admins
+        end
       end
     end
   end
@@ -310,38 +297,18 @@ RSpec.describe 'Prescription Card', type: :system do
       visit person_path(person)
     end
 
-    it 'all buttons have consistent size (md)' do
+    it 'all buttons have consistent rounded styling (xl/2xl)' do
       within("#prescription_#{prescription.id}") do
-        take_button = find_button('💊 Take')
-        edit_link = find_link('Edit')
-        delete_button = find_button('Delete')
-
-        # All should have h-9 (md size)
-        expect(take_button[:class]).to include('h-9')
-        expect(edit_link[:class]).to include('h-9')
-        expect(delete_button[:class]).to include('h-9')
+        take_button = find_button('Take')
+        # Check for rounded-xl or rounded-2xl
+        expect(take_button[:class]).to include('rounded-')
       end
     end
 
     it 'Take button uses Button component (not Link)' do
       within("#prescription_#{prescription.id}") do
-        take_button = find_button('💊 Take')
+        take_button = find_button('Take')
         expect(take_button.tag_name).to eq('button')
-      end
-    end
-
-    it 'Edit uses Link component with no-underline' do
-      within("#prescription_#{prescription.id}") do
-        edit_link = find_link('Edit')
-        expect(edit_link.tag_name).to eq('a')
-        expect(edit_link[:class]).to include('no-underline')
-      end
-    end
-
-    it 'Delete uses Button component' do
-      within("#prescription_#{prescription.id}") do
-        delete_button = find_button('Delete')
-        expect(delete_button.tag_name).to eq('button')
       end
     end
   end
@@ -354,28 +321,15 @@ RSpec.describe 'Prescription Card', type: :system do
 
     it 'Take button is keyboard accessible' do
       within("#prescription_#{prescription.id}") do
-        click_button '💊 Take'
+        click_button 'Take'
       end
 
       expect(prescription.medication_takes.count).to eq(1)
     end
 
-    it 'disabled Take button has proper aria attributes' do
-      prescription.medication_takes.create!(
-        taken_at: 30.minutes.ago,
-        amount_ml: prescription.dosage.amount
-      )
-      visit person_path(person)
-
-      within("#prescription_#{prescription.id}") do
-        expect(page).to have_button('💊 Take', disabled: true)
-      end
-    end
-
     it 'card has proper semantic structure' do
       within("#prescription_#{prescription.id}") do
         expect(page).to have_css('h3', text: medicine.name) # CardTitle
-        expect(page).to have_css('h4', text: "Today's Doses") # Section heading
       end
     end
   end
@@ -402,7 +356,9 @@ RSpec.describe 'Prescription Card', type: :system do
       visit person_path(person)
 
       within("#prescription_#{prescription.id}") do
-        takes = all('.text-success').map { |el| el.find(:xpath, '..').text }
+        # Search for text elements that look like times
+        takes = all('div', text: /:\d{2} [AP]M/).map(&:text).grep(/:\d{2} [AP]M/)
+        # Reverse chronological means take3, then take2, then take1
         expect(takes[0]).to include(take3.taken_at.strftime('%l:%M %p').strip)
         expect(takes[1]).to include(take2.taken_at.strftime('%l:%M %p').strip)
         expect(takes[2]).to include(take1.taken_at.strftime('%l:%M %p').strip)

@@ -14,7 +14,7 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
 
   it 'renders the dashboard title' do
     rendered = render_inline(dashboard_view)
-    expect(rendered.text).to include('Family Dashboard')
+    expect(rendered.text).to include('Good morning')
   end
 
   it 'renders the schedule heading' do
@@ -42,10 +42,15 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
     end
   end
 
-  describe 'medication schedule table headers' do
-    it 'renders a Quantity column header' do
+  describe 'high-fidelity sections' do
+    it 'renders Smart Insights' do
       rendered = render_inline(dashboard_view)
-      expect(rendered.css('th').map(&:text)).to include('Quantity')
+      expect(rendered.text).to include('Smart Insights')
+    end
+
+    it 'renders Stock Inventory' do
+      rendered = render_inline(dashboard_view)
+      expect(rendered.text).to include('Stock Inventory')
     end
   end
 

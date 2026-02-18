@@ -14,8 +14,8 @@ RSpec.describe 'User Sessions', :js do
         aggregate_failures 'login form' do
           expect(page).to have_field('email')
           expect(page).to have_field('password')
-          expect(page).to have_button('Login')
-          expect(page).to have_link('Forgot password?')
+          expect(page).to have_button('Sign In to Dashboard')
+          expect(page).to have_link('Forgot?')
         end
       end
     end
@@ -25,10 +25,10 @@ RSpec.describe 'User Sessions', :js do
 
       fill_in 'email', with: 'wrong@example.com'
       fill_in 'password', with: 'wrongpass'
-      click_button 'Login'
+      click_button 'Sign In to Dashboard'
 
       using_wait_time(3) do
-        within '#flash' do
+        within '#login-flash' do
           aggregate_failures 'flash messages' do
             expect(page).to have_content('error logging in')
           end
@@ -56,16 +56,13 @@ RSpec.describe 'User Sessions', :js do
       using_wait_time(5) do
         expect(page).to have_current_path('/dashboard')
         expect(page).to have_content('You have been logged in')
-        # Wait for flash message to dismiss before clicking
-        expect(page).to have_no_content('You have been logged in')
       end
 
-      click_button user.name
-      click_link 'Logout'
+      click_button 'Sign Out'
 
       using_wait_time(5) do
-        expect(page).to have_link('Login', href: '/login')
-        expect(page).to have_no_button(user.name)
+        expect(page).to have_current_path('/login')
+        expect(page).to have_button('Sign In to Dashboard')
       end
     end
   end

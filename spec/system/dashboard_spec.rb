@@ -11,7 +11,7 @@ RSpec.describe 'Dashboard' do
 
     visit dashboard_path
 
-    expect(page).to have_content('Family Dashboard')
+    expect(page).to have_content('Good morning')
     expect(page).to have_content("Today's Schedule")
 
     # Jane's medication

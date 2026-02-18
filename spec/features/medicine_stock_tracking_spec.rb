@@ -11,8 +11,8 @@ RSpec.describe 'Medicine Stock Tracking', type: :system do
   let(:prescription) { prescriptions(:john_paracetamol) }
 
   before do
-    # Ensure medicine has known stock level
-    medicine.update!(stock: 10, reorder_threshold: 5)
+    # Ensure medicine has known stock level using current_supply
+    medicine.update!(current_supply: 10, stock: 10, reorder_threshold: 5)
 
     # Clear any fixture medication_takes to avoid cooldown interference
     prescription.medication_takes.delete_all
@@ -22,7 +22,7 @@ RSpec.describe 'Medicine Stock Tracking', type: :system do
   end
 
   it 'displays current stock on the dashboard' do
-    visit root_path
+    visit person_path(person)
 
     within "#prescription_#{prescription.id}" do
       # Badge doesn't show when adequately stocked (only for low/out of stock)
@@ -32,8 +32,8 @@ RSpec.describe 'Medicine Stock Tracking', type: :system do
   end
 
   it 'shows low stock badge when stock reaches threshold' do
-    medicine.update!(stock: 5)
-    visit root_path
+    medicine.update!(current_supply: 5)
+    visit person_path(person)
 
     within "#prescription_#{prescription.id}" do
       expect(page).to have_content('Low Stock')
@@ -42,8 +42,8 @@ RSpec.describe 'Medicine Stock Tracking', type: :system do
   end
 
   it 'shows out of stock badge when stock is zero' do
-    medicine.update!(stock: 0)
-    visit root_path
+    medicine.update!(current_supply: 0)
+    visit person_path(person)
 
     within "#prescription_#{prescription.id}" do
       expect(page).to have_content('Out of Stock')
@@ -52,29 +52,29 @@ RSpec.describe 'Medicine Stock Tracking', type: :system do
   end
 
   it 'disables the Take Now button when out of stock' do
-    medicine.update!(stock: 0)
-    visit root_path
+    medicine.update!(current_supply: 0)
+    visit person_path(person)
 
     within "#prescription_#{prescription.id}" do
       expect(page).to have_button('Out of Stock', disabled: true)
-      expect(page).to have_no_button('Take Now')
+      expect(page).to have_no_button('Take')
     end
   end
 
   it 'deducts stock when taking a dose' do
-    visit root_path
+    visit person_path(person)
 
     within "#prescription_#{prescription.id}" do
       expect(page).to have_content('10')
 
-      # Use the specific test ID for the Take Now button
-      click_button 'Take Now', match: :first
+      # Use the specific test ID for the Take button
+      click_button 'Take', match: :first
     end
 
-    expect(page).to have_content(I18n.t('take_medicines.success'))
+    expect(page).to have_content(/taken successfully/)
 
     within "#prescription_#{prescription.id}" do
-      expect(page).to have_content('9')
+      expect(page).to have_content('9 left')
     end
   end
 end

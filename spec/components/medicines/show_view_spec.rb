@@ -14,20 +14,23 @@ RSpec.describe Components::Medicines::ShowView, type: :component do
   it 'renders action links using Link component without raw button classes' do
     rendered = render_inline(described_class.new(medicine: medicine))
 
-    edit_link = rendered.css('a').find { |a| a.text.include?('Edit Medicine') }
-    back_link = rendered.css('a').find { |a| a.text.include?('Back to List') }
+    edit_link = rendered.css('a').find { |a| a.text.include?('Edit Details') }
+    back_link = rendered.css('a').find { |a| a.text.include?('Inventory') }
     expect(edit_link).to be_present
     expect(back_link).to be_present
   end
 
-  it 'does not show both Current Supply and Stock cards (signal-to-noise)' do
+  it 'renders the inventory status heading' do
     rendered = render_inline(described_class.new(medicine: medicine))
 
-    headings = rendered.css('h2').map(&:text)
-    supply_headings = headings.grep(/supply|stock/i)
-    expect(supply_headings.length).to eq(1),
-                                      "Expected 1 inventory heading but found #{supply_headings.length}: " \
-                                      "#{supply_headings.inspect}. Redundant inventory cards violate " \
-                                      'signal-to-noise ratio.'
+    expect(rendered.text).to include('Inventory Status')
+  end
+
+  it 'renders safety warnings when present' do
+    medicine_with_warnings = create(:medicine, warnings: 'Take with food')
+    rendered = render_inline(described_class.new(medicine: medicine_with_warnings))
+
+    expect(rendered.text).to include('Safety Warnings')
+    expect(rendered.text).to include('Take with food')
   end
 end
