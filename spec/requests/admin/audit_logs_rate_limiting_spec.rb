@@ -3,7 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe 'Admin::AuditLogs Rate Limiting' do
-  # skip 'FLAKY TEST'
+  include ActiveSupport::Testing::TimeHelpers
+
   fixtures :all
 
   let(:admin) { users(:admin) }
@@ -23,6 +24,7 @@ RSpec.describe 'Admin::AuditLogs Rate Limiting' do
   end
 
   before do
+    freeze_time
     sign_in(admin)
   end
 
