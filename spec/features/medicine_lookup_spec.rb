@@ -7,6 +7,9 @@ RSpec.feature 'Medicine Lookup', type: :feature do
 
   let(:doctor) { users(:doctor) }
 
+  scenario 'User searches for a medicine and views drug interactions' do
+    login_as(doctor)
+
     visit medicine_finder_path
 
     expect(page).to have_content('Medicine Finder')
@@ -25,7 +28,7 @@ RSpec.feature 'Medicine Lookup', type: :feature do
   end
 
   scenario 'User views detailed interaction information' do
-    login_as(create(:user, :doctor))
+    login_as(doctor)
 
     visit medicine_finder_path
 
@@ -42,7 +45,7 @@ RSpec.feature 'Medicine Lookup', type: :feature do
   end
 
   scenario 'Search returns no results' do
-    login_as(create(:user, :doctor))
+    login_as(doctor)
 
     visit medicine_finder_path
 
