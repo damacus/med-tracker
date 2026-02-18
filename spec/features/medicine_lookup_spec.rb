@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.feature 'Medicine Lookup', type: :feature do
+RSpec.feature 'Medicine Lookup' do
   fixtures :accounts, :people, :medicines, :users
 
   let(:doctor) { users(:doctor) }
