@@ -20,7 +20,8 @@ RSpec.describe 'MedicineFinder' do
         expect(page).to have_content('Medicine Finder')
         expect(page).to have_field('medicine-search-input')
         expect(page).to have_button('Search')
-        expect(page).to have_content('Search for medicines by name or active ingredient')
+        expected_text = 'Search the NHS Dictionary of Medicines and Devices (dm+d) by name or active ingredient.'
+        expect(page).to have_content(expected_text)
       end
     end
   end
