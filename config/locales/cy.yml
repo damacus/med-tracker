@@ -5,6 +5,17 @@ cy:
   admin:
     users:
       unauthorized: "Nid oes gennych awdurdod i gyflawni'r weithred hon."
+      user_row:
+        edit: "Golygu"
+        active: "Actif"
+        inactive: "Anactif"
+        deactivate: "Dadactifadu"
+        activate: "Actifadu"
+        deactivate_dialog:
+          title: "Dadactifadu Cyfrif Defnyddiwr"
+          confirm: "Ydych chi'n sicr eich bod am ddadactifadu cyfrif %{name}? Ni fyddant yn gallu mewngofnodi mwyach."
+          cancel: "Canslo"
+          submit: "Dadactifadu"
     audit_logs:
       index:
         title: "Llwybr Archwilio"
