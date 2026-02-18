@@ -43,8 +43,7 @@ module Components
         render RubyUI::Card.new(class: 'bg-slate-50') do
           render RubyUI::CardContent.new(class: 'py-8 text-center') do
             Text(class: 'text-slate-600') do
-              plain "This feature is coming soon! We'll integrate with a medicine database API " \
-                    'to provide detailed information about medications.'
+              plain t('medicines.finder.coming_soon')
             end
           end
         end

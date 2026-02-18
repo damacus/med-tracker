@@ -29,10 +29,10 @@ module Components
         def render_header
           header(class: 'flex items-center justify-between') do
             div(class: 'space-y-2') do
-              Heading(level: 1) { 'Carer Relationships' }
-              Text(weight: 'muted') { 'Manage carer-patient assignments.' }
+              Heading(level: 1) { t('admin.carer_relationships.index.title') }
+              Text(weight: 'muted') { t('admin.carer_relationships.index.subtitle') }
             end
-            render RubyUI::Link.new(href: '/admin/carer_relationships/new', variant: :primary) { 'New Relationship' }
+            render RubyUI::Link.new(href: '/admin/carer_relationships/new', variant: :primary) { t('admin.carer_relationships.index.new_relationship') }
           end
         end
 
@@ -48,11 +48,11 @@ module Components
         def render_table_header
           render RubyUI::TableHeader.new do
             render RubyUI::TableRow.new do
-              render(RubyUI::TableHead.new { 'Carer' })
-              render(RubyUI::TableHead.new { 'Patient' })
-              render(RubyUI::TableHead.new { 'Type' })
-              render(RubyUI::TableHead.new { 'Status' })
-              render RubyUI::TableHead.new(class: 'text-right') { 'Actions' }
+              render(RubyUI::TableHead.new { t('admin.carer_relationships.index.table.carer') })
+              render(RubyUI::TableHead.new { t('admin.carer_relationships.index.table.patient') })
+              render(RubyUI::TableHead.new { t('admin.carer_relationships.index.table.type') })
+              render(RubyUI::TableHead.new { t('admin.carer_relationships.index.table.status') })
+              render RubyUI::TableHead.new(class: 'text-right') { t('admin.carer_relationships.index.table.actions') }
             end
           end
         end
@@ -62,7 +62,7 @@ module Components
             if relationships.empty?
               render RubyUI::TableRow.new do
                 render RubyUI::TableCell.new(colspan: 5, class: 'py-8 text-center text-muted-foreground') do
-                  'No carer relationships found.'
+                  t('admin.carer_relationships.index.empty')
                 end
               end
             else
@@ -88,9 +88,9 @@ module Components
 
         def render_status_badge(relationship)
           if relationship.active?
-            render RubyUI::Badge.new(variant: :green) { 'Active' }
+            render RubyUI::Badge.new(variant: :green) { t('admin.carer_relationships.index.active') }
           else
-            render RubyUI::Badge.new(variant: :red) { 'Inactive' }
+            render RubyUI::Badge.new(variant: :red) { t('admin.carer_relationships.index.inactive') }
           end
         end
 
@@ -107,7 +107,7 @@ module Components
                 type: :submit,
                 variant: :success_outline,
                 size: :sm
-              ) { 'Activate' }
+              ) { t('admin.carer_relationships.index.activate') }
             end
           end
         end
@@ -116,21 +116,24 @@ module Components
           render RubyUI::AlertDialog.new do
             render RubyUI::AlertDialogTrigger.new do
               Button(variant: :destructive_outline, size: :sm) do
-                'Deactivate'
+                t('admin.carer_relationships.index.deactivate')
               end
             end
             render RubyUI::AlertDialogContent.new do
               render RubyUI::AlertDialogHeader.new do
-                render(RubyUI::AlertDialogTitle.new { 'Deactivate Relationship' })
+                render(RubyUI::AlertDialogTitle.new { t('admin.carer_relationships.index.deactivate_dialog.title') })
                 render RubyUI::AlertDialogDescription.new do
-                  "Are you sure you want to deactivate the relationship between #{relationship.carer.name} " \
-                    "and #{relationship.patient.name}?"
+                  t('admin.carer_relationships.index.deactivate_dialog.confirm',
+                    carer: relationship.carer.name,
+                    patient: relationship.patient.name)
                 end
               end
               render RubyUI::AlertDialogFooter.new do
-                render(RubyUI::AlertDialogCancel.new { 'Cancel' })
+                render(RubyUI::AlertDialogCancel.new { t('admin.carer_relationships.index.deactivate_dialog.cancel') })
                 form_with(url: "/admin/carer_relationships/#{relationship.id}", method: :delete, class: 'inline') do
-                  Button(variant: :destructive, type: :submit) { 'Deactivate' }
+                  Button(variant: :destructive, type: :submit) do
+                    t('admin.carer_relationships.index.deactivate_dialog.submit')
+                  end
                 end
               end
             end
@@ -141,13 +144,13 @@ module Components
           div(class: 'flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3 sm:px-6') do
             div(data: { testid: 'pagination-info' }) do
               Text(size: '2', class: 'text-slate-700') do
-                plain 'Showing '
+                plain "#{t('admin.carer_relationships.index.pagination.showing')} "
                 span(class: 'font-medium') { pagy_obj.from.to_s }
-                plain ' to '
+                plain " #{t('admin.carer_relationships.index.pagination.to')} "
                 span(class: 'font-medium') { pagy_obj.to.to_s }
-                plain ' of '
+                plain " #{t('admin.carer_relationships.index.pagination.of')} "
                 span(class: 'font-medium') { pagy_obj.count.to_s }
-                plain ' results'
+                plain " #{t('admin.carer_relationships.index.pagination.results')}"
               end
             end
           end
