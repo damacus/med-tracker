@@ -211,14 +211,20 @@ module Views
         div(class: 'space-y-3') do
           h3(class: 'text-sm font-medium text-slate-700') { 'Other Options' }
           div(class: 'flex flex-col gap-2 text-sm') do
-            render RubyUI::Link.new(href: view_context.rodauth.create_account_path, variant: :link) do
-              'Create a New Account'
+            unless invite_only?
+              render RubyUI::Link.new(href: view_context.rodauth.create_account_path, variant: :link) do
+                'Create a New Account'
+              end
             end
             render RubyUI::Link.new(href: view_context.rodauth.verify_account_resend_path, variant: :link) do
               'Resend Verify Account Information'
             end
           end
         end
+      end
+
+      def invite_only?
+        User.administrator.exists?
       end
     end
   end

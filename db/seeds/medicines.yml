@@ -1,0 +1,82 @@
+---
+- name: Paracetamol
+  dosage_amount: 500
+  dosage_unit: mg
+  current_supply: 80
+  stock: 100
+  reorder_threshold: 20
+  description: >-
+    Paracetamol is a common painkiller for treating aches and pains, as well as
+    symptoms of colds and flu. It can also be used to reduce a high temperature
+    and treat inflammation.
+  warnings: >-
+    Do not exceed the recommended dose. If symptoms persist for more than 3
+    days, consult your doctor. Contains paracetamol - do not use with
+    other paracetamol-containing products.
+
+- name: Ibuprofen
+  dosage_amount: 200
+  dosage_unit: mg
+  current_supply: 30
+  stock: 50
+  reorder_threshold: 10
+  description: >-
+    Ibuprofen is a nonsteroidal anti-inflammatory drug (NSAID) used for
+    treating pain, fever, and inflammation.
+  warnings: >-
+    May cause stomach upset. Take with food or milk. Do not take if you
+    have a history of stomach ulcers.
+
+- name: Aspirin
+  dosage_amount: 300
+  dosage_unit: mg
+  current_supply: 25
+  stock: 50
+  reorder_threshold: 10
+  description: >-
+    Aspirin is used to treat pain, reduce inflammation and lower fever. It can
+    also be taken in low doses to help prevent heart attacks and strokes in
+    high-risk patients.
+  warnings: >-
+    Not suitable for children under 16. Do not exceed 4000mg in 24 hours. May
+    cause stomach irritation. If symptoms persist, consult your doctor.
+
+- name: Calpol
+  dosage_amount: 5
+  dosage_unit: ml
+  current_supply: 35
+  stock: 50
+  reorder_threshold: 10
+  description: >-
+    Calpol is a brand of children's medicine that contains paracetamol. It is
+    used to relieve pain and reduce fever in children.
+  warnings: >-
+    Do not exceed the recommended dose. If symptoms persist for more than 3
+    days, consult your doctor. Contains paracetamol - do not use with
+    other paracetamol-containing products.
+
+- name: Vitamin D
+  dosage_amount: 1000
+  dosage_unit: IU
+  current_supply: 40
+  stock: 50
+  reorder_threshold: 10
+  description: >-
+    Vitamin D helps regulate the amount of calcium and phosphate in the body.
+    These nutrients are needed to keep bones, teeth and muscles healthy.
+  warnings: >-
+    Do not exceed recommended dosage. Consult your doctor before taking
+    supplements.
+
+- name: Vitamin C
+  dosage_amount: 500
+  dosage_unit: mg
+  current_supply: 60
+  stock: 100
+  reorder_threshold: 20
+  description: >-
+    Vitamin C is an essential nutrient that supports immune function and acts
+    as an antioxidant.
+  warnings: >-
+    Do not exceed recommended dosage. May cause stomach upset if taken on an
+    empty stomach.
