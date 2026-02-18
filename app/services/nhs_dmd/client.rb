@@ -16,8 +16,13 @@ module NhsDmd
     VMP_VALUE_SET = 'https://dmd.nhs.uk/ValueSet/VMP'
     AMP_VALUE_SET = 'https://dmd.nhs.uk/ValueSet/AMP'
 
+    def configured?
+      client_id.present? && client_secret.present?
+    end
+
     def search(query, count: DEFAULT_COUNT)
       return [] if query.blank?
+      return [] unless configured?
 
       vmp_results = fetch_value_set(VMP_VALUE_SET, query, count: count)
       amp_results = fetch_value_set(AMP_VALUE_SET, query, count: count)

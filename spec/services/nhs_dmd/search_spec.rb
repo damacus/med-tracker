@@ -8,8 +8,24 @@ RSpec.describe NhsDmd::Search do
   let(:client) { instance_double(NhsDmd::Client) }
 
   describe '#call' do
+    context 'when the service is not configured (credentials absent)' do
+      before do
+        allow(client).to receive(:configured?).and_return(false)
+        allow(client).to receive(:search)
+      end
+
+      it 'returns a not-configured error result without calling search' do
+        result = search.call('aspirin')
+
+        expect(result).not_to be_success
+        expect(result.error).to eq('not_configured')
+        expect(client).not_to have_received(:search)
+      end
+    end
+
     context 'when the query is blank' do
       before do
+        allow(client).to receive(:configured?).and_return(true)
         allow(client).to receive(:search)
       end
 
@@ -32,6 +48,7 @@ RSpec.describe NhsDmd::Search do
       end
 
       before do
+        allow(client).to receive(:configured?).and_return(true)
         allow(client).to receive(:search).with('aspirin').and_return(raw_results)
       end
 
@@ -61,6 +78,7 @@ RSpec.describe NhsDmd::Search do
 
     context 'when the client raises an ApiError' do
       before do
+        allow(client).to receive(:configured?).and_return(true)
         allow(client).to receive(:search).and_raise(NhsDmd::Client::ApiError, 'Service unavailable')
       end
 

@@ -25,7 +25,9 @@ export default class extends Controller {
 
       const data = await response.json()
 
-      if (data.error) {
+      if (data.error === "not_configured") {
+        this.showNotConfigured()
+      } else if (data.error) {
         this.showError(data.error)
       } else {
         this.showResults(query, data.results)
@@ -57,6 +59,15 @@ export default class extends Controller {
     this.resultsTarget.innerHTML = `
       <div class="text-center py-12 text-slate-500">
         <p class="text-sm">Enter a medicine name above to search the NHS dm+d database.</p>
+      </div>
+    `
+  }
+
+  showNotConfigured() {
+    this.resultsTarget.innerHTML = `
+      <div class="rounded-lg border border-amber-200 bg-amber-50 p-4" role="alert">
+        <p class="text-sm font-medium text-amber-800">Medicine search not available</p>
+        <p class="text-sm text-amber-700 mt-1">NHS dm+d credentials are not configured. Ask your administrator to set <code>NHS_DMD_CLIENT_ID</code> and <code>NHS_DMD_CLIENT_SECRET</code>.</p>
       </div>
     `
   }

@@ -9,6 +9,15 @@ RSpec.describe NhsDmd::Client do
   let(:vmp_url) { 'https://dmd.nhs.uk/ValueSet/VMP' }
   let(:amp_url) { 'https://dmd.nhs.uk/ValueSet/AMP' }
 
+  before do
+    allow(ENV).to receive(:fetch).and_call_original
+    allow(ENV).to receive(:fetch).with('NHS_DMD_CLIENT_ID', nil).and_return('test-client-id')
+    allow(ENV).to receive(:fetch).with('NHS_DMD_CLIENT_SECRET', nil).and_return('test-secret')
+    stub_request(:post, %r{openid-connect/token})
+      .to_return(status: 200, body: { 'access_token' => 'test-token' }.to_json,
+                 headers: { 'Content-Type' => 'application/json' })
+  end
+
   describe '#search' do
     context 'when the API returns results' do
       let(:fhir_response) do
@@ -135,15 +144,22 @@ RSpec.describe NhsDmd::Client do
       end
     end
 
+    context 'when credentials are not configured' do
+      before do
+        allow(ENV).to receive(:fetch).with('NHS_DMD_CLIENT_ID', nil).and_return(nil)
+        allow(ENV).to receive(:fetch).with('NHS_DMD_CLIENT_SECRET', nil).and_return(nil)
+      end
+
+      it 'returns an empty array without making an HTTP request' do
+        results = client.search('aspirin')
+
+        expect(results).to eq([])
+        expect(WebMock).not_to have_requested(:get, /ontology\.nhs\.uk/)
+      end
+    end
+
     context 'when authenticated with credentials' do
       before do
-        allow(ENV).to receive(:fetch).and_call_original
-        allow(ENV).to receive(:fetch).with('NHS_DMD_CLIENT_ID', nil).and_return('test-client-id')
-        allow(ENV).to receive(:fetch).with('NHS_DMD_CLIENT_SECRET', nil).and_return('test-secret')
-
-        stub_request(:post, %r{openid-connect/token})
-          .to_return(status: 200, body: { 'access_token' => 'test-token' }.to_json,
-                     headers: { 'Content-Type' => 'application/json' })
         stub_request(:get, /ontology\.nhs\.uk/)
           .to_return(status: 200, body: '{"resourceType":"ValueSet","expansion":{"total":0,"contains":[]}}',
                      headers: { 'Content-Type' => 'application/json' })

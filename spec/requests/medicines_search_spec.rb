@@ -83,6 +83,24 @@ RSpec.describe 'GET /medicine-finder/search' do
       end
     end
 
+    context 'when the NHS dm+d service is not configured (credentials absent)' do
+      let(:unconfigured_outcome) { NhsDmd::Search::Result.new(results: [], error: 'not_configured') }
+
+      before do
+        login_as_doctor
+        search = instance_double(NhsDmd::Search, call: unconfigured_outcome)
+        allow(NhsDmd::Search).to receive(:new).and_return(search)
+      end
+
+      it 'returns 200 with a not_configured error' do
+        get medicine_finder_search_path(format: :json), params: { q: 'aspirin' }
+
+        json = response.parsed_body
+        expect(response).to have_http_status(:ok)
+        expect(json['error']).to eq('not_configured')
+      end
+    end
+
     context 'when the user is not authenticated' do
       it 'redirects to login' do
         get medicine_finder_search_path(format: :json), params: { q: 'aspirin' }
