@@ -13,7 +13,8 @@ class DashboardPresenter
   end
 
   def active_prescriptions
-    @active_prescriptions ||= Prescription.where(active: true, person_id: people.select(:id))
+    @active_prescriptions ||= Prescription.active
+                                          .where(person_id: people.select(:id))
                                           .includes(person: :user, medicine: [])
   end
 
@@ -42,15 +43,21 @@ class DashboardPresenter
   end
 
   def carer_patients
+    return Person.none if current_user.person.nil?
+
     current_user.person.patients.includes(:user, prescriptions: :medicine)
   end
 
   def parent_minor_patients
+    return Person.none if current_user.person.nil?
+
     current_user.person.patients.where(person_type: :minor)
                 .includes(:user, prescriptions: :medicine)
   end
 
   def own_person
+    return Person.none if current_user.person.nil?
+
     Person.where(id: current_user.person.id)
           .includes(:user, prescriptions: :medicine)
   end
