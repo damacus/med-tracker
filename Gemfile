@@ -98,6 +98,9 @@ group :development, :test do
   gem 'rspec-rails'
   gem 'shoulda-matchers'
 
+  # HTTP request stubbing [https://github.com/bblimke/webmock]
+  gem 'webmock'
+
   # Parallel test execution for local development [https://github.com/grosser/parallel_tests]
   gem 'parallel_tests'
 end
