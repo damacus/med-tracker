@@ -3,6 +3,32 @@ cy:
   hello: "Helo byd"
 
   admin:
+    carer_relationships:
+      index:
+        title: "Perthnasoedd Gofalwr"
+        subtitle: "Rheoli aseiniadau gofalwr-claf."
+        new_relationship: "Perthynas Newydd"
+        table:
+          carer: "Gofalwr"
+          patient: "Claf"
+          type: "Math"
+          status: "Statws"
+          actions: "Gweithredoedd"
+        empty: "Dim perthnasoedd gofalwr wedi'u canfod."
+        active: "Actif"
+        inactive: "Anactif"
+        activate: "Actifadu"
+        deactivate: "Dadactifadu"
+        deactivate_dialog:
+          title: "Dadactifadu Perthynas"
+          confirm: "Ydych chi'n sicr eich bod am ddadactifadu'r berthynas rhwng %{carer} a %{patient}?"
+          cancel: "Canslo"
+          submit: "Dadactifadu"
+        pagination:
+          showing: "Yn dangos"
+          to: "i"
+          of: "o"
+          results: "canlyniad"
     users:
       unauthorized: "Nid oes gennych awdurdod i gyflawni'r weithred hon."
       user_row:
@@ -73,6 +99,8 @@ cy:
     subject: "Gwahoddiad i ymuno â MedTracker"
 
   medicines:
+    finder:
+      coming_soon: "Mae'r nodwedd hon yn dod yn fuan! Byddwn yn integreiddio â API cronfa ddata meddyginiaethau i ddarparu gwybodaeth fanwl am feddyginiaethau."
     created: "Crëwyd y feddyginiaeth yn llwyddiannus."
     updated: "Diweddarwyd y feddyginiaeth yn llwyddiannus."
     deleted: "Dilëwyd y feddyginiaeth yn llwyddiannus."

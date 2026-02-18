@@ -3,6 +3,32 @@ es:
   hello: "Hola mundo"
 
   admin:
+    carer_relationships:
+      index:
+        title: "Relaciones de Cuidador"
+        subtitle: "Gestionar asignaciones de cuidador-paciente."
+        new_relationship: "Nueva Relación"
+        table:
+          carer: "Cuidador"
+          patient: "Paciente"
+          type: "Tipo"
+          status: "Estado"
+          actions: "Acciones"
+        empty: "No se encontraron relaciones de cuidador."
+        active: "Activo"
+        inactive: "Inactivo"
+        activate: "Activar"
+        deactivate: "Desactivar"
+        deactivate_dialog:
+          title: "Desactivar Relación"
+          confirm: "¿Está seguro de que desea desactivar la relación entre %{carer} y %{patient}?"
+          cancel: "Cancelar"
+          submit: "Desactivar"
+        pagination:
+          showing: "Mostrando"
+          to: "a"
+          of: "de"
+          results: "resultados"
     users:
       unauthorized: "No está autorizado para realizar esta acción."
       user_row:
@@ -73,6 +99,8 @@ es:
     subject: "Invitación para unirse a MedTracker"
 
   medicines:
+    finder:
+      coming_soon: "¡Esta función llegará pronto! Integraremos con una API de base de datos de medicamentos para proporcionar información detallada sobre los medicamentos."
     created: "Medicamento creado correctamente."
     updated: "Medicamento actualizado correctamente."
     deleted: "Medicamento eliminado correctamente."
