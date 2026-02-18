@@ -108,8 +108,18 @@ class PrescriptionsController < ApplicationController
         format.html { redirect_to person_path(@person), notice: t('prescriptions.updated') }
         format.turbo_stream do
           flash.now[:notice] = t('prescriptions.updated')
-          prescriptions_html = @person.reload.prescriptions.map do |prescription|
-            view_context.render(Components::Prescriptions::Card.new(prescription: prescription, person: @person))
+          prescriptions = @person.reload.prescriptions.includes(:medicine, :dosage)
+          today_start = Time.current.beginning_of_day
+          takes_by_prescription = MedicationTake
+                                  .where(prescription_id: prescriptions.map(&:id), taken_at: today_start..)
+                                  .order(taken_at: :desc)
+                                  .group_by(&:prescription_id)
+          prescriptions_html = prescriptions.map do |prescription|
+            view_context.render(Components::Prescriptions::Card.new(
+                                  prescription: prescription,
+                                  person: @person,
+                                  todays_takes: takes_by_prescription[prescription.id]
+                                ))
           end.join
           render turbo_stream: [
             turbo_stream.update('prescription_modal', ''),

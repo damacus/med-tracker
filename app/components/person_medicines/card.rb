@@ -7,11 +7,12 @@ module Components
       include Phlex::Rails::Helpers::FormWith
       include Phlex::Rails::Helpers::ButtonTo
 
-      attr_reader :person_medicine, :person
+      attr_reader :person_medicine, :person, :todays_takes
 
-      def initialize(person_medicine:, person:)
+      def initialize(person_medicine:, person:, todays_takes: nil)
         @person_medicine = person_medicine
         @person = person
+        @todays_takes = todays_takes
         super()
       end
 
@@ -97,19 +98,19 @@ module Components
       end
 
       def render_takes_section
-        todays_takes = person_medicine.medication_takes
-                                      .where(taken_at: Time.current.beginning_of_day..)
-                                      .order(taken_at: :desc)
-                                      .load
+        takes = todays_takes || person_medicine.medication_takes
+                                               .where(taken_at: Time.current.beginning_of_day..)
+                                               .order(taken_at: :desc)
+                                               .load
 
         div(class: 'space-y-3') do
           div(class: 'flex items-center justify-between') do
             Heading(level: 4, size: '2', class: 'font-semibold text-slate-700') do
               t('person_medicines.card.todays_doses')
             end
-            render_dose_counter(todays_takes) if person_medicine.max_daily_doses.present?
+            render_dose_counter(takes) if person_medicine.max_daily_doses.present?
           end
-          render_todays_takes(todays_takes)
+          render_todays_takes(takes)
         end
       end
 

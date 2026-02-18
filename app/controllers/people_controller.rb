@@ -12,11 +12,32 @@ class PeopleController < ApplicationController
   def show
     authorize @person
     prescriptions = @person.prescriptions.includes(:medicine, :dosage)
+    person_medicines = @person.person_medicines.includes(:medicine)
     editing = params[:editing] == 'true'
+
+    today_start = Time.current.beginning_of_day
+    prescription_ids = prescriptions.map(&:id)
+    person_medicine_ids = person_medicines.map(&:id)
+
+    takes_by_prescription = MedicationTake
+                            .where(prescription_id: prescription_ids, taken_at: today_start..)
+                            .order(taken_at: :desc)
+                            .group_by(&:prescription_id)
+
+    takes_by_person_medicine = MedicationTake
+                               .where(person_medicine_id: person_medicine_ids, taken_at: today_start..)
+                               .order(taken_at: :desc)
+                               .group_by(&:person_medicine_id)
+
     render Components::People::ShowView.new(
       person: @person,
       prescriptions: prescriptions,
-      editing: editing
+      person_medicines: person_medicines,
+      editing: editing,
+      preloaded_takes: {
+        prescriptions: takes_by_prescription,
+        person_medicines: takes_by_person_medicine
+      }
     )
   end
 

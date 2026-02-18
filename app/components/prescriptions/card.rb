@@ -7,11 +7,12 @@ module Components
       include Phlex::Rails::Helpers::FormWith
       include Phlex::Rails::Helpers::ButtonTo
 
-      attr_reader :prescription, :person
+      attr_reader :prescription, :person, :todays_takes
 
-      def initialize(prescription:, person:)
+      def initialize(prescription:, person:, todays_takes: nil)
         @prescription = prescription
         @person = person
+        @todays_takes = todays_takes
         super()
       end
 
@@ -106,11 +107,13 @@ module Components
       end
 
       def render_todays_takes
-        todays_takes = prescription.medication_takes.where(taken_at: Time.current.beginning_of_day..)
+        takes = todays_takes || prescription.medication_takes
+                                            .where(taken_at: Time.current.beginning_of_day..)
+                                            .order(taken_at: :desc)
 
-        if todays_takes.any?
+        if takes.any?
           div(class: 'space-y-2') do
-            todays_takes.order(taken_at: :desc).each do |take|
+            takes.each do |take|
               render_take_item(take)
             end
           end

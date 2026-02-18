@@ -7,13 +7,16 @@ module Components
       include Phlex::Rails::Helpers::TurboFrameTag
       include Phlex::Rails::Helpers::FormWith
 
-      attr_reader :person, :prescriptions, :person_medicines, :editing
+      attr_reader :person, :prescriptions, :person_medicines, :editing,
+                  :takes_by_prescription, :takes_by_person_medicine
 
-      def initialize(person:, prescriptions:, person_medicines: nil, editing: false)
+      def initialize(person:, prescriptions:, person_medicines: nil, editing: false, preloaded_takes: {})
         @person = person
         @prescriptions = prescriptions
         @person_medicines = person_medicines || person.person_medicines
         @editing = editing
+        @takes_by_prescription = preloaded_takes.fetch(:prescriptions, {})
+        @takes_by_person_medicine = preloaded_takes.fetch(:person_medicines, {})
         super()
       end
 
@@ -122,7 +125,11 @@ module Components
         div(id: 'prescriptions', class: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6') do
           if prescriptions.any?
             prescriptions.each do |prescription|
-              render Components::Prescriptions::Card.new(prescription: prescription, person: person)
+              render Components::Prescriptions::Card.new(
+                prescription: prescription,
+                person: person,
+                todays_takes: takes_by_prescription[prescription.id]
+              )
             end
           else
             render_empty_state
@@ -166,7 +173,11 @@ module Components
         div(id: 'person_medicines', class: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6') do
           if accessible_medicines.any?
             accessible_medicines.each do |person_medicine|
-              render Components::PersonMedicines::Card.new(person_medicine: person_medicine, person: person)
+              render Components::PersonMedicines::Card.new(
+                person_medicine: person_medicine,
+                person: person,
+                todays_takes: takes_by_person_medicine[person_medicine.id]
+              )
             end
           else
             render_my_medicines_empty_state
