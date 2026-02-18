@@ -100,9 +100,9 @@ RSpec.describe 'Person Medicines', type: :system do
       visit person_path(person)
 
       within("#person_medicine_#{person_medicine.id}") do
-        expect(page).to have_content("Today's Doses")
+        expect(page).to have_content("TODAY'S DOSES")
         expect(page).to have_content(take.taken_at.strftime('%l:%M %p').strip)
-        expect(page).to have_content('5 ml')
+        expect(page).to have_content('5ML')
       end
     end
   end

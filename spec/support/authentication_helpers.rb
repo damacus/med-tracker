@@ -6,7 +6,7 @@ module AuthenticationHelpers
     visit '/login'
     fill_in 'Email address', with: email
     fill_in 'Password', with: password
-    click_button 'Login'
+    click_button 'Sign In to Dashboard'
 
     # Wait for login to complete
     using_wait_time(3) do

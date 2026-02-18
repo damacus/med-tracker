@@ -21,184 +21,254 @@ module Components
       end
 
       def view_template
-        div(class: 'container mx-auto px-4 py-8 max-w-7xl') do
-          render_person_details
-          render_prescriptions_section
-          render_my_medicines_section
+        div(class: 'container mx-auto px-4 py-12 max-w-6xl space-y-12') do
+          render_person_header
+
+          div(class: 'grid grid-cols-1 lg:grid-cols-3 gap-12') do
+            div(class: 'lg:col-span-2 space-y-12') do
+              render_prescriptions_section
+              render_my_medicines_section
+            end
+
+            div(class: 'space-y-8') do
+              render_person_overview_card
+              render_quick_actions_card
+            end
+          end
         end
       end
 
       private
 
-      def render_person_details
-        turbo_frame_tag "person_#{person.id}" do
-          Card(class: 'mb-8') do
-            if editing
-              render_edit_form
-            else
-              render_person_info
+      def render_person_header
+        div(class: 'flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-slate-100') do
+          div(class: 'flex items-center gap-6') do
+            div(
+              class: 'w-24 h-24 rounded-[2rem] bg-primary/10 flex items-center justify-center text-primary ' \
+                     'font-black text-3xl shadow-inner'
+            ) do
+              person.name.split.map(&:first).join.upcase
             end
-          end
-        end
-      end
-
-      def render_edit_form
-        form_with(model: person, class: 'space-y-6', data: { controller: 'auto-submit' }) do |f|
-          CardHeader do
-            Heading(level: 2, size: '6', class: 'font-semibold leading-none tracking-tight') do
-              t('people.form.edit_heading')
-            end
-          end
-
-          CardContent(class: 'space-y-4') do
-            FormField do
-              FormFieldLabel(for: 'person_name') { t('people.form.name') }
-              render f.text_field(
-                :name,
-                class: 'flex h-9 w-full rounded-md border bg-background px-3 py-1 text-sm shadow-sm ' \
-                       'border-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
-                data: { action: 'change->auto-submit#submit' }
-              )
-            end
-
-            FormField do
-              FormFieldLabel(for: 'person_date_of_birth') { t('people.form.date_of_birth') }
-              render f.date_field(
-                :date_of_birth,
-                class: 'flex h-9 w-full rounded-md border bg-background px-3 py-1 text-sm shadow-sm ' \
-                       'border-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
-                data: { action: 'change->auto-submit#submit' }
-              )
+            div(class: 'space-y-1') do
+              div(class: 'flex items-center gap-3') do
+                Heading(level: 1, size: '8', class: 'font-black tracking-tight') { person.name }
+                Badge(variant: :outline, class: 'rounded-full uppercase text-[10px] tracking-widest py-1 px-3') do
+                  person.person_type.humanize
+                end
+              end
+              Text(size: '4', weight: 'muted') { "#{t('people.show.age')} #{person.age}" }
             end
           end
 
-          CardFooter(class: 'flex gap-2') do
-            Button(type: :submit, variant: :primary) { t('people.form.save') }
-            Link(href: person_path(person), variant: :outline) { t('people.form.cancel') }
-          end
-        end
-      end
-
-      def render_person_info
-        CardHeader do
-          div(class: 'space-y-4') do
-            Heading(level: 1, size: '7', class: 'font-semibold tracking-tight') { person.name }
-            CardDescription do
-              div(class: 'space-y-1') do
-                p { "#{t('people.show.born')} #{person.date_of_birth.strftime('%B %d, %Y')}" }
-                p { "#{t('people.show.age')} #{person.age}" }
+          div(class: 'flex gap-3') do
+            if view_context.policy(person).update?
+              Link(href: person_path(person, editing: true), variant: :outline, size: :lg,
+                   class: 'rounded-2xl font-bold text-sm bg-white') do
+                t('people.show.edit_person')
               end
             end
-            div(class: 'flex flex-wrap gap-2 pt-2') do
+            Link(href: people_path, variant: :ghost, size: :lg,
+                 class: 'rounded-2xl font-bold text-sm text-slate-400 hover:text-slate-600') do
+              t('people.show.back')
+            end
+          end
+        end
+      end
+
+      def render_person_overview_card
+        Card(class: 'p-8 space-y-6') do
+          Heading(level: 2, size: '4', class: 'font-bold') { 'Profile Overview' }
+
+          div(class: 'space-y-4') do
+            overview_item('Date of Birth', person.date_of_birth.strftime('%B %d, %Y'), Icons::CheckCircle)
+            overview_item('Assigned User', person.user&.email_address || 'No user assigned', Icons::User)
+            overview_item('Capacity', person.has_capacity ? 'Has Capacity' : 'Dependent', Icons::Key)
+          end
+        end
+      end
+
+      def overview_item(label, value, icon_class)
+        div(class: 'flex items-center gap-4 group') do
+          div(
+            class: 'w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 ' \
+                   'group-hover:bg-primary/5 group-hover:text-primary transition-colors'
+          ) do
+            render icon_class.new(size: 20)
+          end
+          div do
+            Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-slate-400') { label }
+            Text(size: '2', weight: 'semibold') { value }
+          end
+        end
+      end
+
+      def render_quick_actions_card
+        Card(class: 'bg-primary p-8 text-white border-none shadow-xl shadow-primary/20') do
+          div(class: 'space-y-6') do
+            div do
+              Heading(level: 3, size: '5', class: 'font-bold mb-2') { 'Care Actions' }
+              Text(size: '2', class: 'text-primary-foreground opacity-80') do
+                'Update medication plans and prescriptions.'
+              end
+            end
+
+            div(class: 'space-y-3') do
               Link(
                 href: new_person_prescription_path(person),
-                variant: :primary,
+                variant: :secondary,
+                class: 'w-full py-6 rounded-xl font-bold text-sm bg-white text-primary border-none shadow-sm',
                 data: { turbo_stream: true }
               ) { t('people.show.add_prescription') }
+
               if view_context.policy(PersonMedicine.new(person: person)).create?
                 Link(
                   href: new_person_person_medicine_path(person),
-                  variant: :primary,
+                  variant: :outline,
+                  class: 'w-full py-6 rounded-xl font-bold text-sm bg-primary-foreground/10 text-white ' \
+                         'border-white/20 hover:bg-primary-foreground/20',
                   data: { turbo_stream: true }
                 ) { t('people.show.add_medicine') }
               end
-              if view_context.policy(person).update?
-                Link(href: person_path(person, editing: true), variant: :outline) { t('people.show.edit_person') }
-              end
-              Link(href: people_path, variant: :outline) { t('people.show.back') }
             end
           end
         end
       end
 
       def render_prescriptions_section
-        div(class: 'space-y-6') do
-          render_prescriptions_header
-          turbo_frame_tag 'prescription_modal'
-          render_prescriptions_grid
-        end
-      end
-
-      def render_prescriptions_header
-        Heading(level: 2, class: 'mb-6') { t('people.show.prescriptions_heading') }
-      end
-
-      def render_prescriptions_grid
-        div(id: 'prescriptions', class: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6') do
-          if prescriptions.any?
-            prescriptions.each do |prescription|
-              render Components::Prescriptions::Card.new(
-                prescription: prescription,
-                person: person,
-                todays_takes: takes_by_prescription[prescription.id]
-              )
-            end
-          else
-            render_empty_state
+        div(class: 'space-y-8') do
+          div(class: 'flex items-center justify-between px-2') do
+            Heading(level: 2, size: '6', class: 'font-bold tracking-tight') { t('people.show.prescriptions_heading') }
+            div(class: 'h-1 flex-1 mx-8 bg-slate-50 rounded-full hidden md:block')
           end
-        end
-      end
 
-      def render_empty_state
-        div(class: 'col-span-full') do
-          Card(class: 'text-center py-12') do
-            CardContent do
-              Text(size: '2', class: 'text-muted-foreground') { t('people.show.no_prescriptions') }
-              Link(
-                href: new_person_prescription_path(person),
-                variant: :primary,
-                data: { turbo_stream: true }
-              ) { t('people.show.add_first_prescription') }
+          turbo_frame_tag 'prescription_modal'
+
+          div(id: 'prescriptions', class: 'grid grid-cols-1 md:grid-cols-2 gap-6') do
+            if prescriptions.any?
+              prescriptions.each do |prescription|
+                render Components::Prescriptions::Card.new(
+                  prescription: prescription,
+                  person: person,
+                  todays_takes: takes_by_prescription[prescription.id]
+                )
+              end
+            else
+              render_empty_state
             end
           end
         end
       end
 
       def render_my_medicines_section
-        div(class: 'space-y-6 mt-8') do
-          render_my_medicines_header
+        div(class: 'space-y-8') do
+          div(class: 'flex items-center justify-between px-2') do
+            Heading(level: 2, size: '6', class: 'font-bold tracking-tight') { t('people.show.my_medicines_heading') }
+            div(class: 'h-1 flex-1 mx-8 bg-slate-50 rounded-full hidden md:block')
+          end
+
           turbo_frame_tag 'person_medicine_modal'
-          render_my_medicines_grid
-        end
-      end
 
-      def render_my_medicines_header
-        Heading(level: 2, class: 'mb-6') { t('people.show.my_medicines_heading') }
-      end
+          # Filter person_medicines based on policy
+          accessible_medicines = person_medicines.select do |pm|
+            view_context.policy(pm).show?
+          end
 
-      def render_my_medicines_grid
-        # Filter person_medicines based on policy
-        accessible_medicines = person_medicines.select do |pm|
-          view_context.policy(pm).show?
-        end
-
-        div(id: 'person_medicines', class: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6') do
-          if accessible_medicines.any?
-            accessible_medicines.each do |person_medicine|
-              render Components::PersonMedicines::Card.new(
-                person_medicine: person_medicine,
-                person: person,
-                todays_takes: takes_by_person_medicine[person_medicine.id]
-              )
+          div(id: 'person_medicines', class: 'grid grid-cols-1 md:grid-cols-2 gap-6') do
+            if accessible_medicines.any?
+              accessible_medicines.each do |person_medicine|
+                render Components::PersonMedicines::Card.new(
+                  person_medicine: person_medicine,
+                  person: person,
+                  todays_takes: takes_by_person_medicine[person_medicine.id]
+                )
+              end
+            else
+              render_my_medicines_empty_state
             end
-          else
-            render_my_medicines_empty_state
+          end
+        end
+      end
+
+      def render_empty_state
+        div(class: 'col-span-full') do
+          Card(class: 'text-center py-12 px-8 border-dashed border-2 bg-slate-50/50') do
+            Text(size: '3', weight: 'medium', class: 'text-slate-400 mb-6') { t('people.show.no_prescriptions') }
+            Link(
+              href: new_person_prescription_path(person),
+              variant: :primary,
+              class: 'rounded-xl',
+              data: { turbo_stream: true }
+            ) { t('people.show.add_first_prescription') }
           end
         end
       end
 
       def render_my_medicines_empty_state
         div(class: 'col-span-full') do
-          Card(class: 'text-center py-12') do
-            CardContent do
-              Text(size: '2', class: 'text-muted-foreground') { t('people.show.no_medicines') }
-              Text(size: '2') { t('people.show.medicines_hint') }
-              if view_context.policy(PersonMedicine.new(person: person)).create?
-                Link(
-                  href: new_person_person_medicine_path(person),
-                  variant: :primary,
-                  data: { turbo_stream: true }
-                ) { t('people.show.add_first_medicine') }
+          Card(class: 'text-center py-12 px-8 border-dashed border-2 bg-slate-50/50') do
+            div(class: 'space-y-2 mb-6') do
+              Text(size: '3', weight: 'medium', class: 'text-slate-400') { t('people.show.no_medicines') }
+              Text(size: '2', class: 'text-slate-300') { t('people.show.medicines_hint') }
+            end
+            if view_context.policy(PersonMedicine.new(person: person)).create?
+              Link(
+                href: new_person_person_medicine_path(person),
+                variant: :primary,
+                class: 'rounded-xl',
+                data: { turbo_stream: true }
+              ) { t('people.show.add_first_medicine') }
+            end
+          end
+        end
+      end
+
+      def render_person_details
+        # Removed redundant method, logic moved to view_template
+      end
+
+      def render_edit_form
+        # Keep current logic for editing, just wrapping in new aesthetic container
+        div(class: 'container mx-auto px-4 py-12 max-w-2xl') do
+          Card(class: 'overflow-hidden border-none shadow-2xl') do
+            form_with(model: person, class: 'space-y-8 p-10', data: { controller: 'auto-submit' }) do |f|
+              div do
+                Heading(level: 2, size: '6', class: 'font-bold mb-1') { t('people.form.edit_heading') }
+                Text(size: '2', weight: 'muted') { "Updating profile for #{person.name}" }
+              end
+
+              div(class: 'space-y-6') do
+                div(class: 'space-y-2') do
+                  render RubyUI::FormFieldLabel.new(
+                    for: 'person_name',
+                    class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 px-1'
+                  ) { t('people.form.name') }
+                  render f.text_field(
+                    :name,
+                    class: 'rounded-2xl border-slate-100 bg-slate-50/50 py-6 px-5 focus:bg-white focus:ring-4 ' \
+                           'focus:ring-primary/5 focus:border-primary transition-all'
+                  )
+                end
+
+                div(class: 'space-y-2') do
+                  render RubyUI::FormFieldLabel.new(
+                    for: 'person_date_of_birth',
+                    class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 px-1'
+                  ) { t('people.form.date_of_birth') }
+                  render f.date_field(
+                    :date_of_birth,
+                    class: 'rounded-2xl border-slate-100 bg-slate-50/50 py-6 px-5 focus:bg-white focus:ring-4 ' \
+                           'focus:ring-primary/5 focus:border-primary transition-all'
+                  )
+                end
+              end
+
+              div(class: 'flex gap-3 pt-4') do
+                render Button.new(type: :submit, variant: :primary, class: 'flex-1 py-7 font-bold') {
+                  t('people.form.save')
+                }
+                Link(href: person_path(person), variant: :ghost, class: 'py-7 px-8 font-bold text-slate-400') do
+                  t('people.form.cancel')
+                end
               end
             end
           end

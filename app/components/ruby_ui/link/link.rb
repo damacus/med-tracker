@@ -3,7 +3,7 @@
 module RubyUI
   class Link < Base
     BASE_CLASSES = [
-      'whitespace-nowrap inline-flex items-center justify-center rounded-md font-medium transition-colors',
+      'whitespace-nowrap inline-flex items-center justify-center rounded-2xl font-medium transition-colors',
       'disabled:pointer-events-none disabled:opacity-50',
       'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
       'aria-disabled:pointer-events-none aria-disabled:opacity-50 aria-disabled:cursor-not-allowed'
@@ -45,8 +45,8 @@ module RubyUI
       [
         BASE_CLASSES,
         size_classes,
-        'bg-primary text-primary-foreground shadow no-underline',
-        'hover:bg-primary/90'
+        'bg-primary text-primary-foreground shadow-lg shadow-primary/20 no-underline',
+        'hover:bg-primary/90 hover:scale-[1.02] active:scale-[0.98] transition-all'
       ]
     end
 
@@ -54,8 +54,8 @@ module RubyUI
       [
         BASE_CLASSES,
         size_classes,
-        'text-primary underline-offset-4',
-        'hover:underline'
+        'text-primary underline-offset-4 font-bold',
+        'hover:underline hover:opacity-80 transition-all'
       ]
     end
 
@@ -63,8 +63,8 @@ module RubyUI
       [
         BASE_CLASSES,
         size_classes,
-        'bg-secondary text-secondary-foreground no-underline',
-        'hover:bg-opacity-80'
+        'bg-secondary text-secondary-foreground shadow-md no-underline',
+        'hover:bg-opacity-80 hover:scale-[1.02] active:scale-[0.98] transition-all'
       ]
     end
 
@@ -72,9 +72,8 @@ module RubyUI
       [
         BASE_CLASSES,
         size_classes,
-        'bg-destructive text-white shadow-sm no-underline',
-        '[a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20',
-        'dark:focus-visible:ring-destructive/40 dark:bg-destructive/60'
+        'bg-destructive text-white shadow-lg shadow-destructive/20 no-underline',
+        'hover:bg-destructive/90 hover:scale-[1.02] active:scale-[0.98] transition-all'
       ]
     end
 
@@ -83,7 +82,7 @@ module RubyUI
         BASE_CLASSES,
         size_classes,
         'border border-input bg-background shadow-sm no-underline',
-        'hover:bg-accent hover:text-accent-foreground'
+        'hover:bg-accent hover:text-accent-foreground hover:scale-[1.02] transition-all'
       ]
     end
 
@@ -92,7 +91,7 @@ module RubyUI
         BASE_CLASSES,
         size_classes,
         'border border-input bg-background shadow-sm no-underline',
-        'text-destructive hover:bg-destructive-light'
+        'text-destructive hover:bg-destructive-light hover:scale-[1.02] transition-all'
       ]
     end
 
@@ -101,7 +100,7 @@ module RubyUI
         BASE_CLASSES,
         size_classes,
         'border border-input bg-background shadow-sm no-underline',
-        'text-success hover:bg-success-light'
+        'text-success hover:bg-success-light hover:scale-[1.02] transition-all'
       ]
     end
 

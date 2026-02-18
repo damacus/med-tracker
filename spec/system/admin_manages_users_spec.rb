@@ -117,14 +117,13 @@ RSpec.describe 'AdminManagesUsers' do
       end
 
       # Log out admin
-      click_button admin.name
-      click_link 'Logout'
+      click_button 'Sign Out'
 
       # Log in as newly created user
       visit login_path
       fill_in 'email', with: 'loginable@example.com'
       fill_in 'password', with: 'securepassword123'
-      click_button 'Login'
+      click_button 'Sign In to Dashboard'
 
       expect(page).to have_content('Loginable User')
     end

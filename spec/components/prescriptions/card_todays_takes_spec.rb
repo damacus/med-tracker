@@ -31,7 +31,7 @@ RSpec.describe Components::Prescriptions::Card, type: :component do
 
     it 'displays takes from pre-loaded collection' do
       rendered = render_card(todays_takes: [take])
-      expect(rendered.text).to include('400 mg')
+      expect(rendered.text).to include('400mg')
     end
 
     it 'shows no doses message when pre-loaded takes is empty' do
@@ -42,7 +42,7 @@ RSpec.describe Components::Prescriptions::Card, type: :component do
     it 'falls back to querying when todays_takes is not provided' do
       take
       rendered = render_card
-      expect(rendered.text).to include('400 mg')
+      expect(rendered.text).to include('400mg')
     end
   end
 end

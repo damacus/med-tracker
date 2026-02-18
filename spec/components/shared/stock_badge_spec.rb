@@ -5,48 +5,49 @@ require 'rails_helper'
 RSpec.describe Components::Shared::StockBadge, type: :component do
   subject(:component) { described_class.new(medicine: medicine) }
 
-  let(:medicine) { instance_double(Medicine, stock: stock, low_stock?: low_stock, out_of_stock?: out_of_stock) }
-  let(:stock) { 100 }
+  let(:medicine) do
+    instance_double(Medicine, current_supply: current_supply, low_stock?: low_stock, out_of_stock?: out_of_stock)
+  end
+  let(:current_supply) { 100 }
   let(:low_stock) { false }
   let(:out_of_stock) { false }
 
   describe '#view_template' do
-    context 'when medicine has no stock value' do
-      let(:stock) { nil }
+    context 'when medicine has no current_supply value' do
+      let(:current_supply) { nil }
 
       it 'renders nothing' do
-        allow(medicine).to receive(:stock).and_return(nil)
         result = render_inline(component)
         expect(result.to_html).to be_empty
       end
     end
 
     context 'when medicine is in stock' do
-      let(:stock) { 100 }
+      let(:current_supply) { 100 }
 
-      it 'renders nothing (badge only shows for low/out of stock)' do
+      it 'renders the supply count' do
         result = render_inline(component)
-        expect(result.to_html).to be_empty
+        expect(result.text).to include('100 left')
       end
     end
 
     context 'when medicine is low stock' do
-      let(:stock) { 5 }
+      let(:current_supply) { 5 }
       let(:low_stock) { true }
 
-      it 'renders Low Stock badge' do
+      it 'renders Low Stock badge with count' do
         result = render_inline(component)
-        expect(result.text).to include('Low Stock')
+        expect(result.text).to include('Low Stock (5)')
       end
     end
 
     context 'when medicine is out of stock' do
-      let(:stock) { 0 }
+      let(:current_supply) { 0 }
       let(:out_of_stock) { true }
 
-      it 'renders Out of Stock badge' do
+      it 'renders Out of Stock badge with count' do
         result = render_inline(component)
-        expect(result.text).to include('Out of Stock')
+        expect(result.text).to include('Out of Stock (0)')
       end
     end
   end

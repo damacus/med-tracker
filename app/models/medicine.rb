@@ -11,14 +11,14 @@ class Medicine < ApplicationRecord # :nodoc:
   validates :reorder_threshold, presence: true, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
 
   def low_stock?
-    return false if stock.nil?
+    return false if current_supply.nil?
 
-    stock <= reorder_threshold
+    current_supply <= reorder_threshold
   end
 
   def out_of_stock?
-    return false if stock.nil?
+    return false if current_supply.nil?
 
-    stock <= 0
+    current_supply <= 0
   end
 end

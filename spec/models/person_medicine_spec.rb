@@ -140,7 +140,7 @@ RSpec.describe PersonMedicine do
     end
 
     context 'when medicine is out of stock' do
-      let(:medicine) { create(:medicine, stock: 0) }
+      let(:medicine) { create(:medicine, current_supply: 0) }
       let(:person_medicine) { create(:person_medicine, medicine: medicine) }
 
       it 'returns false' do
@@ -149,7 +149,7 @@ RSpec.describe PersonMedicine do
     end
 
     context 'when both on cooldown and out of stock' do
-      let(:medicine) { create(:medicine, stock: 0) }
+      let(:medicine) { create(:medicine, current_supply: 0) }
       let(:person_medicine) { create(:person_medicine, medicine: medicine, min_hours_between_doses: 4) }
 
       it 'returns false' do
@@ -158,11 +158,11 @@ RSpec.describe PersonMedicine do
       end
     end
 
-    context 'when medicine stock is nil (untracked)' do
-      let(:medicine) { create(:medicine, stock: nil) }
+    context 'when medicine current_supply is nil (untracked)' do
+      let(:medicine) { create(:medicine, current_supply: nil) }
       let(:person_medicine) { create(:person_medicine, medicine: medicine) }
 
-      it 'returns true (nil stock means untracked)' do
+      it 'returns true (nil current_supply means untracked)' do
         expect(person_medicine.can_administer?).to be true
       end
     end
@@ -187,7 +187,7 @@ RSpec.describe PersonMedicine do
     end
 
     context 'when out of stock' do
-      let(:medicine) { create(:medicine, stock: 0) }
+      let(:medicine) { create(:medicine, current_supply: 0) }
       let(:person_medicine) { create(:person_medicine, medicine: medicine) }
 
       it 'returns :out_of_stock' do
@@ -196,7 +196,7 @@ RSpec.describe PersonMedicine do
     end
 
     context 'when both on cooldown and out of stock' do
-      let(:medicine) { create(:medicine, stock: 0) }
+      let(:medicine) { create(:medicine, current_supply: 0) }
       let(:person_medicine) { create(:person_medicine, medicine: medicine, min_hours_between_doses: 4) }
 
       it 'returns :out_of_stock (stock takes priority)' do

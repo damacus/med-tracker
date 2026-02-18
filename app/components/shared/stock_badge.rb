@@ -13,10 +13,9 @@ module Components
       end
 
       def view_template
-        return if medicine.stock.blank?
-        return unless medicine.low_stock? || medicine.out_of_stock?
+        return if medicine.current_supply.blank?
 
-        render RubyUI::Badge.new(variant: badge_variant) { badge_text }
+        render RubyUI::Badge.new(variant: badge_variant, class: 'rounded-full text-[10px] py-0.5 px-2') { badge_text }
       end
 
       private
@@ -32,12 +31,13 @@ module Components
       end
 
       def badge_text
+        count = medicine.current_supply.to_i
         if medicine.out_of_stock?
-          'Out of Stock'
+          "Out of Stock (#{count})"
         elsif medicine.low_stock?
-          'Low Stock'
+          "Low Stock (#{count})"
         else
-          'In Stock'
+          "#{count} left"
         end
       end
     end

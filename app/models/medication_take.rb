@@ -36,15 +36,12 @@ class MedicationTake < ApplicationRecord
 
   def decrement_medicine_stock
     return unless medicine
-
-    # rubocop:disable Rails/SkipsModelValidations -- Intentional: atomic SQL update prevents race conditions
-    # Using update_all with GREATEST ensures stock never goes negative even under concurrent requests
-    medicine.class.where(id: medicine.id).update_all('stock = GREATEST(COALESCE(stock, 0) - 1, 0)')
-
     return if medicine.current_supply.blank?
 
+    # rubocop:disable Rails/SkipsModelValidations -- Intentional: atomic SQL update prevents race conditions
+    # Using update_all with GREATEST ensures supply never goes negative even under concurrent requests
+    # We only decrement current_supply so that 'stock' can act as the baseline capacity for visual bars
     medicine.class.where(id: medicine.id).update_all('current_supply = GREATEST(COALESCE(current_supply, 0) - 1, 0)')
-
     # rubocop:enable Rails/SkipsModelValidations
   end
 

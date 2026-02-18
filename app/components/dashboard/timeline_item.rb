@@ -12,20 +12,28 @@ module Components
 
       def view_template
         card_id = "timeline_#{dose[:source].class.name.underscore}_#{dose[:source].id}"
-        render RubyUI::Card.new(class: 'mb-4', id: card_id,
-                                data: { id: "dose_#{dose_id}" }) do
+        render RubyUI::Card.new(
+          class: "border-none border-l-4 #{status_border_class} transition-all duration-300 " \
+                 'hover:scale-[1.01] hover:shadow-md bg-white shadow-sm',
+          id: card_id,
+          data: { id: "dose_#{dose_id}" }
+        ) do
           div(class: 'flex items-center justify-between p-4') do
-            div(class: 'flex items-center space-x-4') do
-              status_icon
-
+            div(class: 'flex items-center gap-4') do
+              div(class: 'text-sm font-bold text-slate-500 w-12 hidden md:block') do
+                if dose[:source].respond_to?(:scheduled_time)
+                  dose[:source].scheduled_time.strftime('%H:%M')
+                else
+                  '--:--'
+                end
+              end
               div do
-                Heading(level: 3) { dose[:source].medicine.name }
+                Heading(level: 3, size: '4', class: 'font-semibold') { dose[:source].medicine.name }
                 Text(size: '2', weight: 'muted') { subtitle_text }
-                render Components::Shared::StockBadge.new(medicine: dose[:source].medicine)
               end
             end
 
-            div(class: 'flex items-center space-x-2') do
+            div(class: 'flex items-center gap-3') do
               render_action_button if dose[:status] == :upcoming
               status_badge
             end
@@ -34,6 +42,16 @@ module Components
       end
 
       private
+
+      def status_border_class
+        case dose[:status]
+        when :taken then 'border-l-emerald-500'
+        when :upcoming then 'border-l-blue-500'
+        when :cooldown then 'border-l-amber-500'
+        when :out_of_stock then 'border-l-rose-500'
+        else 'border-l-slate-200'
+        end
+      end
 
       def dose_id
         "#{dose[:source].class.name.downcase}_#{dose[:source].id}"

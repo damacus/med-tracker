@@ -28,6 +28,9 @@ Rails.application.routes.draw do
   # Profile
   resource :profile, only: %i[show update]
 
+  # Reports
+  resources :reports, only: %i[index]
+
   # Medicine management
   resources :medicines do
     member do

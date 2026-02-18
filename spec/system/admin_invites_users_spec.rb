@@ -57,12 +57,10 @@ RSpec.describe 'Admin invites users' do
 
     expect(page).to have_current_path('/dashboard')
 
-    # Wait for flash message to auto-dismiss and be removed from DOM
-    using_wait_time(5) do
-      expect(page).to have_no_css('[data-controller="flash"]')
+    # Verify sidebar shows new user info
+    within 'aside' do
+      expect(page).to have_content('Invited Parent')
+      expect(page).to have_content('Parent')
     end
-
-    click_button 'Invited Parent'
-    expect(page).to have_content('Profile')
   end
 end

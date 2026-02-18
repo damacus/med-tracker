@@ -6,6 +6,8 @@
 :root {
 	--background: oklch(1 0 0);
 	--foreground: oklch(0.145 0 0);
+	--bg: var(--background);
+	--text-main: var(--foreground);
 	--card: oklch(1 0 0);
 	--card-foreground: oklch(0.145 0 0);
 	--popover: oklch(1 0 0);
@@ -48,52 +50,6 @@
 	--success-light: oklch(0.962 0.044 156.743);
 	--success-text: oklch(0.365 0.135 152.934);
 	--warning-text: oklch(0.473 0.137 46.201);
-}
-
-.dark {
-	--background: oklch(0.145 0 0);
-	--foreground: oklch(0.985 0 0);
-	--card: oklch(0.145 0 0);
-	--card-foreground: oklch(0.985 0 0);
-	--popover: oklch(0.145 0 0);
-	--popover-foreground: oklch(0.985 0 0);
-	--primary: oklch(0.985 0 0);
-	--primary-foreground: oklch(0.205 0 0);
-	--secondary: oklch(0.269 0 0);
-	--secondary-foreground: oklch(0.985 0 0);
-	--muted: oklch(0.269 0 0);
-	--muted-foreground: oklch(0.708 0 0);
-	--accent: oklch(0.269 0 0);
-	--accent-foreground: oklch(0.985 0 0);
-	--destructive: oklch(0.396 0.141 25.723);
-	--destructive-foreground: oklch(0.637 0.237 25.331);
-	--border: oklch(0.269 0 0);
-	--input: oklch(0.269 0 0);
-	--ring: oklch(0.439 0 0);
-	--chart-1: oklch(0.488 0.243 264.376);
-	--chart-2: oklch(0.696 0.17 162.48);
-	--chart-3: oklch(0.769 0.188 70.08);
-	--chart-4: oklch(0.627 0.265 303.9);
-	--chart-5: oklch(0.645 0.246 16.439);
-	--sidebar: oklch(0.205 0 0);
-	--sidebar-foreground: oklch(0.985 0 0);
-	--sidebar-primary: oklch(0.488 0.243 264.376);
-	--sidebar-primary-foreground: oklch(0.985 0 0);
-	--sidebar-accent: oklch(0.269 0 0);
-	--sidebar-accent-foreground: oklch(0.985 0 0);
-	--sidebar-border: oklch(0.269 0 0);
-	--sidebar-ring: oklch(0.439 0 0);
-
-	/* ruby_ui specific */
-	--warning: hsl(38 92% 50%);
-	--warning-foreground: hsl(0 0% 100%);
-	--success: hsl(84 81% 44%);
-	--success-foreground: hsl(0 0% 100%);
-	--destructive-light: oklch(0.258 0.092 26.042);
-	--destructive-text: oklch(0.637 0.237 25.331);
-	--success-light: oklch(0.266 0.065 152.934);
-	--success-text: oklch(0.627 0.194 149.214);
-	--warning-text: oklch(0.828 0.189 84.429);
 }
 
 @theme inline {
@@ -159,9 +115,140 @@
 	}
 
 	body {
-		@apply bg-background text-foreground antialiased;
+		@apply bg-background text-foreground antialiased transition-colors duration-500;
+		font-family: var(--font-family, 'Inter', sans-serif);
 	}
+}
 
+/* Theme Overrides - Ultimate Specificity */
+:root.theme-serene-sage {
+	--primary: #7DAA92 !important;
+	--primary-foreground: #FFFFFF !important;
+	--background: #FAFAF9 !important;
+	--foreground: #3D405B !important;
+	--bg: #FAFAF9 !important;
+	--text-main: #3D405B !important;
+	--muted: #E8F3ED !important;
+	--accent: #E8F3ED !important;
+	--accent-foreground: #7DAA92 !important;
+	--font-family: 'Inter', sans-serif !important;
+}
+
+:root.theme-modern-clinical {
+	--primary: #0066FF !important;
+	--primary-foreground: #FFFFFF !important;
+	--background: #F8FAFC !important;
+	--foreground: #0F172A !important;
+	--bg: #F8FAFC !important;
+	--text-main: #0F172A !important;
+	--muted: #EEF4FF !important;
+	--accent: #EEF4FF !important;
+	--accent-foreground: #0066FF !important;
+	--font-family: 'Plus Jakarta Sans', sans-serif !important;
+}
+
+:root.theme-warm-earth {
+	--primary: #E07A5F !important;
+	--primary-foreground: #FFFFFF !important;
+	--background: #FDFBF7 !important;
+	--foreground: #22223B !important;
+	--bg: #FDFBF7 !important;
+	--text-main: #22223B !important;
+	--muted: #FDF2F0 !important;
+	--accent: #FDF2F0 !important;
+	--accent-foreground: #E07A5F !important;
+	--font-family: 'Lexend', sans-serif !important;
+}
+
+:root.theme-deep-lavender {
+	--primary: #9B5DE5 !important;
+	--primary-foreground: #FFFFFF !important;
+	--background: #FAF9FF !important;
+	--foreground: #240046 !important;
+	--bg: #FAF9FF !important;
+	--text-main: #240046 !important;
+	--muted: #F5EEFD !important;
+	--accent: #F5EEFD !important;
+	--accent-foreground: #9B5DE5 !important;
+	--font-family: 'Inter', sans-serif !important;
+}
+
+:root.theme-forest-care {
+	--primary: #2D6A4F !important;
+	--primary-foreground: #FFFFFF !important;
+	--background: #F7FCF9 !important;
+	--foreground: #081C15 !important;
+	--bg: #F7FCF9 !important;
+	--text-main: #081C15 !important;
+	--muted: #E9F5EF !important;
+	--accent: #E9F5EF !important;
+	--accent-foreground: #2D6A4F !important;
+	--font-family: 'Outfit', sans-serif !important;
+}
+
+:root.theme-sunset-support {
+	--primary: #F28482 !important;
+	--primary-foreground: #FFFFFF !important;
+	--background: #FFFAF5 !important;
+	--foreground: #4A4E69 !important;
+	--bg: #FFFAF5 !important;
+	--text-main: #4A4E69 !important;
+	--muted: #FEF2F2 !important;
+	--accent: #FEF2F2 !important;
+	--accent-foreground: #F28482 !important;
+	--font-family: 'Figtree', sans-serif !important;
+}
+
+:root.theme-tech-indigo {
+	--primary: #4361EE !important;
+	--primary-foreground: #FFFFFF !important;
+	--background: #F8F9FE !important;
+	--foreground: #2B2D42 !important;
+	--bg: #F8F9FE !important;
+	--text-main: #2B2D42 !important;
+	--muted: #ECF0FF !important;
+	--accent: #ECF0FF !important;
+	--accent-foreground: #4361EE !important;
+	--font-family: 'Geist', sans-serif !important;
+}
+
+:root.theme-soft-rose {
+	--primary: #E5989B !important;
+	--primary-foreground: #FFFFFF !important;
+	--background: #FFF9F9 !important;
+	--foreground: #6D6875 !important;
+	--bg: #FFF9F9 !important;
+	--text-main: #6D6875 !important;
+	--muted: #F9EDED !important;
+	--accent: #F9EDED !important;
+	--accent-foreground: #E5989B !important;
+	--font-family: 'Urbanist', sans-serif !important;
+}
+
+:root.theme-minty-fresh {
+	--primary: #06D6A0 !important;
+	--primary-foreground: #FFFFFF !important;
+	--background: #F4FEFB !important;
+	--foreground: #073B4C !important;
+	--bg: #F4FEFB !important;
+	--text-main: #073B4C !important;
+	--muted: #E6FBF5 !important;
+	--accent: #E6FBF5 !important;
+	--accent-foreground: #06D6A0 !important;
+	--font-family: 'Public Sans', sans-serif !important;
+}
+
+:root.theme-minimalist-monochrome {
+	--primary: #1A1A1A !important;
+	--primary-foreground: #FFFFFF !important;
+	--background: #FFFFFF !important;
+	--foreground: #111827 !important;
+	--bg: #FFFFFF !important;
+	--text-main: #111827 !important;
+	--muted: #F3F4F6 !important;
+	--accent: #F3F4F6 !important;
+	--accent-foreground: #1A1A1A !important;
+	--font-family: 'Inter', sans-serif !important;
 }
 
 @layer components {

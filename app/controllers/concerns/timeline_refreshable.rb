@@ -6,40 +6,67 @@ module TimelineRefreshable
   private
 
   def build_timeline_streams_for(taken_source, take)
-    streams = []
     medicine = taken_source.medicine.reload
 
-    streams << turbo_stream.replace(
-      timeline_dom_id(taken_source),
+    streams = [
+      update_timeline_item_stream(taken_source, take),
+      update_medicine_card_stream(taken_source)
+    ]
+
+    streams + other_timeline_streams(taken_source, medicine)
+  end
+
+  def update_timeline_item_stream(source, take)
+    turbo_stream.replace(
+      timeline_dom_id(source),
       Components::Dashboard::TimelineItem.new(dose: {
-                                                person: taken_source.person,
-                                                source: taken_source,
+                                                person: source.person,
+                                                source: source,
                                                 scheduled_at: take.taken_at,
                                                 taken_at: take.taken_at,
                                                 status: :taken
                                               })
     )
+  end
 
-    other_prescriptions = Prescription.where(active: true)
-                                      .where(medicine: medicine)
-                                      .includes(:person, :medicine, :dosage)
-    other_prescriptions = other_prescriptions.where.not(id: taken_source.id) if taken_source.is_a?(Prescription)
+  def update_medicine_card_stream(source)
+    if source.is_a?(Prescription)
+      turbo_stream.replace(
+        "prescription_#{source.id}",
+        Components::Prescriptions::Card.new(prescription: source, person: source.person)
+      )
+    else
+      turbo_stream.replace(
+        "person_medicine_#{source.id}",
+        Components::PersonMedicines::Card.new(person_medicine: source, person: source.person)
+      )
+    end
+  end
 
-    other_prescriptions.each do |p|
+  def other_timeline_streams(taken_source, medicine)
+    streams = []
+
+    other_prescriptions(taken_source, medicine).each do |p|
       stream = replace_timeline_item(p)
       streams << stream if stream
     end
 
-    other_pms = PersonMedicine.where(medicine: medicine)
-                              .includes(:person, :medicine)
-    other_pms = other_pms.where.not(id: taken_source.id) if taken_source.is_a?(PersonMedicine)
-
-    other_pms.each do |pm|
+    other_pms(taken_source, medicine).each do |pm|
       stream = replace_timeline_item(pm)
       streams << stream if stream
     end
 
     streams
+  end
+
+  def other_prescriptions(taken_source, medicine)
+    scope = Prescription.where(active: true).where(medicine: medicine).includes(:person, :medicine, :dosage)
+    taken_source.is_a?(Prescription) ? scope.where.not(id: taken_source.id) : scope
+  end
+
+  def other_pms(taken_source, medicine)
+    scope = PersonMedicine.where(medicine: medicine).includes(:person, :medicine)
+    taken_source.is_a?(PersonMedicine) ? scope.where.not(id: taken_source.id) : scope
   end
 
   def replace_timeline_item(source)
