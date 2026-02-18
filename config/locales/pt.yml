@@ -3,8 +3,93 @@ pt:
   hello: "Olá mundo"
 
   admin:
+    carer_relationships:
+      index:
+        title: "Relações de Cuidador"
+        subtitle: "Gerir atribuições de cuidador-paciente."
+        new_relationship: "Nova Relação"
+        table:
+          carer: "Cuidador"
+          patient: "Paciente"
+          type: "Tipo"
+          status: "Estado"
+          actions: "Ações"
+        empty: "Nenhuma relação de cuidador encontrada."
+        active: "Ativo"
+        inactive: "Inativo"
+        activate: "Ativar"
+        deactivate: "Desativar"
+        deactivate_dialog:
+          title: "Desativar Relação"
+          confirm: "Tem certeza de que deseja desativar a relação entre %{carer} e %{patient}?"
+          cancel: "Cancelar"
+          submit: "Desativar"
+        pagination:
+          showing: "A mostrar"
+          to: "a"
+          of: "de"
+          results: "resultados"
     users:
       unauthorized: "Não está autorizado a realizar esta ação."
+      user_row:
+        edit: "Editar"
+        active: "Ativo"
+        inactive: "Inativo"
+        deactivate: "Desativar"
+        activate: "Ativar"
+        deactivate_dialog:
+          title: "Desativar Conta de Utilizador"
+          confirm: "Tem certeza de que deseja desativar a conta de %{name}? Eles não poderão mais iniciar sessão."
+          cancel: "Cancelar"
+          submit: "Desativar"
+    audit_logs:
+      index:
+        title: "Registo de Auditoria"
+        subtitle: "Histórico completo de todas as alterações feitas no MedTracker."
+        filter:
+          record_type: "Tipo de Registo"
+          all_types: "Todos os Tipos"
+          event_type: "Tipo de Evento"
+          all_events: "Todos os Eventos"
+          filter_button: "Filtrar"
+          clear_filters: "Limpar filtros"
+        table:
+          timestamp: "Data/Hora"
+          record_type: "Tipo de Registo"
+          event: "Evento"
+          user: "Utilizador"
+          ip_address: "Endereço IP"
+          actions: "Ações"
+          view_details: "Ver Detalhes"
+        empty:
+          no_logs: "Nenhum registo de auditoria encontrado"
+          adjust_filters: "Tente ajustar os seus filtros"
+        pagination:
+          showing: "A mostrar"
+          to: "a"
+          of: "de"
+          results: "resultados"
+          previous: "Anterior"
+          next: "Seguinte"
+        system: "Sistema"
+      show:
+        title: "Detalhes do Registo de Auditoria"
+        back: "← Voltar aos Registos de Auditoria"
+        event_information: "Informação do Evento"
+        timestamp: "Data/Hora"
+        record_type: "Tipo de Registo"
+        record_id: "ID do Registo"
+        event_type: "Tipo de Evento"
+        user: "Utilizador"
+        ip_address: "Endereço IP"
+        na: "N/D"
+        system: "Sistema"
+        previous_state: "Estado Anterior"
+        previous_state_description: "O estado do registo antes desta alteração"
+        new_state: "Novo Estado"
+        new_state_create: "O estado do registo quando foi criado"
+        new_state_update: "O estado do registo após esta alteração"
+        new_state_other: "O estado atual do registo"
 
   authentication:
     login_required: "Por favor, inicie sessão para continuar"
@@ -14,6 +99,8 @@ pt:
     subject: "Convite para aderir ao MedTracker"
 
   medicines:
+    finder:
+      coming_soon: "Esta funcionalidade estará disponível em breve! Iremos integrar com uma API de base de dados de medicamentos para fornecer informações detalhadas sobre os medicamentos."
     created: "Medicamento criado com sucesso."
     updated: "Medicamento atualizado com sucesso."
     deleted: "Medicamento eliminado com sucesso."
@@ -37,6 +124,26 @@ pt:
     created: "Pessoa criada com sucesso."
     updated: "Pessoa atualizada com sucesso."
     deleted: "Pessoa eliminada com sucesso."
+    show:
+      edit_person: "Editar Pessoa"
+      add_prescription: "Adicionar Receita"
+      add_medicine: "Adicionar Medicamento"
+      back: "Voltar"
+      born: "Nascido:"
+      age: "Idade:"
+      prescriptions_heading: "Receitas"
+      no_prescriptions: "Sem receitas ainda."
+      add_first_prescription: "Adicionar Primeira Receita"
+      my_medicines_heading: "Os Meus Medicamentos"
+      no_medicines: "Sem medicamentos ainda."
+      medicines_hint: "Adicione vitaminas, suplementos ou medicamentos de venda livre aqui."
+      add_first_medicine: "Adicionar Primeiro Medicamento"
+    form:
+      edit_heading: "Editar Pessoa"
+      name: "Nome"
+      date_of_birth: "Data de Nascimento"
+      save: "Guardar"
+      cancel: "Cancelar"
 
   person_medicines:
     created: "Medicamento adicionado com sucesso."
@@ -74,6 +181,22 @@ pt:
     modal:
       new_title: "Nova Receita para %{person}"
       edit_title: "Editar Receita para %{person}"
+    card:
+      started: "📅 Iniciado:"
+      ends: "🏁 Termina:"
+      notes: "📝 Notas: "
+      next_dose_available: "🕐 Próxima dose disponível em: "
+      todays_doses: "Doses de Hoje"
+      no_doses_today: "Nenhuma dose tomada hoje"
+      take: "💊 Tomar"
+      out_of_stock: "💊 Sem Stock"
+      edit: "Editar"
+      delete: "Eliminar"
+      delete_dialog:
+        title: "Eliminar Receita"
+        confirm: "Tem certeza de que deseja eliminar a receita de %{medicine}? Esta ação não pode ser desfeita."
+        cancel: "Cancelar"
+        submit: "Eliminar"
 
   sessions:
     rate_limit: "Tente novamente mais tarde."

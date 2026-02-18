@@ -24,7 +24,7 @@ module Components
             render(RubyUI::TableCell.new { render_status_badge })
             render RubyUI::TableCell.new(class: 'text-right') do
               div(class: 'flex gap-2 justify-end') do
-                render RubyUI::Link.new(href: "/admin/users/#{user.id}/edit", variant: :outline, size: :sm) { 'Edit' }
+                render RubyUI::Link.new(href: "/admin/users/#{user.id}/edit", variant: :outline, size: :sm) { t('admin.users.user_row.edit') }
                 render_activation_button
               end
             end
@@ -35,9 +35,9 @@ module Components
 
         def render_status_badge
           if user.active?
-            render RubyUI::Badge.new(variant: :green) { 'Active' }
+            render RubyUI::Badge.new(variant: :green) { t('admin.users.user_row.active') }
           else
-            render RubyUI::Badge.new(variant: :red) { 'Inactive' }
+            render RubyUI::Badge.new(variant: :red) { t('admin.users.user_row.inactive') }
           end
         end
 
@@ -46,7 +46,7 @@ module Components
 
           if user.active?
             if is_current_user
-              render RubyUI::Button.new(variant: :destructive_outline, size: :sm, disabled: true) { 'Deactivate' }
+              render RubyUI::Button.new(variant: :destructive_outline, size: :sm, disabled: true) { t('admin.users.user_row.deactivate') }
             else
               render_deactivate_dialog
             end
@@ -65,7 +65,7 @@ module Components
               type: :submit,
               variant: :success_outline,
               size: :sm
-            ) { 'Activate' }
+            ) { t('admin.users.user_row.activate') }
           end
         end
 
@@ -73,20 +73,20 @@ module Components
           render RubyUI::AlertDialog.new do
             render RubyUI::AlertDialogTrigger.new do
               Button(variant: :destructive_outline, size: :sm) do
-                'Deactivate'
+                t('admin.users.user_row.deactivate')
               end
             end
             render RubyUI::AlertDialogContent.new do
               render RubyUI::AlertDialogHeader.new do
-                render(RubyUI::AlertDialogTitle.new { 'Deactivate User Account' })
+                render(RubyUI::AlertDialogTitle.new { t('admin.users.user_row.deactivate_dialog.title') })
                 render RubyUI::AlertDialogDescription.new do
-                  "Are you sure you want to deactivate #{user.name}'s account? They will no longer be able to sign in."
+                  t('admin.users.user_row.deactivate_dialog.confirm', name: user.name)
                 end
               end
               render RubyUI::AlertDialogFooter.new do
-                render(RubyUI::AlertDialogCancel.new { 'Cancel' })
+                render(RubyUI::AlertDialogCancel.new { t('admin.users.user_row.deactivate_dialog.cancel') })
                 form_with(url: "/admin/users/#{user.id}", method: :delete, class: 'inline') do
-                  Button(variant: :destructive, type: :submit) { 'Deactivate' }
+                  Button(variant: :destructive, type: :submit) { t('admin.users.user_row.deactivate_dialog.submit') }
                 end
               end
             end

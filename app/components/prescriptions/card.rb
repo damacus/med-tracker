@@ -64,7 +64,7 @@ module Components
       def render_date_details
         div(class: 'space-y-1 text-sm') do
           div(class: 'flex items-center gap-2') do
-            Text(as: 'span', class: 'text-slate-500') { '📅 Started:' }
+            Text(as: 'span', class: 'text-slate-500') { t('prescriptions.card.started') }
             Text(as: 'span', weight: 'medium', class: 'text-slate-700') do
               prescription.start_date.strftime('%B %d, %Y')
             end
@@ -72,7 +72,7 @@ module Components
 
           if prescription.end_date
             div(class: 'flex items-center gap-2') do
-              Text(as: 'span', class: 'text-slate-500') { '🏁 Ends:' }
+              Text(as: 'span', class: 'text-slate-500') { t('prescriptions.card.ends') }
               Text(as: 'span', weight: 'medium', class: 'text-slate-700') do
                 prescription.end_date.strftime('%B %d, %Y')
               end
@@ -84,7 +84,7 @@ module Components
       def render_notes
         div(class: 'p-3 bg-blue-50 border border-blue-200 rounded-md') do
           Text(size: '2', class: 'text-blue-800') do
-            span(class: 'font-semibold') { '📝 Notes: ' }
+            span(class: 'font-semibold') { t('prescriptions.card.notes') }
             plain prescription.notes
           end
         end
@@ -93,7 +93,7 @@ module Components
       def render_countdown_notice
         div(class: 'p-3 bg-amber-50 border border-amber-200 rounded-md') do
           Text(size: '2', class: 'text-amber-800') do
-            span(class: 'font-semibold') { '🕐 Next dose available in: ' }
+            span(class: 'font-semibold') { t('prescriptions.card.next_dose_available') }
             plain prescription.countdown_display
           end
         end
@@ -101,7 +101,7 @@ module Components
 
       def render_takes_section
         div(class: 'space-y-3') do
-          Heading(level: 4, size: '2', class: 'font-semibold text-slate-700') { "Today's Doses" }
+          Heading(level: 4, size: '2', class: 'font-semibold text-slate-700') { t('prescriptions.card.todays_doses') }
           render_todays_takes
         end
       end
@@ -118,7 +118,7 @@ module Components
             end
           end
         else
-          Text(size: '2', weight: 'muted', class: 'italic') { 'No doses taken today' }
+          Text(size: '2', weight: 'muted', class: 'italic') { t('prescriptions.card.no_doses_today') }
         end
       end
 
@@ -145,7 +145,7 @@ module Components
               class: 'inline-flex items-center gap-1 min-w-[80px]',
               data: { optimistic_take_target: 'button' }
             ) do
-              plain '💊 Take'
+              plain t('prescriptions.card.take')
             end
           end
         else
@@ -155,7 +155,7 @@ module Components
 
       def render_disabled_button_with_reason
         reason = prescription.administration_blocked_reason
-        label = reason == :out_of_stock ? '💊 Out of Stock' : '💊 Take'
+        label = reason == :out_of_stock ? t('prescriptions.card.out_of_stock') : t('prescriptions.card.take')
         Button(variant: :secondary, size: :md, disabled: true) { label }
       end
 
@@ -163,31 +163,32 @@ module Components
         render_take_medicine_button
         return unless view_context.current_user&.administrator?
 
-        Link(href: edit_person_prescription_path(person, prescription), variant: :outline) { 'Edit' }
+        Link(href: edit_person_prescription_path(person, prescription), variant: :outline) do
+          t('prescriptions.card.edit')
+        end
         render_delete_dialog
       end
 
       def render_delete_dialog
         AlertDialog do
           AlertDialogTrigger do
-            Button(variant: :destructive_outline, size: :md) { 'Delete' }
+            Button(variant: :destructive_outline, size: :md) { t('prescriptions.card.delete') }
           end
           AlertDialogContent do
             AlertDialogHeader do
-              AlertDialogTitle { 'Delete Prescription' }
+              AlertDialogTitle { t('prescriptions.card.delete_dialog.title') }
               AlertDialogDescription do
-                plain "Are you sure you want to delete the #{prescription.medicine.name} prescription? "
-                plain 'This action cannot be undone.'
+                plain t('prescriptions.card.delete_dialog.confirm', medicine: prescription.medicine.name)
               end
             end
             AlertDialogFooter do
-              AlertDialogCancel { 'Cancel' }
+              AlertDialogCancel { t('prescriptions.card.delete_dialog.cancel') }
               form_with(
                 url: person_prescription_path(person, prescription),
                 method: :delete,
                 class: 'inline'
               ) do
-                Button(variant: :destructive, type: :submit) { 'Delete' }
+                Button(variant: :destructive, type: :submit) { t('prescriptions.card.delete_dialog.submit') }
               end
             end
           end

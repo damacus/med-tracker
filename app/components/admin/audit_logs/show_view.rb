@@ -31,10 +31,10 @@ module Components
         def render_header
           header(class: 'flex items-center justify-between') do
             div(class: 'space-y-2') do
-              Heading(level: 1) { 'Audit Log Details' }
+              Heading(level: 1) { t('admin.audit_logs.show.title') }
               Text(weight: 'muted') { "#{version.item_type} ##{version.item_id} - #{version.event.titleize}" }
             end
-            Link(href: '/admin/audit_logs', variant: :outline) { '← Back to Audit Logs' }
+            Link(href: '/admin/audit_logs', variant: :outline) { t('admin.audit_logs.show.back') }
           end
         end
 
@@ -42,17 +42,18 @@ module Components
           Card do
             CardHeader do
               Heading(level: 2, size: '4', class: 'font-semibold leading-none tracking-tight') do
-                'Event Information'
+                t('admin.audit_logs.show.event_information')
               end
             end
             CardContent do
               dl(class: 'grid grid-cols-1 gap-4 sm:grid-cols-2') do
-                render_detail_item('Timestamp', version.created_at.strftime('%Y-%m-%d %H:%M:%S %Z'))
-                render_detail_item('Record Type', version.item_type.titleize)
-                render_detail_item('Record ID', version.item_id.to_s)
-                render_detail_item('Event Type', version.event.titleize)
-                render_detail_item('User', user_name)
-                render_detail_item('IP Address', version.ip || 'N/A')
+                render_detail_item(t('admin.audit_logs.show.timestamp'),
+                                   version.created_at.strftime('%Y-%m-%d %H:%M:%S %Z'))
+                render_detail_item(t('admin.audit_logs.show.record_type'), version.item_type.titleize)
+                render_detail_item(t('admin.audit_logs.show.record_id'), version.item_id.to_s)
+                render_detail_item(t('admin.audit_logs.show.event_type'), version.event.titleize)
+                render_detail_item(t('admin.audit_logs.show.user'), user_name)
+                render_detail_item(t('admin.audit_logs.show.ip_address'), version.ip || t('admin.audit_logs.show.na'))
               end
             end
           end
@@ -66,7 +67,7 @@ module Components
         end
 
         def user_name
-          return 'System' if version.whodunnit.blank?
+          return I18n.t('admin.audit_logs.show.system') if version.whodunnit.blank?
 
           user = User.find_by(id: version.whodunnit)
           user ? user.name : "User ##{version.whodunnit}"
@@ -78,9 +79,9 @@ module Components
           Card do
             CardHeader do
               Heading(level: 2, size: '4', class: 'font-semibold leading-none tracking-tight') do
-                'Previous State'
+                t('admin.audit_logs.show.previous_state')
               end
-              CardDescription { 'The state of the record before this change' }
+              CardDescription { t('admin.audit_logs.show.previous_state_description') }
             end
             CardContent do
               pre(class: 'bg-slate-50 p-4 rounded-lg overflow-x-auto text-xs font-mono') do
@@ -98,7 +99,9 @@ module Components
 
           Card do
             CardHeader do
-              Heading(level: 2, size: '4', class: 'font-semibold leading-none tracking-tight') { 'New State' }
+              Heading(level: 2, size: '4', class: 'font-semibold leading-none tracking-tight') do
+                t('admin.audit_logs.show.new_state')
+              end
               CardDescription { description_for_new_state }
             end
             CardContent do
@@ -112,11 +115,11 @@ module Components
         def description_for_new_state
           case version.event
           when 'create'
-            'The state of the record when it was created'
+            I18n.t('admin.audit_logs.show.new_state_create')
           when 'update'
-            'The state of the record after this change'
+            I18n.t('admin.audit_logs.show.new_state_update')
           else
-            'The current state of the record'
+            I18n.t('admin.audit_logs.show.new_state_other')
           end
         end
 

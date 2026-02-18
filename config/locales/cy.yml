@@ -3,8 +3,93 @@ cy:
   hello: "Helo byd"
 
   admin:
+    carer_relationships:
+      index:
+        title: "Perthnasoedd Gofalwr"
+        subtitle: "Rheoli aseiniadau gofalwr-claf."
+        new_relationship: "Perthynas Newydd"
+        table:
+          carer: "Gofalwr"
+          patient: "Claf"
+          type: "Math"
+          status: "Statws"
+          actions: "Gweithredoedd"
+        empty: "Dim perthnasoedd gofalwr wedi'u canfod."
+        active: "Actif"
+        inactive: "Anactif"
+        activate: "Actifadu"
+        deactivate: "Dadactifadu"
+        deactivate_dialog:
+          title: "Dadactifadu Perthynas"
+          confirm: "Ydych chi'n sicr eich bod am ddadactifadu'r berthynas rhwng %{carer} a %{patient}?"
+          cancel: "Canslo"
+          submit: "Dadactifadu"
+        pagination:
+          showing: "Yn dangos"
+          to: "i"
+          of: "o"
+          results: "canlyniad"
     users:
       unauthorized: "Nid oes gennych awdurdod i gyflawni'r weithred hon."
+      user_row:
+        edit: "Golygu"
+        active: "Actif"
+        inactive: "Anactif"
+        deactivate: "Dadactifadu"
+        activate: "Actifadu"
+        deactivate_dialog:
+          title: "Dadactifadu Cyfrif Defnyddiwr"
+          confirm: "Ydych chi'n sicr eich bod am ddadactifadu cyfrif %{name}? Ni fyddant yn gallu mewngofnodi mwyach."
+          cancel: "Canslo"
+          submit: "Dadactifadu"
+    audit_logs:
+      index:
+        title: "Llwybr Archwilio"
+        subtitle: "Hanes cyflawn o bob newid a wnaed yn MedTracker."
+        filter:
+          record_type: "Math o Gofnod"
+          all_types: "Pob Math"
+          event_type: "Math o Ddigwyddiad"
+          all_events: "Pob Digwyddiad"
+          filter_button: "Hidlo"
+          clear_filters: "Clirio hidlwyr"
+        table:
+          timestamp: "Amser"
+          record_type: "Math o Gofnod"
+          event: "Digwyddiad"
+          user: "Defnyddiwr"
+          ip_address: "Cyfeiriad IP"
+          actions: "Gweithredoedd"
+          view_details: "Gweld Manylion"
+        empty:
+          no_logs: "Dim logiau archwilio wedi'u canfod"
+          adjust_filters: "Rhowch gynnig ar addasu eich hidlwyr"
+        pagination:
+          showing: "Yn dangos"
+          to: "i"
+          of: "o"
+          results: "canlyniad"
+          previous: "Blaenorol"
+          next: "Nesaf"
+        system: "System"
+      show:
+        title: "Manylion Log Archwilio"
+        back: "← Yn ôl i Logiau Archwilio"
+        event_information: "Gwybodaeth Digwyddiad"
+        timestamp: "Amser"
+        record_type: "Math o Gofnod"
+        record_id: "ID Cofnod"
+        event_type: "Math o Ddigwyddiad"
+        user: "Defnyddiwr"
+        ip_address: "Cyfeiriad IP"
+        na: "Amh"
+        system: "System"
+        previous_state: "Cyflwr Blaenorol"
+        previous_state_description: "Cyflwr y cofnod cyn y newid hwn"
+        new_state: "Cyflwr Newydd"
+        new_state_create: "Cyflwr y cofnod pan gafodd ei greu"
+        new_state_update: "Cyflwr y cofnod ar ôl y newid hwn"
+        new_state_other: "Cyflwr cyfredol y cofnod"
 
   authentication:
     login_required: "Mewngofnodwch i barhau"
@@ -14,6 +99,8 @@ cy:
     subject: "Gwahoddiad i ymuno â MedTracker"
 
   medicines:
+    finder:
+      coming_soon: "Mae'r nodwedd hon yn dod yn fuan! Byddwn yn integreiddio â API cronfa ddata meddyginiaethau i ddarparu gwybodaeth fanwl am feddyginiaethau."
     created: "Crëwyd y feddyginiaeth yn llwyddiannus."
     updated: "Diweddarwyd y feddyginiaeth yn llwyddiannus."
     deleted: "Dilëwyd y feddyginiaeth yn llwyddiannus."
@@ -37,6 +124,26 @@ cy:
     created: "Crëwyd y person yn llwyddiannus."
     updated: "Diweddarwyd y person yn llwyddiannus."
     deleted: "Dilëwyd y person yn llwyddiannus."
+    show:
+      edit_person: "Golygu Person"
+      add_prescription: "Ychwanegu Presgripsiwn"
+      add_medicine: "Ychwanegu Meddyginiaeth"
+      back: "Yn ôl"
+      born: "Ganwyd:"
+      age: "Oedran:"
+      prescriptions_heading: "Presgripsiynau"
+      no_prescriptions: "Dim presgripsiynau eto."
+      add_first_prescription: "Ychwanegu Presgripsiwn Cyntaf"
+      my_medicines_heading: "Fy Meddyginiaethau"
+      no_medicines: "Dim meddyginiaethau wedi'u hychwanegu eto."
+      medicines_hint: "Ychwanegwch fitaminau, atchwanegion, neu feddyginiaethau dros y cownter yma."
+      add_first_medicine: "Ychwanegu Meddyginiaeth Gyntaf"
+    form:
+      edit_heading: "Golygu Person"
+      name: "Enw"
+      date_of_birth: "Dyddiad Geni"
+      save: "Cadw"
+      cancel: "Canslo"
 
   person_medicines:
     created: "Ychwanegwyd y feddyginiaeth yn llwyddiannus."
@@ -74,6 +181,22 @@ cy:
     modal:
       new_title: "Presgripsiwn Newydd ar gyfer %{person}"
       edit_title: "Golygu Presgripsiwn ar gyfer %{person}"
+    card:
+      started: "📅 Dechreuodd:"
+      ends: "🏁 Yn gorffen:"
+      notes: "📝 Nodiadau: "
+      next_dose_available: "🕐 Dos nesaf ar gael mewn: "
+      todays_doses: "Dosau Heddiw"
+      no_doses_today: "Dim dosau wedi'u cymryd heddiw"
+      take: "💊 Cymryd"
+      out_of_stock: "💊 Allan o Stoc"
+      edit: "Golygu"
+      delete: "Dileu"
+      delete_dialog:
+        title: "Dileu Presgripsiwn"
+        confirm: "Ydych chi'n sicr eich bod am ddileu presgripsiwn %{medicine}? Ni all y weithred hon gael ei dadwneud."
+        cancel: "Canslo"
+        submit: "Dileu"
 
   sessions:
     rate_limit: "Rhowch gynnig arall yn nes ymlaen."

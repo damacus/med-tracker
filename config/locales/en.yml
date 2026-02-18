@@ -3,8 +3,93 @@ en:
   hello: "Hello world"
 
   admin:
+    carer_relationships:
+      index:
+        title: "Carer Relationships"
+        subtitle: "Manage carer-patient assignments."
+        new_relationship: "New Relationship"
+        table:
+          carer: "Carer"
+          patient: "Patient"
+          type: "Type"
+          status: "Status"
+          actions: "Actions"
+        empty: "No carer relationships found."
+        active: "Active"
+        inactive: "Inactive"
+        activate: "Activate"
+        deactivate: "Deactivate"
+        deactivate_dialog:
+          title: "Deactivate Relationship"
+          confirm: "Are you sure you want to deactivate the relationship between %{carer} and %{patient}?"
+          cancel: "Cancel"
+          submit: "Deactivate"
+        pagination:
+          showing: "Showing"
+          to: "to"
+          of: "of"
+          results: "results"
     users:
       unauthorized: "You are not authorized to perform this action."
+      user_row:
+        edit: "Edit"
+        active: "Active"
+        inactive: "Inactive"
+        deactivate: "Deactivate"
+        activate: "Activate"
+        deactivate_dialog:
+          title: "Deactivate User Account"
+          confirm: "Are you sure you want to deactivate %{name}'s account? They will no longer be able to sign in."
+          cancel: "Cancel"
+          submit: "Deactivate"
+    audit_logs:
+      index:
+        title: "Audit Trail"
+        subtitle: "Complete history of all changes made in MedTracker."
+        filter:
+          record_type: "Record Type"
+          all_types: "All Types"
+          event_type: "Event Type"
+          all_events: "All Events"
+          filter_button: "Filter"
+          clear_filters: "Clear filters"
+        table:
+          timestamp: "Timestamp"
+          record_type: "Record Type"
+          event: "Event"
+          user: "User"
+          ip_address: "IP Address"
+          actions: "Actions"
+          view_details: "View Details"
+        empty:
+          no_logs: "No audit logs found"
+          adjust_filters: "Try adjusting your filters"
+        pagination:
+          showing: "Showing"
+          to: "to"
+          of: "of"
+          results: "results"
+          previous: "Previous"
+          next: "Next"
+        system: "System"
+      show:
+        title: "Audit Log Details"
+        back: "← Back to Audit Logs"
+        event_information: "Event Information"
+        timestamp: "Timestamp"
+        record_type: "Record Type"
+        record_id: "Record ID"
+        event_type: "Event Type"
+        user: "User"
+        ip_address: "IP Address"
+        na: "N/A"
+        system: "System"
+        previous_state: "Previous State"
+        previous_state_description: "The state of the record before this change"
+        new_state: "New State"
+        new_state_create: "The state of the record when it was created"
+        new_state_update: "The state of the record after this change"
+        new_state_other: "The current state of the record"
 
   authentication:
     login_required: "Please login to continue"
@@ -14,6 +99,8 @@ en:
     subject: "Invitation to join MedTracker"
 
   medicines:
+    finder:
+      coming_soon: "This feature is coming soon! We'll integrate with a medicine database API to provide detailed information about medications."
     created: "Medicine was successfully created."
     updated: "Medicine was successfully updated."
     deleted: "Medicine was successfully deleted."
@@ -37,6 +124,26 @@ en:
     created: "Person was successfully created."
     updated: "Person was successfully updated."
     deleted: "Person was successfully deleted."
+    show:
+      edit_person: "Edit Person"
+      add_prescription: "Add Prescription"
+      add_medicine: "Add Medicine"
+      back: "Back"
+      born: "Born:"
+      age: "Age:"
+      prescriptions_heading: "Prescriptions"
+      no_prescriptions: "No prescriptions yet."
+      add_first_prescription: "Add First Prescription"
+      my_medicines_heading: "My Medicines"
+      no_medicines: "No medicines added yet."
+      medicines_hint: "Add vitamins, supplements, or over-the-counter medicines here."
+      add_first_medicine: "Add First Medicine"
+    form:
+      edit_heading: "Edit Person"
+      name: "Name"
+      date_of_birth: "Date of Birth"
+      save: "Save"
+      cancel: "Cancel"
 
   person_medicines:
     created: "Medicine added successfully."
@@ -74,6 +181,22 @@ en:
     modal:
       new_title: "New Prescription for %{person}"
       edit_title: "Edit Prescription for %{person}"
+    card:
+      started: "📅 Started:"
+      ends: "🏁 Ends:"
+      notes: "📝 Notes: "
+      next_dose_available: "🕐 Next dose available in: "
+      todays_doses: "Today's Doses"
+      no_doses_today: "No doses taken today"
+      take: "💊 Take"
+      out_of_stock: "💊 Out of Stock"
+      edit: "Edit"
+      delete: "Delete"
+      delete_dialog:
+        title: "Delete Prescription"
+        confirm: "Are you sure you want to delete the %{medicine} prescription? This action cannot be undone."
+        cancel: "Cancel"
+        submit: "Delete"
 
   sessions:
     rate_limit: "Try again later."
