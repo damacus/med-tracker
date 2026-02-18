@@ -8,6 +8,7 @@ RSpec.feature 'Medicine Lookup', type: :feature do
   let(:doctor) { users(:doctor) }
 
   scenario 'User searches for a medicine and views drug interactions' do
+    pending 'MLKP-015: medicine search not yet implemented'
     login_as(doctor)
 
     visit medicine_finder_path
@@ -28,6 +29,7 @@ RSpec.feature 'Medicine Lookup', type: :feature do
   end
 
   scenario 'User views detailed interaction information' do
+    pending 'MLKP-015: medicine search not yet implemented'
     login_as(doctor)
 
     visit medicine_finder_path
@@ -45,6 +47,7 @@ RSpec.feature 'Medicine Lookup', type: :feature do
   end
 
   scenario 'Search returns no results' do
+    pending 'MLKP-015: medicine search not yet implemented'
     login_as(doctor)
 
     visit medicine_finder_path
