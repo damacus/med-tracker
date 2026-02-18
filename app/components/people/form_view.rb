@@ -172,9 +172,8 @@ module Components
       def render_capacity_hint
         hint_visible = !person.has_capacity
         div(
-          class: 'mt-2 text-sm text-amber-600',
-          data: { capacity_hint_target: 'hint' },
-          style: hint_visible ? '' : 'display: none;'
+          class: ['mt-2 text-sm text-amber-600', ('hidden' unless hint_visible)],
+          data: { capacity_hint_target: 'hint' }
         ) do
           strong { 'Note: ' }
           plain 'A person without capacity must have at least one carer assigned.'
