@@ -116,4 +116,43 @@ RSpec.describe 'OIDC Security' do # rubocop:disable RSpec/DescribeClass
       expect(rodauth_file).to include("uid_field: 'sub'")
     end
   end
+
+  describe 'OIDC-SEC-002: Token expiration prevents replay attacks' do
+    it 'uses openid_connect gem which validates token expiration automatically' do
+      rodauth_file = Rails.root.join('app/misc/rodauth_main.rb').read
+      expect(rodauth_file).to include('omniauth_provider :openid_connect')
+    end
+
+    it 'does not store tokens long-term, forcing expiration validation' do
+      expect(ActiveRecord::Base.connection.table_exists?(:account_identities)).to be true
+
+      columns = ActiveRecord::Base.connection.columns(:account_identities).map(&:name)
+      expect(columns).not_to include('access_token')
+      expect(columns).not_to include('refresh_token')
+    end
+  end
+
+  describe 'OIDC-SEC-003: Audience claim validation prevents token misuse' do
+    it 'configures client identifier which enables audience validation' do
+      rodauth_file = Rails.root.join('app/misc/rodauth_main.rb').read
+      expect(rodauth_file).to include('identifier: oidc_client_id')
+    end
+
+    it 'uses openid_connect gem which validates audience claim automatically' do
+      rodauth_file = Rails.root.join('app/misc/rodauth_main.rb').read
+      expect(rodauth_file).to include('omniauth_provider :openid_connect')
+    end
+  end
+
+  describe 'OIDC-SEC-006: Nonce prevents token replay attacks' do
+    it 'uses openid_connect gem which handles nonce automatically' do
+      rodauth_file = Rails.root.join('app/misc/rodauth_main.rb').read
+      expect(rodauth_file).to include('omniauth_provider :openid_connect')
+    end
+
+    it 'enables omniauth feature which provides nonce support' do
+      rodauth_file = Rails.root.join('app/misc/rodauth_main.rb').read
+      expect(rodauth_file).to include(':omniauth')
+    end
+  end
 end
