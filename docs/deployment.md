@@ -62,6 +62,23 @@ docker compose -f docker-compose.yml run --rm web rails db:migrate
 - PostgreSQL version target is `18`.
 - Use Rails credentials and environment variables for secrets; never commit them.
 
+## External API credentials
+
+### NHS dm+d medicine search
+
+The medicine search feature requires a system-to-system account
+from the NHS England Terminology Server. See
+[NHS dm+d Integration](nhs-dmd-integration.md) for the full
+setup guide including how to request credentials.
+
+| Variable                | Required | Description                   |
+|-------------------------|----------|-------------------------------|
+| `NHS_DMD_CLIENT_ID`     | Yes      | OAuth2 client ID from NHS     |
+| `NHS_DMD_CLIENT_SECRET` | Yes      | OAuth2 client secret from NHS |
+
+If either variable is absent the medicine search feature is
+disabled automatically — no API calls are made.
+
 ## Flux GitOps: bootstrap first administrator
 
 For Kubernetes production environments managed by Flux, bootstrap the first admin

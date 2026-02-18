@@ -3,6 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'Admin::AuditLogs Rate Limiting' do
+  # skip 'FLAKY TEST'
   fixtures :all
 
   let(:admin) { users(:admin) }

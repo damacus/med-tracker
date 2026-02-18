@@ -18,6 +18,12 @@ administration safely with auditability and timing safeguards.
 - [Passkey Setup](passkey-setup.md): configure and operate WebAuthn passkeys.
 - [Two-Factor Authentication](two-factor-authentication.md): TOTP and recovery flow.
 
+## Integrations
+
+- [NHS dm+d Medicine Search](nhs-dmd-integration.md): search the
+  NHS Dictionary of Medicines and Devices, credentials setup, and
+  feature gating.
+
 ## Architecture
 
 - [Design](design.md): architecture, domain model, and guardrails.

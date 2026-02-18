@@ -35,6 +35,7 @@ Rails.application.routes.draw do
     end
   end
   get 'medicine-finder', to: 'medicines#finder', as: :medicine_finder
+  get 'medicine-finder/search', to: 'medicines#search', as: :medicine_finder_search
 
   # Authentication - Rodauth handles /login, /logout, /create-account via middleware
 
