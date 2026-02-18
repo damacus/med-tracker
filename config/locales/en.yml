@@ -5,6 +5,17 @@ en:
   admin:
     users:
       unauthorized: "You are not authorized to perform this action."
+      user_row:
+        edit: "Edit"
+        active: "Active"
+        inactive: "Inactive"
+        deactivate: "Deactivate"
+        activate: "Activate"
+        deactivate_dialog:
+          title: "Deactivate User Account"
+          confirm: "Are you sure you want to deactivate %{name}'s account? They will no longer be able to sign in."
+          cancel: "Cancel"
+          submit: "Deactivate"
     audit_logs:
       index:
         title: "Audit Trail"

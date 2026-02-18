@@ -5,6 +5,17 @@ es:
   admin:
     users:
       unauthorized: "No está autorizado para realizar esta acción."
+      user_row:
+        edit: "Editar"
+        active: "Activo"
+        inactive: "Inactivo"
+        deactivate: "Desactivar"
+        activate: "Activar"
+        deactivate_dialog:
+          title: "Desactivar Cuenta de Usuario"
+          confirm: "¿Está seguro de que desea desactivar la cuenta de %{name}? Ya no podrán iniciar sesión."
+          cancel: "Cancelar"
+          submit: "Desactivar"
     audit_logs:
       index:
         title: "Registro de Auditoría"
