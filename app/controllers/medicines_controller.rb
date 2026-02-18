@@ -73,6 +73,18 @@ class MedicinesController < ApplicationController
     render Components::Medicines::FinderView.new
   end
 
+  def search
+    authorize Medicine, :finder?
+    query = params[:q].to_s.strip
+    result = NhsDmd::Search.new.call(query)
+
+    if result.success?
+      render json: { results: result.results.map(&:to_h) }
+    else
+      render json: { results: [], error: result.error }
+    end
+  end
+
   def dosages
     medicine = policy_scope(Medicine).find(params[:id])
     authorize medicine

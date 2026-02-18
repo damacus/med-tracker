@@ -103,6 +103,7 @@ group :development, :test do
 
   # Parallel test execution for local development [https://github.com/grosser/parallel_tests]
   gem 'parallel_tests'
+  gem 'webmock'
 end
 
 group :development do
