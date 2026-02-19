@@ -206,7 +206,20 @@ en:
     invalid_credentials: "Try another email address or password."
     signed_out: "Signed out successfully."
     login:
+      tagline: "Wellness Portal"
+      heading: "Welcome back"
+      subheading: "Please sign in to your account"
+      email_label: "Email address"
+      email_placeholder: "your@email.com"
+      password_label: "Password"
+      password_placeholder: "Enter your password"
+      forgot_password: "Forgot?"
+      remember_me: "Remember me"
       submit: "Sign In to Dashboard"
+      oauth_continue: "Continue with %{provider}"
+      need_account: "Need an account?"
+      create_account: "Create one"
+      resend_verification: "Resend verification email"
 
   take_medicines:
     success: "Medication taken successfully recorded."

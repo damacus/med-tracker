@@ -33,7 +33,7 @@ module Views
           end
           Heading(level: 1, size: '7', class: 'font-extrabold tracking-tight text-[var(--text-main)]') { 'MedTracker' }
           Text(size: '2', weight: 'muted', class: 'uppercase tracking-[0.2em] font-bold opacity-30 mt-1') do
-            'Wellness Portal'
+            t('sessions.login.tagline')
           end
         end
       end
@@ -53,8 +53,8 @@ module Views
 
       def render_login_header
         div(class: 'mb-10') do
-          Heading(level: 2, size: '5', class: 'font-bold mb-1.5') { 'Welcome back' }
-          Text(size: '2', class: 'text-slate-400') { 'Please sign in to your account' }
+          Heading(level: 2, size: '5', class: 'font-bold mb-1.5') { t('sessions.login.heading') }
+          Text(size: '2', class: 'text-slate-400') { t('sessions.login.subheading') }
         end
       end
 
@@ -73,7 +73,7 @@ module Views
         div(class: 'space-y-2.5') do
           render RubyUI::FormFieldLabel.new(for: 'email',
                                             class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 ml-5') do
-            'Email address'
+            t('sessions.login.email_label')
           end
           render RubyUI::Input.new(**email_input_attrs,
                                    class: 'rounded-2xl border-slate-100 bg-slate-50/30 py-6 px-5 focus:bg-white focus:ring-4 focus:ring-[var(--primary)]/5 focus:border-[var(--primary)] transition-all placeholder:text-slate-300')
@@ -85,11 +85,11 @@ module Views
           div(class: 'flex items-center justify-between px-5') do
             render RubyUI::FormFieldLabel.new(for: 'password',
                                               class: 'text-[10px] font-black uppercase tracking-widest text-slate-400') do
-              'Password'
+              t('sessions.login.password_label')
             end
             render RubyUI::Link.new(href: view_context.rodauth.reset_password_request_path, variant: :link, size: :sm,
                                     class: 'text-[11px] font-bold text-[var(--primary)] p-0 h-auto hover:underline') do
-              'Forgot?'
+              t('sessions.login.forgot_password')
             end
           end
           render RubyUI::Input.new(**password_input_attrs,
@@ -106,7 +106,7 @@ module Views
             )
             label(for: 'remember',
                   class: 'text-sm font-semibold text-slate-500 cursor-pointer select-none group-hover:text-slate-700 transition-colors') do
-              'Remember me'
+              t('sessions.login.remember_me')
             end
           end
         end
@@ -129,7 +129,7 @@ module Views
             input(type: 'hidden', name: 'authenticity_token', value: view_context.form_authenticity_token)
             render RubyUI::Button.new(type: :submit, variant: :outline, class: 'w-full rounded-2xl py-7 border-slate-100 text-slate-500 font-bold hover:bg-slate-50 transition-all shadow-sm') do
               render_oidc_icon
-              span { "Continue with #{provider_name}" }
+              span { t('sessions.login.oauth_continue', provider: provider_name) }
             end
           end
         end
@@ -137,15 +137,26 @@ module Views
 
       def render_signup_prompt
         div(class: 'mt-10 text-center space-y-4') do
-          unless invite_only?
-            Text(size: '2', weight: 'medium', class: 'text-slate-400') do
-              plain 'Need an account? '
-              render RubyUI::Link.new(href: view_context.rodauth.create_account_path, variant: :link, class: 'font-bold text-[var(--primary)] p-0 h-auto hover:underline') { 'Create one' }
-            end
-          end
+          render_create_account_link unless invite_only?
+          render_resend_verification_link
+        end
+      end
 
-          div do
-            render RubyUI::Link.new(href: view_context.rodauth.verify_account_resend_path, variant: :link, class: 'text-xs text-slate-300 font-medium hover:text-slate-400') { 'Resend verification email' }
+      def render_create_account_link
+        Text(size: '2', weight: 'medium', class: 'text-slate-400') do
+          plain "#{t('sessions.login.need_account')} "
+          render RubyUI::Link.new(href: view_context.rodauth.create_account_path, variant: :link,
+                                  class: 'font-bold text-[var(--primary)] p-0 h-auto hover:underline') do
+            t('sessions.login.create_account')
+          end
+        end
+      end
+
+      def render_resend_verification_link
+        div do
+          render RubyUI::Link.new(href: view_context.rodauth.verify_account_resend_path, variant: :link,
+                                  class: 'text-xs text-slate-300 font-medium hover:text-slate-400') do
+            t('sessions.login.resend_verification')
           end
         end
       end
@@ -180,7 +191,7 @@ module Views
           required: true,
           autofocus: true,
           autocomplete: 'username',
-          placeholder: 'your@email.com',
+          placeholder: t('sessions.login.email_placeholder'),
           value: view_context.params[:email]
         }
       end
@@ -192,7 +203,7 @@ module Views
           id: 'password',
           required: true,
           autocomplete: 'current-password',
-          placeholder: 'Enter your password',
+          placeholder: t('sessions.login.password_placeholder'),
           maxlength: 72
         }
       end

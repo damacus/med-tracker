@@ -206,7 +206,20 @@ cy:
     invalid_credentials: "Rhowch gynnig ar gyfeiriad e-bost neu gyfrinair arall."
     signed_out: "Allgofnodwyd yn llwyddiannus."
     login:
+      tagline: "Porth Lles"
+      heading: "Croeso yn ôl"
+      subheading: "Mewngofnodwch i'ch cyfrif"
+      email_label: "Cyfeiriad e-bost"
+      email_placeholder: "eich@ebost.com"
+      password_label: "Cyfrinair"
+      password_placeholder: "Rhowch eich cyfrinair"
+      forgot_password: "Wedi anghofio?"
+      remember_me: "Cofio fi"
       submit: "Mewngofnodi i'r Dangosfwrdd"
+      oauth_continue: "Parhau gyda %{provider}"
+      need_account: "Angen cyfrif?"
+      create_account: "Creu un"
+      resend_verification: "Ailanfon e-bost dilysu"
 
   take_medicines:
     success: "Cofnodwyd cymryd y feddyginiaeth yn llwyddiannus."

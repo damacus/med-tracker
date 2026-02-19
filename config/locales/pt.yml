@@ -206,7 +206,20 @@ pt:
     invalid_credentials: "Tente outro endereço de email ou palavra-passe."
     signed_out: "Sessão terminada com sucesso."
     login:
+      tagline: "Portal de Saúde"
+      heading: "Bem-vindo de volta"
+      subheading: "Por favor, inicie sessão na sua conta"
+      email_label: "Endereço de email"
+      email_placeholder: "o.seu@email.com"
+      password_label: "Palavra-passe"
+      password_placeholder: "Introduza a sua palavra-passe"
+      forgot_password: "Esqueceu?"
+      remember_me: "Lembrar-me"
       submit: "Iniciar Sessão no Painel"
+      oauth_continue: "Continuar com %{provider}"
+      need_account: "Precisa de uma conta?"
+      create_account: "Criar uma"
+      resend_verification: "Reenviar email de verificação"
 
   take_medicines:
     success: "Toma de medicamento registada com sucesso."

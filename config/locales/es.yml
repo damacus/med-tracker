@@ -206,7 +206,20 @@ es:
     invalid_credentials: "Pruebe con otra dirección de correo electrónico o contraseña."
     signed_out: "Sesión cerrada correctamente."
     login:
+      tagline: "Portal de Bienestar"
+      heading: "Bienvenido de nuevo"
+      subheading: "Por favor, inicie sesión en su cuenta"
+      email_label: "Dirección de correo electrónico"
+      email_placeholder: "su@correo.com"
+      password_label: "Contraseña"
+      password_placeholder: "Introduzca su contraseña"
+      forgot_password: "¿Olvidó?"
+      remember_me: "Recordarme"
       submit: "Iniciar Sesión en el Panel"
+      oauth_continue: "Continuar con %{provider}"
+      need_account: "¿Necesita una cuenta?"
+      create_account: "Crear una"
+      resend_verification: "Reenviar correo de verificación"
 
   take_medicines:
     success: "Toma de medicamento registrada correctamente."
