@@ -11,3 +11,6 @@ Generate a visual gallery to align on the final "Warm & Reassuring" look.
 ## Phase 2: Implementation (Pending Selection)
 - [ ] Task: Update `tailwind.config.js` with Nord colors and Serif font
 - [ ] Task: Refactor global Phlex base styles to apply the new aesthetic
+
+## Phase: Review Fixes
+- [x] Task: Apply review suggestions f374958
