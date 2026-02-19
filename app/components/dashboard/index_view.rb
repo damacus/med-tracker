@@ -99,7 +99,7 @@ module Components
           if doses.any?
             div(class: 'space-y-4') do
               doses.each do |dose|
-                render Components::Dashboard::TimelineItem.new(dose: dose)
+                render Components::Dashboard::TimelineItem.new(dose: dose, current_user: current_user)
               end
             end
           else

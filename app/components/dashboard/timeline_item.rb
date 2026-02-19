@@ -3,10 +3,11 @@
 module Components
   module Dashboard
     class TimelineItem < Components::Base
-      attr_reader :dose
+      attr_reader :dose, :current_user
 
-      def initialize(dose:)
+      def initialize(dose:, current_user: nil)
         @dose = dose
+        @current_user = current_user
         super()
       end
 
@@ -42,6 +43,16 @@ module Components
       end
 
       private
+
+      def own_dose?
+        return true if current_user.nil?
+
+        current_user.person == dose[:person]
+      end
+
+      def take_label
+        own_dose? ? t('person_medicines.card.take') : t('person_medicines.card.give')
+      end
 
       def status_border_class
         case dose[:status]
@@ -86,7 +97,7 @@ module Components
             variant: :outline,
             size: :md,
             data: { optimistic_take_target: 'button', testid: "take-dose-#{dose_id}" }
-          ) { t('person_medicines.card.take') }
+          ) { take_label }
         end
       end
 
