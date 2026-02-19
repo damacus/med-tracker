@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.2.6](https://github.com/damacus/med-tracker/compare/med-tracker/v0.2.5...med-tracker/v0.2.6) (2026-02-19)
+
+
+### Features
+
+* add medicine lookup tests for MLKP-015 ([#479](https://github.com/damacus/med-tracker/issues/479)) ([d2914e3](https://github.com/damacus/med-tracker/commit/d2914e32ac37dc98fdf5243a6c1a7ca8a0352f95))
+* i18n translations for hardcoded strings across components ([#484](https://github.com/damacus/med-tracker/issues/484)) ([825cad9](https://github.com/damacus/med-tracker/commit/825cad92244bafea0826edab1c3b4e675f58e255))
+* implement NHS dm+d medicine search (MLKP-001) ([#486](https://github.com/damacus/med-tracker/issues/486)) ([28cafee](https://github.com/damacus/med-tracker/commit/28cafee3af85b8d07fa329f6c6f33150530f0cdb))
+* medicine/user seeding and invite-only sign-up ([#485](https://github.com/damacus/med-tracker/issues/485)) ([fb6e8e4](https://github.com/damacus/med-tracker/commit/fb6e8e4f155fe1926436189be928a7882afc0289))
+* Premium Wellness Portal aesthetic ([497e5f6](https://github.com/damacus/med-tracker/commit/497e5f621af2196bc1a62dd99c751e4b3c670e95))
+
+
+### Bug Fixes
+
+* align DashboardPresenter with Prescription.active scope and add nil guards ([#483](https://github.com/damacus/med-tracker/issues/483)) ([758a774](https://github.com/damacus/med-tracker/commit/758a7744cb34ad8c5e1279c935b066736bbf71b9))
+* align DashboardPresenter with Prescription.active scope, add guard clauses, and fix A11Y lang attribute ([#481](https://github.com/damacus/med-tracker/issues/481)) ([b9538b4](https://github.com/damacus/med-tracker/commit/b9538b44da5540f2f37e47f8645c92259bf81bb3))
+* dashboard widget layout and spacing issues ([#489](https://github.com/damacus/med-tracker/issues/489)) ([73d3deb](https://github.com/damacus/med-tracker/commit/73d3deb9fb98a018313171528e641a7e9b9f29d1))
+* replace inline styles with CSS classes for CSP compliance ([#478](https://github.com/damacus/med-tracker/issues/478)) ([4accdd9](https://github.com/damacus/med-tracker/commit/4accdd951042e06ce45f9e1d81b0c014dc5b3ee6))
+* stabilise flaky audit_logs rate limiting spec with freeze_time ([#488](https://github.com/damacus/med-tracker/issues/488)) ([497e5f6](https://github.com/damacus/med-tracker/commit/497e5f621af2196bc1a62dd99c751e4b3c670e95))
+
+
+### Performance Improvements
+
+* pre-load today's medication takes to fix N+1 queries in card views ([#482](https://github.com/damacus/med-tracker/issues/482)) ([6916540](https://github.com/damacus/med-tracker/commit/6916540cb421a717a0fcb06c283d897410bc4d68))
+
 ## [0.2.5](https://github.com/damacus/med-tracker/compare/med-tracker/v0.2.4...med-tracker/v0.2.5) (2026-02-17)
 
 
