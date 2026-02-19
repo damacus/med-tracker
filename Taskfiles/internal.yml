@@ -155,7 +155,7 @@ tasks:
 
   port:
     desc: Get port of running container
-    internal: true
+    internal: false
     requires:
       vars: [ENVIRONMENT]
     cmds:
