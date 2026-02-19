@@ -70,6 +70,25 @@ task dev:up
    playwright-cli close
    ```
 
+1. Commit the screenshots and add them to the PR body:
+
+   ```bash
+   git add docs/screenshots/
+   git commit -m "docs: add screenshots for changed pages"
+   git push
+   ```
+
+   Then add a `## Screenshots` section to the PR description with a table per page:
+
+   ```markdown
+   ## Screenshots
+
+   ### <Page Name>
+   | Desktop                                         | Mobile                                        |
+   |-------------------------------------------------|-----------------------------------------------|
+   | ![desktop](docs/screenshots/<page>-desktop.png) | ![mobile](docs/screenshots/<page>-mobile.png) |
+   ```
+
 ## Output
 
 Screenshots are saved to `docs/screenshots/` using the naming convention:
