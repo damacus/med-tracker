@@ -100,6 +100,13 @@ en:
 
   medicines:
     finder:
+      nhs_directory: "NHS Directory"
+      title: "Medicine Finder"
+      subtitle: "Search the NHS Dictionary of Medicines and Devices (dm+d) by name or active ingredient."
+      placeholder: "Search by name, category, or active ingredient..."
+      search_button: "Search"
+      idle_heading: "Ready to explore?"
+      idle_text: "Enter a medicine name above to search thousands of verified records in the NHS database."
       coming_soon: "This feature is coming soon! We'll integrate with a medicine database API to provide detailed information about medications."
     created: "Medicine was successfully created."
     updated: "Medicine was successfully updated."
@@ -138,8 +145,20 @@ en:
       no_medicines: "No medicines added yet."
       medicines_hint: "Add vitamins, supplements, or over-the-counter medicines here."
       add_first_medicine: "Add First Medicine"
+    overview:
+      title: "Profile Overview"
+      dob: "Date of Birth"
+      assigned_user: "Assigned User"
+      no_user: "No user assigned"
+      capacity: "Capacity"
+      has_capacity: "Has Capacity"
+      dependent: "Dependent"
+    actions:
+      title: "Care Actions"
+      subtitle: "Update medication plans and prescriptions."
     form:
       edit_heading: "Edit Person"
+      edit_subheading: "Updating profile for %{name}"
       name: "Name"
       date_of_birth: "Date of Birth"
       save: "Save"
@@ -232,6 +251,21 @@ en:
     no_changes: "No changes to save."
     profile_update_failed: "Failed to update profile: %{errors}"
     email_update_failed: "Failed to update email: %{errors}"
+    theme_picker:
+      title: "Application Theme"
+      description: "Personalize your experience with a custom color palette"
+      themes:
+        default: "Standard"
+        serene_sage: "Serene Sage"
+        modern_clinical: "Modern Clinical"
+        warm_earth: "Warm Earth"
+        deep_lavender: "Deep Lavender"
+        forest_care: "Forest Care"
+        sunset_support: "Sunset Support"
+        tech_indigo: "Tech Indigo"
+        soft_rose: "Soft Rose"
+        minty_fresh: "Minty Fresh"
+        minimalist_monochrome: "Minimalist"
     close_account:
       title: "Close Account"
       description: "Permanently delete your account and all associated data"
@@ -278,8 +312,17 @@ en:
       profile: "Profile"
       administration: "Administration"
       logout: "Logout"
+    sidebar:
+      dashboard: "Dashboard"
+      inventory: "Inventory"
+      finder: "Finder"
+      people: "People"
+      reports: "Reports"
+      sign_out: "Sign Out"
   forms:
     medicines:
+      inventory_management: "Inventory Management"
+      dosage_and_supply: "Dosage & Supply"
       name: "Name"
       description: "Description"
       standard_dosage: "Standard Dosage"
@@ -296,6 +339,7 @@ en:
         other: "%{count} errors prevented this medicine from being saved:"
   dashboard:
     title: "Family Dashboard"
+    greeting: "Good morning, %{name}"
     subtitle: "Your family's medication schedule for today."
     todays_schedule: "Today's Schedule"
     medication_schedule: "Medication Schedule"
@@ -303,9 +347,20 @@ en:
     add_prescriptions_hint: "Add prescriptions to see them here"
     dose_taken_at: "%{person} • Taken at %{time}"
     empty_state: "No medications scheduled for today."
+    insights:
+      title: "Smart Insights"
+      pattern_detected: "Pattern detected"
+      message: "You've been remarkably consistent this week! Great job staying on track with your core regimen."
+      view_report: "View Full Report"
+    inventory:
+      title: "Stock Inventory"
+      left: "%{count} left"
+      order_refills: "Order Refills"
     stats:
       people: "People"
       active_prescriptions: "Active Prescriptions"
+      compliance: "Compliance"
+      next_dose: "Next Dose"
     statuses:
       taken: "Taken"
       upcoming: "Upcoming"

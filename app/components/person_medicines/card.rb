@@ -208,7 +208,7 @@ module Components
               size: :lg,
               class: 'w-full rounded-xl py-6 font-bold shadow-lg shadow-primary/20 hover:shadow-xl ' \
                      'hover:shadow-primary/30',
-              data: { optimistic_take_target: 'button' }
+              data: { optimistic_take_target: 'button', testid: "take-person-medicine-#{person_medicine.id}" }
             ) do
               plain take_label
             end
@@ -225,7 +225,8 @@ module Components
           variant: :secondary,
           size: :lg,
           disabled: true,
-          class: 'flex-1 rounded-xl py-6 opacity-50 grayscale'
+          class: 'flex-1 rounded-xl py-6 opacity-50 grayscale',
+          data: { testid: "take-person-medicine-#{person_medicine.id}-disabled" }
         ) { label }
       end
 
@@ -252,7 +253,8 @@ module Components
           AlertDialogTrigger do
             Button(
               variant: :ghost,
-              class: 'w-12 h-12 p-0 rounded-xl text-slate-300 hover:text-destructive hover:bg-destructive/5'
+              class: 'w-12 h-12 p-0 rounded-xl text-slate-300 hover:text-destructive hover:bg-destructive/5',
+              data: { testid: "delete-person-medicine-#{person_medicine.id}" }
             ) do
               render Icons::Trash.new(size: 20)
             end

@@ -79,12 +79,14 @@ module Components
 
       def render_person_overview_card
         Card(class: 'p-8 space-y-6') do
-          Heading(level: 2, size: '4', class: 'font-bold') { 'Profile Overview' }
+          Heading(level: 2, size: '4', class: 'font-bold') { t('people.overview.title') }
 
           div(class: 'space-y-4') do
-            overview_item('Date of Birth', person.date_of_birth.strftime('%B %d, %Y'), Icons::CheckCircle)
-            overview_item('Assigned User', person.user&.email_address || 'No user assigned', Icons::User)
-            overview_item('Capacity', person.has_capacity ? 'Has Capacity' : 'Dependent', Icons::Key)
+            overview_item(t('people.overview.dob'), person.date_of_birth.strftime('%B %d, %Y'), Icons::CheckCircle)
+            overview_item(t('people.overview.assigned_user'),
+                          person.user&.email_address || t('people.overview.no_user'), Icons::User)
+            overview_item(t('people.overview.capacity'),
+                          person.has_capacity ? t('people.overview.has_capacity') : t('people.overview.dependent'), Icons::Key)
           end
         end
       end
@@ -108,9 +110,9 @@ module Components
         Card(class: 'bg-primary p-8 text-white border-none shadow-xl shadow-primary/20') do
           div(class: 'space-y-6') do
             div do
-              Heading(level: 3, size: '5', class: 'font-bold mb-2') { 'Care Actions' }
+              Heading(level: 3, size: '5', class: 'font-bold mb-2') { t('people.actions.title') }
               Text(size: '2', class: 'text-primary-foreground opacity-80') do
-                'Update medication plans and prescriptions.'
+                t('people.actions.subtitle')
               end
             end
 
@@ -237,7 +239,7 @@ module Components
             form_with(model: person, class: 'space-y-8 p-10', data: { controller: 'auto-submit' }) do |f|
               div do
                 Heading(level: 2, size: '6', class: 'font-bold mb-1') { t('people.form.edit_heading') }
-                Text(size: '2', weight: 'muted') { "Updating profile for #{person.name}" }
+                Text(size: '2', weight: 'muted') { t('people.form.edit_subheading', name: person.name) }
               end
 
               div(class: 'space-y-6') do

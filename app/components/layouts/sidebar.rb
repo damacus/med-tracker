@@ -53,11 +53,11 @@ module Components
 
       def render_navigation
         nav(class: 'flex-1 space-y-2 w-full') do
-          render_nav_link(root_path, Icons::Home, 'Dashboard')
-          render_nav_link(medicines_path, Icons::Pill, 'Inventory')
-          render_nav_link(medicine_finder_path, Icons::Search, 'Finder')
-          render_nav_link(people_path, Icons::Users, 'People')
-          render_nav_link(reports_path, Icons::AlertCircle, 'Reports')
+          render_nav_link(root_path, Icons::Home, t('layouts.sidebar.dashboard'))
+          render_nav_link(medicines_path, Icons::Pill, t('layouts.sidebar.inventory'))
+          render_nav_link(medicine_finder_path, Icons::Search, t('layouts.sidebar.finder'))
+          render_nav_link(people_path, Icons::Users, t('layouts.sidebar.people'))
+          render_nav_link(reports_path, Icons::AlertCircle, t('layouts.sidebar.reports'))
         end
       end
 
@@ -112,7 +112,7 @@ module Components
               div(class: 'group-hover:scale-110 transition-transform flex items-center justify-center') do
                 render Icons::LogOut.new(size: 24)
               end
-              span(class: 'hidden md:block font-bold text-sm') { 'Sign Out' }
+              span(class: 'hidden md:block font-bold text-sm') { t('layouts.sidebar.sign_out') }
             end
           end
         end

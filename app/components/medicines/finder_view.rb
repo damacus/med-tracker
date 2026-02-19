@@ -19,10 +19,10 @@ module Components
 
       def render_header
         div(class: 'mb-10') do
-          Text(size: '2', weight: 'muted', class: 'uppercase tracking-widest mb-1 block font-bold') { 'NHS Directory' }
-          Heading(level: 1, size: '7', class: 'font-bold tracking-tight') { 'Medicine Finder' }
+          Text(size: '2', weight: 'muted', class: 'uppercase tracking-widest mb-1 block font-bold') { t('medicines.finder.nhs_directory') }
+          Heading(level: 1, size: '7', class: 'font-bold tracking-tight') { t('medicines.finder.title') }
           Text(size: '3', class: 'text-slate-400 mt-2') do
-            plain 'Search the NHS Dictionary of Medicines and Devices (dm+d) by name or active ingredient.'
+            plain t('medicines.finder.subtitle')
           end
         end
       end
@@ -40,7 +40,7 @@ module Components
               type: 'text',
               id: 'medicine-search-input',
               name: 'q',
-              placeholder: 'Search by name, category, or active ingredient...',
+              placeholder: t('medicines.finder.placeholder'),
               autocomplete: 'off',
               data: { medicine_search_target: 'input' },
               class: 'block w-full pl-14 pr-32 py-6 border border-slate-100 rounded-[1.5rem] leading-5 bg-white shadow-[0_10px_40px_rgba(0,0,0,0.03)] focus:shadow-[0_10px_40px_rgba(0,0,0,0.06)] focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary sm:text-base transition-all placeholder:text-slate-300'
@@ -51,7 +51,7 @@ module Components
                 variant: :primary,
                 class: 'h-full rounded-2xl px-8 font-bold text-sm shadow-lg shadow-primary/20',
                 data: { medicine_search_target: 'submitButton' }
-              ) { 'Search' }
+              ) { t('medicines.finder.search_button') }
             end
           end
         end
@@ -68,9 +68,9 @@ module Components
           div(class: 'w-20 h-20 rounded-full bg-slate-50 flex items-center justify-center text-slate-200 mx-auto mb-6') do
             render Icons::Search.new(size: 40)
           end
-          Heading(level: 3, size: '5', class: 'font-bold text-slate-400 mb-2') { 'Ready to explore?' }
+          Heading(level: 3, size: '5', class: 'font-bold text-slate-400 mb-2') { t('medicines.finder.idle_heading') }
           Text(size: '2', class: 'text-slate-300 max-w-sm mx-auto') do
-            'Enter a medicine name above to search thousands of verified records in the NHS database.'
+            t('medicines.finder.idle_text')
           end
         end
       end

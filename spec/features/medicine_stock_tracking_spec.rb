@@ -56,8 +56,8 @@ RSpec.describe 'Medicine Stock Tracking', type: :system do
     visit person_path(person)
 
     within "#prescription_#{prescription.id}" do
-      expect(page).to have_button('Out of Stock', disabled: true)
-      expect(page).to have_no_button('Take')
+      expect(page).to have_css("[data-testid='take-prescription-#{prescription.id}-disabled']",
+                               text: /Out of Stock/i)
     end
   end
 
@@ -68,7 +68,7 @@ RSpec.describe 'Medicine Stock Tracking', type: :system do
       expect(page).to have_content('10')
 
       # Use the specific test ID for the Take button
-      click_button 'Take', match: :first
+      find("[data-testid='take-prescription-#{prescription.id}']").click
     end
 
     expect(page).to have_content(/taken successfully/)
