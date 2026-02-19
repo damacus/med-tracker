@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.7](https://github.com/damacus/med-tracker/compare/med-tracker/v0.2.6...med-tracker/v0.2.7) (2026-02-19)
+
+
+### Bug Fixes
+
+* **ui:** Restore i18n and fix tests after aesthetic overhaul ([#490](https://github.com/damacus/med-tracker/issues/490)) ([c753053](https://github.com/damacus/med-tracker/commit/c75305320fed4fe9c539f011c66601b2ed6430c1))
+
 ## [0.2.6](https://github.com/damacus/med-tracker/compare/med-tracker/v0.2.5...med-tracker/v0.2.6) (2026-02-19)
 
 
