@@ -85,6 +85,16 @@ tasks:
       - task: :internal:seed
         vars: { ENVIRONMENT: test }
 
+  port:
+    desc: Print the host port of the running test server
+    summary: |
+      Print the host port that the test web container is listening on.
+      Useful for constructing URLs or scripting against the test server.
+      Usage: task test:port
+    cmds:
+      - task: :internal:port
+        vars: { ENVIRONMENT: test }
+
   logs:
     desc: View test container logs
     summary: |

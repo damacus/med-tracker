@@ -12,20 +12,12 @@ The dev environment must be running. If not, start it first:
 task dev:up
 ```
 
-Find the dev server port:
-
-```bash
-task dev:ps
-```
-
-Note the host port mapped to container port 3000 (e.g. `0.0.0.0:51125->3000/tcp`).
-
 ## Steps
 
-1. Open the browser and navigate to the login page (replace PORT with the actual port):
+1. Get the dev server port and open the browser:
 
    ```bash
-   playwright-cli open http://localhost:PORT/login
+   playwright-cli open http://localhost:$(task dev:port)/login
    ```
 
 1. Take a snapshot to get the current element refs:
