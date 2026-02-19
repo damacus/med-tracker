@@ -8,15 +8,17 @@ module Components
       include Phlex::Rails::Helpers::FormWith
 
       attr_reader :person, :prescriptions, :person_medicines, :editing,
-                  :takes_by_prescription, :takes_by_person_medicine
+                  :takes_by_prescription, :takes_by_person_medicine, :current_user
 
-      def initialize(person:, prescriptions:, person_medicines: nil, editing: false, preloaded_takes: {})
+      def initialize(person:, prescriptions:, person_medicines: nil, editing: false, **opts)
         @person = person
         @prescriptions = prescriptions
         @person_medicines = person_medicines || person.person_medicines
         @editing = editing
+        preloaded_takes = opts.fetch(:preloaded_takes, {})
         @takes_by_prescription = preloaded_takes.fetch(:prescriptions, {})
         @takes_by_person_medicine = preloaded_takes.fetch(:person_medicines, {})
+        @current_user = opts[:current_user]
         super()
       end
 
@@ -149,7 +151,8 @@ module Components
                 render Components::Prescriptions::Card.new(
                   prescription: prescription,
                   person: person,
-                  todays_takes: takes_by_prescription[prescription.id]
+                  todays_takes: takes_by_prescription[prescription.id],
+                  current_user: current_user
                 )
               end
             else
@@ -179,7 +182,8 @@ module Components
                 render Components::PersonMedicines::Card.new(
                   person_medicine: person_medicine,
                   person: person,
-                  todays_takes: takes_by_person_medicine[person_medicine.id]
+                  todays_takes: takes_by_person_medicine[person_medicine.id],
+                  current_user: current_user
                 )
               end
             else

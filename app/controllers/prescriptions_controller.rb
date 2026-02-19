@@ -118,7 +118,8 @@ class PrescriptionsController < ApplicationController
             view_context.render(Components::Prescriptions::Card.new(
                                   prescription: prescription,
                                   person: @person,
-                                  todays_takes: takes_by_prescription[prescription.id]
+                                  todays_takes: takes_by_prescription[prescription.id],
+                                  current_user: current_user
                                 ))
           end.join
           render turbo_stream: [

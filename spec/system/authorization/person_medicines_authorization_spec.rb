@@ -79,8 +79,8 @@ RSpec.describe 'Person Medicines Authorization' do
       visit person_path(assigned_patient)
 
       within("#person_medicine_#{person_medicine.id}") do
-        expect(page).to have_button('💊 Take')
-        click_button '💊 Take'
+        expect(page).to have_button('💊 Give')
+        click_button '💊 Give'
       end
 
       expect(page).to have_content('Medicine taken successfully')
@@ -91,7 +91,7 @@ RSpec.describe 'Person Medicines Authorization' do
       visit person_path(assigned_patient)
 
       within("#person_medicine_#{person_medicine.id}") do
-        expect(page).to have_no_button('💊 Take')
+        expect(page).to have_no_button('💊 Give')
       end
     end
 
@@ -100,7 +100,7 @@ RSpec.describe 'Person Medicines Authorization' do
       visit person_path(assigned_patient)
 
       within("#person_medicine_#{person_medicine.id}") do
-        expect(page).to have_no_button('💊 Take')
+        expect(page).to have_no_button('💊 Give')
       end
     end
 

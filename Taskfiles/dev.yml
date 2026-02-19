@@ -126,6 +126,16 @@ tasks:
           ENVIRONMENT: dev
           COMMAND: 'rails runner ''load Rails.root.join("db/seeds/seed_users.rb")'''
 
+  port:
+    desc: Print the host port of the running development server
+    summary: |
+      Print the host port that the development web container is listening on.
+      Useful for constructing URLs or scripting against the dev server.
+      Usage: task dev:port
+    cmds:
+      - task: :internal:port
+        vars: { ENVIRONMENT: dev }
+
   open-ui:
     desc: Open development server UI
     summary: |

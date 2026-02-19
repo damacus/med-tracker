@@ -153,9 +153,9 @@ tasks:
           COMMAND: "rails db:seed"
       - defer: echo "✓ Database seeding completed"
 
-  open-ui:
-    desc: Open WebUI
-    internal: true
+  port:
+    desc: Get port of running container
+    internal: false
     requires:
       vars: [ENVIRONMENT]
     cmds:
@@ -166,6 +166,16 @@ tasks:
           echo "Run 'task {{.ENVIRONMENT}}:up' first to start the {{.ENVIRONMENT}} server"
           exit 1
         fi
+        echo $PORT
+
+  open-ui:
+    desc: Open WebUI
+    internal: true
+    requires:
+      vars: [ENVIRONMENT]
+    cmds:
+      - |
+        PORT=$(task internal:port ENVIRONMENT={{ .ENVIRONMENT }})
         echo "Opening http://localhost:$PORT/admin/users in Google Chrome..."
         sleep 2
         open -a "Google Chrome" "http://localhost:$PORT/admin/users"

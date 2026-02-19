@@ -7,12 +7,13 @@ module Components
       include Phlex::Rails::Helpers::FormWith
       include Phlex::Rails::Helpers::ButtonTo
 
-      attr_reader :prescription, :person, :todays_takes
+      attr_reader :prescription, :person, :todays_takes, :current_user
 
-      def initialize(prescription:, person:, todays_takes: nil)
+      def initialize(prescription:, person:, todays_takes: nil, current_user: nil)
         @prescription = prescription
         @person = person
         @todays_takes = todays_takes
+        @current_user = current_user
         super()
       end
 
@@ -211,7 +212,7 @@ module Components
                      'hover:shadow-primary/30',
               data: { optimistic_take_target: 'button' }
             ) do
-              plain t('prescriptions.card.take')
+              plain take_label('prescriptions')
             end
           end
         else
@@ -221,13 +222,23 @@ module Components
 
       def render_disabled_button_with_reason
         reason = prescription.administration_blocked_reason
-        label = reason == :out_of_stock ? t('prescriptions.card.out_of_stock') : t('prescriptions.card.take')
+        label = reason == :out_of_stock ? t('prescriptions.card.out_of_stock') : take_label('prescriptions')
         render Button.new(
           variant: :secondary,
           size: :lg,
           disabled: true,
           class: 'flex-1 rounded-xl py-6 opacity-50 grayscale'
         ) { label }
+      end
+
+      def own_dose?
+        return true if current_user.nil?
+
+        current_user.person == person
+      end
+
+      def take_label(scope)
+        own_dose? ? t("#{scope}.card.take") : t("#{scope}.card.give")
       end
 
       def render_prescription_actions

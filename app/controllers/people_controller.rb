@@ -37,7 +37,8 @@ class PeopleController < ApplicationController
       preloaded_takes: {
         prescriptions: takes_by_prescription,
         person_medicines: takes_by_person_medicine
-      }
+      },
+      current_user: current_user
     )
   end
 

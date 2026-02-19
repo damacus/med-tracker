@@ -16,12 +16,12 @@ module Components
           render_header
           render_stats_section
 
-          div(class: 'grid grid-cols-1 lg:grid-cols-3 gap-12') do
+          div(class: 'grid grid-cols-1 lg:grid-cols-3 gap-8') do
             div(class: 'lg:col-span-2 space-y-8') do
               render_timeline_section
               render_health_insights
             end
-            div(class: 'space-y-12') do
+            div(class: 'space-y-8') do
               render_prescriptions_section
               render_supply_levels
             end
@@ -65,7 +65,7 @@ module Components
       end
 
       def render_stats_section
-        div(class: 'grid grid-cols-2 lg:grid-cols-4 gap-6 mb-12') do
+        div(class: 'grid grid-cols-2 lg:grid-cols-4 gap-4 mb-12') do
           render Components::Dashboard::StatCard.new(
             title: t('dashboard.stats.people'),
             value: people.count,
@@ -99,7 +99,7 @@ module Components
           if doses.any?
             div(class: 'space-y-4') do
               doses.each do |dose|
-                render Components::Dashboard::TimelineItem.new(dose: dose)
+                render Components::Dashboard::TimelineItem.new(dose: dose, current_user: current_user)
               end
             end
           else
