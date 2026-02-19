@@ -33,7 +33,7 @@ module Components
             render Icons::Pill.new(size: 32)
           end
           Text(size: '2', weight: 'black', class: 'uppercase tracking-[0.2em] font-bold opacity-40') do
-            'Inventory Management'
+            t('forms.medicines.inventory_management')
           end
           Heading(level: 1, size: '8', class: 'font-black tracking-tight text-slate-900') { title }
           Text(size: '3', class: 'text-slate-400') { subtitle } if subtitle
@@ -58,7 +58,9 @@ module Components
               div(class: 'h-px bg-slate-100 w-full')
 
               div(class: 'space-y-6') do
-                Heading(level: 3, size: '4', class: 'font-bold text-slate-900') { 'Dosage & Supply' }
+                Heading(level: 3, size: '4', class: 'font-bold text-slate-900') do
+                  t('forms.medicines.dosage_and_supply')
+                end
                 div(class: 'grid grid-cols-1 sm:grid-cols-2 gap-6') do
                   render_dosage_fields(form)
                   render_supply_fields(form)

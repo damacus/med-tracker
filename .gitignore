@@ -51,3 +51,5 @@ feedback.txt
 lighthouse-*
 node_modules
 .worktrees/
+# bd worktree
+med-tracker-5pv8/

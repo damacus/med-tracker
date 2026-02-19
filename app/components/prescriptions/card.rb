@@ -210,7 +210,7 @@ module Components
               size: :lg,
               class: 'w-full rounded-xl py-6 font-bold shadow-lg shadow-primary/20 hover:shadow-xl ' \
                      'hover:shadow-primary/30',
-              data: { optimistic_take_target: 'button' }
+              data: { optimistic_take_target: 'button', testid: "take-prescription-#{prescription.id}" }
             ) do
               plain take_label('prescriptions')
             end
@@ -227,7 +227,8 @@ module Components
           variant: :secondary,
           size: :lg,
           disabled: true,
-          class: 'flex-1 rounded-xl py-6 opacity-50 grayscale'
+          class: 'flex-1 rounded-xl py-6 opacity-50 grayscale',
+          data: { testid: "take-prescription-#{prescription.id}-disabled" }
         ) { label }
       end
 
@@ -250,7 +251,8 @@ module Components
               href: edit_person_prescription_path(person, prescription),
               variant: :outline,
               class: 'w-12 h-12 p-0 rounded-xl border-slate-100 flex items-center justify-center ' \
-                     'text-slate-400 hover:text-slate-600'
+                     'text-slate-400 hover:text-slate-600',
+              data: { testid: "edit-prescription-#{prescription.id}" }
             ) do
               svg(
                 xmlns: 'http://www.w3.org/2000/svg',
@@ -276,7 +278,8 @@ module Components
         AlertDialog do
           AlertDialogTrigger do
             Button(variant: :ghost,
-                   class: 'w-12 h-12 p-0 rounded-xl text-slate-300 hover:text-destructive hover:bg-destructive/5') do
+                   class: 'w-12 h-12 p-0 rounded-xl text-slate-300 hover:text-destructive hover:bg-destructive/5',
+                   data: { testid: "delete-prescription-#{prescription.id}" }) do
               render Icons::Trash.new(size: 20)
             end
           end

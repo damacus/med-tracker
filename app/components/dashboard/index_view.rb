@@ -41,7 +41,11 @@ module Components
               Time.current.strftime('%A, %b %d')
             end
             Heading(level: 1, size: '8', class: 'font-extrabold tracking-tight') do
-              current_user.person&.name ? "Good morning, #{current_user.person.name.split.first}" : t('dashboard.title')
+              if current_user.person&.name.present?
+                t('dashboard.greeting', name: current_user.person.name.split.first)
+              else
+                t('dashboard.title')
+              end
             end
           end
           div(class: 'flex gap-3') do
@@ -78,12 +82,12 @@ module Components
           )
           # Placeholder stats to match mockup visual density
           render Components::Dashboard::StatCard.new(
-            title: 'Compliance',
+            title: t('dashboard.stats.compliance'),
             value: '94%',
             icon_type: 'check'
           )
           render Components::Dashboard::StatCard.new(
-            title: 'Next Dose',
+            title: t('dashboard.stats.next_dose'),
             value: '12:30',
             icon_type: 'clock'
           )
@@ -112,7 +116,7 @@ module Components
 
       def render_health_insights
         div(class: 'space-y-4 pt-4') do
-          Heading(level: 2, size: '5', class: 'font-bold') { 'Smart Insights' }
+          Heading(level: 2, size: '5', class: 'font-bold') { t('dashboard.insights.title') }
           render RubyUI::Card.new(
             class: 'bg-indigo-600 rounded-[2.5rem] p-8 text-white relative overflow-hidden border-none ' \
                    'transition-all duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-indigo-500/20 ' \
@@ -125,15 +129,15 @@ module Components
                          'group-hover:scale-110 transition-transform') do
                 render Icons::AlertCircle.new(size: 20)
               end
-              Heading(level: 3, size: '4', class: 'font-bold mb-2') { 'Pattern detected' }
+              Heading(level: 3, size: '4', class: 'font-bold mb-2') { t('dashboard.insights.pattern_detected') }
               Text(class: 'text-indigo-100 text-sm leading-relaxed mb-6') do
-                "You've been remarkably consistent this week! Great job staying on track with your core regimen."
+                t('dashboard.insights.message')
               end
               button(
                 class: 'text-xs font-bold uppercase tracking-widest text-white border-b border-white/30 ' \
                        'pb-1 hover:border-white transition-all'
               ) do
-                'View Full Report'
+                t('dashboard.insights.view_report')
               end
             end
           end
@@ -169,7 +173,7 @@ module Components
 
       def render_supply_levels
         div(class: 'space-y-6') do
-          Heading(level: 2, size: '5', class: 'font-bold') { 'Stock Inventory' }
+          Heading(level: 2, size: '5', class: 'font-bold') { t('dashboard.inventory.title') }
           render RubyUI::Card.new(
             class: 'bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm transition-all ' \
                    'duration-300 hover:shadow-md hover:scale-[1.01] cursor-default'
@@ -186,7 +190,7 @@ module Components
                 class: 'w-full py-4 rounded-2xl bg-slate-50 text-slate-500 text-xs font-bold ' \
                        'hover:bg-slate-100 transition-all uppercase tracking-widest no-underline flex justify-center'
               ) do
-                'Order Refills'
+                t('dashboard.inventory.order_refills')
               end
             end
           end
@@ -201,7 +205,7 @@ module Components
         div(class: 'space-y-2') do
           div(class: 'flex justify-between items-center text-xs') do
             span(class: 'font-bold') { medicine.name }
-            span(class: 'text-slate-400 font-bold') { "#{current} left" }
+            span(class: 'text-slate-400 font-bold') { t('dashboard.inventory.left', count: current) }
           end
           div(class: 'h-2 w-full bg-slate-100 rounded-full overflow-hidden') do
             div(

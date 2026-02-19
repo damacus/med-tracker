@@ -20,8 +20,8 @@ module Views
       def view_template
         render Card.new do
           render CardHeader.new do
-            render(CardTitle.new { 'Application Theme' })
-            render(CardDescription.new { 'Personalize your experience with a custom color palette' })
+            render(CardTitle.new { t('profiles.theme_picker.title') })
+            render(CardDescription.new { t('profiles.theme_picker.description') })
           end
           render CardContent.new do
             div(class: 'flex flex-wrap gap-4', data_controller: 'theme-switcher') do
@@ -44,7 +44,7 @@ module Views
           div(
             class: "w-12 h-12 rounded-full #{theme[:color]} border-2 border-white shadow-sm transition-transform group-hover:scale-110"
           )
-          span(class: 'text-[10px] font-medium text-slate-500 uppercase tracking-tighter') { theme[:name] }
+          span(class: 'text-[10px] font-medium text-slate-500 uppercase tracking-tighter') { t("profiles.theme_picker.themes.#{theme[:id].underscore}") }
         end
       end
     end
