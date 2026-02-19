@@ -41,14 +41,14 @@ RSpec.describe 'Prescription Card', type: :system do
 
     it 'displays start date' do
       within("#prescription_#{prescription.id}") do
-        expect(page).to have_content('STARTED:')
+        expect(page).to have_content(I18n.t('prescriptions.card.started').upcase)
         expect(page).to have_content(prescription.start_date.strftime('%b %d, %Y'))
       end
     end
 
     it 'displays end date when present' do
       within("#prescription_#{prescription.id}") do
-        expect(page).to have_content('ENDS:')
+        expect(page).to have_content(I18n.t('prescriptions.card.ends').upcase)
         expect(page).to have_content(prescription.end_date.strftime('%b %d, %Y'))
       end
     end
@@ -58,14 +58,14 @@ RSpec.describe 'Prescription Card', type: :system do
       visit person_path(person)
 
       within("#prescription_#{prescription.id}") do
-        expect(page).to have_content('NOTES:')
+        expect(page).to have_content(I18n.t('prescriptions.card.notes').strip.upcase)
         expect(page).to have_content('Take with food')
       end
     end
 
     it 'displays todays doses section' do
       within("#prescription_#{prescription.id}") do
-        expect(page).to have_content("TODAY'S DOSES")
+        expect(page).to have_content(I18n.t('prescriptions.card.todays_doses').upcase)
       end
     end
 
@@ -74,7 +74,7 @@ RSpec.describe 'Prescription Card', type: :system do
       visit person_path(person)
 
       within("#prescription_#{prescription.id}") do
-        expect(page).to have_content('No doses taken today')
+        expect(page).to have_content(I18n.t('prescriptions.card.no_doses_today'))
       end
     end
 
@@ -102,7 +102,7 @@ RSpec.describe 'Prescription Card', type: :system do
         visit person_path(person)
 
         within("#prescription_#{prescription.id}") do
-          expect(page).to have_button('Take', disabled: false)
+          expect(page).to have_button(I18n.t('prescriptions.card.give'), disabled: false)
         end
       end
 
@@ -110,7 +110,7 @@ RSpec.describe 'Prescription Card', type: :system do
         visit person_path(person)
 
         within("#prescription_#{prescription.id}") do
-          button = find_button('Take')
+          button = find_button(I18n.t('prescriptions.card.give'))
           expect(button[:class]).to include('shadow-lg')
         end
       end
@@ -119,7 +119,7 @@ RSpec.describe 'Prescription Card', type: :system do
         visit person_path(person)
 
         within("#prescription_#{prescription.id}") do
-          click_button 'Take'
+          click_button I18n.t('prescriptions.card.give')
         end
 
         expect(prescription.medication_takes.count).to eq(1)
@@ -130,7 +130,7 @@ RSpec.describe 'Prescription Card', type: :system do
         time_before = Time.current
 
         within("#prescription_#{prescription.id}") do
-          click_button 'Take'
+          click_button I18n.t('prescriptions.card.give')
         end
 
         latest_take = prescription.medication_takes.order(taken_at: :desc).first
@@ -141,7 +141,7 @@ RSpec.describe 'Prescription Card', type: :system do
         visit person_path(person)
 
         within("#prescription_#{prescription.id}") do
-          click_button 'Take'
+          click_button I18n.t('prescriptions.card.give')
         end
 
         latest_take = prescription.medication_takes.order(taken_at: :desc).first
@@ -152,14 +152,14 @@ RSpec.describe 'Prescription Card', type: :system do
         visit person_path(person)
 
         within("#prescription_#{prescription.id}") do
-          expect(page).to have_content('No doses taken today')
-          click_button 'Take'
+          expect(page).to have_content(I18n.t('prescriptions.card.no_doses_today'))
+          click_button I18n.t('prescriptions.card.give')
         end
 
         # Wait for Turbo update
         using_wait_time(10) do
           within("#prescription_#{prescription.id}") do
-            expect(page).to have_no_content('No doses taken today')
+            expect(page).to have_no_content(I18n.t('prescriptions.card.no_doses_today'))
             expect(page).to have_css('.text-emerald-500') # New check icon color
           end
         end
@@ -175,7 +175,7 @@ RSpec.describe 'Prescription Card', type: :system do
         visit person_path(person)
 
         within("#prescription_#{prescription.id}") do
-          expect(page).to have_button('Out of Stock', disabled: true)
+          expect(page).to have_button(I18n.t('prescriptions.card.out_of_stock'), disabled: true)
         end
       end
 
@@ -183,7 +183,7 @@ RSpec.describe 'Prescription Card', type: :system do
         visit person_path(person)
 
         within("#prescription_#{prescription.id}") do
-          button = find_button('Out of Stock', disabled: true)
+          button = find_button(I18n.t('prescriptions.card.out_of_stock'), disabled: true)
           expect(button[:class]).to include('grayscale')
         end
       end
@@ -201,7 +201,7 @@ RSpec.describe 'Prescription Card', type: :system do
         visit person_path(person)
 
         within("#prescription_#{prescription.id}") do
-          expect(page).to have_button('Take', disabled: true)
+          expect(page).to have_button(I18n.t('prescriptions.card.give'), disabled: true)
         end
       end
 
@@ -209,7 +209,7 @@ RSpec.describe 'Prescription Card', type: :system do
         visit person_path(person)
 
         within("#prescription_#{prescription.id}") do
-          button = find_button('Take', disabled: true)
+          button = find_button(I18n.t('prescriptions.card.give'), disabled: true)
           expect(button[:class]).to include('grayscale')
         end
       end
@@ -218,7 +218,7 @@ RSpec.describe 'Prescription Card', type: :system do
         visit person_path(person)
 
         within("#prescription_#{prescription.id}") do
-          expect(page).to have_content('NEXT DOSE AVAILABLE')
+          expect(page).to have_content(I18n.t('prescriptions.card.next_dose_available').strip.upcase)
         end
       end
     end
@@ -299,7 +299,7 @@ RSpec.describe 'Prescription Card', type: :system do
 
     it 'all buttons have consistent rounded styling (xl/2xl)' do
       within("#prescription_#{prescription.id}") do
-        take_button = find_button('Take')
+        take_button = find_button(I18n.t('prescriptions.card.give'))
         # Check for rounded-xl or rounded-2xl
         expect(take_button[:class]).to include('rounded-')
       end
@@ -307,7 +307,7 @@ RSpec.describe 'Prescription Card', type: :system do
 
     it 'Take button uses Button component (not Link)' do
       within("#prescription_#{prescription.id}") do
-        take_button = find_button('Take')
+        take_button = find_button(I18n.t('prescriptions.card.give'))
         expect(take_button.tag_name).to eq('button')
       end
     end
@@ -321,7 +321,7 @@ RSpec.describe 'Prescription Card', type: :system do
 
     it 'Take button is keyboard accessible' do
       within("#prescription_#{prescription.id}") do
-        click_button 'Take'
+        click_button I18n.t('prescriptions.card.give')
       end
 
       expect(prescription.medication_takes.count).to eq(1)
