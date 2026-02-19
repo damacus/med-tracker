@@ -21,6 +21,9 @@ class Prescription < ApplicationRecord
   validate :end_date_after_start_date
 
   delegate :out_of_stock?, to: :medicine
+  delegate :name, to: :medicine, prefix: true
+  delegate :name, to: :person, prefix: true
+  delegate :amount, :unit, to: :dosage, prefix: true, allow_nil: true
 
   def cycle_period
     case dose_cycle

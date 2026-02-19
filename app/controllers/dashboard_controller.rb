@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 class DashboardController < ApplicationController
-  include Pundit::Authorization
-
   def index
     authorize :dashboard, :index?
 
