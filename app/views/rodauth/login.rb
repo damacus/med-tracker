@@ -115,7 +115,7 @@ module Views
       def render_submit_button
         div(class: 'pt-2') do
           render RubyUI::Button.new(type: :submit, variant: :primary, class: 'w-full py-8 font-black text-base') do
-            'Sign In to Dashboard'
+            t('sessions.login.submit')
           end
         end
       end

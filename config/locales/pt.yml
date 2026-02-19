@@ -205,6 +205,8 @@ pt:
     signed_in: "Sessão iniciada com sucesso."
     invalid_credentials: "Tente outro endereço de email ou palavra-passe."
     signed_out: "Sessão terminada com sucesso."
+    login:
+      submit: "Iniciar Sessão no Painel"
 
   take_medicines:
     success: "Toma de medicamento registada com sucesso."

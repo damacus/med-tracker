@@ -205,6 +205,8 @@ cy:
     signed_in: "Mewngofnodwyd yn llwyddiannus."
     invalid_credentials: "Rhowch gynnig ar gyfeiriad e-bost neu gyfrinair arall."
     signed_out: "Allgofnodwyd yn llwyddiannus."
+    login:
+      submit: "Mewngofnodi i'r Dangosfwrdd"
 
   take_medicines:
     success: "Cofnodwyd cymryd y feddyginiaeth yn llwyddiannus."

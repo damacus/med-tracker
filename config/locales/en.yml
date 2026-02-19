@@ -205,6 +205,8 @@ en:
     signed_in: "Signed in successfully."
     invalid_credentials: "Try another email address or password."
     signed_out: "Signed out successfully."
+    login:
+      submit: "Sign In to Dashboard"
 
   take_medicines:
     success: "Medication taken successfully recorded."
