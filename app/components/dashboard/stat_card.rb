@@ -18,16 +18,8 @@ module Components
           class: 'border-none shadow-sm bg-white/50 backdrop-blur-sm transition-all duration-300 ' \
                  'hover:scale-[1.03] hover:shadow-xl hover:shadow-primary/5 cursor-default group'
         ) do
-          CardContent(class: 'p-6 relative overflow-hidden') do
-            # Subtle background icon for depth
-            div(
-              class: 'absolute -right-3 -bottom-3 opacity-5 group-hover:scale-110 transition-transform ' \
-                     'duration-500 text-slate-900'
-            ) do
-              render_icon(size: 48)
-            end
-
-            div(class: 'relative z-10 space-y-1') do
+          CardContent(class: 'p-6') do
+            div(class: 'space-y-1') do
               div(class: 'flex items-center justify-between gap-2 mb-2 min-w-0') do
                 Text(
                   size: '1', weight: 'muted',
