@@ -44,6 +44,7 @@ Published docs: <https://damacus.github.io/med-tracker/>
 Key pages:
 
 - [Quick Start](https://damacus.github.io/med-tracker/quick-start/)
+- [LLM Context Index (llms.txt)](https://damacus.github.io/med-tracker/llms.txt)
 - [Kubernetes User Seeding](https://damacus.github.io/med-tracker/kubernetes-user-seeding/)
 - [Carer Onboarding: First Dose](https://damacus.github.io/med-tracker/user-onboarding-carer-first-dose/)
 - [Testing](https://damacus.github.io/med-tracker/testing/)

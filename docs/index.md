@@ -37,5 +37,6 @@ administration safely with auditability and timing safeguards.
 
 - Local preview: `task docs:serve`
 - Static build: `task docs:build`
+- LLM context index: [llms.txt](llms.txt)
 
 Published docs: <https://damacus.github.io/med-tracker/>
