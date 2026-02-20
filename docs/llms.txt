@@ -1,0 +1,153 @@
+# MedTracker LLM Context Index (llms.txt)
+
+## PROJECT
+- Name: MedTracker
+- Purpose: Safety-first medication tracking for carers, families, and clinicians.
+- Primary outcomes:
+  - Record prescriptions and non-prescription medicines.
+  - Enforce dosage timing and daily limits.
+  - Keep an auditable medication history.
+- Repo: https://github.com/damacus/med-tracker
+
+## STACK
+- Backend: Ruby on Rails
+- Frontend: Hotwire (Turbo + Stimulus) + Phlex
+- Database: PostgreSQL (all environments)
+- Auth: Rodauth + password, OIDC, passkeys, TOTP
+- Testing: RSpec + Capybara/Playwright
+- Docs build: Zensical (`task docs:serve`, `task docs:build`)
+
+## ARCHITECTURE
+- Server-side domain logic is authoritative.
+- UI renders server-sent HTML; Turbo Streams for interactive updates.
+- Critical identity and medication flows are audited.
+- Role-based authorization controls admin/clinical actions.
+
+Key entry points:
+- Routes: `config/routes.rb`
+- Dashboard: `app/controllers/dashboard_controller.rb`
+- Admin area: `app/controllers/admin/*`
+- Medication models: `app/models/medicine.rb`, `app/models/prescription.rb`, `app/models/person_medicine.rb`, `app/models/medication_take.rb`
+
+## DOMAIN_MODEL
+- `Account`: authentication credential record (email + password hash, status); linked to Person
+- `Person`: care identity (demographics, capacity, care context)
+- `User`: sign-in identity, linked to Person; holds role for authorization
+- `Medicine`: catalog and stock/supply context
+- `Prescription`: prescribed regimen for a person
+- `PersonMedicine`: ad-hoc/non-prescription regimen
+- `MedicationTake`: dose event record
+- `CarerRelationship`: active/inactive care links
+
+Person types:
+- `adult`, `minor`, `dependent_adult`
+
+User roles:
+- `administrator`, `doctor`, `nurse`, `carer`, `parent`, `minor`
+
+Safety invariants:
+- Enforce `max_daily_doses` and `min_hours_between_doses` before saving dose records.
+- Authorization and care-capacity rules gate who can administer/manage.
+
+## SEEDING_MODEL (IMPORTANT)
+Seeding has two distinct flows:
+
+1) Bootstrap first system administrator
+- Command: `rails med_tracker:bootstrap_admin`
+- Task definition: `lib/tasks/admin_bootstrap.rake`
+- Service logic: `app/services/admin/bootstrap_service.rb`
+- Required env:
+  - `ADMIN_EMAIL`
+  - `ADMIN_PASSWORD`
+  - `ADMIN_NAME`
+  - `ADMIN_DOB` (YYYY-MM-DD)
+- Behavior:
+  - Fails if an administrator already exists.
+  - Fails if email already exists.
+  - Creates account + person + administrator user transactionally.
+
+2) Invite initial users from YAML
+- Command path: `rails db:seed` in production
+- Loader: `db/seeds.rb` -> `db/seeds/seed_users.rb`
+- Input file: `db/seeds/users.yml`
+- Behavior (idempotent):
+  - Skips emails that already have an account.
+  - Skips emails with pending invitations.
+  - Creates invitations and sends invite emails.
+
+Kubernetes pattern:
+- Mount `users.yml` via ConfigMap at `/app/db/seeds/users.yml`.
+- Provide env via Secret or ExternalSecret target Secret.
+- Run one-off Job for bootstrap admin, then one-off Job for `rails db:seed`.
+- Full runbook: `docs/kubernetes-user-seeding.md`
+
+## CORE_WORKFLOWS
+- Authentication/session lifecycle:
+  - Login/logout and MFA flows via Rodauth integrations.
+- Medication management:
+  - Create medicines and dosages.
+  - Assign prescriptions/person medicines.
+  - Record medication takes with safety checks.
+- Admin operations:
+  - Manage users and invitations.
+  - Manage carer relationships.
+  - Review audit logs.
+
+## SOURCE_MAP
+High-value files for fast orientation:
+- Architecture/design: `docs/design.md`
+- User roles/types: `docs/user-management.md`
+- Deployment: `docs/deployment.md`
+- K8s seeding runbook: `docs/kubernetes-user-seeding.md`
+- Routes: `config/routes.rb`
+- Seeds:
+  - `db/seeds.rb`
+  - `db/seeds/seed_users.rb`
+  - `db/seeds/users.yml`
+- Admin bootstrap:
+  - `lib/tasks/admin_bootstrap.rake`
+  - `app/services/admin/bootstrap_service.rb`
+- Tests:
+  - Feature/system specs: `spec/features/`, `spec/system/`
+
+## OPS_RUNBOOK
+- Dev start: `task dev:up` then `task dev:seed`
+- Test: `task test`
+- Lint: `task rubocop`
+- Docs: `task docs:serve`, `task docs:build`
+
+Release/deploy context:
+- Release automation: `.github/workflows/release-please.yml`
+- Container publish: `.github/workflows/docker-publish.yml`
+
+## TESTING_AND_QUALITY
+- TDD required: Red -> Green -> Refactor.
+- Use task commands instead of direct test runner commands.
+- Validate behavior through public APIs and user flows.
+- Keep changes small and focused.
+
+## AGENT_GUARDRAILS
+- Do not weaken safety constraints around medication timing/dose limits.
+- Keep authorization boundaries explicit and tested.
+- Prefer root-cause fixes over UI-only workarounds.
+- Preserve production seeding idempotency behavior.
+- For infrastructure docs, include copy-pasteable manifests and verification commands.
+
+## CHANGE_IMPACT_GUIDE
+When changing these areas, also review:
+- Seeding/bootstrap changes ->
+  - `docs/kubernetes-user-seeding.md`
+  - `docs/deployment.md`
+  - `db/seeds/*`
+  - `lib/tasks/admin_bootstrap.rake`
+- Role/capacity logic changes ->
+  - `docs/user-management.md`
+  - policy specs + feature specs
+- Medication safety changes ->
+  - model validations/callbacks
+  - `spec/features/*medication*`, `spec/system/*prescription*`
+
+## DOCUMENTATION INDEX
+- Docs home: `docs/index.md`
+- Published docs: https://damacus.github.io/med-tracker/
+- This file is intended for both humans and coding agents needing rapid repository context.

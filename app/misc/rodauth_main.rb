@@ -2,6 +2,7 @@
 
 require 'sequel/core'
 
+# rubocop:disable Metrics/ClassLength
 class RodauthMain < Rodauth::Rails::Auth
   # rubocop:disable Metrics/BlockLength -- Rodauth configuration DSL requires a single configure block
   configure do
@@ -66,16 +67,17 @@ class RodauthMain < Rodauth::Rails::Auth
     # bcrypt has a maximum input length of 72 bytes, truncating any extra bytes.
     password_maximum_bytes 72 # add custom password complexity rules
     # Custom password complexity requirements (alternative to password_complexity feature).
-    # password_meets_requirements? do |password|
-    #   super(password) && password_complex_enough?(password)
-    # end
-    # auth_class_eval do
-    #   def password_complex_enough?(password)
-    #     return true if password.match?(/\d/) && password.match?(/[^a-zA-Z\d]/)
-    #     set_password_requirement_error_message(:password_simple, "requires one number and one special character")
-    #     false
-    #   end
-    # end
+    password_meets_requirements? do |password|
+      super(password) && password_complex_enough?(password)
+    end
+    auth_class_eval do
+      def password_complex_enough?(password)
+        return true if password.match?(/\d/) && password.match?(/[^a-zA-Z\d]/)
+
+        set_password_requirement_error_message(:password_simple, 'requires one number and one special character')
+        false
+      end
+    end
 
     after_login { remember_login if param_or_nil('remember') }
 
@@ -350,3 +352,4 @@ class RodauthMain < Rodauth::Rails::Auth
   end
   # rubocop:enable Metrics/BlockLength
 end
+# rubocop:enable Metrics/ClassLength

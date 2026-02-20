@@ -11,7 +11,7 @@ RSpec.describe 'User Signup', type: :system do
     it 'redirects to login when an administrator already exists and no invitation token is present' do
       admin_account = Account.create!(
         email: 'admin-existing@example.com',
-        password_hash: RodauthApp.rodauth.allocate.password_hash('securepassword123'),
+        password_hash: RodauthApp.rodauth.allocate.password_hash('SecureP@ssword123!'),
         status: :verified
       )
       admin_person = Person.create!(
@@ -40,8 +40,8 @@ RSpec.describe 'User Signup', type: :system do
       fill_in 'Name', with: 'New Test User'
       fill_in 'Date of birth', with: '1990-01-15'
       fill_in 'Email', with: 'newuser@example.com'
-      fill_in 'Password', with: 'securepassword123'
-      fill_in 'Confirm Password', with: 'securepassword123'
+      fill_in 'Password', with: 'SecureP@ssword123!'
+      fill_in 'Confirm Password', with: 'SecureP@ssword123!'
 
       expect do
         click_button 'Create Account'
@@ -69,8 +69,8 @@ RSpec.describe 'User Signup', type: :system do
 
       fill_in 'Date of birth', with: '1990-01-15'
       fill_in 'Email', with: 'newuser@example.com'
-      fill_in 'Password', with: 'securepassword123'
-      fill_in 'Confirm Password', with: 'securepassword123'
+      fill_in 'Password', with: 'SecureP@ssword123!'
+      fill_in 'Confirm Password', with: 'SecureP@ssword123!'
 
       expect do
         click_button 'Create Account'
@@ -84,8 +84,8 @@ RSpec.describe 'User Signup', type: :system do
 
       fill_in 'Name', with: 'New Test User'
       fill_in 'Email', with: 'newuser@example.com'
-      fill_in 'Password', with: 'securepassword123'
-      fill_in 'Confirm Password', with: 'securepassword123'
+      fill_in 'Password', with: 'SecureP@ssword123!'
+      fill_in 'Confirm Password', with: 'SecureP@ssword123!'
 
       expect do
         click_button 'Create Account'
@@ -100,7 +100,7 @@ RSpec.describe 'User Signup', type: :system do
       fill_in 'Name', with: 'New Test User'
       fill_in 'Date of birth', with: '1990-01-15'
       fill_in 'Email', with: 'newuser@example.com'
-      fill_in 'Password', with: 'securepassword123'
+      fill_in 'Password', with: 'SecureP@ssword123!'
       fill_in 'Confirm Password', with: 'differentpassword'
 
       expect do
@@ -123,8 +123,8 @@ RSpec.describe 'User Signup', type: :system do
       fill_in 'Name', with: 'New Test User'
       fill_in 'Date of birth', with: '1990-01-15'
       fill_in 'Email', with: 'existing@example.com'
-      fill_in 'Password', with: 'securepassword123'
-      fill_in 'Confirm Password', with: 'securepassword123'
+      fill_in 'Password', with: 'SecureP@ssword123!'
+      fill_in 'Confirm Password', with: 'SecureP@ssword123!'
 
       expect do
         click_button 'Create Account'
@@ -140,8 +140,8 @@ RSpec.describe 'User Signup', type: :system do
       fill_in 'Name', with: 'Adult User'
       fill_in 'Date of birth', with: 30.years.ago.to_date.to_s
       fill_in 'Email', with: 'adult@example.com'
-      fill_in 'Password', with: 'securepassword123'
-      fill_in 'Confirm Password', with: 'securepassword123'
+      fill_in 'Password', with: 'SecureP@ssword123!'
+      fill_in 'Confirm Password', with: 'SecureP@ssword123!'
 
       click_button 'Create Account'
 
@@ -156,8 +156,8 @@ RSpec.describe 'User Signup', type: :system do
       fill_in 'Name', with: 'Minor User'
       fill_in 'Date of birth', with: 15.years.ago.to_date.to_s
       fill_in 'Email', with: 'minor@example.com'
-      fill_in 'Password', with: 'securepassword123'
-      fill_in 'Confirm Password', with: 'securepassword123'
+      fill_in 'Password', with: 'SecureP@ssword123!'
+      fill_in 'Confirm Password', with: 'SecureP@ssword123!'
 
       click_button 'Create Account'
 

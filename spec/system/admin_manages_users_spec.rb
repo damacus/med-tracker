@@ -103,8 +103,8 @@ RSpec.describe 'AdminManagesUsers' do
       fill_in 'Name', with: 'Loginable User'
       fill_in 'Date of birth', with: '1985-05-15'
       fill_in 'Email address', with: 'loginable@example.com'
-      fill_in 'Password', with: 'securepassword123'
-      fill_in 'Password confirmation', with: 'securepassword123'
+      fill_in 'Password', with: 'SecureP@ssword123!'
+      fill_in 'Password confirmation', with: 'SecureP@ssword123!'
       select 'Carer', from: 'Role'
 
       click_button 'Create User'
@@ -122,7 +122,7 @@ RSpec.describe 'AdminManagesUsers' do
       # Log in as newly created user
       visit login_path
       fill_in 'email', with: 'loginable@example.com'
-      fill_in 'password', with: 'securepassword123'
+      fill_in 'password', with: 'SecureP@ssword123!'
       click_button 'Sign In to Dashboard'
 
       expect(page).to have_content('Loginable User')

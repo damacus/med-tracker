@@ -4,11 +4,12 @@ Use this guide to seed MedTracker users in Kubernetes quickly and safely.
 
 ## TL;DR (for on-call/sysadmin use)
 
-1. Create `users.yml` with invite targets (ConfigMap).
-2. Create runtime secrets (`APP_URL`, SMTP, etc.) via Secret or ExternalSecret.
-3. Run a one-off Job using the production image and `rails db:seed`.
-4. Check Job logs and confirm invited users/admin access.
-5. Remove one-off Job manifest from GitOps after success.
+1. **Bootstrap first admin** (first deploy only): create Secret with `ADMIN_*` vars and run bootstrap Job (`rails med_tracker:bootstrap_admin`).
+2. Create `users.yml` with invite targets (ConfigMap).
+3. Create runtime secrets (`APP_URL`, SMTP, etc.) via Secret or ExternalSecret.
+4. Run a one-off Job using the production image and `rails db:seed`.
+5. Check Job logs and confirm invited users/admin access.
+6. Remove one-off Job manifests from GitOps after success.
 
 ## What gets seeded
 

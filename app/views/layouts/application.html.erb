@@ -24,6 +24,7 @@
       }
     </script>
 
+    <link rel="manifest" href="/manifest.webmanifest">
     <%= favicon_link_tag "/favicon.svg", type: "image/svg+xml" %>
     <%= favicon_link_tag "/favicon.svg", rel: "apple-touch-icon", type: "image/svg+xml" %>
     <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
@@ -34,7 +35,7 @@
   <body class="bg-background">
     <%= render Components::Layouts::Sidebar.new(current_user: current_user) %>
     <%= render Components::Layouts::Navigation.new(current_user: current_user) %>
-    
+
     <% if content_for?(:flash) %>
       <%= yield :flash %>
     <% else %>

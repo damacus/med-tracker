@@ -11,7 +11,7 @@ RSpec.describe Admin::BootstrapService do
     let(:params) do
       {
         email: 'first.admin@example.com',
-        password: 'securepassword123',
+        password: 'SecureP@ssword123!',
         name: 'First Admin',
         date_of_birth: '1980-02-01'
       }
@@ -20,7 +20,7 @@ RSpec.describe Admin::BootstrapService do
     def create_existing_admin!(email: 'existing.admin@example.com')
       account = Account.create!(
         email: email,
-        password_hash: BCrypt::Password.create('securepassword123'),
+        password_hash: BCrypt::Password.create('SecureP@ssword123!'),
         status: :verified
       )
       person = Person.create!(
@@ -68,7 +68,7 @@ RSpec.describe Admin::BootstrapService do
     it 'refuses to bootstrap when account or user exists with same email' do
       Account.create!(
         email: params[:email],
-        password_hash: BCrypt::Password.create('securepassword123'),
+        password_hash: BCrypt::Password.create('SecureP@ssword123!'),
         status: :verified
       )
 
