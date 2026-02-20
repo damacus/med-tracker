@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/damacus/med-tracker/compare/v0.3.0...v0.3.1) (2026-02-20)
+
+
+### Bug Fixes
+
+* chain docker build from release-please workflow ([#496](https://github.com/damacus/med-tracker/issues/496)) ([41dd510](https://github.com/damacus/med-tracker/commit/41dd51025fcef3aee2ebe0ff91473cd1eb5805ab))
+
 ## [0.3.0](https://github.com/damacus/med-tracker/compare/v0.2.8...v0.3.0) (2026-02-20)
 
 
