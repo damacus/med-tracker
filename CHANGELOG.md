@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.8](https://github.com/damacus/med-tracker/compare/med-tracker/v0.2.7...med-tracker/v0.2.8) (2026-02-20)
+
+
+### Bug Fixes
+
+* iterate through bug fixes and policy improvements ([#492](https://github.com/damacus/med-tracker/issues/492)) ([bb75797](https://github.com/damacus/med-tracker/commit/bb7579768e1782ad6dde58836589d25a8be6f4c0))
+
 ## [0.2.7](https://github.com/damacus/med-tracker/compare/med-tracker/v0.2.6...med-tracker/v0.2.7) (2026-02-19)
 
 
