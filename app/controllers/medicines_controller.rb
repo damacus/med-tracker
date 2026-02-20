@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 class MedicinesController < ApplicationController
-  include Pundit::Authorization
-
   before_action :set_medicine, only: %i[show edit update destroy]
 
   def index

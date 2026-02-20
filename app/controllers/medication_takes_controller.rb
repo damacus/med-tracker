@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 class MedicationTakesController < ApplicationController
-  include Pundit::Authorization
-
   before_action :set_prescription, only: [:create]
 
   def create

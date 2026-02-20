@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class ApplicationPolicy
+  include PolicyHelpers
+
   attr_reader :user, :record
 
   def initialize(user, record)
@@ -34,30 +36,6 @@ class ApplicationPolicy
 
   private
 
-  def admin?
-    user&.administrator? || false
-  end
-
-  def admin_or_clinician?
-    user&.administrator? || user&.doctor? || user&.nurse? || false
-  end
-
-  def doctor?
-    user&.doctor? || false
-  end
-
-  def nurse?
-    user&.nurse? || false
-  end
-
-  def medical_staff?
-    user&.doctor? || user&.nurse? || false
-  end
-
-  def carer_or_parent?
-    user&.carer? || user&.parent? || false
-  end
-
   def person_id_for_authorization
     raise NotImplementedError, 'Subclass must implement #person_id_for_authorization'
   end
@@ -75,6 +53,8 @@ class ApplicationPolicy
   end
 
   class Scope
+    include PolicyHelpers
+
     def initialize(user, scope)
       @user = user
       @scope = scope
@@ -87,30 +67,6 @@ class ApplicationPolicy
     private
 
     attr_reader :user, :scope
-
-    def admin?
-      user&.administrator? || false
-    end
-
-    def admin_or_clinician?
-      user&.administrator? || user&.doctor? || user&.nurse? || false
-    end
-
-    def doctor?
-      user&.doctor? || false
-    end
-
-    def nurse?
-      user&.nurse? || false
-    end
-
-    def medical_staff?
-      user&.doctor? || user&.nurse? || false
-    end
-
-    def carer_or_parent?
-      user&.carer? || user&.parent? || false
-    end
 
     def accessible_patient_ids
       [].tap do |ids|

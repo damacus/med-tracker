@@ -2,37 +2,37 @@
 
 class UserPolicy < ApplicationPolicy
   def index?
-    user&.administrator? || false
+    admin?
   end
 
   def show?
-    user&.administrator? || user == record || false
+    admin? || user == record || false
   end
 
   def create?
-    user&.administrator? || false
+    admin?
   end
 
   alias new? create?
 
   def update?
-    user&.administrator? || user == record || false
+    admin? || user == record || false
   end
 
   alias edit? update?
 
   def destroy?
-    user&.administrator? || false
+    admin?
   end
 
   def activate?
-    user&.administrator? || false
+    admin?
   end
 
   class Scope < ApplicationPolicy::Scope
     def resolve
       return scope.none unless user
-      return scope.all if user.administrator?
+      return scope.all if admin?
 
       scope.where(id: user.id)
     end

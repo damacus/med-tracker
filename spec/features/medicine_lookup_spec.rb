@@ -9,24 +9,32 @@ RSpec.describe 'Medicine Lookup', type: :system do
 
   let(:aspirin_results) do
     [
-      NhsDmd::SearchResult.new(
+      {
         code: '39720311000001101',
         display: 'Aspirin 300mg tablets',
         system: 'https://dmd.nhs.uk',
         concept_class: 'VMP'
-      ),
-      NhsDmd::SearchResult.new(
+      },
+      {
         code: '39720411000001102',
         display: 'Aspirin 75mg tablets',
         system: 'https://dmd.nhs.uk',
         concept_class: 'VMP'
-      )
+      }
     ]
   end
 
+  before do
+    # Set credentials for NhsDmd::Client
+    allow(ENV).to receive(:fetch).and_call_original
+    allow(ENV).to receive(:fetch).with('NHS_DMD_CLIENT_ID', nil).and_return('test-id')
+    allow(ENV).to receive(:fetch).with('NHS_DMD_CLIENT_SECRET', nil).and_return('test-secret')
+
+    stub_nhs_dmd_token
+  end
+
   it 'User searches for a medicine and sees results' do
-    search = instance_double(NhsDmd::Search, call: NhsDmd::Search::Result.new(results: aspirin_results, error: nil))
-    allow(NhsDmd::Search).to receive(:new).and_return(search)
+    stub_nhs_dmd_search(query: 'Aspirin', results: aspirin_results)
 
     sign_in(doctor)
     visit medicine_finder_path
@@ -45,8 +53,7 @@ RSpec.describe 'Medicine Lookup', type: :system do
   end
 
   it 'Search returns no results' do
-    search = instance_double(NhsDmd::Search, call: NhsDmd::Search::Result.new(results: [], error: nil))
-    allow(NhsDmd::Search).to receive(:new).and_return(search)
+    stub_nhs_dmd_search(query: 'NonExistentMedicine12345', results: [])
 
     sign_in(doctor)
     visit medicine_finder_path
@@ -59,9 +66,9 @@ RSpec.describe 'Medicine Lookup', type: :system do
   end
 
   it 'API unavailable shows error message' do
-    search = instance_double(NhsDmd::Search,
-                             call: NhsDmd::Search::Result.new(results: [], error: 'Service unavailable'))
-    allow(NhsDmd::Search).to receive(:new).and_return(search)
+    # Stub search to return error status
+    stub_request(:get, %r{#{NhsDmd::Client::BASE_URL}/ValueSet/\$expand})
+      .to_return(status: 503, body: 'Service Unavailable')
 
     sign_in(doctor)
     visit medicine_finder_path

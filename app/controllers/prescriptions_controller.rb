@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 class PrescriptionsController < ApplicationController
-  include Pundit::Authorization
   include TimelineRefreshable
 
   before_action :set_person
