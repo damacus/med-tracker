@@ -13,6 +13,7 @@ administration safely with auditability and timing safeguards.
 ## Core Guides
 
 - [Deployment](deployment.md): run app and database in development and production.
+- [Kubernetes User Seeding](kubernetes-user-seeding.md): bootstrap first admin and seed care-team invites using ConfigMap and Secret/ExternalSecret patterns.
 - [User Management](user-management.md): person types, user roles, and carer links.
 - [OAuth Setup](oauth-setup.md): configure Google OIDC sign-in.
 - [Passkey Setup](passkey-setup.md): configure and operate WebAuthn passkeys.

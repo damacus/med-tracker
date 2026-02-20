@@ -26,16 +26,16 @@ class ReportsController < ApplicationController
     alerts = Prescription.active.where(person_id: people.map(&:id))
                          .includes(:medicine)
                          .map do |p|
-      burn_rate = p.max_daily_doses || 1
-      current = p.medicine.current_supply || 0
-      days_left = (current.to_f / burn_rate).floor
+                           burn_rate = p.max_daily_doses || 1
+                           current = p.medicine.current_supply || 0
+                           days_left = (current.to_f / burn_rate).floor
 
-      {
-        medicine_name: p.medicine.name,
-        days_left: days_left,
-        doses_left: current,
-        low_stock: days_left <= 3
-      }
+                           {
+                             medicine_name: p.medicine.name,
+                             days_left: days_left,
+                             doses_left: current,
+                             low_stock: days_left <= 3
+                           }
     end
     alerts.select { |alert| alert[:days_left] < 14 }.sort_by { |a| a[:days_left] }.take(2)
   end

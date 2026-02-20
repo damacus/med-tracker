@@ -81,6 +81,18 @@ disabled automatically — no API calls are made.
 
 ## Flux GitOps: bootstrap first administrator
 
+Kubernetes operators should use the dedicated runbook for complete seeding
+procedures:
+
+- [Kubernetes User Seeding Runbook](kubernetes-user-seeding.md)
+
+Quick flow selection:
+
+| Goal                               | Command                             | Notes                                             |
+|------------------------------------|-------------------------------------|---------------------------------------------------|
+| Create first administrator account | `rails med_tracker:bootstrap_admin` | One-off account creation with `ADMIN_*` vars      |
+| Invite initial care-team users     | `rails db:seed`                     | Reads `/app/db/seeds/users.yml`, idempotent skips |
+
 For Kubernetes production environments managed by Flux, bootstrap the first admin
 using a one-off Job manifest committed through the normal GitOps repo path.
 
