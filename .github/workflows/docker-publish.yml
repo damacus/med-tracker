@@ -6,6 +6,13 @@ on:
     tags: ["v*"]
   pull_request:
     branches: [main]
+  workflow_call:
+    inputs:
+      tag_name:
+        description: "Git tag name for release (e.g. v1.0.0)"
+        required: false
+        type: string
+        default: ""
 
 env:
   REGISTRY: ghcr.io
@@ -21,6 +28,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag_name || github.ref }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -58,11 +67,11 @@ jobs:
           tags: |
             type=ref,event=branch
             type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{version}},value=${{ inputs.tag_name || '' }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ inputs.tag_name || '' }}
             type=sha,format=long
-            type=raw,value=beta,enable=${{ github.ref_type != 'tag' && github.ref_name == 'main' }}
-            type=raw,value=latest,enable=${{ github.ref_type == 'tag' }}
+            type=raw,value=beta,enable=${{ inputs.tag_name == '' && github.ref_type != 'tag' && github.ref_name == 'main' }}
+            type=raw,value=latest,enable=${{ inputs.tag_name != '' || github.ref_type == 'tag' }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
