@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe 'PWA' do
+  fixtures :accounts, :people, :users
+
   describe 'GET /manifest.webmanifest' do
     it 'returns the web manifest with app metadata' do
       get '/manifest.webmanifest'
@@ -40,7 +42,9 @@ RSpec.describe 'PWA' do
 
   describe 'manifest link tag in layout' do
     it 'includes a manifest link in the application layout' do
+      sign_in(users(:admin))
       get '/'
+      follow_redirect! if response.redirect?
 
       expect(response.body).to include('<link rel="manifest" href="/manifest.webmanifest">')
     end
