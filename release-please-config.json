@@ -5,6 +5,7 @@
 			"package-name": "med-tracker",
 			"changelog-path": "CHANGELOG.md",
 			"version-file": "lib/med_tracker/version.rb",
+			"include-component-in-tag": false,
 			"prerelease": true,
 			"initial-version": "0.1.0"
 		}
