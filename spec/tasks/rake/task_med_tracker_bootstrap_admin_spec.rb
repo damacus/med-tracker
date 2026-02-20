@@ -35,7 +35,7 @@ RSpec.describe Rake::Task do
   def expect_bootstrap_service_called
     expect(Admin::BootstrapService).to have_received(:call).with(
       email: 'bootstrap.admin@example.com',
-      password: 'securepassword123',
+      password: 'SecureP@ssword123!',
       name: 'Bootstrap Admin',
       date_of_birth: '1980-02-01'
     )
@@ -44,7 +44,7 @@ RSpec.describe Rake::Task do
   it 'invokes bootstrap service with environment variables' do
     set_admin_env(
       email: 'bootstrap.admin@example.com',
-      password: 'securepassword123',
+      password: 'SecureP@ssword123!',
       name: 'Bootstrap Admin',
       dob: '1980-02-01'
     )

@@ -28,14 +28,14 @@ RSpec.describe 'Authentication Features', type: :system do
       # verify_account_grace_period Rails.env.production? ? 0 : 7.days.to_i
       account = Account.create!(
         email: 'unverified@example.com',
-        password_hash: RodauthApp.rodauth.allocate.password_hash('securepassword123'),
+        password_hash: RodauthApp.rodauth.allocate.password_hash('SecureP@ssword123!'),
         status: :unverified
       )
 
       # In test environment, unverified users can login during grace period
       visit login_path
       fill_in 'Email address', with: 'unverified@example.com'
-      fill_in 'Password', with: 'securepassword123'
+      fill_in 'Password', with: 'SecureP@ssword123!'
       click_button 'Sign In to Dashboard'
 
       # Account remains unverified but login succeeds in test env
@@ -78,7 +78,7 @@ RSpec.describe 'Authentication Features', type: :system do
     let!(:account) do
       Account.create!(
         email: 'remember@example.com',
-        password_hash: RodauthApp.rodauth.allocate.password_hash('securepassword123'),
+        password_hash: RodauthApp.rodauth.allocate.password_hash('SecureP@ssword123!'),
         status: :verified
       )
     end
@@ -107,7 +107,7 @@ RSpec.describe 'Authentication Features', type: :system do
     it 'creates remember key when remember me is checked' do
       visit login_path
       fill_in 'Email address', with: 'remember@example.com'
-      fill_in 'Password', with: 'securepassword123'
+      fill_in 'Password', with: 'SecureP@ssword123!'
       check 'remember'
       click_button 'Sign In to Dashboard'
 
@@ -141,14 +141,14 @@ RSpec.describe 'Authentication Features', type: :system do
     it 'allows unverified accounts to login during grace period in non-production' do
       account = Account.create!(
         email: 'blocked@example.com',
-        password_hash: RodauthApp.rodauth.allocate.password_hash('securepassword123'),
+        password_hash: RodauthApp.rodauth.allocate.password_hash('SecureP@ssword123!'),
         status: :unverified
       )
 
       # In test environment, unverified users CAN login (grace period is 7 days)
       visit login_path
       fill_in 'Email address', with: 'blocked@example.com'
-      fill_in 'Password', with: 'securepassword123'
+      fill_in 'Password', with: 'SecureP@ssword123!'
       click_button 'Sign In to Dashboard'
 
       # Login should succeed in test env (grace period active)
@@ -161,7 +161,7 @@ RSpec.describe 'Authentication Features', type: :system do
     before do
       Account.create!(
         email: 'closed@example.com',
-        password_hash: RodauthApp.rodauth.allocate.password_hash('securepassword123'),
+        password_hash: RodauthApp.rodauth.allocate.password_hash('SecureP@ssword123!'),
         status: :closed
       )
     end
@@ -169,7 +169,7 @@ RSpec.describe 'Authentication Features', type: :system do
     it 'prevents login for closed accounts' do
       visit login_path
       fill_in 'Email address', with: 'closed@example.com'
-      fill_in 'Password', with: 'securepassword123'
+      fill_in 'Password', with: 'SecureP@ssword123!'
       click_button 'Sign In to Dashboard'
 
       # Should show error and not redirect to dashboard
@@ -182,7 +182,7 @@ RSpec.describe 'Authentication Features', type: :system do
     before do
       Account.create!(
         email: 'resend@example.com',
-        password_hash: RodauthApp.rodauth.allocate.password_hash('securepassword123'),
+        password_hash: RodauthApp.rodauth.allocate.password_hash('SecureP@ssword123!'),
         status: :unverified
       )
     end

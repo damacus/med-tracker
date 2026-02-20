@@ -50,8 +50,8 @@ RSpec.describe 'Admin invites users' do
 
     fill_in 'Name', with: 'Invited Parent'
     fill_in 'Date of birth', with: '1985-05-15'
-    fill_in 'Password', with: 'securepassword123'
-    fill_in 'Confirm Password', with: 'securepassword123'
+    fill_in 'Password', with: 'SecureP@ssword123!'
+    fill_in 'Confirm Password', with: 'SecureP@ssword123!'
 
     click_button 'Create Account'
 
