@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 
 RSpec.describe 'AUTH: OmniAuth Auto Linking', type: :system do
@@ -21,14 +23,14 @@ RSpec.describe 'AUTH: OmniAuth Auto Linking', type: :system do
     expect(AccountIdentity.where(account_id: existing_account.id).count).to eq(0)
 
     # Mock the OmniAuth response
-    OmniAuth.config.mock_auth[:oidc] = OmniAuth::AuthHash.new({
+    OmniAuth.config.mock_auth[:oidc] = OmniAuth::AuthHash.new(
       provider: 'oidc',
       uid: '12345',
       info: {
         email: email,
         name: 'Damacus Test'
       }
-    })
+    )
 
     # In a real setup, there would be a button to login with OIDC
     # We can simulate the callback directly or click the button if it exists
@@ -36,7 +38,7 @@ RSpec.describe 'AUTH: OmniAuth Auto Linking', type: :system do
 
     # Should be logged in and redirected to dashboard
     expect(page).to have_current_path('/dashboard')
-    
+
     # Should have created an identity linked to the existing account
     expect(AccountIdentity.where(account_id: existing_account.id, provider: 'oidc', uid: '12345').count).to eq(1)
   end

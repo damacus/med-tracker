@@ -37,4 +37,21 @@ RSpec.describe 'PWA' do
       expect(response.body).to include('self.addEventListener')
     end
   end
+
+  describe 'manifest link tag in layout' do
+    it 'includes a manifest link in the application layout' do
+      get '/'
+
+      expect(response.body).to include('<link rel="manifest" href="/manifest.webmanifest">')
+    end
+  end
+
+  describe 'Content-Security-Policy' do
+    it 'includes worker-src self to allow service worker registration' do
+      get '/manifest.webmanifest'
+
+      csp = response.headers['Content-Security-Policy'] || response.headers['Content-Security-Policy-Report-Only']
+      expect(csp).to include('worker-src')
+    end
+  end
 end
