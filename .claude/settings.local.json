@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh issue view:*)",
+      "Bash(git checkout:*)",
+      "Bash(bd ready:*)",
+      "Bash(bd show:*)",
+      "Bash(bd list:*)",
+      "Bash(bd dep show:*)",
+      "Bash(bd blocked:*)",
+      "Skill(playwright-cli)",
+      "Bash(git check-ignore:*)",
+      "Bash(git worktree:*)",
+      "Bash(bd update:*)",
+      "Bash(task local:test:*)",
+      "Bash(task --list:*)",
+      "Bash(task test:ps:*)",
+      "Bash(task test:up:*)",
+      "Bash(task test:*)"
+    ]
+  }
+}
