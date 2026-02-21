@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.2](https://github.com/damacus/med-tracker/compare/v0.3.1...v0.3.2) (2026-02-20)
+
+
+### Bug Fixes
+
+* PWA not installable — add manifest link tag and worker-src CSP ([#502](https://github.com/damacus/med-tracker/issues/502)) ([cd1256a](https://github.com/damacus/med-tracker/commit/cd1256ae79f8336e54b106dd98a472d373414964))
+
 ## [0.3.1](https://github.com/damacus/med-tracker/compare/v0.3.0...v0.3.1) (2026-02-20)
 
 
