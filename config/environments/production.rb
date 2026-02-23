@@ -60,21 +60,35 @@ Rails.application.configure do
   config.active_job.queue_adapter = :solid_queue
   config.solid_queue.connects_to = { database: { writing: :queue } }
 
-  # Ignore bad email addresses and do not raise email delivery errors.
-  # Set this to true and configure the email server for immediate delivery to raise delivery errors.
-  # config.action_mailer.raise_delivery_errors = false
+  # Raise delivery errors in production so failures surface in logs/APM
+  config.action_mailer.raise_delivery_errors = true
+  config.action_mailer.perform_deliveries = true
 
-  # Set host to be used by links generated in mailer templates.
-  config.action_mailer.default_url_options = { host: 'example.com' }
+  # Derive mailer host from APP_URL (used in links inside emails)
+  config.action_mailer.default_url_options = {
+    host: URI.parse(ENV.fetch('APP_URL', 'https://example.com')).host
+  }
 
-  # Specify outgoing SMTP server. Remember to add smtp/* credentials via rails credentials:edit.
-  # config.action_mailer.smtp_settings = {
-  #   user_name: Rails.application.credentials.dig(:smtp, :user_name),
-  #   password: Rails.application.credentials.dig(:smtp, :password),
-  #   address: "smtp.example.com",
-  #   port: 587,
-  #   authentication: :plain
-  # }
+  # Provider-agnostic SMTP delivery — configure via environment variables.
+  # Works with any SMTP provider; change ENV vars to switch provider without code changes.
+  #
+  # SendGrid:  SMTP_ADDRESS=smtp.sendgrid.net  SMTP_USER_NAME=apikey        SMTP_PASSWORD=<key>
+  # Mailgun:   SMTP_ADDRESS=smtp.mailgun.org   SMTP_USER_NAME=postmaster@…  SMTP_PASSWORD=<key>
+  # Postmark:  SMTP_ADDRESS=smtp.postmarkapp.com SMTP_USER_NAME=<token>     SMTP_PASSWORD=<token>
+  # Resend:    SMTP_ADDRESS=smtp.resend.com    SMTP_USER_NAME=resend         SMTP_PASSWORD=<api-key>
+  # AWS SES:   SMTP_ADDRESS=email-smtp.<region>.amazonaws.com SMTP_USER_NAME=<access-key> SMTP_PASSWORD=<secret>
+  #
+  config.action_mailer.delivery_method = :smtp
+  config.action_mailer.smtp_settings = {
+    address:              ENV.fetch('SMTP_ADDRESS', 'localhost'),
+    port:                 ENV.fetch('SMTP_PORT', 587).to_i,
+    user_name:            ENV['SMTP_USER_NAME'],
+    password:             ENV['SMTP_PASSWORD'],
+    authentication:       ENV.fetch('SMTP_AUTHENTICATION', 'plain').to_sym,
+    enable_starttls_auto: ENV.fetch('SMTP_STARTTLS', 'true') == 'true',
+    open_timeout:         5,
+    read_timeout:         5
+  }
 
   # Enable locale fallbacks for I18n (makes lookups for any locale fall back to
   # the I18n.default_locale when a translation cannot be found).
