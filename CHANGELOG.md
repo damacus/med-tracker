@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.4](https://github.com/damacus/med-tracker/compare/v0.3.3...v0.3.4) (2026-02-23)
+
+
+### Features
+
+* admin manual user verification ([#515](https://github.com/damacus/med-tracker/issues/515)) ([8296a97](https://github.com/damacus/med-tracker/commit/8296a9702ea55b48276336935987211a00ff1b87))
+
+
+### Bug Fixes
+
+* replace yield_content with Phlex 2.x block passthrough in breadcrumb components ([#513](https://github.com/damacus/med-tracker/issues/513)) ([0b993c4](https://github.com/damacus/med-tracker/commit/0b993c416d6c685cccce34519406872bed89dea5))
+
 ## [0.3.3](https://github.com/damacus/med-tracker/compare/v0.3.2...v0.3.3) (2026-02-22)
 
 
