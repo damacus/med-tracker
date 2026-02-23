@@ -15,6 +15,8 @@ RSpec.describe Medicine do
   describe 'validations' do
     it { is_expected.to validate_presence_of(:name) }
     it { is_expected.not_to validate_presence_of(:current_supply) }
+    it { is_expected.to allow_value('sachet').for(:dosage_unit) }
+    it { is_expected.not_to allow_value('capsule').for(:dosage_unit) }
 
     it do
       expect(medicine).to validate_numericality_of(:current_supply)
