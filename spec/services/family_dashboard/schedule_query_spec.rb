@@ -3,7 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe FamilyDashboard::ScheduleQuery do
-  fixtures :people, :carer_relationships, :prescriptions, :person_medicines, :medication_takes, :medicines, :dosages
+  fixtures :people, :carer_relationships, :prescriptions, :person_medicines, :medication_takes,
+           :locations, :medicines, :dosages
 
   let(:jane) { people(:jane) }
   let(:child) { people(:child_patient) }

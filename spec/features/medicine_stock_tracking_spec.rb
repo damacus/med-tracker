@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'Medicine Stock Tracking', type: :system do
-  fixtures :accounts, :people, :users, :medicines, :dosages, :prescriptions
+  fixtures :accounts, :people, :users, :locations, :medicines, :dosages, :prescriptions
 
   let(:admin) { users(:admin) }
   let(:person) { people(:john) }

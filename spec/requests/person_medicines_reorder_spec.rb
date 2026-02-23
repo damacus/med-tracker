@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'Person medicine reordering' do
-  fixtures :accounts, :people, :users, :medicines, :carer_relationships
+  fixtures :accounts, :people, :users, :locations, :medicines, :carer_relationships
 
   let(:parent_user) { users(:parent) }
   let(:linked_child) { people(:child_user_person) }

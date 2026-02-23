@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'People' do
-  fixtures :accounts, :people, :users, :medicines, :dosages, :prescriptions, :carer_relationships
+  fixtures :accounts, :people, :users, :locations, :medicines, :dosages, :prescriptions, :carer_relationships
 
   let(:user) { users(:john) }
 

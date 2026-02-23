@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'Optimistic UI updates for take medicine buttons' do
-  fixtures :accounts, :people, :medicines, :users, :dosages, :prescriptions, :carer_relationships
+  fixtures :accounts, :people, :locations, :medicines, :users, :dosages, :prescriptions, :carer_relationships
 
   let(:carer_account) { accounts(:carer) }
   let(:person) { people(:child_patient) }

@@ -3,7 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe Components::People::ShowView, type: :component do
-  fixtures :accounts, :people, :users, :medicines, :dosages, :prescriptions, :person_medicines, :medication_takes
+  fixtures :accounts, :people, :users, :locations, :medicines, :dosages, :prescriptions,
+           :person_medicines, :medication_takes
 
   let(:person) { people(:jane) }
   let(:prescriptions) { person.prescriptions }
