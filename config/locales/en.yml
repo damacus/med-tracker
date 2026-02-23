@@ -337,7 +337,7 @@ en:
       standard_dosage: "Standard Dosage"
       unit: "Unit"
       select_unit: "Select unit"
-      current_supply: "Current Supply"
+      current_supply: "Remaining Supply"
       stock: "Stock"
       reorder_threshold: "Reorder Threshold"
       warnings: "Warnings"

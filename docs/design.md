@@ -26,6 +26,8 @@ HTML and use Turbo Streams for updates.
 - `MedicationTake`: immutable dose record for safety and compliance
 - `CarerRelationship`: mapping of carers to dependent people
 
+Use the [Glossary](glossary.md) as the source of truth for domain terms (for example, **Remaining Supply** vs **Stock**).
+
 ## Safety rules
 
 Timing restrictions are enforced in model logic:
