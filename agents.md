@@ -52,8 +52,7 @@ task dev:port          # → e.g. 3000
 
 ```bash
 git pull --rebase
-bd sync
 git push
 ```
 
-Work is not done until `git push` succeeds.
+Work is not done until `git push` succeeds. (`bd sync` runs automatically via git hooks.)
