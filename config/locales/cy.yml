@@ -285,7 +285,7 @@ cy:
       standard_dosage: "Dosio Safonol"
       unit: "Uned"
       select_unit: "Dewis uned"
-      current_supply: "Cyflenwyd Cyfredol"
+      current_supply: "Cyflenwad sy'n weddill"
       stock: "Stoc"
       reorder_threshold: "Trothwy Yn ail-drefnu"
       warnings: "Rhybuddion"

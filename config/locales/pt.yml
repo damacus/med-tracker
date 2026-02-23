@@ -284,7 +284,7 @@ pt:
       standard_dosage: "Dose Padrão"
       unit: "Unidade"
       select_unit: "Selecionar unidade"
-      current_supply: "Fornecimento Atual"
+      current_supply: "Fornecimento restante"
       stock: "Stock"
       reorder_threshold: "Limite de Reordenação"
       warnings: "Avisos"
