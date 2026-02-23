@@ -17,6 +17,7 @@ nav = [
   { "User Guides" = [
     { "Carer Onboarding: First Dose" = "user-onboarding-carer-first-dose.md" },
     { "User Management" = "user-management.md" },
+    { "Mail Setup" = "mail-setup.md" },
     { "OAuth Setup" = "oauth-setup.md" },
     { "Passkey Setup" = "passkey-setup.md" },
     { "Two-Factor Authentication" = "two-factor-authentication.md" }

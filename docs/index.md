@@ -15,6 +15,7 @@ administration safely with auditability and timing safeguards.
 - [Deployment](deployment.md): run app and database in development and production.
 - [Kubernetes User Seeding](kubernetes-user-seeding.md): bootstrap first admin and seed care-team invites using ConfigMap and Secret/ExternalSecret patterns.
 - [User Management](user-management.md): person types, user roles, and carer links.
+- [Mail Setup](mail-setup.md): SMTP/environment configuration and delivery verification checklist.
 - [OAuth Setup](oauth-setup.md): configure Google OIDC sign-in.
 - [Passkey Setup](passkey-setup.md): configure and operate WebAuthn passkeys.
 - [Two-Factor Authentication](two-factor-authentication.md): TOTP and recovery flow.
