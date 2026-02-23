@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.3](https://github.com/damacus/med-tracker/compare/v0.3.2...v0.3.3) (2026-02-22)
+
+
+### Features
+
+* enhance security, PWA installability, and CI asset reliability ([6aa9784](https://github.com/damacus/med-tracker/commit/6aa9784a7c8fc0620fb1e598eb273ba470aeac36))
+
+
+### Bug Fixes
+
+* (ui) Standardize Form Inputs to RubyUI ([#508](https://github.com/damacus/med-tracker/issues/508)) ([1eb4ae8](https://github.com/damacus/med-tracker/commit/1eb4ae88c5948c800c97c728724aaf8080fef9ed))
+* PWA not installable — add manifest link tag and worker-src CSP ([#504](https://github.com/damacus/med-tracker/issues/504)) ([6aa9784](https://github.com/damacus/med-tracker/commit/6aa9784a7c8fc0620fb1e598eb273ba470aeac36))
+
 ## [0.3.2](https://github.com/damacus/med-tracker/compare/v0.3.1...v0.3.2) (2026-02-20)
 
 
