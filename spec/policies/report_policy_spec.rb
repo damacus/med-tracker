@@ -39,7 +39,7 @@ RSpec.describe ReportPolicy do
   end
 
   context 'when user is a minor patient' do
-    let(:user) { users(:child_user) }
+    let(:user) { users(:minor_patient_user) }
 
     it { is_expected.to forbid_action(:index) }
   end

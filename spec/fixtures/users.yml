@@ -91,6 +91,14 @@ child_user:
   person: child_user_person
   email_address: child.user@example.com
   password_digest: <%= BCrypt::Password.create("password") %>
-  role: 5  # minor (minor with account)
+  role: 4  # parent (minor with account)
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>
+
+minor_patient_user:
+  person: child_patient
+  email_address: minor_patient@example.com
+  password_digest: <%= BCrypt::Password.create("password") %>
+  role: 5  # minor
   created_at: <%= Time.current %>
   updated_at: <%= Time.current %>
