@@ -242,9 +242,47 @@ module Components
 
       def render_person_medicine_actions
         div(class: 'flex items-center gap-2 w-full') do
+          render_reorder_controls if view_context.policy(person_medicine).update?
+
           render_take_medicine_button if view_context.policy(person_medicine).take_medicine?
 
           render_delete_dialog if view_context.policy(person_medicine).destroy?
+        end
+      end
+
+      def render_reorder_controls
+        div(class: 'flex items-center gap-1') do
+          form_with(
+            url: reorder_person_person_medicine_path(person, person_medicine),
+            method: :patch,
+            class: 'inline'
+          ) do
+            input(type: :hidden, name: :direction, value: 'up')
+            Button(
+              variant: :ghost,
+              type: :submit,
+              class: 'w-10 h-10 p-0 rounded-xl text-slate-400 hover:text-slate-700',
+              data: { testid: "move-up-person-medicine-#{person_medicine.id}" }
+            ) do
+              plain '↑'
+            end
+          end
+
+          form_with(
+            url: reorder_person_person_medicine_path(person, person_medicine),
+            method: :patch,
+            class: 'inline'
+          ) do
+            input(type: :hidden, name: :direction, value: 'down')
+            Button(
+              variant: :ghost,
+              type: :submit,
+              class: 'w-10 h-10 p-0 rounded-xl text-slate-400 hover:text-slate-700',
+              data: { testid: "move-down-person-medicine-#{person_medicine.id}" }
+            ) do
+              plain '↓'
+            end
+          end
         end
       end
 

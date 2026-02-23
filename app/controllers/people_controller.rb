@@ -12,7 +12,7 @@ class PeopleController < ApplicationController
   def show
     authorize @person
     prescriptions = @person.prescriptions.includes(:medicine, :dosage)
-    person_medicines = @person.person_medicines.includes(:medicine)
+    person_medicines = @person.person_medicines.includes(:medicine).ordered
     editing = params[:editing] == 'true'
 
     today_start = Time.current.beginning_of_day

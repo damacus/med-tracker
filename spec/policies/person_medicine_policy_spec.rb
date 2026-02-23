@@ -78,8 +78,7 @@ RSpec.describe PersonMedicinePolicy do
       let(:user) { parent_user }
       let(:person_medicine) { PersonMedicine.new(person: child_patient, medicine: medicines(:vitamin_d)) }
 
-      # Parents cannot add medicines for their children - only admins can
-      it { is_expected.not_to permit_action(:create) }
+      it { is_expected.to permit_action(:create) }
     end
 
     context 'when carer creates for assigned patient' do
@@ -145,8 +144,7 @@ RSpec.describe PersonMedicinePolicy do
       let(:user) { parent_user }
       let(:person_medicine) { PersonMedicine.create!(person: child_patient, medicine: medicines(:vitamin_d)) }
 
-      # Parents cannot update medicines for their children - only admins can
-      it { is_expected.not_to permit_action(:update) }
+      it { is_expected.to permit_action(:update) }
     end
 
     context 'when user updates for unrelated person' do
@@ -167,6 +165,13 @@ RSpec.describe PersonMedicinePolicy do
     context 'when user destroys their own' do
       let(:user) { adult_patient_user }
       let(:person_medicine) { PersonMedicine.create!(person: adult_patient, medicine: medicines(:vitamin_d)) }
+
+      it { is_expected.to permit_action(:destroy) }
+    end
+
+    context "when parent removes their child's person medicine record" do
+      let(:user) { parent_user }
+      let(:person_medicine) { PersonMedicine.create!(person: child_patient, medicine: medicines(:vitamin_d)) }
 
       it { is_expected.to permit_action(:destroy) }
     end
@@ -255,13 +260,14 @@ RSpec.describe PersonMedicinePolicy do
         let(:user) { parent_user }
 
         before do
-          # Create a person medicine for the parent
           PersonMedicine.create!(person: user.person, medicine: medicines(:vitamin_c))
+          PersonMedicine.create!(person: child_patient, medicine: medicines(:vitamin_d))
+          PersonMedicine.create!(person: adult_patient, medicine: medicines(:vitamin_d))
         end
 
-        it 'returns only their own person medicines (not children)' do
+        it 'returns their own and linked child person medicines only' do
           scope = described_class::Scope.new(user, PersonMedicine.all).resolve
-          expect(scope.pluck(:person_id).uniq).to eq([user.person_id])
+          expect(scope.pluck(:person_id).uniq).to contain_exactly(user.person_id, child_patient.id)
         end
       end
 

@@ -10,19 +10,19 @@ class PersonMedicinePolicy < ApplicationPolicy
   end
 
   def create?
-    admin? || self_or_dependent?
+    admin? || self_or_dependent? || parent_with_minor?
   end
 
   alias new? create?
 
   def update?
-    admin? || self_or_dependent?
+    admin? || self_or_dependent? || parent_with_minor?
   end
 
   alias edit? update?
 
   def destroy?
-    admin? || self_or_dependent?
+    admin? || self_or_dependent? || parent_with_minor?
   end
 
   def take_medicine?

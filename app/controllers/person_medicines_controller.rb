@@ -4,12 +4,12 @@ class PersonMedicinesController < ApplicationController
   include TimelineRefreshable
 
   before_action :set_person
-  before_action :set_person_medicine, only: %i[destroy take_medicine]
+  before_action :set_person_medicine, only: %i[destroy take_medicine reorder]
 
   def new
     authorize PersonMedicine
     @person_medicine = @person.person_medicines.build
-    @medicines = policy_scope(Medicine)
+    @medicines = available_medicines
 
     respond_to do |format|
       format.html do
@@ -36,7 +36,7 @@ class PersonMedicinesController < ApplicationController
   def create
     @person_medicine = @person.person_medicines.build(person_medicine_params)
     authorize @person_medicine
-    @medicines = policy_scope(Medicine)
+    @medicines = available_medicines
 
     if @person_medicine.save
       respond_to do |format|
@@ -78,6 +78,12 @@ class PersonMedicinesController < ApplicationController
     authorize @person_medicine
     @person_medicine.destroy
     redirect_to person_path(@person), notice: t('person_medicines.deleted')
+  end
+
+  def reorder
+    authorize @person_medicine, :update?
+    @person_medicine.reorder(params[:direction])
+    redirect_to person_path(@person)
   end
 
   def take_medicine
@@ -133,5 +139,9 @@ class PersonMedicinesController < ApplicationController
 
   def person_medicine_params
     params.expect(person_medicine: %i[medicine_id notes max_daily_doses min_hours_between_doses])
+  end
+
+  def available_medicines
+    Medicine.order(:name)
   end
 end

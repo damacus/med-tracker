@@ -58,6 +58,7 @@ Rails.application.routes.draw do
 
     resources :person_medicines, except: [:index] do
       member do
+        patch :reorder
         post :take_medicine
       end
     end

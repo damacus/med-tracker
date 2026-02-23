@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'People' do
-  fixtures :accounts, :people, :users, :medicines, :dosages, :prescriptions
+  fixtures :accounts, :people, :users, :medicines, :dosages, :prescriptions, :carer_relationships
 
   let(:user) { users(:john) }
 
@@ -131,6 +131,74 @@ RSpec.describe 'People' do
 
       within "#person_#{person_with_carer.id}" do
         expect(page).to have_no_css('[data-testid="needs-carer-badge"]')
+      end
+    end
+  end
+
+  describe 'restricted action visibility' do
+    context 'when user is an administrator' do
+      let(:user) { users(:admin) }
+
+      it 'shows Add Prescription action on person show page' do
+        visit person_path(people(:child_patient))
+
+        expect(page).to have_link('Add Prescription')
+      end
+
+      it 'shows Assign Carer action for unassigned dependent patients' do
+        patient_without_carer = Person.create!(
+          name: 'Unassigned Dependent',
+          date_of_birth: 40.years.ago,
+          person_type: :dependent_adult
+        )
+
+        visit people_path
+
+        within "#person_#{patient_without_carer.id}" do
+          expect(page).to have_link('Assign Carer')
+        end
+      end
+    end
+
+    context 'when user is a carer' do
+      let(:user) { users(:carer) }
+
+      it 'hides Add Prescription action on person show page' do
+        visit person_path(people(:child_patient))
+
+        expect(page).to have_content('Care Actions')
+        expect(page).to have_no_link('Add Prescription')
+      end
+
+      it 'hides Assign Carer action for unassigned dependent patients' do
+        patient_without_carer = Person.create!(
+          name: 'Unassigned Dependent',
+          date_of_birth: 40.years.ago,
+          person_type: :dependent_adult
+        )
+
+        visit people_path
+
+        expect(page).to have_content('People')
+        expect(page).to have_no_css("#person_#{patient_without_carer.id}")
+      end
+    end
+
+    context 'when user is a doctor' do
+      let(:user) { users(:doctor) }
+
+      it 'hides Assign Carer action for unassigned dependent patients' do
+        patient_without_carer = Person.create!(
+          name: 'Unassigned Dependent',
+          date_of_birth: 40.years.ago,
+          person_type: :dependent_adult
+        )
+
+        visit people_path
+
+        within "#person_#{patient_without_carer.id}" do
+          expect(page).to have_no_link('Assign Carer')
+        end
       end
     end
   end
