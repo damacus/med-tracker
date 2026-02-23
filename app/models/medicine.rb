@@ -2,6 +2,7 @@
 
 class Medicine < ApplicationRecord # :nodoc:
   DOSAGE_UNITS = %w[tablet mg ml g mcg IU spray drop sachet].freeze
+  CATEGORIES = %w[painkiller antibiotic vitamin respiratory heart supplement allergy digestive skin].freeze
 
   belongs_to :location
 
@@ -10,6 +11,7 @@ class Medicine < ApplicationRecord # :nodoc:
   has_many :person_medicines, dependent: :destroy
 
   validates :name, presence: true
+  validates :category, inclusion: { in: CATEGORIES }, allow_blank: true
   validates :dosage_unit, inclusion: { in: DOSAGE_UNITS }, allow_blank: true
   validates :current_supply, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
   validates :stock, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true

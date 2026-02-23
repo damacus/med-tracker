@@ -18,6 +18,7 @@ class MedicinesController < ApplicationController
     authorize @medicine
     render Components::Medicines::FormView.new(
       medicine: @medicine,
+      locations: available_locations,
       title: t('medicines.form.new_title'),
       subtitle: t('medicines.form.new_subtitle')
     )
@@ -27,6 +28,7 @@ class MedicinesController < ApplicationController
     authorize @medicine
     render Components::Medicines::FormView.new(
       medicine: @medicine,
+      locations: available_locations,
       title: t('medicines.form.edit_title'),
       subtitle: t('medicines.form.edit_subtitle', name: @medicine.name)
     )
@@ -41,6 +43,7 @@ class MedicinesController < ApplicationController
     else
       render Components::Medicines::FormView.new(
         medicine: @medicine,
+        locations: available_locations,
         title: t('medicines.form.new_title'),
         subtitle: t('medicines.form.new_subtitle')
       ), status: :unprocessable_content
@@ -54,6 +57,7 @@ class MedicinesController < ApplicationController
     else
       render Components::Medicines::FormView.new(
         medicine: @medicine,
+        locations: available_locations,
         title: t('medicines.form.edit_title'),
         subtitle: t('medicines.form.edit_subtitle', name: @medicine.name)
       ), status: :unprocessable_content
@@ -95,9 +99,14 @@ class MedicinesController < ApplicationController
     @medicine = policy_scope(Medicine).find(params[:id])
   end
 
+  def available_locations
+    Location.order(:name)
+  end
+
   def medicine_params
     params.expect(
       medicine: %i[name
+                   category
                    description
                    dosage_amount
                    dosage_unit

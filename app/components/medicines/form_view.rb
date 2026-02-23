@@ -54,6 +54,7 @@ module Components
               div(class: 'space-y-6') do
                 render_location_field(form)
                 render_name_field(form)
+                render_category_field(form)
                 render_description_field(form)
               end
 
@@ -153,6 +154,28 @@ module Components
                    "focus:border-primary transition-all #{field_error_class(medicine, :name)}"
           )
           render_field_error(medicine, :name)
+        end
+      end
+
+      def render_category_field(_form)
+        div(class: 'space-y-2') do
+          render RubyUI::FormFieldLabel.new(
+            for: 'medicine_category',
+            class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1'
+          ) { 'Category' }
+          select(
+            name: 'medicine[category]',
+            id: 'medicine_category',
+            class: 'flex w-full rounded-2xl border border-slate-200 bg-white py-4 px-4 text-sm ' \
+                   'focus:outline-none focus:ring-2 focus:ring-primary/10 focus:border-primary ' \
+                   "transition-all appearance-none #{field_error_class(medicine, :category)}"
+          ) do
+            option(value: '') { 'Select a category (optional)...' }
+            Medicine::CATEGORIES.each do |cat|
+              option(value: cat, selected: medicine.category == cat) { cat.titleize }
+            end
+          end
+          render_field_error(medicine, :category)
         end
       end
 

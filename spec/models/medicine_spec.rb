@@ -27,6 +27,12 @@ RSpec.describe Medicine do
 
     it { is_expected.to validate_numericality_of(:stock).only_integer.is_greater_than_or_equal_to(0).allow_nil }
     it { is_expected.to validate_numericality_of(:reorder_threshold).only_integer.is_greater_than_or_equal_to(0) }
+
+    it { is_expected.to allow_value('painkiller').for(:category) }
+    it { is_expected.to allow_value('vitamin').for(:category) }
+    it { is_expected.to allow_value(nil).for(:category) }
+    it { is_expected.to allow_value('').for(:category) }
+    it { is_expected.not_to allow_value('invalid_category').for(:category) }
   end
 
   describe 'associations' do

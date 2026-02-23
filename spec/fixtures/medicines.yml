@@ -2,6 +2,7 @@
 paracetamol:
   name: Paracetamol
   location: home
+  category: painkiller
   dosage_amount: 500
   dosage_unit: "mg"
   current_supply: 80
@@ -19,6 +20,7 @@ paracetamol:
 ibuprofen:
   name: Ibuprofen
   location: home
+  category: painkiller
   dosage_amount: 200
   dosage_unit: "mg"
   current_supply: 30
@@ -34,6 +36,7 @@ ibuprofen:
 aspirin:
   name: Aspirin
   location: home
+  category: painkiller
   description: >-
     Aspirin is used to treat pain, reduce inflammation and lower fever. It can
     also be taken in low doses to help prevent heart attacks and strokes in
@@ -50,6 +53,7 @@ aspirin:
 calpol:
   name: Calpol
   location: home
+  category: painkiller
   description: >-
     Calpol is a brand of children's medicine that contains paracetamol. It is
     used to relieve pain and reduce fever in children.
@@ -66,6 +70,7 @@ calpol:
 vitamin_d:
   name: Vitamin D
   location: home
+  category: vitamin
   description: >-
     Vitamin D helps regulate the amount of calcium and phosphate in the body.
     These nutrients are needed to keep bones, teeth and muscles healthy.
@@ -81,6 +86,7 @@ vitamin_d:
 vitamin_c:
   name: Vitamin C
   location: home
+  category: vitamin
   description: >-
     Vitamin C is an essential nutrient that supports immune function and acts
     as an antioxidant.

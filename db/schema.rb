@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_23_221636) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_23_231214) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -197,13 +197,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_23_221636) do
   end
 
   create_table "medicines", force: :cascade do |t|
+    t.string "category"
     t.datetime "created_at", null: false
     t.integer "current_supply"
     t.text "description"
     t.float "dosage_amount"
     t.string "dosage_unit"
     t.date "expiry_date"
-    t.bigint "location_id"
+    t.bigint "location_id", null: false
     t.string "name"
     t.integer "reorder_status"
     t.integer "reorder_threshold", default: 10, null: false
