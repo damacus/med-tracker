@@ -53,7 +53,7 @@
 
 - **GitHub Flow** We use GitHub Flow: create feature branches from `main`, open PRs, merge after review. **Never push directly to main** - lefthook enforces this.
 - **Branches & commits** Conventional Commits (`feat:`, `fix:`, etc.), small atomic changes, always green tests before merge. GPG-signed commits are strongly recommended and may be required by future branch protection rules, but are not currently enforced by tooling.
-- **Environment** rails server via `bin/dev`; avoid destructive commands without confirmation.
+- **Environment** Start the dev server with `task dev:up`; avoid destructive commands without confirmation.
 - **Documentation** Markdown must satisfy `markdown-lint-cli2`; keep headings orderly.
 
 ## Useful Entry Points
@@ -158,6 +158,64 @@ gh pr view <PR_NUMBER> --json reviews --jq '.reviews[] | select(.author.login ==
 1. Enum comparisons: Use predicate methods (e.g., `person_type_adult?`) instead of string comparisons
 2. Association names: Verify correct association names in models
 3. Type mismatches: Ensure types match (symbol vs string, etc.)
+
+## Interacting with the Application
+
+The app runs in Docker. Use `task` commands to manage it — never run `docker compose` or `bin/dev` directly.
+
+### Development Server
+
+| Command | Purpose |
+|---|---|
+| `task dev:up` | Start the development server |
+| `task dev:stop` | Stop the development server |
+| `task dev:build` | Build Docker images (first-time or after Gemfile/package changes) |
+| `task dev:rebuild` | Rebuild and reset the database (destructive) |
+| `task dev:port` | Print the host port the dev server is bound to |
+| `task dev:open-ui` | Open the running app in the default browser |
+| `task dev:logs` | Tail development server logs |
+| `task dev:ps` | Show Docker Compose stack status |
+| `task dev:db-migrate` | Run pending database migrations |
+| `task dev:seed` | Seed the database with fixtures (all test users: password `password`) |
+| `task stop-all` | Stop all services (dev, test, prod) for this worktree |
+
+### Taking Screenshots for PRs
+
+Use `playwright-cli` (the `playwright-cli` skill) to capture screenshots:
+
+```bash
+# 1. Start the dev server
+task dev:up
+
+# 2. Get the port it's running on
+task dev:port   # e.g. 3000
+
+# 3. Open a browser and navigate
+playwright-cli open http://localhost:<port>
+
+# 4. Log in (all fixture users have password: password)
+playwright-cli goto http://localhost:<port>/login
+
+# 5. Take screenshots
+playwright-cli screenshot --filename=screenshot.png
+
+# 6. Close when done
+playwright-cli close
+```
+
+Attach screenshots to PRs via `gh pr comment <PR> --body "![desc](screenshot.png)"` or upload them as part of the PR body.
+
+### Production Server (local validation)
+
+| Command | Purpose |
+|---|---|
+| `task prod:up` | Start production server locally for validation |
+| `task prod:stop` | Stop production server |
+| `task prod:build` | Build production Docker images |
+| `task prod:rebuild` | Rebuild production server (drops database) |
+| `task prod:logs` | View production server logs |
+| `task prod:ps` | List production container status |
+| `task prod:seed-users` | Send invitations to initial users |
 
 ## Local Testing
 

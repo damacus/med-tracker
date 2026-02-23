@@ -3,9 +3,11 @@
 module Views
   module Reports
     class Index < Views::Base
-      def initialize(daily_data:, inventory_alerts:)
+      def initialize(daily_data:, inventory_alerts:, start_date:, end_date:)
         @daily_data = daily_data
         @inventory_alerts = inventory_alerts
+        @start_date = start_date
+        @end_date = end_date
         super()
       end
 
@@ -20,28 +22,52 @@ module Views
 
       private
 
+      # rubocop:disable Metrics/AbcSize
       def render_header
-        div(class: 'text-center md:text-left space-y-2') do
-          Text(size: '2', weight: 'muted', class: 'uppercase tracking-[0.2em] font-black opacity-40') { 'Wellness Analytics' }
-          Heading(level: 1, size: '9', class: 'font-black tracking-tight text-foreground') { 'Health Report' }
-          p(class: 'text-slate-400') { "#{7.days.ago.strftime('%B %d')} — #{Time.current.strftime('%B %d, %Y')}" }
+        div(class: 'flex flex-col md:flex-row items-center justify-between gap-4') do
+          div(class: 'text-center md:text-left space-y-2') do
+            Text(size: '2', weight: 'muted', class: 'uppercase tracking-[0.2em] font-black opacity-40') { 'Wellness Analytics' }
+            Heading(level: 1, size: '9', class: 'font-black tracking-tight text-foreground') { 'Health Report' }
+            p(class: 'text-slate-400') { "#{@start_date.strftime('%B %d')} — #{@end_date.strftime('%B %d, %Y')}" }
+          end
+
+          form(action: helpers.reports_path, method: :get, class: 'flex items-center gap-2 bg-white/50 backdrop-blur-sm p-4 rounded-xl border border-slate-100 shadow-sm') do
+            div(class: 'flex flex-col gap-1') do
+              label(for: 'start_date', class: 'text-xs font-bold text-slate-500 uppercase tracking-wider') { 'From' }
+              input(type: 'date', name: 'start_date', id: 'start_date', value: @start_date, class: 'form-input text-sm rounded-lg border-slate-200 focus:border-indigo-500 focus:ring-indigo-500')
+            end
+            div(class: 'flex flex-col gap-1') do
+              label(for: 'end_date', class: 'text-xs font-bold text-slate-500 uppercase tracking-wider') { 'To' }
+              input(type: 'date', name: 'end_date', id: 'end_date', value: @end_date, class: 'form-input text-sm rounded-lg border-slate-200 focus:border-indigo-500 focus:ring-indigo-500')
+            end
+            button(type: 'submit', class: 'mt-5 bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-lg transition-colors aria-label: "Apply date filters"') do
+              render Icons::ChevronRight.new(size: 20)
+            end
+          end
         end
       end
+      # rubocop:enable Metrics/AbcSize
 
+      # rubocop:disable Metrics/AbcSize
       def render_summary_card
+        total_expected = @daily_data.sum { |d| d[:expected] }
+        total_actual = @daily_data.sum { |d| d[:actual] }
+        overall_compliance = total_expected.zero? ? 100 : [(total_actual.to_f / total_expected * 100).round, 100].min
+
         Card(class: 'overflow-hidden border-none shadow-2xl') do
           div(class: 'bg-gradient-to-br from-indigo-600 to-violet-700 p-8 sm:p-12 text-white relative') do
             # Decorative element
             div(class: 'absolute right-0 top-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2')
 
             div(class: 'relative z-10 grid grid-cols-1 md:grid-cols-3 gap-8 text-center') do
-              summary_stat('Overall Compliance', '94%', '↑ 3%')
-              summary_stat('Total Doses Logged', '42/45', 'On Track')
-              summary_stat('Current Health Status', 'Optimal', 'Vibrant')
+              summary_stat('Overall Compliance', "#{overall_compliance}%", overall_compliance >= 90 ? 'Excellent' : 'Needs attention')
+              summary_stat('Total Doses Logged', "#{total_actual}/#{total_expected}", total_actual >= total_expected ? 'On Track' : 'Missed doses')
+              summary_stat('Current Health Status', 'Optimal', 'Vibrant') # This could be dynamic in the future based on compliance
             end
           end
         end
       end
+      # rubocop:enable Metrics/AbcSize
 
       def summary_stat(label, value, subtext)
         div(class: 'space-y-1') do

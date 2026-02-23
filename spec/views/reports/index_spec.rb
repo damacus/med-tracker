@@ -4,14 +4,19 @@ require 'rails_helper'
 
 RSpec.describe Views::Reports::Index do
   subject(:report_view) do
-    described_class.new(daily_data: daily_data, inventory_alerts: inventory_alerts)
+    described_class.new(
+      daily_data: daily_data,
+      inventory_alerts: inventory_alerts,
+      start_date: 7.days.ago.to_date,
+      end_date: Time.zone.today
+    )
   end
 
   let(:daily_data) do
     [
-      { day_name: 'Mon', percentage: 100 },
-      { day_name: 'Tue', percentage: 90 },
-      { day_name: 'Wed', percentage: 80 }
+      { day_name: 'Mon', percentage: 100, expected: 5, actual: 5 },
+      { day_name: 'Tue', percentage: 90, expected: 10, actual: 9 },
+      { day_name: 'Wed', percentage: 80, expected: 5, actual: 4 }
     ]
   end
 
@@ -19,6 +24,12 @@ RSpec.describe Views::Reports::Index do
     [
       { medicine_name: 'Ibuprofen', days_left: 3, doses_left: 12 }
     ]
+  end
+
+  before do
+    # rubocop:disable RSpec/SubjectStub
+    allow(report_view).to receive(:helpers).and_return(double(reports_path: '/reports'))
+    # rubocop:enable RSpec/SubjectStub
   end
 
   it 'renders the health report heading' do
