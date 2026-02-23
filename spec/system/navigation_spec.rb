@@ -35,7 +35,7 @@ RSpec.describe 'Navigation' do
 
       within('aside') do
         expect(page).to have_link('Dashboard')
-        # We can't see the text directly if it's hidden, but sidebar spec handles it
+        expect(page).to have_link('Administration', href: admin_root_path)
       end
     end
   end

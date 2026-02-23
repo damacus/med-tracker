@@ -14,7 +14,7 @@ RSpec.describe UserPolicy do
     end
 
     it 'permits all actions' do
-      %i[index show create new update edit destroy activate].each do |action|
+      %i[index show create new update edit destroy activate verify].each do |action|
         expect(policy.public_send("#{action}?")).to be true
       end
     end
@@ -26,7 +26,9 @@ RSpec.describe UserPolicy do
     end
 
     it 'forbids administrative actions' do
-      %i[index create new update edit destroy].each { |action| expect(policy.public_send("#{action}?")).to be false }
+      %i[index create new update edit destroy verify].each do |action|
+        expect(policy.public_send("#{action}?")).to be false
+      end
     end
 
     context 'when viewing own profile' do
@@ -50,7 +52,7 @@ RSpec.describe UserPolicy do
     end
 
     it 'forbids administrative actions' do
-      %i[index create new destroy].each { |action| expect(policy.public_send("#{action}?")).to be false }
+      %i[index create new destroy verify].each { |action| expect(policy.public_send("#{action}?")).to be false }
     end
 
     context 'when viewing own profile' do
@@ -78,6 +80,7 @@ RSpec.describe UserPolicy do
       expect(policy.index?).to be false
       expect(policy.create?).to be false
       expect(policy.destroy?).to be false
+      expect(policy.verify?).to be false
     end
 
     context 'when viewing own profile' do
@@ -106,6 +109,7 @@ RSpec.describe UserPolicy do
       expect(policy.index?).to be false
       expect(policy.create?).to be false
       expect(policy.destroy?).to be false
+      expect(policy.verify?).to be false
     end
 
     context 'when viewing own profile' do

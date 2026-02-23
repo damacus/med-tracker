@@ -16,7 +16,10 @@
       "Bash(task --list:*)",
       "Bash(task test:ps:*)",
       "Bash(task test:up:*)",
-      "Bash(task test:*)"
+      "Bash(task test:*)",
+      "Bash(bd create:*)",
+      "Bash(cd /Users/damacus/repos/damacus/med-tracker/.worktrees/feat/email-mailpit-verification && bd close med-tracker-rl1a --reason=\"Added mailpit to dev profile \\(8025\\) and mailpit-test to test profile \\(8026\\). Dev SMTP configured to mailpit:1025.\" 2>&1)",
+      "Bash(tail:*)"
     ]
   }
 }

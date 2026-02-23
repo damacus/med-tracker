@@ -16,6 +16,17 @@ RSpec.describe 'AdminManagesUsers' do
     User.create!(person: person, email_address: 'test_carer@example.com',
                  password: 'password', password_confirmation: 'password', role: :carer)
   end
+  let!(:unverified_user) do
+    account = Account.create!(email: 'unverified_user@example.com',
+                              password_hash: RodauthApp.rodauth.allocate.password_hash('password'),
+                              status: :unverified)
+    ActiveRecord::Base.connection.execute(
+      "INSERT INTO account_verification_keys (account_id, key) VALUES (#{account.id}, 'manual-verify-key')"
+    )
+    person = Person.create!(name: 'Unverified User', date_of_birth: '1992-02-02', account: account)
+    User.create!(person: person, email_address: 'unverified_user@example.com',
+                 password: 'password', password_confirmation: 'password', role: :parent)
+  end
 
   before do
     driven_by(:playwright)
@@ -198,6 +209,36 @@ RSpec.describe 'AdminManagesUsers' do
       expect(page).to have_content('User account has been activated')
       within "[data-user-id='#{carer.id}']" do
         expect(page).to have_content('Active')
+      end
+    end
+
+    it 'allows admin to manually verify an unverified user and removes verification keys' do
+      login_as(admin)
+
+      visit admin_users_path
+
+      within "[data-user-id='#{unverified_user.id}']" do
+        click_button 'Verify'
+      end
+
+      expect(unverified_user.person.account.reload).to be_verified
+      key_count = ActiveRecord::Base.connection.select_value(
+        "SELECT COUNT(*) FROM account_verification_keys WHERE account_id = #{unverified_user.person.account.id}"
+      ).to_i
+      expect(key_count).to eq(0)
+
+      within "[data-user-id='#{unverified_user.id}']" do
+        expect(page).to have_button('Verified', disabled: true)
+      end
+    end
+
+    it 'shows Verified state for users with verified accounts' do
+      login_as(admin)
+
+      visit admin_users_path
+
+      within "[data-user-id='#{carer.id}']" do
+        expect(page).to have_button('Verified', disabled: true)
       end
     end
 
