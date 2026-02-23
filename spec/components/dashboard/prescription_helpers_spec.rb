@@ -86,16 +86,16 @@ RSpec.describe Components::Dashboard::PrescriptionHelpers do
   end
 
   describe '#format_quantity' do
-    context 'when medicine has stock' do
-      it 'returns the stock as a string' do
-        prescription.medicine.stock = 44
+    context 'when medicine has remaining supply' do
+      it 'returns the remaining supply as a string' do
+        prescription.medicine.current_supply = 44
         expect(instance.format_quantity).to eq('44')
       end
     end
 
-    context 'when medicine stock is nil' do
+    context 'when medicine remaining supply is nil' do
       it 'returns em dash' do
-        prescription.medicine.stock = nil
+        prescription.medicine.current_supply = nil
         expect(instance.format_quantity).to eq('—')
       end
     end

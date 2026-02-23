@@ -13,10 +13,10 @@ module Components
       end
 
       def format_quantity
-        stock = prescription.medicine&.stock
-        return '—' if stock.nil?
+        remaining_supply = prescription.medicine&.current_supply
+        return '—' if remaining_supply.nil?
 
-        stock.to_s
+        remaining_supply.to_s
       end
 
       def format_end_date

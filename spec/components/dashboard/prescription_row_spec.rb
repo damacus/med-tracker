@@ -17,6 +17,6 @@ RSpec.describe Components::Dashboard::PrescriptionRow, type: :component do
 
   it 'renders the medicine quantity' do
     rendered = render_inline(row)
-    expect(rendered.text).to include(prescription.medicine.stock.to_s)
+    expect(rendered.text).to include(prescription.medicine.current_supply.to_s)
   end
 end
