@@ -18,7 +18,7 @@ RSpec.describe Components::PersonMedicines::Card, type: :component do
   def render_card(todays_takes: nil)
     vc = view_context
     vc.singleton_class.define_method(:current_user) { nil }
-    policy_stub = Struct.new(:take_medicine?, :destroy?).new(false, false)
+    policy_stub = Struct.new(:update?, :take_medicine?, :destroy?).new(false, false, false)
     vc.singleton_class.define_method(:policy) { |_record| policy_stub }
     kwargs = { person_medicine: person_medicine, person: person }
     kwargs[:todays_takes] = todays_takes unless todays_takes.nil?
