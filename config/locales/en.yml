@@ -101,6 +101,10 @@ en:
   invitation_mailer:
     subject: "Invitation to join MedTracker"
 
+  rodauth:
+    verify_account:
+      subject: "Verify your MedTracker account"
+
   medicines:
     finder:
       nhs_directory: "NHS Directory"

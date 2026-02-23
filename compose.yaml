@@ -10,6 +10,15 @@ services:
     volumes:
       - medtracker_dev_postgres:/var/lib/postgresql/data
 
+  mailpit:
+    image: axllent/mailpit:latest
+    profiles: [dev]
+    networks: [dev]
+    ports:
+      - "8025:8025"   # Web UI
+      - "1025:1025"   # SMTP
+    restart: unless-stopped
+
   web-dev:
     extends:
       file: compose/base.yml
@@ -23,6 +32,8 @@ services:
     depends_on:
       db-dev:
         condition: service_healthy
+      mailpit:
+        condition: service_started
     environment:
       RAILS_ENV: development
       RAILS_FORCE_SSL: "false"
@@ -37,6 +48,15 @@ services:
       - /app/tmp/cache:uid=1000,gid=1000
 
   # === Test (profile: test) ===
+  mailpit-test:
+    image: axllent/mailpit:latest
+    profiles: [test]
+    networks: [test]
+    ports:
+      - "8026:8025"   # Web UI (use http://localhost:8026 to inspect test emails)
+      - "1026:1025"   # SMTP
+    restart: unless-stopped
+
   db-test:
     extends:
       file: compose/base.yml

@@ -63,6 +63,16 @@ class RodauthMain < Rodauth::Rails::Auth
       db.after_commit { email.deliver_later }
     end
 
+    email_from do
+      Rails.application.credentials.dig(:mailer, :from) ||
+        ENV.fetch('MAILER_FROM', 'MedTracker <noreply@medtracker.app>')
+    end
+    verify_account_email_subject { I18n.t('rodauth.verify_account.subject') }
+
+    create_verify_account_email do
+      RodauthMailer.verify_account(self.class.configuration_name, account_id, verify_account_key_value)
+    end
+
     password_minimum_length 12
     # bcrypt has a maximum input length of 72 bytes, truncating any extra bytes.
     password_maximum_bytes 72 # add custom password complexity rules
