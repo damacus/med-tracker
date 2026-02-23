@@ -328,6 +328,7 @@ en:
     sidebar:
       dashboard: "Dashboard"
       inventory: "Inventory"
+      locations: "Locations"
       finder: "Finder"
       people: "People"
       reports: "Reports"

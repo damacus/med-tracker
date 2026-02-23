@@ -95,6 +95,11 @@ module Components
             render Icons::Pill.new(size: 24)
             plain 'Inventory'
           end
+          render RubyUI::Link.new(href: locations_path, variant: :ghost, size: :xl,
+                                  class: 'justify-start gap-4 px-4 rounded-2xl') do
+            render Icons::Home.new(size: 24)
+            plain t('layouts.sidebar.locations')
+          end
           render RubyUI::Link.new(href: people_path, variant: :ghost, size: :xl,
                                   class: 'justify-start gap-4 px-4 rounded-2xl') do
             render Icons::Users.new(size: 24)

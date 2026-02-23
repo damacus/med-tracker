@@ -69,7 +69,7 @@ class LocationsController < ApplicationController
   private
 
   def set_location
-    @location = policy_scope(Location).find(params[:id])
+    @location = policy_scope(Location).includes(:medicines, :members).find(params[:id])
   end
 
   def location_params
