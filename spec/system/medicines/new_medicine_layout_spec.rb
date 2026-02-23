@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'MedicineNewLayout' do
-  fixtures :accounts, :people, :users
+  fixtures :accounts, :people, :users, :locations
 
   before do
     driven_by(:rack_test)
@@ -30,6 +30,7 @@ RSpec.describe 'MedicineNewLayout' do
         expect(page).to have_field('Warnings')
       end
 
+      select 'Home', from: 'Location'
       fill_in 'Name', with: 'Ibuprofen'
       fill_in 'Description', with: 'Pain relief'
       fill_in 'Standard Dosage', with: 200

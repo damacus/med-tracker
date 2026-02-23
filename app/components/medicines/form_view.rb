@@ -6,12 +6,13 @@ module Components
       include Phlex::Rails::Helpers::FormWith
       include Phlex::Rails::Helpers::Pluralize
 
-      attr_reader :medicine, :title, :subtitle
+      attr_reader :medicine, :title, :subtitle, :locations
 
-      def initialize(medicine:, title:, subtitle: nil)
+      def initialize(medicine:, title:, subtitle: nil, locations: Location.order(:name))
         @medicine = medicine
         @title = title
         @subtitle = subtitle
+        @locations = locations
         super()
       end
 
@@ -51,6 +52,7 @@ module Components
           Card(class: 'overflow-hidden border-none shadow-2xl rounded-[2.5rem] bg-white') do
             div(class: 'p-10 space-y-8') do
               div(class: 'space-y-6') do
+                render_location_field(form)
                 render_name_field(form)
                 render_description_field(form)
               end
@@ -110,6 +112,29 @@ module Components
       def render_form_fields(form)
         # This method is now redundant as logic is moved to render_form,
         # but keeping helper methods below for field rendering
+      end
+
+      def render_location_field(_form)
+        div(class: 'space-y-2') do
+          render RubyUI::FormFieldLabel.new(
+            for: 'medicine_location_id',
+            class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1'
+          ) { 'Location' }
+          select(
+            name: 'medicine[location_id]',
+            id: 'medicine_location_id',
+            required: true,
+            class: 'flex w-full rounded-2xl border border-slate-200 bg-white py-4 px-4 text-sm ' \
+                   'focus:outline-none focus:ring-2 focus:ring-primary/10 focus:border-primary ' \
+                   "transition-all appearance-none #{field_error_class(medicine, :location)}"
+          ) do
+            option(value: '') { 'Select a location...' }
+            locations.each do |loc|
+              option(value: loc.id, selected: medicine.location_id == loc.id) { loc.name }
+            end
+          end
+          render_field_error(medicine, :location)
+        end
       end
 
       def render_name_field(_form)

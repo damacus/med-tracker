@@ -13,9 +13,12 @@ RSpec.describe Dosage do
     )
   end
 
+  let(:location) { Location.create!(name: 'Test Home') }
+
   let(:medicine) do
     Medicine.create!(
       name: 'Aspirin',
+      location: location,
       current_supply: 100,
       stock: 100,
       reorder_threshold: 10

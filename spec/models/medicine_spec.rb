@@ -30,6 +30,7 @@ RSpec.describe Medicine do
   end
 
   describe 'associations' do
+    it { is_expected.to belong_to(:location) }
     it { is_expected.to have_many(:dosages).dependent(:destroy) }
     it { is_expected.to have_many(:prescriptions).dependent(:destroy) }
   end

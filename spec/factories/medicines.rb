@@ -3,6 +3,7 @@
 FactoryBot.define do
   factory :medicine do
     sequence(:name) { |n| "Medicine #{n}" }
+    location
     dosage_amount { 500 }
     dosage_unit { 'mg' }
     current_supply { 50 }

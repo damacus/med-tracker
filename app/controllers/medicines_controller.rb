@@ -103,7 +103,8 @@ class MedicinesController < ApplicationController
                    dosage_unit
                    current_supply
                    stock
-                   warnings]
+                   warnings
+                   location_id]
     )
   end
 end

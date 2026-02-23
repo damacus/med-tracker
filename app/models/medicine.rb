@@ -3,6 +3,8 @@
 class Medicine < ApplicationRecord # :nodoc:
   DOSAGE_UNITS = %w[tablet mg ml g mcg IU spray drop sachet].freeze
 
+  belongs_to :location
+
   has_many :dosages, dependent: :destroy
   has_many :prescriptions, dependent: :destroy
   has_many :person_medicines, dependent: :destroy

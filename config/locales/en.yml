@@ -105,6 +105,11 @@ en:
     verify_account:
       subject: "Verify your MedTracker account"
 
+  locations:
+    created: "Location was successfully created."
+    updated: "Location was successfully updated."
+    deleted: "Location was successfully deleted."
+
   medicines:
     finder:
       nhs_directory: "NHS Directory"
