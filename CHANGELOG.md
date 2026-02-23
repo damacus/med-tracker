@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.3.6](https://github.com/damacus/med-tracker/compare/v0.3.5...v0.3.6) (2026-02-23)
+
+
+### Features
+
+* add sachet as medicine dosage unit ([#530](https://github.com/damacus/med-tracker/issues/530)) ([f1ac458](https://github.com/damacus/med-tracker/commit/f1ac458a1678cdec82e88130011c84d85b6cb542))
+* Health Reports Dashboard ([#521](https://github.com/damacus/med-tracker/issues/521)) ([#532](https://github.com/damacus/med-tracker/issues/532)) ([0c74000](https://github.com/damacus/med-tracker/commit/0c740006eeefc3c3ebc44066e888ccb3511f6b2d))
+
+
+### Bug Fixes
+
+* parent access to child medicine management and ordering ([#526](https://github.com/damacus/med-tracker/issues/526)) ([56e9971](https://github.com/damacus/med-tracker/commit/56e9971976862b9b5242859d395868e8c78f553e))
+* resolve next-dose badge timezone bug and add badge specs ([cfb2ee6](https://github.com/damacus/med-tracker/commit/cfb2ee66d28f12680356a8dbe3498c3aecedc605)), closes [#523](https://github.com/damacus/med-tracker/issues/523)
+* standardize remaining supply semantics in dashboard and docs ([8f2062b](https://github.com/damacus/med-tracker/commit/8f2062b731c649e335722d0517ea969145b6934f))
+
 ## [0.3.5](https://github.com/damacus/med-tracker/compare/v0.3.4...v0.3.5) (2026-02-23)
 
 
