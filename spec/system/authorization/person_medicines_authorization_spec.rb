@@ -12,7 +12,10 @@ RSpec.describe 'Person Medicines Authorization' do
   let(:admin) { users(:admin) }
   let(:doctor) { users(:doctor) }
   let(:nurse) { users(:nurse) }
-  let(:carer) { users(:jane) }
+  let(:carer) { users(:carer) }
+  let(:parent) { users(:parent) }
+  let(:linked_child) { people(:child_user_person) }
+  let(:unlinked_child) { people(:child_patient) }
   let(:assigned_patient) { people(:child_patient) }
   let(:unrelated_person) { people(:john) }
 
@@ -61,6 +64,27 @@ RSpec.describe 'Person Medicines Authorization' do
 
       expect(page).to have_content('My Medicines')
       expect(page).to have_no_link('Add Medicine')
+    end
+
+    it 'allows parents to add medicines to linked children' do
+      login_as(parent)
+      visit person_path(linked_child)
+
+      expect(page).to have_link('Add Medicine')
+      click_link 'Add Medicine'
+      select medicine.name, from: 'Medicine'
+      fill_in 'Notes', with: 'Parent-added medicine'
+      click_button 'Add Medicine'
+
+      expect(page).to have_content('Medicine added successfully')
+      expect(page).to have_content(medicine.name)
+    end
+
+    it 'denies parents ability to add medicines to unlinked children' do
+      login_as(parent)
+      visit person_path(unlinked_child)
+
+      expect(page).to have_content('You are not authorized to perform this action')
     end
   end
 
@@ -169,6 +193,55 @@ RSpec.describe 'Person Medicines Authorization' do
       within("#person_medicine_#{person_medicine.id}") do
         expect(page).to have_no_css('button svg')
       end
+    end
+  end
+
+  describe 'reordering medicines' do
+    let!(:parent_first_medicine) do
+      PersonMedicine.create!(
+        person: linked_child,
+        medicine: medicines(:vitamin_d),
+        notes: 'First medicine'
+      )
+    end
+    let!(:parent_second_medicine) do
+      PersonMedicine.create!(
+        person: linked_child,
+        medicine: medicines(:vitamin_c),
+        notes: 'Second medicine'
+      )
+    end
+
+    let!(:carer_first_medicine) do
+      PersonMedicine.create!(
+        person: assigned_patient,
+        medicine: medicines(:ibuprofen),
+        notes: 'Carer first'
+      )
+    end
+    let!(:carer_second_medicine) do
+      PersonMedicine.create!(
+        person: assigned_patient,
+        medicine: medicines(:aspirin),
+        notes: 'Carer second'
+      )
+    end
+
+    it 'shows reorder controls to parents for linked children' do
+      login_as(parent)
+      visit person_path(linked_child)
+
+      expect(page).to have_css("[data-testid='move-up-person-medicine-#{parent_first_medicine.id}']")
+      expect(page).to have_css("[data-testid='move-down-person-medicine-#{parent_second_medicine.id}']")
+    end
+
+    it 'does not show reorder controls to carers for assigned patients' do
+      login_as(carer)
+      visit person_path(assigned_patient)
+
+      expect(page).to have_content('My Medicines')
+      expect(page).to have_no_css("[data-testid='move-up-person-medicine-#{carer_first_medicine.id}']")
+      expect(page).to have_no_css("[data-testid='move-down-person-medicine-#{carer_second_medicine.id}']")
     end
   end
 

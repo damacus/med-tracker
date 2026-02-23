@@ -12,7 +12,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 20_260_221_233_012) do
+ActiveRecord::Schema[8.1].define(version: 20_260_223_173_000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension 'citext'
   enable_extension 'pg_catalog.plpgsql'
@@ -216,9 +216,11 @@ ActiveRecord::Schema[8.1].define(version: 20_260_221_233_012) do
     t.integer 'min_hours_between_doses'
     t.text 'notes'
     t.bigint 'person_id', null: false
+    t.integer 'position', null: false
     t.datetime 'updated_at', null: false
     t.index ['medicine_id'], name: 'index_person_medicines_on_medicine_id'
     t.index %w[person_id medicine_id], name: 'index_person_medicines_on_person_id_and_medicine_id', unique: true
+    t.index %w[person_id position], name: 'index_person_medicines_on_person_id_and_position'
     t.index ['person_id'], name: 'index_person_medicines_on_person_id'
   end
 
