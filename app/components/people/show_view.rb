@@ -117,12 +117,14 @@ module Components
             end
 
             div(class: 'space-y-3') do
-              Link(
-                href: new_person_prescription_path(person),
-                variant: :secondary,
-                class: 'w-full py-6 rounded-xl font-bold text-sm bg-white text-primary border-none shadow-sm',
-                data: { turbo_stream: true }
-              ) { t('people.show.add_prescription') }
+              if can_create_prescription?
+                Link(
+                  href: new_person_prescription_path(person),
+                  variant: :secondary,
+                  class: 'w-full py-6 rounded-xl font-bold text-sm bg-white text-primary border-none shadow-sm',
+                  data: { turbo_stream: true }
+                ) { t('people.show.add_prescription') }
+              end
 
               if view_context.policy(PersonMedicine.new(person: person)).create?
                 Link(
@@ -199,12 +201,14 @@ module Components
         div(class: 'col-span-full') do
           Card(class: 'text-center py-12 px-8 border-dashed border-2 bg-slate-50/50') do
             Text(size: '3', weight: 'medium', class: 'text-slate-400 mb-6') { t('people.show.no_prescriptions') }
-            Link(
-              href: new_person_prescription_path(person),
-              variant: :primary,
-              class: 'rounded-xl',
-              data: { turbo_stream: true }
-            ) { t('people.show.add_first_prescription') }
+            if can_create_prescription?
+              Link(
+                href: new_person_prescription_path(person),
+                variant: :primary,
+                class: 'rounded-xl',
+                data: { turbo_stream: true }
+              ) { t('people.show.add_first_prescription') }
+            end
           end
         end
       end
@@ -230,6 +234,10 @@ module Components
 
       def render_person_details
         # Removed redundant method, logic moved to view_template
+      end
+
+      def can_create_prescription?
+        view_context.policy(Prescription.new(person: person)).create?
       end
 
       def render_edit_form

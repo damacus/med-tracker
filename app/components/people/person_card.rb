@@ -76,12 +76,7 @@ module Components
 
       def render_card_footer
         CardFooter(class: 'flex gap-2 flex-wrap') do
-          Link(
-            href: new_person_prescription_path(person),
-            variant: :primary,
-            size: :md,
-            data: { turbo_stream: true }
-          ) { 'Add Prescription' }
+          render_add_prescription_link if can_create?(Prescription.new(person: person))
 
           if person.prescriptions.any?
             Link(
@@ -92,8 +87,17 @@ module Components
             ) { 'View Prescriptions' }
           end
 
-          render_assign_carer_link if person.needs_carer?
+          render_assign_carer_link if person.needs_carer? && can_create?(CarerRelationship)
         end
+      end
+
+      def render_add_prescription_link
+        Link(
+          href: new_person_prescription_path(person),
+          variant: :primary,
+          size: :md,
+          data: { turbo_stream: true }
+        ) { 'Add Prescription' }
       end
 
       def render_assign_carer_link
@@ -103,6 +107,12 @@ module Components
           size: :md,
           class: 'text-amber-700 border-amber-300 hover:bg-amber-50'
         ) { 'Assign Carer' }
+      end
+
+      def can_create?(record)
+        return false unless view_context.respond_to?(:policy)
+
+        view_context.policy(record).create?
       end
 
       def helpers
