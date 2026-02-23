@@ -29,6 +29,10 @@ class UserPolicy < ApplicationPolicy
     admin?
   end
 
+  def verify?
+    admin?
+  end
+
   class Scope < ApplicationPolicy::Scope
     def resolve
       return scope.none unless user

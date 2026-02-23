@@ -6,6 +6,7 @@ RSpec.describe Components::Layouts::Sidebar, type: :component do
   fixtures :accounts, :people, :users
 
   let(:admin_user) { users(:admin) }
+  let(:carer_user) { users(:carer) }
 
   def render_sidebar(user: nil)
     vc = view_context
@@ -30,6 +31,12 @@ RSpec.describe Components::Layouts::Sidebar, type: :component do
       expect(rendered.text).to include('Reports')
     end
 
+    it 'renders Administration link for admin users' do
+      rendered = render_sidebar(user: admin_user)
+
+      expect(rendered.text).to include('Administration')
+    end
+
     it 'renders the user profile section' do
       rendered = render_sidebar(user: admin_user)
       expect(rendered.text).to include(admin_user.person.name)
@@ -39,6 +46,14 @@ RSpec.describe Components::Layouts::Sidebar, type: :component do
     it 'renders the sign out button' do
       rendered = render_sidebar(user: admin_user)
       expect(rendered.text).to include('Sign Out')
+    end
+  end
+
+  context 'when user is not an administrator' do
+    it 'does not render Administration link' do
+      rendered = render_sidebar(user: carer_user)
+
+      expect(rendered.text).not_to include('Administration')
     end
   end
 

@@ -25,6 +25,7 @@ module Components
             render RubyUI::TableCell.new(class: 'text-right') do
               div(class: 'flex gap-2 justify-end') do
                 render RubyUI::Link.new(href: "/admin/users/#{user.id}/edit", variant: :outline, size: :sm) { t('admin.users.user_row.edit') }
+                render_verification_button
                 render_activation_button
               end
             end
@@ -67,6 +68,31 @@ module Components
               size: :sm
             ) { t('admin.users.user_row.activate') }
           end
+        end
+
+        def render_verification_button
+          return render_verified_button if user.person&.account&.verified?
+
+          form_with(
+            url: "/admin/users/#{user.id}/verify",
+            method: :post,
+            class: 'inline-block'
+          ) do
+            Button(
+              type: :submit,
+              variant: :outline,
+              size: :sm
+            ) { t('admin.users.user_row.verify') }
+          end
+        end
+
+        def render_verified_button
+          Button(
+            type: :button,
+            variant: :outline,
+            size: :sm,
+            disabled: true
+          ) { t('admin.users.user_row.verified') }
         end
 
         def render_deactivate_dialog

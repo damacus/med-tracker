@@ -76,6 +76,21 @@ module Admin
       redirect_to admin_users_path, notice: t('users.activated')
     end
 
+    def verify
+      @user = User.find(params[:id])
+      authorize @user
+
+      account = @user.person&.account
+      return redirect_to admin_users_path, alert: t('admin.users.missing_account') unless account
+
+      ActiveRecord::Base.transaction do
+        account.update!(status: :verified)
+        AccountVerificationKey.where(account_id: account.id).delete_all
+      end
+
+      redirect_to admin_users_path, notice: t('users.verified')
+    end
+
     private
 
     def account_already_exists?

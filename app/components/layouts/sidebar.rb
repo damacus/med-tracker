@@ -58,6 +58,7 @@ module Components
           render_nav_link(medicine_finder_path, Icons::Search, t('layouts.sidebar.finder'))
           render_nav_link(people_path, Icons::Users, t('layouts.sidebar.people'))
           render_nav_link(reports_path, Icons::AlertCircle, t('layouts.sidebar.reports'))
+          render_nav_link(admin_root_path, Icons::Settings, t('layouts.sidebar.administration')) if current_user.administrator?
         end
       end
 

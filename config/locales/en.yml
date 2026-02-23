@@ -31,12 +31,15 @@ en:
           results: "results"
     users:
       unauthorized: "You are not authorized to perform this action."
+      missing_account: "User does not have an account to verify."
       user_row:
         edit: "Edit"
         active: "Active"
         inactive: "Inactive"
         deactivate: "Deactivate"
         activate: "Activate"
+        verify: "Verify"
+        verified: "Verified"
         deactivate_dialog:
           title: "Deactivate User Account"
           confirm: "Are you sure you want to deactivate %{name}'s account? They will no longer be able to sign in."
@@ -280,6 +283,7 @@ en:
     updated: "User was successfully updated."
     deactivated: "User account has been deactivated."
     activated: "User account has been activated."
+    verified: "User account has been manually verified."
     cannot_deactivate_self: "You cannot deactivate your own account."
 
   webauthn:
@@ -318,6 +322,7 @@ en:
       finder: "Finder"
       people: "People"
       reports: "Reports"
+      administration: "Administration"
       sign_out: "Sign Out"
   forms:
     medicines:
