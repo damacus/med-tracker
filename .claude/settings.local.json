@@ -22,7 +22,8 @@
       "Bash(tail:*)",
       "Bash(git add:*)",
       "Bash(git:*)",
-      "Bash(task:*)"
+      "Bash(task:*)",
+      "Bash(gh pr:*)"
     ]
   }
 }

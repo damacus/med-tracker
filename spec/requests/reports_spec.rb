@@ -38,7 +38,7 @@ RSpec.describe 'Reports' do
     end
 
     context 'when user is authenticated but not authorized' do
-      let(:user) { users(:child_user) } # minor
+      let(:user) { users(:minor_patient_user) } # minor
 
       before do
         post '/login', params: { email: user.email_address, password: 'password' }
