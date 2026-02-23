@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.5](https://github.com/damacus/med-tracker/compare/v0.3.4...v0.3.5) (2026-02-23)
+
+
+### Features
+
+* add Mailpit email sandbox and signup verification email ([#510](https://github.com/damacus/med-tracker/issues/510)) ([#518](https://github.com/damacus/med-tracker/issues/518)) ([18e167b](https://github.com/damacus/med-tracker/commit/18e167b5f0906466c9613e0bd0fc1239eb10d98f))
+* **mailer:** configure production SMTP via ENV vars ([#519](https://github.com/damacus/med-tracker/issues/519)) ([d67d1c0](https://github.com/damacus/med-tracker/commit/d67d1c090274ce8e62eb1ea750d2ebed82364095))
+
+
+### Bug Fixes
+
+* **bug:** Admin column heading missing ([#516](https://github.com/damacus/med-tracker/issues/516)) ([3c990d0](https://github.com/damacus/med-tracker/commit/3c990d003bdf027a1b56c661938b653cc7f9da15))
+
 ## [0.3.4](https://github.com/damacus/med-tracker/compare/v0.3.3...v0.3.4) (2026-02-23)
 
 
