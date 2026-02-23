@@ -19,11 +19,7 @@ RSpec.describe Components::Admin::Users::UsersTable, type: :component do
       rendered = render_inline(described_class.new(users: user_list, current_user: current_user))
 
       headers = rendered.css('th').map(&:text)
-      expect(headers.join).to include('Name')
-      expect(headers.join).to include('Email')
-      expect(headers.join).to include('Role')
-      expect(headers.join).to include('Status')
-      expect(headers.join).to include('Actions')
+      expect(headers).to include('Name', 'Email', 'Role', 'Activation', 'Verification', 'Actions')
     end
 
     it 'renders a row for each user' do

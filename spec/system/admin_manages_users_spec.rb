@@ -212,6 +212,15 @@ RSpec.describe 'AdminManagesUsers' do
       end
     end
 
+    it 'shows separate activation and verification status columns' do
+      login_as(admin)
+
+      visit admin_users_path
+
+      expect(page).to have_css('th', text: 'Activation')
+      expect(page).to have_css('th', text: 'Verification')
+    end
+
     it 'allows admin to manually verify an unverified user and removes verification keys' do
       login_as(admin)
 
