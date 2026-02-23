@@ -69,7 +69,7 @@ module FamilyDashboard
       # 2. Determine if an upcoming dose should be shown
       # We show the "next available" dose if it falls within today
       next_time = source.next_available_time
-      if next_time&.today?
+      if next_time && next_time.to_date == Time.zone.today
         status = source.administration_blocked_reason || :upcoming
         doses << {
           person: person,
