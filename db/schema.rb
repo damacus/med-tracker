@@ -12,7 +12,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 20_260_202_074_737) do
+ActiveRecord::Schema[8.1].define(version: 20_260_221_233_012) do
   # These are extensions that must be enabled in order to support this database
   enable_extension 'citext'
   enable_extension 'pg_catalog.plpgsql'
@@ -188,6 +188,7 @@ ActiveRecord::Schema[8.1].define(version: 20_260_202_074_737) do
     t.string 'dosage_unit'
     t.date 'expiry_date'
     t.string 'name'
+    t.integer 'reorder_status'
     t.integer 'reorder_threshold', default: 10, null: false
     t.integer 'stock'
     t.datetime 'updated_at', null: false

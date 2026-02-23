@@ -26,7 +26,9 @@ RSpec.describe UserPolicy do
     end
 
     it 'forbids administrative actions' do
-      %i[index create new update edit destroy verify].each { |action| expect(policy.public_send("#{action}?")).to be false }
+      %i[index create new update edit destroy verify].each do |action|
+        expect(policy.public_send("#{action}?")).to be false
+      end
     end
 
     context 'when viewing own profile' do
