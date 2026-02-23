@@ -16,7 +16,7 @@ RSpec.describe InvitationMailer do
     end
 
     it 'renders the sender email' do
-      expect(mail.from).to eq(['from@example.com'])
+      expect(mail.from).to eq(['noreply@medtracker.app'])
     end
 
     it 'includes the invitation acceptance URL in the body' do
