@@ -193,7 +193,7 @@ module Components
       end
 
       def dosage_units
-        %w[tablet mg ml g mcg IU spray drop]
+        Medicine::DOSAGE_UNITS
       end
 
       def render_supply_fields(_form)

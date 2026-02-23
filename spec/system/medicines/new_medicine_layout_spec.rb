@@ -23,6 +23,7 @@ RSpec.describe 'MedicineNewLayout' do
         expect(page).to have_field('Description')
         expect(page).to have_field('Standard Dosage')
         expect(page).to have_select('Unit')
+        expect(page).to have_select('Unit', with_options: ['sachet'])
         expect(page).to have_field('Current Supply')
         expect(page).to have_field('Stock')
         expect(page).to have_field('Reorder Threshold')
