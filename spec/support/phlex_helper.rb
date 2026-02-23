@@ -7,8 +7,8 @@ module PhlexTestingSupport
     @rendered = component.call.to_s
   end
 
-  def render_inline(component)
-    html = view_context.render(component)
+  def render_inline(component, &)
+    html = component.render_in(view_context, &)
     @rendered = html
 
     Nokogiri::HTML::DocumentFragment.parse(html)
