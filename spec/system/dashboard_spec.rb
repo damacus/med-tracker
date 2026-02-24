@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'Dashboard' do
-  fixtures :accounts, :users, :medicines, :dosages, :prescriptions, :people,
+  fixtures :accounts, :users, :locations, :medicines, :dosages, :prescriptions, :people,
            :carer_relationships, :person_medicines, :medication_takes
 
   it 'loads the dashboard for a signed-in user and shows family-wide doses' do

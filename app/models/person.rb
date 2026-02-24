@@ -31,6 +31,9 @@ class Person < ApplicationRecord
                                                          inverse_of: :carer
   has_many :patients, through: :active_patient_relationships, source: :patient
 
+  has_many :location_memberships, dependent: :destroy
+  has_many :locations, through: :location_memberships
+
   normalizes :email, with: ->(email) { email&.strip&.downcase }
 
   enum :person_type, {

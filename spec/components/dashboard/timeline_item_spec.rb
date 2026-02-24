@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe Components::Dashboard::TimelineItem, type: :component do
-  fixtures :accounts, :people, :medicines, :dosages, :prescriptions, :person_medicines, :medication_takes
+  fixtures :accounts, :people, :locations, :medicines, :dosages, :prescriptions, :person_medicines, :medication_takes
 
   let(:person) { people(:jane) }
   let(:source) { prescriptions(:jane_ibuprofen) }

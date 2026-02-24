@@ -26,6 +26,8 @@ if Rails.env.local?
     :account_otp_keys,
     :people,
     :users,
+    :locations,
+    :location_memberships,
     :medicines,
     :dosages,
     :prescriptions,

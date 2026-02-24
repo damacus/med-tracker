@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe Prescription do
-  fixtures :accounts, :prescriptions, :people, :medicines, :dosages
+  fixtures :accounts, :prescriptions, :people, :locations, :medicines, :dosages
 
   describe 'active flag' do
     let(:prescription) { prescriptions(:john_paracetamol) }
@@ -50,9 +50,11 @@ RSpec.describe Prescription do
         date_of_birth: Date.new(1990, 1, 1)
       )
     end
+    let(:location) { Location.create!(name: 'Prescription Test Home') }
     let(:medicine) do
       Medicine.create!(
         name: 'Lisinopril',
+        location: location,
         current_supply: 50,
         stock: 50,
         reorder_threshold: 10
@@ -70,7 +72,11 @@ RSpec.describe Prescription do
   end
 
   describe '#can_administer?' do
-    let(:medicine) { Medicine.create!(name: 'TestMed', current_supply: 10, stock: 10, reorder_threshold: 2) }
+    let(:location) { Location.create!(name: 'Administer Test Home') }
+    let(:medicine) do
+      Medicine.create!(name: 'TestMed', location: location, current_supply: 10, stock: 10,
+                       reorder_threshold: 2)
+    end
     let(:person) do
       Person.create!(name: 'Test Person', email: 'test-administer@example.com', date_of_birth: Date.new(1990, 1, 1))
     end
@@ -106,7 +112,11 @@ RSpec.describe Prescription do
   end
 
   describe '#administration_blocked_reason' do
-    let(:medicine) { Medicine.create!(name: 'TestMed2', current_supply: 0, stock: 10, reorder_threshold: 2) }
+    let(:location) { Location.create!(name: 'Blocked Test Home') }
+    let(:medicine) do
+      Medicine.create!(name: 'TestMed2', location: location, current_supply: 0, stock: 10,
+                       reorder_threshold: 2)
+    end
     let(:person) do
       Person.create!(name: 'Test Person2', email: 'test-reason@example.com', date_of_birth: Date.new(1990, 1, 1))
     end

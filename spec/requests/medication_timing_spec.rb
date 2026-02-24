@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'Medication Timing Restrictions' do
-  fixtures :accounts, :people, :medicines, :users, :dosages, :prescriptions, :carer_relationships
+  fixtures :accounts, :people, :locations, :medicines, :users, :dosages, :prescriptions, :carer_relationships
 
   # Use carer account (doesn't require 2FA)
   let(:carer_account) { accounts(:carer) }

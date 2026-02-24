@@ -10,6 +10,7 @@ RSpec.describe MedicationTake do
   let(:medicine) do
     Medicine.create!(
       name: 'Lisinopril',
+      location: Location.find_or_create_by!(name: 'Test Home'),
       current_supply: 50,
       stock: 50,
       reorder_threshold: 10
@@ -153,6 +154,7 @@ RSpec.describe MedicationTake do
       person = people(:john)
       medicine = Medicine.create!(
         name: 'Test Medicine',
+        location: Location.find_or_create_by!(name: 'Versioning Home'),
         current_supply: 100,
         stock: 100,
         reorder_threshold: 10

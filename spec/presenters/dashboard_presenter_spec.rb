@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe DashboardPresenter do
-  fixtures :accounts, :people, :users, :medicines, :dosages, :prescriptions
+  fixtures :accounts, :people, :users, :locations, :medicines, :dosages, :prescriptions
 
   let(:admin_user) { users(:admin) }
   let(:carer_user) { users(:carer) }

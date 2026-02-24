@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'Toast notifications for async actions' do
-  fixtures :accounts, :people, :medicines, :users, :dosages, :prescriptions, :carer_relationships
+  fixtures :accounts, :people, :locations, :medicines, :users, :dosages, :prescriptions, :carer_relationships
 
   let(:carer_account) { accounts(:carer) }
   let(:person) { people(:child_patient) }

@@ -52,6 +52,10 @@ module Components
                 'Medicine Profile'
               end
               Heading(level: 1, size: '8', class: 'font-black tracking-tight') { medicine.name }
+              div(class: 'flex items-center gap-1 mt-1') do
+                render Icons::Home.new(size: 14, class: 'text-slate-400')
+                Text(size: '2', class: 'text-slate-400') { medicine.location.name }
+              end
             end
           end
 

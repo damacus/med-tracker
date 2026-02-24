@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe Components::Dashboard::DeleteConfirmationDialog, type: :component do
-  fixtures :accounts, :people, :users, :medicines, :dosages, :prescriptions
+  fixtures :accounts, :people, :users, :locations, :medicines, :dosages, :prescriptions
 
   let(:prescription) { prescriptions(:active_prescription) }
 

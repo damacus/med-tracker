@@ -3,7 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe FamilyDashboard::ScheduleQuery do
-  fixtures :people, :carer_relationships, :prescriptions, :person_medicines, :medication_takes, :medicines, :dosages
+  fixtures :people, :carer_relationships, :prescriptions, :person_medicines, :medication_takes,
+           :locations, :medicines, :dosages
 
   let(:jane) { people(:jane) }
   let(:child) { people(:child_patient) }
@@ -146,7 +147,8 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
 
     context 'when medicine is out of stock' do
       let!(:prescription) do
-        oos_medicine = Medicine.create!(name: 'OOS Med', current_supply: 0, stock: 10, reorder_threshold: 2)
+        oos_medicine = Medicine.create!(name: 'OOS Med', current_supply: 0, stock: 10, reorder_threshold: 2,
+                                        location: locations(:home))
         dosage = Dosage.create!(medicine: oos_medicine, amount: 10, unit: 'mg', frequency: 'daily')
         Prescription.create!(
           person: people(:john),

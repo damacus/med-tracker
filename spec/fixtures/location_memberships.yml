@@ -1,0 +1,20 @@
+---
+john_home:
+  location: home
+  person: john
+
+jane_home:
+  location: home
+  person: jane
+
+bob_home:
+  location: home
+  person: bob
+
+child_home:
+  location: home
+  person: child_patient
+
+jane_school:
+  location: school
+  person: jane

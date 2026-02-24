@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'PersonMedicinesController medicine options' do
-  fixtures :accounts, :people, :medicines, :users, :carer_relationships
+  fixtures :accounts, :people, :locations, :medicines, :users, :carer_relationships
 
   let(:adult_patient_user) { users(:adult_patient) }
   let(:adult_patient_person) { people(:adult_patient_person) }

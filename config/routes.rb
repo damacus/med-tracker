@@ -32,6 +32,9 @@ Rails.application.routes.draw do
   # Reports
   resources :reports, only: %i[index]
 
+  # Location management
+  resources :locations
+
   # Medicine management
   resources :medicines do
     member do

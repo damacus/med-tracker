@@ -1,0 +1,12 @@
+---
+home:
+  name: Home
+  description: Primary home location
+
+school:
+  name: School
+  description: School location
+
+grandmas:
+  name: "Grandma's House"
+  description: Grandparent's home

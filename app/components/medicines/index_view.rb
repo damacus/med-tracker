@@ -44,17 +44,22 @@ module Components
       end
 
       def render_categories_section
+        categories = medicines.filter_map(&:category).uniq.sort
+        return if categories.empty?
+
         div(class: 'mb-12 overflow-x-auto no-scrollbar') do
           div(class: 'flex gap-3 min-w-max pb-2') do
-            %w[All Painkillers Antibiotics Vitamins Respiratory Heart].each_with_index do |cat, i|
-              variant = i.zero? ? :primary : :outline
+            Button(
+              variant: :primary,
+              class: 'rounded-full px-6 py-2 h-auto text-xs font-bold uppercase tracking-wider ' \
+                     'shadow-md shadow-primary/10'
+            ) { 'All' }
+
+            categories.each do |cat|
               Button(
-                variant: variant,
-                class: 'rounded-full px-6 py-2 h-auto text-xs font-bold uppercase tracking-wider ' \
-                       "#{'shadow-md shadow-primary/10' if i.zero?}"
-              ) do
-                cat
-              end
+                variant: :outline,
+                class: 'rounded-full px-6 py-2 h-auto text-xs font-bold uppercase tracking-wider'
+              ) { cat.pluralize.titleize }
             end
           end
         end

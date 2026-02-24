@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'Form inline validation feedback' do
-  fixtures :accounts, :people, :medicines, :users, :dosages, :prescriptions
+  fixtures :accounts, :people, :locations, :medicines, :users, :dosages, :prescriptions
 
   let(:admin) { users(:admin) }
 

@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe Components::Dashboard::PrescriptionCard, type: :component do
-  fixtures :accounts, :people, :users, :medicines, :dosages, :prescriptions
+  fixtures :accounts, :people, :users, :locations, :medicines, :dosages, :prescriptions
 
   let(:person) { people(:john) }
   let(:prescription) { prescriptions(:active_prescription) }

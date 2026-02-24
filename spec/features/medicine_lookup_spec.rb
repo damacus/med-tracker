@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'Medicine Lookup', type: :system do
-  fixtures :accounts, :people, :medicines, :users
+  fixtures :accounts, :people, :locations, :medicines, :users
 
   let(:doctor) { users(:doctor) }
 
