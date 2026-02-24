@@ -35,21 +35,28 @@ RSpec.describe Components::Medicines::ShowView, type: :component do
   end
 
   context 'when forecast is available' do
-    before do
-      dosage = create(:dosage, medicine: medicine)
-      create(:prescription, medicine: medicine, dosage: dosage, max_daily_doses: 10, dose_cycle: :daily)
-    end
-
     it 'renders the out-of-stock forecast' do
-      rendered = render_inline(described_class.new(medicine: medicine))
+      medicine_with_prescription = create(:medicine, name: 'Paracetamol', current_supply: 50, stock: 100)
+      dosage = create(:dosage, medicine: medicine_with_prescription)
+      create(:prescription, medicine: medicine_with_prescription, dosage: dosage, max_daily_doses: 10,
+                            dose_cycle: :daily)
+
+      rendered = render_inline(described_class.new(medicine: medicine_with_prescription))
 
       expect(rendered.text).to include('Stock will be empty in 5 days')
     end
 
     it 'renders the low-stock forecast' do
-      rendered = render_inline(described_class.new(medicine: medicine))
+      medicine_with_prescription = create(:medicine, name: 'Paracetamol', current_supply: 50, stock: 100)
+      dosage = create(:dosage, medicine: medicine_with_prescription)
+      create(:prescription, medicine: medicine_with_prescription, dosage: dosage, max_daily_doses: 10,
+                            dose_cycle: :daily)
 
-      expect(rendered.text).to match(/Stock will be low in \d+ days/)
+      rendered = render_inline(described_class.new(medicine: medicine_with_prescription))
+
+      # With current_supply: 50, reorder_threshold defaults to 10 from migration
+      # Surplus = 50 - 10 = 40, days = (40 / 10).ceil = 4
+      expect(rendered.text).to include('Stock will be low in 4 days')
     end
   end
 
