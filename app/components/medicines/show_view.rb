@@ -132,6 +132,34 @@ module Components
                 end
               end
             end
+
+            render_forecast_section
+          end
+        end
+      end
+
+      def render_forecast_section
+        if medicine.forecast_available?
+          div(class: 'pt-4 border-t border-slate-50 space-y-2') do
+            if medicine.days_until_low_stock&.positive?
+              forecast_item("Stock will be low in #{medicine.days_until_low_stock} days", :warning)
+            end
+            if medicine.days_until_out_of_stock&.positive?
+              forecast_item("Stock will be empty in #{medicine.days_until_out_of_stock} days", :destructive)
+            end
+          end
+        else
+          div(class: 'pt-4 border-t border-slate-50') do
+            Text(size: '2', class: 'text-slate-400 italic') { 'Forecast unavailable' }
+          end
+        end
+      end
+
+      def forecast_item(message, variant)
+        div(class: 'flex items-center gap-2') do
+          render Icons::AlertCircle.new(size: 14, class: variant == :destructive ? 'text-rose-500' : 'text-amber-500')
+          Text(size: '2', weight: 'medium', class: variant == :destructive ? 'text-rose-700' : 'text-amber-700') do
+            message
           end
         end
       end
@@ -167,7 +195,11 @@ module Components
           render Button.new(variant: :primary, class: 'w-full py-7 rounded-2xl shadow-xl shadow-primary/20') {
             'Log Administration'
           }
-          render Button.new(variant: :outline, class: 'w-full py-7 rounded-2xl bg-white') { 'Refill Inventory' }
+          render Components::Medicines::RefillModal.new(
+            medicine: medicine,
+            button_variant: :outline,
+            button_class: 'w-full py-7 rounded-2xl bg-white'
+          )
         end
       end
 

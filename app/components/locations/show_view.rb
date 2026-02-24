@@ -106,6 +106,16 @@ module Components
               Badge(variant: :success) { "#{medicine.current_supply} units" }
             end
           end
+
+          if view_context.policy(medicine).update?
+            div(class: 'pt-4') do
+              render Components::Medicines::RefillModal.new(
+                medicine: medicine,
+                button_variant: :outline,
+                button_class: 'w-full'
+              )
+            end
+          end
         end
       end
 

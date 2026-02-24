@@ -56,6 +56,12 @@ RSpec.describe 'Admin Audit Logs', type: :system do
       expect(page).to have_select('event')
     end
 
+    it 'includes Medicine in record type filter options' do
+      visit admin_audit_logs_path
+
+      expect(page).to have_select('item_type', with_options: ['Medicine'])
+    end
+
     it 'shows filter form with dropdowns' do
       visit admin_audit_logs_path
 
@@ -291,6 +297,33 @@ RSpec.describe 'Admin Audit Logs', type: :system do
       within('tbody') do
         expect(page).to have_content('192.168.1.100')
       end
+    end
+  end
+
+  describe 'medicine restock audit trail' do
+    let(:medicine) { medicines(:paracetamol) }
+
+    before { sign_in(admin) }
+
+    it 'shows restock entries for medicines in the audit log' do
+      PaperTrail.request.whodunnit = admin.id
+      PaperTrail.request(enabled: true) do
+        medicine.paper_trail_event = 'restock'
+        medicine.restock!(quantity: 7)
+      end
+
+      visit admin_audit_logs_path(item_type: 'Medicine')
+
+      within('tbody') do
+        expect(page).to have_content('Medicine')
+        expect(page).to have_content('Restock')
+      end
+
+      click_link 'View', match: :first
+
+      expect(page).to have_content('New State')
+      expect(page).to have_content('current_supply')
+      expect(page).to have_content('stock')
     end
   end
 

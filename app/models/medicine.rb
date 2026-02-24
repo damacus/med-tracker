@@ -4,6 +4,8 @@ class Medicine < ApplicationRecord # :nodoc:
   DOSAGE_UNITS = %w[tablet mg ml g mcg IU spray drop sachet].freeze
   CATEGORIES = %w[painkiller antibiotic vitamin respiratory heart supplement allergy digestive skin].freeze
 
+  has_paper_trail
+
   belongs_to :location
 
   has_many :dosages, dependent: :destroy
@@ -17,6 +19,20 @@ class Medicine < ApplicationRecord # :nodoc:
   validates :stock, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
   validates :reorder_threshold, presence: true, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
 
+  def restock!(quantity:) # rubocop:disable Naming/PredicateMethod
+    increment = quantity.to_i
+    return false if increment <= 0
+
+    with_lock do
+      update!(
+        current_supply: current_supply.to_i + increment,
+        stock: stock.to_i + increment
+      )
+    end
+
+    true
+  end
+
   def low_stock?
     return false if current_supply.nil?
 
@@ -27,5 +43,52 @@ class Medicine < ApplicationRecord # :nodoc:
     return false if current_supply.nil?
 
     current_supply <= 0
+  end
+
+  def estimated_daily_consumption
+    rx_rate = prescriptions.active.sum do |rx|
+      next 0.0 if rx.max_daily_doses.blank?
+
+      rx.max_daily_doses.to_f / (rx.cycle_period / 1.day)
+    end
+
+    pm_rate = person_medicines.sum do |pm|
+      next 0.0 if pm.max_daily_doses.blank?
+
+      pm.max_daily_doses.to_f
+    end
+
+    rx_rate + pm_rate
+  end
+
+  def forecast_available?
+    current_supply.present? && estimated_daily_consumption.positive?
+  end
+
+  def days_until_out_of_stock
+    return nil unless forecast_available?
+    return 0 if out_of_stock?
+
+    (current_supply.to_f / estimated_daily_consumption).ceil
+  end
+
+  def days_until_low_stock
+    return nil unless forecast_available?
+    return 0 if low_stock?
+
+    surplus = current_supply - reorder_threshold
+    return 0 if surplus <= 0
+
+    (surplus.to_f / estimated_daily_consumption).ceil
+  end
+
+  def out_of_stock_date
+    days = days_until_out_of_stock
+    days ? Time.zone.today + days.days : nil
+  end
+
+  def low_stock_date
+    days = days_until_low_stock
+    days ? Time.zone.today + days.days : nil
   end
 end

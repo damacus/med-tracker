@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class MedicinesController < ApplicationController
-  before_action :set_medicine, only: %i[show edit update destroy]
+  before_action :set_medicine, only: %i[show edit update destroy refill]
 
   def index
     medicines = policy_scope(Medicine)
@@ -70,6 +70,30 @@ class MedicinesController < ApplicationController
     redirect_to medicines_url, notice: t('medicines.deleted')
   end
 
+  def refill
+    authorize @medicine, :update?
+
+    quantity = refill_quantity
+    restock_date = parse_restock_date
+
+    if quantity <= 0
+      render_refill_error('Quantity must be greater than 0')
+      return
+    end
+
+    unless restock_date
+      render_refill_error('Restock date is invalid')
+      return
+    end
+
+    @medicine.paper_trail_event = "restock (qty: #{quantity}, date: #{restock_date.iso8601})"
+    @medicine.restock!(quantity: quantity)
+
+    redirect_to @medicine, notice: 'Inventory refilled successfully.' # rubocop:disable Rails/I18nLocaleTexts
+  rescue ActiveRecord::RecordInvalid => e
+    render_refill_error(e.record.errors.full_messages.to_sentence)
+  end
+
   def finder
     authorize Medicine
     render Components::Medicines::FinderView.new
@@ -112,8 +136,23 @@ class MedicinesController < ApplicationController
                    dosage_unit
                    current_supply
                    stock
+                   reorder_threshold
                    warnings
                    location_id]
     )
+  end
+
+  def refill_quantity
+    params.dig(:refill, :quantity).to_i
+  end
+
+  def parse_restock_date
+    Date.parse(params.dig(:refill, :restock_date).to_s)
+  rescue ArgumentError
+    nil
+  end
+
+  def render_refill_error(message)
+    render Components::Medicines::ShowView.new(medicine: @medicine, notice: message), status: :unprocessable_content
   end
 end

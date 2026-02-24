@@ -7,7 +7,7 @@ module Components
         include Phlex::Rails::Helpers::FormWith
 
         # Models that have audit trail enabled
-        AUDITED_MODELS = %w[User Person CarerRelationship MedicationTake].freeze
+        AUDITED_MODELS = %w[User Person CarerRelationship MedicationTake Medicine].freeze
         # Available event types for filtering
         EVENT_TYPES = %w[create update destroy].freeze
 
