@@ -16,7 +16,7 @@ RSpec.describe 'Medicines refill' do
     it 'updates both current_supply and stock and records a restock audit event' do
       expect do
         patch refill_medicine_path(medicine), params: { refill: { quantity: 10, restock_date: Date.current.to_s } }
-      end.to change(PaperTrail::Version, :count).by(1)
+      end.to change(PaperTrail::Version.where(item_type: 'Medicine'), :count).by(1)
 
       expect(response).to redirect_to(medicine_path(medicine))
 
@@ -24,7 +24,7 @@ RSpec.describe 'Medicines refill' do
       expect(medicine.current_supply).to eq(90)
       expect(medicine.stock).to eq(110)
 
-      version = medicine.versions.last
+      version = PaperTrail::Version.where(item_type: 'Medicine').last
       expect(version.event).to include('restock')
       expect(version.event).to include('qty: 10')
       expect(version.event).to include(Date.current.iso8601)

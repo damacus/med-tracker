@@ -7,13 +7,13 @@ module Components
 
       attr_reader :medicine, :button_variant, :button_class, :quantity, :restock_date, :icon_only
 
-      def initialize(medicine:, button_variant: :outline, button_class: '', quantity: nil, restock_date: nil, icon_only: false)
+      def initialize(medicine:, options: {})
         @medicine = medicine
-        @button_variant = button_variant
-        @button_class = button_class
-        @quantity = quantity
-        @restock_date = restock_date
-        @icon_only = icon_only
+        @button_variant = options.fetch(:button_variant, :outline)
+        @button_class = options.fetch(:button_class, '')
+        @quantity = options[:quantity]
+        @restock_date = options[:restock_date]
+        @icon_only = options.fetch(:icon_only, false)
         super()
       end
 
@@ -34,7 +34,8 @@ module Components
                     stroke_linecap: 'round',
                     stroke_linejoin: 'round',
                     stroke_width: '2',
-                    d: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15'
+                    d: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 ' \
+                       '8.003 0 01-15.357-2m15.357 2H15'
                   )
                 end
                 span(class: 'sr-only') { 'Refill Inventory' }
