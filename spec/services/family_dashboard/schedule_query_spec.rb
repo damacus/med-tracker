@@ -147,7 +147,7 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
 
     context 'when medicine is out of stock' do
       let!(:prescription) do
-        oos_medicine = Medicine.create!(name: 'OOS Med', current_supply: 0, stock: 10, reorder_threshold: 2,
+        oos_medicine = Medicine.create!(name: 'OOS Med', current_supply: 0, reorder_threshold: 2,
                                         location: locations(:home))
         dosage = Dosage.create!(medicine: oos_medicine, amount: 10, unit: 'mg', frequency: 'daily')
         Prescription.create!(

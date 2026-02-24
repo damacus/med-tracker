@@ -12,7 +12,6 @@ RSpec.describe MedicationTake do
       name: 'Lisinopril',
       location: Location.find_or_create_by!(name: 'Test Home'),
       current_supply: 50,
-      stock: 50,
       reorder_threshold: 10
     )
   end
@@ -109,21 +108,12 @@ RSpec.describe MedicationTake do
     end
   end
 
-  describe 'stock tracking' do
+  describe 'supply tracking' do
     before do
-      medicine.update!(stock: 100, current_supply: 100)
+      medicine.update!(current_supply: 100)
     end
 
     context 'when taking a dose from a prescription' do
-      it 'does not deduct from the medicine stock (baseline capacity)' do
-        expect do
-          described_class.create!(
-            prescription: prescription,
-            taken_at: Time.current
-          )
-        end.not_to(change { medicine.reload.stock })
-      end
-
       it 'deducts 1 from the medicine current_supply' do
         expect do
           described_class.create!(
@@ -156,7 +146,6 @@ RSpec.describe MedicationTake do
         name: 'Test Medicine',
         location: Location.find_or_create_by!(name: 'Versioning Home'),
         current_supply: 100,
-        stock: 100,
         reorder_threshold: 10
       )
       dosage = Dosage.create!(medicine: medicine, amount: 10, unit: 'mg', frequency: 'daily')

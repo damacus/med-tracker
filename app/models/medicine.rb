@@ -16,7 +16,7 @@ class Medicine < ApplicationRecord # :nodoc:
   validates :category, inclusion: { in: CATEGORIES }, allow_blank: true
   validates :dosage_unit, inclusion: { in: DOSAGE_UNITS }, allow_blank: true
   validates :current_supply, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
-  validates :stock, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
+  validates :supply_at_last_restock, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
   validates :reorder_threshold, presence: true, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
 
   def restock!(quantity:) # rubocop:disable Naming/PredicateMethod
@@ -24,13 +24,22 @@ class Medicine < ApplicationRecord # :nodoc:
     return false if increment <= 0
 
     with_lock do
+      new_supply = current_supply.to_i + increment
       update!(
-        current_supply: current_supply.to_i + increment,
-        stock: stock.to_i + increment
+        current_supply: new_supply,
+        supply_at_last_restock: new_supply
       )
     end
 
     true
+  end
+
+  def supply_percentage
+    current = current_supply || 0
+    denominator = supply_at_last_restock || [reorder_threshold, 1].max
+    return 0 if denominator <= 0
+
+    [current.to_f / denominator * 100, 100].min.round
   end
 
   def low_stock?

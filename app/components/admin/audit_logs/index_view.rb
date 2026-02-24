@@ -67,7 +67,7 @@ module Components
               select(
                 name: 'item_type',
                 id: 'item_type',
-                class: input_classes,
+                class: select_classes,
                 data: { action: 'change->filter-form#submit' }
               ) do
                 option(value: '', selected: filter_params[:item_type].blank?) do
@@ -88,7 +88,7 @@ module Components
               select(
                 name: 'event',
                 id: 'event',
-                class: input_classes,
+                class: select_classes,
                 data: { action: 'change->filter-form#submit' }
               ) do
                 option(value: '', selected: filter_params[:event].blank?) do
@@ -123,11 +123,6 @@ module Components
                    'px-4 py-2 h-10 text-sm border border-input bg-background hover:bg-accent ' \
                    'hover:text-accent-foreground'
           ) { t('admin.audit_logs.index.filter.clear_filters') }
-        end
-
-        def input_classes
-          'w-full rounded-md border border-input bg-background px-3 py-2 text-sm ' \
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
         end
 
         def render_versions_table

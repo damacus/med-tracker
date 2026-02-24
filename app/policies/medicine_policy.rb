@@ -2,11 +2,11 @@
 
 class MedicinePolicy < ApplicationPolicy
   def index?
-    admin? || doctor? || nurse?
+    admin? || doctor? || nurse? || carer_or_parent?
   end
 
   def show?
-    admin? || doctor? || nurse?
+    admin? || doctor? || nurse? || carer_or_parent?
   end
 
   alias dosages? show?
@@ -35,8 +35,9 @@ class MedicinePolicy < ApplicationPolicy
     def resolve
       return scope.none unless user
       return scope.all if admin? || doctor? || nurse?
+      return scope.none unless carer_or_parent?
 
-      scope.none
+      scope.joins(:prescriptions).where(prescriptions: { person_id: accessible_patient_ids }).distinct
     end
   end
 end

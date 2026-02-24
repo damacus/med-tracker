@@ -14,7 +14,7 @@ medicines_data.each do |attrs|
     dosage_amount: attrs['dosage_amount'],
     dosage_unit: attrs['dosage_unit'],
     current_supply: attrs['current_supply'],
-    stock: attrs['stock'],
+    supply_at_last_restock: attrs['current_supply'],
     reorder_threshold: attrs['reorder_threshold'],
     description: attrs['description'],
     warnings: attrs['warnings']

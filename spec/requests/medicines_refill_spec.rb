@@ -13,7 +13,7 @@ RSpec.describe 'Medicines refill' do
   end
 
   describe 'PATCH /medicines/:id/refill' do
-    it 'updates both current_supply and stock and records a restock audit event' do
+    it 'updates current_supply and records a restock audit event' do
       expect do
         patch refill_medicine_path(medicine), params: { refill: { quantity: 10, restock_date: Date.current.to_s } }
       end.to change(PaperTrail::Version.where(item_type: 'Medicine'), :count).by(1)
@@ -22,7 +22,7 @@ RSpec.describe 'Medicines refill' do
 
       medicine.reload
       expect(medicine.current_supply).to eq(90)
-      expect(medicine.stock).to eq(110)
+      expect(medicine.supply_at_last_restock).to eq(90)
 
       version = PaperTrail::Version.where(item_type: 'Medicine').last
       expect(version.event).to include('restock')
@@ -31,7 +31,7 @@ RSpec.describe 'Medicines refill' do
       expect(version.whodunnit).to eq(admin.id.to_s)
     end
 
-    it 'returns unprocessable content and does not update stock when quantity is invalid' do
+    it 'returns unprocessable content and does not update supply when quantity is invalid' do
       expect do
         patch refill_medicine_path(medicine), params: { refill: { quantity: 0, restock_date: Date.current.to_s } }
       end.not_to(change { medicine.reload.current_supply })

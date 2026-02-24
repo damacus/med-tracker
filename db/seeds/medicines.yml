@@ -3,7 +3,6 @@
   dosage_amount: 500
   dosage_unit: mg
   current_supply: 80
-  stock: 100
   reorder_threshold: 20
   description: >-
     Paracetamol is a common painkiller for treating aches and pains, as well as
@@ -18,7 +17,6 @@
   dosage_amount: 200
   dosage_unit: mg
   current_supply: 30
-  stock: 50
   reorder_threshold: 10
   description: >-
     Ibuprofen is a nonsteroidal anti-inflammatory drug (NSAID) used for
@@ -31,7 +29,6 @@
   dosage_amount: 300
   dosage_unit: mg
   current_supply: 25
-  stock: 50
   reorder_threshold: 10
   description: >-
     Aspirin is used to treat pain, reduce inflammation and lower fever. It can
@@ -45,7 +42,6 @@
   dosage_amount: 5
   dosage_unit: ml
   current_supply: 35
-  stock: 50
   reorder_threshold: 10
   description: >-
     Calpol is a brand of children's medicine that contains paracetamol. It is
@@ -59,7 +55,6 @@
   dosage_amount: 1000
   dosage_unit: IU
   current_supply: 40
-  stock: 50
   reorder_threshold: 10
   description: >-
     Vitamin D helps regulate the amount of calcium and phosphate in the body.
@@ -72,7 +67,6 @@
   dosage_amount: 500
   dosage_unit: mg
   current_supply: 60
-  stock: 100
   reorder_threshold: 20
   description: >-
     Vitamin C is an essential nutrient that supports immune function and acts

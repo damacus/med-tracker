@@ -20,7 +20,6 @@ RSpec.describe Dosage do
       name: 'Aspirin',
       location: location,
       current_supply: 100,
-      stock: 100,
       reorder_threshold: 10
     )
   end

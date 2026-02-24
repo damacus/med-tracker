@@ -180,8 +180,6 @@ module Components
           ) do
             div(class: 'space-y-6') do
               active_prescriptions.take(3).each do |p|
-                # Use current_supply as the numerator and stock as the denominator (capacity)
-                # Note: We ensure stock is at least 1 to avoid division by zero
                 render_supply_item(p.medicine)
               end
               render RubyUI::Link.new(
@@ -199,8 +197,7 @@ module Components
 
       def render_supply_item(medicine)
         current = medicine.current_supply || 0
-        total = [medicine.stock || 1, 1].max
-        percentage = (current.to_f / total * 100).round
+        percentage = medicine.supply_percentage
 
         div(class: 'space-y-2') do
           div(class: 'flex justify-between items-center text-xs') do

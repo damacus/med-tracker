@@ -24,7 +24,7 @@ RSpec.describe 'Refill medicine inventory' do
     expect(page).to have_button('Refill Inventory')
   end
 
-  it 'refills stock from medicine detail with quantity and restock date' do
+  it 'refills supply from medicine detail with quantity and restock date' do
     visit medicine_path(medicine)
 
     click_button 'Refill Inventory'
@@ -40,7 +40,6 @@ RSpec.describe 'Refill medicine inventory' do
 
     medicine.reload
     expect(medicine.current_supply).to eq(92)
-    expect(medicine.stock).to eq(112)
   end
 
   it 'shows validation errors when refill quantity is invalid' do
