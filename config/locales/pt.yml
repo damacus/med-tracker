@@ -104,6 +104,7 @@ pt:
     created: "Medicamento criado com sucesso."
     updated: "Medicamento atualizado com sucesso."
     deleted: "Medicamento eliminado com sucesso."
+    refilled: "Inventário reabastecido com sucesso."
     form:
       new_title: "Adicionar Novo Medicamento"
       new_subtitle: "Registar detalhes de inventário e informação de dosagem."

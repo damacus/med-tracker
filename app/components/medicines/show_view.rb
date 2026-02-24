@@ -195,7 +195,13 @@ module Components
           render Button.new(variant: :primary, class: 'w-full py-7 rounded-2xl shadow-xl shadow-primary/20') {
             'Log Administration'
           }
-          render Button.new(variant: :outline, class: 'w-full py-7 rounded-2xl bg-white') { 'Refill Inventory' }
+          render Components::Medicines::RefillModal.new(
+            medicine: medicine,
+            options: {
+              button_variant: :outline,
+              button_class: 'w-full py-7 rounded-2xl bg-white'
+            }
+          )
         end
       end
 

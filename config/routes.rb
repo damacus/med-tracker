@@ -39,6 +39,7 @@ Rails.application.routes.draw do
   resources :medicines do
     member do
       get :dosages
+      patch :refill
     end
   end
   get 'medicine-finder', to: 'medicines#finder', as: :medicine_finder

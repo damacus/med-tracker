@@ -4,6 +4,8 @@ class Medicine < ApplicationRecord # :nodoc:
   DOSAGE_UNITS = %w[tablet mg ml g mcg IU spray drop sachet].freeze
   CATEGORIES = %w[painkiller antibiotic vitamin respiratory heart supplement allergy digestive skin].freeze
 
+  has_paper_trail
+
   belongs_to :location
 
   has_many :dosages, dependent: :destroy
@@ -16,6 +18,20 @@ class Medicine < ApplicationRecord # :nodoc:
   validates :current_supply, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
   validates :stock, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
   validates :reorder_threshold, presence: true, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
+
+  def restock!(quantity:) # rubocop:disable Naming/PredicateMethod
+    increment = quantity.to_i
+    return false if increment <= 0
+
+    with_lock do
+      update!(
+        current_supply: current_supply.to_i + increment,
+        stock: stock.to_i + increment
+      )
+    end
+
+    true
+  end
 
   def low_stock?
     return false if current_supply.nil?

@@ -104,6 +104,7 @@ cy:
     created: "Crëwyd y feddyginiaeth yn llwyddiannus."
     updated: "Diweddarwyd y feddyginiaeth yn llwyddiannus."
     deleted: "Dilëwyd y feddyginiaeth yn llwyddiannus."
+    refilled: "Ailstociwyd y rhestr stoc yn llwyddiannus."
     form:
       new_title: "Ychwanegu Meddyginiaeth Newydd"
       new_subtitle: "Cofnodi manylion stoc a gwybodaeth dos."

@@ -1,0 +1,14 @@
+---
+version: "3"
+
+vars:
+  COMPOSE_PROJECT:
+    sh: basename $PWD
+  COMPOSE_CMD: docker compose -p {{ .COMPOSE_PROJECT }}
+
+tasks:
+  run:
+    desc: Run tests and capture output to tmp/rspec_out.txt
+    silent: false
+    cmds:
+      - "{{ .COMPOSE_CMD }} --profile test run --rm web-test sh -c 'bundle exec rspec --format documentation --no-color spec > /app/tmp/rspec_out.txt 2>&1; echo EXIT:$? >> /app/tmp/rspec_out.txt; echo done'"

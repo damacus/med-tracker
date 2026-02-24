@@ -185,9 +185,9 @@ RSpec.describe MedicationTake do
           taken_at: Time.current,
           amount_ml: 5.0
         )
-      end.to change(PaperTrail::Version, :count).by(1)
+      end.to change(PaperTrail::Version.where(item_type: 'MedicationTake'), :count).by(1)
 
-      version = PaperTrail::Version.last
+      version = PaperTrail::Version.where(item_type: 'MedicationTake').last
       expect(version.event).to eq('create')
       expect(version.item_type).to eq('MedicationTake')
     end
