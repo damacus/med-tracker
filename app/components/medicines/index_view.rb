@@ -173,17 +173,8 @@ module Components
             render Components::Medicines::RefillModal.new(
               medicine: medicine,
               button_variant: :outline,
-<<<<<<< /Users/damacus/repos/damacus/med-tracker/app/components/medicines/index_view.rb
-<<<<<<< /Users/damacus/repos/damacus/med-tracker/app/components/medicines/index_view.rb
-              button_class: 'rounded-xl w-10 h-10 p-0 border-slate-100 bg-white hover:bg-slate-50 text-slate-400'
-=======
               button_class: 'flex items-center justify-center rounded-xl w-10 h-10 p-0 border-slate-100 bg-white hover:bg-slate-50 text-slate-400',
               icon_only: true
->>>>>>> /Users/damacus/.windsurf/worktrees/med-tracker/med-tracker-31918e60/app/components/medicines/index_view.rb
-=======
-              button_class: 'flex items-center justify-center rounded-xl w-10 h-10 p-0 border-slate-100 bg-white hover:bg-slate-50 text-slate-400',
-              icon_only: true
->>>>>>> /Users/damacus/.windsurf/worktrees/med-tracker/med-tracker-31918e60/app/components/medicines/index_view.rb
             )
           end
           render_delete_dialog(medicine)
