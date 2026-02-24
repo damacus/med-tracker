@@ -12,7 +12,7 @@ class MedicinePolicy < ApplicationPolicy
   alias dosages? show?
 
   def create?
-    admin? || doctor?
+    admin? || doctor? || user&.parent? || false
   end
 
   alias new? create?
