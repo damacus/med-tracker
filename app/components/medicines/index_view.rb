@@ -113,8 +113,7 @@ module Components
       end
 
       def render_supply_bar(medicine)
-        threshold = [medicine.reorder_threshold, 1].max
-        percentage = [medicine.current_supply.to_f / threshold * 100, 100].min.round
+        percentage = medicine.supply_percentage
         bar_color = medicine.low_stock? ? 'bg-destructive' : 'bg-primary'
 
         div(class: 'space-y-2') do

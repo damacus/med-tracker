@@ -39,6 +39,69 @@ RSpec.describe Medicine do
     it { is_expected.to have_many(:prescriptions).dependent(:destroy) }
   end
 
+  describe '#restock!' do
+    let(:medicine) { create(:medicine, current_supply: 10, reorder_threshold: 5) }
+
+    it 'increments current_supply by the given quantity' do
+      expect { medicine.restock!(quantity: 20) }.to change { medicine.reload.current_supply }.from(10).to(30)
+    end
+
+    it 'sets supply_at_last_restock to the new current_supply' do
+      medicine.restock!(quantity: 20)
+      expect(medicine.reload.supply_at_last_restock).to eq(30)
+    end
+
+    it 'returns false for zero quantity' do
+      expect(medicine.restock!(quantity: 0)).to be(false)
+    end
+
+    it 'returns false for negative quantity' do
+      expect(medicine.restock!(quantity: -5)).to be(false)
+    end
+  end
+
+  describe '#supply_percentage' do
+    context 'when supply_at_last_restock is set' do
+      let(:medicine) { build(:medicine, current_supply: 40, supply_at_last_restock: 80, reorder_threshold: 10) }
+
+      it 'returns percentage of current_supply relative to supply_at_last_restock' do
+        expect(medicine.supply_percentage).to eq(50)
+      end
+    end
+
+    context 'when supply_at_last_restock is nil' do
+      let(:medicine) { build(:medicine, current_supply: 40, supply_at_last_restock: nil, reorder_threshold: 10) }
+
+      it 'falls back to reorder_threshold as denominator' do
+        expect(medicine.supply_percentage).to eq(100)
+      end
+    end
+
+    context 'when current_supply exceeds supply_at_last_restock' do
+      let(:medicine) { build(:medicine, current_supply: 100, supply_at_last_restock: 80, reorder_threshold: 10) }
+
+      it 'caps at 100' do
+        expect(medicine.supply_percentage).to eq(100)
+      end
+    end
+
+    context 'when current_supply is zero' do
+      let(:medicine) { build(:medicine, current_supply: 0, supply_at_last_restock: 80, reorder_threshold: 10) }
+
+      it 'returns 0' do
+        expect(medicine.supply_percentage).to eq(0)
+      end
+    end
+
+    context 'when current_supply is nil' do
+      let(:medicine) { build(:medicine, current_supply: nil, supply_at_last_restock: nil, reorder_threshold: 10) }
+
+      it 'returns 0' do
+        expect(medicine.supply_percentage).to eq(0)
+      end
+    end
+  end
+
   describe '#low_stock?' do
     subject(:medicine) do
       described_class.new(

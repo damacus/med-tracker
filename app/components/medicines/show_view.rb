@@ -100,8 +100,7 @@ module Components
           Heading(level: 3, size: '4', class: 'font-bold') { 'Inventory Status' }
 
           current = medicine.current_supply || 0
-          threshold = [medicine.reorder_threshold, 1].max
-          percentage = [current.to_f / threshold * 100, 100].min.round
+          percentage = medicine.supply_percentage
 
           div(class: 'space-y-4') do
             div(class: 'flex items-baseline gap-2') do

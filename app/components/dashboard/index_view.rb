@@ -197,8 +197,7 @@ module Components
 
       def render_supply_item(medicine)
         current = medicine.current_supply || 0
-        threshold = [medicine.reorder_threshold, 1].max
-        percentage = [current.to_f / threshold * 100, 100].min.round
+        percentage = medicine.supply_percentage
 
         div(class: 'space-y-2') do
           div(class: 'flex justify-between items-center text-xs') do

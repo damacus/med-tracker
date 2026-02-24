@@ -22,6 +22,7 @@ RSpec.describe 'Medicines refill' do
 
       medicine.reload
       expect(medicine.current_supply).to eq(90)
+      expect(medicine.supply_at_last_restock).to eq(90)
 
       version = PaperTrail::Version.where(item_type: 'Medicine').last
       expect(version.event).to include('restock')
