@@ -1,0 +1,402 @@
+---
+ga:
+  hello: "Dia dhuit an domhan"
+
+  admin:
+    carer_relationships:
+      index:
+        title: "Caidrimh Chúramóra"
+        subtitle: "Bainistigh sannadhanna cúramóir-claf."
+        new_relationship: "Caidreamh Nua"
+        table:
+          carer: "Cúramóir"
+          patient: "Claf"
+          type: "Cineál"
+          status: "Stádas"
+          actions: "Gníomhartha"
+        empty: "Níor aimsíodh caidrimh chúramóra."
+        active: "Gníomhach"
+        inactive: "Neamhghníomhach"
+        activate: "Gníomhachtú"
+        deactivate: "Díghníomhachtú"
+        deactivate_dialog:
+          title: "Díghníomhachtú Caidrimh"
+          confirm: "An bhfuil tú cinnte gur mian leat an caidreamh idir %{carer} agus %{patient} a dhíghníomhachtú?"
+          cancel: "Cealaigh"
+          submit: "Díghníomhachtú"
+        pagination:
+          showing: "Ag taispeáint"
+          to: "go"
+          of: "as"
+          results: "torthaí"
+    users:
+      unauthorized: "Níl údarás agat an gníomh seo a dhéanamh."
+      missing_account: "Níl cuntas ag an úsáideoir le fíorú."
+      user_row:
+        edit: "Cuir in eagar"
+        active: "Gníomhach"
+        inactive: "Neamhghníomhach"
+        deactivate: "Díghníomhachtú"
+        activate: "Gníomhachtú"
+        verify: "Fíoraigh"
+        verified: "Fíoraithe"
+        deactivate_dialog:
+          title: "Díghníomhachtú Cuntas Úsáideora"
+          confirm: "An bhfuil tú cinnte gur mian leat cuntas %{name} a dhíghníomhachtú? Ní bheidh siad in ann logáil isteach a thuilleadh."
+          cancel: "Cealaigh"
+          submit: "Díghníomhachtú"
+    audit_logs:
+      index:
+        title: "Conair Fhíoraithe"
+        subtitle: "Stair iomlán de gach athrú a rinneadh i MedTracker."
+        filter:
+          record_type: "Cineál Taifid"
+          all_types: "Gach Cineál"
+          event_type: "Cineál Imeachta"
+          all_events: "Gach Imeacht"
+          filter_button: "Scag"
+          clear_filters: "Glan scagairí"
+        table:
+          timestamp: "Stamp Ama"
+          record_type: "Cineál Taifid"
+          event: "Imeacht"
+          user: "Úsáideoir"
+          ip_address: "Seoladh IP"
+          actions: "Gníomhartha"
+          view_details: "Féach ar Sonraí"
+        empty:
+          no_logs: "Níor aimsíodh logáil fíoraithe"
+          adjust_filters: "Bain triail as do scagairí a choigeartú"
+        pagination:
+          showing: "Ag taispeáint"
+          to: "go"
+          of: "as"
+          results: "torthaí"
+          previous: "Roimhe Seo"
+          next: "Ar Aghaidh"
+        system: "Córas"
+      show:
+        title: "Sonraí Logála Fíoraithe"
+        back: "← Ar ais go Logáil Fíoraithe"
+        event_information: "Faisnéis Imeachta"
+        timestamp: "Stamp Ama"
+        record_type: "Cineál Taifid"
+        record_id: "ID Taifid"
+        event_type: "Cineál Imeachta"
+        user: "Úsáideoir"
+        ip_address: "Seoladh IP"
+        na: "N/A"
+        system: "Córas"
+        previous_state: "Stáid Roimhe Seo"
+        previous_state_description: "Stáid na taifid sula ndearnadh an t-athrú seo"
+        new_state: "Stáid Nua"
+        new_state_create: "Stáid na taifid nuair a cruthaíodh í"
+        new_state_update: "Stáid na taifid tar éis an athraithe seo"
+        new_state_other: "Stáid reatha na taifid"
+
+  authentication:
+    login_required: "Logáil isteach le leanúint"
+    two_factor_required: "Le haghaidh slándála fheabhsaithe, socraigh fíorú dhá fhachtar do chuntas."
+
+  invitation_mailer:
+    subject: "Cuirí le bheith páirteach i MedTracker"
+
+  rodauth:
+    verify_account:
+      subject: "Fíoraigh do chuntas MedTracker"
+
+  locations:
+    created: "Cruthaíodh an suíomh go rathúil."
+    updated: "Nuashonraíodh an suíomh go rathúil."
+    deleted: "Scriosadh an suíomh go rathúil."
+
+  medicines:
+    finder:
+      nhs_directory: "Eolaire NHS"
+      title: "Aimsitheoir Leigheas"
+      subtitle: "Cuardaigh Foclóir Leigheasanna agus Gléasanna NHS (dm+d) de réir ainm nó comhábhar gníomhach."
+      placeholder: "Cuardaigh de réir ainm, chatagóir, nó comhábhair ghníomhaigh..."
+      search_button: "Cuardaigh"
+      idle_heading: "Réidh le taispeáint?"
+      idle_text: "Cuir ainm leigheas thuas chun na mílte taifid fíoraí a chuardach sa bhunachar sonraí NHS."
+      coming_soon: "Tá an ghné seo ag teacht go luath! Comhdhlónóimid le API bunachair sonraí leigheas chun faisnéis mhionsonraithe a sholáthar faoi mhíochaine."
+    created: "Cruthaíodh an leigheas go rathúil."
+    updated: "Nuashonraíodh an leigheas go rathúil."
+    deleted: "Scriosadh an leigheas go rathúil."
+    refilled: "Athlionadh stoc go rathúil."
+    form:
+      new_title: "Cuir Leigheas Nua Leis"
+      new_subtitle: "Gabh sonraí stoc agus faisnéis dáileogáin."
+      edit_title: "Cuir Leigheas in Eagar"
+      edit_subtitle: "Nuashonraigh sonraí %{name}."
+
+  passwords:
+    reset_sent: >-
+      Seoladh treoracha athshocraithe focal faire
+      (más ann do úsáideoir leis an seoladh ríomhphoist sin).
+    reset_success: "Athshocraíodh an focal faire."
+    mismatch: "Níor tháinig na focail faire le chéile."
+    invalid_token: "Tá an nasc athshocraithe focal faire neamhbhailí nó imithe as feidhm."
+    mailer:
+      subject: "Athsocraigh do focal faire"
+
+  people:
+    created: "Cruthaíodh an duine go rathúil."
+    updated: "Nuashonraíodh an duine go rathúil."
+    deleted: "Scriosadh an duine go rathúil."
+    show:
+      edit_person: "Cuir Duine in Eagar"
+      add_prescription: "Cuir Oideas Leigheasanna Leis"
+      add_medicine: "Cuir Leigheas Leis"
+      back: "Ar Ais"
+      born: "Rugtha:"
+      age: "Aois:"
+      prescriptions_heading: "Oideas Leigheasanna"
+      no_prescriptions: "Níl aon oideas leigheasanna fós."
+      add_first_prescription: "Cuir an Chéad Oideas Leigheasanna Leis"
+      my_medicines_heading: "Mo Leigheasanna"
+      no_medicines: "Níl aon leigheasanna curtha leis fós."
+      medicines_hint: "Cuir vitimíní, forlíontáin, nó leigheasanna os cionn an chuntair anseo."
+      add_first_medicine: "Cuir an Chéad Leigheas Leis"
+    overview:
+      title: "Forbhreathnú Próifíle"
+      dob: "Dáta Breithe"
+      assigned_user: "Úsáideoir Sannaithe"
+      no_user: "Gan úsáideoir sannaithe"
+      capacity: "Cumhacht"
+      has_capacity: "Tá Cumhacht Aige"
+      dependent: "Spleách"
+    actions:
+      title: "Gníomhartha Cúraim"
+      subtitle: "Nuashonraigh pleananna leigheasanna agus oideas leigheasanna."
+    form:
+      edit_heading: "Cuir Duine in Eagar"
+      edit_subheading: "Próifíl á nuashonrú do %{name}"
+      name: "Ainm"
+      date_of_birth: "Dáta Breithe"
+      save: "Sábháil"
+      cancel: "Cealaigh"
+
+  person_medicines:
+    created: "Cuireadh an leigheas leis go rathúil."
+    deleted: "Baineadh an leigheas go rathúil."
+    medicine_taken: "Tógadh an leigheas go rathúil."
+    modal:
+      new_title: "Cuir Leigheas Leis do %{person}"
+    card:
+      notes: "📝 Nótaí: "
+      timing_restrictions: "⏱️ Srian Amanna:"
+      max_doses_per_day: "Uasmhéid %{count} dáileog(a) in aghaidh an lae"
+      wait_hours: "Fan ar a laghad %{hours} uair an chloig idir dáileoga"
+      next_dose_available: "🕐 An chéad dáileog eile ar fáil i: "
+      todays_doses: "Dáileoga an Lae Innuit"
+      no_doses_today: "Níor tógadh aon dáileoga inniu"
+      take: "💊 Tóg"
+      give: "💊 Tabhair"
+      out_of_stock: "💊 As Stoc"
+      remove: "Bain"
+      remove_medicine: "Bain Leigheas"
+      remove_confirmation: "An bhfuil tú cinnte gur mian leat %{medicine} a bhaint? Ní féidir an gníomh seo a chealú."
+    form:
+      add_medicine: "Cuir Leigheas Leis"
+      add_medicine_for: "Cuir Leigheas Leis do %{person}"
+      validation_errors:
+        one: "Chuir 1 earráid cosc ar an leigheas a shábháil:"
+        other: "Chuir %{count} earráid cosc ar an leigheas a shábháil:"
+      cancel: "Cealaigh"
+      add_medicine_button: "Cuir Leigheas Leis"
+
+  prescriptions:
+    created: "Cruthaíodh an t-oideas leigheasanna go rathúil."
+    updated: "Nuashonraíodh an t-oideas leigheasanna go rathúil."
+    deleted: "Scriosadh an t-oideas leigheasanna go rathúil."
+    medicine_taken: "Tógadh an leigheas go rathúil."
+    modal:
+      new_title: "Oideas Leigheasanna Nua do %{person}"
+      edit_title: "Cuir Oideas Leigheasanna in Eagar do %{person}"
+    card:
+      started: "📅 Thosaigh:"
+      ends: "🏁 Críochnaíonn:"
+      notes: "📝 Nótaí: "
+      next_dose_available: "🕐 An chéad dáileog eile ar fáil i: "
+      todays_doses: "Dáileoga an Lae Innuit"
+      no_doses_today: "Níor tógadh aon dáileoga inniu"
+      take: "💊 Tóg"
+      give: "💊 Tabhair"
+      out_of_stock: "💊 As Stoc"
+      edit: "Cuir in Eagar"
+      delete: "Scrios"
+      delete_dialog:
+        title: "Scrios Oideas Leigheasanna"
+        confirm: "An bhfuil tú cinnte gur mian leat an t-oideas leigheasanna %{medicine} a scrios? Ní féidir an gníomh seo a chealú."
+        cancel: "Cealaigh"
+        submit: "Scrios"
+
+  sessions:
+    rate_limit: "Bain triail eile ar ball."
+    signed_in: "Síníodh isteach go rathúil."
+    invalid_credentials: "Bain triail as seoladh ríomhphoist eile nó focal faire."
+    signed_out: "Síníodh amach go rathúil."
+    login:
+      tagline: "Geata Leabhar Sláinte"
+      heading: "Fáilte ar ais"
+      subheading: "Sínigh isteach do chuntas le do thoil"
+      email_label: "Seoladh ríomhphoist"
+      email_placeholder: "do@ríomhphost.com"
+      password_label: "Focal faire"
+      password_placeholder: "Cuir do focal faire isteach"
+      forgot_password: "Dearmad?"
+      remember_me: "Cuimhnigh orm"
+      submit: "Sínigh Isteach go Dashboard"
+      oauth_continue: "Lean ar aghaidh le %{provider}"
+      need_account: "An gá le cuntas?"
+      create_account: "Cruthaigh ceann"
+      resend_verification: "Seol ríomhphost fíoraithe arís"
+
+  take_medicines:
+    success: "Cláraíodh an leigheas tógtha go rathúil."
+    failure: "Theip ar chlárú an leighis tógtha."
+    json_success: "Cláraíodh an leigheas tógtha go rathúil."
+
+  profiles:
+    updated: "Nuashonraíodh an phróifíl go rathúil."
+    email_updated: "Nuashonraíodh an seoladh ríomhphoist go rathúil."
+    no_changes: "Gan athruithe le sábháil."
+    profile_update_failed: "Theip ar nuashonrú na próifíle: %{errors}"
+    email_update_failed: "Theip ar nuashonrú an ríomhphoist: %{errors}"
+    theme_picker:
+      title: "Téama an Fheidhmchláir"
+      description: "Pearsanáigh do thaithle le paéite datha saincheaptha"
+      themes:
+        default: "Caighdeánach"
+        serene_sage: "Sáite Síoraí"
+        modern_clinical: "Cliniceach Nua-aimseartha"
+        warm_earth: "Talamh Te"
+        deep_lavender: "Lavender Domhain"
+        forest_care: "Cúram Foraoise"
+        sunset_support: "Tacaíocht Lae"
+        tech_indigo: "Teicneolaíocht Indigo"
+        soft_rose: "Rós Bog"
+        minty_fresh: "Úr Mionna"
+        minimalist_monochrome: "Íosmhéideach"
+    close_account:
+      title: "Dún Cuntas"
+      description: "Scrios do chuntas agus na sonraí gaolmhara go buan"
+      dialog_title: "An bhfuil tú lánchinnte?"
+      dialog_description: "Ní féidir an gníomh seo a chealú. Scriosfaidh sé do chuntas go buan agus bainfear do chuid sonraí go léir ó na freastalaithe."
+      cancel_button: "Cealaigh"
+      confirm_button: "Tá, scrios mo chuntas"
+
+  users:
+    welcome: "Fáilte! Cruthaíodh do chuntas."
+    created: "Cruthaíodh an t-úsáideoir go rathúil."
+    updated: "Nuashonraíodh an t-úsáideoir go rathúil."
+    deactivated: "Díghníomhachtaithe cuntas an úsáideora."
+    activated: "Gníomhachtaithe cuntas an úsáideora."
+    verified: "Fíoraithe cuntas an úsáideora de láimh."
+    cannot_deactivate_self: "Ní féidir leat do chuntas féin a dhíghníomhachtú."
+
+  webauthn:
+    passkey_removed: "Baineadh an eochair róchair go rathúil"
+    passkey_registered: "Cláraíodh an eochair róchair go rathúil"
+
+  layouts:
+    navigation:
+      skip_to_content: "Léim go dtí an t-ábhar"
+      brand: "MedTracker"
+      login: "Logáil isteach"
+    desktop_nav:
+      medicines: "Leigheasanna"
+      people: "Daoine"
+      medicine_finder: "Aimsitheoir Leigheas"
+    profile_menu:
+      my_account: "Mo Chuntas"
+      dashboard: "Dashboard"
+      profile: "Próifíl"
+      administration: "Riarachán"
+      logout: "Logáil amach"
+      account: "Cuntas"
+    mobile_menu:
+      brand: "MedTracker"
+      open_menu: "Oscail roghchlár"
+      close_menu: "Dún roghchlár"
+      medicines: "Leigheasanna"
+      people: "Daoine"
+      medicine_finder: "Aimsitheoir Leigheas"
+      profile: "Próifíl"
+      administration: "Riarachán"
+      logout: "Logáil amach"
+    sidebar:
+      dashboard: "Dashboard"
+      inventory: "Stoc"
+      locations: "Suíomhanna"
+      finder: "Aimsitheoir"
+      people: "Daoine"
+      reports: "Tuarascálacha"
+      administration: "Riarachán"
+      sign_out: "Sínigh Amach"
+  forms:
+    medicines:
+      inventory_management: "Bainistíocht Stoc"
+      dosage_and_supply: "Dáileog & Soláthar"
+      name: "Ainm"
+      description: "Cur Síos"
+      standard_dosage: "Dáileag Chaighdeánach"
+      unit: "Aonad"
+      select_unit: "Roghnaigh aonad"
+      current_supply: "Soláthar Faoi Lthair"
+      stock: "Stoc"
+      reorder_threshold: "Tairseach Athorduithe"
+      warnings: "Rabhaidh"
+      save_medicine: "Sábháil Leigheas"
+      back_to_medicines: "Ar Ais go Leigheasanna"
+      validation_errors:
+        one: "Chuir 1 earráid cosc ar an leigheas a shábháil:"
+        other: "Chuir %{count} earráid cosc ar an leigheas a shábháil:"
+  dashboard:
+    title: "Dashboard an Teaghlaigh"
+    greeting: "Maidin mhaith, %{name}"
+    subtitle: "Sceideal leigheasanna do theaghlaigh inniu."
+    todays_schedule: "Sceideal an Lae Innuit"
+    medication_schedule: "Sceideal Leigheasanna"
+    no_active_prescriptions: "Níor aimsíodh aon oideas leigheasanna gníomhacha"
+    add_prescriptions_hint: "Cuir oideas leigheasanna leis chun iad a fheiceáil anseo"
+    dose_taken_at: "%{person} • Tógtha ag %{time}"
+    empty_state: "Gan leigheasanna sceidealta inniu."
+    insights:
+      title: "Léarchéal Cliste"
+      pattern_detected: "Patrún aimsithe"
+      message: "Tá tú tar éis bheith an-chonsasta an tseachtain seo! Maith thú le fanacht ar an bhóthar le do phríomhchlár."
+      view_report: "Féach ar an Tuarascáil Iomlán"
+    inventory:
+      title: "Stocchaint"
+      left: "%{count} fágtha"
+      order_refills: "Ordú Athliontaí"
+    stats:
+      people: "Daoine"
+      active_prescriptions: "Oideas Leigheasanna Gníomhacha"
+      compliance: "Comhlíonadh"
+      next_dose: "An Chéad Dháileog Eile"
+    statuses:
+      taken: "Tógtha"
+      upcoming: "Ag Teacht"
+      cooldown: "Fan"
+      missed: "Caillte"
+      out_of_stock: "As Stoc"
+    table:
+      person: "Duine"
+      medicine: "Leigheas"
+      dosage: "Dáileog"
+      quantity: "Cainníocht"
+      frequency: "Minicíocht"
+      end_date: "Dáta Deiridh"
+      actions: "Gníomhartha"
+    delete_confirmation:
+      delete: "Scrios"
+      delete_prescription: "Scrios Oideas Leigheasanna?"
+      are_you_sure: "An bhfuil tú cinnte gur mian leat %{medicine} do %{person} a scrios? Ní féidir an gníomh seo a chealú."
+      cancel: "Cealaigh"
+    quick_actions:
+      title: "Gníomhartha Tapa"
+      add_medicine: "Cuir Leigheas Leis"
+      add_person: "Cuir Duine Leis"
