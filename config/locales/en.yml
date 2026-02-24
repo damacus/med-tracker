@@ -345,7 +345,6 @@ en:
       unit: "Unit"
       select_unit: "Select unit"
       current_supply: "Remaining Supply"
-      stock: "Total Supply"
       reorder_threshold: "Reorder Threshold"
       warnings: "Warnings"
       save_medicine: "Save Medicine"

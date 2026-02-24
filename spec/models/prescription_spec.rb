@@ -56,7 +56,6 @@ RSpec.describe Prescription do
         name: 'Lisinopril',
         location: location,
         current_supply: 50,
-        stock: 50,
         reorder_threshold: 10
       )
     end
@@ -74,7 +73,7 @@ RSpec.describe Prescription do
   describe '#can_administer?' do
     let(:location) { Location.create!(name: 'Administer Test Home') }
     let(:medicine) do
-      Medicine.create!(name: 'TestMed', location: location, current_supply: 10, stock: 10,
+      Medicine.create!(name: 'TestMed', location: location, current_supply: 10,
                        reorder_threshold: 2)
     end
     let(:person) do
@@ -114,7 +113,7 @@ RSpec.describe Prescription do
   describe '#administration_blocked_reason' do
     let(:location) { Location.create!(name: 'Blocked Test Home') }
     let(:medicine) do
-      Medicine.create!(name: 'TestMed2', location: location, current_supply: 0, stock: 10,
+      Medicine.create!(name: 'TestMed2', location: location, current_supply: 0,
                        reorder_threshold: 2)
     end
     let(:person) do

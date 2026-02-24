@@ -7,7 +7,6 @@ RSpec.describe Medicine do
     described_class.new(
       name: 'Ibuprofen',
       current_supply: 200,
-      stock: 200,
       reorder_threshold: 50
     )
   end
@@ -25,7 +24,6 @@ RSpec.describe Medicine do
         .allow_nil
     end
 
-    it { is_expected.to validate_numericality_of(:stock).only_integer.is_greater_than_or_equal_to(0).allow_nil }
     it { is_expected.to validate_numericality_of(:reorder_threshold).only_integer.is_greater_than_or_equal_to(0) }
 
     it { is_expected.to allow_value('painkiller').for(:category) }
@@ -46,7 +44,6 @@ RSpec.describe Medicine do
       described_class.new(
         name: 'Ibuprofen',
         current_supply: current_supply,
-        stock: 200,
         reorder_threshold: 50
       )
     end

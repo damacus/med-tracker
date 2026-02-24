@@ -240,7 +240,6 @@ module Components
 
       def render_supply_fields(_form)
         render_current_supply_field
-        render_stock_field
         render_reorder_threshold_field
       end
 
@@ -255,24 +254,6 @@ module Components
             name: 'medicine[current_supply]',
             id: 'medicine_current_supply',
             value: medicine.current_supply,
-            min: '0',
-            class: 'rounded-2xl border-slate-200 bg-white py-4 px-4 focus:ring-2 focus:ring-primary/10 ' \
-                   'focus:border-primary transition-all'
-          )
-        end
-      end
-
-      def render_stock_field
-        div(class: 'space-y-2') do
-          render RubyUI::FormFieldLabel.new(
-            for: 'medicine_stock',
-            class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1'
-          ) { t('forms.medicines.stock') }
-          render RubyUI::Input.new(
-            type: :number,
-            name: 'medicine[stock]',
-            id: 'medicine_stock',
-            value: medicine.stock,
             min: '0',
             class: 'rounded-2xl border-slate-200 bg-white py-4 px-4 focus:ring-2 focus:ring-primary/10 ' \
                    'focus:border-primary transition-all'

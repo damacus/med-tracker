@@ -100,15 +100,15 @@ module Components
           Heading(level: 3, size: '4', class: 'font-bold') { 'Inventory Status' }
 
           current = medicine.current_supply || 0
-          total = [medicine.stock || 1, 1].max
-          percentage = (current.to_f / total * 100).round
+          threshold = [medicine.reorder_threshold, 1].max
+          percentage = [current.to_f / threshold * 100, 100].min.round
 
           div(class: 'space-y-4') do
             div(class: 'flex items-baseline gap-2') do
               span(class: "text-5xl font-black #{medicine.low_stock? ? 'text-rose-600' : 'text-primary'}") do
                 current.to_s
               end
-              Text(size: '2', weight: 'bold', class: 'text-slate-400') { "/ #{total} units" }
+              Text(size: '2', weight: 'bold', class: 'text-slate-400') { 'units remaining' }
             end
 
             div(class: 'space-y-2') do
@@ -120,8 +120,8 @@ module Components
                 class: 'flex justify-between items-center text-[10px] font-black uppercase ' \
                        'tracking-widest text-slate-400'
               ) do
-                span { 'Current Stock Level' }
-                span { "#{percentage}%" }
+                span { 'Supply Level' }
+                span { "reorder at #{medicine.reorder_threshold}" }
               end
             end
 
@@ -142,10 +142,10 @@ module Components
         if medicine.forecast_available?
           div(class: 'pt-4 border-t border-slate-50 space-y-2') do
             if medicine.days_until_low_stock&.positive?
-              forecast_item("Stock will be low in #{medicine.days_until_low_stock} days", :warning)
+              forecast_item("Supply will be low in #{medicine.days_until_low_stock} days", :warning)
             end
             if medicine.days_until_out_of_stock&.positive?
-              forecast_item("Stock will be empty in #{medicine.days_until_out_of_stock} days", :destructive)
+              forecast_item("Supply will be empty in #{medicine.days_until_out_of_stock} days", :destructive)
             end
           end
         else

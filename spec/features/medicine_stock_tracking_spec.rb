@@ -12,7 +12,7 @@ RSpec.describe 'Medicine Stock Tracking', type: :system do
 
   before do
     # Ensure medicine has known stock level using current_supply
-    medicine.update!(current_supply: 10, stock: 10, reorder_threshold: 5)
+    medicine.update!(current_supply: 10, reorder_threshold: 5)
 
     # Clear any fixture medication_takes to avoid cooldown interference
     prescription.medication_takes.delete_all

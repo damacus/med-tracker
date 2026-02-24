@@ -16,7 +16,6 @@ class Medicine < ApplicationRecord # :nodoc:
   validates :category, inclusion: { in: CATEGORIES }, allow_blank: true
   validates :dosage_unit, inclusion: { in: DOSAGE_UNITS }, allow_blank: true
   validates :current_supply, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
-  validates :stock, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
   validates :reorder_threshold, presence: true, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
 
   def restock!(quantity:) # rubocop:disable Naming/PredicateMethod
@@ -25,8 +24,7 @@ class Medicine < ApplicationRecord # :nodoc:
 
     with_lock do
       update!(
-        current_supply: current_supply.to_i + increment,
-        stock: stock.to_i + increment
+        current_supply: current_supply.to_i + increment
       )
     end
 

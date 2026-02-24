@@ -113,7 +113,8 @@ module Components
       end
 
       def render_supply_bar(medicine)
-        percentage = ([medicine.current_supply.to_f / [medicine.stock.to_f, 1.0].max, 1.0].min * 100).round
+        threshold = [medicine.reorder_threshold, 1].max
+        percentage = [medicine.current_supply.to_f / threshold * 100, 100].min.round
         bar_color = medicine.low_stock? ? 'bg-destructive' : 'bg-primary'
 
         div(class: 'space-y-2') do
@@ -121,7 +122,7 @@ module Components
             class: 'flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400'
           ) do
             span { 'Inventory Level' }
-            span { "#{medicine.current_supply} / #{medicine.stock}" }
+            span { "#{medicine.current_supply} units" }
           end
           div(class: 'h-1.5 w-full bg-slate-50 rounded-full overflow-hidden') do
             div(class: "h-full #{bar_color} rounded-full transition-all duration-1000", style: "width: #{percentage}%")

@@ -12,13 +12,6 @@ The number of dispensable units left **right now**.
 - Drives low/out-of-stock logic.
 - Should be shown in patient/carer-facing quantity displays.
 
-### Total Supply (`medicines.stock`)
-
-The reference total inventory level for a medicine.
-
-- Does not decrement when a dose is recorded.
-- Used as a baseline/denominator for progress and inventory ratio views.
-
 ### Reorder Threshold (`medicines.reorder_threshold`)
 
 The level at or below which a medicine is considered low stock.
@@ -27,6 +20,5 @@ The level at or below which a medicine is considered low stock.
 
 ## Usage guidance
 
-- Prefer **Remaining Supply** in UI copy where users need “what is left now”.
-- Keep **Total Supply** as the term for baseline total/reference level.
-- If both are displayed together, format as `remaining_supply / stock`.
+- Use **Remaining Supply** in UI copy where users need "what is left now".
+- Use **Reorder Threshold** to indicate the danger zone for re-ordering.

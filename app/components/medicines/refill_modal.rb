@@ -48,7 +48,7 @@ module Components
           DialogContent(size: :md) do
             DialogHeader do
               DialogTitle { "Refill #{medicine.name}" }
-              DialogDescription { 'Add stock quantity and record the restock date.' }
+              DialogDescription { 'Add supply quantity and record the restock date.' }
             end
 
             DialogMiddle do
