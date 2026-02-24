@@ -7,8 +7,9 @@ module Components
 
       attr_reader :medicine, :button_variant, :button_class, :quantity, :restock_date, :icon_only
 
-      def initialize(medicine:, button_variant: :outline, button_class: '', quantity: nil, restock_date: nil,
-                     icon_only: false)
+      # rubocop:disable Metrics/ParameterLists
+      def initialize(medicine:, button_variant: :outline, button_class: '',
+                     quantity: nil, restock_date: nil, icon_only: false)
         @medicine = medicine
         @button_variant = button_variant
         @button_class = button_class
@@ -17,6 +18,7 @@ module Components
         @icon_only = icon_only
         super()
       end
+      # rubocop:enable Metrics/ParameterLists
 
       def view_template
         Dialog do
