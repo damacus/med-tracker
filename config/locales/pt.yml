@@ -105,6 +105,13 @@ pt:
     updated: "Medicamento atualizado com sucesso."
     deleted: "Medicamento eliminado com sucesso."
     refilled: "Inventário reabastecido com sucesso."
+    refill_button: "Reabastecer"
+    refill_modal:
+      refill_inventory: "Reabastecer Inventário"
+      title: "Reabastecer %{medicine}"
+      description: "Adicione a quantidade de estoque e registre a data de reabastecimento."
+      quantity: "Quantidade"
+      restock_date: "Data de reabastecimento"
     form:
       new_title: "Adicionar Novo Medicamento"
       new_subtitle: "Registar detalhes de inventário e informação de dosagem."

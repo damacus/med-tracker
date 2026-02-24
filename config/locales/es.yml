@@ -104,7 +104,14 @@ es:
     created: "Medicamento creado correctamente."
     updated: "Medicamento actualizado correctamente."
     deleted: "Medicamento eliminado correctamente."
-    refilled: "Inventario recargado correctamente."
+    refilled: "Inventario reabastecido correctamente."
+    refill_button: "Reabastecer"
+    refill_modal:
+      refill_inventory: "Reabastecer Inventario"
+      title: "Reabastecer %{medicine}"
+      description: "Añadir cantidad de stock y registrar la fecha de reabastecimiento."
+      quantity: "Cantidad"
+      restock_date: "Fecha de reabastecimiento"
     form:
       new_title: "Añadir Nuevo Medicamento"
       new_subtitle: "Registrar detalles de inventario e información de dosificación."
