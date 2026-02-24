@@ -124,6 +124,13 @@ ga:
     updated: "Nuashonraíodh an leigheas go rathúil."
     deleted: "Scriosadh an leigheas go rathúil."
     refilled: "Athlionadh stoc go rathúil."
+    refill_button: "Athlionadh"
+    refill_modal:
+      refill_inventory: "Athlionadh Fardal"
+      title: "Athlionadh %{medicine}"
+      description: "Cuir cainníocht stoic leis agus déan taifead ar dháta an athstocála."
+      quantity: "Cainníocht"
+      restock_date: "Dáta athstocála"
     form:
       new_title: "Cuir Leigheas Nua Leis"
       new_subtitle: "Gabh sonraí stoc agus faisnéis dáileogáin."

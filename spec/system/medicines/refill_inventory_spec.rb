@@ -34,7 +34,7 @@ RSpec.describe 'Refill medicine inventory' do
 
     fill_in 'Quantity', with: '12'
     fill_in 'Restock date', with: Date.current.to_s
-    click_button 'Save Refill'
+    click_button 'Refill'
 
     expect(page).to have_content('Inventory refilled successfully.')
 
@@ -49,7 +49,7 @@ RSpec.describe 'Refill medicine inventory' do
     fill_in 'Quantity', with: '0'
     fill_in 'Restock date', with: Date.current.to_s
 
-    click_button 'Save Refill'
+    click_button 'Refill'
 
     expect(page).to have_content('Quantity must be greater than 0')
   end

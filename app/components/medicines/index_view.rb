@@ -173,7 +173,8 @@ module Components
             render Components::Medicines::RefillModal.new(
               medicine: medicine,
               button_variant: :outline,
-              button_class: 'flex items-center justify-center rounded-xl w-10 h-10 p-0 border-slate-100 bg-white hover:bg-slate-50 text-slate-400',
+              button_class: 'flex items-center justify-center rounded-xl w-10 h-10 p-0 ' \
+                            'border-slate-100 bg-white hover:bg-slate-50 text-slate-400',
               icon_only: true
             )
           end
