@@ -18,10 +18,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Lexend:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&family=Figtree:wght@400;500;600;700&family=Urbanist:wght@400;500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <script>
-      const savedTheme = localStorage.getItem("med-tracker-theme")
-      if (savedTheme && savedTheme !== "default") {
-        document.documentElement.classList.add(`theme-${savedTheme}`)
-      }
+      <% if current_user %>
+        const savedTheme = localStorage.getItem("med-tracker-theme")
+        if (savedTheme && savedTheme !== "default") {
+          document.documentElement.classList.add(`theme-${savedTheme}`)
+        }
+      <% else %>
+        localStorage.removeItem("med-tracker-theme")
+      <% end %>
     </script>
 
     <link rel="manifest" href="/manifest.webmanifest">
