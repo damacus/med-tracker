@@ -286,7 +286,6 @@ es:
       unit: "Unidad"
       select_unit: "Seleccionar unidad"
       current_supply: "Suministro restante"
-      stock: "Stock"
       reorder_threshold: "Umbral de Reorden"
       warnings: "Advertencias"
       save_medicine: "Guardar Medicamento"

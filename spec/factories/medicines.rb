@@ -7,7 +7,7 @@ FactoryBot.define do
     dosage_amount { 500 }
     dosage_unit { 'mg' }
     current_supply { 50 }
-    stock { 100 }
+    supply_at_last_restock { 50 }
     expiry_date { 1.year.from_now }
     description { 'Test medicine description' }
 

@@ -61,10 +61,10 @@ RSpec.describe MedicinePolicy, type: :policy do
   describe 'for carer' do
     let(:current_user) { users(:carer) }
 
-    it 'forbids all actions' do
+    it 'permits viewing but forbids write actions' do
       aggregate_failures do
-        expect(policy.index?).to be false
-        expect(policy.show?).to be false
+        expect(policy.index?).to be true
+        expect(policy.show?).to be true
         expect(policy.create?).to be false
         expect(policy.new?).to be false
         expect(policy.update?).to be false
@@ -77,22 +77,32 @@ RSpec.describe MedicinePolicy, type: :policy do
   describe 'for parent' do
     let(:current_user) { users(:parent) }
 
-    it 'forbids all actions' do
-      expect(policy.index?).to be false
-      expect(policy.show?).to be false
-      expect(policy.create?).to be false
-      expect(policy.destroy?).to be false
+    it 'permits viewing but forbids write actions' do
+      aggregate_failures do
+        expect(policy.index?).to be true
+        expect(policy.show?).to be true
+        expect(policy.create?).to be false
+        expect(policy.new?).to be false
+        expect(policy.update?).to be false
+        expect(policy.edit?).to be false
+        expect(policy.destroy?).to be false
+      end
     end
   end
 
-  describe 'for patient' do
+  describe 'for patient (carer role managing own care)' do
     let(:current_user) { users(:adult_patient) }
 
-    it 'forbids all actions' do
-      expect(policy.index?).to be false
-      expect(policy.show?).to be false
-      expect(policy.create?).to be false
-      expect(policy.destroy?).to be false
+    it 'permits viewing but forbids write actions' do
+      aggregate_failures do
+        expect(policy.index?).to be true
+        expect(policy.show?).to be true
+        expect(policy.create?).to be false
+        expect(policy.new?).to be false
+        expect(policy.update?).to be false
+        expect(policy.edit?).to be false
+        expect(policy.destroy?).to be false
+      end
     end
   end
 
@@ -136,16 +146,23 @@ RSpec.describe MedicinePolicy, type: :policy do
     context 'when user is a carer' do
       let(:current_user) { users(:carer) }
 
-      it 'returns no medicines' do
-        expect(scope).to be_empty
+      it 'returns medicines prescribed to their patients' do
+        patient_medicine_ids = Medicine.joins(:prescriptions)
+                                       .where(prescriptions: { person_id: current_user.person.patient_ids })
+                                       .pluck(:id)
+        expect(scope.pluck(:id)).to match_array(patient_medicine_ids)
       end
     end
 
     context 'when user is a parent' do
       let(:current_user) { users(:parent) }
 
-      it 'returns no medicines' do
-        expect(scope).to be_empty
+      it 'returns medicines prescribed to their minor children' do
+        minor_ids = Person.where(id: current_user.person.patient_ids, person_type: :minor).pluck(:id)
+        child_medicine_ids = Medicine.joins(:prescriptions)
+                                     .where(prescriptions: { person_id: minor_ids })
+                                     .pluck(:id)
+        expect(scope.pluck(:id)).to match_array(child_medicine_ids)
       end
     end
 

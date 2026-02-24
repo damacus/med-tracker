@@ -232,10 +232,6 @@ module Components
         end
       end
 
-      def render_person_details
-        # Removed redundant method, logic moved to view_template
-      end
-
       def can_create_prescription?
         view_context.policy(Prescription.new(person: person)).create?
       end

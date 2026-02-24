@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe Components::Medicines::ShowView, type: :component do
-  let(:medicine) { create(:medicine, name: 'Paracetamol', current_supply: 50, stock: 100) }
+  let(:medicine) { create(:medicine, name: 'Paracetamol', current_supply: 50) }
 
   it 'renders the medicine name' do
     rendered = render_inline(described_class.new(medicine: medicine))
@@ -36,18 +36,18 @@ RSpec.describe Components::Medicines::ShowView, type: :component do
 
   context 'when forecast is available' do
     it 'renders the out-of-stock forecast' do
-      medicine_with_prescription = create(:medicine, name: 'Paracetamol', current_supply: 50, stock: 100)
+      medicine_with_prescription = create(:medicine, name: 'Paracetamol', current_supply: 50)
       dosage = create(:dosage, medicine: medicine_with_prescription)
       create(:prescription, medicine: medicine_with_prescription, dosage: dosage, max_daily_doses: 10,
                             dose_cycle: :daily)
 
       rendered = render_inline(described_class.new(medicine: medicine_with_prescription))
 
-      expect(rendered.text).to include('Stock will be empty in 5 days')
+      expect(rendered.text).to include('Supply will be empty in 5 days')
     end
 
     it 'renders the low-stock forecast' do
-      medicine_with_prescription = create(:medicine, name: 'Paracetamol', current_supply: 50, stock: 100)
+      medicine_with_prescription = create(:medicine, name: 'Paracetamol', current_supply: 50)
       dosage = create(:dosage, medicine: medicine_with_prescription)
       create(:prescription, medicine: medicine_with_prescription, dosage: dosage, max_daily_doses: 10,
                             dose_cycle: :daily)
@@ -56,7 +56,7 @@ RSpec.describe Components::Medicines::ShowView, type: :component do
 
       # With current_supply: 50, reorder_threshold defaults to 10 from migration
       # Surplus = 50 - 10 = 40, days = (40 / 10).ceil = 4
-      expect(rendered.text).to include('Stock will be low in 4 days')
+      expect(rendered.text).to include('Supply will be low in 4 days')
     end
   end
 
