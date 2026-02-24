@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.3.7](https://github.com/damacus/med-tracker/compare/v0.3.6...v0.3.7) (2026-02-24)
+
+
+### Features
+
+* add Irish (Gaeilge) translations and stock forecasting with refill inventory ([#542](https://github.com/damacus/med-tracker/issues/542)) ([20df6f2](https://github.com/damacus/med-tracker/commit/20df6f2260479bd4849905a67c238319b8a84710))
+* add location-based inventory and medicine ([9aa839d](https://github.com/damacus/med-tracker/commit/9aa839d7e1acc6ef9a5b76e084ad4c34b9de098e))
+* forecast low-stock and out-of-stock dates from active prescriptions ([#539](https://github.com/damacus/med-tracker/issues/539)) ([0d8c6be](https://github.com/damacus/med-tracker/commit/0d8c6be3c3d93b6028c2209ea59e34b86e9add5a)), closes [#533](https://github.com/damacus/med-tracker/issues/533)
+* **i18n:** add complete Irish (Gaeilge) translation file with 402 keys ([20df6f2](https://github.com/damacus/med-tracker/commit/20df6f2260479bd4849905a67c238319b8a84710))
+* medicine refill modal with restock audit trail ([#538](https://github.com/damacus/med-tracker/issues/538)) ([#541](https://github.com/damacus/med-tracker/issues/541)) ([cbd2cbd](https://github.com/damacus/med-tracker/commit/cbd2cbdad5d15a61e41cdf0e77695e85d4b9a3e0))
+
 ## [0.3.6](https://github.com/damacus/med-tracker/compare/v0.3.5...v0.3.6) (2026-02-23)
 
 
