@@ -112,6 +112,7 @@ class MedicinesController < ApplicationController
                    dosage_unit
                    current_supply
                    stock
+                   reorder_threshold
                    warnings
                    location_id]
     )

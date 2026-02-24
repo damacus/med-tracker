@@ -33,4 +33,31 @@ RSpec.describe Components::Medicines::ShowView, type: :component do
     expect(rendered.text).to include('Safety Warnings')
     expect(rendered.text).to include('Take with food')
   end
+
+  context 'when forecast is available' do
+    before do
+      dosage = create(:dosage, medicine: medicine)
+      create(:prescription, medicine: medicine, dosage: dosage, max_daily_doses: 10, dose_cycle: :daily)
+    end
+
+    it 'renders the out-of-stock forecast' do
+      rendered = render_inline(described_class.new(medicine: medicine))
+
+      expect(rendered.text).to include('Stock will be empty in 5 days')
+    end
+
+    it 'renders the low-stock forecast' do
+      rendered = render_inline(described_class.new(medicine: medicine))
+
+      expect(rendered.text).to match(/Stock will be low in \d+ days/)
+    end
+  end
+
+  context 'when forecast is not available' do
+    it 'renders the fallback message' do
+      rendered = render_inline(described_class.new(medicine: medicine))
+
+      expect(rendered.text).to include('Forecast unavailable')
+    end
+  end
 end

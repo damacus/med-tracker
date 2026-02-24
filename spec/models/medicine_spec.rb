@@ -97,4 +97,236 @@ RSpec.describe Medicine do
       it { is_expected.not_to be_out_of_stock }
     end
   end
+
+  describe '#estimated_daily_consumption' do
+    let(:medicine) { create(:medicine, current_supply: 100, reorder_threshold: 10) }
+
+    context 'with no prescriptions or person_medicines' do
+      it 'returns 0.0' do
+        expect(medicine.estimated_daily_consumption).to eq(0.0)
+      end
+    end
+
+    context 'with a daily prescription' do
+      before do
+        dosage = create(:dosage, medicine: medicine)
+        create(:prescription, medicine: medicine, dosage: dosage, max_daily_doses: 4, dose_cycle: :daily)
+      end
+
+      it 'returns the max_daily_doses' do
+        expect(medicine.estimated_daily_consumption).to eq(4.0)
+      end
+    end
+
+    context 'with a weekly prescription' do
+      before do
+        dosage = create(:dosage, medicine: medicine)
+        create(:prescription, :weekly, medicine: medicine, dosage: dosage, max_daily_doses: 7)
+      end
+
+      it 'normalizes to daily rate' do
+        expect(medicine.estimated_daily_consumption).to eq(1.0)
+      end
+    end
+
+    context 'with a monthly prescription' do
+      before do
+        dosage = create(:dosage, medicine: medicine)
+        create(:prescription, :monthly, medicine: medicine, dosage: dosage, max_daily_doses: 30)
+      end
+
+      it 'normalizes to daily rate' do
+        expect(medicine.estimated_daily_consumption).to eq(1.0)
+      end
+    end
+
+    context 'with multiple prescriptions' do
+      before do
+        dosage = create(:dosage, medicine: medicine)
+        create(:prescription, medicine: medicine, dosage: dosage, max_daily_doses: 4, dose_cycle: :daily)
+        create(:prescription, medicine: medicine, dosage: dosage, max_daily_doses: 2, dose_cycle: :daily)
+      end
+
+      it 'sums across all active prescriptions' do
+        expect(medicine.estimated_daily_consumption).to eq(6.0)
+      end
+    end
+
+    context 'with expired prescriptions' do
+      before do
+        dosage = create(:dosage, medicine: medicine)
+        create(:prescription, :expired, medicine: medicine, dosage: dosage, max_daily_doses: 4)
+      end
+
+      it 'excludes expired prescriptions' do
+        expect(medicine.estimated_daily_consumption).to eq(0.0)
+      end
+    end
+
+    context 'with person_medicines' do
+      before do
+        create(:person_medicine, medicine: medicine, max_daily_doses: 2)
+      end
+
+      it 'includes person_medicine daily doses' do
+        expect(medicine.estimated_daily_consumption).to eq(2.0)
+      end
+    end
+
+    context 'with prescriptions and person_medicines combined' do
+      before do
+        dosage = create(:dosage, medicine: medicine)
+        create(:prescription, medicine: medicine, dosage: dosage, max_daily_doses: 3, dose_cycle: :daily)
+        create(:person_medicine, medicine: medicine, max_daily_doses: 1)
+      end
+
+      it 'sums both sources' do
+        expect(medicine.estimated_daily_consumption).to eq(4.0)
+      end
+    end
+
+    context 'with nil max_daily_doses' do
+      before do
+        create(:person_medicine, medicine: medicine, max_daily_doses: nil)
+      end
+
+      it 'treats nil as zero' do
+        expect(medicine.estimated_daily_consumption).to eq(0.0)
+      end
+    end
+  end
+
+  describe '#forecast_available?' do
+    let(:medicine) { create(:medicine, current_supply: 100, reorder_threshold: 10) }
+
+    context 'when current_supply is present and daily consumption is positive' do
+      before do
+        dosage = create(:dosage, medicine: medicine)
+        create(:prescription, medicine: medicine, dosage: dosage, max_daily_doses: 2, dose_cycle: :daily)
+      end
+
+      it 'returns true' do
+        expect(medicine.forecast_available?).to be(true)
+      end
+    end
+
+    context 'when current_supply is nil' do
+      let(:medicine) { create(:medicine, current_supply: nil) }
+
+      it 'returns false' do
+        expect(medicine.forecast_available?).to be(false)
+      end
+    end
+
+    context 'when no prescriptions exist' do
+      it 'returns false' do
+        expect(medicine.forecast_available?).to be(false)
+      end
+    end
+  end
+
+  describe '#days_until_out_of_stock' do
+    let(:medicine) { create(:medicine, current_supply: 20, reorder_threshold: 5) }
+
+    context 'when forecast is available' do
+      before do
+        dosage = create(:dosage, medicine: medicine)
+        create(:prescription, medicine: medicine, dosage: dosage, max_daily_doses: 4, dose_cycle: :daily)
+      end
+
+      it 'returns the number of days' do
+        expect(medicine.days_until_out_of_stock).to eq(5)
+      end
+    end
+
+    context 'when already out of stock' do
+      let(:medicine) { create(:medicine, current_supply: 0, reorder_threshold: 5) }
+
+      before do
+        dosage = create(:dosage, medicine: medicine)
+        create(:prescription, medicine: medicine, dosage: dosage, max_daily_doses: 4, dose_cycle: :daily)
+      end
+
+      it 'returns 0' do
+        expect(medicine.days_until_out_of_stock).to eq(0)
+      end
+    end
+
+    context 'when forecast is not available' do
+      it 'returns nil' do
+        expect(medicine.days_until_out_of_stock).to be_nil
+      end
+    end
+
+    context 'with fractional daily rate' do
+      before do
+        dosage = create(:dosage, medicine: medicine)
+        create(:prescription, :weekly, medicine: medicine, dosage: dosage, max_daily_doses: 7)
+      end
+
+      it 'rounds up to nearest day' do
+        expect(medicine.days_until_out_of_stock).to eq(20)
+      end
+    end
+  end
+
+  describe '#days_until_low_stock' do
+    let(:medicine) { create(:medicine, current_supply: 20, reorder_threshold: 5) }
+
+    context 'when forecast is available' do
+      before do
+        dosage = create(:dosage, medicine: medicine)
+        create(:prescription, medicine: medicine, dosage: dosage, max_daily_doses: 5, dose_cycle: :daily)
+      end
+
+      it 'returns the number of days until supply reaches threshold' do
+        expect(medicine.days_until_low_stock).to eq(3)
+      end
+    end
+
+    context 'when already low stock' do
+      let(:medicine) { create(:medicine, current_supply: 5, reorder_threshold: 10) }
+
+      before do
+        dosage = create(:dosage, medicine: medicine)
+        create(:prescription, medicine: medicine, dosage: dosage, max_daily_doses: 2, dose_cycle: :daily)
+      end
+
+      it 'returns 0' do
+        expect(medicine.days_until_low_stock).to eq(0)
+      end
+    end
+
+    context 'when forecast is not available' do
+      it 'returns nil' do
+        expect(medicine.days_until_low_stock).to be_nil
+      end
+    end
+  end
+
+  describe '#out_of_stock_date' do
+    let(:medicine) { create(:medicine, current_supply: 20, reorder_threshold: 5) }
+
+    before do
+      dosage = create(:dosage, medicine: medicine)
+      create(:prescription, medicine: medicine, dosage: dosage, max_daily_doses: 4, dose_cycle: :daily)
+    end
+
+    it 'returns the forecasted date' do
+      expect(medicine.out_of_stock_date).to eq(Time.zone.today + 5.days)
+    end
+  end
+
+  describe '#low_stock_date' do
+    let(:medicine) { create(:medicine, current_supply: 25, reorder_threshold: 5) }
+
+    before do
+      dosage = create(:dosage, medicine: medicine)
+      create(:prescription, medicine: medicine, dosage: dosage, max_daily_doses: 5, dose_cycle: :daily)
+    end
+
+    it 'returns the forecasted date' do
+      expect(medicine.low_stock_date).to eq(Time.zone.today + 4.days)
+    end
+  end
 end
