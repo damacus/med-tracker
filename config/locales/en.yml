@@ -123,6 +123,7 @@ en:
     created: "Medicine was successfully created."
     updated: "Medicine was successfully updated."
     deleted: "Medicine was successfully deleted."
+    refilled: "Inventory refilled successfully."
     form:
       new_title: "Add a New Medicine"
       new_subtitle: "Capture inventory details and dosage information."

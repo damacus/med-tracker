@@ -89,7 +89,15 @@ class MedicinesController < ApplicationController
     @medicine.paper_trail_event = "restock (qty: #{quantity}, date: #{restock_date.iso8601})"
     @medicine.restock!(quantity: quantity)
 
+<<<<<<< /Users/damacus/repos/damacus/med-tracker/app/controllers/medicines_controller.rb
+<<<<<<< /Users/damacus/repos/damacus/med-tracker/app/controllers/medicines_controller.rb
     redirect_to @medicine, notice: 'Inventory refilled successfully.' # rubocop:disable Rails/I18nLocaleTexts
+=======
+    redirect_to @medicine, notice: 'Inventory refilled successfully.'
+>>>>>>> /Users/damacus/.windsurf/worktrees/med-tracker/med-tracker-31918e60/app/controllers/medicines_controller.rb
+=======
+    redirect_to @medicine, notice: t('medicines.refilled')
+>>>>>>> /Users/damacus/.windsurf/worktrees/med-tracker/med-tracker-31918e60/app/controllers/medicines_controller.rb
   rescue ActiveRecord::RecordInvalid => e
     render_refill_error(e.record.errors.full_messages.to_sentence)
   end

@@ -104,6 +104,7 @@ es:
     created: "Medicamento creado correctamente."
     updated: "Medicamento actualizado correctamente."
     deleted: "Medicamento eliminado correctamente."
+    refilled: "Inventario recargado correctamente."
     form:
       new_title: "Añadir Nuevo Medicamento"
       new_subtitle: "Registrar detalles de inventario e información de dosificación."
