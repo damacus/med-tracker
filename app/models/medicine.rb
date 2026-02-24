@@ -4,7 +4,7 @@ class Medicine < ApplicationRecord # :nodoc:
   DOSAGE_UNITS = %w[tablet mg ml g mcg IU spray drop sachet].freeze
   CATEGORIES = %w[painkiller antibiotic vitamin respiratory heart supplement allergy digestive skin].freeze
 
-  has_paper_trail
+  has_paper_trail if: proc { |medicine| medicine.paper_trail_event.present? }
 
   belongs_to :location
 

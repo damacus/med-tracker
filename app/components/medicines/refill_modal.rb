@@ -7,15 +7,18 @@ module Components
 
       attr_reader :medicine, :button_variant, :button_class, :quantity, :restock_date, :icon_only
 
-      def initialize(medicine:, options: {})
+      # rubocop:disable Metrics/ParameterLists
+      def initialize(medicine:, button_variant: :outline, button_class: '',
+                     quantity: nil, restock_date: nil, icon_only: false)
         @medicine = medicine
-        @button_variant = options.fetch(:button_variant, :outline)
-        @button_class = options.fetch(:button_class, '')
-        @quantity = options[:quantity]
-        @restock_date = options[:restock_date]
-        @icon_only = options.fetch(:icon_only, false)
+        @button_variant = button_variant
+        @button_class = button_class
+        @quantity = quantity
+        @restock_date = restock_date
+        @icon_only = icon_only
         super()
       end
+      # rubocop:enable Metrics/ParameterLists
 
       def view_template
         Dialog do
@@ -38,17 +41,17 @@ module Components
                        '8.003 0 01-15.357-2m15.357 2H15'
                   )
                 end
-                span(class: 'sr-only') { 'Refill Inventory' }
+                span(class: 'sr-only') { t('medicines.refill_modal.refill_inventory') }
               else
-                'Refill Inventory'
+                t('medicines.refill_modal.refill_inventory')
               end
             end
           end
 
           DialogContent(size: :md) do
             DialogHeader do
-              DialogTitle { "Refill #{medicine.name}" }
-              DialogDescription { 'Add supply quantity and record the restock date.' }
+              DialogTitle { t('medicines.refill_modal.title', medicine: medicine.name) }
+              DialogDescription { t('medicines.refill_modal.description') }
             end
 
             DialogMiddle do
@@ -63,7 +66,7 @@ module Components
       def render_form
         form_with(url: refill_medicine_path(medicine), method: :patch, class: 'space-y-4') do
           div(class: 'space-y-2') do
-            label(for: 'refill_quantity', class: 'text-sm font-medium') { 'Quantity' }
+            label(for: 'refill_quantity', class: 'text-sm font-medium') { t('medicines.refill_modal.quantity') }
             input(
               id: 'refill_quantity',
               type: 'number',
@@ -75,7 +78,7 @@ module Components
           end
 
           div(class: 'space-y-2') do
-            label(for: 'refill_restock_date', class: 'text-sm font-medium') { 'Restock date' }
+            label(for: 'refill_restock_date', class: 'text-sm font-medium') { t('medicines.refill_modal.restock_date') }
             input(
               id: 'refill_restock_date',
               type: 'date',
@@ -87,7 +90,7 @@ module Components
           end
 
           div(class: 'flex justify-end gap-3 pt-2') do
-            Button(type: :submit, variant: :primary) { 'Save Refill' }
+            Button(type: :submit, variant: :primary) { t('medicines.refill_button') }
           end
         end
       end

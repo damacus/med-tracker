@@ -105,6 +105,13 @@ cy:
     updated: "Diweddarwyd y feddyginiaeth yn llwyddiannus."
     deleted: "Dilëwyd y feddyginiaeth yn llwyddiannus."
     refilled: "Ailstociwyd y rhestr stoc yn llwyddiannus."
+    refill_button: "Ail-llenwi"
+    refill_modal:
+      refill_inventory: "Ail-llenwi Rhestr Eiddo"
+      title: "Ail-llenwi %{medicine}"
+      description: "Ychwanegu maint y stoc a chofnodi'r dyddiad ail-stocio."
+      quantity: "Nifer"
+      restock_date: "Dyddiad ail-stocio"
     form:
       new_title: "Ychwanegu Meddyginiaeth Newydd"
       new_subtitle: "Cofnodi manylion stoc a gwybodaeth dos."

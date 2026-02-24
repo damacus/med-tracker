@@ -124,6 +124,13 @@ en:
     updated: "Medicine was successfully updated."
     deleted: "Medicine was successfully deleted."
     refilled: "Inventory refilled successfully."
+    refill_button: "Refill"
+    refill_modal:
+      refill_inventory: "Refill Inventory"
+      title: "Refill %{medicine}"
+      description: "Add stock quantity and record the restock date."
+      quantity: "Quantity"
+      restock_date: "Restock date"
     form:
       new_title: "Add a New Medicine"
       new_subtitle: "Capture inventory details and dosage information."
