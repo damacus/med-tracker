@@ -125,9 +125,7 @@ module Components
             name: 'medicine[location_id]',
             id: 'medicine_location_id',
             required: true,
-            class: 'flex w-full rounded-2xl border border-slate-200 bg-white py-4 px-4 text-sm ' \
-                   'focus:outline-none focus:ring-2 focus:ring-primary/10 focus:border-primary ' \
-                   "transition-all appearance-none #{field_error_class(medicine, :location)}"
+            class: "#{select_classes} #{field_error_class(medicine, :location)}"
           ) do
             option(value: '') { 'Select a location...' }
             locations.each do |loc|
@@ -166,9 +164,7 @@ module Components
           select(
             name: 'medicine[category]',
             id: 'medicine_category',
-            class: 'flex w-full rounded-2xl border border-slate-200 bg-white py-4 px-4 text-sm ' \
-                   'focus:outline-none focus:ring-2 focus:ring-primary/10 focus:border-primary ' \
-                   "transition-all appearance-none #{field_error_class(medicine, :category)}"
+            class: "#{select_classes} #{field_error_class(medicine, :category)}"
           ) do
             option(value: '') { 'Select a category (optional)...' }
             Medicine::CATEGORIES.each do |cat|
@@ -228,9 +224,7 @@ module Components
           select(
             name: 'medicine[dosage_unit]',
             id: 'medicine_dosage_unit',
-            class: 'flex w-full rounded-2xl border border-slate-200 bg-white py-4 px-4 text-sm ' \
-                   'focus:outline-none focus:ring-2 focus:ring-primary/10 focus:border-primary ' \
-                   'transition-all appearance-none'
+            class: select_classes
           ) do
             option(value: '', selected: medicine.dosage_unit.blank?) { t('forms.medicines.select_unit') }
             dosage_units.each do |unit|

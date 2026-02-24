@@ -25,7 +25,7 @@ RSpec.describe 'MedicineNewLayout' do
         expect(page).to have_select('Unit')
         expect(page).to have_select('Unit', with_options: ['sachet'])
         expect(page).to have_field('Remaining Supply')
-        expect(page).to have_field('Stock')
+        expect(page).to have_field('Total Supply')
         expect(page).to have_field('Reorder Threshold')
         expect(page).to have_field('Warnings')
       end
@@ -36,7 +36,7 @@ RSpec.describe 'MedicineNewLayout' do
       fill_in 'Standard Dosage', with: 200
       select 'mg', from: 'Unit'
       fill_in 'Remaining Supply', with: 40
-      fill_in 'Stock', with: 80
+      fill_in 'Total Supply', with: 80
       fill_in 'Reorder Threshold', with: 10
       fill_in 'Warnings', with: 'Take with food'
 

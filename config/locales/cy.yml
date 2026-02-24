@@ -287,7 +287,7 @@ cy:
       unit: "Uned"
       select_unit: "Dewis uned"
       current_supply: "Cyflenwad sy'n weddill"
-      stock: "Stoc"
+      stock: "Cyfanswm Cyflenwad"
       reorder_threshold: "Trothwy Yn ail-drefnu"
       warnings: "Rhybuddion"
       save_medicine: "Cadw Meddyginiaeth"

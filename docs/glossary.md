@@ -12,7 +12,7 @@ The number of dispensable units left **right now**.
 - Drives low/out-of-stock logic.
 - Should be shown in patient/carer-facing quantity displays.
 
-### Stock (`medicines.stock`)
+### Total Supply (`medicines.stock`)
 
 The reference total inventory level for a medicine.
 
@@ -28,5 +28,5 @@ The level at or below which a medicine is considered low stock.
 ## Usage guidance
 
 - Prefer **Remaining Supply** in UI copy where users need “what is left now”.
-- Keep **Stock** as the term for baseline total/reference level.
+- Keep **Total Supply** as the term for baseline total/reference level.
 - If both are displayed together, format as `remaining_supply / stock`.

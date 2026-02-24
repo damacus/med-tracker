@@ -345,7 +345,7 @@ ga:
       unit: "Aonad"
       select_unit: "Roghnaigh aonad"
       current_supply: "Soláthar Faoi Lthair"
-      stock: "Stoc"
+      stock: "Soláthar Iomlán"
       reorder_threshold: "Tairseach Athorduithe"
       warnings: "Rabhaidh"
       save_medicine: "Sábháil Leigheas"
