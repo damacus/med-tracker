@@ -197,10 +197,8 @@ module Components
           }
           render Components::Medicines::RefillModal.new(
             medicine: medicine,
-            options: {
-              button_variant: :outline,
-              button_class: 'w-full py-7 rounded-2xl bg-white'
-            }
+            button_variant: :outline,
+            button_class: 'w-full py-7 rounded-2xl bg-white'
           )
         end
       end

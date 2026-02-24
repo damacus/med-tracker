@@ -7,13 +7,14 @@ module Components
 
       attr_reader :medicine, :button_variant, :button_class, :quantity, :restock_date, :icon_only
 
-      def initialize(medicine:, options: {})
+      def initialize(medicine:, button_variant: :outline, button_class: '', quantity: nil, restock_date: nil,
+                     icon_only: false)
         @medicine = medicine
-        @button_variant = options.fetch(:button_variant, :outline)
-        @button_class = options.fetch(:button_class, '')
-        @quantity = options[:quantity]
-        @restock_date = options[:restock_date]
-        @icon_only = options.fetch(:icon_only, false)
+        @button_variant = button_variant
+        @button_class = button_class
+        @quantity = quantity
+        @restock_date = restock_date
+        @icon_only = icon_only
         super()
       end
 
