@@ -111,10 +111,8 @@ module Components
             div(class: 'pt-4') do
               render Components::Medicines::RefillModal.new(
                 medicine: medicine,
-                options: {
-                  button_variant: :outline,
-                  button_class: 'w-full'
-                }
+                button_variant: :outline,
+                button_class: 'w-full'
               )
             end
           end
