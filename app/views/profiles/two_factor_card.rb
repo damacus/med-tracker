@@ -154,13 +154,11 @@ module Views
               end
             end
           end
-          button_to(
-            'Remove',
-            "/webauthn-remove?#{URI.encode_www_form(id: passkey.id)}",
-            method: :post,
-            class: 'text-sm text-destructive hover:text-destructive/80 font-medium',
-            data: { turbo_confirm: 'Are you sure you want to remove this passkey?' }
-          )
+          render RubyUI::Link.new(
+            href: "/webauthn-remove?#{URI.encode_www_form(view_context.rodauth.webauthn_remove_param => passkey.webauthn_id)}",
+            variant: :link,
+            class: 'text-sm text-destructive hover:text-destructive/80 font-medium p-0 h-auto'
+          ) { 'Remove' }
         end
       end
 

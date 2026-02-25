@@ -340,6 +340,7 @@ RSpec.describe 'Prescription Card', type: :system do
     end
 
     it 'displays all takes from today in reverse chronological order' do
+      travel_to(Time.zone.today.noon) do
       take1 = prescription.medication_takes.create!(
         taken_at: 8.hours.ago,
         amount_ml: prescription.dosage.amount
@@ -362,6 +363,7 @@ RSpec.describe 'Prescription Card', type: :system do
         expect(takes[0]).to include(take3.taken_at.strftime('%l:%M %p').strip)
         expect(takes[1]).to include(take2.taken_at.strftime('%l:%M %p').strip)
         expect(takes[2]).to include(take1.taken_at.strftime('%l:%M %p').strip)
+      end
       end
     end
 

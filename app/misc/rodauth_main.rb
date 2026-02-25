@@ -12,7 +12,7 @@ class RodauthMain < Rodauth::Rails::Auth
            :reset_password, :change_password, :change_login, :verify_login_change,
            :close_account, :omniauth,
            :otp, :recovery_codes,
-           :webauthn, :webauthn_login
+           :webauthn, :webauthn_login, :webauthn_autofill
 
     # See the Rodauth documentation for the list of available config options:
     # http://rodauth.jeremyevans.net/documentation.html

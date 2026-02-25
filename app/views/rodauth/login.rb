@@ -2,7 +2,7 @@
 
 module Views
   module Rodauth
-    class Login < Views::Base
+    class Login < Views::Rodauth::Base
       include Phlex::Rails::Helpers::FormWith
       include Phlex::Rails::Helpers::LinkTo
 
@@ -179,10 +179,6 @@ module Views
         view_context.flash[:alert].present? ? :destructive : :success
       end
 
-      def authenticity_token_field
-        input(type: 'hidden', name: 'authenticity_token', value: view_context.form_authenticity_token)
-      end
-
       def email_input_attrs
         {
           type: :email,
@@ -190,7 +186,7 @@ module Views
           id: 'email',
           required: true,
           autofocus: true,
-          autocomplete: 'username',
+          autocomplete: 'username webauthn',
           placeholder: t('sessions.login.email_placeholder'),
           value: view_context.params[:email]
         }

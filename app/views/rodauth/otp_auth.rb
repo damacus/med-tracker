@@ -41,10 +41,6 @@ module Views
         end
       end
 
-      def authenticity_token_field
-        input(type: 'hidden', name: 'authenticity_token', value: view_context.form_authenticity_token)
-      end
-
       def otp_code_field
         render RubyUI::FormField.new do
           render RubyUI::FormFieldLabel.new(for: 'otp-auth-code') { rodauth.otp_auth_label }

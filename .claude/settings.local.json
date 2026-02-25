@@ -23,7 +23,10 @@
       "Bash(find:*)",
       "Bash(task rubocop:*)",
       "Bash(grep:*)",
-      "Bash(bundle exec:*)"
+      "Bash(bundle exec:*)",
+      "Bash(task:*)",
+      "Bash(TEST_FILE=spec/system/dashboard_spec.rb task test:*)",
+      "Bash(TEST_FILE=spec/features/prescriptions/prescription_card_spec.rb:342 task test:*)"
     ]
   }
 }

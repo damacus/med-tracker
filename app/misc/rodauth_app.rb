@@ -10,6 +10,12 @@ class RodauthApp < Rodauth::Rails::App
   route do |r|
     rodauth.load_memory # autologin remembered users
 
+    # Handle GET request for passkey removal confirmation
+    r.get 'webauthn-remove' do
+      rodauth.require_two_factor_authenticated
+      rodauth.view 'webauthn-remove', 'Remove Passkey'
+    end
+
     r.rodauth # route rodauth requests
 
     # ==> Authenticating requests

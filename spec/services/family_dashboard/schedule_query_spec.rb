@@ -91,6 +91,10 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
     end
 
     context 'when a prescription is on cooldown' do
+      around do |example|
+        travel_to(Time.zone.today.noon) { example.run }
+      end
+
       let!(:prescription) do
         Prescription.create!(
           person: people(:john),

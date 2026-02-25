@@ -27,3 +27,4 @@ Before considering work complete:
 
 - [ ] Commit messages follow Conventional Commits format
 - [ ] Changes are atomic and focused
+- [ ] Created a GitHub PR with clear description and linked issues
