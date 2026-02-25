@@ -133,10 +133,10 @@ module Components
               location.members.each do |member|
                 div(class: 'flex items-center justify-between group') do
                   div(class: 'flex items-center gap-3') do
-                    div(class: 'w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500') do
+                    div(class: 'w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-600') do
                       render Icons::User.new(size: 16)
                     end
-                    Text(size: '2', weight: 'medium') { member.name }
+                    Text(size: '2', weight: 'semibold', class: 'text-slate-700') { member.name }
                   end
 
                   if view_context.policy(location).update?

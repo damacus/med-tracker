@@ -70,13 +70,15 @@ module Components
             end
 
             if location.members.any?
-              div(class: 'pt-4 border-t border-slate-50') do
-                Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-slate-400 mb-2 block') do
+              div(class: 'pt-4 border-t border-slate-100') do
+                Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-slate-500 mb-2 block') do
                   t('locations.index.members')
                 end
                 div(class: 'flex flex-wrap gap-1') do
                   location.members.each do |member|
-                    Badge(variant: :secondary, class: 'text-xs') { member.name }
+                    Badge(variant: :outline, class: 'text-[10px] bg-slate-50/50 text-slate-600 border-slate-200 font-medium') do
+                      member.name
+                    end
                   end
                 end
               end
