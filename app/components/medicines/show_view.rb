@@ -128,10 +128,12 @@ module Components
             end
 
             if medicine.low_stock?
-              div(class: 'pt-2') do
+              div(class: 'pt-2 space-y-2') do
                 Badge(variant: :destructive, class: 'w-full py-2 rounded-xl justify-center text-xs tracking-wide') do
                   t('medicines.show.low_stock_alert')
                 end
+
+                render_reorder_status_badge if medicine.reorder_status.present?
               end
             end
 
@@ -198,11 +200,69 @@ module Components
           render Button.new(variant: :primary, class: 'w-full py-7 rounded-2xl shadow-xl shadow-primary/20') {
             t('medicines.show.log_administration')
           }
-          render Components::Medicines::RefillModal.new(
-            medicine: medicine,
-            button_variant: :outline,
-            button_class: 'w-full py-7 rounded-2xl bg-white'
-          )
+
+          render_reorder_actions if medicine.low_stock?
+          render_refill_modal
+        end
+      end
+
+      def render_reorder_actions
+        if medicine.reorder_status.nil?
+          render_reorder_link(mark_as_ordered_medicine_path(medicine), 'Mark as Ordered', Icons::Clock)
+        elsif medicine.reorder_ordered?
+          render_reorder_link(mark_as_received_medicine_path(medicine), 'Mark as Received', Icons::Check)
+        end
+      end
+
+      def render_reorder_link(path, label, icon_class)
+        Link(href: path, variant: :outline, size: :lg,
+             data: { turbo_method: :patch },
+             class: 'w-full py-7 rounded-2xl bg-white flex items-center justify-center') do
+          render icon_class.new(size: 18, class: 'mr-2')
+          plain label
+        end
+      end
+
+      def render_refill_modal
+        button_class = if medicine.reorder_received?
+                         'w-full py-7 rounded-2xl'
+                       else
+                         'w-full py-7 rounded-2xl bg-white'
+                       end
+
+        render Components::Medicines::RefillModal.new(
+          medicine: medicine,
+          button_variant: medicine.reorder_received? ? :primary : :outline,
+          button_class: button_class,
+          button_label: medicine.reorder_received? ? 'Complete Refill' : nil
+        )
+      end
+
+      def render_reorder_status_badge
+        variant = case medicine.reorder_status.to_sym
+                  when :ordered then :default
+                  when :received then :success
+                  else :outline
+                  end
+
+        div(class: 'flex flex-col gap-1') do
+          Badge(variant: variant, class: 'w-full py-2 rounded-xl justify-center text-xs tracking-wide') do
+            t("medicines.reorder_statuses.#{medicine.reorder_status}")
+          end
+
+          timestamp = if medicine.reorder_received?
+                        medicine.reordered_at
+                      elsif medicine.reorder_ordered?
+                        medicine.ordered_at
+                      end
+
+          if timestamp
+            Text(size: '1', class: 'text-center text-slate-400 font-medium') do
+              status_text = t("medicines.reorder_statuses.#{medicine.reorder_status}")
+              time_ago = helpers.time_ago_in_words(timestamp)
+              "#{status_text} #{time_ago} ago"
+            end
+          end
         end
       end
 

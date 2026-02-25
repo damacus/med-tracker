@@ -107,8 +107,14 @@ module Components
       end
 
       def status_badge(medicine)
-        if medicine.low_stock?
+        if medicine.reorder_ordered?
+          Badge(variant: :default) { t('medicines.reorder_statuses.ordered') }
+        elsif medicine.reorder_received?
+          Badge(variant: :success) { t('medicines.reorder_statuses.received') }
+        elsif medicine.out_of_stock?
           Badge(variant: :destructive) { t('dashboard.statuses.out_of_stock') }
+        elsif medicine.low_stock?
+          Badge(variant: :warning) { t('medicines.show.low_stock_alert') }
         else
           Badge(variant: :success) { t('medicines.index.in_stock', default: 'In Stock') }
         end
@@ -159,11 +165,17 @@ module Components
             render Icons::Pencil.new(size: 16)
           end
           if view_context.policy(medicine).update?
+            refill_classes = if medicine.reorder_received?
+                               'flex items-center justify-center rounded-xl w-10 h-10 p-0'
+                             else
+                               'flex items-center justify-center rounded-xl w-10 h-10 p-0 ' \
+                                 'border-slate-100 bg-white hover:bg-slate-50 text-slate-400'
+                             end
+
             render Components::Medicines::RefillModal.new(
               medicine: medicine,
-              button_variant: :outline,
-              button_class: 'flex items-center justify-center rounded-xl w-10 h-10 p-0 ' \
-                            'border-slate-100 bg-white hover:bg-slate-50 text-slate-400',
+              button_variant: medicine.reorder_received? ? :primary : :outline,
+              button_class: refill_classes,
               icon_only: true
             )
           end

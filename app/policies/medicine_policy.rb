@@ -23,6 +23,18 @@ class MedicinePolicy < ApplicationPolicy
 
   alias edit? update?
 
+  def refill?
+    update? || nurse? || carer_or_parent?
+  end
+
+  def mark_as_ordered?
+    refill?
+  end
+
+  def mark_as_received?
+    refill?
+  end
+
   def destroy?
     admin?
   end

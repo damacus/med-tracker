@@ -42,6 +42,8 @@ Rails.application.routes.draw do
     member do
       get :dosages
       patch :refill
+      patch :mark_as_ordered
+      patch :mark_as_received
     end
   end
   get 'medicine-finder', to: 'medicines#finder', as: :medicine_finder

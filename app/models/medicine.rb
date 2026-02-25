@@ -12,6 +12,8 @@ class Medicine < ApplicationRecord # :nodoc:
   has_many :prescriptions, dependent: :destroy
   has_many :person_medicines, dependent: :destroy
 
+  enum :reorder_status, { requested: 0, ordered: 1, received: 2 }, prefix: :reorder
+
   validates :name, presence: true
   validates :category, inclusion: { in: CATEGORIES }, allow_blank: true
   validates :dosage_unit, inclusion: { in: DOSAGE_UNITS }, allow_blank: true
@@ -27,7 +29,10 @@ class Medicine < ApplicationRecord # :nodoc:
       new_supply = current_supply.to_i + increment
       update!(
         current_supply: new_supply,
-        supply_at_last_restock: new_supply
+        supply_at_last_restock: new_supply,
+        reorder_status: nil,
+        ordered_at: nil,
+        reordered_at: nil
       )
     end
 
