@@ -32,7 +32,12 @@ module Components
       private
 
       delegate :people, :active_prescriptions, :upcoming_prescriptions,
-               :current_user, :doses, to: :presenter
+               :current_user, :doses, :next_dose_time, to: :presenter
+
+      def next_dose_value
+        time = next_dose_time
+        time ? time.strftime('%H:%M') : t('dashboard.stats.no_upcoming_doses')
+      end
 
       def render_header
         div(class: 'flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12') do
@@ -88,7 +93,7 @@ module Components
           )
           render Components::Dashboard::StatCard.new(
             title: t('dashboard.stats.next_dose'),
-            value: '12:30',
+            value: next_dose_value,
             icon_type: 'clock'
           )
         end
@@ -145,29 +150,48 @@ module Components
       end
 
       def render_prescriptions_section
-        return if active_prescriptions.empty?
+        upcoming_doses = doses.reject { |d| d[:status] == :taken }.first(5)
+        return if upcoming_doses.empty?
 
         div(class: 'space-y-6') do
           Heading(level: 2, size: '5', class: 'font-bold') { t('dashboard.medication_schedule') }
           div(class: 'space-y-4') do
-            active_prescriptions.take(3).each do |prescription|
-              upcoming_dose_item(prescription)
+            upcoming_doses.each { |dose| upcoming_dose_item(dose) }
+          end
+        end
+      end
+
+      def upcoming_dose_item(dose)
+        source = dose[:source]
+        medicine = source.medicine
+        time_str = dose[:scheduled_at]&.strftime('%H:%M') || '--:--'
+        status = dose[:status]
+
+        div(class: 'flex items-start gap-3 p-1') do
+          div(class: "w-2 h-2 rounded-full mt-2 flex-shrink-0 #{status_dot_color(status)}")
+          div do
+            Text(weight: 'bold', size: '3') { "#{time_str} — #{medicine.name}" }
+            Text(size: '2', weight: 'muted') do
+              "#{dose[:person].name} · #{dosage_label(source)}"
             end
           end
         end
       end
 
-      def upcoming_dose_item(prescription)
-        div(class: 'flex items-start gap-3 p-1') do
-          div(class: 'w-2 h-2 rounded-full bg-primary mt-2 flex-shrink-0')
-          div do
-            Text(weight: 'bold', size: '3') { prescription.medicine.name }
-            div(class: 'flex gap-2 items-center') do
-              Text(size: '2', weight: 'muted') do
-                "#{prescription.dosage.amount} #{prescription.dosage.unit} — #{prescription.dosage.frequency}"
-              end
-            end
-          end
+      def status_dot_color(status)
+        case status
+        when :upcoming then 'bg-primary'
+        when :cooldown then 'bg-amber-400'
+        when :out_of_stock then 'bg-destructive'
+        else 'bg-slate-300'
+        end
+      end
+
+      def dosage_label(source)
+        if source.is_a?(Prescription)
+          "#{source.dosage.amount} #{source.dosage.unit}"
+        else
+          source.medicine.dosage_unit
         end
       end
 

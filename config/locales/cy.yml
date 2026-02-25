@@ -313,6 +313,7 @@ cy:
     stats:
       people: "Pobl"
       active_prescriptions: "Presgripsiynau Gweithredol"
+      no_upcoming_doses: "Dim un heddiw"
     statuses:
       taken: "Wedi cymryd"
       upcoming: "Ar ddod"
