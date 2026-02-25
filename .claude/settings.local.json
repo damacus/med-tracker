@@ -20,7 +20,10 @@
       "Bash(task test:*)",
       "Bash(bd create:*)",
       "Bash(tail:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(task rubocop:*)",
+      "Bash(grep:*)",
+      "Bash(bundle exec:*)"
     ]
   }
 }
