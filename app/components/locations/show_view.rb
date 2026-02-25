@@ -123,9 +123,7 @@ module Components
         Card(class: 'p-8 space-y-6') do
           div(class: 'flex items-center justify-between') do
             Heading(level: 3, size: '4', class: 'font-bold') { t('locations.show.members') }
-            if view_context.policy(location).update?
-              render_add_member_dialog
-            end
+            render_add_member_dialog if view_context.policy(location).update?
           end
 
           if location.members.any?
@@ -155,7 +153,12 @@ module Components
       def render_remove_member_dialog(member, membership)
         AlertDialog do
           AlertDialogTrigger do
-            Button(variant: :ghost, size: :sm, class: 'opacity-0 group-hover:opacity-100 transition-opacity text-slate-300 hover:text-destructive h-8 w-8 p-0') do
+            Button(
+              variant: :ghost,
+              size: :sm,
+              class: 'opacity-0 group-hover:opacity-100 transition-opacity text-slate-300 ' \
+                     'hover:text-destructive h-8 w-8 p-0'
+            ) do
               render Icons::X.new(size: 14)
             end
           end
@@ -170,7 +173,8 @@ module Components
 
             AlertDialogFooter do
               AlertDialogCancel(class: 'rounded-xl') { t('locations.show.remove_member.cancel') }
-              form_with(url: location_location_membership_path(location, membership), method: :delete, class: 'inline') do
+              form_with(url: location_location_membership_path(location, membership), method: :delete,
+                        class: 'inline') do
                 Button(variant: :destructive, type: :submit, class: 'rounded-xl shadow-lg shadow-destructive/20') do
                   t('locations.show.remove_member.submit')
                 end
@@ -185,7 +189,12 @@ module Components
           div(class: 'flex items-center justify-between') do
             Heading(level: 3, size: '4', class: 'font-bold') { t('locations.show.details') }
             if view_context.policy(location).update?
-              Link(href: edit_location_path(location, return_to: location_path(location)), variant: :ghost, size: :sm, class: 'text-slate-400 hover:text-primary h-8 w-8 p-0 flex items-center justify-center') do
+              Link(
+                href: edit_location_path(location, return_to: location_path(location)),
+                variant: :ghost,
+                size: :sm,
+                class: 'text-slate-400 hover:text-primary h-8 w-8 p-0 flex items-center justify-center'
+              ) do
                 render Icons::Pencil.new(size: 16)
               end
             end
@@ -204,7 +213,11 @@ module Components
 
         Dialog do
           DialogTrigger do
-            Button(variant: :ghost, size: :sm, class: 'w-8 h-8 p-0 rounded-full bg-slate-50 text-slate-400 hover:text-primary hover:bg-primary/5') do
+            Button(
+              variant: :ghost,
+              size: :sm,
+              class: 'w-8 h-8 p-0 rounded-full bg-slate-50 text-slate-400 hover:text-primary hover:bg-primary/5'
+            ) do
               render Icons::Plus.new(size: 16)
             end
           end
@@ -219,7 +232,9 @@ module Components
               if available_people.any?
                 form_with(url: location_location_memberships_path(location), method: :post, class: 'space-y-4') do
                   div(class: 'space-y-2') do
-                    label(for: 'location_membership_person_id', class: 'text-sm font-medium') { t('locations.show.add_member.select_person') }
+                    label(for: 'location_membership_person_id', class: 'text-sm font-medium') do
+                      t('locations.show.add_member.select_person')
+                    end
                     select(
                       name: 'location_membership[person_id]',
                       id: 'location_membership_person_id',
@@ -239,7 +254,10 @@ module Components
                 end
               else
                 div(class: 'py-8 text-center space-y-2') do
-                  div(class: 'w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 mx-auto') do
+                  div(
+                    class: 'w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center ' \
+                           'text-slate-300 mx-auto'
+                  ) do
                     render Icons::Users.new(size: 24)
                   end
                   Text(size: '2', class: 'text-slate-500 font-medium') { t('locations.show.add_member.all_assigned') }

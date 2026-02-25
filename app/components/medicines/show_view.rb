@@ -88,7 +88,9 @@ module Components
         div(class: 'space-y-4') do
           div(class: 'flex items-center gap-2') do
             render Icons::AlertCircle.new(size: 20, class: 'text-rose-500')
-            Heading(level: 2, size: '5', class: 'font-bold tracking-tight text-rose-500') { t('medicines.show.safety_warnings') }
+            Heading(level: 2, size: '5', class: 'font-bold tracking-tight text-rose-500') do
+              t('medicines.show.safety_warnings')
+            end
           end
           Card(class: 'bg-rose-50 border-rose-100 p-8') do
             Text(size: '3', class: 'text-rose-800 leading-relaxed font-medium') { medicine.warnings }
@@ -145,7 +147,8 @@ module Components
               forecast_item(t('medicines.show.forecast.low_in_days', days: medicine.days_until_low_stock), :warning)
             end
             if medicine.days_until_out_of_stock&.positive?
-              forecast_item(t('medicines.show.forecast.empty_in_days', days: medicine.days_until_out_of_stock), :destructive)
+              forecast_item(t('medicines.show.forecast.empty_in_days', days: medicine.days_until_out_of_stock),
+                            :destructive)
             end
           end
         else

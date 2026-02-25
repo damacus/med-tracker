@@ -78,7 +78,8 @@ module Components
             end
 
             div(class: 'px-10 py-6 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between gap-4') do
-              Link(href: return_to.presence || medicines_path, variant: :ghost, class: 'font-bold text-slate-400 hover:text-slate-600') do
+              Link(href: return_to.presence || medicines_path, variant: :ghost,
+                   class: 'font-bold text-slate-400 hover:text-slate-600') do
                 t('forms.medicines.back')
               end
               Button(type: :submit, variant: :primary, size: :lg,
