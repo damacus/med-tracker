@@ -125,7 +125,7 @@ RSpec.describe 'Two-Factor Authentication Management', type: :system do
 
       it 'shows remove button for each passkey' do
         visit profile_path
-        expect(page).to have_button('Remove')
+        expect(page).to have_link('Remove')
       end
 
       it 'shows add another button' do
@@ -194,12 +194,9 @@ RSpec.describe 'Two-Factor Authentication Management', type: :system do
 
       it 'redirects to the 2FA method chooser when removing a passkey' do
         visit profile_path
+        click_link 'Remove'
 
-        accept_confirm do
-          click_button 'Remove'
-        end
-
-        expect(page).to have_current_path('/profile')
+        expect(page).to have_current_path('/multifactor-manage')
         expect(account.account_webauthn_keys.count).to eq(1)
       end
     end

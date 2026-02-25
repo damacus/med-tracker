@@ -48,7 +48,7 @@ RSpec.describe 'PASSKEY-002: Passkey registration', type: :system do
 
       visit profile_path
 
-      expect(page).to have_button('Remove')
+      expect(page).to have_link('Remove')
     end
   end
 end
