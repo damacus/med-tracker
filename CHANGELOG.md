@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.3.8](https://github.com/damacus/med-tracker/compare/v0.3.7...v0.3.8) (2026-02-25)
+
+
+### Features
+
+* add default 'Home' location ([#550](https://github.com/damacus/med-tracker/issues/550)) ([cd3cfbe](https://github.com/damacus/med-tracker/commit/cd3cfbe2c0837b9527989b68c244f74a9c580953))
+* auto-link parent-created child profiles as dependents ([#548](https://github.com/damacus/med-tracker/issues/548)) ([61b6da0](https://github.com/damacus/med-tracker/commit/61b6da056b6c0a154ffe9699fa81f388d0a917c2))
+* make dashboard greeting time-aware with i18n support ([#549](https://github.com/damacus/med-tracker/issues/549)) ([0717add](https://github.com/damacus/med-tracker/commit/0717add8dcd703a155fd94cb561efa0e56f13ea7))
+
+
+### Bug Fixes
+
+* hide add medicine when unauthorized and allow parent create ([#546](https://github.com/damacus/med-tracker/issues/546)) ([4398e5a](https://github.com/damacus/med-tracker/commit/4398e5aa541e1fba6a8893bcba017453651007c0))
+* replace hardcoded next dose badge with real scheduled times ([#552](https://github.com/damacus/med-tracker/issues/552)) ([893452d](https://github.com/damacus/med-tracker/commit/893452d9e992e79d60a3643c7f197265d5e1dadd))
+
 ## [0.3.7](https://github.com/damacus/med-tracker/compare/v0.3.6...v0.3.7) (2026-02-24)
 
 
