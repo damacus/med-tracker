@@ -77,12 +77,15 @@ RSpec.describe 'People' do
 
   describe 'patients without carers' do
     it 'highlights dependent adults who need carer assignment' do
-      # Create a dependent adult without any carers
-      patient_without_carer = Person.create!(
+      carer = Person.create!(name: 'Temp Carer', date_of_birth: 40.years.ago, person_type: :adult)
+      patient_without_carer = Person.new(
         name: 'Unassigned Patient',
         date_of_birth: 30.years.ago,
         person_type: :dependent_adult
       )
+      patient_without_carer.carer_relationships.build(carer: carer, relationship_type: 'guardian')
+      patient_without_carer.save!
+      patient_without_carer.carer_relationships.destroy_all
 
       visit people_path
 
@@ -93,12 +96,15 @@ RSpec.describe 'People' do
     end
 
     it 'highlights minors who need carer assignment' do
-      # Create a minor without any carers
-      minor_without_carer = Person.create!(
+      carer = Person.create!(name: 'Temp Carer', date_of_birth: 40.years.ago, person_type: :adult)
+      minor_without_carer = Person.new(
         name: 'Unassigned Child',
         date_of_birth: 10.years.ago,
         person_type: :minor
       )
+      minor_without_carer.carer_relationships.build(carer: carer, relationship_type: 'parent')
+      minor_without_carer.save!
+      minor_without_carer.carer_relationships.destroy_all
 
       visit people_path
 
@@ -146,11 +152,15 @@ RSpec.describe 'People' do
       end
 
       it 'shows Assign Carer action for unassigned dependent patients' do
-        patient_without_carer = Person.create!(
+        carer = Person.create!(name: 'Temp Carer', date_of_birth: 45.years.ago, person_type: :adult)
+        patient_without_carer = Person.new(
           name: 'Unassigned Dependent',
           date_of_birth: 40.years.ago,
           person_type: :dependent_adult
         )
+        patient_without_carer.carer_relationships.build(carer: carer, relationship_type: 'guardian')
+        patient_without_carer.save!
+        patient_without_carer.carer_relationships.destroy_all
 
         visit people_path
 
@@ -171,11 +181,15 @@ RSpec.describe 'People' do
       end
 
       it 'hides Assign Carer action for unassigned dependent patients' do
-        patient_without_carer = Person.create!(
+        carer = Person.create!(name: 'Temp Carer', date_of_birth: 45.years.ago, person_type: :adult)
+        patient_without_carer = Person.new(
           name: 'Unassigned Dependent',
           date_of_birth: 40.years.ago,
           person_type: :dependent_adult
         )
+        patient_without_carer.carer_relationships.build(carer: carer, relationship_type: 'guardian')
+        patient_without_carer.save!
+        patient_without_carer.carer_relationships.destroy_all
 
         visit people_path
 
@@ -188,11 +202,15 @@ RSpec.describe 'People' do
       let(:user) { users(:doctor) }
 
       it 'hides Assign Carer action for unassigned dependent patients' do
-        patient_without_carer = Person.create!(
+        carer = Person.create!(name: 'Temp Carer', date_of_birth: 45.years.ago, person_type: :adult)
+        patient_without_carer = Person.new(
           name: 'Unassigned Dependent',
           date_of_birth: 40.years.ago,
           person_type: :dependent_adult
         )
+        patient_without_carer.carer_relationships.build(carer: carer, relationship_type: 'guardian')
+        patient_without_carer.save!
+        patient_without_carer.carer_relationships.destroy_all
 
         visit people_path
 

@@ -42,6 +42,8 @@ class Person < ApplicationRecord
     dependent_adult: 2
   }
 
+  before_validation :set_capacity_from_person_type
+
   validates :date_of_birth, presence: true
   validates :name, presence: true
   validates :email, allow_blank: true,
@@ -83,6 +85,13 @@ class Person < ApplicationRecord
   end
 
   private
+
+  def set_capacity_from_person_type
+    return unless minor? || dependent_adult?
+    return unless active_carer_relationship?
+
+    self.has_capacity = false
+  end
 
   def birthday_passed?(reference_date)
     month_day(reference_date) >= month_day(date_of_birth)

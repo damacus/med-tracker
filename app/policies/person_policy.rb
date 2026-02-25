@@ -9,15 +9,15 @@ class PersonPolicy < ApplicationPolicy
     admin? || medical_staff? || owns_record? || carer_with_patient? || parent_with_minor?
   end
 
-  def create?
-    # SECURITY: Admins should not create people directly
-    # People should only be created through proper user signup/invitation flows
-    # to prevent abuse and ensure proper account/authentication setup
-    # See: USER_MANAGEMENT_PLAN.md Phase 5.1 for invitation system
-    false
+  def new?
+    carer_or_parent?
   end
 
-  alias new? create?
+  def create?
+    return false unless carer_or_parent?
+
+    record.minor? || record.dependent_adult?
+  end
 
   def update?
     admin?

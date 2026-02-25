@@ -1,0 +1,84 @@
+# frozen_string_literal: true
+
+require 'rails_helper'
+
+RSpec.describe 'People' do
+  fixtures :accounts, :people, :users, :carer_relationships
+
+  describe 'POST /people' do
+    context 'when signed in as a parent' do
+      let(:parent_user) { users(:jane) }
+
+      before { sign_in(parent_user) }
+
+      it 'creates a minor and auto-links carer relationship' do
+        expect do
+          post people_path, params: {
+            person: {
+              name: 'New Child',
+              date_of_birth: 5.years.ago.to_date,
+              person_type: 'minor'
+            }
+          }
+        end.to change(Person, :count).by(1).and change(CarerRelationship, :count).by(1)
+
+        created_person = Person.last
+        expect(created_person.name).to eq('New Child')
+        expect(created_person.has_capacity).to be false
+
+        relationship = created_person.carer_relationships.first
+        expect(relationship.carer).to eq(parent_user.person)
+        expect(relationship.relationship_type).to eq('parent')
+        expect(relationship.active).to be true
+      end
+
+      it 'creates a dependent adult and auto-links carer relationship' do
+        expect do
+          post people_path, params: {
+            person: {
+              name: 'Dependent Adult',
+              date_of_birth: 70.years.ago.to_date,
+              person_type: 'dependent_adult'
+            }
+          }
+        end.to change(Person, :count).by(1)
+
+        created_person = Person.last
+        expect(created_person.has_capacity).to be false
+        expect(created_person.carer_relationships.first.carer).to eq(parent_user.person)
+      end
+
+      it 'rejects creating an adult person' do
+        expect do
+          post people_path, params: {
+            person: {
+              name: 'Another Adult',
+              date_of_birth: 30.years.ago.to_date,
+              person_type: 'adult'
+            }
+          }
+        end.not_to change(Person, :count)
+
+        expect(response).to redirect_to(root_path)
+      end
+    end
+
+    context 'when signed in as an admin' do
+      before { sign_in(users(:admin)) }
+
+      it 'rejects creating people' do
+        expect do
+          post people_path, params: {
+            person: {
+              name: 'Someone',
+              date_of_birth: 10.years.ago.to_date,
+              person_type: 'minor'
+            }
+          }
+        end.not_to change(Person, :count)
+
+        expect(response).to redirect_to(root_path)
+      end
+    end
+  end
+end
