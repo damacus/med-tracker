@@ -101,6 +101,47 @@ ga:
   invitation_mailer:
     subject: "Cuirí le bheith páirteach i MedTracker"
 
+  locations:
+    created: "Cruthaíodh an suíomh go rathúil."
+    updated: "Nuashonraíodh an suíomh go rathúil."
+    deleted: "Scriosadh an suíomh go rathúil."
+    index:
+      manage_locations: "Bainistigh Suíomhanna"
+      title: "Suíomhanna"
+      add_location: "Cuir Suíomh Leis"
+      members: "Baill"
+      view: "Amharc"
+      delete_dialog:
+        title: "Scrios Suíomh"
+        confirm: "An bhfuil tú cinnte gur mian leat %{name} a scriosadh? Scriosfaidh sé seo gach leigheas sa suíomh seo freisin."
+        cancel: "Cealaigh"
+        submit: "Scrios"
+    show:
+      location: "Suíomh"
+      edit_location: "Cuir an Suíomh in Eagar"
+      all_locations: "Gach Suíomh"
+      medicines_heading: "Leigheasanna sa tSuíomh seo"
+      no_medicines: "Níl aon leigheasanna sa suíomh seo fós."
+      members: "Baill"
+      no_members: "Níl aon bhaill sannta."
+      details: "Sonraí"
+      no_details: "Níor cuireadh aon tuairisc ar fáil."
+      add_member:
+        title: "Cuir Ball Leis"
+        description: "Cuir duine le %{name}"
+        select_person: "Roghnaigh Duine"
+        placeholder: "Roghnaigh duine..."
+        submit: "Cuir Ball Leis"
+        all_assigned: "Tá gach úsáideoir ina mbaill den suíomh seo cheana féin."
+
+  location_memberships:
+    create:
+      success: "Cuireadh %{name} le %{location}"
+      failure: "Theip ar bhall a chur leis"
+    destroy:
+      success: "Baineadh %{name} de %{location}"
+      failure: "Theip ar bhall a bhaint"
+
   rodauth:
     verify_account:
       subject: "Fíoraigh do chuntas MedTracker"

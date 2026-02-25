@@ -98,6 +98,47 @@ cy:
   invitation_mailer:
     subject: "Gwahoddiad i ymuno â MedTracker"
 
+  locations:
+    created: "Crëwyd y lleoliad yn llwyddiannus."
+    updated: "Diweddarwyd y lleoliad yn llwyddiannus."
+    deleted: "Dilewyd y lleoliad yn llwyddiannus."
+    index:
+      manage_locations: "Rheoli Lleoliadau"
+      title: "Lleoliadau"
+      add_location: "Ychwanegu Lleoliad"
+      members: "Aelodau"
+      view: "Gweld"
+      delete_dialog:
+        title: "Dileu Lleoliad"
+        confirm: "Ydych chi'n siŵr eich bod am ddileu %{name}? Bydd hyn hefyd yn dileu pob meddyginiaeth yn y lleoliad hwn."
+        cancel: "Canslo"
+        submit: "Dileu"
+    show:
+      location: "Lleoliad"
+      edit_location: "Golygu Lleoliad"
+      all_locations: "Pob Lleoliad"
+      medicines_heading: "Meddyginiaethau yn y Lleoliad hwn"
+      no_medicines: "Dim meddyginiaethau yn y lleoliad hwn eto."
+      members: "Aelodau"
+      no_members: "Dim aelodau wedi'u neilltuo."
+      details: "Manylion"
+      no_details: "Dim disgrifiad wedi'i ddarparu."
+      add_member:
+        title: "Ychwanegu Aelod"
+        description: "Ychwanegu person at %{name}"
+        select_person: "Dewis Person"
+        placeholder: "Dewiswch berson..."
+        submit: "Ychwanegu Aelod"
+        all_assigned: "Mae pob defnyddiwr eisoes yn aelodau o'r lleoliad hwn."
+
+  location_memberships:
+    create:
+      success: "Ychwanegwyd %{name} at %{location}"
+      failure: "Methwyd ag ychwanegu aelod"
+    destroy:
+      success: "Tynnwyd %{name} o %{location}"
+      failure: "Methwyd â thynnu aelod"
+
   medicines:
     finder:
       coming_soon: "Mae'r nodwedd hon yn dod yn fuan! Byddwn yn integreiddio â API cronfa ddata meddyginiaethau i ddarparu gwybodaeth fanwl am feddyginiaethau."

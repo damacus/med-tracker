@@ -47,7 +47,7 @@ module Components
             end
             div(class: 'space-y-1') do
               Text(size: '2', weight: 'black', class: 'uppercase tracking-[0.2em] font-bold opacity-40 block mb-1') do
-                'Location'
+                t('locations.show.location')
               end
               Heading(level: 1, size: '8', class: 'font-black tracking-tight') { location.name }
             end
@@ -56,11 +56,11 @@ module Components
           div(class: 'flex gap-3') do
             Link(href: edit_location_path(location), variant: :outline, size: :lg,
                  class: 'rounded-2xl font-bold text-sm bg-white') do
-              'Edit Location'
+              t('locations.show.edit_location')
             end
             Link(href: locations_path, variant: :ghost, size: :lg,
                  class: 'rounded-2xl font-bold text-sm text-slate-400 hover:text-slate-600') do
-              'All Locations'
+              t('locations.show.all_locations')
             end
           end
         end
@@ -69,7 +69,7 @@ module Components
       def render_medicines_section
         div(class: 'space-y-4') do
           div(class: 'flex items-center justify-between') do
-            Heading(level: 2, size: '5', class: 'font-bold tracking-tight') { 'Medicines at this Location' }
+            Heading(level: 2, size: '5', class: 'font-bold tracking-tight') { t('locations.show.medicines_heading') }
           end
 
           if location.medicines.any?
@@ -80,7 +80,7 @@ module Components
             end
           else
             Card(class: 'p-8 text-center') do
-              Text(size: '3', class: 'text-slate-400') { 'No medicines at this location yet.' }
+              Text(size: '3', class: 'text-slate-400') { t('locations.show.no_medicines') }
             end
           end
         end
@@ -122,7 +122,7 @@ module Components
       def render_members_card
         Card(class: 'p-8 space-y-6') do
           div(class: 'flex items-center justify-between') do
-            Heading(level: 3, size: '4', class: 'font-bold') { 'Members' }
+            Heading(level: 3, size: '4', class: 'font-bold') { t('locations.show.members') }
             if view_context.policy(location).update?
               render_add_member_dialog
             end
@@ -151,7 +151,7 @@ module Components
               end
             end
           else
-            Text(size: '2', class: 'text-slate-400 italic') { 'No members assigned.' }
+            Text(size: '2', class: 'text-slate-400 italic') { t('locations.show.no_members') }
           end
         end
       end
@@ -159,7 +159,7 @@ module Components
       def render_details_card
         Card(class: 'p-8 space-y-4') do
           div(class: 'flex items-center justify-between') do
-            Heading(level: 3, size: '4', class: 'font-bold') { 'Details' }
+            Heading(level: 3, size: '4', class: 'font-bold') { t('locations.show.details') }
             if view_context.policy(location).update?
               Link(href: edit_location_path(location), variant: :ghost, size: :sm, class: 'text-slate-400 hover:text-primary h-8 w-8 p-0 flex items-center justify-center') do
                 render Icons::Pencil.new(size: 16)
@@ -170,7 +170,7 @@ module Components
           if location.description.present?
             Text(size: '2', class: 'text-slate-600 leading-relaxed') { location.description }
           else
-            Text(size: '2', class: 'text-slate-400 italic') { 'No description provided.' }
+            Text(size: '2', class: 'text-slate-400 italic') { t('locations.show.no_details') }
           end
         end
       end
@@ -187,22 +187,22 @@ module Components
 
           DialogContent(size: :md) do
             DialogHeader do
-              DialogTitle { 'Add Member' }
-              DialogDescription { "Add a person to #{location.name}" }
+              DialogTitle { t('locations.show.add_member.title') }
+              DialogDescription { t('locations.show.add_member.description', name: location.name) }
             end
 
             DialogMiddle do
               if available_people.any?
                 form_with(url: location_location_memberships_path(location), method: :post, class: 'space-y-4') do
                   div(class: 'space-y-2') do
-                    label(for: 'location_membership_person_id', class: 'text-sm font-medium') { 'Select Person' }
+                    label(for: 'location_membership_person_id', class: 'text-sm font-medium') { t('locations.show.add_member.select_person') }
                     select(
                       name: 'location_membership[person_id]',
                       id: 'location_membership_person_id',
                       class: select_classes,
                       required: true
                     ) do
-                      option(value: '') { 'Select a person...' }
+                      option(value: '') { t('locations.show.add_member.placeholder') }
                       available_people.each do |person|
                         option(value: person.id) { person.name }
                       end
@@ -210,7 +210,7 @@ module Components
                   end
 
                   div(class: 'flex justify-end gap-3 pt-2') do
-                    Button(type: :submit, variant: :primary) { 'Add Member' }
+                    Button(type: :submit, variant: :primary) { t('locations.show.add_member.submit') }
                   end
                 end
               else
@@ -218,7 +218,7 @@ module Components
                   div(class: 'w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 mx-auto') do
                     render Icons::Users.new(size: 24)
                   end
-                  Text(size: '2', class: 'text-slate-500 font-medium') { 'All users are already members of this location.' }
+                  Text(size: '2', class: 'text-slate-500 font-medium') { t('locations.show.add_member.all_assigned') }
                 end
               end
             end

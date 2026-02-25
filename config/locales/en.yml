@@ -109,6 +109,42 @@ en:
     created: "Location was successfully created."
     updated: "Location was successfully updated."
     deleted: "Location was successfully deleted."
+    index:
+      manage_locations: "Manage Locations"
+      title: "Locations"
+      add_location: "Add Location"
+      members: "Members"
+      view: "View"
+      delete_dialog:
+        title: "Delete Location"
+        confirm: "Are you sure you want to delete %{name}? This will also delete all medicines at this location."
+        cancel: "Cancel"
+        submit: "Delete"
+    show:
+      location: "Location"
+      edit_location: "Edit Location"
+      all_locations: "All Locations"
+      medicines_heading: "Medicines at this Location"
+      no_medicines: "No medicines at this location yet."
+      members: "Members"
+      no_members: "No members assigned."
+      details: "Details"
+      no_details: "No description provided."
+      add_member:
+        title: "Add Member"
+        description: "Add a person to %{name}"
+        select_person: "Select Person"
+        placeholder: "Select a person..."
+        submit: "Add Member"
+        all_assigned: "All users are already members of this location."
+
+  location_memberships:
+    create:
+      success: "%{name} added to %{location}"
+      failure: "Failed to add member"
+    destroy:
+      success: "%{name} removed from %{location}"
+      failure: "Failed to remove member"
 
   medicines:
     finder:

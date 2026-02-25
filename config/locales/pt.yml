@@ -98,6 +98,47 @@ pt:
   invitation_mailer:
     subject: "Convite para aderir ao MedTracker"
 
+  locations:
+    created: "Localização criada com sucesso."
+    updated: "Localização atualizada com sucesso."
+    deleted: "Localização eliminada com sucesso."
+    index:
+      manage_locations: "Gerir Localizações"
+      title: "Localizações"
+      add_location: "Adicionar Localização"
+      members: "Membros"
+      view: "Ver"
+      delete_dialog:
+        title: "Eliminar Localização"
+        confirm: "Tem a certeza que deseja eliminar %{name}? Isto também eliminará todos os medicamentos nesta localização."
+        cancel: "Cancelar"
+        submit: "Eliminar"
+    show:
+      location: "Localização"
+      edit_location: "Editar Localização"
+      all_locations: "Todas as Localizações"
+      medicines_heading: "Medicamentos nesta Localização"
+      no_medicines: "Ainda não existem medicamentos nesta localização."
+      members: "Membros"
+      no_members: "Nenhum membro atribuído."
+      details: "Detalhes"
+      no_details: "Nenhuma descrição fornecida."
+      add_member:
+        title: "Adicionar Membro"
+        description: "Adicionar uma pessoa a %{name}"
+        select_person: "Selecionar Pessoa"
+        placeholder: "Selecione uma pessoa..."
+        submit: "Adicionar Membro"
+        all_assigned: "Todos os utilizadores já são membros desta localização."
+
+  location_memberships:
+    create:
+      success: "%{name} adicionado a %{location}"
+      failure: "Falha ao adicionar membro"
+    destroy:
+      success: "%{name} removido de %{location}"
+      failure: "Falha ao remover membro"
+
   medicines:
     finder:
       coming_soon: "Esta funcionalidade estará disponível em breve! Iremos integrar com uma API de base de dados de medicamentos para fornecer informações detalhadas sobre os medicamentos."
