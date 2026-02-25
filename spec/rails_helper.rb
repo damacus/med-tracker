@@ -87,6 +87,9 @@ RSpec.configure do |config|
 
   # Include FactoryBot syntax methods
   config.include FactoryBot::Syntax::Methods
+
+  # Include ActiveSupport TimeHelpers for travel_to
+  config.include ActiveSupport::Testing::TimeHelpers
 end
 
 # Include Pundit matchers for policy specs after RSpec is configured
