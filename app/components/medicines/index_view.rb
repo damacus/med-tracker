@@ -30,15 +30,17 @@ module Components
             end
             Heading(level: 1, size: '8', class: 'font-extrabold tracking-tight') { 'Medicines' }
           end
-          Link(
-            href: new_medicine_path,
-            variant: :primary,
-            size: :lg,
-            class: 'rounded-2xl font-bold text-sm shadow-lg shadow-primary/20',
-            data: { turbo_stream: true }
-          ) do
-            render Icons::Pill.new(size: 20, class: 'mr-2')
-            span { 'Add Medicine' }
+          if view_context.policy(Medicine).create?
+            Link(
+              href: new_medicine_path,
+              variant: :primary,
+              size: :lg,
+              class: 'rounded-2xl font-bold text-sm shadow-lg shadow-primary/20',
+              data: { turbo_stream: true }
+            ) do
+              render Icons::Pill.new(size: 20, class: 'mr-2')
+              span { 'Add Medicine' }
+            end
           end
         end
       end

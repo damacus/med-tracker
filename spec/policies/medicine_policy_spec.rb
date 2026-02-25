@@ -77,12 +77,12 @@ RSpec.describe MedicinePolicy, type: :policy do
   describe 'for parent' do
     let(:current_user) { users(:parent) }
 
-    it 'permits viewing but forbids write actions' do
+    it 'permits viewing and creating but forbids edit/destroy actions' do
       aggregate_failures do
         expect(policy.index?).to be true
         expect(policy.show?).to be true
-        expect(policy.create?).to be false
-        expect(policy.new?).to be false
+        expect(policy.create?).to be true
+        expect(policy.new?).to be true
         expect(policy.update?).to be false
         expect(policy.edit?).to be false
         expect(policy.destroy?).to be false
