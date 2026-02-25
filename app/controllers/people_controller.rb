@@ -51,7 +51,8 @@ class PeopleController < ApplicationController
   def edit
     @person = Person.find(params[:id])
     authorize @person
-    render Components::People::FormView.new(person: @person)
+    @return_to = params[:return_to]
+    render Components::People::FormView.new(person: @person, return_to: @return_to)
   end
 
   def create
@@ -88,12 +89,12 @@ class PeopleController < ApplicationController
     authorize @person
     respond_to do |format|
       if @person.update(person_params)
-        format.html { redirect_back_or_to @person, notice: t('people.updated') }
-        format.turbo_stream { redirect_back_or_to people_path, notice: t('people.updated') }
+        format.html { redirect_to params[:return_to].presence || @person, notice: t('people.updated') }
+        format.turbo_stream { redirect_to params[:return_to].presence || people_path, notice: t('people.updated') }
         format.json { render :show, status: :ok, location: @person }
       else
         format.html do
-          render Components::People::FormView.new(person: @person), status: :unprocessable_content
+          render Components::People::FormView.new(person: @person, return_to: params[:return_to]), status: :unprocessable_content
         end
         format.json { render json: @person.errors, status: :unprocessable_content }
       end

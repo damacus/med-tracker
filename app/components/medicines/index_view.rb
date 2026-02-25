@@ -151,25 +151,12 @@ module Components
             'View'
           end
           Link(
-            href: edit_medicine_path(medicine),
+            href: edit_medicine_path(medicine, return_to: medicines_path),
             variant: :outline,
             size: :sm,
             class: 'rounded-xl w-10 h-10 p-0 border-slate-100 bg-white hover:bg-slate-50 text-slate-400'
           ) do
-            svg(
-              xmlns: 'http://www.w3.org/2000/svg',
-              class: 'w-4 h-4',
-              fill: 'none',
-              viewBox: '0 0 24 24',
-              stroke: 'currentColor'
-            ) do |s|
-              s.path(
-                stroke_linecap: 'round',
-                stroke_linejoin: 'round',
-                stroke_width: '2',
-                d: 'M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z'
-              )
-            end
+            render Icons::Pencil.new(size: 16)
           end
           if view_context.policy(medicine).update?
             render Components::Medicines::RefillModal.new(

@@ -111,7 +111,7 @@ module Components
             t('locations.index.view')
           end
           Link(
-            href: edit_location_path(location),
+            href: edit_location_path(location, return_to: locations_path),
             variant: :outline,
             size: :sm,
             class: 'rounded-xl w-10 h-10 p-0 border-slate-100 bg-white hover:bg-slate-50 text-slate-400'

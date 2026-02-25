@@ -60,7 +60,7 @@ module Components
           end
 
           div(class: 'flex gap-3') do
-            Link(href: edit_medicine_path(medicine), variant: :outline, size: :lg,
+            Link(href: edit_medicine_path(medicine, return_to: medicine_path(medicine)), variant: :outline, size: :lg,
                  class: 'rounded-2xl font-bold text-sm bg-white') do
               'Edit Details'
             end

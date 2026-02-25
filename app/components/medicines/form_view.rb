@@ -6,13 +6,14 @@ module Components
       include Phlex::Rails::Helpers::FormWith
       include Phlex::Rails::Helpers::Pluralize
 
-      attr_reader :medicine, :title, :subtitle, :locations
+      attr_reader :medicine, :title, :subtitle, :locations, :return_to
 
-      def initialize(medicine:, title:, subtitle: nil, locations: Location.order(:name))
+      def initialize(medicine:, title:, subtitle: nil, locations: Location.order(:name), return_to: nil)
         @medicine = medicine
         @title = title
         @subtitle = subtitle
         @locations = locations
+        @return_to = return_to
         super()
       end
 
@@ -48,6 +49,7 @@ module Components
           data: { testid: 'medicine-form' }
         ) do |form|
           render_errors(form) if medicine.errors.any?
+          input(type: 'hidden', name: 'return_to', value: return_to) if return_to.present?
 
           Card(class: 'overflow-hidden border-none shadow-2xl rounded-[2.5rem] bg-white') do
             div(class: 'p-10 space-y-8') do
@@ -76,8 +78,8 @@ module Components
             end
 
             div(class: 'px-10 py-6 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between gap-4') do
-              Link(href: medicines_path, variant: :ghost, class: 'font-bold text-slate-400 hover:text-slate-600') do
-                t('forms.medicines.back_to_medicines')
+              Link(href: return_to.presence || medicines_path, variant: :ghost, class: 'font-bold text-slate-400 hover:text-slate-600') do
+                'Back'
               end
               Button(type: :submit, variant: :primary, size: :lg,
                      class: 'px-8 rounded-2xl shadow-lg shadow-primary/20') do

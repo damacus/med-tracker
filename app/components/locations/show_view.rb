@@ -54,7 +54,7 @@ module Components
           end
 
           div(class: 'flex gap-3') do
-            Link(href: edit_location_path(location), variant: :outline, size: :lg,
+            Link(href: edit_location_path(location, return_to: location_path(location)), variant: :outline, size: :lg,
                  class: 'rounded-2xl font-bold text-sm bg-white') do
               t('locations.show.edit_location')
             end
@@ -185,7 +185,7 @@ module Components
           div(class: 'flex items-center justify-between') do
             Heading(level: 3, size: '4', class: 'font-bold') { t('locations.show.details') }
             if view_context.policy(location).update?
-              Link(href: edit_location_path(location), variant: :ghost, size: :sm, class: 'text-slate-400 hover:text-primary h-8 w-8 p-0 flex items-center justify-center') do
+              Link(href: edit_location_path(location, return_to: location_path(location)), variant: :ghost, size: :sm, class: 'text-slate-400 hover:text-primary h-8 w-8 p-0 flex items-center justify-center') do
                 render Icons::Pencil.new(size: 16)
               end
             end

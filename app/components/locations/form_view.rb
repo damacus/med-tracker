@@ -6,12 +6,13 @@ module Components
       include Phlex::Rails::Helpers::FormWith
       include Phlex::Rails::Helpers::Pluralize
 
-      attr_reader :location, :title, :subtitle
+      attr_reader :location, :title, :subtitle, :return_to
 
-      def initialize(location:, title:, subtitle: nil)
+      def initialize(location:, title:, subtitle: nil, return_to: nil)
         @location = location
         @title = title
         @subtitle = subtitle
+        @return_to = return_to
         super()
       end
 
@@ -44,6 +45,7 @@ module Components
           data: { testid: 'location-form' }
         ) do |form|
           render_errors if location.errors.any?
+          input(type: 'hidden', name: 'return_to', value: return_to) if return_to.present?
 
           Card(class: 'overflow-hidden border-none shadow-2xl rounded-[2.5rem] bg-white') do
             div(class: 'p-10 space-y-8') do
@@ -52,8 +54,8 @@ module Components
             end
 
             div(class: 'px-10 py-6 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between gap-4') do
-              Link(href: locations_path, variant: :ghost, class: 'font-bold text-slate-400 hover:text-slate-600') do
-                'Back to Locations'
+              Link(href: return_to.presence || locations_path, variant: :ghost, class: 'font-bold text-slate-400 hover:text-slate-600') do
+                'Back'
               end
               Button(type: :submit, variant: :primary, size: :lg,
                      class: 'px-8 rounded-2xl shadow-lg shadow-primary/20') do
