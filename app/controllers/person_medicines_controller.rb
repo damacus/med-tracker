@@ -4,7 +4,7 @@ class PersonMedicinesController < ApplicationController
   include TimelineRefreshable
 
   before_action :set_person
-  before_action :set_person_medicine, only: %i[destroy take_medicine reorder]
+  before_action :set_person_medicine, only: %i[edit update destroy take_medicine reorder]
 
   def new
     authorize PersonMedicine
@@ -27,6 +27,34 @@ class PersonMedicinesController < ApplicationController
             person: @person,
             medicines: @medicines,
             title: t('person_medicines.modal.new_title', person: @person.name)
+          )
+        )
+      end
+    end
+  end
+
+  def edit
+    authorize @person_medicine
+    @medicines = available_medicines
+
+    respond_to do |format|
+      format.html do
+        render Components::PersonMedicines::FormView.new(
+          person_medicine: @person_medicine,
+          person: @person,
+          medicines: @medicines,
+          editing: true
+        )
+      end
+      format.turbo_stream do
+        render turbo_stream: turbo_stream.replace(
+          'person_medicine_modal',
+          Components::PersonMedicines::Modal.new(
+            person_medicine: @person_medicine,
+            person: @person,
+            medicines: @medicines,
+            title: t('person_medicines.modal.edit_title', person: @person.name),
+            editing: true
           )
         )
       end
@@ -67,6 +95,51 @@ class PersonMedicinesController < ApplicationController
               person: @person,
               medicines: @medicines,
               title: t('person_medicines.modal.new_title', person: @person.name)
+            )
+          ), status: :unprocessable_content
+        end
+      end
+    end
+  end
+
+  def update
+    authorize @person_medicine
+    @medicines = available_medicines
+
+    if @person_medicine.update(person_medicine_params)
+      respond_to do |format|
+        format.html { redirect_to person_path(@person), notice: t('person_medicines.updated') }
+        format.turbo_stream do
+          flash.now[:notice] = t('person_medicines.updated')
+          render turbo_stream: [
+            turbo_stream.remove('person_medicine_modal'),
+            turbo_stream.replace(
+              "person_medicine_#{@person_medicine.id}",
+              Components::PersonMedicines::Card.new(person_medicine: @person_medicine.reload, person: @person)
+            ),
+            turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
+          ]
+        end
+      end
+    else
+      respond_to do |format|
+        format.html do
+          render Components::PersonMedicines::FormView.new(
+            person_medicine: @person_medicine,
+            person: @person,
+            medicines: @medicines,
+            editing: true
+          ), status: :unprocessable_content
+        end
+        format.turbo_stream do
+          render turbo_stream: turbo_stream.update(
+            'person_medicine_modal',
+            Components::PersonMedicines::Modal.new(
+              person_medicine: @person_medicine,
+              person: @person,
+              medicines: @medicines,
+              title: t('person_medicines.modal.edit_title', person: @person.name),
+              editing: true
             )
           ), status: :unprocessable_content
         end

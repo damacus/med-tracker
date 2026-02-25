@@ -2,18 +2,19 @@
 
 module Components
   module PersonMedicines
-    # Form view for adding a person medicine (OTC/supplement)
+    # Form view for adding or editing a person medicine (OTC/supplement)
     class FormView < Components::Base
       include Phlex::Rails::Helpers::FormWith
       include Phlex::Rails::Helpers::OptionsFromCollectionForSelect
       include Phlex::Rails::Helpers::Pluralize
 
-      attr_reader :person_medicine, :person, :medicines
+      attr_reader :person_medicine, :person, :medicines, :editing
 
-      def initialize(person_medicine:, person:, medicines:)
+      def initialize(person_medicine:, person:, medicines:, editing: false)
         @person_medicine = person_medicine
         @person = person
         @medicines = medicines
+        @editing = editing
         super()
       end
 
@@ -31,14 +32,21 @@ module Components
           Text(size: '2', weight: 'medium', class: 'uppercase tracking-wide text-slate-500 mb-2') do
             t('person_medicines.form.add_medicine')
           end
-          Heading(level: 1) { t('person_medicines.form.add_medicine_for', person: person.name) }
+          Heading(level: 1) do
+            if editing
+              t('person_medicines.form.edit_medicine_for', person: person.name)
+            else
+              t('person_medicines.form.add_medicine_for', person: person.name)
+            end
+          end
         end
       end
 
       def render_form
         form_with(
           model: person_medicine,
-          url: person_person_medicines_path(person),
+          url: editing ? person_person_medicine_path(person, person_medicine) : person_person_medicines_path(person),
+          method: editing ? :patch : :post,
           class: 'space-y-6'
         ) do |form|
           render_errors if person_medicine.errors.any?
@@ -63,13 +71,15 @@ module Components
       end
 
       def render_form_fields(_form)
-        render FormFields.new(person_medicine: person_medicine, medicines: medicines)
+        render FormFields.new(person_medicine: person_medicine, medicines: medicines, editing: editing)
       end
 
       def render_actions
         div(class: 'flex justify-end gap-3 pt-4') do
           Link(href: person_path(person), variant: :outline) { t('person_medicines.form.cancel') }
-          Button(type: :submit, variant: :primary) { t('person_medicines.form.add_medicine_button') }
+          Button(type: :submit, variant: :primary) do
+            editing ? t('person_medicines.form.save_changes_button') : t('person_medicines.form.add_medicine_button')
+          end
         end
       end
     end
