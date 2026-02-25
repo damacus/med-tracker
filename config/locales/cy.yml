@@ -158,6 +158,41 @@ cy:
       new_subtitle: "Cofnodi manylion stoc a gwybodaeth dos."
       edit_title: "Golygu Meddyginiaeth"
       edit_subtitle: "Diweddaru manylion %{name}."
+    index:
+      your_inventory: "Eich Rhestr"
+      title: "Meddyginiaethau"
+      add_medicine: "Ychwanegu Meddyginiaeth"
+      all: "Pob un"
+      view: "Gweld"
+      inventory_level: "Llefel Rhestr"
+      units: "uned"
+      in_stock: "Mewn Stoc"
+      delete_dialog:
+        title: "Dileu Meddyginiaeth"
+        confirm: "Ydych chi'n sicr eich bod am ddileu %{name}? Ni ellir dadwneud y weithred hon."
+        submit: "Dileu"
+        cancel: "Canslo"
+    show:
+      profile: "Proffil Meddyginiaeth"
+      edit_details: "Golygu Manylion"
+      inventory: "Rhestr Eiddo"
+      overview: "Trosolwg"
+      no_description: "Dim disgrifiad wedi'i ddarparu."
+      safety_warnings: "Rhybuddion Diogelwch"
+      inventory_status: "Statws Rhestr"
+      remaining: "uned yn weddill"
+      supply_level: "Llefel Cyflenwad"
+      reorder_at: "ail-archebu am %{threshold}"
+      forecast_unavailable: "Rhagolwg ddim ar gael"
+      standard_dosage: "Dos Safonol"
+      no_dosage: "Dim dos safonol wedi'i nodi."
+      reorder_at_label: "Ail-archebu am"
+      log_administration: "Logio Gweinyddu"
+      low_stock_alert: "⚠️ Rhybudd Stoc Isel"
+      forecast:
+        low_in_days: "Bydd y cyflenwad yn isel mewn %{days} diwrnod"
+        empty_in_days: "Bydd y cyflenwad yn wag mewn %{days} diwrnod"
+      location: "Lleoliad"
 
   passwords:
     reset_sent: >-
@@ -241,6 +276,8 @@ cy:
       take: "💊 Cymryd"
       give: "💊 Rhoi"
       out_of_stock: "💊 Allan o Stoc"
+      ready_now: "Yn Barod Nawr"
+      waiting: "Yn Aros"
       edit: "Golygu"
       delete: "Dileu"
       delete_dialog:
@@ -329,6 +366,8 @@ cy:
       logout: "Allgofnodi"
   forms:
     medicines:
+      inventory_management: "Rheoli Rhestr Eiddo"
+      dosage_and_supply: "Dos a Chyflenwad"
       name: "Enw"
       description: "Disgrifiad"
       standard_dosage: "Dosio Safonol"
@@ -339,6 +378,9 @@ cy:
       warnings: "Rhybuddion"
       save_medicine: "Cadw Meddyginiaeth"
       back_to_medicines: "Yn ôl i Feddyginiaethau"
+      back: "Yn ôl"
+      select_location: "Dewiswch leoliad..."
+      select_category: "Dewiswch gategori (dewisol)..."
       validation_errors:
         one: "1 gwall wedi atal y meddyginiaeth hon rhag cael ei chadw:"
         other: "%{count} wall wedi atal y meddyginiaeth hon rhag cael ei chadw:"

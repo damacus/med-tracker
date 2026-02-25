@@ -49,7 +49,7 @@ module Components
             end
             div(class: 'space-y-1') do
               Text(size: '2', weight: 'black', class: 'uppercase tracking-[0.2em] font-bold opacity-40 block mb-1') do
-                'Medicine Profile'
+                t('medicines.show.profile')
               end
               Heading(level: 1, size: '8', class: 'font-black tracking-tight') { medicine.name }
               div(class: 'flex items-center gap-1 mt-1') do
@@ -62,11 +62,12 @@ module Components
           div(class: 'flex gap-3') do
             Link(href: edit_medicine_path(medicine, return_to: medicine_path(medicine)), variant: :outline, size: :lg,
                  class: 'rounded-2xl font-bold text-sm bg-white') do
-              'Edit Details'
+              render Icons::Pencil.new(size: 16, class: 'mr-2')
+              plain t('medicines.show.edit_details')
             end
             Link(href: medicines_path, variant: :ghost, size: :lg,
                  class: 'rounded-2xl font-bold text-sm text-slate-400 hover:text-slate-600') do
-              'Inventory'
+              t('medicines.show.inventory')
             end
           end
         end
@@ -74,10 +75,10 @@ module Components
 
       def render_description_section
         div(class: 'space-y-4') do
-          Heading(level: 2, size: '5', class: 'font-bold tracking-tight') { 'Overview' }
+          Heading(level: 2, size: '5', class: 'font-bold tracking-tight') { t('medicines.show.overview') }
           Card(class: 'p-8') do
             Text(size: '3', class: 'text-slate-600 leading-relaxed') do
-              medicine.description.presence || 'No description provided.'
+              medicine.description.presence || t('medicines.show.no_description')
             end
           end
         end
@@ -87,7 +88,7 @@ module Components
         div(class: 'space-y-4') do
           div(class: 'flex items-center gap-2') do
             render Icons::AlertCircle.new(size: 20, class: 'text-rose-500')
-            Heading(level: 2, size: '5', class: 'font-bold tracking-tight text-rose-500') { 'Safety Warnings' }
+            Heading(level: 2, size: '5', class: 'font-bold tracking-tight text-rose-500') { t('medicines.show.safety_warnings') }
           end
           Card(class: 'bg-rose-50 border-rose-100 p-8') do
             Text(size: '3', class: 'text-rose-800 leading-relaxed font-medium') { medicine.warnings }
@@ -97,7 +98,7 @@ module Components
 
       def render_stock_card
         Card(class: 'p-8 space-y-6 overflow-hidden relative') do
-          Heading(level: 3, size: '4', class: 'font-bold') { 'Inventory Status' }
+          Heading(level: 3, size: '4', class: 'font-bold') { t('medicines.show.inventory_status') }
 
           current = medicine.current_supply || 0
           percentage = medicine.supply_percentage
@@ -107,7 +108,7 @@ module Components
               span(class: "text-5xl font-black #{medicine.low_stock? ? 'text-rose-600' : 'text-primary'}") do
                 current.to_s
               end
-              Text(size: '2', weight: 'bold', class: 'text-slate-400') { 'units remaining' }
+              Text(size: '2', weight: 'bold', class: 'text-slate-400') { t('medicines.show.remaining') }
             end
 
             div(class: 'space-y-2') do
@@ -119,15 +120,15 @@ module Components
                 class: 'flex justify-between items-center text-[10px] font-black uppercase ' \
                        'tracking-widest text-slate-400'
               ) do
-                span { 'Supply Level' }
-                span { "reorder at #{medicine.reorder_threshold}" }
+                span { t('medicines.show.supply_level') }
+                span { t('medicines.show.reorder_at', threshold: medicine.reorder_threshold) }
               end
             end
 
             if medicine.low_stock?
               div(class: 'pt-2') do
                 Badge(variant: :destructive, class: 'w-full py-2 rounded-xl justify-center text-xs tracking-wide') do
-                  '⚠️ Low Stock Alert'
+                  t('medicines.show.low_stock_alert')
                 end
               end
             end
@@ -141,15 +142,15 @@ module Components
         if medicine.forecast_available?
           div(class: 'pt-4 border-t border-slate-50 space-y-2') do
             if medicine.days_until_low_stock&.positive?
-              forecast_item("Supply will be low in #{medicine.days_until_low_stock} days", :warning)
+              forecast_item(t('medicines.show.forecast.low_in_days', days: medicine.days_until_low_stock), :warning)
             end
             if medicine.days_until_out_of_stock&.positive?
-              forecast_item("Supply will be empty in #{medicine.days_until_out_of_stock} days", :destructive)
+              forecast_item(t('medicines.show.forecast.empty_in_days', days: medicine.days_until_out_of_stock), :destructive)
             end
           end
         else
           div(class: 'pt-4 border-t border-slate-50') do
-            Text(size: '2', class: 'text-slate-400 italic') { 'Forecast unavailable' }
+            Text(size: '2', class: 'text-slate-400 italic') { t('medicines.show.forecast_unavailable') }
           end
         end
       end
@@ -165,7 +166,7 @@ module Components
 
       def render_dosage_card
         Card(class: 'p-8 space-y-6') do
-          Heading(level: 3, size: '4', class: 'font-bold') { 'Standard Dosage' }
+          Heading(level: 3, size: '4', class: 'font-bold') { t('medicines.show.standard_dosage') }
 
           if dosage_specified?
             div(class: 'flex items-center gap-4') do
@@ -180,11 +181,11 @@ module Components
               end
             end
           else
-            Text(size: '2', class: 'text-slate-400 italic') { 'No standard dosage specified.' }
+            Text(size: '2', class: 'text-slate-400 italic') { t('medicines.show.no_dosage') }
           end
 
           div(class: 'pt-4 border-t border-slate-50') do
-            overview_item('Reorder At', "#{medicine.reorder_threshold} units", Icons::Settings)
+            overview_item(t('medicines.show.reorder_at_label'), "#{medicine.reorder_threshold} units", Icons::Settings)
           end
         end
       end
@@ -192,7 +193,7 @@ module Components
       def render_actions_card
         div(class: 'space-y-4') do
           render Button.new(variant: :primary, class: 'w-full py-7 rounded-2xl shadow-xl shadow-primary/20') {
-            'Log Administration'
+            t('medicines.show.log_administration')
           }
           render Components::Medicines::RefillModal.new(
             medicine: medicine,

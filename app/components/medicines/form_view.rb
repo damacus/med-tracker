@@ -79,7 +79,7 @@ module Components
 
             div(class: 'px-10 py-6 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between gap-4') do
               Link(href: return_to.presence || medicines_path, variant: :ghost, class: 'font-bold text-slate-400 hover:text-slate-600') do
-                'Back'
+                t('forms.medicines.back')
               end
               Button(type: :submit, variant: :primary, size: :lg,
                      class: 'px-8 rounded-2xl shadow-lg shadow-primary/20') do
@@ -122,14 +122,14 @@ module Components
           render RubyUI::FormFieldLabel.new(
             for: 'medicine_location_id',
             class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1'
-          ) { 'Location' }
+          ) { t('medicines.show.location') }
           select(
             name: 'medicine[location_id]',
             id: 'medicine_location_id',
             required: true,
             class: "#{select_classes} #{field_error_class(medicine, :location)}"
           ) do
-            option(value: '') { 'Select a location...' }
+            option(value: '') { t('forms.medicines.select_location') }
             locations.each do |loc|
               option(value: loc.id, selected: medicine.location_id == loc.id) { loc.name }
             end
@@ -168,7 +168,7 @@ module Components
             id: 'medicine_category',
             class: "#{select_classes} #{field_error_class(medicine, :category)}"
           ) do
-            option(value: '') { 'Select a category (optional)...' }
+            option(value: '') { t('forms.medicines.select_category') }
             Medicine::CATEGORIES.each do |cat|
               option(value: cat, selected: medicine.category == cat) { cat.titleize }
             end

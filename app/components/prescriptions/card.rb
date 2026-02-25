@@ -65,9 +65,9 @@ module Components
         return if prescription.out_of_stock?
 
         if prescription.can_take_now?
-          Badge(variant: :success, class: 'rounded-full text-[10px] py-0.5') { 'Ready Now' }
+          Badge(variant: :success, class: 'rounded-full text-[10px] py-0.5') { t('prescriptions.card.ready_now') }
         else
-          Badge(variant: :warning, class: 'rounded-full text-[10px] py-0.5') { 'Waiting' }
+          Badge(variant: :warning, class: 'rounded-full text-[10px] py-0.5') { t('prescriptions.card.waiting') }
         end
       end
 
@@ -254,20 +254,7 @@ module Components
                      'text-slate-400 hover:text-slate-600',
               data: { testid: "edit-prescription-#{prescription.id}" }
             ) do
-              svg(
-                xmlns: 'http://www.w3.org/2000/svg',
-                class: 'w-5 h-5',
-                fill: 'none',
-                viewBox: '0 0 24 24',
-                stroke: 'currentColor'
-              ) do |s|
-                s.path(
-                  stroke_linecap: 'round',
-                  stroke_linejoin: 'round',
-                  stroke_width: '2',
-                  d: 'M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z'
-                )
-              end
+              render Icons::Pencil.new(size: 20)
             end
             render_delete_dialog
           end

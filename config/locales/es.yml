@@ -158,6 +158,41 @@ es:
       new_subtitle: "Registrar detalles de inventario e información de dosificación."
       edit_title: "Editar Medicamento"
       edit_subtitle: "Actualizar detalles de %{name}."
+    index:
+      your_inventory: "Su Inventario"
+      title: "Medicamentos"
+      add_medicine: "Añadir Medicamento"
+      all: "Todos"
+      view: "Ver"
+      inventory_level: "Nivel de Inventario"
+      units: "unidades"
+      in_stock: "En Stock"
+      delete_dialog:
+        title: "Eliminar Medicamento"
+        confirm: "¿Está seguro de que desea eliminar %{name}? Esta acción no se puede deshacer."
+        submit: "Eliminar"
+        cancel: "Cancelar"
+    show:
+      profile: "Perfil del Medicamento"
+      edit_details: "Editar Detalles"
+      inventory: "Inventario"
+      overview: "Resumen"
+      no_description: "No se ha proporcionado ninguna descripción."
+      safety_warnings: "Advertencias de Seguridad"
+      inventory_status: "Estado del Inventario"
+      remaining: "unidades restantes"
+      supply_level: "Nivel de Suministro"
+      reorder_at: "reordenar en %{threshold}"
+      forecast_unavailable: "Pronóstico no disponible"
+      standard_dosage: "Dosis Estándar"
+      no_dosage: "No se ha especificado una dosis estándar."
+      reorder_at_label: "Reordenar En"
+      log_administration: "Registrar Administración"
+      low_stock_alert: "⚠️ Alerta de Stock Bajo"
+      forecast:
+        low_in_days: "El suministro estará bajo en %{days} días"
+        empty_in_days: "El suministro se agotará en %{days} días"
+      location: "Ubicación"
 
   passwords:
     reset_sent: >-
@@ -241,6 +276,8 @@ es:
       take: "💊 Tomar"
       give: "💊 Dar"
       out_of_stock: "💊 Sin Stock"
+      ready_now: "Listo Ahora"
+      waiting: "Esperando"
       edit: "Editar"
       delete: "Eliminar"
       delete_dialog:
@@ -328,6 +365,8 @@ es:
       logout: "Cerrar sesión"
   forms:
     medicines:
+      inventory_management: "Gestión de Inventario"
+      dosage_and_supply: "Dosis y Suministro"
       name: "Nombre"
       description: "Descripción"
       standard_dosage: "Dosis Estándar"
@@ -338,6 +377,9 @@ es:
       warnings: "Advertencias"
       save_medicine: "Guardar Medicamento"
       back_to_medicines: "Volver a Medicamentos"
+      back: "Volver"
+      select_location: "Seleccione una ubicación..."
+      select_category: "Seleccione una categoría (opcional)..."
       validation_errors:
         one: "1 error impidió que este medicamento se guardara:"
         other: "%{count} errores impidieron que este medicamento se guardara:"
