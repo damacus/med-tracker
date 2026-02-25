@@ -65,17 +65,8 @@ module Admin
       ActiveRecord::Base.transaction do
         account = create_account!
         person = create_person!(account)
-        user = create_user!(person)
-        ensure_default_locations!(person)
-        user
+        create_user!(person)
       end
-    end
-
-    def ensure_default_locations!(person)
-      location = Location.find_or_create_by!(name: 'Home') do |l|
-        l.description = 'Primary home location'
-      end
-      LocationMembership.find_or_create_by!(location: location, person: person)
     end
 
     def create_account!

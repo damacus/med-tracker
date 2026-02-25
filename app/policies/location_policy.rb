@@ -2,21 +2,21 @@
 
 class LocationPolicy < ApplicationPolicy
   def index?
-    admin? || doctor? || nurse?
+    user.present?
   end
 
   def show?
-    admin? || doctor? || nurse?
+    user.present?
   end
 
   def create?
-    admin? || doctor?
+    admin?
   end
 
   alias new? create?
 
   def update?
-    admin? || doctor?
+    admin?
   end
 
   alias edit? update?
@@ -28,9 +28,8 @@ class LocationPolicy < ApplicationPolicy
   class Scope < ApplicationPolicy::Scope
     def resolve
       return scope.none unless user
-      return scope.all if admin? || doctor? || nurse?
 
-      scope.none
+      scope.all
     end
   end
 end

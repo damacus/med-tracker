@@ -43,6 +43,7 @@ class Person < ApplicationRecord
   }
 
   before_validation :set_capacity_from_person_type
+  before_validation :assign_default_location, on: :create
 
   validates :date_of_birth, presence: true
   validates :name, presence: true
@@ -50,6 +51,7 @@ class Person < ApplicationRecord
                     format: { with: URI::MailTo::EMAIL_REGEXP, allow_blank: true },
                     uniqueness: { allow_blank: true }
   validate :carer_required_when_lacking_capacity
+  validate :must_have_at_least_one_location
 
   scope :without_carers, -> { where.missing(:carer_relationships) }
 
@@ -86,6 +88,15 @@ class Person < ApplicationRecord
 
   private
 
+  def assign_default_location
+    return if locations.any? || location_memberships.any?
+
+    home = Location.find_or_create_by!(name: 'Home') do |l|
+      l.description = 'Primary home location'
+    end
+    location_memberships.build(location: home)
+  end
+
   def set_capacity_from_person_type
     return unless minor? || dependent_adult?
     return unless active_carer_relationship?
@@ -111,5 +122,11 @@ class Person < ApplicationRecord
   def active_carer_relationship?
     carer_relationships.any? { |r| r.active? || r.active.nil? } ||
       active_carer_relationships.exists?
+  end
+
+  def must_have_at_least_one_location
+    return if locations.any? || location_memberships.any?
+
+    errors.add(:base, 'A person must belong to at least one location')
   end
 end

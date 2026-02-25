@@ -77,6 +77,7 @@ module Components
             div(class: 'space-y-4') do
               render_name_field(person_form)
               render_date_of_birth_field(person_form)
+              render_locations_field(person_form)
             end
           end
         end
@@ -106,6 +107,29 @@ module Components
               value: user.person&.date_of_birth&.to_s,
               required: true
             )
+          end
+        end
+
+        def render_locations_field(_person_form)
+          FormField do
+            FormFieldLabel(for: 'user_person_attributes_location_ids') { 'Locations' }
+            div(class: 'grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2') do
+              Location.all.each do |location|
+                label(class: 'flex items-center gap-2 p-3 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer') do
+                  input(
+                    type: 'checkbox',
+                    name: 'user[person_attributes][location_ids][]',
+                    value: location.id,
+                    id: "location_#{location.id}",
+                    checked: user.person&.location_ids&.include?(location.id),
+                    class: checkbox_classes
+                  )
+                  span { location.name }
+                end
+              end
+            end
+            # Hidden field to ensure location_ids is sent even if none selected (though validation will catch it)
+            input(type: 'hidden', name: 'user[person_attributes][location_ids][]', value: '')
           end
         end
 

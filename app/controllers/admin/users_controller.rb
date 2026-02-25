@@ -173,7 +173,7 @@ module Admin
                :password,
                :password_confirmation,
                :role,
-               { person_attributes: %i[id name date_of_birth] }]
+               { person_attributes: [:id, :name, :date_of_birth, { location_ids: [] }] }]
       )
     end
   end
