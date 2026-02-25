@@ -55,6 +55,15 @@ RSpec.describe Admin::BootstrapService do
       expect(created_user.person.account).to be_verified
     end
 
+    it "creates the 'Home' location and joins the admin to it" do
+      result = described_class.call(**params)
+      person = result.user.person
+
+      home_location = Location.find_by(name: 'Home')
+      expect(home_location).to be_present
+      expect(person.locations).to include(home_location)
+    end
+
     it 'refuses to bootstrap when an administrator already exists' do
       create_existing_admin!
 
