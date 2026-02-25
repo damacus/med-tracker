@@ -620,7 +620,7 @@ RSpec.describe Person do
   end
 
   describe 'versioning' do
-    fixtures :accounts, :people, :users
+    fixtures :accounts, :people, :users, :locations, :location_memberships
 
     let(:admin) { users(:admin) }
 

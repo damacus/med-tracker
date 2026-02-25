@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe Components::Admin::AuditLogs::IndexView, type: :component do
-  fixtures :accounts, :people, :users
+  fixtures :accounts, :people, :users, :locations, :location_memberships
 
   let(:admin) { users(:admin) }
   let(:person) { people(:john) }

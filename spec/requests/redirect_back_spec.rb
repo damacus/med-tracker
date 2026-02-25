@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'Redirect back after form submission' do
-  fixtures :accounts, :people, :locations, :medicines, :users, :dosages, :prescriptions
+  fixtures :accounts, :people, :locations, :location_memberships, :medicines, :users, :dosages, :prescriptions
 
   let(:admin) { users(:admin) }
   let(:medicine) { medicines(:paracetamol) }
