@@ -89,7 +89,7 @@ class MedicinesController < ApplicationController
     @medicine.paper_trail_event = "restock (qty: #{quantity}, date: #{restock_date.iso8601})"
     @medicine.restock!(quantity: quantity)
 
-    redirect_to @medicine, notice: t('medicines.refilled')
+    redirect_back_or_to @medicine, notice: t('medicines.refilled')
   rescue ActiveRecord::RecordInvalid => e
     render_refill_error(e.record.errors.full_messages.to_sentence)
   end

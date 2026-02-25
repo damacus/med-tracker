@@ -77,13 +77,13 @@ class PersonMedicinesController < ApplicationController
   def destroy
     authorize @person_medicine
     @person_medicine.destroy
-    redirect_to person_path(@person), notice: t('person_medicines.deleted')
+    redirect_back_or_to person_path(@person), notice: t('person_medicines.deleted')
   end
 
   def reorder
     authorize @person_medicine, :update?
     @person_medicine.reorder(params[:direction])
-    redirect_to person_path(@person)
+    redirect_back_or_to person_path(@person)
   end
 
   def take_medicine

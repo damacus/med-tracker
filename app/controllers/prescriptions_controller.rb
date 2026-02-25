@@ -104,7 +104,7 @@ class PrescriptionsController < ApplicationController
     authorize @prescription
     if @prescription.update(prescription_params)
       respond_to do |format|
-        format.html { redirect_to person_path(@person), notice: t('prescriptions.updated') }
+        format.html { redirect_back_or_to person_path(@person), notice: t('prescriptions.updated') }
         format.turbo_stream do
           flash.now[:notice] = t('prescriptions.updated')
           prescriptions = @person.reload.prescriptions.includes(:medicine, :dosage)
