@@ -16,7 +16,7 @@ class PersonPolicy < ApplicationPolicy
   def create?
     return false unless carer_or_parent?
 
-    record.minor? || record.dependent_adult?
+    %w[minor dependent_adult].include?(record.person_type)
   end
 
   def update?
