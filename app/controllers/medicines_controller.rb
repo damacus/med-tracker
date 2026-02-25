@@ -26,11 +26,13 @@ class MedicinesController < ApplicationController
 
   def edit
     authorize @medicine
+    @return_to = params[:return_to]
     render Components::Medicines::FormView.new(
       medicine: @medicine,
       locations: available_locations,
       title: t('medicines.form.edit_title'),
-      subtitle: t('medicines.form.edit_subtitle', name: @medicine.name)
+      subtitle: t('medicines.form.edit_subtitle', name: @medicine.name),
+      return_to: @return_to
     )
   end
 
@@ -53,13 +55,14 @@ class MedicinesController < ApplicationController
   def update
     authorize @medicine
     if @medicine.update(medicine_params)
-      redirect_back_or_to @medicine, notice: t('medicines.updated')
+      redirect_to params[:return_to].presence || @medicine, notice: t('medicines.updated')
     else
       render Components::Medicines::FormView.new(
         medicine: @medicine,
         locations: available_locations,
         title: t('medicines.form.edit_title'),
-        subtitle: t('medicines.form.edit_subtitle', name: @medicine.name)
+        subtitle: t('medicines.form.edit_subtitle', name: @medicine.name),
+        return_to: params[:return_to]
       ), status: :unprocessable_content
     end
   end
@@ -89,7 +92,7 @@ class MedicinesController < ApplicationController
     @medicine.paper_trail_event = "restock (qty: #{quantity}, date: #{restock_date.iso8601})"
     @medicine.restock!(quantity: quantity)
 
-    redirect_to @medicine, notice: t('medicines.refilled')
+    redirect_back_or_to @medicine, notice: t('medicines.refilled')
   rescue ActiveRecord::RecordInvalid => e
     render_refill_error(e.record.errors.full_messages.to_sentence)
   end

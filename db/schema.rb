@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_23_231214) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_25_105418) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -208,7 +208,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_23_231214) do
     t.string "name"
     t.integer "reorder_status"
     t.integer "reorder_threshold", default: 10, null: false
-    t.integer "stock"
+    t.integer "supply_at_last_restock"
     t.datetime "updated_at", null: false
     t.text "warnings"
     t.index ["location_id"], name: "index_medicines_on_location_id"

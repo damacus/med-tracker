@@ -29,14 +29,14 @@ RSpec.describe LocationPolicy, type: :policy do
   describe 'for doctor' do
     let(:current_user) { users(:doctor) }
 
-    it 'permits all actions except destroy' do
+    it 'permits viewing only' do
       aggregate_failures do
         expect(policy.index?).to be true
         expect(policy.show?).to be true
-        expect(policy.create?).to be true
-        expect(policy.new?).to be true
-        expect(policy.update?).to be true
-        expect(policy.edit?).to be true
+        expect(policy.create?).to be false
+        expect(policy.new?).to be false
+        expect(policy.update?).to be false
+        expect(policy.edit?).to be false
         expect(policy.destroy?).to be false
       end
     end
@@ -61,10 +61,10 @@ RSpec.describe LocationPolicy, type: :policy do
   describe 'for carer' do
     let(:current_user) { users(:carer) }
 
-    it 'forbids all actions' do
+    it 'permits viewing only' do
       aggregate_failures do
-        expect(policy.index?).to be false
-        expect(policy.show?).to be false
+        expect(policy.index?).to be true
+        expect(policy.show?).to be true
         expect(policy.create?).to be false
         expect(policy.destroy?).to be false
       end
@@ -74,10 +74,10 @@ RSpec.describe LocationPolicy, type: :policy do
   describe 'for parent' do
     let(:current_user) { users(:parent) }
 
-    it 'forbids all actions' do
+    it 'permits viewing only' do
       aggregate_failures do
-        expect(policy.index?).to be false
-        expect(policy.show?).to be false
+        expect(policy.index?).to be true
+        expect(policy.show?).to be true
         expect(policy.create?).to be false
         expect(policy.destroy?).to be false
       end
@@ -97,35 +97,11 @@ RSpec.describe LocationPolicy, type: :policy do
   describe 'Scope' do
     subject(:scope) { described_class::Scope.new(current_user, Location.all).resolve }
 
-    context 'when user is an administrator' do
-      let(:current_user) { users(:admin) }
-
-      it 'returns all locations' do
-        expect(scope).to match_array(Location.all)
-      end
-    end
-
-    context 'when user is a doctor' do
-      let(:current_user) { users(:doctor) }
-
-      it 'returns all locations' do
-        expect(scope).to match_array(Location.all)
-      end
-    end
-
-    context 'when user is a nurse' do
-      let(:current_user) { users(:nurse) }
-
-      it 'returns all locations' do
-        expect(scope).to match_array(Location.all)
-      end
-    end
-
-    context 'when user is a carer' do
+    context 'when user is authenticated' do
       let(:current_user) { users(:carer) }
 
-      it 'returns no locations' do
-        expect(scope).to be_empty
+      it 'returns all locations' do
+        expect(scope).to match_array(Location.all)
       end
     end
 

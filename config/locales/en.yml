@@ -109,6 +109,47 @@ en:
     created: "Location was successfully created."
     updated: "Location was successfully updated."
     deleted: "Location was successfully deleted."
+    index:
+      manage_locations: "Manage Locations"
+      title: "Locations"
+      add_location: "Add Location"
+      members: "Members"
+      view: "View"
+      delete_dialog:
+        title: "Delete Location"
+        confirm: "Are you sure you want to delete %{name}? This will also delete all medicines at this location."
+        cancel: "Cancel"
+        submit: "Delete"
+    show:
+      location: "Location"
+      edit_location: "Edit Location"
+      all_locations: "All Locations"
+      medicines_heading: "Medicines at this Location"
+      no_medicines: "No medicines at this location yet."
+      members: "Members"
+      no_members: "No members assigned."
+      details: "Details"
+      no_details: "No description provided."
+      add_member:
+        title: "Add Member"
+        description: "Add a person to %{name}"
+        select_person: "Select Person"
+        placeholder: "Select a person..."
+        submit: "Add Member"
+        all_assigned: "All users are already members of this location."
+      remove_member:
+        title: "Remove Member"
+        confirm: "Are you sure you want to remove %{name} from %{location}?"
+        cancel: "Cancel"
+        submit: "Remove"
+
+  location_memberships:
+    create:
+      success: "%{name} added to %{location}"
+      failure: "Failed to add member"
+    destroy:
+      success: "%{name} removed from %{location}"
+      failure: "Failed to remove member"
 
   medicines:
     finder:
@@ -136,6 +177,40 @@ en:
       new_subtitle: "Capture inventory details and dosage information."
       edit_title: "Edit Medicine"
       edit_subtitle: "Update %{name}'s details."
+    index:
+      your_inventory: "Your Inventory"
+      title: "Medicines"
+      add_medicine: "Add Medicine"
+      all: "All"
+      view: "View"
+      inventory_level: "Inventory Level"
+      units: "units"
+      in_stock: "In Stock"
+      delete_dialog:
+        title: "Delete Medicine"
+        confirm: "Are you sure you want to delete %{name}? This action cannot be undone."
+        submit: "Delete"
+        cancel: "Cancel"
+    show:
+      profile: "Medicine Profile"
+      edit_details: "Edit Details"
+      inventory: "Inventory"
+      overview: "Overview"
+      no_description: "No description provided."
+      safety_warnings: "Safety Warnings"
+      inventory_status: "Inventory Status"
+      remaining: "units remaining"
+      supply_level: "Supply Level"
+      reorder_at: "reorder at %{threshold}"
+      forecast_unavailable: "Forecast unavailable"
+      standard_dosage: "Standard Dosage"
+      no_dosage: "No standard dosage specified."
+      reorder_at_label: "Reorder At"
+      log_administration: "Log Administration"
+      low_stock_alert: "⚠️ Low Stock Alert"
+      forecast:
+        low_in_days: "Supply will be low in %{days} days"
+        empty_in_days: "Supply will be empty in %{days} days"
 
   passwords:
     reset_sent: >-
@@ -231,6 +306,8 @@ en:
       take: "💊 Take"
       give: "💊 Give"
       out_of_stock: "💊 Out of Stock"
+      ready_now: "Ready Now"
+      waiting: "Waiting"
       edit: "Edit"
       delete: "Delete"
       delete_dialog:
@@ -356,6 +433,9 @@ en:
       warnings: "Warnings"
       save_medicine: "Save Medicine"
       back_to_medicines: "Back to Medicines"
+      back: "Back"
+      select_location: "Select a location..."
+      select_category: "Select a category (optional)..."
       validation_errors:
         one: "1 error prevented this medicine from being saved:"
         other: "%{count} errors prevented this medicine from being saved:"

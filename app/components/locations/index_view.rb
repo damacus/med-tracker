@@ -26,9 +26,9 @@ module Components
         div(class: 'flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12') do
           div do
             Text(size: '2', weight: 'muted', class: 'uppercase tracking-widest mb-1 block font-bold') do
-              'Manage Locations'
+              t('locations.index.manage_locations')
             end
-            Heading(level: 1, size: '8', class: 'font-extrabold tracking-tight') { 'Locations' }
+            Heading(level: 1, size: '8', class: 'font-extrabold tracking-tight') { t('locations.index.title') }
           end
           Link(
             href: new_location_path,
@@ -36,7 +36,7 @@ module Components
             size: :lg,
             class: 'rounded-2xl font-bold text-sm shadow-lg shadow-primary/20'
           ) do
-            span { 'Add Location' }
+            span { t('locations.index.add_location') }
           end
         end
       end
@@ -59,7 +59,10 @@ module Components
           CardHeader(class: 'pb-4 pt-8 px-8') do
             div(class: 'flex justify-between items-start mb-4') do
               render_location_icon
-              Badge(variant: :outline) { pluralize(location.medicines.size, 'medicine') }
+              # Fallback for medicine word
+              Badge(variant: :outline) do
+                pluralize(location.medicines.size, t('medicines.created').split.first.downcase)
+              end
             end
             Heading(level: 2, size: '5', class: 'font-bold tracking-tight') { location.name }
           end
@@ -70,13 +73,16 @@ module Components
             end
 
             if location.members.any?
-              div(class: 'pt-4 border-t border-slate-50') do
-                Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-slate-400 mb-2 block') do
-                  'Members'
+              div(class: 'pt-4 border-t border-slate-100') do
+                Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-slate-500 mb-2 block') do
+                  t('locations.index.members')
                 end
                 div(class: 'flex flex-wrap gap-1') do
                   location.members.each do |member|
-                    Badge(variant: :secondary, class: 'text-xs') { member.name }
+                    Badge(variant: :outline,
+                          class: 'text-[10px] bg-slate-50/50 text-slate-600 border-slate-200 font-medium') do
+                      member.name
+                    end
                   end
                 end
               end
@@ -106,28 +112,15 @@ module Components
             size: :sm,
             class: 'flex-1 rounded-xl py-5 border-slate-100 bg-white hover:bg-slate-50 text-slate-600'
           ) do
-            'View'
+            t('locations.index.view')
           end
           Link(
-            href: edit_location_path(location),
+            href: edit_location_path(location, return_to: locations_path),
             variant: :outline,
             size: :sm,
             class: 'rounded-xl w-10 h-10 p-0 border-slate-100 bg-white hover:bg-slate-50 text-slate-400'
           ) do
-            svg(
-              xmlns: 'http://www.w3.org/2000/svg',
-              class: 'w-4 h-4',
-              fill: 'none',
-              viewBox: '0 0 24 24',
-              stroke: 'currentColor'
-            ) do |s|
-              s.path(
-                stroke_linecap: 'round',
-                stroke_linejoin: 'round',
-                stroke_width: '2',
-                d: 'M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z'
-              )
-            end
+            render Icons::Pencil.new(size: 16)
           end
           render_delete_dialog(location)
         end
@@ -143,17 +136,16 @@ module Components
           end
           AlertDialogContent(class: 'rounded-[2rem] border-none shadow-2xl') do
             AlertDialogHeader do
-              AlertDialogTitle { 'Delete Location' }
+              AlertDialogTitle { t('locations.index.delete_dialog.title') }
               AlertDialogDescription do
-                "Are you sure you want to delete #{location.name}? " \
-                  'This will also delete all medicines at this location.'
+                t('locations.index.delete_dialog.confirm', name: location.name)
               end
             end
             AlertDialogFooter do
-              AlertDialogCancel(class: 'rounded-xl') { 'Cancel' }
+              AlertDialogCancel(class: 'rounded-xl') { t('locations.index.delete_dialog.cancel') }
               form_with(url: location_path(location), method: :delete, class: 'inline') do
                 Button(variant: :destructive, type: :submit, class: 'rounded-xl shadow-lg shadow-destructive/20') do
-                  'Delete'
+                  t('locations.index.delete_dialog.submit')
                 end
               end
             end

@@ -98,6 +98,47 @@ pt:
   invitation_mailer:
     subject: "Convite para aderir ao MedTracker"
 
+  locations:
+    created: "Localização criada com sucesso."
+    updated: "Localização atualizada com sucesso."
+    deleted: "Localização eliminada com sucesso."
+    index:
+      manage_locations: "Gerir Localizações"
+      title: "Localizações"
+      add_location: "Adicionar Localização"
+      members: "Membros"
+      view: "Ver"
+      delete_dialog:
+        title: "Eliminar Localização"
+        confirm: "Tem a certeza que deseja eliminar %{name}? Isto também eliminará todos os medicamentos nesta localização."
+        cancel: "Cancelar"
+        submit: "Eliminar"
+    show:
+      location: "Localização"
+      edit_location: "Editar Localização"
+      all_locations: "Todas as Localizações"
+      medicines_heading: "Medicamentos nesta Localização"
+      no_medicines: "Ainda não existem medicamentos nesta localização."
+      members: "Membros"
+      no_members: "Nenhum membro atribuído."
+      details: "Detalhes"
+      no_details: "Nenhuma descrição fornecida."
+      add_member:
+        title: "Adicionar Membro"
+        description: "Adicionar uma pessoa a %{name}"
+        select_person: "Selecionar Pessoa"
+        placeholder: "Selecione uma pessoa..."
+        submit: "Adicionar Membro"
+        all_assigned: "Todos os utilizadores já são membros desta localização."
+
+  location_memberships:
+    create:
+      success: "%{name} adicionado a %{location}"
+      failure: "Falha ao adicionar membro"
+    destroy:
+      success: "%{name} removido de %{location}"
+      failure: "Falha ao remover membro"
+
   medicines:
     finder:
       coming_soon: "Esta funcionalidade estará disponível em breve! Iremos integrar com uma API de base de dados de medicamentos para fornecer informações detalhadas sobre os medicamentos."
@@ -107,7 +148,7 @@ pt:
     refilled: "Inventário reabastecido com sucesso."
     refill_button: "Reabastecer"
     refill_modal:
-      refill_inventory: "Reabastecer Inventário"
+      refill_inventory: "Reabastecer Inventario"
       title: "Reabastecer %{medicine}"
       description: "Adicione a quantidade de estoque e registre a data de reabastecimento."
       quantity: "Quantidade"
@@ -117,6 +158,41 @@ pt:
       new_subtitle: "Registar detalhes de inventário e informação de dosagem."
       edit_title: "Editar Medicamento"
       edit_subtitle: "Atualizar detalhes de %{name}."
+    index:
+      your_inventory: "O Seu Inventário"
+      title: "Medicamentos"
+      add_medicine: "Adicionar Medicamento"
+      all: "Todos"
+      view: "Ver"
+      inventory_level: "Nível de Inventário"
+      units: "unidades"
+      in_stock: "Em Stock"
+      delete_dialog:
+        title: "Eliminar Medicamento"
+        confirm: "Tem a certeza que deseja eliminar %{name}? Esta ação não pode ser desfeita."
+        submit: "Eliminar"
+        cancel: "Cancelar"
+    show:
+      profile: "Perfil do Medicamento"
+      edit_details: "Editar Detalhes"
+      inventory: "Inventário"
+      overview: "Visão Geral"
+      no_description: "Nenhuma descrição fornecida."
+      safety_warnings: "Avisos de Segurança"
+      inventory_status: "Estado do Inventário"
+      remaining: "unidades restantes"
+      supply_level: "Nivel de Fornecimento"
+      reorder_at: "reordenar em %{threshold}"
+      forecast_unavailable: "Previsão indisponível"
+      standard_dosage: "Dosagem Padrão"
+      no_dosage: "Nenhuma dosagem padrão especificada."
+      reorder_at_label: "Reordenar Em"
+      log_administration: "Registar Administração"
+      low_stock_alert: "⚠️ Alerta de Stock Baixo"
+      forecast:
+        low_in_days: "O stock ficará baixo em %{days} dias"
+        empty_in_days: "O stock ficará vazio em %{days} dias"
+      location: "Localização"
 
   passwords:
     reset_sent: >-
@@ -200,6 +276,8 @@ pt:
       take: "💊 Tomar"
       give: "💊 Dar"
       out_of_stock: "💊 Sem Stock"
+      ready_now: "Pronto Agora"
+      waiting: "A aguardar"
       edit: "Editar"
       delete: "Eliminar"
       delete_dialog:
@@ -287,6 +365,8 @@ pt:
       logout: "Terminar sessão"
   forms:
     medicines:
+      inventory_management: "Gestão de Inventário"
+      dosage_and_supply: "Dosagem e Fornecimento"
       name: "Nome"
       description: "Descrição"
       standard_dosage: "Dose Padrão"
@@ -297,6 +377,9 @@ pt:
       warnings: "Avisos"
       save_medicine: "Guardar Medicamento"
       back_to_medicines: "Voltar aos Medicamentos"
+      back: "Voltar"
+      select_location: "Selecione uma localização..."
+      select_category: "Selecione uma categoria (opcional)..."
       validation_errors:
         one: "1 erro impediu que este medicamento fosse guardado:"
         other: "%{count} erros impediram que este medicamento fosse guardado:"

@@ -33,7 +33,9 @@ Rails.application.routes.draw do
   resources :reports, only: %i[index]
 
   # Location management
-  resources :locations
+  resources :locations do
+    resources :location_memberships, only: %i[create destroy]
+  end
 
   # Medicine management
   resources :medicines do

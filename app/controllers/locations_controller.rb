@@ -25,10 +25,12 @@ class LocationsController < ApplicationController
 
   def edit
     authorize @location
+    @return_to = params[:return_to]
     render Components::Locations::FormView.new(
       location: @location,
       title: 'Edit Location',
-      subtitle: @location.name
+      subtitle: @location.name,
+      return_to: @return_to
     )
   end
 
@@ -50,12 +52,13 @@ class LocationsController < ApplicationController
   def update
     authorize @location
     if @location.update(location_params)
-      redirect_to @location, notice: t('locations.updated')
+      redirect_to params[:return_to].presence || @location, notice: t('locations.updated')
     else
       render Components::Locations::FormView.new(
         location: @location,
         title: 'Edit Location',
-        subtitle: @location.name
+        subtitle: @location.name,
+        return_to: params[:return_to]
       ), status: :unprocessable_content
     end
   end

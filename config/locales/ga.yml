@@ -101,6 +101,47 @@ ga:
   invitation_mailer:
     subject: "Cuirí le bheith páirteach i MedTracker"
 
+  locations:
+    created: "Cruthaíodh an suíomh go rathúil."
+    updated: "Nuashonraíodh an suíomh go rathúil."
+    deleted: "Scriosadh an suíomh go rathúil."
+    index:
+      manage_locations: "Bainistigh Suíomhanna"
+      title: "Suíomhanna"
+      add_location: "Cuir Suíomh Leis"
+      members: "Baill"
+      view: "Amharc"
+      delete_dialog:
+        title: "Scrios Suíomh"
+        confirm: "An bhfuil tú cinnte gur mian leat %{name} a scriosadh? Scriosfaidh sé seo gach leigheas sa suíomh seo freisin."
+        cancel: "Cealaigh"
+        submit: "Scrios"
+    show:
+      location: "Suíomh"
+      edit_location: "Cuir an Suíomh in Eagar"
+      all_locations: "Gach Suíomh"
+      medicines_heading: "Leigheasanna sa tSuíomh seo"
+      no_medicines: "Níl aon leigheasanna sa suíomh seo fós."
+      members: "Baill"
+      no_members: "Níl aon bhaill sannta."
+      details: "Sonraí"
+      no_details: "Níor cuireadh aon tuairisc ar fáil."
+      add_member:
+        title: "Cuir Ball Leis"
+        description: "Cuir duine le %{name}"
+        select_person: "Roghnaigh Duine"
+        placeholder: "Roghnaigh duine..."
+        submit: "Cuir Ball Leis"
+        all_assigned: "Tá gach úsáideoir ina mbaill den suíomh seo cheana féin."
+
+  location_memberships:
+    create:
+      success: "Cuireadh %{name} le %{location}"
+      failure: "Theip ar bhall a chur leis"
+    destroy:
+      success: "Baineadh %{name} de %{location}"
+      failure: "Theip ar bhall a bhaint"
+
   rodauth:
     verify_account:
       subject: "Fíoraigh do chuntas MedTracker"
@@ -136,6 +177,41 @@ ga:
       new_subtitle: "Gabh sonraí stoc agus faisnéis dáileogáin."
       edit_title: "Cuir Leigheas in Eagar"
       edit_subtitle: "Nuashonraigh sonraí %{name}."
+    index:
+      your_inventory: "Do Stoc"
+      title: "Leigheasanna"
+      add_medicine: "Cuir Leigheas Leis"
+      all: "Gach"
+      view: "Amharc"
+      inventory_level: "Leibhéal Stoc"
+      units: "aonad"
+      in_stock: "I Stoc"
+      delete_dialog:
+        title: "Scrios Leigheas"
+        confirm: "An bhfuil tú cinnte gur mian leat %{name} a scrios? Ní féidir an gníomh seo a chealú."
+        submit: "Scrios"
+        cancel: "Cealaigh"
+    show:
+      profile: "Próifíl Leighis"
+      edit_details: "Cuir Sonraí in Eagar"
+      inventory: "Stoc"
+      overview: "Forbhreathnú"
+      no_description: "Níor cuireadh aon tuairisc ar fáil."
+      safety_warnings: "Rabhaidh Sábháilteachta"
+      inventory_status: "Stádas Stoc"
+      remaining: "aonad fágtha"
+      supply_level: "Leibhéal Soláthair"
+      reorder_at: "athordaigh ag %{threshold}"
+      forecast_unavailable: "Réamhaisnéis dho-fhaighte"
+      standard_dosage: "Dáileog Chaighdeánach"
+      no_dosage: "Níl aon dáileog chaighdeánach sonraithe."
+      reorder_at_label: "Athordaigh Ag"
+      log_administration: "Logáil Riaracháin"
+      low_stock_alert: "⚠️ Rabhadh Stoc Íseal"
+      forecast:
+        low_in_days: "Beidh an soláthar íseal i gceann %{days} lá"
+        empty_in_days: "Beidh an soláthar folamh i gceann %{days} lá"
+      location: "Suíomh"
 
   passwords:
     reset_sent: >-
@@ -231,6 +307,8 @@ ga:
       take: "💊 Tóg"
       give: "💊 Tabhair"
       out_of_stock: "💊 As Stoc"
+      ready_now: "Réidh Anois"
+      waiting: "Ag Fanacht"
       edit: "Cuir in Eagar"
       delete: "Scrios"
       delete_dialog:
@@ -356,6 +434,9 @@ ga:
       warnings: "Rabhaidh"
       save_medicine: "Sábháil Leigheas"
       back_to_medicines: "Ar Ais go Leigheasanna"
+      back: "Ar Ais"
+      select_location: "Roghnaigh suíomh..."
+      select_category: "Roghnaigh catagóir (roghnach)..."
       validation_errors:
         one: "Chuir 1 earráid cosc ar an leigheas a shábháil:"
         other: "Chuir %{count} earráid cosc ar an leigheas a shábháil:"

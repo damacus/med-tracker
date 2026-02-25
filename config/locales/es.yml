@@ -98,6 +98,47 @@ es:
   invitation_mailer:
     subject: "Invitación para unirse a MedTracker"
 
+  locations:
+    created: "La ubicación se creó correctamente."
+    updated: "La ubicación se actualizó correctamente."
+    deleted: "La ubicación se eliminó correctamente."
+    index:
+      manage_locations: "Gestionar Ubicaciones"
+      title: "Ubicaciones"
+      add_location: "Añadir Ubicación"
+      members: "Miembros"
+      view: "Ver"
+      delete_dialog:
+        title: "Eliminar Ubicación"
+        confirm: "¿Está seguro de que desea eliminar %{name}? Esto también eliminará todos los medicamentos en esta ubicación."
+        cancel: "Cancelar"
+        submit: "Eliminar"
+    show:
+      location: "Ubicación"
+      edit_location: "Editar Ubicación"
+      all_locations: "Todas las Ubicaciones"
+      medicines_heading: "Medicamentos en esta Ubicación"
+      no_medicines: "Aún no hay medicamentos en esta ubicación."
+      members: "Miembros"
+      no_members: "No hay miembros asignados."
+      details: "Detalles"
+      no_details: "No se ha proporcionado ninguna descripción."
+      add_member:
+        title: "Añadir Miembro"
+        description: "Añadir una persona a %{name}"
+        select_person: "Seleccionar Persona"
+        placeholder: "Seleccione una persona..."
+        submit: "Añadir Miembro"
+        all_assigned: "Todos los usuarios ya son miembros de esta ubicación."
+
+  location_memberships:
+    create:
+      success: "%{name} añadido a %{location}"
+      failure: "Error al añadir miembro"
+    destroy:
+      success: "%{name} eliminado de %{location}"
+      failure: "Error al eliminar miembro"
+
   medicines:
     finder:
       coming_soon: "¡Esta función llegará pronto! Integraremos con una API de base de datos de medicamentos para proporcionar información detallada sobre los medicamentos."
@@ -117,6 +158,41 @@ es:
       new_subtitle: "Registrar detalles de inventario e información de dosificación."
       edit_title: "Editar Medicamento"
       edit_subtitle: "Actualizar detalles de %{name}."
+    index:
+      your_inventory: "Su Inventario"
+      title: "Medicamentos"
+      add_medicine: "Añadir Medicamento"
+      all: "Todos"
+      view: "Ver"
+      inventory_level: "Nivel de Inventario"
+      units: "unidades"
+      in_stock: "En Stock"
+      delete_dialog:
+        title: "Eliminar Medicamento"
+        confirm: "¿Está seguro de que desea eliminar %{name}? Esta acción no se puede deshacer."
+        submit: "Eliminar"
+        cancel: "Cancelar"
+    show:
+      profile: "Perfil del Medicamento"
+      edit_details: "Editar Detalles"
+      inventory: "Inventario"
+      overview: "Resumen"
+      no_description: "No se ha proporcionado ninguna descripción."
+      safety_warnings: "Advertencias de Seguridad"
+      inventory_status: "Estado del Inventario"
+      remaining: "unidades restantes"
+      supply_level: "Nivel de Suministro"
+      reorder_at: "reordenar en %{threshold}"
+      forecast_unavailable: "Pronóstico no disponible"
+      standard_dosage: "Dosis Estándar"
+      no_dosage: "No se ha especificado una dosis estándar."
+      reorder_at_label: "Reordenar En"
+      log_administration: "Registrar Administración"
+      low_stock_alert: "⚠️ Alerta de Stock Bajo"
+      forecast:
+        low_in_days: "El suministro estará bajo en %{days} días"
+        empty_in_days: "El suministro se agotará en %{days} días"
+      location: "Ubicación"
 
   passwords:
     reset_sent: >-
@@ -200,6 +276,8 @@ es:
       take: "💊 Tomar"
       give: "💊 Dar"
       out_of_stock: "💊 Sin Stock"
+      ready_now: "Listo Ahora"
+      waiting: "Esperando"
       edit: "Editar"
       delete: "Eliminar"
       delete_dialog:
@@ -287,6 +365,8 @@ es:
       logout: "Cerrar sesión"
   forms:
     medicines:
+      inventory_management: "Gestión de Inventario"
+      dosage_and_supply: "Dosis y Suministro"
       name: "Nombre"
       description: "Descripción"
       standard_dosage: "Dosis Estándar"
@@ -297,6 +377,9 @@ es:
       warnings: "Advertencias"
       save_medicine: "Guardar Medicamento"
       back_to_medicines: "Volver a Medicamentos"
+      back: "Volver"
+      select_location: "Seleccione una ubicación..."
+      select_category: "Seleccione una categoría (opcional)..."
       validation_errors:
         one: "1 error impidió que este medicamento se guardara:"
         other: "%{count} errores impidieron que este medicamento se guardara:"

@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'AdminManagesUsers' do
-  fixtures :accounts, :people, :users
+  fixtures :accounts, :people, :users, :locations, :location_memberships
 
   # Use the admin fixture instead of creating a duplicate user
   let(:admin) { users(:admin) }

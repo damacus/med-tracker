@@ -26,9 +26,9 @@ module Components
         div(class: 'flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12') do
           div do
             Text(size: '2', weight: 'muted', class: 'uppercase tracking-widest mb-1 block font-bold') do
-              'Your Inventory'
+              t('medicines.index.your_inventory')
             end
-            Heading(level: 1, size: '8', class: 'font-extrabold tracking-tight') { 'Medicines' }
+            Heading(level: 1, size: '8', class: 'font-extrabold tracking-tight') { t('medicines.index.title') }
           end
           if view_context.policy(Medicine).create?
             Link(
@@ -39,7 +39,7 @@ module Components
               data: { turbo_stream: true }
             ) do
               render Icons::Pill.new(size: 20, class: 'mr-2')
-              span { 'Add Medicine' }
+              span { t('medicines.index.add_medicine') }
             end
           end
         end
@@ -55,7 +55,7 @@ module Components
               variant: :primary,
               class: 'rounded-full px-6 py-2 h-auto text-xs font-bold uppercase tracking-wider ' \
                      'shadow-md shadow-primary/10'
-            ) { 'All' }
+            ) { t('medicines.index.all') }
 
             categories.each do |cat|
               Button(
@@ -108,9 +108,9 @@ module Components
 
       def status_badge(medicine)
         if medicine.low_stock?
-          Badge(variant: :destructive) { 'Low Stock' }
+          Badge(variant: :destructive) { t('dashboard.statuses.out_of_stock') }
         else
-          Badge(variant: :success) { 'In Stock' }
+          Badge(variant: :success) { t('medicines.index.in_stock', default: 'In Stock') }
         end
       end
 
@@ -122,8 +122,8 @@ module Components
           div(
             class: 'flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400'
           ) do
-            span { 'Inventory Level' }
-            span { "#{medicine.current_supply} units" }
+            span { t('medicines.index.inventory_level') }
+            span { "#{medicine.current_supply} #{t('medicines.index.units')}" }
           end
           div(class: 'h-1.5 w-full bg-slate-50 rounded-full overflow-hidden') do
             div(class: "h-full #{bar_color} rounded-full transition-all duration-1000", style: "width: #{percentage}%")
@@ -148,28 +148,15 @@ module Components
             size: :sm,
             class: 'flex-1 rounded-xl py-5 border-slate-100 bg-white hover:bg-slate-50 text-slate-600'
           ) do
-            'View'
+            t('medicines.index.view')
           end
           Link(
-            href: edit_medicine_path(medicine),
+            href: edit_medicine_path(medicine, return_to: medicines_path),
             variant: :outline,
             size: :sm,
             class: 'rounded-xl w-10 h-10 p-0 border-slate-100 bg-white hover:bg-slate-50 text-slate-400'
           ) do
-            svg(
-              xmlns: 'http://www.w3.org/2000/svg',
-              class: 'w-4 h-4',
-              fill: 'none',
-              viewBox: '0 0 24 24',
-              stroke: 'currentColor'
-            ) do |s|
-              s.path(
-                stroke_linecap: 'round',
-                stroke_linejoin: 'round',
-                stroke_width: '2',
-                d: 'M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z'
-              )
-            end
+            render Icons::Pencil.new(size: 16)
           end
           if view_context.policy(medicine).update?
             render Components::Medicines::RefillModal.new(
@@ -194,16 +181,16 @@ module Components
           end
           AlertDialogContent(class: 'rounded-[2rem] border-none shadow-2xl') do
             AlertDialogHeader do
-              AlertDialogTitle { 'Delete Medicine' }
+              AlertDialogTitle { t('medicines.index.delete_dialog.title') }
               AlertDialogDescription do
-                "Are you sure you want to delete #{medicine.name}? This action cannot be undone."
+                t('medicines.index.delete_dialog.confirm', name: medicine.name)
               end
             end
             AlertDialogFooter do
-              AlertDialogCancel(class: 'rounded-xl') { 'Cancel' }
+              AlertDialogCancel(class: 'rounded-xl') { t('medicines.index.delete_dialog.cancel') }
               form_with(url: medicine_path(medicine), method: :delete, class: 'inline') do
                 Button(variant: :destructive, type: :submit, class: 'rounded-xl shadow-lg shadow-destructive/20') do
-                  'Delete'
+                  t('medicines.index.delete_dialog.submit')
                 end
               end
             end

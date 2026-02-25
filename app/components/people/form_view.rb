@@ -7,12 +7,13 @@ module Components
       include Phlex::Rails::Helpers::FormWith
       include Phlex::Rails::Helpers::TurboFrameTag
 
-      attr_reader :person, :title, :subtitle
+      attr_reader :person, :title, :subtitle, :return_to
 
-      def initialize(person:, title: nil, subtitle: nil)
+      def initialize(person:, title: nil, subtitle: nil, return_to: nil)
         @person = person
         @title = title || default_title
         @subtitle = subtitle || default_subtitle
+        @return_to = return_to
         super()
       end
 
@@ -45,6 +46,7 @@ module Components
       def render_form
         form_with(model: person, id: 'person_form', class: 'space-y-6', data: { turbo_frame: '_top' }) do |f|
           render_errors if person.errors.any?
+          input(type: 'hidden', name: 'return_to', value: return_to) if return_to.present?
           render_form_fields(f)
           render_actions(f)
         end
@@ -183,7 +185,7 @@ module Components
 
       def render_actions(_f)
         div(class: 'flex gap-3 justify-end pt-4') do
-          Link(href: people_path, variant: :outline) { 'Cancel' }
+          Link(href: return_to.presence || people_path, variant: :outline) { 'Cancel' }
           Button(type: :submit, variant: :primary) do
             person.new_record? ? 'Create Person' : 'Update Person'
           end
