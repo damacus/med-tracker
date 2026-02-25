@@ -13,9 +13,27 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
   let(:admin_user) { users(:admin) }
   let(:presenter) { DashboardPresenter.new(current_user: admin_user) }
 
-  it 'renders the dashboard title' do
-    rendered = render_inline(dashboard_view)
-    expect(rendered.text).to include('Good morning')
+  describe 'greetings' do
+    it 'renders Good morning in the morning' do
+      travel_to Time.zone.parse('2026-02-25 09:00:00') do
+        rendered = render_inline(dashboard_view)
+        expect(rendered.text).to include('Good morning')
+      end
+    end
+
+    it 'renders Good afternoon in the afternoon' do
+      travel_to Time.zone.parse('2026-02-25 15:00:00') do
+        rendered = render_inline(dashboard_view)
+        expect(rendered.text).to include('Good afternoon')
+      end
+    end
+
+    it 'renders Good evening in the evening' do
+      travel_to Time.zone.parse('2026-02-25 20:00:00') do
+        rendered = render_inline(dashboard_view)
+        expect(rendered.text).to include('Good evening')
+      end
+    end
   end
 
   it 'renders the schedule heading' do

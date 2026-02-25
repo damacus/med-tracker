@@ -302,6 +302,9 @@ pt:
         other: "%{count} erros impediram que este medicamento fosse guardado:"
   dashboard:
     title: "Painel Familiar"
+    greeting_morning: "Bom dia, %{name}"
+    greeting_afternoon: "Boa tarde, %{name}"
+    greeting_evening: "Boa noite, %{name}"
     subtitle: "O horário de medicamentos da sua família para hoje."
     todays_schedule: "Horário de Hoje"
     medication_schedule: "Horário de Medicamentos"

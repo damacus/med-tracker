@@ -42,7 +42,7 @@ module Components
             end
             Heading(level: 1, size: '8', class: 'font-extrabold tracking-tight') do
               if current_user.person&.name.present?
-                t('dashboard.greeting', name: current_user.person.name.split.first)
+                t(greeting_key, name: current_user.person.name.split.first)
               else
                 t('dashboard.title')
               end
@@ -211,6 +211,14 @@ module Components
               style: "width: #{percentage}%"
             )
           end
+        end
+      end
+
+      def greeting_key
+        case Time.current.hour
+        when 5..11 then 'dashboard.greeting_morning'
+        when 12..17 then 'dashboard.greeting_afternoon'
+        else 'dashboard.greeting_evening'
         end
       end
     end

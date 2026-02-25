@@ -361,7 +361,9 @@ ga:
         other: "Chuir %{count} earráid cosc ar an leigheas a shábháil:"
   dashboard:
     title: "Dashboard an Teaghlaigh"
-    greeting: "Maidin mhaith, %{name}"
+    greeting_morning: "Maidin mhaith, %{name}"
+    greeting_afternoon: "Tráthnóna maith, %{name}"
+    greeting_evening: "Oíche mhaith, %{name}"
     subtitle: "Sceideal leigheasanna do theaghlaigh inniu."
     todays_schedule: "Sceideal an Lae Innuit"
     medication_schedule: "Sceideal Leigheasanna"

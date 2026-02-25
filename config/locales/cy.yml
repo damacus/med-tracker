@@ -303,6 +303,9 @@ cy:
         other: "%{count} wall wedi atal y meddyginiaeth hon rhag cael ei chadw:"
   dashboard:
     title: "Bwrdd Rheoli Teulu"
+    greeting_morning: "Bore da, %{name}"
+    greeting_afternoon: "Prynhawn da, %{name}"
+    greeting_evening: "Noswaith dda, %{name}"
     subtitle: "Amserlen meddyginiaeth eich teulu am heddiw."
     todays_schedule: "Amserlen Heddiw"
     medication_schedule: "Amserlen Meddyginiaeth"
