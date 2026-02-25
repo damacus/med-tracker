@@ -18,3 +18,39 @@ child_home:
 jane_school:
   location: school
   person: jane
+
+one_home:
+  location: home
+  person: one
+
+damacus_home:
+  location: home
+  person: damacus
+
+admin_home:
+  location: home
+  person: admin
+
+nurse_home:
+  location: home
+  person: nurse_smith
+
+doctor_home:
+  location: home
+  person: doctor_jones
+
+parent_home:
+  location: home
+  person: parent_person
+
+adult_patient_home:
+  location: home
+  person: adult_patient_person
+
+child_user_home:
+  location: home
+  person: child_user_person
+
+carer_home:
+  location: home
+  person: carer_person
