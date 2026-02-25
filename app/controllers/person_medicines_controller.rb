@@ -106,7 +106,7 @@ class PersonMedicinesController < ApplicationController
     authorize @person_medicine
     @medicines = available_medicines
 
-    if @person_medicine.update(person_medicine_params)
+    if @person_medicine.update(person_medicine_update_params)
       respond_to do |format|
         format.html { redirect_to person_path(@person), notice: t('person_medicines.updated') }
         format.turbo_stream do
@@ -212,6 +212,10 @@ class PersonMedicinesController < ApplicationController
 
   def person_medicine_params
     params.expect(person_medicine: %i[medicine_id notes max_daily_doses min_hours_between_doses])
+  end
+
+  def person_medicine_update_params
+    params.expect(person_medicine: %i[notes max_daily_doses min_hours_between_doses])
   end
 
   def available_medicines

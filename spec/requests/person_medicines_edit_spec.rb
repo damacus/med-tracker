@@ -72,6 +72,16 @@ RSpec.describe 'Person medicine edit and update' do
         expect(response.body).to include('person_medicine_modal')
         expect(response.body).to include("person_medicine_#{person_medicine.id}")
       end
+
+      it 'does not update medicine_id even if passed in params' do
+        original_medicine_id = person_medicine.medicine_id
+        patch person_person_medicine_path(person, person_medicine),
+              params: { person_medicine: { medicine_id: medicines(:vitamin_c).id, notes: 'Updated' } }
+
+        expect(response).to redirect_to(person_path(person))
+        expect(person_medicine.reload.medicine_id).to eq(original_medicine_id)
+        expect(person_medicine.reload.notes).to eq('Updated')
+      end
     end
 
     context 'when signed in as parent of linked child' do
