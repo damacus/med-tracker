@@ -61,21 +61,27 @@ RSpec.describe Person do
     end
 
     it 'can be a minor' do
-      minor = described_class.create!(
+      carer = described_class.create!(name: 'Carer', date_of_birth: 40.years.ago, person_type: :adult)
+      minor = described_class.new(
         name: 'Minor Person',
         date_of_birth: 10.years.ago,
         person_type: :minor
       )
+      minor.carer_relationships.build(carer: carer, relationship_type: 'parent')
+      minor.save!
 
       expect(minor.minor?).to be true
     end
 
     it 'can be a dependent adult' do
-      dependent = described_class.create!(
+      carer = described_class.create!(name: 'Carer', date_of_birth: 40.years.ago, person_type: :adult)
+      dependent = described_class.new(
         name: 'Dependent Adult',
         date_of_birth: 75.years.ago,
         person_type: :dependent_adult
       )
+      dependent.carer_relationships.build(carer: carer, relationship_type: 'guardian')
+      dependent.save!
 
       expect(dependent.dependent_adult?).to be true
     end
@@ -491,15 +497,24 @@ RSpec.describe Person do
     end
 
     context 'when person is minor type' do
+      let(:carer_for_minor) do
+        described_class.create!(name: 'Carer For Minor', date_of_birth: 40.years.ago, person_type: :adult)
+      end
+
       let(:minor_person) do
-        described_class.create!(
+        p = described_class.new(
           name: 'Minor Person',
           date_of_birth: 10.years.ago,
           person_type: :minor
         )
+        p.carer_relationships.build(carer: carer_for_minor, relationship_type: 'parent')
+        p.save!
+        p
       end
 
       it 'returns true without carers' do
+        minor_person.carer_relationships.destroy_all
+        minor_person.reload
         expect(minor_person.needs_carer?).to be true
       end
 
@@ -516,15 +531,24 @@ RSpec.describe Person do
     end
 
     context 'when person is dependent_adult type' do
+      let(:carer_for_dependent) do
+        described_class.create!(name: 'Carer For Dependent', date_of_birth: 45.years.ago, person_type: :adult)
+      end
+
       let(:dependent_person) do
-        described_class.create!(
+        p = described_class.new(
           name: 'Dependent Adult',
           date_of_birth: 70.years.ago,
           person_type: :dependent_adult
         )
+        p.carer_relationships.build(carer: carer_for_dependent, relationship_type: 'guardian')
+        p.save!
+        p
       end
 
       it 'returns true without carers' do
+        dependent_person.carer_relationships.destroy_all
+        dependent_person.reload
         expect(dependent_person.needs_carer?).to be true
       end
 
@@ -538,6 +562,60 @@ RSpec.describe Person do
 
         expect(dependent_person.needs_carer?).to be false
       end
+    end
+  end
+
+  describe '#set_capacity_from_person_type' do
+    let(:carer) { described_class.create!(name: 'Carer', date_of_birth: 40.years.ago, person_type: :adult) }
+
+    it 'auto-sets has_capacity to false for minors with a carer' do
+      minor = described_class.new(
+        name: 'Minor',
+        date_of_birth: 10.years.ago,
+        person_type: :minor,
+        has_capacity: true
+      )
+      minor.carer_relationships.build(carer: carer, relationship_type: 'parent')
+      minor.valid?
+
+      expect(minor.has_capacity).to be false
+    end
+
+    it 'auto-sets has_capacity to false for dependent adults with a carer' do
+      dependent = described_class.new(
+        name: 'Dependent',
+        date_of_birth: 70.years.ago,
+        person_type: :dependent_adult,
+        has_capacity: true
+      )
+      dependent.carer_relationships.build(carer: carer, relationship_type: 'guardian')
+      dependent.valid?
+
+      expect(dependent.has_capacity).to be false
+    end
+
+    it 'does not change has_capacity for adults' do
+      adult = described_class.new(
+        name: 'Adult',
+        date_of_birth: 30.years.ago,
+        person_type: :adult,
+        has_capacity: true
+      )
+      adult.valid?
+
+      expect(adult.has_capacity).to be true
+    end
+
+    it 'does not force has_capacity for minors without a carer (self-signup)' do
+      minor = described_class.new(
+        name: 'Self-Signup Minor',
+        date_of_birth: 10.years.ago,
+        person_type: :minor,
+        has_capacity: true
+      )
+      minor.valid?
+
+      expect(minor.has_capacity).to be true
     end
   end
 

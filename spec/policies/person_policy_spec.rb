@@ -19,9 +19,7 @@ RSpec.describe PersonPolicy do
       end
     end
 
-    it 'forbids creating people directly (security)' do
-      # SECURITY: Admins should not create people directly
-      # People should only be created through proper user signup/invitation flows
+    it 'forbids creating people' do
       expect(policy.create?).to be false
       expect(policy.new?).to be false
     end
@@ -76,6 +74,46 @@ RSpec.describe PersonPolicy do
 
     it 'allows accessing index (but scope limits to assigned people)' do
       expect(policy.index?).to be true
+    end
+
+    context 'when creating a minor' do
+      let(:person) { Person.new(person_type: :minor, date_of_birth: 5.years.ago) }
+
+      it { expect(policy.create?).to be true }
+    end
+
+    context 'when creating a dependent adult' do
+      let(:person) { Person.new(person_type: :dependent_adult, date_of_birth: 70.years.ago) }
+
+      it { expect(policy.create?).to be true }
+    end
+
+    context 'when creating an adult' do
+      let(:person) { Person.new(person_type: :adult, date_of_birth: 30.years.ago) }
+
+      it { expect(policy.create?).to be false }
+    end
+
+    context 'when creating a new person (no type yet)' do
+      let(:person) { Person.new }
+
+      it { expect(policy.new?).to be true }
+    end
+  end
+
+  context 'when user is a carer' do
+    let(:current_user) { users(:carer) }
+
+    context 'when creating a minor' do
+      let(:person) { Person.new(person_type: :minor, date_of_birth: 5.years.ago) }
+
+      it { expect(policy.create?).to be true }
+    end
+
+    context 'when creating an adult' do
+      let(:person) { Person.new(person_type: :adult, date_of_birth: 30.years.ago) }
+
+      it { expect(policy.create?).to be false }
     end
   end
 

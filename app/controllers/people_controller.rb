@@ -58,6 +58,14 @@ class PeopleController < ApplicationController
     @person = Person.new(person_params)
     authorize @person
 
+    if current_user.parent? || current_user.carer?
+      @person.carer_relationships.build(
+        carer: current_user.person,
+        relationship_type: current_user.role,
+        active: true
+      )
+    end
+
     respond_to do |format|
       if @person.save
         format.html { redirect_to @person, notice: t('people.created') }
