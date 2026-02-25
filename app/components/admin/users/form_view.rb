@@ -114,8 +114,11 @@ module Components
           FormField do
             FormFieldLabel(for: 'user_person_attributes_location_ids') { 'Locations' }
             div(class: 'grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2') do
-              Location.all.each do |location|
-                label(class: 'flex items-center gap-2 p-3 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer') do
+              Location.find_each do |location|
+                label(
+                  class: 'flex items-center gap-2 p-3 rounded-lg border border-slate-200 ' \
+                         'hover:bg-slate-50 cursor-pointer'
+                ) do
                   input(
                     type: 'checkbox',
                     name: 'user[person_attributes][location_ids][]',
