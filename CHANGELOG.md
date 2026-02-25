@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.9](https://github.com/damacus/med-tracker/compare/v0.3.8...v0.3.9) (2026-02-25)
+
+
+### Features
+
+* improve passkey security and refactor authentication views ([#835](https://github.com/damacus/med-tracker/issues/835)) ([f2ac76b](https://github.com/damacus/med-tracker/commit/f2ac76b59bc722c03512252916a63d035aed5f85))
+* standardize icon usage and integrate reorder workflow ([#833](https://github.com/damacus/med-tracker/issues/833)) ([cc61369](https://github.com/damacus/med-tracker/commit/cc61369c7087397e5f3da7a403016eec36487e73))
+
 ## [0.3.8](https://github.com/damacus/med-tracker/compare/v0.3.7...v0.3.8) (2026-02-25)
 
 
