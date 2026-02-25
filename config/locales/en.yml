@@ -137,6 +137,11 @@ en:
         placeholder: "Select a person..."
         submit: "Add Member"
         all_assigned: "All users are already members of this location."
+      remove_member:
+        title: "Remove Member"
+        confirm: "Are you sure you want to remove %{name} from %{location}?"
+        cancel: "Cancel"
+        submit: "Remove"
 
   location_memberships:
     create:

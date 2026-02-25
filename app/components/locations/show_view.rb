@@ -141,17 +141,41 @@ module Components
 
                   if view_context.policy(location).update?
                     membership = location.location_memberships.find_by(person: member)
-                    form_with(url: location_location_membership_path(location, membership), method: :delete, class: 'opacity-0 group-hover:opacity-100 transition-opacity') do
-                      Button(variant: :ghost, size: :sm, class: 'text-slate-300 hover:text-destructive h-8 w-8 p-0') do
-                        render Icons::X.new(size: 14)
-                      end
-                    end
+                    render_remove_member_dialog(member, membership)
                   end
                 end
               end
             end
           else
             Text(size: '2', class: 'text-slate-400 italic') { t('locations.show.no_members') }
+          end
+        end
+      end
+
+      def render_remove_member_dialog(member, membership)
+        AlertDialog do
+          AlertDialogTrigger do
+            Button(variant: :ghost, size: :sm, class: 'opacity-0 group-hover:opacity-100 transition-opacity text-slate-300 hover:text-destructive h-8 w-8 p-0') do
+              render Icons::X.new(size: 14)
+            end
+          end
+
+          AlertDialogContent(class: 'rounded-[2rem] border-none shadow-2xl') do
+            AlertDialogHeader do
+              AlertDialogTitle { t('locations.show.remove_member.title') }
+              AlertDialogDescription do
+                t('locations.show.remove_member.confirm', name: member.name, location: location.name)
+              end
+            end
+
+            AlertDialogFooter do
+              AlertDialogCancel(class: 'rounded-xl') { t('locations.show.remove_member.cancel') }
+              form_with(url: location_location_membership_path(location, membership), method: :delete, class: 'inline') do
+                Button(variant: :destructive, type: :submit, class: 'rounded-xl shadow-lg shadow-destructive/20') do
+                  t('locations.show.remove_member.submit')
+                end
+              end
+            end
           end
         end
       end
