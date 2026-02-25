@@ -2,11 +2,11 @@
 
 module Components
   module Icons
-    class CheckCircle < Base
+    class Smartphone < Base
       def view_template
         svg(**attrs) do |s|
-          s.circle(cx: '12', cy: '12', r: '10')
-          s.path(d: 'm9 12 2 2 4-4')
+          s.rect(width: '14', height: '20', x: '5', y: '2', rx: '2', ry: '2')
+          s.path(d: 'M12 18h.01')
         end
       end
     end

@@ -3,24 +3,9 @@
 module Components
   module Icons
     class Key < Base
-      def initialize(size: 16, **attrs)
-        super
-        @attrs[:viewBox] = '0 0 20 20'
-        @attrs[:fill] = 'currentColor'
-        @attrs[:stroke] = nil
-        @attrs[:stroke_width] = nil
-        @attrs[:stroke_linecap] = nil
-        @attrs[:stroke_linejoin] = nil
-      end
-
       def view_template
-        svg(**merged_attrs.compact) do |s|
-          s.path(
-            fill_rule: 'evenodd',
-            d: 'M18 8a6 6 0 01-7.743 5.743L10 14l-1 1-1 1H6v2H2v-4l4.257-4.257A6 6 0 1118 8zm-6-4a1 ' \
-               '1 0 100 2 2 2 0 012 2 1 1 0 102 0 4 4 0 00-4-4z',
-            clip_rule: 'evenodd'
-          )
+        svg(**attrs) do |s|
+          s.path(d: 'M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3m-3-3l-2.5-2.5')
         end
       end
     end

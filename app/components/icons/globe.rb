@@ -2,11 +2,12 @@
 
 module Components
   module Icons
-    class CheckCircle < Base
+    class Globe < Base
       def view_template
         svg(**attrs) do |s|
           s.circle(cx: '12', cy: '12', r: '10')
-          s.path(d: 'm9 12 2 2 4-4')
+          s.path(d: 'M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20')
+          s.path(d: 'M2 12h20')
         end
       end
     end

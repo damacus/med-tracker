@@ -264,7 +264,7 @@ module Components
               class: 'w-10 h-10 p-0 rounded-xl text-slate-400 hover:text-slate-700',
               data: { testid: "move-up-person-medicine-#{person_medicine.id}" }
             ) do
-              plain '↑'
+              render Icons::ArrowUp.new(size: 16)
             end
           end
 
@@ -280,7 +280,7 @@ module Components
               class: 'w-10 h-10 p-0 rounded-xl text-slate-400 hover:text-slate-700',
               data: { testid: "move-down-person-medicine-#{person_medicine.id}" }
             ) do
-              plain '↓'
+              render Icons::ArrowDown.new(size: 16)
             end
           end
         end

@@ -32,7 +32,7 @@ module Components
       private
 
       delegate :people, :active_prescriptions, :upcoming_prescriptions,
-               :current_user, :doses, :next_dose_time, to: :presenter
+               :current_user, :doses, :next_dose_time, :compliance_percentage, to: :presenter
 
       def next_dose_value
         time = next_dose_time
@@ -66,7 +66,7 @@ module Components
               variant: :primary,
               size: :lg
             ) do
-              render Icons::Pill.new(size: 20, class: 'mr-2')
+              render Icons::PlusCircle.new(size: 20, class: 'mr-2')
               span { t('dashboard.quick_actions.add_medicine') }
             end
           end
@@ -85,10 +85,9 @@ module Components
             value: active_prescriptions.count,
             icon_type: 'pill'
           )
-          # Placeholder stats to match mockup visual density
           render Components::Dashboard::StatCard.new(
             title: t('dashboard.stats.compliance'),
-            value: '94%',
+            value: "#{compliance_percentage}%",
             icon_type: 'check'
           )
           render Components::Dashboard::StatCard.new(

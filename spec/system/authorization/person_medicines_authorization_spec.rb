@@ -160,8 +160,9 @@ RSpec.describe 'Person Medicines Authorization' do
 
       within("#person_medicine_#{person_medicine.id}") do
         # Trigger is an icon button
-        expect(page).to have_css('button svg')
-        find('button svg').click
+        delete_button = find("[data-testid='delete-person-medicine-#{person_medicine.id}']")
+        expect(delete_button).to have_css('svg')
+        delete_button.click
       end
 
       # Should show confirmation dialog

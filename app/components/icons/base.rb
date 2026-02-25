@@ -2,18 +2,17 @@
 
 module Components
   module Icons
-    class Base < Phlex::HTML
+    class Base < ::RubyUI::Base
       DEFAULT_SIZE = 16
 
       def initialize(size: DEFAULT_SIZE, **attrs)
         @size = size
-        @attrs = attrs
-        super()
+        super(**attrs)
       end
 
       private
 
-      attr_reader :size, :attrs
+      attr_reader :size
 
       def default_attrs
         {
@@ -25,12 +24,9 @@ module Components
           stroke: 'currentColor',
           stroke_width: '2',
           stroke_linecap: 'round',
-          stroke_linejoin: 'round'
+          stroke_linejoin: 'round',
+          class: "lucide lucide-#{self.class.name.demodulize.underscore.dasherize}"
         }
-      end
-
-      def merged_attrs
-        default_attrs.merge(attrs)
       end
     end
   end
