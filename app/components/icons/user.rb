@@ -3,23 +3,10 @@
 module Components
   module Icons
     class User < Base
-      def initialize(size: 16, **attrs)
-        super
-        @attrs[:viewBox] = '0 0 20 20'
-        @attrs[:fill] = 'currentColor'
-        @attrs[:stroke] = nil
-        @attrs[:stroke_width] = nil
-        @attrs[:stroke_linecap] = nil
-        @attrs[:stroke_linejoin] = nil
-      end
-
       def view_template
-        svg(**merged_attrs.compact) do |s|
-          s.path(
-            fill_rule: 'evenodd',
-            d: 'M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z',
-            clip_rule: 'evenodd'
-          )
+        svg(**attrs) do |s|
+          s.path(d: 'M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2')
+          s.circle(cx: '12', cy: '7', r: '4')
         end
       end
     end

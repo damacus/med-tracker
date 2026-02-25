@@ -73,6 +73,20 @@ class MedicinesController < ApplicationController
     redirect_to medicines_url, notice: t('medicines.deleted')
   end
 
+  def mark_as_ordered
+    @medicine = Medicine.find(params[:id])
+    authorize @medicine
+    @medicine.update!(reorder_status: :ordered, ordered_at: Time.current)
+    redirect_back_or_to @medicine, notice: t('medicines.ordered')
+  end
+
+  def mark_as_received
+    @medicine = Medicine.find(params[:id])
+    authorize @medicine
+    @medicine.update!(reorder_status: :received, reordered_at: Time.current)
+    redirect_back_or_to @medicine, notice: t('medicines.received')
+  end
+
   def refill
     authorize @medicine, :update?
 

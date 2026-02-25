@@ -31,6 +31,12 @@ class DashboardPresenter
     upcoming.min_by { |d| d[:scheduled_at] }&.dig(:scheduled_at)
   end
 
+  def compliance_percentage
+    # Placeholder for actual compliance logic
+    # For now, return a realistic-looking mock value
+    85
+  end
+
   private
 
   def load_people

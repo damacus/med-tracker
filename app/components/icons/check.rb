@@ -4,7 +4,7 @@ module Components
   module Icons
     class Check < Base
       def view_template
-        svg(**merged_attrs) do |s|
+        svg(**attrs) do |s|
           s.path(d: 'M20 6 9 17l-5-5')
         end
       end

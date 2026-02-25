@@ -50,11 +50,11 @@ module Components
       end
 
       def check_icon
-        render Icons::Check.new(size: 16, class: 'lucide lucide-check')
+        render Icons::Check.new(size: 16)
       end
 
       def alert_circle_icon
-        render Icons::AlertCircle.new(size: 16, class: 'lucide lucide-alert-circle')
+        render Icons::AlertCircle.new(size: 16)
       end
     end
   end

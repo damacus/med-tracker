@@ -165,7 +165,13 @@ en:
     updated: "Medicine was successfully updated."
     deleted: "Medicine was successfully deleted."
     refilled: "Inventory refilled successfully."
+    ordered: "Refill marked as ordered"
+    received: "Refill marked as received"
     refill_button: "Refill"
+    reorder_statuses:
+      requested: "Requested"
+      ordered: "Ordered"
+      received: "Received"
     refill_modal:
       refill_inventory: "Refill Inventory"
       title: "Refill %{medicine}"

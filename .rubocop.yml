@@ -96,6 +96,7 @@ Layout/LineLength:
     - "app/views/**/*"
     - "app/controllers/**/*"
     - "app/components/ruby_ui/**/*"
+    - "app/components/icons/**/*"
 
 # Allow case-when for size classes in UI components
 Style/HashLikeCase:

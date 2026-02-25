@@ -2,11 +2,11 @@
 
 module Components
   module Icons
-    class CheckCircle < Base
+    class ChevronsUpDown < Base
       def view_template
         svg(**attrs) do |s|
-          s.circle(cx: '12', cy: '12', r: '10')
-          s.path(d: 'm9 12 2 2 4-4')
+          s.path(d: 'm7 15 5 5 5-5')
+          s.path(d: 'm7 9 5-5 5 5')
         end
       end
     end
