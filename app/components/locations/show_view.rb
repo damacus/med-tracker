@@ -192,24 +192,33 @@ module Components
             end
 
             DialogMiddle do
-              form_with(url: location_location_memberships_path(location), method: :post, class: 'space-y-4') do
-                div(class: 'space-y-2') do
-                  label(for: 'location_membership_person_id', class: 'text-sm font-medium') { 'Select Person' }
-                  select(
-                    name: 'location_membership[person_id]',
-                    id: 'location_membership_person_id',
-                    class: select_classes,
-                    required: true
-                  ) do
-                    option(value: '') { 'Select a person...' }
-                    available_people.each do |person|
-                      option(value: person.id) { person.name }
+              if available_people.any?
+                form_with(url: location_location_memberships_path(location), method: :post, class: 'space-y-4') do
+                  div(class: 'space-y-2') do
+                    label(for: 'location_membership_person_id', class: 'text-sm font-medium') { 'Select Person' }
+                    select(
+                      name: 'location_membership[person_id]',
+                      id: 'location_membership_person_id',
+                      class: select_classes,
+                      required: true
+                    ) do
+                      option(value: '') { 'Select a person...' }
+                      available_people.each do |person|
+                        option(value: person.id) { person.name }
+                      end
                     end
                   end
-                end
 
-                div(class: 'flex justify-end gap-3 pt-2') do
-                  Button(type: :submit, variant: :primary) { 'Add Member' }
+                  div(class: 'flex justify-end gap-3 pt-2') do
+                    Button(type: :submit, variant: :primary) { 'Add Member' }
+                  end
+                end
+              else
+                div(class: 'py-8 text-center space-y-2') do
+                  div(class: 'w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 mx-auto') do
+                    render Icons::Users.new(size: 24)
+                  end
+                  Text(size: '2', class: 'text-slate-500 font-medium') { 'All users are already members of this location.' }
                 end
               end
             end
