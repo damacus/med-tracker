@@ -465,6 +465,7 @@ en:
       active_prescriptions: "Active Prescriptions"
       compliance: "Compliance"
       next_dose: "Next Dose"
+      no_upcoming_doses: "None today"
     statuses:
       taken: "Taken"
       upcoming: "Upcoming"

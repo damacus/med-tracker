@@ -398,6 +398,7 @@ es:
     stats:
       people: "Personas"
       active_prescriptions: "Prescripciones Activas"
+      no_upcoming_doses: "Ninguna hoy"
     statuses:
       taken: "Tomado"
       upcoming: "Próximo"

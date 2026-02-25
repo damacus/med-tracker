@@ -26,6 +26,11 @@ class DashboardPresenter
     @doses ||= FamilyDashboard::ScheduleQuery.new(people).call
   end
 
+  def next_dose_time
+    upcoming = doses.select { |d| d[:status] == :upcoming }
+    upcoming.min_by { |d| d[:scheduled_at] }&.dig(:scheduled_at)
+  end
+
   private
 
   def load_people

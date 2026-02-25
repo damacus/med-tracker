@@ -466,6 +466,7 @@ ga:
       active_prescriptions: "Oideas Leigheasanna Gníomhacha"
       compliance: "Comhlíonadh"
       next_dose: "An Chéad Dháileog Eile"
+      no_upcoming_doses: "Níl ceann ar bith inniu"
     statuses:
       taken: "Tógtha"
       upcoming: "Ag Teacht"
