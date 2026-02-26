@@ -27,7 +27,7 @@ RSpec.describe Components::PersonMedications::Card, type: :component do
   end
 
   describe 'pre-loaded todays_takes' do
-    let(:take) { MedicationTake.create!(person_medication: person_medication, taken_at: Time.current) }
+    let(:take) { MedicationTake.create!(person_medication: person_medication, taken_at: Time.current, amount_ml: 10.0) }
 
     it 'displays takes from pre-loaded collection' do
       rendered = render_card(todays_takes: [take])

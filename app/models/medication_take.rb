@@ -15,6 +15,7 @@ class MedicationTake < ApplicationRecord
   has_paper_trail
 
   validates :taken_at, presence: true
+  validates :amount_ml, presence: true, numericality: { greater_than: 0 }
   validate :exactly_one_source
 
   after_create :decrement_medication_stock

@@ -3,6 +3,7 @@
 FactoryBot.define do
   factory :medication_take do
     taken_at { Time.current }
+    amount_ml { 1.0 }
 
     trait :for_person_medication do
       person_medication

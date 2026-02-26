@@ -34,9 +34,13 @@ module Components
             disabled: editing,
             class: select_classes
           ) do
-            option(value: '', disabled: true, selected: person_medication.medication_id.blank?) { 'Select a medication' }
+            option(value: '', disabled: true, selected: person_medication.medication_id.blank?) do
+              'Select a medication'
+            end
             medications.each do |medication|
-              option(value: medication.id, selected: person_medication.medication_id == medication.id) { medication.name }
+              option(value: medication.id, selected: person_medication.medication_id == medication.id) do
+                medication.name
+              end
             end
           end
           FormFieldHint { 'Select a medication from the list' }

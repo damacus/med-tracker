@@ -255,7 +255,8 @@ RSpec.describe 'Admin Audit Logs', type: :system do
       PaperTrail.request(enabled: true) do
         MedicationTake.create!(
           schedule: schedule,
-          taken_at: Time.current
+          taken_at: Time.current,
+          amount_ml: 10.0
         )
       end
 
@@ -287,7 +288,8 @@ RSpec.describe 'Admin Audit Logs', type: :system do
       PaperTrail.request(enabled: true) do
         MedicationTake.create!(
           schedule: schedule,
-          taken_at: Time.current
+          taken_at: Time.current,
+          amount_ml: 10.0
         )
       end
 

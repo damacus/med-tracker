@@ -28,7 +28,7 @@ RSpec.describe Components::PersonMedications::Card, type: :component do
 
   describe 'countdown notice styling' do
     before do
-      MedicationTake.create!(person_medication: person_medication, taken_at: 1.hour.ago)
+      MedicationTake.create!(person_medication: person_medication, taken_at: 1.hour.ago, amount_ml: 10.0)
       allow(person_medication).to receive_messages(can_take_now?: false, countdown_display: '3 hours')
     end
 

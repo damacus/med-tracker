@@ -45,7 +45,12 @@ module Components
       def render_form
         form_with(
           model: person_medication,
-          url: editing ? person_person_medication_path(person, person_medication) : person_person_medications_path(person),
+          url: if editing
+                 person_person_medication_path(person,
+                                               person_medication)
+               else
+                 person_person_medications_path(person)
+               end,
           method: editing ? :patch : :post,
           class: 'space-y-6'
         ) do |form|
@@ -78,7 +83,11 @@ module Components
         div(class: 'flex justify-end gap-3 pt-4') do
           Link(href: person_path(person), variant: :outline) { t('person_medications.form.cancel') }
           Button(type: :submit, variant: :primary) do
-            editing ? t('person_medications.form.save_changes_button') : t('person_medications.form.add_medication_button')
+            if editing
+              t('person_medications.form.save_changes_button')
+            else
+              t('person_medications.form.add_medication_button')
+            end
           end
         end
       end

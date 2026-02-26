@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe MedicationTake do
-  subject(:medication_take) { described_class.new(schedule: schedule, taken_at: Time.current) }
+  subject(:medication_take) { described_class.new(schedule: schedule, taken_at: Time.current, amount_ml: 10.0) }
 
   let(:person) { Person.create!(name: 'Jane Doe', date_of_birth: '1990-01-01') }
 
@@ -38,6 +38,8 @@ RSpec.describe MedicationTake do
 
   describe 'validations' do
     it { is_expected.to validate_presence_of(:taken_at) }
+    it { is_expected.to validate_presence_of(:amount_ml) }
+    it { is_expected.to validate_numericality_of(:amount_ml).is_greater_than(0) }
   end
 
   describe 'associations' do
@@ -47,7 +49,7 @@ RSpec.describe MedicationTake do
 
   describe 'source validation' do
     context 'when neither schedule nor person_medication is set' do
-      subject(:medication_take) { described_class.new(taken_at: Time.current) }
+      subject(:medication_take) { described_class.new(taken_at: Time.current, amount_ml: 10.0) }
 
       it 'is invalid' do
         expect(medication_take).not_to be_valid
@@ -62,7 +64,8 @@ RSpec.describe MedicationTake do
         described_class.new(
           schedule: schedule,
           person_medication: person_medication,
-          taken_at: Time.current
+          taken_at: Time.current,
+          amount_ml: 10.0
         )
       end
 
@@ -78,7 +81,8 @@ RSpec.describe MedicationTake do
       subject(:medication_take) do
         described_class.new(
           schedule: schedule,
-          taken_at: Time.current
+          taken_at: Time.current,
+          amount_ml: 10.0
         )
       end
 
@@ -91,7 +95,8 @@ RSpec.describe MedicationTake do
       subject(:medication_take) do
         described_class.new(
           person_medication: person_medication,
-          taken_at: Time.current
+          taken_at: Time.current,
+          amount_ml: 10.0
         )
       end
 
@@ -118,7 +123,8 @@ RSpec.describe MedicationTake do
         expect do
           described_class.create!(
             schedule: schedule,
-            taken_at: Time.current
+            taken_at: Time.current,
+            amount_ml: 10.0
           )
         end.to change { medication.reload.current_supply }.from(100).to(99)
       end
@@ -129,7 +135,8 @@ RSpec.describe MedicationTake do
         expect do
           described_class.create!(
             person_medication: person_medication,
-            taken_at: Time.current
+            taken_at: Time.current,
+            amount_ml: 10.0
           )
         end.to change { medication.reload.current_supply }.from(100).to(99)
       end

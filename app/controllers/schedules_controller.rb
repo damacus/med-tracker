@@ -205,6 +205,7 @@ class SchedulesController < ApplicationController
 
   def set_person
     @person = Person.find(params[:person_id])
+    authorize @person, :show?
   end
 
   def set_schedule
