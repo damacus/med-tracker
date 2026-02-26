@@ -47,6 +47,8 @@ RSpec.describe 'PWA' do
       follow_redirect! if response.redirect?
 
       expect(response.body).to include('<link rel="manifest" href="/manifest.webmanifest">')
+      expect(response.body).not_to include('fonts.googleapis.com')
+      expect(response.body).not_to include('fonts.gstatic.com')
     end
   end
 
