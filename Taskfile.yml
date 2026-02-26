@@ -42,19 +42,6 @@ tasks:
           COMMAND: 'bundle exec rspec --profile 20 --format documentation {{ .TEST_FILE | default "spec" }}'
           TEST_FILE: '{{ .TEST_FILE | default "spec" }}'
 
-  status:
-    desc: Get current status of the project
-    summary: |
-      Run RSpec tests in Docker and verify project readiness with bd ready
-      Usage: task status
-    silent: true
-    cmds:
-      - task: internal:run
-        vars:
-          ENVIRONMENT: test
-          COMMAND: "bundle exec rspec --format json"
-      - cmd: bd ready
-
   stop-all:
     desc: Stop all services for this worktree (dev, test, prod)
     summary: |

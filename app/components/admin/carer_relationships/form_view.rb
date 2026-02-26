@@ -5,6 +5,7 @@ module Components
     module CarerRelationships
       class FormView < Components::Base
         include Phlex::Rails::Helpers::FormWith
+        include Phlex::Rails::Helpers::TurboFrameTag
 
         RELATIONSHIP_TYPES = [
           ['Parent', 'parent'],
@@ -13,19 +14,31 @@ module Components
           ['Self', 'self']
         ].freeze
 
-        attr_reader :relationship, :carers, :patients
+        attr_reader :relationship, :carers, :patients, :modal
 
-        def initialize(relationship:, carers:, patients:)
+        def initialize(relationship:, carers:, patients:, modal: false)
           @relationship = relationship
           @carers = carers
           @patients = patients
+          @modal = modal
           super()
         end
 
         def view_template
-          div(class: 'max-w-2xl mx-auto') do
-            render_header
-            render_form
+          if modal
+            turbo_frame_tag 'modal' do
+              render ::Components::Modal.new(
+                title: relationship.new_record? ? 'New Carer Relationship' : 'Edit Carer Relationship',
+                subtitle: 'Assign a carer to a patient.'
+              ) do
+                render_form
+              end
+            end
+          else
+            div(class: 'max-w-2xl mx-auto') do
+              render_header
+              render_form
+            end
           end
         end
 
@@ -125,7 +138,11 @@ module Components
             Button(type: :submit, variant: :primary) do
               relationship.new_record? ? 'Create Relationship' : 'Update Relationship'
             end
-            Link(href: '/admin/carer_relationships', variant: :link) { 'Cancel' }
+            if modal
+              Button(variant: :ghost, data: { action: 'click->modal#close' }) { 'Cancel' }
+            else
+              Link(href: '/admin/carer_relationships', variant: :link) { 'Cancel' }
+            end
           end
         end
       end

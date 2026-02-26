@@ -37,5 +37,19 @@ RSpec.describe 'Person medication reordering' do
         .to eq([unlinked_first.id, unlinked_second.id])
       expect(unlinked_child.person_medications.order(:position, :id).pluck(:id)).to eq(original_order)
     end
+
+    it 'returns turbo_stream and updates person show container for linked children' do
+      linked_first = PersonMedication.create!(person: linked_child, medication: medications(:vitamin_d))
+      linked_second = PersonMedication.create!(person: linked_child, medication: medications(:vitamin_c))
+
+      patch reorder_person_person_medication_path(linked_child, linked_second),
+            params: { direction: 'up' },
+            headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.media_type).to eq('text/vnd.turbo-stream.html')
+      expect(response.body).to include("target=\"person_show_#{linked_child.id}\"")
+      expect(linked_child.person_medications.order(:position, :id).pluck(:id)).to eq([linked_second.id, linked_first.id])
+    end
   end
 end

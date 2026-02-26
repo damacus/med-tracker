@@ -19,7 +19,7 @@ module Components
         form_with(
           model: [person, schedule],
           class: 'space-y-6',
-          data: { controller: 'schedule-form' }
+          data: { controller: 'schedule-form', turbo_stream: true }
         ) do |f|
           render_errors if schedule.errors.any?
           render_form_fields(f)
@@ -243,7 +243,7 @@ module Components
 
       def render_actions(_f)
         div(class: 'flex gap-3 justify-end') do
-          Link(href: person_path(person), variant: :outline) { 'Cancel' }
+          Button(variant: :ghost, data: { action: 'click->modal#close' }) { 'Cancel' }
           Button(
             type: :submit,
             variant: :primary,

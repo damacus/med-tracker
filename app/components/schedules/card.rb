@@ -252,7 +252,7 @@ module Components
               variant: :outline,
               class: 'w-12 h-12 p-0 rounded-xl border-slate-100 flex items-center justify-center ' \
                      'text-slate-400 hover:text-slate-600',
-              data: { testid: "edit-schedule-#{schedule.id}" }
+              data: { turbo_frame: 'modal', testid: "edit-schedule-#{schedule.id}" }
             ) do
               render Icons::Pencil.new(size: 20)
             end

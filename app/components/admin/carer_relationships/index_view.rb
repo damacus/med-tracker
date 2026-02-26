@@ -32,7 +32,11 @@ module Components
               Heading(level: 1) { t('admin.carer_relationships.index.title') }
               Text(weight: 'muted') { t('admin.carer_relationships.index.subtitle') }
             end
-            render RubyUI::Link.new(href: '/admin/carer_relationships/new', variant: :primary) { t('admin.carer_relationships.index.new_relationship') }
+            render RubyUI::Link.new(
+              href: '/admin/carer_relationships/new',
+              variant: :primary,
+              data: { turbo_frame: 'modal' }
+            ) { t('admin.carer_relationships.index.new_relationship') }
           end
         end
 
@@ -58,9 +62,9 @@ module Components
         end
 
         def render_table_body
-          render RubyUI::TableBody.new do
+          render RubyUI::TableBody.new(id: 'carer_relationships_rows') do
             if relationships.empty?
-              render RubyUI::TableRow.new do
+              render RubyUI::TableRow.new(id: 'carer_relationships_empty') do
                 render RubyUI::TableCell.new(colspan: 5, class: 'py-8 text-center text-muted-foreground') do
                   t('admin.carer_relationships.index.empty')
                 end
@@ -74,16 +78,7 @@ module Components
         end
 
         def render_relationship_row(relationship)
-          row_class = relationship.active? ? '' : 'opacity-60'
-          render RubyUI::TableRow.new(class: row_class, data: { relationship_id: relationship.id }) do
-            render(RubyUI::TableCell.new(class: 'font-medium') { relationship.carer.name })
-            render(RubyUI::TableCell.new { relationship.patient.name })
-            render(RubyUI::TableCell.new(class: 'capitalize') { relationship.relationship_type.to_s.humanize })
-            render(RubyUI::TableCell.new { render_status_badge(relationship) })
-            render RubyUI::TableCell.new(class: 'text-right space-x-2') do
-              render_activation_button(relationship)
-            end
-          end
+          render Row.new(relationship: relationship)
         end
 
         def render_status_badge(relationship)

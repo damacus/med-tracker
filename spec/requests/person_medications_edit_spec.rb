@@ -69,7 +69,7 @@ RSpec.describe 'Person medication edit and update' do
 
         expect(response).to have_http_status(:ok)
         expect(response.media_type).to eq('text/vnd.turbo-stream.html')
-        expect(response.body).to include('person_medication_modal')
+        expect(response.body).to include('modal')
         expect(response.body).to include("person_medication_#{person_medication.id}")
       end
 

@@ -18,25 +18,70 @@ module Admin
     def new
       @relationship = CarerRelationship.new(patient_id: params[:patient_id])
       authorize @relationship
-      render Components::Admin::CarerRelationships::FormView.new(
-        relationship: @relationship,
-        carers: available_carers,
-        patients: available_patients
-      )
+      is_modal = request.headers['Turbo-Frame'] == 'modal'
+
+      respond_to do |format|
+        format.html do
+          render Components::Admin::CarerRelationships::FormView.new(
+            relationship: @relationship,
+            carers: available_carers,
+            patients: available_patients,
+            modal: is_modal
+          ), layout: false
+        end
+        format.turbo_stream do
+          render turbo_stream: turbo_stream.replace(
+            'modal',
+            Components::Admin::CarerRelationships::FormView.new(
+              relationship: @relationship,
+              carers: available_carers,
+              patients: available_patients,
+              modal: true
+            )
+          )
+        end
+      end
     end
 
     def create
       @relationship = CarerRelationship.new(relationship_params)
       authorize @relationship
 
-      if @relationship.save
-        redirect_to admin_carer_relationships_path, notice: 'Carer relationship was successfully created.'
-      else
-        render Components::Admin::CarerRelationships::FormView.new(
-          relationship: @relationship,
-          carers: available_carers,
-          patients: available_patients
-        ), status: :unprocessable_content
+      respond_to do |format|
+        if @relationship.save
+          format.html { redirect_to admin_carer_relationships_path, notice: 'Carer relationship was successfully created.' }
+          format.turbo_stream do
+            flash.now[:notice] = 'Carer relationship was successfully created.'
+            render turbo_stream: [
+              turbo_stream.update('modal', ''),
+              turbo_stream.remove('carer_relationships_empty'),
+              turbo_stream.prepend(
+                'carer_relationships_rows',
+                Components::Admin::CarerRelationships::Row.new(relationship: @relationship.reload)
+              ),
+              turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
+            ]
+          end
+        else
+          format.html do
+            render Components::Admin::CarerRelationships::FormView.new(
+              relationship: @relationship,
+              carers: available_carers,
+              patients: available_patients
+            ), status: :unprocessable_content
+          end
+          format.turbo_stream do
+            render turbo_stream: turbo_stream.replace(
+              'modal',
+              Components::Admin::CarerRelationships::FormView.new(
+                relationship: @relationship,
+                carers: available_carers,
+                patients: available_patients,
+                modal: true
+              )
+            ), status: :unprocessable_content
+          end
+        end
       end
     end
 
@@ -45,7 +90,13 @@ module Admin
       authorize @relationship
 
       @relationship.deactivate!
-      redirect_to admin_carer_relationships_path, notice: 'Carer relationship has been deactivated.'
+      respond_to do |format|
+        format.html { redirect_to admin_carer_relationships_path, notice: 'Carer relationship has been deactivated.' }
+        format.turbo_stream do
+          flash.now[:notice] = 'Carer relationship has been deactivated.'
+          render turbo_stream: relationship_row_streams(@relationship)
+        end
+      end
     end
 
     def activate
@@ -53,7 +104,13 @@ module Admin
       authorize @relationship
 
       @relationship.activate!
-      redirect_to admin_carer_relationships_path, notice: 'Carer relationship has been activated.'
+      respond_to do |format|
+        format.html { redirect_to admin_carer_relationships_path, notice: 'Carer relationship has been activated.' }
+        format.turbo_stream do
+          flash.now[:notice] = 'Carer relationship has been activated.'
+          render turbo_stream: relationship_row_streams(@relationship)
+        end
+      end
     end
 
     private
@@ -68,6 +125,16 @@ module Admin
 
     def available_patients
       Person.order(:name)
+    end
+
+    def relationship_row_streams(relationship)
+      [
+        turbo_stream.replace(
+          "carer_relationship_#{relationship.id}",
+          Components::Admin::CarerRelationships::Row.new(relationship: relationship.reload)
+        ),
+        turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
+      ]
     end
   end
 end

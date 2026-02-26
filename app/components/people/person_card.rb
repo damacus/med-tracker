@@ -82,8 +82,7 @@ module Components
             Link(
               href: person_path(person),
               variant: :outline,
-              size: :md,
-              data: { turbo_stream: true }
+              size: :md
             ) { 'View Schedules' }
           end
 
@@ -96,7 +95,7 @@ module Components
           href: new_person_schedule_path(person),
           variant: :primary,
           size: :md,
-          data: { turbo_stream: true }
+          data: { turbo_frame: 'modal' }
         ) { 'Add Schedule' }
       end
 
@@ -105,7 +104,8 @@ module Components
           href: new_admin_carer_relationship_path(patient_id: person.id),
           variant: :outline,
           size: :md,
-          class: 'text-amber-700 border-amber-300 hover:bg-amber-50'
+          class: 'text-amber-700 border-amber-300 hover:bg-amber-50',
+          data: { turbo_frame: 'modal' }
         ) { 'Assign Carer' }
       end
 

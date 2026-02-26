@@ -1,0 +1,152 @@
+- generic [ref=e536]:
+  - complementary [ref=e537]:
+    - link "M MedTracker" [ref=e539] [cursor=pointer]:
+      - /url: /
+      - generic [ref=e540]: M
+      - generic [ref=e541]: MedTracker
+    - navigation [ref=e542]:
+      - link "Dashboard" [ref=e543] [cursor=pointer]:
+        - /url: /
+        - img [ref=e545]
+        - generic [ref=e548]: Dashboard
+      - link "Inventory" [ref=e549] [cursor=pointer]:
+        - /url: /medications
+        - img [ref=e551]
+        - generic [ref=e557]: Inventory
+      - link "Locations" [ref=e558] [cursor=pointer]:
+        - /url: /locations
+        - img [ref=e560]
+        - generic [ref=e563]: Locations
+      - link "Finder" [ref=e564] [cursor=pointer]:
+        - /url: /medication-finder
+        - img [ref=e566]
+        - generic [ref=e569]: Finder
+      - link "People" [ref=e570] [cursor=pointer]:
+        - /url: /people
+        - img [ref=e572]
+        - generic [ref=e577]: People
+      - link "Reports" [ref=e578] [cursor=pointer]:
+        - /url: /reports
+        - img [ref=e580]
+        - generic [ref=e582]: Reports
+    - generic [ref=e583]:
+      - link "JD Jane Doe Parent" [ref=e584] [cursor=pointer]:
+        - /url: /profile
+        - generic [ref=e585]: JD
+        - generic [ref=e586]:
+          - paragraph [ref=e587]: Jane Doe
+          - paragraph [ref=e588]: Parent
+      - button "Sign Out" [ref=e590]:
+        - img [ref=e592]
+        - generic [ref=e595]: Sign Out
+  - main [ref=e596]:
+    - generic [ref=e598]:
+      - generic [ref=e599]:
+        - generic [ref=e600]:
+          - generic [ref=e601]: CP
+          - generic [ref=e602]:
+            - generic [ref=e603]:
+              - heading "Child Patient" [level=1] [ref=e604]
+              - generic [ref=e605]: Minor
+            - paragraph [ref=e606]: "Age: 5"
+        - link "Back" [ref=e608] [cursor=pointer]:
+          - /url: /people
+      - generic [ref=e609]:
+        - generic [ref=e610]:
+          - generic [ref=e611]:
+            - heading "Schedules" [level=2] [ref=e613]
+            - generic [ref=e616]:
+              - generic [ref=e617]:
+                - generic [ref=e618]:
+                  - img [ref=e620]
+                  - generic [ref=e626]:
+                    - generic [ref=e627]: 30 left
+                    - generic [ref=e628]: Ready Now
+                - generic [ref=e629]:
+                  - heading "Ibuprofen" [level=3] [ref=e630]
+                  - paragraph [ref=e631]: 200mg • Every 6 hours
+              - generic [ref=e633]:
+                - generic [ref=e634]:
+                  - generic [ref=e635]:
+                    - paragraph [ref=e636]: "📅 Started:"
+                    - paragraph [ref=e637]: Feb 26, 2026
+                  - generic [ref=e638]:
+                    - paragraph [ref=e639]: "🏁 Ends:"
+                    - paragraph [ref=e640]: Feb 26, 2027
+                - generic [ref=e641]:
+                  - generic [ref=e642]:
+                    - paragraph [ref=e643]: Today's Doses
+                    - generic [ref=e644]: 0/3
+                  - paragraph [ref=e645]: No doses taken today
+              - button "💊 Give" [ref=e649]
+          - generic [ref=e650]:
+            - heading "My Medications" [level=2] [ref=e652]
+            - generic [ref=e656]:
+              - generic [ref=e657]:
+                - paragraph [ref=e658]: No medications added yet.
+                - paragraph [ref=e659]: Add vitamins, supplements, or over-the-counter medications here.
+              - link "Add First Medication" [ref=e660] [cursor=pointer]:
+                - /url: /people/946774001/person_medications/new
+        - generic [ref=e661]:
+          - generic [ref=e662]:
+            - heading "Profile Overview" [level=2] [ref=e663]
+            - generic [ref=e664]:
+              - generic [ref=e665]:
+                - img [ref=e667]
+                - generic [ref=e670]:
+                  - paragraph [ref=e671]: Date of Birth
+                  - paragraph [ref=e672]: February 26, 2021
+              - generic [ref=e673]:
+                - img [ref=e675]
+                - generic [ref=e678]:
+                  - paragraph [ref=e679]: Assigned User
+                  - paragraph [ref=e680]: minor_patient@example.com
+              - generic [ref=e681]:
+                - img [ref=e683]
+                - generic [ref=e685]:
+                  - paragraph [ref=e686]: Capacity
+                  - paragraph [ref=e687]: Dependent
+          - generic [ref=e689]:
+            - generic [ref=e690]:
+              - heading "Care Actions" [level=3] [ref=e691]
+              - paragraph [ref=e692]: Update medication plans and schedules.
+            - link "Add Medication" [active] [ref=e694] [cursor=pointer]:
+              - /url: /people/946774001/person_medications/new
+  - generic [ref=e696]:
+    - generic [ref=e697]:
+      - heading "Add Medication for Child Patient" [level=3] [ref=e698]
+      - paragraph [ref=e699]: Add a vitamin, supplement, or over-the-counter medication
+    - generic [ref=e701]:
+      - generic [ref=e702]:
+        - generic [ref=e703]:
+          - text: Medication
+          - combobox "Medication" [ref=e704]:
+            - option "Select a medication" [disabled] [selected]
+            - option "Aspirin"
+            - option "Calpol"
+            - option "Ibuprofen"
+            - option "Paracetamol"
+            - option "Vitamin C"
+            - option "Vitamin D"
+          - paragraph [ref=e705]: Select a medication from the list
+        - generic [ref=e706]:
+          - text: Notes
+          - textbox "Notes" [ref=e707]:
+            - /placeholder: Add any special instructions or notes
+          - paragraph [ref=e708]: Add any special instructions or notes
+        - generic [ref=e709]:
+          - generic [ref=e710]:
+            - text: Max daily doses
+            - spinbutton "Max daily doses" [ref=e711]
+            - paragraph [ref=e712]: Maximum doses per day
+          - generic [ref=e713]:
+            - text: Min hours between doses
+            - spinbutton "Min hours between doses" [ref=e714]
+            - paragraph [ref=e715]: Minimum time between doses
+      - generic [ref=e716]:
+        - link "Cancel" [ref=e717] [cursor=pointer]:
+          - /url: /people/946774001
+        - button "Add Medication" [ref=e718]
+    - button "Close" [ref=e719]:
+      - img [ref=e720]
+      - generic [ref=e723]: Close

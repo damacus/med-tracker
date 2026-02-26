@@ -22,10 +22,7 @@ ls -la
 # 3. Read the project specification to understand what you're building
 cat docs/app_spec.txt
 
-# 4. Check Beads for assigned work and roadmap
-bd ready
-
-# 5. Check recent git history
+# 4. Check recent git history
 git log --oneline -20
 ```
 
@@ -49,11 +46,10 @@ task local:db:up
 The previous session may have introduced bugs. Before implementing anything
 new, you MUST run verification tests.
 
-Run 1-2 core functionality tests to verify the system is stable. Check `bd list` for tasks that were recently closed to identify regression risks.
+Run 1-2 core functionality tests to verify the system is stable.
 
 **If you find ANY issues (functional or visual):**
 
-- Update the corresponding issue in Beads using `bd update <issue_id> notes="..."`
 - Add issues to a list
 - Fix all issues BEFORE moving to new features
 - This includes UI bugs like:
@@ -66,8 +62,6 @@ Run 1-2 core functionality tests to verify the system is stable. Check `bd list`
   - Console errors
 
 ## STEP 4: CHOOSE ONE TASK TO IMPLEMENT
-
-Use `bd ready` to find the highest-priority task that is ready to be worked on.
 
 Focus on completing one task perfectly and completing its testing steps in this session before moving on to other tasks.
 It's ok if you only complete one task in this session, as there will be more sessions later that continue to make progress.
@@ -107,21 +101,7 @@ Use browser automation tools:
 - Skip visual verification
 - Mark tests passing without thorough verification
 
-## STEP 7: UPDATE ISSUE STATUS (MANDATORY)
-
-After thorough verification, update the issue status using `bd update` or `bd close`.
-
-```fish
-# Claim the task
-bd update <issue_id> status=in_progress
-
-# Close the task after completion
-bd close <issue_id>
-```
-
-**ONLY CLOSE THE ISSUE AFTER VERIFICATION WITH SCREENSHOTS AND TESTS PASSING.**
-
-## STEP 8: COMMIT YOUR PROGRESS
+## STEP 7: COMMIT YOUR PROGRESS
 
 Make a descriptive git commit:
 
@@ -131,47 +111,41 @@ git commit -m "Implement [feature name] - verified end-to-end
 
 - Added [specific changes]
 - Tested with browser automation
-- Updated Beads: closed issue #X
 - Screenshots in verification/ directory
 "
 ```
 
-## STEP 9: UPDATE PROGRESS NOTES
+## STEP 8: UPDATE PROGRESS NOTES
 
-Update progress notes using `bd update` to add notes to relevant issues:
+Update progress notes:
 
 - What you accomplished this session
 - Any issues discovered or fixed
 - What should be worked on next
-- Current status from `bd stats`
 - Update screenshots
-- If any decisions have been made about archetecture, record it in adrs, in the ADR format
+- If any decisions have been made about architecture, record it in adrs, in the ADR format
 
-## STEP 10: Update issue screenshots
+## STEP 9: Update screenshots
 
-- For any UI work, update the fodler doc/screenshots/post-implementation with screenshots of the completed work
+- For any UI work, update the folder doc/screenshots/post-implementation with screenshots of the completed work
 
-## STEP 11: END SESSION CLEANLY (LANDING THE PLANE)
+## STEP 10: END SESSION CLEANLY (LANDING THE PLANE)
 
 **When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
 
 **MANDATORY WORKFLOW:**
 
-1. **File issues for remaining work** - Use `bd create` for anything that needs follow-up
-2. **Run quality gates** (if code changed) - `task test`, `task rubocop`
-3. **Update issue status** - Use `bd close` for finished work, `bd update` for in-progress items
-4. **PUSH TO REMOTE** - This is MANDATORY:
+1. **Run quality gates** (if code changed) - `task test`, `task rubocop`
+2. **PUSH TO REMOTE** - This is MANDATORY:
 
    ```fish
    git pull --rebase
-   bd sync
    git push
    git status  # MUST show "up to date with origin"
    ```
 
-5. **Clean up** - Clear stashes, prune remote branches
-6. **Verify** - All changes committed AND pushed
-7. **Hand off** - Update issue notes using `bd update`
+3. **Clean up** - Clear stashes, prune remote branches
+4. **Verify** - All changes committed AND pushed
 
 **CRITICAL RULES:**
 
@@ -244,31 +218,6 @@ task dev:rebuild
 
 # Open UI in browser
 task dev:open-ui
-```
-
-## Beads (Issue Tracking)
-
-```fish
-# List all issues
-bd list
-
-# Find tasks ready to be worked on
-bd ready
-
-# Show details of a specific issue
-bd show <issue_id>
-
-# Update issue status/priority/assignee
-bd update <issue_id> status=in_progress priority=1
-
-# Close an issue
-bd close <issue_id>
-
-# Create a new issue
-bd create "Title" description="..." issue_type=bug
-
-# Get statistics
-bd stats
 ```
 
 ## Linting

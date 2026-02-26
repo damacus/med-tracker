@@ -3,13 +3,6 @@
 <h1>New Person</h1>
 <%= render "form", person: @person %>
 
-<%= turbo_frame_tag "person_modal" do %>
-  <dialog id="new_person_dialog" open>
-    <h1>New person</h1>
-    <%= render "form", person: @person %>
-  </dialog>
-
-  <script type="text/javascript">
-    new_person_dialog.showModal();
-  </script>
+<%= turbo_stream.replace "modal" do %>
+  <%= render Components::People::FormView.new(person: @person) %>
 <% end %>

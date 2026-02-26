@@ -11,21 +11,43 @@ export default class extends Controller {
   };
 
   connect() {
+    this.portalElement = null;
     if (this.openValue) {
       this.open();
     }
   }
 
+  disconnect() {
+    this.cleanup();
+  }
+
   open() {
+    if (this.portalElement) return;
+
     document.body.insertAdjacentHTML("beforeend", this.contentTarget.innerHTML);
+    this.portalElement = document.body.lastElementChild;
     // prevent scroll on body
     document.body.classList.add("overflow-hidden");
   }
 
   dismiss(e) {
+    this.cleanup();
+  }
+
+  cleanup() {
     // allow scroll on body
     document.body.classList.remove("overflow-hidden");
-    // remove the element
-    this.element.remove();
+    
+    if (this.portalElement) {
+      this.portalElement.remove();
+      this.portalElement = null;
+    }
+    
+    // Also remove this element if it's not the one we just removed
+    // (In case this was called from a child action)
+    if (this.element.isConnected && this.element !== document.body) {
+      // Don't remove the trigger container usually, but RubyUI's original code did it
+      // Actually, if we're in a Turbo Stream replace, the element will be removed anyway.
+    }
   }
 }

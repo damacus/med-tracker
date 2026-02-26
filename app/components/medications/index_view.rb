@@ -35,8 +35,7 @@ module Components
               href: new_medication_path,
               variant: :primary,
               size: :lg,
-              class: 'rounded-2xl font-bold text-sm shadow-lg shadow-primary/20',
-              data: { turbo_stream: true }
+              class: 'rounded-2xl font-bold text-sm shadow-lg shadow-primary/20'
             ) do
               render Icons::Pill.new(size: 20, class: 'mr-2')
               span { t('medications.index.add_medication') }

@@ -23,7 +23,7 @@ module Components
       end
 
       def view_template
-        div(class: 'container mx-auto px-4 py-12 max-w-6xl space-y-12') do
+        div(id: "person_show_#{person.id}", class: 'container mx-auto px-4 py-12 max-w-6xl space-y-12') do
           render_person_header
 
           div(class: 'grid grid-cols-1 lg:grid-cols-3 gap-12') do
@@ -122,7 +122,7 @@ module Components
                   href: new_person_schedule_path(person),
                   variant: :secondary,
                   class: 'w-full py-6 rounded-xl font-bold text-sm bg-white text-primary border-none shadow-sm',
-                  data: { turbo_stream: true }
+                  data: { turbo_frame: 'modal' }
                 ) { t('people.show.add_schedule') }
               end
 
@@ -132,7 +132,7 @@ module Components
                   variant: :outline,
                   class: 'w-full py-6 rounded-xl font-bold text-sm bg-primary-foreground/10 text-white ' \
                          'border-white/20 hover:bg-primary-foreground/20',
-                  data: { turbo_stream: true }
+                  data: { turbo_frame: 'modal' }
                 ) { t('people.show.add_medication') }
               end
             end
@@ -146,8 +146,6 @@ module Components
             Heading(level: 2, size: '6', class: 'font-bold tracking-tight') { t('people.show.schedules_heading') }
             div(class: 'h-1 flex-1 mx-8 bg-slate-50 rounded-full hidden md:block')
           end
-
-          turbo_frame_tag 'schedule_modal'
 
           div(id: 'schedules', class: 'grid grid-cols-1 md:grid-cols-2 gap-6') do
             if schedules.any?
@@ -172,8 +170,6 @@ module Components
             Heading(level: 2, size: '6', class: 'font-bold tracking-tight') { t('people.show.my_medications_heading') }
             div(class: 'h-1 flex-1 mx-8 bg-slate-50 rounded-full hidden md:block')
           end
-
-          turbo_frame_tag 'person_medication_modal'
 
           # Filter person_medications based on policy
           accessible_medications = person_medications.select do |pm|
@@ -206,7 +202,7 @@ module Components
                 href: new_person_schedule_path(person),
                 variant: :primary,
                 class: 'rounded-xl',
-                data: { turbo_stream: true }
+                data: { turbo_frame: 'modal' }
               ) { t('people.show.add_first_schedule') }
             end
           end
@@ -225,7 +221,7 @@ module Components
                 href: new_person_person_medication_path(person),
                 variant: :primary,
                 class: 'rounded-xl',
-                data: { turbo_stream: true }
+                data: { turbo_frame: 'modal' }
               ) { t('people.show.add_first_medication') }
             end
           end
