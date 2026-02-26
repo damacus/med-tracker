@@ -122,8 +122,8 @@ ga:
       location: "Suíomh"
       edit_location: "Cuir an Suíomh in Eagar"
       all_locations: "Gach Suíomh"
-      medicines_heading: "Leigheasanna sa tSuíomh seo"
-      no_medicines: "Níl aon leigheasanna sa suíomh seo fós."
+      medications_heading: "Leigheasanna sa tSuíomh seo"
+      no_medications: "Níl aon leigheasanna sa suíomh seo fós."
       members: "Baill"
       no_members: "Níl aon bhaill sannta."
       details: "Sonraí"
@@ -282,7 +282,7 @@ ga:
     updated: "Nuashonraíodh an suíomh go rathúil."
     deleted: "Scriosadh an suíomh go rathúil."
 
-  medicines:
+  medications:
     finder:
       nhs_directory: "Eolaire NHS"
       title: "Aimsitheoir Leigheas"
@@ -299,7 +299,7 @@ ga:
     refill_button: "Athlionadh"
     refill_modal:
       refill_inventory: "Athlionadh Fardal"
-      title: "Athlionadh %{medicine}"
+      title: "Athlionadh %{medication}"
       description: "Cuir cainníocht stoic leis agus déan taifead ar dháta an athstocála."
       quantity: "Cainníocht"
       restock_date: "Dáta athstocála"
@@ -311,7 +311,7 @@ ga:
     index:
       your_inventory: "Do Stoc"
       title: "Leigheasanna"
-      add_medicine: "Cuir Leigheas Leis"
+      add_medication: "Cuir Leigheas Leis"
       all: "Gach"
       view: "Amharc"
       inventory_level: "Leibhéal Stoc"
@@ -360,18 +360,18 @@ ga:
     deleted: "Scriosadh an duine go rathúil."
     show:
       edit_person: "Cuir Duine in Eagar"
-      add_prescription: "Cuir Oideas Leigheasanna Leis"
-      add_medicine: "Cuir Leigheas Leis"
+      add_schedule: "Cuir Oideas Leigheasanna Leis"
+      add_medication: "Cuir Leigheas Leis"
       back: "Ar Ais"
       born: "Rugtha:"
       age: "Aois:"
-      prescriptions_heading: "Oideas Leigheasanna"
-      no_prescriptions: "Níl aon oideas leigheasanna fós."
-      add_first_prescription: "Cuir an Chéad Oideas Leigheasanna Leis"
-      my_medicines_heading: "Mo Leigheasanna"
-      no_medicines: "Níl aon leigheasanna curtha leis fós."
-      medicines_hint: "Cuir vitimíní, forlíontáin, nó leigheasanna os cionn an chuntair anseo."
-      add_first_medicine: "Cuir an Chéad Leigheas Leis"
+      schedules_heading: "Oideas Leigheasanna"
+      no_schedules: "Níl aon oideas leigheasanna fós."
+      add_first_schedule: "Cuir an Chéad Oideas Leigheasanna Leis"
+      my_medications_heading: "Mo Leigheasanna"
+      no_medications: "Níl aon leigheasanna curtha leis fós."
+      medications_hint: "Cuir vitimíní, forlíontáin, nó leigheasanna os cionn an chuntair anseo."
+      add_first_medication: "Cuir an Chéad Leigheas Leis"
     overview:
       title: "Forbhreathnú Próifíle"
       dob: "Dáta Breithe"
@@ -391,10 +391,10 @@ ga:
       save: "Sábháil"
       cancel: "Cealaigh"
 
-  person_medicines:
+  person_medications:
     created: "Cuireadh an leigheas leis go rathúil."
     deleted: "Baineadh an leigheas go rathúil."
-    medicine_taken: "Tógadh an leigheas go rathúil."
+    medication_taken: "Tógadh an leigheas go rathúil."
     modal:
       new_title: "Cuir Leigheas Leis do %{person}"
     card:
@@ -409,22 +409,22 @@ ga:
       give: "💊 Tabhair"
       out_of_stock: "💊 As Stoc"
       remove: "Bain"
-      remove_medicine: "Bain Leigheas"
-      remove_confirmation: "An bhfuil tú cinnte gur mian leat %{medicine} a bhaint? Ní féidir an gníomh seo a chealú."
+      remove_medication: "Bain Leigheas"
+      remove_confirmation: "An bhfuil tú cinnte gur mian leat %{medication} a bhaint? Ní féidir an gníomh seo a chealú."
     form:
-      add_medicine: "Cuir Leigheas Leis"
-      add_medicine_for: "Cuir Leigheas Leis do %{person}"
+      add_medication: "Cuir Leigheas Leis"
+      add_medication_for: "Cuir Leigheas Leis do %{person}"
       validation_errors:
         one: "Chuir 1 earráid cosc ar an leigheas a shábháil:"
         other: "Chuir %{count} earráid cosc ar an leigheas a shábháil:"
       cancel: "Cealaigh"
-      add_medicine_button: "Cuir Leigheas Leis"
+      add_medication_button: "Cuir Leigheas Leis"
 
-  prescriptions:
+  schedules:
     created: "Cruthaíodh an t-oideas leigheasanna go rathúil."
     updated: "Nuashonraíodh an t-oideas leigheasanna go rathúil."
     deleted: "Scriosadh an t-oideas leigheasanna go rathúil."
-    medicine_taken: "Tógadh an leigheas go rathúil."
+    medication_taken: "Tógadh an leigheas go rathúil."
     modal:
       new_title: "Oideas Leigheasanna Nua do %{person}"
       edit_title: "Cuir Oideas Leigheasanna in Eagar do %{person}"
@@ -444,7 +444,7 @@ ga:
       delete: "Scrios"
       delete_dialog:
         title: "Scrios Oideas Leigheasanna"
-        confirm: "An bhfuil tú cinnte gur mian leat an t-oideas leigheasanna %{medicine} a scrios? Ní féidir an gníomh seo a chealú."
+        confirm: "An bhfuil tú cinnte gur mian leat an t-oideas leigheasanna %{medication} a scrios? Ní féidir an gníomh seo a chealú."
         cancel: "Cealaigh"
         submit: "Scrios"
 
@@ -469,7 +469,7 @@ ga:
       create_account: "Cruthaigh ceann"
       resend_verification: "Seol ríomhphost fíoraithe arís"
 
-  take_medicines:
+  take_medications:
     success: "Cláraíodh an leigheas tógtha go rathúil."
     failure: "Theip ar chlárú an leighis tógtha."
     json_success: "Cláraíodh an leigheas tógtha go rathúil."
@@ -522,9 +522,9 @@ ga:
       brand: "MedTracker"
       login: "Logáil isteach"
     desktop_nav:
-      medicines: "Leigheasanna"
+      medications: "Leigheasanna"
       people: "Daoine"
-      medicine_finder: "Aimsitheoir Leigheas"
+      medication_finder: "Aimsitheoir Leigheas"
     profile_menu:
       my_account: "Mo Chuntas"
       dashboard: "Dashboard"
@@ -536,9 +536,9 @@ ga:
       brand: "MedTracker"
       open_menu: "Oscail roghchlár"
       close_menu: "Dún roghchlár"
-      medicines: "Leigheasanna"
+      medications: "Leigheasanna"
       people: "Daoine"
-      medicine_finder: "Aimsitheoir Leigheas"
+      medication_finder: "Aimsitheoir Leigheas"
       profile: "Próifíl"
       administration: "Riarachán"
       logout: "Logáil amach"
@@ -552,7 +552,7 @@ ga:
       administration: "Riarachán"
       sign_out: "Sínigh Amach"
   forms:
-    medicines:
+    medications:
       inventory_management: "Bainistíocht Stoc"
       dosage_and_supply: "Dáileog & Soláthar"
       name: "Ainm"
@@ -563,8 +563,8 @@ ga:
       current_supply: "Soláthar Faoi Lthair"
       reorder_threshold: "Tairseach Athorduithe"
       warnings: "Rabhaidh"
-      save_medicine: "Sábháil Leigheas"
-      back_to_medicines: "Ar Ais go Leigheasanna"
+      save_medication: "Sábháil Leigheas"
+      back_to_medications: "Ar Ais go Leigheasanna"
       back: "Ar Ais"
       select_location: "Roghnaigh suíomh..."
       select_category: "Roghnaigh catagóir (roghnach)..."
@@ -579,8 +579,8 @@ ga:
     subtitle: "Sceideal leigheasanna do theaghlaigh inniu."
     todays_schedule: "Sceideal an Lae Innuit"
     medication_schedule: "Sceideal Leigheasanna"
-    no_active_prescriptions: "Níor aimsíodh aon oideas leigheasanna gníomhacha"
-    add_prescriptions_hint: "Cuir oideas leigheasanna leis chun iad a fheiceáil anseo"
+    no_active_schedules: "Níor aimsíodh aon oideas leigheasanna gníomhacha"
+    add_schedules_hint: "Cuir oideas leigheasanna leis chun iad a fheiceáil anseo"
     dose_taken_at: "%{person} • Tógtha ag %{time}"
     empty_state: "Gan leigheasanna sceidealta inniu."
     insights:
@@ -594,7 +594,7 @@ ga:
       order_refills: "Ordú Athliontaí"
     stats:
       people: "Daoine"
-      active_prescriptions: "Oideas Leigheasanna Gníomhacha"
+      active_schedules: "Oideas Leigheasanna Gníomhacha"
       compliance: "Comhlíonadh"
       next_dose: "An Chéad Dháileog Eile"
       no_upcoming_doses: "Níl ceann ar bith inniu"
@@ -606,7 +606,7 @@ ga:
       out_of_stock: "As Stoc"
     table:
       person: "Duine"
-      medicine: "Leigheas"
+      medication: "Leigheas"
       dosage: "Dáileog"
       quantity: "Cainníocht"
       frequency: "Minicíocht"
@@ -614,10 +614,10 @@ ga:
       actions: "Gníomhartha"
     delete_confirmation:
       delete: "Scrios"
-      delete_prescription: "Scrios Oideas Leigheasanna?"
-      are_you_sure: "An bhfuil tú cinnte gur mian leat %{medicine} do %{person} a scrios? Ní féidir an gníomh seo a chealú."
+      delete_schedule: "Scrios Oideas Leigheasanna?"
+      are_you_sure: "An bhfuil tú cinnte gur mian leat %{medication} do %{person} a scrios? Ní féidir an gníomh seo a chealú."
       cancel: "Cealaigh"
     quick_actions:
       title: "Gníomhartha Tapa"
-      add_medicine: "Cuir Leigheas Leis"
+      add_medication: "Cuir Leigheas Leis"
       add_person: "Cuir Duine Leis"

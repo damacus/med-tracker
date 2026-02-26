@@ -1,0 +1,100 @@
+---
+# Prescriptions Fixtures
+
+john_paracetamol:
+  person: john
+  medication: paracetamol
+  dosage: paracetamol_adult
+  frequency: 'As needed'
+  start_date: <%= Date.today %>
+  end_date: <%= 1.year.from_now.to_date %>
+  max_daily_doses: 4
+  min_hours_between_doses: 4
+  dose_cycle: :daily
+
+# Ibuprofen schedules
+jane_ibuprofen:
+  person: jane
+  medication: ibuprofen
+  dosage: ibuprofen_adult
+  frequency: Every 6-8 hours
+  start_date: <%= Date.today %>
+  end_date: <%= 1.year.from_now.to_date %>
+  notes: For back pain
+  max_daily_doses: 3
+  min_hours_between_doses: 6
+  dose_cycle: :daily
+
+# Aspirin schedules
+bob_aspirin:
+  person: bob
+  medication: aspirin
+  dosage: aspirin_light
+  frequency: Once daily
+  start_date: <%= Date.today %>
+  end_date: <%= 1.year.from_now.to_date %>
+  notes: For heart health
+  max_daily_doses: 1
+  min_hours_between_doses: 24
+  dose_cycle: :daily
+
+# Weekly medication
+bob_weekly_med:
+  person: bob
+  medication: vitamin_d
+  dosage: vitamin_d_daily
+  frequency: Once weekly
+  start_date: <%= Date.today %>
+  end_date: <%= 1.year.from_now.to_date %>
+  notes: Weekly supplement
+  max_daily_doses: 1
+  dose_cycle: :weekly
+
+# Adult patient schedule
+adult_patient_schedule:
+  person: adult_patient_person
+  medication: paracetamol
+  dosage: paracetamol_adult
+  frequency: 'As needed'
+  start_date: <%= Date.today %>
+  end_date: <%= 1.year.from_now.to_date %>
+  max_daily_doses: 4
+  min_hours_between_doses: 4
+  dose_cycle: :daily
+
+# Patient schedule (for carer test)
+patient_schedule:
+  person: child_patient
+  medication: ibuprofen
+  dosage: ibuprofen_child
+  frequency: 'Every 6 hours'
+  start_date: <%= Date.today %>
+  end_date: <%= 1.year.from_now.to_date %>
+  max_daily_doses: 3
+  min_hours_between_doses: 6
+  dose_cycle: :daily
+
+# Child schedule (for parent test)
+child_schedule:
+  person: child_user_person
+  medication: paracetamol
+  dosage: paracetamol_child
+  frequency: 'As needed'
+  start_date: <%= Date.today %>
+  end_date: <%= 1.year.from_now.to_date %>
+  max_daily_doses: 4
+  min_hours_between_doses: 4
+  dose_cycle: :daily
+
+# Active schedule for dashboard testing
+active_schedule:
+  person: john
+  medication: paracetamol
+  dosage: paracetamol_adult
+  frequency: 'Twice daily'
+  start_date: <%= Date.today %>
+  end_date: <%= 1.year.from_now.to_date %>
+  active: true
+  max_daily_doses: 2
+  min_hours_between_doses: 8
+  dose_cycle: :daily

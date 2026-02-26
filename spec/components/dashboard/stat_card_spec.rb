@@ -23,7 +23,7 @@ RSpec.describe Components::Dashboard::StatCard, type: :component do
     end
 
     it 'renders a pill icon when icon_type is pill' do
-      rendered = render_inline(described_class.new(title: 'Medicines', value: 3, icon_type: 'pill'))
+      rendered = render_inline(described_class.new(title: 'Medications', value: 3, icon_type: 'pill'))
 
       expect(rendered.css('svg')).to be_present
     end
@@ -37,9 +37,9 @@ RSpec.describe Components::Dashboard::StatCard, type: :component do
     end
 
     it 'renders the title' do
-      rendered = render_inline(described_class.new(title: 'Active Prescriptions', value: 10, icon_type: 'pill'))
+      rendered = render_inline(described_class.new(title: 'Active Schedules', value: 10, icon_type: 'pill'))
 
-      expect(rendered.text).to include('Active Prescriptions')
+      expect(rendered.text).to include('Active Schedules')
     end
   end
 end

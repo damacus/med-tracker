@@ -251,8 +251,8 @@ es:
       location: "Ubicación"
       edit_location: "Editar Ubicación"
       all_locations: "Todas las Ubicaciones"
-      medicines_heading: "Medicamentos en esta Ubicación"
-      no_medicines: "Aún no hay medicamentos en esta ubicación."
+      medications_heading: "Medicamentos en esta Ubicación"
+      no_medications: "Aún no hay medicamentos en esta ubicación."
       members: "Miembros"
       no_members: "No hay miembros asignados."
       details: "Detalles"
@@ -273,7 +273,7 @@ es:
       success: "%{name} eliminado de %{location}"
       failure: "Error al eliminar miembro"
 
-  medicines:
+  medications:
     finder:
       coming_soon: "¡Esta función llegará pronto! Integraremos con una API de base de datos de medicamentos para proporcionar información detallada sobre los medicamentos."
     created: "Medicamento creado correctamente."
@@ -283,7 +283,7 @@ es:
     refill_button: "Reabastecer"
     refill_modal:
       refill_inventory: "Reabastecer Inventario"
-      title: "Reabastecer %{medicine}"
+      title: "Reabastecer %{medication}"
       description: "Añadir cantidad de stock y registrar la fecha de reabastecimiento."
       quantity: "Cantidad"
       restock_date: "Fecha de reabastecimiento"
@@ -295,7 +295,7 @@ es:
     index:
       your_inventory: "Su Inventario"
       title: "Medicamentos"
-      add_medicine: "Añadir Medicamento"
+      add_medication: "Añadir Medicamento"
       all: "Todos"
       view: "Ver"
       inventory_level: "Nivel de Inventario"
@@ -344,18 +344,18 @@ es:
     deleted: "Persona eliminada correctamente."
     show:
       edit_person: "Editar Persona"
-      add_prescription: "Agregar Receta"
-      add_medicine: "Agregar Medicamento"
+      add_schedule: "Agregar Receta"
+      add_medication: "Agregar Medicamento"
       back: "Volver"
       born: "Nacido:"
       age: "Edad:"
-      prescriptions_heading: "Recetas"
-      no_prescriptions: "Sin recetas aún."
-      add_first_prescription: "Agregar Primera Receta"
-      my_medicines_heading: "Mis Medicamentos"
-      no_medicines: "Sin medicamentos aún."
-      medicines_hint: "Agregue vitaminas, suplementos o medicamentos de venta libre aquí."
-      add_first_medicine: "Agregar Primer Medicamento"
+      schedules_heading: "Recetas"
+      no_schedules: "Sin recetas aún."
+      add_first_schedule: "Agregar Primera Receta"
+      my_medications_heading: "Mis Medicamentos"
+      no_medications: "Sin medicamentos aún."
+      medications_hint: "Agregue vitaminas, suplementos o medicamentos de venta libre aquí."
+      add_first_medication: "Agregar Primer Medicamento"
     form:
       edit_heading: "Editar Persona"
       name: "Nombre"
@@ -363,10 +363,10 @@ es:
       save: "Guardar"
       cancel: "Cancelar"
 
-  person_medicines:
+  person_medications:
     created: "Medicamento añadido correctamente."
     deleted: "Medicamento eliminado correctamente."
-    medicine_taken: "Medicamento tomado correctamente."
+    medication_taken: "Medicamento tomado correctamente."
     modal:
       new_title: "Agregar Medicamento para %{person}"
     card:
@@ -381,22 +381,22 @@ es:
       give: "💊 Dar"
       out_of_stock: "💊 Sin Stock"
       remove: "Eliminar"
-      remove_medicine: "Eliminar Medicamento"
-      remove_confirmation: "¿Está seguro de que desea eliminar %{medicine}? Esta acción no se puede deshacer."
+      remove_medication: "Eliminar Medicamento"
+      remove_confirmation: "¿Está seguro de que desea eliminar %{medication}? Esta acción no se puede deshacer."
     form:
-      add_medicine: "Agregar Medicamento"
-      add_medicine_for: "Agregar Medicamento para %{person}"
+      add_medication: "Agregar Medicamento"
+      add_medication_for: "Agregar Medicamento para %{person}"
       validation_errors:
         one: "1 error impidió que este medicamento se guardara:"
         other: "%{count} errores impidieron que este medicamento se guardara:"
       cancel: "Cancelar"
-      add_medicine_button: "Agregar Medicamento"
+      add_medication_button: "Agregar Medicamento"
 
-  prescriptions:
+  schedules:
     created: "Receta creada correctamente."
     updated: "Receta actualizada correctamente."
     deleted: "Receta eliminada correctamente."
-    medicine_taken: "Medicamento tomado correctamente."
+    medication_taken: "Medicamento tomado correctamente."
     modal:
       new_title: "Nueva Receta para %{person}"
       edit_title: "Editar Receta para %{person}"
@@ -416,7 +416,7 @@ es:
       delete: "Eliminar"
       delete_dialog:
         title: "Eliminar Receta"
-        confirm: "¿Está seguro de que desea eliminar la receta de %{medicine}? Esta acción no se puede deshacer."
+        confirm: "¿Está seguro de que desea eliminar la receta de %{medication}? Esta acción no se puede deshacer."
         cancel: "Cancelar"
         submit: "Eliminar"
 
@@ -441,7 +441,7 @@ es:
       create_account: "Crear una"
       resend_verification: "Reenviar correo de verificación"
 
-  take_medicines:
+  take_medications:
     success: "Toma de medicamento registrada correctamente."
     failure: "Error al registrar la toma de medicamento."
     json_success: "Toma de medicamento registrada correctamente."
@@ -478,9 +478,9 @@ es:
       brand: "MedTracker"
       login: "Iniciar sesión"
     desktop_nav:
-      medicines: "Medicamentos"
+      medications: "Medicamentos"
       people: "Personas"
-      medicine_finder: "Buscador de Medicamentos"
+      medication_finder: "Buscador de Medicamentos"
     profile_menu:
       my_account: "Mi Cuenta"
       dashboard: "Panel"
@@ -491,14 +491,14 @@ es:
     mobile_menu:
       open_menu: "Abrir menú"
       close_menu: "Cerrar menú"
-      medicines: "Medicamentos"
+      medications: "Medicamentos"
       people: "Personas"
-      medicine_finder: "Buscador de Medicamentos"
+      medication_finder: "Buscador de Medicamentos"
       profile: "Perfil"
       administration: "Administración"
       logout: "Cerrar sesión"
   forms:
-    medicines:
+    medications:
       inventory_management: "Gestión de Inventario"
       dosage_and_supply: "Dosis y Suministro"
       name: "Nombre"
@@ -509,8 +509,8 @@ es:
       current_supply: "Suministro restante"
       reorder_threshold: "Umbral de Reorden"
       warnings: "Advertencias"
-      save_medicine: "Guardar Medicamento"
-      back_to_medicines: "Volver a Medicamentos"
+      save_medication: "Guardar Medicamento"
+      back_to_medications: "Volver a Medicamentos"
       back: "Volver"
       select_location: "Seleccione una ubicación..."
       select_category: "Seleccione una categoría (opcional)..."
@@ -525,13 +525,13 @@ es:
     subtitle: "El horario de medicamentos de su familia para hoy."
     todays_schedule: "Horario de Hoy"
     medication_schedule: "Horario de Medicamentos"
-    no_active_prescriptions: "No se encontraron prescripciones activas"
-    add_prescriptions_hint: "Agregue prescripciones para verlas aquí"
+    no_active_schedules: "No se encontraron prescripciones activas"
+    add_schedules_hint: "Agregue prescripciones para verlas aquí"
     dose_taken_at: "%{person} • Tomado a las %{time}"
     empty_state: "No hay medicamentos programados para hoy."
     stats:
       people: "Personas"
-      active_prescriptions: "Prescripciones Activas"
+      active_schedules: "Prescripciones Activas"
       no_upcoming_doses: "Ninguna hoy"
     statuses:
       taken: "Tomado"
@@ -541,7 +541,7 @@ es:
       out_of_stock: "Sin Stock"
     table:
       person: "Persona"
-      medicine: "Medicamento"
+      medication: "Medicamento"
       dosage: "Dosis"
       quantity: "Cantidad"
       frequency: "Frecuencia"
@@ -549,10 +549,10 @@ es:
       actions: "Acciones"
     delete_confirmation:
       delete: "Eliminar"
-      delete_prescription: "¿Eliminar Prescripción?"
-      are_you_sure: "¿Está seguro de que desea eliminar %{medicine} para %{person}? Esta acción no se puede deshacer."
+      delete_schedule: "¿Eliminar Prescripción?"
+      are_you_sure: "¿Está seguro de que desea eliminar %{medication} para %{person}? Esta acción no se puede deshacer."
       cancel: "Cancelar"
     quick_actions:
       title: "Acciones Rápidas"
-      add_medicine: "Agregar Medicamento"
+      add_medication: "Agregar Medicamento"
       add_person: "Agregar Persona"

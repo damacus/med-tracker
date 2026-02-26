@@ -1,0 +1,7 @@
+<%= turbo_stream.update "schedule_modal" do %>
+  <%= render Components::Schedules::Modal.new(
+    schedule: @schedule,
+    person: @person,
+    medications: @medications
+  ) %>
+<% end %>

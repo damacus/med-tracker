@@ -94,7 +94,7 @@ RSpec.describe NhsDmd::Client do
       end
 
       it 'returns an empty array' do
-        results = client.search('nonexistentmedicine12345')
+        results = client.search('nonexistentmedication12345')
 
         expect(results).to eq([])
       end

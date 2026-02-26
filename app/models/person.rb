@@ -10,10 +10,10 @@ class Person < ApplicationRecord
 
   belongs_to :account, optional: true
   has_one :user, inverse_of: :person, dependent: :destroy
-  has_many :prescriptions, dependent: :destroy
-  has_many :medicines, through: :prescriptions
-  has_many :person_medicines, dependent: :destroy
-  has_many :non_prescription_medicines, through: :person_medicines, source: :medicine
+  has_many :schedules, dependent: :destroy
+  has_many :medications, through: :schedules
+  has_many :person_medications, dependent: :destroy
+  has_many :non_schedule_medications, through: :person_medications, source: :medication
   has_many :carer_relationships, foreign_key: :patient_id, dependent: :destroy, inverse_of: :patient
   has_many :active_carer_relationships, -> { active }, class_name: 'CarerRelationship',
                                                        foreign_key: :patient_id,

@@ -3,8 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe Components::Dashboard::IndexView, type: :component do
-  fixtures :accounts, :people, :users, :locations, :medicines, :dosages, :prescriptions,
-           :person_medicines, :medication_takes
+  fixtures :accounts, :people, :users, :locations, :medications, :dosages, :schedules,
+           :person_medications, :medication_takes
 
   subject(:dashboard_view) do
     described_class.new(presenter: presenter)
@@ -47,16 +47,16 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       expect(rendered.text).to include(presenter.people.count.to_s)
     end
 
-    it 'renders active prescriptions count' do
+    it 'renders active schedules count' do
       rendered = render_inline(dashboard_view)
-      expect(rendered.text).to include(presenter.active_prescriptions.count.to_s)
+      expect(rendered.text).to include(presenter.active_schedules.count.to_s)
     end
   end
 
   describe 'quick actions' do
-    it 'renders Add Medicine and Add Person links' do
+    it 'renders Add Medication and Add Person links' do
       rendered = render_inline(dashboard_view)
-      expect(rendered.text).to include('Add Medicine')
+      expect(rendered.text).to include('Add Medication')
       expect(rendered.text).to include('Add Person')
     end
   end
@@ -73,11 +73,11 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
     end
   end
 
-  context 'when there are no active prescriptions or person medicines' do
+  context 'when there are no active schedules or person medications' do
     before do
       MedicationTake.delete_all
-      PersonMedicine.delete_all
-      Prescription.update_all(end_date: 1.year.ago) # rubocop:disable Rails/SkipsModelValidations
+      PersonMedication.delete_all
+      Schedule.update_all(end_date: 1.year.ago) # rubocop:disable Rails/SkipsModelValidations
     end
 
     it 'renders the empty state message' do

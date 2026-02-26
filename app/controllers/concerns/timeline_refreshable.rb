@@ -6,14 +6,14 @@ module TimelineRefreshable
   private
 
   def build_timeline_streams_for(taken_source, take)
-    medicine = taken_source.medicine.reload
+    medication = taken_source.medication.reload
 
     streams = [
       update_timeline_item_stream(taken_source, take),
-      update_medicine_card_stream(taken_source)
+      update_medication_card_stream(taken_source)
     ]
 
-    streams + other_timeline_streams(taken_source, medicine)
+    streams + other_timeline_streams(taken_source, medication)
   end
 
   def update_timeline_item_stream(source, take)
@@ -29,29 +29,29 @@ module TimelineRefreshable
     )
   end
 
-  def update_medicine_card_stream(source)
-    if source.is_a?(Prescription)
+  def update_medication_card_stream(source)
+    if source.is_a?(Schedule)
       turbo_stream.replace(
-        "prescription_#{source.id}",
-        Components::Prescriptions::Card.new(prescription: source, person: source.person)
+        "schedule_#{source.id}",
+        Components::Schedules::Card.new(schedule: source, person: source.person)
       )
     else
       turbo_stream.replace(
-        "person_medicine_#{source.id}",
-        Components::PersonMedicines::Card.new(person_medicine: source, person: source.person)
+        "person_medication_#{source.id}",
+        Components::PersonMedications::Card.new(person_medication: source, person: source.person)
       )
     end
   end
 
-  def other_timeline_streams(taken_source, medicine)
+  def other_timeline_streams(taken_source, medication)
     streams = []
 
-    other_prescriptions(taken_source, medicine).each do |p|
+    other_schedules(taken_source, medication).each do |p|
       stream = replace_timeline_item(p)
       streams << stream if stream
     end
 
-    other_pms(taken_source, medicine).each do |pm|
+    other_pms(taken_source, medication).each do |pm|
       stream = replace_timeline_item(pm)
       streams << stream if stream
     end
@@ -59,14 +59,14 @@ module TimelineRefreshable
     streams
   end
 
-  def other_prescriptions(taken_source, medicine)
-    scope = Prescription.where(active: true).where(medicine: medicine).includes(:person, :medicine, :dosage)
-    taken_source.is_a?(Prescription) ? scope.where.not(id: taken_source.id) : scope
+  def other_schedules(taken_source, medication)
+    scope = Schedule.where(active: true).where(medication: medication).includes(:person, :medication, :dosage)
+    taken_source.is_a?(Schedule) ? scope.where.not(id: taken_source.id) : scope
   end
 
-  def other_pms(taken_source, medicine)
-    scope = PersonMedicine.where(medicine: medicine).includes(:person, :medicine)
-    taken_source.is_a?(PersonMedicine) ? scope.where.not(id: taken_source.id) : scope
+  def other_pms(taken_source, medication)
+    scope = PersonMedication.where(medication: medication).includes(:person, :medication)
+    taken_source.is_a?(PersonMedication) ? scope.where.not(id: taken_source.id) : scope
   end
 
   def replace_timeline_item(source)

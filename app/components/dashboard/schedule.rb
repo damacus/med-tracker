@@ -4,11 +4,11 @@ module Components
   module Dashboard
     # Renders the medication schedule section of the dashboard
     class Schedule < Components::Base
-      attr_reader :people, :upcoming_prescriptions, :current_user
+      attr_reader :people, :upcoming_schedules, :current_user
 
-      def initialize(people:, upcoming_prescriptions:, current_user: nil)
+      def initialize(people:, upcoming_schedules:, current_user: nil)
         @people = people
-        @upcoming_prescriptions = upcoming_prescriptions
+        @upcoming_schedules = upcoming_schedules
         @current_user = current_user
         super()
       end
@@ -29,10 +29,10 @@ module Components
             'Add people to start tracking their medications'
           )
         end
-        if upcoming_prescriptions.empty?
+        if upcoming_schedules.empty?
           return render_empty_state(
-            'No active prescriptions found',
-            'Add prescriptions to see them here'
+            'No active schedules found',
+            'Add schedules to see them here'
           )
         end
 
@@ -41,23 +41,23 @@ module Components
 
       def render_schedule_content
         div(class: 'space-y-6') do
-          upcoming_prescriptions.each do |person, prescriptions|
-            render_schedule_for(person, prescriptions)
+          upcoming_schedules.each do |person, schedules|
+            render_schedule_for(person, schedules)
           end
         end
       end
 
-      def render_schedule_for(person, prescriptions)
+      def render_schedule_for(person, schedules)
         render Components::Dashboard::PersonSchedule.new(
           person: person,
-          prescriptions: prescriptions,
-          take_medicine_url_generator: take_medicine_url_generator,
+          schedules: schedules,
+          take_medication_url_generator: take_medication_url_generator,
           current_user: current_user
         )
       end
 
-      def take_medicine_url_generator
-        ->(prescription) { prescription_medication_takes_path(prescription) }
+      def take_medication_url_generator
+        ->(schedule) { schedule_medication_takes_path(schedule) }
       end
 
       def render_empty_state(message, help_text)

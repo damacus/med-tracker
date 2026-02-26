@@ -57,9 +57,9 @@ module Components
               icon: '👤'
             )
             render_metric_card(
-              title: 'Active Prescriptions',
-              value: metrics[:active_prescriptions] || 0,
-              testid: 'metric-active-prescriptions',
+              title: 'Active Schedules',
+              value: metrics[:active_schedules] || 0,
+              testid: 'metric-active-schedules',
               icon: '💊'
             )
             render_metric_card(

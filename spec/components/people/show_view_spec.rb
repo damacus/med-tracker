@@ -3,12 +3,12 @@
 require 'rails_helper'
 
 RSpec.describe Components::People::ShowView, type: :component do
-  fixtures :accounts, :people, :users, :locations, :medicines, :dosages, :prescriptions,
-           :person_medicines, :medication_takes
+  fixtures :accounts, :people, :users, :locations, :medications, :dosages, :schedules,
+           :person_medications, :medication_takes
 
   let(:person) { people(:jane) }
-  let(:prescriptions) { person.prescriptions }
-  let(:person_medicines) { person.person_medicines }
+  let(:schedules) { person.schedules }
+  let(:person_medications) { person.person_medications }
 
   def render_view
     view_context_helper = view_context
@@ -16,8 +16,8 @@ RSpec.describe Components::People::ShowView, type: :component do
 
     html = view_context_helper.render(described_class.new(
                                         person: person,
-                                        prescriptions: prescriptions,
-                                        person_medicines: person_medicines
+                                        schedules: schedules,
+                                        person_medications: person_medications
                                       ))
     Nokogiri::HTML::DocumentFragment.parse(html)
   end
@@ -26,7 +26,7 @@ RSpec.describe Components::People::ShowView, type: :component do
 
   def stub_view_context_helpers(view_context_helper)
     admin = users(:admin)
-    policy_stub = Struct.new(:update?, :create?, :show?, :take_medicine?, :destroy?).new(true, true, true, true, true)
+    policy_stub = Struct.new(:update?, :create?, :show?, :take_medication?, :destroy?).new(true, true, true, true, true)
     view_context_helper.singleton_class.define_method(:policy) { |_record| policy_stub }
     view_context_helper.singleton_class.define_method(:current_user) { admin }
     view_context_helper.singleton_class.define_method(:pundit_user) { admin }
@@ -47,12 +47,12 @@ RSpec.describe Components::People::ShowView, type: :component do
   it 'renders the Care Actions card' do
     rendered = render_view
     expect(rendered.text).to include('Care Actions')
-    expect(rendered.text).to include('Add Prescription')
+    expect(rendered.text).to include('Add Schedule')
   end
 
-  it 'renders prescriptions and my medicines sections' do
+  it 'renders schedules and my medications sections' do
     rendered = render_view
-    expect(rendered.text).to include('Prescriptions')
-    expect(rendered.text).to include('My Medicines')
+    expect(rendered.text).to include('Schedules')
+    expect(rendered.text).to include('My Medications')
   end
 end

@@ -69,7 +69,7 @@ module Components
             render Icons::Home.new(size: 24)
             plain 'Dashboard'
           end
-          render RubyUI::Link.new(href: medicines_path, variant: :ghost, size: :xl,
+          render RubyUI::Link.new(href: medications_path, variant: :ghost, size: :xl,
                                   class: 'justify-start gap-4 px-4 rounded-2xl') do
             render Icons::Pill.new(size: 24)
             plain 'Inventory'
@@ -84,10 +84,10 @@ module Components
             render Icons::Users.new(size: 24)
             plain t('layouts.mobile_menu.people')
           end
-          render RubyUI::Link.new(href: medicine_finder_path, variant: :ghost, size: :xl,
+          render RubyUI::Link.new(href: medication_finder_path, variant: :ghost, size: :xl,
                                   class: 'justify-start gap-4 px-4 rounded-2xl') do
             render Icons::Search.new(size: 24)
-            plain t('layouts.mobile_menu.medicine_finder')
+            plain t('layouts.mobile_menu.medication_finder')
           end
         end
       end

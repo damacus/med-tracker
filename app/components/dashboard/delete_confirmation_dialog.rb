@@ -2,14 +2,14 @@
 
 module Components
   module Dashboard
-    # Renders a delete confirmation dialog for prescriptions
+    # Renders a delete confirmation dialog for schedules
     class DeleteConfirmationDialog < Components::Base
       include Phlex::Rails::Helpers::FormWith
 
-      attr_reader :prescription, :button_class
+      attr_reader :schedule, :button_class
 
-      def initialize(prescription:, button_class: nil)
-        @prescription = prescription
+      def initialize(schedule:, button_class: nil)
+        @schedule = schedule
         @button_class = button_class
         super()
       end
@@ -21,16 +21,16 @@ module Components
               variant: :destructive_outline,
               size: :sm,
               class: button_class,
-              data: { test_id: "delete-prescription-#{prescription.id}" }
+              data: { test_id: "delete-schedule-#{schedule.id}" }
             ) { t('dashboard.delete_confirmation.delete') }
           end
 
           AlertDialogContent do
             AlertDialogHeader do
-              AlertDialogTitle { t('dashboard.delete_confirmation.delete_prescription') }
+              AlertDialogTitle { t('dashboard.delete_confirmation.delete_schedule') }
               AlertDialogDescription do
-                plain t('dashboard.delete_confirmation.are_you_sure', medicine: prescription.medicine.name,
-                                                                      person: prescription.person.name)
+                plain t('dashboard.delete_confirmation.are_you_sure', medication: schedule.medication.name,
+                                                                      person: schedule.person.name)
               end
             end
 
@@ -46,7 +46,7 @@ module Components
 
       def render_delete_form
         form_with(
-          url: person_prescription_path(prescription.person, prescription),
+          url: person_schedule_path(schedule.person, schedule),
           method: :delete,
           class: 'inline',
           data: { turbo_frame: '_top' }
@@ -54,7 +54,7 @@ module Components
           Button(
             variant: :destructive,
             type: :submit,
-            data: { test_id: "confirm-delete-#{prescription.id}" }
+            data: { test_id: "confirm-delete-#{schedule.id}" }
           ) { t('dashboard.delete_confirmation.delete') }
         end
       end

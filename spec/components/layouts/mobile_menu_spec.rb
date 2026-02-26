@@ -36,10 +36,10 @@ RSpec.describe Components::Layouts::MobileMenu, type: :component do
       expect(rendered.text).to include('People')
     end
 
-    it 'renders Medicine Finder link' do
+    it 'renders Medication Finder link' do
       rendered = render_inline(described_class.new)
 
-      expect(rendered.text).to include('Medicine Finder')
+      expect(rendered.text).to include('Medication Finder')
     end
   end
 

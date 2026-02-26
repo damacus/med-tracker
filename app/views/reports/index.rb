@@ -140,13 +140,13 @@ module Views
         alert = @inventory_alerts.first
         return unless alert
 
-        medicine_name = alert[:medicine_name]
+        medication_name = alert[:medication_name]
         days_left = alert[:days_left]
 
         description = if days_left <= 0
-                        "Your #{medicine_name} supply is exhausted. Please order an urgent refill."
+                        "Your #{medication_name} supply is exhausted. Please order an urgent refill."
                       else
-                        "Your #{medicine_name} supply will be exhausted in #{pluralize(days_left, 'day')}. We recommend ordering a refill this afternoon."
+                        "Your #{medication_name} supply will be exhausted in #{pluralize(days_left, 'day')}. We recommend ordering a refill this afternoon."
                       end
 
         render_insight_card(

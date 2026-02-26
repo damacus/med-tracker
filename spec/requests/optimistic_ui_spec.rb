@@ -2,22 +2,22 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Optimistic UI updates for take medicine buttons' do
-  fixtures :accounts, :people, :locations, :medicines, :users, :dosages, :prescriptions, :carer_relationships
+RSpec.describe 'Optimistic UI updates for take medication buttons' do
+  fixtures :accounts, :people, :locations, :medications, :users, :dosages, :schedules, :carer_relationships
 
   let(:carer_account) { accounts(:carer) }
   let(:person) { people(:child_patient) }
-  let(:medicine) { medicines(:paracetamol) }
+  let(:medication) { medications(:paracetamol) }
 
   before do
     post '/login', params: { email: carer_account.email, password: 'password' }
   end
 
-  describe 'prescription card' do
+  describe 'schedule card' do
     before do
-      Prescription.create!(
+      Schedule.create!(
         person: person,
-        medicine: medicine,
+        medication: medication,
         dosage: dosages(:paracetamol_adult),
         start_date: Time.zone.today - 1.day,
         end_date: Time.zone.today + 30.days,
@@ -35,11 +35,11 @@ RSpec.describe 'Optimistic UI updates for take medicine buttons' do
     end
   end
 
-  describe 'person medicine card' do
+  describe 'person medication card' do
     before do
-      PersonMedicine.create!(
+      PersonMedication.create!(
         person: person,
-        medicine: medicine,
+        medication: medication,
         max_daily_doses: 4,
         min_hours_between_doses: 1
       )

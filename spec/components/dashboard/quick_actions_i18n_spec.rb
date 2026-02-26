@@ -10,7 +10,7 @@ RSpec.describe Components::Dashboard::QuickActions, type: :component do
       rendered = render_inline(component)
 
       expect(rendered.to_html).to include('Quick Actions')
-      expect(rendered.to_html).to include('Add Medicine')
+      expect(rendered.to_html).to include('Add Medication')
     end
   end
 end

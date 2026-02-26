@@ -59,9 +59,9 @@ module Components
           CardHeader(class: 'pb-4 pt-8 px-8') do
             div(class: 'flex justify-between items-start mb-4') do
               render_location_icon
-              # Fallback for medicine word
+              # Fallback for medication word
               Badge(variant: :outline) do
-                pluralize(location.medicines.size, t('medicines.created').split.first.downcase)
+                pluralize(location.medications.size, t('medications.created').split.first.downcase)
               end
             end
             Heading(level: 2, size: '5', class: 'font-bold tracking-tight') { location.name }

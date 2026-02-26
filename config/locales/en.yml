@@ -248,15 +248,15 @@ en:
       view: "View"
       delete_dialog:
         title: "Delete Location"
-        confirm: "Are you sure you want to delete %{name}? This will also delete all medicines at this location."
+        confirm: "Are you sure you want to delete %{name}? This will also delete all medications at this location."
         cancel: "Cancel"
         submit: "Delete"
     show:
       location: "Location"
       edit_location: "Edit Location"
       all_locations: "All Locations"
-      medicines_heading: "Medicines at this Location"
-      no_medicines: "No medicines at this location yet."
+      medications_heading: "Medications at this Location"
+      no_medications: "No medications at this location yet."
       members: "Members"
       no_members: "No members assigned."
       details: "Details"
@@ -282,19 +282,19 @@ en:
       success: "%{name} removed from %{location}"
       failure: "Failed to remove member"
 
-  medicines:
+  medications:
     finder:
       nhs_directory: "NHS Directory"
-      title: "Medicine Finder"
-      subtitle: "Search the NHS Dictionary of Medicines and Devices (dm+d) by name or active ingredient."
+      title: "Medication Finder"
+      subtitle: "Search the NHS Dictionary of Medications and Devices (dm+d) by name or active ingredient."
       placeholder: "Search by name, category, or active ingredient..."
       search_button: "Search"
       idle_heading: "Ready to explore?"
-      idle_text: "Enter a medicine name above to search thousands of verified records in the NHS database."
-      coming_soon: "This feature is coming soon! We'll integrate with a medicine database API to provide detailed information about medications."
-    created: "Medicine was successfully created."
-    updated: "Medicine was successfully updated."
-    deleted: "Medicine was successfully deleted."
+      idle_text: "Enter a medication name above to search thousands of verified records in the NHS database."
+      coming_soon: "This feature is coming soon! We'll integrate with a medication database API to provide detailed information about medications."
+    created: "Medication was successfully created."
+    updated: "Medication was successfully updated."
+    deleted: "Medication was successfully deleted."
     refilled: "Inventory refilled successfully."
     ordered: "Refill marked as ordered"
     received: "Refill marked as received"
@@ -305,31 +305,31 @@ en:
       received: "Received"
     refill_modal:
       refill_inventory: "Refill Inventory"
-      title: "Refill %{medicine}"
+      title: "Refill %{medication}"
       description: "Add stock quantity and record the restock date."
       quantity: "Quantity"
       restock_date: "Restock date"
     form:
-      new_title: "Add a New Medicine"
+      new_title: "Add a New Medication"
       new_subtitle: "Capture inventory details and dosage information."
-      edit_title: "Edit Medicine"
+      edit_title: "Edit Medication"
       edit_subtitle: "Update %{name}'s details."
     index:
       your_inventory: "Your Inventory"
-      title: "Medicines"
-      add_medicine: "Add Medicine"
+      title: "Medications"
+      add_medication: "Add Medication"
       all: "All"
       view: "View"
       inventory_level: "Inventory Level"
       units: "units"
       in_stock: "In Stock"
       delete_dialog:
-        title: "Delete Medicine"
+        title: "Delete Medication"
         confirm: "Are you sure you want to delete %{name}? This action cannot be undone."
         submit: "Delete"
         cancel: "Cancel"
     show:
-      profile: "Medicine Profile"
+      profile: "Medication Profile"
       edit_details: "Edit Details"
       inventory: "Inventory"
       overview: "Overview"
@@ -365,18 +365,18 @@ en:
     deleted: "Person was successfully deleted."
     show:
       edit_person: "Edit Person"
-      add_prescription: "Add Prescription"
-      add_medicine: "Add Medicine"
+      add_schedule: "Add Schedule"
+      add_medication: "Add Medication"
       back: "Back"
       born: "Born:"
       age: "Age:"
-      prescriptions_heading: "Prescriptions"
-      no_prescriptions: "No prescriptions yet."
-      add_first_prescription: "Add First Prescription"
-      my_medicines_heading: "My Medicines"
-      no_medicines: "No medicines added yet."
-      medicines_hint: "Add vitamins, supplements, or over-the-counter medicines here."
-      add_first_medicine: "Add First Medicine"
+      schedules_heading: "Schedules"
+      no_schedules: "No schedules yet."
+      add_first_schedule: "Add First Schedule"
+      my_medications_heading: "My Medications"
+      no_medications: "No medications added yet."
+      medications_hint: "Add vitamins, supplements, or over-the-counter medications here."
+      add_first_medication: "Add First Medication"
     overview:
       title: "Profile Overview"
       dob: "Date of Birth"
@@ -387,7 +387,7 @@ en:
       dependent: "Dependent"
     actions:
       title: "Care Actions"
-      subtitle: "Update medication plans and prescriptions."
+      subtitle: "Update medication plans and schedules."
     form:
       edit_heading: "Edit Person"
       edit_subheading: "Updating profile for %{name}"
@@ -396,14 +396,14 @@ en:
       save: "Save"
       cancel: "Cancel"
 
-  person_medicines:
-    created: "Medicine added successfully."
-    updated: "Medicine updated successfully."
-    deleted: "Medicine removed successfully."
-    medicine_taken: "Medicine taken successfully."
+  person_medications:
+    created: "Medication added successfully."
+    updated: "Medication updated successfully."
+    deleted: "Medication removed successfully."
+    medication_taken: "Medication taken successfully."
     modal:
-      new_title: "Add Medicine for %{person}"
-      edit_title: "Edit Medicine for %{person}"
+      new_title: "Add Medication for %{person}"
+      edit_title: "Edit Medication for %{person}"
     card:
       notes: "📝 Notes: "
       timing_restrictions: "⏱️ Timing Restrictions:"
@@ -417,27 +417,27 @@ en:
       out_of_stock: "💊 Out of Stock"
       edit: "Edit"
       remove: "Remove"
-      remove_medicine: "Remove Medicine"
-      remove_confirmation: "Are you sure you want to remove %{medicine}? This action cannot be undone."
+      remove_medication: "Remove Medication"
+      remove_confirmation: "Are you sure you want to remove %{medication}? This action cannot be undone."
     form:
-      add_medicine: "Add Medicine"
-      add_medicine_for: "Add Medicine for %{person}"
-      edit_medicine_for: "Edit Medicine for %{person}"
+      add_medication: "Add Medication"
+      add_medication_for: "Add Medication for %{person}"
+      edit_medication_for: "Edit Medication for %{person}"
       validation_errors:
-        one: "1 error prohibited this medicine from being saved:"
-        other: "%{count} errors prohibited this medicine from being saved:"
+        one: "1 error prohibited this medication from being saved:"
+        other: "%{count} errors prohibited this medication from being saved:"
       cancel: "Cancel"
-      add_medicine_button: "Add Medicine"
+      add_medication_button: "Add Medication"
       save_changes_button: "Save Changes"
 
-  prescriptions:
-    created: "Prescription was successfully created."
-    updated: "Prescription was successfully updated."
-    deleted: "Prescription was successfully deleted."
-    medicine_taken: "Medicine taken successfully."
+  schedules:
+    created: "Schedule was successfully created."
+    updated: "Schedule was successfully updated."
+    deleted: "Schedule was successfully deleted."
+    medication_taken: "Medication taken successfully."
     modal:
-      new_title: "New Prescription for %{person}"
-      edit_title: "Edit Prescription for %{person}"
+      new_title: "New Schedule for %{person}"
+      edit_title: "Edit Schedule for %{person}"
     card:
       started: "📅 Started:"
       ends: "🏁 Ends:"
@@ -453,8 +453,8 @@ en:
       edit: "Edit"
       delete: "Delete"
       delete_dialog:
-        title: "Delete Prescription"
-        confirm: "Are you sure you want to delete the %{medicine} prescription? This action cannot be undone."
+        title: "Delete Schedule"
+        confirm: "Are you sure you want to delete the %{medication} schedule? This action cannot be undone."
         cancel: "Cancel"
         submit: "Delete"
 
@@ -479,10 +479,10 @@ en:
       create_account: "Create one"
       resend_verification: "Resend verification email"
 
-  take_medicines:
-    success: "Medication taken successfully recorded."
+  take_medications:
+    success: "Medication taken successfully."
     failure: "Failed to record medication taken."
-    json_success: "Medication taken successfully recorded."
+    json_success: "Medication taken successfully."
 
   profiles:
     updated: "Profile updated successfully."
@@ -532,9 +532,9 @@ en:
       brand: "MedTracker"
       login: "Login"
     desktop_nav:
-      medicines: "Medicines"
+      medications: "Medications"
       people: "People"
-      medicine_finder: "Medicine Finder"
+      medication_finder: "Medication Finder"
     profile_menu:
       my_account: "My Account"
       dashboard: "Dashboard"
@@ -546,9 +546,9 @@ en:
       brand: "MedTracker"
       open_menu: "Open menu"
       close_menu: "Close menu"
-      medicines: "Medicines"
+      medications: "Medications"
       people: "People"
-      medicine_finder: "Medicine Finder"
+      medication_finder: "Medication Finder"
       profile: "Profile"
       administration: "Administration"
       logout: "Logout"
@@ -562,7 +562,7 @@ en:
       administration: "Administration"
       sign_out: "Sign Out"
   forms:
-    medicines:
+    medications:
       inventory_management: "Inventory Management"
       dosage_and_supply: "Dosage & Supply"
       name: "Name"
@@ -573,14 +573,14 @@ en:
       current_supply: "Remaining Supply"
       reorder_threshold: "Reorder Threshold"
       warnings: "Warnings"
-      save_medicine: "Save Medicine"
-      back_to_medicines: "Back to Medicines"
+      save_medication: "Save Medication"
+      back_to_medications: "Back to Medications"
       back: "Back"
       select_location: "Select a location..."
       select_category: "Select a category (optional)..."
       validation_errors:
-        one: "1 error prevented this medicine from being saved:"
-        other: "%{count} errors prevented this medicine from being saved:"
+        one: "1 error prevented this medication from being saved:"
+        other: "%{count} errors prevented this medication from being saved:"
   dashboard:
     title: "Family Dashboard"
     greeting_morning: "Good morning, %{name}"
@@ -589,8 +589,8 @@ en:
     subtitle: "Your family's medication schedule for today."
     todays_schedule: "Today's Schedule"
     medication_schedule: "Medication Schedule"
-    no_active_prescriptions: "No active prescriptions found"
-    add_prescriptions_hint: "Add prescriptions to see them here"
+    no_active_schedules: "No active schedules found"
+    add_schedules_hint: "Add schedules to see them here"
     dose_taken_at: "%{person} • Taken at %{time}"
     empty_state: "No medications scheduled for today."
     insights:
@@ -604,7 +604,7 @@ en:
       order_refills: "Order Refills"
     stats:
       people: "People"
-      active_prescriptions: "Active Prescriptions"
+      active_schedules: "Active Schedules"
       compliance: "Compliance"
       next_dose: "Next Dose"
       no_upcoming_doses: "None today"
@@ -616,7 +616,7 @@ en:
       out_of_stock: "Out of Stock"
     table:
       person: "Person"
-      medicine: "Medicine"
+      medication: "Medication"
       dosage: "Dosage"
       quantity: "Quantity"
       frequency: "Frequency"
@@ -624,10 +624,10 @@ en:
       actions: "Actions"
     delete_confirmation:
       delete: "Delete"
-      delete_prescription: "Delete Prescription?"
-      are_you_sure: "Are you sure you want to delete %{medicine} for %{person}? This action cannot be undone."
+      delete_schedule: "Delete Schedule?"
+      are_you_sure: "Are you sure you want to delete %{medication} for %{person}? This action cannot be undone."
       cancel: "Cancel"
     quick_actions:
       title: "Quick Actions"
-      add_medicine: "Add Medicine"
+      add_medication: "Add Medication"
       add_person: "Add Person"

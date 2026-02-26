@@ -1,0 +1,16 @@
+{
+  "track_id": "docker_optimization_20260225",
+  "title": "Docker Layer & Cache Optimization",
+  "description": "Optimize Docker configuration to improve cache/layer reuse and reduce disk usage.",
+  "status": "planned",
+  "priority": "medium",
+  "owner": "system",
+  "related_files": [
+    "Dockerfile",
+    "compose.yaml",
+    ".dockerignore"
+  ],
+  "start_date": "2026-02-25",
+  "end_date": null,
+  "notes": "Addressing reported 100GB reclaimed after pruning. Focus on mailpit pinning, BuildKit cache mounts, and Dockerfile refactoring."
+}

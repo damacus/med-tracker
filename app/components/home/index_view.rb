@@ -6,12 +6,12 @@ module Components
       def view_template
         div(class: 'container mx-auto px-4 py-8') do
           div(class: 'mb-8 text-center') do
-            Heading(level: 1, class: 'mb-2') { 'Medicine Tracker' }
-            Text(size: '4', weight: 'muted') { 'Welcome to your personal medicine tracking application.' }
+            Heading(level: 1, class: 'mb-2') { 'Medication Tracker' }
+            Text(size: '4', weight: 'muted') { 'Welcome to your personal medication tracking application.' }
           end
 
           div(class: 'grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto') do
-            medicines_card
+            medications_card
             people_card
           end
         end
@@ -19,17 +19,17 @@ module Components
 
       private
 
-      def medicines_card
-        Link(href: medicines_path, variant: :ghost, class: 'block transition-transform hover:scale-105 h-auto p-0') do
+      def medications_card
+        Link(href: medications_path, variant: :ghost, class: 'block transition-transform hover:scale-105 h-auto p-0') do
           Card(class: 'h-full') do
             CardHeader do
               div(class: 'w-12 h-12 rounded-xl flex items-center justify-center bg-blue-100 text-blue-700 mb-2') do
-                render_medicine_icon
+                render_medication_icon
               end
             end
             CardContent(class: 'space-y-2') do
-              Heading(level: 2, size: '6', class: 'font-semibold leading-none tracking-tight') { 'Medicines' }
-              CardDescription { 'Manage your medicine inventory, track stock levels, and view dosage information' }
+              Heading(level: 2, size: '6', class: 'font-semibold leading-none tracking-tight') { 'Medications' }
+              CardDescription { 'Manage your medication inventory, track stock levels, and view dosage information' }
             end
           end
         end
@@ -45,13 +45,13 @@ module Components
             end
             CardContent(class: 'space-y-2') do
               Heading(level: 2, size: '6', class: 'font-semibold leading-none tracking-tight') { 'People' }
-              CardDescription { 'Manage people and their prescriptions, track medication schedules' }
+              CardDescription { 'Manage people and their schedules, track medication schedules' }
             end
           end
         end
       end
 
-      def render_medicine_icon
+      def render_medication_icon
         render Icons::Pill.new(size: 24)
       end
 

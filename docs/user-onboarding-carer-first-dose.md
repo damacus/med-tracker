@@ -22,17 +22,17 @@ Expected result:
 ## Step 2: Open the dependent person record
 
 1. Navigate to the person you support.
-2. Review active medicines:
-   - prescriptions
-   - person medicines (non-prescription)
+2. Review active medications:
+   - schedules
+   - person medications (non-schedule)
 
 Expected result:
 
-- You can see medicine details and the current allowed administration state.
+- You can see medication details and the current allowed administration state.
 
 ## Step 3: Check safety constraints before administering
 
-For the target medicine, confirm:
+For the target medication, confirm:
 
 - maximum daily dose (`max_daily_doses`)
 - minimum time gap (`min_hours_between_doses`)
@@ -44,15 +44,15 @@ Expected result:
 
 ## Step 4: Record the first dose
 
-1. Choose the correct medicine entry.
+1. Choose the correct medication entry.
 2. Record administration at the current time (or clinically correct time).
 3. Submit the dose entry.
 
 Expected result:
 
 - A new `MedicationTake` is created from exactly one source:
-  - prescription, or
-  - person medicine
+  - schedule, or
+  - person medication
 
 ## Step 5: Verify history and auditability
 
@@ -81,11 +81,11 @@ Symptom: system blocks submission due to `max_daily_doses`.
 
 Action: do not administer additional dose; follow clinical policy/escalation.
 
-### Wrong medicine source selected
+### Wrong medication source selected
 
 Symptom: invalid or mismatched dose entry path.
 
-Action: choose the correct medicine entry and retry.
+Action: choose the correct medication entry and retry.
 
 ## Completion criteria
 

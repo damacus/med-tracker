@@ -13,9 +13,9 @@ RSpec.describe Components::Layouts::Flash, type: :component do
 
   describe 'notice flash' do
     it 'renders the notice message directly without redundant title' do
-      rendered = render_inline(described_class.new(notice: 'Medicine added successfully'))
+      rendered = render_inline(described_class.new(notice: 'Medication added successfully'))
 
-      expect(rendered.text).to include('Medicine added successfully')
+      expect(rendered.text).to include('Medication added successfully')
       expect(rendered.text).not_to include('Success')
     end
 

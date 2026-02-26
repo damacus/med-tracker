@@ -9,7 +9,7 @@ module FamilyDashboard
 
     def call
       preload_todays_takes
-      # 1. Fetch all active prescriptions and person_medicines for these people
+      # 1. Fetch all active schedules and person_medications for these people
       doses = aggregate_family_doses(@people)
 
       # 2. Sort by time and return
@@ -25,16 +25,18 @@ module FamilyDashboard
 
       # Group by [source_type, source_id] for fast lookup
       @takes_by_source = all_takes.group_by do |t|
-        t.prescription_id ? ['Prescription', t.prescription_id] : ['PersonMedicine', t.person_medicine_id]
+        t.schedule_id ? ['Schedule', t.schedule_id] : ['PersonMedication', t.person_medication_id]
       end
     end
 
     def fetch_todays_takes(person_ids)
       MedicationTake.where(taken_at: Time.current.all_day)
-                    .where(prescription_id: Prescription.where(person_id: person_ids).select(:id))
+                    .where(schedule_id: Schedule.where(person_id: person_ids).select(:id))
                     .or(
                       MedicationTake.where(taken_at: Time.current.all_day)
-                                    .where(person_medicine_id: PersonMedicine.where(person_id: person_ids).select(:id))
+                                    .where(
+                                      person_medication_id: PersonMedication.where(person_id: person_ids).select(:id)
+                                    )
                     )
                     .to_a
     end
@@ -48,13 +50,13 @@ module FamilyDashboard
     def generate_member_doses(member)
       member_doses = []
 
-      # Prescriptions
-      member.prescriptions.active.includes(:medicine, :dosage).find_each do |prescription|
-        member_doses += generate_doses_for(prescription, member)
+      # Schedules
+      member.schedules.active.includes(:medication, :dosage).find_each do |schedule|
+        member_doses += generate_doses_for(schedule, member)
       end
 
-      # PersonMedicines (Non-prescription)
-      member.person_medicines.includes(:medicine).find_each do |pm|
+      # PersonMedications (Non-schedule)
+      member.person_medications.includes(:medication).find_each do |pm|
         member_doses += generate_doses_for(pm, member)
       end
 

@@ -22,14 +22,14 @@ module Components
           div(class: 'flex items-center justify-between p-4') do
             div(class: 'flex items-center gap-4') do
               div(class: 'text-sm font-bold text-slate-500 w-12 hidden md:block') do
-                if dose[:source].respond_to?(:scheduled_time)
-                  dose[:source].scheduled_time.strftime('%H:%M')
+                if dose[:scheduled_at]
+                  dose[:scheduled_at].strftime('%H:%M')
                 else
                   '--:--'
                 end
               end
               div do
-                Heading(level: 3, size: '4', class: 'font-semibold') { dose[:source].medicine.name }
+                Heading(level: 3, size: '4', class: 'font-semibold') { dose[:source].medication.name }
                 Text(size: '2', weight: 'muted') { subtitle_text }
               end
             end
@@ -51,7 +51,7 @@ module Components
       end
 
       def take_label
-        own_dose? ? t('person_medicines.card.take') : t('person_medicines.card.give')
+        own_dose? ? t('person_medications.card.take') : t('person_medications.card.give')
       end
 
       def status_border_class
@@ -80,13 +80,15 @@ module Components
       end
 
       def render_action_button
-        prescription = dose[:source].is_a?(Prescription)
-        path = if prescription
-                 take_medicine_person_prescription_path(dose[:person], dose[:source])
+        source = dose[:source]
+        is_schedule = source.is_a?(::Schedule)
+
+        path = if is_schedule
+                 take_medication_person_schedule_path(dose[:person], source)
                else
-                 take_medicine_person_person_medicine_path(dose[:person], dose[:source])
+                 take_medication_person_person_medication_path(dose[:person], source)
                end
-        amount = prescription ? dose[:source].dosage.amount : dose[:source].medicine.dosage_amount
+        amount = is_schedule ? source.dosage.amount : source.medication.dosage_amount
 
         form_with(url: path, method: :post,
                   data: { controller: 'optimistic-take', action: 'submit->optimistic-take#submit' }) do |f|

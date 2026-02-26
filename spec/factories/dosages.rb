@@ -2,7 +2,7 @@
 
 FactoryBot.define do
   factory :dosage do
-    medicine
+    medication
     amount { 500 }
     unit { 'mg' }
     frequency { 'As needed' }

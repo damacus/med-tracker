@@ -13,7 +13,7 @@ module Components
                  'transition-all duration-500'
         ) do
           render_nav_item(root_path, Icons::Home, 'Home')
-          render_nav_item(medicines_path, Icons::Pill, 'Inventory')
+          render_nav_item(medications_path, Icons::Pill, 'Inventory')
           render_nav_item(reports_path, Icons::AlertCircle, 'Reports')
           render_nav_item(profile_path, Icons::User, 'Profile')
         end

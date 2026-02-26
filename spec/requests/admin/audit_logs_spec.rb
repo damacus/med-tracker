@@ -11,7 +11,7 @@ RSpec.describe 'Admin::AuditLogs' do
   let(:admin) { users(:admin) }
   let(:regular_user) { users(:jane) }
   let(:carer) { users(:bob) }
-  let(:prescription) { prescriptions(:john_paracetamol) }
+  let(:schedule) { schedules(:john_paracetamol) }
 
   describe 'GET /admin/audit_logs' do
     context 'when authenticated as administrator' do

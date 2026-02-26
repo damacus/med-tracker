@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe DashboardPresenter do
-  fixtures :accounts, :people, :users, :locations, :medicines, :dosages, :prescriptions
+  fixtures :accounts, :people, :users, :locations, :medications, :dosages, :schedules
 
   let(:admin_user) { users(:admin) }
   let(:carer_user) { users(:carer) }
@@ -90,35 +90,35 @@ RSpec.describe DashboardPresenter do
     end
   end
 
-  describe '#active_prescriptions' do
-    it 'returns date-active prescriptions for scoped people' do
+  describe '#active_schedules' do
+    it 'returns date-active schedules for scoped people' do
       presenter = described_class.new(current_user: admin_user)
       today = Time.zone.today
-      expect(presenter.active_prescriptions).to all(
+      expect(presenter.active_schedules).to all(
         satisfy { |p| today.between?(p.start_date, p.end_date) }
       )
     end
 
-    it 'excludes prescriptions whose end_date is in the past' do
-      past_prescription = prescriptions(:john_paracetamol)
-      past_prescription.update!(start_date: 2.years.ago.to_date, end_date: 1.year.ago.to_date)
+    it 'excludes schedules whose end_date is in the past' do
+      past_schedule = schedules(:john_paracetamol)
+      past_schedule.update!(start_date: 2.years.ago.to_date, end_date: 1.year.ago.to_date)
       presenter = described_class.new(current_user: admin_user)
-      expect(presenter.active_prescriptions).not_to include(past_prescription)
+      expect(presenter.active_schedules).not_to include(past_schedule)
     end
 
-    it 'excludes prescriptions whose start_date is in the future' do
-      future_prescription = prescriptions(:john_paracetamol)
-      future_prescription.update!(start_date: 1.year.from_now.to_date, end_date: 2.years.from_now.to_date)
+    it 'excludes schedules whose start_date is in the future' do
+      future_schedule = schedules(:john_paracetamol)
+      future_schedule.update!(start_date: 1.year.from_now.to_date, end_date: 2.years.from_now.to_date)
       presenter = described_class.new(current_user: admin_user)
-      expect(presenter.active_prescriptions).not_to include(future_prescription)
+      expect(presenter.active_schedules).not_to include(future_schedule)
     end
   end
 
-  describe '#upcoming_prescriptions' do
-    it 'groups prescriptions by person' do
+  describe '#upcoming_schedules' do
+    it 'groups schedules by person' do
       presenter = described_class.new(current_user: admin_user)
-      expect(presenter.upcoming_prescriptions).to be_a(Hash)
-      expect(presenter.upcoming_prescriptions.keys).to all(be_a(Person))
+      expect(presenter.upcoming_schedules).to be_a(Hash)
+      expect(presenter.upcoming_schedules.keys).to all(be_a(Person))
     end
   end
 

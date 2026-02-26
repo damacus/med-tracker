@@ -18,7 +18,7 @@ RSpec.describe 'Mobile Navigation' do
     expect(page).to have_css('button[aria-label="Open menu"]')
     expect(page).to have_css('nav.mobile-nav')
     expect(page).to have_link('Home', href: root_path)
-    expect(page).to have_link('Inventory', href: medicines_path)
+    expect(page).to have_link('Inventory', href: medications_path)
     expect(page).to have_link('Reports', href: reports_path)
   end
 
@@ -40,9 +40,9 @@ RSpec.describe 'Mobile Navigation' do
 
     # Links in the drawer
     within('[role="dialog"]') do
-      expect(page).to have_link('Inventory', href: medicines_path)
+      expect(page).to have_link('Inventory', href: medications_path)
       expect(page).to have_link('People', href: people_path)
-      expect(page).to have_link('Medicine Finder', href: medicine_finder_path)
+      expect(page).to have_link('Medication Finder', href: medication_finder_path)
       expect(page).to have_link('Profile', href: profile_path)
       expect(page).to have_button('Logout')
     end

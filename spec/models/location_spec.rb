@@ -11,7 +11,7 @@ RSpec.describe Location do
   end
 
   describe 'associations' do
-    it { is_expected.to have_many(:medicines).dependent(:destroy) }
+    it { is_expected.to have_many(:medications).dependent(:destroy) }
     it { is_expected.to have_many(:location_memberships).dependent(:destroy) }
     it { is_expected.to have_many(:members).through(:location_memberships).source(:person) }
   end
