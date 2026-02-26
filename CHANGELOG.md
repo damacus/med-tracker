@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.10](https://github.com/damacus/med-tracker/compare/v0.3.9...v0.3.10) (2026-02-26)
+
+
+### Features
+
+* add edit/update workflow for person medicines ([#836](https://github.com/damacus/med-tracker/issues/836)) ([3c21e9a](https://github.com/damacus/med-tracker/commit/3c21e9aed1cb5e2f4e6985b0a24609a955e52b09))
+* rename medicines to medications and prescriptions to schedules ([#840](https://github.com/damacus/med-tracker/issues/840)) ([a09492c](https://github.com/damacus/med-tracker/commit/a09492cf8ecc353c19c423d7fb77c774f0c181fe))
+
 ## [0.3.9](https://github.com/damacus/med-tracker/compare/v0.3.8...v0.3.9) (2026-02-25)
 
 
