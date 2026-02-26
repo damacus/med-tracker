@@ -6,8 +6,8 @@ module Views
       def view_template
         page_layout do
           render_page_header(
-            title: 'Enter your authentication code',
-            subtitle: 'Use the code from your authenticator app to continue.'
+            title: t('rodauth.views.otp_auth.page_title'),
+            subtitle: t('rodauth.views.otp_auth.page_subtitle')
           )
           form_section
         end
@@ -19,10 +19,10 @@ module Views
         render RubyUI::Card.new(class: card_classes) do
           render RubyUI::CardHeader.new(class: 'space-y-2 bg-white/60') do
             render RubyUI::CardTitle.new(class: 'text-xl font-semibold text-slate-900') do
-              'Authenticator code'
+              t('rodauth.views.otp_auth.card_title')
             end
             render RubyUI::CardDescription.new(class: 'text-base text-slate-600') do
-              'Enter the 6-digit code to finish signing in.'
+              t('rodauth.views.otp_auth.card_description')
             end
           end
           render RubyUI::CardContent.new(class: 'space-y-6 p-6 sm:p-8') do
@@ -53,7 +53,7 @@ module Views
             inputmode: 'numeric',
             pattern: '[0-9]*',
             maxlength: 6,
-            placeholder: 'Enter 6-digit code'
+            placeholder: t('rodauth.views.otp_auth.code_placeholder')
           )
         end
       end

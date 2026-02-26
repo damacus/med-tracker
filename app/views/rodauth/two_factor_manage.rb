@@ -16,17 +16,17 @@ module Views
 
       def header_title
         if rodauth.two_factor_authentication_setup?
-          'Manage Two-Factor Authentication'
+          t('rodauth.views.two_factor_manage.page_title_configured')
         else
-          'Set Up Two-Factor Authentication'
+          t('rodauth.views.two_factor_manage.page_title_unconfigured')
         end
       end
 
       def header_subtitle
         if rodauth.two_factor_authentication_setup?
-          'Manage your authentication methods or add additional security.'
+          t('rodauth.views.two_factor_manage.page_subtitle_configured')
         else
-          'Choose a method to secure your account with two-factor authentication.'
+          t('rodauth.views.two_factor_manage.page_subtitle_unconfigured')
         end
       end
 
@@ -44,10 +44,10 @@ module Views
       def render_card_header
         render RubyUI::CardHeader.new(class: 'space-y-2 bg-white/60') do
           render RubyUI::CardTitle.new(class: 'text-xl font-semibold text-slate-900') do
-            'Authentication Methods'
+            t('rodauth.views.two_factor_manage.card_title')
           end
           render RubyUI::CardDescription.new(class: 'text-base text-slate-600') do
-            plain 'Choose how you want to verify your identity when signing in.'
+            plain t('rodauth.views.two_factor_manage.card_description')
           end
         end
       end
@@ -62,37 +62,37 @@ module Views
 
       def render_webauthn_option
         render_auth_method_card({
-                                  title: 'Passkeys',
-                                  description: 'Use biometrics or a security key for passwordless login.',
+                                  title: t('rodauth.views.two_factor_manage.methods.passkeys_title'),
+                                  description: t('rodauth.views.two_factor_manage.methods.passkeys_description'),
                                   icon: :passkey,
                                   setup_path: rodauth.webauthn_setup_path,
-                                  setup_text: 'Set up passkey',
+                                  setup_text: t('rodauth.views.two_factor_manage.methods.passkeys_setup'),
                                   enabled: webauthn_enabled?,
                                   manage_path: webauthn_enabled? ? rodauth.webauthn_remove_path : nil,
-                                  manage_text: 'Manage passkeys'
+                                  manage_text: t('rodauth.views.two_factor_manage.methods.passkeys_manage')
                                 })
       end
 
       def render_totp_option
         render_auth_method_card({
-                                  title: 'Authenticator App (TOTP)',
-                                  description: 'Use an app like Google Authenticator or 1Password.',
+                                  title: t('rodauth.views.two_factor_manage.methods.totp_title'),
+                                  description: t('rodauth.views.two_factor_manage.methods.totp_description'),
                                   icon: :totp,
                                   setup_path: rodauth.otp_setup_path,
-                                  setup_text: 'Set up authenticator',
+                                  setup_text: t('rodauth.views.two_factor_manage.methods.totp_setup'),
                                   enabled: totp_enabled?,
                                   manage_path: totp_enabled? ? rodauth.otp_disable_path : nil,
-                                  manage_text: 'Disable TOTP'
+                                  manage_text: t('rodauth.views.two_factor_manage.methods.totp_manage')
                                 })
       end
 
       def render_recovery_codes_option
         render_auth_method_card({
-                                  title: 'Recovery Codes',
-                                  description: 'Backup codes for when you lose access to your device.',
+                                  title: t('rodauth.views.two_factor_manage.methods.recovery_codes_title'),
+                                  description: t('rodauth.views.two_factor_manage.methods.recovery_codes_description'),
                                   icon: :recovery,
                                   setup_path: rodauth.recovery_codes_path,
-                                  setup_text: 'View recovery codes',
+                                  setup_text: t('rodauth.views.two_factor_manage.methods.recovery_codes_setup'),
                                   enabled: recovery_codes_enabled?,
                                   manage_path: nil,
                                   manage_text: nil
@@ -153,7 +153,7 @@ module Views
         return unless enabled
 
         span(class: 'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800') do
-          'Enabled'
+          t('rodauth.views.two_factor_manage.status_enabled')
         end
       end
 

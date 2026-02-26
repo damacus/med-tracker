@@ -9,8 +9,8 @@ module Views
       def view_template
         page_layout do
           render_page_header(
-            title: 'MedTracker',
-            subtitle: 'Reset your password to regain access to your account.'
+            title: t('app.name'),
+            subtitle: t('rodauth.views.reset_password_request.page_subtitle')
           )
           form_section
         end
@@ -45,9 +45,9 @@ module Views
 
       def render_card_header
         render RubyUI::CardHeader.new(class: 'space-y-2 bg-white/60') do
-          render RubyUI::CardTitle.new(class: 'text-2xl font-semibold text-slate-900') { 'Reset Password' }
+          render RubyUI::CardTitle.new(class: 'text-2xl font-semibold text-slate-900') { t('rodauth.views.reset_password_request.card_title') }
           render RubyUI::CardDescription.new(class: 'text-base text-slate-600') do
-            plain 'Enter your email address and we\'ll send you a link to reset your password.'
+            plain t('rodauth.views.reset_password_request.card_description')
           end
         end
       end
@@ -70,7 +70,7 @@ module Views
 
       def email_field
         render RubyUI::FormField.new do
-          render RubyUI::FormFieldLabel.new(for: 'email') { 'Email address' }
+          render RubyUI::FormFieldLabel.new(for: 'email') { t('rodauth.views.reset_password_request.email_label') }
           render RubyUI::Input.new(
             type: :email,
             name: 'email',
@@ -78,7 +78,7 @@ module Views
             required: true,
             autofocus: true,
             autocomplete: 'email',
-            placeholder: 'Enter your email address',
+            placeholder: t('rodauth.views.reset_password_request.email_placeholder'),
             value: view_context.params[:email]
           )
         end
@@ -86,19 +86,19 @@ module Views
 
       def submit_button
         render RubyUI::Button.new(type: :submit, variant: :primary, size: :md, class: 'w-full') do
-          'Request Password Reset'
+          t('rodauth.views.reset_password_request.submit')
         end
       end
 
       def render_other_options
         div(class: 'space-y-3 border-t border-slate-200 pt-6') do
-          h3(class: 'text-sm font-medium text-slate-700') { 'Other Options' }
+          h3(class: 'text-sm font-medium text-slate-700') { t('rodauth.views.reset_password_request.other_options') }
           div(class: 'flex flex-col gap-2 text-sm') do
             render RubyUI::Link.new(href: view_context.rodauth.login_path, variant: :link) do
-              'Back to Login'
+              t('rodauth.views.reset_password_request.back_to_login')
             end
             render RubyUI::Link.new(href: view_context.rodauth.create_account_path, variant: :link) do
-              'Create a New Account'
+              t('rodauth.views.reset_password_request.create_account')
             end
           end
         end

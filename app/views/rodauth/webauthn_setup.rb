@@ -9,8 +9,8 @@ module Views
       def view_template
         page_layout do
           render_page_header(
-            title: 'Set Up Passkey Authentication',
-            subtitle: 'Add a passkey for fast, secure passwordless login.'
+            title: t('rodauth.views.webauthn_setup.page_title'),
+            subtitle: t('rodauth.views.webauthn_setup.page_subtitle')
           )
           form_section
         end
@@ -32,10 +32,10 @@ module Views
       def render_card_header
         render RubyUI::CardHeader.new(class: 'space-y-2 bg-white/60') do
           render RubyUI::CardTitle.new(class: 'text-xl font-semibold text-slate-900') do
-            'Register a Passkey'
+            t('rodauth.views.webauthn_setup.card_title')
           end
           render RubyUI::CardDescription.new(class: 'text-base text-slate-600') do
-            plain 'Passkeys use your device\'s biometrics or security key for secure, passwordless authentication.'
+            plain t('rodauth.views.webauthn_setup.card_description')
           end
         end
       end
@@ -52,10 +52,9 @@ module Views
           div(class: 'flex items-start gap-3') do
             render_info_icon
             div(class: 'space-y-1') do
-              h4(class: 'font-medium text-slate-900') { 'What are passkeys?' }
+              h4(class: 'font-medium text-slate-900') { t('rodauth.views.webauthn_setup.info_title') }
               p(class: 'text-sm text-slate-600') do
-                'Passkeys are a secure replacement for passwords. They use your device\'s built-in security ' \
-                  '(like Face ID, Touch ID, or Windows Hello) to verify your identity.'
+                t('rodauth.views.webauthn_setup.info_description')
               end
             end
           end
@@ -94,22 +93,22 @@ module Views
 
       def password_field
         render RubyUI::FormField.new do
-          render RubyUI::FormFieldLabel.new(for: 'password') { 'Current Password' }
+          render RubyUI::FormFieldLabel.new(for: 'password') { t('rodauth.views.webauthn_setup.current_password_label') }
           render RubyUI::Input.new(
             type: :password,
             name: 'password',
             id: 'password',
             required: true,
             autocomplete: 'current-password',
-            placeholder: 'Enter your password to confirm'
+            placeholder: t('rodauth.views.webauthn_setup.current_password_placeholder')
           )
-          p(class: 'text-xs text-slate-500 mt-1') { 'Required to verify your identity before adding a passkey' }
+          p(class: 'text-xs text-slate-500 mt-1') { t('rodauth.views.webauthn_setup.current_password_hint') }
         end
       end
 
       def submit_button
         render RubyUI::Button.new(type: :submit, variant: :primary, size: :md, class: 'w-full') do
-          'Register Passkey'
+          t('rodauth.views.webauthn_setup.submit')
         end
       end
 

@@ -9,8 +9,8 @@ module Views
       def view_template
         page_layout do
           render_page_header(
-            title: 'MedTracker',
-            subtitle: 'Create your account to start tracking medications safely.'
+            title: t('app.name'),
+            subtitle: t('rodauth.views.create_account.page_subtitle')
           )
           form_section
         end
@@ -51,9 +51,9 @@ module Views
 
       def render_card_header
         render RubyUI::CardHeader.new(class: 'space-y-2 bg-white/60') do
-          render RubyUI::CardTitle.new(class: 'text-2xl font-semibold text-slate-900') { 'Create Account' }
+          render RubyUI::CardTitle.new(class: 'text-2xl font-semibold text-slate-900') { t('rodauth.views.create_account.card_title') }
           render RubyUI::CardDescription.new(class: 'text-base text-slate-600') do
-            plain 'Fill in your details to create a new account.'
+            plain t('rodauth.views.create_account.card_description')
           end
         end
       end
@@ -80,7 +80,7 @@ module Views
 
       def name_field
         render_form_field(
-          label: 'Name',
+          label: t('rodauth.views.create_account.name_label'),
           input_attrs: {
             type: :text,
             name: 'name',
@@ -88,7 +88,7 @@ module Views
             required: true,
             autofocus: true,
             autocomplete: 'name',
-            placeholder: 'Enter your full name',
+            placeholder: t('rodauth.views.create_account.name_placeholder'),
             value: view_context.params[:name]
           },
           error: view_context.rodauth.field_error('name')
@@ -97,7 +97,7 @@ module Views
 
       def date_of_birth_field
         render_form_field(
-          label: 'Date of birth',
+          label: t('rodauth.views.create_account.date_of_birth_label'),
           input_attrs: {
             type: :date,
             name: 'date_of_birth',
@@ -112,14 +112,14 @@ module Views
 
       def email_field
         render_form_field(
-          label: 'Email',
+          label: t('rodauth.views.create_account.email_label'),
           input_attrs: {
             type: :email,
             name: 'email',
             id: 'email',
             required: true,
             autocomplete: 'email',
-            placeholder: 'Enter your email address',
+            placeholder: t('rodauth.views.create_account.email_placeholder'),
             value: view_context.params[:email]
           },
           error: view_context.rodauth.field_error('login')
@@ -128,14 +128,14 @@ module Views
 
       def password_field
         render_form_field(
-          label: 'Password',
+          label: t('rodauth.views.create_account.password_label'),
           input_attrs: {
             type: :password,
             name: 'password',
             id: 'password',
             required: true,
             autocomplete: 'new-password',
-            placeholder: 'Create a password (min 12 characters)',
+            placeholder: t('rodauth.views.create_account.password_placeholder'),
             minlength: 12,
             maxlength: 72
           },
@@ -145,14 +145,14 @@ module Views
 
       def password_confirm_field
         render_form_field(
-          label: 'Confirm Password',
+          label: t('rodauth.views.create_account.confirm_password_label'),
           input_attrs: {
             type: :password,
             name: 'password-confirm',
             id: 'password-confirm',
             required: true,
             autocomplete: 'new-password',
-            placeholder: 'Confirm your password',
+            placeholder: t('rodauth.views.create_account.confirm_password_placeholder'),
             minlength: 12,
             maxlength: 72
           },
@@ -170,15 +170,15 @@ module Views
       end
 
       def submit_button
-        render RubyUI::Button.new(type: :submit, variant: :primary, size: :md, class: 'w-full') { 'Create Account' }
+        render RubyUI::Button.new(type: :submit, variant: :primary, size: :md, class: 'w-full') { t('rodauth.views.create_account.submit') }
       end
 
       def render_other_options
         div(class: 'space-y-3 border-t border-slate-200 pt-6') do
-          h3(class: 'text-sm font-medium text-slate-700') { 'Already have an account?' }
+          h3(class: 'text-sm font-medium text-slate-700') { t('rodauth.views.create_account.existing_account') }
           div(class: 'flex flex-col gap-2 text-sm') do
             render RubyUI::Link.new(href: view_context.rodauth.login_path, variant: :link) do
-              'Sign in to your account'
+              t('rodauth.views.create_account.sign_in')
             end
           end
         end
