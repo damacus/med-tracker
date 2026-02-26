@@ -19,6 +19,6 @@ RSpec.describe RubyUI::Badge, type: :component do
     rendered = render_inline(described_class.new) { 'Badge' }
 
     badge = rendered.css('span').first
-    expect(badge['class']).to include('text-primary')
+    expect(badge['class']).to include('text-on-primary-container')
   end
 end

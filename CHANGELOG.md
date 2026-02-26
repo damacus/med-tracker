@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.11](https://github.com/damacus/med-tracker/compare/v0.3.10...v0.3.11) (2026-02-26)
+
+
+### Bug Fixes
+
+* **fonts:** Self-host fonts ([#843](https://github.com/damacus/med-tracker/issues/843)) ([6143daa](https://github.com/damacus/med-tracker/commit/6143daabc77fa7b8e2cb6241fbd314cdb06a3cd4))
+
 ## [0.3.10](https://github.com/damacus/med-tracker/compare/v0.3.9...v0.3.10) (2026-02-26)
 
 

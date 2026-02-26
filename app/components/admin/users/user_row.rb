@@ -36,9 +36,9 @@ module Components
 
         def render_status_badge
           if user.active?
-            render RubyUI::Badge.new(variant: :green) { t('admin.users.user_row.active') }
+            render RubyUI::Badge.new(variant: :success) { t('admin.users.user_row.active') }
           else
-            render RubyUI::Badge.new(variant: :red) { t('admin.users.user_row.inactive') }
+            render RubyUI::Badge.new(variant: :destructive) { t('admin.users.user_row.inactive') }
           end
         end
 
