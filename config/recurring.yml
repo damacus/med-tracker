@@ -1,3 +1,9 @@
+production:
+  schedule_daily_reminders:
+    class: ScheduleDailyRemindersJob
+    schedule: every day at midnight
+    queue: default
+
 # production:
 #   periodic_cleanup:
 #     class: CleanSoftDeletedRecordsJob

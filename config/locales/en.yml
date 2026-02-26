@@ -484,6 +484,8 @@ en:
     failure: "Failed to record medication taken."
     json_success: "Medication taken successfully."
 
+  notification_preferences:
+    updated: "Notification settings saved."
   profiles:
     updated: "Profile updated successfully."
     email_updated: "Email updated successfully."
@@ -559,6 +561,7 @@ en:
       finder: "Finder"
       people: "People"
       reports: "Reports"
+      notifications: "Notifications"
       administration: "Administration"
       sign_out: "Sign Out"
   forms:
