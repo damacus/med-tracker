@@ -11,32 +11,32 @@ class PeopleController < ApplicationController
 
   def show
     authorize @person
-    prescriptions = @person.prescriptions.includes(:medicine, :dosage)
-    person_medicines = @person.person_medicines.includes(:medicine).ordered
+    schedules = @person.schedules.includes(:medication, :dosage)
+    person_medications = @person.person_medications.includes(:medication).ordered
     editing = params[:editing] == 'true'
 
     today_start = Time.current.beginning_of_day
-    prescription_ids = prescriptions.map(&:id)
-    person_medicine_ids = person_medicines.map(&:id)
+    schedule_ids = schedules.map(&:id)
+    person_medication_ids = person_medications.map(&:id)
 
-    takes_by_prescription = MedicationTake
-                            .where(prescription_id: prescription_ids, taken_at: today_start..)
-                            .order(taken_at: :desc)
-                            .group_by(&:prescription_id)
+    takes_by_schedule = MedicationTake
+                        .where(schedule_id: schedule_ids, taken_at: today_start..)
+                        .order(taken_at: :desc)
+                        .group_by(&:schedule_id)
 
-    takes_by_person_medicine = MedicationTake
-                               .where(person_medicine_id: person_medicine_ids, taken_at: today_start..)
-                               .order(taken_at: :desc)
-                               .group_by(&:person_medicine_id)
+    takes_by_person_medication = MedicationTake
+                                 .where(person_medication_id: person_medication_ids, taken_at: today_start..)
+                                 .order(taken_at: :desc)
+                                 .group_by(&:person_medication_id)
 
     render Components::People::ShowView.new(
       person: @person,
-      prescriptions: prescriptions,
-      person_medicines: person_medicines,
+      schedules: schedules,
+      person_medications: person_medications,
       editing: editing,
       preloaded_takes: {
-        prescriptions: takes_by_prescription,
-        person_medicines: takes_by_person_medicine
+        schedules: takes_by_schedule,
+        person_medications: takes_by_person_medication
       },
       current_user: current_user
     )

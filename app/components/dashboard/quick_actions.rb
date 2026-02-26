@@ -19,7 +19,7 @@ module Components
 
       def action_links
         [
-          [t('dashboard.quick_actions.add_medicine'), new_medicine_path],
+          [t('dashboard.quick_actions.add_medication'), new_medication_path],
           [t('dashboard.quick_actions.add_person'), new_person_path]
         ]
       end

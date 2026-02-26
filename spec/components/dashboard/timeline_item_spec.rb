@@ -3,10 +3,10 @@
 require 'rails_helper'
 
 RSpec.describe Components::Dashboard::TimelineItem, type: :component do
-  fixtures :accounts, :people, :locations, :medicines, :dosages, :prescriptions, :person_medicines, :medication_takes
+  fixtures :accounts, :people, :locations, :medications, :dosages, :schedules, :person_medications, :medication_takes
 
   let(:person) { people(:jane) }
-  let(:source) { prescriptions(:jane_ibuprofen) }
+  let(:source) { schedules(:jane_ibuprofen) }
   let(:dose) do
     {
       person: person,
@@ -17,7 +17,7 @@ RSpec.describe Components::Dashboard::TimelineItem, type: :component do
     }
   end
 
-  it 'renders the medicine name and person name' do
+  it 'renders the medication name and person name' do
     component = described_class.new(dose: dose)
     rendered = render_inline(component)
 
@@ -53,7 +53,7 @@ RSpec.describe Components::Dashboard::TimelineItem, type: :component do
 
   describe 'cooldown badge' do
     let(:source_with_cooldown) do
-      prescriptions(:jane_ibuprofen).tap do |p|
+      schedules(:jane_ibuprofen).tap do |p|
         allow(p).to receive_messages(countdown_display: '3h 30m')
       end
     end

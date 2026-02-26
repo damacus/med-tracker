@@ -2,22 +2,22 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Timeline refresh after taking medicine' do
-  fixtures :accounts, :people, :medicines, :users, :dosages, :prescriptions, :carer_relationships
+RSpec.describe 'Timeline refresh after taking medication' do
+  fixtures :accounts, :people, :medications, :users, :dosages, :schedules, :carer_relationships
 
   let(:carer_account) { accounts(:carer) }
   let(:person) { people(:child_patient) }
-  let(:medicine) { medicines(:paracetamol) }
+  let(:medication) { medications(:paracetamol) }
 
   before do
     post '/login', params: { email: carer_account.email, password: 'password' }
   end
 
-  describe 'POST take_medicine for a prescription (turbo_stream)' do
-    let(:prescription) do
-      Prescription.create!(
+  describe 'POST take_medication for a schedule (turbo_stream)' do
+    let(:schedule) do
+      Schedule.create!(
         person: person,
-        medicine: medicine,
+        medication: medication,
         dosage: dosages(:paracetamol_adult),
         start_date: Time.zone.today - 1.day,
         end_date: Time.zone.today + 30.days,
@@ -27,57 +27,57 @@ RSpec.describe 'Timeline refresh after taking medicine' do
     end
 
     it 'includes a turbo-stream replace for the timeline item' do
-      post take_medicine_person_prescription_path(person, prescription),
+      post take_medication_person_schedule_path(person, schedule),
            headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
 
-      expected_id = "timeline_prescription_#{prescription.id}"
+      expected_id = "timeline_schedule_#{schedule.id}"
       expect(response.body).to include(expected_id)
     end
 
-    it 'includes a turbo-stream replace for the prescription card' do
-      post take_medicine_person_prescription_path(person, prescription),
+    it 'includes a turbo-stream replace for the schedule card' do
+      post take_medication_person_schedule_path(person, schedule),
            headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
 
-      expected_id = "prescription_#{prescription.id}"
+      expected_id = "schedule_#{schedule.id}"
       expect(response.body).to include(expected_id)
     end
 
     it 'marks the timeline item as taken in the response' do
-      post take_medicine_person_prescription_path(person, prescription),
+      post take_medication_person_schedule_path(person, schedule),
            headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
 
       expect(response.body).to include('Taken')
     end
   end
 
-  describe 'POST take_medicine for a person_medicine (turbo_stream)' do
-    let(:person_medicine) do
-      PersonMedicine.create!(
+  describe 'POST take_medication for a person_medication (turbo_stream)' do
+    let(:person_medication) do
+      PersonMedication.create!(
         person: person,
-        medicine: medicine,
+        medication: medication,
         max_daily_doses: 4,
         min_hours_between_doses: 1
       )
     end
 
     it 'includes a turbo-stream replace for the timeline item' do
-      post take_medicine_person_person_medicine_path(person, person_medicine),
+      post take_medication_person_person_medication_path(person, person_medication),
            headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
 
-      expected_id = "timeline_person_medicine_#{person_medicine.id}"
+      expected_id = "timeline_person_medication_#{person_medication.id}"
       expect(response.body).to include(expected_id)
     end
 
-    it 'includes a turbo-stream replace for the person_medicine card' do
-      post take_medicine_person_person_medicine_path(person, person_medicine),
+    it 'includes a turbo-stream replace for the person_medication card' do
+      post take_medication_person_person_medication_path(person, person_medication),
            headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
 
-      expected_id = "person_medicine_#{person_medicine.id}"
+      expected_id = "person_medication_#{person_medication.id}"
       expect(response.body).to include(expected_id)
     end
 
     it 'marks the timeline item as taken in the response' do
-      post take_medicine_person_person_medicine_path(person, person_medicine),
+      post take_medication_person_person_medication_path(person, person_medication),
            headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
 
       expect(response.body).to include('Taken')

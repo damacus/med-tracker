@@ -33,7 +33,7 @@ RSpec.describe User do
 
   describe 'associations' do
     it { is_expected.to belong_to(:person).inverse_of(:user).required }
-    it { is_expected.to have_many(:prescriptions).through(:person) }
+    it { is_expected.to have_many(:schedules).through(:person) }
   end
 
   describe 'person linkage' do

@@ -11,6 +11,7 @@ The following models have audit trail enabled:
 - **User**: Track user account changes (excluding password fields for security)
 - **Person**: Track patient/carer demographic changes
 - **CarerRelationship**: Track carer assignments and removals
+- **Medication**: Track changes to medication definitions and stock
 - **MedicationTake**: Track all medication doses (critical for patient safety)
 
 ## Accessing Audit Logs

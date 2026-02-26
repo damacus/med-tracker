@@ -13,8 +13,8 @@ RSpec.describe Person do
 
   describe 'associations' do
     it { is_expected.to have_one(:user).inverse_of(:person).dependent(:destroy) }
-    it { is_expected.to have_many(:prescriptions).dependent(:destroy) }
-    it { is_expected.to have_many(:medicines).through(:prescriptions) }
+    it { is_expected.to have_many(:schedules).dependent(:destroy) }
+    it { is_expected.to have_many(:medications).through(:schedules) }
     it { is_expected.to have_many(:carer_relationships).dependent(:destroy) }
     it { is_expected.to have_many(:active_carer_relationships) }
     it { is_expected.to have_many(:carers).through(:active_carer_relationships) }

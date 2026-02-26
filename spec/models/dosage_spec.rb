@@ -5,7 +5,7 @@ require 'rails_helper'
 RSpec.describe Dosage do
   subject(:dosage) do
     described_class.new(
-      medicine: medicine,
+      medication: medication,
       amount: 500,
       unit: 'mg',
       frequency: 'daily',
@@ -15,8 +15,8 @@ RSpec.describe Dosage do
 
   let(:location) { Location.create!(name: 'Test Home') }
 
-  let(:medicine) do
-    Medicine.create!(
+  let(:medication) do
+    Medication.create!(
       name: 'Aspirin',
       location: location,
       current_supply: 100,
@@ -32,7 +32,7 @@ RSpec.describe Dosage do
   end
 
   describe 'associations' do
-    it { is_expected.to belong_to(:medicine) }
-    it { is_expected.to have_many(:prescriptions).dependent(:destroy) }
+    it { is_expected.to belong_to(:medication) }
+    it { is_expected.to have_many(:schedules).dependent(:destroy) }
   end
 end

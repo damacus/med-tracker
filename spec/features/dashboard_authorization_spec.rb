@@ -3,13 +3,13 @@
 require 'rails_helper'
 
 RSpec.describe 'Dashboard Authorization', type: :system do
-  fixtures :accounts, :people, :users, :prescriptions, :locations, :medicines, :dosages, :carer_relationships
+  fixtures :accounts, :people, :users, :schedules, :locations, :medications, :dosages, :carer_relationships
 
   describe 'viewing the dashboard' do
     context 'when signed in as an administrator' do
       let(:admin) { users(:admin) }
 
-      it 'sees all people and prescriptions' do
+      it 'sees all people and schedules' do
         sign_in(admin)
 
         visit dashboard_path
@@ -26,7 +26,7 @@ RSpec.describe 'Dashboard Authorization', type: :system do
     context 'when signed in as a doctor' do
       let(:doctor) { users(:doctor) }
 
-      it 'sees all people and prescriptions' do
+      it 'sees all people and schedules' do
         sign_in(doctor)
 
         visit dashboard_path
@@ -42,7 +42,7 @@ RSpec.describe 'Dashboard Authorization', type: :system do
     context 'when signed in as a nurse' do
       let(:nurse) { users(:nurse) }
 
-      it 'sees all people and prescriptions' do
+      it 'sees all people and schedules' do
         sign_in(nurse)
 
         visit dashboard_path
@@ -72,16 +72,16 @@ RSpec.describe 'Dashboard Authorization', type: :system do
         expect(page).to have_no_content('Jane Doe')
       end
 
-      it 'sees only prescriptions for assigned patients' do
+      it 'sees only schedules for assigned patients' do
         sign_in(carer)
 
         visit dashboard_path
 
-        # Should see prescriptions for assigned patients
-        # child_patient has ibuprofen prescription
+        # Should see schedules for assigned patients
+        # child_patient has ibuprofen schedule
         expect(page).to have_content('Ibuprofen')
 
-        # Should NOT see Bob's aspirin prescription
+        # Should NOT see Bob's aspirin schedule
         expect(page).to have_no_content('Aspirin')
       end
     end
@@ -104,15 +104,15 @@ RSpec.describe 'Dashboard Authorization', type: :system do
         expect(page).to have_no_content('Adult Patient')
       end
 
-      it 'sees only prescriptions for their children' do
+      it 'sees only schedules for their children' do
         sign_in(parent)
 
         visit dashboard_path
 
-        # Should see child's prescription
+        # Should see child's schedule
         expect(page).to have_content('Paracetamol')
 
-        # Should NOT see other prescriptions
+        # Should NOT see other schedules
         expect(page).to have_no_content('Aspirin')
       end
     end
@@ -135,15 +135,15 @@ RSpec.describe 'Dashboard Authorization', type: :system do
         expect(page).to have_no_content('Child Patient')
       end
 
-      it 'sees only their own prescriptions' do
+      it 'sees only their own schedules' do
         sign_in(adult_patient)
 
         visit dashboard_path
 
-        # Should see their own prescription (paracetamol)
+        # Should see their own schedule (paracetamol)
         expect(page).to have_content('Paracetamol')
 
-        # Should NOT see other prescriptions
+        # Should NOT see other schedules
         expect(page).to have_no_content('Aspirin')
         expect(page).to have_no_content('Ibuprofen')
       end

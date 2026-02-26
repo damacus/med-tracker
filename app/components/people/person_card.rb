@@ -51,18 +51,18 @@ module Components
               plain person.age.to_s
             end
             p do
-              strong { 'Prescriptions: ' }
-              plain prescription_count_text
+              strong { 'Schedules: ' }
+              plain schedule_count_text
             end
           end
         end
       end
 
-      def prescription_count_text
-        if person.prescriptions.active.any?
-          view_context.pluralize(person.prescriptions.active.count, 'active prescription')
+      def schedule_count_text
+        if person.schedules.active.any?
+          view_context.pluralize(person.schedules.active.count, 'active schedule')
         else
-          'No active prescriptions'
+          'No active schedules'
         end
       end
 
@@ -76,28 +76,28 @@ module Components
 
       def render_card_footer
         CardFooter(class: 'flex gap-2 flex-wrap') do
-          render_add_prescription_link if can_create?(Prescription.new(person: person))
+          render_add_schedule_link if can_create?(Schedule.new(person: person))
 
-          if person.prescriptions.any?
+          if person.schedules.any?
             Link(
               href: person_path(person),
               variant: :outline,
               size: :md,
               data: { turbo_stream: true }
-            ) { 'View Prescriptions' }
+            ) { 'View Schedules' }
           end
 
           render_assign_carer_link if person.needs_carer? && can_create?(CarerRelationship)
         end
       end
 
-      def render_add_prescription_link
+      def render_add_schedule_link
         Link(
-          href: new_person_prescription_path(person),
+          href: new_person_schedule_path(person),
           variant: :primary,
           size: :md,
           data: { turbo_stream: true }
-        ) { 'Add Prescription' }
+        ) { 'Add Schedule' }
       end
 
       def render_assign_carer_link

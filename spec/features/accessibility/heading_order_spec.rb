@@ -89,10 +89,10 @@ RSpec.describe 'Heading Order Accessibility', type: :system do
     end
   end
 
-  describe 'Medicines index page' do
+  describe 'Medications index page' do
     before do
       sign_in(user)
-      visit '/medicines'
+      visit '/medications'
     end
 
     it 'has proper heading hierarchy' do

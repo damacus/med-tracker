@@ -37,8 +37,8 @@ Rails.application.routes.draw do
     resources :location_memberships, only: %i[create destroy]
   end
 
-  # Medicine management
-  resources :medicines do
+  # Medication management
+  resources :medications do
     member do
       get :dosages
       patch :refill
@@ -46,28 +46,28 @@ Rails.application.routes.draw do
       patch :mark_as_received
     end
   end
-  get 'medicine-finder', to: 'medicines#finder', as: :medicine_finder
-  get 'medicine-finder/search', to: 'medicines#search', as: :medicine_finder_search
+  get 'medication-finder', to: 'medications#finder', as: :medication_finder
+  get 'medication-finder/search', to: 'medications#search', as: :medication_finder_search
 
   # Authentication - Rodauth handles /login, /logout, /create-account via middleware
 
   # WebAuthn/Passkey routes are handled by Rodauth
 
-  resources :prescriptions do
+  resources :schedules do
     resources :medication_takes, only: [:create]
   end
 
   resources :people do
-    resources :prescriptions, except: [:index] do
+    resources :schedules, except: [:index] do
       member do
-        post :take_medicine
+        post :take_medication
       end
     end
 
-    resources :person_medicines, except: [:index] do
+    resources :person_medications, except: [:index] do
       member do
         patch :reorder
-        post :take_medicine
+        post :take_medication
       end
     end
   end

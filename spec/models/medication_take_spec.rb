@@ -3,12 +3,12 @@
 require 'rails_helper'
 
 RSpec.describe MedicationTake do
-  subject(:medication_take) { described_class.new(prescription: prescription, taken_at: Time.current) }
+  subject(:medication_take) { described_class.new(schedule: schedule, taken_at: Time.current, amount_ml: 10.0) }
 
   let(:person) { Person.create!(name: 'Jane Doe', date_of_birth: '1990-01-01') }
 
-  let(:medicine) do
-    Medicine.create!(
+  let(:medication) do
+    Medication.create!(
       name: 'Lisinopril',
       location: Location.find_or_create_by!(name: 'Test Home'),
       current_supply: 50,
@@ -16,69 +16,73 @@ RSpec.describe MedicationTake do
     )
   end
 
-  let(:dosage) { Dosage.create!(medicine: medicine, amount: 10, unit: 'mg', frequency: 'daily') }
+  let(:dosage) { Dosage.create!(medication: medication, amount: 10, unit: 'mg', frequency: 'daily') }
 
-  let(:prescription) do
-    Prescription.create!(
+  let(:schedule) do
+    Schedule.create!(
       person: person,
-      medicine: medicine,
+      medication: medication,
       dosage: dosage,
       start_date: Time.zone.today,
       end_date: Time.zone.today + 30.days
     )
   end
 
-  let(:person_medicine) do
-    PersonMedicine.create!(
+  let(:person_medication) do
+    PersonMedication.create!(
       person: person,
-      medicine: medicine,
+      medication: medication,
       notes: 'Test notes'
     )
   end
 
   describe 'validations' do
     it { is_expected.to validate_presence_of(:taken_at) }
+    it { is_expected.to validate_presence_of(:amount_ml) }
+    it { is_expected.to validate_numericality_of(:amount_ml).is_greater_than(0) }
   end
 
   describe 'associations' do
-    it { is_expected.to belong_to(:prescription).optional }
-    it { is_expected.to belong_to(:person_medicine).optional }
+    it { is_expected.to belong_to(:schedule).optional }
+    it { is_expected.to belong_to(:person_medication).optional }
   end
 
   describe 'source validation' do
-    context 'when neither prescription nor person_medicine is set' do
-      subject(:medication_take) { described_class.new(taken_at: Time.current) }
+    context 'when neither schedule nor person_medication is set' do
+      subject(:medication_take) { described_class.new(taken_at: Time.current, amount_ml: 10.0) }
 
       it 'is invalid' do
         expect(medication_take).not_to be_valid
         expect(medication_take.errors[:base]).to include(
-          'Must have exactly one source (prescription or person_medicine)'
+          'Must have exactly one source (schedule or person_medication)'
         )
       end
     end
 
-    context 'when both prescription and person_medicine are set' do
+    context 'when both schedule and person_medication are set' do
       subject(:medication_take) do
         described_class.new(
-          prescription: prescription,
-          person_medicine: person_medicine,
-          taken_at: Time.current
+          schedule: schedule,
+          person_medication: person_medication,
+          taken_at: Time.current,
+          amount_ml: 10.0
         )
       end
 
       it 'is invalid' do
         expect(medication_take).not_to be_valid
         expect(medication_take.errors[:base]).to include(
-          'Must have exactly one source (prescription or person_medicine)'
+          'Must have exactly one source (schedule or person_medication)'
         )
       end
     end
 
-    context 'when only prescription is set' do
+    context 'when only schedule is set' do
       subject(:medication_take) do
         described_class.new(
-          prescription: prescription,
-          taken_at: Time.current
+          schedule: schedule,
+          taken_at: Time.current,
+          amount_ml: 10.0
         )
       end
 
@@ -87,18 +91,19 @@ RSpec.describe MedicationTake do
       end
     end
 
-    context 'when only person_medicine is set' do
+    context 'when only person_medication is set' do
       subject(:medication_take) do
         described_class.new(
-          person_medicine: person_medicine,
-          taken_at: Time.current
+          person_medication: person_medication,
+          taken_at: Time.current,
+          amount_ml: 10.0
         )
       end
 
-      let(:person_medicine) do
-        PersonMedicine.create!(
+      let(:person_medication) do
+        PersonMedication.create!(
           person: person,
-          medicine: medicine
+          medication: medication
         )
       end
 
@@ -110,28 +115,30 @@ RSpec.describe MedicationTake do
 
   describe 'supply tracking' do
     before do
-      medicine.update!(current_supply: 100)
+      medication.update!(current_supply: 100)
     end
 
-    context 'when taking a dose from a prescription' do
-      it 'deducts 1 from the medicine current_supply' do
+    context 'when taking a dose from a schedule' do
+      it 'deducts 1 from the medication current_supply' do
         expect do
           described_class.create!(
-            prescription: prescription,
-            taken_at: Time.current
+            schedule: schedule,
+            taken_at: Time.current,
+            amount_ml: 10.0
           )
-        end.to change { medicine.reload.current_supply }.from(100).to(99)
+        end.to change { medication.reload.current_supply }.from(100).to(99)
       end
     end
 
-    context 'when taking a dose from a person_medicine' do
-      it 'deducts 1 from the medicine current_supply' do
+    context 'when taking a dose from a person_medication' do
+      it 'deducts 1 from the medication current_supply' do
         expect do
           described_class.create!(
-            person_medicine: person_medicine,
-            taken_at: Time.current
+            person_medication: person_medication,
+            taken_at: Time.current,
+            amount_ml: 10.0
           )
-        end.to change { medicine.reload.current_supply }.from(100).to(99)
+        end.to change { medication.reload.current_supply }.from(100).to(99)
       end
     end
   end
@@ -140,19 +147,19 @@ RSpec.describe MedicationTake do
     fixtures :accounts, :people, :users
 
     let(:admin) { users(:admin) }
-    let(:prescription) do
+    let(:schedule) do
       person = people(:john)
-      medicine = Medicine.create!(
-        name: 'Test Medicine',
+      medication = Medication.create!(
+        name: 'Test Medication',
         location: Location.find_or_create_by!(name: 'Versioning Home'),
         current_supply: 100,
         reorder_threshold: 10
       )
-      dosage = Dosage.create!(medicine: medicine, amount: 10, unit: 'mg', frequency: 'daily')
+      dosage = Dosage.create!(medication: medication, amount: 10, unit: 'mg', frequency: 'daily')
 
-      Prescription.create!(
+      Schedule.create!(
         person: person,
-        medicine: medicine,
+        medication: medication,
         dosage: dosage,
         start_date: Time.zone.today,
         end_date: Time.zone.today + 30.days
@@ -170,7 +177,7 @@ RSpec.describe MedicationTake do
     it 'creates version when medication is taken' do
       expect do
         described_class.create!(
-          prescription: prescription,
+          schedule: schedule,
           taken_at: Time.current,
           amount_ml: 5.0
         )
@@ -183,7 +190,7 @@ RSpec.describe MedicationTake do
 
     it 'creates version on medication take update' do
       take = described_class.create!(
-        prescription: prescription,
+        schedule: schedule,
         taken_at: Time.current,
         amount_ml: 5.0
       )
@@ -200,7 +207,7 @@ RSpec.describe MedicationTake do
     it 'tracks time changes for medication takes' do
       original_time = 2.hours.ago
       take = described_class.create!(
-        prescription: prescription,
+        schedule: schedule,
         taken_at: original_time,
         amount_ml: 5.0
       )
@@ -215,7 +222,7 @@ RSpec.describe MedicationTake do
 
     it 'associates version with current user' do
       take = described_class.create!(
-        prescription: prescription,
+        schedule: schedule,
         taken_at: Time.current,
         amount_ml: 5.0
       )
@@ -226,7 +233,7 @@ RSpec.describe MedicationTake do
       PaperTrail.request.controller_info = { ip: '192.168.1.100' }
 
       take = described_class.create!(
-        prescription: prescription,
+        schedule: schedule,
         taken_at: Time.current,
         amount_ml: 5.0
       )

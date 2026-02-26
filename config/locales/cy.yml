@@ -251,8 +251,8 @@ cy:
       location: "Lleoliad"
       edit_location: "Golygu Lleoliad"
       all_locations: "Pob Lleoliad"
-      medicines_heading: "Meddyginiaethau yn y Lleoliad hwn"
-      no_medicines: "Dim meddyginiaethau yn y lleoliad hwn eto."
+      medications_heading: "Meddyginiaethau yn y Lleoliad hwn"
+      no_medications: "Dim meddyginiaethau yn y lleoliad hwn eto."
       members: "Aelodau"
       no_members: "Dim aelodau wedi'u neilltuo."
       details: "Manylion"
@@ -273,7 +273,7 @@ cy:
       success: "Tynnwyd %{name} o %{location}"
       failure: "Methwyd â thynnu aelod"
 
-  medicines:
+  medications:
     finder:
       coming_soon: "Mae'r nodwedd hon yn dod yn fuan! Byddwn yn integreiddio â API cronfa ddata meddyginiaethau i ddarparu gwybodaeth fanwl am feddyginiaethau."
     created: "Crëwyd y feddyginiaeth yn llwyddiannus."
@@ -283,7 +283,7 @@ cy:
     refill_button: "Ail-llenwi"
     refill_modal:
       refill_inventory: "Ail-llenwi Rhestr Eiddo"
-      title: "Ail-llenwi %{medicine}"
+      title: "Ail-llenwi %{medication}"
       description: "Ychwanegu maint y stoc a chofnodi'r dyddiad ail-stocio."
       quantity: "Nifer"
       restock_date: "Dyddiad ail-stocio"
@@ -295,7 +295,7 @@ cy:
     index:
       your_inventory: "Eich Rhestr"
       title: "Meddyginiaethau"
-      add_medicine: "Ychwanegu Meddyginiaeth"
+      add_medication: "Ychwanegu Meddyginiaeth"
       all: "Pob un"
       view: "Gweld"
       inventory_level: "Llefel Rhestr"
@@ -344,18 +344,18 @@ cy:
     deleted: "Dilëwyd y person yn llwyddiannus."
     show:
       edit_person: "Golygu Person"
-      add_prescription: "Ychwanegu Presgripsiwn"
-      add_medicine: "Ychwanegu Meddyginiaeth"
+      add_schedule: "Ychwanegu Presgripsiwn"
+      add_medication: "Ychwanegu Meddyginiaeth"
       back: "Yn ôl"
       born: "Ganwyd:"
       age: "Oedran:"
-      prescriptions_heading: "Presgripsiynau"
-      no_prescriptions: "Dim presgripsiynau eto."
-      add_first_prescription: "Ychwanegu Presgripsiwn Cyntaf"
-      my_medicines_heading: "Fy Meddyginiaethau"
-      no_medicines: "Dim meddyginiaethau wedi'u hychwanegu eto."
-      medicines_hint: "Ychwanegwch fitaminau, atchwanegion, neu feddyginiaethau dros y cownter yma."
-      add_first_medicine: "Ychwanegu Meddyginiaeth Gyntaf"
+      schedules_heading: "Presgripsiynau"
+      no_schedules: "Dim presgripsiynau eto."
+      add_first_schedule: "Ychwanegu Presgripsiwn Cyntaf"
+      my_medications_heading: "Fy Meddyginiaethau"
+      no_medications: "Dim meddyginiaethau wedi'u hychwanegu eto."
+      medications_hint: "Ychwanegwch fitaminau, atchwanegion, neu feddyginiaethau dros y cownter yma."
+      add_first_medication: "Ychwanegu Meddyginiaeth Gyntaf"
     form:
       edit_heading: "Golygu Person"
       name: "Enw"
@@ -363,10 +363,10 @@ cy:
       save: "Cadw"
       cancel: "Canslo"
 
-  person_medicines:
+  person_medications:
     created: "Ychwanegwyd y feddyginiaeth yn llwyddiannus."
     deleted: "Tynnwyd y feddyginiaeth yn llwyddiannus."
-    medicine_taken: "Cymerwyd y feddyginiaeth yn llwyddiannus."
+    medication_taken: "Cymerwyd y feddyginiaeth yn llwyddiannus."
     modal:
       new_title: "Ychwanegu Meddyginiaeth ar gyfer %{person}"
     card:
@@ -381,22 +381,22 @@ cy:
       give: "💊 Rhoi"
       out_of_stock: "💊 Allan o Stoc"
       remove: "Tynnu"
-      remove_medicine: "Tynnu Meddyginiaeth"
-      remove_confirmation: "Ydych chi'n sicr eich bod am dynnu %{medicine}? Ni all y weithred hon gael ei dadwneud."
+      remove_medication: "Tynnu Meddyginiaeth"
+      remove_confirmation: "Ydych chi'n sicr eich bod am dynnu %{medication}? Ni all y weithred hon gael ei dadwneud."
     form:
-      add_medicine: "Ychwanegu Meddyginiaeth"
-      add_medicine_for: "Ychwanegu Meddyginiaeth ar gyfer %{person}"
+      add_medication: "Ychwanegu Meddyginiaeth"
+      add_medication_for: "Ychwanegu Meddyginiaeth ar gyfer %{person}"
       validation_errors:
         one: "1 gwall wedi atal y feddyginiaeth hon rhag cael ei chadw:"
         other: "%{count} gwall wedi atal y feddyginiaeth hon rhag cael ei chadw:"
       cancel: "Canslo"
-      add_medicine_button: "Ychwanegu Meddyginiaeth"
+      add_medication_button: "Ychwanegu Meddyginiaeth"
 
-  prescriptions:
+  schedules:
     created: "Crëwyd y presgripsiwn yn llwyddiannus."
     updated: "Diweddarwyd y presgripsiwn yn llwyddiannus."
     deleted: "Dilëwyd y presgripsiwn yn llwyddiannus."
-    medicine_taken: "Cymerwyd y feddyginiaeth yn llwyddiannus."
+    medication_taken: "Cymerwyd y feddyginiaeth yn llwyddiannus."
     modal:
       new_title: "Presgripsiwn Newydd ar gyfer %{person}"
       edit_title: "Golygu Presgripsiwn ar gyfer %{person}"
@@ -416,7 +416,7 @@ cy:
       delete: "Dileu"
       delete_dialog:
         title: "Dileu Presgripsiwn"
-        confirm: "Ydych chi'n sicr eich bod am ddileu presgripsiwn %{medicine}? Ni all y weithred hon gael ei dadwneud."
+        confirm: "Ydych chi'n sicr eich bod am ddileu presgripsiwn %{medication}? Ni all y weithred hon gael ei dadwneud."
         cancel: "Canslo"
         submit: "Dileu"
 
@@ -441,7 +441,7 @@ cy:
       create_account: "Creu un"
       resend_verification: "Ailanfon e-bost dilysu"
 
-  take_medicines:
+  take_medications:
     success: "Cofnodwyd cymryd y feddyginiaeth yn llwyddiannus."
     failure: "Methwyd â chofnodi cymryd y feddyginiaeth."
     json_success: "Cofnodwyd cymryd y feddyginiaeth yn llwyddiannus."
@@ -478,9 +478,9 @@ cy:
       brand: "MedTracker"
       login: "Mewngofnodi"
     desktop_nav:
-      medicines: "Meddyginiaethau"
+      medications: "Meddyginiaethau"
       people: "Pobl"
-      medicine_finder: "Darganfyddwr Meddyginiaethau"
+      medication_finder: "Darganfyddwr Meddyginiaethau"
     profile_menu:
       my_account: "Fy Nghyfrif"
       dashboard: "Bordd"
@@ -492,14 +492,14 @@ cy:
       brand: "MedTracker"
       open_menu: "Agor y ddewislen"
       close_menu: "Cau y ddewislen"
-      medicines: "Meddyginiaethau"
+      medications: "Meddyginiaethau"
       people: "Pobl"
-      medicine_finder: "Darganfyddwr Meddyginiaethau"
+      medication_finder: "Darganfyddwr Meddyginiaethau"
       profile: "Proffil"
       administration: "Gweinyddu"
       logout: "Allgofnodi"
   forms:
-    medicines:
+    medications:
       inventory_management: "Rheoli Rhestr Eiddo"
       dosage_and_supply: "Dos a Chyflenwad"
       name: "Enw"
@@ -510,8 +510,8 @@ cy:
       current_supply: "Cyflenwad sy'n weddill"
       reorder_threshold: "Trothwy Yn ail-drefnu"
       warnings: "Rhybuddion"
-      save_medicine: "Cadw Meddyginiaeth"
-      back_to_medicines: "Yn ôl i Feddyginiaethau"
+      save_medication: "Cadw Meddyginiaeth"
+      back_to_medications: "Yn ôl i Feddyginiaethau"
       back: "Yn ôl"
       select_location: "Dewiswch leoliad..."
       select_category: "Dewiswch gategori (dewisol)..."
@@ -526,13 +526,13 @@ cy:
     subtitle: "Amserlen meddyginiaeth eich teulu am heddiw."
     todays_schedule: "Amserlen Heddiw"
     medication_schedule: "Amserlen Meddyginiaeth"
-    no_active_prescriptions: "Dim presgripsiynau gweithredol wedi'u canfod"
-    add_prescriptions_hint: "Ychwanegwch bresgripsiynau i'w gweld yma"
+    no_active_schedules: "Dim presgripsiynau gweithredol wedi'u canfod"
+    add_schedules_hint: "Ychwanegwch bresgripsiynau i'w gweld yma"
     dose_taken_at: "%{person} • Cymerwyd am %{time}"
     empty_state: "Dim meddyginiaethau wedi'u trefnu ar gyfer heddiw."
     stats:
       people: "Pobl"
-      active_prescriptions: "Presgripsiynau Gweithredol"
+      active_schedules: "Presgripsiynau Gweithredol"
       no_upcoming_doses: "Dim un heddiw"
     statuses:
       taken: "Wedi cymryd"
@@ -542,7 +542,7 @@ cy:
       out_of_stock: "Allan o Stoc"
     table:
       person: "Person"
-      medicine: "Meddyginiaeth"
+      medication: "Meddyginiaeth"
       dosage: "Dos"
       quantity: "Swm"
       frequency: "Amlder"
@@ -550,10 +550,10 @@ cy:
       actions: "Gweithredoedd"
     delete_confirmation:
       delete: "Dileu"
-      delete_prescription: "Dileu Trwyddedriad?"
-      are_you_sure: "Ydych chi'n sicr eich bod am dileu %{medicine} ar gyfer %{person}? Ni all y weithred hon gael ei dadwneud."
+      delete_schedule: "Dileu Trwyddedriad?"
+      are_you_sure: "Ydych chi'n sicr eich bod am dileu %{medication} ar gyfer %{person}? Ni all y weithred hon gael ei dadwneud."
       cancel: "Canslo"
     quick_actions:
       title: "Gweithredoedd Cyflym"
-      add_medicine: "Ychwanegu Meddyginiaeth"
+      add_medication: "Ychwanegu Meddyginiaeth"
       add_person: "Ychwanegu Person"

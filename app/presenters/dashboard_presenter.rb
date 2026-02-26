@@ -12,14 +12,14 @@ class DashboardPresenter
     @people ||= load_people
   end
 
-  def active_prescriptions
-    @active_prescriptions ||= Prescription.active
-                                          .where(person_id: people.select(:id))
-                                          .includes(person: :user, medicine: [])
+  def active_schedules
+    @active_schedules ||= Schedule.active
+                                  .where(person_id: people.select(:id))
+                                  .includes(person: :user, medication: [])
   end
 
-  def upcoming_prescriptions
-    @upcoming_prescriptions ||= active_prescriptions.group_by(&:person)
+  def upcoming_schedules
+    @upcoming_schedules ||= active_schedules.group_by(&:person)
   end
 
   def doses
@@ -50,27 +50,27 @@ class DashboardPresenter
   end
 
   def all_people
-    Person.includes(:user, prescriptions: :medicine).all
+    Person.includes(:user, schedules: :medication).all
   end
 
   def carer_patients
     return Person.none if current_user.person.nil?
 
-    current_user.person.patients.includes(:user, prescriptions: :medicine)
+    current_user.person.patients.includes(:user, schedules: :medication)
   end
 
   def parent_minor_patients
     return Person.none if current_user.person.nil?
 
     current_user.person.patients.where(person_type: :minor)
-                .includes(:user, prescriptions: :medicine)
+                .includes(:user, schedules: :medication)
   end
 
   def own_person
     return Person.none if current_user.person.nil?
 
     Person.where(id: current_user.person.id)
-          .includes(:user, prescriptions: :medicine)
+          .includes(:user, schedules: :medication)
   end
 
   def carer?

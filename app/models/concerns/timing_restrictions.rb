@@ -18,13 +18,13 @@ module TimingRestrictions
   end
 
   def can_administer?
-    return false if medicine.out_of_stock?
+    return false if medication.out_of_stock?
 
     can_take_now?
   end
 
   def administration_blocked_reason
-    return :out_of_stock if medicine.out_of_stock?
+    return :out_of_stock if medication.out_of_stock?
     return :cooldown unless can_take_now?
 
     nil

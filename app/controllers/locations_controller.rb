@@ -4,7 +4,7 @@ class LocationsController < ApplicationController
   before_action :set_location, only: %i[show edit update destroy]
 
   def index
-    locations = policy_scope(Location).includes(:medicines, :members)
+    locations = policy_scope(Location).includes(:medications, :members)
     render Components::Locations::IndexView.new(locations: locations)
   end
 
@@ -19,7 +19,7 @@ class LocationsController < ApplicationController
     render Components::Locations::FormView.new(
       location: @location,
       title: 'New Location',
-      subtitle: 'Add a new medicine storage location'
+      subtitle: 'Add a new medication storage location'
     )
   end
 
@@ -44,7 +44,7 @@ class LocationsController < ApplicationController
       render Components::Locations::FormView.new(
         location: @location,
         title: 'New Location',
-        subtitle: 'Add a new medicine storage location'
+        subtitle: 'Add a new medication storage location'
       ), status: :unprocessable_content
     end
   end
@@ -72,7 +72,7 @@ class LocationsController < ApplicationController
   private
 
   def set_location
-    @location = policy_scope(Location).includes(:medicines, :members).find(params[:id])
+    @location = policy_scope(Location).includes(:medications, :members).find(params[:id])
   end
 
   def location_params

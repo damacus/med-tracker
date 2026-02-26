@@ -4,11 +4,11 @@ module Components
   module Dashboard
     # Renders the quick stats table on the dashboard
     class QuickStats < Components::Base
-      attr_reader :people, :active_prescriptions
+      attr_reader :people, :active_schedules
 
-      def initialize(people:, active_prescriptions:)
+      def initialize(people:, active_schedules:)
         @people = people
-        @active_prescriptions = active_prescriptions
+        @active_schedules = active_schedules
         super()
       end
 
@@ -18,7 +18,7 @@ module Components
             caption(class: 'dashboard__section-title text-left') { 'Quick stats' }
             TableBody do
               render_stat_row('People', people.count)
-              render_stat_row('Active prescriptions', active_prescriptions.count)
+              render_stat_row('Active schedules', active_schedules.count)
             end
           end
         end

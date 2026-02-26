@@ -22,7 +22,7 @@ module Components
               render_health_insights
             end
             div(class: 'space-y-8') do
-              render_prescriptions_section
+              render_schedules_section
               render_supply_levels
             end
           end
@@ -31,7 +31,7 @@ module Components
 
       private
 
-      delegate :people, :active_prescriptions, :upcoming_prescriptions,
+      delegate :people, :active_schedules, :upcoming_schedules,
                :current_user, :doses, :next_dose_time, :compliance_percentage, to: :presenter
 
       def next_dose_value
@@ -62,12 +62,12 @@ module Components
               t('dashboard.quick_actions.add_person')
             end
             render RubyUI::Link.new(
-              href: new_medicine_path,
+              href: new_medication_path,
               variant: :primary,
               size: :lg
             ) do
               render Icons::PlusCircle.new(size: 20, class: 'mr-2')
-              span { t('dashboard.quick_actions.add_medicine') }
+              span { t('dashboard.quick_actions.add_medication') }
             end
           end
         end
@@ -81,8 +81,8 @@ module Components
             icon_type: 'users'
           )
           render Components::Dashboard::StatCard.new(
-            title: t('dashboard.stats.active_prescriptions'),
-            value: active_prescriptions.count,
+            title: t('dashboard.stats.active_schedules'),
+            value: active_schedules.count,
             icon_type: 'pill'
           )
           render Components::Dashboard::StatCard.new(
@@ -148,7 +148,7 @@ module Components
         end
       end
 
-      def render_prescriptions_section
+      def render_schedules_section
         upcoming_doses = doses.reject { |d| d[:status] == :taken }.first(5)
         return if upcoming_doses.empty?
 
@@ -162,14 +162,14 @@ module Components
 
       def upcoming_dose_item(dose)
         source = dose[:source]
-        medicine = source.medicine
+        medication = source.medication
         time_str = dose[:scheduled_at]&.strftime('%H:%M') || '--:--'
         status = dose[:status]
 
         div(class: 'flex items-start gap-3 p-1') do
           div(class: "w-2 h-2 rounded-full mt-2 flex-shrink-0 #{status_dot_color(status)}")
           div do
-            Text(weight: 'bold', size: '3') { "#{time_str} — #{medicine.name}" }
+            Text(weight: 'bold', size: '3') { "#{time_str} — #{medication.name}" }
             Text(size: '2', weight: 'muted') do
               "#{dose[:person].name} · #{dosage_label(source)}"
             end
@@ -187,10 +187,10 @@ module Components
       end
 
       def dosage_label(source)
-        if source.is_a?(Prescription)
+        if source.is_a?(Schedule)
           "#{source.dosage.amount} #{source.dosage.unit}"
         else
-          source.medicine.dosage_unit
+          source.medication.dosage_unit
         end
       end
 
@@ -202,11 +202,11 @@ module Components
                    'duration-300 hover:shadow-md hover:scale-[1.01] cursor-default'
           ) do
             div(class: 'space-y-6') do
-              active_prescriptions.take(3).each do |p|
-                render_supply_item(p.medicine)
+              active_schedules.take(3).each do |p|
+                render_supply_item(p.medication)
               end
               render RubyUI::Link.new(
-                href: medicines_path,
+                href: medications_path,
                 variant: :ghost,
                 class: 'w-full py-4 rounded-2xl bg-slate-50 text-slate-500 text-xs font-bold ' \
                        'hover:bg-slate-100 transition-all uppercase tracking-widest no-underline flex justify-center'
@@ -218,18 +218,18 @@ module Components
         end
       end
 
-      def render_supply_item(medicine)
-        current = medicine.current_supply || 0
-        percentage = medicine.supply_percentage
+      def render_supply_item(medication)
+        current = medication.current_supply || 0
+        percentage = medication.supply_percentage
 
         div(class: 'space-y-2') do
           div(class: 'flex justify-between items-center text-xs') do
-            span(class: 'font-bold') { medicine.name }
+            span(class: 'font-bold') { medication.name }
             span(class: 'text-slate-400 font-bold') { t('dashboard.inventory.left', count: current) }
           end
           div(class: 'h-2 w-full bg-slate-100 rounded-full overflow-hidden') do
             div(
-              class: "h-full #{medicine.low_stock? ? 'bg-destructive' : 'bg-primary'} " \
+              class: "h-full #{medication.low_stock? ? 'bg-destructive' : 'bg-primary'} " \
                      'rounded-full transition-all duration-1000',
               style: "width: #{percentage}%"
             )

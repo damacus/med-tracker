@@ -3,8 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe FamilyDashboard::ScheduleQuery do
-  fixtures :people, :carer_relationships, :prescriptions, :person_medicines, :medication_takes,
-           :locations, :medicines, :dosages
+  fixtures :people, :carer_relationships, :schedules, :person_medications, :medication_takes,
+           :locations, :medications, :dosages
 
   let(:jane) { people(:jane) }
   let(:child) { people(:child_patient) }
@@ -20,18 +20,18 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
       expect(people_in_results).to contain_exactly(jane, child)
     end
 
-    it 'includes prescription doses from both the parent and the child' do
+    it 'includes schedule doses from both the parent and the child' do
       results = query.call
-      prescriptions = results.pluck(:source).grep(Prescription)
+      schedules = results.pluck(:source).grep(Schedule)
 
-      expect(prescriptions).to include(prescriptions(:jane_ibuprofen))
-      expect(prescriptions).to include(prescriptions(:patient_prescription)) # child_patient's ibuprofen
+      expect(schedules).to include(schedules(:jane_ibuprofen))
+      expect(schedules).to include(schedules(:patient_schedule)) # child_patient's ibuprofen
     end
 
-    it 'includes person_medicine (non-prescription) doses' do
+    it 'includes person_medication (non-schedule) doses' do
       results = query.call
-      pms = results.pluck(:source).grep(PersonMedicine)
-      expect(pms).to include(person_medicines(:jane_vitamin_d))
+      pms = results.pluck(:source).grep(PersonMedication)
+      expect(pms).to include(person_medications(:jane_vitamin_d))
     end
 
     it 'returns doses sorted by scheduled_at' do
@@ -50,11 +50,11 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
       expect(jane_takes.first[:taken_at]).to be_present
     end
 
-    it 'filters out inactive prescriptions' do
-      # Create an inactive prescription for Jane
-      Prescription.create!(
+    it 'filters out inactive schedules' do
+      # Create an inactive schedule for Jane
+      Schedule.create!(
         person: jane,
-        medicine: medicines(:paracetamol),
+        medication: medications(:paracetamol),
         dosage: dosages(:paracetamol_adult),
         start_date: 1.year.ago,
         end_date: 1.month.ago,
@@ -62,18 +62,18 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
       )
 
       results = query.call
-      active_prescriptions = results.pluck(:source).grep(Prescription)
-      active_prescriptions.each do |p|
+      active_schedules = results.pluck(:source).grep(Schedule)
+      active_schedules.each do |p|
         expect(p.start_date).to be <= Time.zone.today
         expect(p.end_date).to be >= Time.zone.today
       end
     end
 
-    context 'when a prescription has no timing restrictions' do
-      let!(:prescription) do
-        Prescription.create!(
+    context 'when a schedule has no timing restrictions' do
+      let!(:schedule) do
+        Schedule.create!(
           person: people(:john),
-          medicine: medicines(:paracetamol),
+          medication: medications(:paracetamol),
           dosage: dosages(:paracetamol_adult),
           start_date: Time.zone.today,
           end_date: 1.year.from_now.to_date,
@@ -85,21 +85,16 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
 
       it 'does not emit an upcoming row for a source with no timing restrictions' do
         results = described_class.new([people(:john)]).call
-        upcoming = results.select { |r| r[:source] == prescription && r[:status] == :upcoming }
+        upcoming = results.select { |r| r[:source] == schedule && r[:status] == :upcoming }
         expect(upcoming).to be_empty
       end
     end
 
-    context 'when a prescription is on cooldown' do
-      before do
-        travel_to(Time.zone.today.noon)
-        MedicationTake.create!(prescription: prescription, taken_at: 1.hour.ago, amount_ml: 400)
-      end
-
-      let!(:prescription) do
-        Prescription.create!(
+    context 'when a schedule is on cooldown' do
+      let!(:schedule) do
+        Schedule.create!(
           person: people(:john),
-          medicine: medicines(:ibuprofen),
+          medication: medications(:ibuprofen),
           dosage: dosages(:ibuprofen_adult),
           start_date: Time.zone.today,
           end_date: 1.year.from_now.to_date,
@@ -109,24 +104,28 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
         )
       end
 
+      before do
+        MedicationTake.create!(schedule: schedule, taken_at: 1.hour.ago, amount_ml: 400)
+      end
+
       it 'emits a row with :cooldown status' do
         results = described_class.new([people(:john)]).call
-        cooldown_rows = results.select { |r| r[:source] == prescription && r[:status] == :cooldown }
+        cooldown_rows = results.select { |r| r[:source] == schedule && r[:status] == :cooldown }
         expect(cooldown_rows).not_to be_empty
       end
 
       it 'does not emit an :upcoming row for the same source' do
         results = described_class.new([people(:john)]).call
-        upcoming = results.select { |r| r[:source] == prescription && r[:status] == :upcoming }
+        upcoming = results.select { |r| r[:source] == schedule && r[:status] == :upcoming }
         expect(upcoming).to be_empty
       end
     end
 
     context 'when max daily doses are reached' do
-      let!(:prescription) do
-        Prescription.create!(
+      let!(:schedule) do
+        Schedule.create!(
           person: people(:john),
-          medicine: medicines(:paracetamol),
+          medication: medications(:paracetamol),
           dosage: dosages(:paracetamol_adult),
           start_date: Time.zone.today,
           end_date: 1.year.from_now.to_date,
@@ -136,24 +135,24 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
       end
 
       before do
-        2.times { MedicationTake.create!(prescription: prescription, taken_at: Time.current, amount_ml: 500) }
+        2.times { MedicationTake.create!(schedule: schedule, taken_at: Time.current, amount_ml: 500) }
       end
 
       it 'does not emit an :upcoming row when daily max is reached' do
         results = described_class.new([people(:john)]).call
-        upcoming = results.select { |r| r[:source] == prescription && r[:status] == :upcoming }
+        upcoming = results.select { |r| r[:source] == schedule && r[:status] == :upcoming }
         expect(upcoming).to be_empty
       end
     end
 
-    context 'when medicine is out of stock' do
-      let!(:prescription) do
-        oos_medicine = Medicine.create!(name: 'OOS Med', current_supply: 0, reorder_threshold: 2,
-                                        location: locations(:home))
-        dosage = Dosage.create!(medicine: oos_medicine, amount: 10, unit: 'mg', frequency: 'daily')
-        Prescription.create!(
+    context 'when medication is out of stock' do
+      let!(:schedule) do
+        oos_medication = Medication.create!(name: 'OOS Med', current_supply: 0, reorder_threshold: 2,
+                                            location: locations(:home))
+        dosage = Dosage.create!(medication: oos_medication, amount: 10, unit: 'mg', frequency: 'daily')
+        Schedule.create!(
           person: people(:john),
-          medicine: oos_medicine,
+          medication: oos_medication,
           dosage: dosage,
           start_date: Time.zone.today,
           end_date: 1.year.from_now.to_date,
@@ -164,13 +163,13 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
 
       it 'emits a row with :out_of_stock status' do
         results = described_class.new([people(:john)]).call
-        oos_rows = results.select { |r| r[:source] == prescription && r[:status] == :out_of_stock }
+        oos_rows = results.select { |r| r[:source] == schedule && r[:status] == :out_of_stock }
         expect(oos_rows).not_to be_empty
       end
 
       it 'does not emit an :upcoming row when out of stock' do
         results = described_class.new([people(:john)]).call
-        upcoming = results.select { |r| r[:source] == prescription && r[:status] == :upcoming }
+        upcoming = results.select { |r| r[:source] == schedule && r[:status] == :upcoming }
         expect(upcoming).to be_empty
       end
     end

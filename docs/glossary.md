@@ -2,9 +2,9 @@
 
 This glossary defines MedTracker's core domain language so model names, UI copy, and business rules stay consistent.
 
-## Medicine inventory terms
+## Medication inventory terms
 
-### Remaining Supply (`medicines.current_supply`)
+### Remaining Supply (`medications.current_supply`)
 
 The number of dispensable units left **right now**.
 
@@ -12,17 +12,17 @@ The number of dispensable units left **right now**.
 - Drives low/out-of-stock logic.
 - Should be shown in patient/carer-facing quantity displays.
 
-### Supply at Last Restock (`medicines.supply_at_last_restock`)
+### Supply at Last Restock (`medications.supply_at_last_restock`)
 
 The value of `current_supply` immediately after the most recent restock.
 
-- Set automatically by `Medicine#restock!`.
+- Set automatically by `Medication#restock!`.
 - Used as the denominator for progress bars so the bar drains proportionally from 100% → 0%.
 - Falls back to `reorder_threshold` when nil (e.g. legacy data before this column existed).
 
-### Reorder Threshold (`medicines.reorder_threshold`)
+### Reorder Threshold (`medications.reorder_threshold`)
 
-The level at or below which a medicine is considered low stock.
+The level at or below which a medication is considered low stock.
 
 - `low_stock?` is true when `remaining_supply <= reorder_threshold`.
 

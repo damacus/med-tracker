@@ -3,15 +3,16 @@
 FactoryBot.define do
   factory :medication_take do
     taken_at { Time.current }
+    amount_ml { 1.0 }
 
-    trait :for_person_medicine do
-      person_medicine
-      prescription { nil }
+    trait :for_person_medication do
+      person_medication
+      schedule { nil }
     end
 
-    trait :for_prescription do
-      prescription
-      person_medicine { nil }
+    trait :for_schedule do
+      schedule
+      person_medication { nil }
     end
 
     trait :recent do

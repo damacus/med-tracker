@@ -7,12 +7,12 @@ module Components
       include Phlex::Rails::Helpers::ButtonTo
       include Pundit::Authorization
 
-      attr_reader :person, :prescriptions, :take_medicine_url_generator, :current_user
+      attr_reader :person, :schedules, :take_medication_url_generator, :current_user
 
-      def initialize(person:, prescriptions:, take_medicine_url_generator: nil, current_user: nil)
+      def initialize(person:, schedules:, take_medication_url_generator: nil, current_user: nil)
         @person = person
-        @prescriptions = prescriptions
-        @take_medicine_url_generator = take_medicine_url_generator
+        @schedules = schedules
+        @take_medication_url_generator = take_medication_url_generator
         @current_user = current_user
         super()
       end
@@ -20,7 +20,7 @@ module Components
       def view_template
         div(class: 'space-y-4') do
           render_person_header
-          render_prescriptions_grid
+          render_schedules_grid
         end
       end
 
@@ -42,44 +42,44 @@ module Components
         end
       end
 
-      def render_prescriptions_grid
+      def render_schedules_grid
         div(class: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4') do
-          prescriptions.each do |prescription|
-            render_prescription_card(prescription)
+          schedules.each do |schedule|
+            render_schedule_card(schedule)
           end
         end
       end
 
-      def render_prescription_card(prescription)
-        Card(id: "prescription_#{prescription.id}", class: 'h-full flex flex-col') do
+      def render_schedule_card(schedule)
+        Card(id: "schedule_#{schedule.id}", class: 'h-full flex flex-col') do
           CardHeader do
-            render_medicine_icon
+            render_medication_icon
             Text(size: '4', weight: 'semibold', class: 'leading-none tracking-tight text-slate-900') do
-              prescription.medicine.name
+              schedule.medication.name
             end
           end
 
           CardContent(class: 'flex-grow space-y-2') do
-            render_prescription_details(prescription)
+            render_schedule_details(schedule)
           end
 
           CardFooter do
-            render_prescription_actions(prescription)
+            render_schedule_actions(schedule)
           end
         end
       end
 
-      def render_medicine_icon
+      def render_medication_icon
         div(class: 'w-10 h-10 rounded-xl flex items-center justify-center bg-success-light text-success mb-2') do
           render Icons::Pill.new(size: 20)
         end
       end
 
-      def render_prescription_details(prescription)
+      def render_schedule_details(schedule)
         div(class: 'space-y-1 text-sm text-muted-foreground') do
-          render_detail_row('Dosage', format_dosage(prescription))
-          render_detail_row('Frequency', prescription.frequency) if prescription.frequency.present?
-          render_detail_row('Ends', format_end_date(prescription)) if prescription.end_date
+          render_detail_row('Dosage', format_dosage(schedule))
+          render_detail_row('Frequency', schedule.frequency) if schedule.frequency.present?
+          render_detail_row('Ends', format_end_date(schedule)) if schedule.end_date
         end
       end
 
@@ -90,74 +90,74 @@ module Components
         end
       end
 
-      def format_dosage(prescription)
-        amount = prescription.dosage&.amount
-        unit = prescription.dosage&.unit
+      def format_dosage(schedule)
+        amount = schedule.dosage&.amount
+        unit = schedule.dosage&.unit
         [amount, unit].compact.join(' ')
       end
 
-      def format_end_date(prescription)
-        prescription.end_date.strftime('%B %d, %Y')
+      def format_end_date(schedule)
+        schedule.end_date.strftime('%B %d, %Y')
       end
 
-      def render_prescription_actions(prescription)
+      def render_schedule_actions(schedule)
         div(class: 'flex h-5 items-center space-x-4 text-sm') do
-          render_take_medicine_link(prescription)
-          if can_delete_prescription?(prescription)
+          render_take_medication_link(schedule)
+          if can_delete_schedule?(schedule)
             Separator(orientation: :vertical)
-            render_delete_link(prescription)
+            render_delete_link(schedule)
           end
         end
       end
 
-      def render_take_medicine_link(prescription)
-        return render_disabled_take_label(prescription) unless prescription.can_administer?
+      def render_take_medication_link(schedule)
+        return render_disabled_take_label(schedule) unless schedule.can_administer?
 
-        if take_medicine_url_generator
-          url = take_medicine_url_generator.call(prescription)
+        if take_medication_url_generator
+          url = take_medication_url_generator.call(schedule)
           Link(
             href: url,
             variant: :link,
             class: 'text-primary hover:underline font-medium',
-            data: { turbo_method: :post, test_id: "take-medicine-#{prescription.id}" }
+            data: { turbo_method: :post, test_id: "take-medication-#{schedule.id}" }
           ) { 'Take Now' }
         else
-          span(class: 'text-primary font-medium', data: { test_id: "take-medicine-#{prescription.id}" }) do
+          span(class: 'text-primary font-medium', data: { test_id: "take-medication-#{schedule.id}" }) do
             'Take Now'
           end
         end
       end
 
-      def render_disabled_take_label(prescription)
-        reason = prescription.administration_blocked_reason
+      def render_disabled_take_label(schedule)
+        reason = schedule.administration_blocked_reason
         label = reason == :out_of_stock ? 'Out of Stock' : 'On Cooldown'
         span(
           class: 'text-muted-foreground font-medium cursor-not-allowed',
-          data: { test_id: "take-medicine-#{prescription.id}" }
+          data: { test_id: "take-medication-#{schedule.id}" }
         ) { label }
       end
 
-      def render_delete_link(prescription)
+      def render_delete_link(schedule)
         AlertDialog do
           AlertDialogTrigger do
             Button(
               variant: :destructive_outline,
               size: :sm,
-              data: { test_id: "delete-prescription-#{prescription.id}" }
+              data: { test_id: "delete-schedule-#{schedule.id}" }
             ) { 'Delete' }
           end
           AlertDialogContent do
             AlertDialogHeader do
-              AlertDialogTitle { 'Delete Prescription' }
+              AlertDialogTitle { 'Delete Schedule' }
               AlertDialogDescription do
-                "Are you sure you want to delete this prescription for #{prescription.medicine.name}? " \
+                "Are you sure you want to delete this schedule for #{schedule.medication.name}? " \
                   'This action cannot be undone.'
               end
             end
             AlertDialogFooter do
               AlertDialogCancel { 'Cancel' }
               form_with(
-                url: person_prescription_path(prescription.person, prescription),
+                url: person_schedule_path(schedule.person, schedule),
                 method: :delete,
                 class: 'inline'
               ) do
@@ -168,10 +168,10 @@ module Components
         end
       end
 
-      def can_delete_prescription?(prescription)
+      def can_delete_schedule?(schedule)
         return false unless current_user
 
-        policy = PrescriptionPolicy.new(current_user, prescription)
+        policy = SchedulePolicy.new(current_user, schedule)
         policy.destroy?
       end
     end

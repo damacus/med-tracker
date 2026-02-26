@@ -3,15 +3,15 @@
 require 'rails_helper'
 
 RSpec.describe Components::Dashboard::PersonSchedule, type: :component do
-  fixtures :accounts, :people, :users, :locations, :medicines, :dosages, :prescriptions
+  fixtures :accounts, :people, :users, :locations, :medications, :dosages, :schedules
 
-  subject(:component) { described_class.new(person: person, prescriptions: prescriptions) }
+  subject(:component) { described_class.new(person: person, schedules: schedules) }
 
   let(:person) { people(:john) }
-  let(:prescriptions) { person.prescriptions.where(active: true) }
+  let(:schedules) { person.schedules.where(active: true) }
 
   before do
-    MedicationTake.where(prescription: prescriptions).delete_all
+    MedicationTake.where(schedule: schedules).delete_all
   end
 
   it 'renders the person\'s name' do
@@ -19,21 +19,21 @@ RSpec.describe Components::Dashboard::PersonSchedule, type: :component do
     expect(rendered.text).to include(person.name)
   end
 
-  it 'renders each prescription' do
+  it 'renders each schedule' do
     rendered = render_inline(component)
 
-    prescriptions.each do |prescription|
-      prescription_element = rendered.css("#prescription_#{prescription.id}")
-      expect(prescription_element).to be_present
-      expect(rendered.text).to include(prescription.medicine.name)
+    schedules.each do |schedule|
+      schedule_element = rendered.css("#schedule_#{schedule.id}")
+      expect(schedule_element).to be_present
+      expect(rendered.text).to include(schedule.medication.name)
     end
   end
 
-  it 'renders take now links for each prescription' do
+  it 'renders take now links for each schedule' do
     rendered = render_inline(component)
 
-    prescriptions.each do |prescription|
-      link = rendered.css("[data-test-id='take-medicine-#{prescription.id}']")
+    schedules.each do |schedule|
+      link = rendered.css("[data-test-id='take-medication-#{schedule.id}']")
       expect(link).to be_present
       expect(link.text).to include('Take Now')
     end

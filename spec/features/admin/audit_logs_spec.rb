@@ -56,10 +56,10 @@ RSpec.describe 'Admin Audit Logs', type: :system do
       expect(page).to have_select('event')
     end
 
-    it 'includes Medicine in record type filter options' do
+    it 'includes Medication in record type filter options' do
       visit admin_audit_logs_path
 
-      expect(page).to have_select('item_type', with_options: ['Medicine'])
+      expect(page).to have_select('item_type', with_options: ['Medication'])
     end
 
     it 'shows filter form with dropdowns' do
@@ -244,7 +244,7 @@ RSpec.describe 'Admin Audit Logs', type: :system do
   # AUDIT-014: Audit trail for medication take lifecycle
   describe 'medication take lifecycle audit (AUDIT-014)' do
     let(:carer) { users(:bob) }
-    let(:prescription) { prescriptions(:john_paracetamol) }
+    let(:schedule) { schedules(:john_paracetamol) }
 
     before { sign_in(admin) }
 
@@ -254,8 +254,9 @@ RSpec.describe 'Admin Audit Logs', type: :system do
       PaperTrail.request.controller_info = { ip: '192.168.1.100' }
       PaperTrail.request(enabled: true) do
         MedicationTake.create!(
-          prescription: prescription,
-          taken_at: Time.current
+          schedule: schedule,
+          taken_at: Time.current,
+          amount_ml: 10.0
         )
       end
 
@@ -274,9 +275,9 @@ RSpec.describe 'Admin Audit Logs', type: :system do
       # Verify whodunnit shows carer user
       expect(page).to have_content(carer.name)
 
-      # Verify new state contains prescription_id
+      # Verify new state contains schedule_id
       expect(page).to have_content('New State')
-      expect(page).to have_content('prescription_id')
+      expect(page).to have_content('schedule_id')
     end
 
     it 'records IP address for medication takes' do
@@ -286,8 +287,9 @@ RSpec.describe 'Admin Audit Logs', type: :system do
       PaperTrail.request.controller_info = { ip: '192.168.1.100' }
       PaperTrail.request(enabled: true) do
         MedicationTake.create!(
-          prescription: prescription,
-          taken_at: Time.current
+          schedule: schedule,
+          taken_at: Time.current,
+          amount_ml: 10.0
         )
       end
 
@@ -300,22 +302,22 @@ RSpec.describe 'Admin Audit Logs', type: :system do
     end
   end
 
-  describe 'medicine restock audit trail' do
-    let(:medicine) { medicines(:paracetamol) }
+  describe 'medication restock audit trail' do
+    let(:medication) { medications(:paracetamol) }
 
     before { sign_in(admin) }
 
-    it 'shows restock entries for medicines in the audit log' do
+    it 'shows restock entries for medications in the audit log' do
       PaperTrail.request.whodunnit = admin.id
       PaperTrail.request(enabled: true) do
-        medicine.paper_trail_event = 'restock'
-        medicine.restock!(quantity: 7)
+        medication.paper_trail_event = 'restock'
+        medication.restock!(quantity: 7)
       end
 
-      visit admin_audit_logs_path(item_type: 'Medicine')
+      visit admin_audit_logs_path(item_type: 'Medication')
 
       within('tbody') do
-        expect(page).to have_content('Medicine')
+        expect(page).to have_content('Medication')
         expect(page).to have_content('Restock')
       end
 

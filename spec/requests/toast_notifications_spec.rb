@@ -3,21 +3,21 @@
 require 'rails_helper'
 
 RSpec.describe 'Toast notifications for async actions' do
-  fixtures :accounts, :people, :locations, :medicines, :users, :dosages, :prescriptions, :carer_relationships
+  fixtures :accounts, :people, :locations, :medications, :users, :dosages, :schedules, :carer_relationships
 
   let(:carer_account) { accounts(:carer) }
   let(:person) { people(:child_patient) }
-  let(:medicine) { medicines(:paracetamol) }
+  let(:medication) { medications(:paracetamol) }
 
   before do
     post '/login', params: { email: carer_account.email, password: 'password' }
   end
 
-  describe 'POST /people/:person_id/prescriptions/:id/take_medicine' do
-    let(:prescription) do
-      Prescription.create!(
+  describe 'POST /people/:person_id/schedules/:id/take_medication' do
+    let(:schedule) do
+      Schedule.create!(
         person: person,
-        medicine: medicine,
+        medication: medication,
         dosage: dosages(:paracetamol_adult),
         start_date: Time.zone.today - 1.day,
         end_date: Time.zone.today + 30.days,
@@ -28,7 +28,7 @@ RSpec.describe 'Toast notifications for async actions' do
 
     context 'with turbo_stream format' do
       it 'returns turbo_stream response with flash update on success' do
-        post take_medicine_person_prescription_path(person, prescription),
+        post take_medication_person_schedule_path(person, schedule),
              headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
 
         expect(response).to have_http_status(:ok)
@@ -38,9 +38,9 @@ RSpec.describe 'Toast notifications for async actions' do
       end
 
       it 'returns turbo_stream response with flash update on failure' do
-        prescription.update!(max_daily_doses: 0)
+        schedule.update!(max_daily_doses: 0)
 
-        post take_medicine_person_prescription_path(person, prescription),
+        post take_medication_person_schedule_path(person, schedule),
              headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
 
         expect(response).to have_http_status(:ok)
@@ -52,18 +52,18 @@ RSpec.describe 'Toast notifications for async actions' do
 
     context 'with html format' do
       it 'still redirects as before' do
-        post take_medicine_person_prescription_path(person, prescription)
+        post take_medication_person_schedule_path(person, schedule)
 
         expect(response).to redirect_to(person_path(person))
       end
     end
   end
 
-  describe 'POST /people/:person_id/person_medicines/:id/take_medicine' do
-    let(:person_medicine) do
-      PersonMedicine.create!(
+  describe 'POST /people/:person_id/person_medications/:id/take_medication' do
+    let(:person_medication) do
+      PersonMedication.create!(
         person: person,
-        medicine: medicine,
+        medication: medication,
         max_daily_doses: 4,
         min_hours_between_doses: 1
       )
@@ -71,7 +71,7 @@ RSpec.describe 'Toast notifications for async actions' do
 
     context 'with turbo_stream format' do
       it 'returns turbo_stream response with flash update on success' do
-        post take_medicine_person_person_medicine_path(person, person_medicine),
+        post take_medication_person_person_medication_path(person, person_medication),
              headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
 
         expect(response).to have_http_status(:ok)

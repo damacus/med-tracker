@@ -22,7 +22,7 @@ RSpec.describe Views::Reports::Index do
 
   let(:inventory_alerts) do
     [
-      { medicine_name: 'Ibuprofen', days_left: 3, doses_left: 12 }
+      { medication_name: 'Ibuprofen', days_left: 3, doses_left: 12 }
     ]
   end
 

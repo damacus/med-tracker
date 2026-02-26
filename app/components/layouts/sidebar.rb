@@ -54,9 +54,9 @@ module Components
       def render_navigation
         nav(class: 'flex-1 space-y-2 w-full') do
           render_nav_link(root_path, Icons::Home, t('layouts.sidebar.dashboard'))
-          render_nav_link(medicines_path, Icons::Pill, t('layouts.sidebar.inventory'))
+          render_nav_link(medications_path, Icons::Pill, t('layouts.sidebar.inventory'))
           render_nav_link(locations_path, Icons::Home, t('layouts.sidebar.locations'))
-          render_nav_link(medicine_finder_path, Icons::Search, t('layouts.sidebar.finder'))
+          render_nav_link(medication_finder_path, Icons::Search, t('layouts.sidebar.finder'))
           render_nav_link(people_path, Icons::Users, t('layouts.sidebar.people'))
           render_nav_link(reports_path, Icons::AlertCircle, t('layouts.sidebar.reports'))
           if current_user.administrator?

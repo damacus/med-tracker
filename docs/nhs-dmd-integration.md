@@ -1,14 +1,14 @@
-# NHS dm+d Medicine Search Integration
+# NHS dm+d Medication Search Integration
 
 MedTracker integrates with the NHS Dictionary of Medicines and
 Devices (dm+d) via the NHS England Terminology Server to let
-clinicians search for medicines by name or active ingredient.
+clinicians search for medications by name or active ingredient.
 
 ## What is dm+d?
 
 The dm+d is the NHS standard catalogue of medicines used across
-the UK. It assigns every medicine a unique SNOMED CT code and is
-the authoritative source for medicine names in NHS systems.
+the UK. It assigns every medication a unique SNOMED CT code and is
+the authoritative source for medication names in NHS systems.
 
 MedTracker queries two dm+d concept types:
 
@@ -139,7 +139,7 @@ env:
 The search feature is **off by default** when credentials are
 not configured. The UI shows:
 
-> *Medicine search not available — NHS dm+d credentials are
+> *Medication search not available — NHS dm+d credentials are
 > not configured.*
 
 Once both environment variables are present the feature
@@ -150,7 +150,7 @@ restart flag required.
 
 ```text
 Browser
-  → MedicinesController#search
+  → MedicationsController#search
     → NhsDmd::Search
       → NhsDmd::Client
           POST /token  (OAuth2 client_credentials grant)
@@ -179,13 +179,13 @@ To test the live API locally:
 1. Obtain credentials (see [Getting credentials](#getting-credentials)).
 2. Export `NHS_DMD_CLIENT_ID` and `NHS_DMD_CLIENT_SECRET`.
 3. Run `task dev:up` and sign in as a doctor or administrator.
-4. Visit `/medicine-finder` and search for a medicine name,
+4. Visit `/medication-finder` and search for a medication name,
    for example `Aspirin`.
 
 ## Drug interactions
 
 The dm+d API provides **no interaction data** — it is a
-medicine catalogue only. A separate data source would be
+medication catalogue only. A separate data source would be
 needed. Options for UK clinical use:
 
 | Source                                     | Notes                         |
@@ -195,5 +195,5 @@ needed. Options for UK clinical use:
 | [DrugBank](https://go.drugbank.com)        | Comprehensive; commercial     |
 
 The SNOMED CT codes returned by dm+d serve as the bridge —
-look up a medicine's code in whichever interactions database
+look up a medication's code in whichever interactions database
 is chosen. Drug interaction lookup is tracked as **MLKP-015**.

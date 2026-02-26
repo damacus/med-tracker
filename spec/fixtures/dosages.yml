@@ -4,69 +4,69 @@ paracetamol_adult:
   amount: 1000
   unit: mg
   description: Standard adult dose
-  medicine: paracetamol
+  medication: paracetamol
 
 paracetamol_light:
   amount: 500
   unit: mg
   description: Light adult dose
-  medicine: paracetamol
+  medication: paracetamol
 
 # Ibuprofen dosages
 ibuprofen_adult:
   amount: 400
   unit: mg
   description: Standard adult dose
-  medicine: ibuprofen
+  medication: ibuprofen
 
 ibuprofen_light:
   amount: 200
   unit: mg
   description: Light adult dose
-  medicine: ibuprofen
+  medication: ibuprofen
 
 # Aspirin dosages
 aspirin_adult:
   amount: 300
   unit: mg
   description: Standard adult dose
-  medicine: aspirin
+  medication: aspirin
 
 aspirin_light:
   amount: 75
   unit: mg
   description: Low dose for heart health
-  medicine: aspirin
+  medication: aspirin
 
 vitamin_d_daily:
   amount: 1000
   unit: IU
   description: Daily Vitamin D supplement
-  medicine: vitamin_d
+  medication: vitamin_d
 
 # Calpol dosages
 calpol_child:
   amount: 2.5
   unit: ml
   description: Standard child dose
-  medicine: calpol
+  medication: calpol
 
 calpol_infant:
   amount: 5
   unit: ml
   description: Standard infant dose
-  medicine: calpol
+  medication: calpol
 
 # Child dosages for paracetamol
 paracetamol_child:
   amount: 250
   unit: mg
   description: Standard child dose (6-12 years)
-  medicine: paracetamol
+  medication: paracetamol
 
 # Child dosages for ibuprofen
 ibuprofen_child:
   amount: 200
   unit: mg
   description: Standard child dose (6-12 years)
-  medicine: ibuprofen
+  medication: ibuprofen

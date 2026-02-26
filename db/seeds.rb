@@ -9,7 +9,7 @@ Rails.logger.debug 'Seeding default locations...'
 load Rails.root.join('db/seeds/seed_locations.rb')
 
 Rails.logger.debug 'Seeding medicines...'
-load Rails.root.join('db/seeds/seed_medicines.rb')
+load Rails.root.join('db/seeds/seed_medications.rb')
 
 if Rails.env.production?
   # In production, invite initial users from db/seeds/users.yml.
@@ -31,10 +31,10 @@ if Rails.env.local?
     :users,
     :locations,
     :location_memberships,
-    :medicines,
+    :medications,
     :dosages,
-    :prescriptions,
-    :person_medicines,
+    :schedules,
+    :person_medications,
     :carer_relationships,
     :medication_takes
   )

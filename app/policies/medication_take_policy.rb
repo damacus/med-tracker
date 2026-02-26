@@ -2,7 +2,7 @@
 
 class MedicationTakePolicy < ApplicationPolicy
   def create?
-    admin? || medical_staff? || carer_with_patient? || parent_with_minor? || adult_with_own_medicine?
+    admin? || medical_staff? || carer_with_patient? || parent_with_minor? || adult_with_own_medication?
   end
 
   def new?
@@ -11,7 +11,7 @@ class MedicationTakePolicy < ApplicationPolicy
 
   private
 
-  def adult_with_own_medicine?
+  def adult_with_own_medication?
     return false unless user&.person
 
     user.person.id == record.person&.id && user.person.adult?
@@ -43,14 +43,14 @@ class MedicationTakePolicy < ApplicationPolicy
 
     def carer_parent_scope
       ids = accessible_patient_ids
-      scope.left_joins(:prescription, :person_medicine)
-           .where('prescriptions.person_id IN (:ids) OR person_medicines.person_id IN (:ids)', ids: ids)
+      scope.left_joins(:schedule, :person_medication)
+           .where('schedules.person_id IN (:ids) OR person_medications.person_id IN (:ids)', ids: ids)
     end
 
     def own_takes_scope
       person_id = user.person.id
-      scope.left_joins(:prescription, :person_medicine)
-           .where('prescriptions.person_id = :id OR person_medicines.person_id = :id', id: person_id)
+      scope.left_joins(:schedule, :person_medication)
+           .where('schedules.person_id = :id OR person_medications.person_id = :id', id: person_id)
     end
 
     def owns_record?

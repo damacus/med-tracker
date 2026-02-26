@@ -13,7 +13,7 @@ module Admin
         users_by_role: User.group(:role).count,
         total_people: Person.count,
         people_by_type: Person.group(:person_type).count,
-        active_prescriptions: Prescription.where(active: true).count,
+        active_schedules: Schedule.where(active: true).count,
         patients_without_carers: patients_without_carers_count
       }
 

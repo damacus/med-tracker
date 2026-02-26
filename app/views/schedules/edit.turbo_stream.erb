@@ -1,0 +1,5 @@
+<%= turbo_stream.update "modal" do %>
+  <%= render "shared/modal", title: "Edit Schedule" do %>
+    <%= render "form", schedule: @schedule, inline: true %>
+  <% end %>
+<% end %>

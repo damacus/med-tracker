@@ -18,7 +18,7 @@ module Components
 
           div(class: 'grid grid-cols-1 lg:grid-cols-3 gap-12') do
             div(class: 'lg:col-span-2 space-y-8') do
-              render_medicines_section
+              render_medications_section
             end
 
             div(class: 'space-y-8') do
@@ -66,27 +66,27 @@ module Components
         end
       end
 
-      def render_medicines_section
+      def render_medications_section
         div(class: 'space-y-4') do
           div(class: 'flex items-center justify-between') do
-            Heading(level: 2, size: '5', class: 'font-bold tracking-tight') { t('locations.show.medicines_heading') }
+            Heading(level: 2, size: '5', class: 'font-bold tracking-tight') { t('locations.show.medications_heading') }
           end
 
-          if location.medicines.any?
+          if location.medications.any?
             div(class: 'grid grid-cols-1 md:grid-cols-2 gap-4') do
-              location.medicines.each do |medicine|
-                render_medicine_card(medicine)
+              location.medications.each do |medication|
+                render_medication_card(medication)
               end
             end
           else
             Card(class: 'p-8 text-center') do
-              Text(size: '3', class: 'text-slate-400') { t('locations.show.no_medicines') }
+              Text(size: '3', class: 'text-slate-400') { t('locations.show.no_medications') }
             end
           end
         end
       end
 
-      def render_medicine_card(medicine)
+      def render_medication_card(medication)
         Card(class: 'p-6 hover:shadow-md transition-shadow') do
           div(class: 'flex items-center justify-between') do
             div(class: 'flex items-center gap-4') do
@@ -94,23 +94,23 @@ module Components
                 render Icons::Pill.new(size: 20)
               end
               div do
-                Text(size: '3', weight: 'semibold') { medicine.name }
-                if medicine.dosage_amount.present? && medicine.dosage_unit.present?
-                  Text(size: '1', class: 'text-slate-400') { "#{medicine.dosage_amount} #{medicine.dosage_unit}" }
+                Text(size: '3', weight: 'semibold') { medication.name }
+                if medication.dosage_amount.present? && medication.dosage_unit.present?
+                  Text(size: '1', class: 'text-slate-400') { "#{medication.dosage_amount} #{medication.dosage_unit}" }
                 end
               end
             end
-            if medicine.low_stock?
+            if medication.low_stock?
               Badge(variant: :destructive) { 'Low Stock' }
             else
-              Badge(variant: :success) { "#{medicine.current_supply} units" }
+              Badge(variant: :success) { "#{medication.current_supply} units" }
             end
           end
 
-          if view_context.policy(medicine).update?
+          if view_context.policy(medication).update?
             div(class: 'pt-4') do
-              render Components::Medicines::RefillModal.new(
-                medicine: medicine,
+              render Components::Medications::RefillModal.new(
+                medication: medication,
                 button_variant: :outline,
                 button_class: 'w-full'
               )

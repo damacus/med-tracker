@@ -17,7 +17,7 @@ RSpec.describe 'Admin Dashboard' do
         # Check for metric cards
         expect(page).to have_css('[data-testid="metric-total-users"]')
         expect(page).to have_css('[data-testid="metric-total-people"]')
-        expect(page).to have_css('[data-testid="metric-active-prescriptions"]')
+        expect(page).to have_css('[data-testid="metric-active-schedules"]')
         expect(page).to have_css('[data-testid="metric-patients-without-carers"]')
       end
     end

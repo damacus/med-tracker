@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'People' do
-  fixtures :accounts, :people, :users, :locations, :location_memberships, :medicines, :dosages, :prescriptions,
+  fixtures :accounts, :people, :users, :locations, :location_memberships, :medications, :dosages, :schedules,
            :carer_relationships
 
   let(:user) { users(:john) }
@@ -14,7 +14,7 @@ RSpec.describe 'People' do
   end
 
   describe 'index page' do
-    it 'displays list of people with their prescription counts' do
+    it 'displays list of people with their schedule counts' do
       visit people_path
 
       within '[data-testid="people-list"]' do
@@ -30,48 +30,48 @@ RSpec.describe 'People' do
       end
     end
 
-    it 'shows active prescription count for person with prescriptions' do
+    it 'shows active schedule count for person with schedules' do
       person = people(:john)
-      active_count = person.prescriptions.active.count
+      active_count = person.schedules.active.count
 
       visit people_path
 
       within "#person_#{person.id}" do
         if active_count.positive?
-          expect(page).to have_content("#{active_count} active prescription")
+          expect(page).to have_content("#{active_count} active schedule")
         else
-          expect(page).to have_content('No active prescriptions')
+          expect(page).to have_content('No active schedules')
         end
       end
     end
 
-    it 'shows no active prescriptions for person without prescriptions' do
+    it 'shows no active schedules for person without schedules' do
       person = Person.create!(name: 'New Person', date_of_birth: 20.years.ago)
 
       visit people_path
 
       within "#person_#{person.id}" do
-        expect(page).to have_content('No active prescriptions')
+        expect(page).to have_content('No active schedules')
       end
     end
 
-    it 'provides link to add prescription' do
+    it 'provides link to add schedule' do
       person = people(:john)
 
       visit people_path
 
       within "#person_#{person.id}" do
-        expect(page).to have_link('Add Prescription', href: new_person_prescription_path(person))
+        expect(page).to have_link('Add Schedule', href: new_person_schedule_path(person))
       end
     end
 
-    it 'provides link to view prescriptions when person has prescriptions' do
+    it 'provides link to view schedules when person has schedules' do
       person = people(:john)
 
       visit people_path
 
       within "#person_#{person.id}" do
-        expect(page).to have_link('View Prescriptions', href: person_path(person)) if person.prescriptions.any?
+        expect(page).to have_link('View Schedules', href: person_path(person)) if person.schedules.any?
       end
     end
   end
@@ -146,10 +146,10 @@ RSpec.describe 'People' do
     context 'when user is an administrator' do
       let(:user) { users(:admin) }
 
-      it 'shows Add Prescription action on person show page' do
+      it 'shows Add Schedule action on person show page' do
         visit person_path(people(:child_patient))
 
-        expect(page).to have_link('Add Prescription')
+        expect(page).to have_link('Add Schedule')
       end
 
       it 'shows Assign Carer action for unassigned dependent patients' do
@@ -174,11 +174,11 @@ RSpec.describe 'People' do
     context 'when user is a carer' do
       let(:user) { users(:carer) }
 
-      it 'hides Add Prescription action on person show page' do
+      it 'hides Add Schedule action on person show page' do
         visit person_path(people(:child_patient))
 
         expect(page).to have_content('Care Actions')
-        expect(page).to have_no_link('Add Prescription')
+        expect(page).to have_no_link('Add Schedule')
       end
 
       it 'hides Assign Carer action for unassigned dependent patients' do

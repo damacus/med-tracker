@@ -28,24 +28,23 @@ erDiagram
       boolean active
     }
 
-    MEDICINES {
+    MEDICATIONS {
       bigint id PK
       string name
-      integer stock
       integer current_supply
     }
 
     DOSAGES {
       bigint id PK
-      bigint medicine_id FK
+      bigint medication_id FK
       decimal amount
       string unit
     }
 
-    PRESCRIPTIONS {
+    SCHEDULES {
       bigint id PK
       bigint person_id FK
-      bigint medicine_id FK
+      bigint medication_id FK
       bigint dosage_id FK
       integer max_daily_doses
       integer min_hours_between_doses
@@ -54,18 +53,18 @@ erDiagram
       boolean active
     }
 
-    PERSON_MEDICINES {
+    PERSON_MEDICATIONS {
       bigint id PK
       bigint person_id FK
-      bigint medicine_id FK
+      bigint medication_id FK
       integer max_daily_doses
       integer min_hours_between_doses
     }
 
     MEDICATION_TAKES {
       bigint id PK
-      bigint prescription_id FK
-      bigint person_medicine_id FK
+      bigint schedule_id FK
+      bigint person_medication_id FK
       datetime taken_at
     }
 
@@ -79,20 +78,20 @@ erDiagram
 
     ACCOUNTS ||--o| PEOPLE : "linked profile"
     PEOPLE ||--o| USERS : "login account"
-    MEDICINES ||--o{ DOSAGES : "has"
-    PEOPLE ||--o{ PRESCRIPTIONS : "has"
-    PEOPLE ||--o{ PERSON_MEDICINES : "has"
-    MEDICINES ||--o{ PRESCRIPTIONS : "prescribed in"
-    MEDICINES ||--o{ PERSON_MEDICINES : "assigned in"
-    DOSAGES ||--o{ PRESCRIPTIONS : "used by"
-    PRESCRIPTIONS ||--o{ MEDICATION_TAKES : "records"
-    PERSON_MEDICINES ||--o{ MEDICATION_TAKES : "records"
+    MEDICATIONS ||--o{ DOSAGES : "has"
+    PEOPLE ||--o{ SCHEDULES : "has"
+    PEOPLE ||--o{ PERSON_MEDICATIONS : "has"
+    MEDICATIONS ||--o{ SCHEDULES : "scheduled in"
+    MEDICATIONS ||--o{ PERSON_MEDICATIONS : "assigned in"
+    DOSAGES ||--o{ SCHEDULES : "used by"
+    SCHEDULES ||--o{ MEDICATION_TAKES : "records"
+    PERSON_MEDICATIONS ||--o{ MEDICATION_TAKES : "records"
     PEOPLE ||--o{ CARER_RELATIONSHIPS : "as carer"
     PEOPLE ||--o{ CARER_RELATIONSHIPS : "as patient"
 ```
 
 ## Notes
 
-- `MedicationTake` must reference exactly one source (`prescription_id` or
-  `person_medicine_id`) at the model layer.
+- `MedicationTake` must reference exactly one source (`schedule_id` or
+  `person_medication_id`) at the model layer.
 - Carer relationships are self-referential links on `people`.

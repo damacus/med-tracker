@@ -7,17 +7,17 @@ module Components
       include Phlex::Rails::Helpers::TurboFrameTag
       include Phlex::Rails::Helpers::FormWith
 
-      attr_reader :person, :prescriptions, :person_medicines, :editing,
-                  :takes_by_prescription, :takes_by_person_medicine, :current_user
+      attr_reader :person, :schedules, :person_medications, :editing,
+                  :takes_by_schedule, :takes_by_person_medication, :current_user
 
-      def initialize(person:, prescriptions:, person_medicines: nil, editing: false, **opts)
+      def initialize(person:, schedules:, person_medications: nil, editing: false, **opts)
         @person = person
-        @prescriptions = prescriptions
-        @person_medicines = person_medicines || person.person_medicines
+        @schedules = schedules
+        @person_medications = person_medications || person.person_medications
         @editing = editing
         preloaded_takes = opts.fetch(:preloaded_takes, {})
-        @takes_by_prescription = preloaded_takes.fetch(:prescriptions, {})
-        @takes_by_person_medicine = preloaded_takes.fetch(:person_medicines, {})
+        @takes_by_schedule = preloaded_takes.fetch(:schedules, {})
+        @takes_by_person_medication = preloaded_takes.fetch(:person_medications, {})
         @current_user = opts[:current_user]
         super()
       end
@@ -28,8 +28,8 @@ module Components
 
           div(class: 'grid grid-cols-1 lg:grid-cols-3 gap-12') do
             div(class: 'lg:col-span-2 space-y-12') do
-              render_prescriptions_section
-              render_my_medicines_section
+              render_schedules_section
+              render_my_medications_section
             end
 
             div(class: 'space-y-8') do
@@ -117,45 +117,45 @@ module Components
             end
 
             div(class: 'space-y-3') do
-              if can_create_prescription?
+              if can_create_schedule?
                 Link(
-                  href: new_person_prescription_path(person),
+                  href: new_person_schedule_path(person),
                   variant: :secondary,
                   class: 'w-full py-6 rounded-xl font-bold text-sm bg-white text-primary border-none shadow-sm',
                   data: { turbo_stream: true }
-                ) { t('people.show.add_prescription') }
+                ) { t('people.show.add_schedule') }
               end
 
-              if view_context.policy(PersonMedicine.new(person: person)).create?
+              if view_context.policy(PersonMedication.new(person: person)).create?
                 Link(
-                  href: new_person_person_medicine_path(person),
+                  href: new_person_person_medication_path(person),
                   variant: :outline,
                   class: 'w-full py-6 rounded-xl font-bold text-sm bg-primary-foreground/10 text-white ' \
                          'border-white/20 hover:bg-primary-foreground/20',
                   data: { turbo_stream: true }
-                ) { t('people.show.add_medicine') }
+                ) { t('people.show.add_medication') }
               end
             end
           end
         end
       end
 
-      def render_prescriptions_section
+      def render_schedules_section
         div(class: 'space-y-8') do
           div(class: 'flex items-center justify-between px-2') do
-            Heading(level: 2, size: '6', class: 'font-bold tracking-tight') { t('people.show.prescriptions_heading') }
+            Heading(level: 2, size: '6', class: 'font-bold tracking-tight') { t('people.show.schedules_heading') }
             div(class: 'h-1 flex-1 mx-8 bg-slate-50 rounded-full hidden md:block')
           end
 
-          turbo_frame_tag 'prescription_modal'
+          turbo_frame_tag 'schedule_modal'
 
-          div(id: 'prescriptions', class: 'grid grid-cols-1 md:grid-cols-2 gap-6') do
-            if prescriptions.any?
-              prescriptions.each do |prescription|
-                render Components::Prescriptions::Card.new(
-                  prescription: prescription,
+          div(id: 'schedules', class: 'grid grid-cols-1 md:grid-cols-2 gap-6') do
+            if schedules.any?
+              schedules.each do |schedule|
+                render Components::Schedules::Card.new(
+                  schedule: schedule,
                   person: person,
-                  todays_takes: takes_by_prescription[prescription.id],
+                  todays_takes: takes_by_schedule[schedule.id],
                   current_user: current_user
                 )
               end
@@ -166,32 +166,32 @@ module Components
         end
       end
 
-      def render_my_medicines_section
+      def render_my_medications_section
         div(class: 'space-y-8') do
           div(class: 'flex items-center justify-between px-2') do
-            Heading(level: 2, size: '6', class: 'font-bold tracking-tight') { t('people.show.my_medicines_heading') }
+            Heading(level: 2, size: '6', class: 'font-bold tracking-tight') { t('people.show.my_medications_heading') }
             div(class: 'h-1 flex-1 mx-8 bg-slate-50 rounded-full hidden md:block')
           end
 
-          turbo_frame_tag 'person_medicine_modal'
+          turbo_frame_tag 'person_medication_modal'
 
-          # Filter person_medicines based on policy
-          accessible_medicines = person_medicines.select do |pm|
+          # Filter person_medications based on policy
+          accessible_medications = person_medications.select do |pm|
             view_context.policy(pm).show?
           end
 
-          div(id: 'person_medicines', class: 'grid grid-cols-1 md:grid-cols-2 gap-6') do
-            if accessible_medicines.any?
-              accessible_medicines.each do |person_medicine|
-                render Components::PersonMedicines::Card.new(
-                  person_medicine: person_medicine,
+          div(id: 'person_medications', class: 'grid grid-cols-1 md:grid-cols-2 gap-6') do
+            if accessible_medications.any?
+              accessible_medications.each do |person_medication|
+                render Components::PersonMedications::Card.new(
+                  person_medication: person_medication,
                   person: person,
-                  todays_takes: takes_by_person_medicine[person_medicine.id],
+                  todays_takes: takes_by_person_medication[person_medication.id],
                   current_user: current_user
                 )
               end
             else
-              render_my_medicines_empty_state
+              render_my_medications_empty_state
             end
           end
         end
@@ -200,40 +200,40 @@ module Components
       def render_empty_state
         div(class: 'col-span-full') do
           Card(class: 'text-center py-12 px-8 border-dashed border-2 bg-slate-50/50') do
-            Text(size: '3', weight: 'medium', class: 'text-slate-400 mb-6') { t('people.show.no_prescriptions') }
-            if can_create_prescription?
+            Text(size: '3', weight: 'medium', class: 'text-slate-400 mb-6') { t('people.show.no_schedules') }
+            if can_create_schedule?
               Link(
-                href: new_person_prescription_path(person),
+                href: new_person_schedule_path(person),
                 variant: :primary,
                 class: 'rounded-xl',
                 data: { turbo_stream: true }
-              ) { t('people.show.add_first_prescription') }
+              ) { t('people.show.add_first_schedule') }
             end
           end
         end
       end
 
-      def render_my_medicines_empty_state
+      def render_my_medications_empty_state
         div(class: 'col-span-full') do
           Card(class: 'text-center py-12 px-8 border-dashed border-2 bg-slate-50/50') do
             div(class: 'space-y-2 mb-6') do
-              Text(size: '3', weight: 'medium', class: 'text-slate-400') { t('people.show.no_medicines') }
-              Text(size: '2', class: 'text-slate-300') { t('people.show.medicines_hint') }
+              Text(size: '3', weight: 'medium', class: 'text-slate-400') { t('people.show.no_medications') }
+              Text(size: '2', class: 'text-slate-300') { t('people.show.medications_hint') }
             end
-            if view_context.policy(PersonMedicine.new(person: person)).create?
+            if view_context.policy(PersonMedication.new(person: person)).create?
               Link(
-                href: new_person_person_medicine_path(person),
+                href: new_person_person_medication_path(person),
                 variant: :primary,
                 class: 'rounded-xl',
                 data: { turbo_stream: true }
-              ) { t('people.show.add_first_medicine') }
+              ) { t('people.show.add_first_medication') }
             end
           end
         end
       end
 
-      def can_create_prescription?
-        view_context.policy(Prescription.new(person: person)).create?
+      def can_create_schedule?
+        view_context.policy(Schedule.new(person: person)).create?
       end
 
       def render_edit_form
