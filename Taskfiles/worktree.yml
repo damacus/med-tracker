@@ -1,0 +1,22 @@
+version: "3"
+
+tasks:
+  add:
+    desc: Add a new git worktree
+    summary: |
+      Create a new git worktree in .worktrees/
+      Prompts for agent name and issue number via scripts/worktree_add.fish.
+      Example: task worktree:add
+    interactive: true
+    cmds:
+      - ./scripts/worktree_add.fish
+
+  cleanup:
+    desc: Clean up completed git worktrees
+    summary: |
+      List all worktrees in .worktrees/ and ask for confirmation to delete.
+      Identifies merged worktrees based on origin/main via scripts/worktree_cleanup.fish.
+      Example: task worktree:cleanup
+    interactive: true
+    cmds:
+      - ./scripts/worktree_cleanup.fish

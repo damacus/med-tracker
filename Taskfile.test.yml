@@ -1,0 +1,5 @@
+test:
+  cmds:
+    - printf 'Enter something: '
+    - read val
+    - echo "You entered: $val"

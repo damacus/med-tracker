@@ -1,6 +1,7 @@
 ---
 version: "3"
 silent: true
+run: once
 
 includes:
   dev:
@@ -17,6 +18,8 @@ includes:
     taskfile: Taskfiles/lighthouse.yml
   docs:
     taskfile: Taskfiles/docs.yml
+  worktree:
+    taskfile: Taskfiles/worktree.yml
 
 tasks:
   default:
