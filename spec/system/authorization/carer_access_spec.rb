@@ -37,12 +37,12 @@ RSpec.describe 'Carer Access Authorization' do
   end
 
   describe 'managing people' do
-    it 'denies carers ability to create new people' do
+    it 'allows carers ability to create new dependents' do
       login_as(carer)
       visit people_path
 
       expect(page).to have_css('h1', text: 'People')
-      expect(page).to have_no_link('New Person')
+      expect(page).to have_link('New Person', href: new_person_path)
     end
 
     it 'denies carers ability to edit people' do

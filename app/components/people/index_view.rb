@@ -26,7 +26,7 @@ module Components
       def render_header
         div(class: 'flex justify-between items-center mb-8') do
           Heading(level: 1) { 'People' }
-          if view_context.policy(Person.new).create?
+          if view_context.policy(Person.new).new?
             Link(href: new_person_path, variant: :primary, data: { turbo_frame: 'modal' }) { 'New Person' }
           end
         end
