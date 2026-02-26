@@ -73,7 +73,7 @@ Rails.application.routes.draw do
   end
 
   resource :push_subscription, only: %i[create destroy]
-  resource :notification_preference, only: %i[edit update]
+  resource :notification_preference, only: %i[update]
 
   # Progressive Web App assets
   get 'manifest.webmanifest', to: 'pwa#manifest'

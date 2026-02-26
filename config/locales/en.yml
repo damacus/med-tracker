@@ -486,6 +486,7 @@ en:
 
   notification_preferences:
     updated: "Notification settings saved."
+    update_failed: "Failed to save notification settings."
   profiles:
     updated: "Profile updated successfully."
     email_updated: "Email updated successfully."
@@ -561,7 +562,6 @@ en:
       finder: "Finder"
       people: "People"
       reports: "Reports"
-      notifications: "Notifications"
       administration: "Administration"
       sign_out: "Sign Out"
   forms:

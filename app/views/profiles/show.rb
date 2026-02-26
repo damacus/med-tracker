@@ -40,6 +40,7 @@ module Views
           render_personal_info_card
           render_account_security_card
           render_two_factor_card
+          render_notifications_card
           render_danger_zone_card
         end
       end
@@ -175,6 +176,10 @@ module Views
 
       def render_two_factor_card
         render TwoFactorCard.new(account: account)
+      end
+
+      def render_notifications_card
+        render NotificationsCard.new(person: person)
       end
     end
   end
