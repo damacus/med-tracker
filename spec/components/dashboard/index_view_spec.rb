@@ -54,10 +54,14 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
   end
 
   describe 'quick actions' do
-    it 'renders Add Medication and Add Person links' do
+    it 'renders Add Medication link' do
       rendered = render_inline(dashboard_view)
       expect(rendered.text).to include('Add Medication')
-      expect(rendered.text).to include('Add Person')
+    end
+
+    it 'hides Add Person for admin users' do
+      rendered = render_inline(dashboard_view)
+      expect(rendered.text).not_to include('Add Person')
     end
   end
 

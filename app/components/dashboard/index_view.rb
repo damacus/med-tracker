@@ -54,12 +54,14 @@ module Components
             end
           end
           div(class: 'flex gap-3') do
-            render RubyUI::Link.new(
-              href: new_person_path,
-              variant: :outline,
-              size: :lg
-            ) do
-              t('dashboard.quick_actions.add_person')
+            if can_create_person?
+              render RubyUI::Link.new(
+                href: new_person_path,
+                variant: :outline,
+                size: :lg
+              ) do
+                t('dashboard.quick_actions.add_person')
+              end
             end
             render RubyUI::Link.new(
               href: new_medication_path,
@@ -243,6 +245,12 @@ module Components
         when 12..17 then 'dashboard.greeting_afternoon'
         else 'dashboard.greeting_evening'
         end
+      end
+
+      def can_create_person?
+        return false unless view_context.respond_to?(:policy)
+
+        view_context.policy(Person.new).new?
       end
     end
   end

@@ -126,15 +126,15 @@ module Components
             SelectInput(
               name: 'person[person_type]',
               id: 'person_person_type',
-              value: person.person_type
+              value: selected_person_type
             )
             SelectTrigger do
               SelectValue(placeholder: 'Select person type') do
-                person.person_type&.humanize || 'Select person type'
+                selected_person_type&.humanize || 'Select person type'
               end
             end
             SelectContent do
-              Person.person_types.each_key do |type|
+              available_person_types.each do |type|
                 SelectItem(value: type) { type.humanize }
               end
             end
@@ -190,6 +190,22 @@ module Components
             person.new_record? ? 'Create Person' : 'Update Person'
           end
         end
+      end
+
+      def available_person_types
+        @available_person_types ||= begin
+          allowed_types = Person.person_types.keys.select do |type|
+            view_context.policy(Person.new(person_type: type)).create?
+          end
+          allowed_types.presence || Person.person_types.keys
+        end
+      end
+
+      def selected_person_type
+        return person.person_type if available_person_types.include?(person.person_type)
+        return available_person_types.first if person.new_record?
+
+        person.person_type
       end
     end
   end

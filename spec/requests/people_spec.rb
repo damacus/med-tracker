@@ -5,6 +5,31 @@ require 'rails_helper'
 RSpec.describe 'People' do
   fixtures :accounts, :people, :users, :carer_relationships
 
+  describe 'GET /people/new' do
+    context 'when signed in as a parent' do
+      before { sign_in(users(:jane)) }
+
+      it 'renders dependent person types only' do
+        get new_person_path
+
+        expect(response).to have_http_status(:ok)
+        expect(response.body).to include('value="minor"')
+        expect(response.body).to include('value="dependent_adult"')
+        expect(response.body).not_to include('value="adult"')
+      end
+    end
+
+    context 'when signed in as an admin' do
+      before { sign_in(users(:admin)) }
+
+      it 'rejects access' do
+        get new_person_path
+
+        expect(response).to redirect_to(root_path)
+      end
+    end
+  end
+
   describe 'POST /people' do
     context 'when signed in as a parent' do
       let(:parent_user) { users(:jane) }
@@ -25,6 +50,7 @@ RSpec.describe 'People' do
         created_person = Person.last
         expect(created_person.name).to eq('New Child')
         expect(created_person.has_capacity).to be false
+        expect(created_person.user).to be_nil
 
         relationship = created_person.carer_relationships.first
         expect(relationship.carer).to eq(parent_user.person)
