@@ -341,29 +341,29 @@ RSpec.describe 'Prescription Card', type: :system do
 
     it 'displays all takes from today in reverse chronological order' do
       travel_to(Time.zone.today.noon) do
-      take1 = prescription.medication_takes.create!(
-        taken_at: 8.hours.ago,
-        amount_ml: prescription.dosage.amount
-      )
-      take2 = prescription.medication_takes.create!(
-        taken_at: 4.hours.ago,
-        amount_ml: prescription.dosage.amount
-      )
-      take3 = prescription.medication_takes.create!(
-        taken_at: 1.hour.ago,
-        amount_ml: prescription.dosage.amount
-      )
+        take1 = prescription.medication_takes.create!(
+          taken_at: 8.hours.ago,
+          amount_ml: prescription.dosage.amount
+        )
+        take2 = prescription.medication_takes.create!(
+          taken_at: 4.hours.ago,
+          amount_ml: prescription.dosage.amount
+        )
+        take3 = prescription.medication_takes.create!(
+          taken_at: 1.hour.ago,
+          amount_ml: prescription.dosage.amount
+        )
 
-      visit person_path(person)
+        visit person_path(person)
 
-      within("#prescription_#{prescription.id}") do
-        # Search for text elements that look like times
-        takes = all('div', text: /:\d{2} [AP]M/).map(&:text).grep(/:\d{2} [AP]M/)
-        # Reverse chronological means take3, then take2, then take1
-        expect(takes[0]).to include(take3.taken_at.strftime('%l:%M %p').strip)
-        expect(takes[1]).to include(take2.taken_at.strftime('%l:%M %p').strip)
-        expect(takes[2]).to include(take1.taken_at.strftime('%l:%M %p').strip)
-      end
+        within("#prescription_#{prescription.id}") do
+          # Search for text elements that look like times
+          takes = all('div', text: /:\d{2} [AP]M/).map(&:text).grep(/:\d{2} [AP]M/)
+          # Reverse chronological means take3, then take2, then take1
+          expect(takes[0]).to include(take3.taken_at.strftime('%l:%M %p').strip)
+          expect(takes[1]).to include(take2.taken_at.strftime('%l:%M %p').strip)
+          expect(takes[2]).to include(take1.taken_at.strftime('%l:%M %p').strip)
+        end
       end
     end
 
