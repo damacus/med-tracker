@@ -18,8 +18,8 @@ RSpec.describe RubyUI::Button, type: :component do
   it 'renders destructive variant with filled background' do
     rendered = render_inline(described_class.new(variant: :destructive)) { 'Delete' }
 
-    expect(rendered.css('.bg-destructive')).to be_present
-    expect(rendered.css('.text-white')).to be_present
+    expect(rendered.css('.bg-error')).to be_present
+    expect(rendered.css('.text-on-error')).to be_present
   end
 
   it 'renders outline variant with border' do
@@ -36,8 +36,8 @@ RSpec.describe RubyUI::Button, type: :component do
     classes = button['class']
 
     expect(classes).to include('border')
-    expect(classes).to include('text-destructive')
-    expect(classes).to include('hover:bg-destructive-light')
+    expect(classes).to include('text-error')
+    expect(classes).to include('hover:bg-error-container')
   end
 
   it 'renders success_outline variant with border and semantic success text' do
@@ -48,7 +48,7 @@ RSpec.describe RubyUI::Button, type: :component do
 
     expect(classes).to include('border')
     expect(classes).to include('text-success')
-    expect(classes).to include('hover:bg-success-light')
+    expect(classes).to include('hover:bg-success-container')
   end
 
   it 'merges custom classes' do

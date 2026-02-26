@@ -45,8 +45,8 @@ module RubyUI
       [
         BASE_CLASSES,
         size_classes,
-        'bg-primary text-primary-foreground shadow-lg shadow-primary/20',
-        'hover:bg-primary/90 hover:scale-[1.02] active:scale-[0.98] transition-all'
+        'bg-primary text-on-primary',
+        'hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all'
       ]
     end
 
@@ -63,8 +63,8 @@ module RubyUI
       [
         BASE_CLASSES,
         size_classes,
-        'bg-secondary text-secondary-foreground shadow-md',
-        'hover:bg-opacity-80 hover:scale-[1.02] active:scale-[0.98] transition-all'
+        'bg-secondary text-secondary-foreground shadow-sm',
+        'hover:opacity-80 hover:scale-[1.02] active:scale-[0.98] transition-all'
       ]
     end
 
@@ -72,8 +72,8 @@ module RubyUI
       [
         BASE_CLASSES,
         size_classes,
-        'bg-destructive text-white shadow-lg shadow-destructive/20',
-        'hover:bg-destructive/90 hover:scale-[1.02] active:scale-[0.98] transition-all'
+        'bg-error text-on-error',
+        'hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all'
       ]
     end
 
@@ -81,7 +81,7 @@ module RubyUI
       [
         BASE_CLASSES,
         size_classes,
-        'border border-input bg-background shadow-sm',
+        'border border-input bg-background',
         'hover:bg-accent hover:text-accent-foreground hover:scale-[1.02] transition-all'
       ]
     end
@@ -90,8 +90,8 @@ module RubyUI
       [
         BASE_CLASSES,
         size_classes,
-        'border border-input bg-background shadow-sm',
-        'text-destructive hover:bg-destructive-light hover:scale-[1.02] transition-all'
+        'border border-input bg-background',
+        'text-error hover:bg-error-container hover:scale-[1.02] transition-all'
       ]
     end
 
@@ -99,8 +99,8 @@ module RubyUI
       [
         BASE_CLASSES,
         size_classes,
-        'border border-input bg-background shadow-sm',
-        'text-success hover:bg-success-light hover:scale-[1.02] transition-all'
+        'border border-input bg-background',
+        'text-success hover:bg-success-container hover:scale-[1.02] transition-all'
       ]
     end
 

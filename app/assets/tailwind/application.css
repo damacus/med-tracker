@@ -21,7 +21,7 @@
 	--accent: oklch(0.97 0 0);
 	--accent-foreground: oklch(0.205 0 0);
 	--destructive: oklch(0.577 0.245 27.325);
-	--destructive-foreground: oklch(0.577 0.245 27.325);
+	--destructive-foreground: oklch(0.985 0 0);
 	--border: oklch(0.922 0 0);
 	--input: oklch(0.922 0 0);
 	--ring: oklch(0.708 0 0);
@@ -40,16 +40,28 @@
 	--sidebar-border: oklch(0.922 0 0);
 	--sidebar-ring: oklch(0.708 0 0);
 
-	/* ruby_ui specific */
+	/* Material 3 / RubyUI Semantic Roles */
+	--on-primary: var(--primary-foreground);
+	--primary-container: oklch(from var(--primary) l c h / 0.12);
+	--on-primary-container: oklch(from var(--primary) l c h / 0.9);
+
+	--error: var(--destructive);
+	--on-error: var(--destructive-foreground);
+	--error-container: oklch(from var(--error) l c h / 0.12);
+	--on-error-container: oklch(from var(--error) l c h / 0.9);
+
 	--warning: hsl(38 92% 50%);
 	--warning-foreground: hsl(0 0% 100%);
+	--warning-container: oklch(from var(--warning) l c h / 0.12);
+	--on-warning-container: oklch(from var(--warning) l c h / 0.9);
+
 	--success: hsl(87 100% 37%);
 	--success-foreground: hsl(0 0% 100%);
-	--destructive-light: oklch(0.971 0.013 17.38);
-	--destructive-text: oklch(0.444 0.177 26.899);
-	--success-light: oklch(0.962 0.044 156.743);
-	--success-text: oklch(0.365 0.135 152.934);
-	--warning-text: oklch(0.473 0.137 46.201);
+	--success-container: oklch(from var(--success) l c h / 0.12);
+	--on-success-container: oklch(from var(--success) l c h / 0.9);
+
+	--secondary-container: oklch(from var(--secondary) l c h / 0.12);
+	--on-secondary-container: oklch(from var(--secondary) l c h / 0.9);
 }
 
 @theme inline {
@@ -90,16 +102,35 @@
 	--color-sidebar-border: var(--sidebar-border);
 	--color-sidebar-ring: var(--sidebar-ring);
 
-	/* ruby_ui specific */
-	--color-warning: var(--warning);
-	--color-warning-foreground: var(--warning-foreground);
+	/* Material 3 / RubyUI Semantic Roles */
+	--color-on-primary: var(--on-primary);
+	--color-primary-container: var(--primary-container);
+	--color-on-primary-container: var(--on-primary-container);
+
+	--color-error: var(--error);
+	--color-on-error: var(--on-error);
+	--color-error-container: var(--error-container);
+	--color-on-error-container: var(--on-error-container);
+
 	--color-success: var(--success);
 	--color-success-foreground: var(--success-foreground);
-	--color-destructive-light: var(--destructive-light);
-	--color-destructive-text: var(--destructive-text);
-	--color-success-light: var(--success-light);
-	--color-success-text: var(--success-text);
-	--color-warning-text: var(--warning-text);
+	--color-success-container: var(--success-container);
+	--color-on-success-container: var(--on-success-container);
+
+	--color-secondary-container: var(--secondary-container);
+	--color-on-secondary-container: var(--on-secondary-container);
+
+	--color-warning: var(--warning);
+	--color-warning-foreground: var(--warning-foreground);
+	--color-warning-container: var(--warning-container);
+	--color-on-warning-container: var(--on-warning-container);
+
+	/* Aliases for backward compatibility during transition */
+	--color-destructive-light: var(--error-container);
+	--color-destructive-text: var(--on-error-container);
+	--color-success-light: var(--success-container);
+	--color-success-text: var(--on-success-container);
+	--color-warning-text: var(--on-warning-container);
 }
 
 /* Container settings */
