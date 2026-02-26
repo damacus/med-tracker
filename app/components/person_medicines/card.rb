@@ -243,10 +243,22 @@ module Components
       def render_person_medicine_actions
         div(class: 'flex items-center gap-2 w-full') do
           render_reorder_controls if view_context.policy(person_medicine).update?
+          render_edit_button if view_context.policy(person_medicine).update?
 
           render_take_medicine_button if view_context.policy(person_medicine).take_medicine?
 
           render_delete_dialog if view_context.policy(person_medicine).destroy?
+        end
+      end
+
+      def render_edit_button
+        a(
+          href: edit_person_person_medicine_path(person, person_medicine),
+          data: { turbo_stream: true, testid: "edit-person-medicine-#{person_medicine.id}" },
+          class: 'inline-flex items-center justify-center w-10 h-10 rounded-xl text-slate-400 ' \
+                 'hover:text-slate-700 hover:bg-slate-100 transition-colors'
+        ) do
+          render Icons::Pencil.new(size: 16)
         end
       end
 

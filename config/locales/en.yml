@@ -267,10 +267,12 @@ en:
 
   person_medicines:
     created: "Medicine added successfully."
+    updated: "Medicine updated successfully."
     deleted: "Medicine removed successfully."
     medicine_taken: "Medicine taken successfully."
     modal:
       new_title: "Add Medicine for %{person}"
+      edit_title: "Edit Medicine for %{person}"
     card:
       notes: "📝 Notes: "
       timing_restrictions: "⏱️ Timing Restrictions:"
@@ -282,17 +284,20 @@ en:
       take: "💊 Take"
       give: "💊 Give"
       out_of_stock: "💊 Out of Stock"
+      edit: "Edit"
       remove: "Remove"
       remove_medicine: "Remove Medicine"
       remove_confirmation: "Are you sure you want to remove %{medicine}? This action cannot be undone."
     form:
       add_medicine: "Add Medicine"
       add_medicine_for: "Add Medicine for %{person}"
+      edit_medicine_for: "Edit Medicine for %{person}"
       validation_errors:
         one: "1 error prohibited this medicine from being saved:"
         other: "%{count} errors prohibited this medicine from being saved:"
       cancel: "Cancel"
       add_medicine_button: "Add Medicine"
+      save_changes_button: "Save Changes"
 
   prescriptions:
     created: "Prescription was successfully created."

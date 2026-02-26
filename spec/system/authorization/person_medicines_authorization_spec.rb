@@ -246,6 +246,61 @@ RSpec.describe 'Person Medicines Authorization' do
     end
   end
 
+  describe 'editing medicines' do
+    let(:medicine) { medicines(:vitamin_d) }
+    let!(:person_medicine) do
+      PersonMedicine.create!(
+        person: linked_child,
+        medicine: medicine,
+        notes: 'Original notes',
+        max_daily_doses: 3
+      )
+    end
+
+    it 'allows parents to edit medicines for linked children' do
+      login_as(parent)
+      visit person_path(linked_child)
+
+      within("#person_medicine_#{person_medicine.id}") do
+        find("[data-testid='edit-person-medicine-#{person_medicine.id}']").click
+      end
+
+      expect(page).to have_content('Edit Medicine for')
+      fill_in 'Notes', with: 'Updated notes'
+      fill_in 'Max daily doses', with: '5'
+      click_button 'Save Changes'
+
+      expect(page).to have_content('Medicine updated successfully')
+      expect(page).to have_content('Updated notes')
+    end
+
+    it 'allows administrators to edit medicines for any person' do
+      login_as(admin)
+      visit person_path(linked_child)
+
+      within("#person_medicine_#{person_medicine.id}") do
+        find("[data-testid='edit-person-medicine-#{person_medicine.id}']").click
+      end
+
+      expect(page).to have_content('Edit Medicine for')
+      fill_in 'Notes', with: 'Admin edited notes'
+      click_button 'Save Changes'
+
+      expect(page).to have_content('Medicine updated successfully')
+    end
+
+    it 'does not show edit button to carers for assigned patients' do
+      carer_medicine = PersonMedicine.create!(person: assigned_patient, medicine: medicines(:ibuprofen))
+
+      login_as(carer)
+      visit person_path(assigned_patient)
+
+      within("#person_medicine_#{carer_medicine.id}") do
+        expect(page).to have_no_css("[data-testid='edit-person-medicine-#{carer_medicine.id}']")
+      end
+    end
+  end
+
   describe 'viewing medicines' do
     let(:medicine) { medicines(:vitamin_d) }
 

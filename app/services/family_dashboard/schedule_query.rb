@@ -62,6 +62,7 @@ module FamilyDashboard
     end
 
     def generate_doses_for(source, person)
+      now = Time.current
       # 1. Get doses already taken today from our preloaded cache
       takes = @takes_by_source[[source.class.name, source.id]] || []
       doses = generate_taken_doses(takes, source, person)
@@ -69,7 +70,7 @@ module FamilyDashboard
       # 2. Determine if an upcoming dose should be shown
       # We show the "next available" dose if it falls within today
       next_time = source.next_available_time
-      if next_time && next_time.to_date == Time.zone.today
+      if next_time && next_time <= now + 24.hours
         status = source.administration_blocked_reason || :upcoming
         doses << {
           person: person,

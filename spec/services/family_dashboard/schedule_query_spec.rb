@@ -91,6 +91,11 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
     end
 
     context 'when a prescription is on cooldown' do
+      before do
+        travel_to(Time.zone.today.noon)
+        MedicationTake.create!(prescription: prescription, taken_at: 1.hour.ago, amount_ml: 400)
+      end
+
       let!(:prescription) do
         Prescription.create!(
           person: people(:john),
@@ -102,10 +107,6 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
           min_hours_between_doses: 2,
           max_daily_doses: nil
         )
-      end
-
-      before do
-        MedicationTake.create!(prescription: prescription, taken_at: 1.hour.ago, amount_ml: 400)
       end
 
       it 'emits a row with :cooldown status' do

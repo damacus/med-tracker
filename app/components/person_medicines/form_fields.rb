@@ -5,11 +5,12 @@ module Components
     # Shared form fields component for person medicine forms
     # Used by both FormView and Modal components
     class FormFields < Components::Base
-      attr_reader :person_medicine, :medicines
+      attr_reader :person_medicine, :medicines, :editing
 
-      def initialize(person_medicine:, medicines:)
+      def initialize(person_medicine:, medicines:, editing: false)
         @person_medicine = person_medicine
         @medicines = medicines
+        @editing = editing
         super()
       end
 
@@ -29,7 +30,8 @@ module Components
           select(
             name: 'person_medicine[medicine_id]',
             id: 'person_medicine_medicine_id',
-            required: true,
+            required: !editing,
+            disabled: editing,
             class: select_classes
           ) do
             option(value: '', disabled: true, selected: person_medicine.medicine_id.blank?) { 'Select a medicine' }
