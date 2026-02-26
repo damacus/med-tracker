@@ -9,8 +9,8 @@ module Views
       def view_template
         page_layout do
           render_page_header(
-            title: 'MedTracker',
-            subtitle: 'Verify your account to complete registration.'
+            title: t('app.name'),
+            subtitle: t('rodauth.views.verify_account.page_subtitle')
           )
           form_section
         end
@@ -45,9 +45,9 @@ module Views
 
       def render_card_header
         render RubyUI::CardHeader.new(class: 'space-y-2 bg-white/60') do
-          render RubyUI::CardTitle.new(class: 'text-2xl font-semibold text-slate-900') { 'Verify Your Account' }
+          render RubyUI::CardTitle.new(class: 'text-2xl font-semibold text-slate-900') { t('rodauth.views.verify_account.card_title') }
           render RubyUI::CardDescription.new(class: 'text-base text-slate-600') do
-            plain 'Click the button below to verify your email address and activate your account.'
+            plain t('rodauth.views.verify_account.card_description')
           end
         end
       end
@@ -73,7 +73,7 @@ module Views
 
       def submit_button
         render RubyUI::Button.new(type: :submit, variant: :primary, size: :md, class: 'w-full') do
-          'Verify Account'
+          t('rodauth.views.verify_account.submit')
         end
       end
     end

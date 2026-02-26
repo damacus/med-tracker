@@ -31,7 +31,7 @@ module Views
           div(class: 'w-12 h-12 rounded-2xl bg-[var(--primary)] flex items-center justify-center text-white shadow-lg shadow-[var(--primary)]/20 mb-6 transition-transform hover:scale-105') do
             render Icons::Pill.new(size: 24)
           end
-          Heading(level: 1, size: '7', class: 'font-extrabold tracking-tight text-[var(--text-main)]') { 'MedTracker' }
+          Heading(level: 1, size: '7', class: 'font-extrabold tracking-tight text-[var(--text-main)]') { t('app.name') }
           Text(size: '2', weight: 'muted', class: 'uppercase tracking-[0.2em] font-bold opacity-30 mt-1') do
             t('sessions.login.tagline')
           end

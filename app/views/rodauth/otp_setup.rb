@@ -9,8 +9,8 @@ module Views
       def view_template
         page_layout do
           render_page_header(
-            title: 'Set Up Two-Factor Authentication',
-            subtitle: 'Scan the QR code with your authenticator app to enable 2FA.'
+            title: t('rodauth.views.otp_setup.page_title'),
+            subtitle: t('rodauth.views.otp_setup.page_subtitle')
           )
           form_section
         end
@@ -32,10 +32,10 @@ module Views
       def render_card_header
         render RubyUI::CardHeader.new(class: 'space-y-2 bg-white/60') do
           render RubyUI::CardTitle.new(class: 'text-xl font-semibold text-slate-900') do
-            'Authenticator Setup'
+            t('rodauth.views.otp_setup.card_title')
           end
           render RubyUI::CardDescription.new(class: 'text-base text-slate-600') do
-            plain 'Use an authenticator app like Google Authenticator, Authy, or 1Password to scan the QR code below.'
+            plain t('rodauth.views.otp_setup.card_description')
           end
         end
       end
@@ -57,7 +57,7 @@ module Views
             end
           end
           p(class: 'text-sm text-slate-500 text-center') do
-            'Scan this QR code with your authenticator app'
+            t('rodauth.views.otp_setup.qr_hint')
           end
         end
       end
@@ -66,7 +66,7 @@ module Views
         details(class: 'border-t border-slate-200 pt-6 group') do
           summary(class: 'flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 transition-colors cursor-pointer list-none') do
             chevron_icon
-            span { "Can't scan? Enter the code manually" }
+            span { t('rodauth.views.otp_setup.manual_entry_summary') }
           end
 
           div(class: 'mt-4 space-y-3') do
@@ -82,7 +82,7 @@ module Views
 
       def render_secret_field
         div(class: 'bg-slate-50 rounded-lg p-4 space-y-2') do
-          label(class: 'text-xs font-medium text-slate-500 uppercase tracking-wide') { 'Secret Key' }
+          label(class: 'text-xs font-medium text-slate-500 uppercase tracking-wide') { t('rodauth.views.otp_setup.secret_key') }
           div(class: 'flex items-center gap-2') do
             code(class: 'flex-1 font-mono text-sm text-slate-800 break-all select-all') do
               plain view_context.rodauth.otp_user_key
@@ -94,7 +94,7 @@ module Views
 
       def render_provisioning_url
         div(class: 'bg-slate-50 rounded-lg p-4 space-y-2') do
-          label(class: 'text-xs font-medium text-slate-500 uppercase tracking-wide') { 'Provisioning URL' }
+          label(class: 'text-xs font-medium text-slate-500 uppercase tracking-wide') { t('rodauth.views.otp_setup.provisioning_url') }
           code(class: 'block font-mono text-xs text-slate-600 break-all select-all') do
             plain view_context.rodauth.otp_provisioning_uri
           end
@@ -105,7 +105,7 @@ module Views
         button(
           type: 'button',
           class: 'p-2 text-slate-400 hover:text-slate-600 transition-colors',
-          title: 'Copy to clipboard',
+          title: t('rodauth.views.otp_setup.copy_to_clipboard'),
           data: { action: 'click->clipboard#copy', clipboard_text_param: text }
         ) do
           render Icons::Copy.new(size: 16)
@@ -137,22 +137,22 @@ module Views
 
       def password_field
         render RubyUI::FormField.new do
-          render RubyUI::FormFieldLabel.new(for: 'password') { 'Current Password' }
+          render RubyUI::FormFieldLabel.new(for: 'password') { t('rodauth.views.otp_setup.current_password_label') }
           render RubyUI::Input.new(
             type: :password,
             name: 'password',
             id: 'password',
             required: true,
             autocomplete: 'current-password',
-            placeholder: 'Enter your password to confirm'
+            placeholder: t('rodauth.views.otp_setup.current_password_placeholder')
           )
-          p(class: 'text-xs text-slate-500 mt-1') { 'Required to verify your identity' }
+          p(class: 'text-xs text-slate-500 mt-1') { t('rodauth.views.otp_setup.current_password_hint') }
         end
       end
 
       def otp_code_field
         render RubyUI::FormField.new do
-          render RubyUI::FormFieldLabel.new(for: 'otp') { 'Authentication Code' }
+          render RubyUI::FormFieldLabel.new(for: 'otp') { t('rodauth.views.otp_setup.auth_code_label') }
           render RubyUI::Input.new(
             type: :text,
             name: view_context.rodauth.otp_auth_param,
@@ -162,15 +162,15 @@ module Views
             inputmode: 'numeric',
             pattern: '[0-9]*',
             maxlength: 6,
-            placeholder: 'Enter 6-digit code from app'
+            placeholder: t('rodauth.views.otp_setup.auth_code_placeholder')
           )
-          p(class: 'text-xs text-slate-500 mt-1') { 'Enter the code shown in your authenticator app' }
+          p(class: 'text-xs text-slate-500 mt-1') { t('rodauth.views.otp_setup.auth_code_hint') }
         end
       end
 
       def submit_button
         render RubyUI::Button.new(type: :submit, variant: :primary, size: :md, class: 'w-full') do
-          'Enable Two-Factor Authentication'
+          t('rodauth.views.otp_setup.submit')
         end
       end
     end

@@ -6,8 +6,8 @@ module Views
       def view_template
         page_layout do
           render_page_header(
-            title: 'Additional authentication required',
-            subtitle: 'Choose an available method to confirm your identity.'
+            title: t('rodauth.views.two_factor_auth.page_title'),
+            subtitle: t('rodauth.views.two_factor_auth.page_subtitle')
           )
           links_section
         end
@@ -19,10 +19,10 @@ module Views
         render RubyUI::Card.new(class: card_classes) do
           render RubyUI::CardHeader.new(class: 'space-y-2 bg-white/60') do
             render RubyUI::CardTitle.new(class: 'text-xl font-semibold text-slate-900') do
-              'Verify with'
+              t('rodauth.views.two_factor_auth.card_title')
             end
             render RubyUI::CardDescription.new(class: 'text-base text-slate-600') do
-              'Select one of the available authentication methods.'
+              t('rodauth.views.two_factor_auth.card_description')
             end
           end
           render RubyUI::CardContent.new(class: 'space-y-4 p-6 sm:p-8') do

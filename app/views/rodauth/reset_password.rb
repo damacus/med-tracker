@@ -9,8 +9,8 @@ module Views
       def view_template
         page_layout do
           render_page_header(
-            title: 'MedTracker',
-            subtitle: 'Create a new password for your account.'
+            title: t('app.name'),
+            subtitle: t('rodauth.views.reset_password.page_subtitle')
           )
           form_section
         end
@@ -50,9 +50,9 @@ module Views
 
       def render_card_header
         render RubyUI::CardHeader.new(class: 'space-y-2 bg-white/60') do
-          render RubyUI::CardTitle.new(class: 'text-2xl font-semibold text-slate-900') { 'Set New Password' }
+          render RubyUI::CardTitle.new(class: 'text-2xl font-semibold text-slate-900') { t('rodauth.views.reset_password.card_title') }
           render RubyUI::CardDescription.new(class: 'text-base text-slate-600') do
-            plain 'Enter your new password below.'
+            plain t('rodauth.views.reset_password.card_description')
           end
         end
       end
@@ -80,7 +80,7 @@ module Views
 
       def password_field
         render RubyUI::FormField.new do
-          render RubyUI::FormFieldLabel.new(for: 'password') { 'New Password' }
+          render RubyUI::FormFieldLabel.new(for: 'password') { t('rodauth.views.reset_password.new_password_label') }
           render RubyUI::Input.new(
             type: :password,
             name: 'password',
@@ -88,7 +88,7 @@ module Views
             required: true,
             autofocus: true,
             autocomplete: 'new-password',
-            placeholder: 'Enter your new password (min 12 characters)',
+            placeholder: t('rodauth.views.reset_password.new_password_placeholder'),
             minlength: 12,
             maxlength: 72
           )
@@ -99,14 +99,14 @@ module Views
 
       def password_confirm_field
         render RubyUI::FormField.new do
-          render RubyUI::FormFieldLabel.new(for: 'password-confirm') { 'Confirm New Password' }
+          render RubyUI::FormFieldLabel.new(for: 'password-confirm') { t('rodauth.views.reset_password.confirm_password_label') }
           render RubyUI::Input.new(
             type: :password,
             name: 'password-confirm',
             id: 'password-confirm',
             required: true,
             autocomplete: 'new-password',
-            placeholder: 'Confirm your new password',
+            placeholder: t('rodauth.views.reset_password.confirm_password_placeholder'),
             minlength: 12,
             maxlength: 72
           )
@@ -117,7 +117,7 @@ module Views
 
       def submit_button
         render RubyUI::Button.new(type: :submit, variant: :primary, size: :md, class: 'w-full') do
-          'Reset Password'
+          t('rodauth.views.reset_password.submit')
         end
       end
     end
