@@ -13,24 +13,24 @@ RSpec.describe RubyUI::Alert, type: :component do
     rendered = render_inline(described_class.new(variant: :destructive))
     classes = rendered.css("div[role='alert']").first['class']
 
-    expect(classes).to include('text-destructive-text')
-    expect(classes).to include('bg-destructive/10')
+    expect(classes).to include('text-on-error-container')
+    expect(classes).to include('bg-error-container')
   end
 
   it 'renders warning variant with semantic classes' do
     rendered = render_inline(described_class.new(variant: :warning))
     classes = rendered.css("div[role='alert']").first['class']
 
-    expect(classes).to include('text-warning-text')
-    expect(classes).to include('bg-warning/10')
+    expect(classes).to include('text-on-warning-container')
+    expect(classes).to include('bg-warning-container')
   end
 
   it 'renders success variant with semantic classes' do
     rendered = render_inline(described_class.new(variant: :success))
     classes = rendered.css("div[role='alert']").first['class']
 
-    expect(classes).to include('text-success-text')
-    expect(classes).to include('bg-success/10')
+    expect(classes).to include('text-on-success-container')
+    expect(classes).to include('bg-success-container')
   end
 
   it 'merges custom classes' do

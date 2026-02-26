@@ -88,9 +88,9 @@ module Components
 
         def render_status_badge(relationship)
           if relationship.active?
-            render RubyUI::Badge.new(variant: :green) { t('admin.carer_relationships.index.active') }
+            render RubyUI::Badge.new(variant: :success) { t('admin.carer_relationships.index.active') }
           else
-            render RubyUI::Badge.new(variant: :red) { t('admin.carer_relationships.index.inactive') }
+            render RubyUI::Badge.new(variant: :destructive) { t('admin.carer_relationships.index.inactive') }
           end
         end
 
