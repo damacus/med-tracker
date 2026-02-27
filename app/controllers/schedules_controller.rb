@@ -59,7 +59,7 @@ class SchedulesController < ApplicationController
         format.turbo_stream do
           flash.now[:notice] = t('schedules.created')
           render turbo_stream: [
-            turbo_stream.remove('modal'),
+            turbo_stream.update('modal', ''),
             turbo_stream.replace("person_#{@person.id}", Components::People::PersonCard.new(person: @person.reload)),
             turbo_stream.replace("person_show_#{@person.id}", person_show_view(@person.reload)),
             turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
@@ -82,7 +82,7 @@ class SchedulesController < ApplicationController
         format.turbo_stream do
           flash.now[:notice] = t('schedules.updated')
           render turbo_stream: [
-            turbo_stream.remove('modal'),
+            turbo_stream.update('modal', ''),
             turbo_stream.replace("person_show_#{@person.id}", person_show_view(@person.reload)),
             turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
           ]

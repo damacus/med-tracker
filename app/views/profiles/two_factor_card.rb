@@ -97,15 +97,14 @@ module Views
             render RubyUI::Link.new(
               variant: :outline,
               size: :sm,
-              href: '/recovery-codes',
-              data: { turbo_frame: 'modal' }
+              href: '/recovery-codes'
             ) { 'View codes' }
             button_to(
               'Regenerate',
               '/recovery-codes',
               method: :post,
               class: 'inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background border border-input hover:bg-accent hover:text-accent-foreground h-9 px-3',
-              data: { turbo_confirm: 'This will invalidate your existing recovery codes. Continue?', turbo_frame: 'modal' }
+              data: { turbo_confirm: 'This will invalidate your existing recovery codes. Continue?' }
             )
           end
         end
@@ -158,8 +157,7 @@ module Views
           render RubyUI::Link.new(
             href: "/webauthn-remove?#{URI.encode_www_form(view_context.rodauth.webauthn_remove_param => passkey.webauthn_id)}",
             variant: :link,
-            class: 'text-sm text-destructive hover:text-destructive/80 font-medium p-0 h-auto',
-            data: { turbo_frame: 'modal' }
+            class: 'text-sm text-destructive hover:text-destructive/80 font-medium p-0 h-auto'
           ) { 'Remove' }
         end
       end
@@ -169,8 +167,7 @@ module Views
           render RubyUI::Link.new(
             variant: :outline,
             size: :sm,
-            href: '/webauthn-setup',
-            data: { turbo_frame: 'modal' }
+            href: '/webauthn-setup'
           ) { 'Add a passkey' }
         end
       end
@@ -191,8 +188,7 @@ module Views
           render RubyUI::Link.new(
             variant: :outline,
             size: :sm,
-            href: disable_path,
-            data: { turbo_frame: 'modal' }
+            href: disable_path
           ) { disable_text }
         end
       end
@@ -206,8 +202,7 @@ module Views
           render RubyUI::Link.new(
             variant: :default,
             size: :sm,
-            href: setup_path,
-            data: { turbo_frame: 'modal' }
+            href: setup_path
           ) { setup_text }
         end
       end

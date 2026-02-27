@@ -135,6 +135,13 @@ pt:
         card_description: "Esta ação não pode ser desfeita. Já não poderá iniciar sessão com esta passkey."
         password_label: "Palavra-passe"
         password_placeholder: "Introduza a sua palavra-passe"
+      change_login:
+        new_login_label: "Novo Login"
+        password_label: "Palavra-passe"
+      change_password:
+        password_label: "Palavra-passe"
+        new_password_label: "Nova Palavra-passe"
+        confirm_password_label: "Confirmar Nova Palavra-passe"
 
   admin:
     carer_relationships:

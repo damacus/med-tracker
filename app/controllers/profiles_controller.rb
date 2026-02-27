@@ -27,6 +27,7 @@ class ProfilesController < ApplicationController
           format.turbo_stream do
             flash.now[:notice] = t('profiles.updated')
             render turbo_stream: [
+              turbo_stream.update('modal', ''),
               turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice])),
               turbo_stream.replace('main-content', Views::Profiles::Show.new(person: @person.reload, account: @account))
             ]
@@ -48,6 +49,7 @@ class ProfilesController < ApplicationController
           format.turbo_stream do
             flash.now[:notice] = t('profiles.email_updated')
             render turbo_stream: [
+              turbo_stream.update('modal', ''),
               turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice])),
               turbo_stream.replace('main-content', Views::Profiles::Show.new(person: @person, account: @account.reload))
             ]

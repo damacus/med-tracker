@@ -17,7 +17,6 @@ module Components
 
     def view_template(&block)
       dialog(
-        open: true,
         **attrs,
         class: [
           'fixed inset-0 z-50 m-auto flex flex-col p-0 bg-transparent',

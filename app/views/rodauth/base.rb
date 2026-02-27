@@ -30,9 +30,13 @@ module Views
       end
 
       def title
-        rodauth.change_password_label if rodauth.current_route == :change_password
-        rodauth.change_login_label if rodauth.current_route == :change_login
-        'Authentication'
+        if rodauth.current_route == :change_password
+          rodauth.change_password_button
+        elsif rodauth.current_route == :change_login
+          rodauth.change_login_button
+        else
+          'Authentication'
+        end
       end
 
       def render_page_header(title:, subtitle:)

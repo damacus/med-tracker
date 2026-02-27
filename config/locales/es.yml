@@ -135,6 +135,13 @@ es:
         card_description: "Esta acción no se puede deshacer. Ya no podrás iniciar sesión con esta passkey."
         password_label: "Contraseña"
         password_placeholder: "Introduce tu contraseña"
+      change_login:
+        new_login_label: "Nuevo inicio de sesión"
+        password_label: "Contraseña"
+      change_password:
+        password_label: "Contraseña"
+        new_password_label: "Nueva contraseña"
+        confirm_password_label: "Confirmar nueva contraseña"
 
   admin:
     carer_relationships:
