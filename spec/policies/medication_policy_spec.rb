@@ -146,23 +146,18 @@ RSpec.describe MedicationPolicy, type: :policy do
     context 'when user is a carer' do
       let(:current_user) { users(:carer) }
 
-      it 'returns medications prescribed to their patients' do
-        patient_medication_ids = Medication.joins(:schedules)
-                                           .where(schedules: { person_id: current_user.person.patient_ids })
-                                           .pluck(:id)
-        expect(scope.pluck(:id)).to match_array(patient_medication_ids)
+      it 'returns medications at their locations' do
+        location_ids = current_user.person.location_ids
+        expect(scope.pluck(:id)).to match_array(Medication.where(location_id: location_ids).pluck(:id))
       end
     end
 
     context 'when user is a parent' do
       let(:current_user) { users(:parent) }
 
-      it 'returns medications prescribed to their minor children' do
-        minor_ids = Person.where(id: current_user.person.patient_ids, person_type: :minor).pluck(:id)
-        child_medication_ids = Medication.joins(:schedules)
-                                         .where(schedules: { person_id: minor_ids })
-                                         .pluck(:id)
-        expect(scope.pluck(:id)).to match_array(child_medication_ids)
+      it 'returns medications at their locations' do
+        location_ids = current_user.person.location_ids
+        expect(scope.pluck(:id)).to match_array(Medication.where(location_id: location_ids).pluck(:id))
       end
     end
 
