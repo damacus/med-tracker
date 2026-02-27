@@ -12,6 +12,16 @@ RSpec.describe RubyUI::BreadcrumbEllipsis, type: :component do
     expect(rendered.css('.sr-only').inner_html).to eq('More')
   end
 
+  it 'renders the icon at size 16 using numeric sizing' do
+    rendered = render_inline(described_class.new)
+
+    svg = rendered.css('svg').first
+    expect(svg['width']).to eq('16')
+    expect(svg['height']).to eq('16')
+    expect(svg['class']).not_to include('h-4')
+    expect(svg['class']).not_to include('w-4')
+  end
+
   it 'yields a custom block if provided' do
     rendered = render_inline(described_class.new) { 'custom-ellipsis' }
 

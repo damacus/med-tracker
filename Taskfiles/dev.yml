@@ -144,3 +144,28 @@ tasks:
     cmds:
       - task: :internal:open-ui
         vars: { ENVIRONMENT: dev }
+
+  runner:
+    desc: Run Ruby code in the dev container via rails runner
+    summary: |
+      Run arbitrary Ruby/Rails code inside the dev container without touching Docker directly.
+      Usage: task dev:runner CODE="puts Account.count"
+      Usage: task dev:runner CODE="Account.all.each{|a| puts a.email}"
+    requires:
+      vars: [CODE]
+    cmds:
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: dev
+          COMMAND: "rails runner '{{ .CODE }}'"
+
+  accounts:
+    desc: List seeded dev accounts (email addresses)
+    summary: |
+      Print all account email addresses in the development database.
+      Useful for finding login credentials when taking screenshots or debugging.
+      Usage: task dev:accounts
+    cmds:
+      - task: runner
+        vars:
+          CODE: "Account.all.each{|a| puts a.email}"
