@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.3.12](https://github.com/damacus/med-tracker/compare/v0.3.11...v0.3.12) (2026-02-27)
+
+
+### Features
+
+* implement Material Design 3 semantic color roles and standardize components ([#845](https://github.com/damacus/med-tracker/issues/845)) ([f903d26](https://github.com/damacus/med-tracker/commit/f903d261ec6ffdf11d7dfc99927898227ca6b584))
+* PWA push notifications for medication reminders ([#847](https://github.com/damacus/med-tracker/issues/847)) ([449133d](https://github.com/damacus/med-tracker/commit/449133da7d287ce1af9e1248a70b5271bbc7c3c4))
+* standardize modal system and remove Beads tracking ([#848](https://github.com/damacus/med-tracker/issues/848)) ([112f034](https://github.com/damacus/med-tracker/commit/112f034bfac042211e5976648a0556408fa4a284))
+
+
+### Bug Fixes
+
+* show medications to carers/parents based on location membership ([#853](https://github.com/damacus/med-tracker/issues/853)) ([0a55bb7](https://github.com/damacus/med-tracker/commit/0a55bb786e88867001dafd5c8bbe9790854b69dd))
+* standardize icon sizing to numeric size parameter (closes [#675](https://github.com/damacus/med-tracker/issues/675)) ([#854](https://github.com/damacus/med-tracker/issues/854)) ([1c05bac](https://github.com/damacus/med-tracker/commit/1c05bacfcbe0f772aa85ad68519a892f68f38d2d))
+
 ## [0.3.11](https://github.com/damacus/med-tracker/compare/v0.3.10...v0.3.11) (2026-02-26)
 
 
