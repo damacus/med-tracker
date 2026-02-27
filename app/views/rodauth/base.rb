@@ -3,6 +3,8 @@
 module Views
   module Rodauth
     class Base < Views::Base
+      include Phlex::Rails::Helpers::TurboFrameTag
+
       CARD_CLASSES = 'w-full backdrop-blur bg-white/90 shadow-2xl border border-white/70 ring-1 ring-black/5 rounded-2xl'
       PAGE_CLASSES = 'relative min-h-screen bg-gradient-to-br from-sky-50 via-white to-indigo-100 py-16 sm:py-20'
       CONTENT_WRAPPER_CLASSES = 'relative mx-auto flex w-full max-w-2xl flex-col items-center gap-8 px-4 sm:px-6 lg:px-8'
@@ -12,11 +14,25 @@ module Views
 
       private
 
-      def page_layout(&)
-        div(class: PAGE_CLASSES) do
-          decorative_glow
-          div(class: CONTENT_WRAPPER_CLASSES, &)
+      def page_layout(&block)
+        if helpers.request.headers['Turbo-Frame'] == 'modal'
+          turbo_frame_tag 'modal' do
+            render ::Components::Modal.new(title: @page_title || title) do
+              div(class: 'p-4') { block.call }
+            end
+          end
+        else
+          div(class: PAGE_CLASSES) do
+            decorative_glow
+            div(class: CONTENT_WRAPPER_CLASSES, &block)
+          end
         end
+      end
+
+      def title
+        rodauth.change_password_label if rodauth.current_route == :change_password
+        rodauth.change_login_label if rodauth.current_route == :change_login
+        'Authentication'
       end
 
       def render_page_header(title:, subtitle:)

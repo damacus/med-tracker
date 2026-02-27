@@ -148,7 +148,12 @@ module Views
             p(class: 'text-sm text-slate-600 mt-1') { 'Update the email address you use to sign in' }
           end
           div(class: 'ml-4') do
-            render_edit_sheet('Email', :email, account.email, button_text: 'Change')
+            render RubyUI::Link.new(
+              variant: :outline,
+              size: :sm,
+              href: '/change-login',
+              data: { turbo_frame: 'modal' }
+            ) { 'Change' }
           end
         end
       end
@@ -160,7 +165,12 @@ module Views
             p(class: 'text-sm text-slate-600 mt-1') { 'Update your password to keep your account secure' }
           end
           div(class: 'ml-4') do
-            render_password_sheet
+            render RubyUI::Link.new(
+              variant: :outline,
+              size: :sm,
+              href: '/change-password',
+              data: { turbo_frame: 'modal' }
+            ) { 'Change' }
           end
         end
       end
