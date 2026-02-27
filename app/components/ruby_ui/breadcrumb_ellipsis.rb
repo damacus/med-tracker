@@ -9,7 +9,7 @@ module RubyUI
       else
         span(role: 'presentation', aria_hidden: 'true',
              class: 'flex h-9 w-9 items-center justify-center', **attrs) do
-          render ::Components::Icons::MoreHorizontal.new(class: 'h-4 w-4')
+          render ::Components::Icons::MoreHorizontal.new(size: 16)
           span(class: 'sr-only') { 'More' }
         end
       end

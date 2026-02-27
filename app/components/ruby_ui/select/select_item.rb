@@ -17,7 +17,7 @@ module RubyUI
     private
 
     def selected_icon
-      render ::Components::Icons::Check.new(class: 'invisible group-aria-selected:visible mr-2 h-4 w-4 flex-none')
+      render ::Components::Icons::Check.new(size: 16, class: 'invisible group-aria-selected:visible mr-2 flex-none')
     end
 
     def default_attrs

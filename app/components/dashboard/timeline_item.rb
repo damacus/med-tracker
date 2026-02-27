@@ -106,15 +106,15 @@ module Components
       def status_icon
         case dose[:status]
         when :taken
-          render Icons::CheckCircle.new(class: 'text-green-500 h-6 w-6')
+          render Icons::CheckCircle.new(size: 24, class: 'text-green-500')
         when :upcoming
-          render Icons::Pill.new(class: 'text-blue-500 h-6 w-6')
+          render Icons::Pill.new(size: 24, class: 'text-blue-500')
         when :cooldown
-          render Icons::AlertCircle.new(class: 'text-amber-500 h-6 w-6')
+          render Icons::AlertCircle.new(size: 24, class: 'text-amber-500')
         when :out_of_stock
-          render Icons::XCircle.new(class: 'text-red-500 h-6 w-6')
+          render Icons::XCircle.new(size: 24, class: 'text-red-500')
         else
-          render Icons::AlertCircle.new(class: 'text-red-500 h-6 w-6')
+          render Icons::AlertCircle.new(size: 24, class: 'text-red-500')
         end
       end
 

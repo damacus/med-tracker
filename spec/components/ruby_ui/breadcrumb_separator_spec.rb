@@ -11,6 +11,16 @@ RSpec.describe RubyUI::BreadcrumbSeparator, type: :component do
     expect(rendered.to_html).to include('m9 18 6-6-6-6')
   end
 
+  it 'renders the default icon at size 14 using numeric sizing' do
+    rendered = render_inline(described_class.new)
+
+    svg = rendered.css('svg').first
+    expect(svg['width']).to eq('14')
+    expect(svg['height']).to eq('14')
+    expect(svg['class']).not_to include('h-4')
+    expect(svg['class']).not_to include('w-4')
+  end
+
   it 'yields a custom block if provided' do
     rendered = render_inline(described_class.new) { '/' }
 

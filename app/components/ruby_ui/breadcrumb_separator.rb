@@ -9,7 +9,7 @@ module RubyUI
       else
         li(role: 'presentation', aria_hidden: 'true',
            class: '[&>svg]:w-3.5 [&>svg]:h-3.5', **attrs) do
-          render ::Components::Icons::ChevronRight.new(class: 'h-4 w-4')
+          render ::Components::Icons::ChevronRight.new(size: 14)
         end
       end
     end

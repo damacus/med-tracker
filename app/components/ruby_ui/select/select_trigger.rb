@@ -12,7 +12,7 @@ module RubyUI
     private
 
     def icon
-      render ::Components::Icons::ChevronsUpDown.new(class: 'ml-2 h-4 w-4 shrink-0 opacity-50')
+      render ::Components::Icons::ChevronsUpDown.new(size: 16, class: 'ml-2 shrink-0 opacity-50')
     end
 
     def default_attrs
