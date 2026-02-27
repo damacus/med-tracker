@@ -49,7 +49,13 @@ class MedicationPolicy < ApplicationPolicy
       return scope.all if admin? || doctor? || nurse?
       return scope.none unless carer_or_parent?
 
-      scope.joins(:schedules).where(schedules: { person_id: accessible_patient_ids }).distinct
+      scope_by_location
+    end
+
+    private
+
+    def scope_by_location
+      scope.where(location_id: user.person&.location_ids || [])
     end
   end
 end
