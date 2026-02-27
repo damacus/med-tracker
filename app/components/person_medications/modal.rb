@@ -20,7 +20,8 @@ module Components
 
       def view_template
         turbo_frame_tag 'modal' do
-          render ::Components::Modal.new(title: title, subtitle: 'Add a vitamin, supplement, or over-the-counter medication') do
+          render ::Components::Modal.new(title: title,
+                                         subtitle: 'Add a vitamin, supplement, or over-the-counter medication') do
             render_form
           end
         end

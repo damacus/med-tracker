@@ -2,6 +2,7 @@
 
 class PersonMedicationsController < ApplicationController
   include TimelineRefreshable
+  include PersonViewable
 
   before_action :set_person
   before_action :set_person_medication, only: %i[edit update destroy take_medication reorder]
@@ -16,30 +17,13 @@ class PersonMedicationsController < ApplicationController
     respond_to do |format|
       format.html do
         if is_modal
-          render Components::PersonMedications::Modal.new(
-            person_medication: @person_medication,
-            person: @person,
-            medications: @medications,
-            title: t('person_medications.modal.new_title', person: @person.name)
-          ), layout: false
+          render Components::PersonMedications::Modal.new(person_medication: @person_medication, person: @person, medications: @medications, title: t('person_medications.modal.new_title', person: @person.name)), layout: false
         else
-          render Components::PersonMedications::FormView.new(
-            person_medication: @person_medication,
-            person: @person,
-            medications: @medications
-          )
+          render Components::PersonMedications::FormView.new(person_medication: @person_medication, person: @person, medications: @medications)
         end
       end
       format.turbo_stream do
-        render turbo_stream: turbo_stream.replace(
-          'modal',
-          Components::PersonMedications::Modal.new(
-            person_medication: @person_medication,
-            person: @person,
-            medications: @medications,
-            title: t('person_medications.modal.new_title', person: @person.name)
-          )
-        )
+        render turbo_stream: turbo_stream.replace('modal', Components::PersonMedications::Modal.new(person_medication: @person_medication, person: @person, medications: @medications, title: t('person_medications.modal.new_title', person: @person.name)))
       end
     end
   end
@@ -53,33 +37,13 @@ class PersonMedicationsController < ApplicationController
     respond_to do |format|
       format.html do
         if is_modal
-          render Components::PersonMedications::Modal.new(
-            person_medication: @person_medication,
-            person: @person,
-            medications: @medications,
-            title: t('person_medications.modal.edit_title', person: @person.name),
-            editing: true
-          ), layout: false
+          render Components::PersonMedications::Modal.new(person_medication: @person_medication, person: @person, medications: @medications, title: t('person_medications.modal.edit_title', person: @person.name), editing: true), layout: false
         else
-          render Components::PersonMedications::FormView.new(
-            person_medication: @person_medication,
-            person: @person,
-            medications: @medications,
-            editing: true
-          )
+          render Components::PersonMedications::FormView.new(person_medication: @person_medication, person: @person, medications: @medications, editing: true)
         end
       end
       format.turbo_stream do
-        render turbo_stream: turbo_stream.replace(
-          'modal',
-          Components::PersonMedications::Modal.new(
-            person_medication: @person_medication,
-            person: @person,
-            medications: @medications,
-            title: t('person_medications.modal.edit_title', person: @person.name),
-            editing: true
-          )
-        )
+        render turbo_stream: turbo_stream.replace('modal', Components::PersonMedications::Modal.new(person_medication: @person_medication, person: @person, medications: @medications, title: t('person_medications.modal.edit_title', person: @person.name), editing: true))
       end
     end
   end
@@ -104,24 +68,8 @@ class PersonMedicationsController < ApplicationController
       end
     else
       respond_to do |format|
-        format.html do
-          render Components::PersonMedications::FormView.new(
-            person_medication: @person_medication,
-            person: @person,
-            medications: @medications
-          ), status: :unprocessable_content
-        end
-        format.turbo_stream do
-          render turbo_stream: turbo_stream.replace(
-            'modal',
-            Components::PersonMedications::Modal.new(
-              person_medication: @person_medication,
-              person: @person,
-              medications: @medications,
-              title: t('person_medications.modal.new_title', person: @person.name)
-            )
-          ), status: :unprocessable_content
-        end
+        format.html { render Components::PersonMedications::FormView.new(person_medication: @person_medication, person: @person, medications: @medications), status: :unprocessable_content }
+        format.turbo_stream { render turbo_stream: turbo_stream.replace('modal', Components::PersonMedications::Modal.new(person_medication: @person_medication, person: @person, medications: @medications, title: t('person_medications.modal.new_title', person: @person.name))), status: :unprocessable_content }
       end
     end
   end
@@ -144,26 +92,8 @@ class PersonMedicationsController < ApplicationController
       end
     else
       respond_to do |format|
-        format.html do
-          render Components::PersonMedications::FormView.new(
-            person_medication: @person_medication,
-            person: @person,
-            medications: @medications,
-            editing: true
-          ), status: :unprocessable_content
-        end
-        format.turbo_stream do
-          render turbo_stream: turbo_stream.replace(
-            'modal',
-            Components::PersonMedications::Modal.new(
-              person_medication: @person_medication,
-              person: @person,
-              medications: @medications,
-              title: t('person_medications.modal.edit_title', person: @person.name),
-              editing: true
-            )
-          ), status: :unprocessable_content
-        end
+        format.html { render Components::PersonMedications::FormView.new(person_medication: @person_medication, person: @person, medications: @medications, editing: true), status: :unprocessable_content }
+        format.turbo_stream { render turbo_stream: turbo_stream.replace('modal', Components::PersonMedications::Modal.new(person_medication: @person_medication, person: @person, medications: @medications, title: t('person_medications.modal.edit_title', person: @person.name), editing: true)), status: :unprocessable_content }
       end
     end
   end
@@ -255,32 +185,5 @@ class PersonMedicationsController < ApplicationController
 
   def available_medications
     Medication.order(:name)
-  end
-
-  def person_show_view(person)
-    schedules = person.schedules.includes(:medication, :dosage)
-    person_medications = person.person_medications.includes(:medication).ordered
-    today_start = Time.current.beginning_of_day
-
-    takes_by_schedule = MedicationTake
-                        .where(schedule_id: schedules.map(&:id), taken_at: today_start..)
-                        .order(taken_at: :desc)
-                        .group_by(&:schedule_id)
-
-    takes_by_person_medication = MedicationTake
-                                 .where(person_medication_id: person_medications.map(&:id), taken_at: today_start..)
-                                 .order(taken_at: :desc)
-                                 .group_by(&:person_medication_id)
-
-    Components::People::ShowView.new(
-      person: person,
-      schedules: schedules,
-      person_medications: person_medications,
-      preloaded_takes: {
-        schedules: takes_by_schedule,
-        person_medications: takes_by_person_medication
-      },
-      current_user: current_user
-    )
   end
 end

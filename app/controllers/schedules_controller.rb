@@ -2,6 +2,7 @@
 
 class SchedulesController < ApplicationController
   include TimelineRefreshable
+  include PersonViewable
 
   before_action :set_person
   before_action :set_schedule, only: %i[edit update destroy take_medication]
@@ -16,30 +17,13 @@ class SchedulesController < ApplicationController
     respond_to do |format|
       format.html do
         if is_modal
-          render Components::Schedules::Modal.new(
-            schedule: @schedule,
-            person: @person,
-            medications: @medications,
-            title: t('schedules.modal.new_title', person: @person.name)
-          ), layout: false
+          render Components::Schedules::Modal.new(schedule: @schedule, person: @person, medications: @medications, title: t('schedules.modal.new_title', person: @person.name)), layout: false
         else
-          render Components::Schedules::NewView.new(
-            schedule: @schedule,
-            person: @person,
-            medications: @medications
-          )
+          render Components::Schedules::NewView.new(schedule: @schedule, person: @person, medications: @medications)
         end
       end
       format.turbo_stream do
-        render turbo_stream: turbo_stream.replace(
-          'modal',
-          Components::Schedules::Modal.new(
-            schedule: @schedule,
-            person: @person,
-            medications: @medications,
-            title: t('schedules.modal.new_title', person: @person.name)
-          )
-        )
+        render turbo_stream: turbo_stream.replace('modal', Components::Schedules::Modal.new(schedule: @schedule, person: @person, medications: @medications, title: t('schedules.modal.new_title', person: @person.name)))
       end
     end
   end
@@ -53,30 +37,13 @@ class SchedulesController < ApplicationController
     respond_to do |format|
       format.html do
         if is_modal
-          render Components::Schedules::Modal.new(
-            schedule: @schedule,
-            person: @person,
-            medications: @medications,
-            title: t('schedules.modal.edit_title', person: @person.name)
-          ), layout: false
+          render Components::Schedules::Modal.new(schedule: @schedule, person: @person, medications: @medications, title: t('schedules.modal.edit_title', person: @person.name)), layout: false
         else
-          render Components::Schedules::EditView.new(
-            schedule: @schedule,
-            person: @person,
-            medications: @medications
-          )
+          render Components::Schedules::EditView.new(schedule: @schedule, person: @person, medications: @medications)
         end
       end
       format.turbo_stream do
-        render turbo_stream: turbo_stream.replace(
-          'modal',
-          Components::Schedules::Modal.new(
-            schedule: @schedule,
-            person: @person,
-            medications: @medications,
-            title: t('schedules.modal.edit_title', person: @person.name)
-          )
-        )
+        render turbo_stream: turbo_stream.replace('modal', Components::Schedules::Modal.new(schedule: @schedule, person: @person, medications: @medications, title: t('schedules.modal.edit_title', person: @person.name)))
       end
     end
   end
@@ -101,24 +68,8 @@ class SchedulesController < ApplicationController
       end
     else
       respond_to do |format|
-        format.html do
-          render Components::Schedules::NewView.new(
-            schedule: @schedule,
-            person: @person,
-            medications: @medications
-          ), status: :unprocessable_content
-        end
-        format.turbo_stream do
-          render turbo_stream: turbo_stream.replace(
-            'modal',
-            Components::Schedules::Modal.new(
-              schedule: @schedule,
-              person: @person,
-              medications: @medications,
-              title: t('schedules.modal.new_title', person: @person.name)
-            )
-          ), status: :unprocessable_content
-        end
+        format.html { render Components::Schedules::NewView.new(schedule: @schedule, person: @person, medications: @medications), status: :unprocessable_content }
+        format.turbo_stream { render turbo_stream: turbo_stream.replace('modal', Components::Schedules::Modal.new(schedule: @schedule, person: @person, medications: @medications, title: t('schedules.modal.new_title', person: @person.name))), status: :unprocessable_content }
       end
     end
   end
@@ -140,24 +91,8 @@ class SchedulesController < ApplicationController
     else
       @medications = policy_scope(Medication)
       respond_to do |format|
-        format.html do
-          render Components::Schedules::EditView.new(
-            schedule: @schedule,
-            person: @person,
-            medications: @medications
-          ), status: :unprocessable_content
-        end
-        format.turbo_stream do
-          render turbo_stream: turbo_stream.replace(
-            'modal',
-            Components::Schedules::Modal.new(
-              schedule: @schedule,
-              person: @person,
-              medications: @medications,
-              title: t('schedules.modal.edit_title', person: @person.name)
-            )
-          ), status: :unprocessable_content
-        end
+        format.html { render Components::Schedules::EditView.new(schedule: @schedule, person: @person, medications: @medications), status: :unprocessable_content }
+        format.turbo_stream { render turbo_stream: turbo_stream.replace('modal', Components::Schedules::Modal.new(schedule: @schedule, person: @person, medications: @medications, title: t('schedules.modal.edit_title', person: @person.name))), status: :unprocessable_content }
       end
     end
   end
@@ -231,35 +166,6 @@ class SchedulesController < ApplicationController
   end
 
   def schedule_params
-    params.expect(schedule: %i[medication_id dosage_id frequency
-                               start_date end_date notes max_daily_doses
-                               min_hours_between_doses dose_cycle])
-  end
-
-  def person_show_view(person)
-    schedules = person.schedules.includes(:medication, :dosage)
-    person_medications = person.person_medications.includes(:medication).ordered
-    today_start = Time.current.beginning_of_day
-
-    takes_by_schedule = MedicationTake
-                        .where(schedule_id: schedules.map(&:id), taken_at: today_start..)
-                        .order(taken_at: :desc)
-                        .group_by(&:schedule_id)
-
-    takes_by_person_medication = MedicationTake
-                                 .where(person_medication_id: person_medications.map(&:id), taken_at: today_start..)
-                                 .order(taken_at: :desc)
-                                 .group_by(&:person_medication_id)
-
-    Components::People::ShowView.new(
-      person: person,
-      schedules: schedules,
-      person_medications: person_medications,
-      preloaded_takes: {
-        schedules: takes_by_schedule,
-        person_medications: takes_by_person_medication
-      },
-      current_user: current_user
-    )
+    params.expect(schedule: %i[medication_id dosage_id frequency start_date end_date notes max_daily_doses min_hours_between_doses dose_cycle])
   end
 end

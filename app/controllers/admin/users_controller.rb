@@ -11,12 +11,7 @@ module Admin
       users = apply_status_filter(users) if params[:status].present?
       users = apply_sorting(users)
       @pagy, users = pagy(:offset, users)
-      render Components::Admin::Users::IndexView.new(
-        users: users,
-        search_params: search_params,
-        current_user: current_user,
-        pagy: @pagy
-      )
+      render Components::Admin::Users::IndexView.new(users: users, search_params: search_params, current_user: current_user, pagy: @pagy)
     end
 
     def new
@@ -221,13 +216,7 @@ module Admin
     end
 
     def user_params
-      params.expect(
-        user: [:email_address,
-               :password,
-               :password_confirmation,
-               :role,
-               { person_attributes: [:id, :name, :date_of_birth, { location_ids: [] }] }]
-      )
+      params.expect(user: [:email_address, :password, :password_confirmation, :role, { person_attributes: [:id, :name, :date_of_birth, { location_ids: [] }] }])
     end
 
     def user_row_streams(user)

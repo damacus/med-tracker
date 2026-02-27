@@ -27,7 +27,8 @@ RSpec.describe 'People show card actions with turbo_stream' do
       person = people(:child_user_person)
       person_medication = PersonMedication.create!(person: person, medication: medications(:vitamin_d))
 
-      delete person_person_medication_path(person, person_medication), headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+      delete person_person_medication_path(person, person_medication),
+             headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
 
       expect(response).to have_http_status(:ok)
       expect(response.media_type).to eq('text/vnd.turbo-stream.html')
