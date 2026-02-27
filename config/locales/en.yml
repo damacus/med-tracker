@@ -235,6 +235,13 @@ en:
         card_description: "This action cannot be undone. You will not be able to sign in with this passkey anymore."
         password_label: "Password"
         password_placeholder: "Enter your password"
+      change_login:
+        new_login_label: "New Login"
+        password_label: "Password"
+      change_password:
+        password_label: "Password"
+        new_password_label: "New Password"
+        confirm_password_label: "Confirm New Password"
 
   locations:
     created: "Location was successfully created."

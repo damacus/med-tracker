@@ -256,7 +256,7 @@ module Components
       def render_edit_button
         a(
           href: edit_person_person_medication_path(person, person_medication),
-          data: { turbo_stream: true, testid: "edit-person-medication-#{person_medication.id}" },
+          data: { turbo_frame: 'modal', testid: "edit-person-medication-#{person_medication.id}" },
           class: 'inline-flex items-center justify-center w-10 h-10 rounded-xl text-slate-400 ' \
                  'hover:text-slate-700 hover:bg-slate-100 transition-colors'
         ) do

@@ -19,8 +19,7 @@ module Components
 
       def view_template
         turbo_frame_tag 'modal' do
-          div(class: 'container mx-auto px-4 py-8 max-w-2xl') do
-            render_header
+          render ::Components::Modal.new(title: title, subtitle: subtitle) do
             render_form
           end
         end
@@ -37,14 +36,11 @@ module Components
       end
 
       def render_header
-        div(class: 'mb-8') do
-          Text(size: '2', weight: 'medium', class: 'uppercase tracking-wide text-slate-500 mb-2') { subtitle }
-          Heading(level: 1) { title }
-        end
+        # Header is rendered by Modal component
       end
 
       def render_form
-        form_with(model: person, id: 'person_form', class: 'space-y-6', data: { turbo_frame: '_top' }) do |f|
+        form_with(model: person, id: 'person_form', class: 'space-y-6') do |f|
           render_errors if person.errors.any?
           input(type: 'hidden', name: 'return_to', value: return_to) if return_to.present?
           render_form_fields(f)
@@ -185,7 +181,7 @@ module Components
 
       def render_actions(_f)
         div(class: 'flex gap-3 justify-end pt-4') do
-          Link(href: return_to.presence || people_path, variant: :outline) { 'Cancel' }
+          Button(variant: :ghost, data: { action: 'click->modal#close' }) { 'Cancel' }
           Button(type: :submit, variant: :primary) do
             person.new_record? ? 'Create Person' : 'Update Person'
           end

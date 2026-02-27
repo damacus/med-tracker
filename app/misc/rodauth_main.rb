@@ -327,7 +327,8 @@ class RodauthMain < Rodauth::Rails::Auth
         phlex_class = "Views::Rodauth::#{page.to_s.tr('-', '_').camelize}".safe_constantize
         if phlex_class
           set_title(title)
-          rails_controller_instance.render_to_string(phlex_class.new, layout: true)
+          is_modal = rails_controller_instance.request.headers['Turbo-Frame'] == 'modal'
+          rails_controller_instance.render_to_string(phlex_class.new, layout: !is_modal)
         else
           super
         end

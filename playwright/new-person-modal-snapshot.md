@@ -1,0 +1,111 @@
+- generic [ref=e177]:
+  - complementary [ref=e178]:
+    - link "M MedTracker" [ref=e180] [cursor=pointer]:
+      - /url: /
+      - generic [ref=e181]: M
+      - generic [ref=e182]: MedTracker
+    - navigation [ref=e183]:
+      - link "Dashboard" [ref=e184] [cursor=pointer]:
+        - /url: /
+        - img [ref=e186]
+        - generic [ref=e189]: Dashboard
+      - link "Inventory" [ref=e190] [cursor=pointer]:
+        - /url: /medications
+        - img [ref=e192]
+        - generic [ref=e198]: Inventory
+      - link "Locations" [ref=e199] [cursor=pointer]:
+        - /url: /locations
+        - img [ref=e201]
+        - generic [ref=e204]: Locations
+      - link "Finder" [ref=e205] [cursor=pointer]:
+        - /url: /medication-finder
+        - img [ref=e207]
+        - generic [ref=e210]: Finder
+      - link "People" [ref=e211] [cursor=pointer]:
+        - /url: /people
+        - img [ref=e213]
+        - generic [ref=e218]: People
+      - link "Reports" [ref=e219] [cursor=pointer]:
+        - /url: /reports
+        - img [ref=e221]
+        - generic [ref=e223]: Reports
+    - generic [ref=e224]:
+      - link "JD Jane Doe Parent" [ref=e225] [cursor=pointer]:
+        - /url: /profile
+        - generic [ref=e226]: JD
+        - generic [ref=e227]:
+          - paragraph [ref=e228]: Jane Doe
+          - paragraph [ref=e229]: Parent
+      - button "Sign Out" [ref=e231]:
+        - img [ref=e233]
+        - generic [ref=e236]: Sign Out
+  - main [ref=e237]:
+    - generic [ref=e239]:
+      - generic [ref=e240]:
+        - heading "People" [level=1] [ref=e241]
+        - link "New Person" [active] [ref=e242] [cursor=pointer]:
+          - /url: /people/new
+      - generic [ref=e283]:
+        - generic [ref=e284]:
+          - paragraph [ref=e285]: Add a new person to track medications for
+          - heading "New Person" [level=1] [ref=e286]
+        - generic [ref=e287]:
+          - generic [ref=e288]:
+            - generic [ref=e289]:
+              - text: Name
+              - textbox "Name" [ref=e290]
+            - generic [ref=e291]:
+              - text: Email
+              - textbox "Email" [ref=e292]
+            - generic [ref=e293]:
+              - text: Date of Birth
+              - textbox "Date of Birth" [ref=e294]
+            - generic [ref=e295]:
+              - text: Person Type
+              - combobox [ref=e297]:
+                - generic: Minor
+                - img [ref=e298]
+            - generic [ref=e302]:
+              - checkbox "Has capacity to manage own medication" [checked] [ref=e303]
+              - generic [ref=e304]: Has capacity to manage own medication
+          - generic [ref=e305]:
+            - link "Cancel" [ref=e306] [cursor=pointer]:
+              - /url: /people
+            - button "Create Person" [ref=e307]
+      - generic [ref=e243]:
+        - generic [ref=e244]:
+          - generic [ref=e245]:
+            - img [ref=e247]
+            - heading "Jane Doe" [level=2] [ref=e251]:
+              - link "Jane Doe" [ref=e252] [cursor=pointer]:
+                - /url: /people/980204181
+          - generic [ref=e254]:
+            - paragraph [ref=e255]:
+              - strong [ref=e256]: "Born:"
+              - text: January 02, 1980
+            - paragraph [ref=e257]:
+              - strong [ref=e258]: "Age:"
+              - text: "46"
+            - paragraph [ref=e259]:
+              - strong [ref=e260]: "Schedules:"
+              - text: 1 active schedule
+          - link "View Schedules" [ref=e262] [cursor=pointer]:
+            - /url: /people/980204181
+        - generic [ref=e263]:
+          - generic [ref=e264]:
+            - img [ref=e266]
+            - heading "Child Patient" [level=2] [ref=e270]:
+              - link "Child Patient" [ref=e271] [cursor=pointer]:
+                - /url: /people/946774001
+          - generic [ref=e273]:
+            - paragraph [ref=e274]:
+              - strong [ref=e275]: "Born:"
+              - text: February 26, 2021
+            - paragraph [ref=e276]:
+              - strong [ref=e277]: "Age:"
+              - text: "5"
+            - paragraph [ref=e278]:
+              - strong [ref=e279]: "Schedules:"
+              - text: 1 active schedule
+          - link "View Schedules" [ref=e281] [cursor=pointer]:
+            - /url: /people/946774001

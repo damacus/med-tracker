@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_25_144033) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_25_230121) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -149,10 +149,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_25_144033) do
     t.datetime "created_at", null: false
     t.string "description"
     t.string "frequency"
-    t.bigint "medicine_id", null: false
+    t.bigint "medication_id", null: false
     t.string "unit"
     t.datetime "updated_at", null: false
-    t.index ["medicine_id"], name: "index_dosages_on_medicine_id"
+    t.index ["medication_id"], name: "index_dosages_on_medication_id"
   end
 
   create_table "invitations", force: :cascade do |t|
@@ -187,16 +187,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_25_144033) do
   create_table "medication_takes", force: :cascade do |t|
     t.decimal "amount_ml"
     t.datetime "created_at", null: false
-    t.bigint "person_medicine_id"
-    t.bigint "prescription_id"
+    t.bigint "person_medication_id"
+    t.bigint "schedule_id"
     t.datetime "taken_at"
     t.datetime "updated_at", null: false
-    t.index ["person_medicine_id"], name: "index_medication_takes_on_person_medicine_id"
-    t.index ["prescription_id"], name: "index_medication_takes_on_prescription_id"
+    t.index ["person_medication_id"], name: "index_medication_takes_on_person_medication_id"
+    t.index ["schedule_id"], name: "index_medication_takes_on_schedule_id"
     t.index ["taken_at"], name: "index_medication_takes_on_taken_at"
   end
 
-  create_table "medicines", force: :cascade do |t|
+  create_table "medications", force: :cascade do |t|
     t.string "category"
     t.datetime "created_at", null: false
     t.integer "current_supply"
@@ -213,7 +213,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_25_144033) do
     t.integer "supply_at_last_restock"
     t.datetime "updated_at", null: false
     t.text "warnings"
-    t.index ["location_id"], name: "index_medicines_on_location_id"
+    t.index ["location_id"], name: "index_medications_on_location_id"
   end
 
   create_table "people", force: :cascade do |t|
@@ -230,22 +230,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_25_144033) do
     t.index ["person_type"], name: "index_people_on_person_type"
   end
 
-  create_table "person_medicines", force: :cascade do |t|
+  create_table "person_medications", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.integer "max_daily_doses"
-    t.bigint "medicine_id", null: false
+    t.bigint "medication_id", null: false
     t.integer "min_hours_between_doses"
     t.text "notes"
     t.bigint "person_id", null: false
     t.integer "position", null: false
     t.datetime "updated_at", null: false
-    t.index ["medicine_id"], name: "index_person_medicines_on_medicine_id"
-    t.index ["person_id", "medicine_id"], name: "index_person_medicines_on_person_id_and_medicine_id", unique: true
-    t.index ["person_id", "position"], name: "index_person_medicines_on_person_id_and_position"
-    t.index ["person_id"], name: "index_person_medicines_on_person_id"
+    t.index ["medication_id"], name: "index_person_medications_on_medication_id"
+    t.index ["person_id", "medication_id"], name: "index_person_medications_on_person_id_and_medication_id", unique: true
+    t.index ["person_id", "position"], name: "index_person_medications_on_person_id_and_position"
+    t.index ["person_id"], name: "index_person_medications_on_person_id"
   end
 
-  create_table "prescriptions", force: :cascade do |t|
+  create_table "schedules", force: :cascade do |t|
     t.boolean "active", default: true, null: false
     t.datetime "created_at", null: false
     t.bigint "dosage_id", null: false
@@ -253,16 +253,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_25_144033) do
     t.date "end_date"
     t.string "frequency"
     t.integer "max_daily_doses", default: 4
-    t.bigint "medicine_id", null: false
+    t.bigint "medication_id", null: false
     t.integer "min_hours_between_doses"
     t.text "notes"
     t.bigint "person_id", null: false
     t.date "start_date"
     t.datetime "updated_at", null: false
-    t.index ["active"], name: "index_prescriptions_on_active"
-    t.index ["dosage_id"], name: "index_prescriptions_on_dosage_id"
-    t.index ["medicine_id"], name: "index_prescriptions_on_medicine_id"
-    t.index ["person_id"], name: "index_prescriptions_on_person_id"
+    t.index ["active"], name: "index_schedules_on_active"
+    t.index ["dosage_id"], name: "index_schedules_on_dosage_id"
+    t.index ["medication_id"], name: "index_schedules_on_medication_id"
+    t.index ["person_id"], name: "index_schedules_on_person_id"
   end
 
   create_table "users", force: :cascade do |t|
@@ -305,17 +305,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_25_144033) do
   add_foreign_key "account_webauthn_user_ids", "accounts", on_delete: :cascade
   add_foreign_key "carer_relationships", "people", column: "carer_id", deferrable: :deferred
   add_foreign_key "carer_relationships", "people", column: "patient_id", deferrable: :deferred
-  add_foreign_key "dosages", "medicines", deferrable: :deferred
+  add_foreign_key "dosages", "medications", deferrable: :deferred
   add_foreign_key "location_memberships", "locations", deferrable: :deferred
   add_foreign_key "location_memberships", "people", deferrable: :deferred
-  add_foreign_key "medication_takes", "person_medicines", deferrable: :deferred
-  add_foreign_key "medication_takes", "prescriptions", deferrable: :deferred
-  add_foreign_key "medicines", "locations", deferrable: :deferred
+  add_foreign_key "medication_takes", "person_medications", deferrable: :deferred
+  add_foreign_key "medication_takes", "schedules", deferrable: :deferred
+  add_foreign_key "medications", "locations", deferrable: :deferred
   add_foreign_key "people", "accounts", deferrable: :deferred
-  add_foreign_key "person_medicines", "medicines", deferrable: :deferred
-  add_foreign_key "person_medicines", "people", deferrable: :deferred
-  add_foreign_key "prescriptions", "dosages", deferrable: :deferred
-  add_foreign_key "prescriptions", "medicines", deferrable: :deferred
-  add_foreign_key "prescriptions", "people", deferrable: :deferred
+  add_foreign_key "person_medications", "medications", deferrable: :deferred
+  add_foreign_key "person_medications", "people", deferrable: :deferred
+  add_foreign_key "schedules", "dosages", deferrable: :deferred
+  add_foreign_key "schedules", "medications", deferrable: :deferred
+  add_foreign_key "schedules", "people", deferrable: :deferred
   add_foreign_key "users", "people", deferrable: :deferred
 end

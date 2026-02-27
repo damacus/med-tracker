@@ -41,6 +41,8 @@ RSpec.describe 'Admin invites users' do
 
     click_button 'Send invitation'
 
+    expect(page).to have_content('Invitation sent')
+
     email = ActionMailer::Base.deliveries.last
     expect(email).to be_present
 

@@ -784,11 +784,9 @@ task rubocop
 
 Expected: no offenses.
 
-**Step 3: Sync beads and push**
+**Step 3: Push changes**
 
 ```bash
-bd close med-tracker-zlx --reason="edit/update actions implemented with full test coverage"
-bd sync --from-main
 git pull --rebase
 git push
 ```

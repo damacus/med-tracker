@@ -13,11 +13,28 @@ module Admin
 
       @invitation = Invitation.new(invitation_params)
 
-      if @invitation.save
-        InvitationMailer.with(invitation: @invitation).invite.deliver_later
-        redirect_to admin_invitations_path, notice: 'Invitation sent'
-      else
-        render Components::Admin::Invitations::IndexView.new(invitation: @invitation), status: :unprocessable_content
+      respond_to do |format|
+        if @invitation.save
+          InvitationMailer.with(invitation: @invitation).invite.deliver_later
+          format.html { redirect_to admin_invitations_path, notice: 'Invitation sent' }
+          format.turbo_stream do
+            flash.now[:notice] = 'Invitation sent'
+            render turbo_stream: [
+              turbo_stream.replace('admin_invitations', Components::Admin::Invitations::IndexView.new),
+              turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
+            ]
+          end
+        else
+          format.html do
+            render Components::Admin::Invitations::IndexView.new(invitation: @invitation), status: :unprocessable_content
+          end
+          format.turbo_stream do
+            render turbo_stream: turbo_stream.replace(
+              'admin_invitations',
+              Components::Admin::Invitations::IndexView.new(invitation: @invitation)
+            ), status: :unprocessable_content
+          end
+        end
       end
     end
 

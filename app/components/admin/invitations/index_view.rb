@@ -12,7 +12,7 @@ module Components
         end
 
         def view_template
-          div(class: 'container mx-auto px-4 py-8 max-w-2xl space-y-8') do
+          div(id: 'admin_invitations', class: 'container mx-auto px-4 py-8 max-w-2xl space-y-8') do
             render_header
             render_errors if @invitation.errors.any?
 
@@ -44,7 +44,7 @@ module Components
         end
 
         def render_form
-          form_with(url: admin_invitations_path, method: :post, class: 'space-y-6', data: { turbo: false }) do
+          form_with(url: admin_invitations_path, method: :post, class: 'space-y-6') do
             render_email_field
             render_role_field
             render_actions

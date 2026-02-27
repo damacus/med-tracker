@@ -19,17 +19,10 @@ module Components
       end
 
       def view_template
-        turbo_frame_tag 'person_medication_modal' do
-          Dialog(open: true) do
-            DialogContent(size: :lg) do
-              DialogHeader do
-                DialogTitle { title }
-                DialogDescription { 'Add a vitamin, supplement, or over-the-counter medication' }
-              end
-              DialogMiddle do
-                render_form
-              end
-            end
+        turbo_frame_tag 'modal' do
+          render ::Components::Modal.new(title: title,
+                                         subtitle: 'Add a vitamin, supplement, or over-the-counter medication') do
+            render_form
           end
         end
       end
@@ -62,11 +55,7 @@ module Components
 
       def render_actions
         div(class: 'flex justify-end gap-3 pt-4') do
-          Link(
-            href: person_path(person),
-            variant: :outline,
-            data: { turbo_frame: 'person_medication_modal' }
-          ) { 'Cancel' }
+          Button(variant: :ghost, data: { action: 'click->modal#close' }) { 'Cancel' }
           Button(type: :submit, variant: :primary) do
             editing ? 'Save Changes' : 'Add Medication'
           end

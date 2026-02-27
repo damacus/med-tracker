@@ -12,7 +12,7 @@ module Components
       end
 
       def view_template
-        div(class: 'container mx-auto px-4 py-12 max-w-6xl space-y-12') do
+        div(id: "medication_show_#{medication.id}", class: 'container mx-auto px-4 py-12 max-w-6xl space-y-12') do
           render_notice if notice.present?
           render_header
 

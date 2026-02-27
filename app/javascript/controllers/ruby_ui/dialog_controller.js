@@ -11,22 +11,51 @@ export default class extends Controller {
   }
 
   connect() {
+    this.portalElement = null
+
     if (this.openValue) {
       this.open()
     }
   }
 
+  disconnect() {
+    if (this.portalElement?.isConnected) {
+      this.portalElement.remove()
+      this.portalElement = null
+    }
+
+    this.updateBodyScrollLock()
+  }
+
   open(e) {
-    e?.preventDefault();
-    document.body.insertAdjacentHTML('beforeend', this.contentTarget.innerHTML)
-    // prevent scroll on body
-    document.body.classList.add('overflow-hidden')
+    e?.preventDefault()
+
+    if (this.portalElement?.isConnected) return
+
+    const fragment = this.contentTarget.content.cloneNode(true)
+    this.portalElement = fragment.firstElementChild
+    document.body.appendChild(fragment)
+    this.updateBodyScrollLock()
   }
 
   dismiss() {
-    // allow scroll on body
-    document.body.classList.remove('overflow-hidden')
-    // remove the element
-    this.element.remove()
+    if (this.portalElement?.isConnected) {
+      this.portalElement.remove()
+      this.portalElement = null
+    } else {
+      this.element.remove()
+    }
+
+    this.updateBodyScrollLock()
+  }
+
+  updateBodyScrollLock() {
+    const hasOpenDialog = document.body.querySelector(':scope > div[data-controller~="ruby-ui--dialog"]')
+
+    if (hasOpenDialog) {
+      document.body.classList.add('overflow-hidden')
+    } else {
+      document.body.classList.remove('overflow-hidden')
+    }
   }
 }

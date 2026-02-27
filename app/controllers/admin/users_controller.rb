@@ -11,12 +11,7 @@ module Admin
       users = apply_status_filter(users) if params[:status].present?
       users = apply_sorting(users)
       @pagy, users = pagy(:offset, users)
-      render Components::Admin::Users::IndexView.new(
-        users: users,
-        search_params: search_params,
-        current_user: current_user,
-        pagy: @pagy
-      )
+      render Components::Admin::Users::IndexView.new(users: users, search_params: search_params, current_user: current_user, pagy: @pagy)
     end
 
     def new
@@ -36,23 +31,43 @@ module Admin
       @user = User.new(user_params)
       authorize @user
 
-      return render_user_form_with_errors if account_already_exists?
+      if account_already_exists?
+        respond_to do |format|
+          format.html { render_user_form_with_errors }
+          format.turbo_stream { render_user_form_with_errors }
+        end
+        return
+      end
 
       create_user_with_account!
-      redirect_to admin_users_path, notice: t('users.created')
+      respond_to do |format|
+        format.html { redirect_to admin_users_path, notice: t('users.created') }
+        format.turbo_stream { redirect_to admin_users_path, notice: t('users.created') }
+      end
     rescue ActiveRecord::RecordInvalid => e
       handle_record_invalid_error(e)
-      render_user_form_with_errors
+      respond_to do |format|
+        format.html { render_user_form_with_errors }
+        format.turbo_stream { render_user_form_with_errors }
+      end
     end
 
     def update
       @user = User.find(params[:id])
       authorize @user
 
-      if @user.update(user_params)
-        redirect_to admin_users_path, notice: t('users.updated')
-      else
-        render Components::Admin::Users::FormView.new(user: @user), status: :unprocessable_content
+      respond_to do |format|
+        if @user.update(user_params)
+          format.html { redirect_to admin_users_path, notice: t('users.updated') }
+          format.turbo_stream { redirect_to admin_users_path, notice: t('users.updated') }
+        else
+          format.html do
+            render Components::Admin::Users::FormView.new(user: @user), status: :unprocessable_content
+          end
+          format.turbo_stream do
+            render Components::Admin::Users::FormView.new(user: @user), status: :unprocessable_content
+          end
+        end
       end
     end
 
@@ -60,11 +75,22 @@ module Admin
       @user = User.find(params[:id])
       authorize @user
 
-      if @user == current_user
-        redirect_to admin_users_path, alert: t('users.cannot_deactivate_self')
-      else
-        @user.deactivate!
-        redirect_to admin_users_path, notice: t('users.deactivated')
+      respond_to do |format|
+        if @user == current_user
+          format.html { redirect_to admin_users_path, alert: t('users.cannot_deactivate_self') }
+          format.turbo_stream do
+            flash.now[:alert] = t('users.cannot_deactivate_self')
+            render turbo_stream: turbo_stream.update('flash', Components::Layouts::Flash.new(alert: flash[:alert])),
+                   status: :unprocessable_content
+          end
+        else
+          @user.deactivate!
+          format.html { redirect_to admin_users_path, notice: t('users.deactivated') }
+          format.turbo_stream do
+            flash.now[:notice] = t('users.deactivated')
+            render turbo_stream: user_row_streams(@user)
+          end
+        end
       end
     end
 
@@ -73,7 +99,13 @@ module Admin
       authorize @user
 
       @user.activate!
-      redirect_to admin_users_path, notice: t('users.activated')
+      respond_to do |format|
+        format.html { redirect_to admin_users_path, notice: t('users.activated') }
+        format.turbo_stream do
+          flash.now[:notice] = t('users.activated')
+          render turbo_stream: user_row_streams(@user)
+        end
+      end
     end
 
     def verify
@@ -81,14 +113,30 @@ module Admin
       authorize @user
 
       account = @user.person&.account
-      return redirect_to admin_users_path, alert: t('admin.users.missing_account') unless account
+      unless account
+        respond_to do |format|
+          format.html { redirect_to admin_users_path, alert: t('admin.users.missing_account') }
+          format.turbo_stream do
+            flash.now[:alert] = t('admin.users.missing_account')
+            render turbo_stream: turbo_stream.update('flash', Components::Layouts::Flash.new(alert: flash[:alert])),
+                   status: :unprocessable_content
+          end
+        end
+        return
+      end
 
       ActiveRecord::Base.transaction do
         account.update!(status: :verified)
         AccountVerificationKey.where(account_id: account.id).delete_all
       end
 
-      redirect_to admin_users_path, notice: t('users.verified')
+      respond_to do |format|
+        format.html { redirect_to admin_users_path, notice: t('users.verified') }
+        format.turbo_stream do
+          flash.now[:notice] = t('users.verified')
+          render turbo_stream: user_row_streams(@user)
+        end
+      end
     end
 
     private
@@ -168,13 +216,14 @@ module Admin
     end
 
     def user_params
-      params.expect(
-        user: [:email_address,
-               :password,
-               :password_confirmation,
-               :role,
-               { person_attributes: [:id, :name, :date_of_birth, { location_ids: [] }] }]
-      )
+      params.expect(user: [:email_address, :password, :password_confirmation, :role, { person_attributes: [:id, :name, :date_of_birth, { location_ids: [] }] }])
+    end
+
+    def user_row_streams(user)
+      [
+        turbo_stream.replace("user_#{user.id}", Components::Admin::Users::UserRow.new(user: user.reload, current_user: current_user)),
+        turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
+      ]
     end
   end
 end

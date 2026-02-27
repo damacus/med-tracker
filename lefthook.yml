@@ -36,9 +36,6 @@ pre-push:
           echo "Please start Docker daemon to run full test suite"
         fi
 
-    - name: bd hooks
-      run: bd hooks run pre-push
-
 pre-commit:
   parallel: true
   jobs:
@@ -48,5 +45,3 @@ pre-commit:
         - config/application.rb
         - config/routes.rb
       run: bundle exec rubocop --force-exclusion {all_files}
-    - name: bd hooks
-      run: bd hooks run pre-commit

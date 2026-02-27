@@ -16,7 +16,6 @@ module Components
       def view_template
         div(class: 'container mx-auto px-4 py-8', data: { testid: 'people-list' }) do
           render_header
-          render_modal_frame
           render_people_grid
         end
       end
@@ -30,10 +29,6 @@ module Components
             Link(href: new_person_path, variant: :primary, data: { turbo_frame: 'modal' }) { 'New Person' }
           end
         end
-      end
-
-      def render_modal_frame
-        turbo_frame_tag 'modal'
       end
 
       def render_people_grid

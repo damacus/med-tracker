@@ -38,5 +38,27 @@ RSpec.describe 'Medications refill' do
 
       expect(response).to have_http_status(:unprocessable_content)
     end
+
+    it 'returns turbo_stream and updates show container and flash on success' do
+      patch refill_medication_path(medication),
+            params: { refill: { quantity: 10, restock_date: Date.current.to_s } },
+            headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.media_type).to eq('text/vnd.turbo-stream.html')
+      expect(response.body).to include("target=\"medication_show_#{medication.id}\"")
+      expect(response.body).to include('target="flash"')
+    end
+
+    it 'returns turbo_stream and unprocessable content on invalid quantity' do
+      patch refill_medication_path(medication),
+            params: { refill: { quantity: 0, restock_date: Date.current.to_s } },
+            headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.media_type).to eq('text/vnd.turbo-stream.html')
+      expect(response.body).to include("target=\"medication_show_#{medication.id}\"")
+      expect(response.body).to include('target="flash"')
+    end
   end
 end

@@ -238,13 +238,13 @@ RSpec.describe 'Schedule Card', type: :system do
         end
       end
 
-      it 'navigates to edit page when clicked' do
+      it 'opens edit modal when clicked' do
         within("#schedule_#{schedule.id}") do
           find("a[href='#{edit_person_schedule_path(person, schedule)}']").click
         end
 
-        expect(page).to have_current_path(edit_person_schedule_path(person, schedule))
         expect(page).to have_content(/edit schedule/i)
+        expect(page).to have_css('dialog[open]')
       end
     end
 

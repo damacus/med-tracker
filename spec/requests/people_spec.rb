@@ -107,4 +107,75 @@ RSpec.describe 'People' do
       end
     end
   end
+
+  describe 'POST /people with turbo_stream format' do
+    before { sign_in(users(:jane)) }
+
+    it 'returns turbo_stream and updates modal, people list, and flash on success' do
+      post people_path,
+           params: {
+             person: {
+               name: 'Turbo Child',
+               date_of_birth: 6.years.ago.to_date,
+               person_type: 'minor'
+             }
+           },
+           headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.media_type).to eq('text/vnd.turbo-stream.html')
+      expect(response.body).to include('target="modal"')
+      expect(response.body).to include('target="people"')
+      expect(response.body).to include('target="flash"')
+    end
+
+    it 'returns unprocessable content and re-renders modal on failure' do
+      post people_path,
+           params: {
+             person: {
+               name: '',
+               date_of_birth: '',
+               person_type: 'minor'
+             }
+           },
+           headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.media_type).to eq('text/vnd.turbo-stream.html')
+      expect(response.body).to include('target="modal"')
+      expect(response.body).to include('person_form')
+    end
+  end
+
+  describe 'PATCH /people/:id with turbo_stream format' do
+    before { sign_in(users(:admin)) }
+
+    it 'returns turbo_stream and updates card, show container, and flash on success' do
+      person = people(:john)
+
+      patch person_path(person),
+            params: { person: { name: 'Turbo Updated Name' } },
+            headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.media_type).to eq('text/vnd.turbo-stream.html')
+      expect(response.body).to include("target=\"person_#{person.id}\"")
+      expect(response.body).to include("target=\"person_show_#{person.id}\"")
+      expect(response.body).to include('target="flash"')
+      expect(person.reload.name).to eq('Turbo Updated Name')
+    end
+
+    it 'returns unprocessable content and re-renders modal on failure' do
+      person = people(:john)
+
+      patch person_path(person),
+            params: { person: { name: '', date_of_birth: '' } },
+            headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.media_type).to eq('text/vnd.turbo-stream.html')
+      expect(response.body).to include('target="modal"')
+      expect(response.body).to include('person_form')
+    end
+  end
 end

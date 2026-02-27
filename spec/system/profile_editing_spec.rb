@@ -26,11 +26,11 @@ RSpec.describe 'Profile Editing' do
       expect(page).to have_content(account.email)
     end
 
-    it 'shows account security section with change buttons' do
+    it 'shows account security section with change links' do
       expect(page).to have_content('Account Security')
       expect(page).to have_content('Change Email Address')
       expect(page).to have_content('Change Password')
-      expect(page).to have_button('Change', count: 2)
+      expect(page).to have_link('Change', count: 2)
     end
 
     it 'shows danger zone with close account button' do
@@ -39,10 +39,9 @@ RSpec.describe 'Profile Editing' do
       expect(page).to have_button('Close Account')
     end
 
-    it 'has Stimulus controller attributes on sheet elements' do
-      # Check if Sheet components exist for email/password changes
-      expect(page).to have_css('[data-controller="ruby-ui--sheet"]', minimum: 2)
-      expect(page).to have_css('[data-action*="ruby-ui--sheet#open"]', minimum: 2)
+    it 'has modal frames for account actions' do
+      # Check if links target the modal frame
+      expect(page).to have_css("a[data-turbo-frame='modal']", count: 2)
     end
 
     it 'has AlertDialog for close account' do
@@ -52,39 +51,32 @@ RSpec.describe 'Profile Editing' do
   end
 
   describe 'changing email', :js do
-    it 'opens sheet modal when clicking change' do
-      first('button', text: 'Change').click
+    it 'opens modal when clicking change' do
+      first('a', text: 'Change').click
 
-      # Wait for Stimulus to insert sheet content into DOM
-      expect(page).to have_field('your.email@example.com', with: account.email)
+      expect(page).to have_css('dialog[open]')
+      expect(page).to have_content('Change Login')
     end
 
-    it 'updates email when saving' do
-      expect(page).to have_css('[data-ruby-ui--sheet-target="content"]', visible: :hidden, wait: 5)
+    it 'submits email change request when saving' do
+      first('a', text: 'Change').click
 
-      first('button', text: 'Change').click
+      expect(page).to have_css('dialog[open]')
 
-      expect(page).to have_field('your.email@example.com', with: account.email, wait: 10)
+      fill_in 'New Login', with: 'newemail@example.com'
+      fill_in 'Password', with: 'password'
+      click_button 'Change Login'
 
-      fill_in 'your.email@example.com', with: 'newemail@example.com'
-      find('input[name="account[email]"]').send_keys(:enter)
-
-      expect(page).to have_content('Email updated successfully')
-      expect(account.reload.email).to eq('newemail@example.com')
+      expect(page).to have_content('An email has been sent to you with a link to verify your login change')
     end
   end
 
   describe 'changing password', :js do
-    it 'opens sheet modal when clicking change' do
-      expect(page).to have_css('[data-ruby-ui--sheet-target="content"]', visible: :hidden, wait: 5)
+    it 'opens modal when clicking change' do
+      all('a', text: 'Change')[1].click
 
-      # Click the second Change button (for password)
-      all('button', text: 'Change')[1].click
-
-      # Wait for sheet content to appear
-      expect(page).to have_field('Enter current password', wait: 10)
-      expect(page).to have_field('Enter new password')
-      expect(page).to have_field('Confirm new password')
+      expect(page).to have_css('dialog[open]')
+      expect(page).to have_content('Change Password')
     end
   end
 

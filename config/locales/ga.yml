@@ -276,6 +276,13 @@ ga:
         card_description: "Ní féidir an gníomh seo a chealú. Ní bheidh tú in ann síniú isteach leis an passkey seo a thuilleadh."
         password_label: "Focal faire"
         password_placeholder: "Cuir do fhocal faire isteach"
+      change_login:
+        new_login_label: "Logáil Isteach Nua"
+        password_label: "Focal faire"
+      change_password:
+        password_label: "Focal faire"
+        new_password_label: "Focal Faire Nua"
+        confirm_password_label: "Deimhnigh Focal Faire Nua"
 
   locations:
     created: "Cruthaíodh an suíomh go rathúil."

@@ -2,6 +2,7 @@
 
 class SchedulesController < ApplicationController
   include TimelineRefreshable
+  include PersonViewable
 
   before_action :set_person
   before_action :set_schedule, only: %i[edit update destroy take_medication]
@@ -11,24 +12,18 @@ class SchedulesController < ApplicationController
     authorize @schedule
     @medications = policy_scope(Medication)
 
+    is_modal = request.headers['Turbo-Frame'] == 'modal'
+
     respond_to do |format|
       format.html do
-        render Components::Schedules::NewView.new(
-          schedule: @schedule,
-          person: @person,
-          medications: @medications
-        )
+        if is_modal
+          render Components::Schedules::Modal.new(schedule: @schedule, person: @person, medications: @medications, title: t('schedules.modal.new_title', person: @person.name)), layout: false
+        else
+          render Components::Schedules::NewView.new(schedule: @schedule, person: @person, medications: @medications)
+        end
       end
       format.turbo_stream do
-        render turbo_stream: turbo_stream.replace(
-          'schedule_modal',
-          Components::Schedules::Modal.new(
-            schedule: @schedule,
-            person: @person,
-            medications: @medications,
-            title: t('schedules.modal.new_title', person: @person.name)
-          )
-        )
+        render turbo_stream: turbo_stream.replace('modal', Components::Schedules::Modal.new(schedule: @schedule, person: @person, medications: @medications, title: t('schedules.modal.new_title', person: @person.name)))
       end
     end
   end
@@ -37,24 +32,18 @@ class SchedulesController < ApplicationController
     authorize @schedule
     @medications = policy_scope(Medication)
 
+    is_modal = request.headers['Turbo-Frame'] == 'modal'
+
     respond_to do |format|
       format.html do
-        render Components::Schedules::EditView.new(
-          schedule: @schedule,
-          person: @person,
-          medications: @medications
-        )
+        if is_modal
+          render Components::Schedules::Modal.new(schedule: @schedule, person: @person, medications: @medications, title: t('schedules.modal.edit_title', person: @person.name)), layout: false
+        else
+          render Components::Schedules::EditView.new(schedule: @schedule, person: @person, medications: @medications)
+        end
       end
       format.turbo_stream do
-        render turbo_stream: turbo_stream.replace(
-          'schedule_modal',
-          Components::Schedules::Modal.new(
-            schedule: @schedule,
-            person: @person,
-            medications: @medications,
-            title: t('schedules.modal.edit_title', person: @person.name)
-          )
-        )
+        render turbo_stream: turbo_stream.replace('modal', Components::Schedules::Modal.new(schedule: @schedule, person: @person, medications: @medications, title: t('schedules.modal.edit_title', person: @person.name)))
       end
     end
   end
@@ -70,32 +59,17 @@ class SchedulesController < ApplicationController
         format.turbo_stream do
           flash.now[:notice] = t('schedules.created')
           render turbo_stream: [
-            turbo_stream.remove('schedule_modal'),
+            turbo_stream.update('modal', ''),
             turbo_stream.replace("person_#{@person.id}", Components::People::PersonCard.new(person: @person.reload)),
+            turbo_stream.replace("person_show_#{@person.id}", person_show_view(@person.reload)),
             turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
           ]
         end
       end
     else
       respond_to do |format|
-        format.html do
-          render Components::Schedules::NewView.new(
-            schedule: @schedule,
-            person: @person,
-            medications: @medications
-          ), status: :unprocessable_content
-        end
-        format.turbo_stream do
-          render turbo_stream: turbo_stream.update(
-            'schedule_modal',
-            Components::Schedules::Modal.new(
-              schedule: @schedule,
-              person: @person,
-              medications: @medications,
-              title: t('schedules.modal.new_title', person: @person.name)
-            )
-          ), status: :unprocessable_content
-        end
+        format.html { render Components::Schedules::NewView.new(schedule: @schedule, person: @person, medications: @medications), status: :unprocessable_content }
+        format.turbo_stream { render turbo_stream: turbo_stream.replace('modal', Components::Schedules::Modal.new(schedule: @schedule, person: @person, medications: @medications, title: t('schedules.modal.new_title', person: @person.name))), status: :unprocessable_content }
       end
     end
   end
@@ -107,23 +81,9 @@ class SchedulesController < ApplicationController
         format.html { redirect_to person_path(@person), notice: t('schedules.updated') }
         format.turbo_stream do
           flash.now[:notice] = t('schedules.updated')
-          schedules = @person.reload.schedules.includes(:medication, :dosage)
-          today_start = Time.current.beginning_of_day
-          takes_by_schedule = MedicationTake
-                              .where(schedule_id: schedules.map(&:id), taken_at: today_start..)
-                              .order(taken_at: :desc)
-                              .group_by(&:schedule_id)
-          schedules_html = schedules.map do |schedule|
-            view_context.render(Components::Schedules::Card.new(
-                                  schedule: schedule,
-                                  person: @person,
-                                  todays_takes: takes_by_schedule[schedule.id],
-                                  current_user: current_user
-                                ))
-          end.join
           render turbo_stream: [
-            turbo_stream.update('schedule_modal', ''),
-            turbo_stream.update('schedules', schedules_html),
+            turbo_stream.update('modal', ''),
+            turbo_stream.replace("person_show_#{@person.id}", person_show_view(@person.reload)),
             turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
           ]
         end
@@ -131,24 +91,8 @@ class SchedulesController < ApplicationController
     else
       @medications = policy_scope(Medication)
       respond_to do |format|
-        format.html do
-          render Components::Schedules::EditView.new(
-            schedule: @schedule,
-            person: @person,
-            medications: @medications
-          ), status: :unprocessable_content
-        end
-        format.turbo_stream do
-          render turbo_stream: turbo_stream.update(
-            'schedule_modal',
-            Components::Schedules::Modal.new(
-              schedule: @schedule,
-              person: @person,
-              medications: @medications,
-              title: t('schedules.modal.edit_title', person: @person.name)
-            )
-          ), status: :unprocessable_content
-        end
+        format.html { render Components::Schedules::EditView.new(schedule: @schedule, person: @person, medications: @medications), status: :unprocessable_content }
+        format.turbo_stream { render turbo_stream: turbo_stream.replace('modal', Components::Schedules::Modal.new(schedule: @schedule, person: @person, medications: @medications, title: t('schedules.modal.edit_title', person: @person.name))), status: :unprocessable_content }
       end
     end
   end
@@ -156,7 +100,16 @@ class SchedulesController < ApplicationController
   def destroy
     authorize @schedule
     @schedule.destroy
-    redirect_back_or_to person_path(@person), notice: t('schedules.deleted')
+    respond_to do |format|
+      format.html { redirect_back_or_to person_path(@person), notice: t('schedules.deleted') }
+      format.turbo_stream do
+        flash.now[:notice] = t('schedules.deleted')
+        render turbo_stream: [
+          turbo_stream.replace("person_show_#{@person.id}", person_show_view(@person.reload)),
+          turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
+        ]
+      end
+    end
   end
 
   def take_medication
@@ -213,8 +166,6 @@ class SchedulesController < ApplicationController
   end
 
   def schedule_params
-    params.expect(schedule: %i[medication_id dosage_id frequency
-                               start_date end_date notes max_daily_doses
-                               min_hours_between_doses dose_cycle])
+    params.expect(schedule: %i[medication_id dosage_id frequency start_date end_date notes max_daily_doses min_hours_between_doses dose_cycle])
   end
 end

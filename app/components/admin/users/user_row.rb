@@ -17,7 +17,7 @@ module Components
 
         def view_template
           row_class = user.active? ? '' : 'opacity-60'
-          render RubyUI::TableRow.new(class: row_class, data: { user_id: user.id }) do
+          render RubyUI::TableRow.new(id: "user_#{user.id}", class: row_class, data: { user_id: user.id }) do
             render RubyUI::TableCell.new(class: 'font-medium') { user.name }
             render(RubyUI::TableCell.new { user.email_address })
             render RubyUI::TableCell.new(class: 'capitalize') { user.role }

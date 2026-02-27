@@ -28,18 +28,6 @@ Use `task` for everything. Never run `docker compose`, `bin/dev`, or `bundle exe
 | Stop everything | `task stop-all` |
 | List all tasks | `task -l` |
 
-## Issue tracking
-
-Use **Beads** (`bd`) for all tasks and issues. Never use TodoWrite or markdown task files.
-
-```
-bd ready               # find available work
-bd create --title="…"  # create issue before writing code
-bd update <id> --status=in_progress
-bd close <id>
-bd sync                # sync with remote (run at session end)
-```
-
 ## Screenshots for PRs
 
 ```bash
@@ -55,4 +43,4 @@ git pull --rebase
 git push
 ```
 
-Work is not done until `git push` succeeds. (`bd sync` runs automatically via git hooks.)
+Work is not done until `git push` succeeds.

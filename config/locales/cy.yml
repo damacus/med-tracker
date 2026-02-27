@@ -135,6 +135,13 @@ cy:
         card_description: "Ni ellir dadwneud y weithred hon. Ni fyddwch yn gallu mewngofnodi gyda'r passkey hwn mwyach."
         password_label: "Cyfrinair"
         password_placeholder: "Rhowch eich cyfrinair"
+      change_login:
+        new_login_label: "Mewngofnod Newydd"
+        password_label: "Cyfrinair"
+      change_password:
+        password_label: "Cyfrinair"
+        new_password_label: "Cyfrinair Newydd"
+        confirm_password_label: "Cadarnhau Cyfrinair Newydd"
 
   admin:
     carer_relationships:

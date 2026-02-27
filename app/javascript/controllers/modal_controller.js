@@ -34,6 +34,12 @@ export default class extends Controller {
     }, 200)
   }
 
+  closeOnBackdropClick(event) {
+    if (event.target === this.element) {
+      this.close()
+    }
+  }
+
   handleKeyUp(event) {
     if (event.key === "Escape") {
       this.close()

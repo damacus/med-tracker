@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class MedicationsController < ApplicationController
-  before_action :set_medication, only: %i[show edit update destroy refill]
+  before_action :set_medication, only: %i[show edit update destroy refill mark_as_ordered mark_as_received]
 
   def index
     medications = policy_scope(Medication)
@@ -74,17 +74,27 @@ class MedicationsController < ApplicationController
   end
 
   def mark_as_ordered
-    @medication = Medication.find(params[:id])
     authorize @medication
     @medication.update!(reorder_status: :ordered, ordered_at: Time.current)
-    redirect_back_or_to @medication, notice: t('medications.ordered')
+    respond_to do |format|
+      format.html { redirect_back_or_to @medication, notice: t('medications.ordered') }
+      format.turbo_stream do
+        flash.now[:notice] = t('medications.ordered')
+        render turbo_stream: medication_streams
+      end
+    end
   end
 
   def mark_as_received
-    @medication = Medication.find(params[:id])
     authorize @medication
     @medication.update!(reorder_status: :received, reordered_at: Time.current)
-    redirect_back_or_to @medication, notice: t('medications.received')
+    respond_to do |format|
+      format.html { redirect_back_or_to @medication, notice: t('medications.received') }
+      format.turbo_stream do
+        flash.now[:notice] = t('medications.received')
+        render turbo_stream: medication_streams
+      end
+    end
   end
 
   def refill
@@ -106,7 +116,13 @@ class MedicationsController < ApplicationController
     @medication.paper_trail_event = "restock (qty: #{quantity}, date: #{restock_date.iso8601})"
     @medication.restock!(quantity: quantity)
 
-    redirect_back_or_to @medication, notice: t('medications.refilled')
+    respond_to do |format|
+      format.html { redirect_back_or_to @medication, notice: t('medications.refilled') }
+      format.turbo_stream do
+        flash.now[:notice] = t('medications.refilled')
+        render turbo_stream: medication_streams
+      end
+    end
   rescue ActiveRecord::RecordInvalid => e
     render_refill_error(e.record.errors.full_messages.to_sentence)
   end
@@ -169,6 +185,21 @@ class MedicationsController < ApplicationController
   end
 
   def render_refill_error(message)
-    render Components::Medications::ShowView.new(medication: @medication, notice: message), status: :unprocessable_content
+    respond_to do |format|
+      format.html do
+        render Components::Medications::ShowView.new(medication: @medication, notice: message), status: :unprocessable_content
+      end
+      format.turbo_stream do
+        flash.now[:alert] = message
+        render turbo_stream: medication_streams, status: :unprocessable_content
+      end
+    end
+  end
+
+  def medication_streams
+    [
+      turbo_stream.replace("medication_show_#{@medication.id}", Components::Medications::ShowView.new(medication: @medication.reload)),
+      turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
+    ]
   end
 end
