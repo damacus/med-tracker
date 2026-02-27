@@ -49,8 +49,13 @@ class MedicationPolicy < ApplicationPolicy
       return scope.all if admin? || doctor? || nurse?
       return scope.none unless carer_or_parent?
 
-      location_ids = user.person&.location_ids || []
-      scope.where(location_id: location_ids)
+      scope_by_location
+    end
+
+    private
+
+    def scope_by_location
+      scope.where(location_id: user.person&.location_ids || [])
     end
   end
 end
