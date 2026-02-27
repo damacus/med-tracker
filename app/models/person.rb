@@ -34,6 +34,8 @@ class Person < ApplicationRecord
   has_many :location_memberships, dependent: :destroy
   has_many :locations, through: :location_memberships
 
+  has_one :notification_preference, dependent: :destroy
+
   normalizes :email, with: ->(email) { email&.strip&.downcase }
 
   enum :person_type, {

@@ -42,6 +42,8 @@ gem 'rotp'
 gem 'rqrcode'
 # WebAuthn support for passkeys [https://github.com/cedarcode/webauthn-ruby]
 gem 'webauthn'
+# Web push notifications (VAPID) [https://github.com/pushpad/web-push]
+gem 'web-push'
 
 # OpenTelemetry for observability [https://opentelemetry.io/docs/languages/ruby/]
 gem 'opentelemetry-exporter-otlp'
