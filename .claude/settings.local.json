@@ -8,7 +8,9 @@
       "WebSearch",
       "WebFetch(domain:google-gemini.github.io)",
       "WebFetch(domain:developers.openai.com)",
-      "WebFetch(domain:geminicli.com)"
+      "WebFetch(domain:geminicli.com)",
+      "Bash(bundle:*)",
+      "Skill(pr)"
     ]
   }
 }
