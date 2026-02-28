@@ -149,6 +149,8 @@ ga:
       subject: "Fíoraigh do chuntas MedTracker"
     reset_password:
       subject: "Reset your MedTracker password"
+    unlock_account:
+      subject: "Unlock your MedTracker account"
     views:
       create_account:
         page_subtitle: "Cruthaigh do chuntas chun cógais a rianú go sábháilte."

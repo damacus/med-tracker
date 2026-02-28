@@ -22,6 +22,12 @@ class RodauthMailer < ApplicationMailer
     mail subject: @rodauth.email_subject_prefix + @rodauth.verify_login_change_email_subject
   end
 
+  def unlock_account(name, account_id, key)
+    @rodauth = rodauth(name, account_id) { @account_lockouts_key_value = key }
+    @account = @rodauth.rails_account
+    mail subject: @rodauth.email_subject_prefix + @rodauth.unlock_account_email_subject
+  end
+
   private
 
   def rodauth(name, account_id, &block)
