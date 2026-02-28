@@ -8,6 +8,8 @@ cy:
       subject: "Dilyswch eich cyfrif MedTracker"
     reset_password:
       subject: "Reset your MedTracker password"
+    unlock_account:
+      subject: "Unlock your MedTracker account"
     views:
       create_account:
         page_subtitle: "Crëwch eich cyfrif i ddechrau olrhain meddyginiaethau'n ddiogel."
