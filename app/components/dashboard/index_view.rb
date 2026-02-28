@@ -26,6 +26,7 @@ module Components
               render_supply_levels
             end
           end
+          render_version_footer
         end
       end
 
@@ -251,6 +252,16 @@ module Components
         return false unless view_context.respond_to?(:policy)
 
         view_context.policy(Person.new).new?
+      end
+
+      def render_version_footer
+        div(class: 'mt-12 pt-4 border-t border-slate-100 text-center') do
+          span(class: 'text-xs text-slate-300 font-mono') { "v#{app_version}" }
+        end
+      end
+
+      def app_version
+        ENV.fetch('APP_VERSION', MedTracker::VERSION)
       end
     end
   end

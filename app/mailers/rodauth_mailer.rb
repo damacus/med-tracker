@@ -10,6 +10,12 @@ class RodauthMailer < ApplicationMailer
     mail subject: @rodauth.email_subject_prefix + @rodauth.verify_account_email_subject
   end
 
+  def reset_password(name, account_id, key)
+    @rodauth = rodauth(name, account_id) { @reset_password_key_value = key }
+    @account = @rodauth.rails_account
+    mail subject: @rodauth.email_subject_prefix + @rodauth.reset_password_email_subject
+  end
+
   private
 
   def rodauth(name, account_id, &block)

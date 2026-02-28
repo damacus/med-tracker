@@ -1,25 +1,14 @@
 {
   "permissions": {
     "allow": [
-      "Bash(gh issue view:*)",
-      "Bash(gh pr:*)",
-      "Bash(git checkout:*)",
-      "Bash(git add:*)",
-      "Skill(playwright-cli)",
-      "Bash(git check-ignore:*)",
-      "Bash(git worktree:*)",
-      "Bash(task --list:*)",
-      "Bash(task test:ps:*)",
-      "Bash(task test:up:*)",
-      "Bash(task test:*)",
-      "Bash(tail:*)",
-      "Bash(find:*)",
-      "Bash(task rubocop:*)",
-      "Bash(grep:*)",
       "Bash(bundle exec:*)",
-      "Bash(task:*)",
-      "Bash(TEST_FILE=spec/system/dashboard_spec.rb task test:*)",
-      "Bash(TEST_FILE=spec/features/prescriptions/prescription_card_spec.rb:342 task test:*)"
+      "Bash(TEST_FILE=* task test:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebSearch",
+      "WebFetch(domain:google-gemini.github.io)",
+      "WebFetch(domain:developers.openai.com)",
+      "WebFetch(domain:geminicli.com)"
     ]
   }
 }

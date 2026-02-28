@@ -6,6 +6,8 @@ pt:
   rodauth:
     verify_account:
       subject: "Verifique a sua conta MedTracker"
+    reset_password:
+      subject: "Reset your MedTracker password"
     views:
       create_account:
         page_subtitle: "Crie a sua conta para começar a acompanhar medicamentos em segurança."

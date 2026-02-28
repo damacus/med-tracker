@@ -106,6 +106,8 @@ en:
   rodauth:
     verify_account:
       subject: "Verify your MedTracker account"
+    reset_password:
+      subject: "Reset your MedTracker password"
     views:
       create_account:
         page_subtitle: "Create your account to start tracking medications safely."

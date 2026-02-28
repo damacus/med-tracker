@@ -26,8 +26,8 @@ RSpec.describe RodauthMailer do
       expect(mail.body.encoded).to include('verify-account')
     end
 
-    it 'is a plain text email' do
-      expect(mail.content_type).to include('text/plain')
+    it 'is a multipart email with HTML and plain text parts' do
+      expect(mail.content_type).to include('multipart/alternative')
     end
   end
 end
