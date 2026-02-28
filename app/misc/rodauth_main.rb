@@ -83,6 +83,11 @@ class RodauthMain < Rodauth::Rails::Auth
       RodauthMailer.verify_login_change(self.class.configuration_name, account_id, verify_login_change_key_value)
     end
 
+    unlock_account_email_subject { I18n.t('rodauth.unlock_account.subject') }
+    create_unlock_account_email do
+      RodauthMailer.unlock_account(self.class.configuration_name, account_id, account_lockouts_key_value)
+    end
+
     password_minimum_length 12
     # bcrypt has a maximum input length of 72 bytes, truncating any extra bytes.
     password_maximum_bytes 72 # add custom password complexity rules
