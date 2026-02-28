@@ -1,0 +1,9 @@
+<h2 style="color:#111827;margin-top:0;">You've been invited to MedTracker</h2>
+
+<p>You have been invited to join MedTracker as a <strong><%= @role %></strong>.</p>
+
+<p style="text-align:center;margin:32px 0;">
+  <a href="<%= accept_invitation_url(token: @token) %>" style="background:#007BFF;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;font-weight:bold;font-family:system-ui,-apple-system,Arial,Helvetica,sans-serif">Accept invitation</a>
+</p>
+
+<p style="font-size:13px;color:#6b7280;">This invitation link will expire after use.</p>
