@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.13](https://github.com/damacus/med-tracker/compare/v0.3.12...v0.3.13) (2026-02-28)
+
+
+### Features
+
+* **version:** dashboard version footer ([#855](https://github.com/damacus/med-tracker/issues/855)) ([95d7ef3](https://github.com/damacus/med-tracker/commit/95d7ef3b866ebb92e154595011e89c8658e28b7b))
+
 ## [0.3.12](https://github.com/damacus/med-tracker/compare/v0.3.11...v0.3.12) (2026-02-27)
 
 
