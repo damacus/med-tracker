@@ -78,6 +78,11 @@ class RodauthMain < Rodauth::Rails::Auth
       RodauthMailer.reset_password(self.class.configuration_name, account_id, reset_password_key_value)
     end
 
+    verify_login_change_email_subject { I18n.t('rodauth.verify_login_change.subject') }
+    create_verify_login_change_email do |_login|
+      RodauthMailer.verify_login_change(self.class.configuration_name, account_id, verify_login_change_key_value)
+    end
+
     password_minimum_length 12
     # bcrypt has a maximum input length of 72 bytes, truncating any extra bytes.
     password_maximum_bytes 72 # add custom password complexity rules
