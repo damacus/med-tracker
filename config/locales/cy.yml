@@ -6,6 +6,8 @@ cy:
   rodauth:
     verify_account:
       subject: "Dilyswch eich cyfrif MedTracker"
+    reset_password:
+      subject: "Reset your MedTracker password"
     views:
       create_account:
         page_subtitle: "Crëwch eich cyfrif i ddechrau olrhain meddyginiaethau'n ddiogel."

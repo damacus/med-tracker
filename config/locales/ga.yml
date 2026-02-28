@@ -147,6 +147,8 @@ ga:
   rodauth:
     verify_account:
       subject: "Fíoraigh do chuntas MedTracker"
+    reset_password:
+      subject: "Reset your MedTracker password"
     views:
       create_account:
         page_subtitle: "Cruthaigh do chuntas chun cógais a rianú go sábháilte."
