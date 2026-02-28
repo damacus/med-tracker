@@ -110,6 +110,8 @@ en:
       subject: "Reset your MedTracker password"
     unlock_account:
       subject: "Unlock your MedTracker account"
+    verify_login_change:
+      subject: "Confirm your new MedTracker login"
     views:
       create_account:
         page_subtitle: "Create your account to start tracking medications safely."
