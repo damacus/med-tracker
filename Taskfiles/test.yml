@@ -42,9 +42,9 @@ tasks:
       Stop the test server
       Removes containers but preserves database volumes
       Usage: task test:stop
-    cmds:
-      - task: :internal:stop
-        vars: { ENVIRONMENT: test }
+  cmds:
+    - task: :internal:stop
+      vars: { ENVIRONMENT: test, MAIL_SERVICE: mail-test }
 
   ps:
     desc: List current status of test containers
@@ -77,7 +77,8 @@ tasks:
       Usage: task test:rebuild
     cmds:
       - task: :internal:stop
-        vars: { ENVIRONMENT: test, REMOVE_VOLUMES: "true" }
+        vars:
+          { ENVIRONMENT: test, REMOVE_VOLUMES: "true", MAIL_SERVICE: mail-test }
       - task: :internal:build
         vars: { ENVIRONMENT: test }
       - task: :internal:up-db

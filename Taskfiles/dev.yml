@@ -51,7 +51,7 @@ tasks:
       Usage: task dev:stop
     cmds:
       - task: :internal:stop
-        vars: { ENVIRONMENT: dev }
+        vars: { ENVIRONMENT: dev, MAIL_SERVICE: mail-dev }
 
   ps:
     desc: List current status of Docker Compose Stack
@@ -81,7 +81,8 @@ tasks:
     # prompt: This removes all data and rebuilds the development environment. Are you sure?
     cmds:
       - task: :internal:stop
-        vars: { ENVIRONMENT: dev, REMOVE_VOLUMES: "true" }
+        vars:
+          { ENVIRONMENT: dev, REMOVE_VOLUMES: "true", MAIL_SERVICE: mail-dev }
       - task: :internal:build
         vars: { ENVIRONMENT: dev }
       - task: :internal:up

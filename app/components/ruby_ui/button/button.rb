@@ -45,7 +45,7 @@ module RubyUI
       [
         BASE_CLASSES,
         size_classes,
-        'bg-primary text-on-primary',
+        'bg-primary text-primary-foreground',
         'hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all'
       ]
     end
