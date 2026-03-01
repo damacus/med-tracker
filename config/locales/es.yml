@@ -283,7 +283,8 @@ es:
   layouts:
     mailer:
       footer_notice: "Este correo electrónico fue enviado porque tienes una cuenta con nosotros."
-    navigation:
+
+  locations:
     created: "La ubicación se creó correctamente."
     updated: "La ubicación se actualizó correctamente."
     deleted: "La ubicación se eliminó correctamente."
