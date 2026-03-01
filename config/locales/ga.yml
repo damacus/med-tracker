@@ -102,6 +102,17 @@ ga:
 
   invitation_mailer:
     subject: "Cuirí le bheith páirteach i MedTracker"
+    invite:
+      title: "Tugadh cuireadh duit chuig MedTracker"
+      invited_as: "Tugadh cuireadh duit bheith páirteach i MedTracker mar %{role}."
+      invited_as_html: "Tugadh cuireadh duit bheith páirteach i MedTracker mar %{role}."
+      accept_invitation: "Glac leis an gcuireadh"
+      accept_invitation_label: "Glac le do chuireadh"
+      expiry_notice: "Imeoidh an nasc cuiridh seo as feidhm tar éis é a úsáid."
+
+  layouts:
+    mailer:
+      footer_notice: "Seoladh an ríomhphost seo toisc go bhfuil cuntas agat linn."
 
   locations:
     created: "Cruthaíodh an suíomh go rathúil."

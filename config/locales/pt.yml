@@ -1,15 +1,42 @@
 ---
 pt:
   hello: "Olá mundo"
+  activerecord:
+    attributes:
+      invitation:
+        roles:
+          admin: "Administrador"
+          clinician: "Clínico"
+          carer: "Cuidador"
+          parent: "Pai/Mãe"
+          self: "Próprio"
+
   app:
     name: "MedTracker"
   rodauth:
     verify_account:
       subject: "Verifique a sua conta MedTracker"
+      title: "Verifique o seu endereço de email"
+      instruction: "Obrigado por criar a sua conta MedTracker. Clique no botão abaixo para verificar o seu endereço de email e concluir o seu registo."
+      button: "Verificar a minha conta"
+      notice: "Este link irá expirar. Se não criou uma conta, pode ignorar este email com segurança."
     reset_password:
-      subject: "Reset your MedTracker password"
+      subject: "Redefina a sua palavra-passe do MedTracker"
+      title: "Redefina a sua palavra-passe"
+      instruction: "Recebemos um pedido para redefinir a palavra-passe da sua conta MedTracker. Clique no botão abaixo para escolher uma nova palavra-passe."
+      button: "Redefinir a minha palavra-passe"
+      notice: "Este link irá expirar. Se não solicitou a redefinição da palavra-passe, pode ignorar este email com segurança — a sua palavra-passe não será alterada."
     unlock_account:
-      subject: "Unlock your MedTracker account"
+      subject: "Desbloqueie a sua conta do MedTracker"
+      title: "A sua conta foi bloqueada"
+      instruction: "A sua conta MedTracker foi temporariamente bloqueada devido a várias tentativas de início de sessão falhadas. Clique no botão abaixo para desbloquear a sua conta e recuperar o acesso."
+      button: "Desbloquear a minha conta"
+      notice: "Se não tentou iniciar sessão, contacte-nos imediatamente — alguém pode estar a tentar aceder à sua conta."
+    verify_login_change:
+      title: "Confirme o seu novo endereço de email"
+      instruction: "Solicitou recentemente a alteração do endereço de email da sua conta MedTracker. Clique no botão abaixo para confirmar o seu novo endereço de email."
+      button: "Confirmar novo endereço de email"
+      notice: "Este link irá expirar. Se não solicitou esta alteração, contacte-nos imediatamente, pois alguém pode ter acesso à sua conta."
     views:
       create_account:
         page_subtitle: "Crie a sua conta para começar a acompanhar medicamentos em segurança."
@@ -242,6 +269,17 @@ pt:
 
   invitation_mailer:
     subject: "Convite para aderir ao MedTracker"
+    invite:
+      title: "Foi convidado para o MedTracker"
+      invited_as: "Foi convidado para aderir ao MedTracker como %{role}."
+      invited_as_html: "Foi convidado para aderir ao MedTracker como %{role}."
+      accept_invitation: "Aceitar convite"
+      accept_invitation_label: "Aceite o seu convite"
+      expiry_notice: "Este link de convite irá expirar após a utilização."
+
+  layouts:
+    mailer:
+      footer_notice: "Este email foi enviado porque tem uma conta connosco."
 
   locations:
     created: "Localização criada com sucesso."

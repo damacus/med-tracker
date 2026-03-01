@@ -283,7 +283,8 @@ cy:
   layouts:
     mailer:
       footer_notice: "Anfonwyd yr e-bost hwn oherwydd bod gennych gyfrif gyda ni."
-    navigation:
+
+  locations:
     created: "Crëwyd y lleoliad yn llwyddiannus."
     updated: "Diweddarwyd y lleoliad yn llwyddiannus."
     deleted: "Dilewyd y lleoliad yn llwyddiannus."
