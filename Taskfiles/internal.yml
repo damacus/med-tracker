@@ -74,9 +74,10 @@ tasks:
       REMOVE_VOLUMES: '{{ .REMOVE_VOLUMES | default "false" }}'
       DB_SERVICE: "db-{{ .ENVIRONMENT }}"
       WEB_SERVICE: "web-{{ .ENVIRONMENT }}"
+      MAIL_SERVICE: '{{ .MAIL_SERVICE | default "" }}'
     cmds:
-      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} stop {{ .WEB_SERVICE }} {{ .DB_SERVICE }}"
-      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} rm -f {{ .WEB_SERVICE }} {{ .DB_SERVICE }}"
+      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} stop {{ .WEB_SERVICE }} {{ .DB_SERVICE }}{{ if .MAIL_SERVICE }} {{ .MAIL_SERVICE }}{{ end }}"
+      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} rm -f {{ .WEB_SERVICE }} {{ .DB_SERVICE }}{{ if .MAIL_SERVICE }} {{ .MAIL_SERVICE }}{{ end }}"
       - docker network rm {{ .COMPOSE_PROJECT }}_{{ .ENVIRONMENT }} 2>/dev/null || true
       - |
         {{ if eq .REMOVE_VOLUMES "true" }}
