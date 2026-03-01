@@ -4,6 +4,16 @@ en:
   app:
     name: "MedTracker"
 
+  activerecord:
+    attributes:
+      invitation:
+        roles:
+          admin: "Admin"
+          clinician: "Clinician"
+          carer: "Carer"
+          parent: "Parent"
+          self: "Self"
+
   admin:
     carer_relationships:
       index:
@@ -112,6 +122,26 @@ en:
       subject: "Unlock your MedTracker account"
     verify_login_change:
       subject: "Confirm your new MedTracker login"
+    reset_password:
+      title: "Reset your password"
+      instruction: "We received a request to reset the password for your MedTracker account. Click the button below to choose a new password."
+      button: "Reset my password"
+      notice: "This link will expire. If you didn't request a password reset, you can safely ignore this email — your password will not be changed."
+    unlock_account:
+      title: "Your account has been locked"
+      instruction: "Your MedTracker account has been temporarily locked due to multiple failed login attempts. Click the button below to unlock your account and regain access."
+      button: "Unlock my account"
+      notice: "If you did not attempt to log in, please contact us immediately — someone may be trying to access your account."
+    verify_account:
+      title: "Verify your email address"
+      instruction: "Thanks for creating your MedTracker account. Click the button below to verify your email address and complete your registration."
+      button: "Verify my account"
+      notice: "This link will expire. If you didn't create an account, you can safely ignore this email."
+    verify_login_change:
+      title: "Confirm your new email address"
+      instruction: "You recently requested to change the email address for your MedTracker account. Click the button below to confirm your new email address."
+      button: "Confirm new email address"
+      notice: "This link will expire. If you didn't request this change, please contact us immediately as someone may have access to your account."
     views:
       create_account:
         page_subtitle: "Create your account to start tracking medications safely."
