@@ -40,10 +40,13 @@ Rails.application.configure do
   # Store uploaded files on the local file system in a temporary directory.
   config.active_storage.service = :test
 
-  # Tell Action Mailer not to deliver emails to the real world.
-  # The :test delivery method accumulates sent emails in the
-  # ActionMailer::Base.deliveries array.
-  config.action_mailer.delivery_method = :test
+  # Dual-delivery: accumulates sent emails in ActionMailer::Base.deliveries
+  # (for assertions) and also forwards them to Mailpit via SMTP for inspection.
+  require Rails.root.join('lib/mailpit_delivery')
+  ActionMailer::Base.add_delivery_method :mailpit, MailpitDelivery,
+    address: ENV.fetch('SMTP_ADDRESS', 'mail-test'),
+    port: ENV.fetch('SMTP_PORT', 1025).to_i
+  config.action_mailer.delivery_method = :mailpit
 
   # Perform jobs inline so deliver_later works synchronously in tests
   config.active_job.queue_adapter = :inline
