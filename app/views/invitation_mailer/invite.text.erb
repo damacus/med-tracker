@@ -1,8 +1,8 @@
-You've been invited to MedTracker
+<%= t('.title') %>
 
-You have been invited to join MedTracker as a <%= @role %>.
+<%= t('.invited_as', role: @role) %>
 
-Accept your invitation:
+<%= t('.accept_invitation_label') %>:
 <%= accept_invitation_url(token: @token) %>
 
-This invitation link will expire after use.
+<%= t('.expiry_notice') %>

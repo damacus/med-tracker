@@ -42,9 +42,9 @@ tasks:
       Stop the test server
       Removes containers but preserves database volumes
       Usage: task test:stop
-  cmds:
-    - task: :internal:stop
-      vars: { ENVIRONMENT: test, MAIL_SERVICE: mail-test }
+    cmds:
+      - task: :internal:stop
+        vars: { ENVIRONMENT: test, MAIL_SERVICE: mail-test }
 
   ps:
     desc: List current status of test containers
