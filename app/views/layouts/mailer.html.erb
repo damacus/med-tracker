@@ -63,13 +63,13 @@
     <div class="wrapper" style="width:100%;background-color:#f4f6f8;padding:40px 0;">
       <div class="card" style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:8px;border:1px solid #e5e7eb;padding:40px;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
         <div class="header" style="text-align:center;padding-bottom:24px;margin-bottom:32px;border-bottom:1px solid #e5e7eb;">
-          <p class="header-title" style="font-size:24px;font-weight:bold;color:#007BFF;margin:0;">MedTracker</p>
+          <p class="header-title" style="font-size:24px;font-weight:bold;color:#007BFF;margin:0;"><%= t('app.name') %></p>
         </div>
         <div class="content" style="font-size:16px;line-height:1.6;color:#1f2937;">
           <%= yield %>
         </div>
         <div class="footer" style="margin-top:40px;padding-top:24px;border-top:1px solid #e5e7eb;text-align:center;font-size:13px;color:#6b7280;">
-          &copy; MedTracker &middot; This email was sent because you have an account with us.
+          &copy; <%= t('app.name') %> &middot; <%= t('layouts.mailer.footer_notice') %>
         </div>
       </div>
     </div>
