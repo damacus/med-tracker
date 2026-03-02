@@ -10,6 +10,11 @@ class DosagesController < ApplicationController
     render Components::Dosages::Modal.new(dosage: @dosage, medication: @medication)
   end
 
+  def edit
+    authorize @dosage
+    render Components::Dosages::Modal.new(dosage: @dosage, medication: @medication)
+  end
+
   def create
     @dosage = @medication.dosages.build(dosage_params)
     authorize @dosage
@@ -20,11 +25,6 @@ class DosagesController < ApplicationController
       render Components::Dosages::Modal.new(dosage: @dosage, medication: @medication),
              status: :unprocessable_content
     end
-  end
-
-  def edit
-    authorize @dosage
-    render Components::Dosages::Modal.new(dosage: @dosage, medication: @medication)
   end
 
   def update

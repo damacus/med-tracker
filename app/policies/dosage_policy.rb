@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 class DosagePolicy < ApplicationPolicy
-  def show?    = medication_policy.show?
+  delegate :show?, to: :medication_policy
   def create?  = medication_policy.update?
   def new?     = create?
-  def update?  = medication_policy.update?
+  delegate :update?, to: :medication_policy
   def edit?    = update?
   def destroy? = medication_policy.update?
 
