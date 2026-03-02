@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.3.14](https://github.com/damacus/med-tracker/compare/v0.3.13...v0.3.14) (2026-03-02)
+
+
+### Features
+
+* add mailer previews and expand RSpec coverage for all email types ([a468f24](https://github.com/damacus/med-tracker/commit/a468f241a2e3cc53a5e883f413e28589f72c042c))
+* add unified Add Medication flow with dosage defaults and auto-fill ([33afd80](https://github.com/damacus/med-tracker/commit/33afd808e6d01cfd6a310f3e9189c9bc18409bc3))
+* add unlock_account email with HTML template ([250c5dc](https://github.com/damacus/med-tracker/commit/250c5dc7959559e415bbf4b2988337c56d7a32aa))
+* add verify_login_change email with HTML template ([84aafb4](https://github.com/damacus/med-tracker/commit/84aafb49856abe494cafa8292f24587b14b4d832))
+* convert email templates to use I18n keys and add invitation locale ([d2210a4](https://github.com/damacus/med-tracker/commit/d2210a410807fd8fb2fdad7c66aaf7303a256b63))
+* **email:** upgrade shared mailer layouts with branded HTML and text ([68e8c10](https://github.com/damacus/med-tracker/commit/68e8c10edee909031761254291ee166e2b75c945))
+* migrate modals to RubyUI Dialog, improve schedule form layout, expand medication categories ([e70fd19](https://github.com/damacus/med-tracker/commit/e70fd19104c945836abbd3b70c91e412a42c4bc6))
+* unify schedules and medications into single view, auto-fill defaults ([ce36298](https://github.com/damacus/med-tracker/commit/ce362982f74fcd9597294649d883d69e37eb0fec))
+* upgrade InvitationMailer to multipart HTML+text templates ([1e0b3b0](https://github.com/damacus/med-tracker/commit/1e0b3b0ef8689823f3283f2b1a762af8103f9ab5))
+
+
+### Bug Fixes
+
+* address Copilot PR review comments ([6bd87f3](https://github.com/damacus/med-tracker/commit/6bd87f309db9c4b359632fa24e9f94766782a52d))
+* **mailer:** add class attributes, font fallbacks, Outlook border, and separator style ([a289bff](https://github.com/damacus/med-tracker/commit/a289bff22fed3659eaffba1bca7e9a975866f0f9))
+* merge duplicate rodauth YAML keys to restore subject translations ([4086d71](https://github.com/damacus/med-tracker/commit/4086d715ad023800ce96e9b66dea14ed6de7f7bb))
+* replace text-on-primary with text-primary-foreground for button contrast ([5c0497b](https://github.com/damacus/med-tracker/commit/5c0497bf21e04bceda37de6779cc92b33c11bd6e))
+* resolve remaining test failures after unified medication flow ([08456e1](https://github.com/damacus/med-tracker/commit/08456e150d93b0c38177fd79e8ae85183cfc47cd))
+* restore locations key and fix duplicate layouts key in locale files ([6346c97](https://github.com/damacus/med-tracker/commit/6346c97d88d247689363acde4ae7de0cb2867b75))
+
 ## [0.3.13](https://github.com/damacus/med-tracker/compare/v0.3.12...v0.3.13) (2026-02-28)
 
 
