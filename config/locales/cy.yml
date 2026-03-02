@@ -20,6 +20,8 @@ cy:
       subject: "Ailosod eich cyfrinair MedTracker"
     unlock_account:
       subject: "Datgloi eich cyfrif MedTracker"
+    verify_login_change:
+      subject: "Cadarnhewch eich mewngofnod MedTracker newydd"
     reset_password:
       title: "Ailosod eich cyfrinair"
       instruction: "Cawsom gais i ailosod y cyfrinair ar gyfer eich cyfrif MedTracker. Cliciwch y botwm isod i ddewis cyfrinair newydd."
@@ -421,6 +423,7 @@ cy:
     medication_taken: "Cymerwyd y feddyginiaeth yn llwyddiannus."
     modal:
       new_title: "Ychwanegu Meddyginiaeth ar gyfer %{person}"
+      subtitle: "Ychwanegu fitamin, atodiad, neu feddyginiaeth dros y cownter"
     card:
       notes: "📝 Nodiadau: "
       timing_restrictions: "⏱️ Cyfyngiadau Amseru:"

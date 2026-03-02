@@ -46,12 +46,14 @@ module Components
         div(class: 'grid grid-cols-1 md:grid-cols-2 gap-6') do
           render_medication_field(f)
           render_dosage_field(f)
-          render_frequency_field(f)
           render_start_date_field(f)
           render_end_date_field(f)
-          render_max_doses_field(f)
-          render_min_hours_field(f)
-          render_dose_cycle_field(f)
+          render_frequency_field(f)
+          div(class: 'md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-6') do
+            render_max_doses_field(f)
+            render_min_hours_field(f)
+            render_dose_cycle_field(f)
+          end
           render_notes_field(f)
         end
       end
@@ -120,7 +122,7 @@ module Components
       end
 
       def render_frequency_field(_f)
-        FormField do
+        FormField(class: 'md:col-span-2') do
           FormFieldLabel(for: 'schedule_frequency') { 'Frequency' }
           Input(
             type: :text,
@@ -243,7 +245,7 @@ module Components
 
       def render_actions(_f)
         div(class: 'flex gap-3 justify-end') do
-          Button(variant: :ghost, data: { action: 'click->modal#close' }) { 'Cancel' }
+          Button(variant: :ghost, data: { action: 'click->ruby-ui--dialog#dismiss' }) { 'Cancel' }
           Button(
             type: :submit,
             variant: :primary,

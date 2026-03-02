@@ -159,9 +159,11 @@ ga:
     verify_account:
       subject: "Fíoraigh do chuntas MedTracker"
     reset_password:
-      subject: "Reset your MedTracker password"
+      subject: "Athshocraigh do phasfhocal MedTracker"
     unlock_account:
-      subject: "Unlock your MedTracker account"
+      subject: "Díghlasáil do chuntas MedTracker"
+    verify_login_change:
+      subject: "Deimhnigh do logáil isteach MedTracker nua"
     views:
       create_account:
         page_subtitle: "Cruthaigh do chuntas chun cógais a rianú go sábháilte."
@@ -419,6 +421,7 @@ ga:
     medication_taken: "Tógadh an leigheas go rathúil."
     modal:
       new_title: "Cuir Leigheas Leis do %{person}"
+      subtitle: "Cuir vitimín, forlíonadh, nó cógas gan oideas leis"
     card:
       notes: "📝 Nótaí: "
       timing_restrictions: "⏱️ Srian Amanna:"

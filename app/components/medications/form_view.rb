@@ -164,14 +164,19 @@ module Components
             for: 'medication_category',
             class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1'
           ) { 'Category' }
-          select(
+          input(
+            type: 'text',
             name: 'medication[category]',
             id: 'medication_category',
+            list: 'medication_category_list',
+            value: medication.category,
+            placeholder: t('forms.medications.select_category'),
+            autocomplete: 'off',
             class: "#{select_classes} #{field_error_class(medication, :category)}"
-          ) do
-            option(value: '') { t('forms.medications.select_category') }
+          )
+          datalist(id: 'medication_category_list') do
             Medication::CATEGORIES.each do |cat|
-              option(value: cat, selected: medication.category == cat) { cat.titleize }
+              option(value: cat)
             end
           end
           render_field_error(medication, :category)

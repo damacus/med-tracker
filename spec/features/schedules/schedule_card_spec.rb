@@ -244,7 +244,7 @@ RSpec.describe 'Schedule Card', type: :system do
         end
 
         expect(page).to have_content(/edit schedule/i)
-        expect(page).to have_css('dialog[open]')
+        expect(page).to have_css('div[data-state="open"]')
       end
     end
 

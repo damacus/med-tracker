@@ -5,6 +5,7 @@ module Components
     # Modal component for schedule form using RubyUI Dialog
     class Modal < Components::Base
       include Phlex::Rails::Helpers::TurboFrameTag
+      include RubyUI
 
       attr_reader :schedule, :person, :medications, :title
 
@@ -18,8 +19,16 @@ module Components
 
       def view_template
         turbo_frame_tag 'modal' do
-          render ::Components::Modal.new(title: title, subtitle: 'Add medication details and schedule') do
-            render Form.new(schedule: schedule, person: person, medications: medications)
+          Dialog(open: true) do
+            DialogContent(size: :xl) do
+              DialogHeader do
+                DialogTitle { title }
+                DialogDescription { t('schedules.modal.subtitle') }
+              end
+              DialogMiddle do
+                render Form.new(schedule: schedule, person: person, medications: medications)
+              end
+            end
           end
         end
       end

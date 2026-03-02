@@ -6,6 +6,7 @@ module Components
       class FormView < Components::Base
         include Phlex::Rails::Helpers::FormWith
         include Phlex::Rails::Helpers::TurboFrameTag
+        include RubyUI
 
         RELATIONSHIP_TYPES = [
           ['Parent', 'parent'],
@@ -27,11 +28,16 @@ module Components
         def view_template
           if modal
             turbo_frame_tag 'modal' do
-              render ::Components::Modal.new(
-                title: relationship.new_record? ? 'New Carer Relationship' : 'Edit Carer Relationship',
-                subtitle: 'Assign a carer to a patient.'
-              ) do
-                render_form
+              Dialog(open: true) do
+                DialogContent(size: :xl) do
+                  DialogHeader do
+                    DialogTitle { relationship.new_record? ? 'New Carer Relationship' : 'Edit Carer Relationship' }
+                    DialogDescription { 'Assign a carer to a patient.' }
+                  end
+                  DialogMiddle do
+                    render_form
+                  end
+                end
               end
             end
           else
@@ -139,7 +145,7 @@ module Components
               relationship.new_record? ? 'Create Relationship' : 'Update Relationship'
             end
             if modal
-              Button(variant: :ghost, data: { action: 'click->modal#close' }) { 'Cancel' }
+              Button(variant: :ghost, data: { action: 'click->ruby-ui--dialog#dismiss' }) { 'Cancel' }
             else
               Link(href: '/admin/carer_relationships', variant: :link) { 'Cancel' }
             end

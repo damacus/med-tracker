@@ -2,7 +2,46 @@
 
 class Medication < ApplicationRecord # :nodoc:
   DOSAGE_UNITS = %w[tablet mg ml g mcg IU spray drop sachet].freeze
-  CATEGORIES = %w[painkiller antibiotic vitamin respiratory heart supplement allergy digestive skin].freeze
+  CATEGORIES = [
+    'Analgesic',
+    'Antibiotic',
+    'Anticoagulant',
+    'Anticonvulsant',
+    'Antidepressant',
+    'Antidiabetic',
+    'Antiemetic',
+    'Antifungal',
+    'Antihistamine',
+    'Antihypertensive',
+    'Anti-Inflammatory',
+    'Antiparasitic',
+    'Antipsychotic',
+    'Antiviral',
+    'Anxiolytic',
+    'Cardiovascular',
+    'Cholesterol',
+    'Contraceptive',
+    'Dermatological',
+    'Gastrointestinal',
+    'Hormonal',
+    'Immunosuppressant',
+    'Migraine',
+    'Mineral',
+    'Muscle Relaxant',
+    'Neurological',
+    'Oncology',
+    'Ophthalmic',
+    'Opioid',
+    'Osteoporosis',
+    'Respiratory',
+    'Sleep Aid',
+    'Smoking Cessation',
+    'Supplement',
+    'Thyroid',
+    'Urological',
+    'Vitamin',
+    'Weight Management'
+  ].freeze
 
   has_paper_trail if: proc { |medication| medication.paper_trail_event.present? }
 

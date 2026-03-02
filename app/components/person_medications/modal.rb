@@ -6,6 +6,7 @@ module Components
     class Modal < Components::Base
       include Phlex::Rails::Helpers::FormWith
       include Phlex::Rails::Helpers::TurboFrameTag
+      include RubyUI
 
       attr_reader :person_medication, :person, :medications, :title, :editing
 
@@ -20,9 +21,16 @@ module Components
 
       def view_template
         turbo_frame_tag 'modal' do
-          render ::Components::Modal.new(title: title,
-                                         subtitle: 'Add a vitamin, supplement, or over-the-counter medication') do
-            render_form
+          Dialog(open: true) do
+            DialogContent(size: :xl) do
+              DialogHeader do
+                DialogTitle { title }
+                DialogDescription { t('person_medications.modal.subtitle') }
+              end
+              DialogMiddle do
+                render_form
+              end
+            end
           end
         end
       end
@@ -55,7 +63,7 @@ module Components
 
       def render_actions
         div(class: 'flex justify-end gap-3 pt-4') do
-          Button(variant: :ghost, data: { action: 'click->modal#close' }) { 'Cancel' }
+          Button(variant: :ghost, data: { action: 'click->ruby-ui--dialog#dismiss' }) { 'Cancel' }
           Button(type: :submit, variant: :primary) do
             editing ? 'Save Changes' : 'Add Medication'
           end
