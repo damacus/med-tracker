@@ -3,7 +3,7 @@
 class PeopleController < ApplicationController
   include PersonViewable
 
-  before_action :set_person, only: %i[show update destroy]
+  before_action :set_person, only: %i[show update destroy add_medication]
 
   def index
     authorize Person
@@ -145,6 +145,15 @@ class PeopleController < ApplicationController
       format.html { redirect_to people_path, status: :see_other, notice: t('people.deleted') }
       format.json { head :no_content }
     end
+  end
+
+  def add_medication
+    authorize @person, :show?
+    render Components::People::AddMedicationLanding.new(
+      person: @person,
+      can_schedule: policy(Schedule.new(person: @person)).create?,
+      can_person_medication: policy(PersonMedication.new(person: @person)).create?
+    )
   end
 
   private

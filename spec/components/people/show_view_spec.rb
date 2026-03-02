@@ -47,12 +47,11 @@ RSpec.describe Components::People::ShowView, type: :component do
   it 'renders the Care Actions card' do
     rendered = render_view
     expect(rendered.text).to include('Care Actions')
-    expect(rendered.text).to include('Add Schedule')
+    expect(rendered.text).to include('Add Medication')
   end
 
-  it 'renders schedules and my medications sections' do
+  it 'renders the unified medications section' do
     rendered = render_view
-    expect(rendered.text).to include('Schedules')
-    expect(rendered.text).to include('My Medications')
+    expect(rendered.text).to include('Medications')
   end
 end

@@ -20,12 +20,12 @@ RSpec.describe 'MedicationsVisibility' do
 
     visit new_medication_path
 
-    select 'Home', from: 'medication[location_id]'
-    fill_in 'medication[name]', with: 'Test Medication E2E'
-    select 'Analgesic', from: 'medication[category]'
-    fill_in 'medication[dosage_amount]', with: '500'
-    select 'mg', from: 'medication[dosage_unit]'
-    fill_in 'medication[current_supply]', with: '50'
+    select 'Home', from: 'medication_location_id'
+    fill_in 'medication_name', with: 'Test Medication E2E'
+    fill_in 'medication_category', with: 'Analgesic'
+    fill_in 'medication_dosage_amount', with: '500'
+    select 'mg', from: 'medication_dosage_unit'
+    fill_in 'medication_current_supply', with: '50'
 
     click_button 'Save Medication'
 

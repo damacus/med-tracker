@@ -106,7 +106,7 @@ module Components
       end
 
       def render_quick_actions_card
-        Card(class: 'bg-primary p-8 text-white border-none shadow-xl shadow-primary/20') do
+        Card(class: 'bg-primary p-8 text-white border-none shadow-xl shadow-primary/20', data: { testid: 'quick-actions' }) do
           div(class: 'space-y-6') do
             div do
               Heading(level: 3, size: '5', class: 'font-bold mb-2') { t('people.actions.title') }
@@ -116,21 +116,11 @@ module Components
             end
 
             div(class: 'space-y-3') do
-              if can_create_schedule?
+              if can_add_medication?
                 Link(
-                  href: new_person_schedule_path(person),
+                  href: add_medication_person_path(person),
                   variant: :secondary,
                   class: 'w-full py-6 rounded-xl font-bold text-sm bg-white text-primary border-none shadow-sm',
-                  data: { turbo_frame: 'modal' }
-                ) { t('people.show.add_schedule') }
-              end
-
-              if view_context.policy(PersonMedication.new(person: person)).create?
-                Link(
-                  href: new_person_person_medication_path(person),
-                  variant: :outline,
-                  class: 'w-full py-6 rounded-xl font-bold text-sm bg-primary-foreground/10 text-white ' \
-                         'border-white/20 hover:bg-primary-foreground/20',
                   data: { turbo_frame: 'modal' }
                 ) { t('people.show.add_medication') }
               end
@@ -168,6 +158,7 @@ module Components
             end
 
             render_empty_state if schedules.none? && accessible_medications.none?
+
           end
         end
       end
@@ -176,9 +167,9 @@ module Components
         div(class: 'col-span-full') do
           Card(class: 'text-center py-12 px-8 border-dashed border-2 bg-slate-50/50') do
             Text(size: '3', weight: 'medium', class: 'text-slate-400 mb-6') { t('people.show.no_any_medications') }
-            if can_create_schedule?
+            if can_add_medication?
               Link(
-                href: new_person_schedule_path(person),
+                href: add_medication_person_path(person),
                 variant: :primary,
                 class: 'rounded-xl',
                 data: { turbo_frame: 'modal' }
@@ -190,6 +181,10 @@ module Components
 
       def can_create_schedule?
         view_context.policy(Schedule.new(person: person)).create?
+      end
+
+      def can_add_medication?
+        can_create_schedule? || view_context.policy(PersonMedication.new(person: person)).create?
       end
 
       def render_edit_form

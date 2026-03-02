@@ -29,11 +29,11 @@ RSpec.describe 'Refill medication inventory' do
 
     click_button 'Refill Inventory'
 
-    expect(page).to have_field('Quantity')
-    expect(page).to have_field('Restock date', with: Date.current.to_s)
+    expect(page).to have_field('refill_quantity')
+    expect(page).to have_field('refill_restock_date', with: Date.current.to_s)
 
-    fill_in 'Quantity', with: '12'
-    fill_in 'Restock date', with: Date.current.to_s
+    fill_in 'refill_quantity', with: '12'
+    fill_in 'refill_restock_date', with: Date.current.to_s
     click_button 'Refill'
 
     expect(page).to have_content('Inventory refilled successfully.')
@@ -47,8 +47,8 @@ RSpec.describe 'Refill medication inventory' do
     visit medication_path(medication)
 
     click_button 'Refill Inventory'
-    fill_in 'Quantity', with: '0'
-    fill_in 'Restock date', with: Date.current.to_s
+    fill_in 'refill_quantity', with: '0'
+    fill_in 'refill_restock_date', with: Date.current.to_s
 
     click_button 'Refill'
 

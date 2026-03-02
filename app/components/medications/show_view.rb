@@ -3,6 +3,8 @@
 module Components
   module Medications
     class ShowView < Components::Base
+      include Phlex::Rails::Helpers::TurboFrameTag
+
       attr_reader :medication, :notice
 
       def initialize(medication:, notice: nil)
@@ -20,6 +22,7 @@ module Components
             div(class: 'lg:col-span-2 space-y-8') do
               render_description_section
               render_warnings_section if medication.warnings.present?
+              render_dosages_section
             end
 
             div(class: 'space-y-8') do
@@ -285,6 +288,69 @@ module Components
           div do
             Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-slate-400') { label }
             Text(size: '2', weight: 'semibold') { value }
+          end
+        end
+      end
+
+      def render_dosages_section
+        dosages = medication.dosages.order(:amount)
+        can_manage = view_context.policy(medication).update? rescue false
+
+        Card(class: 'p-6') do
+          div(class: 'flex items-center justify-between mb-4') do
+            Heading(level: 3, size: '4', class: 'font-bold') { t('medications.show.dosages_heading') }
+            if can_manage
+              Link(
+                href: view_context.new_medication_dosage_path(medication),
+                variant: :outline,
+                size: :sm,
+                data: { turbo_frame: 'modal' }
+              ) { t('medications.show.add_dosage') }
+            end
+          end
+
+          turbo_frame_tag 'modal'
+
+          if dosages.any?
+            div(class: 'space-y-3') do
+              dosages.each do |dosage|
+                render_dosage_row(dosage, can_manage)
+              end
+            end
+          else
+            Text(size: '2', class: 'text-slate-400 italic') { t('medications.show.no_dosages') }
+          end
+        end
+      end
+
+      def render_dosage_row(dosage, can_manage)
+        div(class: 'flex items-start justify-between gap-3 rounded-lg border border-slate-100 p-3') do
+          div(class: 'space-y-1') do
+            div(class: 'flex items-center gap-2 flex-wrap') do
+              span(class: 'font-semibold text-sm') { "#{dosage.amount.to_f} #{dosage.unit}" }
+              span(class: 'text-muted-foreground text-sm') { dosage.frequency }
+              Badge(variant: :outline, class: 'text-xs') { 'Adults' } if dosage.default_for_adults?
+              Badge(variant: :secondary, class: 'text-xs') { 'Children' } if dosage.default_for_children?
+            end
+            if dosage.default_max_daily_doses || dosage.default_min_hours_between_doses
+              div(class: 'text-xs text-muted-foreground') do
+                parts = []
+                parts << "Max #{dosage.default_max_daily_doses}/cycle" if dosage.default_max_daily_doses
+                parts << "Min #{dosage.default_min_hours_between_doses}h apart" if dosage.default_min_hours_between_doses
+                plain parts.join(' · ')
+              end
+            end
+          end
+
+          if can_manage
+            div(class: 'flex gap-2 flex-none') do
+              Link(
+                href: view_context.edit_medication_dosage_path(medication, dosage),
+                variant: :ghost,
+                size: :sm,
+                data: { turbo_frame: 'modal' }
+              ) { t('medications.show.edit_dosage') }
+            end
           end
         end
       end

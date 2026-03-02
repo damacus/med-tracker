@@ -16,7 +16,10 @@ RSpec.describe 'Add schedule modal flow' do
     login_as(admin)
     visit person_path(person)
 
-    click_link 'Add Schedule'
+    within '[data-testid="quick-actions"]' do
+      click_link 'Add Medication'
+    end
+    click_link 'Prescribed / Scheduled'
     expect(page).to have_content("New Schedule for #{person.name}")
 
     find('[data-testid="medication-trigger"]').click
@@ -30,7 +33,7 @@ RSpec.describe 'Add schedule modal flow' do
     fill_in 'End date', with: 1.week.from_now.to_date.strftime('%Y-%m-%d')
     fill_in 'Notes', with: 'Turbo modal e2e schedule'
 
-    click_button 'Add Schedule'
+    click_button 'Add Plan'
 
     expect(page).to have_content('Schedule was successfully created.')
     expect(page).to have_no_content("New Schedule for #{person.name}")

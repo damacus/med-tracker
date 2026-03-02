@@ -135,6 +135,15 @@ class Medication < ApplicationRecord # :nodoc:
     (surplus.to_f / estimated_daily_consumption).ceil
   end
 
+  def default_dosage_for_person_type(person_type)
+    child_types = %w[minor dependent_adult]
+    if child_types.include?(person_type.to_s)
+      dosages.find_by(default_for_children: true) || dosages.first
+    else
+      dosages.find_by(default_for_adults: true) || dosages.first
+    end
+  end
+
   def out_of_stock_date
     days = days_until_out_of_stock
     days ? Time.zone.today + days.days : nil

@@ -26,29 +26,40 @@ RSpec.describe 'Person Medications Authorization' do
       login_as(admin)
       visit person_path(assigned_patient)
 
-      expect(page).to have_link('Add Medication')
-      click_link 'Add Medication'
-      select medication.name, from: 'Medication'
-      fill_in 'Notes', with: 'Test notes'
+      within '[data-testid="quick-actions"]' do
+        expect(page).to have_link('Add Medication')
+        click_link 'Add Medication'
+      end
+      click_link 'As-needed / OTC'
+      select medication.name, from: 'person_medication_medication_id'
+      fill_in 'person_medication_notes', with: 'Test notes'
       click_button 'Add Medication'
 
       expect(page).to have_content('Medication added successfully')
     end
 
-    it 'denies doctors ability to add medications' do
+    it 'allows doctors to add scheduled medications but not OTC medications' do
       login_as(doctor)
       visit person_path(assigned_patient)
 
-      expect(page).to have_content('My Medications')
-      expect(page).to have_no_link('Add Medication')
+      expect(page).to have_content('Medications')
+      within '[data-testid="quick-actions"]' do
+        expect(page).to have_link('Add Medication')
+        click_link 'Add Medication'
+      end
+
+      expect(page).to have_content('Prescribed / Scheduled')
+      expect(page).to have_no_content('As-needed / OTC')
     end
 
     it 'denies nurses ability to add medications' do
       login_as(nurse)
       visit person_path(assigned_patient)
 
-      expect(page).to have_content('My Medications')
-      expect(page).to have_no_link('Add Medication')
+      expect(page).to have_content('Medications')
+      within '[data-testid="quick-actions"]' do
+        expect(page).to have_no_link('Add Medication')
+      end
     end
 
     it 'denies carers ability to add medications to unrelated people' do
@@ -62,18 +73,23 @@ RSpec.describe 'Person Medications Authorization' do
       login_as(carer)
       visit person_path(assigned_patient)
 
-      expect(page).to have_content('My Medications')
-      expect(page).to have_no_link('Add Medication')
+      expect(page).to have_content('Medications')
+      within '[data-testid="quick-actions"]' do
+        expect(page).to have_no_link('Add Medication')
+      end
     end
 
     it 'allows parents to add medications to linked children' do
       login_as(parent)
       visit person_path(linked_child)
 
-      expect(page).to have_link('Add Medication')
-      click_link 'Add Medication'
-      select medication.name, from: 'Medication'
-      fill_in 'Notes', with: 'Parent-added medication'
+      within '[data-testid="quick-actions"]' do
+        expect(page).to have_link('Add Medication')
+        click_link 'Add Medication'
+      end
+      click_link 'As-needed / OTC'
+      select medication.name, from: 'person_medication_medication_id'
+      fill_in 'person_medication_notes', with: 'Parent-added medication'
       click_button 'Add Medication'
 
       expect(page).to have_content('Medication added successfully')
@@ -240,7 +256,7 @@ RSpec.describe 'Person Medications Authorization' do
       login_as(carer)
       visit person_path(assigned_patient)
 
-      expect(page).to have_content('My Medications')
+      expect(page).to have_content('Medications')
       expect(page).to have_no_css("[data-testid='move-up-person-medication-#{carer_first_medication.id}']")
       expect(page).to have_no_css("[data-testid='move-down-person-medication-#{carer_second_medication.id}']")
     end
@@ -314,7 +330,7 @@ RSpec.describe 'Person Medications Authorization' do
       login_as(admin)
       visit person_path(assigned_patient)
 
-      expect(page).to have_content('My Medications')
+      expect(page).to have_content('Medications')
       expect(page).to have_content(medication.name)
     end
 
@@ -328,7 +344,7 @@ RSpec.describe 'Person Medications Authorization' do
       login_as(doctor)
       visit person_path(assigned_patient)
 
-      expect(page).to have_content('My Medications')
+      expect(page).to have_content('Medications')
       expect(page).to have_content(medication.name)
     end
 
@@ -342,7 +358,7 @@ RSpec.describe 'Person Medications Authorization' do
       login_as(nurse)
       visit person_path(assigned_patient)
 
-      expect(page).to have_content('My Medications')
+      expect(page).to have_content('Medications')
       expect(page).to have_content(medication.name)
     end
 
@@ -356,7 +372,7 @@ RSpec.describe 'Person Medications Authorization' do
       login_as(carer)
       visit person_path(assigned_patient)
 
-      expect(page).to have_content('My Medications')
+      expect(page).to have_content('Medications')
       expect(page).to have_content(medication.name)
     end
 
