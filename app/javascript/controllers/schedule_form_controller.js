@@ -1,9 +1,10 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["submit", "dosageSelect", "medicationSelect", "dosageContent", "dosageValue", "dosageTrigger"]
+  static targets = ["submit", "dosageSelect", "medicationSelect", "dosageContent", "dosageValue", "dosageTrigger", "frequencyInput"]
 
   connect() {
+    this.dosageData = {}
     this.validate()
   }
 
@@ -23,6 +24,18 @@ export default class extends Controller {
     if (this.hasSubmitTarget) {
       this.submitTarget.disabled = !isValid
     }
+  }
+
+  onDosageChange() {
+    const dosageInput = this.element.querySelector('[name="schedule[dosage_id]"]')
+    const dosageId = dosageInput?.value
+    if (dosageId && this.dosageData[dosageId]) {
+      const dosage = this.dosageData[dosageId]
+      if (dosage.frequency && this.hasFrequencyInputTarget && !this.frequencyInputTarget.value) {
+        this.frequencyInputTarget.value = dosage.frequency
+      }
+    }
+    this.validate()
   }
 
   async updateDosages(event) {
@@ -52,11 +65,12 @@ export default class extends Controller {
     }
 
     if (!medicationId) {
-      // Clear dosage options
+      // Clear dosage options and cached data
       const innerDiv = this.dosageContentTarget.querySelector('div')
       if (innerDiv) {
         innerDiv.innerHTML = ''
       }
+      this.dosageData = {}
       this.validate()
       return
     }
@@ -64,6 +78,22 @@ export default class extends Controller {
     try {
       const response = await fetch(`/medications/${medicationId}/dosages.json`)
       const dosages = await response.json()
+
+      // Cache dosage data for use in onDosageChange
+      this.dosageData = {}
+      dosages.forEach(d => { this.dosageData[String(d.id)] = d })
+
+      // Auto-select if only one dosage and none already selected
+      if (dosages.length === 1 && dosageInput && !dosageInput.value) {
+        const only = dosages[0]
+        dosageInput.value = String(only.id)
+        if (this.hasDosageValueTarget) {
+          this.dosageValueTarget.textContent = `${only.amount} ${only.unit} - ${only.description}`
+        }
+        if (only.frequency && this.hasFrequencyInputTarget && !this.frequencyInputTarget.value) {
+          this.frequencyInputTarget.value = only.frequency
+        }
+      }
 
       // Build RubyUI SelectItem markup
       const items = dosages.map((dosage) => {

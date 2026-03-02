@@ -28,8 +28,7 @@ module Components
 
           div(class: 'grid grid-cols-1 lg:grid-cols-3 gap-12') do
             div(class: 'lg:col-span-2 space-y-12') do
-              render_schedules_section
-              render_my_medications_section
+              render_medications_section
             end
 
             div(class: 'space-y-8') do
@@ -140,55 +139,35 @@ module Components
         end
       end
 
-      def render_schedules_section
+      def render_medications_section
+        accessible_medications = person_medications.select { |pm| view_context.policy(pm).show? }
+
         div(class: 'space-y-8') do
           div(class: 'flex items-center justify-between px-2') do
-            Heading(level: 2, size: '6', class: 'font-bold tracking-tight') { t('people.show.schedules_heading') }
+            Heading(level: 2, size: '6', class: 'font-bold tracking-tight') { t('people.show.medications_heading') }
             div(class: 'h-1 flex-1 mx-8 bg-slate-50 rounded-full hidden md:block')
           end
 
-          div(id: 'schedules', class: 'grid grid-cols-1 md:grid-cols-2 gap-6') do
-            if schedules.any?
-              schedules.each do |schedule|
-                render Components::Schedules::Card.new(
-                  schedule: schedule,
-                  person: person,
-                  todays_takes: takes_by_schedule[schedule.id],
-                  current_user: current_user
-                )
-              end
-            else
-              render_empty_state
+          div(id: 'medications', class: 'grid grid-cols-1 md:grid-cols-2 gap-6') do
+            schedules.each do |schedule|
+              render Components::Schedules::Card.new(
+                schedule: schedule,
+                person: person,
+                todays_takes: takes_by_schedule[schedule.id],
+                current_user: current_user
+              )
             end
-          end
-        end
-      end
 
-      def render_my_medications_section
-        div(class: 'space-y-8') do
-          div(class: 'flex items-center justify-between px-2') do
-            Heading(level: 2, size: '6', class: 'font-bold tracking-tight') { t('people.show.my_medications_heading') }
-            div(class: 'h-1 flex-1 mx-8 bg-slate-50 rounded-full hidden md:block')
-          end
-
-          # Filter person_medications based on policy
-          accessible_medications = person_medications.select do |pm|
-            view_context.policy(pm).show?
-          end
-
-          div(id: 'person_medications', class: 'grid grid-cols-1 md:grid-cols-2 gap-6') do
-            if accessible_medications.any?
-              accessible_medications.each do |person_medication|
-                render Components::PersonMedications::Card.new(
-                  person_medication: person_medication,
-                  person: person,
-                  todays_takes: takes_by_person_medication[person_medication.id],
-                  current_user: current_user
-                )
-              end
-            else
-              render_my_medications_empty_state
+            accessible_medications.each do |person_medication|
+              render Components::PersonMedications::Card.new(
+                person_medication: person_medication,
+                person: person,
+                todays_takes: takes_by_person_medication[person_medication.id],
+                current_user: current_user
+              )
             end
+
+            render_empty_state if schedules.none? && accessible_medications.none?
           end
         end
       end
@@ -196,33 +175,14 @@ module Components
       def render_empty_state
         div(class: 'col-span-full') do
           Card(class: 'text-center py-12 px-8 border-dashed border-2 bg-slate-50/50') do
-            Text(size: '3', weight: 'medium', class: 'text-slate-400 mb-6') { t('people.show.no_schedules') }
+            Text(size: '3', weight: 'medium', class: 'text-slate-400 mb-6') { t('people.show.no_any_medications') }
             if can_create_schedule?
               Link(
                 href: new_person_schedule_path(person),
                 variant: :primary,
                 class: 'rounded-xl',
                 data: { turbo_frame: 'modal' }
-              ) { t('people.show.add_first_schedule') }
-            end
-          end
-        end
-      end
-
-      def render_my_medications_empty_state
-        div(class: 'col-span-full') do
-          Card(class: 'text-center py-12 px-8 border-dashed border-2 bg-slate-50/50') do
-            div(class: 'space-y-2 mb-6') do
-              Text(size: '3', weight: 'medium', class: 'text-slate-400') { t('people.show.no_medications') }
-              Text(size: '2', class: 'text-slate-300') { t('people.show.medications_hint') }
-            end
-            if view_context.policy(PersonMedication.new(person: person)).create?
-              Link(
-                href: new_person_person_medication_path(person),
-                variant: :primary,
-                class: 'rounded-xl',
-                data: { turbo_frame: 'modal' }
-              ) { t('people.show.add_first_medication') }
+              ) { t('people.show.add_first_any_medication') }
             end
           end
         end

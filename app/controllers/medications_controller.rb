@@ -147,7 +147,7 @@ class MedicationsController < ApplicationController
   def dosages
     medication = policy_scope(Medication).find(params[:id])
     authorize medication
-    render json: medication.dosages.select(:id, :amount, :unit, :description)
+    render json: medication.dosages.select(:id, :amount, :unit, :description, :frequency)
   end
 
   private
