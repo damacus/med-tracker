@@ -26,8 +26,8 @@ RSpec.describe Medication do
 
     it { is_expected.to validate_numericality_of(:reorder_threshold).only_integer.is_greater_than_or_equal_to(0) }
 
-    it { is_expected.to allow_value('painkiller').for(:category) }
-    it { is_expected.to allow_value('vitamin').for(:category) }
+    it { is_expected.to allow_value('Analgesic').for(:category) }
+    it { is_expected.to allow_value('Vitamin').for(:category) }
     it { is_expected.to allow_value(nil).for(:category) }
     it { is_expected.to allow_value('').for(:category) }
     it { is_expected.not_to allow_value('invalid_category').for(:category) }

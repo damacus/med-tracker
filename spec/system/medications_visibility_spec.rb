@@ -22,7 +22,7 @@ RSpec.describe 'MedicationsVisibility' do
 
     select 'Home', from: 'medication[location_id]'
     fill_in 'medication[name]', with: 'Test Medication E2E'
-    select 'Painkiller', from: 'medication[category]'
+    select 'Analgesic', from: 'medication[category]'
     fill_in 'medication[dosage_amount]', with: '500'
     select 'mg', from: 'medication[dosage_unit]'
     fill_in 'medication[current_supply]', with: '50'

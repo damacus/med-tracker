@@ -33,6 +33,7 @@ pt:
       button: "Desbloquear a minha conta"
       notice: "Se não tentou iniciar sessão, contacte-nos imediatamente — alguém pode estar a tentar aceder à sua conta."
     verify_login_change:
+      subject: "Confirme o seu novo login do MedTracker"
       title: "Confirme o seu novo endereço de email"
       instruction: "Solicitou recentemente a alteração do endereço de email da sua conta MedTracker. Clique no botão abaixo para confirmar o seu novo endereço de email."
       button: "Confirmar novo endereço de email"
@@ -418,6 +419,7 @@ pt:
     medication_taken: "Medicamento tomado com sucesso."
     modal:
       new_title: "Adicionar Medicamento para %{person}"
+      subtitle: "Adicionar uma vitamina, suplemento ou medicamento sem receita"
     card:
       notes: "📝 Notas: "
       timing_restrictions: "⏱️ Restrições de Tempo:"

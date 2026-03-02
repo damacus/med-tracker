@@ -37,6 +37,7 @@ RSpec.describe 'Refill medication inventory' do
     click_button 'Refill'
 
     expect(page).to have_content('Inventory refilled successfully.')
+    expect(page).to have_no_css('div[data-state="open"]')
 
     medication.reload
     expect(medication.current_supply).to eq(92)

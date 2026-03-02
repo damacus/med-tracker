@@ -20,6 +20,8 @@ es:
       subject: "Restablecer tu contraseña de MedTracker"
     unlock_account:
       subject: "Desbloquea tu cuenta de MedTracker"
+    verify_login_change:
+      subject: "Confirma tu nuevo inicio de sesión de MedTracker"
     reset_password:
       title: "Restablecer tu contraseña"
       instruction: "Recibimos una solicitud para restablecer la contraseña de tu cuenta de MedTracker. Haz clic en el botón de abajo para elegir una nueva contraseña."
@@ -421,6 +423,7 @@ es:
     medication_taken: "Medicamento tomado correctamente."
     modal:
       new_title: "Agregar Medicamento para %{person}"
+      subtitle: "Agregar una vitamina, suplemento o medicamento sin receta"
     card:
       notes: "📝 Notas: "
       timing_restrictions: "⏱️ Restricciones de Tiempo:"

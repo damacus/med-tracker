@@ -6,6 +6,7 @@ module Components
     class FormView < Components::Base
       include Phlex::Rails::Helpers::FormWith
       include Phlex::Rails::Helpers::TurboFrameTag
+      include RubyUI
 
       attr_reader :person, :title, :subtitle, :return_to
 
@@ -19,8 +20,16 @@ module Components
 
       def view_template
         turbo_frame_tag 'modal' do
-          render ::Components::Modal.new(title: title, subtitle: subtitle) do
-            render_form
+          Dialog(open: true) do
+            DialogContent(size: :xl) do
+              DialogHeader do
+                DialogTitle { title }
+                DialogDescription { subtitle }
+              end
+              DialogMiddle do
+                render_form
+              end
+            end
           end
         end
       end
@@ -181,7 +190,7 @@ module Components
 
       def render_actions(_f)
         div(class: 'flex gap-3 justify-end pt-4') do
-          Button(variant: :ghost, data: { action: 'click->modal#close' }) { 'Cancel' }
+          Button(variant: :ghost, data: { action: 'click->ruby-ui--dialog#dismiss' }) { 'Cancel' }
           Button(type: :submit, variant: :primary) do
             person.new_record? ? 'Create Person' : 'Update Person'
           end
