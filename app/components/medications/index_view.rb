@@ -5,10 +5,11 @@ module Components
     class IndexView < Components::Base
       include Phlex::Rails::Helpers::FormWith
 
-      attr_reader :medications
+      attr_reader :medications, :current_category
 
-      def initialize(medications:)
+      def initialize(medications:, current_category: nil)
         @medications = medications
+        @current_category = current_category
         super()
       end
 

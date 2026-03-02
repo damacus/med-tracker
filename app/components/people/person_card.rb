@@ -76,7 +76,7 @@ module Components
 
       def render_card_footer
         CardFooter(class: 'flex gap-2 flex-wrap') do
-          render_add_schedule_link if can_create?(Schedule.new(person: person))
+          render_add_medication_link if can_add_medication?
 
           if person.schedules.any?
             Link(
@@ -90,13 +90,18 @@ module Components
         end
       end
 
-      def render_add_schedule_link
+      def render_add_medication_link
         Link(
-          href: new_person_schedule_path(person),
+          href: add_medication_person_path(person),
           variant: :primary,
           size: :md,
           data: { turbo_frame: 'modal' }
-        ) { 'Add Schedule' }
+        ) { 'Add Medication' }
+      end
+
+      def can_add_medication?
+        can_create?(Schedule.new(person: person)) ||
+          can_create?(PersonMedication.new(person: person))
       end
 
       def render_assign_carer_link
