@@ -92,7 +92,7 @@ module Components
               id: 'schedule_dosage_id',
               value: schedule.dosage_id,
               required: true,
-              data: { action: 'change->schedule-form#validate' }
+              data: { action: 'change->schedule-form#onDosageChange' }
             )
             SelectTrigger(
               disabled: schedule.medication.nil?,
@@ -130,7 +130,7 @@ module Components
             id: 'schedule_frequency',
             value: schedule.frequency,
             placeholder: 'e.g., Once daily, Every 4-6 hours',
-            data: { action: 'input->schedule-form#validate' }
+            data: { action: 'input->schedule-form#validate', schedule_form_target: 'frequencyInput' }
           )
         end
       end
