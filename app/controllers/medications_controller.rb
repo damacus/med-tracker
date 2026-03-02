@@ -7,7 +7,7 @@ class MedicationsController < ApplicationController
     @current_category = params[:category]
     medications = policy_scope(Medication)
     medications = medications.where(category: @current_category) if @current_category.present?
-    
+
     render Components::Medications::IndexView.new(
       medications: medications,
       current_category: @current_category

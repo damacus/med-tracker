@@ -106,7 +106,8 @@ module Components
       end
 
       def render_quick_actions_card
-        Card(class: 'bg-primary p-8 text-white border-none shadow-xl shadow-primary/20', data: { testid: 'quick-actions' }) do
+        Card(class: 'bg-primary p-8 text-white border-none shadow-xl shadow-primary/20',
+             data: { testid: 'quick-actions' }) do
           div(class: 'space-y-6') do
             div do
               Heading(level: 3, size: '5', class: 'font-bold mb-2') { t('people.actions.title') }
@@ -158,7 +159,6 @@ module Components
             end
 
             render_empty_state if schedules.none? && accessible_medications.none?
-
           end
         end
       end
