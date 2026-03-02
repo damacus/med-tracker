@@ -139,9 +139,9 @@ RSpec.describe 'Admin Audit Logs', type: :system do
       # Verify list is displayed
       expect(page).to have_css('[data-testid="admin-audit-logs"]')
 
-      # Verify columns: timestamp, record type, event, user
+      # Verify columns: time, record type, event, user
       within('thead') do
-        expect(page).to have_content('Timestamp')
+        expect(page).to have_content('Time')
         expect(page).to have_content('Record Type')
         expect(page).to have_content('Event')
         expect(page).to have_content('User')
