@@ -12,7 +12,7 @@ module Components
         end
 
         def view_template
-          div(data: { testid: 'admin-dashboard' }, class: 'container mx-auto px-4 py-8 space-y-8') do
+          div(data: { testid: 'admin-dashboard' }, class: 'container mx-auto px-4 py-8 pb-24 md:pb-8 max-w-6xl') do
             render_header
             render_metrics_grid
             render_quick_actions
@@ -22,133 +22,175 @@ module Components
         private
 
         def render_header
-          header(class: 'space-y-2') do
-            Heading(level: 1) { 'Admin Dashboard' }
-            Text(weight: 'muted') { 'System overview and administrative tools' }
+          div(class: 'flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12') do
+            div do
+              Text(size: '2', weight: 'muted', class: 'uppercase tracking-widest mb-1 block font-bold') do
+                Time.current.strftime('%A, %b %d')
+              end
+              Heading(level: 1, size: '8', class: 'font-extrabold tracking-tight') do
+                'Admin Dashboard'
+              end
+            end
           end
         end
 
         # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
         def render_metrics_grid
-          div(class: 'grid gap-6 md:grid-cols-2 lg:grid-cols-3') do
+          div(class: 'grid grid-cols-2 lg:grid-cols-4 gap-4 mb-12') do
             render_metric_card(
               title: 'Total Users',
               value: metrics[:total_users] || 0,
               testid: 'metric-total-users',
-              icon: '👥'
+              icon_type: 'users'
             )
             render_metric_card(
               title: 'Active Users',
               value: metrics[:active_users] || 0,
               testid: 'metric-active-users',
-              icon: '✅'
+              icon_type: 'check'
             )
             render_metric_card(
               title: 'Recent Signups',
               value: metrics[:recent_signups] || 0,
               testid: 'metric-recent-signups',
-              icon: '🆕',
-              subtitle: 'Last 7 days'
+              icon_type: 'activity'
             )
             render_metric_card(
               title: 'Total People',
               value: metrics[:total_people] || 0,
               testid: 'metric-total-people',
-              icon: '👤'
+              icon_type: 'users'
             )
             render_metric_card(
               title: 'Active Schedules',
               value: metrics[:active_schedules] || 0,
               testid: 'metric-active-schedules',
-              icon: '💊'
+              icon_type: 'pill'
             )
             render_metric_card(
-              title: 'Patients Without Carers',
+              title: 'No Carers',
               value: metrics[:patients_without_carers] || 0,
               testid: 'metric-patients-without-carers',
-              icon: '⚠️',
+              icon_type: 'activity',
               variant: metrics[:patients_without_carers]&.positive? ? :warning : :default
             )
           end
         end
         # rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
-        # rubocop:disable Metrics/ParameterLists
-        def render_metric_card(title:, value:, testid:, icon: nil, variant: :default, subtitle: nil)
-          card_classes = base_card_classes(variant)
+        def render_metric_card(title:, value:, testid:, icon_type:, variant: :default)
+          bg_color = variant == :warning ? 'bg-amber-50/50' : 'bg-white/50'
+          border_color = variant == :warning ? 'border-amber-200' : 'border-none'
 
-          div(class: card_classes, data: { testid: testid }) do
-            div(class: 'flex items-center justify-between') do
-              div do
-                Text(size: '2', weight: 'medium', class: 'text-slate-600') { title }
-                Text(size: '7', weight: 'bold', class: 'mt-2', data: { metric_value: value }) { value.to_s }
-                Text(size: '1', weight: 'muted', class: 'mt-1') { subtitle } if subtitle
+          Card(
+            class: "#{border_color} shadow-sm #{bg_color} backdrop-blur-sm transition-all duration-300 " \
+                   'hover:scale-[1.03] hover:shadow-xl hover:shadow-primary/5 cursor-default group',
+            data: { testid: testid }
+          ) do
+            CardContent(class: 'p-6') do
+              div(class: 'space-y-1') do
+                div(class: 'flex items-center justify-between gap-2 mb-2 min-w-0') do
+                  Text(
+                    size: '1', weight: 'muted',
+                    class: 'uppercase font-black tracking-widest group-hover:text-primary transition-colors truncate'
+                  ) { title }
+                  icon_classes = 'p-2 rounded-lg flex-shrink-0 ' \
+                                 "#{icon_bg_class(icon_type, variant)} " \
+                                 "#{value_color_class(icon_type, variant)} transition-colors"
+                  div(class: icon_classes) do
+                    render_icon(icon_type, size: 16)
+                  end
+                end
+                div(class: 'flex items-baseline gap-2') do
+                  span(class: "text-3xl font-black tracking-tight #{value_color_class(icon_type, variant)}",
+                       data: { metric_value: value }) do
+                    value.to_s
+                  end
+                end
               end
-              div(class: 'text-4xl') { icon } if icon
             end
           end
         end
-        # rubocop:enable Metrics/ParameterLists
 
-        def base_card_classes(variant)
-          base = 'rounded-xl border bg-white p-6 shadow-sm'
-          case variant
-          when :warning
-            "#{base} border-amber-200 bg-amber-50"
-          else
-            "#{base} border-slate-200"
+        def render_icon(icon_type, size:)
+          case icon_type
+          when 'users' then render Icons::Users.new(size: size)
+          when 'pill' then render Icons::Pill.new(size: size)
+          when 'check' then render Icons::CheckCircle.new(size: size)
+          when 'clock' then render Icons::Clock.new(size: size)
+          else render Icons::Activity.new(size: size)
+          end
+        end
+
+        def icon_bg_class(icon_type, variant)
+          return 'bg-amber-100' if variant == :warning
+
+          case icon_type
+          when 'users' then 'bg-blue-50'
+          when 'pill' then 'bg-emerald-50'
+          when 'check' then 'bg-indigo-50'
+          when 'clock' then 'bg-amber-50'
+          else 'bg-slate-50'
+          end
+        end
+
+        def value_color_class(icon_type, variant)
+          return 'text-amber-700' if variant == :warning
+
+          case icon_type
+          when 'users' then 'text-blue-600'
+          when 'pill' then 'text-emerald-600'
+          when 'check' then 'text-indigo-600'
+          when 'clock' then 'text-amber-600'
+          else 'text-slate-900'
           end
         end
 
         def render_quick_actions
-          Card do
-            CardHeader do
-              Heading(level: 2, size: '4', class: 'font-semibold leading-none tracking-tight') do
-                'Quick Actions'
-              end
-            end
-            CardContent do
-              div(class: 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3') do
-                render_action_link(
-                  title: 'Manage Users',
-                  description: 'View and manage user accounts',
-                  href: '/admin/users',
-                  icon: '👥'
-                )
-                render_action_link(
-                  title: 'Invitations',
-                  description: 'Invite new users to join MedTracker',
-                  href: '/admin/invitations',
-                  icon: '✉️'
-                )
-                render_action_link(
-                  title: 'Manage People',
-                  description: 'View and manage people records',
-                  href: '/people',
-                  icon: '👤'
-                )
-                render_action_link(
-                  title: 'Audit Trail',
-                  description: 'View system audit logs and change history',
-                  href: '/admin/audit_logs',
-                  icon: '📋'
-                )
-              end
+          div(class: 'space-y-6') do
+            Heading(level: 2, size: '5', class: 'font-bold') { 'Quick Actions' }
+            div(class: 'grid gap-4 sm:grid-cols-2 lg:grid-cols-4') do
+              render_action_card(
+                title: 'Manage Users',
+                description: 'View and manage user accounts',
+                href: '/admin/users',
+                icon: Icons::Users.new(size: 24)
+              )
+              render_action_card(
+                title: 'Invitations',
+                description: 'Invite new users to join',
+                href: '/admin/invitations',
+                icon: Icons::User.new(size: 24)
+              )
+              render_action_card(
+                title: 'Manage People',
+                description: 'View and manage people records',
+                href: '/people',
+                icon: Icons::Users.new(size: 24)
+              )
+              render_action_card(
+                title: 'Audit Trail',
+                description: 'View system audit logs',
+                href: '/admin/audit_logs',
+                icon: Icons::Activity.new(size: 24)
+              )
             end
           end
         end
 
-        def render_action_link(title:, description:, href:, icon: nil)
+        def render_action_card(title:, description:, href:, icon: nil)
           Link(
             href: href,
             variant: :ghost,
-            class: 'flex items-start gap-4 rounded-lg border border-slate-200 p-4 h-auto ' \
-                   'transition-colors hover:bg-slate-50 hover:border-slate-300'
+            class: 'flex flex-col gap-3 rounded-2xl bg-white p-6 border border-slate-100 shadow-sm ' \
+                   'transition-all duration-300 hover:shadow-md hover:scale-[1.02] cursor-pointer no-underline h-full'
           ) do
-            div(class: 'text-3xl') { icon } if icon
-            div do
-              Text(size: '4', weight: 'semibold', class: 'text-slate-900') { title }
-              Text(size: '2', weight: 'muted', class: 'mt-1') { description }
+            div(class: 'w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-600') do
+              render icon if icon
+            end
+            div(class: 'mt-2') do
+              Heading(level: 3, size: '3', class: 'font-bold text-slate-900 mb-1') { title }
+              Text(size: '2', weight: 'muted', class: 'leading-relaxed') { description }
             end
           end
         end

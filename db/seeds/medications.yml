@@ -74,3 +74,115 @@
   warnings: >-
     Do not exceed recommended dosage. May cause stomach upset if taken on an
     empty stomach.
+
+- name: Gabapentin
+  category: Anticonvulsant
+  dosage_amount: 300
+  dosage_unit: mg
+  current_supply: 90
+  reorder_threshold: 21
+  description: >-
+    Gabapentin is used to treat nerve pain and certain types of seizures. It works
+    by affecting chemicals and nerves in the body that are involved in the cause of
+    seizures and some types of pain.
+  warnings: >-
+    May cause dizziness and drowsiness. Do not drive or operate machinery until you
+    know how this medication affects you. Do not stop taking suddenly without
+    consulting your doctor.
+
+- name: Metformin
+  category: Antidiabetic
+  dosage_amount: 500
+  dosage_unit: mg
+  current_supply: 60
+  reorder_threshold: 14
+  description: >-
+    Metformin is used to treat type 2 diabetes. It helps control blood sugar levels
+    and is often prescribed alongside diet and exercise changes.
+  warnings: >-
+    Take with or after food to reduce stomach side effects. Do not take if you have
+    kidney problems. Contact your doctor immediately if you experience unusual muscle
+    pain, difficulty breathing, or stomach pain.
+
+- name: Mebeverine
+  category: Gastrointestinal
+  dosage_amount: 135
+  dosage_unit: mg
+  current_supply: 60
+  reorder_threshold: 14
+  description: >-
+    Mebeverine is used to treat symptoms of irritable bowel syndrome (IBS), including
+    stomach cramps, pain, and spasms. It works by relaxing the muscles in the wall
+    of the gut.
+  warnings: >-
+    Take 20 minutes before meals. Do not exceed the recommended dose. If symptoms
+    worsen or do not improve, consult your doctor.
+
+- name: Sitagliptin
+  category: Antidiabetic
+  dosage_amount: 100
+  dosage_unit: mg
+  current_supply: 30
+  reorder_threshold: 10
+  description: >-
+    Sitagliptin is used to treat type 2 diabetes. It works by increasing levels of
+    natural substances that lower blood sugar when it is high, especially after meals.
+  warnings: >-
+    Tell your doctor if you experience severe joint pain or signs of kidney problems.
+    Do not use to treat type 1 diabetes or diabetic ketoacidosis.
+
+- name: Simvastatin
+  category: Cholesterol
+  dosage_amount: 40
+  dosage_unit: mg
+  current_supply: 30
+  reorder_threshold: 10
+  description: >-
+    Simvastatin is used to lower cholesterol and triglycerides in the blood. It
+    helps reduce the risk of heart disease and cardiovascular events.
+  warnings: >-
+    Take at night for best effect. Tell your doctor immediately if you experience
+    unexplained muscle pain, tenderness or weakness. Avoid grapefruit juice.
+
+- name: Dapagliflozin
+  category: Antidiabetic
+  dosage_amount: 10
+  dosage_unit: mg
+  current_supply: 30
+  reorder_threshold: 10
+  description: >-
+    Dapagliflozin is used to treat type 2 diabetes. It works by helping the kidneys
+    remove glucose from the body through urine, lowering blood sugar levels.
+  warnings: >-
+    May increase risk of urinary tract infections and genital infections. Stay well
+    hydrated. Stop taking and seek medical help if you experience signs of diabetic
+    ketoacidosis.
+
+- name: Omeprazole
+  category: Gastrointestinal
+  dosage_amount: 20
+  dosage_unit: mg
+  current_supply: 30
+  reorder_threshold: 10
+  description: >-
+    Omeprazole is a proton pump inhibitor (PPI) used to reduce the amount of acid
+    produced in the stomach. It is used to treat acid reflux, heartburn, and stomach
+    ulcers.
+  warnings: >-
+    Long-term use may affect magnesium levels and increase risk of bone fractures.
+    Tell your doctor if you have liver problems. May mask symptoms of stomach cancer.
+
+- name: Duloxetine
+  category: Antidepressant
+  dosage_amount: 30
+  dosage_unit: mg
+  current_supply: 120
+  reorder_threshold: 28
+  description: >-
+    Duloxetine is used to treat fibromyalgia, depression, anxiety, and nerve pain.
+    It works by increasing the activity of serotonin and norepinephrine in the
+    nervous system.
+  warnings: >-
+    Do not stop taking suddenly without consulting your doctor as this may cause
+    withdrawal symptoms. May increase thoughts of suicide in young adults during
+    early treatment. Avoid alcohol.

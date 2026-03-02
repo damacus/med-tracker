@@ -16,28 +16,24 @@ cy:
   rodauth:
     verify_account:
       subject: "Dilyswch eich cyfrif MedTracker"
+      title: "Dilyswch eich cyfeiriad e-bost"
+      instruction: "Diolch am greu eich cyfrif MedTracker. Cliciwch y botwm isod i ddilysu eich cyfeiriad e-bost a chwblhau eich cofrestriad."
+      button: "Dilysu fy nghyfrif"
+      notice: "Bydd y ddolen hon yn dod i ben. Os na wnaethoch greu cyfrif, gallwch anwybyddu'r e-bost hwn yn ddiogel."
     reset_password:
       subject: "Ailosod eich cyfrinair MedTracker"
-    unlock_account:
-      subject: "Datgloi eich cyfrif MedTracker"
-    verify_login_change:
-      subject: "Cadarnhewch eich mewngofnod MedTracker newydd"
-    reset_password:
       title: "Ailosod eich cyfrinair"
       instruction: "Cawsom gais i ailosod y cyfrinair ar gyfer eich cyfrif MedTracker. Cliciwch y botwm isod i ddewis cyfrinair newydd."
       button: "Ailosod fy nghyfrinair"
       notice: "Bydd y ddolen hon yn dod i ben. Os na wnaethoch ofyn am ailosod cyfrinair, gallwch anwybyddu'r e-bost hwn yn ddiogel — ni fydd eich cyfrinair yn cael ei newid."
     unlock_account:
+      subject: "Datgloi eich cyfrif MedTracker"
       title: "Mae eich cyfrif wedi'i gloi"
       instruction: "Mae eich cyfrif MedTracker wedi'i gloi dros dro oherwydd sawl ymgais aflwyddiannus i fewngofnodi. Cliciwch y botwm isod i ddatgloi eich cyfrif ac adennill mynediad."
       button: "Datgloi fy nghyfrif"
       notice: "Os na wnaethoch geisio mewngofnodi, cysylltwch â ni ar unwaith — efallai bod rhywun yn ceisio cyrchu eich cyfrif."
-    verify_account:
-      title: "Dilyswch eich cyfeiriad e-bost"
-      instruction: "Diolch am greu eich cyfrif MedTracker. Cliciwch y botwm isod i ddilysu eich cyfeiriad e-bost a chwblhau eich cofrestriad."
-      button: "Dilysu fy nghyfrif"
-      notice: "Bydd y ddolen hon yn dod i ben. Os na wnaethoch greu cyfrif, gallwch anwybyddu'r e-bost hwn yn ddiogel."
     verify_login_change:
+      subject: "Cadarnhewch eich mewngofnod MedTracker newydd"
       title: "Cadarnhewch eich cyfeiriad e-bost newydd"
       instruction: "Yn ddiweddar gwnaethoch gais i newid y cyfeiriad e-bost ar gyfer eich cyfrif MedTracker. Cliciwch y botwm isod i gadarnhau eich cyfeiriad e-bost newydd."
       button: "Cadarnhau cyfeiriad e-bost newydd"
@@ -282,10 +278,6 @@ cy:
       accept_invitation_label: "Derbyniwch eich gwahoddiad"
       expiry_notice: "Bydd y ddolen wahodd hon yn dod i ben ar ôl ei defnyddio."
 
-  layouts:
-    mailer:
-      footer_notice: "Anfonwyd yr e-bost hwn oherwydd bod gennych gyfrif gyda ni."
-
   locations:
     created: "Crëwyd y lleoliad yn llwyddiannus."
     updated: "Diweddarwyd y lleoliad yn llwyddiannus."
@@ -528,6 +520,8 @@ cy:
     passkey_registered: "Allwedd mynediad wedi'i chofrestru'n llwyddiannus"
 
   layouts:
+    mailer:
+      footer_notice: "Anfonwyd yr e-bost hwn oherwydd bod gennych gyfrif gyda ni."
     navigation:
       skip_to_content: "Neidio i'r cynnwys"
       brand: "MedTracker"

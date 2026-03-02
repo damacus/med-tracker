@@ -571,6 +571,8 @@ en:
     passkey_registered: "Passkey registered successfully"
 
   layouts:
+    mailer:
+      footer_notice: "This email was sent because you have an account with us."
     navigation:
       skip_to_content: "Skip to content"
       brand: "MedTracker"
