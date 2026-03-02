@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<%= I18n.locale %>">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -69,7 +69,7 @@
           <%= yield %>
         </div>
         <div class="footer" style="margin-top:40px;padding-top:24px;border-top:1px solid #e5e7eb;text-align:center;font-size:13px;color:#6b7280;">
-          &copy; <%= t('app.name') %> &middot; <%= t('layouts.mailer.footer_notice') %>
+          &copy; <%= t('app.name') %> &middot; <%= t('layouts.mailer.footer_notice', default: 'This email was sent because you have an account with us.') %>
         </div>
       </div>
     </div>

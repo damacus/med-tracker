@@ -42,11 +42,15 @@ Rails.application.configure do
 
   # Dual-delivery: accumulates sent emails in ActionMailer::Base.deliveries
   # (for assertions) and also forwards them to Mailpit via SMTP for inspection.
-  require Rails.root.join('lib/mailpit_delivery')
-  ActionMailer::Base.add_delivery_method :mailpit, MailpitDelivery,
-    address: ENV.fetch('SMTP_ADDRESS', 'mail-test'),
-    port: ENV.fetch('SMTP_PORT', 1025).to_i
-  config.action_mailer.delivery_method = :mailpit
+  if ENV['SMTP_ADDRESS'].present?
+    require Rails.root.join('lib/mailpit_delivery')
+    ActionMailer::Base.add_delivery_method :mailpit, MailpitDelivery,
+      address: ENV['SMTP_ADDRESS'],
+      port: ENV.fetch('SMTP_PORT', 1025).to_i
+    config.action_mailer.delivery_method = :mailpit
+  else
+    config.action_mailer.delivery_method = :test
+  end
 
   # Perform jobs inline so deliver_later works synchronously in tests
   config.active_job.queue_adapter = :inline

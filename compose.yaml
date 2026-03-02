@@ -13,7 +13,9 @@ services:
   mail-dev:
     image: axllent/mailpit:latest
     profiles: [dev]
-    networks: [dev]
+    networks:
+      dev:
+        aliases: [mailpit]
     ports:
       - "8025"   # Web UI
       - "1025"   # SMTP

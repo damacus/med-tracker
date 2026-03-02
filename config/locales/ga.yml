@@ -110,10 +110,6 @@ ga:
       accept_invitation_label: "Glac le do chuireadh"
       expiry_notice: "Imeoidh an nasc cuiridh seo as feidhm tar éis é a úsáid."
 
-  layouts:
-    mailer:
-      footer_notice: "Seoladh an ríomhphost seo toisc go bhfuil cuntas agat linn."
-
   locations:
     created: "Cruthaíodh an suíomh go rathúil."
     updated: "Nuashonraíodh an suíomh go rathúil."
@@ -542,6 +538,8 @@ ga:
     passkey_registered: "Cláraíodh an eochair róchair go rathúil"
 
   layouts:
+    mailer:
+      footer_notice: "Seoladh an ríomhphost seo toisc go bhfuil cuntas agat linn."
     navigation:
       skip_to_content: "Léim go dtí an t-ábhar"
       brand: "MedTracker"

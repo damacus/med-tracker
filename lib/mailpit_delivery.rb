@@ -6,7 +6,7 @@ class MailpitDelivery
   end
 
   def deliver!(mail)
-    ActionMailer::Base.deliveries << mail
+    ActionMailer::Base.deliveries << mail unless ActionMailer::Base.delivery_method == :test
     Mail::SMTP.new(@settings).deliver!(mail)
   rescue Errno::ECONNREFUSED, Net::OpenTimeout, SocketError => e
     Rails.logger.warn "[MailpitDelivery] SMTP delivery to Mailpit failed: #{e.message}"

@@ -16,28 +16,24 @@ es:
   rodauth:
     verify_account:
       subject: "Verifica tu cuenta de MedTracker"
+      title: "Verifica tu dirección de correo electrónico"
+      instruction: "Gracias por crear tu cuenta de MedTracker. Haz clic en el botón de abajo para verificar tu dirección de correo electrónico y completar tu registro."
+      button: "Verificar mi cuenta"
+      notice: "Este enlace caducará. Si no creaste una cuenta, puedes ignorar este correo de forma segura."
     reset_password:
       subject: "Restablecer tu contraseña de MedTracker"
-    unlock_account:
-      subject: "Desbloquea tu cuenta de MedTracker"
-    verify_login_change:
-      subject: "Confirma tu nuevo inicio de sesión de MedTracker"
-    reset_password:
       title: "Restablecer tu contraseña"
       instruction: "Recibimos una solicitud para restablecer la contraseña de tu cuenta de MedTracker. Haz clic en el botón de abajo para elegir una nueva contraseña."
       button: "Restablecer mi contraseña"
       notice: "Este enlace caducará. Si no solicitaste un restablecimiento de contraseña, puedes ignorar este correo de forma segura; tu contraseña no se cambiará."
     unlock_account:
+      subject: "Desbloquea tu cuenta de MedTracker"
       title: "Tu cuenta ha sido bloqueada"
       instruction: "Tu cuenta de MedTracker ha sido bloqueada temporalmente debido a múltiples intentos fallidos de inicio de sesión. Haz clic en el botón de abajo para desbloquear tu cuenta y recuperar el acceso."
       button: "Desbloquear mi cuenta"
       notice: "Si no intentaste iniciar sesión, contáctanos de inmediato; alguien puede estar intentando acceder a tu cuenta."
-    verify_account:
-      title: "Verifica tu dirección de correo electrónico"
-      instruction: "Gracias por crear tu cuenta de MedTracker. Haz clic en el botón de abajo para verificar tu dirección de correo electrónico y completar tu registro."
-      button: "Verificar mi cuenta"
-      notice: "Este enlace caducará. Si no creaste una cuenta, puedes ignorar este correo de forma segura."
     verify_login_change:
+      subject: "Confirma tu nuevo inicio de sesión de MedTracker"
       title: "Confirma tu nueva dirección de correo electrónico"
       instruction: "Recientemente solicitaste cambiar la dirección de correo electrónico de tu cuenta de MedTracker. Haz clic en el botón de abajo para confirmar tu nueva dirección de correo electrónico."
       button: "Confirmar nueva dirección de correo electrónico"
@@ -282,10 +278,6 @@ es:
       accept_invitation_label: "Acepta tu invitación"
       expiry_notice: "Este enlace de invitación caducará después de su uso."
 
-  layouts:
-    mailer:
-      footer_notice: "Este correo electrónico fue enviado porque tienes una cuenta con nosotros."
-
   locations:
     created: "La ubicación se creó correctamente."
     updated: "La ubicación se actualizó correctamente."
@@ -528,6 +520,8 @@ es:
     passkey_registered: "Clave de acceso registrada correctamente"
 
   layouts:
+    mailer:
+      footer_notice: "Este correo electrónico fue enviado porque tienes una cuenta con nosotros."
     navigation:
       skip_to_content: "Saltar al contenido"
       brand: "MedTracker"

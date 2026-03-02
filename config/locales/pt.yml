@@ -278,10 +278,6 @@ pt:
       accept_invitation_label: "Aceite o seu convite"
       expiry_notice: "Este link de convite irá expirar após a utilização."
 
-  layouts:
-    mailer:
-      footer_notice: "Este email foi enviado porque tem uma conta connosco."
-
   locations:
     created: "Localização criada com sucesso."
     updated: "Localização atualizada com sucesso."
@@ -524,6 +520,8 @@ pt:
     passkey_registered: "Chave de acesso registada com sucesso"
 
   layouts:
+    mailer:
+      footer_notice: "Este email foi enviado porque tem uma conta connosco."
     navigation:
       skip_to_content: "Saltar para o conteúdo"
       brand: "MedTracker"

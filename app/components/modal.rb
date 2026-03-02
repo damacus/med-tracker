@@ -9,15 +9,26 @@ module Components
     include Phlex::Rails::Helpers::T
     include Components::FormHelpers
 
-    def initialize(title: nil, subtitle: nil, **attrs)
+    SIZES = {
+      xs: 'max-w-sm',
+      sm: 'max-w-md',
+      md: 'max-w-lg',
+      lg: 'max-w-2xl',
+      xl: 'max-w-4xl',
+      full: 'max-w-full'
+    }.freeze
+
+    def initialize(title: nil, subtitle: nil, size: :md, **attrs)
       @title = title
       @subtitle = subtitle
+      @size = size
       super(**attrs)
     end
 
     def view_template(&block)
       dialog(
         **attrs,
+        open: true,
         class: [
           'fixed inset-0 z-50 m-auto flex flex-col p-0 bg-transparent',
           'backdrop:bg-background/80 backdrop:backdrop-blur-sm',
@@ -26,8 +37,10 @@ module Components
         ]
       ) do
         div(
-          class: 'relative w-full max-w-lg bg-background border shadow-lg ' \
-                 'sm:rounded-lg overflow-hidden flex flex-col'
+          class: [
+            'relative w-full bg-background border shadow-lg sm:rounded-lg overflow-hidden flex flex-col',
+            SIZES[@size]
+          ]
         ) do
           render_header if @title || @subtitle
           div(class: 'p-6 overflow-y-auto max-h-[80vh]') { block.call if block_given? }
