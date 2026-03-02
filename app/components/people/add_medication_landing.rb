@@ -58,7 +58,8 @@ module Components
           class: 'flex items-start gap-4 rounded-xl border border-input p-5 ' \
                  'hover:bg-accent hover:border-primary/30 transition-colors cursor-pointer no-underline'
         ) do
-          div(class: 'w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary flex-none mt-0.5') do
+          div(class: 'w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center ' \
+                     'text-primary flex-none mt-0.5') do
             render icon.new(size: 20)
           end
           div do
