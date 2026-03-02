@@ -388,6 +388,13 @@ pt:
     created: "Pessoa criada com sucesso."
     updated: "Pessoa atualizada com sucesso."
     deleted: "Pessoa eliminada com sucesso."
+    add_medication:
+      title: "Add Medication"
+      subtitle: "How is this medication taken?"
+      scheduled_title: "Prescribed / Scheduled"
+      scheduled_description: "Has a specific dosage, start date, and fixed schedule"
+      otc_title: "As-needed / OTC"
+      otc_description: "Over-the-counter or taken flexibly without a fixed schedule"
     show:
       edit_person: "Editar Pessoa"
       add_schedule: "Adicionar Receita"

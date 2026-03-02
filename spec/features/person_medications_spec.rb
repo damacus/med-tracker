@@ -18,9 +18,12 @@ RSpec.describe 'Person Medications', type: :system do
     it 'allows adding a vitamin/OTC medication without a schedule' do
       visit person_path(person)
 
-      expect(page).to have_content('My Medications')
+      expect(page).to have_content('Medications')
 
-      click_link 'Add Medication'
+      within '[data-testid="quick-actions"]' do
+        click_link 'Add Medication'
+      end
+      click_link 'As-needed / OTC'
 
       select new_medication.name, from: 'person_medication[medication_id]'
       fill_in 'person_medication[notes]', with: 'Take with breakfast'

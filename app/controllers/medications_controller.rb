@@ -4,8 +4,14 @@ class MedicationsController < ApplicationController
   before_action :set_medication, only: %i[show edit update destroy refill mark_as_ordered mark_as_received]
 
   def index
+    @current_category = params[:category]
     medications = policy_scope(Medication)
-    render Components::Medications::IndexView.new(medications: medications)
+    medications = medications.where(category: @current_category) if @current_category.present?
+    
+    render Components::Medications::IndexView.new(
+      medications: medications,
+      current_category: @current_category
+    )
   end
 
   def show
@@ -147,7 +153,11 @@ class MedicationsController < ApplicationController
   def dosages
     medication = policy_scope(Medication).find(params[:id])
     authorize medication
-    render json: medication.dosages.select(:id, :amount, :unit, :description, :frequency)
+    render json: medication.dosages.select(
+      :id, :amount, :unit, :description, :frequency,
+      :default_for_adults, :default_for_children,
+      :default_max_daily_doses, :default_min_hours_between_doses, :default_dose_cycle
+    )
   end
 
   private

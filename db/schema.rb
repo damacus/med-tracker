@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_26_155133) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_02_100605) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -147,12 +147,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_26_155133) do
   create_table "dosages", force: :cascade do |t|
     t.decimal "amount"
     t.datetime "created_at", null: false
+    t.integer "default_dose_cycle"
+    t.boolean "default_for_adults", default: false, null: false
+    t.boolean "default_for_children", default: false, null: false
+    t.integer "default_max_daily_doses"
+    t.decimal "default_min_hours_between_doses", precision: 4, scale: 1
     t.string "description"
     t.string "frequency"
     t.bigint "medication_id", null: false
     t.string "unit"
     t.datetime "updated_at", null: false
     t.index ["medication_id"], name: "index_dosages_on_medication_id"
+    t.index ["medication_id"], name: "index_dosages_one_adult_default", unique: true, where: "(default_for_adults = true)"
+    t.index ["medication_id"], name: "index_dosages_one_child_default", unique: true, where: "(default_for_children = true)"
   end
 
   create_table "invitations", force: :cascade do |t|

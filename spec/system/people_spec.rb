@@ -61,7 +61,7 @@ RSpec.describe 'People' do
       visit people_path
 
       within "#person_#{person.id}" do
-        expect(page).to have_link('Add Schedule', href: new_person_schedule_path(person))
+        expect(page).to have_link('Add Medication', href: add_medication_person_path(person))
       end
     end
 
@@ -149,7 +149,7 @@ RSpec.describe 'People' do
       it 'shows Add Schedule action on person show page' do
         visit person_path(people(:child_patient))
 
-        expect(page).to have_link('Add Schedule')
+        expect(page).to have_link('Add Medication')
       end
 
       it 'shows Assign Carer action for unassigned dependent patients' do
@@ -178,7 +178,7 @@ RSpec.describe 'People' do
         visit person_path(people(:child_patient))
 
         expect(page).to have_content('Care Actions')
-        expect(page).to have_no_link('Add Schedule')
+        expect(page).to have_no_link('Add Medication')
       end
 
       it 'hides Assign Carer action for unassigned dependent patients' do

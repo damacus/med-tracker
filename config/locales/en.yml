@@ -69,12 +69,10 @@ en:
           filter_button: "Filter"
           clear_filters: "Clear filters"
         table:
-          timestamp: "Timestamp"
-          record_type: "Record Type"
-          event: "Event"
+          timestamp: "Time"
+          activity: "Activity"
           user: "User"
-          ip_address: "IP Address"
-          actions: "Actions"
+          actions: ""
           view_details: "View Details"
         empty:
           no_logs: "No audit logs found"
@@ -105,6 +103,16 @@ en:
         new_state_create: "The state of the record when it was created"
         new_state_update: "The state of the record after this change"
         new_state_other: "The current state of the record"
+        changes: "Field Changes"
+        field: "Field"
+        previous: "Previous Value"
+        new: "New Value"
+        record: "Record"
+        view_title: "Audit Detail"
+        view_subtitle: "Recorded details for this event"
+        snapshot: "Object Snapshot"
+        snapshot_description: "The full state of the record at this point in time"
+        no_data: "No data recorded for this version"
 
   authentication:
     login_required: "Please login to continue"
@@ -381,6 +389,10 @@ en:
       forecast_unavailable: "Forecast unavailable"
       standard_dosage: "Standard Dosage"
       no_dosage: "No standard dosage specified."
+      dosages_heading: "Dosages"
+      no_dosages: "No dosages defined yet."
+      add_dosage: "Add Dosage"
+      edit_dosage: "Edit"
       reorder_at_label: "Reorder At"
       log_administration: "Log Administration"
       low_stock_alert: "⚠️ Low Stock Alert"
@@ -402,9 +414,15 @@ en:
     created: "Person was successfully created."
     updated: "Person was successfully updated."
     deleted: "Person was successfully deleted."
+    add_medication:
+      title: "Add Medication"
+      subtitle: "How is this medication taken?"
+      scheduled_title: "Prescribed / Scheduled"
+      scheduled_description: "Has a specific dosage, start date, and fixed schedule"
+      otc_title: "As-needed / OTC"
+      otc_description: "Over-the-counter or taken flexibly without a fixed schedule"
     show:
       edit_person: "Edit Person"
-      add_schedule: "Add Schedule"
       add_medication: "Add Medication"
       back: "Back"
       born: "Born:"
@@ -472,6 +490,15 @@ en:
       cancel: "Cancel"
       add_medication_button: "Add Medication"
       save_changes_button: "Save Changes"
+
+  dosages:
+    created: "Dosage was successfully added."
+    updated: "Dosage was successfully updated."
+    deleted: "Dosage was successfully removed."
+    new:
+      title: "Add Dosage"
+    edit:
+      title: "Edit Dosage"
 
   schedules:
     created: "Schedule was successfully created."
@@ -637,7 +664,10 @@ en:
     greeting_evening: "Good evening, %{name}"
     subtitle: "Your family's medication schedule for today."
     todays_schedule: "Today's Schedule"
-    medication_schedule: "Medication Schedule"
+    as_needed:
+      title: "Take as Needed"
+    overdue_alert: "Overdue: %{medication} for %{person} (scheduled at %{time})"
+    out_of_stock_alert: "Out of Stock: %{medication}. Cannot record doses for %{person}."
     no_active_schedules: "No active schedules found"
     add_schedules_hint: "Add schedules to see them here"
     dose_taken_at: "%{person} • Taken at %{time}"

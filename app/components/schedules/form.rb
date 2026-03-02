@@ -19,7 +19,7 @@ module Components
         form_with(
           model: [person, schedule],
           class: 'space-y-6',
-          data: { controller: 'schedule-form', turbo_stream: true }
+          data: { controller: 'schedule-form', turbo_stream: true, person_type: person.person_type }
         ) do |f|
           render_errors if schedule.errors.any?
           render_form_fields(f)
@@ -60,7 +60,10 @@ module Components
 
       def render_medication_field(_f)
         FormField do
-          FormFieldLabel(for: 'schedule_medication_id') { 'Medication' }
+          FormFieldLabel(for: 'schedule_medication_id') do
+            plain 'Medication'
+            span(class: 'text-destructive ml-0.5') { ' *' }
+          end
           Select(data: { schedule_form_target: 'medicationSelect', testid: 'medication-select' }) do
             SelectInput(
               name: 'schedule[medication_id]',
@@ -85,7 +88,10 @@ module Components
 
       def render_dosage_field(_f)
         FormField do
-          FormFieldLabel(for: 'schedule_dosage_id') { 'Dosage' }
+          FormFieldLabel(for: 'schedule_dosage_id') do
+            plain 'Dosage'
+            span(class: 'text-destructive ml-0.5') { ' *' }
+          end
           Select(data: { schedule_form_target: 'dosageSelect', testid: 'dosage-select' }) do
             SelectInput(
               name: 'schedule[dosage_id]',
@@ -137,7 +143,10 @@ module Components
 
       def render_start_date_field(_f)
         FormField do
-          FormFieldLabel(for: 'schedule_start_date') { 'Start date' }
+          FormFieldLabel(for: 'schedule_start_date') do
+            plain 'Start date'
+            span(class: 'text-destructive ml-0.5') { ' *' }
+          end
           Input(
             type: :string,
             name: 'schedule[start_date]',
@@ -186,7 +195,8 @@ module Components
             name: 'schedule[max_daily_doses]',
             id: 'schedule_max_daily_doses',
             value: schedule.max_daily_doses,
-            min: 1
+            min: 1,
+            data: { schedule_form_target: 'maxDosesInput', action: 'input->schedule-form#generateFrequency' }
           )
         end
       end
@@ -200,7 +210,9 @@ module Components
             name: 'schedule[min_hours_between_doses]',
             id: 'schedule_min_hours_between_doses',
             value: schedule.min_hours_between_doses,
-            min: 1
+            min: 0,
+            step: '0.5',
+            data: { schedule_form_target: 'minHoursInput', action: 'input->schedule-form#generateFrequency' }
           )
         end
       end
@@ -213,7 +225,8 @@ module Components
             SelectInput(
               name: 'schedule[dose_cycle]',
               id: 'schedule_dose_cycle',
-              value: schedule.dose_cycle
+              value: schedule.dose_cycle,
+              data: { schedule_form_target: 'doseCycleInput', action: 'change->schedule-form#generateFrequency' }
             )
             SelectTrigger do
               SelectValue(placeholder: 'Select a cycle (default: daily)') do
@@ -251,7 +264,7 @@ module Components
             variant: :primary,
             size: :md,
             data: { schedule_form_target: 'submit' }
-          ) { schedule.new_record? ? 'Add Schedule' : 'Update Schedule' }
+          ) { schedule.new_record? ? 'Add Plan' : 'Update Plan' }
         end
       end
 

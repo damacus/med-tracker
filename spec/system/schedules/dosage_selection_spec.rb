@@ -16,7 +16,10 @@ RSpec.describe 'Schedule dosage selection' do
     login_as(admin)
     visit person_path(person)
 
-    click_link 'Add Schedule'
+    within '[data-testid="quick-actions"]' do
+      click_link 'Add Medication'
+    end
+    click_link 'Prescribed / Scheduled'
 
     # Dosage trigger should be disabled initially
     expect(page).to have_css('[data-testid="dosage-trigger"][disabled]')
@@ -39,8 +42,8 @@ RSpec.describe 'Schedule dosage selection' do
     fill_in 'End date', with: 1.week.from_now.to_date.strftime('%Y-%m-%d')
 
     # Wait for validation to enable the button
-    expect(page).to have_button('Add Schedule', disabled: false)
-    click_button 'Add Schedule'
+    expect(page).to have_button('Add Plan', disabled: false)
+    click_button 'Add Plan'
 
     expect(page).to have_content('Schedule was successfully created.')
   end
