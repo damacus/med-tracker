@@ -104,7 +104,7 @@ RSpec.describe 'Locations' do
     context 'when authenticated as admin' do
       before { post '/login', params: { email: admin.email_address, password: 'password' } }
 
-      it 'destroys the location' do
+      it 'deletes the location' do
         expect do
           delete location_path(location)
         end.to change(Location, :count).by(-1)
@@ -113,7 +113,7 @@ RSpec.describe 'Locations' do
       end
     end
 
-    context 'when authenticated as doctor (unauthorized for destroy)' do
+    context 'when authenticated as doctor (unauthorized to delete)' do
       let(:doctor) { users(:doctor) }
 
       before { post '/login', params: { email: doctor.email_address, password: 'password' } }

@@ -15,12 +15,12 @@ RSpec.describe PersonMedication do
     context 'with max_daily_doses restriction' do
       let(:person_medication) { create(:person_medication, max_daily_doses: 1) }
 
-      it 'returns false when max doses reached' do
+      it 'prevents taking when max doses reached' do
         create(:medication_take, :for_person_medication, :today, person_medication: person_medication)
         expect(person_medication.can_take_now?).to be false
       end
 
-      it 'returns true when under max doses' do
+      it 'allows taking when under max doses' do
         expect(person_medication.can_take_now?).to be true
       end
     end
@@ -28,12 +28,12 @@ RSpec.describe PersonMedication do
     context 'with min_hours_between_doses restriction' do
       let(:person_medication) { create(:person_medication, min_hours_between_doses: 4) }
 
-      it 'returns false when minimum hours not passed' do
+      it 'prevents taking when minimum hours not passed' do
         create(:medication_take, :for_person_medication, :recent, person_medication: person_medication)
         expect(person_medication.can_take_now?).to be false
       end
 
-      it 'returns true when minimum hours passed' do
+      it 'allows taking when minimum hours passed' do
         expect(person_medication.can_take_now?).to be true
       end
     end
@@ -41,7 +41,7 @@ RSpec.describe PersonMedication do
     context 'with both restrictions' do
       let(:person_medication) { create(:person_medication, :with_both_restrictions) }
 
-      it 'returns false when either restriction violated' do
+      it 'prevents taking when either restriction is violated' do
         create(:medication_take, :for_person_medication, :recent, person_medication: person_medication)
         expect(person_medication.can_take_now?).to be false
       end

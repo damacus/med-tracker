@@ -68,7 +68,7 @@ RSpec.describe DashboardPresenter do
     end
 
     context 'when carer user has no associated person' do
-      it 'returns Person.none without raising' do
+      it 'handles missing person record gracefully' do
         allow(carer_user).to receive(:person).and_return(nil)
         presenter = described_class.new(current_user: carer_user)
         expect(presenter.people).to eq(Person.none)
@@ -76,7 +76,7 @@ RSpec.describe DashboardPresenter do
     end
 
     context 'when parent user has no associated person' do
-      it 'returns Person.none without raising' do
+      it 'handles missing person record gracefully' do
         allow(parent_user).to receive(:person).and_return(nil)
         presenter = described_class.new(current_user: parent_user)
         expect(presenter.people).to eq(Person.none)
@@ -84,7 +84,7 @@ RSpec.describe DashboardPresenter do
     end
 
     context 'when non-privileged user has no associated person' do
-      it 'returns Person.none without raising' do
+      it 'handles missing person record gracefully' do
         allow(minor_user).to receive(:person).and_return(nil)
         presenter = described_class.new(current_user: minor_user)
         expect(presenter.people).to eq(Person.none)

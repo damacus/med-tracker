@@ -89,7 +89,7 @@ RSpec.describe Medication do
     context 'when current_supply is zero' do
       let(:medication) { build(:medication, current_supply: 0, supply_at_last_restock: 80, reorder_threshold: 10) }
 
-      it 'returns 0' do
+      it 'returns zero' do
         expect(medication.supply_percentage).to eq(0)
       end
     end
@@ -97,7 +97,7 @@ RSpec.describe Medication do
     context 'when current_supply is nil' do
       let(:medication) { build(:medication, current_supply: nil, supply_at_last_restock: nil, reorder_threshold: 10) }
 
-      it 'returns 0' do
+      it 'returns zero' do
         expect(medication.supply_percentage).to eq(0)
       end
     end
@@ -163,7 +163,7 @@ RSpec.describe Medication do
     let(:medication) { create(:medication, current_supply: 100, reorder_threshold: 10) }
 
     context 'with no schedules or person_medications' do
-      it 'returns 0.0' do
+      it 'returns 0.0 with no schedules or person_medications' do
         expect(medication.estimated_daily_consumption).to eq(0.0)
       end
     end
@@ -185,7 +185,7 @@ RSpec.describe Medication do
         create(:schedule, :weekly, medication: medication, dosage: dosage, max_daily_doses: 7)
       end
 
-      it 'normalizes to daily rate' do
+      it 'normalizes weekly schedule to daily rate' do
         expect(medication.estimated_daily_consumption).to eq(1.0)
       end
     end
@@ -196,7 +196,7 @@ RSpec.describe Medication do
         create(:schedule, :monthly, medication: medication, dosage: dosage, max_daily_doses: 30)
       end
 
-      it 'normalizes to daily rate' do
+      it 'normalizes monthly schedule to daily rate' do
         expect(medication.estimated_daily_consumption).to eq(1.0)
       end
     end
@@ -308,7 +308,7 @@ RSpec.describe Medication do
         create(:schedule, medication: medication, dosage: dosage, max_daily_doses: 4, dose_cycle: :daily)
       end
 
-      it 'returns 0' do
+      it 'returns zero' do
         expect(medication.days_until_out_of_stock).to eq(0)
       end
     end
@@ -353,7 +353,7 @@ RSpec.describe Medication do
         create(:schedule, medication: medication, dosage: dosage, max_daily_doses: 2, dose_cycle: :daily)
       end
 
-      it 'returns 0' do
+      it 'returns zero' do
         expect(medication.days_until_low_stock).to eq(0)
       end
     end

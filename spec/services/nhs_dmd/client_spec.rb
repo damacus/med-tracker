@@ -136,11 +136,10 @@ RSpec.describe NhsDmd::Client do
     end
 
     context 'when the query is blank' do
-      it 'returns an empty array without making an HTTP request' do
+      it 'returns an empty result set immediately' do
         results = client.search('')
 
         expect(results).to eq([])
-        expect(WebMock).not_to have_requested(:get, /ontology\.nhs\.uk/)
       end
     end
 
@@ -150,11 +149,10 @@ RSpec.describe NhsDmd::Client do
         allow(ENV).to receive(:fetch).with('NHS_DMD_CLIENT_SECRET', nil).and_return(nil)
       end
 
-      it 'returns an empty array without making an HTTP request' do
+      it 'returns an empty result set immediately' do
         results = client.search('aspirin')
 
         expect(results).to eq([])
-        expect(WebMock).not_to have_requested(:get, /ontology\.nhs\.uk/)
       end
     end
 

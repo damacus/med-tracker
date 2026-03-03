@@ -166,7 +166,7 @@ RSpec.describe SchedulePolicy, type: :policy do
     context 'when user is an administrator' do
       let(:current_user) { users(:admin) }
 
-      it 'returns all schedules' do
+      it 'returns all schedules for administrators' do
         expect(scope).to match_array(Schedule.all)
       end
     end
@@ -174,7 +174,7 @@ RSpec.describe SchedulePolicy, type: :policy do
     context 'when user is a doctor' do
       let(:current_user) { users(:doctor) }
 
-      it 'returns all schedules' do
+      it 'returns all schedules for doctors' do
         expect(scope).to match_array(Schedule.all)
       end
     end

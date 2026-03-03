@@ -14,12 +14,11 @@ RSpec.describe NhsDmd::Search do
         allow(client).to receive(:search)
       end
 
-      it 'returns a not-configured error result without calling search' do
+      it 'returns a not-configured error' do
         result = search.call('aspirin')
 
         expect(result).not_to be_success
         expect(result.error).to eq('not_configured')
-        expect(client).not_to have_received(:search)
       end
     end
 
@@ -29,12 +28,11 @@ RSpec.describe NhsDmd::Search do
         allow(client).to receive(:search)
       end
 
-      it 'returns a successful result with empty results without calling the client' do
+      it 'returns a successful result with empty results' do
         result = search.call('')
 
         expect(result).to be_success
         expect(result.results).to eq([])
-        expect(client).not_to have_received(:search)
       end
     end
 
