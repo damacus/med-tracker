@@ -1,1 +1,0 @@
-## 2026-03-03 - ARIA labels in components\n**Learning:** Phlex components make it easy to forget ARIA labels for icon-only buttons like `render Icons::Pencil.new`. Both `en.yml` and `cy.yml` must be updated when adding translations.\n**Action:** Always check `app/components/` for icon-only actions and add localized `aria: { label: t('...') }` attributes.
