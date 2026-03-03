@@ -51,7 +51,7 @@ module Components
           render_errors(form) if medication.errors.any?
           input(type: 'hidden', name: 'return_to', value: return_to) if return_to.present?
 
-          Card(class: 'overflow-hidden border-none shadow-2xl rounded-[2.5rem] bg-white') do
+          Card(class: 'overflow-visible border-none shadow-2xl rounded-[2.5rem] bg-white') do
             div(class: 'p-10 space-y-8') do
               div(class: 'space-y-6') do
                 render_location_field(form)
@@ -151,7 +151,7 @@ module Components
             id: 'medication_name',
             value: medication.name,
             required: true,
-            class: 'rounded-2xl border-slate-200 bg-white py-4 px-4 focus:ring-2 focus:ring-primary/10 ' \
+            class: 'rounded-md border-slate-200 bg-white py-4 px-4 focus:ring-2 focus:ring-primary/10 ' \
                    "focus:border-primary transition-all #{field_error_class(medication, :name)}"
           )
           render_field_error(medication, :name)
@@ -164,19 +164,85 @@ module Components
             for: 'medication_category',
             class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1'
           ) { 'Category' }
-          input(
-            type: 'text',
-            name: 'medication[category]',
-            id: 'medication_category',
-            list: 'medication_category_list',
-            value: medication.category,
-            placeholder: t('forms.medications.select_category'),
-            autocomplete: 'off',
-            class: "#{select_classes} #{field_error_class(medication, :category)}"
-          )
-          datalist(id: 'medication_category_list') do
-            Medication::CATEGORIES.each do |cat|
-              option(value: cat)
+          div(
+            data: { controller: 'category-combobox' },
+            class: 'relative'
+          ) do
+            input(
+              type: 'hidden',
+              name: 'medication[category]',
+              id: 'medication_category',
+              value: medication.category,
+              data: { category_combobox_target: 'input' }
+            )
+            button(
+              type: 'button',
+              id: 'medication_category_trigger',
+              data: {
+                action: 'click->category-combobox#toggle click@window->category-combobox#handleOutsideClick',
+                category_combobox_target: 'button',
+                placeholder: t('forms.medications.select_category')
+              },
+              aria: {
+                expanded: 'false',
+                controls: 'medication_category_panel',
+                haspopup: 'listbox'
+              },
+              class: "#{select_classes} #{field_error_class(medication, :category)} flex items-center justify-between text-left"
+            ) do
+              span(class: 'truncate', data: { category_combobox_target: 'label' }) do
+                medication.category.presence || t('forms.medications.select_category')
+              end
+              render Icons::ChevronsUpDown.new(size: 16, class: 'ml-2 shrink-0 opacity-60')
+            end
+            div(
+              id: 'medication_category_panel',
+              data: { category_combobox_target: 'panel' },
+              class: 'hidden absolute z-50 mt-2 max-h-72 w-full overflow-y-auto overscroll-contain rounded-md border bg-white p-2 shadow-md'
+            ) do
+              render RubyUI::Input.new(
+                type: :text,
+                id: 'medication_category_search',
+                placeholder: 'Type to filter categories...',
+                autocomplete: 'off',
+                data: {
+                  action: 'input->category-combobox#filter keydown.escape->category-combobox#close',
+                  category_combobox_target: 'search'
+                },
+                class: 'mb-2 h-9'
+              )
+              div(
+                role: 'listbox',
+                aria: { labelledby: 'medication_category_trigger' },
+                class: 'rounded-md border p-1'
+              ) do
+                button(
+                  type: 'button',
+                  role: 'option',
+                  data: {
+                    action: 'click->category-combobox#select',
+                    category_combobox_target: 'option',
+                    value: ''
+                  },
+                  class: 'w-full rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground'
+                ) { t('forms.medications.select_category') }
+                Medication::CATEGORIES.each do |category|
+                  button(
+                    type: 'button',
+                    role: 'option',
+                    data: {
+                      action: 'click->category-combobox#select',
+                      category_combobox_target: 'option',
+                      value: category
+                    },
+                    class: 'w-full rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground'
+                  ) { category }
+                end
+              end
+              p(
+                data: { category_combobox_target: 'empty' },
+                class: 'hidden px-2 py-3 text-sm text-slate-500'
+              ) { 'No categories found.' }
             end
           end
           render_field_error(medication, :category)
@@ -193,7 +259,7 @@ module Components
             name: 'medication[description]',
             id: 'medication_description',
             rows: 3,
-            class: 'rounded-2xl border-slate-200 bg-white p-4 focus:ring-2 focus:ring-primary/10 ' \
+            class: 'rounded-md border-slate-200 bg-white p-4 focus:ring-2 focus:ring-primary/10 ' \
                    'focus:border-primary transition-all resize-none'
           ) { medication.description }
         end
@@ -217,7 +283,7 @@ module Components
             value: medication.dosage_amount.to_i,
             step: 'any',
             min: '0',
-            class: 'rounded-2xl border-slate-200 bg-white py-4 px-4 focus:ring-2 focus:ring-primary/10 ' \
+            class: 'rounded-md border-slate-200 bg-white py-4 px-4 focus:ring-2 focus:ring-primary/10 ' \
                    'focus:border-primary transition-all'
           )
         end
@@ -263,7 +329,7 @@ module Components
             id: 'medication_current_supply',
             value: medication.current_supply,
             min: '0',
-            class: 'rounded-2xl border-slate-200 bg-white py-4 px-4 focus:ring-2 focus:ring-primary/10 ' \
+            class: 'rounded-md border-slate-200 bg-white py-4 px-4 focus:ring-2 focus:ring-primary/10 ' \
                    'focus:border-primary transition-all'
           )
         end
@@ -281,7 +347,7 @@ module Components
             id: 'medication_reorder_threshold',
             value: medication.reorder_threshold,
             min: '1',
-            class: 'rounded-2xl border-slate-200 bg-white py-4 px-4 focus:ring-2 focus:ring-primary/10 ' \
+            class: 'rounded-md border-slate-200 bg-white py-4 px-4 focus:ring-2 focus:ring-primary/10 ' \
                    'focus:border-primary transition-all'
           )
         end
@@ -297,7 +363,7 @@ module Components
             name: 'medication[warnings]',
             id: 'medication_warnings',
             rows: 3,
-            class: 'rounded-2xl border-rose-100 bg-rose-50/30 p-4 text-rose-900 focus:ring-2 ' \
+            class: 'rounded-md border-rose-100 bg-rose-50/30 p-4 text-rose-900 focus:ring-2 ' \
                    'focus:ring-rose-500/10 focus:border-rose-500 transition-all resize-none ' \
                    'placeholder:text-rose-300'
           ) { medication.warnings }
