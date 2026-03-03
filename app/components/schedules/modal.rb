@@ -7,13 +7,14 @@ module Components
       include Phlex::Rails::Helpers::TurboFrameTag
       include RubyUI
 
-      attr_reader :schedule, :person, :medications, :title
+      attr_reader :schedule, :person, :medications, :title, :back_path
 
-      def initialize(schedule:, person:, medications:, title: nil)
+      def initialize(schedule:, person:, medications:, title: nil, back_path: nil)
         @schedule = schedule
         @person = person
         @medications = medications
         @title = title || "New Schedule for #{person.name}"
+        @back_path = back_path
         super()
       end
 
@@ -22,6 +23,16 @@ module Components
           Dialog(open: true) do
             DialogContent(size: :xl) do
               DialogHeader do
+                if back_path
+                  a(
+                    href: back_path,
+                    data: { turbo_frame: 'modal' },
+                    class: 'inline-flex items-center text-sm text-muted-foreground hover:text-foreground ' \
+                           'transition-colors mb-2 no-underline'
+                  ) do
+                    plain t('medication_workflow.back')
+                  end
+                end
                 DialogTitle { title }
                 DialogDescription { t('schedules.modal.subtitle') }
               end

@@ -58,17 +58,18 @@ class SchedulesController < ApplicationController
     @medications = policy_scope(Medication)
 
     is_modal = request.headers['Turbo-Frame'] == 'modal'
+    modal_back_path = is_modal ? add_medication_person_path(@person) : nil
 
     respond_to do |format|
       format.html do
         if is_modal
-          render Components::Schedules::Modal.new(schedule: @schedule, person: @person, medications: @medications, title: t('schedules.modal.new_title', person: @person.name)), layout: false
+          render Components::Schedules::Modal.new(schedule: @schedule, person: @person, medications: @medications, title: t('schedules.modal.new_title', person: @person.name), back_path: modal_back_path), layout: false
         else
           render Components::Schedules::NewView.new(schedule: @schedule, person: @person, medications: @medications)
         end
       end
       format.turbo_stream do
-        render turbo_stream: turbo_stream.replace('modal', Components::Schedules::Modal.new(schedule: @schedule, person: @person, medications: @medications, title: t('schedules.modal.new_title', person: @person.name)))
+        render turbo_stream: turbo_stream.replace('modal', Components::Schedules::Modal.new(schedule: @schedule, person: @person, medications: @medications, title: t('schedules.modal.new_title', person: @person.name), back_path: modal_back_path))
       end
     end
   end

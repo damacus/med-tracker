@@ -712,3 +712,11 @@ en:
       title: "Quick Actions"
       add_medication: "Add Medication"
       add_person: "Add Person"
+
+  medication_workflow:
+    person_selection:
+      title: "Add Medication"
+      subtitle: "Who is this medication for?"
+      search_placeholder: "Search people…"
+      no_results: "No people found."
+    back: "← Back"

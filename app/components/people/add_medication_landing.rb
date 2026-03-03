@@ -7,12 +7,13 @@ module Components
       include Phlex::Rails::Helpers::TurboFrameTag
       include RubyUI
 
-      attr_reader :person, :can_schedule, :can_person_medication
+      attr_reader :person, :can_schedule, :can_person_medication, :back_path
 
-      def initialize(person:, can_schedule: true, can_person_medication: true)
+      def initialize(person:, can_schedule: true, can_person_medication: true, back_path: nil)
         @person = person
         @can_schedule = can_schedule
         @can_person_medication = can_person_medication
+        @back_path = back_path
         super()
       end
 
@@ -21,6 +22,16 @@ module Components
           Dialog(open: true) do
             DialogContent(size: :md) do
               DialogHeader do
+                if back_path
+                  a(
+                    href: back_path,
+                    data: { turbo_frame: 'modal' },
+                    class: 'inline-flex items-center text-sm text-muted-foreground hover:text-foreground ' \
+                           'transition-colors mb-2 no-underline'
+                  ) do
+                    plain t('medication_workflow.back')
+                  end
+                end
                 DialogTitle { t('people.add_medication.title') }
                 DialogDescription { t('people.add_medication.subtitle') }
               end
@@ -55,16 +66,17 @@ module Components
         a(
           href: href,
           data: { turbo_frame: 'modal' },
-          class: 'flex items-start gap-4 rounded-xl border border-input p-5 ' \
-                 'hover:bg-accent hover:border-primary/30 transition-colors cursor-pointer no-underline'
+          class: 'flex items-start gap-4 w-full rounded-2xl border-2 border-input p-6 ' \
+                 'hover:border-primary hover:bg-primary/5 active:bg-primary/10 ' \
+                 'transition-all cursor-pointer no-underline'
         ) do
-          div(class: 'w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center ' \
+          div(class: 'w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center ' \
                      'text-primary flex-none mt-0.5') do
-            render icon.new(size: 20)
+            render icon.new(size: 24)
           end
           div do
-            div(class: 'font-semibold text-sm text-foreground') { title }
-            div(class: 'text-muted-foreground text-sm mt-0.5') { description }
+            div(class: 'font-semibold text-base text-foreground') { title }
+            div(class: 'text-muted-foreground text-sm mt-1') { description }
           end
         end
       end

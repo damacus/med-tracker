@@ -65,9 +65,10 @@ module Components
               end
             end
             render RubyUI::Link.new(
-              href: new_medication_path,
+              href: add_medication_path,
               variant: :primary,
-              size: :lg
+              size: :lg,
+              data: { turbo_frame: 'modal' }
             ) do
               render Icons::PlusCircle.new(size: 20, class: 'mr-2')
               span { t('dashboard.quick_actions.add_medication') }
