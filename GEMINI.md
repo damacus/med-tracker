@@ -1,5 +1,8 @@
 # AGENT CONTEXT CONFIGURATION
 
+# Agent Rules & Workflow
+@agents.md
+
 # Core Tooling & Tech Stack
 @.windsurf/rules/tooling.md
 
