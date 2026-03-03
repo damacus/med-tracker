@@ -32,7 +32,11 @@ module Components
             id: 'person_medication_medication_id',
             required: !editing,
             disabled: editing,
-            class: select_classes
+            class: select_classes,
+            data: {
+              person_medication_form_target: 'medicationSelect',
+              action: 'change->person-medication-form#updateDefaults'
+            }
           ) do
             option(value: '', disabled: true, selected: person_medication.medication_id.blank?) do
               'Select a medication'
@@ -61,30 +65,32 @@ module Components
       end
 
       def render_timing_fields
-        div(class: 'grid grid-cols-2 gap-4') do
+        div(class: 'grid grid-cols-1 md:grid-cols-3 gap-4') do
           render_max_daily_doses_field
           render_min_hours_field
+          render_dose_cycle_field
         end
       end
 
       def render_max_daily_doses_field
         FormField do
-          FormFieldLabel(for: 'person_medication_max_daily_doses') { 'Max daily doses' }
+          FormFieldLabel(for: 'person_medication_max_daily_doses') { 'Max doses / cycle' }
           Input(
             type: :number,
             name: 'person_medication[max_daily_doses]',
             id: 'person_medication_max_daily_doses',
             value: person_medication.max_daily_doses,
             min: 1,
-            placeholder: 'Optional'
+            placeholder: 'Optional',
+            data: { person_medication_form_target: 'maxDosesInput' }
           )
-          FormFieldHint { 'Maximum doses per day' }
+          FormFieldHint { 'Max doses allowed per cycle' }
         end
       end
 
       def render_min_hours_field
         FormField do
-          FormFieldLabel(for: 'person_medication_min_hours_between_doses') { 'Min hours between doses' }
+          FormFieldLabel(for: 'person_medication_min_hours_between_doses') { 'Min hours apart' }
           Input(
             type: :number,
             name: 'person_medication[min_hours_between_doses]',
@@ -92,9 +98,27 @@ module Components
             value: person_medication.min_hours_between_doses,
             min: 1,
             step: 0.5,
-            placeholder: 'Optional'
+            placeholder: 'Optional',
+            data: { person_medication_form_target: 'minHoursInput' }
           )
-          FormFieldHint { 'Minimum time between doses' }
+          FormFieldHint { 'Min time between doses' }
+        end
+      end
+
+      def render_dose_cycle_field
+        FormField do
+          FormFieldLabel(for: 'person_medication_dose_cycle') { 'Dose cycle' }
+          select(
+            name: 'person_medication[dose_cycle]',
+            id: 'person_medication_dose_cycle',
+            class: select_classes,
+            data: { person_medication_form_target: 'doseCycleInput' }
+          ) do
+            option(value: 'daily', selected: person_medication.dose_daily?) { 'Daily' }
+            option(value: 'weekly', selected: person_medication.dose_weekly?) { 'Weekly' }
+            option(value: 'monthly', selected: person_medication.dose_monthly?) { 'Monthly' }
+          end
+          FormFieldHint { 'Cycle reset period' }
         end
       end
     end

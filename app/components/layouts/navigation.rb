@@ -55,7 +55,7 @@ module Components
 
       def render_brand
         div(class: 'nav__brand') do
-          link_to(t('layouts.navigation.brand'), root_path, class: 'nav__brand-link')
+          link_to(t('layouts.navigation.brand'), root_path, class: 'nav__brand-link text-foreground')
         end
       end
 

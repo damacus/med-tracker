@@ -11,6 +11,7 @@ medications_data.each do |attrs|
   medication = Medication.find_or_initialize_by(name: attrs['name'])
   medication.location ||= default_location
   medication.update!(
+    category: attrs['category'],
     dosage_amount: attrs['dosage_amount'],
     dosage_unit: attrs['dosage_unit'],
     current_supply: attrs['current_supply'],

@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'People' do
-  fixtures :accounts, :people, :users, :carer_relationships
+  fixtures :accounts, :people, :users, :locations, :location_memberships, :carer_relationships
 
   describe 'GET /people/new' do
     context 'when signed in as a parent' do
@@ -72,6 +72,48 @@ RSpec.describe 'People' do
         created_person = Person.last
         expect(created_person.has_capacity).to be false
         expect(created_person.carer_relationships.first.carer).to eq(parent_user.person)
+      end
+
+      it 'allows creating multiple dependents with blank email addresses' do
+        expect do
+          post people_path, params: {
+            person: {
+              name: 'First Child',
+              date_of_birth: 7.years.ago.to_date,
+              person_type: 'minor',
+              email: ''
+            }
+          }
+
+          post people_path, params: {
+            person: {
+              name: 'Second Child',
+              date_of_birth: 8.years.ago.to_date,
+              person_type: 'minor',
+              email: ''
+            }
+          }
+        end.to change(Person, :count).by(2)
+
+        created_people = Person.order(:id).last(2)
+        expect(created_people.map(&:email)).to all(be_blank)
+      end
+
+      it 'creates dependents at the parent primary location' do
+        parent_user.person.location_memberships.delete_all
+        parent_user.person.location_memberships.create!(location: locations(:school))
+
+        post people_path, params: {
+          person: {
+            name: 'Location Child',
+            date_of_birth: 6.years.ago.to_date,
+            person_type: 'minor',
+            email: ''
+          }
+        }
+
+        created_person = Person.order(:id).last
+        expect(created_person.locations.pluck(:name)).to contain_exactly('School')
       end
 
       it 'rejects creating an adult person' do
@@ -144,6 +186,35 @@ RSpec.describe 'People' do
       expect(response.media_type).to eq('text/vnd.turbo-stream.html')
       expect(response.body).to include('target="modal"')
       expect(response.body).to include('person_form')
+    end
+
+    it 'creates two dependents in sequence with blank email without raising 500' do
+      post people_path,
+           params: {
+             person: {
+               name: 'Turbo Child One',
+               date_of_birth: 6.years.ago.to_date,
+               person_type: 'minor',
+               email: ''
+             }
+           },
+           headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(response).to have_http_status(:ok)
+
+      post people_path,
+           params: {
+             person: {
+               name: 'Turbo Child Two',
+               date_of_birth: 5.years.ago.to_date,
+               person_type: 'minor',
+               email: ''
+             }
+           },
+           headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include('target="people"')
     end
   end
 

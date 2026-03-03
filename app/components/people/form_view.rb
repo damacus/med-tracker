@@ -8,25 +8,25 @@ module Components
       include Phlex::Rails::Helpers::TurboFrameTag
       include RubyUI
 
-      attr_reader :person, :title, :subtitle, :return_to
+      attr_reader :person, :title, :subtitle, :return_to, :is_modal
 
-      def initialize(person:, title: nil, subtitle: nil, return_to: nil)
+      def initialize(person:, title: nil, subtitle: nil, return_to: nil, is_modal: false)
         @person = person
         @title = title || default_title
         @subtitle = subtitle || default_subtitle
         @return_to = return_to
+        @is_modal = is_modal
         super()
       end
 
       def view_template
-        turbo_frame_tag 'modal' do
-          Dialog(open: true) do
-            DialogContent(size: :xl) do
-              DialogHeader do
-                DialogTitle { title }
-                DialogDescription { subtitle }
-              end
-              DialogMiddle do
+        if is_modal
+          render_form
+        else
+          div(class: 'container mx-auto px-4 py-12 max-w-2xl') do
+            Card(class: 'overflow-hidden border-none shadow-2xl rounded-[2.5rem] bg-white') do
+              div(class: 'p-10') do
+                render_header_section
                 render_form
               end
             end
@@ -35,6 +35,13 @@ module Components
       end
 
       private
+
+      def render_header_section
+        div(class: 'mb-8 space-y-2') do
+          Heading(level: 1, size: '7', class: 'font-black tracking-tight') { title }
+          Text(weight: 'muted') { subtitle }
+        end
+      end
 
       def default_title
         person.new_record? ? 'New Person' : 'Edit Person'

@@ -52,7 +52,8 @@ module Components
                  person_person_medications_path(person)
                end,
           method: editing ? :patch : :post,
-          class: 'space-y-6'
+          class: 'space-y-6',
+          data: { controller: 'person-medication-form', person_type: person.person_type }
         ) do |form|
           render_errors if person_medication.errors.any?
           render_form_fields(form)

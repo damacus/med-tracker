@@ -283,7 +283,7 @@ RSpec.describe 'Person Medications Authorization' do
 
       expect(page).to have_content('Edit Medication for')
       fill_in 'Notes', with: 'Updated notes'
-      fill_in 'Max daily doses', with: '5'
+      fill_in 'Max doses / cycle', with: '5'
       click_button 'Save Changes'
 
       expect(page).to have_content('Medication updated successfully')

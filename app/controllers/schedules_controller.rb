@@ -4,11 +4,50 @@ class SchedulesController < ApplicationController
   include TimelineRefreshable
   include PersonViewable
 
-  before_action :set_person
+  before_action :set_person, except: %i[workflow start_workflow]
   before_action :set_schedule, only: %i[edit update destroy take_medication]
+
+  def workflow
+    authorize Schedule.new(person: current_user&.person || Person.new), :create?
+    @people = policy_scope(Person).order(:name)
+    @medications = policy_scope(Medication).includes(:location).order(:name)
+    @selected_person_id = params[:person_id]
+    @selected_medication_id = params[:medication_id]
+    @schedule_type = params[:schedule_type]
+    @frequency = params[:frequency]
+
+    render Components::Schedules::WorkflowView.new(
+      people: @people,
+      medications: @medications,
+      selected_person_id: @selected_person_id,
+      selected_medication_id: @selected_medication_id,
+      schedule_type: @schedule_type,
+      frequency: @frequency
+    )
+  end
+
+  def start_workflow
+    authorize Schedule.new(person: current_user&.person || Person.new), :create?
+    people = policy_scope(Person)
+    medications = policy_scope(Medication)
+
+    person = people.find(params.require(:person_id))
+    medication = medications.find(params.require(:medication_id))
+    frequency = params[:frequency].to_s
+    schedule_type = params[:schedule_type].to_s
+
+    redirect_to new_person_schedule_path(
+      person,
+      medication_id: medication.id,
+      frequency: frequency,
+      schedule_type: schedule_type
+    )
+  end
 
   def new
     @schedule = @person.schedules.build
+    @schedule.medication_id = params[:medication_id] if params[:medication_id].present?
+    @schedule.frequency = params[:frequency] if params[:frequency].present?
     authorize @schedule
     @medications = policy_scope(Medication)
 

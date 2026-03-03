@@ -42,6 +42,7 @@ class MedicationTake < ApplicationRecord
     # rubocop:disable Rails/SkipsModelValidations -- Intentional: atomic SQL update prevents race conditions
     # Using update_all with GREATEST ensures supply never goes negative even under concurrent requests
     # We only decrement current_supply (the live dispensable-units counter)
+    # Each 'take' represents one dispensable unit (e.g. 1 tablet, 1 sachet, or 1 multi-ml dose)
     medication.class.where(id: medication.id)
               .update_all('current_supply = GREATEST(COALESCE(current_supply, 0) - 1, 0)')
     # rubocop:enable Rails/SkipsModelValidations

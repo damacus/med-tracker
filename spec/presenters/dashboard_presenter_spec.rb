@@ -33,9 +33,11 @@ RSpec.describe DashboardPresenter do
     end
 
     context 'when user is a parent' do
-      it 'returns minor patients of the parent' do
+      it 'returns the parent and their minor patients' do
         presenter = described_class.new(current_user: parent_user)
-        expect(presenter.people).to eq(parent_user.person.patients.where(person_type: :minor))
+        parent_minor_ids = parent_user.person.patients.where(person_type: :minor).pluck(:id)
+        expected_people = Person.where(id: [parent_user.person.id] + parent_minor_ids)
+        expect(presenter.people).to eq(expected_people)
       end
 
       it 'returns Person.none when parent has no associated person' do

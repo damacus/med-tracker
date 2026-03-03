@@ -16,14 +16,19 @@ module Components
         end
 
         def view_template
-          div(data: { testid: 'admin-users' }, class: 'space-y-8 px-4 sm:px-6 lg:px-8') do
+          div(data: { testid: 'admin-users' },
+              class: 'container mx-auto px-4 py-8 pb-24 md:pb-8 max-w-6xl space-y-8') do
             render_header
             render Components::Admin::Users::SearchForm.new(search_params: search_params)
-            render Components::Admin::Users::UsersTable.new(
-              users: users,
-              search_params: search_params,
-              current_user: current_user
-            )
+
+            div(class: 'rounded-xl border border-border bg-card shadow-sm overflow-hidden') do
+              render Components::Admin::Users::UsersTable.new(
+                users: users,
+                search_params: search_params,
+                current_user: current_user
+              )
+            end
+
             render Components::Admin::Users::Pagination.new(pagy: pagy_obj, search_params: search_params) if pagy_obj
           end
         end
@@ -31,12 +36,19 @@ module Components
         private
 
         def render_header
-          header(class: 'flex items-center justify-between') do
-            div(class: 'space-y-2') do
-              Heading(level: 1) { 'User Management' }
-              Text(weight: 'muted') { 'Review roles and access levels for everyone using MedTracker.' }
+          div(class: 'flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12') do
+            div do
+              Text(size: '2', weight: 'muted', class: 'uppercase tracking-widest mb-1 block font-bold') do
+                Time.current.strftime('%A, %b %d')
+              end
+              Heading(level: 1, size: '8', class: 'font-extrabold tracking-tight') do
+                'User Management'
+              end
+              Text(weight: 'muted', class: 'mt-2 block') do
+                'Review roles and access levels for everyone using MedTracker.'
+              end
             end
-            render RubyUI::Link.new(href: '/admin/users/new', variant: :primary) { 'New User' }
+            render RubyUI::Link.new(href: '/admin/users/new', variant: :primary, size: :lg, class: 'rounded-2xl shadow-lg shadow-primary/20') { 'New User' }
           end
         end
       end

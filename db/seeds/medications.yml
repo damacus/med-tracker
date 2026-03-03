@@ -1,162 +1,141 @@
 ---
 - name: Paracetamol
+  category: Analgesic
   dosage_amount: 500
   dosage_unit: mg
   current_supply: 80
   reorder_threshold: 20
   description: >-
-    Paracetamol is a common painkiller for treating aches and pains, as well as
-    symptoms of colds and flu. It can also be used to reduce a high temperature
-    and treat inflammation.
+    Paracetamol is a common painkiller used to treat aches, pains, and fever.
   warnings: >-
-    Do not exceed the recommended dose. If symptoms persist for more than 3
-    days, consult your doctor. Contains paracetamol - do not use with
-    other paracetamol-containing products.
+    Do not take more than the recommended dose or combine with other
+    paracetamol-containing medicines.
 
 - name: Ibuprofen
+  category: Anti-Inflammatory
   dosage_amount: 200
+  dosage_unit: mg
+  current_supply: 60
+  reorder_threshold: 15
+  description: >-
+    Ibuprofen is a non-steroidal anti-inflammatory medicine used for pain,
+    inflammation, and fever.
+  warnings: >-
+    Take with food. Avoid if you have a history of stomach ulcers unless your
+    clinician has advised otherwise.
+
+- name: Aspirin
+  category: Analgesic
+  dosage_amount: 300
+  dosage_unit: mg
+  current_supply: 40
+  reorder_threshold: 10
+  description: >-
+    Aspirin is used for pain and inflammation and can be prescribed at low dose
+    for cardiovascular prevention.
+  warnings: >-
+    Not suitable for children under 16 unless specifically prescribed.
+
+- name: Codeine
+  category: Opioid
+  dosage_amount: 30
   dosage_unit: mg
   current_supply: 30
   reorder_threshold: 10
   description: >-
-    Ibuprofen is a nonsteroidal anti-inflammatory drug (NSAID) used for
-    treating pain, fever, and inflammation.
+    Codeine is an opioid pain medicine for short-term moderate pain.
   warnings: >-
-    May cause stomach upset. Take with food or milk. Do not take if you
-    have a history of stomach ulcers.
-
-- name: Aspirin
-  dosage_amount: 300
-  dosage_unit: mg
-  current_supply: 25
-  reorder_threshold: 10
-  description: >-
-    Aspirin is used to treat pain, reduce inflammation and lower fever. It can
-    also be taken in low doses to help prevent heart attacks and strokes in
-    high-risk patients.
-  warnings: >-
-    Not suitable for children under 16. Do not exceed 4000mg in 24 hours. May
-    cause stomach irritation. If symptoms persist, consult your doctor.
+    Can cause drowsiness and constipation. Risk of dependence with prolonged use.
 
 - name: Calpol
+  category: Analgesic
   dosage_amount: 5
   dosage_unit: ml
   current_supply: 35
   reorder_threshold: 10
   description: >-
-    Calpol is a brand of children's medicine that contains paracetamol. It is
-    used to relieve pain and reduce fever in children.
+    Calpol is a paracetamol-containing liquid used to relieve pain and fever in
+    children.
   warnings: >-
-    Do not exceed the recommended dose. If symptoms persist for more than 3
-    days, consult your doctor. Contains paracetamol - do not use with
-    other paracetamol-containing products.
+    Do not exceed the dose on the label and avoid combining with other
+    paracetamol products.
 
-- name: Vitamin D
-  dosage_amount: 1000
-  dosage_unit: IU
-  current_supply: 40
+- name: Amoxicillin
+  category: Antibiotic
+  dosage_amount: 500
+  dosage_unit: mg
+  current_supply: 42
+  reorder_threshold: 14
+  description: >-
+    Amoxicillin is a penicillin antibiotic used to treat bacterial infections.
+  warnings: >-
+    Complete the full prescribed course. Do not use if you have a penicillin allergy.
+
+- name: Doxycycline
+  category: Antibiotic
+  dosage_amount: 100
+  dosage_unit: mg
+  current_supply: 28
   reorder_threshold: 10
   description: >-
-    Vitamin D helps regulate the amount of calcium and phosphate in the body.
-    These nutrients are needed to keep bones, teeth and muscles healthy.
+    Doxycycline is a tetracycline antibiotic used for a range of bacterial infections.
   warnings: >-
-    Do not exceed recommended dosage. Consult your doctor before taking
-    supplements.
+    Take with water and avoid lying down straight after dosing.
 
-- name: Vitamin C
-  dosage_amount: 500
+- name: Nitrofurantoin
+  category: Antibiotic
+  dosage_amount: 100
+  dosage_unit: mg
+  current_supply: 20
+  reorder_threshold: 8
+  description: >-
+    Nitrofurantoin is commonly used to treat urinary tract infections.
+  warnings: >-
+    Take with food. Tell your clinician if breathing problems or jaundice occur.
+
+- name: Fluconazole
+  category: Antifungal
+  dosage_amount: 150
+  dosage_unit: mg
+  current_supply: 12
+  reorder_threshold: 4
+  description: >-
+    Fluconazole is an antifungal medicine used to treat fungal infections.
+  warnings: >-
+    Check interactions with other medicines, especially those affecting heart rhythm.
+
+- name: Aciclovir
+  category: Antiviral
+  dosage_amount: 400
+  dosage_unit: mg
+  current_supply: 30
+  reorder_threshold: 10
+  description: >-
+    Aciclovir is an antiviral used for herpes simplex and shingles infections.
+  warnings: >-
+    Keep hydrated and seek advice if kidney problems are present.
+
+- name: Cetirizine
+  category: Antihistamine
+  dosage_amount: 10
   dosage_unit: mg
   current_supply: 60
   reorder_threshold: 20
   description: >-
-    Vitamin C is an essential nutrient that supports immune function and acts
-    as an antioxidant.
+    Cetirizine is an antihistamine used for hay fever, hives, and allergy symptoms.
   warnings: >-
-    Do not exceed recommended dosage. May cause stomach upset if taken on an
-    empty stomach.
+    May cause sleepiness in some people.
 
-- name: Gabapentin
-  category: Anticonvulsant
-  dosage_amount: 300
-  dosage_unit: mg
-  current_supply: 90
-  reorder_threshold: 21
-  description: >-
-    Gabapentin is used to treat nerve pain and certain types of seizures. It works
-    by affecting chemicals and nerves in the body that are involved in the cause of
-    seizures and some types of pain.
-  warnings: >-
-    May cause dizziness and drowsiness. Do not drive or operate machinery until you
-    know how this medication affects you. Do not stop taking suddenly without
-    consulting your doctor.
-
-- name: Metformin
-  category: Antidiabetic
-  dosage_amount: 500
-  dosage_unit: mg
-  current_supply: 60
-  reorder_threshold: 14
-  description: >-
-    Metformin is used to treat type 2 diabetes. It helps control blood sugar levels
-    and is often prescribed alongside diet and exercise changes.
-  warnings: >-
-    Take with or after food to reduce stomach side effects. Do not take if you have
-    kidney problems. Contact your doctor immediately if you experience unusual muscle
-    pain, difficulty breathing, or stomach pain.
-
-- name: Mebeverine
-  category: Gastrointestinal
-  dosage_amount: 135
-  dosage_unit: mg
-  current_supply: 60
-  reorder_threshold: 14
-  description: >-
-    Mebeverine is used to treat symptoms of irritable bowel syndrome (IBS), including
-    stomach cramps, pain, and spasms. It works by relaxing the muscles in the wall
-    of the gut.
-  warnings: >-
-    Take 20 minutes before meals. Do not exceed the recommended dose. If symptoms
-    worsen or do not improve, consult your doctor.
-
-- name: Sitagliptin
-  category: Antidiabetic
-  dosage_amount: 100
-  dosage_unit: mg
-  current_supply: 30
-  reorder_threshold: 10
-  description: >-
-    Sitagliptin is used to treat type 2 diabetes. It works by increasing levels of
-    natural substances that lower blood sugar when it is high, especially after meals.
-  warnings: >-
-    Tell your doctor if you experience severe joint pain or signs of kidney problems.
-    Do not use to treat type 1 diabetes or diabetic ketoacidosis.
-
-- name: Simvastatin
-  category: Cholesterol
-  dosage_amount: 40
-  dosage_unit: mg
-  current_supply: 30
-  reorder_threshold: 10
-  description: >-
-    Simvastatin is used to lower cholesterol and triglycerides in the blood. It
-    helps reduce the risk of heart disease and cardiovascular events.
-  warnings: >-
-    Take at night for best effect. Tell your doctor immediately if you experience
-    unexplained muscle pain, tenderness or weakness. Avoid grapefruit juice.
-
-- name: Dapagliflozin
-  category: Antidiabetic
+- name: Loratadine
+  category: Antihistamine
   dosage_amount: 10
   dosage_unit: mg
-  current_supply: 30
-  reorder_threshold: 10
+  current_supply: 60
+  reorder_threshold: 20
   description: >-
-    Dapagliflozin is used to treat type 2 diabetes. It works by helping the kidneys
-    remove glucose from the body through urine, lowering blood sugar levels.
+    Loratadine is a non-drowsy antihistamine used for allergy symptoms.
   warnings: >-
-    May increase risk of urinary tract infections and genital infections. Stay well
-    hydrated. Stop taking and seek medical help if you experience signs of diabetic
-    ketoacidosis.
+    Check with a clinician before use in severe liver problems.
 
 - name: Omeprazole
   category: Gastrointestinal
@@ -165,24 +144,402 @@
   current_supply: 30
   reorder_threshold: 10
   description: >-
-    Omeprazole is a proton pump inhibitor (PPI) used to reduce the amount of acid
-    produced in the stomach. It is used to treat acid reflux, heartburn, and stomach
-    ulcers.
+    Omeprazole is a proton pump inhibitor used for reflux and stomach ulcer symptoms.
   warnings: >-
-    Long-term use may affect magnesium levels and increase risk of bone fractures.
-    Tell your doctor if you have liver problems. May mask symptoms of stomach cancer.
+    Long-term use should be reviewed by a clinician.
+
+- name: Senna
+  category: Gastrointestinal
+  dosage_amount: 7.5
+  dosage_unit: mg
+  current_supply: 40
+  reorder_threshold: 12
+  description: >-
+    Senna is a stimulant laxative used for short-term treatment of constipation.
+  warnings: >-
+    Do not use continuously without clinical advice.
+
+- name: Lactulose
+  category: Gastrointestinal
+  dosage_amount: 15
+  dosage_unit: ml
+  current_supply: 120
+  reorder_threshold: 30
+  description: >-
+    Lactulose is an osmotic laxative used to treat constipation.
+  warnings: >-
+    Can cause bloating and wind, especially at treatment start.
+
+- name: Bisacodyl
+  category: Gastrointestinal
+  dosage_amount: 5
+  dosage_unit: mg
+  current_supply: 40
+  reorder_threshold: 12
+  description: >-
+    Bisacodyl is a stimulant laxative used for temporary constipation relief.
+  warnings: >-
+    Avoid long-term daily use unless advised by a clinician.
+
+- name: Loperamide
+  category: Gastrointestinal
+  dosage_amount: 2
+  dosage_unit: mg
+  current_supply: 30
+  reorder_threshold: 10
+  description: >-
+    Loperamide helps reduce diarrhoea by slowing gut movement.
+  warnings: >-
+    Seek urgent advice for diarrhoea with blood, fever, or lasting more than 48 hours.
+
+- name: Mebeverine
+  category: Gastrointestinal
+  dosage_amount: 135
+  dosage_unit: mg
+  current_supply: 60
+  reorder_threshold: 14
+  description: >-
+    Mebeverine is used to ease bowel spasms and pain in irritable bowel syndrome.
+  warnings: >-
+    Take before meals and discuss persistent symptoms with your clinician.
+
+- name: Metformin
+  category: Antidiabetic
+  dosage_amount: 500
+  dosage_unit: mg
+  current_supply: 90
+  reorder_threshold: 21
+  description: >-
+    Metformin is used for type 2 diabetes to help lower blood glucose levels.
+  warnings: >-
+    Take with food to reduce stomach side effects.
+
+- name: Sitagliptin
+  category: Antidiabetic
+  dosage_amount: 100
+  dosage_unit: mg
+  current_supply: 30
+  reorder_threshold: 10
+  description: >-
+    Sitagliptin helps control blood sugar in type 2 diabetes.
+  warnings: >-
+    Seek advice if severe abdominal pain develops.
+
+- name: Dapagliflozin
+  category: Antidiabetic
+  dosage_amount: 10
+  dosage_unit: mg
+  current_supply: 30
+  reorder_threshold: 10
+  description: >-
+    Dapagliflozin lowers blood sugar by helping remove glucose through urine.
+  warnings: >-
+    Stay hydrated and seek urgent advice for symptoms of ketoacidosis.
+
+- name: Simvastatin
+  category: Cholesterol
+  dosage_amount: 40
+  dosage_unit: mg
+  current_supply: 60
+  reorder_threshold: 14
+  description: >-
+    Simvastatin is used to lower cholesterol and reduce cardiovascular risk.
+  warnings: >-
+    Report unexplained muscle pain promptly.
+
+- name: Amlodipine
+  category: Antihypertensive
+  dosage_amount: 5
+  dosage_unit: mg
+  current_supply: 60
+  reorder_threshold: 14
+  description: >-
+    Amlodipine is used to treat high blood pressure and prevent angina.
+  warnings: >-
+    Can cause ankle swelling and flushing.
+
+- name: Ramipril
+  category: Antihypertensive
+  dosage_amount: 5
+  dosage_unit: mg
+  current_supply: 60
+  reorder_threshold: 14
+  description: >-
+    Ramipril is an ACE inhibitor used for hypertension and heart protection.
+  warnings: >-
+    Can cause dizziness or a persistent dry cough.
+
+- name: Warfarin
+  category: Anticoagulant
+  dosage_amount: 3
+  dosage_unit: mg
+  current_supply: 35
+  reorder_threshold: 10
+  description: >-
+    Warfarin is an anticoagulant used to reduce harmful blood clot formation.
+  warnings: >-
+    Requires INR monitoring and has many food and medicine interactions.
+
+- name: Apixaban
+  category: Anticoagulant
+  dosage_amount: 5
+  dosage_unit: mg
+  current_supply: 56
+  reorder_threshold: 14
+  description: >-
+    Apixaban is an anticoagulant used to prevent and treat blood clots.
+  warnings: >-
+    Increased bleeding risk; tell clinicians before procedures.
+
+- name: Sertraline
+  category: Antidepressant
+  dosage_amount: 50
+  dosage_unit: mg
+  current_supply: 56
+  reorder_threshold: 14
+  description: >-
+    Sertraline is an SSRI antidepressant used for depression and anxiety disorders.
+  warnings: >-
+    It may take several weeks to feel full benefit. Do not stop abruptly.
 
 - name: Duloxetine
   category: Antidepressant
   dosage_amount: 30
   dosage_unit: mg
-  current_supply: 120
-  reorder_threshold: 28
+  current_supply: 56
+  reorder_threshold: 14
   description: >-
-    Duloxetine is used to treat fibromyalgia, depression, anxiety, and nerve pain.
-    It works by increasing the activity of serotonin and norepinephrine in the
-    nervous system.
+    Duloxetine is used for depression, anxiety, and some nerve pain conditions.
   warnings: >-
-    Do not stop taking suddenly without consulting your doctor as this may cause
-    withdrawal symptoms. May increase thoughts of suicide in young adults during
-    early treatment. Avoid alcohol.
+    Do not stop suddenly without medical advice.
+
+- name: Gabapentin
+  category: Anticonvulsant
+  dosage_amount: 300
+  dosage_unit: mg
+  current_supply: 90
+  reorder_threshold: 21
+  description: >-
+    Gabapentin is used for neuropathic pain and some seizure disorders.
+  warnings: >-
+    May cause dizziness and sleepiness.
+
+- name: Quetiapine
+  category: Antipsychotic
+  dosage_amount: 100
+  dosage_unit: mg
+  current_supply: 56
+  reorder_threshold: 14
+  description: >-
+    Quetiapine is used for psychosis, bipolar disorder, and adjunctive depression care.
+  warnings: >-
+    Can cause sedation and metabolic side effects; regular review is important.
+
+- name: Diazepam
+  category: Anxiolytic
+  dosage_amount: 5
+  dosage_unit: mg
+  current_supply: 20
+  reorder_threshold: 6
+  description: >-
+    Diazepam is a benzodiazepine used short-term for severe anxiety and muscle spasm.
+  warnings: >-
+    Risk of dependence and sedation; generally for short-term use only.
+
+- name: Ondansetron
+  category: Antiemetic
+  dosage_amount: 4
+  dosage_unit: mg
+  current_supply: 24
+  reorder_threshold: 8
+  description: >-
+    Ondansetron helps prevent nausea and vomiting.
+  warnings: >-
+    Seek advice for persistent constipation or palpitations.
+
+- name: Salbutamol Inhaler
+  category: Respiratory
+  dosage_amount: 100
+  dosage_unit: mcg
+  current_supply: 20
+  reorder_threshold: 6
+  description: >-
+    Salbutamol reliever inhalers quickly ease wheeze and breathlessness in asthma.
+  warnings: >-
+    Using it frequently can indicate poor asthma control and needs review.
+
+- name: Beclometasone Inhaler
+  category: Respiratory
+  dosage_amount: 100
+  dosage_unit: mcg
+  current_supply: 20
+  reorder_threshold: 6
+  description: >-
+    Beclometasone inhalers are preventer medicines for long-term asthma control.
+  warnings: >-
+    Use regularly and rinse mouth after inhaled corticosteroids.
+
+- name: Sumatriptan
+  category: Migraine
+  dosage_amount: 50
+  dosage_unit: mg
+  current_supply: 18
+  reorder_threshold: 6
+  description: >-
+    Sumatriptan is used to treat migraine attacks once they start.
+  warnings: >-
+    Do not exceed the maximum daily dose.
+
+- name: Levothyroxine
+  category: Thyroid
+  dosage_amount: 100
+  dosage_unit: mcg
+  current_supply: 56
+  reorder_threshold: 14
+  description: >-
+    Levothyroxine replaces thyroid hormone in hypothyroidism.
+  warnings: >-
+    Take consistently on an empty stomach and monitor thyroid blood tests.
+
+- name: Ferrous Sulfate
+  category: Mineral
+  dosage_amount: 200
+  dosage_unit: mg
+  current_supply: 60
+  reorder_threshold: 20
+  description: >-
+    Ferrous sulfate is an iron supplement used to treat iron-deficiency anaemia.
+  warnings: >-
+    May cause dark stools and stomach upset.
+
+- name: Calcium Carbonate
+  category: Mineral
+  dosage_amount: 500
+  dosage_unit: mg
+  current_supply: 60
+  reorder_threshold: 20
+  description: >-
+    Calcium carbonate supplements are used when dietary calcium intake is low.
+  warnings: >-
+    Do not exceed advised intake; high doses can cause constipation.
+
+- name: Vitamin D
+  category: Vitamin
+  dosage_amount: 1000
+  dosage_unit: IU
+  current_supply: 60
+  reorder_threshold: 20
+  description: >-
+    Vitamin D supports bone, teeth, and muscle health.
+  warnings: >-
+    Avoid exceeding the recommended dose.
+
+- name: Vitamin C
+  category: Vitamin
+  dosage_amount: 500
+  dosage_unit: mg
+  current_supply: 60
+  reorder_threshold: 20
+  description: >-
+    Vitamin C supports immune function and connective tissue health.
+  warnings: >-
+    High doses may cause gastrointestinal upset.
+
+- name: Folic Acid
+  category: Vitamin
+  dosage_amount: 400
+  dosage_unit: mcg
+  current_supply: 56
+  reorder_threshold: 14
+  description: >-
+    Folic acid supports healthy red blood cell formation and is used before and during pregnancy.
+  warnings: >-
+    Use higher-dose tablets only when prescribed.
+
+- name: Nicotine Gum
+  category: Smoking Cessation
+  dosage_amount: 2
+  dosage_unit: mg
+  current_supply: 120
+  reorder_threshold: 30
+  description: >-
+    Nicotine replacement therapy helps reduce withdrawal symptoms when stopping smoking.
+  warnings: >-
+    Follow product instructions and taper as advised.
+
+- name: Orlistat
+  category: Weight Management
+  dosage_amount: 120
+  dosage_unit: mg
+  current_supply: 84
+  reorder_threshold: 21
+  description: >-
+    Orlistat helps weight loss by reducing fat absorption from food.
+  warnings: >-
+    Works best with a low-fat diet and can cause gastrointestinal side effects.
+
+- name: Solifenacin
+  category: Urological
+  dosage_amount: 5
+  dosage_unit: mg
+  current_supply: 56
+  reorder_threshold: 14
+  description: >-
+    Solifenacin is used for overactive bladder symptoms.
+  warnings: >-
+    Can cause dry mouth and constipation.
+
+- name: Timolol Eye Drops
+  category: Ophthalmic
+  dosage_amount: 1
+  dosage_unit: drop
+  current_supply: 60
+  reorder_threshold: 20
+  description: >-
+    Timolol eye drops are used to reduce raised pressure in the eye.
+  warnings: >-
+    Apply with clean technique and report breathing symptoms.
+
+- name: Hydrocortisone Cream
+  category: Dermatological
+  dosage_amount: 1
+  dosage_unit: g
+  current_supply: 30
+  reorder_threshold: 10
+  description: >-
+    Hydrocortisone cream is a mild topical steroid for inflamed or itchy skin.
+  warnings: >-
+    Use thinly for short periods unless advised otherwise.
+
+- name: Prednisolone
+  category: Hormonal
+  dosage_amount: 5
+  dosage_unit: mg
+  current_supply: 30
+  reorder_threshold: 10
+  description: >-
+    Prednisolone is a corticosteroid used to reduce inflammation in many conditions.
+  warnings: >-
+    Do not stop long courses abruptly; tapering may be needed.
+
+- name: Tacrolimus
+  category: Immunosuppressant
+  dosage_amount: 1
+  dosage_unit: mg
+  current_supply: 56
+  reorder_threshold: 14
+  description: >-
+    Tacrolimus suppresses the immune system, commonly after organ transplantation.
+  warnings: >-
+    Requires regular blood tests and strict dose timing.
+
+- name: Alendronic Acid
+  category: Osteoporosis
+  dosage_amount: 70
+  dosage_unit: mg
+  current_supply: 12
+  reorder_threshold: 4
+  description: >-
+    Alendronic acid helps strengthen bones and reduce fracture risk in osteoporosis.
+  warnings: >-
+    Take with plain water and remain upright for at least 30 minutes.

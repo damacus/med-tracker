@@ -10,6 +10,13 @@ class PersonMedication < ApplicationRecord
   belongs_to :medication
   has_many :medication_takes, dependent: :destroy
 
+  enum :dose_cycle, { daily: 0, weekly: 1, monthly: 2 }, prefix: :dose
+
+  # CRITICAL: Audit trail for person-medication links
+  # Tracks: which medications are assigned to which people, and their non-scheduled dosing rules
+  # @see docs/audit-trail.md
+  has_paper_trail
+
   scope :ordered, -> { order(:position, :id) }
 
   before_validation :assign_position, on: :create
@@ -24,8 +31,11 @@ class PersonMedication < ApplicationRecord
   end
 
   def cycle_period
-    # For non-schedule medications, we use daily cycles
-    1.day
+    case dose_cycle
+    when 'weekly' then 1.week
+    when 'monthly' then 1.month
+    else 1.day
+    end
   end
 
   private

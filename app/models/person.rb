@@ -2,6 +2,8 @@
 
 # Person captures an individual's demographic details and their medication plan.
 class Person < ApplicationRecord
+  attr_accessor :primary_location
+
   # Audit trail for patient/carer demographic changes
   # Critical for compliance: tracks all changes to personal data
   # Tracks: name, DOB, email, person_type, has_capacity changes
@@ -36,7 +38,7 @@ class Person < ApplicationRecord
 
   has_one :notification_preference, dependent: :destroy
 
-  normalizes :email, with: ->(email) { email&.strip&.downcase }
+  normalizes :email, with: ->(email) { email.to_s.strip.downcase.presence }
 
   enum :person_type, {
     adult: 0,
@@ -92,6 +94,11 @@ class Person < ApplicationRecord
 
   def assign_default_location
     return if locations.any? || location_memberships.any?
+
+    if primary_location.present?
+      location_memberships.build(location: primary_location)
+      return
+    end
 
     home = Location.find_or_create_by!(name: 'Home') do |l|
       l.description = 'Primary home location'

@@ -32,7 +32,7 @@ RSpec.describe 'Dashboard' do
     expect(page).to have_content("Today's Schedule")
 
     # Find the first take-dose button
-    button = find('[data-testid^="take-dose-"]')
+    button = first('[data-testid^="take-dose-"]')
 
     expect do
       button.click

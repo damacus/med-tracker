@@ -108,8 +108,8 @@ RSpec.describe 'Dashboard Authorization' do
 
       # Adult patient should see the dashboard with their own data
       expect(page).to have_content('Dashboard')
-      # They should see the Medication Schedule section
-      expect(page).to have_content('Medication Schedule')
+      # They should see the Today's Schedule section
+      expect(page).to have_content("Today's Schedule")
     end
   end
 end

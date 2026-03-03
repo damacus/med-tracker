@@ -71,14 +71,20 @@ module TimingRestrictions
   def would_exceed_max_doses?(check_time)
     return false if max_daily_doses.blank?
 
-    doses_today = if medication_takes.loaded?
-                    range = check_time.all_day
-                    medication_takes.count { |t| range.cover?(t.taken_at) }
-                  else
-                    medication_takes.where(taken_at: check_time.all_day).count
-                  end
+    cycle = respond_to?(:dose_cycle) ? dose_cycle : 'daily'
 
-    doses_today >= max_daily_doses
+    range = case cycle
+            when 'weekly' then check_time.all_week
+            when 'monthly' then check_time.all_month
+            else check_time.all_day
+            end
+    doses_in_cycle = if medication_takes.loaded?
+                       medication_takes.count { |take| range.cover?(take.taken_at) }
+                     else
+                       medication_takes.where(taken_at: range).count
+                     end
+
+    doses_in_cycle >= max_daily_doses
   end
 
   def would_violate_min_hours?(check_time)
@@ -97,21 +103,39 @@ module TimingRestrictions
   end
 
   def calculate_next_available_time
-    times = []
+    [
+      next_time_from_min_hours,
+      next_time_from_max_doses
+    ].compact.min
+  end
 
-    # Check when min hours restriction would be satisfied
-    if min_hours_between_doses.present?
-      last_take = if medication_takes.loaded?
-                    medication_takes.max_by(&:taken_at)
-                  else
-                    medication_takes.order(taken_at: :desc).first
-                  end
-      times << (last_take.taken_at + min_hours_between_doses.hours) if last_take
+  def next_time_from_min_hours
+    return nil if min_hours_between_doses.blank?
+
+    last_take = if medication_takes.loaded?
+                  medication_takes.max_by(&:taken_at)
+                else
+                  medication_takes.order(taken_at: :desc).first
+                end
+    return nil unless last_take
+
+    last_take.taken_at + min_hours_between_doses.hours
+  end
+
+  def next_time_from_max_doses
+    return nil if max_daily_doses.blank?
+    return nil unless would_exceed_max_doses?(Time.current)
+
+    next_cycle_reset_time(Time.current)
+  end
+
+  def next_cycle_reset_time(time)
+    cycle = respond_to?(:dose_cycle) ? dose_cycle : 'daily'
+
+    case cycle
+    when 'weekly' then time.end_of_week + 1.second
+    when 'monthly' then time.end_of_month + 1.second
+    else time.end_of_day + 1.second
     end
-
-    # Check when max doses restriction would be satisfied (next day)
-    times << (Time.current.end_of_day + 1.second) if max_daily_doses.present? && would_exceed_max_doses?(Time.current)
-
-    times.compact.min
   end
 end
