@@ -16,10 +16,11 @@ module Components
         end
 
         def view_template
-          div(data: { testid: 'admin-users' }, class: 'container mx-auto px-4 py-8 pb-24 md:pb-8 max-w-6xl space-y-8') do
+          div(data: { testid: 'admin-users' },
+              class: 'container mx-auto px-4 py-8 pb-24 md:pb-8 max-w-6xl space-y-8') do
             render_header
             render Components::Admin::Users::SearchForm.new(search_params: search_params)
-            
+
             div(class: 'rounded-xl border border-border bg-card shadow-sm overflow-hidden') do
               render Components::Admin::Users::UsersTable.new(
                 users: users,
@@ -27,7 +28,7 @@ module Components
                 current_user: current_user
               )
             end
-            
+
             render Components::Admin::Users::Pagination.new(pagy: pagy_obj, search_params: search_params) if pagy_obj
           end
         end
@@ -43,7 +44,9 @@ module Components
               Heading(level: 1, size: '8', class: 'font-extrabold tracking-tight') do
                 'User Management'
               end
-              Text(weight: 'muted', class: 'mt-2 block') { 'Review roles and access levels for everyone using MedTracker.' }
+              Text(weight: 'muted', class: 'mt-2 block') do
+                'Review roles and access levels for everyone using MedTracker.'
+              end
             end
             render RubyUI::Link.new(href: '/admin/users/new', variant: :primary, size: :lg, class: 'rounded-2xl shadow-lg shadow-primary/20') { 'New User' }
           end

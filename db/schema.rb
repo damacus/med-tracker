@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_02_110000) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_03_113000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -245,7 +245,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_02_110000) do
     t.integer "person_type", default: 0, null: false
     t.datetime "updated_at", null: false
     t.index ["account_id"], name: "index_people_on_account_id"
-    t.index ["email"], name: "index_people_on_email", unique: true
+    t.index ["email"], name: "index_people_on_email_present_unique", unique: true, where: "((email IS NOT NULL) AND (btrim((email)::text) <> ''::text))"
     t.index ["person_type"], name: "index_people_on_person_type"
   end
 

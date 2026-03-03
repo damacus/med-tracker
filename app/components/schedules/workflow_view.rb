@@ -7,13 +7,13 @@ module Components
 
       attr_reader :people, :medications, :selected_person_id, :selected_medication_id, :schedule_type, :frequency
 
-      def initialize(people:, medications:, selected_person_id: nil, selected_medication_id: nil, schedule_type: nil, frequency: nil)
+      def initialize(people:, medications:, **selection)
         @people = people
         @medications = medications
-        @selected_person_id = selected_person_id
-        @selected_medication_id = selected_medication_id
-        @schedule_type = schedule_type
-        @frequency = frequency
+        @selected_person_id = selection[:selected_person_id]
+        @selected_medication_id = selection[:selected_medication_id]
+        @schedule_type = selection[:schedule_type]
+        @frequency = selection[:frequency]
         super()
       end
 
@@ -52,7 +52,8 @@ module Components
       def render_schedule_type_field
         FormField do
           FormFieldLabel(for: 'schedule_type') { 'Type (OTC or prescribed)' }
-          select(name: 'schedule_type', id: 'schedule_type', class: 'w-full rounded-md border border-input bg-background px-3 py-2 text-sm') do
+          select(name: 'schedule_type', id: 'schedule_type',
+                 class: 'w-full rounded-md border border-input bg-background px-3 py-2 text-sm') do
             option(value: '', selected: schedule_type.blank?) { 'Select type' }
             option(value: 'otc', selected: schedule_type == 'otc') { 'OTC' }
             option(value: 'prescribed', selected: schedule_type == 'prescribed') { 'Prescribed' }
@@ -102,18 +103,31 @@ module Components
       end
 
       def render_summary
-        selected_medication = medications.find { |medication| medication.id.to_s == selected_medication_id.to_s }
-        selected_person = people.find { |person| person.id.to_s == selected_person_id.to_s }
-
         render RubyUI::Card.new(class: 'p-6') do
           Heading(level: 2, size: '4', class: 'font-semibold mb-4') { 'Schedule (break this down)' }
           div(class: 'space-y-2 text-sm text-slate-600') do
-            p { "Name of med: #{selected_medication&.name || '-'}" }
-            p { "Person name: #{selected_person&.name || '-'}" }
-            p { "Type: #{schedule_type.presence || '-'}" }
-            p { "Dose, frequency: #{frequency.presence || '-'}" }
+            render_summary_row('Name of med', selected_medication&.name)
+            render_summary_row('Person name', selected_person&.name)
+            render_summary_row('Type', schedule_type)
+            render_summary_row('Dose, frequency', frequency)
           end
         end
+      end
+
+      def render_summary_row(label, value)
+        p { "#{label}: #{summary_value(value)}" }
+      end
+
+      def summary_value(value)
+        value.presence || '-'
+      end
+
+      def selected_medication
+        medications.find { |medication| medication.id.to_s == selected_medication_id.to_s }
+      end
+
+      def selected_person
+        people.find { |person| person.id.to_s == selected_person_id.to_s }
       end
     end
   end

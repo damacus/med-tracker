@@ -12,7 +12,11 @@ module Components
       def initialize(person:, title: nil, subtitle: nil, return_to: nil)
         @person = person
         @title = title || (person.new_record? ? 'New Person' : 'Edit Person')
-        @subtitle = subtitle || (person.new_record? ? 'Add a new person to track medications for' : "Update #{person.name}'s details")
+        @subtitle = subtitle || (if person.new_record?
+                                   'Add a new person to track medications for'
+                                 else
+                                   "Update #{person.name}'s details"
+                                 end)
         @return_to = return_to
         super()
       end

@@ -28,7 +28,14 @@ RSpec.describe 'Schedules workflow' do
 
     click_button 'Continue to schedule details'
 
-    expect(page).to have_current_path(new_person_schedule_path(people(:john), medication_id: medications(:paracetamol).id, frequency: 'Twice daily', schedule_type: 'prescribed'))
+    expect(page).to have_current_path(
+      new_person_schedule_path(
+        people(:john),
+        medication_id: medications(:paracetamol).id,
+        frequency: 'Twice daily',
+        schedule_type: 'prescribed'
+      )
+    )
     expect(page).to have_content('Add schedule for John Doe')
   end
 end

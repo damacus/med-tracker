@@ -17,7 +17,8 @@ module Components
         end
 
         def view_template
-          div(data: { testid: 'admin-carer-relationships' }, class: 'container mx-auto px-4 py-8 pb-24 md:pb-8 max-w-6xl space-y-8') do
+          div(data: { testid: 'admin-carer-relationships' },
+              class: 'container mx-auto px-4 py-8 pb-24 md:pb-8 max-w-6xl space-y-8') do
             render_header
             render_relationships_table
             render_pagination if pagy_obj && pagy_obj.pages > 1

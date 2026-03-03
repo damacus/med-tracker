@@ -25,7 +25,8 @@ RSpec.describe 'Schedules workflow' do
       get schedules_workflow_path, params: { medication_id: medications(:paracetamol).id }
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include("<option value=\"#{medications(:paracetamol).id}\" selected>Paracetamol</option>")
+      selected_option = "<option value=\"#{medications(:paracetamol).id}\" selected>Paracetamol</option>"
+      expect(response.body).to include(selected_option)
     end
   end
 

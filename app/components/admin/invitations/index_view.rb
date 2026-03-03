@@ -54,20 +54,27 @@ module Components
 
         def render_email_field
           FormField(class: 'space-y-2') do
-            FormFieldLabel(for: 'invitation_email', class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1') { 'Email' }
+            FormFieldLabel(for: 'invitation_email',
+                           class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1') do
+              'Email'
+            end
             Input(
               type: :email,
               name: 'invitation[email]',
               id: 'invitation_email',
               required: true,
-              class: 'rounded-md border-slate-200 bg-white py-4 px-4 focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all'
+              class: 'rounded-md border-slate-200 bg-white py-4 px-4 focus:ring-2 ' \
+                     'focus:ring-primary/10 focus:border-primary transition-all'
             )
           end
         end
 
         def render_role_field
           FormField(class: 'space-y-2') do
-            FormFieldLabel(for: 'invitation_role', class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1') { 'Role' }
+            FormFieldLabel(for: 'invitation_role',
+                           class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1') do
+              'Role'
+            end
             select(name: 'invitation[role]', id: 'invitation_role', class: select_classes, required: true) do
               User.roles.each_key do |role|
                 option(value: role) { role.titleize }
@@ -78,7 +85,10 @@ module Components
 
         def render_actions
           div(class: 'flex items-center justify-end pt-4') do
-            Button(type: :submit, variant: :primary, size: :lg, class: 'px-8 rounded-2xl shadow-lg shadow-primary/20') { 'Send invitation' }
+            Button(type: :submit, variant: :primary, size: :lg,
+                   class: 'px-8 rounded-2xl shadow-lg shadow-primary/20') do
+              'Send invitation'
+            end
           end
         end
       end

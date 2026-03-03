@@ -35,7 +35,8 @@ RSpec.describe DashboardPresenter do
     context 'when user is a parent' do
       it 'returns the parent and their minor patients' do
         presenter = described_class.new(current_user: parent_user)
-        expected_people = Person.where(id: [parent_user.person.id] + parent_user.person.patients.where(person_type: :minor).pluck(:id))
+        parent_minor_ids = parent_user.person.patients.where(person_type: :minor).pluck(:id)
+        expected_people = Person.where(id: [parent_user.person.id] + parent_minor_ids)
         expect(presenter.people).to eq(expected_people)
       end
 

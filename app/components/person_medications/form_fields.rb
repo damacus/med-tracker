@@ -33,7 +33,7 @@ module Components
             required: !editing,
             disabled: editing,
             class: select_classes,
-            data: { 
+            data: {
               person_medication_form_target: 'medicationSelect',
               action: 'change->person-medication-form#updateDefaults'
             }

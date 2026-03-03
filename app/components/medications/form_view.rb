@@ -188,7 +188,8 @@ module Components
                 controls: 'medication_category_panel',
                 haspopup: 'listbox'
               },
-              class: "#{select_classes} #{field_error_class(medication, :category)} flex items-center justify-between text-left"
+              class: "#{select_classes} #{field_error_class(medication,
+                                                            :category)} flex items-center justify-between text-left"
             ) do
               span(class: 'truncate', data: { category_combobox_target: 'label' }) do
                 medication.category.presence || t('forms.medications.select_category')
@@ -198,7 +199,8 @@ module Components
             div(
               id: 'medication_category_panel',
               data: { category_combobox_target: 'panel' },
-              class: 'hidden absolute z-50 mt-2 max-h-72 w-full overflow-y-auto overscroll-contain rounded-md border bg-white p-2 shadow-md'
+              class: 'hidden absolute z-50 mt-2 max-h-72 w-full overflow-y-auto ' \
+                     'overscroll-contain rounded-md border bg-white p-2 shadow-md'
             ) do
               render RubyUI::Input.new(
                 type: :text,
@@ -235,7 +237,8 @@ module Components
                       category_combobox_target: 'option',
                       value: category
                     },
-                    class: 'w-full rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground'
+                    class: 'w-full rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent ' \
+                           'hover:text-accent-foreground'
                   ) { category }
                 end
               end
