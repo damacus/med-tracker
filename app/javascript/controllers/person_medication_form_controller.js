@@ -4,7 +4,8 @@ export default class extends Controller {
   static targets = ["medicationSelect", "maxDosesInput", "minHoursInput", "doseCycleInput"]
 
   async updateDefaults() {
-    const medicationId = this.medicationSelectTarget.value
+    const checkedRadio = this.medicationSelectTargets.find(t => t.checked)
+    const medicationId = checkedRadio ? checkedRadio.value : this.medicationSelectTarget.value
     const personType = this.element.dataset.personType || 'adult'
 
     if (!medicationId) return

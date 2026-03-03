@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'MedicationNewLayout' do
-  fixtures :accounts, :people, :users, :locations
+  fixtures :accounts, :people, :users, :locations, :medications
 
   before do
     driven_by(:rack_test)
@@ -29,7 +29,7 @@ RSpec.describe 'MedicationNewLayout' do
         expect(page).to have_field('Warnings')
       end
 
-      select 'Home', from: 'Location'
+      choose('medication[location_id]', option: locations(:home).id.to_s)
       fill_in 'Name', with: 'Ibuprofen'
       fill_in 'Description', with: 'Pain relief'
       fill_in 'Dose', with: 200
@@ -60,6 +60,6 @@ RSpec.describe 'MedicationNewLayout' do
 
     visit new_medication_path
 
-    expect(page).to have_select('Location', selected: 'Home')
+    expect(page).to have_field('medication[location_id]', type: :radio, checked: true)
   end
 end

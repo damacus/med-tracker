@@ -20,21 +20,22 @@ RSpec.describe 'MedicationsVisibility' do
 
     visit new_medication_path
 
-    select 'Home', from: 'medication_location_id'
+    triggers = all('[data-ruby-ui--combobox-target="trigger"]')
+    triggers[0].click  # location
+    find('label', text: 'Home').click
+    page.send_keys(:escape)
+
     fill_in 'medication_name', with: 'Test Medication E2E'
 
-    # Handle the category combobox (RubyUI)
-    find('button', text: 'Select a category').click
-    within('[role="popover"]', wait: 2) do
-      find('label', text: 'Analgesic').click
-    end
+    triggers[1].click  # category
+    find('label', text: 'Analgesic').click
+    page.send_keys(:escape)
 
     fill_in 'medication_dosage_amount', with: '500'
-    # Handle the dosage unit combobox (RubyUI)
-    find('button', text: 'Select unit').click
-    within('[role="popover"]', wait: 2) do
-      find('label', text: 'mg').click
-    end
+
+    triggers[2].click  # dosage unit
+    find('label', text: 'mg').click
+    page.send_keys(:escape)
     fill_in 'medication_current_supply', with: '50'
 
     click_button 'Save Medication'

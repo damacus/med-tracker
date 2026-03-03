@@ -121,18 +121,36 @@ module Components
       def render_location_field(_form)
         div(class: 'space-y-2') do
           render RubyUI::FormFieldLabel.new(
-            for: 'medication_location_id',
+            for: 'medication_location_id_trigger',
             class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1'
           ) { t('medications.show.location') }
-          select(
-            name: 'medication[location_id]',
-            id: 'medication_location_id',
-            required: true,
-            class: "#{select_classes} #{field_error_class(medication, :location)}"
-          ) do
-            option(value: '') { t('forms.medications.select_location') }
-            locations.each do |loc|
-              option(value: loc.id, selected: medication.location_id == loc.id) { loc.name }
+          render RubyUI::Combobox.new(class: 'w-full') do
+            render RubyUI::ComboboxTrigger.new(
+              placeholder: selected_location_name || t('forms.medications.select_location'),
+              class: field_error_class(medication, :location)
+            )
+
+            render RubyUI::ComboboxPopover.new do
+              render RubyUI::ComboboxSearchInput.new(
+                placeholder: t('forms.medications.select_location')
+              )
+
+              render RubyUI::ComboboxList.new do
+                render(RubyUI::ComboboxEmptyState.new { t('forms.medications.select_location') })
+
+                locations.each do |loc|
+                  render RubyUI::ComboboxItem.new do
+                    render RubyUI::ComboboxRadio.new(
+                      name: 'medication[location_id]',
+                      id: "medication_location_id_#{loc.id}",
+                      value: loc.id,
+                      checked: medication.location_id == loc.id,
+                      required: true
+                    )
+                    span { loc.name }
+                  end
+                end
+              end
             end
           end
           render_field_error(medication, :location)
@@ -296,6 +314,12 @@ module Components
 
       def dosage_units
         Medication::DOSAGE_UNITS
+      end
+
+      def selected_location_name
+        return nil if medication.location_id.blank?
+
+        locations.find { |l| l.id == medication.location_id }&.name
       end
 
       def render_supply_fields(_form)

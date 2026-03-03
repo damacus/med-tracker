@@ -25,7 +25,8 @@ RSpec.describe 'Person Medications', type: :system do
       end
       click_link 'As-needed / OTC'
 
-      select new_medication.name, from: 'person_medication[medication_id]'
+      click_button 'Select a medication'
+      find('label', text: new_medication.name).click
       fill_in 'person_medication[notes]', with: 'Take with breakfast'
       fill_in 'person_medication[max_daily_doses]', with: '1'
 

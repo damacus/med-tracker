@@ -31,7 +31,8 @@ RSpec.describe 'Person Medications Authorization' do
         click_link 'Add Medication'
       end
       click_link 'As-needed / OTC'
-      select medication.name, from: 'person_medication_medication_id'
+      click_button 'Select a medication'
+      find('label', text: medication.name).click
       fill_in 'person_medication_notes', with: 'Test notes'
       click_button 'Add Medication'
 
@@ -88,7 +89,8 @@ RSpec.describe 'Person Medications Authorization' do
         click_link 'Add Medication'
       end
       click_link 'As-needed / OTC'
-      select medication.name, from: 'person_medication_medication_id'
+      click_button 'Select a medication'
+      find('label', text: medication.name).click
       fill_in 'person_medication_notes', with: 'Parent-added medication'
       click_button 'Add Medication'
 
