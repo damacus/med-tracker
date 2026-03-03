@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.16](https://github.com/damacus/med-tracker/compare/v0.3.15...v0.3.16) (2026-03-03)
+
+
+### Features
+
+* convert medication selects to RubyUI Combobox components ([#874](https://github.com/damacus/med-tracker/issues/874)) ([dc3798c](https://github.com/damacus/med-tracker/commit/dc3798cc99f9e3abfc1a87627639ab036307ac96))
+
 ## [0.3.15](https://github.com/damacus/med-tracker/compare/v0.3.14...v0.3.15) (2026-03-03)
 
 
