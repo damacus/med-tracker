@@ -23,15 +23,18 @@ RSpec.describe 'MedicationsVisibility' do
     select 'Home', from: 'medication_location_id'
     fill_in 'medication_name', with: 'Test Medication E2E'
 
-    # Handle the category combobox
-    find_by_id('medication_category_trigger').click
-    within('#medication_category_panel') do
-      fill_in 'medication_category_search', with: 'Analgesic'
-      click_button 'Analgesic'
+    # Handle the category combobox (RubyUI)
+    find('button', text: 'Select a category').click
+    within('[role="popover"]', wait: 2) do
+      find('label', text: 'Analgesic').click
     end
 
     fill_in 'medication_dosage_amount', with: '500'
-    select 'mg', from: 'medication_dosage_unit'
+    # Handle the dosage unit combobox (RubyUI)
+    find('button', text: 'Select unit').click
+    within('[role="popover"]', wait: 2) do
+      find('label', text: 'mg').click
+    end
     fill_in 'medication_current_supply', with: '50'
 
     click_button 'Save Medication'

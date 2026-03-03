@@ -37,5 +37,31 @@ RSpec.describe Components::Medications::FormView, type: :component do
       expect(html).to include(I18n.t('forms.medications.filter_categories'))
       expect(html).to include(I18n.t('forms.medications.no_categories_found'))
     end
+
+    it 'renders RubyUI combobox controller and preselects the current category' do
+      medication = Medication.new(name: 'Test Medication', category: 'Vitamin')
+      rendered = render_inline(described_class.new(medication: medication, title: 'Test Title'))
+
+      expect(rendered.css("[data-controller='ruby-ui--combobox']")).to be_present
+      expect(rendered.css("input[type='radio'][name='medication[category]'][value='Vitamin'][checked]")).to be_present
+    end
+  end
+
+  describe 'unit combobox accessibility' do
+    it 'associates unit label with the combobox trigger button' do
+      medication = Medication.new(name: 'Test Medication')
+      rendered = render_inline(described_class.new(medication: medication, title: 'Test Title'))
+
+      expect(rendered.css("label[for='medication_dosage_unit_trigger']")).to be_present
+      expect(rendered.css("label[for='medication_dosage_unit']")).to be_empty
+    end
+
+    it 'renders RubyUI combobox controller and preselects the current dosage unit' do
+      medication = Medication.new(name: 'Test Medication', dosage_unit: 'mg')
+      rendered = render_inline(described_class.new(medication: medication, title: 'Test Title'))
+
+      expect(rendered.css("[data-controller='ruby-ui--combobox']")).to be_present
+      expect(rendered.css("input[type='radio'][name='medication[dosage_unit]'][value='mg'][checked]")).to be_present
+    end
   end
 end

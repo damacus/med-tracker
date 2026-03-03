@@ -5,11 +5,12 @@ module Components
     class IndexView < Components::Base
       include Phlex::Rails::Helpers::FormWith
 
-      attr_reader :medications, :current_category
+      attr_reader :medications, :current_category, :categories
 
-      def initialize(medications:, current_category: nil)
+      def initialize(medications:, current_category: nil, categories: [])
         @medications = medications
         @current_category = current_category
+        @categories = categories
         super()
       end
 
@@ -57,22 +58,52 @@ module Components
       end
 
       def render_categories_section
-        categories = medications.filter_map(&:category).uniq.sort
         return if categories.empty?
 
-        div(class: 'mb-12 overflow-x-auto no-scrollbar') do
-          div(class: 'flex gap-3 min-w-max pb-2') do
-            Button(
-              variant: :primary,
-              class: 'rounded-full px-6 py-2 h-auto text-xs font-bold uppercase tracking-wider ' \
-                     'shadow-md shadow-primary/10'
-            ) { t('medications.index.all') }
+        div(class: 'mb-12 max-w-md') do
+          form_with(url: medications_path, method: :get, class: 'space-y-2', data: { controller: 'form-submit' }) do
+            render RubyUI::FormFieldLabel.new(
+              for: 'inventory_category_trigger',
+              class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1'
+            ) { 'Category' }
+            render RubyUI::Combobox.new(class: 'w-full') do
+              render RubyUI::ComboboxTrigger.new(
+                placeholder: current_category.presence || t('medications.index.all')
+              )
 
-            categories.each do |cat|
-              Button(
-                variant: :outline,
-                class: 'rounded-full px-6 py-2 h-auto text-xs font-bold uppercase tracking-wider'
-              ) { cat.pluralize.titleize }
+              render RubyUI::ComboboxPopover.new do
+                render RubyUI::ComboboxSearchInput.new(
+                  placeholder: t('forms.medications.filter_categories')
+                )
+
+                render RubyUI::ComboboxList.new do
+                  render RubyUI::ComboboxEmptyState.new do
+                    t('forms.medications.no_categories_found')
+                  end
+
+                  render RubyUI::ComboboxItem.new do
+                    render RubyUI::ComboboxRadio.new(
+                      name: 'category',
+                      value: '',
+                      checked: current_category.blank?,
+                      data: { action: 'change->form-submit#submitForm' }
+                    )
+                    span { t('medications.index.all') }
+                  end
+
+                  categories.each do |category|
+                    render RubyUI::ComboboxItem.new do
+                      render RubyUI::ComboboxRadio.new(
+                        name: 'category',
+                        value: category,
+                        checked: current_category == category,
+                        data: { action: 'change->form-submit#submitForm' }
+                      )
+                      span { category }
+                    end
+                  end
+                end
+              end
             end
           end
         end
