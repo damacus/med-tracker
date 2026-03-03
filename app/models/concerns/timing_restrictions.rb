@@ -71,7 +71,12 @@ module TimingRestrictions
   def would_exceed_max_doses?(check_time)
     return false if max_daily_doses.blank?
 
-    doses_today = medication_takes.where(taken_at: check_time.all_day).count
+    doses_today = if medication_takes.loaded?
+                    range = check_time.all_day
+                    medication_takes.count { |t| range.cover?(t.taken_at) }
+                  else
+                    medication_takes.where(taken_at: check_time.all_day).count
+                  end
 
     doses_today >= max_daily_doses
   end
@@ -79,7 +84,11 @@ module TimingRestrictions
   def would_violate_min_hours?(check_time)
     return false if min_hours_between_doses.blank?
 
-    last_take = medication_takes.where(taken_at: ...check_time).order(taken_at: :desc).first
+    last_take = if medication_takes.loaded?
+                  medication_takes.select { |t| t.taken_at < check_time }.max_by(&:taken_at)
+                else
+                  medication_takes.where(taken_at: ...check_time).order(taken_at: :desc).first
+                end
 
     return false if last_take.blank?
 
@@ -92,7 +101,11 @@ module TimingRestrictions
 
     # Check when min hours restriction would be satisfied
     if min_hours_between_doses.present?
-      last_take = medication_takes.order(taken_at: :desc).first
+      last_take = if medication_takes.loaded?
+                    medication_takes.max_by(&:taken_at)
+                  else
+                    medication_takes.order(taken_at: :desc).first
+                  end
       times << (last_take.taken_at + min_hours_between_doses.hours) if last_take
     end
 
