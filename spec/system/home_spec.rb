@@ -12,7 +12,7 @@ RSpec.describe 'Home' do
 
     aggregate_failures 'dashboard content' do
       expect(page).to have_content('Dashboard')
-      expect(page).to have_link('Add Medication', href: new_medication_path)
+      expect(page).to have_link('Add Medication', href: add_medication_path)
       expect(page).to have_no_link('Add Person')
     end
   end
