@@ -99,21 +99,19 @@ class Medication < ApplicationRecord # :nodoc:
   end
 
   def estimated_daily_consumption
-    @estimated_daily_consumption ||= begin
-      schedule_rate = schedules.active.sum do |schedule|
-        next 0.0 if schedule.max_daily_doses.blank?
+    schedule_rate = schedules.active.sum do |schedule|
+      next 0.0 if schedule.max_daily_doses.blank?
 
-        schedule.max_daily_doses.to_f / (schedule.cycle_period / 1.day)
-      end
-
-      pm_rate = person_medications.sum do |pm|
-        next 0.0 if pm.max_daily_doses.blank?
-
-        pm.max_daily_doses.to_f
-      end
-
-      schedule_rate + pm_rate
+      schedule.max_daily_doses.to_f / (schedule.cycle_period / 1.day)
     end
+
+    pm_rate = person_medications.sum do |pm|
+      next 0.0 if pm.max_daily_doses.blank?
+
+      pm.max_daily_doses.to_f
+    end
+
+    schedule_rate + pm_rate
   end
 
   def forecast_available?

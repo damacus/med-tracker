@@ -1,5 +1,5 @@
-## 2025-03-02 - Memoize Derived Database Properties
+## 2025-03-02 - Use Enumerable Methods to Prevent N+1 Queries on Preloaded Associations
 
-**Learning:** Computations like `estimated_daily_consumption` in `Medication` iterate over collections (e.g. `schedules` and `person_medications`). Since properties like `forecast_available?`, `days_until_out_of_stock`, and `days_until_low_stock` reference `estimated_daily_consumption` repeatedly during view renders, this leads to redundant iteration and query-like evaluation loops on the model layer.
+**Learning:** When displaying collections in views (like a dashboard schedule list), calling `association.where(...).count` or `association.order(...).first` on child objects forces ActiveRecord to issue a new query to the database for every single iteration, even if the association itself was preloaded with `.includes(:association)`. This introduces a severe N+1 query bottleneck.
 
-**Action:** Whenever a model calculation involves looping over multiple records and is referenced multiple times per render cycle, use memoization (e.g., `@var ||= begin ... end`) to store the calculation outcome.
+**Action:** Whenever iterating over preloaded associations, use Ruby Enumerable methods (e.g., `association.count { |item| ... }`, `association.select { |item| ... }.max_by(&:field)`) instead of database-level queries (`.where.count` or `.order.first`). This allows Rails to perform filtering and sorting entirely in-memory using the already-loaded collection.
