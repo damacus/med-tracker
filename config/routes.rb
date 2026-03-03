@@ -54,6 +54,8 @@ Rails.application.routes.draw do
 
   # WebAuthn/Passkey routes are handled by Rodauth
 
+  get 'schedules/workflow', to: 'schedules#workflow', as: :schedules_workflow
+  post 'schedules/workflow', to: 'schedules#start_workflow', as: :start_schedules_workflow
   resources :schedules do
     resources :medication_takes, only: [:create]
   end

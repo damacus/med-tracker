@@ -570,6 +570,8 @@ es:
       back: "Volver"
       select_location: "Seleccione una ubicación..."
       select_category: "Seleccione una categoría (opcional)..."
+      filter_categories: "Escriba para filtrar categorías..."
+      no_categories_found: "No se encontraron categorías."
       validation_errors:
         one: "1 error impidió que este medicamento se guardara:"
         other: "%{count} errores impidieron que este medicamento se guardara:"

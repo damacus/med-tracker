@@ -50,9 +50,9 @@ class PeopleController < ApplicationController
     is_modal = request.headers['Turbo-Frame'] == 'modal'
 
     if is_modal
-      render Components::People::FormView.new(person: @person), layout: false
+      render Components::People::Modal.new(person: @person), layout: false
     else
-      render Components::People::FormView.new(person: @person) # FormView already handles its own layout
+      render Components::People::FormView.new(person: @person)
     end
   end
 
@@ -63,7 +63,7 @@ class PeopleController < ApplicationController
     is_modal = request.headers['Turbo-Frame'] == 'modal'
 
     if is_modal
-      render Components::People::FormView.new(person: @person, return_to: @return_to), layout: false
+      render Components::People::Modal.new(person: @person, return_to: @return_to), layout: false
     else
       render Components::People::FormView.new(person: @person, return_to: @return_to)
     end
@@ -72,6 +72,7 @@ class PeopleController < ApplicationController
   def create
     @person = Person.new(person_params)
     authorize @person
+    @person.primary_location = current_primary_location
 
     if current_user.parent? || current_user.carer?
       @person.carer_relationships.build(
@@ -93,13 +94,14 @@ class PeopleController < ApplicationController
           ]
         end
       else
+        @medications = [] # Needed if form uses it
         format.html do
           render Components::People::FormView.new(person: @person), status: :unprocessable_content
         end
         format.turbo_stream do
           render turbo_stream: turbo_stream.replace(
             'modal',
-            Components::People::FormView.new(person: @person)
+            Components::People::Modal.new(person: @person)
           ), status: :unprocessable_content
         end
       end
@@ -128,7 +130,7 @@ class PeopleController < ApplicationController
         format.turbo_stream do
           render turbo_stream: turbo_stream.replace(
             'modal',
-            Components::People::FormView.new(person: @person, return_to: params[:return_to])
+            Components::People::Modal.new(person: @person, return_to: params[:return_to])
           ), status: :unprocessable_content
         end
         format.json { render json: @person.errors, status: :unprocessable_content }
@@ -164,5 +166,11 @@ class PeopleController < ApplicationController
 
   def person_params
     params.expect(person: %i[name date_of_birth email person_type has_capacity])
+  end
+
+  def current_primary_location
+    return nil unless current_user&.person
+
+    current_user.person.location_memberships.order(:id).first&.location
   end
 end

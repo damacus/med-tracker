@@ -21,6 +21,7 @@ class MedicationsController < ApplicationController
 
   def new
     @medication = Medication.new
+    @medication.location_id ||= current_primary_location&.id
     authorize @medication
     render Components::Medications::FormView.new(
       medication: @medication,
@@ -44,6 +45,7 @@ class MedicationsController < ApplicationController
 
   def create
     @medication = Medication.new(medication_params)
+    @medication.location_id ||= current_primary_location&.id
     authorize @medication
 
     if @medication.save
@@ -168,6 +170,12 @@ class MedicationsController < ApplicationController
 
   def available_locations
     Location.order(:name)
+  end
+
+  def current_primary_location
+    return nil unless current_user&.person
+
+    current_user.person.location_memberships.order(:id).first&.location
   end
 
   def medication_params

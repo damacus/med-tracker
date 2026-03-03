@@ -51,6 +51,16 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       rendered = render_inline(dashboard_view)
       expect(rendered.text).to include(presenter.active_schedules.count.to_s)
     end
+
+    it 'renders parent-scoped people count including self' do
+      parent_presenter = DashboardPresenter.new(current_user: users(:parent))
+      parent_view = described_class.new(presenter: parent_presenter)
+      expected_count = users(:parent).person.patients.where(person_type: :minor).count + 1
+
+      rendered = render_inline(parent_view)
+
+      expect(rendered.text).to include(expected_count.to_s)
+    end
   end
 
   describe 'quick actions' do

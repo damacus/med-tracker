@@ -654,6 +654,8 @@ en:
       back: "Back"
       select_location: "Select a location..."
       select_category: "Select a category (optional)..."
+      filter_categories: "Type to filter categories..."
+      no_categories_found: "No categories found."
       validation_errors:
         one: "1 error prevented this medication from being saved:"
         other: "%{count} errors prevented this medication from being saved:"

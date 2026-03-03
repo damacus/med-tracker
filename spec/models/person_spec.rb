@@ -33,6 +33,32 @@ RSpec.describe Person do
       expect(person).to be_valid
     end
 
+    it 'normalizes blank email to nil on save' do
+      person.email = '   '
+      person.save!
+
+      expect(person.reload.email).to be_nil
+    end
+
+    it 'allows multiple people with blank or nil email' do
+      first_person = described_class.new(
+        name: 'First No Email',
+        email: '',
+        date_of_birth: Date.new(2011, 1, 1)
+      )
+      second_person = described_class.new(
+        name: 'Second No Email',
+        email: nil,
+        date_of_birth: Date.new(2012, 1, 1)
+      )
+
+      expect(first_person).to be_valid
+      expect(second_person).to be_valid
+
+      first_person.save!
+      expect { second_person.save! }.not_to raise_error
+    end
+
     it 'enforces case-insensitive uniqueness when email is present' do
       described_class.create!(
         name: 'Existing Person',
@@ -84,6 +110,25 @@ RSpec.describe Person do
       dependent.save!
 
       expect(dependent.dependent_adult?).to be true
+    end
+  end
+
+  describe 'default location assignment' do
+    let(:school_location) { Location.create!(name: 'Spec School', description: 'School') }
+
+    it 'assigns primary location when provided' do
+      person_with_primary_location = described_class.new(
+        name: 'Primary Location Child',
+        date_of_birth: 8.years.ago,
+        person_type: :minor
+      )
+      person_with_primary_location.primary_location = school_location
+
+      carer = described_class.create!(name: 'Parent Carer', date_of_birth: 40.years.ago, person_type: :adult)
+      person_with_primary_location.carer_relationships.build(carer: carer, relationship_type: 'parent')
+      person_with_primary_location.save!
+
+      expect(person_with_primary_location.locations).to contain_exactly(school_location)
     end
   end
 

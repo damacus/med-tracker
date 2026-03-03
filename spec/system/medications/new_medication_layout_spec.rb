@@ -21,7 +21,7 @@ RSpec.describe 'MedicationNewLayout' do
       aggregate_failures 'form fields' do
         expect(page).to have_field('Name')
         expect(page).to have_field('Description')
-        expect(page).to have_field('Standard Dosage')
+        expect(page).to have_field('Dose')
         expect(page).to have_select('Unit')
         expect(page).to have_select('Unit', with_options: ['sachet'])
         expect(page).to have_field('Remaining Supply')
@@ -32,7 +32,7 @@ RSpec.describe 'MedicationNewLayout' do
       select 'Home', from: 'Location'
       fill_in 'Name', with: 'Ibuprofen'
       fill_in 'Description', with: 'Pain relief'
-      fill_in 'Standard Dosage', with: 200
+      fill_in 'Dose', with: 200
       select 'mg', from: 'Unit'
       fill_in 'Remaining Supply', with: 40
       fill_in 'Reorder Threshold', with: 10
@@ -53,5 +53,13 @@ RSpec.describe 'MedicationNewLayout' do
         'warnings' => 'Take with food'
       )
     end
+  end
+
+  it 'defaults location to the signed-in user primary location' do
+    sign_in(users(:jane))
+
+    visit new_medication_path
+
+    expect(page).to have_select('Location', selected: 'Home')
   end
 end

@@ -208,6 +208,16 @@ module Components
 
       def render_actions_card
         div(class: 'space-y-4') do
+          Link(
+            href: schedules_workflow_path(medication_id: medication.id),
+            variant: :outline,
+            size: :lg,
+            class: 'w-full py-7 rounded-2xl bg-white flex items-center justify-center'
+          ) do
+            render Icons::PlusCircle.new(size: 18, class: 'mr-2')
+            plain 'Add Schedule'
+          end
+
           render Button.new(variant: :primary, class: 'w-full py-7 rounded-2xl shadow-xl shadow-primary/20') {
             t('medications.show.log_administration')
           }

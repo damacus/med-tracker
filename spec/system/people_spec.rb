@@ -55,7 +55,7 @@ RSpec.describe 'People' do
       end
     end
 
-    it 'provides link to add schedule' do
+    it 'provides link to add medication' do
       person = people(:john)
 
       visit people_path
@@ -146,7 +146,7 @@ RSpec.describe 'People' do
     context 'when user is an administrator' do
       let(:user) { users(:admin) }
 
-      it 'shows Add Schedule action on person show page' do
+      it 'shows Add Medication action on person show page' do
         visit person_path(people(:child_patient))
 
         expect(page).to have_link('Add Medication')
@@ -174,7 +174,7 @@ RSpec.describe 'People' do
     context 'when user is a carer' do
       let(:user) { users(:carer) }
 
-      it 'hides Add Schedule action on person show page' do
+      it 'hides Add Medication action on person show page' do
         visit person_path(people(:child_patient))
 
         expect(page).to have_content('Care Actions')
@@ -219,6 +219,32 @@ RSpec.describe 'People' do
           expect(page).to have_no_link('Assign Carer')
         end
       end
+    end
+  end
+
+  describe 'dependent creation workflow' do
+    let(:user) { users(:jane) }
+
+    it 'allows creating two dependents without email addresses' do
+      visit people_path
+      click_link 'New Person'
+
+      fill_in 'Name', with: 'System Child One'
+      fill_in 'Email', with: ''
+      fill_in 'Date of Birth', with: 7.years.ago.to_date.to_s
+      click_button 'Create Person'
+
+      expect(page).to have_content('System Child One')
+
+      visit people_path
+      click_link 'New Person'
+
+      fill_in 'Name', with: 'System Child Two'
+      fill_in 'Email', with: ''
+      fill_in 'Date of Birth', with: 6.years.ago.to_date.to_s
+      click_button 'Create Person'
+
+      expect(page).to have_content('System Child Two')
     end
   end
 end

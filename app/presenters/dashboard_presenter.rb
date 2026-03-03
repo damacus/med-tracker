@@ -62,8 +62,9 @@ class DashboardPresenter
   def parent_minor_patients
     return Person.none if current_user.person.nil?
 
-    current_user.person.patients.where(person_type: :minor)
-                .includes(:user, schedules: :medication)
+    people_ids = [current_user.person.id] + current_user.person.patients.where(person_type: :minor).pluck(:id)
+    Person.where(id: people_ids.uniq)
+          .includes(:user, schedules: :medication)
   end
 
   def own_person

@@ -598,6 +598,8 @@ ga:
       back: "Ar Ais"
       select_location: "Roghnaigh suíomh..."
       select_category: "Roghnaigh catagóir (roghnach)..."
+      filter_categories: "Clóscríobh chun catagóirí a scagadh..."
+      no_categories_found: "Níor aimsíodh catagóirí."
       validation_errors:
         one: "Chuir 1 earráid cosc ar an leigheas a shábháil:"
         other: "Chuir %{count} earráid cosc ar an leigheas a shábháil:"

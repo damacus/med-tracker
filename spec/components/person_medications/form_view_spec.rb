@@ -6,7 +6,7 @@ RSpec.describe Components::PersonMedications::FormView, type: :component do
   describe 'i18n translations' do
     it 'renders form with default locale translations' do
       person_medication = PersonMedication.new
-      person = instance_double(Person, name: 'John Doe')
+      person = instance_double(Person, name: 'John Doe', person_type: 'adult')
       medications = []
 
       component = described_class.new(

@@ -161,7 +161,7 @@ module Components
       def render_category_field(_form)
         div(class: 'space-y-2') do
           render RubyUI::FormFieldLabel.new(
-            for: 'medication_category',
+            for: 'medication_category_trigger',
             class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1'
           ) { 'Category' }
           div(
@@ -203,7 +203,7 @@ module Components
               render RubyUI::Input.new(
                 type: :text,
                 id: 'medication_category_search',
-                placeholder: 'Type to filter categories...',
+                placeholder: t('forms.medications.filter_categories'),
                 autocomplete: 'off',
                 data: {
                   action: 'input->category-combobox#filter keydown.escape->category-combobox#close',
@@ -242,7 +242,7 @@ module Components
               p(
                 data: { category_combobox_target: 'empty' },
                 class: 'hidden px-2 py-3 text-sm text-slate-500'
-              ) { 'No categories found.' }
+              ) { t('forms.medications.no_categories_found') }
             end
           end
           render_field_error(medication, :category)

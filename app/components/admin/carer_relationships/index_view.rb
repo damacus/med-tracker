@@ -17,7 +17,7 @@ module Components
         end
 
         def view_template
-          div(data: { testid: 'admin-carer-relationships' }, class: 'space-y-8 px-4 sm:px-6 lg:px-8') do
+          div(data: { testid: 'admin-carer-relationships' }, class: 'container mx-auto px-4 py-8 pb-24 md:pb-8 max-w-6xl space-y-8') do
             render_header
             render_relationships_table
             render_pagination if pagy_obj && pagy_obj.pages > 1
@@ -27,21 +27,28 @@ module Components
         private
 
         def render_header
-          header(class: 'flex items-center justify-between') do
-            div(class: 'space-y-2') do
-              Heading(level: 1) { t('admin.carer_relationships.index.title') }
-              Text(weight: 'muted') { t('admin.carer_relationships.index.subtitle') }
+          div(class: 'flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12') do
+            div do
+              Text(size: '2', weight: 'muted', class: 'uppercase tracking-widest mb-1 block font-bold') do
+                Time.current.strftime('%A, %b %d')
+              end
+              Heading(level: 1, size: '8', class: 'font-extrabold tracking-tight') do
+                t('admin.carer_relationships.index.title')
+              end
+              Text(weight: 'muted', class: 'mt-2 block') { t('admin.carer_relationships.index.subtitle') }
             end
             render RubyUI::Link.new(
               href: '/admin/carer_relationships/new',
               variant: :primary,
+              size: :lg,
+              class: 'rounded-2xl shadow-lg shadow-primary/20',
               data: { turbo_frame: 'modal' }
             ) { t('admin.carer_relationships.index.new_relationship') }
           end
         end
 
         def render_relationships_table
-          div(class: 'rounded-xl border border-border bg-card shadow-sm') do
+          div(class: 'rounded-xl border border-border bg-card shadow-sm overflow-hidden') do
             render RubyUI::Table.new do
               render_table_header
               render_table_body

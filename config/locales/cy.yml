@@ -571,6 +571,8 @@ cy:
       back: "Yn ôl"
       select_location: "Dewiswch leoliad..."
       select_category: "Dewiswch gategori (dewisol)..."
+      filter_categories: "Teipiwch i hidlo categorïau..."
+      no_categories_found: "Ni chanfuwyd categorïau."
       validation_errors:
         one: "1 gwall wedi atal y meddyginiaeth hon rhag cael ei chadw:"
         other: "%{count} wall wedi atal y meddyginiaeth hon rhag cael ei chadw:"

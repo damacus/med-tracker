@@ -32,14 +32,25 @@ module Components
             Heading(level: 1, size: '8', class: 'font-extrabold tracking-tight') { t('medications.index.title') }
           end
           if view_context.policy(Medication).create?
-            Link(
-              href: new_medication_path,
-              variant: :primary,
-              size: :lg,
-              class: 'rounded-2xl font-bold text-sm shadow-lg shadow-primary/20'
-            ) do
-              render Icons::Pill.new(size: 20, class: 'mr-2')
-              span { t('medications.index.add_medication') }
+            div(class: 'flex gap-3') do
+              Link(
+                href: schedules_workflow_path,
+                variant: :outline,
+                size: :lg,
+                class: 'rounded-2xl font-bold text-sm'
+              ) do
+                render Icons::PlusCircle.new(size: 20, class: 'mr-2')
+                span { 'Add Schedule' }
+              end
+              Link(
+                href: new_medication_path,
+                variant: :primary,
+                size: :lg,
+                class: 'rounded-2xl font-bold text-sm shadow-lg shadow-primary/20'
+              ) do
+                render Icons::Pill.new(size: 20, class: 'mr-2')
+                span { t('medications.index.add_medication') }
+              end
             end
           end
         end

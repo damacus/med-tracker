@@ -12,13 +12,15 @@ module Components
         end
 
         def view_template
-          div(id: 'admin_invitations', class: 'container mx-auto px-4 py-8 max-w-2xl space-y-8') do
+          div(id: 'admin_invitations', class: 'container mx-auto px-4 py-8 pb-24 md:pb-8 max-w-6xl space-y-8') do
             render_header
             render_errors if @invitation.errors.any?
 
-            Card do
-              CardContent(class: 'pt-6') do
-                render_form
+            div(class: 'max-w-2xl mx-auto w-full') do
+              Card(class: 'overflow-hidden border-none shadow-2xl rounded-[2.5rem] bg-white') do
+                div(class: 'p-10') do
+                  render_form
+                end
               end
             end
           end
@@ -26,46 +28,46 @@ module Components
 
         private
 
-        def render_errors
-          Alert(variant: :destructive) do
-            ul do
-              @invitation.errors.full_messages.each do |message|
-                li { message }
+        def render_header
+          div(class: 'flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12') do
+            div do
+              Text(size: '2', weight: 'muted', class: 'uppercase tracking-widest mb-1 block font-bold') do
+                Time.current.strftime('%A, %b %d')
               end
+              Heading(level: 1, size: '8', class: 'font-extrabold tracking-tight') do
+                'Invitations'
+              end
+              Text(weight: 'muted', class: 'mt-2 block') { 'Invite new users to join MedTracker.' }
             end
           end
         end
 
-        def render_header
-          div(class: 'space-y-2') do
-            Heading(level: 1) { 'Invitations' }
-            Text(weight: 'muted') { 'Invite new users to join MedTracker.' }
-          end
-        end
-
         def render_form
-          form_with(url: admin_invitations_path, method: :post, class: 'space-y-6') do
-            render_email_field
-            render_role_field
+          form_with(url: admin_invitations_path, method: :post, class: 'space-y-8') do
+            div(class: 'space-y-6') do
+              render_email_field
+              render_role_field
+            end
             render_actions
           end
         end
 
         def render_email_field
-          FormField do
-            FormFieldLabel(for: 'invitation_email') { 'Email' }
+          FormField(class: 'space-y-2') do
+            FormFieldLabel(for: 'invitation_email', class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1') { 'Email' }
             Input(
               type: :email,
               name: 'invitation[email]',
               id: 'invitation_email',
-              required: true
+              required: true,
+              class: 'rounded-md border-slate-200 bg-white py-4 px-4 focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all'
             )
           end
         end
 
         def render_role_field
-          FormField do
-            FormFieldLabel(for: 'invitation_role') { 'Role' }
+          FormField(class: 'space-y-2') do
+            FormFieldLabel(for: 'invitation_role', class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1') { 'Role' }
             select(name: 'invitation[role]', id: 'invitation_role', class: select_classes, required: true) do
               User.roles.each_key do |role|
                 option(value: role) { role.titleize }
@@ -75,8 +77,8 @@ module Components
         end
 
         def render_actions
-          div(class: 'flex items-center justify-end') do
-            Button(type: :submit, variant: :primary) { 'Send invitation' }
+          div(class: 'flex items-center justify-end pt-4') do
+            Button(type: :submit, variant: :primary, size: :lg, class: 'px-8 rounded-2xl shadow-lg shadow-primary/20') { 'Send invitation' }
           end
         end
       end
