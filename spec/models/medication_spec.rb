@@ -16,6 +16,7 @@ RSpec.describe Medication do
     it { is_expected.not_to validate_presence_of(:current_supply) }
     it { is_expected.to allow_value('sachet').for(:dosage_unit) }
     it { is_expected.not_to allow_value('capsule').for(:dosage_unit) }
+    it { is_expected.to validate_numericality_of(:dosage_amount).is_greater_than(0).allow_nil }
 
     it do
       expect(medication).to validate_numericality_of(:current_supply)

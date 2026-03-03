@@ -36,7 +36,7 @@ module Components
 
         # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
         def render_metrics_grid
-          div(class: 'grid grid-cols-2 lg:grid-cols-4 gap-4 mb-12') do
+          div(class: 'grid grid-cols-2 lg:grid-cols-4 auto-rows-fr gap-4 mb-12') do
             render_metric_card(
               title: 'Total Users',
               value: metrics[:total_users] || 0,
@@ -79,71 +79,14 @@ module Components
         # rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
         def render_metric_card(title:, value:, testid:, icon_type:, variant: :default)
-          bg_color = variant == :warning ? 'bg-amber-50/50' : 'bg-white/50'
-          border_color = variant == :warning ? 'border-amber-200' : 'border-none'
-
-          Card(
-            class: "#{border_color} shadow-sm #{bg_color} backdrop-blur-sm transition-all duration-300 " \
-                   'hover:scale-[1.03] hover:shadow-xl hover:shadow-primary/5 cursor-default group',
-            data: { testid: testid }
-          ) do
-            CardContent(class: 'p-6') do
-              div(class: 'space-y-1') do
-                div(class: 'flex items-center justify-between gap-2 mb-2 min-w-0') do
-                  Text(
-                    size: '1', weight: 'muted',
-                    class: 'uppercase font-black tracking-widest group-hover:text-primary transition-colors truncate'
-                  ) { title }
-                  icon_classes = 'p-2 rounded-lg flex-shrink-0 ' \
-                                 "#{icon_bg_class(icon_type, variant)} " \
-                                 "#{value_color_class(icon_type, variant)} transition-colors"
-                  div(class: icon_classes) do
-                    render_icon(icon_type, size: 16)
-                  end
-                end
-                div(class: 'flex items-baseline gap-2') do
-                  span(class: "text-3xl font-black tracking-tight #{value_color_class(icon_type, variant)}",
-                       data: { metric_value: value }) do
-                    value.to_s
-                  end
-                end
-              end
-            end
-          end
-        end
-
-        def render_icon(icon_type, size:)
-          case icon_type
-          when 'users' then render Icons::Users.new(size: size)
-          when 'pill' then render Icons::Pill.new(size: size)
-          when 'check' then render Icons::CheckCircle.new(size: size)
-          when 'clock' then render Icons::Clock.new(size: size)
-          else render Icons::Activity.new(size: size)
-          end
-        end
-
-        def icon_bg_class(icon_type, variant)
-          return 'bg-amber-100' if variant == :warning
-
-          case icon_type
-          when 'users' then 'bg-blue-50'
-          when 'pill' then 'bg-emerald-50'
-          when 'check' then 'bg-indigo-50'
-          when 'clock' then 'bg-amber-50'
-          else 'bg-slate-50'
-          end
-        end
-
-        def value_color_class(icon_type, variant)
-          return 'text-amber-700' if variant == :warning
-
-          case icon_type
-          when 'users' then 'text-blue-600'
-          when 'pill' then 'text-emerald-600'
-          when 'check' then 'text-indigo-600'
-          when 'clock' then 'text-amber-600'
-          else 'text-slate-900'
-          end
+          render Components::Shared::MetricCard.new(
+            title: title,
+            value: value,
+            icon_type: icon_type,
+            testid: testid,
+            variant: variant,
+            value_data_attr: { metric_value: value }
+          )
         end
 
         def render_quick_actions

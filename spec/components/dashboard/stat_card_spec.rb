@@ -46,6 +46,7 @@ RSpec.describe Components::Dashboard::StatCard, type: :component do
       rendered = render_inline(described_class.new(title: 'People', value: 5, icon_type: 'users', href: '/people'))
 
       expect(rendered.css('a[href="/people"]')).to be_present
+      expect(rendered.to_html).not_to include('h-9')
     end
 
     it 'does not render a link wrapper when href is omitted' do

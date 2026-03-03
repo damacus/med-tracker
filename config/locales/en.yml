@@ -461,6 +461,7 @@ en:
     updated: "Medication updated successfully."
     deleted: "Medication removed successfully."
     medication_taken: "Medication taken successfully."
+    invalid_dose_configured: "Invalid dose configured. Update the medication dose before taking."
     modal:
       new_title: "Add Medication for %{person}"
       edit_title: "Edit Medication for %{person}"
@@ -476,6 +477,7 @@ en:
       take: "💊 Take"
       give: "💊 Give"
       out_of_stock: "💊 Out of Stock"
+      invalid_dose: "Invalid Dose Configured"
       edit: "Edit"
       remove: "Remove"
       remove_medication: "Remove Medication"
@@ -505,6 +507,7 @@ en:
     updated: "Schedule was successfully updated."
     deleted: "Schedule was successfully deleted."
     medication_taken: "Medication taken successfully."
+    invalid_dose_configured: "Invalid dose configured. Update the schedule dose before taking."
     modal:
       new_title: "New Schedule for %{person}"
       edit_title: "Edit Schedule for %{person}"
@@ -519,6 +522,7 @@ en:
       take: "💊 Take"
       give: "💊 Give"
       out_of_stock: "💊 Out of Stock"
+      invalid_dose: "Invalid Dose Configured"
       ready_now: "Ready Now"
       waiting: "Waiting"
       edit: "Edit"

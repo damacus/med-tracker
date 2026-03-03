@@ -180,13 +180,22 @@ class SchedulesController < ApplicationController
       return
     end
 
-    # Extract the amount from the schedule's dosage if not provided
-    amount = params[:amount_ml] || @schedule.dosage.amount
+    amount = normalized_take_amount(params[:amount_ml].presence || @schedule.dosage.amount)
+    if invalid_take_amount?(amount)
+      log_invalid_take_attempt(amount)
+      respond_take_medication_invalid_dose
+      return
+    end
 
-    @take = @schedule.medication_takes.create!(
+    @take = @schedule.medication_takes.create(
       taken_at: Time.current,
       amount_ml: amount
     )
+    unless @take.persisted?
+      respond_take_medication_invalid_dose
+      return
+    end
+
     flash.now[:notice] = t('schedules.medication_taken')
 
     respond_to do |format|
@@ -220,5 +229,43 @@ class SchedulesController < ApplicationController
     return current_user.person if current_user.person.nil?
 
     current_user.person.patients.first || current_user.person
+  end
+
+  def invalid_take_amount?(amount)
+    amount.nil? || amount <= 0
+  end
+
+  def normalized_take_amount(raw_amount)
+    return nil if raw_amount.blank?
+
+    BigDecimal(raw_amount.to_s)
+  rescue ArgumentError
+    nil
+  end
+
+  def respond_take_medication_invalid_dose
+    message = t('schedules.invalid_dose_configured')
+    respond_to do |format|
+      format.html { redirect_back_or_to person_path(@person), alert: message }
+      format.turbo_stream do
+        flash.now[:alert] = message
+        render turbo_stream: turbo_stream.update('flash', Components::Layouts::Flash.new(alert: flash[:alert]))
+      end
+    end
+  end
+
+  def log_invalid_take_attempt(amount)
+    Rails.logger.warn(
+      {
+        event: 'invalid_take_medication',
+        controller: self.class.name,
+        source: 'schedule',
+        person_id: @person.id,
+        schedule_id: @schedule.id,
+        medication_id: @schedule.medication_id,
+        dosage_id: @schedule.dosage_id,
+        attempted_amount_ml: amount&.to_s
+      }.to_json
+    )
   end
 end

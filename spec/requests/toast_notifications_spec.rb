@@ -48,6 +48,19 @@ RSpec.describe 'Toast notifications for async actions' do
         expect(response.body).to include('turbo-stream')
         expect(response.body).to include('flash')
       end
+
+      it 'returns turbo_stream response with flash update when dose is invalid' do
+        schedule.dosage.update_column(:amount, 0)
+
+        post take_medication_person_schedule_path(person, schedule),
+             headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+        expect(response).to have_http_status(:ok)
+        expect(response.media_type).to eq('text/vnd.turbo-stream.html')
+        expect(response.body).to include('turbo-stream')
+        expect(response.body).to include('flash')
+        expect(response.body).to include('Invalid dose configured')
+      end
     end
 
     context 'with html format' do
@@ -78,6 +91,19 @@ RSpec.describe 'Toast notifications for async actions' do
         expect(response.media_type).to eq('text/vnd.turbo-stream.html')
         expect(response.body).to include('turbo-stream')
         expect(response.body).to include('flash')
+      end
+
+      it 'returns turbo_stream response with flash update when dose is invalid' do
+        medication.update_column(:dosage_amount, 0)
+
+        post take_medication_person_person_medication_path(person, person_medication),
+             headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+        expect(response).to have_http_status(:ok)
+        expect(response.media_type).to eq('text/vnd.turbo-stream.html')
+        expect(response.body).to include('turbo-stream')
+        expect(response.body).to include('flash')
+        expect(response.body).to include('Invalid dose configured')
       end
     end
   end

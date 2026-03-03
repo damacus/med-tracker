@@ -197,7 +197,9 @@ module Components
       end
 
       def render_take_medication_button
-        if schedule.can_administer?
+        if invalid_dose_configured? || !schedule.can_administer?
+          render_disabled_button_with_reason
+        else
           form_with(
             url: take_medication_person_schedule_path(person, schedule),
             method: :post,
@@ -215,14 +217,16 @@ module Components
               plain take_label('schedules')
             end
           end
-        else
-          render_disabled_button_with_reason
         end
       end
 
       def render_disabled_button_with_reason
-        reason = schedule.administration_blocked_reason
-        label = reason == :out_of_stock ? t('schedules.card.out_of_stock') : take_label('schedules')
+        label = if invalid_dose_configured?
+                  t('schedules.card.invalid_dose')
+                else
+                  reason = schedule.administration_blocked_reason
+                  reason == :out_of_stock ? t('schedules.card.out_of_stock') : take_label('schedules')
+                end
         render Button.new(
           variant: :secondary,
           size: :lg,
@@ -240,6 +244,10 @@ module Components
 
       def take_label(scope)
         own_dose? ? t("#{scope}.card.take") : t("#{scope}.card.give")
+      end
+
+      def invalid_dose_configured?
+        schedule.dosage.amount.to_f <= 0
       end
 
       def render_schedule_actions

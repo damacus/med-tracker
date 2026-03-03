@@ -13,11 +13,13 @@ if [[ "$RAILS_ENV" == "development" ]]; then
     echo "Removing stale precompiled assets (development uses dynamic serving)..."
     rm -rf public/assets
   fi
-elif [[ "$RAILS_ENV" == "test" ]]; then
-  # Test: volume mount overrides built image assets, so build Tailwind CSS from
+fi
+
+if [[ "$RAILS_ENV" == "development" || "$RAILS_ENV" == "test" ]]; then
+  # Dev/Test: volume mount overrides built image assets, so build Tailwind CSS from
   # mounted source files so Propshaft can resolve stylesheet_link_tag "tailwind".
   if [[ ! -f "app/assets/builds/tailwind.css" ]]; then
-    echo "Building Tailwind CSS for test environment..."
+    echo "Building Tailwind CSS for $RAILS_ENV environment..."
     SECRET_KEY_BASE_DUMMY=1 ./bin/rails tailwindcss:build
   fi
 elif [[ ! -f "public/assets/.manifest.json" ]]; then
