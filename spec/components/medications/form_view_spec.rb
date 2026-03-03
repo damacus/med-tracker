@@ -19,4 +19,23 @@ RSpec.describe Components::Medications::FormView, type: :component do
       expect(rendered.to_html).to include('Save Medication')
     end
   end
+
+  describe 'category combobox accessibility and translations' do
+    it 'associates category label with the combobox trigger button' do
+      medication = Medication.new(name: 'Test Medication')
+      rendered = render_inline(described_class.new(medication: medication, title: 'Test Title'))
+
+      expect(rendered.css("label[for='medication_category_trigger']")).to be_present
+      expect(rendered.css("label[for='medication_category']")).to be_empty
+    end
+
+    it 'renders category helper copy from i18n keys' do
+      medication = Medication.new(name: 'Test Medication')
+      rendered = render_inline(described_class.new(medication: medication, title: 'Test Title'))
+      html = rendered.to_html
+
+      expect(html).to include(I18n.t('forms.medications.filter_categories'))
+      expect(html).to include(I18n.t('forms.medications.no_categories_found'))
+    end
+  end
 end
