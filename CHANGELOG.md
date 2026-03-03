@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.15](https://github.com/damacus/med-tracker/compare/v0.3.14...v0.3.15) (2026-03-03)
+
+
+### Bug Fixes
+
+* **bug sweep:** medication flow, people defaults, and schedule onboarding ([#873](https://github.com/damacus/med-tracker/issues/873)) ([a98389f](https://github.com/damacus/med-tracker/commit/a98389f0a69f56f4d647c344b86cac634b05ba3b))
+* **palette:** Add ARIA labels to icon-only buttons in person medication card ([#861](https://github.com/damacus/med-tracker/issues/861)) ([cf7622c](https://github.com/damacus/med-tracker/commit/cf7622ce2886bc7626c1ae5b845585caadc71e81))
+* **perf:** memoize estimated_daily_consumption for Medication ([#860](https://github.com/damacus/med-tracker/issues/860)) ([466c5d1](https://github.com/damacus/med-tracker/commit/466c5d195a2bcd27888d800c8204d70818cd7a92))
+
 ## [0.3.14](https://github.com/damacus/med-tracker/compare/v0.3.13...v0.3.14) (2026-03-02)
 
 
