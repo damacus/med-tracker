@@ -4,19 +4,36 @@ module Components
   module Dashboard
     # Renders a single stat card with title, value, and icon
     class StatCard < Components::Base
-      attr_reader :title, :value, :icon_type
+      attr_reader :title, :value, :icon_type, :href
 
-      def initialize(title:, value:, icon_type:)
+      def initialize(title:, value:, icon_type:, href: nil)
         @title = title
         @value = value
         @icon_type = icon_type
+        @href = href
         super()
       end
 
       def view_template
+        if href.present?
+          Link(
+            href: href,
+            class: 'block no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ' \
+                   'focus-visible:ring-offset-2 rounded-xl'
+          ) do
+            render_card
+          end
+        else
+          render_card
+        end
+      end
+
+      private
+
+      def render_card
         Card(
           class: 'border-none shadow-sm bg-white/50 backdrop-blur-sm transition-all duration-300 ' \
-                 'hover:scale-[1.03] hover:shadow-xl hover:shadow-primary/5 cursor-default group'
+                 "hover:scale-[1.03] hover:shadow-xl hover:shadow-primary/5 #{cursor_class} group"
         ) do
           CardContent(class: 'p-6') do
             div(class: 'space-y-1') do
@@ -39,7 +56,9 @@ module Components
         end
       end
 
-      private
+      def cursor_class
+        href.present? ? 'cursor-pointer' : 'cursor-default'
+      end
 
       def render_icon(size:)
         case icon_type
