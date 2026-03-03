@@ -26,24 +26,36 @@ module Components
 
       def render_medication_field
         FormField do
-          FormFieldLabel(for: 'person_medication_medication_id') { 'Medication' }
-          select(
-            name: 'person_medication[medication_id]',
-            id: 'person_medication_medication_id',
-            required: !editing,
-            disabled: editing,
-            class: select_classes,
-            data: {
-              person_medication_form_target: 'medicationSelect',
-              action: 'change->person-medication-form#updateDefaults'
-            }
-          ) do
-            option(value: '', disabled: true, selected: person_medication.medication_id.blank?) do
-              'Select a medication'
-            end
-            medications.each do |medication|
-              option(value: medication.id, selected: person_medication.medication_id == medication.id) do
-                medication.name
+          FormFieldLabel(for: 'person_medication_medication_id_trigger') { 'Medication' }
+          render RubyUI::Combobox.new(class: 'w-full') do
+            render RubyUI::ComboboxTrigger.new(
+              placeholder: selected_medication_name || 'Select a medication',
+              disabled: editing
+            )
+
+            render RubyUI::ComboboxPopover.new do
+              render RubyUI::ComboboxSearchInput.new(placeholder: 'Search medications…')
+
+              render RubyUI::ComboboxList.new do
+                render(RubyUI::ComboboxEmptyState.new { 'No medications found.' })
+
+                medications.each do |med|
+                  render RubyUI::ComboboxItem.new do
+                    render RubyUI::ComboboxRadio.new(
+                      name: 'person_medication[medication_id]',
+                      id: "person_medication_medication_id_#{med.id}",
+                      value: med.id,
+                      checked: person_medication.medication_id == med.id,
+                      required: !editing,
+                      data: {
+                        text: med.name,
+                        person_medication_form_target: 'medicationSelect',
+                        action: 'change->person-medication-form#updateDefaults'
+                      }
+                    )
+                    span { med.name }
+                  end
+                end
               end
             end
           end
@@ -105,18 +117,38 @@ module Components
         end
       end
 
+      def selected_medication_name
+        return nil if person_medication.medication_id.blank?
+
+        medications.find { |m| m.id == person_medication.medication_id }&.name
+      end
+
       def render_dose_cycle_field
         FormField do
-          FormFieldLabel(for: 'person_medication_dose_cycle') { 'Dose cycle' }
-          select(
-            name: 'person_medication[dose_cycle]',
-            id: 'person_medication_dose_cycle',
-            class: select_classes,
-            data: { person_medication_form_target: 'doseCycleInput' }
-          ) do
-            option(value: 'daily', selected: person_medication.dose_daily?) { 'Daily' }
-            option(value: 'weekly', selected: person_medication.dose_weekly?) { 'Weekly' }
-            option(value: 'monthly', selected: person_medication.dose_monthly?) { 'Monthly' }
+          FormFieldLabel(for: 'person_medication_dose_cycle_trigger') { 'Dose cycle' }
+          render RubyUI::Combobox.new(class: 'w-full') do
+            render RubyUI::ComboboxTrigger.new(
+              placeholder: person_medication.dose_cycle&.titleize || 'Daily'
+            )
+
+            render RubyUI::ComboboxPopover.new do
+              render RubyUI::ComboboxList.new do
+                render(RubyUI::ComboboxEmptyState.new { 'No options.' })
+
+                [%w[Daily daily], %w[Weekly weekly], %w[Monthly monthly]].each do |label, value|
+                  render RubyUI::ComboboxItem.new do
+                    render RubyUI::ComboboxRadio.new(
+                      name: 'person_medication[dose_cycle]',
+                      id: "person_medication_dose_cycle_#{value}",
+                      value: value,
+                      checked: person_medication.dose_cycle == value,
+                      data: { person_medication_form_target: 'doseCycleInput' }
+                    )
+                    span { label }
+                  end
+                end
+              end
+            end
           end
           FormFieldHint { 'Cycle reset period' }
         end

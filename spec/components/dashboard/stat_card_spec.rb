@@ -41,5 +41,17 @@ RSpec.describe Components::Dashboard::StatCard, type: :component do
 
       expect(rendered.text).to include('Active Schedules')
     end
+
+    it 'renders a link wrapper when href is provided' do
+      rendered = render_inline(described_class.new(title: 'People', value: 5, icon_type: 'users', href: '/people'))
+
+      expect(rendered.css('a[href="/people"]')).to be_present
+    end
+
+    it 'does not render a link wrapper when href is omitted' do
+      rendered = render_inline(described_class.new(title: 'People', value: 5, icon_type: 'users'))
+
+      expect(rendered.css('a')).to be_empty
+    end
   end
 end

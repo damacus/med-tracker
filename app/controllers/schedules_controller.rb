@@ -4,8 +4,14 @@ class SchedulesController < ApplicationController
   include TimelineRefreshable
   include PersonViewable
 
-  before_action :set_person, except: %i[workflow start_workflow]
+  before_action :set_person, except: %i[index workflow start_workflow]
   before_action :set_schedule, only: %i[edit update destroy take_medication]
+
+  def index
+    authorize Schedule.new(person: schedule_index_person), :index?
+    schedules = policy_scope(Schedule).active.includes(:person, :medication, :dosage).order(:start_date, :id)
+    render Components::Schedules::IndexView.new(schedules: schedules)
+  end
 
   def workflow
     authorize Schedule.new(person: current_user&.person || Person.new), :create?
@@ -206,5 +212,12 @@ class SchedulesController < ApplicationController
 
   def schedule_params
     params.expect(schedule: %i[medication_id dosage_id frequency start_date end_date notes max_daily_doses min_hours_between_doses dose_cycle])
+  end
+
+  def schedule_index_person
+    return Person.new if current_user.nil?
+    return current_user.person if current_user.person.nil?
+
+    current_user.person.patients.first || current_user.person
   end
 end

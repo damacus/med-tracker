@@ -40,4 +40,29 @@ RSpec.describe 'Dashboard' do
       expect(page).to have_content('Medication taken successfully.', wait: 10)
     end.to change(MedicationTake, :count).by(1)
   end
+
+  it 'navigates from stat cards to the expected pages' do
+    sign_in(users(:jane))
+    visit dashboard_path
+
+    within '[data-testid="dashboard"]' do
+      find("a[href='#{people_path}']").click
+    end
+    expect(page).to have_current_path(people_path)
+    expect(page).to have_content('People')
+
+    visit dashboard_path
+    within '[data-testid="dashboard"]' do
+      find("a[href='#{schedules_path}']").click
+    end
+    expect(page).to have_current_path(schedules_path)
+    expect(page).to have_content('Active Schedules')
+
+    visit dashboard_path
+    within '[data-testid="dashboard"]' do
+      find("a[href='#{reports_path}']").click
+    end
+    expect(page).to have_current_path(reports_path)
+    expect(page).to have_content('Health Report')
+  end
 end

@@ -81,17 +81,20 @@ module Components
           render Components::Dashboard::StatCard.new(
             title: t('dashboard.stats.people'),
             value: people.count,
-            icon_type: 'users'
+            icon_type: 'users',
+            href: people_path
           )
           render Components::Dashboard::StatCard.new(
             title: t('dashboard.stats.active_schedules'),
             value: active_schedules.count,
-            icon_type: 'pill'
+            icon_type: 'pill',
+            href: schedules_path
           )
           render Components::Dashboard::StatCard.new(
             title: t('dashboard.stats.compliance'),
             value: "#{compliance_percentage}%",
-            icon_type: 'check'
+            icon_type: 'check',
+            href: reports_path
           )
           render Components::Dashboard::StatCard.new(
             title: t('dashboard.stats.next_dose'),

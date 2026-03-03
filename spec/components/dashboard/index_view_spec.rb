@@ -61,6 +61,24 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
 
       expect(rendered.text).to include(expected_count.to_s)
     end
+
+    it 'links People stat card to people page' do
+      rendered = render_inline(dashboard_view)
+
+      expect(rendered.css("a[href='/people']")).to be_present
+    end
+
+    it 'links Active Schedules stat card to schedules page' do
+      rendered = render_inline(dashboard_view)
+
+      expect(rendered.css("a[href='/schedules']")).to be_present
+    end
+
+    it 'links Compliance stat card to reports page' do
+      rendered = render_inline(dashboard_view)
+
+      expect(rendered.css("a[href='/reports']")).to be_present
+    end
   end
 
   describe 'quick actions' do

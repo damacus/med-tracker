@@ -121,18 +121,36 @@ module Components
       def render_location_field(_form)
         div(class: 'space-y-2') do
           render RubyUI::FormFieldLabel.new(
-            for: 'medication_location_id',
+            for: 'medication_location_id_trigger',
             class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1'
           ) { t('medications.show.location') }
-          select(
-            name: 'medication[location_id]',
-            id: 'medication_location_id',
-            required: true,
-            class: "#{select_classes} #{field_error_class(medication, :location)}"
-          ) do
-            option(value: '') { t('forms.medications.select_location') }
-            locations.each do |loc|
-              option(value: loc.id, selected: medication.location_id == loc.id) { loc.name }
+          render RubyUI::Combobox.new(class: 'w-full') do
+            render RubyUI::ComboboxTrigger.new(
+              placeholder: selected_location_name || t('forms.medications.select_location'),
+              class: field_error_class(medication, :location)
+            )
+
+            render RubyUI::ComboboxPopover.new do
+              render RubyUI::ComboboxSearchInput.new(
+                placeholder: t('forms.medications.select_location')
+              )
+
+              render RubyUI::ComboboxList.new do
+                render(RubyUI::ComboboxEmptyState.new { t('forms.medications.select_location') })
+
+                locations.each do |loc|
+                  render RubyUI::ComboboxItem.new do
+                    render RubyUI::ComboboxRadio.new(
+                      name: 'medication[location_id]',
+                      id: "medication_location_id_#{loc.id}",
+                      value: loc.id,
+                      checked: medication.location_id == loc.id,
+                      required: true
+                    )
+                    span { loc.name }
+                  end
+                end
+              end
             end
           end
           render_field_error(medication, :location)
@@ -164,88 +182,42 @@ module Components
             for: 'medication_category_trigger',
             class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1'
           ) { 'Category' }
-          div(
-            data: { controller: 'category-combobox' },
-            class: 'relative'
-          ) do
-            input(
-              type: 'hidden',
-              name: 'medication[category]',
-              id: 'medication_category',
-              value: medication.category,
-              data: { category_combobox_target: 'input' }
+          render RubyUI::Combobox.new(class: 'w-full') do
+            render RubyUI::ComboboxTrigger.new(
+              placeholder: medication.category.presence || t('forms.medications.select_category'),
+              class: field_error_class(medication, :category)
             )
-            button(
-              type: 'button',
-              id: 'medication_category_trigger',
-              data: {
-                action: 'click->category-combobox#toggle click@window->category-combobox#handleOutsideClick',
-                category_combobox_target: 'button',
-                placeholder: t('forms.medications.select_category')
-              },
-              aria: {
-                expanded: 'false',
-                controls: 'medication_category_panel',
-                haspopup: 'listbox'
-              },
-              class: "#{select_classes} #{field_error_class(medication,
-                                                            :category)} flex items-center justify-between text-left"
-            ) do
-              span(class: 'truncate', data: { category_combobox_target: 'label' }) do
-                medication.category.presence || t('forms.medications.select_category')
-              end
-              render Icons::ChevronsUpDown.new(size: 16, class: 'ml-2 shrink-0 opacity-60')
-            end
-            div(
-              id: 'medication_category_panel',
-              data: { category_combobox_target: 'panel' },
-              class: 'hidden absolute z-50 mt-2 max-h-72 w-full overflow-y-auto ' \
-                     'overscroll-contain rounded-md border bg-white p-2 shadow-md'
-            ) do
-              render RubyUI::Input.new(
-                type: :text,
-                id: 'medication_category_search',
-                placeholder: t('forms.medications.filter_categories'),
-                autocomplete: 'off',
-                data: {
-                  action: 'input->category-combobox#filter keydown.escape->category-combobox#close',
-                  category_combobox_target: 'search'
-                },
-                class: 'mb-2 h-9'
+
+            render RubyUI::ComboboxPopover.new do
+              render RubyUI::ComboboxSearchInput.new(
+                placeholder: t('forms.medications.filter_categories')
               )
-              div(
-                role: 'listbox',
-                aria: { labelledby: 'medication_category_trigger' },
-                class: 'rounded-md border p-1'
-              ) do
-                button(
-                  type: 'button',
-                  role: 'option',
-                  data: {
-                    action: 'click->category-combobox#select',
-                    category_combobox_target: 'option',
-                    value: ''
-                  },
-                  class: 'w-full rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground'
-                ) { t('forms.medications.select_category') }
+
+              render RubyUI::ComboboxList.new do
+                render RubyUI::ComboboxEmptyState.new do
+                  t('forms.medications.no_categories_found')
+                end
+
+                render RubyUI::ComboboxItem.new do
+                  render RubyUI::ComboboxRadio.new(
+                    name: 'medication[category]',
+                    value: '',
+                    checked: medication.category.blank?
+                  )
+                  span { t('forms.medications.select_category') }
+                end
+
                 Medication::CATEGORIES.each do |category|
-                  button(
-                    type: 'button',
-                    role: 'option',
-                    data: {
-                      action: 'click->category-combobox#select',
-                      category_combobox_target: 'option',
-                      value: category
-                    },
-                    class: 'w-full rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent ' \
-                           'hover:text-accent-foreground'
-                  ) { category }
+                  render RubyUI::ComboboxItem.new do
+                    render RubyUI::ComboboxRadio.new(
+                      name: 'medication[category]',
+                      value: category,
+                      checked: medication.category == category
+                    )
+                    span { category }
+                  end
                 end
               end
-              p(
-                data: { category_combobox_target: 'empty' },
-                class: 'hidden px-2 py-3 text-sm text-slate-500'
-              ) { t('forms.medications.no_categories_found') }
             end
           end
           render_field_error(medication, :category)
@@ -295,24 +267,59 @@ module Components
       def render_dosage_unit_field
         div(class: 'space-y-2') do
           render RubyUI::FormFieldLabel.new(
-            for: 'medication_dosage_unit',
+            for: 'medication_dosage_unit_trigger',
             class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1'
           ) { t('forms.medications.unit') }
-          select(
-            name: 'medication[dosage_unit]',
-            id: 'medication_dosage_unit',
-            class: select_classes
-          ) do
-            option(value: '', selected: medication.dosage_unit.blank?) { t('forms.medications.select_unit') }
-            dosage_units.each do |unit|
-              option(value: unit, selected: medication.dosage_unit == unit) { unit }
+          render RubyUI::Combobox.new(class: 'w-full') do
+            render RubyUI::ComboboxTrigger.new(
+              placeholder: medication.dosage_unit.presence || t('forms.medications.select_unit'),
+              class: field_error_class(medication, :dosage_unit)
+            )
+
+            render RubyUI::ComboboxPopover.new do
+              render RubyUI::ComboboxSearchInput.new(
+                placeholder: t('forms.medications.select_unit')
+              )
+
+              render RubyUI::ComboboxList.new do
+                render RubyUI::ComboboxEmptyState.new do
+                  'No units found.'
+                end
+
+                render RubyUI::ComboboxItem.new do
+                  render RubyUI::ComboboxRadio.new(
+                    name: 'medication[dosage_unit]',
+                    value: '',
+                    checked: medication.dosage_unit.blank?
+                  )
+                  span { t('forms.medications.select_unit') }
+                end
+
+                dosage_units.each do |unit|
+                  render RubyUI::ComboboxItem.new do
+                    render RubyUI::ComboboxRadio.new(
+                      name: 'medication[dosage_unit]',
+                      value: unit,
+                      checked: medication.dosage_unit == unit
+                    )
+                    span { unit }
+                  end
+                end
+              end
             end
           end
+          render_field_error(medication, :dosage_unit)
         end
       end
 
       def dosage_units
         Medication::DOSAGE_UNITS
+      end
+
+      def selected_location_name
+        return nil if medication.location_id.blank?
+
+        locations.find { |l| l.id == medication.location_id }&.name
       end
 
       def render_supply_fields(_form)

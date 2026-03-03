@@ -27,6 +27,7 @@ RSpec.describe Medication do
     it { is_expected.to validate_numericality_of(:reorder_threshold).only_integer.is_greater_than_or_equal_to(0) }
 
     it { is_expected.to allow_value('Analgesic').for(:category) }
+    it { is_expected.to allow_value('Osmotic Laxative').for(:category) }
     it { is_expected.to allow_value('Vitamin').for(:category) }
     it { is_expected.to allow_value(nil).for(:category) }
     it { is_expected.to allow_value('').for(:category) }

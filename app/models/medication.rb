@@ -31,6 +31,7 @@ class Medication < ApplicationRecord # :nodoc:
     'Neurological',
     'Oncology',
     'Ophthalmic',
+    'Osmotic Laxative',
     'Opioid',
     'Osteoporosis',
     'Respiratory',

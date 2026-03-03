@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'MedicationNewLayout' do
-  fixtures :accounts, :people, :users, :locations
+  fixtures :accounts, :people, :users, :locations, :medications
 
   before do
     driven_by(:rack_test)
@@ -22,18 +22,18 @@ RSpec.describe 'MedicationNewLayout' do
         expect(page).to have_field('Name')
         expect(page).to have_field('Description')
         expect(page).to have_field('Dose')
-        expect(page).to have_select('Unit')
-        expect(page).to have_select('Unit', with_options: ['sachet'])
+        expect(page).to have_field('medication[dosage_unit]', type: :radio, with: 'mg')
+        expect(page).to have_field('medication[dosage_unit]', type: :radio, with: 'sachet')
         expect(page).to have_field('Remaining Supply')
         expect(page).to have_field('Reorder Threshold')
         expect(page).to have_field('Warnings')
       end
 
-      select 'Home', from: 'Location'
+      choose('medication[location_id]', option: locations(:home).id.to_s)
       fill_in 'Name', with: 'Ibuprofen'
       fill_in 'Description', with: 'Pain relief'
       fill_in 'Dose', with: 200
-      select 'mg', from: 'Unit'
+      choose('medication[dosage_unit]', option: 'mg')
       fill_in 'Remaining Supply', with: 40
       fill_in 'Reorder Threshold', with: 10
       fill_in 'Warnings', with: 'Take with food'
@@ -60,6 +60,6 @@ RSpec.describe 'MedicationNewLayout' do
 
     visit new_medication_path
 
-    expect(page).to have_select('Location', selected: 'Home')
+    expect(page).to have_field('medication[location_id]', type: :radio, checked: true)
   end
 end
