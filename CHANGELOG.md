@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.18](https://github.com/damacus/med-tracker/compare/v0.3.17...v0.3.18) (2026-03-04)
+
+
+### Performance Improvements
+
+* use Enumerable methods to prevent N+1 queries on preloaded associations ([#879](https://github.com/damacus/med-tracker/issues/879)) ([9e37c4f](https://github.com/damacus/med-tracker/commit/9e37c4f8956ac4ba576369100515bb036f8afa23))
+
 ## [0.3.17](https://github.com/damacus/med-tracker/compare/v0.3.16...v0.3.17) (2026-03-04)
 
 
