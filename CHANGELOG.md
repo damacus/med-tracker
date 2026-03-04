@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.17](https://github.com/damacus/med-tracker/compare/v0.3.16...v0.3.17) (2026-03-04)
+
+
+### Features
+
+* unified medication/schedule addition workflow with global entry point ([#876](https://github.com/damacus/med-tracker/issues/876)) ([5cd3d2c](https://github.com/damacus/med-tracker/commit/5cd3d2ca893c2f9ac503ccc046c7bc8001f1874f))
+
 ## [0.3.16](https://github.com/damacus/med-tracker/compare/v0.3.15...v0.3.16) (2026-03-03)
 
 
