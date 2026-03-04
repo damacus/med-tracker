@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe NotificationPreference, type: :model do
+RSpec.describe NotificationPreference do
   subject(:notification_preference) { build(:notification_preference) }
 
   describe 'associations' do
@@ -25,20 +25,20 @@ RSpec.describe NotificationPreference, type: :model do
     end
 
     context 'with valid periods' do
-      it 'returns the correct time for morning' do
-        expect(preference.time_for_period(:morning).to_s(:time)).to eq('08:00')
+      it 'returns the morning_time attribute' do
+        expect(preference.time_for_period(:morning)).to eq(preference.morning_time)
       end
 
-      it 'returns the correct time for afternoon' do
-        expect(preference.time_for_period(:afternoon).to_s(:time)).to eq('14:00')
+      it 'returns the afternoon_time attribute' do
+        expect(preference.time_for_period(:afternoon)).to eq(preference.afternoon_time)
       end
 
-      it 'returns the correct time for evening' do
-        expect(preference.time_for_period(:evening).to_s(:time)).to eq('18:00')
+      it 'returns the evening_time attribute' do
+        expect(preference.time_for_period(:evening)).to eq(preference.evening_time)
       end
 
-      it 'returns the correct time for night' do
-        expect(preference.time_for_period(:night).to_s(:time)).to eq('22:00')
+      it 'returns the night_time attribute' do
+        expect(preference.time_for_period(:night)).to eq(preference.night_time)
       end
     end
 
