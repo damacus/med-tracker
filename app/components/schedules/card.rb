@@ -153,7 +153,11 @@ module Components
             end
             if schedule.max_daily_doses.present?
               takes_count = todays_takes&.count ||
-                            schedule.medication_takes.where(taken_at: Time.current.beginning_of_day..).count
+                            if schedule.medication_takes.loaded?
+                              schedule.medication_takes.count { |t| t.taken_at >= Time.current.beginning_of_day }
+                            else
+                              schedule.medication_takes.where(taken_at: Time.current.beginning_of_day..).count
+                            end
               Badge(variant: :outline, class: 'rounded-full text-[10px]') do
                 "#{takes_count}/#{schedule.max_daily_doses}"
               end
@@ -164,9 +168,7 @@ module Components
       end
 
       def render_todays_takes
-        takes = todays_takes || schedule.medication_takes
-                                        .where(taken_at: Time.current.beginning_of_day..)
-                                        .order(taken_at: :desc)
+        takes = todays_takes || fetch_todays_takes
 
         if takes.any?
           div(class: 'grid grid-cols-1 gap-2') do
@@ -178,6 +180,19 @@ module Components
           Text(size: '2', weight: 'medium', class: 'italic text-slate-300 px-1') do
             t('schedules.card.no_doses_today')
           end
+        end
+      end
+
+      def fetch_todays_takes
+        if schedule.medication_takes.loaded?
+          schedule.medication_takes
+                  .select { |t| t.taken_at >= Time.current.beginning_of_day }
+                  .sort_by(&:taken_at)
+                  .reverse
+        else
+          schedule.medication_takes
+                  .where(taken_at: Time.current.beginning_of_day..)
+                  .order(taken_at: :desc)
         end
       end
 
