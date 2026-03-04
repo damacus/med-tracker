@@ -21,6 +21,26 @@ services:
       - "1025"   # SMTP
     restart: unless-stopped
 
+  migrate-dev:
+    extends:
+      file: compose/base.yml
+      service: rails
+    profiles: [dev]
+    networks: [dev]
+    command: bin/rails db:prepare
+    depends_on:
+      db-dev:
+        condition: service_healthy
+    environment: &rails_env_dev
+      RAILS_ENV: development
+      RAILS_FORCE_SSL: "false"
+      DATABASE_URL: postgresql://medtracker:medtracker_password@db-dev:5432/medtracker
+    volumes:
+      - .:/app
+      - medtracker_dev_bundle:/usr/local/bundle
+      - medtracker_dev_node_modules:/app/node_modules
+      - medtracker_dev_storage:/app/storage
+
   web-dev:
     extends:
       file: compose/base.yml
@@ -36,10 +56,9 @@ services:
         condition: service_healthy
       mail-dev:
         condition: service_started
-    environment:
-      RAILS_ENV: development
-      RAILS_FORCE_SSL: "false"
-      DATABASE_URL: postgresql://medtracker:medtracker_password@db-dev:5432/medtracker
+      migrate-dev:
+        condition: service_completed_successfully
+    environment: *rails_env_dev
     volumes:
       - .:/app
       - medtracker_dev_bundle:/usr/local/bundle
@@ -69,6 +88,24 @@ services:
       interval: 5s
       timeout: 3s
 
+  migrate-test:
+    extends:
+      file: compose/base.yml
+      service: rails
+    profiles: [test]
+    networks: [test]
+    command: bin/rails db:prepare
+    depends_on:
+      db-test:
+        condition: service_healthy
+    environment: &rails_env_test
+      RAILS_ENV: test
+      DATABASE_URL: postgresql://medtracker:medtracker_password@db-test:5432/medtracker
+    volumes:
+      - .:/app
+      - medtracker_test_bundle:/usr/local/bundle
+      - medtracker_test_node_modules:/app/node_modules
+
   web-test:
     extends:
       file: compose/base.yml
@@ -82,9 +119,9 @@ services:
         condition: service_healthy
       mail-test:
         condition: service_started
-    environment:
-      RAILS_ENV: test
-      DATABASE_URL: postgresql://medtracker:medtracker_password@db-test:5432/medtracker
+      migrate-test:
+        condition: service_completed_successfully
+    environment: *rails_env_test
     volumes:
       - .:/app
       - medtracker_test_bundle:/usr/local/bundle
@@ -109,6 +146,26 @@ services:
       - medtracker_prod_postgres:/var/lib/postgresql/data
       - ./compose/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh:ro
 
+  migrate-prod:
+    extends:
+      file: compose/base.yml
+      service: rails
+    profiles: [prod]
+    networks: [prod]
+    command: bin/rails db:prepare
+    depends_on:
+      db-prod:
+        condition: service_healthy
+    environment: &rails_env_prod
+      RAILS_ENV: production
+      DATABASE_URL: postgresql://medtracker:medtracker_password@db-prod:5432/medtracker
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE:-local-prod-testing-only-not-for-real-use}
+      SOLID_QUEUE_DATABASE_URL: postgresql://medtracker:medtracker_password@db-prod:5432/medtracker_production_queue
+      SOLID_CACHE_DATABASE_URL: postgresql://medtracker:medtracker_password@db-prod:5432/medtracker_production_cache
+      SOLID_CABLE_DATABASE_URL: postgresql://medtracker:medtracker_password@db-prod:5432/medtracker_production_cable
+    volumes:
+      - medtracker_prod_storage:/app/storage
+
   web-prod:
     extends:
       file: compose/base.yml
@@ -120,13 +177,9 @@ services:
     depends_on:
       db-prod:
         condition: service_healthy
-    environment:
-      RAILS_ENV: production
-      DATABASE_URL: postgresql://medtracker:medtracker_password@db-prod:5432/medtracker
-      SECRET_KEY_BASE: ${SECRET_KEY_BASE:-local-prod-testing-only-not-for-real-use}
-      SOLID_QUEUE_DATABASE_URL: postgresql://medtracker:medtracker_password@db-prod:5432/medtracker_production_queue
-      SOLID_CACHE_DATABASE_URL: postgresql://medtracker:medtracker_password@db-prod:5432/medtracker_production_cache
-      SOLID_CABLE_DATABASE_URL: postgresql://medtracker:medtracker_password@db-prod:5432/medtracker_production_cable
+      migrate-prod:
+        condition: service_completed_successfully
+    environment: *rails_env_prod
     ports:
       - "80"
     volumes:
