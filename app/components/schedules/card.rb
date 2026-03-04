@@ -260,6 +260,7 @@ module Components
               variant: :outline,
               class: 'w-12 h-12 p-0 rounded-xl border-slate-100 flex items-center justify-center ' \
                      'text-slate-400 hover:text-slate-600',
+              aria_label: t('schedules.card.edit', default: 'Edit schedule'),
               data: { turbo_frame: 'modal', testid: "edit-schedule-#{schedule.id}" }
             ) do
               render Icons::Pencil.new(size: 20)
@@ -274,6 +275,7 @@ module Components
           AlertDialogTrigger do
             Button(variant: :ghost,
                    class: 'w-12 h-12 p-0 rounded-xl text-slate-300 hover:text-destructive hover:bg-destructive/5',
+                   aria_label: t('schedules.card.delete', default: 'Delete schedule'),
                    data: { testid: "delete-schedule-#{schedule.id}" }) do
               render Icons::Trash.new(size: 20)
             end

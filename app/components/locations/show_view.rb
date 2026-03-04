@@ -157,7 +157,8 @@ module Components
               variant: :ghost,
               size: :sm,
               class: 'opacity-0 group-hover:opacity-100 transition-opacity text-slate-300 ' \
-                     'hover:text-destructive h-8 w-8 p-0'
+                     'hover:text-destructive h-8 w-8 p-0',
+              aria_label: t('locations.show.remove_member.aria_label', default: 'Remove member')
             ) do
               render Icons::X.new(size: 14)
             end
@@ -193,7 +194,8 @@ module Components
                 href: edit_location_path(location, return_to: location_path(location)),
                 variant: :ghost,
                 size: :sm,
-                class: 'text-slate-400 hover:text-primary h-8 w-8 p-0 flex items-center justify-center'
+                class: 'text-slate-400 hover:text-primary h-8 w-8 p-0 flex items-center justify-center',
+                aria_label: t('locations.show.edit_details', default: 'Edit location details')
               ) do
                 render Icons::Pencil.new(size: 16)
               end
@@ -216,7 +218,8 @@ module Components
             Button(
               variant: :ghost,
               size: :sm,
-              class: 'w-8 h-8 p-0 rounded-full bg-slate-50 text-slate-400 hover:text-primary hover:bg-primary/5'
+              class: 'w-8 h-8 p-0 rounded-full bg-slate-50 text-slate-400 hover:text-primary hover:bg-primary/5',
+              aria_label: t('locations.show.add_member.aria_label', default: 'Add member')
             ) do
               render Icons::Plus.new(size: 16)
             end
