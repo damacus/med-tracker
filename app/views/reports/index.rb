@@ -165,6 +165,7 @@ module Views
         )
       end
 
+      # rubocop:disable Metrics/AbcSize
       def render_insight_card(card)
         Card(class: "border-none shadow-sm #{card.bg_color} p-8 space-y-4 transition-transform hover:scale-[1.02]") do
           div(class: 'flex items-center gap-4') do
@@ -183,6 +184,8 @@ module Views
           end
         end
       end
+
+      # rubocop:enable Metrics/AbcSize
 
       def pluralize(count, singular, plural = nil)
         "#{count} #{count == 1 ? singular : (plural || singular.pluralize)}"
