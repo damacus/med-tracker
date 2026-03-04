@@ -32,7 +32,7 @@ RSpec.describe Components::Schedules::Card, type: :component do
   end
 
   it 'disables the take button when schedule dose is invalid' do
-    schedule.dosage.update_column(:amount, 0)
+    schedule.dosage.amount = 0
     vc = view_context
     vc.singleton_class.define_method(:current_user) { nil }
 

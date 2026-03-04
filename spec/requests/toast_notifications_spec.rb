@@ -50,9 +50,8 @@ RSpec.describe 'Toast notifications for async actions' do
       end
 
       it 'returns turbo_stream response with flash update when dose is invalid' do
-        schedule.dosage.update_column(:amount, 0)
-
         post take_medication_person_schedule_path(person, schedule),
+             params: { amount_ml: 0 },
              headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
 
         expect(response).to have_http_status(:ok)
@@ -94,9 +93,8 @@ RSpec.describe 'Toast notifications for async actions' do
       end
 
       it 'returns turbo_stream response with flash update when dose is invalid' do
-        medication.update_column(:dosage_amount, 0)
-
         post take_medication_person_person_medication_path(person, person_medication),
+             params: { amount_ml: 0 },
              headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
 
         expect(response).to have_http_status(:ok)

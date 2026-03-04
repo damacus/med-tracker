@@ -202,6 +202,7 @@ RSpec.describe 'People' do
 
       expect(response).to have_http_status(:ok)
       expect(response.body).to include('target="people"')
+      expect(response.body).to include('Turbo Child One')
 
       post people_path,
            params: {
@@ -216,6 +217,7 @@ RSpec.describe 'People' do
 
       expect(response).to have_http_status(:ok)
       expect(response.body).to include('target="people"')
+      expect(response.body).to include('Turbo Child Two')
     end
   end
 

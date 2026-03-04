@@ -29,6 +29,12 @@ class PersonPolicy < ApplicationPolicy
     admin?
   end
 
+  def add_medication?
+    # User can add medication if they can create either a Schedule or a PersonMedication for this person
+    SchedulePolicy.new(user, Schedule.new(person: record)).create? ||
+      PersonMedicationPolicy.new(user, PersonMedication.new(person: record)).create?
+  end
+
   private
 
   def owns_record?

@@ -81,13 +81,9 @@ RSpec.describe 'Medication Timing Restrictions' do
     end
 
     context 'when schedule dose is invalid' do
-      before do
-        schedule.dosage.update_column(:amount, 0)
-      end
-
       it 'does not create a medication take and shows a friendly alert' do
         expect do
-          post take_medication_person_schedule_path(person, schedule)
+          post take_medication_person_schedule_path(person, schedule), params: { amount_ml: 0 }
         end.not_to change(MedicationTake, :count)
 
         expect(response).to redirect_to(person_path(person))
@@ -158,13 +154,9 @@ RSpec.describe 'Medication Timing Restrictions' do
     end
 
     context 'when medication dose is invalid' do
-      before do
-        medication.update_column(:dosage_amount, 0)
-      end
-
       it 'does not create a medication take and shows a friendly alert' do
         expect do
-          post take_medication_person_person_medication_path(person, person_medication)
+          post take_medication_person_person_medication_path(person, person_medication), params: { amount_ml: 0 }
         end.not_to change(MedicationTake, :count)
 
         expect(response).to redirect_to(person_path(person))

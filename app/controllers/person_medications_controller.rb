@@ -3,6 +3,8 @@
 class PersonMedicationsController < ApplicationController
   include TimelineRefreshable
   include PersonViewable
+  include TakeMedicationGuardable
+  include MedicationWorkflowBackPathable
 
   before_action :set_person
   before_action :set_person_medication, only: %i[edit update destroy take_medication reorder]
@@ -13,18 +15,18 @@ class PersonMedicationsController < ApplicationController
     @medications = available_medications
 
     is_modal = request.headers['Turbo-Frame'] == 'modal'
-    modal_back_path = is_modal ? add_medication_person_path(@person) : nil
+    back_path = modal_back_path(@person)
 
     respond_to do |format|
       format.html do
         if is_modal
-          render Components::PersonMedications::Modal.new(person_medication: @person_medication, person: @person, medications: @medications, title: t('person_medications.modal.new_title', person: @person.name), back_path: modal_back_path), layout: false
+          render Components::PersonMedications::Modal.new(person_medication: @person_medication, person: @person, medications: @medications, title: t('person_medications.modal.new_title', person: @person.name), back_path: back_path), layout: false
         else
           render Components::PersonMedications::FormView.new(person_medication: @person_medication, person: @person, medications: @medications)
         end
       end
       format.turbo_stream do
-        render turbo_stream: turbo_stream.replace('modal', Components::PersonMedications::Modal.new(person_medication: @person_medication, person: @person, medications: @medications, title: t('person_medications.modal.new_title', person: @person.name), back_path: modal_back_path))
+        render turbo_stream: turbo_stream.replace('modal', Components::PersonMedications::Modal.new(person_medication: @person_medication, person: @person, medications: @medications, title: t('person_medications.modal.new_title', person: @person.name), back_path: back_path))
       end
     end
   end
@@ -149,8 +151,15 @@ class PersonMedicationsController < ApplicationController
 
     amount = normalized_take_amount(params[:amount_ml].presence || @person_medication.medication.dosage_amount)
     if invalid_take_amount?(amount)
-      log_invalid_take_attempt(amount)
-      respond_take_medication_invalid_dose
+      log_invalid_take_attempt(
+        source: 'person_medication',
+        amount: amount,
+        metadata: {
+          person_medication_id: @person_medication.id,
+          medication_id: @person_medication.medication_id
+        }
+      )
+      respond_take_medication_invalid_dose(scope: 'person_medications')
       return
     end
 
@@ -159,7 +168,7 @@ class PersonMedicationsController < ApplicationController
       amount_ml: amount
     )
     unless @take.persisted?
-      respond_take_medication_invalid_dose
+      respond_take_medication_invalid_dose(scope: 'person_medications')
       return
     end
 
@@ -198,42 +207,5 @@ class PersonMedicationsController < ApplicationController
 
   def available_medications
     Medication.order(:name)
-  end
-
-  def invalid_take_amount?(amount)
-    amount.nil? || amount <= 0
-  end
-
-  def normalized_take_amount(raw_amount)
-    return nil if raw_amount.blank?
-
-    BigDecimal(raw_amount.to_s)
-  rescue ArgumentError
-    nil
-  end
-
-  def respond_take_medication_invalid_dose
-    message = t('person_medications.invalid_dose_configured')
-    respond_to do |format|
-      format.html { redirect_back_or_to person_path(@person), alert: message }
-      format.turbo_stream do
-        flash.now[:alert] = message
-        render turbo_stream: turbo_stream.update('flash', Components::Layouts::Flash.new(alert: flash[:alert]))
-      end
-    end
-  end
-
-  def log_invalid_take_attempt(amount)
-    Rails.logger.warn(
-      {
-        event: 'invalid_take_medication',
-        controller: self.class.name,
-        source: 'person_medication',
-        person_id: @person.id,
-        person_medication_id: @person_medication.id,
-        medication_id: @person_medication.medication_id,
-        attempted_amount_ml: amount&.to_s
-      }.to_json
-    )
   end
 end
