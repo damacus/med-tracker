@@ -303,7 +303,7 @@ module Components
       end
 
       def render_dosages_section
-        dosages = medication.dosages.order(:amount)
+        dosages = medication.dosages.sort_by(&:amount)
         can_manage = begin
           view_context.policy(medication).update?
         rescue StandardError
