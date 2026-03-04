@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.19](https://github.com/damacus/med-tracker/compare/v0.3.18...v0.3.19) (2026-03-04)
+
+
+### Features
+
+* optimize initial load performance and improve UI contrast ([58f1546](https://github.com/damacus/med-tracker/commit/58f1546bcb284db869ee6fbc8715bbcc65fa5d7c))
+
 ## [0.3.18](https://github.com/damacus/med-tracker/compare/v0.3.17...v0.3.18) (2026-03-04)
 
 
