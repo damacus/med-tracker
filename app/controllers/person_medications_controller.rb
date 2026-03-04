@@ -3,6 +3,8 @@
 class PersonMedicationsController < ApplicationController
   include TimelineRefreshable
   include PersonViewable
+  include TakeMedicationGuardable
+  include MedicationWorkflowBackPathable
 
   before_action :set_person
   before_action :set_person_medication, only: %i[edit update destroy take_medication reorder]
@@ -13,17 +15,18 @@ class PersonMedicationsController < ApplicationController
     @medications = available_medications
 
     is_modal = request.headers['Turbo-Frame'] == 'modal'
+    back_path = modal_back_path(@person)
 
     respond_to do |format|
       format.html do
         if is_modal
-          render Components::PersonMedications::Modal.new(person_medication: @person_medication, person: @person, medications: @medications, title: t('person_medications.modal.new_title', person: @person.name)), layout: false
+          render Components::PersonMedications::Modal.new(person_medication: @person_medication, person: @person, medications: @medications, title: t('person_medications.modal.new_title', person: @person.name), back_path: back_path), layout: false
         else
           render Components::PersonMedications::FormView.new(person_medication: @person_medication, person: @person, medications: @medications)
         end
       end
       format.turbo_stream do
-        render turbo_stream: turbo_stream.replace('modal', Components::PersonMedications::Modal.new(person_medication: @person_medication, person: @person, medications: @medications, title: t('person_medications.modal.new_title', person: @person.name)))
+        render turbo_stream: turbo_stream.replace('modal', Components::PersonMedications::Modal.new(person_medication: @person_medication, person: @person, medications: @medications, title: t('person_medications.modal.new_title', person: @person.name), back_path: back_path))
       end
     end
   end
@@ -146,10 +149,29 @@ class PersonMedicationsController < ApplicationController
       return
     end
 
-    @take = @person_medication.medication_takes.create!(
+    amount = normalized_take_amount(params[:amount_ml].presence || @person_medication.medication.dosage_amount)
+    if invalid_take_amount?(amount)
+      log_invalid_take_attempt(
+        source: 'person_medication',
+        amount: amount,
+        metadata: {
+          person_medication_id: @person_medication.id,
+          medication_id: @person_medication.medication_id
+        }
+      )
+      respond_take_medication_invalid_dose(scope: 'person_medications')
+      return
+    end
+
+    @take = @person_medication.medication_takes.create(
       taken_at: Time.current,
-      amount_ml: params[:amount_ml] || @person_medication.medication.dosage_amount
+      amount_ml: amount
     )
+    unless @take.persisted?
+      respond_take_medication_invalid_dose(scope: 'person_medications')
+      return
+    end
+
     flash.now[:notice] = t('person_medications.medication_taken')
 
     respond_to do |format|

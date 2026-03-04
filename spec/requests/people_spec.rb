@@ -188,7 +188,7 @@ RSpec.describe 'People' do
       expect(response.body).to include('person_form')
     end
 
-    it 'creates two dependents in sequence with blank email without raising 500' do
+    it 'allows creating multiple dependents in sequence without email addresses' do
       post people_path,
            params: {
              person: {
@@ -201,6 +201,8 @@ RSpec.describe 'People' do
            headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
 
       expect(response).to have_http_status(:ok)
+      expect(response.body).to include('target="people"')
+      expect(response.body).to include('Turbo Child One')
 
       post people_path,
            params: {
@@ -215,6 +217,7 @@ RSpec.describe 'People' do
 
       expect(response).to have_http_status(:ok)
       expect(response.body).to include('target="people"')
+      expect(response.body).to include('Turbo Child Two')
     end
   end
 

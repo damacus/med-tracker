@@ -65,9 +65,10 @@ module Components
               end
             end
             render RubyUI::Link.new(
-              href: new_medication_path,
+              href: add_medication_path,
               variant: :primary,
-              size: :lg
+              size: :lg,
+              data: { turbo_frame: 'modal' }
             ) do
               render Icons::PlusCircle.new(size: 20, class: 'mr-2')
               span { t('dashboard.quick_actions.add_medication') }
@@ -77,26 +78,26 @@ module Components
       end
 
       def render_stats_section
-        div(class: 'grid grid-cols-2 lg:grid-cols-4 gap-4 mb-12') do
-          render Components::Dashboard::StatCard.new(
+        div(class: 'grid grid-cols-2 lg:grid-cols-4 auto-rows-fr gap-4 mb-12') do
+          render Components::Shared::MetricCard.new(
             title: t('dashboard.stats.people'),
             value: people.count,
             icon_type: 'users',
             href: people_path
           )
-          render Components::Dashboard::StatCard.new(
+          render Components::Shared::MetricCard.new(
             title: t('dashboard.stats.active_schedules'),
             value: active_schedules.count,
             icon_type: 'pill',
             href: schedules_path
           )
-          render Components::Dashboard::StatCard.new(
+          render Components::Shared::MetricCard.new(
             title: t('dashboard.stats.compliance'),
             value: "#{compliance_percentage}%",
             icon_type: 'check',
             href: reports_path
           )
-          render Components::Dashboard::StatCard.new(
+          render Components::Shared::MetricCard.new(
             title: t('dashboard.stats.next_dose'),
             value: next_dose_value,
             icon_type: 'clock'

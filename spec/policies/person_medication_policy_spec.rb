@@ -159,28 +159,36 @@ RSpec.describe PersonMedicationPolicy do
     context 'when user is an administrator' do
       let(:user) { admin_user }
 
-      it { is_expected.to permit_action(:destroy) }
+      it 'permits removal' do
+        expect(policy.destroy?).to be true
+      end
     end
 
-    context 'when user destroys their own' do
+    context 'when user removes their own' do
       let(:user) { adult_patient_user }
       let(:person_medication) { PersonMedication.create!(person: adult_patient, medication: medications(:vitamin_d)) }
 
-      it { is_expected.to permit_action(:destroy) }
+      it 'permits removal' do
+        expect(policy.destroy?).to be true
+      end
     end
 
     context "when parent removes their child's person medication record" do
       let(:user) { parent_user }
       let(:person_medication) { PersonMedication.create!(person: child_patient, medication: medications(:vitamin_d)) }
 
-      it { is_expected.to permit_action(:destroy) }
+      it 'permits removal' do
+        expect(policy.destroy?).to be true
+      end
     end
 
-    context 'when user destroys for unrelated person' do
+    context 'when user removes for unrelated person' do
       let(:user) { adult_patient_user }
       let(:person_medication) { PersonMedication.create!(person: child_patient, medication: medications(:vitamin_d)) }
 
-      it { is_expected.not_to permit_action(:destroy) }
+      it 'forbids removal' do
+        expect(policy.destroy?).to be false
+      end
     end
   end
 

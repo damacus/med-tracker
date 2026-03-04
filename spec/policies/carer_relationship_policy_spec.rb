@@ -83,7 +83,7 @@ RSpec.describe CarerRelationshipPolicy do
     context 'when user is an administrator' do
       let(:current_user) { users(:admin) }
 
-      it 'returns all relationships' do
+      it 'returns all relationships for administrators' do
         expect(scope).to match_array(CarerRelationship.all)
       end
     end
@@ -91,7 +91,7 @@ RSpec.describe CarerRelationshipPolicy do
     context 'when user is a doctor' do
       let(:current_user) { users(:doctor) }
 
-      it 'returns all relationships' do
+      it 'returns all relationships for doctors' do
         expect(scope).to match_array(CarerRelationship.all)
       end
     end
@@ -99,7 +99,7 @@ RSpec.describe CarerRelationshipPolicy do
     context 'when user is a nurse' do
       let(:current_user) { users(:nurse) }
 
-      it 'returns all relationships' do
+      it 'returns all relationships for nurses' do
         expect(scope).to match_array(CarerRelationship.all)
       end
     end

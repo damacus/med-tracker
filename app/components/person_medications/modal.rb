@@ -8,13 +8,16 @@ module Components
       include Phlex::Rails::Helpers::TurboFrameTag
       include RubyUI
 
-      attr_reader :person_medication, :person, :medications, :title, :editing
+      attr_reader :person_medication, :person, :medications, :title, :editing, :back_path
 
-      def initialize(person_medication:, person:, medications:, title: nil, editing: false)
+      # rubocop:disable Metrics/ParameterLists
+      def initialize(person_medication:, person:, medications:, title: nil, editing: false, back_path: nil)
+        # rubocop:enable Metrics/ParameterLists
         @person_medication = person_medication
         @person = person
         @medications = medications
         @editing = editing
+        @back_path = back_path
         @title = title || (editing ? "Edit Medication for #{person.name}" : "Add Medication for #{person.name}")
         super()
       end
@@ -24,6 +27,16 @@ module Components
           Dialog(open: true) do
             DialogContent(size: :xl) do
               DialogHeader do
+                if back_path
+                  a(
+                    href: back_path,
+                    data: { turbo_frame: 'modal' },
+                    class: 'inline-flex items-center text-sm text-muted-foreground hover:text-foreground ' \
+                           'transition-colors mb-2 no-underline'
+                  ) do
+                    plain t('medication_workflow.back')
+                  end
+                end
                 DialogTitle { title }
                 DialogDescription { t('person_medications.modal.subtitle') }
               end

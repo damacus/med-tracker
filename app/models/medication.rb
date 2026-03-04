@@ -56,6 +56,7 @@ class Medication < ApplicationRecord # :nodoc:
 
   validates :name, presence: true
   validates :category, inclusion: { in: CATEGORIES }, allow_blank: true
+  validates :dosage_amount, numericality: { greater_than: 0 }, allow_nil: true
   validates :dosage_unit, inclusion: { in: DOSAGE_UNITS }, allow_blank: true
   validates :current_supply, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
   validates :supply_at_last_restock, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true

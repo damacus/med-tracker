@@ -26,6 +26,9 @@ Rails.application.routes.draw do
   # Dashboard
   get 'dashboard', to: 'dashboard#index'
 
+  # Global medication workflow entry point
+  get 'add_medication', to: 'medication_workflow#index', as: :add_medication
+
   # Profile
   resource :profile, only: %i[show update]
 

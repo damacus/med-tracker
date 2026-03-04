@@ -145,7 +145,7 @@ RSpec.describe Components::Dashboard::ScheduleHelpers do
         expect(SchedulePolicy).to have_received(:new).with(user, schedule)
       end
 
-      it 'returns false when policy denies destroy' do
+      it 'returns false when policy denies deletion' do
         policy_double = instance_double(SchedulePolicy, destroy?: false)
         allow(SchedulePolicy).to receive(:new).with(user, schedule).and_return(policy_double)
 

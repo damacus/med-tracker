@@ -159,7 +159,7 @@ RSpec.describe MedicationTakePolicy do
       context 'when user is an administrator' do
         let(:user) { admin_user }
 
-        it 'returns all medication takes' do
+        it 'returns all medication takes for administrators' do
           scope = described_class::Scope.new(user, MedicationTake.all).resolve
           expect(scope).to eq(MedicationTake.all)
         end
@@ -168,7 +168,7 @@ RSpec.describe MedicationTakePolicy do
       context 'when user is a doctor' do
         let(:user) { doctor_user }
 
-        it 'returns all medication takes' do
+        it 'returns all medication takes for doctors' do
           scope = described_class::Scope.new(user, MedicationTake.all).resolve
           expect(scope).to eq(MedicationTake.all)
         end
@@ -177,7 +177,7 @@ RSpec.describe MedicationTakePolicy do
       context 'when user is a nurse' do
         let(:user) { nurse_user }
 
-        it 'returns all medication takes' do
+        it 'returns all medication takes for nurses' do
           scope = described_class::Scope.new(user, MedicationTake.all).resolve
           expect(scope).to eq(MedicationTake.all)
         end

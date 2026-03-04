@@ -35,5 +35,14 @@ RSpec.describe 'Form inline validation feedback' do
       expect(response).to have_http_status(:unprocessable_content)
       expect(response.body).to include('border-destructive')
     end
+
+    it 'rejects zero dosage amount' do
+      post medications_path,
+           params: { medication: { name: 'Bad Dosage', description: 'A test', dosage_amount: 0,
+                                   dosage_unit: 'tablet' } }
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.body).to include('must be greater than 0')
+    end
   end
 end

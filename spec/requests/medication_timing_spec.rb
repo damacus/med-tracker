@@ -79,6 +79,17 @@ RSpec.describe 'Medication Timing Restrictions' do
         expect(flash[:alert]).to include('Cannot take medication')
       end
     end
+
+    context 'when schedule dose is invalid' do
+      it 'does not create a medication take and shows a friendly alert' do
+        expect do
+          post take_medication_person_schedule_path(person, schedule), params: { amount_ml: 0 }
+        end.not_to change(MedicationTake, :count)
+
+        expect(response).to redirect_to(person_path(person))
+        expect(flash[:alert]).to include('Invalid dose configured')
+      end
+    end
   end
 
   describe 'POST /people/:person_id/person_medications/:id/take_medication' do
@@ -139,6 +150,17 @@ RSpec.describe 'Medication Timing Restrictions' do
 
         expect(response).to redirect_to(person_path(person))
         expect(flash[:alert]).to include('Cannot take medication')
+      end
+    end
+
+    context 'when medication dose is invalid' do
+      it 'does not create a medication take and shows a friendly alert' do
+        expect do
+          post take_medication_person_person_medication_path(person, person_medication), params: { amount_ml: 0 }
+        end.not_to change(MedicationTake, :count)
+
+        expect(response).to redirect_to(person_path(person))
+        expect(flash[:alert]).to include('Invalid dose configured')
       end
     end
   end

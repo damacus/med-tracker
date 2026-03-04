@@ -30,4 +30,17 @@ RSpec.describe Components::Schedules::Card, type: :component do
     expect(take_text).to include('400mg')
     expect(take_text).not_to match(/400\s*ml/i)
   end
+
+  it 'disables the take button when schedule dose is invalid' do
+    schedule.dosage.amount = 0
+    vc = view_context
+    vc.singleton_class.define_method(:current_user) { nil }
+
+    html = vc.render(described_class.new(schedule: schedule, person: person))
+    rendered = Nokogiri::HTML::DocumentFragment.parse(html)
+
+    button = rendered.at_css("button[data-testid='take-schedule-#{schedule.id}-disabled'][disabled]")
+    expect(button).not_to be_nil
+    expect(button.text).to include('Invalid Dose Configured')
+  end
 end

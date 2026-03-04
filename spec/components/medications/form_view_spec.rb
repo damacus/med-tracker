@@ -64,4 +64,15 @@ RSpec.describe Components::Medications::FormView, type: :component do
       expect(rendered.css("input[type='radio'][name='medication[dosage_unit]'][value='mg'][checked]")).to be_present
     end
   end
+
+  describe 'dosage input constraints' do
+    it 'renders dosage amount input with minimum value of 1' do
+      medication = Medication.new(name: 'Test Medication', dosage_amount: 1)
+      rendered = render_inline(described_class.new(medication: medication, title: 'Test Title'))
+
+      dosage_input = rendered.at_css("input#medication_dosage_amount[name='medication[dosage_amount]']")
+      expect(dosage_input).not_to be_nil
+      expect(dosage_input['min']).to eq('1')
+    end
+  end
 end

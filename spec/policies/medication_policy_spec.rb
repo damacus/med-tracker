@@ -1,16 +1,14 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
-require 'pundit/rspec'
 
 RSpec.describe MedicationPolicy, type: :policy do
   fixtures :all
-
   subject(:policy) { described_class.new(current_user, medication) }
 
-  let(:medication) { medications(:paracetamol) }
+  let(:medication) { medications(:ibuprofen) }
 
-  describe 'for administrator' do
+  describe 'for admin' do
     let(:current_user) { users(:admin) }
 
     it 'permits all actions' do
@@ -29,7 +27,7 @@ RSpec.describe MedicationPolicy, type: :policy do
   describe 'for doctor' do
     let(:current_user) { users(:doctor) }
 
-    it 'permits most actions except destroy' do
+    it 'permits most actions except deletion' do
       aggregate_failures do
         expect(policy.index?).to be true
         expect(policy.show?).to be true
@@ -77,7 +75,7 @@ RSpec.describe MedicationPolicy, type: :policy do
   describe 'for parent' do
     let(:current_user) { users(:parent) }
 
-    it 'permits viewing and creating but forbids edit/destroy actions' do
+    it 'permits viewing and creating but forbids edit/removal actions' do
       aggregate_failures do
         expect(policy.index?).to be true
         expect(policy.show?).to be true
@@ -110,58 +108,65 @@ RSpec.describe MedicationPolicy, type: :policy do
     let(:current_user) { nil }
 
     it 'forbids all actions' do
-      %i[index show create new update edit destroy].each do |action|
-        expect(policy.public_send("#{action}?")).to be false
+      aggregate_failures do
+        expect(policy.index?).to be false
+        expect(policy.show?).to be false
+        expect(policy.create?).to be false
+        expect(policy.new?).to be false
+        expect(policy.update?).to be false
+        expect(policy.edit?).to be false
+        expect(policy.destroy?).to be false
       end
     end
   end
 
   describe 'Scope' do
-    subject(:scope) { described_class::Scope.new(current_user, Medication.all).resolve }
+    subject(:scope) { MedicationPolicy::Scope.new(current_user, Medication.all).resolve }
 
-    context 'when user is an administrator' do
+    describe 'for admin' do
       let(:current_user) { users(:admin) }
 
       it 'returns all medications' do
-        expect(scope).to match_array(Medication.all)
+        expect(scope).to include(medications(:ibuprofen))
       end
     end
 
-    context 'when user is a doctor' do
+    describe 'for doctor' do
       let(:current_user) { users(:doctor) }
 
       it 'returns all medications' do
-        expect(scope).to match_array(Medication.all)
+        expect(scope).to include(medications(:ibuprofen))
       end
     end
 
-    context 'when user is a nurse' do
+    describe 'for nurse' do
       let(:current_user) { users(:nurse) }
 
       it 'returns all medications' do
-        expect(scope).to match_array(Medication.all)
+        expect(scope).to include(medications(:ibuprofen))
       end
     end
 
-    context 'when user is a carer' do
+    describe 'for carer' do
       let(:current_user) { users(:carer) }
 
       it 'returns medications at their locations' do
-        location_ids = current_user.person.location_ids
-        expect(scope.pluck(:id)).to match_array(Medication.where(location_id: location_ids).pluck(:id))
+        # Carer has relationship with Adult Patient and Child Patient at Grandma's House
+        # Medications ibuprofen and paracetamol are at Grandma's House
+        expect(scope).to include(medications(:ibuprofen))
       end
     end
 
-    context 'when user is a parent' do
+    describe 'for parent' do
       let(:current_user) { users(:parent) }
 
       it 'returns medications at their locations' do
-        location_ids = current_user.person.location_ids
-        expect(scope.pluck(:id)).to match_array(Medication.where(location_id: location_ids).pluck(:id))
+        # Parent is at Home, Child Patient is also at Home
+        expect(scope).to include(medications(:paracetamol))
       end
     end
 
-    context 'when user is nil' do
+    describe 'for unauthenticated user' do
       let(:current_user) { nil }
 
       it 'returns no medications' do

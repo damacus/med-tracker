@@ -197,7 +197,9 @@ module Components
       def render_take_medication_button
         return unless view_context.policy(person_medication).take_medication?
 
-        if person_medication.can_administer?
+        if invalid_dose_configured? || !person_medication.can_administer?
+          render_disabled_button_with_reason
+        else
           form_with(
             url: take_medication_person_person_medication_path(person, person_medication),
             method: :post,
@@ -215,14 +217,16 @@ module Components
               plain take_label
             end
           end
-        else
-          render_disabled_button_with_reason
         end
       end
 
       def render_disabled_button_with_reason
-        reason = person_medication.administration_blocked_reason
-        label = reason == :out_of_stock ? t('person_medications.card.out_of_stock') : take_label
+        label = if invalid_dose_configured?
+                  t('person_medications.card.invalid_dose')
+                else
+                  reason = person_medication.administration_blocked_reason
+                  reason == :out_of_stock ? t('person_medications.card.out_of_stock') : take_label
+                end
         render Button.new(
           variant: :secondary,
           size: :lg,
@@ -240,6 +244,10 @@ module Components
 
       def take_label
         own_dose? ? t('person_medications.card.take') : t('person_medications.card.give')
+      end
+
+      def invalid_dose_configured?
+        person_medication.medication.dosage_amount.to_f <= 0
       end
 
       def render_person_medication_actions

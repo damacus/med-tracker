@@ -257,10 +257,11 @@ module Components
             id: 'medication_dosage_amount',
             value: medication.dosage_amount.to_i,
             step: 'any',
-            min: '0',
+            min: '1',
             class: 'rounded-md border-slate-200 bg-white py-4 px-4 focus:ring-2 focus:ring-primary/10 ' \
                    'focus:border-primary transition-all'
           )
+          render_field_error(medication, :dosage_amount)
         end
       end
 
