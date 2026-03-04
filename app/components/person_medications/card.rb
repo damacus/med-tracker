@@ -138,10 +138,7 @@ module Components
       end
 
       def render_takes_section
-        takes = todays_takes || person_medication.medication_takes
-                                                 .where(taken_at: Time.current.beginning_of_day..)
-                                                 .order(taken_at: :desc)
-                                                 .load
+        takes = todays_takes || fetch_todays_takes
 
         div(class: 'space-y-4 pt-2') do
           div(class: 'flex items-center justify-between') do
@@ -151,6 +148,20 @@ module Components
             render_dose_counter(takes) if person_medication.max_daily_doses.present?
           end
           render_todays_takes(takes)
+        end
+      end
+
+      def fetch_todays_takes
+        if person_medication.medication_takes.loaded?
+          person_medication.medication_takes
+                           .select { |t| t.taken_at >= Time.current.beginning_of_day }
+                           .sort_by(&:taken_at)
+                           .reverse
+        else
+          person_medication.medication_takes
+                           .where(taken_at: Time.current.beginning_of_day..)
+                           .order(taken_at: :desc)
+                           .load
         end
       end
 
