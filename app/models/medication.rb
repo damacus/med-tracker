@@ -2,6 +2,8 @@
 
 class Medication < ApplicationRecord # :nodoc:
   DOSAGE_UNITS = %w[tablet mg ml g mcg IU spray drop sachet].freeze
+  PRESET_DOSAGE_AMOUNTS = %w[0.5 1 1.5 2 3 4].freeze
+  MEDICAL_UNITS_NO_PLURALIZATION = %w[mg ml g mcg IU].freeze
   CATEGORIES = [
     'Analgesic',
     'Antibiotic',
@@ -101,7 +103,13 @@ class Medication < ApplicationRecord # :nodoc:
   def supply_label(count: current_supply)
     c = count.to_i
     u = dosage_unit.presence || 'unit'
-    label = c == 1 ? u : u.pluralize
+
+    label = if MEDICAL_UNITS_NO_PLURALIZATION.include?(u)
+              u
+            else
+              c == 1 ? u : u.pluralize
+            end
+
     "#{c} #{label}"
   end
 
@@ -176,6 +184,8 @@ class Medication < ApplicationRecord # :nodoc:
   private
 
   def sync_dosages
+    return unless single_dose.present? || dosage_presets.present?
+
     if single_dose == 'true'
       sync_single_dosage
     elsif dosage_presets.present?
@@ -186,6 +196,7 @@ class Medication < ApplicationRecord # :nodoc:
   def sync_single_dosage
     return if dosage_amount.blank?
 
+    dosages.where('amount != ? OR unit != ?', dosage_amount, dosage_unit).destroy_all
     dosages.find_or_create_by!(
       amount: dosage_amount,
       unit: dosage_unit,
@@ -196,6 +207,7 @@ class Medication < ApplicationRecord # :nodoc:
 
   def sync_preset_dosages
     amounts = dosage_presets.split(',').map(&:to_f).uniq
+    dosages.where('amount NOT IN (?) OR unit != ?', amounts, dosage_unit).destroy_all
     amounts.each do |amount|
       dosages.find_or_create_by!(
         amount: amount,

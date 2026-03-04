@@ -324,7 +324,7 @@ module Components
           ) { 'Standard Dose Options' }
 
           div(class: 'flex flex-wrap gap-2') do
-            ['0.5', '1', '1.5', '2', '3', '4'].each do |val|
+            Medication::PRESET_DOSAGE_AMOUNTS.each do |val|
               label(class: 'group') do
                 input(
                   type: 'checkbox',
@@ -371,7 +371,7 @@ module Components
       end
 
       def other_dosages_string
-        presets = ['0.5', '1', '1.5', '2', '3', '4'].map(&:to_f)
+        presets = Medication::PRESET_DOSAGE_AMOUNTS.map(&:to_f)
         medication.dosages.reject { |d| presets.include?(d.amount.to_f) }.map { |d| d.amount.to_f }.join(', ')
       end
 
