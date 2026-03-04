@@ -264,7 +264,7 @@
 	--secondary: oklch(0.97 0 0);
 	--secondary-foreground: oklch(0.205 0 0);
 	--muted: oklch(0.97 0 0);
-	--muted-foreground: oklch(0.556 0 0);
+	--muted-foreground: oklch(0.4 0 0);
 	--accent: oklch(0.97 0 0);
 	--accent-foreground: oklch(0.205 0 0);
 	--destructive: oklch(0.577 0.245 27.325);
@@ -295,17 +295,17 @@
 	--error: var(--destructive);
 	--on-error: var(--destructive-foreground);
 	--error-container: oklch(from var(--error) l c h / 0.12);
-	--on-error-container: oklch(from var(--error) l c h / 0.9);
+	--on-error-container: oklch(from var(--error) 0.3 c h);
 
 	--warning: hsl(38 92% 50%);
 	--warning-foreground: hsl(0 0% 100%);
 	--warning-container: oklch(from var(--warning) l c h / 0.12);
-	--on-warning-container: oklch(from var(--warning) l c h / 0.9);
+	--on-warning-container: oklch(from var(--warning) 0.3 c h);
 
 	--success: hsl(87 100% 37%);
 	--success-foreground: hsl(0 0% 100%);
 	--success-container: oklch(from var(--success) l c h / 0.12);
-	--on-success-container: oklch(from var(--success) l c h / 0.9);
+	--on-success-container: oklch(from var(--success) 0.3 c h);
 
 	--secondary-container: oklch(from var(--secondary) l c h / 0.12);
 	--on-secondary-container: oklch(from var(--secondary) l c h / 0.9);

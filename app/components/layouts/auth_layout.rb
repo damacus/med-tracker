@@ -17,13 +17,15 @@ module Components
         doctype
         html do
           head do
+            meta(charset: 'UTF-8')
             title { @title }
+            meta(name: 'description', content: 'Med Tracker - Manage your medications and health with ease.')
             meta(name: 'viewport', content: 'width=device-width,initial-scale=1')
             csp_meta_tag
             csrf_meta_tags
 
             stylesheet_link_tag 'tailwind', 'data-turbo-track': 'reload'
-            javascript_importmap_tags
+            javascript_importmap_tags('auth')
           end
 
           body(class: 'bg-slate-50') do

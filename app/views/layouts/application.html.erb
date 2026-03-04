@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <html lang="<%= I18n.locale %>">
   <head>
+    <meta charset="UTF-8">
     <title><%= content_for(:title) || "Med Tracker" %></title>
+    <meta name="description" content="Med Tracker - Manage your medications and health with ease.">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
@@ -32,7 +34,11 @@
     <%= favicon_link_tag "/favicon.svg", rel: "apple-touch-icon", type: "image/svg+xml" %>
     <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "hamburgers", "data-turbo-track": "reload" %>
-    <%= javascript_importmap_tags %>
+    <% if current_user %>
+      <%= javascript_importmap_tags %>
+    <% else %>
+      <%= javascript_importmap_tags "auth" %>
+    <% end %>
 
   <body class="bg-background">
     <%= render Components::Layouts::Sidebar.new(current_user: current_user) %>

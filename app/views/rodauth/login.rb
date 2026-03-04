@@ -32,7 +32,7 @@ module Views
             render Icons::Pill.new(size: 24)
           end
           Heading(level: 1, size: '7', class: 'font-extrabold tracking-tight text-[var(--text-main)]') { t('app.name') }
-          Text(size: '2', weight: 'muted', class: 'uppercase tracking-[0.2em] font-bold opacity-30 mt-1') do
+          Text(size: '2', weight: 'muted', class: 'uppercase tracking-[0.2em] font-bold text-slate-600 mt-1') do
             t('sessions.login.tagline')
           end
         end
@@ -54,7 +54,7 @@ module Views
       def render_login_header
         div(class: 'mb-10') do
           Heading(level: 2, size: '5', class: 'font-bold mb-1.5') { t('sessions.login.heading') }
-          Text(size: '2', class: 'text-slate-400') { t('sessions.login.subheading') }
+          Text(size: '2', class: 'text-slate-600') { t('sessions.login.subheading') }
         end
       end
 
@@ -72,7 +72,7 @@ module Views
       def render_identity_field
         div(class: 'space-y-2.5') do
           render RubyUI::FormFieldLabel.new(for: 'email',
-                                            class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 ml-5') do
+                                            class: 'text-[10px] font-black uppercase tracking-widest text-slate-600 ml-5') do
             t('sessions.login.email_label')
           end
           render RubyUI::Input.new(**email_input_attrs,
@@ -84,7 +84,7 @@ module Views
         div(class: 'space-y-2.5') do
           div(class: 'flex items-center justify-between px-5') do
             render RubyUI::FormFieldLabel.new(for: 'password',
-                                              class: 'text-[10px] font-black uppercase tracking-widest text-slate-400') do
+                                              class: 'text-[10px] font-black uppercase tracking-widest text-slate-600') do
               t('sessions.login.password_label')
             end
             render RubyUI::Link.new(href: view_context.rodauth.reset_password_request_path, variant: :link, size: :sm,
@@ -155,7 +155,7 @@ module Views
       def render_resend_verification_link
         div do
           render RubyUI::Link.new(href: view_context.rodauth.verify_account_resend_path, variant: :link,
-                                  class: 'text-xs text-slate-300 font-medium hover:text-slate-400') do
+                                  class: 'text-xs text-slate-600 font-medium hover:text-slate-700') do
             t('sessions.login.resend_verification')
           end
         end

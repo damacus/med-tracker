@@ -26,12 +26,12 @@ module Components
         link_to(
           path,
           class: 'flex flex-col items-center justify-center gap-1.5 min-h-[44px] min-w-[44px] ' \
-                 "transition-all no-underline #{is_active ? 'text-primary' : 'text-slate-400'}"
+                 "transition-all no-underline #{is_active ? 'text-primary' : 'text-slate-600'}"
         ) do
           div(class: "transition-transform #{'scale-110' if is_active}") do
             render icon_class.new(size: 24)
           end
-          span(class: "text-[10px] font-black uppercase tracking-widest #{is_active ? 'opacity-100' : 'opacity-40'}") do
+          span(class: 'text-[10px] font-black uppercase tracking-widest') do
             label
           end
         end

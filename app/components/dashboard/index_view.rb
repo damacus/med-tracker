@@ -232,7 +232,7 @@ module Components
         div(class: 'space-y-2') do
           div(class: 'flex justify-between items-center text-xs') do
             span(class: 'font-bold') { medication.name }
-            span(class: 'text-slate-400 font-bold') { t('dashboard.inventory.left', count: current) }
+            span(class: 'text-slate-600 font-bold') { t('dashboard.inventory.left', count: current) }
           end
           div(class: 'h-2 w-full bg-slate-100 rounded-full overflow-hidden') do
             div(
@@ -260,7 +260,7 @@ module Components
 
       def render_version_footer
         div(class: 'mt-12 pt-4 border-t border-slate-100 text-center') do
-          span(class: 'text-xs text-slate-300 font-mono') { "v#{app_version}" }
+          span(class: 'text-xs text-slate-500 font-mono') { "v#{app_version}" }
         end
       end
 

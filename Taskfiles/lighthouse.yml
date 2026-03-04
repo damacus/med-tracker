@@ -11,7 +11,9 @@ tasks:
       Usage: task lighthouse:run
       Usage: task lighthouse:run URL=http://localhost:3000/medicines
     vars:
-      URL: '{{ .URL | default "http://localhost:3000/dashboard" }}'
+      DEV_PORT:
+        sh: task dev:port
+      URL: '{{ .URL | default (printf "http://localhost:%s/dashboard" .DEV_PORT) }}'
     cmds:
       - |
         echo "Running Lighthouse audit on {{ .URL }}..."
@@ -33,22 +35,32 @@ tasks:
       Usage: task lighthouse:summary
     cmds:
       - |
-        if [ -f lighthouse-report.json ]; then
+        REPORT_FILE=""
+        HTML_FILE=""
+        if [ -f lighthouse-report.report.json ]; then
+          REPORT_FILE="lighthouse-report.report.json"
+          HTML_FILE="lighthouse-report.report.html"
+        elif [ -f lighthouse-report.json ]; then
+          REPORT_FILE="lighthouse-report.json"
+          HTML_FILE="lighthouse-report.html"
+        fi
+
+        if [ -n "$REPORT_FILE" ]; then
           echo ""
           echo "═══════════════════════════════════════════"
           echo "         LIGHTHOUSE MOBILE SCORES          "
           echo "═══════════════════════════════════════════"
           node -e "
-            const r = require('./lighthouse-report.json');
+            const r = require('./$REPORT_FILE');
             console.log('Performance:     ' + Math.floor(r.categories.performance.score * 100) + '%');
             console.log('Accessibility:   ' + Math.floor(r.categories.accessibility.score * 100) + '%');
             console.log('Best Practices:  ' + Math.floor(r.categories['best-practices'].score * 100) + '%');
           "
           echo "═══════════════════════════════════════════"
           echo ""
-          echo "Full report: lighthouse-report.html"
+          echo "Full report: $HTML_FILE"
         else
-          echo "No lighthouse-report.json found. Run 'task lighthouse:run' first."
+          echo "No Lighthouse JSON report found. Run 'task lighthouse:run' first."
           exit 1
         fi
 
@@ -61,7 +73,9 @@ tasks:
       Usage: task lighthouse:ci URL=http://localhost:3000/login
       Usage: task lighthouse:ci PERF_THRESHOLD=60 A11Y_THRESHOLD=80 BP_THRESHOLD=80
     vars:
-      URL: '{{ .URL | default "http://localhost:3000/login" }}'
+      DEV_PORT:
+        sh: task dev:port
+      URL: '{{ .URL | default (printf "http://localhost:%s/login" .DEV_PORT) }}'
       PERF_THRESHOLD: '{{ .PERF_THRESHOLD | default "70" }}'
       A11Y_THRESHOLD: '{{ .A11Y_THRESHOLD | default "85" }}'
       BP_THRESHOLD: '{{ .BP_THRESHOLD | default "85" }}'
@@ -81,7 +95,15 @@ tasks:
           --only-categories=accessibility,best-practices,performance
       - |
         set -euo pipefail
-        REPORT_FILE="{{ .REPORT_PATH }}.json"
+        REPORT_FILE=""
+        if [ -f "{{ .REPORT_PATH }}.report.json" ]; then
+          REPORT_FILE="{{ .REPORT_PATH }}.report.json"
+        elif [ -f "{{ .REPORT_PATH }}.json" ]; then
+          REPORT_FILE="{{ .REPORT_PATH }}.json"
+        else
+          echo "No Lighthouse JSON report found for REPORT_PATH={{ .REPORT_PATH }}"
+          exit 1
+        fi
         echo ""
         echo "═══════════════════════════════════════════"
         echo "         LIGHTHOUSE MOBILE SCORES          "
@@ -126,10 +148,17 @@ tasks:
       Usage: task lighthouse:failed-audits
     cmds:
       - |
-        if [ -f lighthouse-report.json ]; then
+        REPORT_FILE=""
+        if [ -f lighthouse-report.report.json ]; then
+          REPORT_FILE="lighthouse-report.report.json"
+        elif [ -f lighthouse-report.json ]; then
+          REPORT_FILE="lighthouse-report.json"
+        fi
+
+        if [ -n "$REPORT_FILE" ]; then
           echo "Failed audits:"
-          node -e "const r=require('./lighthouse-report.json');Object.entries(r.audits).filter(([k,v])=>v.score!=null&&v.score<1).forEach(([k,v])=>console.log('  ['+Math.floor(v.score*100)+'%] '+v.title))"
+          node -e "const r=require('./$REPORT_FILE');Object.entries(r.audits).filter(([k,v])=>v.score!=null&&v.score<1).forEach(([k,v])=>console.log('  ['+Math.floor(v.score*100)+'%] '+v.title))"
         else
-          echo "No lighthouse-report.json found. Run 'task lighthouse:run' first."
+          echo "No Lighthouse JSON report found. Run 'task lighthouse:run' first."
           exit 1
         fi
