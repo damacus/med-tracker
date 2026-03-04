@@ -13,6 +13,9 @@ PLAYWRIGHT_BROWSER_ARGS = [
   '--disable-dev-shm-usage'
 ].freeze
 
+Capybara.default_normalize_ws = true
+Capybara.case_sensitive = false
+
 Capybara.register_driver :playwright do |app|
   Capybara::Playwright::Driver.new(
     app,

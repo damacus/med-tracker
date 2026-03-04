@@ -9,6 +9,10 @@
 - **Person enum** — `adult:0`, `minor:1`, `dependent_adult:2`; minors/dependent_adults always `has_capacity:false`
 - **PostgreSQL 18** — Use version 18, not 17, in all configs and docs
 - **Fixture password** — All dev/test fixture users have password `password`
+- **Zero Placeholders** — NEVER use `...` or `// ...` in `write_file` or `replace`. Always provide full literal content.
+- **Stimulus Robustness** — Always use `event.target.closest()` or `pointer-events-none` on child elements (SVGs, spans) to ensure reliable event targeting.
+- **Turbo Context** — When returning Turbo Streams from controllers, always verify if the target element exists on the current page. If unsure or if the request is not a modal (`request.headers['Turbo-Frame'] != 'modal'`), prefer a standard redirect.
+- **Rails Introspection** — Use `bin/rails runner 'puts Medication.reflect_on_all_associations.map(&:name)'` or similar for reliable schema/logic checks instead of grepping.
 
 ## Commands
 
