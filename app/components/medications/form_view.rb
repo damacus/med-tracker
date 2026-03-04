@@ -241,8 +241,138 @@ module Components
       end
 
       def render_dosage_fields(_form)
-        render_dosage_amount_field
-        render_dosage_unit_field
+        div(class: 'md:col-span-2 space-y-6', data: { controller: 'medication-dose-setup' }) do
+          div(
+            class: 'flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-slate-50 ' \
+                   'rounded-2xl border border-slate-100'
+          ) do
+            div(class: 'space-y-0.5') do
+              Text(size: '2', weight: 'bold', class: 'text-slate-900') { 'Is there a single dose for this medicine?' }
+              Text(size: '1', class: 'text-slate-500') do
+                'Choose "No" to set up multiple dose options (e.g. 0.5, 1, 2).'
+              end
+            end
+
+            div(class: 'flex p-1 bg-slate-200 rounded-xl w-fit') do
+              label(class: 'relative flex-1 group') do
+                input(
+                  type: 'radio',
+                  name: 'medication[single_dose]',
+                  value: 'true',
+                  class: 'peer sr-only',
+                  checked: medication.dosages.count <= 1,
+                  data: { action: 'change->medication-dose-setup#toggle',
+                          medication_dose_setup_target: 'singleDoseRadio' }
+                )
+                div(
+                  class: 'px-4 py-2 rounded-lg text-sm font-bold cursor-pointer transition-all ' \
+                         'peer-checked:bg-white peer-checked:text-primary peer-checked:shadow-sm ' \
+                         'text-slate-500 hover:text-slate-700'
+                ) do
+                  'Yes'
+                end
+              end
+              label(class: 'relative flex-1 group') do
+                input(
+                  type: 'radio',
+                  name: 'medication[single_dose]',
+                  value: 'false',
+                  class: 'peer sr-only',
+                  checked: medication.dosages.many?,
+                  data: { action: 'change->medication-dose-setup#toggle' }
+                )
+                div(
+                  class: 'px-4 py-2 rounded-lg text-sm font-bold cursor-pointer transition-all ' \
+                         'peer-checked:bg-white peer-checked:text-primary peer-checked:shadow-sm ' \
+                         'text-slate-500 hover:text-slate-700'
+                ) do
+                  'No'
+                end
+              end
+            end
+          end
+
+          div(class: 'grid grid-cols-1 sm:grid-cols-2 gap-6') do
+            div(class: 'space-y-2') do
+              render RubyUI::FormFieldLabel.new(
+                for: 'medication_dosage_unit_trigger',
+                class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1'
+              ) do
+                plain t('forms.medications.unit')
+                span(class: 'text-destructive ml-0.5') { ' *' }
+              end
+              render_dosage_unit_field
+            end
+
+            div(data: { medication_dose_setup_target: 'singleDoseContainer' },
+                class: ('hidden' if medication.dosages.many?)) do
+              render_dosage_amount_field
+            end
+          end
+
+          div(data: { medication_dose_setup_target: 'multiDoseContainer' },
+              class: "space-y-4 #{'hidden' if medication.dosages.count <= 1}") do
+            render_dosage_presets_field
+          end
+        end
+      end
+
+      def render_dosage_presets_field
+        div(class: 'space-y-3') do
+          render RubyUI::FormFieldLabel.new(
+            class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1'
+          ) { 'Standard Dose Options' }
+
+          div(class: 'flex flex-wrap gap-2') do
+            ['0.5', '1', '1.5', '2', '3', '4'].each do |val|
+              label(class: 'group') do
+                input(
+                  type: 'checkbox',
+                  class: 'peer sr-only',
+                  value: val,
+                  checked: medication.dosages.any? { |d| d.amount.to_f.to_s == val.to_f.to_s },
+                  data: { action: 'change->medication-dose-setup#updateHidden',
+                          medication_dose_setup_target: 'presetChip' }
+                )
+                div(
+                  class: 'px-4 py-2 rounded-xl border border-slate-200 text-sm font-bold cursor-pointer ' \
+                         'transition-all peer-checked:bg-primary peer-checked:border-primary ' \
+                         'peer-checked:text-white hover:border-primary/30 text-slate-600'
+                ) do
+                  val
+                end
+              end
+            end
+          end
+
+          div(class: 'space-y-2') do
+            render RubyUI::FormFieldLabel.new(
+              for: 'medication_other_dosages',
+              class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1'
+            ) { 'Other doses (comma separated)' }
+            render RubyUI::Input.new(
+              type: :text,
+              id: 'medication_other_dosages',
+              placeholder: 'e.g. 2.5, 5, 10',
+              value: other_dosages_string,
+              class: 'rounded-md border-slate-200 bg-white py-4 px-4 focus:ring-2 ' \
+                     'focus:ring-primary/10 focus:border-primary transition-all',
+              data: { action: 'input->medication-dose-setup#updateHidden',
+                      medication_dose_setup_target: 'otherInput' }
+            )
+          end
+
+          input(
+            type: 'hidden',
+            name: 'medication[dosage_presets]',
+            data: { medication_dose_setup_target: 'hiddenOutput' }
+          )
+        end
+      end
+
+      def other_dosages_string
+        presets = ['0.5', '1', '1.5', '2', '3', '4'].map(&:to_f)
+        medication.dosages.reject { |d| presets.include?(d.amount.to_f) }.map { |d| d.amount.to_f }.join(', ')
       end
 
       def render_dosage_amount_field
@@ -255,9 +385,9 @@ module Components
             type: :number,
             name: 'medication[dosage_amount]',
             id: 'medication_dosage_amount',
-            value: medication.dosage_amount.to_i,
+            value: medication.dosage_amount.to_f.positive? ? medication.dosage_amount.to_f : nil,
             step: 'any',
-            min: '1',
+            min: '0.01',
             class: 'rounded-md border-slate-200 bg-white py-4 px-4 focus:ring-2 focus:ring-primary/10 ' \
                    'focus:border-primary transition-all'
           )
@@ -266,51 +396,45 @@ module Components
       end
 
       def render_dosage_unit_field
-        div(class: 'space-y-2') do
-          render RubyUI::FormFieldLabel.new(
-            for: 'medication_dosage_unit_trigger',
-            class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1'
-          ) { t('forms.medications.unit') }
-          render RubyUI::Combobox.new(class: 'w-full') do
-            render RubyUI::ComboboxTrigger.new(
-              placeholder: medication.dosage_unit.presence || t('forms.medications.select_unit'),
-              class: field_error_class(medication, :dosage_unit)
+        render RubyUI::Combobox.new(class: 'w-full') do
+          render RubyUI::ComboboxTrigger.new(
+            placeholder: medication.dosage_unit.presence || t('forms.medications.select_unit'),
+            class: field_error_class(medication, :dosage_unit)
+          )
+
+          render RubyUI::ComboboxPopover.new do
+            render RubyUI::ComboboxSearchInput.new(
+              placeholder: t('forms.medications.select_unit')
             )
 
-            render RubyUI::ComboboxPopover.new do
-              render RubyUI::ComboboxSearchInput.new(
-                placeholder: t('forms.medications.select_unit')
-              )
+            render RubyUI::ComboboxList.new do
+              render RubyUI::ComboboxEmptyState.new do
+                'No units found.'
+              end
 
-              render RubyUI::ComboboxList.new do
-                render RubyUI::ComboboxEmptyState.new do
-                  'No units found.'
-                end
+              render RubyUI::ComboboxItem.new do
+                render RubyUI::ComboboxRadio.new(
+                  name: 'medication[dosage_unit]',
+                  value: '',
+                  checked: medication.dosage_unit.blank?
+                )
+                span { t('forms.medications.select_unit') }
+              end
 
+              dosage_units.each do |unit|
                 render RubyUI::ComboboxItem.new do
                   render RubyUI::ComboboxRadio.new(
                     name: 'medication[dosage_unit]',
-                    value: '',
-                    checked: medication.dosage_unit.blank?
+                    value: unit,
+                    checked: medication.dosage_unit == unit
                   )
-                  span { t('forms.medications.select_unit') }
-                end
-
-                dosage_units.each do |unit|
-                  render RubyUI::ComboboxItem.new do
-                    render RubyUI::ComboboxRadio.new(
-                      name: 'medication[dosage_unit]',
-                      value: unit,
-                      checked: medication.dosage_unit == unit
-                    )
-                    span { unit }
-                  end
+                  span { unit }
                 end
               end
             end
           end
-          render_field_error(medication, :dosage_unit)
         end
+        render_field_error(medication, :dosage_unit)
       end
 
       def dosage_units

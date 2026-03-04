@@ -107,13 +107,17 @@ class SchedulesController < ApplicationController
       respond_to do |format|
         format.html { redirect_to person_path(@person), notice: t('schedules.created') }
         format.turbo_stream do
-          flash.now[:notice] = t('schedules.created')
-          render turbo_stream: [
-            turbo_stream.update('modal', ''),
-            turbo_stream.replace("person_#{@person.id}", Components::People::PersonCard.new(person: @person.reload)),
-            turbo_stream.replace("person_show_#{@person.id}", person_show_view(@person.reload)),
-            turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
-          ]
+          if request.headers['Turbo-Frame'] == 'modal'
+            flash.now[:notice] = t('schedules.created')
+            render turbo_stream: [
+              turbo_stream.update('modal', ''),
+              turbo_stream.replace("person_#{@person.id}", Components::People::PersonCard.new(person: @person.reload)),
+              turbo_stream.replace("person_show_#{@person.id}", person_show_view(@person.reload)),
+              turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
+            ]
+          else
+            redirect_to person_path(@person), notice: t('schedules.created')
+          end
         end
       end
     else
@@ -130,12 +134,16 @@ class SchedulesController < ApplicationController
       respond_to do |format|
         format.html { redirect_to person_path(@person), notice: t('schedules.updated') }
         format.turbo_stream do
-          flash.now[:notice] = t('schedules.updated')
-          render turbo_stream: [
-            turbo_stream.update('modal', ''),
-            turbo_stream.replace("person_show_#{@person.id}", person_show_view(@person.reload)),
-            turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
-          ]
+          if request.headers['Turbo-Frame'] == 'modal'
+            flash.now[:notice] = t('schedules.updated')
+            render turbo_stream: [
+              turbo_stream.update('modal', ''),
+              turbo_stream.replace("person_show_#{@person.id}", person_show_view(@person.reload)),
+              turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
+            ]
+          else
+            redirect_to person_path(@person), notice: t('schedules.updated')
+          end
         end
       end
     else
@@ -184,7 +192,7 @@ class SchedulesController < ApplicationController
       return
     end
 
-    amount = normalized_take_amount(params[:amount_ml].presence || @schedule.dosage.amount)
+    amount = normalized_take_amount(params[:amount_ml].presence || @schedule.effective_dose_amount)
     if invalid_take_amount?(amount)
       log_invalid_take_attempt(
         source: 'schedule',

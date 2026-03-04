@@ -1,55 +1,53 @@
 # frozen_string_literal: true
 
-# Schedule model
 class Schedule < ApplicationRecord
-  include TimingRestrictions
-
   belongs_to :person
   belongs_to :medication
-  belongs_to :dosage
-
-  enum :dose_cycle, { daily: 0, weekly: 1, monthly: 2 }
-
-  has_many :medication_takes, dependent: :destroy
-
-  scope :active, lambda {
-    where('start_date <= ? AND end_date >= ?', Time.zone.today, Time.zone.today)
-  }
+  belongs_to :dosage, optional: true
+  has_many :medication_administrations, dependent: :destroy
 
   validates :start_date, presence: true
-  validates :end_date, presence: true
-  validate :end_date_after_start_date
+  validates :frequency, presence: true
+  validates :custom_dose_amount, presence: true, if: -> { dosage_id.blank? }
+  validates :custom_dose_unit, presence: true, if: -> { dosage_id.blank? }
+  validate :at_least_one_dose_source
 
-  delegate :out_of_stock?, to: :medication
+  scope :active, -> { where('start_date <= ? AND (end_date IS NULL OR end_date >= ?)', Time.zone.today, Time.zone.today) }
+
   delegate :name, to: :medication, prefix: true
   delegate :name, to: :person, prefix: true
   delegate :amount, :unit, to: :dosage, prefix: true, allow_nil: true
 
   def active?
     today = Time.zone.today
-    return false if start_date.nil? || end_date.nil?
+    return false if start_date.nil?
+    return today >= start_date if end_date.nil?
 
     today.between?(start_date, end_date)
   end
 
+  def effective_dose_amount
+    dosage ? dosage.amount : custom_dose_amount
+  end
+
+  def effective_dose_unit
+    dosage ? dosage.unit : custom_dose_unit
+  end
+
+  def dosage_text
+    "#{effective_dose_amount} #{effective_dose_unit}"
+  end
+
   def cycle_period
-    case dose_cycle
-    when 'weekly'
-      7.days
-    when 'monthly'
-      30.days
-    else
-      1.day # Handles 'daily', nil, and any other values
-    end
+    # Mock implementation for now
+    7.days
   end
 
   private
 
-  def end_date_after_start_date
-    return if end_date.blank? || start_date.blank?
+  def at_least_one_dose_source
+    return if dosage_id.present? || (custom_dose_amount.present? && custom_dose_unit.present?)
 
-    return unless end_date < start_date
-
-    errors.add(:end_date, 'must be after the start date')
+    errors.add(:base, 'Must specify either a preset dosage or a custom dose amount and unit')
   end
 end

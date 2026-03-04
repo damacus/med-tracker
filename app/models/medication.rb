@@ -54,13 +54,17 @@ class Medication < ApplicationRecord # :nodoc:
 
   enum :reorder_status, { requested: 0, ordered: 1, received: 2 }, prefix: :reorder
 
+  attr_accessor :dosage_presets, :single_dose
+
   validates :name, presence: true
   validates :category, inclusion: { in: CATEGORIES }, allow_blank: true
   validates :dosage_amount, numericality: { greater_than: 0 }, allow_nil: true
-  validates :dosage_unit, inclusion: { in: DOSAGE_UNITS }, allow_blank: true
+  validates :dosage_unit, presence: true, inclusion: { in: DOSAGE_UNITS }
   validates :current_supply, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
   validates :supply_at_last_restock, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
   validates :reorder_threshold, presence: true, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
+
+  after_save :sync_dosages
 
   def restock!(quantity:) # rubocop:disable Naming/PredicateMethod
     increment = quantity.to_i
@@ -92,6 +96,13 @@ class Medication < ApplicationRecord # :nodoc:
     return false if current_supply.nil?
 
     current_supply <= reorder_threshold
+  end
+
+  def supply_label(count: current_supply)
+    c = count.to_i
+    u = dosage_unit.presence || 'unit'
+    label = c == 1 ? u : u.pluralize
+    "#{c} #{label}"
   end
 
   def out_of_stock?
@@ -151,8 +162,47 @@ class Medication < ApplicationRecord # :nodoc:
     days ? Time.zone.today + days.days : nil
   end
 
+  def assigned_people
+    schedules_people = schedules.active.includes(:person).map(&:person)
+    pm_people = person_medications.includes(:person).map(&:person)
+    (schedules_people + pm_people).uniq
+  end
+
   def low_stock_date
     days = days_until_low_stock
     days ? Time.zone.today + days.days : nil
+  end
+
+  private
+
+  def sync_dosages
+    if single_dose == 'true'
+      sync_single_dosage
+    elsif dosage_presets.present?
+      sync_preset_dosages
+    end
+  end
+
+  def sync_single_dosage
+    return if dosage_amount.blank?
+
+    dosages.find_or_create_by!(
+      amount: dosage_amount,
+      unit: dosage_unit,
+      frequency: 'As prescribed',
+      description: 'Standard dose'
+    )
+  end
+
+  def sync_preset_dosages
+    amounts = dosage_presets.split(',').map(&:to_f).uniq
+    amounts.each do |amount|
+      dosages.find_or_create_by!(
+        amount: amount,
+        unit: dosage_unit,
+        frequency: 'As prescribed',
+        description: 'Preset dose'
+      )
+    end
   end
 end

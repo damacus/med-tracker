@@ -236,15 +236,37 @@ RSpec.describe 'People' do
 
       expect(page).to have_content('System Child One')
 
+      # Navigate back to index and verify it renders
       visit people_path
-      click_link 'New Person'
+      expect(page).to have_content('People')
+      expect(page).to have_content('System Child One')
 
+      # Create second child
+      click_link 'New Person'
       fill_in 'Name', with: 'System Child Two'
       fill_in 'Email', with: ''
       fill_in 'Date of Birth', with: 6.years.ago.to_date.to_s
       click_button 'Create Person'
 
       expect(page).to have_content('System Child Two')
+
+      # Critical: Verify index page still renders without 500 error
+      visit people_path
+      expect(page).to have_content('People')
+      expect(page).to have_content('System Child One')
+      expect(page).to have_content('System Child Two')
+
+      # Verify both children show proper schedule counts
+      within '#people' do
+        expect(page).to have_content('No active schedules').at_least(2).times
+      end
+
+      # Verify carer relationships were created
+      created_children = Person.where(name: ['System Child One', 'System Child Two'])
+      created_children.each do |child|
+        expect(child.carer_relationships.count).to eq(1)
+        expect(child.carers).not_to be_empty
+      end
     end
   end
 end

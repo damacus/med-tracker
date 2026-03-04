@@ -43,23 +43,10 @@ RSpec.describe Schedule do
       )
     end
 
-    let(:person) do
-      Person.create!(
-        name: 'Jane Doe',
-        email: 'jane@example.com',
-        date_of_birth: Date.new(1990, 1, 1)
-      )
-    end
-    let(:location) { Location.create!(name: 'Schedule Test Home') }
-    let(:medication) do
-      Medication.create!(
-        name: 'Lisinopril',
-        location: location,
-        current_supply: 50,
-        reorder_threshold: 10
-      )
-    end
-    let(:dosage) { Dosage.create!(medication: medication, amount: 10, unit: 'mg', frequency: 'daily') }
+    let(:person) { people(:john) }
+    let(:location) { locations(:home) }
+    let(:medication) { medications(:paracetamol) }
+    let(:dosage) { dosages(:paracetamol_adult) }
 
     it { is_expected.to validate_presence_of(:start_date) }
     it { is_expected.to validate_presence_of(:end_date) }
@@ -68,13 +55,70 @@ RSpec.describe Schedule do
       schedule.end_date = schedule.start_date - 1.day
       expect(schedule).not_to be_valid
     end
+
+    context 'when neither dosage nor custom dose is provided' do
+      let(:dosage) { nil }
+
+      it 'is invalid' do
+        expect(schedule).not_to be_valid
+        expect(schedule.errors[:base]).to include('Either a preset dosage or a custom amount and unit must be provided')
+      end
+    end
+
+    context 'when custom dose is provided' do
+      let(:dosage) { nil }
+
+      it 'is valid with custom amount and unit' do
+        schedule.custom_dose_amount = 2.5
+        schedule.custom_dose_unit = 'tablets'
+        expect(schedule).to be_valid
+      end
+
+      it 'is invalid with non-positive custom amount' do
+        schedule.custom_dose_amount = 0
+        schedule.custom_dose_unit = 'tablets'
+        expect(schedule).not_to be_valid
+        expect(schedule.errors[:custom_dose_amount]).to include('must be greater than zero')
+      end
+
+      it 'is invalid with missing unit' do
+        schedule.custom_dose_amount = 2.5
+        schedule.custom_dose_unit = nil
+        expect(schedule).not_to be_valid
+      end
+    end
+  end
+
+  describe 'effective dose helpers' do
+    let(:schedule) { described_class.new(dosage: dosage) }
+    let(:dosage) { Dosage.new(amount: 10, unit: 'mg') }
+
+    context 'with preset dosage' do
+      it 'returns dosage amount and unit' do
+        expect(schedule.effective_dose_amount).to eq(10)
+        expect(schedule.effective_dose_unit).to eq('mg')
+      end
+    end
+
+    context 'with custom dose' do
+      before do
+        schedule.dosage = nil
+        schedule.custom_dose_amount = 2.5
+        schedule.custom_dose_unit = 'tablets'
+      end
+
+      it 'returns custom amount and unit' do
+        expect(schedule.effective_dose_amount).to eq(2.5)
+        expect(schedule.effective_dose_unit).to eq('tablets')
+      end
+    end
   end
 
   describe '#can_administer?' do
     let(:location) { Location.create!(name: 'Administer Test Home') }
     let(:medication) do
       Medication.create!(name: 'TestMed', location: location, current_supply: 10,
-                         reorder_threshold: 2)
+                         reorder_threshold: 2, dosage_unit: 'mg')
     end
     let(:person) do
       Person.create!(name: 'Test Person', email: 'test-administer@example.com', date_of_birth: Date.new(1990, 1, 1))
@@ -114,7 +158,7 @@ RSpec.describe Schedule do
     let(:location) { Location.create!(name: 'Blocked Test Home') }
     let(:medication) do
       Medication.create!(name: 'TestMed2', location: location, current_supply: 0,
-                         reorder_threshold: 2)
+                         reorder_threshold: 2, dosage_unit: 'mg')
     end
     let(:person) do
       Person.create!(name: 'Test Person2', email: 'test-reason@example.com', date_of_birth: Date.new(1990, 1, 1))
@@ -134,7 +178,7 @@ RSpec.describe Schedule do
 
   describe 'associations' do
     it { is_expected.to belong_to(:person) }
-    it { is_expected.to belong_to(:dosage) }
+    it { is_expected.to belong_to(:dosage).optional }
     it { is_expected.to have_many(:medication_takes).dependent(:destroy) }
   end
 end

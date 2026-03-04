@@ -46,6 +46,7 @@ module Components
         div(class: 'grid grid-cols-1 md:grid-cols-2 gap-6') do
           render_medication_field(f)
           render_dosage_field(f)
+          render_custom_dose_fields(f)
           render_start_date_field(f)
           render_end_date_field(f)
           render_frequency_field(f)
@@ -89,15 +90,13 @@ module Components
       def render_dosage_field(_f)
         FormField do
           FormFieldLabel(for: 'schedule_dosage_id') do
-            plain 'Dosage'
-            span(class: 'text-destructive ml-0.5') { ' *' }
+            plain 'Dosage Preset'
           end
           Select(data: { schedule_form_target: 'dosageSelect', testid: 'dosage-select' }) do
             SelectInput(
               name: 'schedule[dosage_id]',
               id: 'schedule_dosage_id',
               value: schedule.dosage_id,
-              required: true,
               data: { action: 'change->schedule-form#onDosageChange' }
             )
             SelectTrigger(
@@ -123,6 +122,34 @@ module Components
                 end
               end
             end
+          end
+        end
+      end
+
+      def render_custom_dose_fields(_f)
+        div(class: 'md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6') do
+          FormField do
+            FormFieldLabel(for: 'schedule_custom_dose_amount') { 'Or Custom Amount' }
+            Input(
+              type: :number,
+              name: 'schedule[custom_dose_amount]',
+              id: 'schedule_custom_dose_amount',
+              value: schedule.custom_dose_amount,
+              step: '0.01',
+              placeholder: 'e.g., 0.5',
+              data: { action: 'input->schedule-form#onCustomDoseChange', schedule_form_target: 'customDoseAmount' }
+            )
+          end
+          FormField do
+            FormFieldLabel(for: 'schedule_custom_dose_unit') { 'Custom Unit' }
+            Input(
+              type: :text,
+              name: 'schedule[custom_dose_unit]',
+              id: 'schedule_custom_dose_unit',
+              value: schedule.custom_dose_unit,
+              placeholder: 'e.g., tablets',
+              data: { action: 'input->schedule-form#onCustomDoseChange', schedule_form_target: 'customDoseUnit' }
+            )
           end
         end
       end

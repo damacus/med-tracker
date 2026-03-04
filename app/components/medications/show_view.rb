@@ -121,7 +121,9 @@ module Components
               span(class: "text-5xl font-black #{medication.low_stock? ? 'text-rose-600' : 'text-primary'}") do
                 current.to_s
               end
-              Text(size: '2', weight: 'bold', class: 'text-slate-400') { t('medications.show.remaining') }
+              Text(size: '2', weight: 'bold', class: 'text-slate-400') do
+                medication.dosage_unit.presence || t('medications.show.remaining')
+              end
             end
 
             div(class: 'space-y-2') do
@@ -201,7 +203,8 @@ module Components
           end
 
           div(class: 'pt-4 border-t border-slate-50') do
-            overview_item(t('medications.show.reorder_at_label'), "#{medication.reorder_threshold} units", Icons::Settings)
+            overview_item(t('medications.show.reorder_at_label'),
+                          medication.supply_label(count: medication.reorder_threshold), Icons::Settings)
           end
         end
       end

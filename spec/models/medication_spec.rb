@@ -6,6 +6,7 @@ RSpec.describe Medication do
   subject(:medication) do
     described_class.new(
       name: 'Ibuprofen',
+      dosage_unit: 'mg',
       current_supply: 200,
       reorder_threshold: 50
     )
@@ -13,6 +14,7 @@ RSpec.describe Medication do
 
   describe 'validations' do
     it { is_expected.to validate_presence_of(:name) }
+    it { is_expected.to validate_presence_of(:dosage_unit) }
     it { is_expected.not_to validate_presence_of(:current_supply) }
     it { is_expected.to allow_value('sachet').for(:dosage_unit) }
     it { is_expected.not_to allow_value('capsule').for(:dosage_unit) }
@@ -33,6 +35,56 @@ RSpec.describe Medication do
     it { is_expected.to allow_value(nil).for(:category) }
     it { is_expected.to allow_value('').for(:category) }
     it { is_expected.not_to allow_value('invalid_category').for(:category) }
+  end
+
+  describe '#supply_label' do
+    let(:medication) { build(:medication, current_supply: 16, dosage_unit: 'sachet') }
+
+    it 'returns plural label for multiple units' do
+      expect(medication.supply_label).to eq('16 sachets')
+    end
+
+    it 'returns singular label for one unit' do
+      medication.current_supply = 1
+      expect(medication.supply_label).to eq('1 sachet')
+    end
+
+    it 'falls back to unit/units when dosage_unit is blank' do
+      medication.dosage_unit = nil
+      expect(medication.supply_label).to eq('16 units')
+    end
+  end
+
+  describe '#assigned_people' do
+    let(:medication) { create(:medication) }
+    let(:primary_person) { create(:person) }
+    let(:secondary_person) { create(:person) }
+
+    it 'returns unique people from active schedules and links' do
+      dosage = create(:dosage, medication: medication)
+      create(:schedule, medication: medication, person: primary_person, dosage: dosage)
+      create(:person_medication, medication: medication, person: secondary_person)
+
+      expect(medication.assigned_people).to contain_exactly(primary_person, secondary_person)
+    end
+  end
+
+  describe '#sync_dosages' do
+    let(:medication) { create(:medication, dosage_unit: 'mg') }
+
+    it 'creates a dosage for single dose setup' do
+      medication.single_dose = 'true'
+      medication.dosage_amount = 500
+      expect { medication.save! }.to change { medication.dosages.count }.by(1)
+      expect(medication.dosages.first.amount).to eq(500)
+    end
+
+    it 'creates multiple dosages for presets setup' do
+      medication.single_dose = 'false'
+      medication.dosage_presets = '0.5,1,2'
+      expect { medication.save! }.to change { medication.dosages.count }.by(3)
+      expect(medication.dosages.map(&:amount).map(&:to_f)).to include(0.5, 1.0, 2.0)
+    end
   end
 
   describe 'associations' do
@@ -109,7 +161,8 @@ RSpec.describe Medication do
       described_class.new(
         name: 'Ibuprofen',
         current_supply: current_supply,
-        reorder_threshold: 50
+        reorder_threshold: 50,
+        dosage_unit: 'mg'
       )
     end
 

@@ -130,6 +130,7 @@ module Components
               status_badge(medication)
             end
             Heading(level: 2, size: '5', class: 'font-bold tracking-tight') { medication.name }
+            render_assignee_badges(medication)
           end
 
           CardContent(class: 'flex-grow space-y-6 px-8 pb-4') do
@@ -144,6 +145,27 @@ module Components
 
           CardFooter(class: 'px-8 pb-8 pt-2 mt-auto') do
             render_medication_actions(medication)
+          end
+        end
+      end
+
+      def render_assignee_badges(medication)
+        people = medication.assigned_people
+        return if people.empty?
+
+        div(class: 'flex flex-wrap gap-1.5 mt-2') do
+          people.take(3).each do |person|
+            first_name = person.name.split.first
+            Badge(variant: :secondary,
+                  class: 'rounded-full text-[9px] py-0 px-2 font-bold bg-slate-100 text-slate-500 border-none') do
+              first_name
+            end
+          end
+          if people.size > 3
+            Badge(variant: :secondary,
+                  class: 'rounded-full text-[9px] py-0 px-2 font-bold bg-slate-50 text-slate-400 border-none') do
+              "+#{people.size - 3}"
+            end
           end
         end
       end
@@ -171,7 +193,7 @@ module Components
             class: 'flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400'
           ) do
             span { t('medications.index.inventory_level') }
-            span { "#{medication.current_supply} #{t('medications.index.units')}" }
+            span { medication.supply_label }
           end
           div(class: 'h-1.5 w-full bg-slate-50 rounded-full overflow-hidden') do
             div(class: "h-full #{bar_color} rounded-full transition-all duration-1000", style: "width: #{percentage}%")

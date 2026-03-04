@@ -1,7 +1,8 @@
 import { Controller } from "@hotwired/stimulus";
 export default class extends Controller {
 
-  handleSelectItem({ target }) {
+  handleSelectItem(targetOrEvent) {
+    const target = targetOrEvent.target || targetOrEvent;
     if (this.element.dataset.value == target.dataset.value) {
       this.element.setAttribute("aria-selected", true);
     } else {

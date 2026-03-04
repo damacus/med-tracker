@@ -190,7 +190,9 @@ class MedicationsController < ApplicationController
                      current_supply
                      reorder_threshold
                      warnings
-                     location_id]
+                     location_id
+                     single_dose
+                     dosage_presets]
     )
   end
 

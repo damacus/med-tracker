@@ -53,7 +53,8 @@ module Components
           end
           div do
             CardTitle(class: 'text-2xl font-black tracking-tight mb-1 text-slate-900') { schedule.medication.name }
-            dosage_text = "#{schedule.dosage.amount.to_i}#{schedule.dosage.unit}"
+            amount = schedule.effective_dose_amount
+            dosage_text = "#{(amount % 1).zero? ? amount.to_i : amount}#{schedule.effective_dose_unit}"
             CardDescription(class: 'text-slate-600 font-bold uppercase text-[10px] tracking-widest') do
               "#{dosage_text} • #{schedule.frequency}"
             end
@@ -206,7 +207,8 @@ module Components
             Text(size: '2', weight: 'bold', class: 'text-slate-700') { take.taken_at.strftime('%l:%M %p').strip }
           end
           Text(size: '1', weight: 'black', class: 'text-slate-400 uppercase tracking-tighter') do
-            "#{take.amount_ml.to_i}#{schedule.dosage.unit}"
+            amount = take.amount_ml
+            "#{(amount % 1).zero? ? amount.to_i : amount}#{schedule.effective_dose_unit}"
           end
         end
       end
@@ -262,7 +264,7 @@ module Components
       end
 
       def invalid_dose_configured?
-        schedule.dosage.amount.to_f <= 0
+        schedule.effective_dose_amount.to_f <= 0
       end
 
       def render_schedule_actions

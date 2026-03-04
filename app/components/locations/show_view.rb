@@ -101,9 +101,9 @@ module Components
               end
             end
             if medication.low_stock?
-              Badge(variant: :destructive) { 'Low Stock' }
+              Badge(variant: :destructive) { "Low Stock: #{medication.supply_label}" }
             else
-              Badge(variant: :success) { "#{medication.current_supply} units" }
+              Badge(variant: :success) { medication.supply_label }
             end
           end
 

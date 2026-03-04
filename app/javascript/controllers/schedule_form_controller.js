@@ -4,7 +4,8 @@ export default class extends Controller {
   static targets = [
     "submit", "dosageSelect", "medicationSelect", "dosageContent",
     "dosageValue", "dosageTrigger", "frequencyInput",
-    "maxDosesInput", "minHoursInput", "doseCycleInput"
+    "maxDosesInput", "minHoursInput", "doseCycleInput",
+    "customDoseAmount", "customDoseUnit"
   ]
 
   connect() {
@@ -15,15 +16,22 @@ export default class extends Controller {
   validate() {
     const requiredFields = [
       'medication_id',
-      'dosage_id',
-      'frequency',
       'start_date'
     ]
 
-    const isValid = requiredFields.every(field => {
+    let isValid = requiredFields.every(field => {
       const input = this.element.querySelector(`[name*='[${field}]']`)
       return input && input.value.trim() !== ''
     })
+
+    if (isValid) {
+      const dosageInput = this.element.querySelector('[name="schedule[dosage_id]"]')
+      const hasDosage = dosageInput && dosageInput.value.trim() !== ''
+      const hasCustom = this.hasCustomDoseAmountTarget && this.customDoseAmountTarget.value.trim() !== '' &&
+                        this.hasCustomDoseUnitTarget && this.customDoseUnitTarget.value.trim() !== ''
+      
+      isValid = hasDosage || hasCustom
+    }
 
     if (this.hasSubmitTarget) {
       this.submitTarget.disabled = !isValid
@@ -39,6 +47,20 @@ export default class extends Controller {
         this.frequencyInputTarget.value = dosage.frequency
       }
       this.#fillSchedulingDefaults(dosage)
+      
+      // Clear custom dose fields when a preset is selected
+      if (this.hasCustomDoseAmountTarget) this.customDoseAmountTarget.value = ''
+      if (this.hasCustomDoseUnitTarget) this.customDoseUnitTarget.value = ''
+    }
+    this.validate()
+  }
+
+  onCustomDoseChange() {
+    if (this.customDoseAmountTarget.value || this.customDoseUnitTarget.value) {
+      // Clear dosage select when custom fields are typed into
+      const dosageInput = this.element.querySelector('[name="schedule[dosage_id]"]')
+      if (dosageInput) dosageInput.value = ''
+      if (this.hasDosageValueTarget) this.dosageValueTarget.textContent = 'Select a dosage'
     }
     this.validate()
   }
@@ -140,11 +162,11 @@ export default class extends Controller {
             data-orientation="vertical"
             data-controller="ruby-ui--select-item"
             data-action="click->ruby-ui--select#selectItem keydown.enter->ruby-ui--select#selectItem keydown.down->ruby-ui--select#handleKeyDown keydown.up->ruby-ui--select#handleKeyUp keydown.esc->ruby-ui--select#handleEsc"
-            data-ruby-ui__select-target="item"
+            data-ruby-ui--select-target="item"
             class="item group relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground hover:bg-accent hover:text-accent-foreground"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="${isSelected ? 'visible' : 'invisible'} group-aria-selected:visible mr-2 h-4 w-4 flex-none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
-            ${text}
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="${isSelected ? 'visible' : 'invisible'} group-aria-selected:visible mr-2 h-4 w-4 flex-none pointer-events-none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
+            <span class="pointer-events-none">${text}</span>
           </div>
         `
       }).join('')

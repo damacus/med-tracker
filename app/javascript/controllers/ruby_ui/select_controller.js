@@ -24,15 +24,18 @@ export default class extends Controller {
     event.preventDefault();
     event.stopPropagation();
 
-    this.rubyUiSelectItemOutlets.forEach((item) =>
-      item.handleSelectItem(event),
+    const item = event.target.closest('[data-ruby-ui--select-target="item"]');
+    if (!item) return;
+
+    this.rubyUiSelectItemOutlets.forEach((selectItemOutlet) =>
+      selectItemOutlet.handleSelectItem(item),
     );
 
     const oldValue = this.inputTarget.value;
-    const newValue = event.target.dataset.value;
+    const newValue = item.dataset.value;
 
     this.inputTarget.value = newValue;
-    this.valueTarget.innerText = event.target.innerText;
+    this.valueTarget.innerText = item.innerText;
 
     this.dispatchOnChange(oldValue, newValue);
     this.closeContent();
