@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.22](https://github.com/damacus/med-tracker/compare/v0.3.21...v0.3.22) (2026-03-05)
+
+
+### Performance Improvements
+
+* ⚡ [performance] Fix N+1 query in locations members ([#908](https://github.com/damacus/med-tracker/issues/908)) ([1039719](https://github.com/damacus/med-tracker/commit/10397199a6c8c8401880542270ca5a7e392d5e25))
+* reuse schedule card data during render ([#912](https://github.com/damacus/med-tracker/issues/912)) ([ac99906](https://github.com/damacus/med-tracker/commit/ac99906e543fc4c6b5f3df519eace7be60c97a60))
+
 ## [0.3.21](https://github.com/damacus/med-tracker/compare/v0.3.20...v0.3.21) (2026-03-05)
 
 
