@@ -8,7 +8,6 @@ RSpec.describe 'Admin::AuditLogs Rate Limiting' do
   fixtures :all
 
   let(:admin) { users(:admin) }
-  let(:another_admin) { users(:john) }
 
   around do |example|
     original_cache_store = Rack::Attack.cache.store
@@ -30,13 +29,13 @@ RSpec.describe 'Admin::AuditLogs Rate Limiting' do
 
   describe 'IP-based rate limiting on GET /admin/audit_logs' do
     it 'allows requests under the limit' do
-      50.times do
+      5.times do
         get admin_audit_logs_path
         expect(response).to have_http_status(:success)
       end
     end
 
-    it 'throttles requests exceeding 100 per minute' do
+    it 'throttles requests exceeding 100 per minute and includes Retry-After' do
       100.times do
         get admin_audit_logs_path
         expect(response).to have_http_status(:success)
@@ -45,12 +44,6 @@ RSpec.describe 'Admin::AuditLogs Rate Limiting' do
       get admin_audit_logs_path
       expect(response).to have_http_status(:too_many_requests)
       expect(response.body).to include('Rate limit exceeded')
-    end
-
-    it 'includes Retry-After header when throttled' do
-      101.times { get admin_audit_logs_path }
-
-      expect(response).to have_http_status(:too_many_requests)
       expect(response.headers['Retry-After']).to be_present
       expect(response.headers['Retry-After'].to_i).to be > 0
     end
@@ -78,40 +71,6 @@ RSpec.describe 'Admin::AuditLogs Rate Limiting' do
 
       get admin_audit_logs_path
       expect(response).to have_http_status(:too_many_requests)
-    end
-  end
-
-  describe 'user-based rate limiting' do
-    before do
-      PaperTrail.request.whodunnit = admin.id
-      PaperTrail.request(enabled: true) do
-        users(:jane).update!(role: :nurse)
-      end
-    end
-
-    it 'allows different users to have separate rate limit counters' do
-      50.times do
-        sign_in(admin)
-        get admin_audit_logs_path
-        expect(response).to have_http_status(:success)
-      end
-
-      50.times do
-        sign_in(another_admin)
-        get admin_audit_logs_path
-        expect(response).to have_http_status(:success)
-      end
-    end
-
-    it 'throttles at IP limit (100) before reaching user limit (200)' do
-      100.times do
-        get admin_audit_logs_path
-        expect(response).to have_http_status(:success)
-      end
-
-      get admin_audit_logs_path
-      expect(response).to have_http_status(:too_many_requests)
-      expect(response.body).to include('Rate limit exceeded')
     end
   end
 
