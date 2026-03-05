@@ -37,6 +37,9 @@ RSpec.describe 'PWA' do
       expect(response).to have_http_status(:ok)
       expect(response.media_type).to eq('text/javascript')
       expect(response.body).to include('self.addEventListener')
+      expect(response.body).to include("const CACHE_VERSION = 'v2'")
+      expect(response.body).to include('self.skipWaiting()')
+      expect(response.body).to include('self.clients.claim()')
     end
   end
 
