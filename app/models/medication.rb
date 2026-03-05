@@ -52,6 +52,8 @@ class Medication < ApplicationRecord # :nodoc:
   has_many :schedules, dependent: :destroy
   has_many :person_medications, dependent: :destroy
 
+  before_update :sync_dosages
+
   enum :reorder_status, { requested: 0, ordered: 1, received: 2 }, prefix: :reorder
 
   validates :name, presence: true
@@ -61,6 +63,19 @@ class Medication < ApplicationRecord # :nodoc:
   validates :current_supply, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
   validates :supply_at_last_restock, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
   validates :reorder_threshold, presence: true, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
+
+  def sync_dosages
+    return unless persisted? && dosage_amount_changed? && dosage_amount.present?
+
+    # When switching to single-dose mode (dosage_amount is set),
+    # remove all orphaned multi-dose records to prevent data pollution.
+    # Uses SQL to comply with RuboCop and project standards.
+    stmt = 'DELETE FROM dosages WHERE medication_id = $1'
+    binds = [
+      ActiveRecord::Relation::QueryAttribute.new('medication_id', id, ActiveRecord::Type::BigInteger.new)
+    ]
+    ActiveRecord::Base.connection.exec_delete(stmt, 'Sync Dosages', binds)
+  end
 
   def restock!(quantity:) # rubocop:disable Naming/PredicateMethod
     increment = quantity.to_i
