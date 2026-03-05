@@ -127,10 +127,6 @@ module Components
 
         view_context.policy(record).create?
       end
-
-      def helpers
-        @helpers ||= ApplicationController.helpers
-      end
     end
   end
 end

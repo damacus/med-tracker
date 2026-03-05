@@ -72,10 +72,12 @@ services:
   mail-test:
     image: axllent/mailpit:latest
     profiles: [test]
-    networks: [test]
+    networks:
+      test:
+        aliases: [mail-test]
     ports:
-      - "8026:8025"   # Web UI (use http://localhost:8026 to inspect test emails)
-      - "1026:1025"   # SMTP
+      - "8025"   # Web UI
+      - "1025"   # SMTP
     restart: unless-stopped
 
   db-test:
@@ -101,6 +103,7 @@ services:
     environment: &rails_env_test
       RAILS_ENV: test
       DATABASE_URL: postgresql://medtracker:medtracker_password@db-test:5432/medtracker
+      SMTP_ADDRESS: mail-test
     volumes:
       - .:/app
       - medtracker_test_bundle:/usr/local/bundle

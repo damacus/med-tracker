@@ -33,7 +33,7 @@ module Views
             p(class: 'text-slate-400') { "#{@start_date.strftime('%B %d')} — #{@end_date.strftime('%B %d, %Y')}" }
           end
 
-          form(action: helpers.reports_path, method: :get, class: 'flex items-center gap-2 bg-white/50 backdrop-blur-sm p-4 rounded-xl border border-slate-100 shadow-sm') do
+          form(action: view_context.reports_path, method: :get, class: 'flex items-center gap-2 bg-white/50 backdrop-blur-sm p-4 rounded-xl border border-slate-100 shadow-sm') do
             div(class: 'flex flex-col gap-1') do
               label(for: 'start_date', class: 'text-xs font-bold text-slate-500 uppercase tracking-wider') { 'From' }
               input(type: 'date', name: 'start_date', id: 'start_date', value: @start_date, class: 'form-input text-sm rounded-lg border-slate-200 focus:border-indigo-500 focus:ring-indigo-500')
