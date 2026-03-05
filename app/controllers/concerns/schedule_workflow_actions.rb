@@ -1,6 +1,12 @@
 # frozen_string_literal: true
 
 module ScheduleWorkflowActions
+  extend ActiveSupport::Concern
+
+  included do
+    skip_before_action :set_person, only: %i[workflow start_workflow], raise: false
+  end
+
   def workflow
     authorize Schedule.new(person: current_user&.person || Person.new), :create?
     @people = policy_scope(Person).order(:name)

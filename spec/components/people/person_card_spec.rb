@@ -3,12 +3,16 @@
 require 'rails_helper'
 
 RSpec.describe Components::People::PersonCard, type: :component do
+  fixtures :people, :users, :schedules
+
   let(:person) do
-    build(:person, :dependent_adult, id: 1, name: 'Jane Doe')
+    people(:one)
   end
 
+  let(:user) { users(:jane) }
+
   it 'renders Needs Carer badge using RubyUI::Badge component (not inline styles)' do
-    rendered = render_inline(described_class.new(person: person))
+    rendered = render_inline(described_class.new(person: person, current_user: user))
 
     badge = rendered.at_css('[data-testid="needs-carer-badge"]')
     expect(badge).to be_present, 'Expected Needs Carer badge to be rendered'

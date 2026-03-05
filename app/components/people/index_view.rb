@@ -6,10 +6,11 @@ module Components
     class IndexView < Components::Base
       include Phlex::Rails::Helpers::TurboFrameTag
 
-      attr_reader :people
+      attr_reader :people, :current_user
 
-      def initialize(people:)
+      def initialize(people:, current_user: nil)
         @people = people
+        @current_user = current_user
         super()
       end
 
@@ -34,7 +35,7 @@ module Components
       def render_people_grid
         div(class: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6', id: 'people') do
           people.each do |person|
-            render PersonCard.new(person: person)
+            render PersonCard.new(person: person, current_user: current_user || view_context.current_user)
           end
         end
       end

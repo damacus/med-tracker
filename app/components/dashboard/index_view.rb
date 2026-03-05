@@ -160,7 +160,7 @@ module Components
         return if upcoming_doses.empty?
 
         div(class: 'space-y-6') do
-          Heading(level: 2, size: '5', class: 'font-bold') { t('dashboard.medication_schedule') }
+          Heading(level: 2, size: '5', class: 'font-bold') { t('dashboard.todays_schedule') }
           div(class: 'space-y-4') do
             upcoming_doses.each { |dose| upcoming_dose_item(dose) }
           end
@@ -195,7 +195,7 @@ module Components
 
       def dosage_label(source)
         if source.is_a?(Schedule)
-          "#{source.dosage.amount} #{source.dosage.unit}"
+          "#{source.effective_dose_amount} #{source.effective_dose_unit}"
         else
           source.medication.dosage_unit
         end
@@ -203,7 +203,7 @@ module Components
 
       def render_supply_levels
         div(class: 'space-y-6') do
-          Heading(level: 2, size: '5', class: 'font-bold') { t('dashboard.inventory.title') }
+          Heading(level: 2, size: '5', class: 'font-bold') { t('dashboard.stock_inventory') }
           render RubyUI::Card.new(
             class: 'bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm transition-all ' \
                    'duration-300 hover:shadow-md hover:scale-[1.01] cursor-default'

@@ -414,6 +414,9 @@ en:
     created: "Person was successfully created."
     updated: "Person was successfully updated."
     deleted: "Person was successfully deleted."
+    create_success: "Person was successfully created."
+    update_success: "Person was successfully updated."
+    destroy_success: "Person was successfully destroyed."
     add_medication:
       title: "Add Medication"
       subtitle: "How is this medication taken?"
@@ -670,6 +673,7 @@ en:
     greeting_evening: "Good evening, %{name}"
     subtitle: "Your family's medication schedule for today."
     todays_schedule: "Today's Schedule"
+    stock_inventory: "Stock Inventory"
     as_needed:
       title: "Take as Needed"
     overdue_alert: "Overdue: %{medication} for %{person} (scheduled at %{time})"
