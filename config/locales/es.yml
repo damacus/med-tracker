@@ -345,7 +345,9 @@ es:
       all: "Todos"
       view: "Ver"
       inventory_level: "Nivel de Inventario"
-      units: "unidades"
+      units:
+        one: "unidad"
+        other: "unidades"
       in_stock: "En Stock"
       delete_dialog:
         title: "Eliminar Medicamento"
@@ -357,10 +359,12 @@ es:
       edit_details: "Editar Detalles"
       inventory: "Inventario"
       overview: "Resumen"
-      no_description: "No se ha proporcionado ninguna descripción."
+      no_description: "No se ha proporcionado descripción."
       safety_warnings: "Advertencias de Seguridad"
       inventory_status: "Estado del Inventario"
-      remaining: "unidades restantes"
+      remaining:
+        one: "unidad restante"
+        other: "unidades restantes"
       supply_level: "Nivel de Suministro"
       reorder_at: "reordenar en %{threshold}"
       forecast_unavailable: "Pronóstico no disponible"
