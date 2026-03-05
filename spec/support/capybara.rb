@@ -3,18 +3,19 @@
 require 'capybara/rspec'
 
 # Performance-optimized browser args for CI and local testing
-PLAYWRIGHT_BROWSER_ARGS = [
-  '--disable-blink-features=AutomationControlled',
-  '--disable-features=PasswordManager',
-  '--disable-save-password-bubble',
-  '--disable-background-timer-throttling',
-  '--disable-backgrounding-occluded-windows',
-  '--disable-renderer-backgrounding',
-  '--disable-dev-shm-usage'
-].freeze
+unless defined?(PLAYWRIGHT_BROWSER_ARGS)
+  PLAYWRIGHT_BROWSER_ARGS = [
+    '--disable-blink-features=AutomationControlled',
+    '--disable-features=PasswordManager',
+    '--disable-save-password-bubble',
+    '--disable-background-timer-throttling',
+    '--disable-backgrounding-occluded-windows',
+    '--disable-renderer-backgrounding',
+    '--disable-dev-shm-usage'
+  ].freeze
+end
 
 Capybara.default_normalize_ws = true
-Capybara.case_sensitive = false
 
 Capybara.register_driver :playwright do |app|
   Capybara::Playwright::Driver.new(

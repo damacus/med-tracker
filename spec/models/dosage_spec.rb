@@ -18,6 +18,7 @@ RSpec.describe Dosage do
   let(:medication) do
     Medication.create!(
       name: 'Aspirin',
+      dosage_unit: 'mg',
       location: location,
       current_supply: 100,
       reorder_threshold: 10
