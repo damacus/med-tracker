@@ -20,6 +20,7 @@ export default class extends Controller {
 
   applyTheme(theme) {
     const root = document.documentElement
+    const activeTheme = theme || "default"
     
     // Remove all theme classes
     const classes = Array.from(root.classList)
@@ -37,7 +38,11 @@ export default class extends Controller {
     // Mark active in UI - look for the circle div inside the button
     this.element.querySelectorAll("[data-theme]").forEach(btn => {
       const circle = btn.querySelector("div")
-      if (btn.dataset.theme === theme) {
+      const isActive = btn.dataset.theme === activeTheme
+
+      btn.setAttribute("aria-pressed", isActive ? "true" : "false")
+
+      if (isActive) {
         circle.classList.add("ring-2", "ring-offset-2", "ring-primary")
         circle.classList.remove("border-2") // Remove border when ring is active for cleaner look
       } else {

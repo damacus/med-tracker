@@ -37,7 +37,9 @@ module Views
 
       def render_theme_option(theme)
         button(
-          class: 'group flex flex-col items-center gap-2 focus:outline-none',
+          type: 'button',
+          aria_pressed: 'false',
+          class: 'group flex flex-col items-center gap-2 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
           data_action: 'click->theme-switcher#switch',
           data_theme: theme[:id]
         ) do
