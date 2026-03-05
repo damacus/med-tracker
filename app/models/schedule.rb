@@ -25,6 +25,13 @@ class Schedule < ApplicationRecord
   delegate :name, to: :person, prefix: true
   delegate :amount, :unit, to: :dosage, prefix: true, allow_nil: true
 
+  def active?
+    today = Time.zone.today
+    return false if start_date.nil? || end_date.nil?
+
+    start_date <= today && end_date >= today
+  end
+
   def cycle_period
     case dose_cycle
     when 'weekly'
