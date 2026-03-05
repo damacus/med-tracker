@@ -49,18 +49,9 @@ module FamilyDashboard
     end
 
     def preload_takes
-      schedule_ids = @all_schedules.values.flatten.map(&:id)
-      pm_ids = @all_person_medications.values.flatten.map(&:id)
-
       # Fetch takes for the last 30 days to cover weekly/monthly cycles
       # but focus on today for the dashboard
-      all_takes = MedicationTake.where(taken_at: 30.days.ago..Time.current.end_of_day)
-                                .where(schedule_id: schedule_ids)
-                                .or(
-                                  MedicationTake.where(taken_at: 30.days.ago..Time.current.end_of_day)
-                                                .where(person_medication_id: pm_ids)
-                                )
-                                .to_a
+      all_takes = fetch_takes_for_sources
 
       # Group by [source_type, source_id] for fast lookup
       takes_by_source = all_takes.group_by do |t|
@@ -68,14 +59,28 @@ module FamilyDashboard
       end
 
       # Associate preloaded takes with these objects to avoid N+1 in TimingRestrictions
-      associate_takes_to_sources(@all_schedules.values.flatten + @all_person_medications.values.flatten, takes_by_source)
+      associate_takes_to_sources(all_sources, takes_by_source)
+    end
+
+    def all_sources
+      @all_schedules.values.flatten + @all_person_medications.values.flatten
+    end
+
+    def fetch_takes_for_sources
+      schedule_ids = @all_schedules.values.flatten.map(&:id)
+      pm_ids = @all_person_medications.values.flatten.map(&:id)
+      range = 30.days.ago..Time.current.end_of_day
+
+      MedicationTake.where(taken_at: range, schedule_id: schedule_ids)
+                    .or(MedicationTake.where(taken_at: range, person_medication_id: pm_ids))
+                    .to_a
     end
 
     def associate_takes_to_sources(sources, takes_by_source)
       sources.each do |source|
         key = [source.class.name, source.id]
         takes = takes_by_source[key] || []
-        
+
         # Set the association as loaded and assign the takes
         association = source.association(:medication_takes)
         association.loaded!
