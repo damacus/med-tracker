@@ -74,12 +74,12 @@ RSpec.describe 'GET /medication-finder/search' do
         allow(NhsDmd::Search).to receive(:new).and_return(search)
       end
 
-      it 'returns 200 with an error message' do
+      it 'returns 503 with a generic error message' do
         get medication_finder_search_path(format: :json), params: { q: 'aspirin' }
 
         json = response.parsed_body
-        expect(response).to have_http_status(:ok)
-        expect(json['error']).to be_present
+        expect(response).to have_http_status(:service_unavailable)
+        expect(json['error']).to eq('Medication search is temporarily unavailable.')
       end
     end
 
@@ -92,12 +92,12 @@ RSpec.describe 'GET /medication-finder/search' do
         allow(NhsDmd::Search).to receive(:new).and_return(search)
       end
 
-      it 'returns 200 with a not_configured error' do
+      it 'returns 503 with a generic error message' do
         get medication_finder_search_path(format: :json), params: { q: 'aspirin' }
 
         json = response.parsed_body
-        expect(response).to have_http_status(:ok)
-        expect(json['error']).to eq('not_configured')
+        expect(response).to have_http_status(:service_unavailable)
+        expect(json['error']).to eq('Medication search is temporarily unavailable.')
       end
     end
 

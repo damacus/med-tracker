@@ -145,12 +145,14 @@ class MedicationsController < ApplicationController
   def search
     authorize Medication, :finder?
     query = params[:q].to_s.strip
+    return render json: { results: [] } if query.blank?
+
     result = NhsDmd::Search.new.call(query)
 
     if result.success?
       render json: { results: result.results.map(&:to_h) }
     else
-      render json: { results: [], error: result.error }
+      render json: { results: [], error: 'Medication search is temporarily unavailable.' }, status: :service_unavailable
     end
   end
 
