@@ -33,9 +33,9 @@ module Components
       private
 
       def status_top_border_class
-        if schedule.out_of_stock?
+        if out_of_stock?
           'border-t-rose-500'
-        elsif !schedule.can_take_now?
+        elsif !can_take_now?
           'border-t-amber-500'
         else
           'border-t-primary'
@@ -62,9 +62,9 @@ module Components
       end
 
       def status_badge
-        return if schedule.out_of_stock?
+        return if out_of_stock?
 
-        if schedule.can_take_now?
+        if can_take_now?
           Badge(variant: :success, class: 'rounded-full text-[10px] py-0.5') { t('schedules.card.ready_now') }
         else
           Badge(variant: :warning, class: 'rounded-full text-[10px] py-0.5') { t('schedules.card.waiting') }
@@ -76,7 +76,7 @@ module Components
           div(class: 'pt-4 border-t border-slate-50 space-y-4') do
             render_date_details
             render_notes if schedule.notes.present?
-            render_countdown_notice if !schedule.can_take_now? && schedule.countdown_display
+            render_countdown_notice if !can_take_now? && schedule.countdown_display
             render_takes_section
           end
         end
@@ -152,14 +152,8 @@ module Components
               t('schedules.card.todays_doses')
             end
             if schedule.max_daily_doses.present?
-              takes_count = todays_takes&.count ||
-                            if schedule.medication_takes.loaded?
-                              schedule.medication_takes.count { |t| t.taken_at >= Time.current.beginning_of_day }
-                            else
-                              schedule.medication_takes.where(taken_at: Time.current.beginning_of_day..).count
-                            end
               Badge(variant: :outline, class: 'rounded-full text-[10px]') do
-                "#{takes_count}/#{schedule.max_daily_doses}"
+                "#{todays_takes_count}/#{schedule.max_daily_doses}"
               end
             end
           end
@@ -168,7 +162,7 @@ module Components
       end
 
       def render_todays_takes
-        takes = todays_takes || fetch_todays_takes
+        takes = resolved_todays_takes
 
         if takes.any?
           div(class: 'grid grid-cols-1 gap-2') do
@@ -196,6 +190,46 @@ module Components
         end
       end
 
+      # Cache these per-render so the card doesn't rescan or requery the same data
+      # for the status badge, disabled button, dose count badge, and take history.
+      def out_of_stock?
+        return @out_of_stock if instance_variable_defined?(:@out_of_stock)
+
+        @out_of_stock = schedule.out_of_stock?
+      end
+
+      def can_take_now?
+        return @can_take_now if instance_variable_defined?(:@can_take_now)
+
+        @can_take_now = schedule.can_take_now?
+      end
+
+      def can_administer?
+        return @can_administer if instance_variable_defined?(:@can_administer)
+
+        @can_administer = !out_of_stock? && can_take_now?
+      end
+
+      def blocked_reason
+        return @blocked_reason if instance_variable_defined?(:@blocked_reason)
+
+        @blocked_reason = if out_of_stock?
+                            :out_of_stock
+                          else
+                            (can_take_now? ? nil : :cooldown)
+                          end
+      end
+
+      def resolved_todays_takes
+        return @resolved_todays_takes if instance_variable_defined?(:@resolved_todays_takes)
+
+        @resolved_todays_takes = (todays_takes || fetch_todays_takes).to_a
+      end
+
+      def todays_takes_count
+        @todays_takes_count ||= resolved_todays_takes.size
+      end
+
       def render_take_item(take)
         div(
           class: 'flex items-center justify-between p-3 rounded-xl bg-slate-50/50 group/item transition-colors ' \
@@ -212,7 +246,7 @@ module Components
       end
 
       def render_take_medication_button
-        if invalid_dose_configured? || !schedule.can_administer?
+        if invalid_dose_configured? || !can_administer?
           render_disabled_button_with_reason
         else
           form_with(
@@ -239,8 +273,7 @@ module Components
         label = if invalid_dose_configured?
                   t('schedules.card.invalid_dose')
                 else
-                  reason = schedule.administration_blocked_reason
-                  reason == :out_of_stock ? t('schedules.card.out_of_stock') : take_label('schedules')
+                  blocked_reason == :out_of_stock ? t('schedules.card.out_of_stock') : take_label('schedules')
                 end
         render Button.new(
           variant: :secondary,

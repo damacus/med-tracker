@@ -9,7 +9,7 @@ RSpec.describe Views::Profiles::ThemePickerCard, type: :component do
     buttons = rendered.css('button[data-theme]')
 
     expect(buttons).not_to be_empty
-    expect(buttons.map { |button| button['type'] }).to all(eq('button'))
-    expect(buttons.map { |button| button['aria-pressed'] }).to all(eq('false'))
+    expect(buttons.pluck('type')).to all(eq('button'))
+    expect(buttons.pluck('aria-pressed')).to all(eq('false'))
   end
 end
