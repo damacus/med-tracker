@@ -4,6 +4,7 @@ module Components
   module Medications
     class ShowView < Components::Base
       include Phlex::Rails::Helpers::TurboFrameTag
+      include Phlex::Rails::Helpers::TimeAgoInWords
 
       attr_reader :medication, :notice
 
@@ -121,7 +122,9 @@ module Components
               span(class: "text-5xl font-black #{medication.low_stock? ? 'text-rose-600' : 'text-primary'}") do
                 current.to_s
               end
-              Text(size: '2', weight: 'bold', class: 'text-slate-400') { t('medications.show.remaining') }
+              Text(size: '2', weight: 'bold', class: 'text-slate-400') do
+                current == 1 ? 'unit remaining' : 'units remaining'
+              end
             end
 
             div(class: 'space-y-2') do
@@ -201,61 +204,74 @@ module Components
           end
 
           div(class: 'pt-4 border-t border-slate-50') do
-            overview_item(t('medications.show.reorder_at_label'), "#{medication.reorder_threshold} units", Icons::Settings)
+            overview_item(t('medications.show.reorder_at_label'), pluralize(medication.reorder_threshold, 'unit'), Icons::Settings)
           end
         end
       end
 
       def render_actions_card
-        div(class: 'space-y-4') do
+        div(class: 'space-y-3') do
           Link(
             href: schedules_workflow_path(medication_id: medication.id),
             variant: :outline,
             size: :lg,
-            class: 'w-full py-7 rounded-2xl bg-white flex items-center justify-center'
+            class: 'w-full py-6 rounded-2xl bg-white border-slate-200/60 shadow-sm flex items-center justify-center'
           ) do
-            render Icons::PlusCircle.new(size: 18, class: 'mr-2')
-            plain 'Add Schedule'
+            render Icons::PlusCircle.new(size: 18, class: 'mr-2 text-primary')
+            span(class: 'font-semibold text-slate-700') { 'Add Schedule' }
           end
 
-          render Button.new(variant: :primary, class: 'w-full py-7 rounded-2xl shadow-xl shadow-primary/20') {
-            t('medications.show.log_administration')
-          }
+          render Button.new(
+            variant: :primary,
+            class: 'w-full py-6 rounded-2xl shadow-lg shadow-primary/20 flex items-center justify-center'
+          ) do
+            render Icons::Activity.new(size: 18, class: 'mr-2')
+            span(class: 'font-semibold') { t('medications.show.log_administration') }
+          end
 
-          render_reorder_actions if medication.low_stock?
-          render_refill_modal
+          # Reorder & Refill Actions Group
+          div(class: 'grid grid-cols-2 gap-3') do
+            render_reorder_actions
+            render_refill_modal
+          end
         end
       end
 
       def render_reorder_actions
-        if medication.reorder_status.nil?
-          render_reorder_link(mark_as_ordered_medication_path(medication), 'Mark as Ordered', Icons::Clock)
-        elsif medication.reorder_ordered?
-          render_reorder_link(mark_as_received_medication_path(medication), 'Mark as Received', Icons::Check)
-        end
-      end
+        path, label, icon = if medication.reorder_status.nil?
+                              [mark_as_ordered_medication_path(medication), 'Mark as Ordered', Icons::Clock]
+                            elsif medication.reorder_ordered?
+                              [mark_as_received_medication_path(medication), 'Mark as Received', Icons::Check]
+                            end
 
-      def render_reorder_link(path, label, icon_class)
-        Link(href: path, variant: :outline, size: :lg,
-             data: { turbo_method: :patch },
-             class: 'w-full py-7 rounded-2xl bg-white flex items-center justify-center') do
-          render icon_class.new(size: 18, class: 'mr-2')
-          plain label
+        return unless path
+
+        Link(
+          href: path,
+          variant: :outline,
+          size: :lg,
+          data: { turbo_method: :patch },
+          class: 'w-full py-6 rounded-2xl bg-white border-slate-200/60 shadow-sm flex items-center justify-center'
+        ) do
+          render icon.new(size: 18, class: 'mr-2 text-primary')
+          span(class: 'font-semibold text-slate-700') { label }
         end
       end
 
       def render_refill_modal
-        button_class = if medication.reorder_received?
-                         'w-full py-7 rounded-2xl'
+        is_received = medication.reorder_received?
+        base_classes = 'w-full py-6 rounded-2xl shadow-sm flex items-center justify-center'
+        button_class = if is_received
+                         base_classes
                        else
-                         'w-full py-7 rounded-2xl bg-white'
+                         "#{base_classes} bg-white border-slate-200/60"
                        end
 
         render Components::Medications::RefillModal.new(
           medication: medication,
-          button_variant: medication.reorder_received? ? :primary : :outline,
+          button_variant: is_received ? :primary : :outline,
           button_class: button_class,
-          button_label: medication.reorder_received? ? 'Complete Refill' : nil
+          button_label: is_received ? 'Complete Refill' : 'Refill Inventory'
         )
       end
 
@@ -280,7 +296,7 @@ module Components
           if timestamp
             Text(size: '1', class: 'text-center text-slate-400 font-medium') do
               status_text = t("medications.reorder_statuses.#{medication.reorder_status}")
-              time_ago = helpers.time_ago_in_words(timestamp)
+              time_ago = time_ago_in_words(timestamp)
               "#{status_text} #{time_ago} ago"
             end
           end
@@ -303,7 +319,7 @@ module Components
       end
 
       def render_dosages_section
-        dosages = medication.dosages.order(:amount)
+        dosages = medication.dosages.sort_by(&:amount)
         can_manage = begin
           view_context.policy(medication).update?
         rescue StandardError

@@ -135,7 +135,7 @@ module Components
               render RubyUI::ComboboxList.new do
                 render(RubyUI::ComboboxEmptyState.new { 'No options.' })
 
-                [%w[Daily daily], %w[Weekly weekly], %w[Monthly monthly]].each do |label, value|
+                PersonMedication::DOSE_CYCLE_OPTIONS.each do |label, value|
                   render RubyUI::ComboboxItem.new do
                     render RubyUI::ComboboxRadio.new(
                       name: 'person_medication[dose_cycle]',

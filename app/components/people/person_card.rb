@@ -58,9 +58,17 @@ module Components
         end
       end
 
+      def active_schedules
+        @active_schedules ||= if person.schedules.loaded?
+                                person.schedules.select(&:active?)
+                              else
+                                person.schedules.active
+                              end
+      end
+
       def schedule_count_text
-        if person.schedules.active.any?
-          view_context.pluralize(person.schedules.active.count, 'active schedule')
+        if active_schedules.present?
+          view_context.pluralize(active_schedules.size, 'active schedule')
         else
           'No active schedules'
         end
@@ -118,10 +126,6 @@ module Components
         return false unless view_context.respond_to?(:policy)
 
         view_context.policy(record).create?
-      end
-
-      def helpers
-        @helpers ||= ApplicationController.helpers
       end
     end
   end

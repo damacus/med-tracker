@@ -345,11 +345,13 @@ pt:
       all: "Todos"
       view: "Ver"
       inventory_level: "Nível de Inventário"
-      units: "unidades"
+      units:
+        one: "unidade"
+        other: "unidades"
       in_stock: "Em Stock"
       delete_dialog:
         title: "Eliminar Medicamento"
-        confirm: "Tem a certeza que deseja eliminar %{name}? Esta ação não pode ser desfeita."
+        confirm: "Tem certeza que deseja eliminar %{name}? Esta ação não pode ser desfeita."
         submit: "Eliminar"
         cancel: "Cancelar"
     show:
@@ -360,7 +362,9 @@ pt:
       no_description: "Nenhuma descrição fornecida."
       safety_warnings: "Avisos de Segurança"
       inventory_status: "Estado do Inventário"
-      remaining: "unidades restantes"
+      remaining:
+        one: "unidade restante"
+        other: "unidades restantes"
       supply_level: "Nivel de Fornecimento"
       reorder_at: "reordenar em %{threshold}"
       forecast_unavailable: "Previsão indisponível"

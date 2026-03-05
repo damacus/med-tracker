@@ -391,4 +391,29 @@ RSpec.describe Medication do
       expect(medication.low_stock_date).to eq(Time.zone.today + 4.days)
     end
   end
+
+  describe '#sync_dosages' do
+    let(:medication) { create(:medication, dosage_amount: nil, dosage_unit: nil) }
+
+    before do
+      create(:dosage, medication: medication, amount: 10, unit: 'mg')
+      create(:dosage, medication: medication, amount: 20, unit: 'mg')
+    end
+
+    context 'when switching from multi-dose to single-dose' do
+      it 'removes associated dosages when dosage_amount is set' do
+        expect do
+          medication.update!(dosage_amount: 500, dosage_unit: 'mg')
+        end.to change { medication.dosages.count }.from(2).to(0)
+      end
+    end
+
+    context 'when remaining in multi-dose mode' do
+      it 'does not remove dosages when dosage_amount remains nil' do
+        expect do
+          medication.update!(name: 'New Name')
+        end.not_to change(medication.dosages, :count)
+      end
+    end
+  end
 end

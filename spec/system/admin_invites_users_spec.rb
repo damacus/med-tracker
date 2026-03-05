@@ -7,8 +7,8 @@ RSpec.describe 'Admin invites users' do
 
   let(:admin) { users(:admin) }
 
-  before do
-    driven_by(:playwright)
+  before do |example|
+    driven_by(example.metadata[:js] ? :playwright : :rack_test)
     ActionMailer::Base.deliveries.clear
   end
 

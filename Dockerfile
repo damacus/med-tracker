@@ -94,8 +94,9 @@ ENV RAILS_ENV="${RAILS_ENV}" \
   USER="ruby"
 
 COPY --chown=ruby:ruby --from=assets /usr/local/bundle /usr/local/bundle
-COPY --chown=ruby:ruby --from=assets /app/public /public
+COPY --chown=ruby:ruby --from=assets /app/public /app/public
 COPY --chown=ruby:ruby . .
+RUN test -f /app/public/assets/.manifest.json && ls /app/public/assets/tailwind-*.css >/dev/null 2>&1
 
 EXPOSE 80
 ENTRYPOINT ["/app/bin/docker-entrypoint-web"]

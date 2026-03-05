@@ -10,8 +10,8 @@ RSpec.describe 'AdminManagesCarerRelationships' do
   let(:jane) { people(:jane) }
   let(:child_patient) { people(:child_patient) }
 
-  before do
-    driven_by(:playwright)
+  before do |example|
+    driven_by(example.metadata[:js] ? :playwright : :rack_test)
   end
 
   context 'when user is logged in as an admin' do
@@ -41,7 +41,7 @@ RSpec.describe 'AdminManagesCarerRelationships' do
       expect(page).to have_content('Carer relationship was successfully created')
     end
 
-    it 'allows admin to deactivate a carer relationship' do
+    it 'allows admin to deactivate a carer relationship', :js do
       relationship = carer_relationships(:jane_cares_for_child)
       login_as(admin)
 

@@ -171,7 +171,7 @@ module Components
             class: 'flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400'
           ) do
             span { t('medications.index.inventory_level') }
-            span { "#{medication.current_supply} #{t('medications.index.units')}" }
+            span { pluralize(medication.current_supply, 'unit') }
           end
           div(class: 'h-1.5 w-full bg-slate-50 rounded-full overflow-hidden') do
             div(class: "h-full #{bar_color} rounded-full transition-all duration-1000", style: "width: #{percentage}%")
@@ -202,7 +202,8 @@ module Components
             href: edit_medication_path(medication, return_to: medications_path),
             variant: :outline,
             size: :sm,
-            class: 'rounded-xl w-10 h-10 p-0 border-slate-100 bg-white hover:bg-slate-50 text-slate-400'
+            class: 'rounded-xl w-10 h-10 p-0 border-slate-100 bg-white hover:bg-slate-50 text-slate-400',
+            aria_label: t('medications.index.edit', default: 'Edit medication')
           ) do
             render Icons::Pencil.new(size: 16)
           end
@@ -229,7 +230,8 @@ module Components
         AlertDialog do
           AlertDialogTrigger do
             Button(variant: :ghost, size: :sm,
-                   class: 'rounded-xl w-10 h-10 p-0 text-slate-300 hover:text-destructive hover:bg-destructive/5') do
+                   class: 'rounded-xl w-10 h-10 p-0 text-slate-300 hover:text-destructive hover:bg-destructive/5',
+                   aria_label: t('medications.index.delete', default: 'Delete medication')) do
               render Icons::Trash.new(size: 18)
             end
           end

@@ -16,7 +16,7 @@ RSpec.describe 'AdminManagesUsers' do
     User.create!(person: person, email_address: 'test_carer@example.com',
                  password: 'password', password_confirmation: 'password', role: :carer)
   end
-  let!(:unverified_user) do
+  let(:unverified_user) do
     account = Account.create!(email: 'unverified_user@example.com',
                               password_hash: RodauthApp.rodauth.allocate.password_hash('password'),
                               status: :unverified)
@@ -28,8 +28,8 @@ RSpec.describe 'AdminManagesUsers' do
                  password: 'password', password_confirmation: 'password', role: :parent)
   end
 
-  before do
-    driven_by(:playwright)
+  before do |example|
+    driven_by(example.metadata[:js] ? :playwright : :rack_test)
   end
 
   context 'when user is logged in as an admin' do
@@ -67,7 +67,7 @@ RSpec.describe 'AdminManagesUsers' do
       expect(page).to have_content('Doctor')
     end
 
-    it 'shows validation errors when creating user with invalid data' do
+    it 'shows validation errors when creating user with invalid data', :js do
       login_as(admin)
 
       visit new_admin_user_path
@@ -106,7 +106,7 @@ RSpec.describe 'AdminManagesUsers' do
       expect(page).to have_content('has already been taken')
     end
 
-    it 'creates user that can immediately log in' do
+    it 'creates user that can immediately log in', :js do
       login_as(admin)
 
       visit new_admin_user_path
@@ -160,7 +160,7 @@ RSpec.describe 'AdminManagesUsers' do
       expect(page).to have_content('Nurse')
     end
 
-    it 'shows validation errors when updating user with invalid data' do
+    it 'shows validation errors when updating user with invalid data', :js do
       login_as(admin)
 
       visit edit_admin_user_path(carer)
@@ -174,7 +174,7 @@ RSpec.describe 'AdminManagesUsers' do
       expect(page).to have_content("Email address can't be blank")
     end
 
-    it 'allows admin to deactivate a user' do
+    it 'allows admin to deactivate a user', :js do
       login_as(admin)
 
       visit admin_users_path
@@ -223,6 +223,7 @@ RSpec.describe 'AdminManagesUsers' do
 
     it 'allows admin to manually verify an unverified user and removes verification keys' do
       login_as(admin)
+      unverified_user
 
       visit admin_users_path
 

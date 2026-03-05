@@ -2,6 +2,8 @@
 
 module Views
   module Reports
+    InsightCard = Data.define(:title, :value, :description, :icon_class, :text_color, :bg_color)
+
     class Index < Views::Base
       def initialize(daily_data:, inventory_alerts:, start_date:, end_date:)
         @daily_data = daily_data
@@ -31,7 +33,7 @@ module Views
             p(class: 'text-slate-400') { "#{@start_date.strftime('%B %d')} — #{@end_date.strftime('%B %d, %Y')}" }
           end
 
-          form(action: helpers.reports_path, method: :get, class: 'flex items-center gap-2 bg-white/50 backdrop-blur-sm p-4 rounded-xl border border-slate-100 shadow-sm') do
+          form(action: view_context.reports_path, method: :get, class: 'flex items-center gap-2 bg-white/50 backdrop-blur-sm p-4 rounded-xl border border-slate-100 shadow-sm') do
             div(class: 'flex flex-col gap-1') do
               label(for: 'start_date', class: 'text-xs font-bold text-slate-500 uppercase tracking-wider') { 'From' }
               input(type: 'date', name: 'start_date', id: 'start_date', value: @start_date, class: 'form-input text-sm rounded-lg border-slate-200 focus:border-indigo-500 focus:ring-indigo-500')
@@ -127,12 +129,14 @@ module Views
 
       def render_achievement_streak
         render_insight_card(
-          title: 'Achievement Streak',
-          value: '4 Days Uninterrupted',
-          description: "You haven't missed a single dose since Friday morning. Your body is maintaining optimal levels.",
-          icon_class: Icons::CheckCircle,
-          text_color: 'text-emerald-600',
-          bg_color: 'bg-emerald-50'
+          InsightCard.new(
+            title: 'Achievement Streak',
+            value: '4 Days Uninterrupted',
+            description: "You haven't missed a single dose since Friday morning. Your body is maintaining optimal levels.",
+            icon_class: Icons::CheckCircle,
+            text_color: 'text-emerald-600',
+            bg_color: 'bg-emerald-50'
+          )
         )
       end
 
@@ -150,35 +154,38 @@ module Views
                       end
 
         render_insight_card(
-          title: 'Inventory Alert',
-          value: days_left <= 0 ? 'Out of Stock' : 'Refill Pending',
-          description: description,
-          icon_class: Icons::AlertCircle,
-          text_color: 'text-rose-600',
-          bg_color: 'bg-rose-50'
+          InsightCard.new(
+            title: 'Inventory Alert',
+            value: days_left <= 0 ? 'Out of Stock' : 'Refill Pending',
+            description: description,
+            icon_class: Icons::AlertCircle,
+            text_color: 'text-rose-600',
+            bg_color: 'bg-rose-50'
+          )
         )
       end
 
-      # rubocop:disable Metrics/ParameterLists
-      def render_insight_card(title:, value:, description:, icon_class:, text_color:, bg_color:)
-        Card(class: "border-none shadow-sm #{bg_color} p-8 space-y-4 transition-transform hover:scale-[1.02]") do
+      # rubocop:disable Metrics/AbcSize
+      def render_insight_card(card)
+        Card(class: "border-none shadow-sm #{card.bg_color} p-8 space-y-4 transition-transform hover:scale-[1.02]") do
           div(class: 'flex items-center gap-4') do
-            div(class: "w-12 h-12 rounded-2xl flex items-center justify-center #{text_color} bg-white shadow-sm") do
-              render icon_class.new(size: 24)
+            div(class: "w-12 h-12 rounded-2xl flex items-center justify-center #{card.text_color} bg-white shadow-sm") do
+              render card.icon_class.new(size: 24)
             end
             div do
-              Heading(level: 3, size: '4', class: "#{text_color} font-black") { title }
+              Heading(level: 3, size: '4', class: "#{card.text_color} font-black") { card.title }
               Text(size: '1', weight: 'bold', class: 'uppercase tracking-widest opacity-50') { 'Actionable insight' }
             end
           end
 
           div(class: 'space-y-2') do
-            Heading(level: 4, size: '5', class: 'font-bold') { value }
-            Text(size: '2', class: 'text-slate-600 leading-relaxed') { description }
+            Heading(level: 4, size: '5', class: 'font-bold') { card.value }
+            Text(size: '2', class: 'text-slate-600 leading-relaxed') { card.description }
           end
         end
       end
-      # rubocop:enable Metrics/ParameterLists
+
+      # rubocop:enable Metrics/AbcSize
 
       def pluralize(count, singular, plural = nil)
         "#{count} #{count == 1 ? singular : (plural || singular.pluralize)}"

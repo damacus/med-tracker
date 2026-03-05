@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.3.21](https://github.com/damacus/med-tracker/compare/v0.3.20...v0.3.21) (2026-03-05)
+
+
+### Bug Fixes
+
+* **docker:** copy precompiled assets into app public dir ([#906](https://github.com/damacus/med-tracker/issues/906)) ([586903c](https://github.com/damacus/med-tracker/commit/586903c9c550f9abe6d563ed14c2ff3c95cffbc3))
+* sync dosages data loss and improve inventory reorder layout ([#905](https://github.com/damacus/med-tracker/issues/905)) ([cd769e1](https://github.com/damacus/med-tracker/commit/cd769e1abb06dc889f0ea4ca32a3e80a19cc6b51))
+
+## [0.3.20](https://github.com/damacus/med-tracker/compare/v0.3.19...v0.3.20) (2026-03-05)
+
+
+### Bug Fixes
+
+* 🔒 [IDOR] Use policy_scope for model finds in controllers ([#896](https://github.com/damacus/med-tracker/issues/896)) ([f4b983e](https://github.com/damacus/med-tracker/commit/f4b983e8d7cde939276ce20198ab0c5a53739a07))
+* medical unit pluralization ([#897](https://github.com/damacus/med-tracker/issues/897)) ([b0ef396](https://github.com/damacus/med-tracker/commit/b0ef39643ab6a91e4298ee66d2fad3cca7354fc7))
+* medical unit pluralization in components using Rails pluralize ([e48d1e1](https://github.com/damacus/med-tracker/commit/e48d1e100dbff72cacc68a99c31f1393d0ba6563))
+* **perf:** resolve N+1 queries in dashboard schedule query ([#898](https://github.com/damacus/med-tracker/issues/898)) ([b8fcf40](https://github.com/damacus/med-tracker/commit/b8fcf402473ae6232adf850917482d4bd9633e9e))
+
+
+### Performance Improvements
+
+* ⚡ fix N+1 query in locations medications ([#891](https://github.com/damacus/med-tracker/issues/891)) ([6528dd1](https://github.com/damacus/med-tracker/commit/6528dd14c5885e67f43e62a877b7a82e9e7e416c))
+* ⚡ Optimize N+1 queries in People index view ([#895](https://github.com/damacus/med-tracker/issues/895)) ([d8081c1](https://github.com/damacus/med-tracker/commit/d8081c12cefa629760b4f923e51f578149318203))
+* ⚡ Optimize rendering dosages to avoid N+1 query ([#890](https://github.com/damacus/med-tracker/issues/890)) ([822fc4b](https://github.com/damacus/med-tracker/commit/822fc4b2463c37a45a35f543f6340b63afe28650))
+
 ## [0.3.19](https://github.com/damacus/med-tracker/compare/v0.3.18...v0.3.19) (2026-03-04)
 
 

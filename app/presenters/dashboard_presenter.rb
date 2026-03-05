@@ -50,13 +50,13 @@ class DashboardPresenter
   end
 
   def all_people
-    Person.includes(:user, schedules: :medication).all
+    Person.includes(:user, schedules: %i[medication dosage], person_medications: :medication).all
   end
 
   def carer_patients
     return Person.none if current_user.person.nil?
 
-    current_user.person.patients.includes(:user, schedules: :medication)
+    current_user.person.patients.includes(:user, schedules: %i[medication dosage], person_medications: :medication)
   end
 
   def parent_minor_patients
@@ -64,14 +64,14 @@ class DashboardPresenter
 
     people_ids = [current_user.person.id] + current_user.person.patients.where(person_type: :minor).pluck(:id)
     Person.where(id: people_ids.uniq)
-          .includes(:user, schedules: :medication)
+          .includes(:user, schedules: %i[medication dosage], person_medications: :medication)
   end
 
   def own_person
     return Person.none if current_user.person.nil?
 
     Person.where(id: current_user.person.id)
-          .includes(:user, schedules: :medication)
+          .includes(:user, schedules: %i[medication dosage], person_medications: :medication)
   end
 
   def carer?
