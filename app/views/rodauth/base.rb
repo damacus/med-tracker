@@ -15,7 +15,7 @@ module Views
       private
 
       def page_layout(&block)
-        if helpers.request.headers['Turbo-Frame'] == 'modal'
+        if view_context.request.headers['Turbo-Frame'] == 'modal'
           turbo_frame_tag 'modal' do
             render ::Components::Modal.new(title: @page_title || title) do
               div(class: 'p-4') { block.call }

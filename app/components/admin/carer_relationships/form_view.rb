@@ -8,13 +8,6 @@ module Components
         include Phlex::Rails::Helpers::TurboFrameTag
         include RubyUI
 
-        RELATIONSHIP_TYPES = [
-          ['Parent', 'parent'],
-          ['Family member', 'family_member'],
-          ['Professional carer', 'professional_carer'],
-          ['Self', 'self']
-        ].freeze
-
         attr_reader :relationship, :carers, :patients, :modal
 
         def initialize(relationship:, carers:, patients:, modal: false)
@@ -131,7 +124,7 @@ module Components
                 class: select_classes
               ) do
                 option(value: '', selected: relationship.relationship_type.blank?) { 'Select relationship type...' }
-                RELATIONSHIP_TYPES.each do |label, value|
+                CarerRelationship::RELATIONSHIP_TYPES.each do |label, value|
                   option(value: value, selected: relationship.relationship_type == value) { label }
                 end
               end

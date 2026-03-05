@@ -4,6 +4,7 @@ module Components
   module Medications
     class ShowView < Components::Base
       include Phlex::Rails::Helpers::TurboFrameTag
+      include Phlex::Rails::Helpers::TimeAgoInWords
 
       attr_reader :medication, :notice
 
@@ -282,7 +283,7 @@ module Components
           if timestamp
             Text(size: '1', class: 'text-center text-slate-400 font-medium') do
               status_text = t("medications.reorder_statuses.#{medication.reorder_status}")
-              time_ago = helpers.time_ago_in_words(timestamp)
+              time_ago = time_ago_in_words(timestamp)
               "#{status_text} #{time_ago} ago"
             end
           end

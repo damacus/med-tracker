@@ -234,9 +234,9 @@ module Components
               end
             end
             SelectContent do
-              SelectItem(value: 'daily') { 'Daily' }
-              SelectItem(value: 'weekly') { 'Weekly' }
-              SelectItem(value: 'monthly') { 'Monthly' }
+              Schedule::DOSE_CYCLE_OPTIONS.each do |label, value|
+                SelectItem(value: value) { label }
+              end
             end
           end
         end

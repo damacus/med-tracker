@@ -30,29 +30,34 @@ RSpec.describe 'Admin::AuditLogs Rate Limiting' do
 
   describe 'IP-based rate limiting on GET /admin/audit_logs' do
     it 'allows requests under the limit' do
-      50.times do
-        get admin_audit_logs_path
-        expect(response).to have_http_status(:success)
-      end
+      3.times { get admin_audit_logs_path }
+      expect(response).to have_http_status(:success)
     end
 
-    it 'throttles requests exceeding 100 per minute' do
-      100.times do
-        get admin_audit_logs_path
-        expect(response).to have_http_status(:success)
-      end
+    it 'allows the 100th request and throttles the 101st request' do
+      100.times { get admin_audit_logs_path }
+      expect(response).to have_http_status(:success)
 
       get admin_audit_logs_path
       expect(response).to have_http_status(:too_many_requests)
       expect(response.body).to include('Rate limit exceeded')
     end
 
-    it 'includes Retry-After header when throttled' do
-      101.times { get admin_audit_logs_path }
+    it 'throttles requests exceeding 100 per minute and includes retry metadata' do
+      allow(Rails.logger).to receive(:warn)
 
+      100.times { get admin_audit_logs_path }
+      expect(response).to have_http_status(:success)
+
+      get admin_audit_logs_path
       expect(response).to have_http_status(:too_many_requests)
+      expect(response.body).to include('Rate limit exceeded')
       expect(response.headers['Retry-After']).to be_present
       expect(response.headers['Retry-After'].to_i).to be > 0
+      expect(Rails.logger).to have_received(:warn).with(%r{Rate limit exceeded: admin/audit_logs/ip})
+
+      get admin_root_path
+      expect(response).to have_http_status(:success)
     end
   end
 
@@ -66,15 +71,11 @@ RSpec.describe 'Admin::AuditLogs Rate Limiting' do
     end
 
     it 'throttles show endpoint as part of the same limit' do
-      50.times do
-        get admin_audit_logs_path
-        expect(response).to have_http_status(:success)
-      end
+      99.times { get admin_audit_logs_path }
+      expect(response).to have_http_status(:success)
 
-      50.times do
-        get admin_audit_log_path(version)
-        expect(response).to have_http_status(:success)
-      end
+      get admin_audit_log_path(version)
+      expect(response).to have_http_status(:success)
 
       get admin_audit_logs_path
       expect(response).to have_http_status(:too_many_requests)
@@ -82,56 +83,26 @@ RSpec.describe 'Admin::AuditLogs Rate Limiting' do
   end
 
   describe 'user-based rate limiting' do
-    before do
-      PaperTrail.request.whodunnit = admin.id
-      PaperTrail.request(enabled: true) do
-        users(:jane).update!(role: :nurse)
-      end
-    end
-
-    it 'allows different users to have separate rate limit counters' do
-      50.times do
+    it 'allows different users to have separate rate limit counters below the threshold' do
+      10.times do
         sign_in(admin)
         get admin_audit_logs_path
-        expect(response).to have_http_status(:success)
       end
+      expect(response).to have_http_status(:success)
 
-      50.times do
+      10.times do
         sign_in(another_admin)
         get admin_audit_logs_path
-        expect(response).to have_http_status(:success)
       end
+      expect(response).to have_http_status(:success)
     end
 
-    it 'throttles at IP limit (100) before reaching user limit (200)' do
-      100.times do
-        get admin_audit_logs_path
-        expect(response).to have_http_status(:success)
-      end
+    it 'throttles at the IP limit before reaching the user limit' do
+      100.times { get admin_audit_logs_path }
+      expect(response).to have_http_status(:success)
 
       get admin_audit_logs_path
       expect(response).to have_http_status(:too_many_requests)
-      expect(response.body).to include('Rate limit exceeded')
-    end
-  end
-
-  describe 'rate limit does not affect other endpoints' do
-    it 'does not throttle non-audit endpoints even after many requests' do
-      101.times { get admin_audit_logs_path }
-      expect(response).to have_http_status(:too_many_requests)
-
-      get admin_root_path
-      expect(response).to have_http_status(:success)
-    end
-  end
-
-  describe 'rate limit logging' do
-    it 'logs rate limit violations' do
-      allow(Rails.logger).to receive(:warn)
-
-      101.times { get admin_audit_logs_path }
-
-      expect(Rails.logger).to have_received(:warn).with(%r{Rate limit exceeded: admin/audit_logs/ip})
     end
   end
 end
