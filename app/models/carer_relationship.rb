@@ -3,12 +3,7 @@
 # CarerRelationship represents the relationship between a carer and a patient.
 # This allows tracking who is responsible for administering medication to whom.
 class CarerRelationship < ApplicationRecord
-  RELATIONSHIP_TYPES = [
-    ['Parent', 'parent'],
-    ['Family member', 'family_member'],
-    ['Professional carer', 'professional_carer'],
-    ['Self', 'self']
-  ].freeze
+  RELATIONSHIP_TYPES = %w[parent family_member professional_carer self].map { |v| [v.humanize, v] }.freeze
 
   belongs_to :carer, class_name: 'Person', inverse_of: :patient_relationships
   belongs_to :patient, class_name: 'Person', inverse_of: :carer_relationships
