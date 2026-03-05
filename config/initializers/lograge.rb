@@ -3,49 +3,11 @@
 require 'lograge'
 require 'ecs_logging/logger'
 
-# A ProxyLogger that translates Hash messages to keyword arguments
-# so that EcsLogging::Logger merges them into the root of the JSON
-# instead of wrapping them in a {"message": "{...}"} string.
-class LogrageEcsProxyLogger
-  def initialize(logger)
-    @logger = logger
-  end
-
-  [:debug, :info, :warn, :error, :fatal, :unknown].each do |level|
-    define_method(level) do |msg = nil, &block|
-      if msg.is_a?(Hash)
-        @logger.send(level, nil, **msg)
-      else
-        @logger.send(level, msg, &block)
-      end
-    end
-  end
-end
-
-class LogrageEcsFormatter
-  def call(data)
-    # Map Lograge data to ECS fields
-    payload = {
-      'http.request.method' => data[:method],
-      'url.path' => data[:path],
-      'http.response.status_code' => data[:status]
-    }
-    
-    payload['event.duration'] = (data[:duration].to_f * 1_000_000).to_i if data[:duration]
-    payload['message'] = "#{data[:method]} #{data[:path]} #{data[:status]}" if data[:method] && data[:path] && data[:status]
-
-    payload.merge(data.except(:method, :path, :status, :duration))
-  end
-end
-
 Rails.application.configure do
   config.lograge.enabled = true
 
-  # Use our custom Hash-returning formatter
-  config.lograge.formatter = LogrageEcsFormatter.new
-
-  # Wrap the main logger in our proxy just for Lograge
-  config.lograge.logger = LogrageEcsProxyLogger.new(config.logger)
+  # Use JSON formatter for Lograge (ECS logging is handled by the main logger)
+  config.lograge.formatter = Lograge::Formatters::Json.new
 
   # Keep standard Rails logs for other things, but Lograge handles requests
   config.lograge.keep_appenders = false
