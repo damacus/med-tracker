@@ -171,7 +171,7 @@ module Components
             class: 'flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400'
           ) do
             span { t('medications.index.inventory_level') }
-            span { "#{medication.current_supply} #{t('medications.index.units')}" }
+            span { pluralize(medication.current_supply, 'unit') }
           end
           div(class: 'h-1.5 w-full bg-slate-50 rounded-full overflow-hidden') do
             div(class: "h-full #{bar_color} rounded-full transition-all duration-1000", style: "width: #{percentage}%")

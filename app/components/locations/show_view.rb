@@ -103,7 +103,7 @@ module Components
             if medication.low_stock?
               Badge(variant: :destructive) { 'Low Stock' }
             else
-              Badge(variant: :success) { "#{medication.current_supply} units" }
+              Badge(variant: :success) { pluralize(medication.current_supply, 'unit') }
             end
           end
 
