@@ -344,7 +344,7 @@ ga:
         confirm: "An bhfuil tú cinnte gur mhaith leat %{name} a scriosadh? Ní féidir an gníomh seo a chealú."
         submit: "Scrios"
         cancel: "Cealaigh"
-      show:
+    show:
       profile: "Próifíl Leigheas"
       edit_details: "Cuir Sonraí in Eagar"
       inventory: "Inventár"

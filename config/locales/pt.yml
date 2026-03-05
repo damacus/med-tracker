@@ -354,7 +354,7 @@ pt:
         confirm: "Tem certeza que deseja eliminar %{name}? Esta ação não pode ser desfeita."
         submit: "Eliminar"
         cancel: "Cancelar"
-      show:
+    show:
       profile: "Perfil do Medicamento"
       edit_details: "Editar Detalhes"
       inventory: "Inventário"

@@ -354,7 +354,7 @@ es:
         confirm: "¿Está seguro de que desea eliminar %{name}? Esta acción no se puede deshacer."
         submit: "Eliminar"
         cancel: "Cancelar"
-      show:
+    show:
       profile: "Perfil del Medicamento"
       edit_details: "Editar Detalles"
       inventory: "Inventario"
