@@ -224,7 +224,7 @@ class SchedulesController < ApplicationController
   private
 
   def set_person
-    @person = Person.find(params[:person_id])
+    @person = policy_scope(Person).find(params[:person_id])
     authorize @person, :show?
   end
 end
