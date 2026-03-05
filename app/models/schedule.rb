@@ -29,7 +29,7 @@ class Schedule < ApplicationRecord
     today = Time.zone.today
     return false if start_date.nil? || end_date.nil?
 
-    start_date <= today && end_date >= today
+    today.between?(start_date, end_date)
   end
 
   def cycle_period
