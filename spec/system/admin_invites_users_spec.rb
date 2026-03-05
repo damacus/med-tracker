@@ -12,6 +12,24 @@ RSpec.describe 'Admin invites users' do
     ActionMailer::Base.deliveries.clear
   end
 
+  it 'allows an admin to send a user invitation email' do
+    login_as(admin)
+
+    visit admin_root_path
+    click_link 'Invitations'
+
+    fill_in 'Email', with: 'invited_parent@example.com'
+    select 'Parent', from: 'Role'
+
+    click_button 'Send invitation'
+
+    expect(page).to have_content('Invitation sent')
+    expect(ActionMailer::Base.deliveries.count).to eq(1)
+
+    email = ActionMailer::Base.deliveries.last
+    expect(email.to).to eq(['invited_parent@example.com'])
+  end
+
   it 'allows an invitee to accept an invitation' do
     login_as(admin)
 

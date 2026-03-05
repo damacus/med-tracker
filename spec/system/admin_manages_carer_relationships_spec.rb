@@ -8,6 +8,7 @@ RSpec.describe 'AdminManagesCarerRelationships' do
   let(:admin) { users(:admin) }
   let(:carer) { users(:carer) }
   let(:jane) { people(:jane) }
+  let(:child_patient) { people(:child_patient) }
 
   before do
     driven_by(:playwright)
@@ -23,15 +24,70 @@ RSpec.describe 'AdminManagesCarerRelationships' do
       expect(page).to have_content(jane.name)
     end
 
+    it 'allows admin to create a new carer relationship' do
+      login_as(admin)
+
+      visit admin_carer_relationships_path
+      click_link 'New Relationship'
+
+      expect(page).to have_content('New Carer Relationship')
+
+      select jane.name, from: 'Carer'
+      select people(:john).name, from: 'Patient'
+      select 'Family member', from: 'Relationship type'
+
+      click_button 'Create Relationship'
+
+      expect(page).to have_content('Carer relationship was successfully created')
+    end
+
+    it 'allows admin to deactivate a carer relationship' do
+      relationship = carer_relationships(:jane_cares_for_child)
+      login_as(admin)
+
+      visit admin_carer_relationships_path
+
+      within "[data-relationship-id='#{relationship.id}']" do
+        click_button 'Deactivate'
+      end
+
+      # Confirm in the AlertDialog
+      within('[role="alertdialog"]') do
+        click_button 'Deactivate'
+      end
+
+      expect(page).to have_content('Carer relationship has been deactivated')
+    end
+
+    it 'allows admin to reactivate a deactivated carer relationship' do
+      relationship = carer_relationships(:inactive_relationship)
+      login_as(admin)
+
+      visit admin_carer_relationships_path
+
+      within "[data-relationship-id='#{relationship.id}']" do
+        expect(page).to have_content('Inactive')
+        click_button 'Activate'
+      end
+
+      expect(page).to have_content('Carer relationship has been activated')
+
+      within "[data-relationship-id='#{relationship.id}']" do
+        expect(page).to have_content('Active')
+      end
+    end
+
     it 'allows carer to access patient after relationship is reactivated' do
       relationship = carer_relationships(:inactive_relationship)
       carer_user = relationship.carer.user
       patient = relationship.patient
 
+      # First verify carer cannot access patient when relationship is inactive
       login_as(carer_user)
       visit person_path(patient)
       expect(page).to have_css('#flash', text: 'You are not authorized to perform this action.')
 
+      # Admin reactivates the relationship
       rodauth_logout
       login_as(admin)
       visit admin_carer_relationships_path
@@ -42,6 +98,7 @@ RSpec.describe 'AdminManagesCarerRelationships' do
 
       expect(page).to have_content('Carer relationship has been activated')
 
+      # Now carer can access patient
       rodauth_logout
       login_as(carer_user)
       visit person_path(patient)
