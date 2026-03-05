@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.21](https://github.com/damacus/med-tracker/compare/v0.3.20...v0.3.21) (2026-03-05)
+
+
+### Bug Fixes
+
+* **docker:** copy precompiled assets into app public dir ([#906](https://github.com/damacus/med-tracker/issues/906)) ([586903c](https://github.com/damacus/med-tracker/commit/586903c9c550f9abe6d563ed14c2ff3c95cffbc3))
+* sync dosages data loss and improve inventory reorder layout ([#905](https://github.com/damacus/med-tracker/issues/905)) ([cd769e1](https://github.com/damacus/med-tracker/commit/cd769e1abb06dc889f0ea4ca32a3e80a19cc6b51))
+
 ## [0.3.20](https://github.com/damacus/med-tracker/compare/v0.3.19...v0.3.20) (2026-03-05)
 
 
