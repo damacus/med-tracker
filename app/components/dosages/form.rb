@@ -6,12 +6,6 @@ module Components
     class Form < Components::Base
       include Phlex::Rails::Helpers::FormWith
 
-      DOSE_CYCLE_OPTIONS = [
-        %w[Daily daily],
-        %w[Weekly weekly],
-        %w[Monthly monthly]
-      ].freeze
-
       attr_reader :dosage, :medication
 
       def initialize(dosage:, medication:)
@@ -122,7 +116,7 @@ module Components
               class: 'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm'
             ) do
               option(value: '') { '— none —' }
-              DOSE_CYCLE_OPTIONS.each do |label, value|
+              Dosage::DOSE_CYCLE_OPTIONS.each do |label, value|
                 option(value: value, selected: dosage.default_dose_cycle == value) { label }
               end
             end
