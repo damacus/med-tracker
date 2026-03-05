@@ -8,65 +8,102 @@ module FamilyDashboard
     end
 
     def call
-      preload_todays_takes
-      # 1. Fetch all active schedules and person_medications for these people
-      doses = aggregate_family_doses(@people)
+      # 1. Fetch all active schedules and person_medications for these people first
+      # to get the IDs for take preloading
+      @person_ids = @people.map(&:id)
+      @all_schedules = fetch_active_schedules
+      @all_person_medications = fetch_person_medications
 
-      # 2. Sort by time and return
+      # 2. Preload takes using the specific IDs we just found
+      preload_takes
+
+      # 3. Aggregate all doses
+      doses = aggregate_family_doses
+
+      # 4. Sort by time and return
       doses.sort_by { |d| d[:scheduled_at] }
     end
 
     private
 
-    def preload_todays_takes
-      person_ids = @people.map(&:id)
-
-      all_takes = fetch_todays_takes(person_ids)
-
-      # Group by [source_type, source_id] for fast lookup
-      @takes_by_source = all_takes.group_by do |t|
-        t.schedule_id ? ['Schedule', t.schedule_id] : ['PersonMedication', t.person_medication_id]
+    def fetch_active_schedules
+      @people.each_with_object({}) do |person, hash|
+        schedules = if person.schedules.loaded?
+                      person.schedules.select(&:active?)
+                    else
+                      person.schedules.active.includes(:medication, :dosage).to_a
+                    end
+        hash[person.id] = schedules
       end
     end
 
-    def fetch_todays_takes(person_ids)
-      MedicationTake.where(taken_at: Time.current.all_day)
-                    .where(schedule_id: Schedule.where(person_id: person_ids).select(:id))
-                    .or(
-                      MedicationTake.where(taken_at: Time.current.all_day)
-                                    .where(
-                                      person_medication_id: PersonMedication.where(person_id: person_ids).select(:id)
-                                    )
-                    )
-                    .to_a
+    def fetch_person_medications
+      @people.each_with_object({}) do |person, hash|
+        pms = if person.person_medications.loaded?
+                person.person_medications.to_a
+              else
+                person.person_medications.includes(:medication).to_a
+              end
+        hash[person.id] = pms
+      end
     end
 
-    def aggregate_family_doses(family_members)
-      family_members.each_with_object([]) do |member, doses|
-        doses.concat(generate_member_doses(member))
+    def preload_takes
+      schedule_ids = @all_schedules.values.flatten.map(&:id)
+      pm_ids = @all_person_medications.values.flatten.map(&:id)
+
+      # Fetch takes for the last 30 days to cover weekly/monthly cycles
+      # but focus on today for the dashboard
+      all_takes = MedicationTake.where(taken_at: 30.days.ago..Time.current.end_of_day)
+                                .where(schedule_id: schedule_ids)
+                                .or(
+                                  MedicationTake.where(taken_at: 30.days.ago..Time.current.end_of_day)
+                                                .where(person_medication_id: pm_ids)
+                                )
+                                .to_a
+
+      # Group by [source_type, source_id] for fast lookup
+      takes_by_source = all_takes.group_by do |t|
+        t.schedule_id ? ['Schedule', t.schedule_id] : ['PersonMedication', t.person_medication_id]
+      end
+
+      # Associate preloaded takes with these objects to avoid N+1 in TimingRestrictions
+      associate_takes_to_sources(@all_schedules.values.flatten + @all_person_medications.values.flatten, takes_by_source)
+    end
+
+    def associate_takes_to_sources(sources, takes_by_source)
+      sources.each do |source|
+        key = [source.class.name, source.id]
+        takes = takes_by_source[key] || []
+        
+        # Set the association as loaded and assign the takes
+        association = source.association(:medication_takes)
+        association.loaded!
+        association.target.concat(takes)
+      end
+    end
+
+    def aggregate_family_doses
+      @people.each_with_object([]) do |member, doses|
+        (@all_schedules[member.id] || []).each do |schedule|
+          doses.concat(generate_doses_for(schedule, member))
+        end
+
+        (@all_person_medications[member.id] || []).each do |pm|
+          doses.concat(generate_doses_for(pm, member))
+        end
       end
     end
 
     def generate_member_doses(member)
-      member_doses = []
-
-      # Schedules
-      member.schedules.active.includes(:medication, :dosage).find_each do |schedule|
-        member_doses += generate_doses_for(schedule, member)
-      end
-
-      # PersonMedications (Non-schedule)
-      member.person_medications.includes(:medication).find_each do |pm|
-        member_doses += generate_doses_for(pm, member)
-      end
-
-      member_doses
+      self.class.new(member).call
     end
 
     def generate_doses_for(source, person)
       now = Time.current
-      # 1. Get doses already taken today from our preloaded cache
-      takes = @takes_by_source[[source.class.name, source.id]] || []
+      # 1. Get doses already taken today from our preloaded association
+      # This uses the association preloaded in aggregate_family_doses to avoid N+1 queries
+      takes = source.medication_takes.select { |t| Time.current.all_day.cover?(t.taken_at) }
       doses = generate_taken_doses(takes, source, person)
 
       # 2. Determine if an upcoming dose should be shown

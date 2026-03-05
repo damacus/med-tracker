@@ -7,3 +7,7 @@
 ## 2025-03-05 - ActiveRecord .any? and loaded associations
 **Learning:** ActiveRecord's `.any?` efficiently uses the loaded array or does an EXISTS query under the hood automatically. But if you chain a scope like `.active` to an association (e.g. `person.schedules.active.any?`), it will *always* hit the database, even if `person.schedules` is eagerly loaded, causing an N+1 query.
 **Action:** When working with eagerly loaded associations, if you need to filter them, evaluate them in-memory using Enumerable methods like `.select` and then use `.present?` and `.size` on the resulting array to avoid database queries. Make sure the ruby logic matches the database scope correctly (especially handling `nil` vs SQL `NULL`).
+
+## 2026-03-05 - Manually Preloading Associations in Query Objects
+**Learning:** When a query object (like `ScheduleQuery`) preloads records into a hash or separate collection, child models with custom logic (like `TimingRestrictions`) will still hit the database if they access the association and don't know it's already "preloaded". Even if you have the data, the model's `association.loaded?` check will return false.
+**Action:** In query objects that perform bulk fetching, manually associate the child records with their parents using `source.association(:association_name).loaded!` and `source.association(:association_name).target.concat(preloaded_records)`. This ensures that downstream logic using the association (like `.count { ... }` on the loaded collection) avoids triggering new SQL queries.
