@@ -5,8 +5,8 @@ require 'rails_helper'
 RSpec.describe 'Person Medications Authorization' do
   fixtures :accounts, :people, :users, :locations, :medications, :carer_relationships
 
-  before do
-    driven_by(:playwright)
+  before do |example|
+    driven_by(example.metadata[:js] ? :playwright : :rack_test)
   end
 
   let(:admin) { users(:admin) }
@@ -22,7 +22,7 @@ RSpec.describe 'Person Medications Authorization' do
   describe 'adding medications' do
     let(:medication) { medications(:vitamin_d) }
 
-    it 'allows administrators to add medications to any person' do
+    it 'allows administrators to add medications to any person', :js do
       login_as(admin)
       visit person_path(assigned_patient)
 
@@ -39,7 +39,7 @@ RSpec.describe 'Person Medications Authorization' do
       expect(page).to have_content('Medication added successfully')
     end
 
-    it 'allows doctors to add scheduled medications but not OTC medications' do
+    it 'allows doctors to add scheduled medications but not OTC medications', :js do
       login_as(doctor)
       visit person_path(assigned_patient)
 
@@ -80,7 +80,7 @@ RSpec.describe 'Person Medications Authorization' do
       end
     end
 
-    it 'allows parents to add medications to linked children' do
+    it 'allows parents to add medications to linked children', :js do
       login_as(parent)
       visit person_path(linked_child)
 
@@ -172,7 +172,7 @@ RSpec.describe 'Person Medications Authorization' do
       )
     end
 
-    it 'allows administrators to remove medications from any person' do
+    it 'allows administrators to remove medications from any person', :js do
       login_as(admin)
       visit person_path(assigned_patient)
 
@@ -275,7 +275,7 @@ RSpec.describe 'Person Medications Authorization' do
       )
     end
 
-    it 'allows parents to edit medications for linked children' do
+    it 'allows parents to edit medications for linked children', :js do
       login_as(parent)
       visit person_path(linked_child)
 
@@ -292,7 +292,7 @@ RSpec.describe 'Person Medications Authorization' do
       expect(page).to have_content('Updated notes')
     end
 
-    it 'allows administrators to edit medications for any person' do
+    it 'allows administrators to edit medications for any person', :js do
       login_as(admin)
       visit person_path(linked_child)
 
