@@ -115,11 +115,9 @@ RSpec.describe Components::Admin::AuditLogs::IndexView, type: :component do
     let(:view) { described_class.new(versions: versions, current_page: 1, total_count: 100, per_page: 50) }
 
     before do
-      # rubocop:disable RSpec/SubjectStub
       allow(view).to receive(:view_context).and_return(
         double(admin_audit_logs_path: '/admin/audit_logs')
       )
-      # rubocop:enable RSpec/SubjectStub
     end
 
     it 'generates URL with page parameter' do
