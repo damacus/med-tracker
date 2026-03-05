@@ -26,6 +26,21 @@ RSpec.describe Components::Schedules::Card, type: :component do
     Nokogiri::HTML::DocumentFragment.parse(html)
   end
 
+  def count_medication_take_queries(&)
+    query_count = 0
+
+    subscriber = lambda do |_name, _start, _finish, _id, payload|
+      sql = payload[:sql]
+      next if payload[:cached] || payload[:name] == 'SCHEMA'
+      next unless sql.include?('"medication_takes"')
+
+      query_count += 1
+    end
+
+    ActiveSupport::Notifications.subscribed(subscriber, 'sql.active_record', &)
+    query_count
+  end
+
   describe 'pre-loaded todays_takes' do
     let(:take) { MedicationTake.create!(schedule: schedule, taken_at: Time.current, amount_ml: 400) }
 
@@ -43,6 +58,24 @@ RSpec.describe Components::Schedules::Card, type: :component do
       take
       rendered = render_card
       expect(rendered.text).to include('400mg')
+    end
+
+    it 'reuses one medication_takes load for the dose badge and list' do
+      schedule.update!(max_daily_doses: 4)
+      allow(schedule).to receive_messages(out_of_stock?: false, can_take_now?: true)
+
+      take
+
+      expect(count_medication_take_queries { render_card }).to eq(1)
+    end
+
+    it 'memoizes schedule availability checks for the render' do
+      allow(schedule).to receive_messages(out_of_stock?: false, can_take_now?: true)
+
+      render_card
+
+      expect(schedule).to have_received(:out_of_stock?).once
+      expect(schedule).to have_received(:can_take_now?).once
     end
   end
 end
