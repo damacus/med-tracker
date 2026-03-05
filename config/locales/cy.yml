@@ -345,7 +345,9 @@ cy:
       all: "Pob un"
       view: "Gweld"
       inventory_level: "Llefel Rhestr"
-      units: "uned"
+      units:
+        one: "uned"
+        other: "unedau"
       in_stock: "Mewn Stoc"
       delete_dialog:
         title: "Dileu Meddyginiaeth"
@@ -360,7 +362,9 @@ cy:
       no_description: "Dim disgrifiad wedi'i ddarparu."
       safety_warnings: "Rhybuddion Diogelwch"
       inventory_status: "Statws Rhestr"
-      remaining: "uned yn weddill"
+      remaining:
+        one: "uned yn weddill"
+        other: "unedau yn weddill"
       supply_level: "Llefel Cyflenwad"
       reorder_at: "ail-archebu am %{threshold}"
       forecast_unavailable: "Rhagolwg ddim ar gael"
