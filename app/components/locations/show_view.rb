@@ -72,7 +72,7 @@ module Components
             Heading(level: 2, size: '5', class: 'font-bold tracking-tight') { t('locations.show.medications_heading') }
           end
 
-          if location.medications.any?
+          if location.medications.present?
             div(class: 'grid grid-cols-1 md:grid-cols-2 gap-4') do
               location.medications.each do |medication|
                 render_medication_card(medication)
@@ -126,7 +126,7 @@ module Components
             render_add_member_dialog if view_context.policy(location).update?
           end
 
-          if location.members.any?
+          if location.members.present?
             div(class: 'space-y-3') do
               location.members.each do |member|
                 div(class: 'flex items-center justify-between group') do
@@ -138,7 +138,7 @@ module Components
                   end
 
                   if view_context.policy(location).update?
-                    membership = location.location_memberships.find_by(person: member)
+                    membership = location.location_memberships.find { |lm| lm.person_id == member.id }
                     render_remove_member_dialog(member, membership)
                   end
                 end
