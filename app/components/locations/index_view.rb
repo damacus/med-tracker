@@ -72,7 +72,7 @@ module Components
               Text(size: '2', class: 'text-slate-400 line-clamp-2 leading-relaxed') { location.description }
             end
 
-            if location.members.any?
+            if location.members.size > 0
               div(class: 'pt-4 border-t border-slate-100') do
                 Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-slate-500 mb-2 block') do
                   t('locations.index.members')
