@@ -202,7 +202,8 @@ module Components
             href: edit_medication_path(medication, return_to: medications_path),
             variant: :outline,
             size: :sm,
-            class: 'rounded-xl w-10 h-10 p-0 border-slate-100 bg-white hover:bg-slate-50 text-slate-400'
+            class: 'rounded-xl w-10 h-10 p-0 border-slate-100 bg-white hover:bg-slate-50 text-slate-400',
+            aria_label: t('medications.index.edit', default: 'Edit medication')
           ) do
             render Icons::Pencil.new(size: 16)
           end
@@ -229,7 +230,8 @@ module Components
         AlertDialog do
           AlertDialogTrigger do
             Button(variant: :ghost, size: :sm,
-                   class: 'rounded-xl w-10 h-10 p-0 text-slate-300 hover:text-destructive hover:bg-destructive/5') do
+                   class: 'rounded-xl w-10 h-10 p-0 text-slate-300 hover:text-destructive hover:bg-destructive/5',
+                   aria_label: t('medications.index.delete', default: 'Delete medication')) do
               render Icons::Trash.new(size: 18)
             end
           end
