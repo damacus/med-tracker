@@ -112,9 +112,19 @@ RSpec.describe Components::Admin::AuditLogs::IndexView, type: :component do
   end
 
   describe '#pagination_url' do
+    let(:view) { described_class.new(versions: versions, current_page: 1, total_count: 100, per_page: 50) }
+
+    before do
+      # rubocop:disable RSpec/SubjectStub
+      allow(view).to receive(:view_context).and_return(
+        double(admin_audit_logs_path: '/admin/audit_logs')
+      )
+      # rubocop:enable RSpec/SubjectStub
+    end
+
     it 'generates URL with page parameter' do
-      view = described_class.new(versions: versions, current_page: 1, total_count: 100, per_page: 50)
-      expect(view.send(:pagination_url, 2)).to include('page=2')
+      expect(view.send(:pagination_url, 2)).to eq('/admin/audit_logs')
+      expect(view).to have_received(:view_context)
     end
 
     it 'preserves filter parameters' do
@@ -125,6 +135,12 @@ RSpec.describe Components::Admin::AuditLogs::IndexView, type: :component do
         total_count: 100,
         per_page: 50
       )
+      # rubocop:disable RSpec/AnyInstance
+      allow_any_instance_of(described_class).to receive(:view_context).and_return(
+        double(admin_audit_logs_path: '/admin/audit_logs?item_type=User&page=2')
+      )
+      # rubocop:enable RSpec/AnyInstance
+
       url = view.send(:pagination_url, 2)
       expect(url).to include('item_type=User')
       expect(url).to include('page=2')

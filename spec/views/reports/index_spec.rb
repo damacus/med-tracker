@@ -28,7 +28,7 @@ RSpec.describe Views::Reports::Index do
 
   before do
     # rubocop:disable RSpec/SubjectStub
-    allow(report_view).to receive(:helpers).and_return(double(reports_path: '/reports'))
+    allow(report_view).to receive(:view_context).and_return(double(reports_path: '/reports'))
     # rubocop:enable RSpec/SubjectStub
   end
 

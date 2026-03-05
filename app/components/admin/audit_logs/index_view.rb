@@ -298,7 +298,7 @@ module Components
 
         def pagination_url(page)
           base_params = filter_params.respond_to?(:to_unsafe_h) ? filter_params.to_unsafe_h : filter_params.to_h
-          Rails.application.routes.url_helpers.admin_audit_logs_path(base_params.merge(page: page))
+          view_context.admin_audit_logs_path(base_params.merge(page: page))
         end
       end
     end
