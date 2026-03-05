@@ -34,6 +34,15 @@ RSpec.describe 'Admin::AuditLogs Rate Limiting' do
       expect(response).to have_http_status(:success)
     end
 
+    it 'allows the 100th request and throttles the 101st request' do
+      100.times { get admin_audit_logs_path }
+      expect(response).to have_http_status(:success)
+
+      get admin_audit_logs_path
+      expect(response).to have_http_status(:too_many_requests)
+      expect(response.body).to include('Rate limit exceeded')
+    end
+
     it 'throttles requests exceeding 100 per minute and includes retry metadata' do
       allow(Rails.logger).to receive(:warn)
 
@@ -86,6 +95,14 @@ RSpec.describe 'Admin::AuditLogs Rate Limiting' do
         get admin_audit_logs_path
       end
       expect(response).to have_http_status(:success)
+    end
+
+    it 'throttles at the IP limit before reaching the user limit' do
+      100.times { get admin_audit_logs_path }
+      expect(response).to have_http_status(:success)
+
+      get admin_audit_logs_path
+      expect(response).to have_http_status(:too_many_requests)
     end
   end
 end
