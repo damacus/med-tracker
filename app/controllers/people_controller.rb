@@ -7,7 +7,7 @@ class PeopleController < ApplicationController
 
   def index
     authorize Person
-    people = policy_scope(Person).includes(:user, :schedules)
+    people = policy_scope(Person).includes(:user, :schedules, :person_medications)
     render Components::People::IndexView.new(people: people)
   end
 
@@ -156,7 +156,8 @@ class PeopleController < ApplicationController
       person: @person,
       can_schedule: policy(Schedule.new(person: @person)).create?,
       can_person_medication: policy(PersonMedication.new(person: @person)).create?,
-      back_path: back
+      back_path: back,
+      medication_id: params[:medication_id]
     )
   end
 

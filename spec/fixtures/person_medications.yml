@@ -2,6 +2,8 @@
 john_vitamin_d:
   person: john
   medication: vitamin_d
+  dose_amount: 1000
+  dose_unit: IU
   position: 0
   notes: Take with breakfast
   max_daily_doses: 1
@@ -9,6 +11,8 @@ john_vitamin_d:
 jane_vitamin_d:
   person: jane
   medication: vitamin_d
+  dose_amount: 1000
+  dose_unit: IU
   position: 0
   max_daily_doses: 2
   min_hours_between_doses: 12
@@ -16,6 +20,8 @@ jane_vitamin_d:
 bob_vitamin_c:
   person: bob
   medication: vitamin_c
+  dose_amount: 500
+  dose_unit: mg
   position: 0
   max_daily_doses: 3
   min_hours_between_doses: 4

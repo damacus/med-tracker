@@ -24,6 +24,14 @@ RSpec.describe 'Refill medication inventory' do
     expect(page).to have_button('Refill Inventory')
   end
 
+  it 'links medication cards on location pages to medication details' do
+    visit location_path(medication.location)
+
+    click_link medication.name
+
+    expect(page).to have_current_path(medication_path(medication))
+  end
+
   it 'refills supply from medication detail with quantity and restock date' do
     visit medication_path(medication)
 

@@ -1,6 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
+  static values = { nextUrl: String }
   static targets = [
     "submit", "dosageSelect", "medicationSelect", "dosageContent",
     "dosageValue", "dosageTrigger", "frequencyInput",
@@ -13,24 +14,50 @@ export default class extends Controller {
   }
 
   validate() {
-    const requiredFields = [
-      'medication_id',
-      'dosage_id',
-      'frequency',
-      'start_date'
-    ]
-
-    const isValid = requiredFields.every(field => {
-      const input = this.element.querySelector(`[name*='[${field}]']`)
-      return input && input.value.trim() !== ''
-    })
+    const medicationSelected = this.#fieldPresent('schedule[medication_id]')
+    const dosageSelected = this.#fieldPresent('schedule[dosage_id]')
+    const frequencyPresent = this.#fieldPresent('schedule[frequency]')
+    const startDatePresent = this.#fieldPresent('schedule[start_date]')
+    const isValid = medicationSelected && dosageSelected && frequencyPresent && startDatePresent
 
     if (this.hasSubmitTarget) {
       this.submitTarget.disabled = !isValid
     }
   }
 
+  advanceToDetails() {
+    const medicationInput = this.element.querySelector('[name="schedule[medication_id]"]')
+    const medicationId = medicationInput?.value
+
+    if (!medicationId || !this.hasNextUrlValue) return
+
+    const frame = this.element.closest('turbo-frame')
+    const url = new URL(this.nextUrlValue, window.location.origin)
+    url.searchParams.set('medication_id', medicationId)
+    if (frame) {
+      frame.src = url.toString()
+    } else {
+      window.location.assign(url.toString())
+    }
+  }
+
   onDosageChange() {
+    const selectedRadio = this.element.querySelector('[name="schedule[dosage_id]"]:checked')
+    if (selectedRadio) {
+      const dosage = {
+        frequency: selectedRadio.dataset.frequency,
+        default_max_daily_doses: selectedRadio.dataset.defaultMaxDailyDoses,
+        default_min_hours_between_doses: selectedRadio.dataset.defaultMinHoursBetweenDoses,
+        default_dose_cycle: selectedRadio.dataset.defaultDoseCycle
+      }
+      if (dosage.frequency && this.hasFrequencyInputTarget && !this.frequencyInputTarget.value) {
+        this.frequencyInputTarget.value = dosage.frequency
+      }
+      this.#fillSchedulingDefaults(dosage)
+      this.validate()
+      return
+    }
+
     const dosageInput = this.element.querySelector('[name="schedule[dosage_id]"]')
     const dosageId = dosageInput?.value
     if (dosageId && this.dosageData[dosageId]) {
@@ -166,8 +193,6 @@ export default class extends Controller {
     this.element.closest('turbo-frame').src = null
   }
 
-  // --- private ---
-
   #fillSchedulingDefaults(dosage) {
     if (this.hasMaxDosesInputTarget && !this.maxDosesInputTarget.value && dosage.default_max_daily_doses) {
       this.maxDosesInputTarget.value = dosage.default_max_daily_doses
@@ -182,5 +207,13 @@ export default class extends Controller {
         : dosage.default_dose_cycle
       if (cycleValue) this.doseCycleInputTarget.value = cycleValue
     }
+  }
+
+  #fieldPresent(fieldName) {
+    const checked = this.element.querySelector(`[name="${fieldName}"]:checked`)
+    if (checked) return checked.value.trim() !== ''
+
+    const input = this.element.querySelector(`[name="${fieldName}"]`)
+    return !!(input && input.value.trim() !== '')
   }
 }

@@ -12,6 +12,7 @@ class PersonMedicationsController < ApplicationController
   def new
     authorize PersonMedication
     @person_medication = @person.person_medications.build
+    @person_medication.medication_id = params[:medication_id] if params[:medication_id].present?
     @medications = available_medications
 
     is_modal = request.headers['Turbo-Frame'] == 'modal'
@@ -149,7 +150,7 @@ class PersonMedicationsController < ApplicationController
       return
     end
 
-    amount = normalized_take_amount(params[:amount_ml].presence || @person_medication.medication.dosage_amount)
+    amount = normalized_take_amount(params[:amount_ml].presence || @person_medication.dose_amount)
     if invalid_take_amount?(amount)
       log_invalid_take_attempt(
         source: 'person_medication',
@@ -198,11 +199,11 @@ class PersonMedicationsController < ApplicationController
   end
 
   def person_medication_params
-    params.expect(person_medication: %i[medication_id notes max_daily_doses min_hours_between_doses dose_cycle])
+    params.expect(person_medication: %i[medication_id dose_amount dose_unit notes max_daily_doses min_hours_between_doses dose_cycle])
   end
 
   def person_medication_update_params
-    params.expect(person_medication: %i[notes max_daily_doses min_hours_between_doses dose_cycle])
+    params.expect(person_medication: %i[dose_amount dose_unit notes max_daily_doses min_hours_between_doses dose_cycle])
   end
 
   def available_medications

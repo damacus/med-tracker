@@ -19,9 +19,14 @@ class PersonMedication < ApplicationRecord
 
   scope :ordered, -> { order(:position, :id) }
 
+  before_validation :assign_default_dose
   before_validation :assign_position, on: :create
 
   validates :person_id, uniqueness: { scope: :medication_id }
+  validates :dose_amount, presence: true, numericality: { greater_than: 0 },
+                          unless: :legacy_record_without_resolvable_dose?
+  validates :dose_unit, presence: true, inclusion: { in: Medication::DOSAGE_UNITS },
+                        unless: :legacy_record_without_resolvable_dose?
 
   def reorder(direction)
     adjacent = adjacent_record(direction)
@@ -38,7 +43,21 @@ class PersonMedication < ApplicationRecord
     end
   end
 
+  def dose_display
+    return if dose_amount.blank? || dose_unit.blank?
+
+    "#{dose_amount.to_f.to_s.sub(/\.0$/, '')} #{dose_unit}"
+  end
+
   private
+
+  def assign_default_dose
+    return if dose_amount.present? && dose_unit.present?
+    return if medication.blank?
+
+    self.dose_amount ||= resolved_dose_amount
+    self.dose_unit ||= resolved_dose_unit
+  end
 
   def assign_position
     return if position.present?
@@ -62,5 +81,26 @@ class PersonMedication < ApplicationRecord
       update!(position: other.position)
       other.update!(position: self_position)
     end
+  end
+
+  def legacy_record_without_resolvable_dose?
+    persisted? && dose_amount.blank? && dose_unit.blank? &&
+      resolved_dose_amount.blank? && resolved_dose_unit.blank?
+  end
+
+  def resolved_dose_amount
+    dosage = resolved_dosage
+    dosage&.amount || medication&.dosage_amount
+  end
+
+  def resolved_dose_unit
+    dosage = resolved_dosage
+    dosage&.unit || medication&.dosage_unit
+  end
+
+  def resolved_dosage
+    return if medication.blank?
+
+    medication.default_dosage_for_person_type(person&.person_type) || medication.dosages.first
   end
 end

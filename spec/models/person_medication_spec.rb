@@ -3,6 +3,27 @@
 require 'rails_helper'
 
 RSpec.describe PersonMedication do
+  describe 'dose validations' do
+    it 'requires a resolvable dose for new records' do
+      medication = create(:medication, dosage_amount: nil, dosage_unit: nil)
+      person_medication = build(:person_medication, medication: medication, dose_amount: nil, dose_unit: nil)
+
+      expect(person_medication).not_to be_valid
+      expect(person_medication.errors[:dose_amount]).to include("can't be blank")
+      expect(person_medication.errors[:dose_unit]).to include("can't be blank")
+    end
+
+    it 'allows legacy persisted records without a resolvable dose to update non-dose fields' do
+      medication = create(:medication, dosage_amount: nil, dosage_unit: nil)
+      person_medication = build(:person_medication, medication: medication, dose_amount: nil, dose_unit: nil,
+                                                    notes: 'Original notes', position: 0)
+      person_medication.save!(validate: false)
+
+      expect(person_medication.update(notes: 'Updated notes')).to be true
+      expect(person_medication.reload.notes).to eq('Updated notes')
+    end
+  end
+
   describe '#can_take_now?' do
     context 'without timing restrictions' do
       let(:person_medication) { create(:person_medication) }

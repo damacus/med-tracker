@@ -387,8 +387,8 @@ ga:
       subtitle: "How is this medication taken?"
       scheduled_title: "Prescribed / Scheduled"
       scheduled_description: "Has a specific dosage, start date, and fixed schedule"
-      otc_title: "As-needed / OTC"
-      otc_description: "Over-the-counter or taken flexibly without a fixed schedule"
+      otc_title: "As needed"
+      otc_description: "Taken as needed without a fixed schedule"
     show:
       edit_person: "Cuir Duine in Eagar"
       add_schedule: "Cuir Oideas Leigheasanna Leis"

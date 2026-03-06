@@ -10,9 +10,6 @@ RSpec.describe 'Person Medications', type: :system do
 
   before do |example|
     driven_by(example.metadata[:js] ? :playwright : :rack_test)
-  end
-
-  before do
     login_as(user)
   end
 

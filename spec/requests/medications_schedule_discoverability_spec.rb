@@ -12,7 +12,7 @@ RSpec.describe 'Medication schedule discoverability' do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include('Add Schedule')
-    expect(response.body).to include(schedules_workflow_path)
+    expect(response.body).to include(add_medication_path)
   end
 
   it 'shows Add Schedule entry point on medication details page' do
@@ -22,6 +22,6 @@ RSpec.describe 'Medication schedule discoverability' do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include('Add Schedule')
-    expect(response.body).to include(schedules_workflow_path(medication_id: medication.id))
+    expect(response.body).to include(add_medication_path(medication_id: medication.id))
   end
 end

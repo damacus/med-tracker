@@ -21,12 +21,11 @@ RSpec.describe 'Add schedule modal flow' do
     end
     click_link 'Prescribed / Scheduled'
     expect(page).to have_content("New Schedule for #{person.name}")
+    expect(page).to have_content('Choose a medication')
 
-    find('[data-testid="medication-trigger"]').click
-    find('div[role="option"]', text: 'Ibuprofen').click
+    select 'Ibuprofen', from: 'Medication'
 
-    find('[data-testid="dosage-trigger"]').click
-    find('div[role="option"]', text: /child dose/i).click
+    choose("schedule_dosage_id_#{dosages(:ibuprofen_child).id}", allow_label_click: true)
 
     fill_in 'Frequency', with: 'Twice daily'
     fill_in 'Start date', with: Date.current.strftime('%Y-%m-%d')

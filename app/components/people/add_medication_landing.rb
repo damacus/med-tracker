@@ -7,13 +7,14 @@ module Components
       include Phlex::Rails::Helpers::TurboFrameTag
       include RubyUI
 
-      attr_reader :person, :can_schedule, :can_person_medication, :back_path
+      attr_reader :person, :can_schedule, :can_person_medication, :back_path, :medication_id
 
-      def initialize(person:, can_schedule: true, can_person_medication: true, back_path: nil)
+      def initialize(person:, can_schedule: true, can_person_medication: true, back_path: nil, medication_id: nil)
         @person = person
         @can_schedule = can_schedule
         @can_person_medication = can_person_medication
         @back_path = back_path
+        @medication_id = medication_id
         super()
       end
 
@@ -39,7 +40,7 @@ module Components
                 div(class: 'grid grid-cols-1 gap-3 py-2') do
                   if can_schedule
                     render_option(
-                      href: new_person_schedule_path(person),
+                      href: new_person_schedule_path(person, medication_id: medication_id),
                       title: t('people.add_medication.scheduled_title'),
                       description: t('people.add_medication.scheduled_description'),
                       icon: Icons::Calendar
@@ -47,7 +48,7 @@ module Components
                   end
                   if can_person_medication
                     render_option(
-                      href: new_person_person_medication_path(person),
+                      href: new_person_person_medication_path(person, medication_id: medication_id),
                       title: t('people.add_medication.otc_title'),
                       description: t('people.add_medication.otc_description'),
                       icon: Icons::Pill

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_03_113000) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_06_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -251,7 +251,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_03_113000) do
 
   create_table "person_medications", force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.decimal "dose_amount", precision: 10, scale: 2
     t.integer "dose_cycle"
+    t.string "dose_unit"
     t.integer "max_daily_doses"
     t.bigint "medication_id", null: false
     t.integer "min_hours_between_doses"

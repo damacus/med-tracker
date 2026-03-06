@@ -194,10 +194,10 @@ module Components
       end
 
       def dosage_label(source)
-        if source.is_a?(Schedule)
+        if source.is_a?(::Schedule)
           "#{source.dosage.amount} #{source.dosage.unit}"
         else
-          source.medication.dosage_unit
+          source.dose_display
         end
       end
 

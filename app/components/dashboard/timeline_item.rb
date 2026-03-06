@@ -88,7 +88,7 @@ module Components
                else
                  take_medication_person_person_medication_path(dose[:person], source)
                end
-        amount = is_schedule ? source.dosage.amount : source.medication.dosage_amount
+        amount = is_schedule ? source.dosage.amount : source.dose_amount
 
         form_with(url: path, method: :post,
                   data: { controller: 'optimistic-take', action: 'submit->optimistic-take#submit' }) do |f|
