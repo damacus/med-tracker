@@ -77,9 +77,11 @@ export default class extends Controller {
     const data = subscription.toJSON()
     const token = document.querySelector('meta[name="csrf-token"]')?.content
 
-    await fetch("/push_subscription", {
+    const response = await fetch("/push_subscription", {
       method: "POST",
+      credentials: "same-origin",
       headers: {
+        "Accept": "application/json",
         "Content-Type": "application/json",
         "X-CSRF-Token": token
       },
@@ -88,19 +90,29 @@ export default class extends Controller {
         keys: data.keys
       })
     })
+
+    if (!response.ok) {
+      throw new Error(await this.errorMessageFor(response, "subscribe"))
+    }
   }
 
   async deleteSubscription(subscription) {
     const token = document.querySelector('meta[name="csrf-token"]')?.content
 
-    await fetch("/push_subscription", {
+    const response = await fetch("/push_subscription", {
       method: "DELETE",
+      credentials: "same-origin",
       headers: {
+        "Accept": "application/json",
         "Content-Type": "application/json",
         "X-CSRF-Token": token
       },
       body: JSON.stringify({ endpoint: subscription.endpoint })
     })
+
+    if (!response.ok) {
+      throw new Error(await this.errorMessageFor(response, "unsubscribe"))
+    }
   }
 
   updateStatus(message) {
@@ -123,5 +135,14 @@ export default class extends Controller {
     const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/")
     const rawData = window.atob(base64)
     return Uint8Array.from([...rawData].map(char => char.charCodeAt(0)))
+  }
+
+  async errorMessageFor(response, action) {
+    if (response.status === 422) {
+      return `Failed to ${action}: your session expired. Refresh the page and try again.`
+    }
+
+    const body = await response.text()
+    return `Failed to ${action}: ${body || `server returned ${response.status}`}`
   }
 }

@@ -47,6 +47,6 @@ class PwaController < ApplicationController
   end
 
   def service_worker_source
-    Rails.root.join('app/javascript/pwa/service_worker.js').binread
+    Rails.public_path.join('service-worker.js').binread
   end
 end
