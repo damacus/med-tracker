@@ -5,12 +5,23 @@ class PushSubscriptionsController < ApplicationController
     sub = current_account.push_subscriptions.find_or_initialize_by(endpoint: params[:endpoint])
     sub.assign_attributes(p256dh: params.dig(:keys, :p256dh), auth: params.dig(:keys, :auth),
                           user_agent: request.user_agent)
-    sub.save!
-    head :created
+    if sub.save
+      head :created
+    else
+      render json: { error: 'Unable to save push subscription.', errors: sub.errors.full_messages },
+             status: :unprocessable_content
+    end
   end
 
   def destroy
-    current_account.push_subscriptions.find_by(endpoint: params[:endpoint])&.destroy!
-    head :no_content
+    sub = current_account.push_subscriptions.find_by(endpoint: params[:endpoint])
+    return head :no_content unless sub
+
+    if sub.destroy
+      head :no_content
+    else
+      render json: { error: 'Unable to save push subscription.', errors: sub.errors.full_messages },
+             status: :unprocessable_content
+    end
   end
 end
