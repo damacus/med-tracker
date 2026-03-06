@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.3.23](https://github.com/damacus/med-tracker/compare/v0.3.22...v0.3.23) (2026-03-06)
+
+
+### Features
+
+* 🎨 Palette: Add aria-label to refill modal icon button ([b167d5e](https://github.com/damacus/med-tracker/commit/b167d5eb112b484baa027540e174ec1870607796))
+* 🎨 Palette: Add placeholders to medication form inputs ([4774d69](https://github.com/damacus/med-tracker/commit/4774d69f802f53543419dc1a121cc6f9d1040998))
+* 🎨 Palette: Add placeholders to medication form inputs ([afa1e07](https://github.com/damacus/med-tracker/commit/afa1e07e4070499b457cf171d03824f715fb9586))
+* **person-medications:** support explicit dose fields ([f8b717b](https://github.com/damacus/med-tracker/commit/f8b717b0629aca41aa4c323b7ca921b13e12f94f))
+
+
+### Bug Fixes
+
+* **pwa:** prevent notification subscription logout ([44ca733](https://github.com/damacus/med-tracker/commit/44ca7338f65e42cc466f4344daea631d7fcdf790))
+
 ## [0.3.22](https://github.com/damacus/med-tracker/compare/v0.3.21...v0.3.22) (2026-03-05)
 
 
