@@ -95,6 +95,7 @@ module Components
           input(type: :hidden, name: 'schedule[medication_id]', value: schedule.medication_id)
           div(class: 'grid grid-cols-1 md:grid-cols-2 gap-6') do
             render_dosage_cards
+            render_details_intro
             render_frequency_field(nil)
             render_start_date_field(nil)
             render_end_date_field(nil)
@@ -163,29 +164,48 @@ module Components
             plain 'Dose'
             span(class: 'text-destructive ml-0.5') { ' *' }
           end
-          div(class: 'grid grid-cols-1 md:grid-cols-2 gap-3') do
-            schedule.medication.dosages.each do |dosage|
-              label(class: dosage_card_classes(dosage)) do
-                input(
-                  type: :radio,
-                  name: 'schedule[dosage_id]',
-                  id: "schedule_dosage_id_#{dosage.id}",
-                  value: dosage.id,
-                  checked: schedule.dosage_id == dosage.id,
-                  required: true,
-                  class: 'sr-only',
-                  data: {
-                    action: 'change->schedule-form#onDosageChange',
-                    frequency: dosage.frequency,
-                    default_max_daily_doses: dosage.default_max_daily_doses,
-                    default_min_hours_between_doses: dosage.default_min_hours_between_doses,
-                    default_dose_cycle: dosage.default_dose_cycle
-                  }
-                )
-                div(class: 'font-semibold text-slate-900') { "#{dosage.amount.to_f} #{dosage.unit}" }
-                div(class: 'text-sm text-slate-500') { dosage.description }
+          Text(size: '2', class: 'text-slate-500') { 'Choose one dose before entering schedule details.' }
+          if schedule.medication.dosages.any?
+            div(class: 'mt-3 grid grid-cols-1 md:grid-cols-2 gap-3') do
+              schedule.medication.dosages.each do |dosage|
+                label(class: dosage_card_classes(dosage)) do
+                  input(
+                    type: :radio,
+                    name: 'schedule[dosage_id]',
+                    id: "schedule_dosage_id_#{dosage.id}",
+                    value: dosage.id,
+                    checked: schedule.dosage_id == dosage.id,
+                    required: true,
+                    class: 'sr-only',
+                    data: {
+                      action: 'change->schedule-form#onDosageChange',
+                      frequency: dosage.frequency,
+                      default_max_daily_doses: dosage.default_max_daily_doses,
+                      default_min_hours_between_doses: dosage.default_min_hours_between_doses,
+                      default_dose_cycle: dosage.default_dose_cycle
+                    }
+                  )
+                  div(class: 'font-semibold text-slate-900') { "#{dosage.amount.to_f} #{dosage.unit}" }
+                  div(class: 'text-sm text-slate-500') { dosage.description }
+                end
               end
             end
+          else
+            div(
+              class: 'mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-950',
+              data: { testid: 'schedule-no-dosage-message' }
+            ) do
+              'No dose options are available for this medication. Add a dosage before creating a schedule.'
+            end
+          end
+        end
+      end
+
+      def render_details_intro
+        div(class: 'md:col-span-2 space-y-1') do
+          Heading(level: 2, size: '4', class: 'font-semibold') { 'Schedule details' }
+          Text(size: '2', class: 'text-slate-500') do
+            'Set timing and safety guidance after choosing a dose.'
           end
         end
       end
@@ -368,6 +388,7 @@ module Components
               type: :submit,
               variant: :primary,
               size: :md,
+              disabled: schedule.new_record? && schedule.dosage.blank?,
               data: { schedule_form_target: 'submit' }
             ) { schedule.new_record? ? 'Add Plan' : 'Update Plan' }
           end
@@ -380,7 +401,11 @@ module Components
 
       def dosage_card_classes(dosage)
         base = 'rounded-2xl border p-4 transition-colors cursor-pointer'
-        selected = schedule.dosage_id == dosage.id ? ' border-primary bg-primary/5' : ' border-slate-200 bg-white'
+        selected = if schedule.dosage_id == dosage.id
+                     ' border-primary bg-primary/5 ring-2 ring-primary/20'
+                   else
+                     ' border-slate-200 bg-white'
+                   end
         "#{base}#{selected}"
       end
     end

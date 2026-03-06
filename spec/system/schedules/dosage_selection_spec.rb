@@ -26,6 +26,8 @@ RSpec.describe 'Schedule dosage selection' do
     select 'Ibuprofen', from: 'Medication'
 
     expect(page).to have_content('Change')
+    expect(page).to have_no_css('[name="schedule[dosage_id]"]:checked', visible: :hidden)
+    expect(page).to have_button('Add Plan', disabled: true)
     choose("schedule_dosage_id_#{dosages(:ibuprofen_adult).id}", allow_label_click: true)
 
     fill_in 'Frequency', with: 'Once daily'
@@ -36,5 +38,26 @@ RSpec.describe 'Schedule dosage selection' do
     click_button 'Add Plan'
 
     expect(page).to have_content('Schedule was successfully created.')
+  end
+
+  it 'shows a blocked dose step when the medication has no dosage choices' do
+    Medication.create!(
+      name: 'Dose-less medication',
+      location: locations(:home),
+      reorder_threshold: 0
+    )
+
+    login_as(admin)
+    visit person_path(person)
+
+    within '[data-testid="quick-actions"]' do
+      click_link 'Add Medication'
+    end
+    click_link 'Prescribed / Scheduled'
+
+    select 'Dose-less medication', from: 'Medication'
+
+    expect(page).to have_content('No dose options are available for this medication.')
+    expect(page).to have_button('Add Plan', disabled: true)
   end
 end
