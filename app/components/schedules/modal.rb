@@ -9,10 +9,13 @@ module Components
 
       attr_reader :schedule, :person, :medications, :title, :back_path, :editing
 
-      def initialize(schedule:, person:, medications:, title: nil, back_path: nil, editing: false)
+      def initialize(schedule:, person:, medications:, **options)
         @schedule = schedule
         @person = person
         @medications = medications
+        title = options[:title]
+        back_path = options[:back_path]
+        editing = options.fetch(:editing, false)
         @title = title || "New Schedule for #{person.name}"
         @back_path = back_path
         @editing = editing
