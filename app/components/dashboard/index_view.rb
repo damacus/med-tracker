@@ -22,6 +22,7 @@ module Components
               render_health_insights
             end
             div(class: 'space-y-8') do
+              render_right_rail_next_dose
               render_schedules_section
               render_supply_levels
             end
@@ -165,6 +166,16 @@ module Components
             upcoming_doses.each { |dose| upcoming_dose_item(dose) }
           end
         end
+      end
+
+      def render_right_rail_next_dose
+        render Components::Shared::MetricCard.new(
+          title: t('dashboard.stats.next_dose'),
+          value: next_dose_value,
+          icon_type: 'clock',
+          layout: :compact,
+          testid: 'dashboard-right-rail-next-dose'
+        )
       end
 
       def upcoming_dose_item(dose)

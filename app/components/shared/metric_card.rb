@@ -3,7 +3,7 @@
 module Components
   module Shared
     class MetricCard < Components::Base
-      attr_reader :title, :value, :icon_type, :href, :badge, :testid, :variant, :value_data_attr
+      attr_reader :title, :value, :icon_type, :href, :badge, :testid, :variant, :value_data_attr, :layout
 
       def initialize(title:, value:, icon_type:, **options)
         @title = title
@@ -14,6 +14,7 @@ module Components
         @testid = options.fetch(:testid, nil)
         @variant = options.fetch(:variant, :default).to_sym
         @value_data_attr = options.fetch(:value_data_attr, {}) || {}
+        @layout = options.fetch(:layout, :default).to_sym
         super()
       end
 
@@ -37,26 +38,31 @@ module Components
 
       def render_card(as_link: false)
         Card(
-          class: "#{border_class} h-full min-h-[9.5rem] sm:min-h-[10rem] " \
-                 "shadow-sm #{background_class} backdrop-blur-sm " \
-                 'transition-all duration-300 md:hover:scale-[1.02] md:hover:shadow-xl md:hover:shadow-primary/5 ' \
+          class: "#{border_class} h-full #{min_height_class} " \
+                 "shadow-sm #{background_class} backdrop-blur-sm #{hover_class} " \
                  "#{cursor_class} group",
           data: testid.present? && !as_link ? { testid: testid } : nil
         ) do
-          CardContent(class: 'p-6 h-full flex flex-col') do
-            div(class: 'flex items-center justify-between gap-2 mb-2 min-w-0') do
+          CardContent(class: "#{content_padding_class} h-full flex flex-col") do
+            div(class: "flex items-center justify-between gap-2 #{header_margin_class} min-w-0") do
               Text(
                 size: '1', weight: 'muted',
-                class: 'uppercase font-black tracking-widest group-hover:text-primary transition-colors truncate'
+                class: "uppercase font-black tracking-widest truncate #{title_class}"
               ) do
                 title
               end
-              div(class: "p-2 rounded-lg flex-shrink-0 #{icon_bg_class} #{value_color_class} transition-colors") do
-                render_icon(size: 16)
+              div(
+                class: "#{icon_padding_class} rounded-lg flex-shrink-0 " \
+                       "#{icon_bg_class} #{value_color_class} transition-colors"
+              ) do
+                render_icon(size: icon_size)
               end
             end
             div(class: 'mt-auto flex flex-col items-start gap-2') do
-              span(class: "text-3xl font-black tracking-tight #{value_color_class}", data: value_data_attr) do
+              span(
+                class: "#{value_size_class} font-black tracking-tight #{value_color_class}",
+                data: value_data_attr
+              ) do
                 value.to_s
               end
               if badge.present?
@@ -72,8 +78,46 @@ module Components
         end
       end
 
+      def compact?
+        layout == :compact
+      end
+
       def cursor_class
         href.present? ? 'cursor-pointer' : 'cursor-default'
+      end
+
+      def min_height_class
+        compact? ? 'min-h-[7rem]' : 'min-h-[9.5rem] sm:min-h-[10rem]'
+      end
+
+      def hover_class
+        return '' if compact?
+
+        'transition-all duration-300 md:hover:scale-[1.02] md:hover:shadow-xl md:hover:shadow-primary/5'
+      end
+
+      def content_padding_class
+        compact? ? 'p-4' : 'p-6'
+      end
+
+      def header_margin_class
+        compact? ? 'mb-3' : 'mb-2'
+      end
+
+      def title_class
+        compact? ? 'text-[0.7rem]' : 'group-hover:text-primary transition-colors'
+      end
+
+      def icon_padding_class
+        compact? ? 'p-1.5' : 'p-2'
+      end
+
+      def icon_size
+        compact? ? 14 : 16
+      end
+
+      def value_size_class
+        compact? ? 'text-2xl' : 'text-3xl'
       end
 
       def background_class

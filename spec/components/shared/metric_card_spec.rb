@@ -55,4 +55,16 @@ RSpec.describe Components::Shared::MetricCard, type: :component do
 
     expect(rendered.css('[data-metric-value="10"]')).to be_present
   end
+
+  it 'renders compact layout classes when requested' do
+    rendered = render_inline(
+      described_class.new(title: 'Next Dose', value: '14:47', icon_type: 'clock', layout: :compact)
+    )
+    html = rendered.to_html
+
+    expect(html).to include('min-h-[7rem]')
+    expect(html).to include('p-4')
+    expect(html).to include('text-2xl')
+    expect(html).not_to include('md:hover:scale-[1.02]')
+  end
 end

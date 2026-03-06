@@ -103,6 +103,18 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       rendered = render_inline(dashboard_view)
       expect(rendered.text).to include('Stock Inventory')
     end
+
+    it 'renders a compact Next Dose card in the right rail' do
+      rendered = render_inline(dashboard_view)
+      expected_value = presenter.next_dose_time&.strftime('%H:%M') || I18n.t('dashboard.stats.no_upcoming_doses')
+
+      compact_card = rendered.at_css('[data-testid="dashboard-right-rail-next-dose"]')
+
+      expect(compact_card).to be_present
+      expect(compact_card.text).to include('Next Dose')
+      expect(compact_card.text).to include(expected_value)
+      expect(compact_card.to_html).to include('min-h-[7rem]')
+    end
   end
 
   context 'when there are no active schedules or person medications' do
