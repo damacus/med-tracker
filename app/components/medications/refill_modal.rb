@@ -24,10 +24,13 @@ module Components
       def view_template
         Dialog do
           DialogTrigger do
-            Button(variant: button_variant, class: button_class) do
+            Button(
+              variant: button_variant,
+              class: button_class,
+              **(icon_only ? { aria_label: t('medications.refill_modal.refill_inventory') } : {})
+            ) do
               if icon_only
                 render Icons::RefreshCw.new(size: 16)
-                span(class: 'sr-only') { t('medications.refill_modal.refill_inventory') }
               elsif button_label
                 plain button_label
               else
