@@ -81,13 +81,13 @@ module Components
         div(class: 'grid grid-cols-2 lg:grid-cols-4 auto-rows-fr gap-4 mb-12') do
           render Components::Shared::MetricCard.new(
             title: t('dashboard.stats.people'),
-            value: people.count,
+            value: people.size,
             icon_type: 'users',
             href: people_path
           )
           render Components::Shared::MetricCard.new(
             title: t('dashboard.stats.active_schedules'),
-            value: active_schedules.count,
+            value: active_schedules.size,
             icon_type: 'pill',
             href: schedules_path
           )
@@ -209,7 +209,7 @@ module Components
                    'duration-300 hover:shadow-md hover:scale-[1.01] cursor-default'
           ) do
             div(class: 'space-y-6') do
-              active_schedules.take(3).each do |p|
+              active_schedules.to_a.take(3).each do |p|
                 render_supply_item(p.medication)
               end
               render RubyUI::Link.new(

@@ -14,8 +14,9 @@ class DashboardPresenter
 
   def active_schedules
     @active_schedules ||= Schedule.active
-                                  .where(person_id: people.select(:id))
+                                  .where(person_id: people.map(&:id))
                                   .includes(person: :user, medication: [])
+                                  .load
   end
 
   def upcoming_schedules
