@@ -6,7 +6,7 @@ module Views
       include Phlex::Rails::Helpers::T
 
       def view_template
-        div(class: 'flex items-start justify-between p-4 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors') do
+        div(class: 'flex items-start justify-between rounded-lg border border-border bg-card/70 p-4 transition-colors hover:bg-accent/50') do
           render_account_info
           render_alert_dialog
         end
@@ -16,8 +16,8 @@ module Views
 
       def render_account_info
         div(class: 'flex-1') do
-          h3(class: 'text-sm font-medium text-slate-900') { t('profiles.close_account.title') }
-          p(class: 'text-sm text-slate-600 mt-1') { t('profiles.close_account.description') }
+          h3(class: 'text-sm font-medium text-foreground') { t('profiles.close_account.title') }
+          p(class: 'mt-1 text-sm text-muted-foreground') { t('profiles.close_account.description') }
         end
       end
 

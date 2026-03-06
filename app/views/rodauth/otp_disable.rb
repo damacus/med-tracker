@@ -17,11 +17,11 @@ module Views
 
       def form_section
         render RubyUI::Card.new(class: card_classes) do
-          render RubyUI::CardHeader.new(class: 'space-y-2 bg-white/60') do
-            render RubyUI::CardTitle.new(class: 'text-xl font-semibold text-slate-900') do
+          render RubyUI::CardHeader.new(class: 'space-y-2 bg-card/60') do
+            render RubyUI::CardTitle.new(class: 'text-xl font-semibold text-foreground') do
               t('rodauth.views.otp_disable.card_title')
             end
-            render RubyUI::CardDescription.new(class: 'text-base text-slate-600') do
+            render RubyUI::CardDescription.new(class: 'text-base text-muted-foreground') do
               t('rodauth.views.otp_disable.card_description')
             end
           end

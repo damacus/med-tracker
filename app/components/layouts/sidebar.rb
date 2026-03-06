@@ -17,7 +17,9 @@ module Components
         return unless authenticated?
 
         aside(
-          class: 'fixed left-0 top-0 h-full w-20 md:w-64 bg-white border-r border-slate-100 hidden ' \
+          class: 'fixed left-0 top-0 hidden h-full w-20 border-r border-sidebar-border bg-sidebar ' \
+                 'text-sidebar-foreground ' \
+                 'md:w-64 ' \
                  'sm:flex flex-col items-center md:items-start py-8 px-4 z-50 transition-all duration-500'
         ) do
           render_brand
@@ -74,7 +76,7 @@ module Components
                        "#{if is_active
                             'bg-primary/5 text-primary'
                           else
-                            'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
+                            'text-muted-foreground hover:text-foreground hover:bg-accent/60'
                           end}" do
           div(
             class: 'flex items-center justify-center ' \
@@ -89,8 +91,8 @@ module Components
       def render_user_profile
         div(class: 'mt-auto w-full space-y-4 px-2') do
           link_to profile_path,
-                  class: 'flex items-center gap-3 p-2 rounded-2xl border border-slate-100 bg-slate-50/50 ' \
-                         'hover:bg-slate-100 transition-all no-underline group' do
+                  class: 'flex items-center gap-3 rounded-2xl border border-sidebar-border bg-muted/50 p-2 ' \
+                         'transition-all no-underline group hover:bg-accent/70' do
             div(
               class: 'w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary ' \
                      'font-bold text-xs overflow-hidden flex-shrink-0'
@@ -103,7 +105,7 @@ module Components
             end
             div(class: 'hidden md:block overflow-hidden') do
               p(class: 'text-xs font-bold truncate text-foreground') { current_user.person&.name || 'User' }
-              p(class: 'text-[10px] text-slate-400 font-medium') { current_user.role.to_s.humanize }
+              p(class: 'text-[10px] font-medium text-muted-foreground') { current_user.role.to_s.humanize }
             end
           end
 
@@ -112,7 +114,7 @@ module Components
             button(
               type: 'submit',
               class: 'w-full flex items-center justify-center md:justify-start gap-4 px-4 py-3 rounded-2xl ' \
-                     'text-slate-400 hover:text-destructive hover:bg-destructive/5 transition-all group'
+                     'text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-all group'
             ) do
               div(class: 'group-hover:scale-110 transition-transform flex items-center justify-center') do
                 render Icons::LogOut.new(size: 24)

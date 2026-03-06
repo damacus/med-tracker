@@ -42,11 +42,11 @@ module Views
       end
 
       def render_card_header
-        render RubyUI::CardHeader.new(class: 'space-y-2 bg-white/60') do
-          render RubyUI::CardTitle.new(class: 'text-xl font-semibold text-slate-900') do
+        render RubyUI::CardHeader.new(class: 'space-y-2 bg-card/60') do
+          render RubyUI::CardTitle.new(class: 'text-xl font-semibold text-foreground') do
             t('rodauth.views.two_factor_manage.card_title')
           end
-          render RubyUI::CardDescription.new(class: 'text-base text-slate-600') do
+          render RubyUI::CardDescription.new(class: 'text-base text-muted-foreground') do
             plain t('rodauth.views.two_factor_manage.card_description')
           end
         end
@@ -100,15 +100,15 @@ module Views
       end
 
       def render_auth_method_card(method_config) # rubocop:disable Metrics/AbcSize
-        div(class: 'flex items-start gap-4 p-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition-colors') do
+        div(class: 'flex items-start gap-4 rounded-xl border border-border bg-card/70 p-4 transition-colors hover:bg-accent/40') do
           render_method_icon(method_config[:icon], method_config[:enabled])
 
           div(class: 'flex-1 min-w-0') do
             div(class: 'flex items-center gap-2') do
-              h4(class: 'font-medium text-slate-900') { method_config[:title] }
+              h4(class: 'font-medium text-foreground') { method_config[:title] }
               render_status_badge(method_config[:enabled]) if method_config[:enabled]
             end
-            p(class: 'text-sm text-slate-600 mt-1') { method_config[:description] }
+            p(class: 'mt-1 text-sm text-muted-foreground') { method_config[:description] }
           end
 
           div(class: 'flex-shrink-0') do
@@ -122,8 +122,8 @@ module Views
       end
 
       def render_method_icon(icon_type, enabled)
-        bg_class = enabled ? 'bg-green-100' : 'bg-slate-100'
-        icon_class = enabled ? 'text-green-600' : 'text-slate-500'
+        bg_class = enabled ? 'bg-success-light' : 'bg-muted'
+        icon_class = enabled ? 'text-success' : 'text-muted-foreground'
 
         div(class: "flex-shrink-0 w-12 h-12 #{bg_class} rounded-full flex items-center justify-center") do
           case icon_type
@@ -152,7 +152,7 @@ module Views
       def render_status_badge(enabled)
         return unless enabled
 
-        span(class: 'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800') do
+        span(class: 'inline-flex items-center rounded-full bg-success-light px-2 py-0.5 text-xs font-medium text-success-text') do
           t('rodauth.views.two_factor_manage.status_enabled')
         end
       end

@@ -30,11 +30,11 @@ module Views
       end
 
       def render_card_header
-        render RubyUI::CardHeader.new(class: 'space-y-2 bg-white/60') do
-          render RubyUI::CardTitle.new(class: 'text-xl font-semibold text-slate-900') do
+        render RubyUI::CardHeader.new(class: 'space-y-2 bg-card/60') do
+          render RubyUI::CardTitle.new(class: 'text-xl font-semibold text-foreground') do
             t('rodauth.views.otp_setup.card_title')
           end
-          render RubyUI::CardDescription.new(class: 'text-base text-slate-600') do
+          render RubyUI::CardDescription.new(class: 'text-base text-muted-foreground') do
             plain t('rodauth.views.otp_setup.card_description')
           end
         end
@@ -50,21 +50,21 @@ module Views
 
       def render_qr_code_section
         div(class: 'flex flex-col items-center space-y-4') do
-          div(class: 'p-4 bg-white rounded-xl shadow-sm border border-slate-200') do
+          div(class: 'rounded-xl border border-border bg-card p-4 shadow-sm') do
             div(class: 'w-48 h-48 flex items-center justify-center [&_img]:max-w-full [&_img]:max-h-full [&_svg]:max-w-full [&_svg]:max-h-full') do
               qr_html = view_context.rodauth.otp_qr_code
               safe(qr_html)
             end
           end
-          p(class: 'text-sm text-slate-500 text-center') do
+          p(class: 'text-center text-sm text-muted-foreground') do
             t('rodauth.views.otp_setup.qr_hint')
           end
         end
       end
 
       def render_manual_entry_section
-        details(class: 'border-t border-slate-200 pt-6 group') do
-          summary(class: 'flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 transition-colors cursor-pointer list-none') do
+        details(class: 'group border-t border-border pt-6') do
+          summary(class: 'flex cursor-pointer list-none items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground') do
             chevron_icon
             span { t('rodauth.views.otp_setup.manual_entry_summary') }
           end
@@ -81,10 +81,10 @@ module Views
       end
 
       def render_secret_field
-        div(class: 'bg-slate-50 rounded-lg p-4 space-y-2') do
-          label(class: 'text-xs font-medium text-slate-500 uppercase tracking-wide') { t('rodauth.views.otp_setup.secret_key') }
+        div(class: 'space-y-2 rounded-lg border border-border bg-muted/60 p-4') do
+          label(class: 'text-xs font-medium uppercase tracking-wide text-muted-foreground') { t('rodauth.views.otp_setup.secret_key') }
           div(class: 'flex items-center gap-2') do
-            code(class: 'flex-1 font-mono text-sm text-slate-800 break-all select-all') do
+            code(class: 'flex-1 break-all select-all font-mono text-sm text-foreground') do
               plain view_context.rodauth.otp_user_key
             end
             copy_button(view_context.rodauth.otp_user_key)
@@ -93,9 +93,9 @@ module Views
       end
 
       def render_provisioning_url
-        div(class: 'bg-slate-50 rounded-lg p-4 space-y-2') do
-          label(class: 'text-xs font-medium text-slate-500 uppercase tracking-wide') { t('rodauth.views.otp_setup.provisioning_url') }
-          code(class: 'block font-mono text-xs text-slate-600 break-all select-all') do
+        div(class: 'space-y-2 rounded-lg border border-border bg-muted/60 p-4') do
+          label(class: 'text-xs font-medium uppercase tracking-wide text-muted-foreground') { t('rodauth.views.otp_setup.provisioning_url') }
+          code(class: 'block break-all select-all font-mono text-xs text-muted-foreground') do
             plain view_context.rodauth.otp_provisioning_uri
           end
         end
@@ -104,7 +104,7 @@ module Views
       def copy_button(text)
         button(
           type: 'button',
-          class: 'p-2 text-slate-400 hover:text-slate-600 transition-colors',
+          class: 'p-2 text-muted-foreground transition-colors hover:text-foreground',
           title: t('rodauth.views.otp_setup.copy_to_clipboard'),
           data: { action: 'click->clipboard#copy', clipboard_text_param: text }
         ) do
@@ -113,7 +113,7 @@ module Views
       end
 
       def render_setup_form
-        div(class: 'border-t border-slate-200 pt-6') do
+        div(class: 'border-t border-border pt-6') do
           render RubyUI::Form.new(
             action: view_context.rodauth.otp_setup_path,
             method: :post,
@@ -146,7 +146,7 @@ module Views
             autocomplete: 'current-password',
             placeholder: t('rodauth.views.otp_setup.current_password_placeholder')
           )
-          p(class: 'text-xs text-slate-500 mt-1') { t('rodauth.views.otp_setup.current_password_hint') }
+          p(class: 'mt-1 text-xs text-muted-foreground') { t('rodauth.views.otp_setup.current_password_hint') }
         end
       end
 
@@ -164,7 +164,7 @@ module Views
             maxlength: 6,
             placeholder: t('rodauth.views.otp_setup.auth_code_placeholder')
           )
-          p(class: 'text-xs text-slate-500 mt-1') { t('rodauth.views.otp_setup.auth_code_hint') }
+          p(class: 'mt-1 text-xs text-muted-foreground') { t('rodauth.views.otp_setup.auth_code_hint') }
         end
       end
 

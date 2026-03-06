@@ -25,8 +25,8 @@ class PwaController < ApplicationController
     start_url: '/',
     display: 'standalone',
     orientation: 'portrait',
-    background_color: '#ffffff',
-    theme_color: '#0ea5e9'
+    background_color: '#111827',
+    theme_color: '#111827'
   }.freeze
 
   MANIFEST_ICONS = [

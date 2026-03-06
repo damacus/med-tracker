@@ -63,7 +63,7 @@ module Views
       end
 
       def render_recovery_codes_section
-        div(class: 'space-y-3 pt-4 border-t border-slate-200') do
+        div(class: 'space-y-3 border-t border-border pt-4') do
           render_section_header(
             'Recovery Codes',
             'Use these codes to access your account if you lose your 2FA device'
@@ -85,12 +85,12 @@ module Views
       end
 
       def render_recovery_codes_actions
-        div(class: 'flex items-center justify-between p-3 border border-slate-200 rounded-lg bg-slate-50') do
+        div(class: 'flex items-center justify-between rounded-lg border border-border bg-muted/60 p-3') do
           div(class: 'flex items-center gap-2') do
             render Components::Icons::CheckCircle.new(size: 20, class: 'text-green-600')
             div do
-              p(class: 'text-sm font-medium text-slate-900') { 'Recovery codes generated' }
-              p(class: 'text-xs text-slate-600') { "#{recovery_codes_count} codes available" }
+              p(class: 'text-sm font-medium text-foreground') { 'Recovery codes generated' }
+              p(class: 'text-xs text-muted-foreground') { "#{recovery_codes_count} codes available" }
             end
           end
           div(class: 'flex gap-2') do
@@ -111,7 +111,7 @@ module Views
       end
 
       def render_passkeys_section
-        div(class: 'space-y-3 pt-4 border-t border-slate-200') do
+        div(class: 'space-y-3 border-t border-border pt-4') do
           render_section_header(
             'Passkeys',
             'Passwordless authentication using biometrics or security keys'
@@ -144,12 +144,12 @@ module Views
       end
 
       def render_passkey_item(passkey)
-        div(class: 'flex items-center justify-between p-3 border border-slate-200 rounded-lg') do
+        div(class: 'flex items-center justify-between rounded-lg border border-border bg-card/70 p-3') do
           div(class: 'flex items-center gap-3 flex-1') do
-            render Components::Icons::Key.new(size: 20, class: 'text-slate-600')
+            render Components::Icons::Key.new(size: 20, class: 'text-muted-foreground')
             div do
-              p(class: 'text-sm font-medium text-slate-900') { passkey.nickname }
-              p(class: 'text-xs text-slate-500') do
+              p(class: 'text-sm font-medium text-foreground') { passkey.nickname }
+              p(class: 'text-xs text-muted-foreground') do
                 "Added #{passkey.created_at.strftime('%B %d, %Y')}"
               end
             end
@@ -174,16 +174,16 @@ module Views
 
       def render_section_header(title, description)
         div(class: 'space-y-1') do
-          h3(class: 'text-sm font-semibold text-slate-900') { title }
-          p(class: 'text-xs text-slate-600') { description }
+          h3(class: 'text-sm font-semibold text-foreground') { title }
+          p(class: 'text-xs text-muted-foreground') { description }
         end
       end
 
       def render_enabled_method(status_text, disable_path:, disable_text:)
-        div(class: 'flex items-center justify-between p-3 border border-slate-200 rounded-lg bg-green-50 border-green-200') do
+        div(class: 'flex items-center justify-between rounded-lg border border-success/40 bg-success-light p-3') do
           div(class: 'flex items-center gap-2') do
             render Components::Icons::CheckCircle.new(size: 20, class: 'text-green-600')
-            p(class: 'text-sm font-medium text-slate-900') { status_text }
+            p(class: 'text-sm font-medium text-success-text') { status_text }
           end
           render RubyUI::Link.new(
             variant: :outline,
@@ -194,10 +194,10 @@ module Views
       end
 
       def render_disabled_method(status_text, setup_path:, setup_text:)
-        div(class: 'flex items-center justify-between p-3 border border-slate-200 rounded-lg bg-slate-50') do
+        div(class: 'flex items-center justify-between rounded-lg border border-border bg-muted/60 p-3') do
           div(class: 'flex items-center gap-2') do
-            render Components::Icons::XCircle.new(size: 20, class: 'text-slate-400')
-            p(class: 'text-sm text-slate-600') { status_text }
+            render Components::Icons::XCircle.new(size: 20, class: 'text-muted-foreground')
+            p(class: 'text-sm text-muted-foreground') { status_text }
           end
           render RubyUI::Link.new(
             variant: :default,

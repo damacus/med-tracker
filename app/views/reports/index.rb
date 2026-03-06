@@ -30,19 +30,19 @@ module Views
           div(class: 'text-center md:text-left space-y-2') do
             Text(size: '2', weight: 'muted', class: 'uppercase tracking-[0.2em] font-black opacity-40') { 'Wellness Analytics' }
             Heading(level: 1, size: '9', class: 'font-black tracking-tight text-foreground') { 'Health Report' }
-            p(class: 'text-slate-400') { "#{@start_date.strftime('%B %d')} — #{@end_date.strftime('%B %d, %Y')}" }
+            p(class: 'text-muted-foreground') { "#{@start_date.strftime('%B %d')} — #{@end_date.strftime('%B %d, %Y')}" }
           end
 
-          form(action: view_context.reports_path, method: :get, class: 'flex items-center gap-2 bg-white/50 backdrop-blur-sm p-4 rounded-xl border border-slate-100 shadow-sm') do
+          form(action: view_context.reports_path, method: :get, class: 'flex items-center gap-2 rounded-xl border border-border bg-card/70 p-4 shadow-sm backdrop-blur-sm') do
             div(class: 'flex flex-col gap-1') do
-              label(for: 'start_date', class: 'text-xs font-bold text-slate-500 uppercase tracking-wider') { 'From' }
-              input(type: 'date', name: 'start_date', id: 'start_date', value: @start_date, class: 'form-input text-sm rounded-lg border-slate-200 focus:border-indigo-500 focus:ring-indigo-500')
+              label(for: 'start_date', class: 'text-xs font-bold uppercase tracking-wider text-muted-foreground') { 'From' }
+              input(type: 'date', name: 'start_date', id: 'start_date', value: @start_date, class: 'form-input rounded-lg border-border bg-background text-sm text-foreground focus:border-primary focus:ring-primary')
             end
             div(class: 'flex flex-col gap-1') do
-              label(for: 'end_date', class: 'text-xs font-bold text-slate-500 uppercase tracking-wider') { 'To' }
-              input(type: 'date', name: 'end_date', id: 'end_date', value: @end_date, class: 'form-input text-sm rounded-lg border-slate-200 focus:border-indigo-500 focus:ring-indigo-500')
+              label(for: 'end_date', class: 'text-xs font-bold uppercase tracking-wider text-muted-foreground') { 'To' }
+              input(type: 'date', name: 'end_date', id: 'end_date', value: @end_date, class: 'form-input rounded-lg border-border bg-background text-sm text-foreground focus:border-primary focus:ring-primary')
             end
-            button(type: 'submit', class: 'mt-5 bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded-lg transition-colors aria-label: "Apply date filters"') do
+            button(type: 'submit', class: 'mt-5 rounded-lg bg-primary p-2 text-primary-foreground transition-colors hover:opacity-90 aria-label: "Apply date filters"') do
               render Icons::ChevronRight.new(size: 20)
             end
           end
@@ -59,7 +59,7 @@ module Views
         Card(class: 'overflow-hidden border-none shadow-2xl') do
           div(class: 'bg-gradient-to-br from-indigo-600 to-violet-700 p-8 sm:p-12 text-white relative') do
             # Decorative element
-            div(class: 'absolute right-0 top-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2')
+            div(class: 'absolute right-0 top-0 h-64 w-64 rounded-full bg-background/10 blur-3xl -translate-y-1/2 translate-x-1/2')
 
             div(class: 'relative z-10 grid grid-cols-1 md:grid-cols-3 gap-8 text-center') do
               summary_stat('Overall Compliance', "#{overall_compliance}%", overall_compliance >= 90 ? 'Excellent' : 'Needs attention')
@@ -75,7 +75,7 @@ module Views
         div(class: 'space-y-1') do
           Text(size: '1', class: 'uppercase tracking-widest text-indigo-100 font-bold opacity-70') { label }
           Heading(level: 2, size: '8', class: 'font-black') { value }
-          Text(size: '1', class: 'font-bold bg-white/20 inline-block px-2 py-0.5 rounded-full') { subtext }
+          Text(size: '1', class: 'inline-block rounded-full bg-background/15 px-2 py-0.5 font-bold') { subtext }
         end
       end
 
@@ -86,7 +86,7 @@ module Views
             render Button.new(variant: :outline, size: :sm, class: 'rounded-full') { 'Download PDF' }
           end
 
-          Card(class: 'p-8 sm:p-10 border-slate-50 bg-white/50 backdrop-blur-sm') do
+          Card(class: 'border-border bg-card/70 p-8 backdrop-blur-sm sm:p-10') do
             div(class: 'flex items-end justify-between h-64 gap-4 px-2') do
               @daily_data.each do |day|
                 render_bar(day)
@@ -101,7 +101,7 @@ module Views
           # The Bar
           div(class: 'relative w-full h-full flex flex-col justify-end') do
             # Background guide
-            div(class: 'absolute inset-0 bg-slate-50 rounded-t-xl opacity-50')
+            div(class: 'absolute inset-0 rounded-t-xl bg-muted/60')
 
             # Active Bar
             div(
@@ -109,14 +109,14 @@ module Views
               style: "height: #{day[:percentage]}%"
             ) do
               # Tooltip-like value on hover
-              div(class: 'absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap') do
+              div(class: 'absolute -top-10 left-1/2 -translate-x-1/2 rounded bg-foreground px-2 py-1 text-[10px] font-bold whitespace-nowrap text-background opacity-0 transition-opacity group-hover:opacity-100') do
                 "#{day[:percentage]}% Compliance"
               end
             end
           end
 
           # Day Label
-          Text(size: '1', weight: 'black', class: 'text-slate-400 uppercase tracking-tighter') { day[:day_name] }
+          Text(size: '1', weight: 'black', class: 'text-muted-foreground uppercase tracking-tighter') { day[:day_name] }
         end
       end
 
@@ -135,7 +135,7 @@ module Views
             description: "You haven't missed a single dose since Friday morning. Your body is maintaining optimal levels.",
             icon_class: Icons::CheckCircle,
             text_color: 'text-emerald-600',
-            bg_color: 'bg-emerald-50'
+            bg_color: 'bg-success-light'
           )
         )
       end
@@ -160,7 +160,7 @@ module Views
             description: description,
             icon_class: Icons::AlertCircle,
             text_color: 'text-rose-600',
-            bg_color: 'bg-rose-50'
+            bg_color: 'bg-destructive-light'
           )
         )
       end
@@ -169,7 +169,7 @@ module Views
       def render_insight_card(card)
         Card(class: "border-none shadow-sm #{card.bg_color} p-8 space-y-4 transition-transform hover:scale-[1.02]") do
           div(class: 'flex items-center gap-4') do
-            div(class: "w-12 h-12 rounded-2xl flex items-center justify-center #{card.text_color} bg-white shadow-sm") do
+            div(class: "w-12 h-12 rounded-2xl flex items-center justify-center #{card.text_color} bg-card shadow-sm") do
               render card.icon_class.new(size: 24)
             end
             div do
@@ -180,7 +180,7 @@ module Views
 
           div(class: 'space-y-2') do
             Heading(level: 4, size: '5', class: 'font-bold') { card.value }
-            Text(size: '2', class: 'text-slate-600 leading-relaxed') { card.description }
+            Text(size: '2', class: 'text-muted-foreground leading-relaxed') { card.description }
           end
         end
       end

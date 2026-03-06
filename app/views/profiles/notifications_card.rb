@@ -48,9 +48,9 @@ module Views
             'Browser Notifications',
             'Allow this device to receive medication reminders'
           )
-          div(class: 'flex items-center justify-between p-3 border border-slate-200 rounded-lg bg-slate-50') do
+          div(class: 'flex items-center justify-between rounded-lg border border-border bg-muted/60 p-3') do
             p(
-              class: 'text-sm text-slate-600',
+              class: 'text-sm text-muted-foreground',
               data: { push_notification_target: 'status' }
             ) { 'Checking notification status...' }
             div(class: 'flex gap-2 ml-4 flex-shrink-0') do
@@ -66,8 +66,8 @@ module Views
               ) { 'Enable' }
               button(
                 type: 'button',
-                class: 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 ' \
-                       'text-slate-600 font-medium text-sm hover:bg-slate-100 transition-colors',
+                class: 'inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 ' \
+                       'text-sm font-medium text-muted-foreground transition-colors hover:bg-accent',
                 data: {
                   push_notification_target: 'unsubscribeButton',
                   action: 'push-notification#unsubscribe'
@@ -101,8 +101,8 @@ module Views
       def render_enabled_toggle
         div(class: 'flex items-center justify-between') do
           div do
-            p(class: 'text-sm font-medium text-slate-900') { 'Enable reminders' }
-            p(class: 'text-xs text-slate-500 mt-0.5') { 'Send notifications at the times below' }
+            p(class: 'text-sm font-medium text-foreground') { 'Enable reminders' }
+            p(class: 'mt-0.5 text-xs text-muted-foreground') { 'Send notifications at the times below' }
           end
           div(class: 'flex items-center gap-2') do
             input(type: 'hidden', name: 'notification_preference[enabled]', value: '0')
@@ -112,14 +112,14 @@ module Views
               id: 'notification_preference_enabled',
               value: '1',
               checked: preference.enabled,
-              class: 'h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary'
+              class: 'h-4 w-4 rounded border-border bg-background text-primary focus:ring-primary'
             )
           end
         end
       end
 
       def render_time_slots
-        div(class: 'space-y-2 pt-2 border-t border-slate-100') do
+        div(class: 'space-y-2 border-t border-border pt-2') do
           render_section_header('Reminder times', 'Set when you want to receive reminders each day')
           div(class: 'grid grid-cols-2 gap-3 mt-2') do
             NotificationPreference::PERIODS.each { |period| render_time_slot(period) }
@@ -130,7 +130,7 @@ module Views
       def render_time_slot(period)
         div do
           label(
-            class: 'block text-xs font-medium text-slate-500 mb-1',
+            class: 'mb-1 block text-xs font-medium text-muted-foreground',
             for: "notification_preference_#{period}_time"
           ) { PERIOD_LABELS[period] }
           input(
@@ -138,7 +138,7 @@ module Views
             name: "notification_preference[#{period}_time]",
             id: "notification_preference_#{period}_time",
             value: preference.time_for_period(period)&.strftime('%H:%M'),
-            class: 'w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm ' \
+            class: 'w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground ' \
                    'focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary'
           )
         end
@@ -146,8 +146,8 @@ module Views
 
       def render_section_header(title, description)
         div(class: 'space-y-0.5') do
-          h3(class: 'text-sm font-semibold text-slate-900') { title }
-          p(class: 'text-xs text-slate-600') { description }
+          h3(class: 'text-sm font-semibold text-foreground') { title }
+          p(class: 'text-xs text-muted-foreground') { description }
         end
       end
     end

@@ -44,9 +44,9 @@ module Views
       end
 
       def render_card_header
-        render RubyUI::CardHeader.new(class: 'space-y-2 bg-white/60') do
-          render RubyUI::CardTitle.new(class: 'text-2xl font-semibold text-slate-900') { t('rodauth.views.verify_account.card_title') }
-          render RubyUI::CardDescription.new(class: 'text-base text-slate-600') do
+        render RubyUI::CardHeader.new(class: 'space-y-2 bg-card/60') do
+          render RubyUI::CardTitle.new(class: 'text-2xl font-semibold text-foreground') { t('rodauth.views.verify_account.card_title') }
+          render RubyUI::CardDescription.new(class: 'text-base text-muted-foreground') do
             plain t('rodauth.views.verify_account.card_description')
           end
         end

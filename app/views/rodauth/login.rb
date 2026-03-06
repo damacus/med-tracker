@@ -21,8 +21,8 @@ module Views
 
       def render_background_atmosphere
         div(class: 'fixed inset-0 overflow-hidden pointer-events-none') do
-          div(class: 'absolute -top-[10%] -left-[10%] w-[50%] h-[50%] rounded-full bg-[var(--primary)] opacity-[0.02] blur-[120px]')
-          div(class: 'absolute -bottom-[10%] -right-[10%] w-[50%] h-[50%] rounded-full bg-blue-500 opacity-[0.02] blur-[120px]')
+          div(class: 'absolute -top-[10%] -left-[10%] h-[50%] w-[50%] rounded-full bg-primary/10 blur-[120px]')
+          div(class: 'absolute -bottom-[10%] -right-[10%] h-[50%] w-[50%] rounded-full bg-accent opacity-70 blur-[120px]')
         end
       end
 
@@ -32,7 +32,7 @@ module Views
             render Icons::Pill.new(size: 24)
           end
           Heading(level: 1, size: '7', class: 'font-extrabold tracking-tight text-[var(--text-main)]') { t('app.name') }
-          Text(size: '2', weight: 'muted', class: 'uppercase tracking-[0.2em] font-bold text-slate-600 mt-1') do
+          Text(size: '2', weight: 'muted', class: 'mt-1 uppercase tracking-[0.2em] font-bold text-muted-foreground') do
             t('sessions.login.tagline')
           end
         end
@@ -40,7 +40,7 @@ module Views
 
       def render_login_card
         render RubyUI::Card.new(
-          class: 'border border-slate-100/50 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.06)] bg-white rounded-[2.5rem] overflow-hidden'
+          class: 'overflow-hidden rounded-[2.5rem] border border-border/70 bg-card/90 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.18)]'
         ) do
           div(class: 'p-10 sm:p-12') do
             render_login_header
@@ -54,7 +54,7 @@ module Views
       def render_login_header
         div(class: 'mb-10') do
           Heading(level: 2, size: '5', class: 'font-bold mb-1.5') { t('sessions.login.heading') }
-          Text(size: '2', class: 'text-slate-600') { t('sessions.login.subheading') }
+          Text(size: '2', class: 'text-muted-foreground') { t('sessions.login.subheading') }
         end
       end
 
@@ -72,11 +72,11 @@ module Views
       def render_identity_field
         div(class: 'space-y-2.5') do
           render RubyUI::FormFieldLabel.new(for: 'email',
-                                            class: 'text-[10px] font-black uppercase tracking-widest text-slate-600 ml-5') do
+                                            class: 'ml-5 text-[10px] font-black uppercase tracking-widest text-muted-foreground') do
             t('sessions.login.email_label')
           end
           render RubyUI::Input.new(**email_input_attrs,
-                                   class: 'rounded-2xl border-slate-100 bg-slate-50/30 py-6 px-5 focus:bg-white focus:ring-4 focus:ring-[var(--primary)]/5 focus:border-[var(--primary)] transition-all placeholder:text-slate-300')
+                                   class: 'rounded-2xl border-border bg-background/80 px-5 py-6 text-foreground transition-all placeholder:text-muted-foreground focus:bg-card focus:ring-4 focus:ring-[var(--primary)]/10 focus:border-[var(--primary)]')
         end
       end
 
@@ -84,7 +84,7 @@ module Views
         div(class: 'space-y-2.5') do
           div(class: 'flex items-center justify-between px-5') do
             render RubyUI::FormFieldLabel.new(for: 'password',
-                                              class: 'text-[10px] font-black uppercase tracking-widest text-slate-600') do
+                                              class: 'text-[10px] font-black uppercase tracking-widest text-muted-foreground') do
               t('sessions.login.password_label')
             end
             render RubyUI::Link.new(href: view_context.rodauth.reset_password_request_path, variant: :link, size: :sm,
@@ -93,7 +93,7 @@ module Views
             end
           end
           render RubyUI::Input.new(**password_input_attrs,
-                                   class: 'rounded-2xl border-slate-100 bg-slate-50/30 py-6 px-5 focus:bg-white focus:ring-4 focus:ring-[var(--primary)]/5 focus:border-[var(--primary)] transition-all placeholder:text-slate-300')
+                                   class: 'rounded-2xl border-border bg-background/80 px-5 py-6 text-foreground transition-all placeholder:text-muted-foreground focus:bg-card focus:ring-4 focus:ring-[var(--primary)]/10 focus:border-[var(--primary)]')
         end
       end
 
@@ -102,10 +102,10 @@ module Views
           div(class: 'flex items-center gap-3 cursor-pointer group') do
             input(
               type: 'checkbox', name: 'remember', id: 'remember', value: 't',
-              class: 'w-4 h-4 rounded-md border-2 border-slate-200 text-[var(--primary)] focus:ring-[var(--primary)] transition-all cursor-pointer'
+              class: 'h-4 w-4 cursor-pointer rounded-md border-2 border-border bg-background text-[var(--primary)] transition-all focus:ring-[var(--primary)]'
             )
             label(for: 'remember',
-                  class: 'text-sm font-semibold text-slate-500 cursor-pointer select-none group-hover:text-slate-700 transition-colors') do
+                  class: 'cursor-pointer select-none text-sm font-semibold text-muted-foreground transition-colors group-hover:text-foreground') do
               t('sessions.login.remember_me')
             end
           end
@@ -123,11 +123,11 @@ module Views
       def render_oauth_section
         return unless oauth_enabled?
 
-        div(class: 'mt-10 pt-10 border-t border-slate-50') do
+        div(class: 'mt-10 border-t border-border pt-10') do
           provider_name = ENV.fetch('OIDC_PROVIDER_NAME', 'OIDC')
           form(action: view_context.rodauth.omniauth_request_path(:oidc), method: 'post', data: { turbo: 'false' }) do
             input(type: 'hidden', name: 'authenticity_token', value: view_context.form_authenticity_token)
-            render RubyUI::Button.new(type: :submit, variant: :outline, class: 'w-full rounded-2xl py-7 border-slate-100 text-slate-500 font-bold hover:bg-slate-50 transition-all shadow-sm') do
+            render RubyUI::Button.new(type: :submit, variant: :outline, class: 'w-full rounded-2xl border-border py-7 font-bold text-muted-foreground shadow-sm transition-all hover:bg-accent') do
               render_oidc_icon
               span { t('sessions.login.oauth_continue', provider: provider_name) }
             end
@@ -143,7 +143,7 @@ module Views
       end
 
       def render_create_account_link
-        Text(size: '2', weight: 'medium', class: 'text-slate-400') do
+        Text(size: '2', weight: 'medium', class: 'text-muted-foreground') do
           plain "#{t('sessions.login.need_account')} "
           render RubyUI::Link.new(href: view_context.rodauth.create_account_path, variant: :link,
                                   class: 'font-bold text-[var(--primary)] p-0 h-auto hover:underline') do
@@ -155,7 +155,7 @@ module Views
       def render_resend_verification_link
         div do
           render RubyUI::Link.new(href: view_context.rodauth.verify_account_resend_path, variant: :link,
-                                  class: 'text-xs text-slate-600 font-medium hover:text-slate-700') do
+                                  class: 'text-xs font-medium text-muted-foreground hover:text-foreground') do
             t('sessions.login.resend_verification')
           end
         end

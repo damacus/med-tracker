@@ -10,7 +10,7 @@ module Components
       end
 
       def view_template
-        div(class: 'relative min-h-screen bg-gradient-to-br from-sky-50 via-white to-indigo-100 py-16 sm:py-20') do
+        div(class: 'relative min-h-screen bg-gradient-to-br from-background via-background to-muted py-16 sm:py-20') do
           div(class: 'relative mx-auto flex w-full max-w-5xl flex-col items-center gap-12 px-4 sm:px-6 lg:px-8') do
             header_section
             form_section
@@ -22,21 +22,21 @@ module Components
 
       def header_section
         div(class: 'mx-auto max-w-xl text-center space-y-3') do
-          Heading(level: 1, class: 'text-4xl font-bold tracking-tight text-slate-800 sm:text-5xl') { 'MedTracker' }
-          Text(size: 'lg', class: 'text-slate-600 sm:text-xl') do
+          Heading(level: 1, class: 'text-4xl font-bold tracking-tight text-foreground sm:text-5xl') { 'MedTracker' }
+          Text(size: 'lg', class: 'text-muted-foreground sm:text-xl') do
             "Welcome! You've been invited as a #{@invitation.role.titleize}."
           end
         end
       end
 
       def form_section
-        card_classes = 'w-full max-w-xl backdrop-blur bg-white/90 shadow-2xl border border-white/70 ' \
-                       'ring-1 ring-black/5 rounded-2xl overflow-hidden'
+        card_classes = 'w-full max-w-xl overflow-hidden rounded-2xl border border-border/70 bg-card/85 ' \
+                       'shadow-2xl ring-1 ring-ring/10 backdrop-blur'
 
         Card(class: card_classes) do
-          CardHeader(class: 'space-y-2 bg-white/60') do
-            CardTitle(class: 'text-2xl font-semibold text-slate-900') { 'Complete Your Account' }
-            CardDescription(class: 'text-base text-slate-600') do
+          CardHeader(class: 'space-y-2 bg-card/60') do
+            CardTitle(class: 'text-2xl font-semibold text-foreground') { 'Complete Your Account' }
+            CardDescription(class: 'text-base text-muted-foreground') do
               plain 'Fill in your details to accept the invitation.'
             end
           end
@@ -67,7 +67,7 @@ module Components
           FormField do
             FormFieldLabel(for: 'email') { 'Email' }
             Input(type: :email, name: 'email', id: 'email', value: @invitation.email,
-                  readonly: true, class: 'bg-slate-50')
+                  readonly: true, class: 'bg-muted/70')
           end
 
           FormField do

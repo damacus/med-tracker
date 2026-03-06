@@ -30,11 +30,11 @@ module Views
       end
 
       def render_card_header
-        render RubyUI::CardHeader.new(class: 'space-y-2 bg-white/60') do
-          render RubyUI::CardTitle.new(class: 'text-xl font-semibold text-slate-900') do
+        render RubyUI::CardHeader.new(class: 'space-y-2 bg-card/60') do
+          render RubyUI::CardTitle.new(class: 'text-xl font-semibold text-foreground') do
             t('rodauth.views.webauthn_setup.card_title')
           end
-          render RubyUI::CardDescription.new(class: 'text-base text-slate-600') do
+          render RubyUI::CardDescription.new(class: 'text-base text-muted-foreground') do
             plain t('rodauth.views.webauthn_setup.card_description')
           end
         end
@@ -48,12 +48,12 @@ module Views
       end
 
       def render_info_section
-        div(class: 'bg-sky-50 rounded-xl p-4 space-y-3') do
+        div(class: 'space-y-3 rounded-xl border border-border bg-muted/60 p-4') do
           div(class: 'flex items-start gap-3') do
             render_info_icon
             div(class: 'space-y-1') do
-              h4(class: 'font-medium text-slate-900') { t('rodauth.views.webauthn_setup.info_title') }
-              p(class: 'text-sm text-slate-600') do
+              h4(class: 'font-medium text-foreground') { t('rodauth.views.webauthn_setup.info_title') }
+              p(class: 'text-sm text-muted-foreground') do
                 t('rodauth.views.webauthn_setup.info_description')
               end
             end
@@ -62,13 +62,13 @@ module Views
       end
 
       def render_info_icon
-        div(class: 'flex-shrink-0 w-10 h-10 bg-sky-100 rounded-full flex items-center justify-center') do
-          render Icons::Lock.new(size: 20, class: 'text-sky-600')
+        div(class: 'flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary/12') do
+          render Icons::Lock.new(size: 20, class: 'text-primary')
         end
       end
 
       def render_setup_form
-        div(class: 'border-t border-slate-200 pt-6') do
+        div(class: 'border-t border-border pt-6') do
           form(
             method: :post,
             action: view_context.rodauth.webauthn_setup_path,
@@ -102,7 +102,7 @@ module Views
             autocomplete: 'current-password',
             placeholder: t('rodauth.views.webauthn_setup.current_password_placeholder')
           )
-          p(class: 'text-xs text-slate-500 mt-1') { t('rodauth.views.webauthn_setup.current_password_hint') }
+          p(class: 'mt-1 text-xs text-muted-foreground') { t('rodauth.views.webauthn_setup.current_password_hint') }
         end
       end
 

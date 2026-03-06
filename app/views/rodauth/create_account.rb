@@ -50,9 +50,9 @@ module Views
       end
 
       def render_card_header
-        render RubyUI::CardHeader.new(class: 'space-y-2 bg-white/60') do
-          render RubyUI::CardTitle.new(class: 'text-2xl font-semibold text-slate-900') { t('rodauth.views.create_account.card_title') }
-          render RubyUI::CardDescription.new(class: 'text-base text-slate-600') do
+        render RubyUI::CardHeader.new(class: 'space-y-2 bg-card/60') do
+          render RubyUI::CardTitle.new(class: 'text-2xl font-semibold text-foreground') { t('rodauth.views.create_account.card_title') }
+          render RubyUI::CardDescription.new(class: 'text-base text-muted-foreground') do
             plain t('rodauth.views.create_account.card_description')
           end
         end
@@ -174,8 +174,8 @@ module Views
       end
 
       def render_other_options
-        div(class: 'space-y-3 border-t border-slate-200 pt-6') do
-          h3(class: 'text-sm font-medium text-slate-700') { t('rodauth.views.create_account.existing_account') }
+        div(class: 'space-y-3 border-t border-border pt-6') do
+          h3(class: 'text-sm font-medium text-foreground') { t('rodauth.views.create_account.existing_account') }
           div(class: 'flex flex-col gap-2 text-sm') do
             render RubyUI::Link.new(href: view_context.rodauth.login_path, variant: :link) do
               t('rodauth.views.create_account.sign_in')

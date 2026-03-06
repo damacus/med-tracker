@@ -568,9 +568,17 @@ en:
     no_changes: "No changes to save."
     profile_update_failed: "Failed to update profile: %{errors}"
     email_update_failed: "Failed to update email: %{errors}"
+    appearance:
+      title: "Appearance"
+      description: "Choose how MedTracker looks across signed-in and signed-out screens."
+      mode_label: "Mode"
+      modes:
+        light: "Light"
+        dark: "Dark"
+        system: "System"
     theme_picker:
-      title: "Application Theme"
-      description: "Personalize your experience with a custom color palette"
+      title: "Color Palette"
+      description: "Pair your appearance setting with a palette that matches your preference."
       themes:
         default: "Standard"
         serene_sage: "Serene Sage"

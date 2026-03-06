@@ -512,9 +512,17 @@ ga:
     no_changes: "Gan athruithe le sábháil."
     profile_update_failed: "Theip ar nuashonrú na próifíle: %{errors}"
     email_update_failed: "Theip ar nuashonrú an ríomhphoist: %{errors}"
+    appearance:
+      title: "Cuma"
+      description: "Roghnaigh conas a fheictear MedTracker ar scáileáin shínithe isteach agus phoiblí."
+      mode_label: "Mód"
+      modes:
+        light: "Geal"
+        dark: "Dorcha"
+        system: "Córas"
     theme_picker:
-      title: "Téama an Fheidhmchláir"
-      description: "Pearsanáigh do thaithle le paéite datha saincheaptha"
+      title: "Pailéad Datha"
+      description: "Meaitseáil do mhodh cuma le pailéad a oireann do do rogha."
       themes:
         default: "Caighdeánach"
         serene_sage: "Sáite Síoraí"

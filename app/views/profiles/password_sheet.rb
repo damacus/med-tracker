@@ -61,7 +61,7 @@ module Views
 
       def render_password_field(name, label_text, placeholder)
         div do
-          label(class: 'text-sm font-medium text-slate-900 mb-2 block') { label_text }
+          label(class: 'mb-2 block text-sm font-medium text-foreground') { label_text }
           render Input.new(
             type: 'password',
             name: name,

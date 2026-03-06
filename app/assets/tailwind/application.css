@@ -251,6 +251,7 @@
 }
 
 :root {
+	color-scheme: light;
 	--background: oklch(1 0 0);
 	--foreground: oklch(0.145 0 0);
 	--bg: var(--background);
@@ -309,6 +310,60 @@
 
 	--secondary-container: oklch(from var(--secondary) l c h / 0.12);
 	--on-secondary-container: oklch(from var(--secondary) l c h / 0.9);
+}
+
+.dark {
+	color-scheme: dark;
+	--background: oklch(0.16 0.01 260);
+	--foreground: oklch(0.95 0.01 255);
+	--bg: var(--background);
+	--text-main: var(--foreground);
+	--card: oklch(0.22 0.012 260);
+	--card-foreground: oklch(0.95 0.01 255);
+	--popover: oklch(0.2 0.012 260);
+	--popover-foreground: oklch(0.95 0.01 255);
+	--primary: oklch(0.78 0.16 250);
+	--primary-foreground: oklch(0.19 0.02 255);
+	--secondary: oklch(0.28 0.012 260);
+	--secondary-foreground: oklch(0.94 0.01 255);
+	--muted: oklch(0.27 0.012 260);
+	--muted-foreground: oklch(0.74 0.015 255);
+	--accent: oklch(0.29 0.015 250);
+	--accent-foreground: oklch(0.97 0.01 255);
+	--destructive: oklch(0.68 0.2 23);
+	--destructive-foreground: oklch(0.98 0.01 255);
+	--border: oklch(0.34 0.012 255);
+	--input: oklch(0.32 0.012 255);
+	--ring: oklch(0.7 0.08 250);
+	--chart-1: oklch(0.7 0.17 250);
+	--chart-2: oklch(0.76 0.12 190);
+	--chart-3: oklch(0.68 0.07 230);
+	--chart-4: oklch(0.8 0.15 85);
+	--chart-5: oklch(0.72 0.15 55);
+	--sidebar: oklch(0.18 0.012 260);
+	--sidebar-foreground: oklch(0.95 0.01 255);
+	--sidebar-primary: var(--primary);
+	--sidebar-primary-foreground: var(--primary-foreground);
+	--sidebar-accent: oklch(0.25 0.014 250);
+	--sidebar-accent-foreground: oklch(0.95 0.01 255);
+	--sidebar-border: oklch(0.3 0.012 255);
+	--sidebar-ring: var(--ring);
+	--primary-container: oklch(from var(--primary) 0.34 c h / 0.5);
+	--on-primary-container: oklch(0.95 0.01 255);
+	--error: var(--destructive);
+	--on-error: var(--destructive-foreground);
+	--error-container: oklch(from var(--error) 0.33 c h / 0.42);
+	--on-error-container: oklch(0.95 0.01 255);
+	--warning: oklch(0.77 0.16 82);
+	--warning-foreground: oklch(0.2 0.02 90);
+	--warning-container: oklch(from var(--warning) 0.34 c h / 0.42);
+	--on-warning-container: oklch(0.95 0.01 255);
+	--success: oklch(0.77 0.18 150);
+	--success-foreground: oklch(0.2 0.02 150);
+	--success-container: oklch(from var(--success) 0.34 c h / 0.42);
+	--on-success-container: oklch(0.95 0.01 255);
+	--secondary-container: oklch(from var(--secondary) 0.34 c h / 0.42);
+	--on-secondary-container: oklch(0.95 0.01 255);
 }
 
 @theme inline {
@@ -392,6 +447,10 @@
 		@apply border-border outline-ring/50;
 	}
 
+	html {
+		@apply bg-background;
+	}
+
 	body {
 		@apply bg-background text-foreground antialiased transition-colors duration-500;
 		font-family: var(--font-family, 'Inter', sans-serif);
@@ -402,136 +461,238 @@
 :root.theme-serene-sage {
 	--primary: #7DAA92 !important;
 	--primary-foreground: #FFFFFF !important;
-	--background: #FAFAF9 !important;
-	--foreground: #3D405B !important;
-	--bg: #FAFAF9 !important;
-	--text-main: #3D405B !important;
 	--muted: #E8F3ED !important;
 	--accent: #E8F3ED !important;
 	--accent-foreground: #7DAA92 !important;
+	--ring: #7DAA92 !important;
 	--font-family: 'Inter', sans-serif !important;
 }
 
 :root.theme-modern-clinical {
 	--primary: #0066FF !important;
 	--primary-foreground: #FFFFFF !important;
-	--background: #F8FAFC !important;
-	--foreground: #0F172A !important;
-	--bg: #F8FAFC !important;
-	--text-main: #0F172A !important;
 	--muted: #EEF4FF !important;
 	--accent: #EEF4FF !important;
 	--accent-foreground: #0066FF !important;
+	--ring: #0066FF !important;
 	--font-family: 'Plus Jakarta Sans', sans-serif !important;
 }
 
 :root.theme-warm-earth {
 	--primary: #E07A5F !important;
 	--primary-foreground: #FFFFFF !important;
-	--background: #FDFBF7 !important;
-	--foreground: #22223B !important;
-	--bg: #FDFBF7 !important;
-	--text-main: #22223B !important;
 	--muted: #FDF2F0 !important;
 	--accent: #FDF2F0 !important;
 	--accent-foreground: #E07A5F !important;
+	--ring: #E07A5F !important;
 	--font-family: 'Lexend', sans-serif !important;
 }
 
 :root.theme-deep-lavender {
 	--primary: #9B5DE5 !important;
 	--primary-foreground: #FFFFFF !important;
-	--background: #FAF9FF !important;
-	--foreground: #240046 !important;
-	--bg: #FAF9FF !important;
-	--text-main: #240046 !important;
 	--muted: #F5EEFD !important;
 	--accent: #F5EEFD !important;
 	--accent-foreground: #9B5DE5 !important;
+	--ring: #9B5DE5 !important;
 	--font-family: 'Inter', sans-serif !important;
 }
 
 :root.theme-forest-care {
 	--primary: #2D6A4F !important;
 	--primary-foreground: #FFFFFF !important;
-	--background: #F7FCF9 !important;
-	--foreground: #081C15 !important;
-	--bg: #F7FCF9 !important;
-	--text-main: #081C15 !important;
 	--muted: #E9F5EF !important;
 	--accent: #E9F5EF !important;
 	--accent-foreground: #2D6A4F !important;
+	--ring: #2D6A4F !important;
 	--font-family: 'Outfit', sans-serif !important;
 }
 
 :root.theme-sunset-support {
 	--primary: #F28482 !important;
 	--primary-foreground: #FFFFFF !important;
-	--background: #FFFAF5 !important;
-	--foreground: #4A4E69 !important;
-	--bg: #FFFAF5 !important;
-	--text-main: #4A4E69 !important;
 	--muted: #FEF2F2 !important;
 	--accent: #FEF2F2 !important;
 	--accent-foreground: #F28482 !important;
+	--ring: #F28482 !important;
 	--font-family: 'Figtree', sans-serif !important;
 }
 
 :root.theme-tech-indigo {
 	--primary: #4361EE !important;
 	--primary-foreground: #FFFFFF !important;
-	--background: #F8F9FE !important;
-	--foreground: #2B2D42 !important;
-	--bg: #F8F9FE !important;
-	--text-main: #2B2D42 !important;
 	--muted: #ECF0FF !important;
 	--accent: #ECF0FF !important;
 	--accent-foreground: #4361EE !important;
+	--ring: #4361EE !important;
 	--font-family: 'Geist', sans-serif !important;
 }
 
 :root.theme-soft-rose {
 	--primary: #E5989B !important;
 	--primary-foreground: #FFFFFF !important;
-	--background: #FFF9F9 !important;
-	--foreground: #6D6875 !important;
-	--bg: #FFF9F9 !important;
-	--text-main: #6D6875 !important;
 	--muted: #F9EDED !important;
 	--accent: #F9EDED !important;
 	--accent-foreground: #E5989B !important;
+	--ring: #E5989B !important;
 	--font-family: 'Urbanist', sans-serif !important;
 }
 
 :root.theme-minty-fresh {
 	--primary: #06D6A0 !important;
 	--primary-foreground: #FFFFFF !important;
-	--background: #F4FEFB !important;
-	--foreground: #073B4C !important;
-	--bg: #F4FEFB !important;
-	--text-main: #073B4C !important;
 	--muted: #E6FBF5 !important;
 	--accent: #E6FBF5 !important;
 	--accent-foreground: #06D6A0 !important;
+	--ring: #06D6A0 !important;
 	--font-family: 'Public Sans', sans-serif !important;
 }
 
 :root.theme-minimalist-monochrome {
 	--primary: #1A1A1A !important;
 	--primary-foreground: #FFFFFF !important;
-	--background: #FFFFFF !important;
-	--foreground: #111827 !important;
-	--bg: #FFFFFF !important;
-	--text-main: #111827 !important;
 	--muted: #F3F4F6 !important;
 	--accent: #F3F4F6 !important;
 	--accent-foreground: #1A1A1A !important;
+	--ring: #1A1A1A !important;
 	--font-family: 'Inter', sans-serif !important;
+}
+
+.dark:root.theme-serene-sage {
+	--muted: color-mix(in oklab, #7DAA92 22%, transparent) !important;
+	--accent: color-mix(in oklab, #7DAA92 28%, transparent) !important;
+}
+
+.dark:root.theme-modern-clinical {
+	--muted: color-mix(in oklab, #0066FF 20%, transparent) !important;
+	--accent: color-mix(in oklab, #0066FF 26%, transparent) !important;
+}
+
+.dark:root.theme-warm-earth {
+	--muted: color-mix(in oklab, #E07A5F 20%, transparent) !important;
+	--accent: color-mix(in oklab, #E07A5F 26%, transparent) !important;
+}
+
+.dark:root.theme-deep-lavender {
+	--muted: color-mix(in oklab, #9B5DE5 20%, transparent) !important;
+	--accent: color-mix(in oklab, #9B5DE5 26%, transparent) !important;
+}
+
+.dark:root.theme-forest-care {
+	--muted: color-mix(in oklab, #2D6A4F 22%, transparent) !important;
+	--accent: color-mix(in oklab, #2D6A4F 28%, transparent) !important;
+}
+
+.dark:root.theme-sunset-support {
+	--muted: color-mix(in oklab, #F28482 20%, transparent) !important;
+	--accent: color-mix(in oklab, #F28482 26%, transparent) !important;
+}
+
+.dark:root.theme-tech-indigo {
+	--muted: color-mix(in oklab, #4361EE 20%, transparent) !important;
+	--accent: color-mix(in oklab, #4361EE 26%, transparent) !important;
+}
+
+.dark:root.theme-soft-rose {
+	--muted: color-mix(in oklab, #E5989B 20%, transparent) !important;
+	--accent: color-mix(in oklab, #E5989B 26%, transparent) !important;
+}
+
+.dark:root.theme-minty-fresh {
+	--muted: color-mix(in oklab, #06D6A0 20%, transparent) !important;
+	--accent: color-mix(in oklab, #06D6A0 26%, transparent) !important;
+}
+
+.dark:root.theme-minimalist-monochrome {
+	--muted: oklch(0.28 0.01 255) !important;
+	--accent: oklch(0.3 0.01 255) !important;
+	--accent-foreground: oklch(0.96 0.01 255) !important;
+}
+
+.dark .bg-white {
+	background-color: var(--card) !important;
+}
+
+.dark .bg-white\/90 {
+	background-color: color-mix(in oklab, var(--card) 90%, transparent) !important;
+}
+
+.dark .bg-white\/80 {
+	background-color: color-mix(in oklab, var(--card) 80%, transparent) !important;
+}
+
+.dark .bg-white\/60 {
+	background-color: color-mix(in oklab, var(--card) 60%, transparent) !important;
+}
+
+.dark .bg-white\/50 {
+	background-color: color-mix(in oklab, var(--card) 50%, transparent) !important;
+}
+
+.dark .bg-white\/20 {
+	background-color: color-mix(in oklab, var(--card) 20%, transparent) !important;
+}
+
+.dark .bg-white\/10 {
+	background-color: color-mix(in oklab, var(--card) 10%, transparent) !important;
+}
+
+.dark .bg-slate-50,
+.dark .bg-slate-50\/50,
+.dark .bg-slate-50\/30 {
+	background-color: color-mix(in oklab, var(--muted) 92%, transparent) !important;
+}
+
+.dark .bg-slate-100,
+.dark .bg-slate-100\/50 {
+	background-color: color-mix(in oklab, var(--muted) 100%, transparent) !important;
+}
+
+.dark .bg-slate-200,
+.dark .bg-slate-300 {
+	background-color: color-mix(in oklab, var(--accent) 100%, transparent) !important;
+}
+
+.dark .text-slate-900,
+.dark .text-slate-800,
+.dark .text-slate-700 {
+	color: var(--foreground) !important;
+}
+
+.dark .text-slate-600,
+.dark .text-slate-500,
+.dark .text-slate-400,
+.dark .text-slate-300,
+.dark .text-slate-200 {
+	color: var(--muted-foreground) !important;
+}
+
+.dark .border-slate-50,
+.dark .border-slate-100,
+.dark .border-slate-200,
+.dark .border-slate-300 {
+	border-color: var(--border) !important;
+}
+
+.dark .hover\:bg-slate-50:hover,
+.dark .hover\:bg-slate-100:hover {
+	background-color: var(--accent) !important;
+}
+
+.dark .hover\:text-slate-600:hover,
+.dark .hover\:text-slate-700:hover,
+.dark .hover\:text-slate-900:hover {
+	color: var(--foreground) !important;
+}
+
+.dark .placeholder\:text-slate-300::placeholder,
+.dark .placeholder\:text-slate-400::placeholder {
+	color: color-mix(in oklab, var(--muted-foreground) 78%, transparent) !important;
 }
 
 @layer components {
 	.nav {
-		@apply sticky top-0 z-40 w-full border-b border-border bg-white/70 backdrop-blur supports-[backdrop-filter]:bg-white/60;
+		@apply sticky top-0 z-40 w-full border-b border-border bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/65;
 	}
 
 	.nav__container {
@@ -552,11 +713,11 @@
 	}
 
 	.nav__menu {
-		@apply hidden items-center gap-3 text-sm font-medium text-slate-700 sm:flex;
+		@apply hidden items-center gap-3 text-sm font-medium text-muted-foreground sm:flex;
 	}
 
 	.nav__link {
-		@apply inline-flex items-center rounded-md px-3 py-2 min-h-[24px] text-sm font-medium text-slate-600 transition-colors hover:text-slate-900 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
+		@apply inline-flex items-center rounded-md px-3 py-2 min-h-[24px] text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
 	}
 
 	.nav__user-menu {

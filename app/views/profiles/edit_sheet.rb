@@ -66,7 +66,7 @@ module Views
       def render_field_input
         case @field
         when :email
-          label(class: 'text-sm font-medium text-slate-900 mb-2 block') { 'Email Address' }
+          label(class: 'mb-2 block text-sm font-medium text-foreground') { 'Email Address' }
           render Input.new(
             type: 'email',
             name: 'account[email]',
@@ -74,7 +74,7 @@ module Views
             value: @current_value
           )
         when :date_of_birth
-          label(class: 'text-sm font-medium text-slate-900 mb-2 block') { 'Date of Birth' }
+          label(class: 'mb-2 block text-sm font-medium text-foreground') { 'Date of Birth' }
           render Input.new(
             type: 'date',
             name: 'person[date_of_birth]',

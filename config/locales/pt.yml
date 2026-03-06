@@ -510,6 +510,29 @@ pt:
     no_changes: "Sem alterações a guardar."
     profile_update_failed: "Falha ao atualizar perfil: %{errors}"
     email_update_failed: "Falha ao atualizar email: %{errors}"
+    appearance:
+      title: "Aspeto"
+      description: "Escolha como o MedTracker aparece em ecrãs autenticados e públicos."
+      mode_label: "Modo"
+      modes:
+        light: "Claro"
+        dark: "Escuro"
+        system: "Sistema"
+    theme_picker:
+      title: "Paleta de cores"
+      description: "Combine o modo de aspeto com uma paleta adequada à sua preferência."
+      themes:
+        default: "Padrão"
+        serene_sage: "Sálvia Serena"
+        modern_clinical: "Clínico Moderno"
+        warm_earth: "Terra Quente"
+        deep_lavender: "Lavanda Profunda"
+        forest_care: "Cuidado da Floresta"
+        sunset_support: "Apoio ao Pôr do Sol"
+        tech_indigo: "Índigo Tecnológico"
+        soft_rose: "Rosa Suave"
+        minty_fresh: "Menta Fresca"
+        minimalist_monochrome: "Minimalista"
     close_account:
       title: "Encerrar Conta"
       description: "Eliminar permanentemente a sua conta e todos os dados associados"

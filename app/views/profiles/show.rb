@@ -27,8 +27,8 @@ module Views
 
       def render_header
         div(class: 'mb-8') do
-          h1(class: 'text-3xl font-bold text-slate-900') { 'My Profile' }
-          p(class: 'text-slate-600 mt-2') do
+          h1(class: 'text-3xl font-bold text-foreground') { 'My Profile' }
+          p(class: 'mt-2 text-muted-foreground') do
             'Manage your personal information and account settings'
           end
         end
@@ -97,17 +97,17 @@ module Views
       end
 
       def render_info_row(label, value)
-        div(class: 'flex justify-between items-center py-3 border-b border-slate-200 last:border-0') do
-          dt(class: 'text-sm font-medium text-slate-600') { label }
-          dd(class: 'text-sm text-slate-900') { value || 'Not set' }
+        div(class: 'flex items-center justify-between border-b border-border py-3 last:border-0') do
+          dt(class: 'text-sm font-medium text-muted-foreground') { label }
+          dd(class: 'text-sm text-foreground') { value || 'Not set' }
         end
       end
 
       def render_action_button(title, href, description, variant: :outline, button_text: 'Update')
-        div(class: 'flex items-start justify-between p-4 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors') do
+        div(class: 'flex items-start justify-between rounded-lg border border-border bg-card/70 p-4 transition-colors hover:bg-accent/50') do
           div(class: 'flex-1') do
-            h3(class: 'text-sm font-medium text-slate-900') { title }
-            p(class: 'text-sm text-slate-600 mt-1') { description }
+            h3(class: 'text-sm font-medium text-foreground') { title }
+            p(class: 'mt-1 text-sm text-muted-foreground') { description }
           end
           div(class: 'ml-4') do
             render RubyUI::Link.new(
@@ -120,10 +120,10 @@ module Views
       end
 
       def render_info_row_with_edit(label, value, field)
-        div(class: 'flex justify-between items-center py-3 border-b border-slate-200 last:border-0') do
-          dt(class: 'text-sm font-medium text-slate-600') { label }
+        div(class: 'flex items-center justify-between border-b border-border py-3 last:border-0') do
+          dt(class: 'text-sm font-medium text-muted-foreground') { label }
           div(class: 'flex items-center gap-2') do
-            dd(class: 'text-sm text-slate-900') { value || 'Not set' }
+            dd(class: 'text-sm text-foreground') { value || 'Not set' }
             render_edit_sheet(label, field, value)
           end
         end
@@ -143,10 +143,10 @@ module Views
       end
 
       def render_email_change_sheet
-        div(class: 'flex items-start justify-between p-4 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors') do
+        div(class: 'flex items-start justify-between rounded-lg border border-border bg-card/70 p-4 transition-colors hover:bg-accent/50') do
           div(class: 'flex-1') do
-            h3(class: 'text-sm font-medium text-slate-900') { 'Change Email Address' }
-            p(class: 'text-sm text-slate-600 mt-1') { 'Update the email address you use to sign in' }
+            h3(class: 'text-sm font-medium text-foreground') { 'Change Email Address' }
+            p(class: 'mt-1 text-sm text-muted-foreground') { 'Update the email address you use to sign in' }
           end
           div(class: 'ml-4') do
             render RubyUI::Link.new(
@@ -160,10 +160,10 @@ module Views
       end
 
       def render_password_change_sheet
-        div(class: 'flex items-start justify-between p-4 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors') do
+        div(class: 'flex items-start justify-between rounded-lg border border-border bg-card/70 p-4 transition-colors hover:bg-accent/50') do
           div(class: 'flex-1') do
-            h3(class: 'text-sm font-medium text-slate-900') { 'Change Password' }
-            p(class: 'text-sm text-slate-600 mt-1') { 'Update your password to keep your account secure' }
+            h3(class: 'text-sm font-medium text-foreground') { 'Change Password' }
+            p(class: 'mt-1 text-sm text-muted-foreground') { 'Update your password to keep your account secure' }
           end
           div(class: 'ml-4') do
             render RubyUI::Link.new(

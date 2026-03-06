@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="<%= I18n.locale %>">
+<html lang="<%= I18n.locale %>" data-allow-palette="<%= current_user.present? %>">
   <head>
     <meta charset="UTF-8">
     <title><%= content_for(:title) || "Med Tracker" %></title>
@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="theme-color" content="#007BFF">
+    <meta name="theme-color" content="#f8fafc">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
     <%= csrf_meta_tags %>
@@ -18,20 +18,10 @@
 
     <%= yield :head %>
 
-    <script>
-      <% if current_user %>
-        const savedTheme = localStorage.getItem("med-tracker-theme")
-        if (savedTheme && savedTheme !== "default") {
-          document.documentElement.classList.add(`theme-${savedTheme}`)
-        }
-      <% else %>
-        localStorage.removeItem("med-tracker-theme")
-      <% end %>
-    </script>
-
     <link rel="manifest" href="/manifest.webmanifest">
     <%= favicon_link_tag "/favicon.svg", type: "image/svg+xml" %>
     <%= favicon_link_tag "/favicon.svg", rel: "apple-touch-icon", type: "image/svg+xml" %>
+    <%= javascript_include_tag "appearance_boot", "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "hamburgers", "data-turbo-track": "reload" %>
     <% if current_user %>
@@ -39,6 +29,7 @@
     <% else %>
       <%= javascript_importmap_tags "auth" %>
     <% end %>
+  </head>
 
   <body class="bg-background">
     <%= render Components::Layouts::Sidebar.new(current_user: current_user) %>
