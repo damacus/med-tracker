@@ -15,3 +15,7 @@
 ## 2026-03-05 - Materialize Shared Card Data Once Per Render
 **Learning:** In MedTracker card components, showing both a "today's doses" badge and the corresponding take list can accidentally trigger duplicate `medication_takes` work in the same render: one query for the count and another for the rows, plus repeated boolean checks if memoization uses `||=` for falsey values.
 **Action:** When a card needs the same association for multiple UI elements, materialize it once into an array and reuse it for counts and rendering. For per-render boolean/nil memoization, prefer `instance_variable_defined?` guards over `||=` so blocked/out-of-stock states cache correctly.
+
+## 2025-03-05 - Avoid N+1 Queries on `active_schedules`
+**Learning:** In the DashboardPresenter, `active_schedules` was being populated with `.where(person_id: people.select(:id))` which resulted in a subquery, and then the views were calling `.count` or `.take(3)` directly on the relation which forced multiple queries.
+**Action:** When accessing a collection multiple times across views (like `.count`, `.take(3)`, etc.), materialize it once in the presenter using `.load` or `.to_a`. Change the subquery to an in-memory map (`people.map(&:id)`) if the parent collection is already loaded, and always use enumerable methods (e.g., `.size`, `.to_a.take()`) in the views to prevent repeated database hits.

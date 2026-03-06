@@ -82,13 +82,13 @@ module Components
         div(class: 'grid grid-cols-2 lg:grid-cols-4 auto-rows-fr gap-4 mb-12') do
           render Components::Shared::MetricCard.new(
             title: t('dashboard.stats.people'),
-            value: people.count,
+            value: people.size,
             icon_type: 'users',
             href: people_path
           )
           render Components::Shared::MetricCard.new(
             title: t('dashboard.stats.active_schedules'),
-            value: active_schedules.count,
+            value: active_schedules.size,
             icon_type: 'pill',
             href: schedules_path
           )

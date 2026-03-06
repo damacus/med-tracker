@@ -17,8 +17,8 @@ module Components
           Table(class: 'dashboard__stats-table') do
             caption(class: 'dashboard__section-title text-left') { 'Quick stats' }
             TableBody do
-              render_stat_row('People', people.count)
-              render_stat_row('Active schedules', active_schedules.count)
+              render_stat_row('People', people.size)
+              render_stat_row('Active schedules', active_schedules.size)
             end
           end
         end
