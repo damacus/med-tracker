@@ -131,10 +131,8 @@ class PersonMedicationsController < ApplicationController
   def take_medication
     authorize @person_medication, :take_medication?
 
-    # SECURITY: Enforce timing restrictions server-side
-    # This prevents bypassing UI-disabled buttons via direct API calls
-    unless @person_medication.can_administer?
-      reason = @person_medication.administration_blocked_reason
+    reason = take_medication_blocked_reason(@person_medication)
+    if reason
       message = reason == :out_of_stock ? 'Cannot take medication: out of stock' : 'Cannot take medication: timing restrictions not met'
       respond_to do |format|
         format.html do
@@ -164,9 +162,17 @@ class PersonMedicationsController < ApplicationController
       return
     end
 
+    stock_source_error, taken_from_medication = resolve_taken_from_medication(@person_medication)
+    if stock_source_error
+      respond_take_medication_stock_source_error(scope: 'person_medications', error: stock_source_error)
+      return
+    end
+
     @take = @person_medication.medication_takes.create(
       taken_at: Time.current,
-      amount_ml: amount
+      amount_ml: amount,
+      taken_from_medication: taken_from_medication,
+      taken_from_location: taken_from_medication.location
     )
     unless @take.persisted?
       respond_take_medication_invalid_dose(scope: 'person_medications')

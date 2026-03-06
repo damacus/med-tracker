@@ -43,4 +43,35 @@ RSpec.describe Components::Schedules::Card, type: :component do
     expect(button).not_to be_nil
     expect(button.text).to include('Invalid Dose Configured')
   end
+
+  it 'shows the recorded location for today takes' do
+    add_schedule_take_for('Schedule Alt Location')
+    rendered = render_schedule_card
+    expect(rendered.text).to include('Schedule Alt Location')
+  end
+
+  def render_schedule_card
+    vc = view_context
+    vc.singleton_class.define_method(:current_user) { nil }
+    html = vc.render(described_class.new(schedule: schedule, person: person))
+    Nokogiri::HTML::DocumentFragment.parse(html)
+  end
+
+  def add_schedule_take_for(location_name)
+    alternate_location = create(:location, name: location_name)
+    alternate_medication = create(
+      :medication,
+      name: medication.name,
+      location: alternate_location,
+      dosage_amount: medication.dosage_amount,
+      dosage_unit: medication.dosage_unit
+    )
+    MedicationTake.create!(
+      schedule: schedule,
+      taken_at: Time.current,
+      amount_ml: 400,
+      taken_from_medication: alternate_medication,
+      taken_from_location: alternate_location
+    )
+  end
 end

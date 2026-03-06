@@ -195,7 +195,12 @@ module Components
         ) do
           div(class: 'flex items-center gap-3') do
             render Icons::CheckCircle.new(size: 16, class: 'text-emerald-500')
-            Text(size: '2', weight: 'bold', class: 'text-slate-700') { take.taken_at.strftime('%l:%M %p').strip }
+            div(class: 'space-y-1') do
+              Text(size: '2', weight: 'bold', class: 'text-slate-700') { take.taken_at.strftime('%l:%M %p').strip }
+              if take.inventory_location.present?
+                Text(size: '1', class: 'text-slate-400') { take.inventory_location.name }
+              end
+            end
           end
           if take.amount_ml.present?
             Text(size: '1', weight: 'black', class: 'text-slate-400 uppercase tracking-tighter') do
@@ -208,43 +213,29 @@ module Components
       def render_take_medication_button
         return unless view_context.policy(person_medication).take_medication?
 
-        if invalid_dose_configured? || !person_medication.can_administer?
-          render_disabled_button_with_reason
-        else
-          form_with(
-            url: take_medication_person_person_medication_path(person, person_medication),
-            method: :post,
-            class: 'flex-1',
-            data: { controller: 'optimistic-take', action: 'submit->optimistic-take#submit' }
-          ) do
-            render RubyUI::Button.new(
-              type: :submit,
-              variant: :primary,
-              size: :lg,
-              class: 'w-full rounded-xl py-6 font-bold shadow-lg shadow-primary/20 hover:shadow-xl ' \
-                     'hover:shadow-primary/30',
-              data: { optimistic_take_target: 'button', testid: "take-person-medication-#{person_medication.id}" }
-            ) do
-              plain take_label
-            end
-          end
-        end
-      end
-
-      def render_disabled_button_with_reason
         label = if invalid_dose_configured?
                   t('person_medications.card.invalid_dose')
                 else
-                  reason = person_medication.administration_blocked_reason
-                  reason == :out_of_stock ? t('person_medications.card.out_of_stock') : take_label
+                  blocked_reason == :out_of_stock ? t('person_medications.card.out_of_stock') : take_label
                 end
-        render Button.new(
-          variant: :secondary,
-          size: :lg,
-          disabled: true,
-          class: 'flex-1 rounded-xl py-6 opacity-50 grayscale',
-          data: { testid: "take-person-medication-#{person_medication.id}-disabled" }
-        ) { label }
+        render Components::Medications::TakeAction.new(
+          source: person_medication,
+          context: { person: person, current_user: current_user },
+          amount: person_medication.dose_amount,
+          button: {
+            label: take_label,
+            variant: :primary,
+            size: :lg,
+            class: 'w-full rounded-xl py-6 font-bold shadow-lg shadow-primary/20 hover:shadow-xl ' \
+                   'hover:shadow-primary/30',
+            testid: "take-person-medication-#{person_medication.id}",
+            form_class: 'flex-1'
+          },
+          state: {
+            disabled: invalid_dose_configured? || blocked_reason.present?,
+            label: label
+          }
+        )
       end
 
       def own_dose?
@@ -259,6 +250,12 @@ module Components
 
       def invalid_dose_configured?
         person_medication.dose_amount.to_f <= 0
+      end
+
+      def blocked_reason
+        @blocked_reason ||= MedicationStockSourceResolver
+                            .new(user: current_user, source: person_medication)
+                            .blocked_reason
       end
 
       def render_person_medication_actions

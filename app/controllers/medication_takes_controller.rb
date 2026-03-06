@@ -1,22 +1,28 @@
 # frozen_string_literal: true
 
 class MedicationTakesController < ApplicationController
+  include TakeMedicationGuardable
+
   before_action :set_schedule, only: [:create]
 
   def create
-    # SECURITY: Enforce timing and stock restrictions server-side
-    # This prevents bypassing UI-disabled buttons via direct API calls
-    unless @schedule.can_administer?
-      reason = @schedule.administration_blocked_reason
-      message = reason == :out_of_stock ? 'Cannot take medication: out of stock' : 'Cannot take medication: timing restrictions not met'
-      respond_to do |format|
-        format.html { redirect_back_or_to(root_path, alert: message) }
-        format.json { render json: { success: false, errors: [message] }, status: :unprocessable_content }
-      end
+    if (reason = take_medication_blocked_reason(@schedule))
+      respond_create_error(message: blocked_reason_message(reason))
       return
     end
 
-    @medication_take = @schedule.medication_takes.build(medication_take_params)
+    stock_source_error, taken_from_medication = resolve_taken_from_medication(@schedule)
+    if stock_source_error
+      respond_create_error(message: stock_source_error_message(stock_source_error))
+      return
+    end
+
+    @medication_take = @schedule.medication_takes.build(
+      medication_take_params.merge(
+        taken_from_medication: taken_from_medication,
+        taken_from_location: taken_from_medication.location
+      )
+    )
     @medication_take.amount_ml ||= @schedule.dosage.amount
     authorize @medication_take
 
@@ -43,11 +49,33 @@ class MedicationTakesController < ApplicationController
 
   def medication_take_params
     if params[:medication_take].present?
-      params.expect(medication_take: %i[taken_at notes]).tap do |whitelisted|
+      params.expect(medication_take: %i[taken_at notes taken_from_medication_id]).tap do |whitelisted|
         whitelisted[:taken_at] ||= Time.current
       end
     else
-      { taken_at: Time.current }
+      {
+        taken_at: Time.current,
+        taken_from_medication_id: requested_taken_from_medication_id
+      }
+    end
+  end
+
+  def blocked_reason_message(reason)
+    reason == :out_of_stock ? 'Cannot take medication: out of stock' : 'Cannot take medication: timing restrictions not met'
+  end
+
+  def stock_source_error_message(stock_source_error)
+    if stock_source_error == :selection_required
+      'Choose a location to record this dose.'
+    else
+      'Selected location is unavailable for this medication.'
+    end
+  end
+
+  def respond_create_error(message:)
+    respond_to do |format|
+      format.html { redirect_back_or_to(root_path, alert: message) }
+      format.json { render json: { success: false, errors: [message] }, status: :unprocessable_content }
     end
   end
 end

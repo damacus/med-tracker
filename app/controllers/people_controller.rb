@@ -23,11 +23,13 @@ class PeopleController < ApplicationController
 
     takes_by_schedule = MedicationTake
                         .where(schedule_id: schedule_ids, taken_at: today_start..)
+                        .includes(:taken_from_location, :taken_from_medication)
                         .order(taken_at: :desc)
                         .group_by(&:schedule_id)
 
     takes_by_person_medication = MedicationTake
                                  .where(person_medication_id: person_medication_ids, taken_at: today_start..)
+                                 .includes(:taken_from_location, :taken_from_medication)
                                  .order(taken_at: :desc)
                                  .group_by(&:person_medication_id)
 

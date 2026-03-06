@@ -47,6 +47,8 @@ RSpec.describe MedicationTake do
   describe 'associations' do
     it { is_expected.to belong_to(:schedule).optional }
     it { is_expected.to belong_to(:person_medication).optional }
+    it { is_expected.to belong_to(:taken_from_medication).class_name('Medication').optional }
+    it { is_expected.to belong_to(:taken_from_location).class_name('Location').optional }
   end
 
   describe 'source validation' do
@@ -143,6 +145,59 @@ RSpec.describe MedicationTake do
             amount_ml: 10.0
           )
         end.to change { medication.reload.current_supply }.from(100).to(99)
+      end
+    end
+
+    context 'when taking a dose from an alternate location medication' do
+      it 'deducts stock from the selected medication and records its location' do
+        alternate_location = Location.create!(name: 'Grandma Alternate')
+        alternate_medication = create_matching_medication(
+          medication: medication,
+          location: alternate_location
+        )
+
+        create_taken_from_schedule(
+          schedule: schedule,
+          taken_from_medication: alternate_medication,
+          taken_from_location: alternate_location
+        )
+
+        expect(medication.reload.current_supply).to eq(100)
+        expect(alternate_medication.reload.current_supply).to eq(11)
+      end
+
+      it 'stores the selected inventory source on the take' do
+        alternate_location = Location.create!(name: 'Grandma Alternate')
+        alternate_medication = create_matching_medication(
+          medication: medication,
+          location: alternate_location
+        )
+        take = create_taken_from_schedule(
+          schedule: schedule,
+          taken_from_medication: alternate_medication,
+          taken_from_location: alternate_location
+        )
+
+        expect(take.inventory_medication).to eq(alternate_medication)
+        expect(take.inventory_location).to eq(alternate_location)
+      end
+    end
+  end
+
+  describe 'taken_from validation' do
+    context 'when the selected medication uses a different identity' do
+      it 'requires taken_from_medication to match the assigned medication identity' do
+        alternate_location = Location.create!(name: 'Validation Alt')
+        alternate_medication = create_matching_medication(medication: medication, location: alternate_location,
+                                                          name: 'Different', current_supply: 10, reorder_threshold: 1)
+        take = build_taken_from_schedule(
+          schedule: schedule,
+          taken_from_medication: alternate_medication,
+          taken_from_location: alternate_location
+        )
+
+        expect(take).not_to be_valid
+        expect(take.errors[:taken_from_medication]).to include('must match the assigned medication')
       end
     end
   end
@@ -247,4 +302,36 @@ RSpec.describe MedicationTake do
       PaperTrail.request.controller_info = nil
     end
   end # rubocop:enable RSpec/MultipleMemoizedHelpers
+
+  def create_matching_medication(medication:, location:, name: medication.name, current_supply: 12,
+                                 reorder_threshold: 2)
+    Medication.create!(
+      name: name,
+      location: location,
+      dosage_amount: medication.dosage_amount,
+      dosage_unit: medication.dosage_unit,
+      current_supply: current_supply,
+      reorder_threshold: reorder_threshold
+    )
+  end
+
+  def create_taken_from_schedule(schedule:, taken_from_medication:, taken_from_location:)
+    described_class.create!(
+      schedule: schedule,
+      taken_at: Time.current,
+      amount_ml: 10.0,
+      taken_from_medication: taken_from_medication,
+      taken_from_location: taken_from_location
+    )
+  end
+
+  def build_taken_from_schedule(schedule:, taken_from_medication:, taken_from_location:)
+    described_class.new(
+      schedule: schedule,
+      taken_at: Time.current,
+      amount_ml: 10.0,
+      taken_from_medication: taken_from_medication,
+      taken_from_location: taken_from_location
+    )
+  end
 end

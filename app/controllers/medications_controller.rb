@@ -1,18 +1,27 @@
 # frozen_string_literal: true
 
 class MedicationsController < ApplicationController
+  include InventoryLocationFilterable
+  include MedicationRefillable
+
   before_action :set_medication, only: %i[show edit update destroy refill mark_as_ordered mark_as_received]
 
   def index
     @current_category = params[:category]
-    medications = policy_scope(Medication)
+    medications = policy_scope(Medication).includes(:location)
+    locations = accessible_inventory_locations(medications)
+    @current_location_id = resolved_inventory_location_id(locations)
+
+    medications = medications.where(location_id: @current_location_id) if @current_location_id.present?
     categories = medications.where.not(category: [nil, '']).distinct.order(:category).pluck(:category)
     medications = medications.where(category: @current_category) if @current_category.present?
 
     render Components::Medications::IndexView.new(
       medications: medications,
       current_category: @current_category,
-      categories: categories
+      categories: categories,
+      locations: locations,
+      current_location_id: @current_location_id
     )
   end
 
@@ -194,34 +203,5 @@ class MedicationsController < ApplicationController
                      warnings
                      location_id]
     )
-  end
-
-  def refill_quantity
-    params.dig(:refill, :quantity).to_i
-  end
-
-  def parse_restock_date
-    Date.parse(params.dig(:refill, :restock_date).to_s)
-  rescue ArgumentError
-    nil
-  end
-
-  def render_refill_error(message)
-    respond_to do |format|
-      format.html do
-        render Components::Medications::ShowView.new(medication: @medication, notice: message), status: :unprocessable_content
-      end
-      format.turbo_stream do
-        flash.now[:alert] = message
-        render turbo_stream: medication_streams, status: :unprocessable_content
-      end
-    end
-  end
-
-  def medication_streams
-    [
-      turbo_stream.replace("medication_show_#{@medication.id}", Components::Medications::ShowView.new(medication: @medication.reload)),
-      turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
-    ]
   end
 end

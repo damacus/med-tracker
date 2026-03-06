@@ -111,30 +111,24 @@ module Components
       end
 
       def render_take_medication_link(schedule)
-        return render_disabled_take_label(schedule) unless schedule.can_administer?
-
-        if take_medication_url_generator
-          url = take_medication_url_generator.call(schedule)
-          Link(
-            href: url,
-            variant: :link,
-            class: 'text-primary hover:underline font-medium',
-            data: { turbo_method: :post, test_id: "take-medication-#{schedule.id}" }
-          ) { 'Take Now' }
-        else
-          span(class: 'text-primary font-medium', data: { test_id: "take-medication-#{schedule.id}" }) do
-            'Take Now'
-          end
-        end
-      end
-
-      def render_disabled_take_label(schedule)
-        reason = schedule.administration_blocked_reason
-        label = reason == :out_of_stock ? 'Out of Stock' : 'On Cooldown'
-        span(
-          class: 'text-muted-foreground font-medium cursor-not-allowed',
-          data: { test_id: "take-medication-#{schedule.id}" }
-        ) { label }
+        label = blocked_reason_for(schedule) == :out_of_stock ? 'Out of Stock' : 'On Cooldown'
+        render Components::Medications::TakeAction.new(
+          source: schedule,
+          context: { person: person, current_user: current_user },
+          amount: schedule.dosage.amount,
+          button: {
+            label: 'Take Now',
+            variant: :ghost,
+            size: :sm,
+            class: 'text-primary hover:underline font-medium p-0 h-auto',
+            testid: "take-medication-#{schedule.id}",
+            form_class: 'inline-block'
+          },
+          state: {
+            disabled: blocked_reason_for(schedule).present?,
+            label: label
+          }
+        )
       end
 
       def render_delete_link(schedule)
@@ -173,6 +167,13 @@ module Components
 
         policy = SchedulePolicy.new(current_user, schedule)
         policy.destroy?
+      end
+
+      def blocked_reason_for(schedule)
+        @blocked_reasons ||= {}
+        @blocked_reasons[schedule.id] ||= MedicationStockSourceResolver
+                                          .new(user: current_user, source: schedule)
+                                          .blocked_reason
       end
     end
   end

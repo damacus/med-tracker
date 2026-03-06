@@ -24,8 +24,9 @@ module TimelineRefreshable
                                                 source: source,
                                                 scheduled_at: take.taken_at,
                                                 taken_at: take.taken_at,
-                                                status: :taken
-                                              })
+                                                status: :taken,
+                                                taken_from_location_name: take.inventory_location&.name
+                                              }, current_user: current_user)
     )
   end
 
@@ -33,12 +34,12 @@ module TimelineRefreshable
     if source.is_a?(Schedule)
       turbo_stream.replace(
         "schedule_#{source.id}",
-        Components::Schedules::Card.new(schedule: source, person: source.person)
+        Components::Schedules::Card.new(schedule: source, person: source.person, current_user: current_user)
       )
     else
       turbo_stream.replace(
         "person_medication_#{source.id}",
-        Components::PersonMedications::Card.new(person_medication: source, person: source.person)
+        Components::PersonMedications::Card.new(person_medication: source, person: source.person, current_user: current_user)
       )
     end
   end
@@ -73,7 +74,7 @@ module TimelineRefreshable
     next_time = source.next_available_time
     return nil unless next_time&.today?
 
-    status = source.administration_blocked_reason || :upcoming
+    status = MedicationStockSourceResolver.new(user: current_user, source: source).blocked_reason || :upcoming
 
     turbo_stream.replace(
       timeline_dom_id(source),
@@ -83,7 +84,7 @@ module TimelineRefreshable
                                                 scheduled_at: next_time,
                                                 taken_at: nil,
                                                 status: status
-                                              })
+                                              }, current_user: current_user)
     )
   end
 
