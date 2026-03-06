@@ -9,14 +9,14 @@ class DashboardPresenter
   end
 
   def people
-    @people ||= load_people
+    @people ||= load_people.to_a
   end
 
   def active_schedules
     @active_schedules ||= Schedule.active
                                   .where(person_id: people.map(&:id))
                                   .includes(person: :user, medication: [])
-                                  .load
+                                  .to_a
   end
 
   def upcoming_schedules

@@ -209,7 +209,7 @@ module Components
                    'duration-300 hover:shadow-md hover:scale-[1.01] cursor-default'
           ) do
             div(class: 'space-y-6') do
-              active_schedules.to_a.take(3).each do |p|
+              active_schedules.take(3).each do |p|
                 render_supply_item(p.medication)
               end
               render RubyUI::Link.new(
