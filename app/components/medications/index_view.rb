@@ -35,7 +35,7 @@ module Components
           if view_context.policy(Medication).create?
             div(class: 'flex gap-3') do
               Link(
-                href: schedules_workflow_path,
+                href: add_medication_path,
                 variant: :outline,
                 size: :lg,
                 class: 'rounded-2xl font-bold text-sm'

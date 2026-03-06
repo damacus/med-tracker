@@ -419,8 +419,8 @@ en:
       subtitle: "How is this medication taken?"
       scheduled_title: "Prescribed / Scheduled"
       scheduled_description: "Has a specific dosage, start date, and fixed schedule"
-      otc_title: "As-needed / OTC"
-      otc_description: "Over-the-counter or taken flexibly without a fixed schedule"
+      otc_title: "As needed"
+      otc_description: "Taken as needed without a fixed schedule"
     show:
       edit_person: "Edit Person"
       add_medication: "Add Medication"
@@ -465,7 +465,7 @@ en:
     modal:
       new_title: "Add Medication for %{person}"
       edit_title: "Edit Medication for %{person}"
-      subtitle: "Add a vitamin, supplement, or over-the-counter medication"
+      subtitle: "Add a medication that is taken as needed"
     card:
       notes: "📝 Notes: "
       timing_restrictions: "⏱️ Timing Restrictions:"

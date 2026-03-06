@@ -15,7 +15,7 @@ RSpec.describe 'Schedules workflow' do
 
     click_link 'Add Schedule'
 
-    expect(page).to have_current_path(schedules_workflow_path(medication_id: medications(:paracetamol).id))
+    expect(page).to have_current_path(add_medication_path(medication_id: medications(:paracetamol).id))
   end
 
   it 'routes workflow selections into a prefilled schedule form' do

@@ -68,10 +68,10 @@ module Components
 
       def medication_description
         parts = []
-        if person_medication.medication.dosage_amount
-          parts << "#{person_medication.medication.dosage_amount.to_i}#{person_medication.medication.dosage_unit}"
+        if person_medication.dose_amount
+          parts << "#{person_medication.dose_amount.to_f.to_s.sub(/\.0$/, '')}#{person_medication.dose_unit}"
         end
-        parts << 'Ad-hoc'
+        parts << 'As needed'
         parts.join(' • ')
       end
 
@@ -199,7 +199,7 @@ module Components
           end
           if take.amount_ml.present?
             Text(size: '1', weight: 'black', class: 'text-slate-400 uppercase tracking-tighter') do
-              "#{take.amount_ml.to_i}ml"
+              "#{take.amount_ml.to_f.to_s.sub(/\.0$/, '')}#{person_medication.dose_unit}"
             end
           end
         end
@@ -258,7 +258,7 @@ module Components
       end
 
       def invalid_dose_configured?
-        person_medication.medication.dosage_amount.to_f <= 0
+        person_medication.dose_amount.to_f <= 0
       end
 
       def render_person_medication_actions

@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe 'People' do
   fixtures :accounts, :people, :users, :locations, :location_memberships, :medications, :dosages, :schedules,
-           :carer_relationships
+           :person_medications, :carer_relationships
 
   let(:user) { users(:john) }
 
@@ -14,7 +14,7 @@ RSpec.describe 'People' do
   end
 
   describe 'index page' do
-    it 'displays list of people with their schedule counts' do
+    it 'displays list of people with their medication counts' do
       visit people_path
 
       within '[data-testid="people-list"]' do
@@ -30,28 +30,28 @@ RSpec.describe 'People' do
       end
     end
 
-    it 'shows active schedule count for person with schedules' do
+    it 'shows active medication count for person with schedules' do
       person = people(:john)
-      active_count = person.schedules.active.count
+      active_count = person.schedules.active.count + person.person_medications.count
 
       visit people_path
 
       within "#person_#{person.id}" do
         if active_count.positive?
-          expect(page).to have_content("#{active_count} active schedule")
+          expect(page).to have_content("#{active_count} active medication")
         else
-          expect(page).to have_content('No active schedules')
+          expect(page).to have_content('No active medications')
         end
       end
     end
 
-    it 'shows no active schedules for person without schedules' do
+    it 'shows no active medications for person without medications' do
       person = Person.create!(name: 'New Person', date_of_birth: 20.years.ago)
 
       visit people_path
 
       within "#person_#{person.id}" do
-        expect(page).to have_content('No active schedules')
+        expect(page).to have_content('No active medications')
       end
     end
 
@@ -65,13 +65,16 @@ RSpec.describe 'People' do
       end
     end
 
-    it 'provides link to view schedules when person has schedules' do
+    it 'provides link to view medications when person has medications' do
       person = people(:john)
 
       visit people_path
 
       within "#person_#{person.id}" do
-        expect(page).to have_link('View Schedules', href: person_path(person)) if person.schedules.any?
+        if person.schedules.any? || person.person_medications.any?
+          expect(page).to have_link('View Medications',
+                                    href: person_path(person))
+        end
       end
     end
   end

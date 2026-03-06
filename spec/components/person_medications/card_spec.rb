@@ -11,7 +11,7 @@ RSpec.describe Components::PersonMedications::Card, type: :component do
   end
 
   it 'disables the take button when medication dose is invalid' do
-    medication.dosage_amount = 0
+    person_medication.dose_amount = 0
     vc = view_context
     vc.singleton_class.define_method(:current_user) { nil }
     policy_stub = Struct.new(:update?, :take_medication?, :destroy?).new(false, true, false)

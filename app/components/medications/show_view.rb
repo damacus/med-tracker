@@ -212,7 +212,7 @@ module Components
       def render_actions_card
         div(class: 'space-y-3') do
           Link(
-            href: schedules_workflow_path(medication_id: medication.id),
+            href: add_medication_path(medication_id: medication.id),
             variant: :outline,
             size: :lg,
             class: 'w-full py-6 rounded-2xl bg-white border-slate-200/60 shadow-sm flex items-center justify-center'

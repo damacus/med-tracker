@@ -9,6 +9,6 @@ class MedicationWorkflowController < ApplicationController
     people = policy_scope(Person).order(:name)
     people = people.select { |person| policy(person).add_medication? }
 
-    render Components::MedicationWorkflow::PersonSelection.new(people: people)
+    render Components::MedicationWorkflow::PersonSelection.new(people: people, medication_id: params[:medication_id])
   end
 end

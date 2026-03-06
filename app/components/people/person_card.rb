@@ -51,8 +51,8 @@ module Components
               plain person.age.to_s
             end
             p do
-              strong { 'Schedules: ' }
-              plain schedule_count_text
+              strong { 'Medications: ' }
+              plain active_medication_count_text
             end
           end
         end
@@ -66,11 +66,21 @@ module Components
                               end
       end
 
-      def schedule_count_text
-        if active_schedules.present?
-          view_context.pluralize(active_schedules.size, 'active schedule')
+      def visible_person_medications
+        @visible_person_medications ||= person.person_medications.select do |person_medication|
+          view_context.policy(person_medication).show?
+        end
+      end
+
+      def active_medications_count
+        active_schedules.size + visible_person_medications.size
+      end
+
+      def active_medication_count_text
+        if active_medications_count.positive?
+          view_context.pluralize(active_medications_count, 'active medication')
         else
-          'No active schedules'
+          'No active medications'
         end
       end
 
@@ -86,12 +96,12 @@ module Components
         CardFooter(class: 'flex gap-2 flex-wrap') do
           render_add_medication_link if can_add_medication?
 
-          if person.schedules.any?
+          if active_medications_count.positive?
             Link(
               href: person_path(person),
               variant: :outline,
               size: :md
-            ) { 'View Schedules' }
+            ) { 'View Medications' }
           end
 
           render_assign_carer_link if person.needs_carer? && can_create?(CarerRelationship)

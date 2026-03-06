@@ -94,7 +94,10 @@ module Components
                 render Icons::Pill.new(size: 20)
               end
               div do
-                Text(size: '3', weight: 'semibold') { medication.name }
+                Link(href: medication_path(medication), variant: :link,
+                     class: 'font-semibold text-base no-underline') do
+                  medication.name
+                end
                 if medication.dosage_amount.present? && medication.dosage_unit.present?
                   Text(size: '1', class: 'text-slate-400') { "#{medication.dosage_amount} #{medication.dosage_unit}" }
                 end

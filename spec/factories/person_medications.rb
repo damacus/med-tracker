@@ -4,6 +4,8 @@ FactoryBot.define do
   factory :person_medication do
     person
     medication
+    dose_amount { medication.dosage_amount }
+    dose_unit { medication.dosage_unit }
     notes { nil }
     max_daily_doses { nil }
     min_hours_between_doses { nil }
