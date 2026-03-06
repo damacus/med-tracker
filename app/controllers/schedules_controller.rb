@@ -59,9 +59,6 @@ class SchedulesController < ApplicationController
     @schedule = @person.schedules.build
     @schedule.medication_id = params[:medication_id] if params[:medication_id].present?
     @schedule.frequency = params[:frequency] if params[:frequency].present?
-    if @schedule.medication && @schedule.dosage.blank?
-      @schedule.dosage = @schedule.medication.default_dosage_for_person_type(@person.person_type)
-    end
     authorize @schedule
     @medications = policy_scope(Medication)
     render_schedule_form(
