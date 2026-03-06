@@ -169,6 +169,7 @@ module Components
             id: 'medication_name',
             value: medication.name,
             required: true,
+            placeholder: t('forms.medications.name_placeholder'),
             class: 'rounded-md border-slate-200 bg-white py-4 px-4 focus:ring-2 focus:ring-primary/10 ' \
                    "focus:border-primary transition-all #{field_error_class(medication, :name)}"
           )
@@ -234,6 +235,7 @@ module Components
             name: 'medication[description]',
             id: 'medication_description',
             rows: 3,
+            placeholder: t('forms.medications.description_placeholder'),
             class: 'rounded-md border-slate-200 bg-white p-4 focus:ring-2 focus:ring-primary/10 ' \
                    'focus:border-primary transition-all resize-none'
           ) { medication.description }
@@ -374,9 +376,10 @@ module Components
             name: 'medication[warnings]',
             id: 'medication_warnings',
             rows: 3,
+            placeholder: t('forms.medications.warnings_placeholder'),
             class: 'rounded-md border-rose-100 bg-rose-50/30 p-4 text-rose-900 focus:ring-2 ' \
                    'focus:ring-rose-500/10 focus:border-rose-500 transition-all resize-none ' \
-                   'placeholder:text-rose-300'
+                   'placeholder:text-rose-400/50'
           ) { medication.warnings }
         end
       end
