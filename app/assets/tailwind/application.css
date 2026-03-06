@@ -459,6 +459,7 @@
 
 /* Theme Overrides - Ultimate Specificity */
 :root.theme-serene-sage {
+	--palette-color: #7DAA92 !important;
 	--primary: #7DAA92 !important;
 	--primary-foreground: #FFFFFF !important;
 	--muted: #E8F3ED !important;
@@ -469,6 +470,7 @@
 }
 
 :root.theme-modern-clinical {
+	--palette-color: #0066FF !important;
 	--primary: #0066FF !important;
 	--primary-foreground: #FFFFFF !important;
 	--muted: #EEF4FF !important;
@@ -479,6 +481,7 @@
 }
 
 :root.theme-warm-earth {
+	--palette-color: #E07A5F !important;
 	--primary: #E07A5F !important;
 	--primary-foreground: #FFFFFF !important;
 	--muted: #FDF2F0 !important;
@@ -489,6 +492,7 @@
 }
 
 :root.theme-deep-lavender {
+	--palette-color: #9B5DE5 !important;
 	--primary: #9B5DE5 !important;
 	--primary-foreground: #FFFFFF !important;
 	--muted: #F5EEFD !important;
@@ -499,6 +503,7 @@
 }
 
 :root.theme-forest-care {
+	--palette-color: #2D6A4F !important;
 	--primary: #2D6A4F !important;
 	--primary-foreground: #FFFFFF !important;
 	--muted: #E9F5EF !important;
@@ -509,6 +514,7 @@
 }
 
 :root.theme-sunset-support {
+	--palette-color: #F28482 !important;
 	--primary: #F28482 !important;
 	--primary-foreground: #FFFFFF !important;
 	--muted: #FEF2F2 !important;
@@ -519,6 +525,7 @@
 }
 
 :root.theme-tech-indigo {
+	--palette-color: #4361EE !important;
 	--primary: #4361EE !important;
 	--primary-foreground: #FFFFFF !important;
 	--muted: #ECF0FF !important;
@@ -529,6 +536,7 @@
 }
 
 :root.theme-soft-rose {
+	--palette-color: #E5989B !important;
 	--primary: #E5989B !important;
 	--primary-foreground: #FFFFFF !important;
 	--muted: #F9EDED !important;
@@ -539,6 +547,7 @@
 }
 
 :root.theme-minty-fresh {
+	--palette-color: #06D6A0 !important;
 	--primary: #06D6A0 !important;
 	--primary-foreground: #FFFFFF !important;
 	--muted: #E6FBF5 !important;
@@ -549,6 +558,7 @@
 }
 
 :root.theme-minimalist-monochrome {
+	--palette-color: #1A1A1A !important;
 	--primary: #1A1A1A !important;
 	--primary-foreground: #FFFFFF !important;
 	--muted: #F3F4F6 !important;
@@ -558,55 +568,40 @@
 	--font-family: 'Inter', sans-serif !important;
 }
 
-.dark:root.theme-serene-sage {
-	--muted: color-mix(in oklab, #7DAA92 22%, transparent) !important;
-	--accent: color-mix(in oklab, #7DAA92 28%, transparent) !important;
-}
-
-.dark:root.theme-modern-clinical {
-	--muted: color-mix(in oklab, #0066FF 20%, transparent) !important;
-	--accent: color-mix(in oklab, #0066FF 26%, transparent) !important;
-}
-
-.dark:root.theme-warm-earth {
-	--muted: color-mix(in oklab, #E07A5F 20%, transparent) !important;
-	--accent: color-mix(in oklab, #E07A5F 26%, transparent) !important;
-}
-
-.dark:root.theme-deep-lavender {
-	--muted: color-mix(in oklab, #9B5DE5 20%, transparent) !important;
-	--accent: color-mix(in oklab, #9B5DE5 26%, transparent) !important;
-}
-
-.dark:root.theme-forest-care {
-	--muted: color-mix(in oklab, #2D6A4F 22%, transparent) !important;
-	--accent: color-mix(in oklab, #2D6A4F 28%, transparent) !important;
-}
-
-.dark:root.theme-sunset-support {
-	--muted: color-mix(in oklab, #F28482 20%, transparent) !important;
-	--accent: color-mix(in oklab, #F28482 26%, transparent) !important;
-}
-
-.dark:root.theme-tech-indigo {
-	--muted: color-mix(in oklab, #4361EE 20%, transparent) !important;
-	--accent: color-mix(in oklab, #4361EE 26%, transparent) !important;
-}
-
-.dark:root.theme-soft-rose {
-	--muted: color-mix(in oklab, #E5989B 20%, transparent) !important;
-	--accent: color-mix(in oklab, #E5989B 26%, transparent) !important;
-}
-
-.dark:root.theme-minty-fresh {
-	--muted: color-mix(in oklab, #06D6A0 20%, transparent) !important;
-	--accent: color-mix(in oklab, #06D6A0 26%, transparent) !important;
+.dark:root[class*="theme-"] {
+	--background: color-mix(in oklab, var(--palette-color) 6%, oklch(0.16 0.01 260)) !important;
+	--card: color-mix(in oklab, var(--palette-color) 9%, oklch(0.22 0.012 260)) !important;
+	--popover: color-mix(in oklab, var(--palette-color) 10%, oklch(0.2 0.012 260)) !important;
+	--secondary: color-mix(in oklab, var(--palette-color) 10%, oklch(0.28 0.012 260)) !important;
+	--muted: color-mix(in oklab, var(--palette-color) 16%, oklch(0.27 0.012 260)) !important;
+	--accent: color-mix(in oklab, var(--palette-color) 23%, oklch(0.29 0.015 250)) !important;
+	--border: color-mix(in oklab, var(--palette-color) 18%, oklch(0.34 0.012 255)) !important;
+	--input: color-mix(in oklab, var(--palette-color) 14%, oklch(0.32 0.012 255)) !important;
+	--ring: color-mix(in oklab, var(--palette-color) 72%, white) !important;
+	--sidebar: color-mix(in oklab, var(--palette-color) 12%, oklch(0.18 0.012 260)) !important;
+	--sidebar-accent: color-mix(in oklab, var(--palette-color) 20%, oklch(0.25 0.014 250)) !important;
+	--primary-container: color-mix(in oklab, var(--palette-color) 32%, oklch(0.24 0.012 255)) !important;
+	--secondary-container: color-mix(in oklab, var(--palette-color) 20%, oklch(0.24 0.012 255)) !important;
+	--accent-foreground: oklch(0.97 0.01 255) !important;
+	--sidebar-ring: var(--ring) !important;
 }
 
 .dark:root.theme-minimalist-monochrome {
-	--muted: oklch(0.28 0.01 255) !important;
-	--accent: oklch(0.3 0.01 255) !important;
+	--background: oklch(0.14 0.005 255) !important;
+	--card: oklch(0.19 0.005 255) !important;
+	--popover: oklch(0.18 0.005 255) !important;
+	--secondary: oklch(0.24 0.005 255) !important;
+	--muted: oklch(0.26 0.005 255) !important;
+	--accent: oklch(0.29 0.005 255) !important;
+	--border: oklch(0.31 0.005 255) !important;
+	--input: oklch(0.28 0.005 255) !important;
+	--ring: oklch(0.82 0.005 255) !important;
+	--sidebar: oklch(0.16 0.005 255) !important;
+	--sidebar-accent: oklch(0.22 0.005 255) !important;
+	--primary-container: oklch(0.34 0.005 255 / 0.52) !important;
+	--secondary-container: oklch(0.31 0.005 255 / 0.4) !important;
 	--accent-foreground: oklch(0.96 0.01 255) !important;
+	--sidebar-ring: var(--ring) !important;
 }
 
 .dark .bg-white {

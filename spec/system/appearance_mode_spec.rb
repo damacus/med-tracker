@@ -6,6 +6,9 @@ RSpec.describe 'Appearance mode' do
   fixtures :accounts, :people, :users
 
   let(:user) { users(:damacus) }
+  let(:page_background_script) do
+    'getComputedStyle(document.body).backgroundColor'
+  end
 
   it 'lets signed-in users switch appearance modes without losing their palette' do
     sign_in(user)
@@ -13,11 +16,14 @@ RSpec.describe 'Appearance mode' do
 
     click_button 'Dark'
 
+    default_dark_background = page.evaluate_script(page_background_script)
+
     expect(page.evaluate_script('localStorage.getItem("med-tracker-appearance")')).to eq('dark')
     expect(page.evaluate_script('document.documentElement.classList.contains("dark")')).to be(true)
 
     click_button 'Warm Earth'
 
+    expect(page.evaluate_script(page_background_script)).not_to eq(default_dark_background)
     expect(page.evaluate_script('localStorage.getItem("med-tracker-theme")')).to eq('warm-earth')
     expect(page.evaluate_script('document.documentElement.classList.contains("dark")')).to be(true)
     expect(page.evaluate_script('document.documentElement.classList.contains("theme-warm-earth")')).to be(true)

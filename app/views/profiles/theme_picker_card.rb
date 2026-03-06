@@ -63,7 +63,7 @@ module Views
           p(class: 'text-sm text-muted-foreground') do
             t('profiles.theme_picker.description')
           end
-          div(class: 'flex flex-wrap gap-4') do
+          div(class: 'flex flex-wrap justify-center gap-x-5 gap-y-7 sm:justify-start') do
             THEMES.each do |theme|
               render_theme_option(theme)
             end
@@ -90,17 +90,17 @@ module Views
         button(
           type: 'button',
           aria_pressed: 'false',
-          class: 'group flex flex-col items-center gap-2 rounded-2xl px-2 py-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+          class: 'group flex w-[6.75rem] flex-col items-center gap-3 rounded-2xl px-2 py-1 text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background',
           data: {
             action: 'click->appearance#switchTheme',
             theme: theme[:id]
           }
         ) do
           div(
-            class: "w-12 h-12 rounded-full #{theme[:color]} border border-border/80 shadow-sm shadow-black/5 transition-transform group-hover:scale-110 data-[active=true]:ring-2 data-[active=true]:ring-primary data-[active=true]:ring-offset-2 data-[active=true]:ring-offset-background",
+            class: "h-14 w-14 rounded-full #{theme[:color]} border border-border/80 shadow-sm shadow-black/10 transition-transform group-hover:scale-110 data-[active=true]:scale-105 data-[active=true]:ring-2 data-[active=true]:ring-primary data-[active=true]:ring-offset-2 data-[active=true]:ring-offset-background",
             data: { theme_swatch: true, active: false }
           )
-          span(class: 'text-[10px] font-medium uppercase tracking-tighter text-muted-foreground group-data-[active=true]:text-foreground') do
+          span(class: 'max-w-full text-[11px] font-semibold uppercase tracking-[0.08em] leading-tight text-muted-foreground group-data-[active=true]:text-foreground') do
             t("profiles.theme_picker.themes.#{theme[:id].underscore}")
           end
         end
