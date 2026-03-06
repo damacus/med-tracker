@@ -73,7 +73,12 @@ module Components
 
         if dose[:status] == :taken && dose[:taken_at]
           time = dose[:taken_at].strftime('%l:%M %p').strip
-          t('dashboard.dose_taken_at', person: person_name, time: time)
+          location_name = dose[:taken_from_location_name]
+          if location_name.present?
+            "#{t('dashboard.dose_taken_at', person: person_name, time: time)} • #{location_name}"
+          else
+            t('dashboard.dose_taken_at', person: person_name, time: time)
+          end
         else
           person_name
         end
@@ -81,26 +86,20 @@ module Components
 
       def render_action_button
         source = dose[:source]
-        is_schedule = source.is_a?(::Schedule)
+        amount = source.is_a?(::Schedule) ? source.dosage.amount : source.dose_amount
 
-        path = if is_schedule
-                 take_medication_person_schedule_path(dose[:person], source)
-               else
-                 take_medication_person_person_medication_path(dose[:person], source)
-               end
-        amount = is_schedule ? source.dosage.amount : source.dose_amount
-
-        form_with(url: path, method: :post,
-                  data: { controller: 'optimistic-take', action: 'submit->optimistic-take#submit' }) do |f|
-          input(type: :hidden, name: 'authenticity_token', value: view_context.form_authenticity_token)
-          f.hidden_field :amount_ml, value: amount
-          Button(
-            type: :submit,
+        render Components::Medications::TakeAction.new(
+          source: source,
+          context: { person: dose[:person], current_user: current_user },
+          amount: amount,
+          button: {
+            label: take_label,
             variant: :outline,
             size: :md,
-            data: { optimistic_take_target: 'button', testid: "take-dose-#{dose_id}" }
-          ) { take_label }
-        end
+            testid: "take-dose-#{dose_id}",
+            form_class: nil
+          }
+        )
       end
 
       def status_icon

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_06_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_06_133000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -197,10 +197,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_06_120000) do
     t.bigint "person_medication_id"
     t.bigint "schedule_id"
     t.datetime "taken_at"
+    t.bigint "taken_from_location_id"
+    t.bigint "taken_from_medication_id"
     t.datetime "updated_at", null: false
     t.index ["person_medication_id"], name: "index_medication_takes_on_person_medication_id"
     t.index ["schedule_id"], name: "index_medication_takes_on_schedule_id"
     t.index ["taken_at"], name: "index_medication_takes_on_taken_at"
+    t.index ["taken_from_location_id"], name: "index_medication_takes_on_taken_from_location_id"
+    t.index ["taken_from_medication_id"], name: "index_medication_takes_on_taken_from_medication_id"
   end
 
   create_table "medications", force: :cascade do |t|
@@ -342,6 +346,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_06_120000) do
   add_foreign_key "dosages", "medications", deferrable: :deferred
   add_foreign_key "location_memberships", "locations", deferrable: :deferred
   add_foreign_key "location_memberships", "people", deferrable: :deferred
+  add_foreign_key "medication_takes", "locations", column: "taken_from_location_id"
+  add_foreign_key "medication_takes", "medications", column: "taken_from_medication_id"
   add_foreign_key "medication_takes", "person_medications", deferrable: :deferred
   add_foreign_key "medication_takes", "schedules", deferrable: :deferred
   add_foreign_key "medications", "locations", deferrable: :deferred

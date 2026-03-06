@@ -3,8 +3,11 @@
 module FamilyDashboard
   # Query object to fetch a 24-hour medication schedule for a person and their dependents
   class ScheduleQuery
-    def initialize(people)
+    attr_reader :current_user
+
+    def initialize(people, current_user: nil)
       @people = Array(people)
+      @current_user = current_user
     end
 
     def call
@@ -73,6 +76,7 @@ module FamilyDashboard
 
       MedicationTake.where(taken_at: range, schedule_id: schedule_ids)
                     .or(MedicationTake.where(taken_at: range, person_medication_id: pm_ids))
+                    .includes(:taken_from_location, :taken_from_medication)
                     .to_a
     end
 
@@ -115,7 +119,7 @@ module FamilyDashboard
       # We show the "next available" dose if it falls within today
       next_time = source.next_available_time
       if next_time && next_time <= now + 24.hours
-        status = source.administration_blocked_reason || :upcoming
+        status = MedicationStockSourceResolver.new(user: current_user, source: source).blocked_reason || :upcoming
         doses << {
           person: person,
           source: source,
@@ -135,7 +139,8 @@ module FamilyDashboard
           source: source,
           scheduled_at: take.taken_at,
           taken_at: take.taken_at,
-          status: :taken
+          status: :taken,
+          taken_from_location_name: take.inventory_location&.name
         }
       end
     end

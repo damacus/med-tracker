@@ -118,11 +118,11 @@ RSpec.describe 'Schedule Card', type: :system do
       it 'submits take medication form when clicked' do
         visit person_path(person)
 
-        within("#schedule_#{schedule.id}") do
-          click_button I18n.t('schedules.card.give')
-        end
-
-        expect(schedule.medication_takes.count).to eq(1)
+        expect do
+          within("#schedule_#{schedule.id}") do
+            click_button I18n.t('schedules.card.give')
+          end
+        end.to change { schedule.reload.medication_takes.count }.by(1)
       end
 
       it 'records correct timestamp for take' do
@@ -133,7 +133,7 @@ RSpec.describe 'Schedule Card', type: :system do
           click_button I18n.t('schedules.card.give')
         end
 
-        latest_take = schedule.medication_takes.order(taken_at: :desc).first
+        latest_take = schedule.reload.medication_takes.order(taken_at: :desc).first
         expect(latest_take.taken_at).to be_between(time_before, 1.second.from_now)
       end
 
@@ -144,7 +144,7 @@ RSpec.describe 'Schedule Card', type: :system do
           click_button I18n.t('schedules.card.give')
         end
 
-        latest_take = schedule.medication_takes.order(taken_at: :desc).first
+        latest_take = schedule.reload.medication_takes.order(taken_at: :desc).first
         expect(latest_take.amount_ml).to eq(schedule.dosage.amount)
       end
 
@@ -320,11 +320,11 @@ RSpec.describe 'Schedule Card', type: :system do
     end
 
     it 'Take button is keyboard accessible' do
-      within("#schedule_#{schedule.id}") do
-        click_button I18n.t('schedules.card.give')
-      end
-
-      expect(schedule.medication_takes.count).to eq(1)
+      expect do
+        within("#schedule_#{schedule.id}") do
+          click_button I18n.t('schedules.card.give')
+        end
+      end.to change { schedule.reload.medication_takes.count }.by(1)
     end
 
     it 'card has proper semantic structure' do

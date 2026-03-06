@@ -70,12 +70,18 @@ RSpec.describe Components::Schedules::Card, type: :component do
     end
 
     it 'memoizes schedule availability checks for the render' do
-      allow(schedule).to receive_messages(out_of_stock?: false, can_take_now?: true)
+      resolver = instance_double(
+        MedicationStockSourceResolver,
+        blocked_reason: nil,
+        available_medications: [medication]
+      )
+      allow(MedicationStockSourceResolver).to receive(:new).and_return(resolver)
+      allow(schedule).to receive(:can_take_now?).and_return(true)
 
       render_card
 
-      expect(schedule).to have_received(:out_of_stock?).once
       expect(schedule).to have_received(:can_take_now?).once
+      expect(resolver).to have_received(:blocked_reason).once
     end
   end
 end

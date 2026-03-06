@@ -88,33 +88,28 @@ module Components
       end
 
       def render_take_now_button
-        if schedule.can_administer?
-          form_with(
-            url: schedule_medication_takes_path(schedule),
-            method: :post,
-            class: 'inline-block'
-          ) do
-            Button(
-              type: :submit,
-              variant: :success_outline,
-              size: :md,
-              data: { test_id: "take-medication-#{schedule.id}" }
-            ) { 'Take Now' }
-          end
-        else
-          render_disabled_take_button
-        end
+        label = blocked_reason == :out_of_stock ? 'Out of Stock' : 'On Cooldown'
+        render Components::Medications::TakeAction.new(
+          source: schedule,
+          context: { person: person, current_user: current_user },
+          amount: schedule.dosage.amount,
+          button: {
+            label: 'Take Now',
+            variant: :success_outline,
+            size: :md,
+            class: 'inline-block',
+            testid: "take-medication-#{schedule.id}",
+            form_class: 'inline-block'
+          },
+          state: {
+            disabled: blocked_reason.present?,
+            label: label
+          }
+        )
       end
 
-      def render_disabled_take_button
-        reason = schedule.administration_blocked_reason
-        label = reason == :out_of_stock ? 'Out of Stock' : 'On Cooldown'
-        Button(
-          variant: :secondary,
-          size: :md,
-          disabled: true,
-          data: { test_id: "take-medication-#{schedule.id}" }
-        ) { label }
+      def blocked_reason
+        @blocked_reason ||= MedicationStockSourceResolver.new(user: current_user, source: schedule).blocked_reason
       end
 
       def render_delete_button

@@ -23,7 +23,7 @@ class DashboardPresenter
   end
 
   def doses
-    @doses ||= FamilyDashboard::ScheduleQuery.new(people).call
+    @doses ||= FamilyDashboard::ScheduleQuery.new(people, current_user: current_user).call
   end
 
   def next_dose_time

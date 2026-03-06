@@ -193,9 +193,7 @@ module Components
       # Cache these per-render so the card doesn't rescan or requery the same data
       # for the status badge, disabled button, dose count badge, and take history.
       def out_of_stock?
-        return @out_of_stock if instance_variable_defined?(:@out_of_stock)
-
-        @out_of_stock = schedule.out_of_stock?
+        blocked_reason == :out_of_stock
       end
 
       def can_take_now?
@@ -205,19 +203,13 @@ module Components
       end
 
       def can_administer?
-        return @can_administer if instance_variable_defined?(:@can_administer)
-
-        @can_administer = !out_of_stock? && can_take_now?
+        blocked_reason.nil?
       end
 
       def blocked_reason
         return @blocked_reason if instance_variable_defined?(:@blocked_reason)
 
-        @blocked_reason = if out_of_stock?
-                            :out_of_stock
-                          else
-                            (can_take_now? ? nil : :cooldown)
-                          end
+        @blocked_reason = stock_source_resolver.blocked_reason
       end
 
       def resolved_todays_takes
@@ -237,7 +229,12 @@ module Components
         ) do
           div(class: 'flex items-center gap-3') do
             render Icons::CheckCircle.new(size: 16, class: 'text-emerald-500')
-            Text(size: '2', weight: 'bold', class: 'text-slate-700') { take.taken_at.strftime('%l:%M %p').strip }
+            div(class: 'space-y-1') do
+              Text(size: '2', weight: 'bold', class: 'text-slate-700') { take.taken_at.strftime('%l:%M %p').strip }
+              if take.inventory_location.present?
+                Text(size: '1', class: 'text-slate-400') { take.inventory_location.name }
+              end
+            end
           end
           Text(size: '1', weight: 'black', class: 'text-slate-400 uppercase tracking-tighter') do
             "#{take.amount_ml.to_i}#{schedule.dosage.unit}"
@@ -246,42 +243,29 @@ module Components
       end
 
       def render_take_medication_button
-        if invalid_dose_configured? || !can_administer?
-          render_disabled_button_with_reason
-        else
-          form_with(
-            url: take_medication_person_schedule_path(person, schedule),
-            method: :post,
-            class: 'flex-1',
-            data: { controller: 'optimistic-take', action: 'submit->optimistic-take#submit' }
-          ) do
-            render RubyUI::Button.new(
-              type: :submit,
-              variant: :primary,
-              size: :lg,
-              class: 'w-full rounded-xl py-6 font-bold shadow-lg shadow-primary/20 hover:shadow-xl ' \
-                     'hover:shadow-primary/30',
-              data: { optimistic_take_target: 'button', testid: "take-schedule-#{schedule.id}" }
-            ) do
-              plain take_label('schedules')
-            end
-          end
-        end
-      end
-
-      def render_disabled_button_with_reason
         label = if invalid_dose_configured?
                   t('schedules.card.invalid_dose')
                 else
                   blocked_reason == :out_of_stock ? t('schedules.card.out_of_stock') : take_label('schedules')
                 end
-        render Button.new(
-          variant: :secondary,
-          size: :lg,
-          disabled: true,
-          class: 'flex-1 rounded-xl py-6 opacity-50 grayscale',
-          data: { testid: "take-schedule-#{schedule.id}-disabled" }
-        ) { label }
+        render Components::Medications::TakeAction.new(
+          source: schedule,
+          context: { person: person, current_user: current_user },
+          amount: schedule.dosage.amount,
+          button: {
+            label: take_label('schedules'),
+            variant: :primary,
+            size: :lg,
+            class: 'w-full rounded-xl py-6 font-bold shadow-lg shadow-primary/20 hover:shadow-xl ' \
+                   'hover:shadow-primary/30',
+            testid: "take-schedule-#{schedule.id}",
+            form_class: 'flex-1'
+          },
+          state: {
+            disabled: invalid_dose_configured? || !can_administer?,
+            label: label
+          }
+        )
       end
 
       def own_dose?
@@ -296,6 +280,10 @@ module Components
 
       def invalid_dose_configured?
         schedule.dosage.amount.to_f <= 0
+      end
+
+      def stock_source_resolver
+        @stock_source_resolver ||= MedicationStockSourceResolver.new(user: current_user, source: schedule)
       end
 
       def render_schedule_actions

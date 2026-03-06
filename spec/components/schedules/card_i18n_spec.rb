@@ -30,7 +30,6 @@ RSpec.describe Components::Schedules::Card, type: :component do
       expect(text).to include('No doses taken today')
       expect(text).to include('📅 Started:')
       expect(text).to include('🏁 Ends:')
-      expect(text).to include('💊 Take')
     end
 
     it 'renders delete dialog with translated strings for admin user' do
