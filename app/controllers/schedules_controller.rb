@@ -3,6 +3,7 @@
 class SchedulesController < ApplicationController
   include TimelineRefreshable
   include PersonViewable
+  include ScheduleModalRenderable
   include TakeMedicationGuardable
   include ScheduleIndexPersonResolvable
   include ScheduleResourceResolvable
@@ -58,44 +59,28 @@ class SchedulesController < ApplicationController
     @schedule = @person.schedules.build
     @schedule.medication_id = params[:medication_id] if params[:medication_id].present?
     @schedule.frequency = params[:frequency] if params[:frequency].present?
+    if @schedule.medication && @schedule.dosage.blank?
+      @schedule.dosage = @schedule.medication.default_dosage_for_person_type(@person.person_type)
+    end
     authorize @schedule
     @medications = policy_scope(Medication)
-
-    is_modal = request.headers['Turbo-Frame'] == 'modal'
-    back_path = modal_back_path(@person)
-
-    respond_to do |format|
-      format.html do
-        if is_modal
-          render Components::Schedules::Modal.new(schedule: @schedule, person: @person, medications: @medications, title: t('schedules.modal.new_title', person: @person.name), back_path: back_path), layout: false
-        else
-          render Components::Schedules::NewView.new(schedule: @schedule, person: @person, medications: @medications)
-        end
-      end
-      format.turbo_stream do
-        render turbo_stream: turbo_stream.replace('modal', Components::Schedules::Modal.new(schedule: @schedule, person: @person, medications: @medications, title: t('schedules.modal.new_title', person: @person.name), back_path: back_path))
-      end
-    end
+    render_schedule_form(
+      schedule: @schedule,
+      medications: @medications,
+      title: t('schedules.modal.new_title', person: @person.name),
+      back_path: modal_back_path(@person)
+    )
   end
 
   def edit
     authorize @schedule
     @medications = policy_scope(Medication)
-
-    is_modal = request.headers['Turbo-Frame'] == 'modal'
-
-    respond_to do |format|
-      format.html do
-        if is_modal
-          render Components::Schedules::Modal.new(schedule: @schedule, person: @person, medications: @medications, title: t('schedules.modal.edit_title', person: @person.name)), layout: false
-        else
-          render Components::Schedules::EditView.new(schedule: @schedule, person: @person, medications: @medications)
-        end
-      end
-      format.turbo_stream do
-        render turbo_stream: turbo_stream.replace('modal', Components::Schedules::Modal.new(schedule: @schedule, person: @person, medications: @medications, title: t('schedules.modal.edit_title', person: @person.name)))
-      end
-    end
+    render_schedule_form(
+      schedule: @schedule,
+      medications: @medications,
+      title: t('schedules.modal.edit_title', person: @person.name),
+      editing: true
+    )
   end
 
   def create
@@ -117,10 +102,12 @@ class SchedulesController < ApplicationController
         end
       end
     else
-      respond_to do |format|
-        format.html { render Components::Schedules::NewView.new(schedule: @schedule, person: @person, medications: @medications), status: :unprocessable_content }
-        format.turbo_stream { render turbo_stream: turbo_stream.replace('modal', Components::Schedules::Modal.new(schedule: @schedule, person: @person, medications: @medications, title: t('schedules.modal.new_title', person: @person.name))), status: :unprocessable_content }
-      end
+      render_schedule_form(
+        schedule: @schedule,
+        medications: @medications,
+        title: t('schedules.modal.new_title', person: @person.name),
+        status: :unprocessable_content
+      )
     end
   end
 
@@ -140,10 +127,13 @@ class SchedulesController < ApplicationController
       end
     else
       @medications = policy_scope(Medication)
-      respond_to do |format|
-        format.html { render Components::Schedules::EditView.new(schedule: @schedule, person: @person, medications: @medications), status: :unprocessable_content }
-        format.turbo_stream { render turbo_stream: turbo_stream.replace('modal', Components::Schedules::Modal.new(schedule: @schedule, person: @person, medications: @medications, title: t('schedules.modal.edit_title', person: @person.name))), status: :unprocessable_content }
-      end
+      render_schedule_form(
+        schedule: @schedule,
+        medications: @medications,
+        title: t('schedules.modal.edit_title', person: @person.name),
+        editing: true,
+        status: :unprocessable_content
+      )
     end
   end
 

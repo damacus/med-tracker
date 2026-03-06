@@ -7,14 +7,15 @@ module Components
       include Phlex::Rails::Helpers::TurboFrameTag
       include RubyUI
 
-      attr_reader :schedule, :person, :medications, :title, :back_path
+      attr_reader :schedule, :person, :medications, :title, :back_path, :editing
 
-      def initialize(schedule:, person:, medications:, title: nil, back_path: nil)
+      def initialize(schedule:, person:, medications:, title: nil, back_path: nil, editing: false)
         @schedule = schedule
         @person = person
         @medications = medications
         @title = title || "New Schedule for #{person.name}"
         @back_path = back_path
+        @editing = editing
         super()
       end
 

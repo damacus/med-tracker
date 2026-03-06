@@ -68,16 +68,14 @@ module Components
         end
       end
 
-      def render_workflow_step(step_number, title:, description:)
+      def render_workflow_step(step_number, title:, description:, &)
         div(class: workflow_step_classes(step_number),
             data: { person_medication_form_target: 'stepPanel', step: step_number }) do
           div(class: 'space-y-1') do
             Heading(level: 2, size: '4', class: 'font-semibold') { title }
             Text(size: '2', class: 'text-slate-500') { description }
           end
-          div(class: 'space-y-4') do
-            yield
-          end
+          div(class: 'space-y-4', &)
         end
       end
 
@@ -149,19 +147,30 @@ module Components
             plain 'Dose'
             span(class: 'text-destructive ml-0.5') { ' *' }
           end
-          input(type: :hidden, name: 'person_medication[dose_amount]', value: decimal_string(person_medication.dose_amount),
-                data: { person_medication_form_target: 'doseAmountInput' })
-          input(type: :hidden, name: 'person_medication[dose_unit]', value: person_medication.dose_unit,
-                data: { person_medication_form_target: 'doseUnitInput' })
+          input(
+            type: :hidden,
+            name: 'person_medication[dose_amount]',
+            value: decimal_string(person_medication.dose_amount),
+            data: { person_medication_form_target: 'doseAmountInput' }
+          )
+          input(
+            type: :hidden,
+            name: 'person_medication[dose_unit]',
+            value: person_medication.dose_unit,
+            data: { person_medication_form_target: 'doseUnitInput' }
+          )
           select(
             id: 'person_medication_dose_option',
             name: 'dose_option',
             required: true,
             disabled: person_medication.medication_id.blank?,
             class: 'w-full rounded-md border border-input bg-background px-3 py-2 text-sm',
-            data: { person_medication_form_target: 'doseOptionInput', action: 'change->person-medication-form#selectDose' }
+            data: { person_medication_form_target: 'doseOptionInput',
+                    action: 'change->person-medication-form#selectDose' }
           ) do
-            option(value: '') { person_medication.medication_id.present? ? 'Select a dose' : 'Select a medication first' }
+            option(value: '') do
+              person_medication.medication_id.present? ? 'Select a dose' : 'Select a medication first'
+            end
             if person_medication.dose_amount.present? && person_medication.dose_unit.present?
               option(value: selected_dose_option_value, selected: true) { selected_dose_label }
             end
@@ -249,7 +258,11 @@ module Components
       end
 
       def initial_step
-        return 3 if person_medication.errors.any? && workflow_error_attributes.none? { |key| %i[medication dose_amount dose_unit medication_id].include?(key) }
+        if person_medication.errors.any? && workflow_error_attributes.none? do |key|
+             %i[medication dose_amount dose_unit medication_id].include?(key)
+           end
+          return 3
+        end
         return 2 if person_medication.errors[:dose_amount].any? || person_medication.errors[:dose_unit].any?
         return 2 if person_medication.medication_id.present?
 
@@ -263,7 +276,7 @@ module Components
       end
 
       def workflow_progress_classes(step_number)
-        classes = ['h-2', 'w-10', 'rounded-full', 'transition-colors']
+        classes = %w[h-2 w-10 rounded-full transition-colors]
         classes << (step_number <= initial_step ? 'bg-slate-900' : 'bg-slate-200')
         classes.join(' ')
       end

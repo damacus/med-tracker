@@ -11,6 +11,8 @@ RSpec.describe MedicationTake do
     Medication.create!(
       name: 'Lisinopril',
       location: Location.find_or_create_by!(name: 'Test Home'),
+      dosage_amount: 10,
+      dosage_unit: 'mg',
       current_supply: 50,
       reorder_threshold: 10
     )
@@ -103,7 +105,9 @@ RSpec.describe MedicationTake do
       let(:person_medication) do
         PersonMedication.create!(
           person: person,
-          medication: medication
+          medication: medication,
+          dose_amount: 10,
+          dose_unit: 'mg'
         )
       end
 
