@@ -8,6 +8,10 @@ RSpec.describe 'Person Medications', type: :system do
   let(:person) { people(:john) }
   let(:user) { users(:john) }
 
+  before do |example|
+    driven_by(example.metadata[:js] ? :playwright : :rack_test)
+  end
+
   before do
     login_as(user)
   end
@@ -15,7 +19,7 @@ RSpec.describe 'Person Medications', type: :system do
   describe 'adding a non-schedule medication' do
     let(:new_medication) { medications(:vitamin_c) }
 
-    it 'allows adding a vitamin/OTC medication without a schedule' do
+    it 'allows adding an as-needed medication without a schedule', :js do
       visit person_path(person)
 
       expect(page).to have_content('Medications')
@@ -23,12 +27,18 @@ RSpec.describe 'Person Medications', type: :system do
       within '[data-testid="quick-actions"]' do
         click_link 'Add Medication'
       end
-      click_link 'As-needed / OTC'
+      click_link 'As needed'
 
       click_button 'Select a medication'
       find('label', text: new_medication.name).click
-      fill_in 'person_medication[notes]', with: 'Take with breakfast'
-      fill_in 'person_medication[max_daily_doses]', with: '1'
+
+      expect(page).to have_content('Choose the dose')
+      select '500 mg', from: 'Dose'
+      click_button 'Next'
+
+      expect(page).to have_content('Add optional guidance')
+      fill_in 'person_medication_notes', with: 'Take with breakfast'
+      fill_in 'person_medication_max_daily_doses', with: '1'
 
       click_button 'Add Medication'
 
@@ -104,9 +114,9 @@ RSpec.describe 'Person Medications', type: :system do
       visit person_path(person)
 
       within("#person_medication_#{person_medication.id}") do
-        expect(page).to have_content("TODAY'S DOSES")
+        expect(page).to have_text(/today's doses/i)
         expect(page).to have_content(take.taken_at.strftime('%l:%M %p').strip)
-        expect(page).to have_content('5ML')
+        expect(page).to have_content('5IU')
       end
     end
   end

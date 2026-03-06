@@ -51,6 +51,20 @@ RSpec.describe 'PersonMedicationsController medication options' do
           expect(response.body).to include(medication.name)
         end
       end
+
+      it 're-renders the workflow modal for turbo stream requests' do
+        post person_person_medications_path(adult_patient_person),
+             params: { person_medication: { medication_id: '', notes: '' } },
+             headers: {
+               'Accept' => 'text/vnd.turbo-stream.html',
+               'Turbo-Frame' => 'modal'
+             }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.media_type).to eq('text/vnd.turbo-stream.html')
+        expect(response.body).to include('Add Medication for')
+        expect(response.body).to include('Choose a medication')
+      end
     end
   end
 end
