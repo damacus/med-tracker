@@ -30,16 +30,20 @@ RSpec.describe 'Person Medications Authorization' do
         expect(page).to have_link('Add Medication')
         click_link 'Add Medication'
       end
-      click_link 'As-needed / OTC'
+      click_link 'As needed'
       click_button 'Select a medication'
       find('label', text: medication.name).click
+      expect(page).to have_content('Choose the dose')
+      select '1000 IU - Daily Vitamin D supplement', from: 'Dose'
+      click_button 'Next'
+      expect(page).to have_content('Add optional guidance')
       fill_in 'person_medication_notes', with: 'Test notes'
       click_button 'Add Medication'
 
       expect(page).to have_content('Medication added successfully')
     end
 
-    it 'allows doctors to add scheduled medications but not OTC medications', :js do
+    it 'allows doctors to add scheduled medications but not as-needed medications', :js do
       login_as(doctor)
       visit person_path(assigned_patient)
 
@@ -50,7 +54,7 @@ RSpec.describe 'Person Medications Authorization' do
       end
 
       expect(page).to have_content('Prescribed / Scheduled')
-      expect(page).to have_no_content('As-needed / OTC')
+      expect(page).to have_no_content('As needed')
     end
 
     it 'denies nurses ability to add medications' do
@@ -88,9 +92,13 @@ RSpec.describe 'Person Medications Authorization' do
         expect(page).to have_link('Add Medication')
         click_link 'Add Medication'
       end
-      click_link 'As-needed / OTC'
+      click_link 'As needed'
       click_button 'Select a medication'
       find('label', text: medication.name).click
+      expect(page).to have_content('Choose the dose')
+      select '1000 IU - Daily Vitamin D supplement', from: 'Dose'
+      click_button 'Next'
+      expect(page).to have_content('Add optional guidance')
       fill_in 'person_medication_notes', with: 'Parent-added medication'
       click_button 'Add Medication'
 
