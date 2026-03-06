@@ -6,8 +6,8 @@ if [[ -z "${LD_PRELOAD+x}" ]]; then
     export LD_PRELOAD
 fi
 
-# Development/Test: Ensure Tailwind CSS is built if missing (volume mounts might override built image assets)
 if [[ "$RAILS_ENV" == "development" || "$RAILS_ENV" == "test" ]]; then
+    bundle check >/dev/null 2>&1 || bundle install
     if [[ ! -f "app/assets/builds/tailwind.css" ]]; then
         echo "Building Tailwind CSS for $RAILS_ENV environment..."
         SECRET_KEY_BASE_DUMMY=1 ./bin/rails tailwindcss:build
