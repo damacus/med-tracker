@@ -401,10 +401,29 @@ RSpec.describe Medication do
     end
 
     context 'when switching from multi-dose to single-dose' do
-      it 'removes associated dosages when dosage_amount is set' do
+      it 'removes associated dosages when dosage_amount is set and there are no schedules' do
         expect do
           medication.update!(dosage_amount: 500, dosage_unit: 'mg')
         end.to change { medication.dosages.count }.from(2).to(0)
+      end
+    end
+
+    context 'when schedules still use the dosage options' do
+      before do
+        create(:schedule, medication: medication, dosage: medication.dosages.first)
+      end
+
+      it 'rejects the switch to single-dose mode' do
+        expect(medication.update(dosage_amount: 500, dosage_unit: 'mg')).to be(false)
+        expect(medication.errors[:dosage_amount]).to include(
+          'cannot switch to a single standard dose while schedules still use dose options'
+        )
+      end
+
+      it 'keeps the existing dosages intact' do
+        expect do
+          medication.update(dosage_amount: 500, dosage_unit: 'mg')
+        end.not_to(change { medication.dosages.count })
       end
     end
 

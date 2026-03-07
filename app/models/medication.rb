@@ -52,7 +52,8 @@ class Medication < ApplicationRecord # :nodoc:
   has_many :schedules, dependent: :destroy
   has_many :person_medications, dependent: :destroy
 
-  before_update :sync_dosages
+  validate :single_dose_switch_requires_no_schedules
+  after_commit :sync_dosages, on: :update
 
   enum :reorder_status, { requested: 0, ordered: 1, received: 2 }, prefix: :reorder
 
@@ -65,7 +66,8 @@ class Medication < ApplicationRecord # :nodoc:
   validates :reorder_threshold, presence: true, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
 
   def sync_dosages
-    return unless persisted? && dosage_amount_changed? && dosage_amount.present?
+    return unless persisted? && switched_to_single_dose_mode?
+    return if schedules.exists?
 
     # When switching to single-dose mode (dosage_amount is set),
     # remove all orphaned multi-dose records to prevent data pollution.
@@ -169,5 +171,30 @@ class Medication < ApplicationRecord # :nodoc:
   def low_stock_date
     days = days_until_low_stock
     days ? Time.zone.today + days.days : nil
+  end
+
+  private
+
+  def single_dose_switch_requires_no_schedules
+    return unless switching_to_single_dose_mode?
+    return unless schedules.exists?
+
+    errors.add(:dosage_amount,
+               'cannot switch to a single standard dose while schedules still use dose options')
+  end
+
+  def switching_to_single_dose_mode?
+    return false unless will_save_change_to_dosage_amount?
+
+    previous_amount, new_amount = dosage_amount_change_to_be_saved
+    previous_amount.blank? && new_amount.present?
+  end
+
+  def switched_to_single_dose_mode?
+    change = previous_changes['dosage_amount']
+    return false if change.blank?
+
+    previous_amount, new_amount = change
+    previous_amount.blank? && new_amount.present?
   end
 end

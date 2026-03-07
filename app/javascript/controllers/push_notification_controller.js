@@ -138,7 +138,19 @@ export default class extends Controller {
   }
 
   async errorMessageFor(response, action) {
-    if (response.status === 422) {
+    const contentType = response.headers.get("content-type") || ""
+
+    if (contentType.includes("application/json")) {
+      try {
+        const payload = await response.json()
+        if (payload?.error) {
+          return payload.error
+        }
+      } catch (_error) {
+      }
+    }
+
+    if (response.status === 422 && !response.redirected) {
       return `Failed to ${action}: your session expired. Refresh the page and try again.`
     }
 
