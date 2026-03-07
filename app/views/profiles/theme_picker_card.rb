@@ -23,20 +23,6 @@ module Views
         { id: 'minimalist-monochrome', name: 'Minimalist', color: 'bg-[#1A1A1A]' }
       ].freeze
 
-      THEME_PREVIEW_COPY = {
-        'default' => 'Quiet neutrals with familiar MedTracker contrast.',
-        'serene-sage' => 'Soft green notes for a calmer daily routine.',
-        'modern-clinical' => 'Sharp cobalt energy with a clinical edge.',
-        'warm-earth' => 'Terracotta warmth for a gentler bedside mood.',
-        'deep-lavender' => 'Dusty violet with richer evening contrast.',
-        'forest-care' => 'Grounded teal-green for steady care workflows.',
-        'sunset-support' => 'Blush coral accents with a supportive glow.',
-        'tech-indigo' => 'Clear electric blue for modern focus.',
-        'soft-rose' => 'Muted rose tones with softer contrast.',
-        'minty-fresh' => 'Bright mint accents for a lighter feel.',
-        'minimalist-monochrome' => 'Low-noise monochrome for reduced distraction.'
-      }.freeze
-
       def view_template
         render Card.new(class: 'overflow-hidden rounded-[2rem] border border-border/70 bg-[radial-gradient(circle_at_top_left,_rgba(244,238,229,0.88),_transparent_28%),linear-gradient(145deg,_rgba(255,255,255,0.98),_rgba(244,247,251,0.92))] shadow-[0_26px_60px_-36px_rgba(15,23,42,0.42)] dark:bg-[radial-gradient(circle_at_top_left,_rgba(72,187,152,0.12),_transparent_24%),linear-gradient(145deg,_rgba(20,25,34,0.98),_rgba(28,35,46,0.95))]') do
           render CardHeader.new(class: 'relative overflow-hidden border-b border-border/60 pb-6') do
@@ -129,12 +115,9 @@ module Views
               class: "h-16 w-16 rounded-full #{theme[:color]} border border-white/70 shadow-[0_14px_28px_-18px_rgba(15,23,42,0.75)] transition-transform duration-300 group-hover:scale-110 data-[active=true]:scale-105 data-[active=true]:ring-2 data-[active=true]:ring-primary data-[active=true]:ring-offset-2 data-[active=true]:ring-offset-background",
               data: { theme_swatch: true, active: false }
             )
-            div(class: 'space-y-1') do
+            div do
               span(class: "block text-sm font-semibold uppercase tracking-[0.12em] leading-tight text-foreground [font-family:'Outfit',sans-serif]") do
                 t("profiles.theme_picker.themes.#{theme[:id].underscore}")
-              end
-              span(class: 'block text-xs leading-5 text-muted-foreground') do
-                theme_preview_copy(theme[:id])
               end
             end
           end
@@ -142,10 +125,6 @@ module Views
             'Apply palette'
           end
         end
-      end
-
-      def theme_preview_copy(theme_id)
-        THEME_PREVIEW_COPY.fetch(theme_id)
       end
 
       def render_appearance_icon(icon)
