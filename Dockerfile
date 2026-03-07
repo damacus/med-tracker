@@ -68,7 +68,7 @@ ENV RAILS_ENV=test \
   PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 ENTRYPOINT ["/app/bin/docker-entrypoint-web"]
-CMD ["bundle", "exec", "rspec"]
+CMD ["ore", "exec", "--", "rspec"]
 
 ###############################################################################
 
