@@ -594,6 +594,9 @@ ga:
       administration: "Riarachán"
       sign_out: "Sínigh Amach"
   forms:
+    people:
+      name_placeholder: "e.g., Jane Doe"
+      email_placeholder: "e.g., jane@example.com"
     medications:
       inventory_management: "Bainistíocht Stoc"
       dosage_and_supply: "Dáileog & Soláthar"
@@ -615,6 +618,9 @@ ga:
       select_category: "Roghnaigh catagóir (roghnach)..."
       filter_categories: "Clóscríobh chun catagóirí a scagadh..."
       no_categories_found: "Níor aimsíodh catagóirí."
+      standard_dosage_placeholder: "e.g., 500"
+      current_supply_placeholder: "e.g., 30"
+      reorder_threshold_placeholder: "e.g., 5"
       validation_errors:
         one: "Chuir 1 earráid cosc ar an leigheas a shábháil:"
         other: "Chuir %{count} earráid cosc ar an leigheas a shábháil:"

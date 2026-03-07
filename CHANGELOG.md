@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.24](https://github.com/damacus/med-tracker/compare/v0.3.23...v0.3.24) (2026-03-06)
+
+
+### Features
+
+* **schedules:** require explicit dose selection ([#927](https://github.com/damacus/med-tracker/issues/927)) ([1e9c1b3](https://github.com/damacus/med-tracker/commit/1e9c1b3c24bc29a7b991d7a9087b7e47104ff1c7))
+* **ui:** add compact dashboard metric card ([#925](https://github.com/damacus/med-tracker/issues/925)) ([0b7afca](https://github.com/damacus/med-tracker/commit/0b7afca21edf277180dc874ee470f344d7c4d68a))
+
+
+### Performance Improvements
+
+* ⚡ Bolt: Eliminate repeated queries on active_schedules in Dashboard ([#913](https://github.com/damacus/med-tracker/issues/913)) ([189d5af](https://github.com/damacus/med-tracker/commit/189d5afe5e6029e835398c26c5b1e62eef87890a))
+
 ## [0.3.23](https://github.com/damacus/med-tracker/compare/v0.3.22...v0.3.23) (2026-03-06)
 
 

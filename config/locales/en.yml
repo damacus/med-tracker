@@ -650,6 +650,9 @@ en:
       administration: "Administration"
       sign_out: "Sign Out"
   forms:
+    people:
+      name_placeholder: "e.g., Jane Doe"
+      email_placeholder: "e.g., jane@example.com"
     medications:
       inventory_management: "Inventory Management"
       dosage_and_supply: "Dosage & Supply"
@@ -671,6 +674,9 @@ en:
       select_category: "Select a category (optional)..."
       filter_categories: "Type to filter categories..."
       no_categories_found: "No categories found."
+      standard_dosage_placeholder: "e.g., 500"
+      current_supply_placeholder: "e.g., 30"
+      reorder_threshold_placeholder: "e.g., 5"
       validation_errors:
         one: "1 error prevented this medication from being saved:"
         other: "%{count} errors prevented this medication from being saved:"
