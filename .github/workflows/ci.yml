@@ -15,7 +15,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+        uses: appraisal-rb/setup-ruby-flash@v1
         with:
           bundler-cache: true
 
@@ -30,7 +30,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+        uses: appraisal-rb/setup-ruby-flash@v1
         with:
           bundler-cache: true
 
@@ -45,7 +45,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+        uses: appraisal-rb/setup-ruby-flash@v1
         with:
           bundler-cache: true
 
@@ -82,19 +82,19 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+        uses: appraisal-rb/setup-ruby-flash@v1
         with:
           ruby-version: "4.0.1"
           bundler-cache: true
 
       - name: Set up database
-        run: bundle exec rails db:migrate
+        run: ore exec -- rails db:migrate
 
       - name: Precompile assets
-        run: bundle exec rails assets:precompile
+        run: ore exec -- rails assets:precompile
 
       - name: Run non-browser tests
-        run: bundle exec rspec --format RSpec::Github::Formatter --tag ~browser
+        run: ore exec -- rspec --format RSpec::Github::Formatter --tag ~browser
 
   test_system:
     runs-on: [ubuntu-latest]
@@ -130,7 +130,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+        uses: appraisal-rb/setup-ruby-flash@v1
         with:
           ruby-version: "4.0.1"
           bundler-cache: true
@@ -154,10 +154,10 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Set up database
-        run: bundle exec rails db:migrate
+        run: ore exec -- rails db:migrate
 
       - name: Precompile assets
-        run: bundle exec rails assets:precompile
+        run: ore exec -- rails assets:precompile
 
       - name: Run browser tests (shard ${{ matrix.shard }}/2)
         shell: bash
@@ -177,7 +177,7 @@ jobs:
 
           if [ ${#shard_files[@]} -gt 0 ]; then
             echo "Running tests for shard $shard: ${shard_files[*]}"
-            bundle exec rspec --format RSpec::Github::Formatter --format documentation "${shard_files[@]}"
+            ore exec -- rspec --format RSpec::Github::Formatter --format documentation "${shard_files[@]}"
           else
             echo "No files for this shard"
           fi
@@ -214,7 +214,7 @@ jobs:
   #       uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6
 
   #     - name: Set up Ruby
-  #       uses: ruby/setup-ruby@v1
+  #       uses: appraisal-rb/setup-ruby-flash@v1
   #       with:
   #         ruby-version: '3.4.7'
   #         bundler-cache: true
@@ -238,17 +238,17 @@ jobs:
   #       run: npm ci
 
   #     - name: Set up database
-  #       run: bundle exec rails db:create db:migrate
+  #       run: ore exec -- rails db:create db:migrate
 
   #     - name: Seed database
-  #       run: bundle exec rails db:seed
+  #       run: ore exec -- rails db:seed
 
   #     - name: Precompile assets
-  #       run: bundle exec rails assets:precompile
+  #       run: ore exec -- rails assets:precompile
 
   #     - name: Start Rails server
   #       run: |
-  #         bundle exec rails server -p 3000 -d
+  #         ore exec -- rails server -p 3000 -d
   #         sleep 5
   #         curl -s http://localhost:3000/up || (echo "Server failed to start" && exit 1)
 

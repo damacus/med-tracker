@@ -19,7 +19,10 @@ RUN bash -c "set -o pipefail && apt-get update \
 USER ruby
 
 COPY --chown=ruby:ruby Gemfile* ./
-RUN bundle install
+USER root
+RUN curl -fsSL https://raw.githubusercontent.com/contriboss/ore-light/master/scripts/install.sh | bash -s -- --system
+USER ruby
+RUN ore install
 
 COPY --chown=ruby:ruby package.json *yarn* ./
 RUN yarn install
@@ -65,7 +68,7 @@ ENV RAILS_ENV=test \
   PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 ENTRYPOINT ["/app/bin/docker-entrypoint-web"]
-CMD ["bundle", "exec", "rspec"]
+CMD ["ore", "exec", "--", "rspec"]
 
 ###############################################################################
 

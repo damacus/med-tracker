@@ -27,6 +27,7 @@ gem 'tilt'
 # OAuth integration for Rodauth [https://github.com/janko/rodauth-omniauth]
 gem 'rodauth-omniauth'
 # Generic OpenID Connect provider support
+gem 'faraday', require: true
 gem 'omniauth_openid_connect'
 # Authorization framework [https://github.com/varvet/pundit]
 gem 'pundit'
