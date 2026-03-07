@@ -559,6 +559,9 @@ cy:
       administration: "Gweinyddu"
       logout: "Allgofnodi"
   forms:
+    people:
+      name_placeholder: "e.g., Jane Doe"
+      email_placeholder: "e.g., jane@example.com"
     medications:
       inventory_management: "Rheoli Rhestr Eiddo"
       dosage_and_supply: "Dos a Chyflenwad"
@@ -580,6 +583,9 @@ cy:
       select_category: "Dewiswch gategori (dewisol)..."
       filter_categories: "Teipiwch i hidlo categorïau..."
       no_categories_found: "Ni chanfuwyd categorïau."
+      standard_dosage_placeholder: "e.g., 500"
+      current_supply_placeholder: "e.g., 30"
+      reorder_threshold_placeholder: "e.g., 5"
       validation_errors:
         one: "1 gwall wedi atal y meddyginiaeth hon rhag cael ei chadw:"
         other: "%{count} wall wedi atal y meddyginiaeth hon rhag cael ei chadw:"
