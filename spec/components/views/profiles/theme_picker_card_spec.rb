@@ -22,4 +22,13 @@ RSpec.describe Views::Profiles::ThemePickerCard, type: :component do
     expect(theme_buttons.pluck('type')).to all(eq('button'))
     expect(theme_buttons.pluck('aria-pressed')).to all(eq('false'))
   end
+
+  it 'renders palette options in a responsive grid' do
+    rendered = render_inline(described_class.new)
+
+    palette_grid = rendered.at_css('div.grid.grid-cols-2.gap-3.sm\\:grid-cols-3.xl\\:grid-cols-4')
+
+    expect(palette_grid).to be_present
+    expect(palette_grid.css('button[data-theme]').count).to eq(described_class::THEMES.count)
+  end
 end
