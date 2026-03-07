@@ -16,10 +16,10 @@ RSpec.describe Components::PersonMedications::Card, type: :component do
     )
   end
 
-  def render_card
+  def render_card(take_medication: false)
     vc = view_context
     vc.singleton_class.define_method(:current_user) { nil }
-    policy_stub = Struct.new(:update?, :take_medication?, :destroy?).new(false, false, false)
+    policy_stub = Struct.new(:update?, :take_medication?, :destroy?).new(false, take_medication, false)
     vc.singleton_class.define_method(:policy) { |_record| policy_stub }
 
     html = vc.render(described_class.new(person_medication: person_medication, person: person))
@@ -40,6 +40,16 @@ RSpec.describe Components::PersonMedications::Card, type: :component do
 
       expect(countdown_div).to be_present, 'countdown notice should use amber (warning) background'
       expect(notes_div).to be_present, 'notes should use blue (info) background'
+    end
+
+    it 'memoizes blocked reason resolution when the action button is visible' do
+      resolver = instance_double(MedicationStockSourceResolver, blocked_reason: nil,
+                                                                available_medications: [medication])
+      allow(MedicationStockSourceResolver).to receive(:new).and_return(resolver)
+
+      render_card(take_medication: true)
+
+      expect(resolver).to have_received(:blocked_reason).once
     end
   end
 end
