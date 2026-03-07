@@ -83,6 +83,24 @@ RSpec.describe 'GET /medication-finder/search' do
       end
     end
 
+    context 'when the search service crashes unexpectedly' do
+      before do
+        login_as_doctor
+        search = instance_double(NhsDmd::Search)
+        allow(search).to receive(:call).and_raise(SocketError, 'lookup failed')
+        allow(NhsDmd::Search).to receive(:new).and_return(search)
+        allow(Rails.logger).to receive(:error)
+      end
+
+      it 'returns 503 instead of raising a server error' do
+        get medication_finder_search_path(format: :json), params: { q: 'aspirin' }
+
+        expect(response).to have_http_status(:service_unavailable)
+        expect(response.parsed_body['error']).to eq('Medication search is temporarily unavailable.')
+        expect(Rails.logger).to have_received(:error).with(/Medication finder search failed/)
+      end
+    end
+
     context 'when the NHS dm+d service is not configured (credentials absent)' do
       let(:unconfigured_outcome) { NhsDmd::Search::Result.new(results: [], error: 'not_configured') }
 

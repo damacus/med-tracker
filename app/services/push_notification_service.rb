@@ -29,6 +29,8 @@ class PushNotificationService
     )
   rescue WebPush::ExpiredSubscription, WebPush::InvalidSubscription
     sub.destroy
+  rescue StandardError => e
+    Rails.logger.error("Push notification delivery failed for subscription #{sub.id}: #{e.class}: #{e.message}")
   end
   private_class_method :deliver
 end
