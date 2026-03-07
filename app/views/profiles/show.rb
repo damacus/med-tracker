@@ -17,7 +17,7 @@ module Views
       end
 
       def view_template
-        div(class: 'container mx-auto px-4 py-8 pb-24 md:pb-8 max-w-4xl') do
+        div(class: 'container mx-auto max-w-6xl px-4 py-8 pb-24 md:pb-8') do
           render_header
           render_profile_sections
         end
@@ -26,22 +26,39 @@ module Views
       private
 
       def render_header
-        div(class: 'mb-8') do
-          h1(class: 'text-3xl font-bold text-foreground') { 'My Profile' }
-          p(class: 'mt-2 text-muted-foreground') do
-            'Manage your personal information and account settings'
+        div(class: 'relative mb-8 overflow-hidden rounded-[2rem] border border-border/70 bg-[radial-gradient(circle_at_top_left,_rgba(125,170,146,0.2),_transparent_32%),linear-gradient(135deg,_rgba(255,255,255,0.96),_rgba(244,238,229,0.9))] px-6 py-8 shadow-[0_24px_60px_-28px_rgba(15,23,42,0.28)] dark:bg-[radial-gradient(circle_at_top_left,_rgba(125,170,146,0.16),_transparent_32%),linear-gradient(135deg,_rgba(24,28,39,0.96),_rgba(31,38,48,0.94))] sm:px-8') do
+          div(class: 'relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between') do
+            div(class: 'max-w-2xl') do
+              p(class: "mb-3 text-[0.7rem] font-semibold uppercase tracking-[0.34em] text-muted-foreground [font-family:'Outfit',sans-serif]") do
+                'Account Atelier'
+              end
+              h1(class: "text-4xl font-semibold tracking-tight text-foreground [font-family:'Outfit',sans-serif] sm:text-5xl") do
+                'My Profile'
+              end
+              p(class: 'mt-3 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base') do
+                'Shape your account, safety preferences, and notification rhythm from one calm control room.'
+              end
+            end
+            div(class: 'grid gap-3 sm:grid-cols-2 lg:w-[24rem]') do
+              render_header_stat('Profile name', person.name)
+              render_header_stat('Sign-in email', account.email)
+            end
           end
         end
       end
 
       def render_profile_sections
-        div(class: 'space-y-6') do
-          render_theme_picker_card
-          render_personal_info_card
-          render_account_security_card
-          render_two_factor_card
-          render_notifications_card
-          render_danger_zone_card
+        div(class: 'grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(22rem,0.9fr)]') do
+          div(class: 'space-y-6') do
+            render_theme_picker_card
+            render_personal_info_card
+            render_two_factor_card
+          end
+          div(class: 'space-y-6') do
+            render_account_security_card
+            render_notifications_card
+            render_danger_zone_card
+          end
         end
       end
 
@@ -50,7 +67,7 @@ module Views
       end
 
       def render_personal_info_card
-        render Card.new do
+        render Card.new(class: 'overflow-hidden rounded-[2rem] border border-border/70 bg-card/95 shadow-[0_18px_45px_-32px_rgba(15,23,42,0.45)]') do
           render_personal_info_header
           render_personal_info_content
         end
@@ -68,7 +85,7 @@ module Views
       end
 
       def render_account_security_card
-        render Card.new do
+        render Card.new(class: 'rounded-[2rem] border border-border/70 bg-card/95 shadow-[0_18px_45px_-32px_rgba(15,23,42,0.45)]') do
           render CardHeader.new do
             render(CardTitle.new { 'Account Security' })
             render(CardDescription.new do
@@ -83,12 +100,9 @@ module Views
       end
 
       def render_danger_zone_card
-        render Card.new(class: 'border-destructive') do
+        render Card.new(class: 'rounded-[2rem] border-destructive/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(255,240,240,0.92))] shadow-[0_18px_45px_-32px_rgba(127,29,29,0.35)] dark:bg-[linear-gradient(135deg,rgba(44,18,22,0.92),rgba(60,20,28,0.88))]') do
           render CardHeader.new do
             render CardTitle.new(class: 'text-destructive') { 'Danger Zone' }
-            render(CardDescription.new do
-              'Irreversible account actions'
-            end)
           end
           render CardContent.new do
             render_close_account_dialog
@@ -190,6 +204,13 @@ module Views
 
       def render_notifications_card
         render NotificationsCard.new(person: person)
+      end
+
+      def render_header_stat(label, value)
+        div(class: 'rounded-[1.35rem] border border-white/50 bg-white/70 px-4 py-4 shadow-[0_10px_30px_-24px_rgba(15,23,42,0.55)] backdrop-blur dark:border-white/10 dark:bg-white/5') do
+          p(class: 'text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-muted-foreground') { label }
+          p(class: 'mt-2 truncate text-sm font-semibold text-foreground sm:text-base') { value.presence || 'Not set' }
+        end
       end
     end
   end

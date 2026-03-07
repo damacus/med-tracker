@@ -16,15 +16,17 @@ module Components
           render_header
           render_stats_section
 
-          div(class: 'grid grid-cols-1 lg:grid-cols-3 gap-8') do
-            div(class: 'lg:col-span-2 space-y-8') do
+          div(class: 'grid grid-cols-1 lg:grid-cols-3 gap-8 items-start') do
+            div(class: 'lg:col-span-2') do
               render_timeline_section
-              render_health_insights
             end
             div(class: 'space-y-8') do
               render_right_rail_next_dose
               render_schedules_section
               render_supply_levels
+            end
+            div(class: 'lg:col-span-2') do
+              render_health_insights
             end
           end
           render_version_footer

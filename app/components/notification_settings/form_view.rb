@@ -73,6 +73,18 @@ module Components
             ) do
               'Disable Notifications'
             end
+            button(
+              type: 'button',
+              class: 'inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 ' \
+                     'text-foreground font-bold text-sm hover:bg-slate-100 transition-colors',
+              data: {
+                push_notification_target: 'testButton',
+                action: 'push-notification#sendTest'
+              },
+              hidden: true
+            ) do
+              'Send Test'
+            end
           end
         end
       end

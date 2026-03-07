@@ -114,6 +114,15 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       expect(compact_card.text).to include('Next Dose')
       expect(compact_card.text).to include(expected_value)
       expect(compact_card.to_html).to include('min-h-[7rem]')
+      expect(compact_card[:class]).not_to include('h-full')
+    end
+
+    it 'renders the mobile content flow with schedule and inventory before insights' do
+      rendered = render_inline(dashboard_view)
+      html = rendered.to_html
+
+      expect(html.index('Medication Schedule')).to be < html.index('Smart Insights')
+      expect(html.index('Stock Inventory')).to be < html.index('Smart Insights')
     end
   end
 
