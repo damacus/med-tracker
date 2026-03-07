@@ -116,6 +116,8 @@ class Medication < ApplicationRecord # :nodoc:
   end
 
   def estimated_daily_consumption
+    return @estimated_daily_consumption if defined?(@estimated_daily_consumption)
+
     schedule_rate = schedules.active.sum do |schedule|
       next 0.0 if schedule.max_daily_doses.blank?
 
@@ -128,7 +130,7 @@ class Medication < ApplicationRecord # :nodoc:
       pm.max_daily_doses.to_f
     end
 
-    schedule_rate + pm_rate
+    @estimated_daily_consumption = schedule_rate + pm_rate
   end
 
   def forecast_available?
