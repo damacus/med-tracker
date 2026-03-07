@@ -54,7 +54,7 @@ module Components
           div(class: 'pt-4 border-t border-slate-50 space-y-4') do
             render_notes if person_medication.notes.present?
             render_timing_restrictions if person_medication.timing_restrictions?
-            render_countdown_notice if !can_take_now? && person_medication.countdown_display
+            render_countdown_notice if !person_medication.can_take_now? && person_medication.countdown_display
             render_takes_section
           end
         end
@@ -188,38 +188,6 @@ module Components
         end
       end
 
-      # Cache per-render status checks so the card does not recompute the same
-      # timing restrictions for the countdown, disabled state, and label copy.
-      def out_of_stock?
-        return @out_of_stock if instance_variable_defined?(:@out_of_stock)
-
-        @out_of_stock = person_medication.medication.out_of_stock?
-      end
-
-      def can_take_now?
-        return @can_take_now if instance_variable_defined?(:@can_take_now)
-
-        @can_take_now = person_medication.can_take_now?
-      end
-
-      def can_administer?
-        return @can_administer if instance_variable_defined?(:@can_administer)
-
-        @can_administer = !out_of_stock? && can_take_now?
-      end
-
-      def blocked_reason
-        return @blocked_reason if instance_variable_defined?(:@blocked_reason)
-
-        @blocked_reason = if out_of_stock?
-                            :out_of_stock
-                          elsif can_take_now?
-                            nil
-                          else
-                            :cooldown
-                          end
-      end
-
       def render_take_item(take)
         div(
           class: 'flex items-center justify-between p-3 rounded-xl bg-slate-50/50 group/item transition-colors ' \
@@ -244,6 +212,7 @@ module Components
 
       def render_take_medication_button
         return unless view_context.policy(person_medication).take_medication?
+
         label = if invalid_dose_configured?
                   t('person_medications.card.invalid_dose')
                 else
@@ -283,20 +252,16 @@ module Components
         person_medication.dose_amount.to_f <= 0
       end
 
-      # Cache per-render timing state so countdowns and action state do not
-      # recompute the same cooldown checks multiple times on a single card.
-      def can_take_now?
-        return @can_take_now if instance_variable_defined?(:@can_take_now)
-
-        @can_take_now = person_medication.can_take_now?
-      end
-
+      # Cache the resolved blocked reason per render so a nil result does not
+      # re-run stock resolution for both the disabled label and disabled state.
       def blocked_reason
         return @blocked_reason if instance_variable_defined?(:@blocked_reason)
 
-        @blocked_reason = MedicationStockSourceResolver
-                          .new(user: current_user, source: person_medication)
-                          .blocked_reason
+        @blocked_reason = stock_source_resolver.blocked_reason
+      end
+
+      def stock_source_resolver
+        @stock_source_resolver ||= MedicationStockSourceResolver.new(user: current_user, source: person_medication)
       end
 
       def render_person_medication_actions

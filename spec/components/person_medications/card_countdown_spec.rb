@@ -42,12 +42,14 @@ RSpec.describe Components::PersonMedications::Card, type: :component do
       expect(notes_div).to be_present, 'notes should use blue (info) background'
     end
 
-    it 'memoizes availability checks when the action button is visible' do
-      allow(person_medication).to receive(:can_take_now?).and_return(false)
+    it 'memoizes blocked reason resolution when the action button is visible' do
+      resolver = instance_double(MedicationStockSourceResolver, blocked_reason: nil,
+                                                                available_medications: [medication])
+      allow(MedicationStockSourceResolver).to receive(:new).and_return(resolver)
 
       render_card(take_medication: true)
 
-      expect(person_medication).to have_received(:can_take_now?).once
+      expect(resolver).to have_received(:blocked_reason).once
     end
   end
 end
