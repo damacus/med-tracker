@@ -581,6 +581,9 @@ pt:
       administration: "Administração"
       logout: "Terminar sessão"
   forms:
+    people:
+      name_placeholder: "e.g., Jane Doe"
+      email_placeholder: "e.g., jane@example.com"
     medications:
       inventory_management: "Gestão de Inventário"
       dosage_and_supply: "Dosagem e Fornecimento"
@@ -602,6 +605,9 @@ pt:
       select_category: "Selecione uma categoria (opcional)..."
       filter_categories: "Escreva para filtrar categorias..."
       no_categories_found: "Nenhuma categoria encontrada."
+      standard_dosage_placeholder: "e.g., 500"
+      current_supply_placeholder: "e.g., 30"
+      reorder_threshold_placeholder: "e.g., 5"
       validation_errors:
         one: "1 erro impediu que este medicamento fosse guardado:"
         other: "%{count} erros impediram que este medicamento fosse guardado:"
