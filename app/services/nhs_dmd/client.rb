@@ -15,6 +15,15 @@ module NhsDmd
 
     VMP_VALUE_SET = 'https://dmd.nhs.uk/ValueSet/VMP'
     AMP_VALUE_SET = 'https://dmd.nhs.uk/ValueSet/AMP'
+    NETWORK_ERRORS = [
+      Net::OpenTimeout,
+      Net::ReadTimeout,
+      Errno::ECONNREFUSED,
+      Errno::ECONNRESET,
+      EOFError,
+      SocketError,
+      OpenSSL::SSL::SSLError
+    ].freeze
 
     def configured?
       client_id.present? && client_secret.present?
@@ -59,7 +68,7 @@ module NhsDmd
       request['Authorization'] = "Bearer #{access_token}" if authenticated?
 
       http.request(request)
-    rescue Net::OpenTimeout, Net::ReadTimeout, Errno::ECONNREFUSED => e
+    rescue *NETWORK_ERRORS => e
       raise ApiError, "NHS dm+d API request failed: #{e.message}"
     end
 
@@ -109,7 +118,9 @@ module NhsDmd
       raise ApiError, "Failed to obtain NHS dm+d access token: #{response.code}" unless response.is_a?(Net::HTTPSuccess)
 
       JSON.parse(response.body)['access_token']
-    rescue Net::OpenTimeout, Net::ReadTimeout => e
+    rescue JSON::ParserError => e
+      raise ApiError, "NHS dm+d token response was invalid JSON: #{e.message}"
+    rescue *NETWORK_ERRORS => e
       raise ApiError, "NHS dm+d token request failed: #{e.message}"
     end
 

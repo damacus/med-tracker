@@ -156,12 +156,13 @@ class MedicationsController < ApplicationController
     query = params[:q].to_s.strip
     return render json: { results: [] } if query.blank?
 
-    result = NhsDmd::Search.new.call(query)
+    result = search_results_for(query)
+    return render_medication_search_unavailable unless result
 
     if result.success?
       render json: { results: result.results.map(&:to_h) }
     else
-      render json: { results: [], error: 'Medication search is temporarily unavailable.' }, status: :service_unavailable
+      render_medication_search_unavailable
     end
   end
 
@@ -203,5 +204,16 @@ class MedicationsController < ApplicationController
                      warnings
                      location_id]
     )
+  end
+
+  def search_results_for(query)
+    NhsDmd::Search.new.call(query)
+  rescue StandardError => e
+    Rails.logger.error("Medication finder search failed: #{e.class}: #{e.message}")
+    nil
+  end
+
+  def render_medication_search_unavailable
+    render json: { results: [], error: 'Medication search is temporarily unavailable.' }, status: :service_unavailable
   end
 end

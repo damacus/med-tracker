@@ -93,5 +93,22 @@ RSpec.describe NhsDmd::Search do
         expect(result.results).to eq([])
       end
     end
+
+    context 'when the client raises an unexpected error' do
+      before do
+        allow(client).to receive(:configured?).and_return(true)
+        allow(client).to receive(:search).and_raise(SocketError, 'lookup failed')
+        allow(Rails.logger).to receive(:error)
+      end
+
+      it 'returns a result instead of propagating the exception' do
+        result = search.call('aspirin')
+
+        expect(result).not_to be_success
+        expect(result.error).to eq('unexpected_error')
+        expect(result.results).to eq([])
+        expect(Rails.logger).to have_received(:error).with(/NhsDmd::Search crashed/)
+      end
+    end
   end
 end
