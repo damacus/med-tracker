@@ -38,13 +38,13 @@ RSpec.describe 'Person medication workflow' do
     expect(page).to have_content('Medication')
     expect(page).to have_content('Calpol')
 
-    expect(page).to have_no_content('Standard child dose')
-    select '2.5 ml', from: 'Dose'
+    expect(page).to have_css('#person_medication_dose_option option', text: '5 ml', visible: :all)
+    select '5 ml', from: 'Dose'
     click_button 'Next'
 
     expect(page).to have_content('Add optional guidance')
     expect(page).to have_content('Dose')
-    expect(page).to have_content('2.5 ml')
+    expect(page).to have_content('5 ml')
     expect(page).to have_no_button('Next')
     expect(page).to have_button('Back')
     expect(page).to have_button('Cancel')

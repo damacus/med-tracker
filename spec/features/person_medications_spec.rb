@@ -30,6 +30,7 @@ RSpec.describe 'Person Medications', type: :system do
       find('label', text: new_medication.name).click
 
       expect(page).to have_content('Choose the dose')
+      expect(page).to have_css('#person_medication_dose_option option', text: '500 mg', visible: :all)
       select '500 mg', from: 'Dose'
       click_button 'Next'
 
