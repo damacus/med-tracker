@@ -11,7 +11,6 @@
 ## 2026-03-05 - Manually Preloading Associations in Query Objects
 **Learning:** When a query object (like `ScheduleQuery`) preloads records into a hash or separate collection, child models with custom logic (like `TimingRestrictions`) will still hit the database if they access the association and don't know it's already "preloaded". Even if you have the data, the model's `association.loaded?` check will return false.
 **Action:** In query objects that perform bulk fetching, manually associate the child records with their parents using `source.association(:association_name).loaded!` and `source.association(:association_name).target.concat(preloaded_records)`. This ensures that downstream logic using the association (like `.count { ... }` on the loaded collection) avoids triggering new SQL queries.
-
 ## 2026-03-05 - Materialize Shared Card Data Once Per Render
 **Learning:** In MedTracker card components, showing both a "today's doses" badge and the corresponding take list can accidentally trigger duplicate `medication_takes` work in the same render: one query for the count and another for the rows, plus repeated boolean checks if memoization uses `||=` for falsey values.
 **Action:** When a card needs the same association for multiple UI elements, materialize it once into an array and reuse it for counts and rendering. For per-render boolean/nil memoization, prefer `instance_variable_defined?` guards over `||=` so blocked/out-of-stock states cache correctly.
@@ -23,3 +22,7 @@
 ## 2025-03-05 - Memoize Computed Methods to Avoid Redundant SQL
 **Learning:** In ActiveRecord models, computed methods like `estimated_daily_consumption` that iterate over associations (e.g. `schedules.sum`) trigger database calls or array aggregations. When these computed methods are called multiple times in the same view (like inside `forecast_available?`, `days_until_low_stock`, etc.), it causes redundant queries.
 **Action:** Use instance variable memoization (`return @variable if defined?(@variable)`) for computed methods that process associations but don't change state during a render cycle. This drastically reduces redundant Ruby object allocation and database interactions when the view relies on those computations.
+
+## 2026-03-07 - Cache Timing Restriction State Per Card Render
+**Learning:** MedTracker medication cards can evaluate the same timing restriction logic multiple times in one render path: once for countdown visibility, again for the disabled button state, and again for disabled-label copy. On cooldown states this multiplies `can_take_now?` work across every visible card.
+**Action:** In card components that render medication actions, cache `can_take_now?`, out-of-stock state, and blocked reason per render using instance variables guarded with `instance_variable_defined?`. That keeps cooldown/out-of-stock renders to a single timing evaluation while preserving behavior.
