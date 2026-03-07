@@ -19,3 +19,7 @@
 ## 2025-03-05 - Avoid N+1 Queries on `active_schedules`
 **Learning:** In the DashboardPresenter, `active_schedules` was being populated with `.where(person_id: people.select(:id))` which resulted in a subquery, and then the views were calling `.count` or `.take(3)` directly on the relation which forced multiple queries.
 **Action:** When accessing a collection multiple times across views (like `.count`, `.take(3)`, etc.), materialize it once in the presenter using `.load` or `.to_a`. Change the subquery to an in-memory map (`people.map(&:id)`) if the parent collection is already loaded, and always use enumerable methods (e.g., `.size`, `.to_a.take()`) in the views to prevent repeated database hits.
+
+## 2025-03-05 - Memoize Computed Methods to Avoid Redundant SQL
+**Learning:** In ActiveRecord models, computed methods like `estimated_daily_consumption` that iterate over associations (e.g. `schedules.sum`) trigger database calls or array aggregations. When these computed methods are called multiple times in the same view (like inside `forecast_available?`, `days_until_low_stock`, etc.), it causes redundant queries.
+**Action:** Use instance variable memoization (`return @variable if defined?(@variable)`) for computed methods that process associations but don't change state during a render cycle. This drastically reduces redundant Ruby object allocation and database interactions when the view relies on those computations.

@@ -96,6 +96,7 @@ module Components
             id: 'person_name',
             value: person.name,
             required: true,
+            placeholder: t('forms.people.name_placeholder', default: 'e.g., Jane Doe'),
             class: field_error_class(person, :name)
           )
           render_field_error(person, :name)
@@ -110,6 +111,7 @@ module Components
             name: 'person[email]',
             id: 'person_email',
             value: person.email,
+            placeholder: t('forms.people.email_placeholder', default: 'e.g., jane@example.com'),
             class: field_error_class(person, :email)
           )
           render_field_error(person, :email)
