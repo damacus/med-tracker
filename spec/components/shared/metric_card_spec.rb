@@ -61,10 +61,14 @@ RSpec.describe Components::Shared::MetricCard, type: :component do
       described_class.new(title: 'Next Dose', value: '14:47', icon_type: 'clock', layout: :compact)
     )
     html = rendered.to_html
+    card = rendered.css('div').find do |node|
+      node[:class]&.include?('min-h-[7rem]')
+    end
 
     expect(html).to include('min-h-[7rem]')
     expect(html).to include('p-4')
     expect(html).to include('text-2xl')
     expect(html).not_to include('md:hover:scale-[1.02]')
+    expect(card[:class]).not_to include('h-full')
   end
 end
