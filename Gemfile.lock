@@ -770,6 +770,7 @@ DEPENDENCIES
   debug
   ecs-logging
   factory_bot_rails
+  faraday
   importmap-rails
   lograge
   omniauth_openid_connect
@@ -819,4 +820,4 @@ DEPENDENCIES
   webmock
 
 BUNDLED WITH
-  4.0.3
+  4.0.4
