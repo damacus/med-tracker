@@ -16,18 +16,34 @@ module NhsDmd
       return not_configured_result unless @client.configured?
       return Result.new(results: [], error: nil) if query.blank?
 
-      raw = @client.search(query)
-      results = raw.map { |item| build_result(item) }
-      Result.new(results: results, error: nil)
+      Result.new(results: search_results(query), error: nil)
     rescue Client::ApiError => e
-      Rails.logger.error("NhsDmd::Search failed: #{e.message}")
-      Result.new(results: [], error: e.message)
+      failed_result(e.message)
+    rescue StandardError => e
+      failed_result('unexpected_error', e)
     end
 
     private
 
     def not_configured_result
       Result.new(results: [], error: 'not_configured')
+    end
+
+    def search_results(query)
+      @client.search(query).map { |item| build_result(item) }
+    end
+
+    def failed_result(message, exception = nil)
+      log_failure(message, exception)
+      Result.new(results: [], error: message)
+    end
+
+    def log_failure(message, exception)
+      if exception
+        Rails.logger.error("NhsDmd::Search crashed: #{exception.class}: #{exception.message}")
+      else
+        Rails.logger.error("NhsDmd::Search failed: #{message}")
+      end
     end
 
     def build_result(item)

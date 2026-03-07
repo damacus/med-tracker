@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["status", "subscribeButton", "unsubscribeButton"]
+  static targets = ["status", "subscribeButton", "unsubscribeButton", "testButton"]
   static values = { endpoint: String }
 
   async connect() {
@@ -56,6 +56,29 @@ export default class extends Controller {
     }
   }
 
+  async sendTest() {
+    try {
+      const registration = await navigator.serviceWorker.ready
+      const subscription = await registration.pushManager.getSubscription()
+
+      if (Notification.permission !== "granted" || !subscription) {
+        this.updateStatus("Enable notifications on this device before sending a test.")
+        this.showButton("subscribe")
+        return
+      }
+
+      await registration.showNotification("MedTracker test notification", {
+        body: "Notifications are working on this device.",
+        tag: "medtracker-test-notification",
+        renotify: false
+      })
+
+      this.updateStatus("Test notification sent.")
+    } catch (error) {
+      this.updateStatus("Failed to send test notification: " + error.message)
+    }
+  }
+
   async updateUI() {
     const permission = Notification.permission
     const registration = await navigator.serviceWorker.ready
@@ -64,12 +87,15 @@ export default class extends Controller {
     if (permission === "denied") {
       this.updateStatus("Notifications are blocked. Please update your browser settings.")
       this.showButton("subscribe")
+      this.showTestButton(false)
     } else if (subscription) {
       this.updateStatus("Notifications are enabled.")
       this.showButton("unsubscribe")
+      this.showTestButton(true)
     } else {
       this.updateStatus("Notifications are not enabled.")
       this.showButton("subscribe")
+      this.showTestButton(false)
     }
   }
 
@@ -127,6 +153,12 @@ export default class extends Controller {
     }
     if (this.hasUnsubscribeButtonTarget) {
       this.unsubscribeButtonTarget.hidden = which !== "unsubscribe"
+    }
+  }
+
+  showTestButton(visible) {
+    if (this.hasTestButtonTarget) {
+      this.testButtonTarget.hidden = !visible
     }
   }
 

@@ -74,6 +74,16 @@ module Views
                 },
                 hidden: true
               ) { 'Disable' }
+              button(
+                type: 'button',
+                class: 'inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 ' \
+                       'text-sm font-medium text-foreground transition-colors hover:bg-accent',
+                data: {
+                  push_notification_target: 'testButton',
+                  action: 'push-notification#sendTest'
+                },
+                hidden: true
+              ) { 'Send Test' }
             end
           end
         end

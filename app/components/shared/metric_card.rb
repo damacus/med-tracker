@@ -30,7 +30,7 @@ module Components
             render_card(as_link: true)
           end
         else
-          div(class: 'h-full') { render_card(as_link: false) }
+          div(class: wrapper_height_class) { render_card(as_link: false) }
         end
       end
 
@@ -38,12 +38,12 @@ module Components
 
       def render_card(as_link: false)
         Card(
-          class: "#{border_class} h-full #{min_height_class} " \
+          class: "#{border_class} #{card_height_class} #{min_height_class} " \
                  "shadow-sm #{background_class} backdrop-blur-sm #{hover_class} " \
                  "#{cursor_class} group",
           data: testid.present? && !as_link ? { testid: testid } : nil
         ) do
-          CardContent(class: "#{content_padding_class} h-full flex flex-col") do
+          CardContent(class: "#{content_padding_class} #{content_height_class} flex flex-col") do
             div(class: "flex items-center justify-between gap-2 #{header_margin_class} min-w-0") do
               Text(
                 size: '1', weight: 'muted',
@@ -58,7 +58,7 @@ module Components
                 render_icon(size: icon_size)
               end
             end
-            div(class: 'mt-auto flex flex-col items-start gap-2') do
+            div(class: value_wrapper_class) do
               span(
                 class: "#{value_size_class} font-black tracking-tight #{value_color_class}",
                 data: value_data_attr
@@ -80,6 +80,22 @@ module Components
 
       def compact?
         layout == :compact
+      end
+
+      def wrapper_height_class
+        compact? ? '' : 'h-full'
+      end
+
+      def card_height_class
+        compact? ? '' : 'h-full'
+      end
+
+      def content_height_class
+        compact? ? '' : 'h-full'
+      end
+
+      def value_wrapper_class
+        compact? ? 'flex flex-col items-start gap-1' : 'mt-auto flex flex-col items-start gap-2'
       end
 
       def cursor_class

@@ -252,10 +252,16 @@ module Components
         person_medication.dose_amount.to_f <= 0
       end
 
+      # Cache the resolved blocked reason per render so a nil result does not
+      # re-run stock resolution for both the disabled label and disabled state.
       def blocked_reason
-        @blocked_reason ||= MedicationStockSourceResolver
-                            .new(user: current_user, source: person_medication)
-                            .blocked_reason
+        return @blocked_reason if instance_variable_defined?(:@blocked_reason)
+
+        @blocked_reason = stock_source_resolver.blocked_reason
+      end
+
+      def stock_source_resolver
+        @stock_source_resolver ||= MedicationStockSourceResolver.new(user: current_user, source: person_medication)
       end
 
       def render_person_medication_actions

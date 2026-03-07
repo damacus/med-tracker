@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.25](https://github.com/damacus/med-tracker/compare/v0.3.24...v0.3.25) (2026-03-07)
+
+
+### Features
+
+* **ui:** redesign profile appearance settings ([#932](https://github.com/damacus/med-tracker/issues/932)) ([bfcc6ba](https://github.com/damacus/med-tracker/commit/bfcc6ba171b46fff470a7e53f78413b24c515cdc))
+
+
+### Performance Improvements
+
+* ⚡ Memoize estimated_daily_consumption to prevent N+1 aggregations ([#930](https://github.com/damacus/med-tracker/issues/930)) ([8b98914](https://github.com/damacus/med-tracker/commit/8b9891415ed17799adf8298955bef79c0843d174))
+
 ## [0.3.24](https://github.com/damacus/med-tracker/compare/v0.3.23...v0.3.24) (2026-03-06)
 
 
