@@ -39,6 +39,7 @@ RSpec.describe 'Person medication workflow' do
     expect(page).to have_content('Calpol')
 
     expect(page).to have_no_content('Standard child dose')
+    expect(page).to have_select('Dose', with_options: ['2.5 ml'])
     select '2.5 ml', from: 'Dose'
     click_button 'Next'
 

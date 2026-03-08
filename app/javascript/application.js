@@ -1,6 +1,6 @@
 // Configure your import map in config/importmap.rb. Read more: https://github.com/rails/importmap-rails
 import { Turbo } from "@hotwired/turbo-rails"
-import "./session_expiry"
+import "session_expiry"
 
 // Enable debug mode
 Turbo.setProgressBarDelay(0)
