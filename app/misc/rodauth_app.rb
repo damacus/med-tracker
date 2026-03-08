@@ -17,6 +17,10 @@ class RodauthApp < Rodauth::Rails::App
     end
 
     r.rodauth # route rodauth requests
+  rescue ActionController::InvalidAuthenticityToken
+    r.session.clear
+    flash[:alert] = I18n.t('authentication.session_expired', default: 'Your session expired. Please sign in again.')
+    r.redirect rodauth.login_path
 
     # ==> Authenticating requests
     # Call `rodauth.require_account` for requests that you want to
