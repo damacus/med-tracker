@@ -120,7 +120,10 @@ class Medication < ApplicationRecord # :nodoc:
   def estimated_daily_consumption
     return @estimated_daily_consumption if defined?(@estimated_daily_consumption)
 
-    schedule_rate = schedules.active.sum do |schedule|
+    # ⚡ Bolt Optimization: Use Enumerable#select instead of ActiveRecord#active
+    # to filter schedules in-memory. This prevents N+1 queries when calculating
+    # daily consumption for a collection of eager-loaded medications.
+    schedule_rate = schedules.select(&:active?).sum do |schedule|
       next 0.0 if schedule.max_daily_doses.blank?
 
       schedule.max_daily_doses.to_f / (schedule.cycle_period / 1.day)
