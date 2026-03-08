@@ -30,9 +30,9 @@ RSpec.describe 'Person medication reordering' do
       unlinked_second = PersonMedication.create!(person: unlinked_child, medication: medications(:aspirin))
       original_order = unlinked_child.person_medications.order(:position, :id).pluck(:id)
 
-      expect do
-        patch reorder_person_person_medication_path(unlinked_child, unlinked_second), params: { direction: 'up' }
-      end.to raise_error(ActiveRecord::RecordNotFound)
+      patch reorder_person_person_medication_path(unlinked_child, unlinked_second), params: { direction: 'up' }
+
+      expect(response).to have_http_status(:not_found)
 
       expect(unlinked_child.person_medications.order(:position, :id).pluck(:id))
         .to eq([unlinked_first.id, unlinked_second.id])

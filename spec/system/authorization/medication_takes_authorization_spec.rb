@@ -76,19 +76,23 @@ RSpec.describe 'Medication Takes Authorization' do
       it 'denies carers from viewing schedules for unassigned patients' do
         sign_in(carer)
         # Try to access an unrelated person
-        expect { visit person_path(people(:john)) }.to raise_error(ActiveRecord::RecordNotFound)
+        visit person_path(people(:john))
+        # Rails test environment renders the detailed exception page for RecordNotFound in system tests
+        expect(page).to have_content(/RecordNotFound|Couldn't find/i)
       end
 
       it 'denies parents from viewing schedules for non-children' do
         sign_in(parent)
         # Try to access an adult patient
-        expect { visit person_path(people(:adult_patient_person)) }.to raise_error(ActiveRecord::RecordNotFound)
+        visit person_path(people(:adult_patient_person))
+        expect(page).to have_content(/RecordNotFound|Couldn't find/i)
       end
 
       it 'denies adult patients from viewing others schedules' do
         sign_in(adult_patient)
         # Try to access another person
-        expect { visit person_path(people(:child_user_person)) }.to raise_error(ActiveRecord::RecordNotFound)
+        visit person_path(people(:child_user_person))
+        expect(page).to have_content(/RecordNotFound|Couldn't find/i)
       end
     end
   end

@@ -30,7 +30,9 @@ RSpec.describe 'Carer Access Authorization' do
 
     it 'denies carers access to unrelated people' do
       login_as(carer)
-      expect { visit person_path(unrelated_person) }.to raise_error(ActiveRecord::RecordNotFound)
+      visit person_path(unrelated_person)
+      # Rails test environment renders the detailed exception page for RecordNotFound in system tests
+      expect(page).to have_content(/RecordNotFound|Couldn't find/i)
     end
   end
 
