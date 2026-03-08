@@ -116,6 +116,7 @@ en:
 
   authentication:
     login_required: "Please login to continue"
+    session_expired: "Your session expired. Please sign in again."
     two_factor_required: "For enhanced security, please set up two-factor authentication for your account."
 
   invitation_mailer:

@@ -34,6 +34,7 @@ RSpec.describe 'Person Medications Authorization' do
       click_button 'Select a medication'
       find('label', text: medication.name).click
       expect(page).to have_content('Choose the dose')
+      expect(page).to have_select('Dose', with_options: ['1000 IU - Daily Vitamin D supplement'])
       select '1000 IU - Daily Vitamin D supplement', from: 'Dose'
       click_button 'Next'
       expect(page).to have_content('Add optional guidance')
@@ -96,6 +97,7 @@ RSpec.describe 'Person Medications Authorization' do
       click_button 'Select a medication'
       find('label', text: medication.name).click
       expect(page).to have_content('Choose the dose')
+      expect(page).to have_select('Dose', with_options: ['1000 IU - Daily Vitamin D supplement'])
       select '1000 IU - Daily Vitamin D supplement', from: 'Dose'
       click_button 'Next'
       expect(page).to have_content('Add optional guidance')
