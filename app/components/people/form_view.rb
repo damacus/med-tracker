@@ -8,14 +8,15 @@ module Components
       include Phlex::Rails::Helpers::TurboFrameTag
       include RubyUI
 
-      attr_reader :person, :title, :subtitle, :return_to, :is_modal
+      attr_reader :person, :title, :subtitle, :return_to, :is_modal, :assigned_location
 
-      def initialize(person:, title: nil, subtitle: nil, return_to: nil, is_modal: false)
+      def initialize(person:, is_modal: false, assigned_location: nil, **options)
         @person = person
-        @title = title || default_title
-        @subtitle = subtitle || default_subtitle
-        @return_to = return_to
+        @title = options[:title] || default_title
+        @subtitle = options[:subtitle] || default_subtitle
+        @return_to = options[:return_to]
         @is_modal = is_modal
+        @assigned_location = assigned_location
         super()
       end
 
@@ -59,8 +60,21 @@ module Components
         form_with(model: person, id: 'person_form', class: 'space-y-6') do |f|
           render_errors if person.errors.any?
           input(type: 'hidden', name: 'return_to', value: return_to) if return_to.present?
+          render_location_hint
           render_form_fields(f)
           render_actions(f)
+        end
+      end
+
+      def render_location_hint
+        return unless person.new_record?
+        return if assigned_location.blank?
+
+        Alert(class: 'border-primary/20 bg-primary/5 text-primary') do
+          AlertTitle { 'Location' }
+          AlertDescription do
+            plain "This person will be created at #{assigned_location.name}."
+          end
         end
       end
 

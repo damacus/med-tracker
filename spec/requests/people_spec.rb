@@ -17,6 +17,13 @@ RSpec.describe 'People' do
         expect(response.body).to include('value="dependent_adult"')
         expect(response.body).not_to include('value="adult"')
       end
+
+      it 'shows the primary location where the dependent will be created' do
+        get new_person_path
+
+        expect(response).to have_http_status(:ok)
+        expect(response.body).to include('This person will be created at Home.')
+      end
     end
 
     context 'when signed in as an admin' do
