@@ -5,7 +5,7 @@ class LocationMembershipsController < ApplicationController
 
   def create
     authorize LocationMembership
-    @person = Person.find(params[:location_membership][:person_id])
+    @person = policy_scope(Person).find(params[:location_membership][:person_id])
 
     if LocationMembership.create(location: @location, person: @person)
       redirect_to @location, notice: t('.success', name: @person.name, location: @location.name)
