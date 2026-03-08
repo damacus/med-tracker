@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.3.26](https://github.com/damacus/med-tracker/compare/v0.3.25...v0.3.26) (2026-03-08)
+
+
+### Features
+
+* 🎨 Palette: Add ARIA labels to person medication card icon buttons ([#939](https://github.com/damacus/med-tracker/issues/939)) ([68ff449](https://github.com/damacus/med-tracker/commit/68ff4490dd72dd87fcbc27f6d6f8e54e791216d8))
+
+
+### Bug Fixes
+
+* 🛡️ Sentinel: [HIGH] Fix IDOR in controllers ([#940](https://github.com/damacus/med-tracker/issues/940)) ([3cba131](https://github.com/damacus/med-tracker/commit/3cba13155b1fce0572a737e6c1d1e003c8fe35a3))
+
+
+### Performance Improvements
+
+* ⚡ Bolt: Prevent N+1 query in Medication consumption estimate ([#938](https://github.com/damacus/med-tracker/issues/938)) ([bd9238b](https://github.com/damacus/med-tracker/commit/bd9238b10107054295672e5e8a1e17417ed29b79))
+
 ## [0.3.25](https://github.com/damacus/med-tracker/compare/v0.3.24...v0.3.25) (2026-03-07)
 
 
