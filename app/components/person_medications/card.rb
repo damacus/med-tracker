@@ -280,7 +280,8 @@ module Components
           href: edit_person_person_medication_path(person, person_medication),
           data: { turbo_frame: 'modal', testid: "edit-person-medication-#{person_medication.id}" },
           class: 'inline-flex items-center justify-center w-10 h-10 rounded-xl text-slate-400 ' \
-                 'hover:text-slate-700 hover:bg-slate-100 transition-colors'
+                 'hover:text-slate-700 hover:bg-slate-100 transition-colors',
+          aria_label: t('person_medications.card.edit')
         ) do
           render Icons::Pencil.new(size: 16)
         end
@@ -298,7 +299,8 @@ module Components
               variant: :ghost,
               type: :submit,
               class: 'w-10 h-10 p-0 rounded-xl text-slate-400 hover:text-slate-700',
-              data: { testid: "move-up-person-medication-#{person_medication.id}" }
+              data: { testid: "move-up-person-medication-#{person_medication.id}" },
+              aria_label: t('person_medications.card.move_up_aria_label')
             ) do
               render Icons::ArrowUp.new(size: 16)
             end
@@ -314,7 +316,8 @@ module Components
               variant: :ghost,
               type: :submit,
               class: 'w-10 h-10 p-0 rounded-xl text-slate-400 hover:text-slate-700',
-              data: { testid: "move-down-person-medication-#{person_medication.id}" }
+              data: { testid: "move-down-person-medication-#{person_medication.id}" },
+              aria_label: t('person_medications.card.move_down_aria_label')
             ) do
               render Icons::ArrowDown.new(size: 16)
             end
@@ -328,7 +331,8 @@ module Components
             Button(
               variant: :ghost,
               class: 'w-12 h-12 p-0 rounded-xl text-slate-300 hover:text-destructive hover:bg-destructive/5',
-              data: { testid: "delete-person-medication-#{person_medication.id}" }
+              data: { testid: "delete-person-medication-#{person_medication.id}" },
+              aria_label: t('person_medications.card.delete_aria_label')
             ) do
               render Icons::Trash.new(size: 20)
             end
