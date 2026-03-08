@@ -84,8 +84,7 @@ RSpec.describe 'AdminManagesCarerRelationships' do
 
       # First verify carer cannot access patient when relationship is inactive
       login_as(carer_user)
-      visit person_path(patient)
-      expect(page).to have_css('#flash', text: 'You are not authorized to perform this action.')
+      expect { visit person_path(patient) }.to raise_error(ActiveRecord::RecordNotFound)
 
       # Admin reactivates the relationship
       rodauth_logout
