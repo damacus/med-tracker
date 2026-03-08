@@ -57,7 +57,7 @@ class PersonMedicationsController < ApplicationController
     authorize @person_medication
     @medications = available_medications
 
-    if @person_medication.save
+    if explicit_dose_submitted? && @person_medication.save
       respond_to do |format|
         format.html { redirect_to person_path(@person), notice: t('person_medications.created') }
         format.turbo_stream do
@@ -71,6 +71,8 @@ class PersonMedicationsController < ApplicationController
         end
       end
     else
+      add_explicit_dose_errors unless explicit_dose_submitted?
+
       respond_to do |format|
         format.html { render Components::PersonMedications::FormView.new(person_medication: @person_medication, person: @person, medications: @medications), status: :unprocessable_content }
         format.turbo_stream { render turbo_stream: turbo_stream.replace('modal', Components::PersonMedications::Modal.new(person_medication: @person_medication, person: @person, medications: @medications, title: t('person_medications.modal.new_title', person: @person.name))), status: :unprocessable_content }
@@ -214,5 +216,15 @@ class PersonMedicationsController < ApplicationController
 
   def available_medications
     Medication.order(:name)
+  end
+
+  def explicit_dose_submitted?
+    params.dig(:person_medication, :dose_amount).present? &&
+      params.dig(:person_medication, :dose_unit).present?
+  end
+
+  def add_explicit_dose_errors
+    @person_medication.errors.add(:dose_amount, :blank) if @person_medication.errors[:dose_amount].blank?
+    @person_medication.errors.add(:dose_unit, :blank) if @person_medication.errors[:dose_unit].blank?
   end
 end

@@ -401,7 +401,7 @@ ga:
       add_first_schedule: "Cuir an Chéad Oideas Leigheasanna Leis"
       my_medications_heading: "Mo Leigheasanna"
       no_medications: "Níl aon leigheasanna curtha leis fós."
-      medications_hint: "Cuir vitimíní, forlíontáin, nó leigheasanna os cionn an chuntair anseo."
+      medications_hint: "Cuir leigheasanna a thógtar de réir mar is gá anseo."
       add_first_medication: "Cuir an Chéad Leigheas Leis"
     overview:
       title: "Forbhreathnú Próifíle"
@@ -428,7 +428,7 @@ ga:
     medication_taken: "Tógadh an leigheas go rathúil."
     modal:
       new_title: "Cuir Leigheas Leis do %{person}"
-      subtitle: "Cuir vitimín, forlíonadh, nó cógas gan oideas leis"
+      subtitle: "Cuir leigheas de réir mar is gá leis"
     card:
       notes: "📝 Nótaí: "
       timing_restrictions: "⏱️ Srian Amanna:"

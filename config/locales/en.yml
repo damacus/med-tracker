@@ -434,7 +434,7 @@ en:
       add_first_schedule: "Add First Schedule"
       my_medications_heading: "My Medications"
       no_medications: "No medications added yet."
-      medications_hint: "Add vitamins, supplements, or over-the-counter medications here."
+      medications_hint: "Add medications that are taken as needed here."
       add_first_medication: "Add First Medication"
       no_any_medications: "No medications yet."
       add_first_any_medication: "Add Medication"
@@ -466,7 +466,7 @@ en:
     modal:
       new_title: "Add Medication for %{person}"
       edit_title: "Edit Medication for %{person}"
-      subtitle: "Add a medication that is taken as needed"
+      subtitle: "Add an as-needed medication"
     card:
       notes: "📝 Notes: "
       timing_restrictions: "⏱️ Timing Restrictions:"
