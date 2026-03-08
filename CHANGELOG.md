@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.27](https://github.com/damacus/med-tracker/compare/v0.3.26...v0.3.27) (2026-03-08)
+
+
+### Bug Fixes
+
+* resolve 422 error on TOTP authentication behind reverse proxy ([#942](https://github.com/damacus/med-tracker/issues/942)) ([120ccbc](https://github.com/damacus/med-tracker/commit/120ccbc93fc1eee79a2c5b7ce6acb78d3f052b58))
+
 ## [0.3.26](https://github.com/damacus/med-tracker/compare/v0.3.25...v0.3.26) (2026-03-08)
 
 
