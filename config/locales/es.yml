@@ -411,7 +411,7 @@ es:
       add_first_schedule: "Agregar Primera Receta"
       my_medications_heading: "Mis Medicamentos"
       no_medications: "Sin medicamentos aún."
-      medications_hint: "Agregue vitaminas, suplementos o medicamentos de venta libre aquí."
+      medications_hint: "Agregue aquí medicamentos que se toman según sea necesario."
       add_first_medication: "Agregar Primer Medicamento"
     form:
       edit_heading: "Editar Persona"
@@ -426,7 +426,7 @@ es:
     medication_taken: "Medicamento tomado correctamente."
     modal:
       new_title: "Agregar Medicamento para %{person}"
-      subtitle: "Agregar una vitamina, suplemento o medicamento sin receta"
+      subtitle: "Agregar un medicamento según sea necesario"
     card:
       notes: "📝 Notas: "
       timing_restrictions: "⏱️ Restricciones de Tiempo:"

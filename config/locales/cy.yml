@@ -411,7 +411,7 @@ cy:
       add_first_schedule: "Ychwanegu Presgripsiwn Cyntaf"
       my_medications_heading: "Fy Meddyginiaethau"
       no_medications: "Dim meddyginiaethau wedi'u hychwanegu eto."
-      medications_hint: "Ychwanegwch fitaminau, atchwanegion, neu feddyginiaethau dros y cownter yma."
+      medications_hint: "Ychwanegwch feddyginiaethau a gymerir yn ôl yr angen yma."
       add_first_medication: "Ychwanegu Meddyginiaeth Gyntaf"
     form:
       edit_heading: "Golygu Person"
@@ -426,7 +426,7 @@ cy:
     medication_taken: "Cymerwyd y feddyginiaeth yn llwyddiannus."
     modal:
       new_title: "Ychwanegu Meddyginiaeth ar gyfer %{person}"
-      subtitle: "Ychwanegu fitamin, atodiad, neu feddyginiaeth dros y cownter"
+      subtitle: "Ychwanegu meddyginiaeth yn ôl yr angen"
     card:
       notes: "📝 Nodiadau: "
       timing_restrictions: "⏱️ Cyfyngiadau Amseru:"
