@@ -113,7 +113,7 @@ module Views
       end
 
       def render_webauthn_script
-        script(src: "#{view_context.rodauth.webauthn_js_host}#{view_context.rodauth.webauthn_setup_js_path}")
+        script(src: "#{view_context.rodauth.webauthn_js_host}#{view_context.rodauth.webauthn_setup_js_path}", nonce: view_context.content_security_policy_nonce)
       end
     end
   end
