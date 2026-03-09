@@ -1,13 +1,16 @@
-# Quick Start
+# Technical Quick Start
 
-This guide gets MedTracker running locally with the project-standard
-`task` commands.
+This guide is for developers and advanced users who want to run the full
+MedTracker stack locally using Docker.
 
 ## Prerequisites
 
-- Docker and Docker Compose
-- [Task](https://taskfile.dev/)
+Before you begin, make sure you have these tools installed:
+- [Docker](https://www.docker.com/) and Docker Compose
+- [Task](https://taskfile.dev/) (the task runner for this project)
 - Git
+
+---
 
 ## 1. Clone the project
 
@@ -18,67 +21,52 @@ cd med-tracker
 
 ## 2. Start development services
 
+Run this command to start the database, web server, and worker:
+
 ```bash
 task dev:up
 ```
 
-This starts the development stack defined in `docker-compose.dev.yml`.
+*This command uses the configuration in `docker-compose.dev.yml`.*
 
 ## 3. Seed development data
+
+To quickly populate the database with example users, people, and medicines:
 
 ```bash
 task dev:seed
 ```
 
-The seed process loads fixtures from `spec/fixtures/` via `db/seeds.rb`.
-Default fixture user passwords are `password`.
+*The default password for all example users (e.g., `admin@example.com`) is `password`.*
 
 ## 4. Open the app
 
-Visit <http://localhost:3000>.
+The MedTracker UI is available at:
 
-## Common day-to-day commands
+👉 **[http://localhost:3000](http://localhost:3000)**
 
-```bash
-task dev:logs
-task dev:stop
-task dev:ps
-```
+---
 
-## Run tests
+## Day-to-Day Development Commands
 
-Use the test environment through Taskfile commands:
-
-```bash
-task test
-```
-
-For local CI-like runs outside Dockerized app services:
-
-```bash
-task local:test
-task local:test:browser
-task local:test:all
-```
+| Command | Action |
+| --- | --- |
+| `task dev:logs` | View real-time application logs |
+| `task dev:stop` | Stop all development containers |
+| `task dev:ps` | List running containers |
+| `task test` | Run the full test suite in Docker |
 
 ## Troubleshooting
 
 ### Rebuild from scratch
-
+If you encounter database issues or want to start fresh:
 ```bash
 task dev:rebuild
 ```
+*Warning: This removes all data and recreates the database.*
 
-This removes volumes and recreates the development database.
-
-### Database migration updates
-
+### Database migrations
+To apply new database changes without a full rebuild:
 ```bash
 task dev:run-migrations
 ```
-
-## Next guides
-
-- [Carer Onboarding: First Dose](user-onboarding-carer-first-dose.md)
-- [Testing](testing.md)
-- [Deployment](deployment.md)

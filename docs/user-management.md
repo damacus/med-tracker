@@ -1,63 +1,61 @@
-# User Management
+# Managing Your Family
 
-## Overview
+In MedTracker, we differentiate between the **person taking the medicine**
+and the **person recording the dose**. This guide will help you understand
+how to set up your family correctly.
 
-MedTracker separates care identity (`Person`) from authentication identity
-(`User`).
+---
 
-- `Person`: clinical/care context (capacity, care relationships, demographics)
-- `User`: can sign in and act in the system
+## 👨‍👩‍👧‍👦 Who is who?
 
-Not every `Person` must have a `User`.
+### 1. The Person
+A **Person** is someone whose health is being tracked. They have a profile
+with their medicines, history, and special needs.
 
-## Person types
+### 2. The User
+A **User** is someone who can log in to the app to record a dose, add a
+medicine, or manage others.
 
-`Person.person_type` values:
+👉 **Note:** Not every Person needs to be a User. For example, a young child
+(a "Person") might not have their own login (a "User").
 
-- `adult` (`0`): self-managing adult
-- `minor` (`1`): child requiring parental/carer support
-- `dependent_adult` (`2`): adult requiring carer support
+---
 
-Capacity (`has_capacity`) is tracked separately and used in care rules.
+## 🏥 Types of People
+We use these categories to help the app understand how much help someone needs:
 
-## User roles
+- **Adult:** A self-managing adult who can look after their own medicines.
+- **Minor:** A child who needs a parent or carer's help.
+- **Dependent Adult:** An adult who requires a carer to manage their medications safely.
 
-`User.role` values:
+---
 
-- `administrator`
-- `doctor`
-- `nurse`
-- `carer`
-- `parent`
-- `minor`
+## 🤝 Carers & Support
+A **Carer** is anyone who helps another person manage their medicine.
+This can be a family member, a parent, or even a professional nurse.
 
-Roles define authorization scope; person type defines care requirements.
+- **Family Support:** You can have multiple carers for one person (e.g., both
+  parents looking after a child).
+- **Multiple Dependents:** A single carer can look after many people (e.g., a
+  daughter looking after both of her parents).
 
-## Carer relationships
+---
 
-`CarerRelationship` links carers to patients/dependents:
+## 🛡️ Roles and Permissions
+To keep things safe, different people have different "roles" in the app:
 
-- `carer_id` references a `Person`
-- `patient_id` references a `Person`
-- relationships can be active/inactive
+- **Administrator:** Can manage everyone, add users, and change settings.
+- **Carer / Parent:** Can record doses and see the history for their family.
+- **Doctor / Nurse:** Can add prescriptions and clinical notes.
 
-A dependent person can have multiple carers. A carer can support multiple people.
+---
 
-## Key constraints
+## 📝 How to add a family member
+1.  **Go to the Dashboard:** Click on "Add Person".
+2.  **Fill in the details:** Name, age, and any special needs.
+3.  **Assign a Carer:** If they need help, choose who will be their carer.
+4.  **Save:** Their profile is now ready to use!
 
-- Person emails are normalized and unique when present.
-- People without capacity must have at least one active carer relationship.
-- Carer relationship uniqueness is enforced for each carer/patient pair.
-
-## Practical flow
-
-1. Create a `Person`.
-2. Optionally create a linked `User` for sign-in.
-3. If the person lacks capacity, assign at least one active carer.
-4. Use role-based policies to control who can prescribe/administer/manage.
-
-## Related guides
-
-- [Carer Onboarding: First Dose](user-onboarding-carer-first-dose.md)
-- [Design](design.md)
-- [Audit Trail](audit-trail.md)
+## What's next?
+- [**Add their first medicine**](families/adding-first-medicine.md)
+- [**Record their first dose**](families/taking-first-dose.md)

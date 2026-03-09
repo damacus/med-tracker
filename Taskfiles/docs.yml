@@ -8,7 +8,8 @@ tasks:
       Build and serve documentation locally for preview.
       Usage: task docs:serve
     cmds:
-      - zensical serve
+      - uv sync
+      - uv run zensical serve
 
   build:
     desc: Build static documentation site
@@ -16,4 +17,5 @@ tasks:
       Build documentation into the site output directory.
       Usage: task docs:build
     cmds:
-      - zensical build --clean
+      - uv sync
+      - uv run zensical build --clean
