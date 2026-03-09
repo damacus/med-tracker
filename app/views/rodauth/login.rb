@@ -5,6 +5,7 @@ module Views
     class Login < Views::Rodauth::Base
       include Phlex::Rails::Helpers::FormWith
       include Phlex::Rails::Helpers::LinkTo
+      include Views::Rodauth::LoginPasskeySupport
 
       def view_template
         div(class: 'min-h-screen bg-[var(--bg)] flex flex-col items-center justify-center p-6 transition-all duration-500') do
@@ -46,6 +47,7 @@ module Views
             render_login_header
             flash_section
             render_login_form
+            render_passkey_section
             render_oauth_section
           end
         end

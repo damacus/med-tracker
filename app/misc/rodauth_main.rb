@@ -102,6 +102,14 @@ class RodauthMain < Rodauth::Rails::Auth
         set_password_requirement_error_message(:password_simple, 'requires one number and one special character')
         false
       end
+
+      def webauthn_user_verification
+        if current_route == :webauthn_login || @webauthn_login
+          'required'
+        else
+          super
+        end
+      end
     end
 
     after_login { remember_login if param_or_nil('remember') }
@@ -145,6 +153,8 @@ class RodauthMain < Rodauth::Rails::Auth
     end
 
     webauthn_origin { ENV.fetch('APP_URL', request.base_url) }
+    webauthn_user_verification 'required'
+    webauthn_login_user_verification_additional_factor? true
 
     # Configure WebAuthn table column mappings for Rails conventions
     webauthn_user_ids_account_id_column :account_id

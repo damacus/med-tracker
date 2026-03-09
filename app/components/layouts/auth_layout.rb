@@ -28,7 +28,7 @@ module Components
 
             javascript_include_tag 'appearance_boot', 'data-turbo-track': 'reload'
             stylesheet_link_tag 'tailwind', 'data-turbo-track': 'reload'
-            javascript_importmap_tags('auth')
+            javascript_include_tag 'auth', 'data-turbo-track': 'reload'
           end
 
           body(class: 'bg-background text-foreground') do

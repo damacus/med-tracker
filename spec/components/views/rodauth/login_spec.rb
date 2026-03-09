@@ -3,6 +3,14 @@
 require 'rails_helper'
 
 RSpec.describe Views::Rodauth::Login, type: :component do
+  let(:credential_options) do
+    Struct.new(:challenge) do
+      def as_json
+        { challenge: challenge, allowCredentials: [] }
+      end
+    end.new('challenge')
+  end
+
   # rubocop:disable RSpec/VerifiedDoubles
   let(:rodauth) do
     double(
@@ -10,7 +18,14 @@ RSpec.describe Views::Rodauth::Login, type: :component do
       login_path: '/login',
       reset_password_request_path: '/reset-password-request',
       create_account_path: '/create-account',
-      verify_account_resend_path: '/verify-account-resend'
+      verify_account_resend_path: '/verify-account-resend',
+      webauthn_login_path: '/webauthn-login',
+      webauthn_auth_param: 'webauthn_auth',
+      webauthn_auth_challenge_param: 'webauthn_auth_challenge',
+      webauthn_auth_challenge_hmac_param: 'webauthn_auth_challenge_hmac',
+      webauthn_auth_additional_form_tags: '',
+      compute_hmac: 'challenge-hmac',
+      webauthn_credential_options_for_get: credential_options
     )
   end
 
@@ -24,6 +39,23 @@ RSpec.describe Views::Rodauth::Login, type: :component do
 
     expect(rendered.text).to include('Welcome back')
     expect(rendered.text).to include('MedTracker')
+  end
+
+  it 'renders passkey controls for login autofill and explicit sign-in' do
+    rendered = render_inline(described_class.new)
+
+    expect(rendered.text).to include('Continue with Passkey')
+    expect(rendered.css('#webauthn-login-form').count).to eq(1)
+    expect(rendered.css('#passkey-login-trigger').count).to eq(1)
+  end
+
+  it 'renders passkey login form fields and login autocomplete hints' do
+    rendered = render_inline(described_class.new)
+
+    expect(rendered.css('input[autocomplete="username webauthn"]').count).to eq(1)
+    expect(rendered.to_html).to include('/webauthn-login')
+    expect(rendered.to_html).to include('webauthn_auth_challenge')
+    expect(rendered.to_html).to include('challenge-hmac')
   end
 
   it 'renders flash message inline near the login form (proximity principle)' do

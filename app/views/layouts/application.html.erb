@@ -30,7 +30,7 @@
     <% if current_user %>
       <%= javascript_importmap_tags %>
     <% else %>
-      <%= javascript_importmap_tags "auth" %>
+      <%= javascript_include_tag "auth", "data-turbo-track": "reload" %>
     <% end %>
   </head>
 

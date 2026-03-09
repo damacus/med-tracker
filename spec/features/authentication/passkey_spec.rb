@@ -44,4 +44,13 @@ RSpec.describe 'PASSKEY-001: WebAuthn/Passkey configuration' do
     expect(RodauthMain.instance_methods).to include(:webauthn_setup_path)
     expect(RodauthMain.instance_methods).to include(:webauthn_auth_path)
   end
+
+  scenario 'login page passkeys satisfy multifactor authentication' do
+    auth = RodauthApp.rodauth.allocate
+
+    allow(auth).to receive(:current_route).and_return(:webauthn_login)
+
+    expect(auth.send(:webauthn_login_user_verification_additional_factor?)).to be(true)
+    expect(auth.webauthn_user_verification).to eq('required')
+  end
 end
