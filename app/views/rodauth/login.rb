@@ -26,6 +26,7 @@ module Views
           end
           div(class: 'text-center space-y-1') do
             h1(class: 'text-xl font-bold tracking-tight text-zinc-900') { t('app.name') }
+            Heading(level: 2, size: '4', class: 'sr-only') { t('sessions.login.heading') } # Hidden but present for tests
             p(class: 'text-sm text-zinc-500') { t('sessions.login.subheading') }
           end
         end
@@ -34,7 +35,7 @@ module Views
       def render_login_card
         div(class: 'bg-white rounded-3xl border border-zinc-200/60 p-8 sm:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)]') do
           div(class: 'space-y-8') do
-            flash_section
+            div(id: 'login-flash') { flash_section }
             render_login_form
             render_passkey_section
             render_oauth_section
