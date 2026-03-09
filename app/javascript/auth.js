@@ -126,7 +126,7 @@ const initPasskeyLogin = () => {
       });
     } catch (error) {
       if (!noopError(error)) {
-        setError(trigger.dataset.errorFailed);
+        setError("");
       }
     }
   };
@@ -149,7 +149,7 @@ const initPasskeyLogin = () => {
   });
 
   startConditionalAutofill().catch(() => {
-    setError(trigger.dataset.errorFailed);
+    setError("");
   });
 
   form.dataset.passkeyInitialized = "true";
