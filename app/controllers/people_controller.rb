@@ -50,11 +50,12 @@ class PeopleController < ApplicationController
     @person = Person.new
     authorize @person
     is_modal = request.headers['Turbo-Frame'] == 'modal'
+    assigned_location = current_primary_location
 
     if is_modal
-      render Components::People::Modal.new(person: @person), layout: false
+      render Components::People::Modal.new(person: @person, assigned_location: assigned_location), layout: false
     else
-      render Components::People::FormView.new(person: @person)
+      render Components::People::FormView.new(person: @person, assigned_location: assigned_location)
     end
   end
 
@@ -98,12 +99,13 @@ class PeopleController < ApplicationController
       else
         @medications = [] # Needed if form uses it
         format.html do
-          render Components::People::FormView.new(person: @person), status: :unprocessable_content
+          render Components::People::FormView.new(person: @person, assigned_location: current_primary_location),
+                 status: :unprocessable_content
         end
         format.turbo_stream do
           render turbo_stream: turbo_stream.replace(
             'modal',
-            Components::People::Modal.new(person: @person)
+            Components::People::Modal.new(person: @person, assigned_location: current_primary_location)
           ), status: :unprocessable_content
         end
       end

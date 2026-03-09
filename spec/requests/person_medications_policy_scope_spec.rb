@@ -65,6 +65,20 @@ RSpec.describe 'PersonMedicationsController medication options' do
         expect(response.body).to include('Add Medication for')
         expect(response.body).to include('Choose a medication')
       end
+
+      it 'requires an explicit dose selection before creating the medication' do
+        post person_person_medications_path(adult_patient_person),
+             params: {
+               person_medication: {
+                 medication_id: medications(:vitamin_d).id,
+                 notes: 'No dose selected'
+               }
+             }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.body).to include('Dose amount can&#39;t be blank')
+        expect(response.body).to include('Dose unit can&#39;t be blank')
+      end
     end
   end
 end
