@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.28](https://github.com/damacus/med-tracker/compare/v0.3.27...v0.3.28) (2026-03-09)
+
+
+### Features
+
+* **people:** show dependent creation location ([#947](https://github.com/damacus/med-tracker/issues/947)) ([4a40fd6](https://github.com/damacus/med-tracker/commit/4a40fd64ce4e3be6007a65f462083c70361fca41))
+
+
+### Bug Fixes
+
+* passkey registration and several production bug fixes ([#948](https://github.com/damacus/med-tracker/issues/948)) ([4fe5b00](https://github.com/damacus/med-tracker/commit/4fe5b00a60f6259e3a0e18fc6fad0fec55814d9c))
+* **ui:** require explicit as-needed dose selection ([#944](https://github.com/damacus/med-tracker/issues/944)) ([571c967](https://github.com/damacus/med-tracker/commit/571c96707734e6e5162266be8eeefd3ed5a140ed))
+
 ## [0.3.27](https://github.com/damacus/med-tracker/compare/v0.3.26...v0.3.27) (2026-03-08)
 
 
