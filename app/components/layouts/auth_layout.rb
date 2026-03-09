@@ -7,7 +7,6 @@ module Components
       include Phlex::Rails::Helpers::CSRFMetaTags
       include Phlex::Rails::Helpers::JavaScriptIncludeTag
       include Phlex::Rails::Helpers::StylesheetLinkTag
-      include Phlex::Rails::Helpers::JavaScriptImportmapTags
 
       def initialize(title: 'Med Tracker', component: nil)
         @title = title
