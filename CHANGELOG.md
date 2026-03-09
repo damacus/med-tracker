@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.29](https://github.com/damacus/med-tracker/compare/v0.3.28...v0.3.29) (2026-03-09)
+
+
+### Features
+
+* simplify login page design  ([#951](https://github.com/damacus/med-tracker/issues/951)) ([00a2b5a](https://github.com/damacus/med-tracker/commit/00a2b5aebc4f85793c4c7e6cbccaf9528cec19c4))
+
+
+### Performance Improvements
+
+* reduce duplicated browser coverage in slow specs ([#949](https://github.com/damacus/med-tracker/issues/949)) ([70a98b4](https://github.com/damacus/med-tracker/commit/70a98b44efc6234717e200793a75f91b55775b92))
+
 ## [0.3.28](https://github.com/damacus/med-tracker/compare/v0.3.27...v0.3.28) (2026-03-09)
 
 
