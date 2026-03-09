@@ -15,7 +15,7 @@ You'll need to install these three tools before we start. They are the "engine" 
 
 1. **[Docker Desktop](https://www.docker.com/products/docker-desktop/):** download and install the version for your computer.
 2. **[Git](https://git-scm.com/downloads):** follow the instructions for your computer.
-3. **[Task](https://taskfile.dev/installation/):** follow the "Manual Installation" or "One-liner" if you can.
+3. **[Task](https://taskfile.dev/installation/):** follow the instructions for your computer (e.g., `brew install go-task/tap/go-task` on Mac).
 
 ---
 
