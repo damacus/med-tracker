@@ -16,6 +16,9 @@ module Views
           passkey_error_message
           render_passkey_login_form(credential_options)
         end
+      rescue StandardError => e
+        Rails.logger.error("Failed to render passkey section: #{e.message}")
+        nil
       end
 
       def render_passkey_login_form(credential_options)

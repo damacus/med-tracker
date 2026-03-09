@@ -58,6 +58,15 @@ RSpec.describe Views::Rodauth::Login, type: :component do
     expect(rendered.to_html).to include('challenge-hmac')
   end
 
+  it 'renders login form even when passkey credential generation fails' do
+    allow(rodauth).to receive(:webauthn_credential_options_for_get).and_raise(StandardError, 'WebAuthn unavailable')
+
+    rendered = render_inline(described_class.new)
+
+    expect(rendered.text).to include('Welcome back')
+    expect(rendered.css('#webauthn-login-form').count).to eq(0)
+  end
+
   it 'renders flash message inline near the login form (proximity principle)' do
     flash_hash = ActionDispatch::Flash::FlashHash.new(alert: 'Please login to continue')
     allow(controller).to receive(:flash).and_return(flash_hash)
