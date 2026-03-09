@@ -35,7 +35,7 @@ RSpec.describe 'MedicationsVisibility' do
     click_button 'Continue'
 
     # Step 2: Dosage & Supply — wait for step to become visible
-    expect(page).to have_css('#medication_dosage_amount', visible: true)
+    expect(page).to have_css('#medication_dosage_amount', visible: :visible)
     fill_in 'medication_dosage_amount', with: '500'
 
     all('[data-ruby-ui--combobox-target="trigger"]').last.click
@@ -46,7 +46,7 @@ RSpec.describe 'MedicationsVisibility' do
     click_button 'Continue'
 
     # Step 3: Warnings — wait for step, then save
-    expect(page).to have_button('Save Medication', visible: true)
+    expect(page).to have_button('Save Medication', visible: :visible)
     click_button 'Save Medication'
 
     expect(page).to have_content('Test Medication E2E')
