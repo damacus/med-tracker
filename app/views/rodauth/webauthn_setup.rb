@@ -68,9 +68,17 @@ module Views
       end
 
       def render_setup_form
+        credential = view_context.rodauth.new_webauthn_credential
         div(class: 'border-t border-border pt-6') do
-          render_webauthn_form(view_context.rodauth.new_webauthn_credential)
+          render_webauthn_form(credential)
           render_webauthn_script
+        end
+      rescue StandardError => e
+        Rails.logger.error("Failed to render WebAuthn setup form: #{e.message}")
+        div(class: 'border-t border-border pt-6') do
+          p(class: 'text-sm text-destructive') do
+            'Unable to initialize passkey registration. Please try again later.'
+          end
         end
       end
 

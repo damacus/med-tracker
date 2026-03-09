@@ -145,10 +145,10 @@ class RodauthMain < Rodauth::Rails::Auth
     # ==> WebAuthn (Passkey) Configuration
     webauthn_rp_name 'MedTracker'
     webauthn_rp_id do
-      if Rails.env.production?
+      if ENV['APP_URL'].present?
         URI.parse(ENV.fetch('APP_URL')).host
       else
-        'localhost'
+        request.host
       end
     end
 

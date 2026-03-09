@@ -5,6 +5,7 @@ module Components
     class FormView < Components::Base
       include Phlex::Rails::Helpers::FormWith
       include Phlex::Rails::Helpers::Pluralize
+      include Wizard::FieldHelpers
 
       attr_reader :medication, :title, :subtitle, :locations, :return_to
 

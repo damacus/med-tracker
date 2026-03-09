@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class MedicationsController < ApplicationController
+class MedicationsController < ApplicationController # rubocop:disable Metrics/ClassLength
   include InventoryLocationFilterable
   include MedicationRefillable
 
@@ -34,11 +34,10 @@ class MedicationsController < ApplicationController
     @medication = Medication.new
     @medication.location_id ||= current_primary_location&.id
     authorize @medication
-    render Components::Medications::FormView.new(
+
+    render wizard_wrapper_class.new(
       medication: @medication,
-      locations: available_locations,
-      title: t('medications.form.new_title'),
-      subtitle: t('medications.form.new_subtitle')
+      locations: available_locations
     )
   end
 
@@ -60,7 +59,12 @@ class MedicationsController < ApplicationController
     authorize @medication
 
     if @medication.save
-      redirect_to @medication, notice: t('medications.created')
+      create_success
+    elsif params[:wizard] == 'true'
+      render wizard_wrapper_class.new(
+        medication: @medication,
+        locations: available_locations
+      ), status: :unprocessable_content
     else
       render Components::Medications::FormView.new(
         medication: @medication,
@@ -204,6 +208,30 @@ class MedicationsController < ApplicationController
                      warnings
                      location_id]
     )
+  end
+
+  def create_success
+    if params[:wizard] == 'true'
+      respond_to do |format|
+        format.turbo_stream do
+          render turbo_stream: turbo_stream.replace(
+            'wizard-content',
+            Components::Medications::Wizard::StepDosages.new(medication: @medication)
+          )
+        end
+        format.html { redirect_to @medication, notice: t('medications.created') }
+      end
+    else
+      redirect_to @medication, notice: t('medications.created')
+    end
+  end
+
+  def wizard_wrapper_class
+    case params[:variant]
+    when 'modal'     then Components::Medications::Wizard::ModalWrapper
+    when 'slideover' then Components::Medications::Wizard::SlideOverWrapper
+    else                  Components::Medications::Wizard::FullPageWrapper
+    end
   end
 
   def search_results_for(query)

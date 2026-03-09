@@ -15,9 +15,8 @@ RSpec.describe 'MedicationNewLayout' do
     visit new_medication_path
 
     expect(page).to have_content('Add a New Medication')
-    expect(page).to have_content('Capture inventory details and dosage information.')
 
-    within('[data-testid="medication-form"]') do
+    within('[data-testid="medication-wizard-form"]') do
       aggregate_failures 'form fields' do
         expect(page).to have_field('Name')
         expect(page).to have_field('Description')

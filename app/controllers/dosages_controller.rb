@@ -20,7 +20,21 @@ class DosagesController < ApplicationController
     authorize @dosage
 
     if @dosage.save
-      redirect_to @medication, notice: t('dosages.created')
+      if params[:wizard] == 'true'
+        respond_to do |format|
+          format.turbo_stream do
+            dosage_row = Components::Medications::Wizard::DosageRow.new(dosage: @dosage)
+            form_frame = Components::Medications::Wizard::DosageFormFrame.new(medication: @medication)
+            render turbo_stream: [
+              turbo_stream.append('dosage-list', dosage_row),
+              turbo_stream.replace('dosage-form', form_frame)
+            ]
+          end
+          format.html { redirect_to @medication, notice: t('dosages.created') }
+        end
+      else
+        redirect_to @medication, notice: t('dosages.created')
+      end
     else
       render Components::Dosages::Modal.new(dosage: @dosage, medication: @medication),
              status: :unprocessable_content
