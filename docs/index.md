@@ -1,43 +1,40 @@
 # MedTracker Documentation
 
-MedTracker helps carers, families, and clinicians record medication
-administration safely with auditability and timing safeguards.
+MedTracker helps you safely record when someone has taken their medicine.
+It's built to keep families, carers, and health professionals on the same page,
+ensuring medications are given on time and safely.
 
-## Start Here
+---
 
-- [Quick Start](quick-start.md): run MedTracker locally with Docker.
-- [Carer Onboarding: First Dose](user-onboarding-carer-first-dose.md): first-time
-  user flow from invite to recording a dose.
-- [Testing](testing.md): run the full suite with project `task` commands.
+## 🏠 For Families
+*These guides are for family members and carers looking after loved ones at home.*
 
-## Core Guides
+- [**Quick Setup Guide**](families/quick-setup.md): get MedTracker up and running in minutes.
+- [**Add your first medicine**](families/adding-first-medicine.md): learn how to add a prescription or a simple over-the-counter medicine.
+- [**Record a dose**](families/taking-first-dose.md): follow the steps to safely record when a medicine is taken.
+- [Manage your family members](user-management.md): set up profiles for the people you support.
 
-- [Deployment](deployment.md): run app and database in development and production.
-- [Kubernetes User Seeding](kubernetes-user-seeding.md): bootstrap first admin and seed care-team invites using ConfigMap and Secret/ExternalSecret patterns.
-- [User Management](user-management.md): person types, user roles, and carer links.
-- [Mail Setup](mail-setup.md): SMTP/environment configuration and delivery verification checklist.
-- [OAuth Setup](oauth-setup.md): configure Google OIDC sign-in.
-- [Passkey Setup](passkey-setup.md): configure and operate WebAuthn passkeys.
-- [Two-Factor Authentication](two-factor-authentication.md): TOTP and recovery flow.
+---
 
-## Integrations
+## 🛠️ For Developers
+*These guides are for those setting up, customizing, or contributing to the MedTracker codebase.*
 
-- [NHS dm+d Medicine Search](nhs-dmd-integration.md): search the
-  NHS Dictionary of Medicines and Devices, credentials setup, and
-  feature gating.
+- [**Technical Quick Start**](quick-start.md): run the full stack with Docker.
+- [Testing Guide](testing.md): run the RSpec and Capybara/Playwright test suites.
+- [Design & Architecture](design.md): explore the domain model and safety guardrails.
+- [Audit & Compliance](audit-trail.md): details on versioning and data history.
 
-## Architecture
+---
 
-- [Design](design.md): architecture, domain model, and guardrails.
-- [Database Relationships](database-relationships.md): current schema relationships.
-- [Audit Trail](audit-trail.md): PaperTrail model coverage and access rules.
-- [Accessibility](accessibility.md): WCAG guidance used in the UI.
-- [Theming](theming.md): styling and design consistency rules.
+## 🩺 For Clinicians & Advanced Users
+*These guides focus on clinical accuracy and deep integrations.*
 
-## Docs Tooling
+- [NHS dm+d Integration](nhs-dmd-integration.md): use the UK's medicine dictionary to find accurate names.
+- [UK Regulatory Compliance Plan](uk-regulatory-compliance-plan.md): how MedTracker aligns with health data standards.
+- [Audit Trail](audit-trail.md): how we ensure clinical records are safe and traceable.
 
-- Local preview: `task docs:serve`
-- Static build: `task docs:build`
-- LLM context index: [llms.txt](llms.txt)
+---
 
-Published docs: <https://damacus.github.io/med-tracker/>
+### Need help?
+- [Glossary](glossary.md): common terms used in the app.
+- [Troubleshooting](quick-start.md#troubleshooting): common technical fixes.

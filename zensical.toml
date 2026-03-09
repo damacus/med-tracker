@@ -9,25 +9,32 @@ site_dir = "site"
 
 nav = [
   { Home = "index.md" },
-  { "Getting Started" = [
+  { "🏠 For Families" = [
+    { "Add your first medicine" = "families/adding-first-medicine.md" },
+    { "Record a dose" = "families/taking-first-dose.md" },
+    { "Managing Your Family" = "user-management.md" }
+  ] },
+  { "🛠️ For Developers" = [
     { "Quick Start" = "quick-start.md" },
+    { "Self-Hosting Setup" = "self-hosting.md" },
     { Deployment = "deployment.md" },
-    { Testing = "testing.md" }
-  ] },
-  { "User Guides" = [
-    { "Carer Onboarding: First Dose" = "user-onboarding-carer-first-dose.md" },
-    { "User Management" = "user-management.md" },
-    { "Mail Setup" = "mail-setup.md" },
-    { "OAuth Setup" = "oauth-setup.md" },
-    { "Passkey Setup" = "passkey-setup.md" },
-    { "Two-Factor Authentication" = "two-factor-authentication.md" }
-  ] },
-  { Architecture = [
+    { Testing = "testing.md" },
     { Design = "design.md" },
     { "Database Relationships" = "database-relationships.md" },
-    { "Audit Trail" = "audit-trail.md" },
+    { "Audit Trail" = "audit-trail.md" }
+  ] },
+  { "🩺 For Clinicians" = [
+    { "NHS dm+d Integration" = "nhs-dmd-integration.md" },
+    { "UK Regulatory Compliance" = "uk-regulatory-compliance-plan.md" }
+  ] },
+  { "Advanced Setup" = [
+    { "Mail Setup" = "mail-setup.md" },
+    { "OAuth/OIDC Setup" = "oidc-setup.md" },
+    { "Passkey Setup" = "passkey-setup.md" },
+    { "Two-Factor Authentication" = "two-factor-authentication.md" },
     { Accessibility = "accessibility.md" },
-    { Theming = "theming.md" }
+    { Theming = "theming.md" },
+    { "Audit Trail Detail" = "audit-trail.md" }
   ] }
 ]
 
