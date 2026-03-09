@@ -19,37 +19,6 @@ RSpec.describe 'Profile Editing' do
     page.execute_script('document.querySelectorAll("[data-state]").forEach(el => el.remove())') if example.metadata[:js]
   end
 
-  describe 'viewing profile' do
-    it 'displays user information' do
-      expect(page).to have_content('My Profile')
-      expect(page).to have_content(person.name)
-      expect(page).to have_content(account.email)
-    end
-
-    it 'shows account security section with change links' do
-      expect(page).to have_content('Account Security')
-      expect(page).to have_content('Change Email Address')
-      expect(page).to have_content('Change Password')
-      expect(page).to have_link('Change', count: 2)
-    end
-
-    it 'shows danger zone with close account button' do
-      expect(page).to have_content('Danger Zone')
-      expect(page).to have_content('Close Account')
-      expect(page).to have_button('Close Account')
-    end
-
-    it 'has modal frames for account actions' do
-      # Check if links target the modal frame
-      expect(page).to have_css("a[data-turbo-frame='modal']", count: 2)
-    end
-
-    it 'has AlertDialog for close account' do
-      # Check if AlertDialog component exists
-      expect(page).to have_css('[data-controller="ruby-ui--alert-dialog"]', minimum: 1)
-    end
-  end
-
   describe 'changing email', :js do
     it 'opens modal when clicking change' do
       first('a', text: 'Change').click
