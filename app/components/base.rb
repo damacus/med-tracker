@@ -11,6 +11,17 @@ module Components
     include Phlex::Rails::Helpers::Pluralize
     include Components::FormHelpers
 
+    def render_version_badge
+      div(
+        class: 'version-badge-container mt-auto py-4 px-2 flex justify-center md:justify-start ' \
+               'w-full opacity-40 hover:opacity-100 transition-opacity'
+      ) do
+        render RubyUI::Badge.new(variant: :outline, size: :sm) do
+          "v#{MedTracker::VERSION}"
+        end
+      end
+    end
+
     if Rails.env.development?
       def before_template
         comment { "Before #{self.class.name}" }

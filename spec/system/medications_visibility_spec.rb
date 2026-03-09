@@ -20,6 +20,7 @@ RSpec.describe 'MedicationsVisibility' do
 
     visit new_medication_path
 
+    # Step 1: Basic Info
     triggers = all('[data-ruby-ui--combobox-target="trigger"]')
     triggers[0].click  # location
     find('label', text: 'Home').click
@@ -31,13 +32,21 @@ RSpec.describe 'MedicationsVisibility' do
     find('label', text: 'Analgesic').click
     page.send_keys(:escape)
 
+    click_button 'Continue'
+
+    # Step 2: Dosage & Supply — wait for step to become visible
+    expect(page).to have_css('#medication_dosage_amount', visible: :visible)
     fill_in 'medication_dosage_amount', with: '500'
 
-    triggers[2].click  # dosage unit
+    all('[data-ruby-ui--combobox-target="trigger"]').last.click
     find('label', text: 'mg').click
     page.send_keys(:escape)
     fill_in 'medication_current_supply', with: '50'
 
+    click_button 'Continue'
+
+    # Step 3: Warnings — wait for step, then save
+    expect(page).to have_button('Save Medication', visible: :visible)
     click_button 'Save Medication'
 
     expect(page).to have_content('Test Medication E2E')
