@@ -4,6 +4,7 @@ module Components
   module Medications
     class IndexView < Components::Base
       include Phlex::Rails::Helpers::FormWith
+      include Phlex::Rails::Helpers::TurboFrameTag
 
       attr_reader :medications, :current_category, :categories, :locations, :current_location_id
 
@@ -21,6 +22,7 @@ module Components
           render_header
           render_filters_section
           render_medications_grid
+          turbo_frame_tag 'modal'
         end
       end
 

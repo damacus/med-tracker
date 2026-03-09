@@ -38,8 +38,9 @@ module Components
                 render_navigation_links
               end
 
-              render RubyUI::SheetFooter.new(class: 'mt-auto') do
+              render RubyUI::SheetFooter.new(class: 'mt-auto flex flex-col gap-4 items-center') do
                 render_auth_actions
+                render_version_badge
               end
             end
           end
