@@ -60,7 +60,7 @@ module Views
       end
 
       def render_webauthn_script
-        script(src: "#{rodauth.webauthn_js_host}#{rodauth.webauthn_auth_js_path}")
+        script(src: "#{rodauth.webauthn_js_host}#{rodauth.webauthn_auth_js_path}", nonce: view_context.content_security_policy_nonce)
       end
 
       def challenge_fields(credential_options)

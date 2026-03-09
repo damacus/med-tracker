@@ -10,6 +10,8 @@ class ScheduleDailyRemindersJob < ApplicationJob
       next unless pref.person&.account
 
       enqueue_reminders_for(pref)
+    rescue StandardError => e
+      Rails.logger.error("Failed to schedule reminders for preference #{pref.id}: #{e.class}: #{e.message}")
     end
   end
 

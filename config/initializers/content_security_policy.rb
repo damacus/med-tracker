@@ -20,8 +20,7 @@ Rails.application.configure do
     policy.worker_src  :self
 
     # Allow connections to self and websockets for Turbo/ActionCable
-    policy.connect_src :self, :wss if Rails.env.development?
-    policy.connect_src :self unless Rails.env.development?
+    policy.connect_src :self, :wss
   end
 
   # Generate session nonces for permitted importmap, inline scripts, and inline styles.
