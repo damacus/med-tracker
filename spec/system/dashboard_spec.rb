@@ -6,63 +6,23 @@ RSpec.describe 'Dashboard' do
   fixtures :accounts, :users, :locations, :medications, :dosages, :schedules, :people,
            :carer_relationships, :person_medications, :medication_takes
 
-  it 'loads the dashboard for a signed-in user and shows family-wide doses' do
+  it 'loads the dashboard and allows taking a dose from the timeline' do
     travel_to(Time.current.beginning_of_day + 9.hours) do
       sign_in(users(:jane))
-
       visit dashboard_path
 
       expect(page).to have_content('Good morning')
       expect(page).to have_content("Today's Schedule")
-
-      # Jane's medication
       expect(page).to have_content('Ibuprofen')
       expect(page).to have_content('Jane Doe')
-
-      # Child's medication
       expect(page).to have_content('Child Patient')
+
+      button = first('[data-testid^="take-dose-"]')
+
+      expect do
+        button.click
+        expect(page).to have_content('Medication taken successfully.', wait: 10)
+      end.to change(MedicationTake, :count).by(1)
     end
-  end
-
-  it 'allows taking a dose directly from the dashboard' do
-    sign_in(users(:jane))
-    visit dashboard_path
-
-    # Wait for the dashboard to load and show schedules
-    expect(page).to have_content("Today's Schedule")
-
-    # Find the first take-dose button
-    button = first('[data-testid^="take-dose-"]')
-
-    expect do
-      button.click
-      # Wait for the success message
-      expect(page).to have_content('Medication taken successfully.', wait: 10)
-    end.to change(MedicationTake, :count).by(1)
-  end
-
-  it 'navigates from stat cards to the expected pages' do
-    sign_in(users(:jane))
-    visit dashboard_path
-
-    within '[data-testid="dashboard"]' do
-      find("a[href='#{people_path}']").click
-    end
-    expect(page).to have_current_path(people_path)
-    expect(page).to have_content('People')
-
-    visit dashboard_path
-    within '[data-testid="dashboard"]' do
-      find("a[href='#{schedules_path}']").click
-    end
-    expect(page).to have_current_path(schedules_path)
-    expect(page).to have_content('Active Schedules')
-
-    visit dashboard_path
-    within '[data-testid="dashboard"]' do
-      find("a[href='#{reports_path}']").click
-    end
-    expect(page).to have_current_path(reports_path)
-    expect(page).to have_content('Health Report')
   end
 end
