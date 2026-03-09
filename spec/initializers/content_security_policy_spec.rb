@@ -16,21 +16,13 @@ RSpec.describe 'Content Security Policy Configuration' do # rubocop:disable RSpe
   end
 
   describe 'policy directives' do
-    it 'sets style-src to self only' do
-      policy = ActionDispatch::ContentSecurityPolicy.new
-      csp.call(policy)
-      header = policy.build(nil)
-
-      expect(header).to include("style-src 'self'")
-      expect(header).not_to match(/style-src.*unsafe-inline/)
+    it 'configures style-src and script-src to self' do
+      expect(csp.directives['style-src']).to eq(["'self'"])
+      expect(csp.directives['script-src']).to eq(["'self'"])
     end
 
-    it 'sets script-src to self only' do
-      policy = ActionDispatch::ContentSecurityPolicy.new
-      csp.call(policy)
-      header = policy.build(nil)
-
-      expect(header).to include("script-src 'self'")
+    it 'does not allow unsafe-inline in style-src' do
+      expect(csp.directives['style-src']).not_to include("'unsafe-inline'")
     end
   end
 end
