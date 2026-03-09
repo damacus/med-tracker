@@ -2,7 +2,6 @@
 
 require 'rails_helper'
 
-# rubocop:disable Capybara/NegationMatcherAfterVisit
 RSpec.describe 'Two-Factor Soft Enforcement' do
   fixtures :accounts, :people, :users
 
@@ -17,4 +16,3 @@ RSpec.describe 'Two-Factor Soft Enforcement' do
     expect(page).to have_current_path(profile_path)
   end
 end
-# rubocop:enable Capybara/NegationMatcherAfterVisit

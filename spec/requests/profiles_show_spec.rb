@@ -53,7 +53,7 @@ RSpec.describe 'Profiles' do
       end
       AccountRecoveryCode.where(id: account.id).delete_all
       5.times do |i|
-        AccountRecoveryCode.insert!({ id: account.id, code: "recovery-code-#{i}" })
+        AccountRecoveryCode.create!(id: account.id, code: "recovery-code-#{i}")
       end
       account.account_webauthn_keys.destroy_all
       account.account_webauthn_keys.create!(
