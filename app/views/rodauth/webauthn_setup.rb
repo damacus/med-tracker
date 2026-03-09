@@ -69,26 +69,32 @@ module Views
 
       def render_setup_form
         div(class: 'border-t border-border pt-6') do
-          form(
-            method: :post,
-            action: view_context.rodauth.webauthn_setup_path,
-            id: 'webauthn-setup-form',
-            class: 'space-y-6'
-          ) do
-            additional_tags = view_context.rodauth.webauthn_setup_additional_form_tags
-            safe(additional_tags) if additional_tags.present?
-            authenticity_token_field
-            hidden_webauthn_fields
-            password_field
-            submit_button
-          end
-
+          render_webauthn_form(view_context.rodauth.new_webauthn_credential)
           render_webauthn_script
         end
       end
 
-      def hidden_webauthn_fields
+      def render_webauthn_form(credential_options)
+        form(
+          method: :post,
+          action: view_context.rodauth.webauthn_setup_path,
+          id: 'webauthn-setup-form',
+          data_credential_options: credential_options.as_json.to_json,
+          class: 'space-y-6'
+        ) do
+          additional_tags = view_context.rodauth.webauthn_setup_additional_form_tags
+          safe(additional_tags) if additional_tags.present?
+          authenticity_token_field
+          hidden_webauthn_fields(credential_options)
+          password_field
+          submit_button
+        end
+      end
+
+      def hidden_webauthn_fields(credential_options)
         input(type: 'hidden', id: 'webauthn-setup', name: view_context.rodauth.webauthn_setup_param, value: '')
+        input(type: 'hidden', name: view_context.rodauth.webauthn_setup_challenge_param, value: credential_options.challenge)
+        input(type: 'hidden', name: view_context.rodauth.webauthn_setup_challenge_hmac_param, value: view_context.rodauth.compute_hmac(credential_options.challenge))
       end
 
       def password_field
