@@ -104,25 +104,20 @@ module Views
         button(
           type: 'button',
           aria_pressed: 'false',
-          class: 'group flex min-h-[11rem] w-full flex-col justify-between rounded-[1.5rem] border border-border/65 bg-white/80 p-3 text-left shadow-[0_16px_34px_-28px_rgba(15,23,42,0.6)] transition-all duration-300 hover:-translate-y-1 hover:border-primary/35 hover:shadow-[0_26px_40px_-30px_rgba(15,23,42,0.75)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-white/5',
+          class: 'group flex min-h-[10rem] w-full flex-col items-center justify-center gap-4 rounded-[1.5rem] border border-border/65 bg-white/80 p-4 text-center shadow-[0_16px_34px_-28px_rgba(15,23,42,0.6)] transition-all duration-300 hover:-translate-y-1 hover:border-primary/35 hover:shadow-[0_26px_40px_-30px_rgba(15,23,42,0.75)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-white/5',
           data: {
             action: 'click->appearance#switchTheme',
             theme: theme[:id]
           }
         ) do
-          div(class: 'space-y-4') do
-            div(
-              class: "h-16 w-16 rounded-full #{theme[:color]} border border-white/70 shadow-[0_14px_28px_-18px_rgba(15,23,42,0.75)] transition-transform duration-300 group-hover:scale-110 data-[active=true]:scale-105 data-[active=true]:ring-2 data-[active=true]:ring-primary data-[active=true]:ring-offset-2 data-[active=true]:ring-offset-background",
-              data: { theme_swatch: true, active: false }
-            )
-            div do
-              span(class: "block text-sm font-semibold uppercase tracking-[0.12em] leading-tight text-foreground [font-family:'Outfit',sans-serif]") do
-                t("profiles.theme_picker.themes.#{theme[:id].underscore}")
-              end
+          div(
+            class: "h-16 w-16 rounded-full #{theme[:color]} border border-white/70 shadow-[0_14px_28px_-18px_rgba(15,23,42,0.75)] transition-transform duration-300 group-hover:scale-110 data-[active=true]:scale-105 data-[active=true]:ring-2 data-[active=true]:ring-primary data-[active=true]:ring-offset-2 data-[active=true]:ring-offset-background",
+            data: { theme_swatch: true, active: false }
+          )
+          div do
+            span(class: "block text-sm font-semibold uppercase tracking-[0.12em] leading-tight text-foreground [font-family:'Outfit',sans-serif]") do
+              t("profiles.theme_picker.themes.#{theme[:id].underscore}")
             end
-          end
-          span(class: 'inline-flex items-center text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-muted-foreground transition-colors group-hover:text-foreground') do
-            'Apply palette'
           end
         end
       end

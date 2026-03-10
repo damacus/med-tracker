@@ -589,7 +589,7 @@ en:
         dark: "Dark"
         system: "System"
     theme_picker:
-      title: "Color Palette"
+      title: "Colour Palette"
       description: "Pair your appearance setting with a palette that matches your preference."
       themes:
         default: "Standard"
