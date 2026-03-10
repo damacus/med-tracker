@@ -18,10 +18,11 @@ module Components
         end
 
         def view_template
-          turbo_frame_tag 'admin-users-frame' do
-            div(data: { testid: 'admin-users' },
-                class: 'container mx-auto px-4 py-8 pb-24 md:pb-8 max-w-6xl space-y-8') do
-              render_header
+          div(data: { testid: 'admin-users' },
+              class: 'container mx-auto px-4 py-8 pb-24 md:pb-8 max-w-6xl space-y-8') do
+            render_header
+
+            turbo_frame_tag 'admin-users-frame', class: 'block space-y-8' do
               render Components::Admin::Users::SearchForm.new(search_params: search_params)
 
               div(class: 'rounded-[2rem] border border-border bg-card shadow-sm overflow-x-auto p-4') do
@@ -31,6 +32,7 @@ module Components
                   current_user: current_user
                 )
               end
+
               render Components::Admin::Users::Pagination.new(pagy: pagy_obj, search_params: search_params) if pagy_obj
             end
           end
@@ -51,7 +53,13 @@ module Components
                 'Review roles and access levels for everyone using MedTracker.'
               end
             end
-            render RubyUI::Link.new(href: '/admin/users/new', variant: :primary, size: :lg, class: 'rounded-2xl shadow-lg shadow-primary/20') { 'New User' }
+            render RubyUI::Link.new(
+              href: '/admin/users/new',
+              variant: :primary,
+              size: :lg,
+              class: 'rounded-2xl shadow-lg shadow-primary/20',
+              data: { turbo_frame: '_top' }
+            ) { 'New User' }
           end
         end
       end
