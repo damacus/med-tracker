@@ -16,20 +16,22 @@ module Components
         end
 
         def view_template
-          div(data: { testid: 'admin-users' },
-              class: 'container mx-auto px-4 py-8 pb-24 md:pb-8 max-w-6xl space-y-8') do
-            render_header
-            render Components::Admin::Users::SearchForm.new(search_params: search_params)
+          turbo_frame_tag 'admin-users-frame' do
+            div(data: { testid: 'admin-users' },
+                class: 'container mx-auto px-4 py-8 pb-24 md:pb-8 max-w-6xl space-y-8') do
+              render_header
+              render Components::Admin::Users::SearchForm.new(search_params: search_params)
 
-            div(class: 'rounded-[2rem] border border-border bg-card shadow-sm overflow-x-auto') do
-              render Components::Admin::Users::UsersTable.new(
-                users: users,
-                search_params: search_params,
-                current_user: current_user
-              )
+              div(class: 'rounded-[2rem] border border-border bg-card shadow-sm overflow-x-auto') do
+                render Components::Admin::Users::UsersTable.new(
+                  users: users,
+                  search_params: search_params,
+                  current_user: current_user
+                )
+              end
+
+              render Components::Admin::Users::Pagination.new(pagy: pagy_obj, search_params: search_params) if pagy_obj
             end
-
-            render Components::Admin::Users::Pagination.new(pagy: pagy_obj, search_params: search_params) if pagy_obj
           end
         end
 

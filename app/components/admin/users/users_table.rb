@@ -49,7 +49,8 @@ module Components
           Link(
             href: "/admin/users?#{sort_params.to_query}",
             variant: :link,
-            class: sortable_header_class(is_active)
+            class: sortable_header_class(is_active),
+            data: { turbo_frame: 'admin-users-frame' }
           ) do
             span { label }
             render_sort_indicator(is_active, current_direction)

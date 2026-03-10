@@ -29,13 +29,23 @@ module Components
 
         def render_mobile_pagination
           if pagy_obj.previous
-            Link(href: page_url(pagy_obj.previous), variant: :link, class: mobile_nav_class) { 'Previous' }
+            Link(
+              href: page_url(pagy_obj.previous),
+              variant: :link,
+              class: mobile_nav_class,
+              data: { turbo_frame: 'admin-users-frame' }
+            ) { 'Previous' }
           else
             span(class: "#{mobile_nav_class} opacity-50 cursor-not-allowed") { 'Previous' }
           end
 
           if pagy_obj.next
-            Link(href: page_url(pagy_obj.next), variant: :link, class: mobile_nav_class) { 'Next' }
+            Link(
+              href: page_url(pagy_obj.next),
+              variant: :link,
+              class: mobile_nav_class,
+              data: { turbo_frame: 'admin-users-frame' }
+            ) { 'Next' }
           else
             span(class: "#{mobile_nav_class} opacity-50 cursor-not-allowed") { 'Next' }
           end
@@ -72,7 +82,12 @@ module Components
 
         def render_prev_button
           if pagy_obj.previous
-            Link(href: page_url(pagy_obj.previous), variant: :link, class: nav_button_class('rounded-l-md')) do
+            Link(
+              href: page_url(pagy_obj.previous),
+              variant: :link,
+              class: nav_button_class('rounded-l-md'),
+              data: { turbo_frame: 'admin-users-frame' }
+            ) do
               span(class: 'sr-only') { 'Previous' }
               plain '‹'
             end
@@ -86,7 +101,12 @@ module Components
 
         def render_next_button
           if pagy_obj.next
-            Link(href: page_url(pagy_obj.next), variant: :link, class: nav_button_class('rounded-r-md')) do
+            Link(
+              href: page_url(pagy_obj.next),
+              variant: :link,
+              class: nav_button_class('rounded-r-md'),
+              data: { turbo_frame: 'admin-users-frame' }
+            ) do
               span(class: 'sr-only') { 'Next' }
               plain '›'
             end
@@ -102,7 +122,12 @@ module Components
           pagy_obj.series.each do |item|
             case item
             when Integer
-              Link(href: page_url(item), variant: :link, class: page_number_class(false)) { item.to_s }
+              Link(
+                href: page_url(item),
+                variant: :link,
+                class: page_number_class(false),
+                data: { turbo_frame: 'admin-users-frame' }
+              ) { item.to_s }
             when String
               span(class: page_number_class(true)) { item }
             when :gap
