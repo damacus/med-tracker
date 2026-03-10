@@ -64,13 +64,13 @@ RSpec.describe Components::Admin::Users::SearchForm, type: :component do
   end
 
   describe 'status filter' do
-    it 'renders active and inactive status options' do
+    it 'renders active, inactive, and soft deleted status options' do
       rendered = render_inline(described_class.new)
 
       status_select = rendered.css('select[name="status"]').first
       options = status_select.css('option').map(&:text)
 
-      expect(options).to include('All', 'Active', 'Inactive')
+      expect(options).to include('All', 'Active', 'Inactive', 'Soft deleted')
     end
 
     it 'pre-selects the current status filter' do
@@ -79,6 +79,14 @@ RSpec.describe Components::Admin::Users::SearchForm, type: :component do
       status_select = rendered.css('select[name="status"]').first
       selected = status_select.css('option[selected]')
       expect(selected.first['value']).to eq('active')
+    end
+
+    it 'pre-selects the soft deleted status filter' do
+      rendered = render_inline(described_class.new(search_params: { status: 'soft_deleted' }))
+
+      status_select = rendered.css('select[name="status"]').first
+      selected = status_select.css('option[selected]')
+      expect(selected.first['value']).to eq('soft_deleted')
     end
   end
 

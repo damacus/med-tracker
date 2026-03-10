@@ -38,6 +38,7 @@ ga:
         edit: "Cuir in eagar"
         active: "Gníomhach"
         inactive: "Neamhghníomhach"
+        soft_deleted: "Scriosta go bog"
         deactivate: "Díghníomhachtú"
         activate: "Gníomhachtú"
         verify: "Fíoraigh"
