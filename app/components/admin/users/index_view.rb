@@ -21,7 +21,7 @@ module Components
             render_header
             render Components::Admin::Users::SearchForm.new(search_params: search_params)
 
-            div(class: 'rounded-xl border border-border bg-card shadow-sm overflow-x-auto') do
+            div(class: 'rounded-[2rem] border border-border bg-card shadow-sm overflow-x-auto') do
               render Components::Admin::Users::UsersTable.new(
                 users: users,
                 search_params: search_params,

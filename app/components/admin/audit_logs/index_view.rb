@@ -130,7 +130,7 @@ module Components
           if versions.empty?
             render_empty_state
           else
-            div(class: 'rounded-xl border border-border bg-card shadow-sm overflow-x-auto') do
+            div(class: 'rounded-[2rem] border border-border bg-card shadow-sm overflow-x-auto') do
               Table(class: 'min-w-[800px]') do
                 render_table_header
                 render_table_body
