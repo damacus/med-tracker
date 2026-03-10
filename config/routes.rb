@@ -82,7 +82,9 @@ Rails.application.routes.draw do
     end
   end
 
-  resource :push_subscription, only: %i[create destroy]
+  resource :push_subscription, only: %i[create destroy] do
+    post :test, on: :collection
+  end
   resource :notification_preference, only: %i[update]
 
   # Progressive Web App assets

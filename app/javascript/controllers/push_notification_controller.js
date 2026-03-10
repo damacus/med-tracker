@@ -67,39 +67,60 @@ export default class extends Controller {
         return
       }
 
-      await registration.showNotification("MedTracker test notification", {
-        body: "Notifications are working on this device.",
-        tag: "medtracker-test-notification",
-        renotify: false
+      const token = document.querySelector('meta[name="csrf-token"]')?.content
+      const response = await fetch("/push_subscription/test", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "X-CSRF-Token": token
+        }
       })
 
-      this.updateStatus("Test notification sent.")
+      if (response.ok) {
+        this.updateStatus("Test notification requested from server.")
+      } else {
+        throw new Error(await this.errorMessageFor(response, "send test"))
+      }
     } catch (error) {
       this.updateStatus("Failed to send test notification: " + error.message)
     }
   }
 
   async updateUI() {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+      console.log("[PushNotification] Not supported")
+      this.updateStatus("Push notifications are not supported in this browser.")
+      this.showButton("none")
+      this.showTestButton(false)
+      return
+    }
+
     const permission = Notification.permission
     const registration = await navigator.serviceWorker.ready
     const subscription = await registration.pushManager.getSubscription()
 
+    console.log("[PushNotification] Permission:", permission)
+    console.log("[PushNotification] Subscription:", subscription)
+
     if (permission === "denied") {
-      this.updateStatus("Notifications are blocked. Please update your browser settings.")
-      this.showButton("subscribe")
+      this.updateStatus("Notifications are blocked in your browser settings.")
+      this.showButton("none")
       this.showTestButton(false)
     } else if (subscription) {
-      this.updateStatus("Notifications are enabled.")
+      this.updateStatus("Notifications are enabled on this device.")
       this.showButton("unsubscribe")
       this.showTestButton(true)
     } else {
-      this.updateStatus("Notifications are not enabled.")
+      this.updateStatus("Notifications are not enabled on this device.")
       this.showButton("subscribe")
       this.showTestButton(false)
     }
   }
 
   async saveSubscription(subscription) {
+    console.log("[PushNotification] Saving subscription:", subscription)
     const data = subscription.toJSON()
     const token = document.querySelector('meta[name="csrf-token"]')?.content
 
@@ -123,6 +144,7 @@ export default class extends Controller {
   }
 
   async deleteSubscription(subscription) {
+    console.log("[PushNotification] Deleting subscription:", subscription.endpoint)
     const token = document.querySelector('meta[name="csrf-token"]')?.content
 
     const response = await fetch("/push_subscription", {

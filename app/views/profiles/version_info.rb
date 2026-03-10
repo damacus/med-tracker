@@ -12,40 +12,46 @@ module Views
             render(CardDescription.new { 'Application version and resources' })
           end
 
-          render CardContent.new(class: 'space-y-4') do
-            render_info_row('App Version', "v#{MedTracker::VERSION}") do
-              link_to "v#{MedTracker::VERSION}",
-                      "https://github.com/damacus/med-tracker/releases/tag/v#{MedTracker::VERSION}",
-                      class: 'text-primary hover:underline font-mono text-xs',
-                      target: '_blank',
-                      rel: 'noopener'
-            end
-
-            render_info_row('Release Notes', 'View latest changes') do
-              link_to 'Release Notes',
-                      "https://github.com/damacus/med-tracker/releases/tag/v#{MedTracker::VERSION}",
-                      class: 'text-primary hover:underline text-xs',
-                      target: '_blank',
-                      rel: 'noopener'
-            end
-
-            render_info_row('Documentation', 'Get help and guides') do
-              link_to 'View Docs',
-                      'https://damacus.github.io/med-tracker',
-                      class: 'text-primary hover:underline text-xs',
-                      target: '_blank',
-                      rel: 'noopener'
-            end
+          render CardContent.new(class: 'space-y-0') do
+            render_version_row
+            render_release_notes_row
+            render_docs_row
           end
         end
       end
 
       private
 
-      def render_info_row(label, _value, &)
-        div(class: 'flex items-center justify-between border-b border-border/50 py-3 last:border-0') do
-          dt(class: 'text-sm font-medium text-muted-foreground') { label }
-          dd(class: 'text-sm text-foreground', &)
+      def render_version_row
+        div(class: 'flex items-center justify-between border-b border-border/50 py-3') do
+          dt(class: 'text-sm font-medium text-muted-foreground') { 'App Version' }
+          dd(class: 'text-sm font-mono text-foreground') { "v#{MedTracker::VERSION}" }
+        end
+      end
+
+      def render_release_notes_row
+        div(class: 'flex items-center justify-between border-b border-border/50 py-3') do
+          dt(class: 'text-sm font-medium text-muted-foreground') { 'Release Notes' }
+          dd do
+            link_to "v#{MedTracker::VERSION}",
+                    "https://github.com/damacus/med-tracker/releases/tag/v#{MedTracker::VERSION}",
+                    class: 'text-sm font-medium text-primary hover:underline',
+                    target: '_blank',
+                    rel: 'noopener'
+          end
+        end
+      end
+
+      def render_docs_row
+        div(class: 'flex items-center justify-between py-3') do
+          dt(class: 'text-sm font-medium text-muted-foreground') { 'Documentation' }
+          dd do
+            link_to 'View Docs',
+                    'https://damacus.github.io/med-tracker',
+                    class: 'text-sm font-medium text-primary hover:underline',
+                    target: '_blank',
+                    rel: 'noopener'
+          end
         end
       end
     end

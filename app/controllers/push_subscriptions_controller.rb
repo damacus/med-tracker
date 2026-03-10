@@ -24,4 +24,13 @@ class PushSubscriptionsController < ApplicationController
              status: :unprocessable_content
     end
   end
+
+  def test
+    PushNotificationService.send_to_account(
+      current_account,
+      title: 'MedTracker Test',
+      body: 'Push notifications are working correctly from the server.'
+    )
+    head :no_content
+  end
 end
