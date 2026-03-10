@@ -24,7 +24,8 @@ module Components
         end
 
         def view_template
-          div(data: { testid: 'admin-audit-logs' }, class: 'space-y-8') do
+          div(data: { testid: 'admin-audit-logs' },
+              class: 'container mx-auto px-4 py-8 pb-24 md:pb-8 max-w-6xl space-y-8') do
             render_header
             render_filter_form
             render_versions_table
