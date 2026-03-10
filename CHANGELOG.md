@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.3.30](https://github.com/damacus/med-tracker/compare/v0.3.29...v0.3.30) (2026-03-10)
+
+
+### Features
+
+* add auto-filtering and partial reloads to admin users ([0aeef40](https://github.com/damacus/med-tracker/commit/0aeef40bed73b6d4e9c9ec8ffb93c6459f4bb867))
+* add version badge to all layouts ([f8e079a](https://github.com/damacus/med-tracker/commit/f8e079a5d66e52e8745bc1040488be61aecb39d0))
+
+
+### Bug Fixes
+
+* add container spacing to audit logs view ([edeeecc](https://github.com/damacus/med-tracker/commit/edeeeccf567e75a452a747c6dc0ee7c3eaa5d69f))
+* align admin users table columns ([fdc521d](https://github.com/damacus/med-tracker/commit/fdc521d83f97e547c067df01d8f4d50033546afb))
+* center align admin users actions column ([3df746d](https://github.com/damacus/med-tracker/commit/3df746ddeb663f7e8ef76338cd5c0185b2e9d559))
+* correctly align admin users table with separate verification column ([ca5b9c7](https://github.com/damacus/med-tracker/commit/ca5b9c73b435ac090513ac899d9a2e330e1d22fe))
+* improve push notification UI and robustness ([d9b628f](https://github.com/damacus/med-tracker/commit/d9b628faaa522650bf2a814787bfd221384fcb16))
+* include TurboFrameTag helper in admin users index view ([b29a4b4](https://github.com/damacus/med-tracker/commit/b29a4b42593746e0a6b642c644d8863a253de2d9))
+* resolve CSP inline style violations and add WebAuthn error handling ([#953](https://github.com/damacus/med-tracker/issues/953)) ([e35147f](https://github.com/damacus/med-tracker/commit/e35147fbff5dcf0e4d097d91e209dc58973a128a))
+* resolve NameError, test failures, and improve table padding ([8b7de38](https://github.com/damacus/med-tracker/commit/8b7de38d5d8afe2d3dcf641f9d5baeb874c76dfe))
+* resolve NoMethodError, improve table padding, and fix navigation issues ([a5fe591](https://github.com/damacus/med-tracker/commit/a5fe591289b93c294612a1f72cb45413e9f63698))
+* resolve text overflow in admin dashboard and tables ([2b8f194](https://github.com/damacus/med-tracker/commit/2b8f1948fd09d2c0cb35317eb4bc6798332afeb4))
+
+
+### Performance Improvements
+
+* **schedules:** Prevent N+1 query in schedules index view ([#955](https://github.com/damacus/med-tracker/issues/955)) ([1479d0b](https://github.com/damacus/med-tracker/commit/1479d0bacfa8f054884b1df64a7e6d454b89af93))
+
 ## [0.3.29](https://github.com/damacus/med-tracker/compare/v0.3.28...v0.3.29) (2026-03-09)
 
 
