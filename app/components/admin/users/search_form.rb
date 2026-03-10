@@ -15,7 +15,12 @@ module Components
         def view_template
           Card do
             CardContent(class: 'pt-6') do
-              render RubyUI::Form.new(action: '/admin/users', method: :get, class: 'flex gap-4 items-end') do
+              render RubyUI::Form.new(
+                action: '/admin/users',
+                method: :get,
+                class: 'flex gap-4 items-end',
+                data: { controller: 'filter-form', turbo_frame: 'admin-users-frame' }
+              ) do
                 render_search_field
                 render_role_filter
                 render_status_filter
@@ -36,7 +41,8 @@ module Components
                 name: 'search',
                 id: 'search',
                 value: search_params[:search],
-                placeholder: 'Search by name or email...'
+                placeholder: 'Search by name or email...',
+                data: { action: 'input->filter-form#submit' }
               )
             end
           end
@@ -46,7 +52,12 @@ module Components
           div(class: 'w-48') do
             render RubyUI::FormField.new do
               render RubyUI::FormFieldLabel.new(for: 'role') { 'Role' }
-              select(name: 'role', id: 'role', class: select_classes) do
+              select(
+                name: 'role',
+                id: 'role',
+                class: select_classes,
+                data: { action: 'change->filter-form#submit' }
+              ) do
                 option(value: '', selected: search_params[:role].blank?) { 'All Roles' }
                 User.roles.each_key do |role|
                   option(value: role, selected: search_params[:role] == role) { role.titleize }
@@ -60,7 +71,12 @@ module Components
           div(class: 'w-36') do
             render RubyUI::FormField.new do
               render RubyUI::FormFieldLabel.new(for: 'status') { 'Status' }
-              select(name: 'status', id: 'status', class: select_classes) do
+              select(
+                name: 'status',
+                id: 'status',
+                class: select_classes,
+                data: { action: 'change->filter-form#submit' }
+              ) do
                 option(value: '', selected: search_params[:status].blank?) { 'All' }
                 option(value: 'active', selected: search_params[:status] == 'active') { 'Active' }
                 option(value: 'inactive', selected: search_params[:status] == 'inactive') { 'Inactive' }
@@ -71,8 +87,12 @@ module Components
 
         def render_actions
           div(class: 'flex gap-2') do
-            Button(type: :submit, variant: :primary) { 'Search' }
-            Link(href: '/admin/users', variant: :outline) { 'Clear' } if active_filters?
+            Button(type: :submit, variant: :primary, class: 'hidden') { 'Search' }
+            Link(
+              href: '/admin/users',
+              variant: :outline,
+              data: { turbo_frame: 'admin-users-frame' }
+            ) { 'Clear' } if active_filters?
           end
         end
 
