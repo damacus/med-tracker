@@ -19,7 +19,7 @@ module Components
                 action: '/admin/users',
                 method: :get,
                 class: 'flex gap-4 items-end',
-                data: { controller: 'filter-form', turbo_frame: 'admin-users-frame' }
+                data: { controller: 'filter-form' }
               ) do
                 render_search_field
                 render_role_filter
@@ -42,7 +42,10 @@ module Components
                 id: 'search',
                 value: search_params[:search],
                 placeholder: 'Search by name or email...',
-                data: { action: 'input->filter-form#submit' }
+                data: {
+                  action: 'input->filter-form#submit',
+                  turbo_frame: 'admin-users-frame'
+                }
               )
             end
           end
@@ -56,7 +59,10 @@ module Components
                 name: 'role',
                 id: 'role',
                 class: select_classes,
-                data: { action: 'change->filter-form#submit' }
+                data: {
+                  action: 'change->filter-form#submit',
+                  turbo_frame: 'admin-users-frame'
+                }
               ) do
                 option(value: '', selected: search_params[:role].blank?) { 'All Roles' }
                 User.roles.each_key do |role|
@@ -75,7 +81,10 @@ module Components
                 name: 'status',
                 id: 'status',
                 class: select_classes,
-                data: { action: 'change->filter-form#submit' }
+                data: {
+                  action: 'change->filter-form#submit',
+                  turbo_frame: 'admin-users-frame'
+                }
               ) do
                 option(value: '', selected: search_params[:status].blank?) { 'All' }
                 option(value: 'active', selected: search_params[:status] == 'active') { 'Active' }
