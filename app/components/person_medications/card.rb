@@ -7,12 +7,13 @@ module Components
       include Phlex::Rails::Helpers::FormWith
       include Phlex::Rails::Helpers::ButtonTo
 
-      attr_reader :person_medication, :person, :todays_takes, :current_user
+      attr_reader :person_medication, :person, :todays_takes, :matching_medications, :current_user
 
-      def initialize(person_medication:, person:, todays_takes: nil, current_user: nil)
+      def initialize(person_medication:, person:, todays_takes: nil, matching_medications: nil, current_user: nil)
         @person_medication = person_medication
         @person = person
         @todays_takes = todays_takes
+        @matching_medications = matching_medications
         @current_user = current_user
         super()
       end
@@ -261,7 +262,11 @@ module Components
       end
 
       def stock_source_resolver
-        @stock_source_resolver ||= MedicationStockSourceResolver.new(user: current_user, source: person_medication)
+        @stock_source_resolver ||= MedicationStockSourceResolver.new(
+          user: current_user,
+          source: person_medication,
+          matching_medications: matching_medications
+        )
       end
 
       def render_person_medication_actions

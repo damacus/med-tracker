@@ -8,7 +8,7 @@ module Components
       include Phlex::Rails::Helpers::FormWith
 
       attr_reader :person, :schedules, :person_medications, :editing,
-                  :takes_by_schedule, :takes_by_person_medication, :current_user
+                  :takes_by_schedule, :takes_by_person_medication, :stock_by_criteria, :current_user
 
       def initialize(person:, schedules:, person_medications: nil, editing: false, **opts)
         @person = person
@@ -18,6 +18,7 @@ module Components
         preloaded_takes = opts.fetch(:preloaded_takes, {})
         @takes_by_schedule = preloaded_takes.fetch(:schedules, {})
         @takes_by_person_medication = preloaded_takes.fetch(:person_medications, {})
+        @stock_by_criteria = opts.fetch(:stock_by_criteria, {})
         @current_user = opts[:current_user]
         super()
       end
@@ -141,19 +142,27 @@ module Components
 
           div(id: 'medications', class: 'grid grid-cols-1 md:grid-cols-2 gap-6') do
             schedules.each do |schedule|
+              medication = schedule.medication
+              matching = stock_by_criteria[[medication.name, medication.dosage_amount, medication.dosage_unit]] || []
+
               render Components::Schedules::Card.new(
                 schedule: schedule,
                 person: person,
                 todays_takes: takes_by_schedule[schedule.id],
+                matching_medications: matching,
                 current_user: current_user
               )
             end
 
             accessible_medications.each do |person_medication|
+              medication = person_medication.medication
+              matching = stock_by_criteria[[medication.name, medication.dosage_amount, medication.dosage_unit]] || []
+
               render Components::PersonMedications::Card.new(
                 person_medication: person_medication,
                 person: person,
                 todays_takes: takes_by_person_medication[person_medication.id],
+                matching_medications: matching,
                 current_user: current_user
               )
             end

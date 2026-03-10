@@ -17,8 +17,9 @@ module FamilyDashboard
       @all_schedules = fetch_active_schedules
       @all_person_medications = fetch_person_medications
 
-      # 2. Preload takes using the specific IDs we just found
+      # 2. Preload takes and matching stock medications for these objects to avoid N+1 queries
       preload_takes
+      preload_stock_medications
 
       # 3. Aggregate all doses
       doses = aggregate_family_doses
@@ -116,10 +117,18 @@ module FamilyDashboard
       doses = generate_taken_doses(takes, source, person)
 
       # 2. Determine if an upcoming dose should be shown
-      # We show the "next available" dose if it falls within today
+      # We show the \"next available\" dose if it falls within today
       next_time = source.next_available_time
       if next_time && next_time <= now + 24.hours
-        status = MedicationStockSourceResolver.new(user: current_user, source: source).blocked_reason || :upcoming
+        medication = source.medication
+        matching = @stock_by_criteria[[medication.name, medication.dosage_amount, medication.dosage_unit]] || []
+
+        status = MedicationStockSourceResolver.new(
+          user: current_user,
+          source: source,
+          matching_medications: matching
+        ).blocked_reason || :upcoming
+
         doses << {
           person: person,
           source: source,
@@ -142,6 +151,26 @@ module FamilyDashboard
           status: :taken,
           taken_from_location_name: take.inventory_location&.name
         }
+      end
+    end
+
+    def preload_stock_medications
+      # Get the accessible scope for medications
+      scope = if current_user.blank?
+                Medication.where(id: all_sources.map(&:medication_id).uniq)
+              else
+                MedicationPolicy::Scope.new(current_user, Medication.all).resolve
+              end
+
+      # Fetch all relevant medications in one query to avoid N+1 when checking stock status
+      all_accessible = scope.joins(:location)
+                            .includes(:location)
+                            .order('locations.name ASC, medications.id ASC')
+                            .to_a
+
+      # Group them by name and dosage criteria for fast lookup during dose generation
+      @stock_by_criteria = all_accessible.group_by do |m|
+        [m.name, m.dosage_amount, m.dosage_unit]
       end
     end
   end

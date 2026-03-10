@@ -3,9 +3,10 @@
 class MedicationStockSourceResolver
   attr_reader :user, :source
 
-  def initialize(user:, source:)
+  def initialize(user:, source:, matching_medications: nil)
     @user = user
     @source = source
+    @matching_medications = matching_medications
   end
 
   def available_medications
