@@ -16,6 +16,8 @@ module Views
           passkey_error_message
           render_passkey_login_form(credential_options)
         end
+      rescue StandardError
+        nil
       end
 
       def render_passkey_login_form(credential_options)
