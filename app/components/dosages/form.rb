@@ -28,6 +28,20 @@ module Components
         end
       end
 
+      FREQUENCY_SUGGESTIONS = [
+        'Once daily',
+        'Twice daily',
+        'Three times daily',
+        'Every 4 hours',
+        'Every 4–6 hours',
+        'Every 6 hours',
+        'Every 8 hours',
+        'Every 12 hours',
+        'Every morning',
+        'Every night',
+        'As needed (PRN)'
+      ].freeze
+
       private
 
       def render_errors
@@ -67,21 +81,40 @@ module Components
           end
         end
 
-        FormField(class: 'mt-4') do
+        FormField(class: 'mt-4', data: { controller: 'frequency-suggestions' }) do
           FormFieldLabel(for: 'dosage_frequency') do
             plain 'Frequency label'
             span(class: 'text-destructive ml-0.5') { ' *' }
           end
           FormFieldHint { 'Short description, e.g. "Once daily", "Every 4–6 hours"' }
+          render_frequency_suggestions
           Input(type: :text, name: 'dosage[frequency]', id: 'dosage_frequency',
                 value: dosage.frequency, required: true,
-                placeholder: 'Once daily')
+                placeholder: 'Once daily',
+                data: { 'frequency-suggestions-target': 'input' })
         end
 
         FormField(class: 'mt-4') do
           FormFieldLabel(for: 'dosage_description') { 'Description / notes' }
           Input(type: :text, name: 'dosage[description]', id: 'dosage_description',
                 value: dosage.description, placeholder: 'Optional')
+        end
+      end
+
+      def render_frequency_suggestions
+        div(class: 'flex flex-nowrap overflow-x-auto gap-1.5 mt-1 mb-2 pb-0.5 -mx-0.5 px-0.5') do
+          FREQUENCY_SUGGESTIONS.each do |suggestion|
+            button(
+              type: 'button',
+              data: {
+                action: 'click->frequency-suggestions#suggest',
+                suggestion: suggestion
+              },
+              class: 'inline-flex shrink-0 items-center rounded-full border border-slate-200 bg-white ' \
+                     'px-2.5 py-0.5 text-xs font-medium text-slate-600 shadow-sm whitespace-nowrap ' \
+                     'hover:bg-slate-50 hover:border-slate-300 cursor-pointer transition-colors'
+            ) { suggestion }
+          end
         end
       end
 
