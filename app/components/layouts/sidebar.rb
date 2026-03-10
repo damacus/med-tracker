@@ -25,7 +25,6 @@ module Components
           render_brand
           render_navigation
           render_user_profile
-          render_version_badge
         end
       end
 

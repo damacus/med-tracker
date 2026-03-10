@@ -8,15 +8,12 @@ module Views
       include Views::Rodauth::LoginPasskeySupport
 
       def view_template
-        div(class: 'relative min-h-screen bg-[#fafafa] flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8') do
-          div(class: 'w-full max-w-[440px] space-y-12 flex-grow flex flex-col justify-center') do
-            div(class: 'space-y-12') do
-              render_brand_header
-              render_login_card
-              render_footer_links
-            end
+        div(class: 'relative min-h-screen bg-[#fafafa] flex items-center justify-center p-4 sm:p-6 lg:p-8') do
+          div(class: 'w-full max-w-[440px] space-y-12') do
+            render_brand_header
+            render_login_card
+            render_footer_links
           end
-          render_version_badge
         end
       end
 

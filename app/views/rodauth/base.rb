@@ -24,10 +24,7 @@ module Views
         else
           div(class: PAGE_CLASSES) do
             decorative_glow
-            div(class: CONTENT_WRAPPER_CLASSES) do
-              block.call
-              render_version_badge
-            end
+            div(class: CONTENT_WRAPPER_CLASSES, &block)
           end
         end
       end

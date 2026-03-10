@@ -16,7 +16,6 @@ module Components
           render_nav_item(medications_path, Icons::Pill, 'Inventory')
           render_nav_item(reports_path, Icons::AlertCircle, 'Reports')
           render_nav_item(profile_path, Icons::User, 'Profile')
-          render_version_badge
         end
       end
 

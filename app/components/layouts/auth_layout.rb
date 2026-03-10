@@ -30,15 +30,13 @@ module Components
             javascript_include_tag 'auth', 'data-turbo-track': 'reload'
           end
 
-          body(class: 'bg-background text-foreground flex flex-col min-h-screen') do
+          body(class: 'bg-background text-foreground') do
             div(id: 'flash')
 
-            main(class: 'flex-grow') do
+            main do
               render @component if @component
               yield if block_given?
             end
-
-            render_version_badge
           end
         end
       end
