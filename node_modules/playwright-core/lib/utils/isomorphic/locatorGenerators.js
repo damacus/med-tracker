@@ -25,7 +25,8 @@ __export(locatorGenerators_exports, {
   PythonLocatorFactory: () => PythonLocatorFactory,
   asLocator: () => asLocator,
   asLocatorDescription: () => asLocatorDescription,
-  asLocators: () => asLocators
+  asLocators: () => asLocators,
+  locatorCustomDescription: () => locatorCustomDescription
 });
 module.exports = __toCommonJS(locatorGenerators_exports);
 var import_selectorParser = require("./selectorParser");
@@ -33,16 +34,30 @@ var import_stringUtils = require("./stringUtils");
 function asLocatorDescription(lang, selector) {
   try {
     const parsed = (0, import_selectorParser.parseSelector)(selector);
-    const lastPart = parsed.parts[parsed.parts.length - 1];
-    if (lastPart?.name === "internal:describe") {
-      const description = JSON.parse(lastPart.body);
-      if (typeof description === "string")
-        return description;
-    }
+    const customDescription = parseCustomDescription(parsed);
+    if (customDescription)
+      return customDescription;
     return innerAsLocators(new generators[lang](), parsed, false, 1)[0];
   } catch (e) {
     return selector;
   }
+}
+function locatorCustomDescription(selector) {
+  try {
+    const parsed = (0, import_selectorParser.parseSelector)(selector);
+    return parseCustomDescription(parsed);
+  } catch (e) {
+    return void 0;
+  }
+}
+function parseCustomDescription(parsed) {
+  const lastPart = parsed.parts[parsed.parts.length - 1];
+  if (lastPart?.name === "internal:describe") {
+    const description = JSON.parse(lastPart.body);
+    if (typeof description === "string")
+      return description;
+  }
+  return void 0;
 }
 function asLocator(lang, selector, isFrameLocator = false) {
   return asLocators(lang, selector, isFrameLocator, 1)[0];
@@ -669,5 +684,6 @@ function isRegExp(obj) {
   PythonLocatorFactory,
   asLocator,
   asLocatorDescription,
-  asLocators
+  asLocators,
+  locatorCustomDescription
 });

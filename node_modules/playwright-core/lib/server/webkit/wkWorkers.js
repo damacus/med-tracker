@@ -47,6 +47,7 @@ class WKWorkers {
         });
         this._workerSessions.set(event.workerId, workerSession);
         worker.createExecutionContext(new import_wkExecutionContext.WKExecutionContext(workerSession, void 0));
+        worker.workerScriptLoaded();
         this._page.addWorker(event.workerId, worker);
         workerSession.on("Console.messageAdded", (event2) => this._onConsoleMessage(worker, event2));
         Promise.all([
@@ -95,7 +96,7 @@ class WKWorkers {
       lineNumber: (lineNumber || 1) - 1,
       columnNumber: (columnNumber || 1) - 1
     };
-    this._page.addConsoleMessage(derivedType, handles, location, handles.length ? void 0 : text);
+    this._page.addConsoleMessage(worker, derivedType, handles, location, handles.length ? void 0 : text);
   }
 }
 // Annotate the CommonJS export names for ESM import in node:

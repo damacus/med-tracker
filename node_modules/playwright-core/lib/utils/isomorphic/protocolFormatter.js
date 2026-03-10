@@ -25,6 +25,9 @@ __export(protocolFormatter_exports, {
 module.exports = __toCommonJS(protocolFormatter_exports);
 var import_protocolMetainfo = require("./protocolMetainfo");
 function formatProtocolParam(params, alternatives) {
+  return _formatProtocolParam(params, alternatives)?.replaceAll("\n", "\\n");
+}
+function _formatProtocolParam(params, alternatives) {
   if (!params)
     return void 0;
   for (const name of alternatives.split("|")) {

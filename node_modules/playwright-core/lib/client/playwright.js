@@ -43,10 +43,6 @@ class Playwright extends import_channelOwner.ChannelOwner {
     this._android._playwright = this;
     this._electron = import_electron.Electron.from(initializer.electron);
     this._electron._playwright = this;
-    this._bidiChromium = import_browserType.BrowserType.from(initializer._bidiChromium);
-    this._bidiChromium._playwright = this;
-    this._bidiFirefox = import_browserType.BrowserType.from(initializer._bidiFirefox);
-    this._bidiFirefox._playwright = this;
     this.devices = this._connection.localUtils()?.devices ?? {};
     this.selectors = new import_selectors.Selectors(this._connection._platform);
     this.errors = { TimeoutError: import_errors.TimeoutError };
@@ -55,7 +51,7 @@ class Playwright extends import_channelOwner.ChannelOwner {
     return channel._object;
   }
   _browserTypes() {
-    return [this.chromium, this.firefox, this.webkit, this._bidiChromium, this._bidiFirefox];
+    return [this.chromium, this.firefox, this.webkit];
   }
   _preLaunchedBrowser() {
     const browser = import_browser.Browser.from(this._initializer.preLaunchedBrowser);

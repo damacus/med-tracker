@@ -22,8 +22,9 @@ __export(console_exports, {
 });
 module.exports = __toCommonJS(console_exports);
 class ConsoleMessage {
-  constructor(page, type, text, args, location) {
+  constructor(page, worker, type, text, args, location) {
     this._page = page;
+    this._worker = worker;
     this._type = type;
     this._text = text;
     this._args = args;
@@ -31,6 +32,9 @@ class ConsoleMessage {
   }
   page() {
     return this._page;
+  }
+  worker() {
+    return this._worker;
   }
   type() {
     return this._type;

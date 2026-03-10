@@ -85,7 +85,7 @@ async function asString(stream) {
 function iterablePump() {
   let controller;
   const stream = new ReadableStream({ start: (c) => controller = c });
-  const iterable = async function* () {
+  const iterable = (async function* () {
     const reader = stream.getReader();
     while (true) {
       const { done, value } = await reader.read();
@@ -93,7 +93,7 @@ function iterablePump() {
         break;
       yield value;
     }
-  }();
+  })();
   return {
     iterable,
     addChunk: (chunk) => {

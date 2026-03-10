@@ -26,11 +26,16 @@ var import_errors = require("./errors");
 var import_events = require("./events");
 var import_jsHandle = require("./jsHandle");
 var import_manualPromise = require("../utils/isomorphic/manualPromise");
+var import_timeoutSettings = require("./timeoutSettings");
+var import_waiter = require("./waiter");
 class Worker extends import_channelOwner.ChannelOwner {
   constructor(parent, type, guid, initializer) {
     super(parent, type, guid, initializer);
     // Set for service workers.
     this._closedScope = new import_manualPromise.LongStandingScope();
+    this._setEventToSubscriptionMapping(/* @__PURE__ */ new Map([
+      [import_events.Events.Worker.Console, "console"]
+    ]));
     this._channel.on("close", () => {
       if (this._page)
         this._page._workers.delete(this);
@@ -39,6 +44,9 @@ class Worker extends import_channelOwner.ChannelOwner {
       this.emit(import_events.Events.Worker.Close, this);
     });
     this.once(import_events.Events.Worker.Close, () => this._closedScope.close(this._page?._closeErrorWithReason() || new import_errors.TargetClosedError()));
+  }
+  static fromNullable(worker) {
+    return worker ? Worker.from(worker) : null;
   }
   static from(worker) {
     return worker._object;
@@ -55,6 +63,20 @@ class Worker extends import_channelOwner.ChannelOwner {
     (0, import_jsHandle.assertMaxArguments)(arguments.length, 2);
     const result = await this._channel.evaluateExpressionHandle({ expression: String(pageFunction), isFunction: typeof pageFunction === "function", arg: (0, import_jsHandle.serializeArgument)(arg) });
     return import_jsHandle.JSHandle.from(result.handle);
+  }
+  async waitForEvent(event, optionsOrPredicate = {}) {
+    return await this._wrapApiCall(async () => {
+      const timeoutSettings = this._page?._timeoutSettings ?? this._context?._timeoutSettings ?? new import_timeoutSettings.TimeoutSettings(this._platform);
+      const timeout = timeoutSettings.timeout(typeof optionsOrPredicate === "function" ? {} : optionsOrPredicate);
+      const predicate = typeof optionsOrPredicate === "function" ? optionsOrPredicate : optionsOrPredicate.predicate;
+      const waiter = import_waiter.Waiter.createForEvent(this, event);
+      waiter.rejectOnTimeout(timeout, `Timeout ${timeout}ms exceeded while waiting for event "${event}"`);
+      if (event !== import_events.Events.Worker.Close)
+        waiter.rejectOnEvent(this, import_events.Events.Worker.Close, () => new import_errors.TargetClosedError());
+      const result = await waiter.waitForEvent(this, event, predicate);
+      waiter.dispose();
+      return result;
+    });
   }
 }
 // Annotate the CommonJS export names for ESM import in node:

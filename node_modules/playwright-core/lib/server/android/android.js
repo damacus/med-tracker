@@ -248,7 +248,7 @@ class AndroidDevice extends import_instrumentation.SdkObject {
       "--disable-fre",
       "--no-default-browser-check",
       `--remote-debugging-socket-name=${socketName}`,
-      ...(0, import_chromiumSwitches.chromiumSwitches)(),
+      ...(0, import_chromiumSwitches.chromiumSwitches)(void 0, void 0, true),
       ...this._innerDefaultArgs(options)
     ];
     return chromeArguments;

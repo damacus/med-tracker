@@ -112,8 +112,9 @@ class Recorder extends import_events.default {
     }
     return recorderPromise;
   }
-  static existingForContext(context) {
-    return context[recorderSymbol];
+  static async existingForContext(context) {
+    const recorderPromise = context[recorderSymbol];
+    return await recorderPromise;
   }
   static async _create(context, params = {}) {
     const recorder = new Recorder(context, params);

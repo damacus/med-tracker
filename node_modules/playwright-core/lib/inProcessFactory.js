@@ -43,8 +43,6 @@ function createInProcessPlaywright() {
   playwrightAPI.firefox._serverLauncher = new import_browserServerImpl.BrowserServerLauncherImpl("firefox");
   playwrightAPI.webkit._serverLauncher = new import_browserServerImpl.BrowserServerLauncherImpl("webkit");
   playwrightAPI._android._serverLauncher = new import_androidServerImpl.AndroidServerLauncherImpl();
-  playwrightAPI._bidiChromium._serverLauncher = new import_browserServerImpl.BrowserServerLauncherImpl("_bidiChromium");
-  playwrightAPI._bidiFirefox._serverLauncher = new import_browserServerImpl.BrowserServerLauncherImpl("_bidiFirefox");
   dispatcherConnection.onmessage = (message) => setImmediate(() => clientConnection.dispatch(message));
   clientConnection.onmessage = (message) => setImmediate(() => dispatcherConnection.dispatch(message));
   clientConnection.toImpl = (x) => {

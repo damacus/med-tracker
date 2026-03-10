@@ -27,6 +27,7 @@ class Tracing extends import_channelOwner.ChannelOwner {
   constructor(parent, type, guid, initializer) {
     super(parent, type, guid, initializer);
     this._includeSources = false;
+    this._isLive = false;
     this._isTracing = false;
   }
   static from(channel) {
@@ -35,6 +36,7 @@ class Tracing extends import_channelOwner.ChannelOwner {
   async start(options = {}) {
     await this._wrapApiCall(async () => {
       this._includeSources = !!options.sources;
+      this._isLive = !!options._live;
       await this._channel.tracingStart({
         name: options.name,
         snapshots: options.snapshots,
@@ -42,13 +44,13 @@ class Tracing extends import_channelOwner.ChannelOwner {
         live: options._live
       });
       const { traceName } = await this._channel.tracingStartChunk({ name: options.name, title: options.title });
-      await this._startCollectingStacks(traceName);
+      await this._startCollectingStacks(traceName, this._isLive);
     });
   }
   async startChunk(options = {}) {
     await this._wrapApiCall(async () => {
       const { traceName } = await this._channel.tracingStartChunk(options);
-      await this._startCollectingStacks(traceName);
+      await this._startCollectingStacks(traceName, this._isLive);
     });
   }
   async group(name, options = {}) {
@@ -57,12 +59,12 @@ class Tracing extends import_channelOwner.ChannelOwner {
   async groupEnd() {
     await this._channel.tracingGroupEnd();
   }
-  async _startCollectingStacks(traceName) {
+  async _startCollectingStacks(traceName, live) {
     if (!this._isTracing) {
       this._isTracing = true;
       this._connection.setIsTracing(true);
     }
-    const result = await this._connection.localUtils()?.tracingStarted({ tracesDir: this._tracesDir, traceName });
+    const result = await this._connection.localUtils()?.tracingStarted({ tracesDir: this._tracesDir, traceName, live });
     this._stacksId = result?.stacksId;
   }
   async stopChunk(options = {}) {

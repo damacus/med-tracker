@@ -127,6 +127,11 @@ export interface FullResult {
  * `false`. This way, Playwright will use one of the standard terminal reporters in addition to your custom reporter
  * to enhance user experience.
  *
+ * **Reporter errors**
+ *
+ * Playwright will swallow any errors thrown in your custom reporter methods. If you need to detect or fail on
+ * reporter errors, you must wrap and handle them yourself.
+ *
  * **Merged report API notes**
  *
  * When merging multiple [`blob`](https://playwright.dev/docs/test-reporters#blob-reporter) reports via
@@ -292,6 +297,7 @@ export interface JSONReportError {
 export interface JSONReportTestResult {
   workerIndex: number;
   parallelIndex: number;
+  shardIndex?: number;
   status: TestStatus | undefined;
   duration: number;
   error: TestError | undefined;
@@ -773,7 +779,7 @@ export interface TestStep {
    * - `hook` for hooks initialization and teardown
    * - `pw:api` for Playwright API calls.
    * - `test.step` for test.step API calls.
-   * - `test.attach` for test attachmen calls.
+   * - `test.attach` for testInfo.attach API calls.
    */
   category: string;
 

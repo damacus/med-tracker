@@ -65,12 +65,8 @@ async function zip(progress, stackSessions, params) {
   const stackSession = params.stacksId ? stackSessions.get(params.stacksId) : void 0;
   if (stackSession?.callStacks.length) {
     await progress.race(stackSession.writer);
-    if (process.env.PW_LIVE_TRACE_STACKS) {
-      zipFile.addFile(stackSession.file, "trace.stacks");
-    } else {
-      const buffer = Buffer.from(JSON.stringify((0, import_traceUtils.serializeClientSideCallMetadata)(stackSession.callStacks)));
-      zipFile.addBuffer(buffer, "trace.stacks");
-    }
+    const buffer = Buffer.from(JSON.stringify((0, import_traceUtils.serializeClientSideCallMetadata)(stackSession.callStacks)));
+    zipFile.addBuffer(buffer, "trace.stacks");
   }
   if (params.includeSources) {
     const sourceFiles = /* @__PURE__ */ new Set();
@@ -188,7 +184,7 @@ async function tracingStarted(progress, stackSessions, params) {
   if (!params.tracesDir)
     tmpDir = await progress.race(import_fs.default.promises.mkdtemp(import_path.default.join(import_os.default.tmpdir(), "playwright-tracing-")));
   const traceStacksFile = import_path.default.join(params.tracesDir || tmpDir, params.traceName + ".stacks");
-  stackSessions.set(traceStacksFile, { callStacks: [], file: traceStacksFile, writer: Promise.resolve(), tmpDir });
+  stackSessions.set(traceStacksFile, { callStacks: [], file: traceStacksFile, writer: Promise.resolve(), tmpDir, live: params.live });
   return { stacksId: traceStacksFile };
 }
 async function traceDiscarded(progress, stackSessions, params) {
@@ -197,7 +193,7 @@ async function traceDiscarded(progress, stackSessions, params) {
 function addStackToTracingNoReply(stackSessions, params) {
   for (const session of stackSessions.values()) {
     session.callStacks.push(params.callData);
-    if (process.env.PW_LIVE_TRACE_STACKS) {
+    if (session.live) {
       session.writer = session.writer.then(() => {
         const buffer = Buffer.from(JSON.stringify((0, import_traceUtils.serializeClientSideCallMetadata)(session.callStacks)));
         return import_fs.default.promises.writeFile(session.file, buffer);

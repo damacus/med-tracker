@@ -182,9 +182,9 @@ class Mouse {
     await this._raw.up(progress, this._x, this._y, button, this._buttons, this._keyboard._modifiers(), clickCount);
   }
   async click(progress, x, y, options = {}) {
-    const { delay = null, clickCount = 1 } = options;
+    const { delay = null, clickCount = 1, steps } = options;
     if (delay) {
-      this.move(progress, x, y, { forClick: true });
+      await this.move(progress, x, y, { forClick: true, steps });
       for (let cc = 1; cc <= clickCount; ++cc) {
         await this.down(progress, { ...options, clickCount: cc });
         await progress.wait(delay);
@@ -194,7 +194,11 @@ class Mouse {
       }
     } else {
       const promises = [];
-      promises.push(this.move(progress, x, y, { forClick: true }));
+      const movePromise = this.move(progress, x, y, { forClick: true, steps });
+      if (steps !== void 0 && steps > 1)
+        await movePromise;
+      else
+        promises.push(movePromise);
       for (let cc = 1; cc <= clickCount; ++cc) {
         promises.push(this.down(progress, { ...options, clickCount: cc }));
         promises.push(this.up(progress, { ...options, clickCount: cc }));

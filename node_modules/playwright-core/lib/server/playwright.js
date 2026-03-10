@@ -45,10 +45,8 @@ class Playwright extends import_instrumentation.SdkObject {
       onPageOpen: (page) => this._allPages.add(page),
       onPageClose: (page) => this._allPages.delete(page)
     }, null);
-    this.chromium = new import_chromium.Chromium(this);
-    this._bidiChromium = new import_bidiChromium.BidiChromium(this);
-    this._bidiFirefox = new import_bidiFirefox.BidiFirefox(this);
-    this.firefox = new import_firefox.Firefox(this);
+    this.chromium = new import_chromium.Chromium(this, new import_bidiChromium.BidiChromium(this));
+    this.firefox = new import_firefox.Firefox(this, new import_bidiFirefox.BidiFirefox(this));
     this.webkit = new import_webkit.WebKit(this);
     this.electron = new import_electron.Electron(this);
     this.android = new import_android.Android(this, new import_backendAdb.AdbBackend());

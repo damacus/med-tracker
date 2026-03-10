@@ -167,6 +167,9 @@ class Locator {
   describe(description) {
     return new Locator(this._frame, this._selector + " >> internal:describe=" + JSON.stringify(description));
   }
+  description() {
+    return (0, import_locatorGenerators.locatorCustomDescription)(this._selector) || null;
+  }
   first() {
     return new Locator(this._frame, this._selector + " >> nth=0");
   }
@@ -298,7 +301,7 @@ class Locator {
     return this.toString();
   }
   toString() {
-    return (0, import_locatorGenerators.asLocator)("javascript", this._selector);
+    return (0, import_locatorGenerators.asLocatorDescription)("javascript", this._selector);
   }
 }
 class FrameLocator {

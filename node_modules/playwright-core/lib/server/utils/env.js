@@ -22,7 +22,8 @@ __export(env_exports, {
   getFromENV: () => getFromENV,
   getPackageManager: () => getPackageManager,
   getPackageManagerExecCommand: () => getPackageManagerExecCommand,
-  isLikelyNpxGlobal: () => isLikelyNpxGlobal
+  isLikelyNpxGlobal: () => isLikelyNpxGlobal,
+  setPlaywrightTestProcessEnv: () => setPlaywrightTestProcessEnv
 });
 module.exports = __toCommonJS(env_exports);
 function getFromENV(name) {
@@ -58,11 +59,15 @@ function getPackageManagerExecCommand() {
 function isLikelyNpxGlobal() {
   return process.argv.length >= 2 && process.argv[1].includes("_npx");
 }
+function setPlaywrightTestProcessEnv() {
+  return process.env["PLAYWRIGHT_TEST"] = "1";
+}
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   getAsBooleanFromENV,
   getFromENV,
   getPackageManager,
   getPackageManagerExecCommand,
-  isLikelyNpxGlobal
+  isLikelyNpxGlobal,
+  setPlaywrightTestProcessEnv
 });

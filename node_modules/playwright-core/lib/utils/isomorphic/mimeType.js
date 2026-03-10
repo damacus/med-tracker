@@ -437,7 +437,7 @@ const types = /* @__PURE__ */ new Map([
   ["jpgm", "video/jpm"],
   ["mj2", "video/mj2"],
   ["mjp2", "video/mj2"],
-  ["ts", "video/mp2t"],
+  ["ts", "application/typescript"],
   ["mp4", "video/mp4"],
   ["mp4v", "video/mp4"],
   ["mpg4", "video/mp4"],
