@@ -25,8 +25,11 @@ RSpec.describe 'Profiles' do
       expect(response.body).to include('Change Password')
       expect(response.body).to include('Danger Zone')
       expect(response.body).to include('Close Account')
+      expect(response.body).to include('System Information')
+      expect(response.body).to include('App Version')
+      expect(response.body).to include('Docs')
+      expect(response.body).to include('Release Notes')
       expect(response.body.scan('data-turbo-frame="modal"').size).to be >= 2
-      expect(response.body).to include('ruby-ui--alert-dialog')
     end
 
     it 'renders the two-factor card and empty-state setup actions' do

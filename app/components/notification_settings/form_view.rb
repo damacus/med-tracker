@@ -91,7 +91,7 @@ module Components
               },
               hidden: true
             ) do
-              render Icons::Send.new(size: 16)
+              render Components::Icons::Send.new(size: 16)
               plain 'Send Test Notification'
             end
           end
