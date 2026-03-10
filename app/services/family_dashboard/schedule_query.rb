@@ -110,35 +110,37 @@ module FamilyDashboard
     end
 
     def generate_doses_for(source, person)
-      now = Time.current
-      # 1. Get doses already taken today from our preloaded association
-      # This uses the association preloaded in aggregate_family_doses to avoid N+1 queries
       takes = source.medication_takes.select { |t| Time.current.all_day.cover?(t.taken_at) }
       doses = generate_taken_doses(takes, source, person)
 
-      # 2. Determine if an upcoming dose should be shown
-      # We show the \"next available\" dose if it falls within today
-      next_time = source.next_available_time
-      if next_time && next_time <= now + 24.hours
-        medication = source.medication
-        matching = @stock_by_criteria[[medication.name, medication.dosage_amount, medication.dosage_unit]] || []
-
-        status = MedicationStockSourceResolver.new(
-          user: current_user,
-          source: source,
-          matching_medications: matching
-        ).blocked_reason || :upcoming
-
-        doses << {
-          person: person,
-          source: source,
-          scheduled_at: next_time,
-          taken_at: nil,
-          status: status
-        }
-      end
+      upcoming = generate_upcoming_dose(source, person)
+      doses << upcoming if upcoming
 
       doses
+    end
+
+    def generate_upcoming_dose(source, person)
+      next_time = source.next_available_time
+      return nil unless next_time && next_time <= 24.hours.from_now
+
+      {
+        person: person,
+        source: source,
+        scheduled_at: next_time,
+        taken_at: nil,
+        status: resolved_status_for(source)
+      }
+    end
+
+    def resolved_status_for(source)
+      medication = source.medication
+      matching = @stock_by_criteria[[medication.name, medication.dosage_amount, medication.dosage_unit]] || []
+
+      MedicationStockSourceResolver.new(
+        user: current_user,
+        source: source,
+        matching_medications: matching
+      ).blocked_reason || :upcoming
     end
 
     def generate_taken_doses(takes, source, person)
@@ -155,22 +157,25 @@ module FamilyDashboard
     end
 
     def preload_stock_medications
-      # Get the accessible scope for medications
-      scope = if current_user.blank?
-                Medication.where(id: all_sources.map(&:medication_id).uniq)
-              else
-                MedicationPolicy::Scope.new(current_user, Medication.all).resolve
-              end
-
-      # Fetch all relevant medications in one query to avoid N+1 when checking stock status
-      all_accessible = scope.joins(:location)
-                            .includes(:location)
-                            .order('locations.name ASC, medications.id ASC')
-                            .to_a
-
-      # Group them by name and dosage criteria for fast lookup during dose generation
+      all_accessible = fetch_accessible_medications
       @stock_by_criteria = all_accessible.group_by do |m|
         [m.name, m.dosage_amount, m.dosage_unit]
+      end
+    end
+
+    def fetch_accessible_medications
+      accessible_medication_scope
+        .joins(:location)
+        .includes(:location)
+        .order('locations.name ASC, medications.id ASC')
+        .to_a
+    end
+
+    def accessible_medication_scope
+      if current_user.blank?
+        Medication.where(id: all_sources.map(&:medication_id).uniq)
+      else
+        MedicationPolicy::Scope.new(current_user, Medication.all).resolve
       end
     end
   end

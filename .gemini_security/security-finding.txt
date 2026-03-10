@@ -1,0 +1,39 @@
+# Security Audit Findings - MedTracker Project
+Date: Tuesday, 10 March 2026
+OSV Scanner Report Summary
+
+## Critical Severity
+
+### basic-ftp
+- **Vulnerability ID**: [GHSA-5rq4-664w-9x2c](https://github.com/advisories/GHSA-5rq4-664w-9x2c)
+- **Current Versions**: 5.0.5 (package-lock.json), 5.1.0 (yarn.lock)
+- **Fix Version**: 5.2.0 or higher
+- **Description**: Path traversal in `downloadToDir()` allows malicious FTP servers to write files outside the intended directory.
+- **Risk**: Potential Remote Code Execution (RCE) or system file overwrite.
+
+## High Severity
+
+### minimatch
+- **Vulnerability ID**: [GHSA-3ppc-4f35-3m26](https://github.com/advisories/GHSA-3ppc-4f35-3m26) (and others: GHSA-23c5-xmqv-rm74, GHSA-7r86-cg39-jmmj)
+- **Current Version**: 9.0.5
+- **Fix Version**: 9.0.7 or higher
+- **Description**: Regular Expression Denial of Service (ReDoS) via repeated wildcards.
+- **Risk**: Denial of Service (DoS) by hanging the CPU.
+
+## Medium Severity
+
+### lodash-es
+- **Vulnerability ID**: [GHSA-xxjr-mmjv-4gpg](https://github.com/advisories/GHSA-xxjr-mmjv-4gpg)
+- **Current Version**: 4.17.21
+- **Fix Version**: 4.17.23 or higher
+- **Description**: Prototype Pollution in `_.unset` and `_.omit`.
+- **Risk**: Property injection or unintended side effects.
+
+---
+## Recommended Remediation Commands
+
+### npm
+npm install basic-ftp@^5.2.0 minimatch@^9.0.7 lodash-es@^4.17.23
+
+### Yarn
+yarn upgrade basic-ftp@^5.2.0 minimatch@^9.0.7 lodash-es@^4.17.23

@@ -135,41 +135,52 @@ module Components
         accessible_medications = person_medications.select { |pm| view_context.policy(pm).show? }
 
         div(class: 'space-y-8') do
-          div(class: 'flex items-center justify-between px-2') do
-            Heading(level: 2, size: '6', class: 'font-bold tracking-tight') { t('people.show.medications_heading') }
-            div(class: 'h-1 flex-1 mx-8 bg-slate-50 rounded-full hidden md:block')
-          end
-
-          div(id: 'medications', class: 'grid grid-cols-1 md:grid-cols-2 gap-6') do
-            schedules.each do |schedule|
-              medication = schedule.medication
-              matching = stock_by_criteria[[medication.name, medication.dosage_amount, medication.dosage_unit]] || []
-
-              render Components::Schedules::Card.new(
-                schedule: schedule,
-                person: person,
-                todays_takes: takes_by_schedule[schedule.id],
-                matching_medications: matching,
-                current_user: current_user
-              )
-            end
-
-            accessible_medications.each do |person_medication|
-              medication = person_medication.medication
-              matching = stock_by_criteria[[medication.name, medication.dosage_amount, medication.dosage_unit]] || []
-
-              render Components::PersonMedications::Card.new(
-                person_medication: person_medication,
-                person: person,
-                todays_takes: takes_by_person_medication[person_medication.id],
-                matching_medications: matching,
-                current_user: current_user
-              )
-            end
-
-            render_empty_state if schedules.none? && accessible_medications.none?
-          end
+          render_medications_header
+          render_medications_grid(accessible_medications)
         end
+      end
+
+      def render_medications_header
+        div(class: 'flex items-center justify-between px-2') do
+          Heading(level: 2, size: '6', class: 'font-bold tracking-tight') { t('people.show.medications_heading') }
+          div(class: 'h-1 flex-1 mx-8 bg-slate-50 rounded-full hidden md:block')
+        end
+      end
+
+      def render_medications_grid(accessible_medications)
+        div(id: 'medications', class: 'grid grid-cols-1 md:grid-cols-2 gap-6') do
+          render_schedule_cards
+          render_person_medication_cards(accessible_medications)
+          render_empty_state if schedules.none? && accessible_medications.none?
+        end
+      end
+
+      def render_schedule_cards
+        schedules.each do |schedule|
+          render Components::Schedules::Card.new(
+            schedule: schedule,
+            person: person,
+            todays_takes: takes_by_schedule[schedule.id],
+            matching_medications: matching_stock_for(schedule.medication),
+            current_user: current_user
+          )
+        end
+      end
+
+      def render_person_medication_cards(accessible_medications)
+        accessible_medications.each do |pm|
+          render Components::PersonMedications::Card.new(
+            person_medication: pm,
+            person: person,
+            todays_takes: takes_by_person_medication[pm.id],
+            matching_medications: matching_stock_for(pm.medication),
+            current_user: current_user
+          )
+        end
+      end
+
+      def matching_stock_for(medication)
+        stock_by_criteria[[medication.name, medication.dosage_amount, medication.dosage_unit]] || []
       end
 
       def render_empty_state
