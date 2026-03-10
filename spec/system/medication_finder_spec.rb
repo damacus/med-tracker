@@ -22,6 +22,7 @@ RSpec.describe 'MedicationFinder' do
         expect(page).to have_button('Search')
         expected_text = 'Search the NHS Dictionary of Medications and Devices (dm+d) by name or active ingredient.'
         expect(page).to have_content(expected_text)
+        expect(page).to have_css('[data-testid="barcode-scanner"]')
       end
     end
   end
