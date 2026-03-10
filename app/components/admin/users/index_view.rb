@@ -5,6 +5,8 @@ module Components
     module Users
       # Admin users index view - displays list of users with search, filtering, and pagination
       class IndexView < Components::Base
+        include Phlex::Rails::Helpers::TurboFrameTag
+
         attr_reader :users, :search_params, :current_user, :pagy_obj
 
         def initialize(users:, search_params: {}, current_user: nil, pagy: nil)
