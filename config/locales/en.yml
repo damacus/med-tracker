@@ -602,7 +602,6 @@ en:
         tech_indigo: "Tech Indigo"
         soft_rose: "Soft Rose"
         minty_fresh: "Minty Fresh"
-        minimalist_monochrome: "Minimalist"
     close_account:
       title: "Close Account"
       description: "Permanently delete your account and all associated data"

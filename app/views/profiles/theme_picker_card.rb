@@ -19,8 +19,7 @@ module Views
         { id: 'sunset-support', name: 'Sunset Support', color: 'bg-[#F28482]' },
         { id: 'tech-indigo', name: 'Tech Indigo', color: 'bg-[#4361EE]' },
         { id: 'soft-rose', name: 'Soft Rose', color: 'bg-[#E5989B]' },
-        { id: 'minty-fresh', name: 'Minty Fresh', color: 'bg-[#06D6A0]' },
-        { id: 'minimalist-monochrome', name: 'Minimalist', color: 'bg-[#1A1A1A]' }
+        { id: 'minty-fresh', name: 'Minty Fresh', color: 'bg-[#06D6A0]' }
       ].freeze
 
       def view_template
