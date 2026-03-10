@@ -26,3 +26,9 @@
 ## 2026-03-07 - Cache Timing Restriction State Per Card Render
 **Learning:** MedTracker medication cards can evaluate the same timing restriction logic multiple times in one render path: once for countdown visibility, again for the disabled button state, and again for disabled-label copy. On cooldown states this multiplies `can_take_now?` work across every visible card.
 **Action:** In card components that render medication actions, cache `can_take_now?`, out-of-stock state, and blocked reason per render using instance variables guarded with `instance_variable_defined?`. That keeps cooldown/out-of-stock renders to a single timing evaluation while preserving behavior.
+
+## 2026-03-10 - Preload Accessible Medications for Stock Resolution
+
+**Learning:** When rendering multiple medication cards (schedules or as-needed), each card's `MedicationStockSourceResolver` was performing a new database query to find matching medications across all locations. This caused a severe N+1 query bottleneck on the dashboard and person profile views.
+
+**Action:** Update data preparation layers (like `ScheduleQuery` and `PeopleController`) to bulk-fetch all accessible medications for the current user once. Group these by name and dosage criteria in a hash, and pass the relevant preloaded medications to each `MedicationStockSourceResolver` instance. This reduces the number of stock-related queries from O(N) to O(1) for the entire page.
