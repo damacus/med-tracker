@@ -15,8 +15,8 @@ module Components
         end
 
         def view_template
-          div(class: 'rounded-xl border border-border bg-card shadow-sm') do
-            render RubyUI::Table.new do
+          div(class: 'w-full overflow-x-auto') do
+            render RubyUI::Table.new(class: 'min-w-[800px]') do
               render_table_header
               render_table_body
             end

@@ -122,18 +122,18 @@ module Components
         end
 
         def render_action_card(title:, description:, href:, icon: nil)
-          Link(
+          a(
             href: href,
-            variant: :ghost,
             class: 'flex flex-col gap-3 rounded-2xl bg-white p-6 border border-slate-100 shadow-sm ' \
-                   'transition-all duration-300 hover:shadow-md hover:scale-[1.02] cursor-pointer no-underline h-full'
+                   'transition-all duration-300 hover:shadow-md hover:scale-[1.02] ' \
+                   'cursor-pointer no-underline h-full min-w-0'
           ) do
-            div(class: 'w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-600') do
+            div(class: 'w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-600 shrink-0') do
               render icon if icon
             end
-            div(class: 'mt-2') do
-              Heading(level: 3, size: '3', class: 'font-bold text-slate-900 mb-1') { title }
-              Text(size: '2', weight: 'muted', class: 'leading-relaxed') { description }
+            div(class: 'mt-2 min-w-0') do
+              Heading(level: 3, size: '3', class: 'font-bold text-slate-900 mb-1 truncate') { title }
+              Text(size: '2', weight: 'muted', class: 'leading-relaxed break-words text-wrap') { description }
             end
           end
         end
