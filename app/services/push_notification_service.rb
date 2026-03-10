@@ -11,10 +11,12 @@ class PushNotificationService
   end
 
   def self.build_vapid_config
+    subject = ENV.fetch('VAPID_SUBJECT',
+                        Rails.application.credentials.dig(:vapid, :subject) || 'notifications@example.com')
     {
-      subject: "mailto:#{Rails.application.credentials.dig(:vapid, :subject) || 'notifications@example.com'}",
-      public_key: Rails.application.credentials.dig(:vapid, :public_key),
-      private_key: Rails.application.credentials.dig(:vapid, :private_key)
+      subject: "mailto:#{subject}",
+      public_key: ENV.fetch('VAPID_PUBLIC_KEY', Rails.application.credentials.dig(:vapid, :public_key)),
+      private_key: ENV.fetch('VAPID_PRIVATE_KEY', Rails.application.credentials.dig(:vapid, :private_key))
     }
   end
   private_class_method :build_vapid_config

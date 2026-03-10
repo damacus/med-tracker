@@ -39,6 +39,10 @@ module Components
           class: 'mb-8 p-6 rounded-2xl border border-slate-200 bg-slate-50/50',
           data: { controller: 'push-notification' }
         ) do
+          # VAPID key fallback if not in layout
+          vapid_public_key = ENV['VAPID_PUBLIC_KEY'] || Rails.application.credentials.dig(:vapid, :public_key)
+          meta(name: 'vapid-public-key', content: vapid_public_key) if vapid_public_key
+
           div(class: 'flex items-center gap-3 mb-4') do
             render Icons::Bell.new(size: 24)
             h2(class: 'text-lg font-bold text-foreground') { 'Browser Notifications' }
@@ -47,43 +51,48 @@ module Components
             class: 'text-sm text-slate-500 mb-4',
             data: { push_notification_target: 'status' }
           ) { 'Checking notification status...' }
-          div(class: 'flex gap-3') do
-            button(
-              type: 'button',
-              class: 'inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white font-bold ' \
-                     'text-sm hover:bg-primary/90 transition-colors',
-              data: {
-                push_notification_target: 'subscribeButton',
-                action: 'push-notification#subscribe'
-              },
-              hidden: true
-            ) do
-              render Icons::Bell.new(size: 16)
-              plain 'Enable Notifications'
+          div(class: 'flex flex-col gap-3') do
+            div(class: 'flex gap-3') do
+              button(
+                type: 'button',
+                class: 'inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white font-bold ' \
+                       'text-sm hover:bg-primary/90 transition-colors',
+                data: {
+                  push_notification_target: 'subscribeButton',
+                  action: 'push-notification#subscribe'
+                },
+                hidden: true
+              ) do
+                render Icons::Bell.new(size: 16)
+                plain 'Enable Notifications'
+              end
+              button(
+                type: 'button',
+                class: 'inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 ' \
+                       'text-slate-600 font-bold text-sm hover:bg-slate-100 transition-colors',
+                data: {
+                  push_notification_target: 'unsubscribeButton',
+                  action: 'push-notification#unsubscribe'
+                },
+                hidden: true
+              ) do
+                'Disable Notifications'
+              end
             end
+
             button(
               type: 'button',
-              class: 'inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 ' \
-                     'text-slate-600 font-bold text-sm hover:bg-slate-100 transition-colors',
-              data: {
-                push_notification_target: 'unsubscribeButton',
-                action: 'push-notification#unsubscribe'
-              },
-              hidden: true
-            ) do
-              'Disable Notifications'
-            end
-            button(
-              type: 'button',
-              class: 'inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 ' \
-                     'text-foreground font-bold text-sm hover:bg-slate-100 transition-colors',
+              class: 'w-full inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 ' \
+                     'bg-white px-4 py-2.5 text-sm font-bold text-foreground transition-all hover:bg-slate-50 ' \
+                     'hover:shadow-sm active:scale-[0.98]',
               data: {
                 push_notification_target: 'testButton',
                 action: 'push-notification#sendTest'
               },
               hidden: true
             ) do
-              'Send Test'
+              render Icons::Send.new(size: 16)
+              plain 'Send Test Notification'
             end
           end
         end

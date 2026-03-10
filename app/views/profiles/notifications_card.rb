@@ -44,48 +44,77 @@ module Views
           class: 'space-y-3',
           data: { controller: 'push-notification' }
         ) do
+          render_vapid_meta
           render_section_header(
             'Browser Notifications',
             'Allow this device to receive medication reminders'
           )
-          div(class: 'flex items-center justify-between rounded-lg border border-border bg-muted/60 p-3') do
-            p(
-              class: 'text-sm text-muted-foreground',
-              data: { push_notification_target: 'status' }
-            ) { 'Checking notification status...' }
-            div(class: 'flex gap-2 ml-4 flex-shrink-0') do
-              button(
-                type: 'button',
-                class: 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-white ' \
-                       'font-medium text-sm hover:bg-primary/90 transition-colors',
-                data: {
-                  push_notification_target: 'subscribeButton',
-                  action: 'push-notification#subscribe'
-                },
-                hidden: true
-              ) { 'Enable' }
-              button(
-                type: 'button',
-                class: 'inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 ' \
-                       'text-sm font-medium text-muted-foreground transition-colors hover:bg-accent',
-                data: {
-                  push_notification_target: 'unsubscribeButton',
-                  action: 'push-notification#unsubscribe'
-                },
-                hidden: true
-              ) { 'Disable' }
-              button(
-                type: 'button',
-                class: 'inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 ' \
-                       'text-sm font-medium text-foreground transition-colors hover:bg-accent',
-                data: {
-                  push_notification_target: 'testButton',
-                  action: 'push-notification#sendTest'
-                },
-                hidden: true
-              ) { 'Send Test' }
-            end
+          render_push_status_box
+        end
+      end
+
+      def render_vapid_meta
+        vapid_public_key = ENV['VAPID_PUBLIC_KEY'] || Rails.application.credentials.dig(:vapid, :public_key)
+        meta(name: 'vapid-public-key', content: vapid_public_key) if vapid_public_key
+      end
+
+      def render_push_status_box
+        div(class: 'rounded-lg border border-border bg-muted/60 p-4') do
+          div(class: 'flex flex-col gap-4') do
+            render_status_row
+            render_test_button
           end
+        end
+      end
+
+      def render_status_row
+        div(class: 'flex items-center justify-between') do
+          p(
+            class: 'text-sm text-muted-foreground',
+            data: { push_notification_target: 'status' }
+          ) { 'Checking notification status...' }
+          render_push_action_buttons
+        end
+      end
+
+      def render_push_action_buttons
+        div(class: 'flex gap-2 flex-shrink-0') do
+          button(
+            type: 'button',
+            class: 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-white ' \
+                   'font-medium text-sm hover:bg-primary/90 transition-colors',
+            data: {
+              push_notification_target: 'subscribeButton',
+              action: 'push-notification#subscribe'
+            },
+            hidden: true
+          ) { 'Enable' }
+          button(
+            type: 'button',
+            class: 'inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 ' \
+                   'text-sm font-medium text-muted-foreground transition-colors hover:bg-accent',
+            data: {
+              push_notification_target: 'unsubscribeButton',
+              action: 'push-notification#unsubscribe'
+            },
+            hidden: true
+          ) { 'Disable' }
+        end
+      end
+
+      def render_test_button
+        button(
+          type: 'button',
+          class: 'w-full inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-background px-4 py-2.5 ' \
+                 'text-sm font-bold text-foreground transition-all hover:bg-accent hover:shadow-sm active:scale-[0.98]',
+          data: {
+            push_notification_target: 'testButton',
+            action: 'push-notification#sendTest'
+          },
+          hidden: true
+        ) do
+          render Icons::Send.new(size: 16)
+          plain 'Send Test Notification'
         end
       end
 

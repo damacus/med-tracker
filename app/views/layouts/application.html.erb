@@ -15,8 +15,9 @@
     <% unless current_user %>
       <meta name="turbo-visit-control" content="reload">
     <% end %>
-    <% if Rails.application.credentials.dig(:vapid, :public_key) %>
-      <meta name="vapid-public-key" content="<%= Rails.application.credentials.dig(:vapid, :public_key) %>">
+    <% vapid_public_key = ENV['VAPID_PUBLIC_KEY'] || Rails.application.credentials.dig(:vapid, :public_key) %>
+    <% if vapid_public_key %>
+      <meta name="vapid-public-key" content="<%= vapid_public_key %>">
     <% end %>
 
     <%= yield :head %>

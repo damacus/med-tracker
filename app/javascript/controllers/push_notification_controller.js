@@ -108,12 +108,18 @@ export default class extends Controller {
       this.updateStatus("Notifications are blocked in your browser settings.")
       this.showButton("none")
       this.showTestButton(false)
-    } else if (subscription) {
-      this.updateStatus("Notifications are enabled on this device.")
-      this.showButton("unsubscribe")
-      this.showTestButton(true)
+    } else if (permission === "granted") {
+      if (subscription) {
+        this.updateStatus("Notifications are fully enabled.")
+        this.showButton("unsubscribe")
+        this.showTestButton(true)
+      } else {
+        this.updateStatus("Notifications are permitted, but push subscription is missing.")
+        this.showButton("subscribe")
+        this.showTestButton(false)
+      }
     } else {
-      this.updateStatus("Notifications are not enabled on this device.")
+      this.updateStatus("Notifications are not enabled.")
       this.showButton("subscribe")
       this.showTestButton(false)
     }
