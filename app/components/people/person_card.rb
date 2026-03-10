@@ -99,8 +99,7 @@ module Components
           data: { testid: 'needs-carer-badge' }
         ) do
           div(class: 'flex flex-col items-center leading-tight') do
-            span { 'Needs' }
-            span { 'Carer' }
+            plain 'Needs Carer'
           end
         end
       end
@@ -131,6 +130,11 @@ module Components
           size: :md,
           class: 'w-full rounded-2xl font-bold py-6'
         ) { 'Add Medication' }
+      end
+
+      def can_add_medication?
+        can_create?(Schedule.new(person: person)) ||
+          can_create?(PersonMedication.new(person: person))
       end
 
       def render_assign_carer_link
