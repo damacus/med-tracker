@@ -23,8 +23,8 @@ module Components
             render RubyUI::TableCell.new(class: 'capitalize') { user.role }
             render(RubyUI::TableCell.new { render_status_badge })
             render(RubyUI::TableCell.new { render_verification_button })
-            render RubyUI::TableCell.new(class: 'text-right') do
-              div(class: 'flex gap-2 justify-end') do
+            render RubyUI::TableCell.new(class: 'text-center') do
+              div(class: 'flex gap-2 justify-center') do
                 render RubyUI::Link.new(href: "/admin/users/#{user.id}/edit", variant: :outline, size: :sm) { t('admin.users.user_row.edit') }
                 render_activation_button
               end
