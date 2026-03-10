@@ -22,19 +22,25 @@ module Components
       private
 
       def render_card_header
-        CardHeader do
-          render_person_icon
-          div(class: 'flex items-center justify-between gap-2') do
-            Heading(level: 2, size: '5', class: 'font-semibold leading-none tracking-tight') do
-              Link(href: person_path(person), variant: :link, class: 'text-xl font-semibold') { person.name }
-            end
+        CardHeader(class: 'pb-4') do
+          div(class: 'flex items-start justify-between') do
+            render_person_icon
             render_needs_carer_badge if person.needs_carer?
+          end
+          div(class: 'space-y-1') do
+            Heading(level: 2, size: '5', class: 'font-semibold leading-none tracking-tight') do
+              Link(
+                href: person_path(person),
+                variant: :link,
+                class: 'text-2xl font-bold p-0 h-auto hover:no-underline'
+              ) { person.name }
+            end
           end
         end
       end
 
       def render_person_icon
-        div(class: 'w-10 h-10 rounded-xl flex items-center justify-center bg-violet-100 text-violet-700 mb-2') do
+        div(class: 'w-10 h-10 rounded-xl flex items-center justify-center bg-violet-100 text-violet-700') do
           render Icons::User.new(size: 20)
         end
       end
@@ -87,24 +93,34 @@ module Components
       def render_needs_carer_badge
         render RubyUI::Badge.new(
           variant: :warning,
-          size: :md,
+          size: :sm,
+          class: 'h-auto py-1.5 px-3 rounded-xl border-amber-200 bg-amber-50 text-amber-900 ' \
+                 'font-bold uppercase tracking-wider text-[10px]',
           data: { testid: 'needs-carer-badge' }
-        ) { 'Needs Carer' }
+        ) do
+          div(class: 'flex flex-col items-center leading-tight') do
+            span { 'Needs' }
+            span { 'Carer' }
+          end
+        end
       end
 
       def render_card_footer
-        CardFooter(class: 'flex gap-2 flex-wrap') do
+        CardFooter(class: 'flex flex-col gap-3 mt-auto pt-6') do
           render_add_medication_link if can_add_medication?
 
-          if active_medications_count.positive?
-            Link(
-              href: person_path(person),
-              variant: :outline,
-              size: :md
-            ) { 'View Medications' }
-          end
+          div(class: 'flex gap-2 w-full') do
+            if active_medications_count.positive?
+              Link(
+                href: person_path(person),
+                variant: :outline,
+                size: :md,
+                class: 'flex-1 rounded-2xl'
+              ) { 'View Medications' }
+            end
 
-          render_assign_carer_link if person.needs_carer? && can_create?(CarerRelationship)
+            render_assign_carer_link if person.needs_carer? && can_create?(CarerRelationship)
+          end
         end
       end
 
@@ -113,13 +129,8 @@ module Components
           href: add_medication_person_path(person),
           variant: :primary,
           size: :md,
-          data: { turbo_frame: 'modal' }
+          class: 'w-full rounded-2xl font-bold py-6'
         ) { 'Add Medication' }
-      end
-
-      def can_add_medication?
-        can_create?(Schedule.new(person: person)) ||
-          can_create?(PersonMedication.new(person: person))
       end
 
       def render_assign_carer_link
@@ -127,7 +138,7 @@ module Components
           href: new_admin_carer_relationship_path(patient_id: person.id),
           variant: :outline,
           size: :md,
-          class: 'text-amber-700 border-amber-300 hover:bg-amber-50',
+          class: 'flex-1 rounded-2xl text-amber-700 border-amber-300 hover:bg-amber-50',
           data: { turbo_frame: 'modal' }
         ) { 'Assign Carer' }
       end
