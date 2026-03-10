@@ -20,6 +20,7 @@ RSpec.describe MedicationPolicy, type: :policy do
         expect(policy.update?).to be true
         expect(policy.edit?).to be true
         expect(policy.destroy?).to be true
+        expect(policy.finder?).to be true
       end
     end
   end
@@ -36,6 +37,7 @@ RSpec.describe MedicationPolicy, type: :policy do
         expect(policy.update?).to be true
         expect(policy.edit?).to be true
         expect(policy.destroy?).to be false
+        expect(policy.finder?).to be true
       end
     end
   end
@@ -52,6 +54,7 @@ RSpec.describe MedicationPolicy, type: :policy do
         expect(policy.update?).to be false
         expect(policy.edit?).to be false
         expect(policy.destroy?).to be false
+        expect(policy.finder?).to be false
       end
     end
   end
@@ -68,6 +71,7 @@ RSpec.describe MedicationPolicy, type: :policy do
         expect(policy.update?).to be false
         expect(policy.edit?).to be false
         expect(policy.destroy?).to be false
+        expect(policy.finder?).to be false
       end
     end
   end
@@ -84,6 +88,7 @@ RSpec.describe MedicationPolicy, type: :policy do
         expect(policy.update?).to be false
         expect(policy.edit?).to be false
         expect(policy.destroy?).to be false
+        expect(policy.finder?).to be true
       end
     end
   end
@@ -100,6 +105,7 @@ RSpec.describe MedicationPolicy, type: :policy do
         expect(policy.update?).to be false
         expect(policy.edit?).to be false
         expect(policy.destroy?).to be false
+        expect(policy.finder?).to be false
       end
     end
   end
@@ -116,6 +122,7 @@ RSpec.describe MedicationPolicy, type: :policy do
         expect(policy.update?).to be false
         expect(policy.edit?).to be false
         expect(policy.destroy?).to be false
+        expect(policy.finder?).to be false
       end
     end
   end
