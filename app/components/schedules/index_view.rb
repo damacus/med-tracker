@@ -17,7 +17,9 @@ module Components
             Text(weight: :muted) { 'Schedules currently active for people you can access.' }
           end
 
-          if schedules.any?
+          # ⚡ Bolt Optimization: Use .to_a.any? instead of .any? to materialize the relation
+          # into an array in memory. This prevents an extra COUNT/EXISTS query before iterating.
+          if schedules.to_a.any?
             div(class: 'rounded-3xl border border-slate-100 bg-white overflow-hidden shadow-sm') do
               table(class: 'w-full text-sm') do
                 thead(class: 'bg-slate-50 text-slate-500 uppercase tracking-widest text-xs') do
