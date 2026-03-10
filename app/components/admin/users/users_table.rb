@@ -32,6 +32,7 @@ module Components
               render(RubyUI::TableHead.new { render_sortable_header('Email', 'email') })
               render(RubyUI::TableHead.new { render_sortable_header('Role', 'role') })
               render(RubyUI::TableHead.new { 'Activation' })
+              render(RubyUI::TableHead.new { 'Verification' })
               render RubyUI::TableHead.new(class: 'text-right') { 'Actions' }
             end
           end
