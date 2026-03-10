@@ -19,12 +19,12 @@ RSpec.describe Components::BarcodeScanner, type: :component do
 
   it 'renders the stop button as hidden by default' do
     stop_button = rendered.css('[data-barcode-scanner-target="stopButton"]').first
-    expect(stop_button['hidden']).to be_present
+    expect(stop_button.key?('hidden')).to be true
   end
 
   it 'renders the scanner region as hidden by default' do
     region = rendered.css('[data-barcode-scanner-target="scannerRegion"]').first
-    expect(region['hidden']).to be_present
+    expect(region.key?('hidden')).to be true
   end
 
   it 'renders the status area with live region attributes' do
