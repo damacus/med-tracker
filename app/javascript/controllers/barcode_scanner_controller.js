@@ -22,15 +22,6 @@ export default class extends Controller {
     this.transition("requesting")
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-      stream.getTracks().forEach(track => track.stop())
-    } catch (error) {
-      this.transition("denied")
-      this.dispatch("denied", { detail: { error: error.message } })
-      return
-    }
-
-    try {
       const { Html5Qrcode } = await import("html5-qrcode")
       const scannerId = this.scannerRegionTarget.id
 
@@ -39,8 +30,6 @@ export default class extends Controller {
       const config = {
         fps: 10,
         qrbox: { width: 250, height: 150 },
-        formatsToSupport: this.formatsValue.map(f => Html5Qrcode.getSupportedFormats
-          ? f : f),
         aspectRatio: 1.777
       }
 
@@ -48,13 +37,20 @@ export default class extends Controller {
         { facingMode: "environment" },
         config,
         (decodedText, decodedResult) => this.onDecodeSuccess(decodedText, decodedResult),
-        (_errorMessage) => {}
+        (_errorMessage) => { }
       )
 
       this.transition("scanning")
     } catch (error) {
-      this.transition("error")
-      this.dispatch("error", { detail: { error: error.message } })
+      const isDenied = error.name === "NotAllowedError" ||
+        (error.message && error.message.toLowerCase().includes("permission"))
+      if (isDenied) {
+        this.transition("denied")
+        this.dispatch("denied", { detail: { error: error.message } })
+      } else {
+        this.transition("error")
+        this.dispatch("error", { detail: { error: error.message } })
+      }
     }
   }
 
