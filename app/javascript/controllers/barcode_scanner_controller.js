@@ -33,8 +33,20 @@ export default class extends Controller {
         aspectRatio: 1.777
       }
 
+      const cameras = await Html5Qrcode.getCameras()
+
+      if (!cameras || cameras.length === 0) {
+        this.transition("error")
+        this.dispatch("error", { detail: { error: "No camera found on this device." } })
+        return
+      }
+
+      const cameraConfig = cameras.length === 1
+        ? cameras[0].id
+        : { facingMode: "environment" }
+
       await this.scanner.start(
-        { facingMode: "environment" },
+        cameraConfig,
         config,
         (decodedText, decodedResult) => this.onDecodeSuccess(decodedText, decodedResult),
         (_errorMessage) => { }
@@ -42,14 +54,18 @@ export default class extends Controller {
 
       this.transition("scanning")
     } catch (error) {
+      const msg = error.message || String(error)
       const isDenied = error.name === "NotAllowedError" ||
-        (error.message && error.message.toLowerCase().includes("permission"))
+        error.name === "NotFoundError" ||
+        msg.toLowerCase().includes("permission") ||
+        msg.toLowerCase().includes("denied")
+
       if (isDenied) {
         this.transition("denied")
-        this.dispatch("denied", { detail: { error: error.message } })
+        this.dispatch("denied", { detail: { error: msg } })
       } else {
         this.transition("error")
-        this.dispatch("error", { detail: { error: error.message } })
+        this.dispatch("error", { detail: { error: msg } })
       }
     }
   }
