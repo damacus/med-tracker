@@ -73,5 +73,26 @@ RSpec.describe 'Profile Editing' do
       # Dialog should close and we're still on profile page
       expect(page).to have_content('My Profile')
     end
+
+    it 'closes the account and prevents future login' do
+      expect(page).to have_css('[data-ruby-ui--alert-dialog-target="content"]', visible: :hidden, wait: 5)
+
+      click_button 'Close Account'
+      expect(page).to have_content('Are you absolutely sure?', wait: 10)
+
+      fill_in 'Password', with: 'password'
+      click_button 'Yes, delete my account'
+
+      expect(page).to have_current_path('/login')
+      expect(account.reload).to be_closed
+      expect(person.reload.account).to be_nil
+
+      fill_in 'Email address', with: account.email
+      fill_in 'Password', with: 'password'
+      click_button 'Sign In to Dashboard'
+
+      expect(page).to have_no_current_path('/dashboard')
+      expect(page).to have_content(/closed|invalid|error/i)
+    end
   end
 end
