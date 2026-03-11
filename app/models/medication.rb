@@ -162,8 +162,7 @@ class Medication < ApplicationRecord # :nodoc:
   def default_dosage_for_person_type(person_type)
     child_types = %w[minor dependent_adult]
 
-    # ⚡ Bolt Optimization: Use Enumerable#find on the potentially preloaded
-    # dosages association instead of find_by to avoid N+1 queries.
+
     if child_types.include?(person_type.to_s)
       dosages.find(&:default_for_children?) || dosages.first
     else
