@@ -47,10 +47,34 @@ module Views
       def render_dialog_footer
         render AlertDialogFooter.new do
           render(AlertDialogCancel.new { t('profiles.close_account.cancel_button') })
-          render AlertDialogAction.new(
-            data: { turbo_method: :delete, turbo_confirm: false },
-            href: '/close-account'
-          ) { t('profiles.close_account.confirm_button') }
+          render_close_account_form
+        end
+      end
+
+      def render_close_account_form
+        render RubyUI::Form.new(action: view_context.rodauth.close_account_path, method: :post, class: 'space-y-3') do
+          render_close_account_hidden_fields
+          render_close_account_password_field
+          render Button.new(type: :submit, variant: :destructive, class: 'w-full') { t('profiles.close_account.confirm_button') }
+        end
+      end
+
+      def render_close_account_hidden_fields
+        additional_tags = view_context.rodauth.close_account_additional_form_tags
+        safe(additional_tags) if additional_tags.present?
+        input(type: 'hidden', name: 'authenticity_token', value: view_context.form_authenticity_token)
+      end
+
+      def render_close_account_password_field
+        render RubyUI::FormField.new do
+          render RubyUI::FormFieldLabel.new(for: 'close-account-password') { t('rodauth.views.change_login.password_label') }
+          render RubyUI::Input.new(
+            type: :password,
+            name: view_context.rodauth.password_param,
+            id: 'close-account-password',
+            required: true,
+            autocomplete: 'current-password'
+          )
         end
       end
     end

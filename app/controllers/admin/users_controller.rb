@@ -187,6 +187,7 @@ module Admin
       case params[:status]
       when 'active' then scope.active
       when 'inactive' then scope.inactive
+      when 'soft_deleted' then scope.left_joins(person: :account).where(accounts: { id: nil }).or(scope.left_joins(person: :account).where(accounts: { status: Account.statuses[:closed] }))
       else scope
       end
     end

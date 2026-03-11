@@ -48,6 +48,7 @@ en:
         edit: "Edit"
         active: "Active"
         inactive: "Inactive"
+        soft_deleted: "Soft deleted"
         deactivate: "Deactivate"
         activate: "Activate"
         verify: "Verify"
