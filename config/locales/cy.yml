@@ -570,6 +570,9 @@ cy:
       administration: "Gweinyddu"
       logout: "Allgofnodi"
   forms:
+    locations:
+      name_placeholder: "e.e. Cartref, Ysgol, Tŷ Mam-gu"
+      description_placeholder: "Disgrifiwch y lleoliad hwn..."
     people:
       name_placeholder: "e.g., Jane Doe"
       email_placeholder: "e.g., jane@example.com"

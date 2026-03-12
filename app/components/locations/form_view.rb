@@ -97,7 +97,7 @@ module Components
             id: 'location_name',
             value: location.name,
             required: true,
-            placeholder: 'e.g. Home, School, Grandma\'s House',
+            placeholder: t('forms.locations.name_placeholder'),
             class: 'rounded-2xl border-slate-200 bg-white py-4 px-4 focus:ring-2 focus:ring-primary/10 ' \
                    "focus:border-primary transition-all #{field_error_class(location, :name)}"
           )
@@ -115,7 +115,7 @@ module Components
             name: 'location[description]',
             id: 'location_description',
             rows: 3,
-            placeholder: 'Describe this location...',
+            placeholder: t('forms.locations.description_placeholder'),
             class: 'rounded-2xl border-slate-200 bg-white p-4 focus:ring-2 focus:ring-primary/10 ' \
                    'focus:border-primary transition-all resize-none'
           ) { location.description }
