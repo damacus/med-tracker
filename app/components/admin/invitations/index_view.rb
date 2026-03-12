@@ -143,6 +143,8 @@ module Components
         def invitation_metadata(invitation)
           if invitation.accepted?
             "Accepted #{view_context.time_ago_in_words(invitation.accepted_at)} ago"
+          elsif invitation.expired?
+            "Expired #{view_context.time_ago_in_words(invitation.expires_at)} ago"
           else
             "Expires #{view_context.time_ago_in_words(invitation.expires_at)} from now"
           end

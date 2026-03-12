@@ -110,6 +110,8 @@ RSpec.describe 'Admin invites users' do
 
     within '#admin_invitations' do
       expect(page).to have_content('resend.me@example.com')
+      expect(page).to have_content('Expired')
+      expect(page).to have_content('Expired 1 day ago')
       click_button 'Resend', match: :first
     end
 
