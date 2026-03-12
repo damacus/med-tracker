@@ -592,6 +592,9 @@ pt:
       administration: "Administração"
       logout: "Terminar sessão"
   forms:
+    locations:
+      name_placeholder: "p. ex. Casa, Escola, Casa da Avó"
+      description_placeholder: "Descreva esta localização..."
     people:
       name_placeholder: "e.g., Jane Doe"
       email_placeholder: "e.g., jane@example.com"

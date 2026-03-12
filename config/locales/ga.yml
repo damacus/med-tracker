@@ -606,6 +606,9 @@ ga:
       administration: "Riarachán"
       sign_out: "Sínigh Amach"
   forms:
+    locations:
+      name_placeholder: "m.sh. Baile, Scoil, Teach na Mamó"
+      description_placeholder: "Déan cur síos ar an suíomh seo..."
     people:
       name_placeholder: "e.g., Jane Doe"
       email_placeholder: "e.g., jane@example.com"
