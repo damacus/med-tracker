@@ -17,8 +17,8 @@ services:
       dev:
         aliases: [mailpit]
     ports:
-      - "8025"   # Web UI
-      - "1025"   # SMTP
+      - "8025" # Web UI
+      - "1025" # SMTP
     restart: unless-stopped
 
   migrate-dev:
@@ -67,6 +67,7 @@ services:
     tmpfs:
       - /app/tmp/pids:uid=1000,gid=1000
       - /app/tmp/cache:uid=1000,gid=1000
+      - /app/public/assets:uid=1000,gid=1000
 
   # === Test (profile: test) ===
   mail-test:
@@ -76,8 +77,8 @@ services:
       test:
         aliases: [mail-test]
     ports:
-      - "8025"   # Web UI
-      - "1025"   # SMTP
+      - "8025" # Web UI
+      - "1025" # SMTP
     restart: unless-stopped
 
   db-test:
@@ -133,6 +134,7 @@ services:
     tmpfs:
       - /app/tmp/pids:uid=1000,gid=1000
       - /app/tmp/cache:uid=1000,gid=1000
+      - /app/public/assets:uid=1000,gid=1000
     healthcheck:
       disable: true
 

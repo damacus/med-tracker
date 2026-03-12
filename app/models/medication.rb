@@ -57,6 +57,7 @@ class Medication < ApplicationRecord # :nodoc:
 
   enum :reorder_status, { requested: 0, ordered: 1, received: 2 }, prefix: :reorder
 
+  validates :barcode, uniqueness: true, allow_blank: true
   validates :name, presence: true
   validates :category, inclusion: { in: CATEGORIES }, allow_blank: true
   validates :dosage_amount, numericality: { greater_than: 0 }, allow_nil: true

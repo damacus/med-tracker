@@ -6,10 +6,15 @@ module Components
     class FinderView < Components::Base
       def view_template
         div(
-          data: { testid: 'medication-finder', controller: 'medication-search' },
+          data: {
+            testid: 'medication-finder',
+            controller: 'medication-search',
+            action: 'barcode-scanner:decoded->medication-search#barcodeDecoded'
+          },
           class: 'container mx-auto px-4 py-12 max-w-5xl'
         ) do
           render_header
+          render_scanner_section
           render_search_section
           render_results_section
         end
@@ -24,6 +29,12 @@ module Components
           Text(size: '3', class: 'text-slate-400 mt-2') do
             plain t('medications.finder.subtitle')
           end
+        end
+      end
+
+      def render_scanner_section
+        div(class: 'mb-8') do
+          render Components::BarcodeScanner.new
         end
       end
 

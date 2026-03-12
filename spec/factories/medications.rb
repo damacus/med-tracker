@@ -22,5 +22,9 @@ FactoryBot.define do
       dosage_amount { 500 }
       dosage_unit { 'mg' }
     end
+
+    trait :with_barcode do
+      sequence(:barcode) { |n| format('50001581%05d', n) }
+    end
   end
 end

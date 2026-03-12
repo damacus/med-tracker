@@ -33,6 +33,23 @@ RSpec.describe Medication do
     it { is_expected.to allow_value(nil).for(:category) }
     it { is_expected.to allow_value('').for(:category) }
     it { is_expected.not_to allow_value('invalid_category').for(:category) }
+
+    it { is_expected.to allow_value(nil).for(:barcode) }
+    it { is_expected.to allow_value('').for(:barcode) }
+    it { is_expected.to allow_value('5000158100138').for(:barcode) }
+
+    it 'rejects duplicate barcodes' do
+      create(:medication, barcode: '5000158100138')
+      medication.barcode = '5000158100138'
+      medication.valid?
+      expect(medication.errors[:barcode]).to include('has already been taken')
+    end
+
+    it 'allows multiple nil barcodes' do
+      create(:medication, barcode: nil)
+      other = build(:medication, barcode: nil)
+      expect(other).to be_valid
+    end
   end
 
   describe 'associations' do
