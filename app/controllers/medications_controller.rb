@@ -152,7 +152,6 @@ class MedicationsController < ApplicationController # rubocop:disable Metrics/Cl
 
   def finder
     authorize Medication
-    response.headers['Permissions-Policy'] = 'geolocation=(), camera=(self), microphone=()'
     render Components::Medications::FinderView.new
   end
 

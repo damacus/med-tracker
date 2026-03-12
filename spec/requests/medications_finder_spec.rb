@@ -9,12 +9,20 @@ RSpec.describe 'GET /medication-finder' do
     post '/login', params: { email: accounts(:john_doe).email, password: 'password' }
   end
 
-  it 'allows camera access for the finder document while keeping other policies restricted' do
+  it 'allows camera access via the global Permissions-Policy header' do
     login_as_admin
 
     get medication_finder_path
 
     expect(response).to have_http_status(:ok)
     expect(response.headers['Permissions-Policy']).to eq('geolocation=(), camera=(self), microphone=()')
+  end
+
+  it 'does not set a per-action Permissions-Policy override' do
+    login_as_admin
+
+    get medication_finder_path
+
+    expect(response.headers['Permissions-Policy']).not_to include('camera=()')
   end
 end
