@@ -8,9 +8,14 @@ module Components
         include Phlex::Rails::Helpers::Pluralize
         include Components::FormHelpers
 
-        def initialize(invitation: Invitation.new, invitations: Invitation.order(created_at: :desc))
+        def initialize(
+          invitation: Invitation.new,
+          invitations: Invitation.order(created_at: :desc),
+          resendable_invitation_ids: []
+        )
           @invitation = invitation
           @invitations = invitations
+          @resendable_invitation_ids = resendable_invitation_ids
         end
 
         def view_template
@@ -125,12 +130,16 @@ module Components
               p(class: 'text-xs text-slate-400') { invitation_metadata(invitation) }
             end
 
-            next unless invitation.resendable?
+            next unless resendable_invitation?(invitation)
 
             form_with(url: resend_admin_invitation_path(invitation), method: :post, class: 'shrink-0') do
               Button(type: :submit, variant: :outline, size: :sm, class: 'rounded-xl') { 'Resend' }
             end
           end
+        end
+
+        def resendable_invitation?(invitation)
+          @resendable_invitation_ids.include?(invitation.id)
         end
 
         def invitation_status_label(invitation)

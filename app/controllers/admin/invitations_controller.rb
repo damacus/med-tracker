@@ -5,7 +5,7 @@ module Admin
     def index
       authorize :invitation, :index?
 
-      render Components::Admin::Invitations::IndexView.new(invitations: invitations)
+      render invitation_index_view
     end
 
     def create
@@ -23,13 +23,12 @@ module Admin
           end
         else
           format.html do
-            render Components::Admin::Invitations::IndexView.new(invitation: @invitation, invitations: invitations),
-                   status: :unprocessable_content
+            render invitation_index_view(invitation: @invitation), status: :unprocessable_content
           end
           format.turbo_stream do
             render turbo_stream: turbo_stream.replace(
               'admin_invitations',
-              Components::Admin::Invitations::IndexView.new(invitation: @invitation, invitations: invitations)
+              invitation_index_view(invitation: @invitation)
             ), status: :unprocessable_content
           end
         end
@@ -63,9 +62,30 @@ module Admin
 
     def render_index_turbo
       render turbo_stream: [
-        turbo_stream.replace('admin_invitations', Components::Admin::Invitations::IndexView.new(invitations: invitations)),
+        turbo_stream.replace('admin_invitations', invitation_index_view),
         turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
       ]
+    end
+
+    def invitation_index_view(invitation: Invitation.new)
+      current_invitations = invitations
+      Components::Admin::Invitations::IndexView.new(
+        invitation: invitation,
+        invitations: current_invitations,
+        resendable_invitation_ids: resendable_invitation_ids(current_invitations)
+      )
+    end
+
+    def resendable_invitation_ids(current_invitations)
+      pending_counts_by_email = Invitation.pending.group(:email).count
+
+      current_invitations.filter_map do |invitation|
+        next if invitation.accepted?
+
+        pending_count = pending_counts_by_email[invitation.email].to_i
+        next invitation.id if invitation.pending? && pending_count == 1
+        next invitation.id if invitation.expired? && pending_count.zero?
+      end
     end
 
     def redirect_with_invitation_notice(message)
