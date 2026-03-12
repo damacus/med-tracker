@@ -91,9 +91,10 @@ module Components
               id: 'user_person_attributes_name',
               value: user.person&.name,
               required: true,
-              class: person_field_error_class(:name)
+              class: person_field_error_class(:name),
+              **person_field_error_attributes(:name, input_id: 'user_person_attributes_name')
             )
-            render_person_field_error(:name)
+            render_person_field_error(:name, input_id: 'user_person_attributes_name')
           end
         end
 
@@ -105,8 +106,10 @@ module Components
               name: 'user[person_attributes][date_of_birth]',
               id: 'user_person_attributes_date_of_birth',
               value: user.person&.date_of_birth&.to_s,
-              required: true
+              required: true,
+              **person_field_error_attributes(:date_of_birth, input_id: 'user_person_attributes_date_of_birth')
             )
+            render_person_field_error(:date_of_birth, input_id: 'user_person_attributes_date_of_birth')
           end
         end
 
@@ -145,9 +148,10 @@ module Components
               id: 'user_email_address',
               value: user.email_address,
               required: true,
-              class: field_error_class(user, :email_address)
+              class: field_error_class(user, :email_address),
+              **field_error_attributes(user, :email_address, input_id: 'user_email_address')
             )
-            render_field_error(user, :email_address)
+            render_field_error(user, :email_address, input_id: 'user_email_address')
           end
         end
 
@@ -166,9 +170,10 @@ module Components
               name: 'user[password]',
               id: 'user_password',
               required: user.new_record?,
-              class: field_error_class(user, :password)
+              class: field_error_class(user, :password),
+              **field_error_attributes(user, :password, input_id: 'user_password')
             )
-            render_field_error(user, :password)
+            render_field_error(user, :password, input_id: 'user_password')
           end
         end
 
@@ -217,11 +222,18 @@ module Components
           field_error_class(person, field)
         end
 
-        def render_person_field_error(field)
+        def person_field_error_attributes(field, input_id:)
+          person = user.person
+          return {} unless person
+
+          field_error_attributes(person, field, input_id: input_id)
+        end
+
+        def render_person_field_error(field, input_id:)
           person = user.person
           return unless person
 
-          render_field_error(person, field)
+          render_field_error(person, field, input_id: input_id)
         end
       end
     end

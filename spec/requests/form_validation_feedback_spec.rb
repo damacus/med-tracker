@@ -25,6 +25,7 @@ RSpec.describe 'Form inline validation feedback' do
            params: { medication: { name: '', description: 'A test', dosage_amount: 10, dosage_unit: 'mg' } }
 
       expect(response).to have_http_status(:unprocessable_content)
+      expect(response.body).to include('role="alert"')
       expect(response.body).to include('error')
     end
 
@@ -34,6 +35,16 @@ RSpec.describe 'Form inline validation feedback' do
 
       expect(response).to have_http_status(:unprocessable_content)
       expect(response.body).to include('border-destructive')
+    end
+
+    it 'associates field errors with invalid inputs' do
+      post medications_path,
+           params: { medication: { name: '', description: 'A test', dosage_amount: 10, dosage_unit: 'mg' } }
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.body).to include('id="medication_name_error"')
+      expect(response.body).to include('aria-invalid')
+      expect(response.body).to include('aria-describedby="medication_name_error"')
     end
 
     it 'rejects zero dosage amount' do
