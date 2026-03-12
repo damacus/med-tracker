@@ -9,7 +9,7 @@ export default class extends Controller {
   }
 
   next() {
-    // Validation temporarily simplified for debugging
+    if (!this.validateCurrentStep()) return
     if (this.currentValue < this.stepTargets.length - 1) {
       this.currentValue++
     }

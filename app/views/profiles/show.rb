@@ -8,12 +8,13 @@ module Views
       include Phlex::Rails::Helpers::FormWith
       include Phlex::Rails::Helpers::ButtonTo
 
-      attr_reader :person, :account
+      attr_reader :person, :account, :user
 
-      def initialize(person:, account:)
+      def initialize(person:, account:, user:)
         super()
         @person = person
         @account = account
+        @user = user
       end
 
       def view_template
@@ -66,6 +67,7 @@ module Views
         div(class: 'space-y-6') do
           render AccountSecurityCard.new(account: account)
           render NotificationsCard.new(person: person)
+          render ExperimentsCard.new(user: user)
           render DangerZoneCard.new
           render VersionInfo.new
         end

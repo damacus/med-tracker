@@ -6,14 +6,16 @@ module Components
       include Phlex::Rails::Helpers::FormWith
       include Phlex::Rails::Helpers::TurboFrameTag
 
-      attr_reader :medications, :current_category, :categories, :locations, :current_location_id
+      attr_reader :medications, :current_category, :categories, :locations, :current_location_id, :wizard_variant
 
-      def initialize(medications:, current_category: nil, categories: [], locations: [], current_location_id: nil)
+      def initialize(medications:, current_category: nil, categories: [], locations: [], # rubocop:disable Metrics/ParameterLists
+                     current_location_id: nil, wizard_variant: 'fullpage')
         @medications = medications
         @current_category = current_category
         @categories = categories
         @locations = locations
         @current_location_id = current_location_id
+        @wizard_variant = wizard_variant
         super()
       end
 
@@ -51,7 +53,8 @@ module Components
                 href: new_medication_path,
                 variant: :primary,
                 size: :lg,
-                class: 'rounded-2xl font-bold text-sm shadow-lg shadow-primary/20'
+                class: 'rounded-2xl font-bold text-sm shadow-lg shadow-primary/20',
+                **wizard_link_data
               ) do
                 render Icons::Pill.new(size: 20, class: 'mr-2')
                 span { t('medications.index.add_medication') }
@@ -179,6 +182,10 @@ module Components
         params[:category] = current_category if current_category.present?
         params[:location_id] = current_location_id if current_location_id.present?
         params
+      end
+
+      def wizard_link_data
+        %w[modal slideover].include?(wizard_variant) ? { data: { turbo_frame: 'modal' } } : {}
       end
 
       def render_medications_grid

@@ -6,10 +6,11 @@ module Components
       class DosageFormFrame < Components::Base
         include Phlex::Rails::Helpers::TurboFrameTag
 
-        attr_reader :medication
+        attr_reader :medication, :dosage
 
-        def initialize(medication:)
+        def initialize(medication:, dosage: nil)
           @medication = medication
+          @dosage = dosage || medication.dosages.build
           super()
         end
 
@@ -17,7 +18,7 @@ module Components
           turbo_frame_tag 'dosage-form' do
             div(class: 'rounded-2xl border border-dashed border-slate-200 p-6 bg-slate-50/50') do
               render WizardDosageForm.new(
-                dosage: medication.dosages.build,
+                dosage: dosage,
                 medication: medication
               )
             end

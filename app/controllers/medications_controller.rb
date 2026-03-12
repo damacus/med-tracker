@@ -21,7 +21,8 @@ class MedicationsController < ApplicationController # rubocop:disable Metrics/Cl
       current_category: @current_category,
       categories: categories,
       locations: locations,
-      current_location_id: @current_location_id
+      current_location_id: @current_location_id,
+      wizard_variant: current_user.wizard_variant
     )
   end
 
@@ -212,6 +213,7 @@ class MedicationsController < ApplicationController # rubocop:disable Metrics/Cl
 
   def create_success
     if params[:wizard] == 'true'
+      seed_initial_dosage
       respond_to do |format|
         format.turbo_stream do
           render turbo_stream: turbo_stream.replace(
@@ -227,11 +229,22 @@ class MedicationsController < ApplicationController # rubocop:disable Metrics/Cl
   end
 
   def wizard_wrapper_class
-    case params[:variant]
+    case current_user.wizard_variant
     when 'modal'     then Components::Medications::Wizard::ModalWrapper
     when 'slideover' then Components::Medications::Wizard::SlideOverWrapper
     else                  Components::Medications::Wizard::FullPageWrapper
     end
+  end
+
+  def seed_initial_dosage
+    return unless @medication.dosage_amount.present? && @medication.dosage_unit.present?
+
+    @medication.dosages.create(
+      amount: @medication.dosage_amount,
+      unit: @medication.dosage_unit,
+      frequency: 'As directed',
+      default_for_adults: true
+    )
   end
 
   def search_results_for(query)

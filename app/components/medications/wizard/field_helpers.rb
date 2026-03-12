@@ -60,6 +60,7 @@ module Components
               value: medication.name,
               required: true,
               placeholder: t('forms.medications.name_placeholder'),
+              title: 'Medication name, e.g. Ibuprofen',
               class: 'rounded-md border-slate-200 bg-white py-4 px-4 focus:ring-2 focus:ring-primary/10 ' \
                      "focus:border-primary transition-all #{field_error_class(medication, :name)}"
             )
@@ -142,9 +143,10 @@ module Components
               type: :number,
               name: 'medication[dosage_amount]',
               id: 'medication_dosage_amount',
-              value: medication.dosage_amount.to_i,
+              value: medication.dosage_amount,
               step: 'any',
               min: '1',
+              title: 'Standard dose amount, e.g. 500',
               placeholder: t('forms.medications.standard_dosage_placeholder', default: 'e.g., 500'),
               class: 'rounded-md border-slate-200 bg-white py-4 px-4 focus:ring-2 focus:ring-primary/10 ' \
                      'focus:border-primary transition-all'
@@ -213,6 +215,7 @@ module Components
               id: 'medication_current_supply',
               value: medication.current_supply,
               min: '0',
+              title: 'Current number of units in stock',
               placeholder: t('forms.medications.current_supply_placeholder', default: 'e.g., 30'),
               class: 'rounded-md border-slate-200 bg-white py-4 px-4 focus:ring-2 focus:ring-primary/10 ' \
                      'focus:border-primary transition-all'
@@ -232,6 +235,7 @@ module Components
               id: 'medication_reorder_threshold',
               value: medication.reorder_threshold,
               min: '1',
+              title: 'Reorder when supply falls below this level',
               placeholder: t('forms.medications.reorder_threshold_placeholder', default: 'e.g., 5'),
               class: 'rounded-md border-slate-200 bg-white py-4 px-4 focus:ring-2 focus:ring-primary/10 ' \
                      'focus:border-primary transition-all'
