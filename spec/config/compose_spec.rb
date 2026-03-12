@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'compose.yaml' do
+RSpec.describe YAML do
   let(:compose_config) do
     YAML.safe_load(Rails.root.join('compose.yaml').read, aliases: true)
   end

@@ -7,12 +7,12 @@ RSpec.describe 'BarcodeScanner' do
 
   let(:user) { users(:john) }
 
-  def stub_html5_qrcode(cameras:, error: nil, camera_delay_ms: 0)
-    page.execute_script(<<~JS)
+  def html5_qrcode_stub
+    <<~JS
       (() => {
-        const cameras = #{cameras.to_json};
-        const error = #{error.to_json};
-        const cameraDelayMs = #{camera_delay_ms};
+        const cameras = __CAMERAS__;
+        const error = __ERROR__;
+        const cameraDelayMs = __CAMERA_DELAY_MS__;
 
         const buildError = (details) => {
           if (!details) return null;
@@ -67,6 +67,15 @@ RSpec.describe 'BarcodeScanner' do
         window.__barcodeScannerTestLibrary = { Html5Qrcode: FakeHtml5Qrcode };
       })();
     JS
+  end
+
+  def stub_html5_qrcode(cameras:, error: nil, camera_delay_ms: 0)
+    page.execute_script(
+      html5_qrcode_stub
+        .gsub('__CAMERAS__', cameras.to_json)
+        .gsub('__ERROR__', error.to_json)
+        .gsub('__CAMERA_DELAY_MS__', camera_delay_ms.to_json)
+    )
   end
 
   context 'with static HTML (rack_test)' do
