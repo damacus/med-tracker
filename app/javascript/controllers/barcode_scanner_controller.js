@@ -33,30 +33,13 @@ export default class extends Controller {
         aspectRatio: 1.777
       }
 
-      const cameras = await Html5Qrcode.getCameras()
-
-      if (!cameras || cameras.length === 0) {
-        this.transition("error")
-        this.dispatch("error", { detail: { error: "No camera found on this device." } })
-        return
-      }
-
-      const cameraConfig = cameras.length === 1
-        ? cameras[0].id
-        : { facingMode: "environment" }
-
-      await this.scanner.start(
-        cameraConfig,
-        config,
-        (decodedText, decodedResult) => this.onDecodeSuccess(decodedText, decodedResult),
-        (_errorMessage) => { }
-      )
+      await this.startScanner(Html5Qrcode, config)
 
       this.transition("scanning")
     } catch (error) {
       const msg = error.message || String(error)
       const isDenied = error.name === "NotAllowedError" ||
-        error.name === "NotFoundError" ||
+        error.name === "SecurityError" ||
         msg.toLowerCase().includes("permission") ||
         msg.toLowerCase().includes("denied")
 
@@ -68,6 +51,40 @@ export default class extends Controller {
         this.dispatch("error", { detail: { error: msg } })
       }
     }
+  }
+
+  async startScanner(Html5Qrcode, config) {
+    try {
+      await this.scanner.start(
+        { facingMode: "environment" },
+        config,
+        (decodedText, decodedResult) => this.onDecodeSuccess(decodedText, decodedResult),
+        (_errorMessage) => { }
+      )
+    } catch (error) {
+      if (!this.shouldRetryWithCameraList(error)) throw error
+
+      const cameras = await Html5Qrcode.getCameras()
+      if (!cameras || cameras.length === 0) throw error
+
+      await this.scanner.start(
+        cameras[0].id,
+        config,
+        (decodedText, decodedResult) => this.onDecodeSuccess(decodedText, decodedResult),
+        (_errorMessage) => { }
+      )
+    }
+  }
+
+  shouldRetryWithCameraList(error) {
+    const msg = (error.message || String(error)).toLowerCase()
+
+    return error.name === "NotFoundError" ||
+      error.name === "OverconstrainedError" ||
+      msg.includes("facingmode") ||
+      msg.includes("environment") ||
+      msg.includes("rear camera") ||
+      msg.includes("back camera")
   }
 
   async stop() {
