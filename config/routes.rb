@@ -34,7 +34,9 @@ Rails.application.routes.draw do
   get 'add_medication', to: 'medication_workflow#index', as: :add_medication
 
   # Profile
-  resource :profile, only: %i[show update]
+  resource :profile, only: %i[show update] do
+    patch :experiments, on: :member
+  end
 
   # Reports
   resources :reports, only: %i[index]

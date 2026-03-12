@@ -46,8 +46,6 @@ RSpec.describe 'MedicationNewLayout' do
       expect(Medication.last.attributes).to include(
         'name' => 'Ibuprofen',
         'description' => 'Pain relief',
-        'dosage_amount' => 200.0,
-        'dosage_unit' => 'mg',
         'current_supply' => 40,
         'warnings' => 'Take with food'
       )

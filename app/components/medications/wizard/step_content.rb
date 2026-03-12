@@ -28,14 +28,11 @@ module Components
             form_with(
               model: medication,
               class: 'space-y-8',
-              data: {
-                testid: 'medication-wizard-form',
-                turbo_frame: '_top'
-              }
+              turbo_frame: frame_target,
+              data: { testid: 'medication-wizard-form' }
             ) do |_form|
               render_errors if medication.errors.any?
               input(type: 'hidden', name: 'wizard', value: 'true')
-              input(type: 'hidden', name: 'variant', value: variant)
 
               render_step_panels
               render_navigation
@@ -44,6 +41,14 @@ module Components
         end
 
         private
+
+        def frame_target
+          overlay_variant? ? 'modal' : nil
+        end
+
+        def overlay_variant?
+          variant.in?(%w[modal slideover])
+        end
 
         def render_errors
           render RubyUI::Alert.new(variant: :destructive, class: 'mb-4 rounded-2xl border-none shadow-sm') do
@@ -64,17 +69,14 @@ module Components
         end
 
         def render_step_panels
-          # Step 1: Basic Info
           div(data: { wizard_target: 'step' }) do
             render StepBasicInfo.new(medication: medication, locations: locations)
           end
 
-          # Step 2: Dosage & Supply
           div(class: 'hidden', data: { wizard_target: 'step' }) do
             render StepDosageSupply.new(medication: medication)
           end
 
-          # Step 3: Warnings
           div(class: 'hidden', data: { wizard_target: 'step' }) do
             render StepWarnings.new(medication: medication)
           end
@@ -82,22 +84,30 @@ module Components
 
         def render_navigation
           div(class: 'flex items-center justify-between pt-6 border-t border-slate-100') do
-            # Previous button
-            Button(
-              type: :button,
-              variant: :ghost,
-              class: 'font-bold text-slate-400 hover:text-slate-600 invisible',
-              data: {
-                wizard_target: 'prevButton',
-                action: 'click->wizard#prev'
-              }
-            ) do
-              render Icons::ChevronLeft.new(size: 16, class: 'mr-1') if icon_exists?(:ChevronLeft)
-              plain 'Back'
+            div(class: 'flex items-center gap-3') do
+              Button(
+                type: :button,
+                variant: :ghost,
+                class: 'font-bold text-slate-400 hover:text-slate-600 invisible',
+                data: {
+                  wizard_target: 'prevButton',
+                  action: 'click->wizard#prev'
+                }
+              ) do
+                render Icons::ChevronLeft.new(size: 16, class: 'mr-1')
+                plain 'Back'
+              end
+
+              if overlay_variant?
+                a(
+                  href: medications_path,
+                  class: 'text-sm font-bold text-slate-400 hover:text-slate-600',
+                  data: { turbo_frame: '_top' }
+                ) { 'Cancel' }
+              end
             end
 
             div(class: 'flex gap-3') do
-              # Next button (visible on steps 1 & 2)
               Button(
                 type: :button,
                 variant: :primary,
@@ -111,7 +121,6 @@ module Components
                 plain 'Continue'
               end
 
-              # Submit button (visible on step 3)
               Button(
                 type: :submit,
                 variant: :primary,
@@ -123,12 +132,6 @@ module Components
               end
             end
           end
-        end
-
-        def icon_exists?(name)
-          Components::Icons.const_defined?(name)
-        rescue StandardError
-          false
         end
       end
     end

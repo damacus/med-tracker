@@ -17,10 +17,11 @@ module Components
 
         def view_template
           turbo_frame_tag 'modal' do
-            # Backdrop
-            div(
+            a(
+              href: medications_path,
               class: 'fixed inset-0 z-50 bg-black/40 backdrop-blur-sm',
-              data: { action: 'click->ruby-ui--dialog#dismiss' }
+              data: { turbo_frame: '_top' },
+              aria_label: 'Close'
             )
 
             # Slide-over panel
@@ -50,7 +51,7 @@ module Components
                    'flex items-center justify-center text-slate-500 transition-colors z-10',
             data: { turbo_frame: '_top' }
           ) do
-            render Icons::X.new(size: 18) if icon_exists?(:X)
+            render Icons::X.new(size: 18)
             span(class: 'sr-only') { 'Close' }
           end
         end
@@ -70,12 +71,6 @@ module Components
               t('medications.form.new_subtitle')
             end
           end
-        end
-
-        def icon_exists?(name)
-          Components::Icons.const_defined?(name)
-        rescue StandardError
-          false
         end
       end
     end

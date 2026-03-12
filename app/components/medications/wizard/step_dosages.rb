@@ -65,14 +65,16 @@ module Components
             Link(
               href: medication_path(medication),
               variant: :ghost,
-              class: 'font-bold text-slate-400 hover:text-slate-600'
+              class: 'font-bold text-slate-400 hover:text-slate-600',
+              data: { turbo_frame: '_top' }
             ) { 'Skip for now' }
 
             Link(
               href: medication_path(medication),
               variant: :primary,
               size: :lg,
-              class: 'px-8 rounded-2xl shadow-lg shadow-primary/20'
+              class: 'px-8 rounded-2xl shadow-lg shadow-primary/20',
+              data: { turbo_frame: '_top' }
             ) { 'Done' }
           end
         end

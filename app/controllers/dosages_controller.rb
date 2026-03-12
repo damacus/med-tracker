@@ -35,6 +35,19 @@ class DosagesController < ApplicationController
       else
         redirect_to @medication, notice: t('dosages.created')
       end
+    elsif params[:wizard] == 'true'
+      respond_to do |format|
+        format.turbo_stream do
+          render turbo_stream: turbo_stream.replace(
+            'dosage-form',
+            Components::Medications::Wizard::DosageFormFrame.new(
+              medication: @medication,
+              dosage: @dosage
+            )
+          ), status: :unprocessable_content
+        end
+        format.html { redirect_to @medication }
+      end
     else
       render Components::Dosages::Modal.new(dosage: @dosage, medication: @medication),
              status: :unprocessable_content

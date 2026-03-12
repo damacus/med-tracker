@@ -18,6 +18,16 @@ module Components
             render_actions
           end
         end
+
+        private
+
+        def render_actions
+          div(class: 'flex gap-3 justify-end pt-2') do
+            Button(type: :submit, variant: :primary) do
+              dosage.new_record? ? 'Add Dosage' : 'Update Dosage'
+            end
+          end
+        end
       end
     end
   end

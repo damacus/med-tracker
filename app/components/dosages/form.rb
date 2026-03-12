@@ -6,6 +6,20 @@ module Components
     class Form < Components::Base
       include Phlex::Rails::Helpers::FormWith
 
+      FREQUENCY_SUGGESTIONS = [
+        'Once daily',
+        'Twice daily',
+        'Three times daily',
+        'Every 4 hours',
+        'Every 4–6 hours',
+        'Every 6 hours',
+        'Every 8 hours',
+        'Every 12 hours',
+        'Every morning',
+        'Every night',
+        'As needed (PRN)'
+      ].freeze
+
       attr_reader :dosage, :medication
 
       def initialize(dosage:, medication:)
@@ -27,20 +41,6 @@ module Components
           render_actions
         end
       end
-
-      FREQUENCY_SUGGESTIONS = [
-        'Once daily',
-        'Twice daily',
-        'Three times daily',
-        'Every 4 hours',
-        'Every 4–6 hours',
-        'Every 6 hours',
-        'Every 8 hours',
-        'Every 12 hours',
-        'Every morning',
-        'Every night',
-        'As needed (PRN)'
-      ].freeze
 
       private
 

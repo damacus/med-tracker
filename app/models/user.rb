@@ -8,6 +8,15 @@ class User < ApplicationRecord
   # @see docs/audit-trail.md
   has_paper_trail ignore: %i[password_digest recovery_password_digest]
 
+  WIZARD_VARIANTS = %w[fullpage modal slideover].freeze
+
+  store_accessor :preferences, :wizard_variant
+
+  def wizard_variant
+    v = super
+    WIZARD_VARIANTS.include?(v) ? v : 'fullpage'
+  end
+
   belongs_to :person, inverse_of: :user
 
   accepts_nested_attributes_for :person

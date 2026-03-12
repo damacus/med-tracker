@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_10_213044) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_13_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -311,10 +311,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_10_213044) do
     t.string "email_address", null: false
     t.string "password_digest"
     t.bigint "person_id", null: false
+    t.jsonb "preferences", default: {}, null: false
     t.integer "role", default: 4, null: false
     t.datetime "updated_at", null: false
     t.index ["email_address"], name: "index_users_on_email_address", unique: true
     t.index ["person_id"], name: "index_users_on_person_id", unique: true
+    t.index ["preferences"], name: "index_users_on_preferences", using: :gin
   end
 
   create_table "versions", force: :cascade do |t|
