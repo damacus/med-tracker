@@ -27,10 +27,24 @@ module Components
       model.errors[field].any? ? 'border-destructive focus-visible:ring-destructive' : ''
     end
 
-    def render_field_error(model, field)
+    def field_error_attributes(model, field, input_id: nil)
+      return {} unless model.errors[field].any?
+
+      attributes = { aria: { invalid: true } }
+      attributes[:aria][:describedby] = field_error_id(input_id) if input_id.present?
+      attributes
+    end
+
+    def render_field_error(model, field, input_id: nil)
       return unless model.errors[field].any?
 
-      FormFieldError { model.errors[field].first }
+      error_attributes = {}
+      error_attributes[:id] = field_error_id(input_id) if input_id.present?
+      FormFieldError(**error_attributes) { model.errors[field].first }
+    end
+
+    def field_error_id(input_id)
+      "#{input_id}_error"
     end
   end
 end

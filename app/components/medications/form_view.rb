@@ -172,9 +172,10 @@ module Components
             required: true,
             placeholder: t('forms.medications.name_placeholder'),
             class: 'rounded-md border-slate-200 bg-white py-4 px-4 focus:ring-2 focus:ring-primary/10 ' \
-                   "focus:border-primary transition-all #{field_error_class(medication, :name)}"
+                   "focus:border-primary transition-all #{field_error_class(medication, :name)}",
+            **field_error_attributes(medication, :name, input_id: 'medication_name')
           )
-          render_field_error(medication, :name)
+          render_field_error(medication, :name, input_id: 'medication_name')
         end
       end
 
@@ -263,9 +264,10 @@ module Components
             min: '1',
             placeholder: t('forms.medications.standard_dosage_placeholder', default: 'e.g., 500'),
             class: 'rounded-md border-slate-200 bg-white py-4 px-4 focus:ring-2 focus:ring-primary/10 ' \
-                   'focus:border-primary transition-all'
+                   'focus:border-primary transition-all',
+            **field_error_attributes(medication, :dosage_amount, input_id: 'medication_dosage_amount')
           )
-          render_field_error(medication, :dosage_amount)
+          render_field_error(medication, :dosage_amount, input_id: 'medication_dosage_amount')
         end
       end
 

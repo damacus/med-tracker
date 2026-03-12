@@ -63,7 +63,9 @@ module Components
               span(class: 'text-destructive ml-0.5') { ' *' }
             end
             Input(type: :number, name: 'dosage[amount]', id: 'dosage_amount',
-                  value: dosage.amount, step: 'any', min: '0', required: true)
+                  value: dosage.amount, step: 'any', min: '0', required: true,
+                  **field_error_attributes(dosage, :amount, input_id: 'dosage_amount'))
+            render_field_error(dosage, :amount, input_id: 'dosage_amount')
           end
 
           FormField do
@@ -74,7 +76,9 @@ module Components
             Input(type: :text, name: 'dosage[unit]', id: 'dosage_unit',
                   value: dosage.unit, required: true,
                   placeholder: 'mg, tablet, ml…',
-                  list: 'dosage_unit_list')
+                  list: 'dosage_unit_list',
+                  **field_error_attributes(dosage, :unit, input_id: 'dosage_unit'))
+            render_field_error(dosage, :unit, input_id: 'dosage_unit')
             datalist(id: 'dosage_unit_list') do
               Medication::DOSAGE_UNITS.each { |u| option(value: u) }
             end
@@ -91,7 +95,9 @@ module Components
           Input(type: :text, name: 'dosage[frequency]', id: 'dosage_frequency',
                 value: dosage.frequency, required: true,
                 placeholder: 'Once daily',
-                data: { 'frequency-suggestions-target': 'input' })
+                data: { 'frequency-suggestions-target': 'input' },
+                **field_error_attributes(dosage, :frequency, input_id: 'dosage_frequency'))
+          render_field_error(dosage, :frequency, input_id: 'dosage_frequency')
         end
 
         FormField(class: 'mt-4') do
