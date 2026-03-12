@@ -5,7 +5,7 @@ class InvitationsController < ApplicationController
   layout false
 
   def accept
-    @invitation = Invitation.pending.find_by(token: params[:token])
+    @invitation = Invitation.pending.where.not(role: Invitation.roles[:minor]).find_by(token: params[:token])
 
     unless @invitation
       render plain: 'This invitation link is invalid or has expired.', status: :not_found

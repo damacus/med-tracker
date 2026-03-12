@@ -30,6 +30,15 @@ RSpec.describe 'Admin invites users' do
     expect(email.to).to eq(['invited_parent@example.com'])
   end
 
+  it 'does not offer Minor in the invitation role selector' do
+    login_as(admin)
+
+    visit admin_root_path
+    click_link 'Invitations'
+
+    expect(page).to have_no_select('Role', with_options: ['Minor'])
+  end
+
   it 'allows an invitee to accept an invitation' do
     login_as(admin)
 
@@ -64,5 +73,31 @@ RSpec.describe 'Admin invites users' do
       expect(page).to have_content('Invited Parent')
       expect(page).to have_content('Parent')
     end
+  end
+
+  it 'rejects under-18 invited signup' do
+    login_as(admin)
+
+    visit admin_root_path
+    click_link 'Invitations'
+
+    fill_in 'Email', with: 'invited_child@example.com'
+    select 'Parent', from: 'Role'
+    click_button 'Send invitation'
+
+    invitation_url = ActionMailer::Base.deliveries.last.body.encoded.match(%r{https?://\S+})[0]
+    uri = URI.parse(invitation_url)
+    visit [uri.path, uri.query].compact.join('?')
+
+    fill_in 'Name', with: 'Invited Child'
+    fill_in 'Date of birth', with: 10.years.ago.to_date.to_s
+    fill_in 'Password', with: 'SecureP@ssword123!'
+    fill_in 'Confirm Password', with: 'SecureP@ssword123!'
+
+    expect do
+      click_button 'Create Account'
+    end.not_to change(Account, :count)
+
+    expect(page).to have_content('Children must be added by a parent or carer.')
   end
 end
