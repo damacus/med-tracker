@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe YAML do
   let(:compose_config) do
-    YAML.safe_load(Rails.root.join('compose.yaml').read, aliases: true)
+    described_class.safe_load(Rails.root.join('compose.yaml').read, aliases: true)
   end
 
   it 'isolates public assets in development web container' do
