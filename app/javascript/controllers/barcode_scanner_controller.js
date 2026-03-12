@@ -59,14 +59,25 @@ export default class extends Controller {
 
   async startScanner(library, cameraId) {
     const scannerId = this.scannerRegionTarget.id
-    this.scanner = new library.Html5Qrcode(scannerId)
+    const formatsToSupport = this.formatsToSupport(library.Html5QrcodeSupportedFormats)
+    const constructorConfig = formatsToSupport.length > 0 ? { formatsToSupport } : {}
+    this.scanner = new library.Html5Qrcode(scannerId, constructorConfig)
 
     await this.scanner.start(
       cameraId,
-      this.scannerConfig(library.Html5QrcodeSupportedFormats),
+      { fps: 10, qrbox: { width: 250, height: 150 }, aspectRatio: 1.777 },
       (decodedText, decodedResult) => this.onDecodeSuccess(decodedText, decodedResult),
       (_errorMessage) => { }
     )
+  }
+
+  scannerConfig(_supportedFormats) {
+    return {
+      fps: 10,
+      qrbox: { width: 250, height: 150 },
+      aspectRatio: 1.777
+    }
+  }
   }
 
   scannerConfig(supportedFormats) {
