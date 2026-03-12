@@ -104,6 +104,15 @@ set -x NHS_DMD_CLIENT_SECRET "your-client-secret"
 task dev:up
 ```
 
+If your shell already holds the credentials under the deployment-level
+names, alias them:
+
+```fish
+set -x NHS_DMD_CLIENT_ID $MED_TRACKER_NHS_CLIENT_ID
+set -x NHS_DMD_CLIENT_SECRET $MED_TRACKER_NHS_CLIENT_SECRET
+task dev:up
+```
+
 ### Docker Compose
 
 Docker Compose inherits exported shell variables automatically,

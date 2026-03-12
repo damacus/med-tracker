@@ -79,6 +79,20 @@ setup guide including how to request credentials.
 If either variable is absent the medicine search feature is
 disabled automatically — no API calls are made.
 
+#### Kamal deployments — credential remapping
+
+If your deployment environment stores credentials under different names
+(e.g. `MED_TRACKER_NHS_CLIENT_ID` / `MED_TRACKER_NHS_CLIENT_SECRET`),
+remap them in `.kamal/secrets` so Kamal injects the names the app expects:
+
+```sh
+NHS_DMD_CLIENT_ID=$MED_TRACKER_NHS_CLIENT_ID
+NHS_DMD_CLIENT_SECRET=$MED_TRACKER_NHS_CLIENT_SECRET
+```
+
+Then ensure `config/deploy.yml` lists both under `env.secret` — this is
+already configured in this repository.
+
 ## Flux GitOps: bootstrap first administrator
 
 Kubernetes operators should use the dedicated runbook for complete seeding
