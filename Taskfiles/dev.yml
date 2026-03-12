@@ -71,6 +71,18 @@ tasks:
       - task: :internal:db-migrate
         vars: { ENVIRONMENT: dev }
 
+  assets-rebuild:
+    desc: Rebuild compiled assets inside the development container
+    summary: |
+      Rebuild compiled Rails assets inside the development web container.
+      Useful when importmap or Propshaft asset resolution gets out of sync.
+      Usage: task dev:assets-rebuild
+    cmds:
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: dev
+          COMMAND: "rails assets:clobber assets:precompile"
+
   rebuild:
     desc: Rebuild development server (drops database)
     summary: |
