@@ -20,6 +20,10 @@ RSpec.describe InvitationPolicy do
     it 'permits create' do
       expect(policy.create?).to be true
     end
+
+    it 'permits resend' do
+      expect(policy.resend?).to be true
+    end
   end
 
   context 'when user is a doctor' do
@@ -33,6 +37,10 @@ RSpec.describe InvitationPolicy do
 
     it 'forbids create' do
       expect(policy.create?).to be false
+    end
+
+    it 'forbids resend' do
+      expect(policy.resend?).to be false
     end
   end
 
@@ -48,6 +56,10 @@ RSpec.describe InvitationPolicy do
     it 'forbids create' do
       expect(policy.create?).to be false
     end
+
+    it 'forbids resend' do
+      expect(policy.resend?).to be false
+    end
   end
 
   context 'when user is a carer' do
@@ -61,6 +73,10 @@ RSpec.describe InvitationPolicy do
 
     it 'forbids create' do
       expect(policy.create?).to be false
+    end
+
+    it 'forbids resend' do
+      expect(policy.resend?).to be false
     end
   end
 
@@ -76,6 +92,10 @@ RSpec.describe InvitationPolicy do
     it 'forbids create' do
       expect(policy.create?).to be false
     end
+
+    it 'forbids resend' do
+      expect(policy.resend?).to be false
+    end
   end
 
   context 'when user is a minor' do
@@ -89,6 +109,10 @@ RSpec.describe InvitationPolicy do
 
     it 'forbids create' do
       expect(policy.create?).to be false
+    end
+
+    it 'forbids resend' do
+      expect(policy.resend?).to be false
     end
   end
 end

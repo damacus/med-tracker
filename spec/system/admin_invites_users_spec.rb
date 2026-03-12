@@ -100,4 +100,31 @@ RSpec.describe 'Admin invites users' do
 
     expect(page).to have_content('Children must be added by a parent or carer.')
   end
+
+  it 'allows an admin to resend an invitation and invalidates the old token' do
+    login_as(admin)
+    invitation = create(:invitation, email: 'resend.me@example.com', role: :parent, expires_at: 1.day.ago)
+    original_token = invitation.token
+
+    visit admin_invitations_path
+
+    within '#admin_invitations' do
+      expect(page).to have_content('resend.me@example.com')
+      expect(page).to have_content('Expired')
+      expect(page).to have_content('Expired 1 day ago')
+      click_button 'Resend', match: :first
+    end
+
+    expect(page).to have_content('Invitation resent')
+    expect(ActionMailer::Base.deliveries.count).to eq(1)
+
+    invitation.reload
+    expect(invitation.token).not_to eq(original_token)
+
+    visit accept_invitation_path(token: original_token)
+    expect(page).to have_content('This invitation link is invalid or has expired.')
+
+    visit accept_invitation_path(token: invitation.token)
+    expect(page).to have_content("You've been invited as a Parent.")
+  end
 end

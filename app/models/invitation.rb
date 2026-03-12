@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Invitation < ApplicationRecord
+  has_paper_trail
+
   before_create :generate_token
   before_create :set_expires_at
 
@@ -26,6 +28,23 @@ class Invitation < ApplicationRecord
 
   def accepted?
     accepted_at.present?
+  end
+
+  def pending?
+    !accepted? && !expired?
+  end
+
+  def resendable?
+    return false if accepted?
+
+    !self.class.pending.where.not(id: id).exists?(email: email)
+  end
+
+  def resend!
+    raise ActiveRecord::RecordInvalid, self unless resendable?
+
+    self.paper_trail_event = 'resend'
+    update!(token: SecureRandom.hex(32), expires_at: 7.days.from_now)
   end
 
   private

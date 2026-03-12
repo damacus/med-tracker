@@ -12,7 +12,11 @@ Rails.application.routes.draw do
         post :verify
       end
     end
-    resources :invitations, only: %i[index create]
+    resources :invitations, only: %i[index create] do
+      member do
+        post :resend
+      end
+    end
     resources :carer_relationships, only: %i[index new create destroy] do
       member do
         post :activate

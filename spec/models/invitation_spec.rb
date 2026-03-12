@@ -82,4 +82,53 @@ RSpec.describe Invitation do
       expect(invitation).not_to be_accepted
     end
   end
+
+  describe '#resend!' do
+    it 'rotates the token and extends the expiry window' do
+      invitation = create(:invitation, expires_at: 1.day.from_now)
+      original_token = invitation.token
+      original_expires_at = invitation.expires_at
+
+      invitation.resend!
+
+      expect(invitation.reload.token).not_to eq(original_token)
+      expect(invitation.expires_at).to be > original_expires_at
+    end
+
+    it 'creates an audit version for the resend' do
+      invitation = create(:invitation)
+
+      expect do
+        invitation.resend!
+      end.to change(PaperTrail::Version.where(item_type: 'Invitation'), :count).by(1)
+
+      expect(PaperTrail::Version.where(item_type: 'Invitation').last.event).to eq('resend')
+    end
+
+    it 'raises for accepted invitations' do
+      invitation = create(:invitation, :accepted)
+
+      expect do
+        invitation.resend!
+      end.to raise_error(ActiveRecord::RecordInvalid)
+    end
+
+    it 'raises when a newer pending invitation exists for the same email' do
+      invitation = create(:invitation, :expired, email: 'duplicate@example.com')
+      create(:invitation, email: 'duplicate@example.com')
+
+      expect do
+        invitation.resend!
+      end.to raise_error(ActiveRecord::RecordInvalid)
+    end
+  end
+
+  describe '#resendable?' do
+    it 'returns false when a pending invitation exists for the same email' do
+      invitation = create(:invitation, :expired, email: 'duplicate@example.com')
+      create(:invitation, email: 'duplicate@example.com')
+
+      expect(invitation).not_to be_resendable
+    end
+  end
 end

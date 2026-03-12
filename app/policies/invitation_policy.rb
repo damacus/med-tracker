@@ -8,4 +8,8 @@ class InvitationPolicy < ApplicationPolicy
   def create?
     admin?
   end
+
+  def resend?
+    admin?
+  end
 end
