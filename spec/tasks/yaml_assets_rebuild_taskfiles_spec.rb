@@ -2,30 +2,28 @@
 
 require 'rails_helper'
 
+CLEAR_ASSETS_CMD = 'find public/assets -mindepth 1 -maxdepth 1 -exec rm -rf {} +'
+
 RSpec.describe YAML do
-  def task_config(path)
-    YAML.safe_load(Rails.root.join(path).read)
+  def task_cmds(path)
+    YAML.safe_load(Rails.root.join(path).read).dig('tasks', 'assets-rebuild', 'cmds')
   end
 
   def internal_run(environment, command)
     { 'task' => ':internal:run', 'vars' => { 'ENVIRONMENT' => environment, 'COMMAND' => command } }
   end
 
-  def expected_commands(environment)
-    [
-      internal_run(environment, 'find public/assets -mindepth 1 -maxdepth 1 -exec rm -rf {} +'),
-      internal_run(environment, 'rails assets:precompile')
-    ]
+  it 'defines dev:assets-rebuild via internal:run' do
+    expect(task_cmds('Taskfiles/dev.yml')).to eq([
+                                                   internal_run('dev', CLEAR_ASSETS_CMD),
+                                                   internal_run('dev', 'rails assets:precompile')
+                                                 ])
   end
 
-  shared_examples 'assets rebuild taskfile' do |path, environment|
-    it "defines #{environment}:assets-rebuild via internal:run" do
-      task = task_config(path).dig('tasks', 'assets-rebuild')
-
-      expect(task['cmds']).to eq(expected_commands(environment))
-    end
+  it 'defines test:assets-rebuild via internal:run' do
+    expect(task_cmds('Taskfiles/test.yml')).to eq([
+                                                    internal_run('test', CLEAR_ASSETS_CMD),
+                                                    internal_run('test', 'rails assets:precompile')
+                                                  ])
   end
-
-  it_behaves_like 'assets rebuild taskfile', 'Taskfiles/dev.yml', 'dev'
-  it_behaves_like 'assets rebuild taskfile', 'Taskfiles/test.yml', 'test'
 end
