@@ -239,7 +239,7 @@ class MedicationsController < ApplicationController # rubocop:disable Metrics/Cl
   def seed_initial_dosage
     return unless @medication.dosage_amount.present? && @medication.dosage_unit.present?
 
-    @medication.dosages.create(
+    @medication.dosages.create!(
       amount: @medication.dosage_amount,
       unit: @medication.dosage_unit,
       frequency: 'As directed',
