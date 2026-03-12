@@ -5,6 +5,7 @@ module Components
     module Invitations
       class IndexView < Components::Base
         include Phlex::Rails::Helpers::FormWith
+        include Phlex::Rails::Helpers::Pluralize
         include Components::FormHelpers
 
         def initialize(invitation: Invitation.new)
@@ -62,6 +63,7 @@ module Components
               type: :email,
               name: 'invitation[email]',
               id: 'invitation_email',
+              value: @invitation.email,
               required: true,
               class: 'rounded-md border-slate-200 bg-white py-4 px-4 focus:ring-2 ' \
                      'focus:ring-primary/10 focus:border-primary transition-all'
@@ -76,8 +78,8 @@ module Components
               'Role'
             end
             select(name: 'invitation[role]', id: 'invitation_role', class: select_classes, required: true) do
-              User.roles.each_key do |role|
-                option(value: role) { role.titleize }
+              Invitation.assignable_roles.each_key do |role|
+                option(value: role, selected: @invitation.role == role) { role.titleize }
               end
             end
           end
@@ -88,6 +90,21 @@ module Components
             Button(type: :submit, variant: :primary, size: :lg,
                    class: 'px-8 rounded-2xl shadow-lg shadow-primary/20') do
               'Send invitation'
+            end
+          end
+        end
+
+        def render_errors
+          render RubyUI::Alert.new(variant: :destructive, class: 'mb-6') do
+            div do
+              Heading(level: 2, size: '3', class: 'font-semibold mb-2') do
+                plain "#{pluralize(@invitation.errors.count, 'error')} prevented this invitation from being saved:"
+              end
+              ul(class: 'my-2 ml-6 list-disc [&>li]:mt-1') do
+                @invitation.errors.full_messages.each do |message|
+                  li { message }
+                end
+              end
             end
           end
         end
