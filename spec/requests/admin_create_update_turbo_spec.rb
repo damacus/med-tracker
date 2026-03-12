@@ -31,6 +31,38 @@ RSpec.describe 'Admin create and update turbo flows' do
     end
   end
 
+  describe 'POST /admin/invitations/:id/resend' do
+    let!(:invitation) { create(:invitation, email: 'existing.user@example.com', role: :carer, expires_at: 1.day.ago) }
+
+    it 'returns turbo_stream, rotates the token, records an audit event, and updates flash on success' do
+      original_token = invitation.token
+
+      post resend_admin_invitation_path(invitation),
+           headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.media_type).to eq('text/vnd.turbo-stream.html')
+      expect(response.body).to include('target="admin_invitations"')
+      expect(response.body).to include('target="flash"')
+      expect(invitation.reload.token).not_to eq(original_token)
+      expect(invitation.versions.last.event).to eq('resend')
+      expect(invitation.versions.last.whodunnit).to eq(admin.id.to_s)
+    end
+
+    it 'returns an alert and leaves accepted invitations unchanged' do
+      accepted_invitation = create(:invitation, :accepted, email: 'accepted.user@example.com', role: :carer)
+
+      post resend_admin_invitation_path(accepted_invitation),
+           headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.media_type).to eq('text/vnd.turbo-stream.html')
+      expect(response.body).to include('Accepted invitations cannot be resent')
+      expect(response.body).not_to include('Invitation resent')
+      expect(accepted_invitation.reload.versions.last.event).not_to eq('resend')
+    end
+  end
+
   describe 'POST /admin/users' do
     it 'follows turbo redirect to index on success' do
       post admin_users_path,

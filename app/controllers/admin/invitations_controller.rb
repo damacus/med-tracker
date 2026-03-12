@@ -5,7 +5,7 @@ module Admin
     def index
       authorize :invitation, :index?
 
-      render Components::Admin::Invitations::IndexView.new
+      render Components::Admin::Invitations::IndexView.new(invitations: invitations)
     end
 
     def create
@@ -19,22 +19,33 @@ module Admin
           format.html { redirect_to admin_invitations_path, notice: 'Invitation sent' }
           format.turbo_stream do
             flash.now[:notice] = 'Invitation sent'
-            render turbo_stream: [
-              turbo_stream.replace('admin_invitations', Components::Admin::Invitations::IndexView.new),
-              turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
-            ]
+            render_index_turbo
           end
         else
           format.html do
-            render Components::Admin::Invitations::IndexView.new(invitation: @invitation), status: :unprocessable_content
+            render Components::Admin::Invitations::IndexView.new(invitation: @invitation, invitations: invitations),
+                   status: :unprocessable_content
           end
           format.turbo_stream do
             render turbo_stream: turbo_stream.replace(
               'admin_invitations',
-              Components::Admin::Invitations::IndexView.new(invitation: @invitation)
+              Components::Admin::Invitations::IndexView.new(invitation: @invitation, invitations: invitations)
             ), status: :unprocessable_content
           end
         end
+      end
+    end
+
+    def resend
+      @invitation = Invitation.find(params[:id])
+      authorize @invitation, :resend?
+
+      if @invitation.resendable?
+        @invitation.resend!
+        InvitationMailer.with(invitation: @invitation).invite.deliver_later
+        redirect_with_invitation_notice('Invitation resent')
+      else
+        redirect_with_invitation_alert('Accepted invitations cannot be resent')
       end
     end
 
@@ -42,6 +53,37 @@ module Admin
 
     def invitation_params
       params.expect(invitation: %i[email role])
+    end
+
+    def invitations
+      Invitation.order(created_at: :desc)
+    end
+
+    def render_index_turbo
+      render turbo_stream: [
+        turbo_stream.replace('admin_invitations', Components::Admin::Invitations::IndexView.new(invitations: invitations)),
+        turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
+      ]
+    end
+
+    def redirect_with_invitation_notice(message)
+      respond_to do |format|
+        format.html { redirect_to admin_invitations_path, notice: message }
+        format.turbo_stream do
+          flash.now[:notice] = message
+          render_index_turbo
+        end
+      end
+    end
+
+    def redirect_with_invitation_alert(message)
+      respond_to do |format|
+        format.html { redirect_to admin_invitations_path, alert: message }
+        format.turbo_stream do
+          flash.now[:alert] = message
+          render_index_turbo
+        end
+      end
     end
   end
 end
