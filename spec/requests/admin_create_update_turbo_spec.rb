@@ -61,6 +61,25 @@ RSpec.describe 'Admin create and update turbo flows' do
       expect(response.body).not_to include('Invitation resent')
       expect(accepted_invitation.reload.versions.last.event).not_to eq('resend')
     end
+
+    it 'returns an alert and leaves the invitation unchanged when a newer pending invitation exists' do
+      conflicting_invitation = create(:invitation, :expired, email: 'duplicate.user@example.com', role: :carer)
+      create(:invitation, email: 'duplicate.user@example.com', role: :carer)
+      original_token = conflicting_invitation.token
+      original_expires_at = conflicting_invitation.expires_at
+
+      post resend_admin_invitation_path(conflicting_invitation),
+           headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.media_type).to eq('text/vnd.turbo-stream.html')
+      expect(response.body).to include(
+        'This invitation could not be resent. A pending invitation for this email may already exist.'
+      )
+      conflicting_invitation.reload
+      expect(conflicting_invitation.token).to eq(original_token)
+      expect(conflicting_invitation.expires_at.to_i).to eq(original_expires_at.to_i)
+    end
   end
 
   describe 'POST /admin/users' do

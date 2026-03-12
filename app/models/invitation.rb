@@ -35,7 +35,9 @@ class Invitation < ApplicationRecord
   end
 
   def resendable?
-    !accepted?
+    return false if accepted?
+
+    !self.class.pending.where.not(id: id).exists?(email: email)
   end
 
   def resend!

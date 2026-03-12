@@ -44,8 +44,10 @@ module Admin
         @invitation.resend!
         InvitationMailer.with(invitation: @invitation).invite.deliver_later
         redirect_with_invitation_notice('Invitation resent')
-      else
+      elsif @invitation.accepted?
         redirect_with_invitation_alert('Accepted invitations cannot be resent')
+      else
+        redirect_with_invitation_alert('This invitation could not be resent. A pending invitation for this email may already exist.')
       end
     end
 

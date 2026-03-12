@@ -112,5 +112,23 @@ RSpec.describe Invitation do
         invitation.resend!
       end.to raise_error(ActiveRecord::RecordInvalid)
     end
+
+    it 'raises when a newer pending invitation exists for the same email' do
+      invitation = create(:invitation, :expired, email: 'duplicate@example.com')
+      create(:invitation, email: 'duplicate@example.com')
+
+      expect do
+        invitation.resend!
+      end.to raise_error(ActiveRecord::RecordInvalid)
+    end
+  end
+
+  describe '#resendable?' do
+    it 'returns false when a pending invitation exists for the same email' do
+      invitation = create(:invitation, :expired, email: 'duplicate@example.com')
+      create(:invitation, email: 'duplicate@example.com')
+
+      expect(invitation).not_to be_resendable
+    end
   end
 end
