@@ -3,6 +3,14 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
   static targets = ["input", "results", "idle", "submitButton"]
 
+  barcodeDecoded(event) {
+    const barcode = event.detail.barcode
+    if (!barcode) return
+
+    this.inputTarget.value = barcode
+    this.search(event)
+  }
+
   async search(event) {
     event.preventDefault()
 

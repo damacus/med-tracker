@@ -17,7 +17,7 @@ Rails.application.configure do
     policy.frame_ancestors :self
     policy.base_uri    :self
     policy.form_action :self
-    policy.worker_src  :self
+    policy.worker_src  :self, :blob
 
     # Allow connections to self and websockets for Turbo/ActionCable
     policy.connect_src :self, :wss

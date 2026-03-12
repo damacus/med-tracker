@@ -10,7 +10,10 @@
       "WebFetch(domain:developers.openai.com)",
       "WebFetch(domain:geminicli.com)",
       "Bash(bundle:*)",
-      "Skill(pr)"
+      "Skill(pr)",
+      "Bash(playwright-cli eval:*)",
+      "Bash(curl -sI http://localhost:52671/ 2>&1 | grep -i \"permissions\\\\|worker\\\\|content-security\")",
+      "Bash(curl -sI http://localhost:52671/ 2>&1)"
     ]
   }
 }
