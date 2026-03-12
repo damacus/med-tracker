@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.3.31](https://github.com/damacus/med-tracker/compare/v0.3.30...v0.3.31) (2026-03-12)
+
+
+### Features
+
+* 🎨 Palette: [Add descriptive placeholders to location forms] ([#972](https://github.com/damacus/med-tracker/issues/972)) ([52d45a1](https://github.com/damacus/med-tracker/commit/52d45a1fe4e0cdbcf9cb2684454e6f7dcb136d61))
+* Add frequency suggestion badges and fix wizard dosage list update ([#964](https://github.com/damacus/med-tracker/issues/964)) ([652e8a0](https://github.com/damacus/med-tracker/commit/652e8a06da1a429ad49884bc0ab5d71b4d37a99b))
+* allow admins to resend invitations ([#975](https://github.com/damacus/med-tracker/issues/975)) ([8e0d262](https://github.com/damacus/med-tracker/commit/8e0d2624ae0240643ca82465f5872f2d56af03a4))
+* block child signup paths ([#973](https://github.com/damacus/med-tracker/issues/973)) ([0aab6da](https://github.com/damacus/med-tracker/commit/0aab6da4f774737566fbf0ed083d72768d1fe2b6))
+* implement barcode scanner UI component ([#966](https://github.com/damacus/med-tracker/issues/966)) ([87a4ba5](https://github.com/damacus/med-tracker/commit/87a4ba5edc689c76ee95c77c692d01cf515b1844))
+* implement barcode scanner UI component with camera integration ([87a4ba5](https://github.com/damacus/med-tracker/commit/87a4ba5edc689c76ee95c77c692d01cf515b1844))
+* wizard rebuild with experiments preference system ([#977](https://github.com/damacus/med-tracker/issues/977)) ([6b2f382](https://github.com/damacus/med-tracker/commit/6b2f3822d8e192577227822be0b603133d13c536))
+
+
+### Bug Fixes
+
+* announce form errors to screen readers ([#974](https://github.com/damacus/med-tracker/issues/974)) ([060c6ea](https://github.com/damacus/med-tracker/commit/060c6eadc51132e364ea4537fb60201f9b5c3ecf))
+* complete soft-delete account flow ([#965](https://github.com/damacus/med-tracker/issues/965)) ([8334fc0](https://github.com/damacus/med-tracker/commit/8334fc0910f6cb28e182d49cea9cd4a5c655f5af))
+
 ## [0.3.30](https://github.com/damacus/med-tracker/compare/v0.3.29...v0.3.30) (2026-03-10)
 
 
