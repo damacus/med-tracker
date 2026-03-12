@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_06_133000) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_10_213044) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -208,6 +208,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_06_133000) do
   end
 
   create_table "medications", force: :cascade do |t|
+    t.string "barcode"
     t.string "category"
     t.datetime "created_at", null: false
     t.integer "current_supply"
@@ -224,6 +225,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_06_133000) do
     t.integer "supply_at_last_restock"
     t.datetime "updated_at", null: false
     t.text "warnings"
+    t.index ["barcode"], name: "index_medications_on_barcode", unique: true, where: "((barcode IS NOT NULL) AND ((barcode)::text <> ''::text))"
     t.index ["location_id"], name: "index_medications_on_location_id"
   end
 
