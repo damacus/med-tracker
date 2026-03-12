@@ -1,5 +1,9 @@
 import { Controller } from "@hotwired/stimulus"
 
+const BACK_CAMERA_PATTERN = /(rear|back|environment)/i
+const SCANNING_STATE = 2
+const PAUSED_STATE = 3
+
 export default class extends Controller {
   static targets = ["video", "status", "result", "manualInput", "startButton", "stopButton", "scannerRegion"]
   static values = {
@@ -17,74 +21,97 @@ export default class extends Controller {
   }
 
   async start() {
-    if (this.stateValue === "scanning") return
+    if (this.stateValue === "requesting" || this.stateValue === "scanning") return
 
     this.transition("requesting")
 
     try {
-      const { Html5Qrcode } = await import("html5-qrcode")
-      const scannerId = this.scannerRegionTarget.id
+      await this.stopScanning()
+      const library = await this.loadLibrary()
+      const camera = await this.selectCamera(library.Html5Qrcode)
 
-      this.scanner = new Html5Qrcode(scannerId)
-
-      const config = {
-        fps: 10,
-        qrbox: { width: 250, height: 150 },
-        aspectRatio: 1.777
+      if (!camera) {
+        this.transition("unavailable")
+        this.dispatch("unavailable")
+        return
       }
 
-      await this.startScanner(Html5Qrcode, config)
+      await this.startScanner(library, camera.id)
 
       this.transition("scanning")
     } catch (error) {
-      const msg = error.message || String(error)
-      const isDenied = error.name === "NotAllowedError" ||
-        error.name === "SecurityError" ||
-        msg.toLowerCase().includes("permission") ||
-        msg.toLowerCase().includes("denied")
-
-      if (isDenied) {
-        this.transition("denied")
-        this.dispatch("denied", { detail: { error: msg } })
-      } else {
-        this.transition("error")
-        this.dispatch("error", { detail: { error: msg } })
-      }
+      await this.stopScanning()
+      this.handleStartError(error)
     }
   }
 
-  async startScanner(Html5Qrcode, config) {
-    try {
-      await this.scanner.start(
-        { facingMode: "environment" },
-        config,
-        (decodedText, decodedResult) => this.onDecodeSuccess(decodedText, decodedResult),
-        (_errorMessage) => { }
-      )
-    } catch (error) {
-      if (!this.shouldRetryWithCameraList(error)) throw error
-
-      const cameras = await Html5Qrcode.getCameras()
-      if (!cameras || cameras.length === 0) throw error
-
-      await this.scanner.start(
-        cameras[0].id,
-        config,
-        (decodedText, decodedResult) => this.onDecodeSuccess(decodedText, decodedResult),
-        (_errorMessage) => { }
-      )
-    }
+  async loadLibrary() {
+    return window.__barcodeScannerTestLibrary || import("html5-qrcode")
   }
 
-  shouldRetryWithCameraList(error) {
+  async selectCamera(Html5Qrcode) {
+    const cameras = await Html5Qrcode.getCameras()
+
+    if (!Array.isArray(cameras) || cameras.length === 0) return null
+
+    return cameras.find((camera) => BACK_CAMERA_PATTERN.test(camera.label || "")) || cameras[0]
+  }
+
+  async startScanner(library, cameraId) {
+    const scannerId = this.scannerRegionTarget.id
+    this.scanner = new library.Html5Qrcode(scannerId)
+
+    await this.scanner.start(
+      cameraId,
+      this.scannerConfig(library.Html5QrcodeSupportedFormats),
+      (decodedText, decodedResult) => this.onDecodeSuccess(decodedText, decodedResult),
+      (_errorMessage) => { }
+    )
+  }
+
+  scannerConfig(supportedFormats) {
+    const config = {
+      fps: 10,
+      qrbox: { width: 250, height: 150 },
+      aspectRatio: 1.777
+    }
+    const formatsToSupport = this.formatsToSupport(supportedFormats)
+
+    if (formatsToSupport.length > 0) {
+      config.formatsToSupport = formatsToSupport
+    }
+
+    return config
+  }
+
+  formatsToSupport(supportedFormats) {
+    if (!supportedFormats) return []
+
+    return this.formatsValue
+      .map((format) => supportedFormats[format])
+      .filter((format) => format !== undefined)
+  }
+
+  handleStartError(error) {
+    const msg = error.message || String(error)
+
+    if (this.isDeniedError(error)) {
+      this.transition("denied")
+      this.dispatch("denied", { detail: { error: msg } })
+      return
+    }
+
+    this.transition("error")
+    this.dispatch("error", { detail: { error: msg } })
+  }
+
+  isDeniedError(error) {
     const msg = (error.message || String(error)).toLowerCase()
 
-    return error.name === "NotFoundError" ||
-      error.name === "OverconstrainedError" ||
-      msg.includes("facingmode") ||
-      msg.includes("environment") ||
-      msg.includes("rear camera") ||
-      msg.includes("back camera")
+    return error.name === "NotAllowedError" ||
+      error.name === "SecurityError" ||
+      msg.includes("permission") ||
+      msg.includes("denied")
   }
 
   async stop() {
@@ -93,21 +120,30 @@ export default class extends Controller {
   }
 
   async stopScanning() {
-    if (this.scanner) {
-      try {
-        const state = this.scanner.getState()
-        if (state === 2 || state === 3) {
-          await this.scanner.stop()
-        }
-      } catch (_error) {
-        // Scanner may already be stopped
+    if (!this.scanner) return
+
+    const scanner = this.scanner
+    this.scanner = null
+
+    try {
+      const state = scanner.getState()
+      if (state === SCANNING_STATE || state === PAUSED_STATE) {
+        await scanner.stop()
       }
-      this.scanner = null
+    } catch (_error) {
+      // Scanner may already be stopped
+    }
+
+    if (typeof scanner.clear === "function") {
+      try {
+        await scanner.clear()
+      } catch (_error) {
+      }
     }
   }
 
-  onDecodeSuccess(decodedText, _decodedResult) {
-    this.stopScanning()
+  async onDecodeSuccess(decodedText, _decodedResult) {
+    await this.stopScanning()
     this.transition("decoded")
 
     if (this.hasResultTarget) {
@@ -159,13 +195,14 @@ export default class extends Controller {
       scanning: "Point your camera at a barcode",
       decoded: "Barcode scanned successfully!",
       denied: "Camera access was denied. Please use manual entry below.",
+      unavailable: "No camera was found. Please use manual entry below.",
       error: "Scanner error. Please use manual entry below."
     }
 
     this.statusTarget.textContent = messages[this.stateValue] || ""
 
     this.statusTarget.classList.toggle("text-destructive",
-      this.stateValue === "denied" || this.stateValue === "error")
+      this.stateValue === "denied" || this.stateValue === "unavailable" || this.stateValue === "error")
     this.statusTarget.classList.toggle("text-green-600",
       this.stateValue === "decoded")
   }
