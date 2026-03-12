@@ -74,7 +74,11 @@ tasks:
       - task: :internal:run
         vars:
           ENVIRONMENT: test
-          COMMAND: "rails assets:clobber assets:precompile"
+          COMMAND: "find public/assets -mindepth 1 -maxdepth 1 -exec rm -rf {} +"
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: test
+          COMMAND: "rails assets:precompile"
 
   rebuild:
     desc: Rebuild test server (drops database)

@@ -11,27 +11,41 @@ RSpec.describe 'assets rebuild taskfiles' do
     task = task_config('Taskfiles/dev.yml').dig('tasks', 'assets-rebuild')
 
     expect(task['cmds']).to eq([
-      {
-        'task' => ':internal:run',
-        'vars' => {
-          'ENVIRONMENT' => 'dev',
-          'COMMAND' => 'rails assets:clobber assets:precompile'
-        }
-      }
-    ])
+                                 {
+                                   'task' => ':internal:run',
+                                   'vars' => {
+                                     'ENVIRONMENT' => 'dev',
+                                     'COMMAND' => 'find public/assets -mindepth 1 -maxdepth 1 -exec rm -rf {} +'
+                                   }
+                                 },
+                                 {
+                                   'task' => ':internal:run',
+                                   'vars' => {
+                                     'ENVIRONMENT' => 'dev',
+                                     'COMMAND' => 'rails assets:precompile'
+                                   }
+                                 }
+                               ])
   end
 
   it 'defines test:assets-rebuild via internal:run' do
     task = task_config('Taskfiles/test.yml').dig('tasks', 'assets-rebuild')
 
     expect(task['cmds']).to eq([
-      {
-        'task' => ':internal:run',
-        'vars' => {
-          'ENVIRONMENT' => 'test',
-          'COMMAND' => 'rails assets:clobber assets:precompile'
-        }
-      }
-    ])
+                                 {
+                                   'task' => ':internal:run',
+                                   'vars' => {
+                                     'ENVIRONMENT' => 'test',
+                                     'COMMAND' => 'find public/assets -mindepth 1 -maxdepth 1 -exec rm -rf {} +'
+                                   }
+                                 },
+                                 {
+                                   'task' => ':internal:run',
+                                   'vars' => {
+                                     'ENVIRONMENT' => 'test',
+                                     'COMMAND' => 'rails assets:precompile'
+                                   }
+                                 }
+                               ])
   end
 end
