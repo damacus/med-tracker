@@ -9,6 +9,7 @@ RSpec.describe 'Signup verification email', type: :system do
   let(:new_user_password) { 'Password123!' }
 
   before do
+    driven_by(:rack_test)
     ActionMailer::Base.deliveries.clear
   end
 

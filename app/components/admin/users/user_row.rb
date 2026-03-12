@@ -16,7 +16,7 @@ module Components
         end
 
         def view_template
-          row_class = user.active? ? '' : 'opacity-60'
+          row_class = user.active? && !user.soft_deleted? ? '' : 'opacity-60'
           render RubyUI::TableRow.new(id: "user_#{user.id}", class: row_class, data: { user_id: user.id }) do
             render RubyUI::TableCell.new(class: 'font-medium') { user.name }
             render(RubyUI::TableCell.new { user.email_address })
@@ -40,7 +40,9 @@ module Components
         private
 
         def render_status_badge
-          if user.active?
+          if user.soft_deleted?
+            render RubyUI::Badge.new(variant: :secondary) { t('admin.users.user_row.soft_deleted') }
+          elsif user.active?
             render RubyUI::Badge.new(variant: :success) { t('admin.users.user_row.active') }
           else
             render RubyUI::Badge.new(variant: :destructive) { t('admin.users.user_row.inactive') }
@@ -48,6 +50,8 @@ module Components
         end
 
         def render_activation_button
+          return if user.soft_deleted?
+
           is_current_user = user == current_user
 
           if user.active?
@@ -76,6 +80,7 @@ module Components
         end
 
         def render_verification_button
+          return render_soft_deleted_button if user.soft_deleted?
           return render_verified_button if user.person&.account&.verified?
 
           form_with(
@@ -98,6 +103,15 @@ module Components
             size: :sm,
             disabled: true
           ) { t('admin.users.user_row.verified') }
+        end
+
+        def render_soft_deleted_button
+          Button(
+            type: :button,
+            variant: :outline,
+            size: :sm,
+            disabled: true
+          ) { t('admin.users.user_row.soft_deleted') }
         end
 
         def render_deactivate_dialog

@@ -20,6 +20,15 @@ RSpec.describe 'Admin create and update turbo flows' do
       expect(response.body).to include('target="admin_invitations"')
       expect(response.body).to include('target="flash"')
     end
+
+    it 'returns unprocessable content when inviting a minor' do
+      post admin_invitations_path,
+           params: { invitation: { email: 'minor.user@example.com', role: 'minor' } },
+           headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.body).to include('Children must be added by a parent or carer.')
+    end
   end
 
   describe 'POST /admin/users' do
@@ -62,6 +71,10 @@ RSpec.describe 'Admin create and update turbo flows' do
            headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
 
       expect(response).to have_http_status(:unprocessable_content)
+      expect(response.body).to include('role="alert"')
+      expect(response.body).to include('id="user_email_address_error"')
+      expect(response.body).to include('aria-describedby="user_email_address_error"')
+      expect(response.body).to include('aria-invalid')
     end
   end
 

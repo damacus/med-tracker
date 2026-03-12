@@ -28,6 +28,11 @@ class User < ApplicationRecord
   scope :active, -> { where(active: true) }
   scope :inactive, -> { where(active: false) }
 
+  def soft_deleted?
+    account = person&.account
+    person.present? && (account.nil? || account.closed?)
+  end
+
   delegate :name, :date_of_birth, :age, to: :person, allow_nil: true
 
   def deactivate!

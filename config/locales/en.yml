@@ -48,6 +48,7 @@ en:
         edit: "Edit"
         active: "Active"
         inactive: "Inactive"
+        soft_deleted: "Soft deleted"
         deactivate: "Deactivate"
         activate: "Activate"
         verify: "Verify"
@@ -661,6 +662,9 @@ en:
       administration: "Administration"
       sign_out: "Sign Out"
   forms:
+    locations:
+      name_placeholder: "e.g. Home, School, Grandma's House"
+      description_placeholder: "Describe this location..."
     people:
       name_placeholder: "e.g., Jane Doe"
       email_placeholder: "e.g., jane@example.com"

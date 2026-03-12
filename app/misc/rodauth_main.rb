@@ -240,14 +240,18 @@ class RodauthMain < Rodauth::Rails::Auth
       throw_error_status(422, 'date_of_birth', 'must be present') if date_of_birth_str.blank?
 
       begin
-        Date.parse(date_of_birth_str)
+        date_of_birth = Date.parse(date_of_birth_str)
       rescue ArgumentError, TypeError
         throw_error_status(422, 'date_of_birth', 'must be a valid date')
       end
 
+      if Person.new(date_of_birth: date_of_birth).age < 18
+        throw_error_status(422, 'date_of_birth', 'Children must be added by a parent or carer.')
+      end
+
       # Validate invitation token if present and lock down email
       if (token = param_or_nil('invitation_token'))
-        @invitation = Invitation.pending.find_by(token: token)
+        @invitation = Invitation.pending.where.not(role: Invitation.roles[:minor]).find_by(token: token)
         throw_error_status(422, 'invitation_token', 'is invalid or expired') unless @invitation
         request.params[login_param] = @invitation.email
       end

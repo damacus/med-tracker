@@ -80,6 +80,7 @@ module Components
                 option(value: '', selected: search_params[:status].blank?) { 'All' }
                 option(value: 'active', selected: search_params[:status] == 'active') { 'Active' }
                 option(value: 'inactive', selected: search_params[:status] == 'inactive') { 'Inactive' }
+                option(value: 'soft_deleted', selected: search_params[:status] == 'soft_deleted') { 'Soft deleted' }
               end
             end
           end

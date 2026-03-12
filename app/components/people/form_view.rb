@@ -111,9 +111,10 @@ module Components
             value: person.name,
             required: true,
             placeholder: t('forms.people.name_placeholder', default: 'e.g., Jane Doe'),
-            class: field_error_class(person, :name)
+            class: field_error_class(person, :name),
+            **field_error_attributes(person, :name, input_id: 'person_name')
           )
-          render_field_error(person, :name)
+          render_field_error(person, :name, input_id: 'person_name')
         end
       end
 
@@ -126,9 +127,10 @@ module Components
             id: 'person_email',
             value: person.email,
             placeholder: t('forms.people.email_placeholder', default: 'e.g., jane@example.com'),
-            class: field_error_class(person, :email)
+            class: field_error_class(person, :email),
+            **field_error_attributes(person, :email, input_id: 'person_email')
           )
-          render_field_error(person, :email)
+          render_field_error(person, :email, input_id: 'person_email')
         end
       end
 
@@ -141,9 +143,10 @@ module Components
             id: 'person_date_of_birth',
             value: person.date_of_birth&.to_s,
             required: true,
-            class: field_error_class(person, :date_of_birth)
+            class: field_error_class(person, :date_of_birth),
+            **field_error_attributes(person, :date_of_birth, input_id: 'person_date_of_birth')
           )
-          render_field_error(person, :date_of_birth)
+          render_field_error(person, :date_of_birth, input_id: 'person_date_of_birth')
         end
       end
 

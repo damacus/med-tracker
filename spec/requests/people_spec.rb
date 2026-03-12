@@ -193,6 +193,10 @@ RSpec.describe 'People' do
       expect(response.media_type).to eq('text/vnd.turbo-stream.html')
       expect(response.body).to include('target="modal"')
       expect(response.body).to include('person_form')
+      expect(response.body).to include('role="alert"')
+      expect(response.body).to include('id="person_name_error"')
+      expect(response.body).to include('aria-describedby="person_name_error"')
+      expect(response.body).to include('aria-invalid')
     end
 
     it 'allows creating multiple dependents in sequence without email addresses' do

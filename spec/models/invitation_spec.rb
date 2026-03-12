@@ -8,6 +8,13 @@ RSpec.describe Invitation do
     it { is_expected.to validate_presence_of(:role) }
     it { is_expected.to allow_value('test@example.com').for(:email) }
     it { is_expected.not_to allow_value('invalid-email').for(:email) }
+
+    it 'does not allow minor invitations' do
+      invitation = build(:invitation, role: :minor)
+
+      expect(invitation).not_to be_valid
+      expect(invitation.errors[:role]).to include('Children must be added by a parent or carer.')
+    end
   end
 
   describe 'enums' do
@@ -16,6 +23,12 @@ RSpec.describe Invitation do
     it 'defines role enum' do
       expect(invitation).to define_enum_for(:role)
         .with_values(administrator: 0, doctor: 1, nurse: 2, carer: 3, parent: 4, minor: 5)
+    end
+  end
+
+  describe '.assignable_roles' do
+    it 'excludes minor' do
+      expect(described_class.assignable_roles.keys).not_to include('minor')
     end
   end
 

@@ -5,6 +5,7 @@ require 'rails_helper'
 RSpec.describe 'User Signup', type: :system do
   describe 'creating a new account' do
     before do
+      driven_by(:rack_test)
       User.administrator.destroy_all
     end
 
@@ -149,20 +150,20 @@ RSpec.describe 'User Signup', type: :system do
       expect(person&.person_type).to eq('adult')
     end
 
-    it 'sets person_type based on age (minor for under 18)' do
+    it 'rejects under-18 signup' do
       visit create_account_path
 
-      # Set date of birth to make user 15 years old
       fill_in 'Name', with: 'Minor User'
       fill_in 'Date of birth', with: 15.years.ago.to_date.to_s
       fill_in 'Email', with: 'minor@example.com'
       fill_in 'Password', with: 'SecureP@ssword123!'
       fill_in 'Confirm Password', with: 'SecureP@ssword123!'
 
-      click_button 'Create Account'
+      expect do
+        click_button 'Create Account'
+      end.not_to change(Account, :count)
 
-      person = Account.find_by(email: 'minor@example.com')&.person
-      expect(person&.person_type).to eq('minor')
+      expect(page).to have_content('Children must be added by a parent or carer.')
     end
   end
 end

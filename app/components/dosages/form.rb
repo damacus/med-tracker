@@ -28,6 +28,20 @@ module Components
         end
       end
 
+      FREQUENCY_SUGGESTIONS = [
+        'Once daily',
+        'Twice daily',
+        'Three times daily',
+        'Every 4 hours',
+        'Every 4–6 hours',
+        'Every 6 hours',
+        'Every 8 hours',
+        'Every 12 hours',
+        'Every morning',
+        'Every night',
+        'As needed (PRN)'
+      ].freeze
+
       private
 
       def render_errors
@@ -49,7 +63,9 @@ module Components
               span(class: 'text-destructive ml-0.5') { ' *' }
             end
             Input(type: :number, name: 'dosage[amount]', id: 'dosage_amount',
-                  value: dosage.amount, step: 'any', min: '0', required: true)
+                  value: dosage.amount, step: 'any', min: '0', required: true,
+                  **field_error_attributes(dosage, :amount, input_id: 'dosage_amount'))
+            render_field_error(dosage, :amount, input_id: 'dosage_amount')
           end
 
           FormField do
@@ -60,28 +76,51 @@ module Components
             Input(type: :text, name: 'dosage[unit]', id: 'dosage_unit',
                   value: dosage.unit, required: true,
                   placeholder: 'mg, tablet, ml…',
-                  list: 'dosage_unit_list')
+                  list: 'dosage_unit_list',
+                  **field_error_attributes(dosage, :unit, input_id: 'dosage_unit'))
+            render_field_error(dosage, :unit, input_id: 'dosage_unit')
             datalist(id: 'dosage_unit_list') do
               Medication::DOSAGE_UNITS.each { |u| option(value: u) }
             end
           end
         end
 
-        FormField(class: 'mt-4') do
+        FormField(class: 'mt-4', data: { controller: 'frequency-suggestions' }) do
           FormFieldLabel(for: 'dosage_frequency') do
             plain 'Frequency label'
             span(class: 'text-destructive ml-0.5') { ' *' }
           end
           FormFieldHint { 'Short description, e.g. "Once daily", "Every 4–6 hours"' }
+          render_frequency_suggestions
           Input(type: :text, name: 'dosage[frequency]', id: 'dosage_frequency',
                 value: dosage.frequency, required: true,
-                placeholder: 'Once daily')
+                placeholder: 'Once daily',
+                data: { 'frequency-suggestions-target': 'input' },
+                **field_error_attributes(dosage, :frequency, input_id: 'dosage_frequency'))
+          render_field_error(dosage, :frequency, input_id: 'dosage_frequency')
         end
 
         FormField(class: 'mt-4') do
           FormFieldLabel(for: 'dosage_description') { 'Description / notes' }
           Input(type: :text, name: 'dosage[description]', id: 'dosage_description',
                 value: dosage.description, placeholder: 'Optional')
+        end
+      end
+
+      def render_frequency_suggestions
+        div(class: 'flex flex-nowrap overflow-x-auto gap-1.5 mt-1 mb-2 pb-0.5 -mx-0.5 px-0.5') do
+          FREQUENCY_SUGGESTIONS.each do |suggestion|
+            button(
+              type: 'button',
+              data: {
+                action: 'click->frequency-suggestions#suggest',
+                suggestion: suggestion
+              },
+              class: 'inline-flex shrink-0 items-center rounded-full border border-slate-200 bg-white ' \
+                     'px-2.5 py-0.5 text-xs font-medium text-slate-600 shadow-sm whitespace-nowrap ' \
+                     'hover:bg-slate-50 hover:border-slate-300 cursor-pointer transition-colors'
+            ) { suggestion }
+          end
         end
       end
 

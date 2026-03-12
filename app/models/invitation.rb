@@ -8,10 +8,15 @@ class Invitation < ApplicationRecord
                     format: { with: URI::MailTo::EMAIL_REGEXP },
                     uniqueness: { case_sensitive: false, conditions: -> { pending } }
   validates :role, presence: true
+  validate :role_cannot_be_minor
 
   enum :role, { administrator: 0, doctor: 1, nurse: 2, carer: 3, parent: 4, minor: 5 }, validate: true
 
   scope :pending, -> { where(accepted_at: nil).where('expires_at > ?', Time.current) }
+
+  def self.assignable_roles
+    roles.except('minor')
+  end
 
   def expired?
     return false if expires_at.nil?
@@ -31,5 +36,9 @@ class Invitation < ApplicationRecord
 
   def set_expires_at
     self.expires_at ||= 7.days.from_now
+  end
+
+  def role_cannot_be_minor
+    errors.add(:role, 'Children must be added by a parent or carer.') if minor?
   end
 end
