@@ -14,7 +14,9 @@ class MedicationStockSourceResolver
 
   def blocked_reason
     return :out_of_stock if available_medications.empty?
-    return :cooldown unless source.can_take_now?
+
+    can_take = block_given? ? yield : source.can_take_now?
+    return :cooldown unless can_take
 
     nil
   end
