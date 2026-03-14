@@ -137,6 +137,8 @@ module Components
         end
       end
 
+      # ⚡ Bolt: Cache can_take_now? per render to avoid repeated DB/Time evaluations
+      # Used by disabled button state, disabled label, and countdown visibility.
       def can_take_now?
         return @can_take_now if instance_variable_defined?(:@can_take_now)
 
@@ -157,6 +159,8 @@ module Components
         end
       end
 
+      # ⚡ Bolt: Cache todays_takes per render. This array is used for the
+      # dose counter badge and the take history list, avoiding duplicate queries.
       def resolved_todays_takes
         return @resolved_todays_takes if instance_variable_defined?(:@resolved_todays_takes)
 

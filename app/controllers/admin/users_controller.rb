@@ -22,7 +22,7 @@ module Admin
     end
 
     def edit
-      @user = policy_scope(User).find(params[:id])
+      @user = User.find(params[:id])
       authorize @user
       render Components::Admin::Users::FormView.new(user: @user)
     end
@@ -53,7 +53,7 @@ module Admin
     end
 
     def update
-      @user = policy_scope(User).find(params[:id])
+      @user = User.find(params[:id])
       authorize @user
 
       respond_to do |format|
@@ -72,7 +72,7 @@ module Admin
     end
 
     def destroy
-      @user = policy_scope(User).find(params[:id])
+      @user = User.find(params[:id])
       authorize @user
 
       respond_to do |format|
@@ -95,7 +95,7 @@ module Admin
     end
 
     def activate
-      @user = policy_scope(User).find(params[:id])
+      @user = User.find(params[:id])
       authorize @user
 
       @user.activate!
@@ -109,7 +109,7 @@ module Admin
     end
 
     def verify
-      @user = policy_scope(User).find(params[:id])
+      @user = User.find(params[:id])
       authorize @user
 
       account = @user.person&.account
