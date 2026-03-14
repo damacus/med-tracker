@@ -208,6 +208,7 @@ module Components
 
       def blocked_reason
         return @blocked_reason if instance_variable_defined?(:@blocked_reason)
+
         # ⚡ Bolt: Yield our cached can_take_now? state to avoid redundant DB queries
         # while preserving the resolver's lazy evaluation (only evaluated if in stock)
         @blocked_reason = stock_source_resolver.blocked_reason { can_take_now? }
