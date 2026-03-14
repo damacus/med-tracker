@@ -42,7 +42,7 @@ module Views
               label(for: 'end_date', class: 'text-xs font-bold uppercase tracking-wider text-muted-foreground') { 'To' }
               input(type: 'date', name: 'end_date', id: 'end_date', value: @end_date, class: 'form-input rounded-lg border-border bg-background text-sm text-foreground focus:border-primary focus:ring-primary')
             end
-            button(type: 'submit', class: 'mt-5 rounded-lg bg-primary p-2 text-primary-foreground transition-colors hover:opacity-90', 'aria-label': 'Apply date filters') do
+            button(type: 'submit', class: 'mt-5 rounded-lg bg-primary p-2 text-primary-foreground transition-colors hover:opacity-90 aria-label: "Apply date filters"') do
               render Icons::ChevronRight.new(size: 20)
             end
           end

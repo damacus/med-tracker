@@ -23,10 +23,6 @@
 **Learning:** In ActiveRecord models, computed methods like `estimated_daily_consumption` that iterate over associations (e.g. `schedules.sum`) trigger database calls or array aggregations. When these computed methods are called multiple times in the same view (like inside `forecast_available?`, `days_until_low_stock`, etc.), it causes redundant queries.
 **Action:** Use instance variable memoization (`return @variable if defined?(@variable)`) for computed methods that process associations but don't change state during a render cycle. This drastically reduces redundant Ruby object allocation and database interactions when the view relies on those computations.
 
-## 2026-03-08 - Use Enumerable#find Instead of ActiveRecord#find_by on Preloaded Associations
-**Learning:** ActiveRecord's `find_by` always hits the database even if the association is preloaded via `.includes()` or `.eager_load()`. Calling `.find_by(attribute: value)` inside an iteration (e.g. `default_dosage_for_person_type` rendering multiple medications) triggers an N+1 query bottleneck.
-**Action:** When finding a specific record within an eagerly loaded association, materialize the collection using `.to_a` (or if it's already an array) and use Ruby's `Enumerable#find` (e.g., `association.to_a.find(&:attribute?)`) to evaluate the filter in-memory and avoid subsequent SQL queries.
-
 ## 2026-03-07 - Cache Timing Restriction State Per Card Render
 **Learning:** MedTracker medication cards can evaluate the same timing restriction logic multiple times in one render path: once for countdown visibility, again for the disabled button state, and again for disabled-label copy. On cooldown states this multiplies `can_take_now?` work across every visible card.
 **Action:** In card components that render medication actions, cache `can_take_now?`, out-of-stock state, and blocked reason per render using instance variables guarded with `instance_variable_defined?`. That keeps cooldown/out-of-stock renders to a single timing evaluation while preserving behavior.

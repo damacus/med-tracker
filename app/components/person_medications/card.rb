@@ -54,7 +54,7 @@ module Components
           div(class: 'pt-4 border-t border-slate-50 space-y-4') do
             render_notes if person_medication.notes.present?
             render_timing_restrictions if person_medication.timing_restrictions?
-            render_countdown_notice if !person_medication.can_take_now? && person_medication.countdown_display
+            render_countdown_notice if !can_take_now? && person_medication.countdown_display
             render_takes_section
           end
         end
@@ -137,8 +137,16 @@ module Components
         end
       end
 
+      # ⚡ Bolt: Cache can_take_now? per render to avoid repeated DB/Time evaluations
+      # Used by disabled button state, disabled label, and countdown visibility.
+      def can_take_now?
+        return @can_take_now if instance_variable_defined?(:@can_take_now)
+
+        @can_take_now = person_medication.can_take_now?
+      end
+
       def render_takes_section
-        takes = todays_takes || fetch_todays_takes
+        takes = resolved_todays_takes
 
         div(class: 'space-y-4 pt-2') do
           div(class: 'flex items-center justify-between') do
@@ -149,6 +157,14 @@ module Components
           end
           render_todays_takes(takes)
         end
+      end
+
+      # ⚡ Bolt: Cache todays_takes per render. This array is used for the
+      # dose counter badge and the take history list, avoiding duplicate queries.
+      def resolved_todays_takes
+        return @resolved_todays_takes if instance_variable_defined?(:@resolved_todays_takes)
+
+        @resolved_todays_takes = (todays_takes || fetch_todays_takes).to_a
       end
 
       def fetch_todays_takes
@@ -257,7 +273,9 @@ module Components
       def blocked_reason
         return @blocked_reason if instance_variable_defined?(:@blocked_reason)
 
-        @blocked_reason = stock_source_resolver.blocked_reason
+        # ⚡ Bolt: Yield our cached can_take_now? state to avoid redundant DB queries
+        # while preserving the resolver's lazy evaluation (only evaluated if in stock)
+        @blocked_reason = stock_source_resolver.blocked_reason { can_take_now? }
       end
 
       def stock_source_resolver
