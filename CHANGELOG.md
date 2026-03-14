@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.32](https://github.com/damacus/med-tracker/compare/v0.3.31...v0.3.32) (2026-03-14)
+
+
+### Bug Fixes
+
+* 🛡️ Sentinel: [High] Fix IDOR vulnerabilities in admin controllers ([#978](https://github.com/damacus/med-tracker/issues/978)) ([e3a45d2](https://github.com/damacus/med-tracker/commit/e3a45d2484cbd3e4a2e8a8c3643e6b71441d439e))
+
+
+### Performance Improvements
+
+* ⚡ Bolt: Use Enumerable#find to avoid N+1 queries when looking up default dosages ([#982](https://github.com/damacus/med-tracker/issues/982)) ([c8fb98c](https://github.com/damacus/med-tracker/commit/c8fb98c12acc50565cb9a205d68ab584ef98be94))
+
 ## [0.3.31](https://github.com/damacus/med-tracker/compare/v0.3.30...v0.3.31) (2026-03-12)
 
 
