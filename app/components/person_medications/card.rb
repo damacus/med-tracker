@@ -157,8 +157,6 @@ module Components
         end
       end
 
-      # ⚡ Bolt: Cache todays_takes per render. This array is used for the
-      # dose counter badge and the take history list, avoiding duplicate queries.
       def resolved_todays_takes
         return @resolved_todays_takes if instance_variable_defined?(:@resolved_todays_takes)
 
