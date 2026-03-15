@@ -54,13 +54,17 @@ module Components
       end
 
       def render_empty_state
-        div(class: 'flex flex-col items-center justify-center py-16 px-4 text-center bg-white rounded-[2.5rem] shadow-sm border border-slate-100') do
+        div(class: 'flex flex-col items-center justify-center py-16 px-4 text-center ' \
+                   'bg-white rounded-[2.5rem] shadow-sm border border-slate-100') do
           div(class: 'w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300 mb-6') do
             render Icons::MapPin.new(size: 32)
           end
-          Heading(level: 2, size: '5', class: 'font-bold mb-2') { t('locations.index.empty_state_title', default: 'No locations yet') }
+          Heading(level: 2, size: '5', class: 'font-bold mb-2') do
+            t('locations.index.empty_state_title', default: 'No locations yet')
+          end
           Text(size: '3', class: 'text-slate-400 max-w-sm mb-8') do
-            t('locations.index.empty_state_description', default: 'Create a location like "Home" or "School" to organize medications and inventory.')
+            t('locations.index.empty_state_description',
+              default: 'Create a location like "Home" or "School" to organize medications and inventory.')
           end
           Link(
             href: new_location_path,
