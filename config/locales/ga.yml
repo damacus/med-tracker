@@ -116,6 +116,8 @@ ga:
     updated: "Nuashonraíodh an suíomh go rathúil."
     deleted: "Scriosadh an suíomh go rathúil."
     index:
+      empty_state_title: 'Níl aon suíomh go fóill'
+      empty_state_description: 'Cruthaigh suíomh mar "Baile" nó "Scoil" chun cógais agus fardal a eagrú.'
       manage_locations: "Bainistigh Suíomhanna"
       title: "Suíomhanna"
       add_location: "Cuir Suíomh Leis"

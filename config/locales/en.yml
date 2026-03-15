@@ -290,6 +290,8 @@ en:
     updated: "Location was successfully updated."
     deleted: "Location was successfully deleted."
     index:
+      empty_state_title: 'No locations yet'
+      empty_state_description: 'Create a location like "Home" or "School" to organize medications and inventory.'
       manage_locations: "Manage Locations"
       title: "Locations"
       add_location: "Add Location"

@@ -283,6 +283,8 @@ pt:
     updated: "Localização atualizada com sucesso."
     deleted: "Localização eliminada com sucesso."
     index:
+      empty_state_title: 'Ainda sem localizações'
+      empty_state_description: 'Crie uma localização como "Casa" ou "Escola" para organizar medicamentos e inventário.'
       manage_locations: "Gerir Localizações"
       title: "Localizações"
       add_location: "Adicionar Localização"
