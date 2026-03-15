@@ -42,9 +42,37 @@ module Components
       end
 
       def render_locations_grid
-        div(class: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8', id: 'locations') do
-          locations.each do |location|
-            render_location_card(location)
+        if locations.empty?
+          render_empty_state
+        else
+          div(class: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8', id: 'locations') do
+            locations.each do |location|
+              render_location_card(location)
+            end
+          end
+        end
+      end
+
+      def render_empty_state
+        div(class: 'flex flex-col items-center justify-center py-16 px-4 text-center ' \
+                   'bg-white rounded-[2.5rem] shadow-sm border border-slate-100') do
+          div(class: 'w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300 mb-6') do
+            render Icons::MapPin.new(size: 32)
+          end
+          Heading(level: 2, size: '5', class: 'font-bold mb-2') do
+            t('locations.index.empty_state_title', default: 'No locations yet')
+          end
+          Text(size: '3', class: 'text-slate-400 max-w-sm mb-8') do
+            t('locations.index.empty_state_description',
+              default: 'Create a location like "Home" or "School" to organize medications and inventory.')
+          end
+          Link(
+            href: new_location_path,
+            variant: :primary,
+            size: :lg,
+            class: 'rounded-2xl font-bold shadow-lg shadow-primary/20'
+          ) do
+            span { t('locations.index.add_location') }
           end
         end
       end

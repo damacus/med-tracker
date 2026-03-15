@@ -283,6 +283,8 @@ cy:
     updated: "Diweddarwyd y lleoliad yn llwyddiannus."
     deleted: "Dilewyd y lleoliad yn llwyddiannus."
     index:
+      empty_state_title: 'Dim lleoliadau eto'
+      empty_state_description: 'Creu lleoliad fel "Cartref" neu "Ysgol" i drefnu meddyginiaethau a rhestr eiddo.'
       manage_locations: "Rheoli Lleoliadau"
       title: "Lleoliadau"
       add_location: "Ychwanegu Lleoliad"

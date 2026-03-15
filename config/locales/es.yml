@@ -283,6 +283,8 @@ es:
     updated: "La ubicación se actualizó correctamente."
     deleted: "La ubicación se eliminó correctamente."
     index:
+      empty_state_title: 'Aún no hay ubicaciones'
+      empty_state_description: 'Crea una ubicación como "Casa" o "Escuela" para organizar medicamentos e inventario.'
       manage_locations: "Gestionar Ubicaciones"
       title: "Ubicaciones"
       add_location: "Añadir Ubicación"
