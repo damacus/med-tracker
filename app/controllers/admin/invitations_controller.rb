@@ -36,7 +36,7 @@ module Admin
     end
 
     def resend
-      @invitation = Invitation.find(params[:id])
+      @invitation = policy_scope(Invitation).find(params[:id])
       authorize @invitation, :resend?
 
       if @invitation.resendable?
