@@ -12,14 +12,8 @@ def main
 
   # Check if the modified file is Gemfile
   if file_path.include?('Gemfile') || file_path.end_with?('/Gemfile')
-    puts '🔧 Gemfile modified, running bundle install...'
-
     # Run bundle install
-    result = system('bundle install')
-
-    if result
-      puts '✅ Bundle install completed successfully'
-    else
+    unless system('bundle install')
       puts '❌ Bundle install failed'
       exit 1
     end
