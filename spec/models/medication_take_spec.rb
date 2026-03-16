@@ -200,6 +200,40 @@ RSpec.describe MedicationTake do
         expect(take.errors[:taken_from_medication]).to include('must match the assigned medication')
       end
     end
+
+    context 'when the selected location does not match the medication location' do
+      it 'assigns the medication location if none is provided' do
+        alternate_location = Location.create!(name: 'Assignment Loc')
+        alternate_medication = create_matching_medication(medication: medication, location: alternate_location)
+
+        take = MedicationTake.new(
+          schedule: schedule,
+          taken_at: Time.current,
+          amount_ml: 10.0,
+          taken_from_medication: alternate_medication
+        )
+
+        take.valid?
+        expect(take.taken_from_location).to eq(alternate_location)
+      end
+
+      it 'is invalid if an incorrect location is explicitly provided' do
+        alternate_location = Location.create!(name: 'Correct Loc')
+        wrong_location = Location.create!(name: 'Wrong Loc')
+        alternate_medication = create_matching_medication(medication: medication, location: alternate_location)
+
+        take = MedicationTake.new(
+          schedule: schedule,
+          taken_at: Time.current,
+          amount_ml: 10.0,
+          taken_from_medication: alternate_medication,
+          taken_from_location: wrong_location
+        )
+
+        expect(take).not_to be_valid
+        expect(take.errors[:taken_from_location]).to include('must match the selected medication location')
+      end
+    end
   end
 
   describe 'versioning' do # rubocop:disable RSpec/MultipleMemoizedHelpers
