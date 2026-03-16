@@ -144,7 +144,7 @@ module Admin
     def account_already_exists?
       return false unless Account.exists?(email: @user.email_address)
 
-      @user.errors.add(:email_address, 'has already been taken')
+      @user.errors.add(:email_address, :taken)
       true
     end
 

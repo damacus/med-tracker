@@ -16,9 +16,9 @@ module Admin
       respond_to do |format|
         if @invitation.save
           InvitationMailer.with(invitation: @invitation).invite.deliver_later
-          format.html { redirect_to admin_invitations_path, notice: 'Invitation sent' }
+          format.html { redirect_to admin_invitations_path, notice: t('admin.invitations.created') }
           format.turbo_stream do
-            flash.now[:notice] = 'Invitation sent'
+            flash.now[:notice] = t('admin.invitations.created')
             render_index_turbo
           end
         else
@@ -42,11 +42,11 @@ module Admin
       if @invitation.resendable?
         @invitation.resend!
         InvitationMailer.with(invitation: @invitation).invite.deliver_later
-        redirect_with_invitation_notice('Invitation resent')
+        redirect_with_invitation_notice(t('admin.invitations.resent'))
       elsif @invitation.accepted?
-        redirect_with_invitation_alert('Accepted invitations cannot be resent')
+        redirect_with_invitation_alert(t('admin.invitations.cannot_resend_accepted'))
       else
-        redirect_with_invitation_alert('This invitation could not be resent. A pending invitation for this email may already exist.')
+        redirect_with_invitation_alert(t('admin.invitations.resend_failed'))
       end
     end
 

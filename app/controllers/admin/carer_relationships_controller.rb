@@ -49,9 +49,9 @@ module Admin
 
       respond_to do |format|
         if @relationship.save
-          format.html { redirect_to admin_carer_relationships_path, notice: 'Carer relationship was successfully created.' }
+          format.html { redirect_to admin_carer_relationships_path, notice: t('admin.carer_relationships.created') }
           format.turbo_stream do
-            flash.now[:notice] = 'Carer relationship was successfully created.'
+            flash.now[:notice] = t('admin.carer_relationships.created')
             render turbo_stream: [
               turbo_stream.update('modal', ''),
               turbo_stream.remove('carer_relationships_empty'),
@@ -91,9 +91,9 @@ module Admin
 
       @relationship.deactivate!
       respond_to do |format|
-        format.html { redirect_to admin_carer_relationships_path, notice: 'Carer relationship has been deactivated.' }
+        format.html { redirect_to admin_carer_relationships_path, notice: t('admin.carer_relationships.deactivated') }
         format.turbo_stream do
-          flash.now[:notice] = 'Carer relationship has been deactivated.'
+          flash.now[:notice] = t('admin.carer_relationships.deactivated')
           render turbo_stream: relationship_row_streams(@relationship)
         end
       end
@@ -105,9 +105,9 @@ module Admin
 
       @relationship.activate!
       respond_to do |format|
-        format.html { redirect_to admin_carer_relationships_path, notice: 'Carer relationship has been activated.' }
+        format.html { redirect_to admin_carer_relationships_path, notice: t('admin.carer_relationships.activated') }
         format.turbo_stream do
-          flash.now[:notice] = 'Carer relationship has been activated.'
+          flash.now[:notice] = t('admin.carer_relationships.activated')
           render turbo_stream: relationship_row_streams(@relationship)
         end
       end
