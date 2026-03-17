@@ -195,16 +195,18 @@ module Admin
     def apply_sorting(scope)
       sort_column = params[:sort].presence_in(allowed_sort_columns) || 'created_at'
       sort_direction = params[:direction].presence_in(%w[asc desc]) || 'asc'
+      direction_sym = { 'asc' => :asc, 'desc' => :desc }[sort_direction]
 
       case sort_column
       when 'name'
+        # Security: sort_direction is already validated against %w[asc desc] above
         scope.left_joins(:person).order(Arel.sql("people.name #{sort_direction}"))
       when 'email'
-        scope.order(email_address: sort_direction.to_sym)
+        scope.order(email_address: direction_sym)
       when 'role'
-        scope.order(role: sort_direction.to_sym)
+        scope.order(role: direction_sym)
       else
-        scope.order(created_at: sort_direction.to_sym)
+        scope.order(created_at: direction_sym)
       end
     end
 
