@@ -105,6 +105,7 @@ module Views
         div(class: 'text-center space-y-4 pt-4') do
           render_signup_link
           render_resend_link
+          render_invite_only_oidc_link if invite_only? && oauth_enabled?
         end
       end
 
@@ -131,6 +132,7 @@ module Views
 
       def render_oauth_section
         return unless oauth_enabled?
+        return if invite_only?
 
         div(class: 'relative mt-8') do
           render_oauth_divider
@@ -156,6 +158,20 @@ module Views
                                       class: 'w-full h-12 rounded-xl border-zinc-200 bg-white font-medium text-zinc-700 transition-all hover:bg-zinc-50 hover:border-zinc-300') do
               render Components::Icons::Globe.new(size: 18, class: 'mr-2 text-zinc-400')
               span { provider_name }
+            end
+          end
+        end
+      end
+
+      def render_invite_only_oidc_link
+        provider_name = ENV.fetch('OIDC_PROVIDER_NAME', 'OIDC')
+        div(class: 'space-y-2 text-xs text-zinc-500') do
+          p { t('sessions.login.invite_only_oidc_notice', default: 'Single sign-on is reserved for invited accounts.') }
+          form(action: view_context.rodauth.omniauth_request_path(:oidc), method: 'post', data: { turbo: 'false' }, class: 'inline-block') do
+            input(type: 'hidden', name: 'authenticity_token', value: view_context.form_authenticity_token)
+            render RubyUI::Button.new(type: :submit, variant: :link,
+                                      class: 'h-auto p-0 font-semibold text-zinc-500 hover:text-zinc-900') do
+              plain t('sessions.login.invite_only_oidc_cta', default: "Continue with #{provider_name}")
             end
           end
         end

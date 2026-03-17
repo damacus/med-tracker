@@ -86,12 +86,13 @@ RSpec.describe Invitation do
   describe '#resend!' do
     it 'rotates the token and extends the expiry window' do
       invitation = create(:invitation, expires_at: 1.day.from_now)
-      original_token = invitation.token
+      original_digest = invitation.token_digest
       original_expires_at = invitation.expires_at
 
       invitation.resend!
 
-      expect(invitation.reload.token).not_to eq(original_token)
+      expect(invitation.token_digest).not_to eq(original_digest)
+      expect(invitation.token).to be_present
       expect(invitation.expires_at).to be > original_expires_at
     end
 

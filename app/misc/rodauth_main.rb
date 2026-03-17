@@ -110,6 +110,15 @@ class RodauthMain < Rodauth::Rails::Auth
           super
         end
       end
+
+      def invite_only_registration_required?
+        User.administrator.exists?
+      end
+
+      def invite_only_registration_message
+        I18n.t('authentication.invite_only',
+               default: 'Registration is by invitation only. Please contact an administrator.')
+      end
     end
 
     after_login { remember_login if param_or_nil('remember') }
@@ -222,10 +231,9 @@ class RodauthMain < Rodauth::Rails::Auth
     # even seeing the registration form in invite-only mode.
     before_create_account_route do
       next if param_or_nil('invitation_token').present?
-      next unless User.administrator.exists?
+      next unless invite_only_registration_required?
 
-      set_notice_flash I18n.t('authentication.invite_only',
-                              default: 'Registration is by invitation only. Please contact an administrator.')
+      set_notice_flash invite_only_registration_message
       redirect login_path
     end
 
@@ -251,14 +259,22 @@ class RodauthMain < Rodauth::Rails::Auth
 
       # Validate invitation token if present and lock down email
       if (token = param_or_nil('invitation_token'))
-        @invitation = Invitation.pending.where.not(role: Invitation.roles[:minor]).find_by(token: token)
+        digest = Invitation.digest(token)
+        @invitation = Invitation.pending.where.not(role: Invitation.roles[:minor]).find_by(token_digest: digest)
         throw_error_status(422, 'invitation_token', 'is invalid or expired') unless @invitation
         request.params[login_param] = @invitation.email
       end
 
-      if @invitation.nil? && User.administrator.exists?
+      if @invitation.nil? && invite_only_registration_required?
         throw_error_status(422, 'invitation_token', 'is required when registration is invitation-only')
       end
+    end
+
+    before_omniauth_create_account do
+      next unless invite_only_registration_required?
+
+      set_notice_flash invite_only_registration_message
+      redirect login_path
     end
 
     # Perform additional actions after the account is created.

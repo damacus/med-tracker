@@ -168,9 +168,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_13_000001) do
     t.string "email"
     t.datetime "expires_at"
     t.integer "role"
-    t.string "token"
     t.datetime "updated_at", null: false
-    t.index ["token"], name: "index_invitations_on_token", unique: true
+    t.string "token_digest"
+    t.index ["token_digest"], name: "index_invitations_on_token_digest", unique: true
   end
 
   create_table "location_memberships", force: :cascade do |t|

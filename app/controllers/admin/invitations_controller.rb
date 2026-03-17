@@ -15,7 +15,7 @@ module Admin
 
       respond_to do |format|
         if @invitation.save
-          InvitationMailer.with(invitation: @invitation).invite.deliver_later
+          InvitationMailer.with(invitation: @invitation, token: @invitation.plain_token).invite.deliver_later
           format.html { redirect_to admin_invitations_path, notice: 'Invitation sent' }
           format.turbo_stream do
             flash.now[:notice] = 'Invitation sent'
@@ -41,7 +41,7 @@ module Admin
 
       if @invitation.resendable?
         @invitation.resend!
-        InvitationMailer.with(invitation: @invitation).invite.deliver_later
+        InvitationMailer.with(invitation: @invitation, token: @invitation.plain_token).invite.deliver_later
         redirect_with_invitation_notice('Invitation resent')
       elsif @invitation.accepted?
         redirect_with_invitation_alert('Accepted invitations cannot be resent')

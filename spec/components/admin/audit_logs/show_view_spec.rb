@@ -78,6 +78,14 @@ RSpec.describe Components::Admin::AuditLogs::ShowView, type: :component do
         expect(result).to have_key('name')
       end
 
+      it 'removes token and token_digest from data' do
+        data = { 'name' => 'Test', 'token' => 'raw', 'token_digest' => 'digest' }
+        result = view.send(:filter_sensitive_fields, data)
+
+        expect(result).not_to have_key('token')
+        expect(result).not_to have_key('token_digest')
+      end
+
       it 'returns non-hash data unchanged' do
         expect(view.send(:filter_sensitive_fields, 'string')).to eq('string')
         expect(view.send(:filter_sensitive_fields, nil)).to be_nil

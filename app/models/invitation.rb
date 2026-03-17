@@ -1,9 +1,13 @@
 # frozen_string_literal: true
 
-class Invitation < ApplicationRecord
-  has_paper_trail
+require 'digest'
 
-  before_create :generate_token
+class Invitation < ApplicationRecord
+  attr_reader :plain_token
+
+  has_paper_trail ignore: %i[token_digest]
+
+  before_create :assign_token_digest
   before_create :set_expires_at
 
   validates :email, presence: true,
@@ -44,13 +48,25 @@ class Invitation < ApplicationRecord
     raise ActiveRecord::RecordInvalid, self unless resendable?
 
     self.paper_trail_event = 'resend'
-    update!(token: SecureRandom.hex(32), expires_at: 7.days.from_now)
+    assign_token_digest
+    update!(token_digest:, expires_at: 7.days.from_now)
+  end
+
+  def token
+    plain_token
+  end
+
+  def self.digest(raw_token)
+    return if raw_token.blank?
+
+    Digest::SHA256.hexdigest(raw_token)
   end
 
   private
 
-  def generate_token
-    self.token = SecureRandom.hex(32)
+  def assign_token_digest
+    @plain_token = SecureRandom.hex(32)
+    self.token_digest = self.class.digest(@plain_token)
   end
 
   def set_expires_at

@@ -118,13 +118,17 @@ RSpec.describe 'Admin invites users' do
     expect(page).to have_content('Invitation resent')
     expect(ActionMailer::Base.deliveries.count).to eq(1)
 
+    email = ActionMailer::Base.deliveries.last
+    new_invitation_url = email.body.encoded.match(%r{https?://\S+})[0]
+    new_token = Rack::Utils.parse_query(URI.parse(new_invitation_url).query)['token']
+
     invitation.reload
-    expect(invitation.token).not_to eq(original_token)
+    expect(invitation.token_digest).not_to eq(Invitation.digest(original_token))
 
     visit accept_invitation_path(token: original_token)
     expect(page).to have_content('This invitation link is invalid or has expired.')
 
-    visit accept_invitation_path(token: invitation.token)
+    visit accept_invitation_path(token: new_token)
     expect(page).to have_content("You've been invited as a Parent.")
   end
 end

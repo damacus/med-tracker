@@ -69,6 +69,12 @@ RSpec.describe LocationPolicy, type: :policy do
         expect(policy.destroy?).to be false
       end
     end
+
+    it 'denies viewing locations outside their household' do
+      foreign_location = locations(:school)
+      scoped_policy = described_class.new(current_user, foreign_location)
+      expect(scoped_policy.show?).to be false
+    end
   end
 
   describe 'for parent' do
@@ -97,11 +103,19 @@ RSpec.describe LocationPolicy, type: :policy do
   describe 'Scope' do
     subject(:scope) { described_class::Scope.new(current_user, Location.all).resolve }
 
-    context 'when user is authenticated' do
+    context 'when user is a carer' do
       let(:current_user) { users(:carer) }
 
-      it 'returns all locations' do
-        expect(scope).to match_array(Location.all)
+      it 'returns only their household locations' do
+        expect(scope).to contain_exactly(locations(:home))
+      end
+    end
+
+    context 'when user is a parent with multiple locations' do
+      let(:current_user) { users(:jane) }
+
+      it 'returns the locations tied to their household' do
+        expect(scope).to contain_exactly(locations(:home), locations(:school))
       end
     end
 

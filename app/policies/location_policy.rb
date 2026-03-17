@@ -6,7 +6,9 @@ class LocationPolicy < ApplicationPolicy
   end
 
   def show?
-    user.present?
+    return false unless user
+
+    admin_or_clinician? || accessible_location_ids.include?(record.id)
   end
 
   def create?
@@ -28,8 +30,66 @@ class LocationPolicy < ApplicationPolicy
   class Scope < ApplicationPolicy::Scope
     def resolve
       return scope.none unless user
+      return scope.all if admin_or_clinician?
 
-      scope.all
+      location_ids = accessible_location_ids
+      return scope.none if location_ids.empty?
+
+      scope.where(id: location_ids)
     end
+
+    private
+
+    def accessible_location_ids
+      person_ids = accessible_person_ids
+      return [] if person_ids.empty?
+
+      LocationMembership.where(person_id: person_ids).select(:location_id).distinct.pluck(:location_id)
+    end
+
+    def accessible_person_ids
+      return [] unless user&.person
+
+      [user.person_id, *carer_patient_ids, *parent_minor_patient_ids].compact.uniq
+    end
+
+    def carer_patient_ids
+      user.carer? ? user.person.patient_ids : []
+    end
+
+    def parent_minor_patient_ids
+      return [] unless user.parent?
+
+      user.person.patients.where(person_type: :minor).pluck(:id)
+    end
+  end
+
+  private
+
+  def accessible_location_ids
+    @accessible_location_ids ||= begin
+      ids = accessible_person_ids_for_policy
+      if ids.empty?
+        []
+      else
+        LocationMembership.where(person_id: ids).pluck(:location_id).uniq
+      end
+    end
+  end
+
+  def accessible_person_ids_for_policy
+    return [] unless user&.person
+
+    [user.person_id, *carer_patient_ids_for_policy, *parent_minor_patient_ids_for_policy].compact.uniq
+  end
+
+  def carer_patient_ids_for_policy
+    user.carer? ? user.person.patient_ids : []
+  end
+
+  def parent_minor_patient_ids_for_policy
+    return [] unless user.parent?
+
+    user.person.patients.where(person_type: :minor).pluck(:id)
   end
 end
