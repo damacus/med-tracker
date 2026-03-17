@@ -15,7 +15,15 @@ en:
           self: "Self"
 
   admin:
+    invitations:
+      created: "Invitation sent"
+      resent: "Invitation resent"
+      cannot_resend_accepted: "Accepted invitations cannot be resent"
+      resend_failed: "This invitation could not be resent. A pending invitation for this email may already exist."
     carer_relationships:
+      created: "Carer relationship was successfully created."
+      deactivated: "Carer relationship has been deactivated."
+      activated: "Carer relationship has been activated."
       index:
         title: "Carer Relationships"
         subtitle: "Manage carer-patient assignments."

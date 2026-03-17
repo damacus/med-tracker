@@ -176,7 +176,15 @@ pt:
         confirm_password_label: "Confirmar Nova Palavra-passe"
 
   admin:
+    invitations:
+      created: "Convite enviado"
+      resent: "Convite reenviado"
+      cannot_resend_accepted: "Convites aceitos não podem ser reenviados"
+      resend_failed: "Este convite não pôde ser reenviado. Já pode existir um convite pendente para este e-mail."
     carer_relationships:
+      created: "A relação de cuidador foi criada com sucesso."
+      deactivated: "A relação de cuidador foi desativada."
+      activated: "A relação de cuidador foi ativada."
       index:
         title: "Relações de Cuidador"
         subtitle: "Gerir atribuições de cuidador-paciente."

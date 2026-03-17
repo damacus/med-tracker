@@ -5,7 +5,15 @@ ga:
     name: "MedTracker"
 
   admin:
+    invitations:
+      created: "Cuireadh seolta"
+      resent: "Cuireadh athsheolta"
+      cannot_resend_accepted: "Ní féidir cuirí a nglactar leo a athsheoladh"
+      resend_failed: "Níorbh fhéidir an cuireadh seo a athsheoladh. Seans go bhfuil cuireadh ar feitheamh don ríomhphost seo ann cheana féin."
     carer_relationships:
+      created: "Cruthaíodh an caidreamh cúramóra go rathúil."
+      deactivated: "Díghníomhaíodh an caidreamh cúramóra."
+      activated: "Gníomhaíodh an caidreamh cúramóra."
       index:
         title: "Caidrimh Chúramóra"
         subtitle: "Bainistigh sannadhanna cúramóir-claf."
