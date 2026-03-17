@@ -1,7 +1,7 @@
 # Tech Stack
 
 ## Core
-- **Language:** Ruby 4.0.1
+- **Language:** Ruby 4.0.2
 - **Framework:** Ruby on Rails 8.1
 - **Database:** PostgreSQL
 

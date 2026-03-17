@@ -1,4 +1,4 @@
-FROM ruby:4.0.1-slim-trixie AS assets
+FROM ruby:4.0.2-slim-trixie AS assets
 WORKDIR /app
 
 ARG UID=1000
@@ -69,7 +69,7 @@ CMD ["bundle", "exec", "rspec"]
 
 ###############################################################################
 
-FROM ruby:4.0.1-slim-trixie AS app
+FROM ruby:4.0.2-slim-trixie AS app
 WORKDIR /app
 
 ARG UID=1000
