@@ -10,7 +10,7 @@ MedTracker uses a **Dockerized PostgreSQL-based test environment** with RSpec, C
 
 | Component       | Tool                          | Version   |
 |-----------------|-------------------------------|-----------|
-| Language        | Ruby                          | 4.0.1     |
+| Language        | Ruby                          | 4.0.2     |
 | Framework       | Rails                         | 8.0+      |
 | Test Framework  | RSpec                         | 8.0+      |
 | Browser Testing | Capybara + Playwright         | chromium  |
