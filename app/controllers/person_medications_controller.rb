@@ -12,7 +12,7 @@ class PersonMedicationsController < ApplicationController
   def new
     authorize PersonMedication
     @person_medication = @person.person_medications.build
-    @person_medication.medication_id = params[:medication_id] if params[:medication_id].present?
+    @person_medication.medication_id = params[:medication_id] if medication_in_scope?(params[:medication_id])
     @medications = available_medications
 
     is_modal = request.headers['Turbo-Frame'] == 'modal'
@@ -215,7 +215,11 @@ class PersonMedicationsController < ApplicationController
   end
 
   def available_medications
-    Medication.order(:name)
+    policy_scope(Medication).order(:name)
+  end
+
+  def medication_in_scope?(medication_id)
+    available_medications.exists?(id: medication_id)
   end
 
   def explicit_dose_submitted?

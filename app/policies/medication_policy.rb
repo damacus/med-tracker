@@ -12,7 +12,11 @@ class MedicationPolicy < ApplicationPolicy
   alias dosages? show?
 
   def create?
-    admin? || doctor? || user&.parent? || false
+    return true if admin? || doctor?
+    return false unless user&.parent?
+    return true if record.is_a?(Class) || record.location_id.blank?
+
+    authorized_location_scope.exists?(id: record.location_id)
   end
 
   alias new? create?
@@ -53,7 +57,17 @@ class MedicationPolicy < ApplicationPolicy
     private
 
     def scope_by_location
-      scope.where(location_id: user.person&.location_ids || [])
+      scope.where(location_id: authorized_location_scope.select(:id))
     end
+
+    def authorized_location_scope
+      LocationPolicy::Scope.new(user, Location.all).resolve
+    end
+  end
+
+  private
+
+  def authorized_location_scope
+    LocationPolicy::Scope.new(user, Location.all).resolve
   end
 end

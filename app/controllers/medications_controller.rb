@@ -188,7 +188,7 @@ class MedicationsController < ApplicationController # rubocop:disable Metrics/Cl
   end
 
   def available_locations
-    Location.order(:name)
+    policy_scope(Location).order(:name)
   end
 
   def current_primary_location

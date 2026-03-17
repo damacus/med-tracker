@@ -8,7 +8,7 @@ module Components
       # @see docs/audit-trail.md
       class ShowView < Components::Base
         # Fields that should never be displayed in audit logs for security
-        SENSITIVE_FIELDS = %w[password_digest password_hash].freeze
+        SENSITIVE_FIELDS = %w[password_digest password_hash token token_digest].freeze
 
         attr_reader :version
 

@@ -34,6 +34,18 @@ RSpec.describe 'Locations' do
         expect(response).to have_http_status(:success)
       end
     end
+
+    context 'when authenticated as carer with household locations' do
+      let(:carer) { users(:carer) }
+
+      before { post '/login', params: { email: carer.email_address, password: 'password' } }
+
+      it 'renders only accessible locations' do
+        get locations_path
+        expect(response.body).to include('Home')
+        expect(response.body).not_to include('School')
+      end
+    end
   end
 
   describe 'GET /locations/:id' do
@@ -45,6 +57,30 @@ RSpec.describe 'Locations' do
       it 'returns HTTP success' do
         get location_path(location)
         expect(response).to have_http_status(:success)
+      end
+    end
+
+    context 'when authenticated as carer for an accessible location' do
+      let(:location) { locations(:home) }
+      let(:carer) { users(:carer) }
+
+      before { post '/login', params: { email: carer.email_address, password: 'password' } }
+
+      it 'returns HTTP success' do
+        get location_path(location)
+        expect(response).to have_http_status(:success)
+      end
+    end
+
+    context 'when authenticated as carer for a foreign location' do
+      let(:location) { locations(:school) }
+      let(:carer) { users(:carer) }
+
+      before { post '/login', params: { email: carer.email_address, password: 'password' } }
+
+      it 'returns not found through the scoped lookup' do
+        get location_path(location)
+        expect(response).to have_http_status(:not_found)
       end
     end
   end

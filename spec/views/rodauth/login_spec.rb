@@ -13,23 +13,27 @@ RSpec.describe Views::Rodauth::Login do
     end.new('challenge')
   end
 
-  def render_login
-    rodauth_mock = setup_rodauth_mock
+  def render_login(oauth_enabled: false, invite_only: nil)
+    rodauth_mock = setup_rodauth_mock(oauth_enabled: oauth_enabled)
     vc = view_context
-    # Satisfy rodauth-rails internal environment check
     controller.request.env['rodauth'] = rodauth_mock
 
     allow(vc).to receive_messages(rodauth: rodauth_mock, flash: {}, params: {})
+    stub_invite_only(invite_only)
 
     render_inline(described_class.new)
   end
 
   private
 
-  def setup_rodauth_mock
+  def setup_rodauth_mock(oauth_enabled: false)
     mock = double('Rodauth') # rubocop:disable RSpec/VerifiedDoubles
     allow(mock).to receive_messages(**rodauth_mock_messages)
-    allow(mock).to receive(:respond_to?).with(:omniauth_request_path).and_return(false)
+    allow(mock).to receive(:respond_to?).with(:omniauth_request_path).and_return(oauth_enabled)
+    if oauth_enabled
+      allow(mock).to receive(:omniauth_request_path).with(:oidc).and_return('/auth/oidc')
+      stub_oidc_credentials
+    end
     mock
   end
 
@@ -47,6 +51,19 @@ RSpec.describe Views::Rodauth::Login do
       compute_hmac: 'challenge-hmac',
       webauthn_credential_options_for_get: credential_options
     }
+  end
+
+  def stub_oidc_credentials
+    creds = Rails.application.credentials
+    allow(creds).to receive(:dig).and_call_original
+    allow(creds).to receive(:dig).with(:oidc, :client_id).and_return('test-client-id')
+    allow(creds).to receive(:dig).with(:oidc, :issuer_url).and_return('https://issuer.example.com')
+  end
+
+  def stub_invite_only(invite_only)
+    return if invite_only.nil?
+
+    allow(User).to receive(:administrator).and_return(instance_double(ActiveRecord::Relation, exists?: invite_only))
   end
 
   it 'renders the login heading and brand' do
@@ -78,5 +95,19 @@ RSpec.describe Views::Rodauth::Login do
     expect(rendered.css('#webauthn-login-form').count).to eq(1)
     expect(rendered.css('#passkey-login-trigger').count).to eq(1)
     expect(rendered.css('input[autocomplete="username webauthn"]').count).to eq(1)
+  end
+
+  it 'renders the OAuth button when invite-only is disabled' do
+    rendered = render_login(oauth_enabled: true, invite_only: false)
+
+    expect(rendered.text).to include('or continue with')
+    expect(rendered.text).to include('OIDC')
+  end
+
+  it 'hides the OAuth CTA and shows invite-only notice when invite-only is active' do
+    rendered = render_login(oauth_enabled: true, invite_only: true)
+
+    expect(rendered.text).not_to include('or continue with')
+    expect(rendered.text).to include('Single sign-on is reserved for invited accounts.')
   end
 end

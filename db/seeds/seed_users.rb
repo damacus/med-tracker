@@ -23,7 +23,7 @@ users_data.each do |attrs|
   end
 
   invitation = Invitation.create!(email: email, role: role)
-  InvitationMailer.with(invitation: invitation).invite.deliver_later
+  InvitationMailer.with(invitation: invitation, token: invitation.plain_token).invite.deliver_later
 
   Rails.logger.debug { "Invited #{email} as #{role}." }
   invited_count += 1

@@ -9,7 +9,7 @@ module Components
 
       attr_reader :medication, :title, :subtitle, :locations, :return_to
 
-      def initialize(medication:, title:, subtitle: nil, locations: Location.order(:name), return_to: nil)
+      def initialize(medication:, title:, subtitle: nil, locations: [], return_to: nil)
         @medication = medication
         @title = title
         @subtitle = subtitle

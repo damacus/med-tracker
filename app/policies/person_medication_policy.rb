@@ -10,7 +10,10 @@ class PersonMedicationPolicy < ApplicationPolicy
   end
 
   def create?
-    admin? || self_or_dependent? || parent_with_minor?
+    return false unless create_person_permitted?
+    return true if record.is_a?(Class) || record.medication_id.blank?
+
+    permitted_medications.exists?(id: record.medication_id)
   end
 
   alias new? create?
@@ -30,6 +33,16 @@ class PersonMedicationPolicy < ApplicationPolicy
   end
 
   private
+
+  def create_person_permitted?
+    admin? || self_or_dependent? || parent_with_minor?
+  end
+
+  def permitted_medications
+    return Medication.all if admin?
+
+    MedicationPolicy::Scope.new(user, Medication.all).resolve
+  end
 
   def self_or_dependent?
     return false unless user&.person

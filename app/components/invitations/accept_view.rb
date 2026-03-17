@@ -5,8 +5,9 @@ module Components
     class AcceptView < Components::Base
       include Phlex::Rails::Helpers::FormWith
 
-      def initialize(invitation:)
+      def initialize(invitation:, token:)
         @invitation = invitation
+        @token = token
       end
 
       def view_template
@@ -51,7 +52,7 @@ module Components
         # Post to Rodauth's create account path, but include the invitation token
         form_with(url: view_context.rodauth.create_account_path, method: :post, class: 'space-y-6',
                   data: { turbo: false }) do
-          input(type: 'hidden', name: 'invitation_token', value: @invitation.token)
+          input(type: 'hidden', name: 'invitation_token', value: @token)
 
           FormField do
             FormFieldLabel(for: 'name') { 'Name' }

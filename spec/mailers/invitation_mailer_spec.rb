@@ -4,8 +4,11 @@ require 'rails_helper'
 
 RSpec.describe InvitationMailer do
   describe '#invite' do
-    let(:invitation) { Invitation.new(email: 'invitee@example.com', role: :carer, token: 'test-token-123') }
-    let(:mail) { described_class.with(invitation: invitation).invite }
+    let(:token) { 'test-token-123' }
+    let(:invitation) do
+      Invitation.new(email: 'invitee@example.com', role: :carer, token_digest: Invitation.digest(token))
+    end
+    let(:mail) { described_class.with(invitation: invitation, token: token).invite }
 
     it 'renders the recipient email' do
       expect(mail.to).to eq(['invitee@example.com'])
