@@ -176,7 +176,15 @@ cy:
         confirm_password_label: "Cadarnhau Cyfrinair Newydd"
 
   admin:
+    invitations:
+      created: "Anfonwyd y gwahoddiad"
+      resent: "Ailanfonwyd y gwahoddiad"
+      cannot_resend_accepted: "Ni ellir ailanfon gwahoddiadau sydd wedi'u derbyn"
+      resend_failed: "Ni ellid ailanfon y gwahoddiad hwn. Mae'n bosibl bod gwahoddiad sy'n aros am yr e-bost hwn eisoes yn bodoli."
     carer_relationships:
+      created: "Crëwyd perthynas gofalwr yn llwyddiannus."
+      deactivated: "Mae perthynas gofalwr wedi'i ddadactifadu."
+      activated: "Mae perthynas gofalwr wedi'i hactifadu."
       index:
         title: "Perthnasoedd Gofalwr"
         subtitle: "Rheoli aseiniadau gofalwr-claf."

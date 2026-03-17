@@ -176,7 +176,15 @@ es:
         confirm_password_label: "Confirmar nueva contraseña"
 
   admin:
+    invitations:
+      created: "Invitación enviada"
+      resent: "Invitación reenviada"
+      cannot_resend_accepted: "Las invitaciones aceptadas no se pueden reenviar"
+      resend_failed: "No se pudo reenviar esta invitación. Es posible que ya exista una invitación pendiente para este correo electrónico."
     carer_relationships:
+      created: "La relación de cuidador se creó correctamente."
+      deactivated: "La relación de cuidador ha sido desactivada."
+      activated: "La relación de cuidador ha sido activada."
       index:
         title: "Relaciones de Cuidador"
         subtitle: "Gestionar asignaciones de cuidador-paciente."
