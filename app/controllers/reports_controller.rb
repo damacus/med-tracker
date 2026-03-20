@@ -36,13 +36,13 @@ class ReportsController < ApplicationController
     person_ids = people.map(&:id)
 
     # Pre-fetch takes and schedules to avoid N+1
-    takes = MedicationTake.where(schedule_id: Schedule.where(person_id: person_ids).select(:id))
-                          .where(taken_at: start_date.beginning_of_day..end_date.end_of_day)
-                          .group_by { |t| t.taken_at.to_date }
-
     schedules = Schedule.where(person_id: person_ids)
                         .where('start_date <= ? AND (end_date IS NULL OR end_date >= ?)', end_date, start_date)
                         .to_a
+
+    takes = MedicationTake.where(schedule_id: schedules.map(&:id))
+                          .where(taken_at: start_date.beginning_of_day..end_date.end_of_day)
+                          .group_by { |t| t.taken_at.to_date }
 
     (start_date..end_date).map do |date|
       active_schedules = schedules.select do |p|
