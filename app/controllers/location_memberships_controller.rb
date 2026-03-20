@@ -29,6 +29,6 @@ class LocationMembershipsController < ApplicationController
   private
 
   def set_location
-    @location = Location.find(params[:location_id])
+    @location = policy_scope(Location).find(params[:location_id])
   end
 end
