@@ -61,6 +61,7 @@ module Components
               name: 'refill[quantity]',
               required: true,
               value: quantity,
+              min: '1',
               class: 'w-full rounded-md border border-input bg-background px-3 py-2 text-sm'
             )
           end
