@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.3.33](https://github.com/damacus/med-tracker/compare/v0.3.32...v0.3.33) (2026-03-21)
+
+
+### Features
+
+* 🎨 Palette: Add minimum value to refill quantity input ([#1000](https://github.com/damacus/med-tracker/issues/1000)) ([9ab634f](https://github.com/damacus/med-tracker/commit/9ab634f6ac8616118e75028b5115ec5d81391d51))
+* 🛡️ Sentinel: [MEDIUM] Replace Arel.sql with Hash-based ordering ([#1007](https://github.com/damacus/med-tracker/issues/1007)) ([958e224](https://github.com/damacus/med-tracker/commit/958e22453ea9158f92294de23d23d6629e3592f4))
+
+
+### Bug Fixes
+
+* 🛡️ Sentinel: [High] Fix Insecure Direct Object Reference (IDOR) in LocationMembershipsController ([#1002](https://github.com/damacus/med-tracker/issues/1002)) ([388a358](https://github.com/damacus/med-tracker/commit/388a35886804550fd93acc476737abcd0cfc34f7))
+* 🛡️ Sentinel: [HIGH] Fix symbol exhaustion vulnerability in sorting ([#993](https://github.com/damacus/med-tracker/issues/993)) ([b29aacd](https://github.com/damacus/med-tracker/commit/b29aacd567226f3eb97593fe520811b1f185e0d0))
+
+
+### Performance Improvements
+
+* ⚡ Bolt: optimize reports controller daily compliance n+1 query ([#1003](https://github.com/damacus/med-tracker/issues/1003)) ([9d29792](https://github.com/damacus/med-tracker/commit/9d297920f810ca32755a0afe8a5e34d6899d7e66))
+
 ## [0.3.32](https://github.com/damacus/med-tracker/compare/v0.3.31...v0.3.32) (2026-03-14)
 
 
