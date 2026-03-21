@@ -200,7 +200,7 @@ module Admin
       case sort_column
       when 'name'
         # Security: sort_direction is already validated against %w[asc desc] above
-        # Sentinel: Using merge syntax for safer query generation without string interpolation (defense in depth)
+
         scope.left_joins(:person).merge(Person.order(name: direction_sym))
       when 'email'
         scope.order(email_address: direction_sym)
