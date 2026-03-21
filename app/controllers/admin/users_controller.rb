@@ -200,7 +200,8 @@ module Admin
       case sort_column
       when 'name'
         # Security: sort_direction is already validated against %w[asc desc] above
-        scope.left_joins(:person).order(Arel.sql("people.name #{sort_direction}"))
+
+        scope.left_joins(:person).merge(Person.order(name: direction_sym))
       when 'email'
         scope.order(email_address: direction_sym)
       when 'role'
