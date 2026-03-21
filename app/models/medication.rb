@@ -68,7 +68,7 @@ class Medication < ApplicationRecord # :nodoc:
 
   def sync_dosages
     return unless persisted? && switched_to_single_dose_mode?
-    return if schedules.exists?
+    return if schedules.loaded? ? schedules.to_a.any? : schedules.exists?
 
     # When switching to single-dose mode (dosage_amount is set),
     # remove all orphaned multi-dose records to prevent data pollution.
@@ -130,7 +130,9 @@ class Medication < ApplicationRecord # :nodoc:
       schedule.max_daily_doses.to_f / (schedule.cycle_period / 1.day)
     end
 
-    pm_rate = person_medications.sum do |pm|
+    # ⚡ Bolt Optimization: Use .to_a.sum instead of .sum to evaluate
+    # in-memory and prevent N+1 queries for preloaded person_medications.
+    pm_rate = person_medications.to_a.sum do |pm|
       next 0.0 if pm.max_daily_doses.blank?
 
       pm.max_daily_doses.to_f
@@ -183,7 +185,7 @@ class Medication < ApplicationRecord # :nodoc:
 
   def single_dose_switch_requires_no_schedules
     return unless switching_to_single_dose_mode?
-    return unless schedules.exists?
+    return unless schedules.loaded? ? schedules.to_a.any? : schedules.exists?
 
     errors.add(:dosage_amount,
                'cannot switch to a single standard dose while schedules still use dose options')
