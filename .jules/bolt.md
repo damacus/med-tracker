@@ -30,3 +30,7 @@
 ## 2026-03-07 - Cache Timing Restriction State Per Card Render
 **Learning:** MedTracker medication cards can evaluate the same timing restriction logic multiple times in one render path: once for countdown visibility, again for the disabled button state, and again for disabled-label copy. On cooldown states this multiplies `can_take_now?` work across every visible card.
 **Action:** In card components that render medication actions, cache `can_take_now?`, out-of-stock state, and blocked reason per render using instance variables guarded with `instance_variable_defined?`. That keeps cooldown/out-of-stock renders to a single timing evaluation while preserving behavior.
+
+## 2026-03-08 - Avoid Redundant Subqueries When Array is Materialized Immediately Afterwards
+**Learning:** In `reports_controller.rb`, extracting `Schedule.where(person_id: person_ids).select(:id)` as a subquery constraint for `MedicationTake` forced an extra database subquery, even though the exact filtered subset of active `schedules` was materialized into an array on the very next line via `.to_a`.
+**Action:** Order ActiveRecord relation evaluations logically to maximize reuse. If a collection must be materialized into a Ruby array anyway, compute it first, and then map its IDs (`schedules.map(&:id)`) to constrain subsequent queries instead of duplicating the database effort with a subquery.
