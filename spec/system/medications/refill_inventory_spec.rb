@@ -60,6 +60,6 @@ RSpec.describe 'Refill medication inventory' do
 
     click_button 'Refill'
 
-    expect(page).to have_content('Quantity must be greater than 0')
+    expect(page).to have_css('#refill_quantity:invalid')
   end
 end
