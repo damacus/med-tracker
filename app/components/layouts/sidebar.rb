@@ -114,7 +114,8 @@ module Components
             button(
               type: 'submit',
               class: 'w-full flex items-center justify-center md:justify-start gap-4 px-4 py-3 rounded-2xl ' \
-                     'text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-all group'
+                     'text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-all group',
+              aria_label: t('layouts.sidebar.sign_out')
             ) do
               div(class: 'group-hover:scale-110 transition-transform flex items-center justify-center') do
                 render Icons::LogOut.new(size: 24)
