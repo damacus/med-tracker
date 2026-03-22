@@ -15,7 +15,7 @@ RSpec.describe DoseTimingPolicy do
   end
 
   def fake_take(taken_at:)
-    instance_double('MedicationTake', taken_at: taken_at)
+    instance_double(MedicationTake, taken_at: taken_at)
   end
 
   describe '#restrictions?' do

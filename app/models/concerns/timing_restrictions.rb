@@ -20,9 +20,7 @@ module TimingRestrictions
 
   def timing_restrictions? = timing_policy.restrictions?
   def can_take_now? = timing_policy.can_take_at?
-  def next_available_time = timing_policy.next_available_time
-  def time_until_next_dose = timing_policy.time_until_next_dose
-  def countdown_display = timing_policy.countdown_display
+  delegate :next_available_time, :time_until_next_dose, :countdown_display, to: :timing_policy
 
   def can_administer?
     return false if medication.out_of_stock?
