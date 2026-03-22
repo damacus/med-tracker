@@ -9,7 +9,11 @@ module TimingRestrictions
 
   def timing_policy
     cycle = respond_to?(:dose_cycle) ? dose_cycle : 'daily'
-    takes = medication_takes.to_a
+    takes = if medication_takes.loaded?
+              medication_takes.to_a
+            else
+              medication_takes.where(taken_at: 30.days.ago..Time.current.end_of_day).to_a
+            end
     DoseTimingPolicy.new(
       takes: takes,
       max_daily_doses: max_daily_doses,
