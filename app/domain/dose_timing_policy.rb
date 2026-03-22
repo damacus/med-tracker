@@ -16,18 +16,18 @@ class DoseTimingPolicy
     @dose_cycle = dose_cycle
   end
 
-  def has_restrictions?
+  def restrictions?
     @max_daily_doses.present? || @min_hours_between_doses.present?
   end
 
   def can_take_at?(check_time = Time.current)
-    return true unless has_restrictions?
+    return true unless restrictions?
 
     !would_violate_restrictions?(check_time)
   end
 
   def next_available_time
-    return nil unless has_restrictions?
+    return nil unless restrictions?
     return Time.current if can_take_at?
 
     calculate_next_available_time
@@ -100,17 +100,17 @@ class DoseTimingPolicy
 
   def cycle_range(time)
     case @dose_cycle
-    when 'weekly'  then time.all_week
+    when 'weekly' then time.all_week
     when 'monthly' then time.all_month
-    else                time.all_day
+    else time.all_day
     end
   end
 
   def next_cycle_reset_time(time)
     case @dose_cycle
-    when 'weekly'  then time.end_of_week + 1.second
+    when 'weekly' then time.end_of_week + 1.second
     when 'monthly' then time.end_of_month + 1.second
-    else                time.end_of_day + 1.second
+    else time.end_of_day + 1.second
     end
   end
 end

@@ -18,17 +18,17 @@ RSpec.describe DoseTimingPolicy do
     instance_double('MedicationTake', taken_at: taken_at)
   end
 
-  describe '#has_restrictions?' do
+  describe '#restrictions?' do
     it 'returns false when no restrictions set' do
-      expect(policy.has_restrictions?).to be false
+      expect(policy.restrictions?).to be false
     end
 
     it 'returns true when max_daily_doses set' do
-      expect(policy(max_daily_doses: 3).has_restrictions?).to be true
+      expect(policy(max_daily_doses: 3).restrictions?).to be true
     end
 
     it 'returns true when min_hours_between_doses set' do
-      expect(policy(min_hours_between_doses: 4).has_restrictions?).to be true
+      expect(policy(min_hours_between_doses: 4).restrictions?).to be true
     end
   end
 

@@ -9,7 +9,7 @@ module TimingRestrictions
 
   def timing_policy
     cycle = respond_to?(:dose_cycle) ? dose_cycle : 'daily'
-    takes = medication_takes.loaded? ? medication_takes.to_a : medication_takes.to_a
+    takes = medication_takes.to_a
     DoseTimingPolicy.new(
       takes: takes,
       max_daily_doses: max_daily_doses,
@@ -18,11 +18,11 @@ module TimingRestrictions
     )
   end
 
-  def timing_restrictions? = timing_policy.has_restrictions?
-  def can_take_now?        = timing_policy.can_take_at?
-  def next_available_time  = timing_policy.next_available_time
+  def timing_restrictions? = timing_policy.restrictions?
+  def can_take_now? = timing_policy.can_take_at?
+  def next_available_time = timing_policy.next_available_time
   def time_until_next_dose = timing_policy.time_until_next_dose
-  def countdown_display    = timing_policy.countdown_display
+  def countdown_display = timing_policy.countdown_display
 
   def can_administer?
     return false if medication.out_of_stock?
