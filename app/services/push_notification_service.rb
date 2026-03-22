@@ -2,6 +2,11 @@
 
 class PushNotificationService
   def self.send_to_account(account, title:, body:, path: '/')
+    send_web_push_to_account(account, title: title, body: body, path: path)
+    send_native_push_to_account(account, title: title, body: body, path: path)
+  end
+
+  def self.send_web_push_to_account(account, title:, body:, path: '/')
     vapid = build_vapid_config
     payload = { title: title, options: { body: body, data: { path: path } } }.to_json
 
@@ -9,6 +14,31 @@ class PushNotificationService
       deliver(sub, payload, vapid)
     end
   end
+  private_class_method :send_web_push_to_account
+
+  # Delivers OS push notifications to registered native iOS/Android devices.
+  #
+  # iOS uses APNs (Apple Push Notification service) and Android uses FCM
+  # (Firebase Cloud Messaging). This method logs the intent; wire up your
+  # preferred APNs/FCM gem (e.g. houston, apnotic, fcm) when those
+  # credentials are available.
+  #
+  # Suggested gems:
+  #   iOS  — apnotic (https://github.com/ostinelli/apnotic)
+  #   Android — fcm (https://github.com/spacialdb/fcm)
+  def self.send_native_push_to_account(account, title:, body:, path: '/')
+    tokens = account.native_device_tokens
+    return if tokens.none?
+
+    tokens.each do |token|
+      Rails.logger.info(
+        "[PushNotificationService] Native push queued: platform=#{token.platform} " \
+        "token=#{token.device_token.first(8)}… title=#{title.inspect} path=#{path.inspect}"
+      )
+      # TODO: deliver via APNs (platform "ios") or FCM (platform "android")
+    end
+  end
+  private_class_method :send_native_push_to_account
 
   def self.build_vapid_config
     subject = ENV.fetch('VAPID_SUBJECT',

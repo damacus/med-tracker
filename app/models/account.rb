@@ -7,6 +7,7 @@ class Account < ApplicationRecord
 
   has_one :person, dependent: :nullify
   has_many :push_subscriptions, dependent: :destroy
+  has_many :native_device_tokens, dependent: :destroy
   has_many :account_webauthn_keys, dependent: :destroy
   has_many :account_webauthn_user_ids, dependent: :destroy
 
