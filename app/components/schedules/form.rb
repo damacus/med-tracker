@@ -319,6 +319,7 @@ module Components
             name: 'schedule[max_daily_doses]',
             id: 'schedule_max_daily_doses',
             value: schedule.max_daily_doses,
+            placeholder: 'e.g., 4',
             min: 1,
             data: { schedule_form_target: 'maxDosesInput', action: 'input->schedule-form#generateFrequency' }
           )
@@ -334,6 +335,7 @@ module Components
             name: 'schedule[min_hours_between_doses]',
             id: 'schedule_min_hours_between_doses',
             value: schedule.min_hours_between_doses,
+            placeholder: 'e.g., 6',
             min: 0,
             step: '0.5',
             data: { schedule_form_target: 'minHoursInput', action: 'input->schedule-form#generateFrequency' }

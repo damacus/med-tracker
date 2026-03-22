@@ -137,6 +137,7 @@ module Components
             FormFieldLabel(for: 'dosage_default_max_daily_doses') { 'Max doses / cycle' }
             Input(type: :number, name: 'dosage[default_max_daily_doses]',
                   id: 'dosage_default_max_daily_doses',
+                  placeholder: 'e.g., 4',
                   value: dosage.default_max_daily_doses, min: 1)
           end
 
@@ -144,6 +145,7 @@ module Components
             FormFieldLabel(for: 'dosage_default_min_hours_between_doses') { 'Min hours apart' }
             Input(type: :number, name: 'dosage[default_min_hours_between_doses]',
                   id: 'dosage_default_min_hours_between_doses',
+                  placeholder: 'e.g., 6',
                   value: dosage.default_min_hours_between_doses, min: 0, step: '0.5')
           end
 
