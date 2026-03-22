@@ -1,0 +1,116 @@
+# frozen_string_literal: true
+
+# Domain policy object encapsulating the rules for when a medication dose can be taken.
+#
+# Accepts a plain enumerable of takes (any objects responding to #taken_at),
+# making it independently testable without ActiveRecord.
+#
+# Rules enforced:
+#   - max_daily_doses: cannot exceed this many doses in the current dose_cycle period
+#   - min_hours_between_doses: must wait this many hours after the last dose
+class DoseTimingPolicy
+  def initialize(takes:, max_daily_doses: nil, min_hours_between_doses: nil, dose_cycle: 'daily')
+    @takes = takes
+    @max_daily_doses = max_daily_doses
+    @min_hours_between_doses = min_hours_between_doses
+    @dose_cycle = dose_cycle
+  end
+
+  def has_restrictions?
+    @max_daily_doses.present? || @min_hours_between_doses.present?
+  end
+
+  def can_take_at?(check_time = Time.current)
+    return true unless has_restrictions?
+
+    !would_violate_restrictions?(check_time)
+  end
+
+  def next_available_time
+    return nil unless has_restrictions?
+    return Time.current if can_take_at?
+
+    calculate_next_available_time
+  end
+
+  def time_until_next_dose
+    return nil if can_take_at?
+
+    next_time = next_available_time
+    return nil unless next_time
+
+    (next_time - Time.current).to_i
+  end
+
+  def countdown_display
+    seconds = time_until_next_dose
+    return nil unless seconds
+    return 'less than 1 minute' if seconds < 60
+
+    hours = seconds / 3600
+    minutes = (seconds % 3600) / 60
+
+    hours.positive? ? "#{hours}h #{minutes}m" : "#{minutes}m"
+  end
+
+  private
+
+  def would_violate_restrictions?(check_time)
+    would_exceed_max_doses?(check_time) || would_violate_min_hours?(check_time)
+  end
+
+  def would_exceed_max_doses?(check_time)
+    return false if @max_daily_doses.blank?
+
+    range = cycle_range(check_time)
+    doses_in_cycle = @takes.count { |take| range.cover?(take.taken_at) }
+
+    doses_in_cycle >= @max_daily_doses
+  end
+
+  def would_violate_min_hours?(check_time)
+    return false if @min_hours_between_doses.blank?
+
+    last_take = @takes.select { |t| t.taken_at < check_time }.max_by(&:taken_at)
+    return false if last_take.blank?
+
+    hours_since_last = (check_time - last_take.taken_at) / 1.hour
+    hours_since_last < @min_hours_between_doses
+  end
+
+  def calculate_next_available_time
+    [next_time_from_min_hours, next_time_from_max_doses].compact.min
+  end
+
+  def next_time_from_min_hours
+    return nil if @min_hours_between_doses.blank?
+
+    last_take = @takes.max_by(&:taken_at)
+    return nil unless last_take
+
+    last_take.taken_at + @min_hours_between_doses.hours
+  end
+
+  def next_time_from_max_doses
+    return nil if @max_daily_doses.blank?
+    return nil unless would_exceed_max_doses?(Time.current)
+
+    next_cycle_reset_time(Time.current)
+  end
+
+  def cycle_range(time)
+    case @dose_cycle
+    when 'weekly'  then time.all_week
+    when 'monthly' then time.all_month
+    else                time.all_day
+    end
+  end
+
+  def next_cycle_reset_time(time)
+    case @dose_cycle
+    when 'weekly'  then time.end_of_week + 1.second
+    when 'monthly' then time.end_of_month + 1.second
+    else                time.end_of_day + 1.second
+    end
+  end
+end
