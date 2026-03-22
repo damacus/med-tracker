@@ -13,7 +13,10 @@ module Components
             render RubyUI::FormFieldLabel.new(
               for: 'medication_location_id_trigger',
               class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1'
-            ) { t('medications.show.location') }
+            ) do
+              plain t('medications.show.location')
+              span(class: 'text-destructive ml-0.5') { ' *' }
+            end
             render RubyUI::Combobox.new(class: 'w-full') do
               render RubyUI::ComboboxTrigger.new(
                 placeholder: selected_location_name || t('forms.medications.select_location'),
@@ -52,7 +55,10 @@ module Components
             render RubyUI::FormFieldLabel.new(
               for: 'medication_name',
               class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1'
-            ) { t('forms.medications.name') }
+            ) do
+              plain t('forms.medications.name')
+              span(class: 'text-destructive ml-0.5') { ' *' }
+            end
             render RubyUI::Input.new(
               type: :text,
               name: 'medication[name]',
