@@ -20,7 +20,10 @@ module TimingRestrictions
     end
   end
 
-  def timing_restrictions? = timing_policy.restrictions?
+  def timing_restrictions?
+    max_daily_doses.present? || min_hours_between_doses.present?
+  end
+
   def can_take_now? = timing_policy.can_take_at?
   delegate :next_available_time, :time_until_next_dose, :countdown_display, to: :timing_policy
 
