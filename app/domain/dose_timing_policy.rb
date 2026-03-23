@@ -1,13 +1,5 @@
 # frozen_string_literal: true
 
-# Domain policy object encapsulating the rules for when a medication dose can be taken.
-#
-# Accepts a plain enumerable of takes (any objects responding to #taken_at),
-# making it independently testable without ActiveRecord.
-#
-# Rules enforced:
-#   - max_daily_doses: cannot exceed this many doses in the current dose_cycle period
-#   - min_hours_between_doses: must wait this many hours after the last dose
 class DoseTimingPolicy
   def initialize(takes:, max_daily_doses: nil, min_hours_between_doses: nil, dose_cycle: 'daily')
     @takes = takes

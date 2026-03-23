@@ -24,7 +24,11 @@ module TimingRestrictions
     max_daily_doses.present? || min_hours_between_doses.present?
   end
 
-  def can_take_now? = timing_policy.can_take_at?
+  def can_take_now?
+    return true unless timing_restrictions?
+
+    timing_policy.can_take_at?
+  end
   delegate :next_available_time, :time_until_next_dose, :countdown_display, to: :timing_policy
 
   def can_administer?
