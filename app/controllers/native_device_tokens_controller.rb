@@ -4,7 +4,6 @@ class NativeDeviceTokensController < ApplicationController
   def create
     token = NativeDeviceToken.find_or_initialize_by(device_token: params[:device_token])
     token.assign_attributes(account: current_account, platform: params[:platform], user_agent: request.user_agent)
-    token.assign_attributes(platform: params[:platform], user_agent: request.user_agent)
 
     if token.save
       head :created
