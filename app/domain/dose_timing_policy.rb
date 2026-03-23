@@ -90,6 +90,6 @@ class DoseTimingPolicy
     next_cycle_reset_time(Time.current)
   end
 
-  def cycle_range(time)        = @cycle.range_for(time)
-  def next_cycle_reset_time(t) = @cycle.next_reset_time(t)
+  def cycle_range(time) = @cycle.range_for(time)
+  def next_cycle_reset_time(time) = @cycle.next_reset_time(time)
 end

@@ -36,11 +36,7 @@ class PersonMedication < ApplicationRecord
   end
 
   def cycle_period
-    case dose_cycle
-    when 'weekly' then 1.week
-    when 'monthly' then 1.month
-    else 1.day
-    end
+    DoseCycle.new(dose_cycle).period
   end
 
   def dose_display
