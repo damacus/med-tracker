@@ -26,8 +26,8 @@ class DoseCycle
 
   def period
     case @value
-    when 'weekly' then 7.days
-    when 'monthly' then 30.days
+    when 'weekly' then 1.week
+    when 'monthly' then 1.month
     else 1.day
     end
   end

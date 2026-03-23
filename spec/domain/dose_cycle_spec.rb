@@ -39,8 +39,8 @@ RSpec.describe DoseCycle do
 
   describe '#period' do
     it { expect(described_class.new('daily').period).to eq(1.day) }
-    it { expect(described_class.new('weekly').period).to eq(7.days) }
-    it { expect(described_class.new('monthly').period).to eq(30.days) }
+    it { expect(described_class.new('weekly').period).to eq(1.week) }
+    it { expect(described_class.new('monthly').period).to eq(1.month) }
   end
 
   describe '#to_s' do
