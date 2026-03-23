@@ -132,6 +132,56 @@ RSpec.describe Schedule do
     end
   end
 
+  describe '#active?' do
+    let(:schedule) do
+      described_class.new(
+        start_date: start_date,
+        end_date: end_date
+      )
+    end
+    let(:start_date) { Time.zone.today }
+    let(:end_date) { Time.zone.today + 30.days }
+
+    context 'when today is between start_date and end_date (inclusive)' do
+      it 'returns true' do
+        expect(schedule.active?).to be true
+      end
+    end
+
+    context 'when today is before start_date' do
+      let(:start_date) { Time.zone.today + 5.days }
+
+      it 'returns false' do
+        expect(schedule.active?).to be false
+      end
+    end
+
+    context 'when today is after end_date' do
+      let(:start_date) { Time.zone.today - 30.days }
+      let(:end_date) { Time.zone.today - 5.days }
+
+      it 'returns false' do
+        expect(schedule.active?).to be false
+      end
+    end
+
+    context 'when start_date is nil' do
+      let(:start_date) { nil }
+
+      it 'returns false' do
+        expect(schedule.active?).to be false
+      end
+    end
+
+    context 'when end_date is nil' do
+      let(:end_date) { nil }
+
+      it 'returns false' do
+        expect(schedule.active?).to be false
+      end
+    end
+  end
+
   describe 'associations' do
     it { is_expected.to belong_to(:person) }
     it { is_expected.to belong_to(:dosage) }
