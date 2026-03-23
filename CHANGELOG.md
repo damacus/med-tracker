@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.34](https://github.com/damacus/med-tracker/compare/v0.3.33...v0.3.34) (2026-03-23)
+
+
+### Features
+
+* 🎨 Palette: [Add placeholders to complex form inputs] ([#1008](https://github.com/damacus/med-tracker/issues/1008)) ([6aadeb0](https://github.com/damacus/med-tracker/commit/6aadeb0b104c44310655de5d6973429fe3e4d036))
+* Add Turbo Native Phase 1: detection, native layout, and device token infrastructure ([#1010](https://github.com/damacus/med-tracker/issues/1010)) ([97ba4ad](https://github.com/damacus/med-tracker/commit/97ba4add5f4cc5f24a5a66fa86ed1bd235f16d92))
+
+
+### Performance Improvements
+
+* ⚡ Bolt: Prevent redundant COUNT query in locations view ([#1013](https://github.com/damacus/med-tracker/issues/1013)) ([6a80eac](https://github.com/damacus/med-tracker/commit/6a80eacef159150ced9031c43f5188b66ef0c9f1))
+
 ## [0.3.33](https://github.com/damacus/med-tracker/compare/v0.3.32...v0.3.33) (2026-03-21)
 
 
