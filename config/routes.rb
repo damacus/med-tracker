@@ -91,6 +91,7 @@ Rails.application.routes.draw do
   resource :push_subscription, only: %i[create destroy] do
     post :test, on: :collection
   end
+  resources :native_device_tokens, only: %i[create destroy]
   resource :notification_preference, only: %i[update]
 
   # Progressive Web App assets
