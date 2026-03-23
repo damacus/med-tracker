@@ -27,8 +27,15 @@ RSpec.describe Invitation do
   end
 
   describe '.assignable_roles' do
-    it 'excludes minor' do
-      expect(described_class.assignable_roles.keys).not_to include('minor')
+    it 'returns all roles except minor' do
+      expected_roles = {
+        'administrator' => 0,
+        'doctor' => 1,
+        'nurse' => 2,
+        'carer' => 3,
+        'parent' => 4
+      }
+      expect(described_class.assignable_roles).to eq(expected_roles)
     end
   end
 
