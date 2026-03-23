@@ -147,9 +147,8 @@ module Components
 
       def medication_description(medication)
         parts = [medication.name]
-        if medication.dosage_amount.present? && medication.dosage_unit.present?
-          parts << "#{medication.dosage_amount.to_f.to_s.sub(/\.0$/, '')}#{medication.dosage_unit}"
-        end
+        dose = DoseAmount.new(medication.dosage_amount, medication.dosage_unit).to_s
+        parts << dose if dose.present?
         parts.join(' • ')
       end
 
