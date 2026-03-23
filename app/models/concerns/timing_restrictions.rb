@@ -4,20 +4,18 @@ module TimingRestrictions
   extend ActiveSupport::Concern
 
   def timing_policy
-    @timing_policy ||= begin
-      cycle = respond_to?(:dose_cycle) ? dose_cycle : 'daily'
-      takes = if medication_takes.loaded?
-                medication_takes.to_a
-              else
-                medication_takes.where(taken_at: 31.days.ago.beginning_of_day..Time.current.end_of_day).to_a
-              end
-      DoseTimingPolicy.new(
-        takes: takes,
-        max_daily_doses: max_daily_doses,
-        min_hours_between_doses: min_hours_between_doses,
-        dose_cycle: cycle
-      )
-    end
+    cycle = respond_to?(:dose_cycle) ? dose_cycle : 'daily'
+    takes = if medication_takes.loaded?
+              medication_takes.to_a
+            else
+              medication_takes.where(taken_at: 31.days.ago.beginning_of_day..Time.current.end_of_day).to_a
+            end
+    DoseTimingPolicy.new(
+      takes: takes,
+      max_daily_doses: max_daily_doses,
+      min_hours_between_doses: min_hours_between_doses,
+      dose_cycle: cycle
+    )
   end
 
   def timing_restrictions?

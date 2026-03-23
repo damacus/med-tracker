@@ -71,7 +71,7 @@ class DoseTimingPolicy
   end
 
   def calculate_next_available_time
-    [next_time_from_min_hours, next_time_from_max_doses].compact.min
+    [next_time_from_min_hours, next_time_from_max_doses].compact.max
   end
 
   def next_time_from_min_hours
