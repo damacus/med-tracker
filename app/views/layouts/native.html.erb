@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="<%= I18n.locale %>">
+  <head>
+    <meta charset="UTF-8">
+    <title><%= content_for(:title) || "Med Tracker" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="theme-color" content="#f8fafc">
+
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    <%= yield :head %>
+
+    <%= javascript_include_tag "appearance_boot", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+  </head>
+
+  <body class="bg-background">
+    <% if content_for?(:flash) %>
+      <%= yield :flash %>
+    <% else %>
+      <div id="flash">
+        <%= render Components::Layouts::Flash.new(notice: notice, alert: alert, warning: flash[:warning]) %>
+      </div>
+    <% end %>
+
+    <main>
+      <div id="main-content">
+        <%= yield %>
+      </div>
+    </main>
+    <turbo-frame id="modal"></turbo-frame>
+  </body>
+</html>

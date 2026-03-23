@@ -4,6 +4,7 @@ class ApplicationController < ActionController::Base
   include Authentication
   include Pundit::Authorization
   include Pagy::Method
+  include TurboNativeDetectable
 
   before_action :set_paper_trail_whodunnit
 
