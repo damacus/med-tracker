@@ -235,7 +235,9 @@ module Components
             end
 
             DialogMiddle do
-              if available_people.any?
+              # ⚡ Bolt Optimization: Use .to_a.any? instead of .any? to materialize the relation
+              # preventing a redundant COUNT query when checking if there are available people.
+              if available_people.to_a.any?
                 form_with(url: location_location_memberships_path(location), method: :post, class: 'space-y-4') do
                   div(class: 'space-y-2') do
                     label(for: 'location_membership_person_id', class: 'text-sm font-medium') do
