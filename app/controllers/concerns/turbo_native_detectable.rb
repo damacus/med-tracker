@@ -11,10 +11,10 @@ module TurboNativeDetectable
   private
 
   def turbo_native_app?
-    request.user_agent.to_s.include?("Turbo Native")
+    request.user_agent.to_s.include?('Turbo Native')
   end
 
   def resolve_layout
-    turbo_native_app? ? "native" : "application"
+    turbo_native_app? ? 'native' : 'application'
   end
 end

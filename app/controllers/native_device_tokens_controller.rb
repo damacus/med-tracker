@@ -8,7 +8,7 @@ class NativeDeviceTokensController < ApplicationController
     if token.save
       head :created
     else
-      render json: { error: "Unable to save device token.", errors: token.errors.full_messages },
+      render json: { error: 'Unable to save device token.', errors: token.errors.full_messages },
              status: :unprocessable_content
     end
   end
@@ -20,7 +20,7 @@ class NativeDeviceTokensController < ApplicationController
     if token.destroy
       head :no_content
     else
-      render json: { error: "Unable to remove device token.", errors: token.errors.full_messages },
+      render json: { error: 'Unable to remove device token.', errors: token.errors.full_messages },
              status: :unprocessable_content
     end
   end

@@ -23,7 +23,7 @@ class PushNotificationService
     tokens.each do |token|
       Rails.logger.info(
         "[PushNotificationService] Native push queued: platform=#{token.platform} " \
-        "token=#{token.device_token.first(8)}… title=#{title.inspect} path=#{path.inspect}"
+        "token=#{token.device_token.first(8)}… title=#{title.inspect} body=#{body.inspect} path=#{path.inspect}"
       )
     end
   end
