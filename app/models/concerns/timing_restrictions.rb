@@ -21,7 +21,7 @@ module TimingRestrictions
   end
 
   def reload(*)
-    @timing_policy = nil
+    remove_instance_variable(:@timing_policy) if defined?(@timing_policy)
     super
   end
 
