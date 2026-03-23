@@ -1,9 +1,5 @@
 # frozen_string_literal: true
 
-# Registers and deregisters native push notification device tokens (APNs/FCM).
-# Called by the Turbo Native iOS/Android shell after it receives a device token
-# from the OS. The token is later used by PushNotificationService to deliver
-# OS-level push notifications.
 class NativeDeviceTokensController < ApplicationController
   def create
     token = current_account.native_device_tokens.find_or_initialize_by(device_token: params[:device_token])

@@ -5,7 +5,7 @@ class CreateNativeDeviceTokens < ActiveRecord::Migration[8.0]
     create_table :native_device_tokens do |t|
       t.references :account, null: false, foreign_key: true
       t.string :device_token, null: false
-      t.string :platform, null: false  # "ios" or "android"
+      t.string :platform, null: false
       t.string :user_agent
 
       t.timestamps
