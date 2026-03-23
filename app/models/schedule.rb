@@ -33,14 +33,7 @@ class Schedule < ApplicationRecord
   end
 
   def cycle_period
-    case dose_cycle
-    when 'weekly'
-      7.days
-    when 'monthly'
-      30.days
-    else
-      1.day # Handles 'daily', nil, and any other values
-    end
+    DoseCycle.new(dose_cycle).period
   end
 
   private

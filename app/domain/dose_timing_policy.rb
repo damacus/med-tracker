@@ -5,7 +5,7 @@ class DoseTimingPolicy
     @takes = takes
     @max_daily_doses = max_daily_doses
     @min_hours_between_doses = min_hours_between_doses
-    @dose_cycle = dose_cycle
+    @cycle = DoseCycle.new(dose_cycle)
   end
 
   def restrictions?
@@ -90,19 +90,6 @@ class DoseTimingPolicy
     next_cycle_reset_time(Time.current)
   end
 
-  def cycle_range(time)
-    case @dose_cycle
-    when 'weekly' then time.all_week
-    when 'monthly' then time.all_month
-    else time.all_day
-    end
-  end
-
-  def next_cycle_reset_time(time)
-    case @dose_cycle
-    when 'weekly' then time.end_of_week + 1.second
-    when 'monthly' then time.end_of_month + 1.second
-    else time.end_of_day + 1.second
-    end
-  end
+  def cycle_range(time)        = @cycle.range_for(time)
+  def next_cycle_reset_time(t) = @cycle.next_reset_time(t)
 end
