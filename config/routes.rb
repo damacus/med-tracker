@@ -1,6 +1,25 @@
 # frozen_string_literal: true
 
 Rails.application.routes.draw do
+  namespace :api do
+    namespace :v1 do
+      namespace :auth do
+        post :login, to: 'sessions#create'
+        post :refresh, to: 'sessions#refresh'
+        delete :logout, to: 'sessions#destroy'
+      end
+
+      resource :me, only: [:show], controller: 'me'
+      resources :people, only: %i[index show]
+      resources :locations, only: %i[index show]
+      resources :medications, only: %i[index show]
+      resources :schedules, only: %i[index show]
+      resources :person_medications, only: %i[index show]
+      resources :medication_takes, only: [:index]
+      resource :notification_preference, only: [:show]
+    end
+  end
+
   # Defines the root path route ("/")
   root 'dashboard#index'
 

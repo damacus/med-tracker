@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_13_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_24_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -131,6 +131,24 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_13_000001) do
     t.index ["email"], name: "index_accounts_on_email", unique: true, where: "(status = ANY (ARRAY[1, 2]))"
   end
 
+  create_table "api_sessions", force: :cascade do |t|
+    t.datetime "access_expires_at", null: false
+    t.string "access_token_digest", null: false
+    t.bigint "account_id", null: false
+    t.datetime "created_at", null: false
+    t.string "device_name"
+    t.datetime "last_used_at", null: false
+    t.datetime "refresh_expires_at", null: false
+    t.string "refresh_token_digest", null: false
+    t.datetime "revoked_at"
+    t.datetime "updated_at", null: false
+    t.string "user_agent"
+    t.index ["access_token_digest"], name: "index_api_sessions_on_access_token_digest", unique: true
+    t.index ["account_id"], name: "index_api_sessions_on_account_id"
+    t.index ["refresh_token_digest"], name: "index_api_sessions_on_refresh_token_digest", unique: true
+    t.index ["revoked_at"], name: "index_api_sessions_on_revoked_at"
+  end
+
   create_table "carer_relationships", force: :cascade do |t|
     t.boolean "active", default: true, null: false
     t.bigint "carer_id", null: false
@@ -168,8 +186,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_13_000001) do
     t.string "email"
     t.datetime "expires_at"
     t.integer "role"
-    t.datetime "updated_at", null: false
     t.string "token_digest"
+    t.datetime "updated_at", null: false
     t.index ["token_digest"], name: "index_invitations_on_token_digest", unique: true
   end
 
@@ -345,6 +363,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_13_000001) do
   add_foreign_key "account_verification_keys", "accounts"
   add_foreign_key "account_webauthn_keys", "accounts", on_delete: :cascade
   add_foreign_key "account_webauthn_user_ids", "accounts", on_delete: :cascade
+  add_foreign_key "api_sessions", "accounts"
   add_foreign_key "carer_relationships", "people", column: "carer_id", deferrable: :deferred
   add_foreign_key "carer_relationships", "people", column: "patient_id", deferrable: :deferred
   add_foreign_key "dosages", "medications", deferrable: :deferred
