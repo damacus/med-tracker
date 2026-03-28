@@ -10,7 +10,8 @@
 #     source: @schedule,
 #     amount_override: params[:amount_ml],
 #     taken_from_medication_id: params[:taken_from_medication_id],
-#     user: current_user
+#     user: current_user,
+#     taken_at: params[:taken_at] || Time.current   # optional, defaults to now
 #   )
 #   result.success  # => true / false
 #   result.take     # => MedicationTake record (when successful)
@@ -19,7 +20,7 @@
 class TakeMedicationService
   Result = Data.define(:success, :take, :error)
 
-  def call(source:, amount_override:, taken_from_medication_id:, user:)
+  def call(source:, amount_override:, taken_from_medication_id:, user:, taken_at: Time.current)
     resolver = MedicationStockSourceResolver.new(user: user, source: source)
 
     blocked = resolver.blocked_reason
@@ -36,7 +37,7 @@ class TakeMedicationService
     return Result.new(success: false, take: nil, error: :invalid_source) if medication.blank?
 
     take = source.medication_takes.create(
-      taken_at: Time.current,
+      taken_at: taken_at,
       amount_ml: amount,
       taken_from_medication: medication,
       taken_from_location: medication.location

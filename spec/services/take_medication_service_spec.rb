@@ -143,6 +143,28 @@ RSpec.describe TakeMedicationService do
     end
   end
 
+  describe 'taken_at override' do
+    let(:schedule) { schedules(:john_paracetamol) }
+    let(:custom_time) { 2.hours.ago }
+
+    it 'records the custom taken_at when provided' do
+      result = service.call(
+        source: schedule,
+        amount_override: nil,
+        taken_from_medication_id: nil,
+        user: user,
+        taken_at: custom_time
+      )
+      expect(result.success).to be true
+      expect(result.take.taken_at).to be_within(1.second).of(custom_time)
+    end
+
+    it 'defaults taken_at to now when not provided' do
+      result = call_service(source: schedule)
+      expect(result.take.taken_at).to be_within(5.seconds).of(Time.current)
+    end
+  end
+
   describe 'result object' do
     let(:schedule) { schedules(:john_paracetamol) }
 
