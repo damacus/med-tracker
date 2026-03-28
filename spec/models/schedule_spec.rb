@@ -191,9 +191,8 @@ RSpec.describe Schedule do
   describe '#frequency vs #dose_cycle' do
     let(:medication) { medications(:paracetamol) }
     let(:dosage) { Dosage.create!(medication: medication, amount: 10, unit: 'mg', frequency: 'daily') }
-
-    it 'frequency is a human-readable display string independent of dose_cycle' do
-      schedule = Schedule.create!(
+    let(:schedule) do
+      described_class.create!(
         person: people(:john),
         medication: medication,
         dosage: dosage,
@@ -204,15 +203,15 @@ RSpec.describe Schedule do
         max_daily_doses: 3,
         min_hours_between_doses: 4
       )
+    end
 
-      # frequency is a free-text label for human display
+    it 'frequency is a free-text display label, independent of dose_cycle' do
       expect(schedule.frequency).to eq('Up to 3 times daily, at least 4h apart')
-
-      # dose_cycle is the machine-readable period used for timing calculations
       expect(schedule.dose_cycle).to eq('daily')
       expect(schedule.cycle_period).to be_a(ActiveSupport::Duration)
+    end
 
-      # They can diverge: a weekly schedule can carry any frequency description
+    it 'frequency and dose_cycle can diverge independently' do
       schedule.update!(dose_cycle: :weekly, frequency: 'Once a week on Mondays')
       expect(schedule.dose_cycle).to eq('weekly')
       expect(schedule.frequency).to eq('Once a week on Mondays')
