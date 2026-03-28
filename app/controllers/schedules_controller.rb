@@ -152,57 +152,23 @@ class SchedulesController < ApplicationController
   def take_medication
     authorize @schedule, :take_medication?
 
-    reason = take_medication_blocked_reason(@schedule)
-    if reason
-      message = reason == :out_of_stock ? 'Cannot take medication: out of stock' : 'Cannot take medication: timing restrictions not met'
-      respond_to do |format|
-        format.html do
-          redirect_back_or_to person_path(@person),
-                              alert: t('schedules.cannot_take_medication', default: message)
-        end
-        format.turbo_stream do
-          flash.now[:alert] = t('schedules.cannot_take_medication', default: message)
-          render turbo_stream: turbo_stream.update('flash',
-                                                   Components::Layouts::Flash.new(alert: flash[:alert]))
-        end
-      end
-      return
-    end
-
-    amount = normalized_take_amount(params[:amount_ml].presence || @schedule.dosage.amount)
-    if invalid_take_amount?(amount)
-      log_invalid_take_attempt(
-        source: 'schedule',
-        amount: amount,
-        metadata: {
-          schedule_id: @schedule.id,
-          medication_id: @schedule.medication_id,
-          dosage_id: @schedule.dosage_id
-        }
-      )
-      respond_take_medication_invalid_dose(scope: 'schedules')
-      return
-    end
-
-    stock_source_error, taken_from_medication = resolve_taken_from_medication(@schedule)
-    if stock_source_error
-      respond_take_medication_stock_source_error(scope: 'schedules', error: stock_source_error)
-      return
-    end
-
-    @take = @schedule.medication_takes.create(
-      taken_at: Time.current,
-      amount_ml: amount,
-      taken_from_medication: taken_from_medication,
-      taken_from_location: taken_from_medication.location
+    result = TakeMedicationService.new.call(
+      source: @schedule,
+      amount_override: params[:amount_ml],
+      taken_from_medication_id: requested_taken_from_medication_id,
+      user: current_user
     )
-    unless @take.persisted?
-      respond_take_medication_invalid_dose(scope: 'schedules')
-      return
+
+    if result.error == :invalid_amount
+      log_invalid_take_attempt(source: 'schedule', amount: nil,
+                               metadata: { schedule_id: @schedule.id,
+                                           medication_id: @schedule.medication_id,
+                                           dosage_id: @schedule.dosage_id })
     end
 
-    flash.now[:notice] = t('schedules.medication_taken')
+    return handle_take_medication_failure(result.error, scope: 'schedules') unless result.success
 
+    @take = result.take
     respond_to do |format|
       format.html { redirect_back_or_to person_path(@person), notice: t('schedules.medication_taken') }
       format.turbo_stream do

@@ -133,59 +133,24 @@ class PersonMedicationsController < ApplicationController
   def take_medication
     authorize @person_medication, :take_medication?
 
-    reason = take_medication_blocked_reason(@person_medication)
-    if reason
-      message = reason == :out_of_stock ? 'Cannot take medication: out of stock' : 'Cannot take medication: timing restrictions not met'
-      respond_to do |format|
-        format.html do
-          redirect_back_or_to person_path(@person),
-                              alert: t('person_medications.cannot_take_medication', default: message)
-        end
-        format.turbo_stream do
-          flash.now[:alert] = t('person_medications.cannot_take_medication', default: message)
-          render turbo_stream: turbo_stream.update('flash',
-                                                   Components::Layouts::Flash.new(alert: flash[:alert]))
-        end
-      end
-      return
-    end
-
-    amount = normalized_take_amount(params[:amount_ml].presence || @person_medication.dose_amount)
-    if invalid_take_amount?(amount)
-      log_invalid_take_attempt(
-        source: 'person_medication',
-        amount: amount,
-        metadata: {
-          person_medication_id: @person_medication.id,
-          medication_id: @person_medication.medication_id
-        }
-      )
-      respond_take_medication_invalid_dose(scope: 'person_medications')
-      return
-    end
-
-    stock_source_error, taken_from_medication = resolve_taken_from_medication(@person_medication)
-    if stock_source_error
-      respond_take_medication_stock_source_error(scope: 'person_medications', error: stock_source_error)
-      return
-    end
-
-    @take = @person_medication.medication_takes.create(
-      taken_at: Time.current,
-      amount_ml: amount,
-      taken_from_medication: taken_from_medication,
-      taken_from_location: taken_from_medication.location
+    result = TakeMedicationService.new.call(
+      source: @person_medication,
+      amount_override: params[:amount_ml],
+      taken_from_medication_id: requested_taken_from_medication_id,
+      user: current_user
     )
-    unless @take.persisted?
-      respond_take_medication_invalid_dose(scope: 'person_medications')
-      return
+
+    if result.error == :invalid_amount
+      log_invalid_take_attempt(source: 'person_medication', amount: nil,
+                               metadata: { person_medication_id: @person_medication.id,
+                                           medication_id: @person_medication.medication_id })
     end
 
-    flash.now[:notice] = t('person_medications.medication_taken')
+    return handle_take_medication_failure(result.error, scope: 'person_medications') unless result.success
 
+    @take = result.take
     respond_to do |format|
       format.html { redirect_back_or_to person_path(@person), notice: t('person_medications.medication_taken') }
-
       format.turbo_stream do
         flash.now[:notice] = t('person_medications.medication_taken')
         streams = build_timeline_streams_for(@person_medication.reload, @take)
