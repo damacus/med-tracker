@@ -25,7 +25,9 @@ class Schedule < ApplicationRecord
   delegate :name, to: :person, prefix: true
   delegate :amount, :unit, to: :dosage, prefix: true, allow_nil: true
 
-  alias default_dose_amount dosage_amount
+  def default_dose_amount
+    dosage_amount
+  end
 
   def active?
     today = Time.zone.today
