@@ -70,7 +70,7 @@ RSpec.describe 'Person medication workflow' do
 
     within("#person_medication_#{created_person_medication.id}") do
       expect(page).to have_text(/today's doses/i)
-      expect(page).to have_text(/2\.5ml/i)
+      expect(page).to have_text(/2\.5 ml/i)
       expect(page).to have_button('💊 Give', disabled: true)
       expect(page).to have_content('1/1')
     end

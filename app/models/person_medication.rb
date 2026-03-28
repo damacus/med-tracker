@@ -44,9 +44,7 @@ class PersonMedication < ApplicationRecord
   end
 
   def dose_display
-    return if dose_amount.blank? || dose_unit.blank?
-
-    "#{dose_amount.to_f.to_s.sub(/\.0$/, '')} #{dose_unit}"
+    DoseAmount.new(dose_amount, dose_unit).to_s.presence
   end
 
   private

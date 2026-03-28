@@ -244,9 +244,7 @@ module Components
       end
 
       def selected_dose_label
-        return if person_medication.dose_amount.blank? || person_medication.dose_unit.blank?
-
-        "#{person_medication.dose_amount.to_f.to_s.sub(/\.0$/, '')} #{person_medication.dose_unit}"
+        DoseAmount.new(person_medication.dose_amount, person_medication.dose_unit).to_s.presence
       end
 
       def selection_summary_layout_classes(show_dose)

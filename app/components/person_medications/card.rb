@@ -68,9 +68,8 @@ module Components
 
       def medication_description
         parts = []
-        if person_medication.dose_amount
-          parts << "#{person_medication.dose_amount.to_f.to_s.sub(/\.0$/, '')}#{person_medication.dose_unit}"
-        end
+        dose = DoseAmount.new(person_medication.dose_amount, person_medication.dose_unit).to_s
+        parts << dose if dose.present?
         parts << 'As needed'
         parts.join(' • ')
       end
@@ -204,7 +203,7 @@ module Components
           end
           if take.amount_ml.present?
             Text(size: '1', weight: 'black', class: 'text-slate-400 uppercase tracking-tighter') do
-              "#{take.amount_ml.to_f.to_s.sub(/\.0$/, '')}#{person_medication.dose_unit}"
+              DoseAmount.new(take.amount_ml, person_medication.dose_unit).to_s
             end
           end
         end

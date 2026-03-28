@@ -52,3 +52,6 @@ lighthouse-*
 node_modules
 .worktrees/
 vendor/**/*
+
+# Downloaded browser packages
+*.deb
