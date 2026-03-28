@@ -57,8 +57,7 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
         medication: medications(:paracetamol),
         dosage: dosages(:paracetamol_adult),
         start_date: 1.year.ago,
-        end_date: 1.month.ago,
-        frequency: 'Daily'
+        end_date: 1.month.ago
       )
 
       results = query.call
@@ -77,7 +76,6 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
           dosage: dosages(:paracetamol_adult),
           start_date: Time.zone.today,
           end_date: 1.year.from_now.to_date,
-          frequency: 'As needed',
           max_daily_doses: nil,
           min_hours_between_doses: nil
         )
@@ -98,7 +96,6 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
           dosage: dosages(:ibuprofen_adult),
           start_date: Time.zone.today,
           end_date: 1.year.from_now.to_date,
-          frequency: 'Every 2 hours',
           min_hours_between_doses: 2,
           max_daily_doses: nil
         )
@@ -129,7 +126,6 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
           dosage: dosages(:paracetamol_adult),
           start_date: Time.zone.today,
           end_date: 1.year.from_now.to_date,
-          frequency: 'As needed',
           max_daily_doses: 2
         )
       end
@@ -156,7 +152,6 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
           dosage: dosage,
           start_date: Time.zone.today,
           end_date: 1.year.from_now.to_date,
-          frequency: 'daily',
           min_hours_between_doses: 4
         )
       end

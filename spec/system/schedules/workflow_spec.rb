@@ -24,7 +24,6 @@ RSpec.describe 'Schedules workflow' do
     select 'Prescribed', from: 'Type (OTC or prescribed)'
     select 'John Doe', from: 'Person name'
     select 'Paracetamol', from: 'Name of med'
-    fill_in 'Dose, frequency', with: 'Twice daily'
 
     click_button 'Continue to schedule details'
 
@@ -32,7 +31,6 @@ RSpec.describe 'Schedules workflow' do
       new_person_schedule_path(
         people(:john),
         medication_id: medications(:paracetamol).id,
-        frequency: 'Twice daily',
         schedule_type: 'prescribed'
       )
     )

@@ -25,15 +25,13 @@ class SchedulesController < ApplicationController
     @selected_person_id = params[:person_id]
     @selected_medication_id = params[:medication_id]
     @schedule_type = params[:schedule_type]
-    @frequency = params[:frequency]
 
     render Components::Schedules::WorkflowView.new(
       people: @people,
       medications: @medications,
       selected_person_id: @selected_person_id,
       selected_medication_id: @selected_medication_id,
-      schedule_type: @schedule_type,
-      frequency: @frequency
+      schedule_type: @schedule_type
     )
   end
 
@@ -44,13 +42,11 @@ class SchedulesController < ApplicationController
 
     person = people.find(params.require(:person_id))
     medication = medications.find(params.require(:medication_id))
-    frequency = params[:frequency].to_s
     schedule_type = params[:schedule_type].to_s
 
     redirect_to new_person_schedule_path(
       person,
       medication_id: medication.id,
-      frequency: frequency,
       schedule_type: schedule_type
     )
   end
@@ -58,7 +54,6 @@ class SchedulesController < ApplicationController
   def new
     @schedule = @person.schedules.build
     @schedule.medication_id = params[:medication_id] if params[:medication_id].present?
-    @schedule.frequency = params[:frequency] if params[:frequency].present?
     authorize @schedule
     @medications = policy_scope(Medication)
     render_schedule_form(

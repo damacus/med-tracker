@@ -5,7 +5,7 @@ module Components
     class WorkflowView < Components::Base
       include Phlex::Rails::Helpers::FormWith
 
-      attr_reader :people, :medications, :selected_person_id, :selected_medication_id, :schedule_type, :frequency
+      attr_reader :people, :medications, :selected_person_id, :selected_medication_id, :schedule_type
 
       def initialize(people:, medications:, **selection)
         @people = people
@@ -13,7 +13,6 @@ module Components
         @selected_person_id = selection[:selected_person_id]
         @selected_medication_id = selection[:selected_medication_id]
         @schedule_type = selection[:schedule_type]
-        @frequency = selection[:frequency]
         super()
       end
 
@@ -40,7 +39,6 @@ module Components
             render_schedule_type_field
             render_person_field
             render_medication_field
-            render_frequency_field
           end
 
           div(class: 'flex justify-end') do
@@ -89,19 +87,6 @@ module Components
         end
       end
 
-      def render_frequency_field
-        FormField do
-          FormFieldLabel(for: 'frequency') { 'Dose, frequency' }
-          Input(
-            type: :text,
-            name: 'frequency',
-            id: 'frequency',
-            value: frequency,
-            placeholder: 'e.g. Once daily'
-          )
-        end
-      end
-
       def render_summary
         render RubyUI::Card.new(class: 'p-6') do
           Heading(level: 2, size: '4', class: 'font-semibold mb-4') { 'Schedule (break this down)' }
@@ -109,7 +94,6 @@ module Components
             render_summary_row('Name of med', selected_medication&.name)
             render_summary_row('Person name', selected_person&.name)
             render_summary_row('Type', schedule_type)
-            render_summary_row('Dose, frequency', frequency)
           end
         end
       end

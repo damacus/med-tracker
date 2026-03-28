@@ -58,7 +58,6 @@ module Components
             render_dosage_field(f)
             render_start_date_field(f)
             render_end_date_field(f)
-            render_frequency_field(f)
             div(class: 'md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-6') do
               render_max_doses_field(f)
               render_min_hours_field(f)
@@ -96,7 +95,6 @@ module Components
           div(class: 'grid grid-cols-1 md:grid-cols-2 gap-6') do
             render_dosage_cards
             render_details_intro
-            render_frequency_field(nil)
             render_start_date_field(nil)
             render_end_date_field(nil)
             div(class: 'md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-6') do
@@ -179,7 +177,6 @@ module Components
                     class: 'sr-only',
                     data: {
                       action: 'change->schedule-form#onDosageChange',
-                      frequency: dosage.frequency,
                       default_max_daily_doses: dosage.default_max_daily_doses,
                       default_min_hours_between_doses: dosage.default_min_hours_between_doses,
                       default_dose_cycle: dosage.default_dose_cycle
@@ -251,20 +248,6 @@ module Components
         end
       end
 
-      def render_frequency_field(_f)
-        FormField(class: 'md:col-span-2') do
-          FormFieldLabel(for: 'schedule_frequency') { 'Frequency' }
-          Input(
-            type: :text,
-            name: 'schedule[frequency]',
-            id: 'schedule_frequency',
-            value: schedule.frequency,
-            placeholder: 'e.g., Once daily, Every 4-6 hours',
-            data: { action: 'input->schedule-form#validate', schedule_form_target: 'frequencyInput' }
-          )
-        end
-      end
-
       def render_start_date_field(_f)
         FormField do
           FormFieldLabel(for: 'schedule_start_date') do
@@ -321,7 +304,7 @@ module Components
             value: schedule.max_daily_doses,
             placeholder: 'e.g., 4',
             min: 1,
-            data: { schedule_form_target: 'maxDosesInput', action: 'input->schedule-form#generateFrequency' }
+            data: { schedule_form_target: 'maxDosesInput', action: 'input->schedule-form#validate' }
           )
         end
       end
@@ -338,7 +321,7 @@ module Components
             placeholder: 'e.g., 6',
             min: 0,
             step: '0.5',
-            data: { schedule_form_target: 'minHoursInput', action: 'input->schedule-form#generateFrequency' }
+            data: { schedule_form_target: 'minHoursInput', action: 'input->schedule-form#validate' }
           )
         end
       end
@@ -352,7 +335,7 @@ module Components
               name: 'schedule[dose_cycle]',
               id: 'schedule_dose_cycle',
               value: schedule.dose_cycle,
-              data: { schedule_form_target: 'doseCycleInput', action: 'change->schedule-form#generateFrequency' }
+              data: { schedule_form_target: 'doseCycleInput', action: 'change->schedule-form#validate' }
             )
             SelectTrigger do
               SelectValue(placeholder: 'Select a cycle (default: daily)') do

@@ -11,7 +11,6 @@ RSpec.describe Components::Schedules::Card, type: :component do
       person: person,
       medication: medication,
       dosage: dosage,
-      frequency: 'Twice daily',
       start_date: 1.month.ago,
       end_date: 1.month.from_now
     )

@@ -19,13 +19,12 @@ RSpec.describe Components::Dashboard::ScheduleHelpers do
   let(:schedule) do
     person = create(:person)
     medication = create(:medication)
-    dosage = Dosage.new(medication: medication, amount: 500.0, unit: 'mg')
+    dosage = Dosage.new(medication: medication, amount: 500.0, unit: 'mg', frequency: 'Twice daily')
     Schedule.new(
       person: person,
       medication: medication,
       dosage: dosage,
-      end_date: Date.new(2024, 12, 31),
-      frequency: 'Twice daily'
+      end_date: Date.new(2024, 12, 31)
     )
   end
 

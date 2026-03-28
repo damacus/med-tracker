@@ -4,12 +4,14 @@ paracetamol_adult:
   amount: 1000
   unit: mg
   description: Standard adult dose
+  frequency: As needed
   medication: paracetamol
 
 paracetamol_light:
   amount: 500
   unit: mg
   description: Light adult dose
+  frequency: As needed
   medication: paracetamol
 
 # Ibuprofen dosages
@@ -17,12 +19,14 @@ ibuprofen_adult:
   amount: 400
   unit: mg
   description: Standard adult dose
+  frequency: Every 6-8 hours
   medication: ibuprofen
 
 ibuprofen_light:
   amount: 200
   unit: mg
   description: Light adult dose
+  frequency: Every 6-8 hours
   medication: ibuprofen
 
 # Aspirin dosages
@@ -30,18 +34,21 @@ aspirin_adult:
   amount: 300
   unit: mg
   description: Standard adult dose
+  frequency: Once daily
   medication: aspirin
 
 aspirin_light:
   amount: 75
   unit: mg
   description: Low dose for heart health
+  frequency: Once daily
   medication: aspirin
 
 vitamin_d_daily:
   amount: 1000
   unit: IU
   description: Daily Vitamin D supplement
+  frequency: Once daily
   medication: vitamin_d
 
 # Calpol dosages
@@ -49,12 +56,14 @@ calpol_child:
   amount: 2.5
   unit: ml
   description: Standard child dose
+  frequency: Every 4-6 hours
   medication: calpol
 
 calpol_infant:
   amount: 5
   unit: ml
   description: Standard infant dose
+  frequency: Every 4-6 hours
   medication: calpol
 
 # Child dosages for paracetamol
@@ -62,6 +71,7 @@ paracetamol_child:
   amount: 250
   unit: mg
   description: Standard child dose (6-12 years)
+  frequency: Every 4-6 hours
   medication: paracetamol
 
 # Child dosages for ibuprofen
@@ -69,4 +79,5 @@ ibuprofen_child:
   amount: 200
   unit: mg
   description: Standard child dose (6-12 years)
+  frequency: Every 6-8 hours
   medication: ibuprofen
