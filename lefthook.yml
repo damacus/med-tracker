@@ -20,7 +20,8 @@ pre-push:
       tags:
         - backend
         - linting
-      run: bundle exec rubocop {staged_files}
+      glob: "*.rb"
+      run: bundle exec rubocop {push_files}
 
     - name: rspec
       tags:

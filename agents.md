@@ -38,6 +38,21 @@ task dev:port          # → e.g. 3000
 # then use the playwright-cli skill to navigate and screenshot
 ```
 
+## Quality gates (run before every push)
+
+```bash
+task rubocop          # lint — must pass with no offenses
+task test             # full test suite in Docker — must be green
+```
+
+Run a single file during development:
+
+```bash
+task test TEST_FILE=spec/path/to/file_spec.rb
+```
+
+Never push if either command fails.
+
 ## Session close (mandatory)
 
 ```bash
