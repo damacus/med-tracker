@@ -22,35 +22,41 @@ class TakeMedicationService
 
   def call(source:, amount_override:, taken_from_medication_id:, user:, taken_at: Time.current)
     resolver = MedicationStockSourceResolver.new(user: user, source: source)
-
-    blocked = resolver.blocked_reason
-    return Result.new(success: false, take: nil, error: blocked) if blocked
+    return failure(resolver.blocked_reason) if resolver.blocked_reason
 
     amount = normalize_amount(amount_override.presence || source.default_dose_amount)
-    return Result.new(success: false, take: nil, error: :invalid_amount) if invalid_amount?(amount)
+    return failure(:invalid_amount) if invalid_amount?(amount)
 
-    if resolver.selection_required?(taken_from_medication_id)
-      return Result.new(success: false, take: nil, error: :selection_required)
-    end
+    error, medication = resolve_stock_source(resolver, taken_from_medication_id)
+    return failure(error) if error
+
+    take = record_take(source: source, amount: amount, medication: medication, taken_at: taken_at)
+    take.persisted? ? Result.new(success: true, take: take, error: nil) : failure(:create_failed)
+  end
+
+  private
+
+  def failure(error)
+    Result.new(success: false, take: nil, error: error)
+  end
+
+  def resolve_stock_source(resolver, taken_from_medication_id)
+    return [:selection_required, nil] if resolver.selection_required?(taken_from_medication_id)
 
     medication = resolver.resolve_selected(taken_from_medication_id)
-    return Result.new(success: false, take: nil, error: :invalid_source) if medication.blank?
+    return [:invalid_source, nil] if medication.blank?
 
-    take = source.medication_takes.create(
+    [nil, medication]
+  end
+
+  def record_take(source:, amount:, medication:, taken_at:)
+    source.medication_takes.create(
       taken_at: taken_at,
       amount_ml: amount,
       taken_from_medication: medication,
       taken_from_location: medication.location
     )
-
-    if take.persisted?
-      Result.new(success: true, take: take, error: nil)
-    else
-      Result.new(success: false, take: nil, error: :create_failed)
-    end
   end
-
-  private
 
   def normalize_amount(raw)
     return nil if raw.blank?

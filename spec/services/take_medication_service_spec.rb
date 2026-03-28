@@ -9,8 +9,6 @@ RSpec.describe TakeMedicationService do
   subject(:service) { described_class.new }
 
   let(:user) { users(:john) }
-  let(:medication) { medications(:paracetamol) }
-  let(:taken_from_medication_id) { nil }
 
   # Shared helper to invoke the service
   def call_service(source:, amount_override: nil, taken_from_medication_id: nil)
