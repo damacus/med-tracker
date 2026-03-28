@@ -24,7 +24,6 @@ class Schedule < ApplicationRecord
   delegate :name, to: :medication, prefix: true
   delegate :name, to: :person, prefix: true
   delegate :amount, :unit, to: :dosage, prefix: true, allow_nil: true
-  delegate :frequency, to: :dosage, allow_nil: true
 
   def default_dose_amount
     dosage_amount

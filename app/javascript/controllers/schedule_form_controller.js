@@ -4,7 +4,7 @@ export default class extends Controller {
   static values = { nextUrl: String }
   static targets = [
     "submit", "dosageSelect", "medicationSelect", "dosageContent",
-    "dosageValue", "dosageTrigger",
+    "dosageValue", "dosageTrigger", "frequencyInput",
     "maxDosesInput", "minHoursInput", "doseCycleInput"
   ]
 
@@ -16,8 +16,9 @@ export default class extends Controller {
   validate() {
     const medicationSelected = this.#fieldPresent('schedule[medication_id]')
     const dosageSelected = this.#fieldPresent('schedule[dosage_id]')
+    const frequencyPresent = this.#fieldPresent('schedule[frequency]')
     const startDatePresent = this.#fieldPresent('schedule[start_date]')
-    const isValid = medicationSelected && dosageSelected && startDatePresent
+    const isValid = medicationSelected && dosageSelected && frequencyPresent && startDatePresent
 
     if (this.hasSubmitTarget) {
       this.submitTarget.disabled = !isValid
@@ -44,9 +45,13 @@ export default class extends Controller {
     const selectedRadio = this.element.querySelector('[name="schedule[dosage_id]"]:checked')
     if (selectedRadio) {
       const dosage = {
+        frequency: selectedRadio.dataset.frequency,
         default_max_daily_doses: selectedRadio.dataset.defaultMaxDailyDoses,
         default_min_hours_between_doses: selectedRadio.dataset.defaultMinHoursBetweenDoses,
         default_dose_cycle: selectedRadio.dataset.defaultDoseCycle
+      }
+      if (dosage.frequency && this.hasFrequencyInputTarget && !this.frequencyInputTarget.value) {
+        this.frequencyInputTarget.value = dosage.frequency
       }
       this.#fillSchedulingDefaults(dosage)
       this.validate()
@@ -56,7 +61,35 @@ export default class extends Controller {
     const dosageInput = this.element.querySelector('[name="schedule[dosage_id]"]')
     const dosageId = dosageInput?.value
     if (dosageId && this.dosageData[dosageId]) {
-      this.#fillSchedulingDefaults(this.dosageData[dosageId])
+      const dosage = this.dosageData[dosageId]
+      if (dosage.frequency && this.hasFrequencyInputTarget && !this.frequencyInputTarget.value) {
+        this.frequencyInputTarget.value = dosage.frequency
+      }
+      this.#fillSchedulingDefaults(dosage)
+    }
+    this.validate()
+  }
+
+  generateFrequency() {
+    const max = parseInt(this.hasMaxDosesInputTarget ? this.maxDosesInputTarget.value : '') || null
+    const hours = parseFloat(this.hasMinHoursInputTarget ? this.minHoursInputTarget.value : '') || null
+    const cycle = this.hasDoseCycleInputTarget ? this.doseCycleInputTarget.value : ''
+
+    if (!max && !hours) {
+      this.validate()
+      return
+    }
+
+    const parts = []
+    if (max && cycle) {
+      parts.push(max === 1 ? `Once ${cycle}` : `Up to ${max} times ${cycle}`)
+    } else if (max) {
+      parts.push(max === 1 ? 'Once per cycle' : `Up to ${max} times per cycle`)
+    }
+    if (hours) parts.push(`at least ${hours}h apart`)
+
+    if (parts.length && this.hasFrequencyInputTarget) {
+      this.frequencyInputTarget.value = parts.join(', ')
     }
     this.validate()
   }

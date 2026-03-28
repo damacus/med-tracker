@@ -21,10 +21,11 @@ RSpec.describe 'Schedules' do
       end
 
       it 'returns success and only displays active schedules in scope' do
-        Schedule.create!(
+        inactive_schedule = Schedule.create!(
           person: people(:child_patient),
           medication: medications(:ibuprofen),
           dosage: dosages(:ibuprofen_child),
+          frequency: 'Inactive',
           start_date: 10.days.ago.to_date,
           end_date: 1.day.ago.to_date
         )
@@ -36,6 +37,7 @@ RSpec.describe 'Schedules' do
         expect(response.body).to include(people(:child_patient).name)
         expect(response.body).to include(people(:child_user_person).name)
         expect(response.body).not_to include(people(:john).name)
+        expect(response.body).not_to include(inactive_schedule.frequency)
       end
     end
 

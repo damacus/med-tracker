@@ -5,6 +5,7 @@ FactoryBot.define do
     person
     medication
     dosage
+    frequency { 'As needed' }
     start_date { Time.zone.today }
     end_date { 1.year.from_now.to_date }
     max_daily_doses { 4 }
@@ -14,11 +15,13 @@ FactoryBot.define do
     trait :weekly do
       dose_cycle { :weekly }
       max_daily_doses { 1 }
+      frequency { 'Once weekly' }
     end
 
     trait :monthly do
       dose_cycle { :monthly }
       max_daily_doses { 1 }
+      frequency { 'Once monthly' }
     end
 
     trait :expired do

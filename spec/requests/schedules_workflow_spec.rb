@@ -17,6 +17,7 @@ RSpec.describe 'Schedules workflow' do
       expect(response.body).to include('Type (OTC or prescribed)')
       expect(response.body).to include('Name of med')
       expect(response.body).to include('Person name')
+      expect(response.body).to include('Dose, frequency')
       expect(response.body).to include('Schedule (break this down)')
     end
 
@@ -34,27 +35,31 @@ RSpec.describe 'Schedules workflow' do
       post start_schedules_workflow_path, params: {
         person_id: people(:john).id,
         medication_id: medications(:paracetamol).id,
-        schedule_type: 'prescribed'
+        schedule_type: 'prescribed',
+        frequency: 'Twice daily'
       }
 
       expect(response).to redirect_to(
         new_person_schedule_path(
           people(:john),
           medication_id: medications(:paracetamol).id,
-          schedule_type: 'prescribed'
+          schedule_type: 'prescribed',
+          frequency: 'Twice daily'
         )
       )
     end
   end
 
   describe 'GET /people/:person_id/schedules/new' do
-    it 'prefills selected medication from workflow params' do
+    it 'prefills selected medication and frequency from workflow params' do
       get new_person_schedule_path(people(:john)), params: {
-        medication_id: medications(:paracetamol).id
+        medication_id: medications(:paracetamol).id,
+        frequency: 'Twice daily'
       }
 
       expect(response).to have_http_status(:ok)
       expect(response.body).to include("value=\"#{medications(:paracetamol).id}\"")
+      expect(response.body).to include('Twice daily')
     end
   end
 end
