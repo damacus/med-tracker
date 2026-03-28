@@ -114,12 +114,12 @@ RSpec.describe TakeMedicationService do
   end
 
   describe '#call with a PersonMedication source' do
-    let(:person_medication) { person_medications(:john_vitamin_d) }
+    let(:person_medication) { person_medications(:jane_vitamin_d) }
 
     context 'when everything is valid and no override amount' do
       let(:result) { call_service(source: person_medication) }
 
-      it_behaves_like 'a successful dose', 1000 # john_vitamin_d dose_amount
+      it_behaves_like 'a successful dose', 1000 # jane_vitamin_d dose_amount
     end
 
     context 'when an explicit amount override is provided' do

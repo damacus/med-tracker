@@ -28,7 +28,9 @@ class PersonMedication < ApplicationRecord
   validates :dose_unit, presence: true, inclusion: { in: Medication::DOSAGE_UNITS },
                         unless: :legacy_record_without_resolvable_dose?
 
-  alias_attribute :default_dose_amount, :dose_amount
+  def default_dose_amount
+    dose_amount
+  end
 
   def reorder(direction)
     adjacent = adjacent_record(direction)
