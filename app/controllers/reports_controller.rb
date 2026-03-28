@@ -33,7 +33,7 @@ class ReportsController < ApplicationController
 
   # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
   def calculate_daily_compliance(people, start_date, end_date)
-    person_ids = people.map(&:id)
+    person_ids = people.pluck(:id)
 
     # Pre-fetch takes and schedules to avoid N+1
     schedules = Schedule.where(person_id: person_ids)
@@ -70,7 +70,7 @@ class ReportsController < ApplicationController
   # rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
   def calculate_inventory_alerts(people)
-    alerts = Schedule.active.where(person_id: people.map(&:id))
+    alerts = Schedule.active.where(person_id: people.pluck(:id))
                      .includes(:medication)
                      .map do |p|
                        burn_rate = p.max_daily_doses || 1

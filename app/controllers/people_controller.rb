@@ -97,7 +97,6 @@ class PeopleController < ApplicationController
           ]
         end
       else
-        @medications = [] # Needed if form uses it
         format.html do
           render Components::People::FormView.new(person: @person, assigned_location: current_primary_location),
                  status: :unprocessable_content
