@@ -9,10 +9,12 @@ module TakeMedicationGuardable
   def handle_take_medication_failure(error, scope:)
     case error
     when :out_of_stock, :cooldown
-      message = t("#{scope}.cannot_take_medication",
-                  default: error == :out_of_stock ? 'Cannot take medication: out of stock'
-                                                   : 'Cannot take medication: timing restrictions not met')
-      respond_take_medication_error(message:)
+      default_message = if error == :out_of_stock
+                          'Cannot take medication: out of stock'
+                        else
+                          'Cannot take medication: timing restrictions not met'
+                        end
+      respond_take_medication_error(message: t("#{scope}.cannot_take_medication", default: default_message))
     when :invalid_amount, :create_failed
       respond_take_medication_invalid_dose(scope:)
     when :selection_required, :invalid_source
@@ -59,7 +61,6 @@ module TakeMedicationGuardable
   def requested_taken_from_medication_id
     params[:taken_from_medication_id].presence || params.dig(:medication_take, :taken_from_medication_id).presence
   end
-
 
   def respond_take_medication_redirect_path
     defined?(@person) && @person.present? ? person_path(@person) : root_path

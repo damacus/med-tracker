@@ -45,13 +45,13 @@ RSpec.describe TakeMedicationService do
     context 'when everything is valid and no override amount' do
       let(:result) { call_service(source: schedule) }
 
-      include_examples 'a successful dose', 1000 # paracetamol_adult dosage amount
+      it_behaves_like 'a successful dose', 1000 # paracetamol_adult dosage amount
     end
 
     context 'when an explicit amount override is provided' do
       let(:result) { call_service(source: schedule, amount_override: '750') }
 
-      include_examples 'a successful dose', 750
+      it_behaves_like 'a successful dose', 750
     end
 
     context 'when the medication is out of stock' do
@@ -119,13 +119,13 @@ RSpec.describe TakeMedicationService do
     context 'when everything is valid and no override amount' do
       let(:result) { call_service(source: person_medication) }
 
-      include_examples 'a successful dose', 1000 # john_vitamin_d dose_amount
+      it_behaves_like 'a successful dose', 1000 # john_vitamin_d dose_amount
     end
 
     context 'when an explicit amount override is provided' do
       let(:result) { call_service(source: person_medication, amount_override: '500') }
 
-      include_examples 'a successful dose', 500
+      it_behaves_like 'a successful dose', 500
     end
 
     context 'when the medication is out of stock' do
