@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# Setup script for Claude Code sessions.
+# Run this at the start of each session before using any task commands.
+# Usage: bin/setup-claude
+
+set -euo pipefail
+
+echo "==> Installing task CLI..."
+if ! command -v task &>/dev/null; then
+  curl -sL "https://github.com/go-task/task/releases/latest/download/task_linux_amd64.tar.gz" \
+    | tar -xzf - -C /tmp task
+  mv /tmp/task /usr/local/bin/task
+  echo "    task $(task --version) installed"
+else
+  echo "    task already installed: $(task --version)"
+fi
+
+echo "==> Installing Ruby gems..."
+# Bundler 4.0.x + Ruby 3.3 has a CGI class variable bug when proxied.
+# RUBYOPT="-rcgi" preloads CGI to avoid it.
+RUBYOPT="-rcgi" bundle _4.0.3_ install
+
+echo "==> Installing npm packages..."
+npm install
+
+echo "==> Installing Python/uv packages..."
+uv sync
+
+echo "==> Setting up Playwright browsers..."
+# cdn.playwright.dev is not reachable in this environment.
+# The pre-installed chromium-1194 cache is reused by symlinking to the
+# revision Playwright 1.58.2 expects (chromium-1208).
+PLAYWRIGHT_CACHE="$HOME/.cache/ms-playwright"
+for browser in chromium chromium_headless_shell; do
+  src="${PLAYWRIGHT_CACHE}/${browser}-1194"
+  dst="${PLAYWRIGHT_CACHE}/${browser}-1208"
+  if [ -d "$src" ] && [ ! -e "$dst" ]; then
+    ln -sf "$src" "$dst"
+    echo "    symlinked ${browser}-1194 -> ${browser}-1208"
+  fi
+done
+
+echo ""
+echo "==> Setup complete."

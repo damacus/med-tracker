@@ -247,6 +247,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_24_090000) do
     t.index ["location_id"], name: "index_medications_on_location_id"
   end
 
+  create_table "native_device_tokens", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.datetime "created_at", null: false
+    t.string "device_token", null: false
+    t.string "platform", null: false
+    t.datetime "updated_at", null: false
+    t.string "user_agent"
+    t.index ["account_id", "platform"], name: "index_native_device_tokens_on_account_id_and_platform"
+    t.index ["account_id"], name: "index_native_device_tokens_on_account_id"
+    t.index ["device_token"], name: "index_native_device_tokens_on_device_token", unique: true
+  end
+
   create_table "notification_preferences", force: :cascade do |t|
     t.time "afternoon_time", default: "2000-01-01 14:00:00"
     t.datetime "created_at", null: false
@@ -374,6 +386,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_24_090000) do
   add_foreign_key "medication_takes", "person_medications", deferrable: :deferred
   add_foreign_key "medication_takes", "schedules", deferrable: :deferred
   add_foreign_key "medications", "locations", deferrable: :deferred
+  add_foreign_key "native_device_tokens", "accounts"
   add_foreign_key "notification_preferences", "people", deferrable: :deferred
   add_foreign_key "people", "accounts", deferrable: :deferred
   add_foreign_key "person_medications", "medications", deferrable: :deferred
