@@ -27,7 +27,6 @@ RSpec.describe 'Add schedule modal flow' do
 
     choose("schedule_dosage_id_#{dosages(:ibuprofen_child).id}", allow_label_click: true)
 
-    fill_in 'Frequency', with: 'Twice daily'
     fill_in 'Start date', with: Date.current.strftime('%Y-%m-%d')
     fill_in 'End date', with: 1.week.from_now.to_date.strftime('%Y-%m-%d')
     fill_in 'Notes', with: 'Turbo modal e2e schedule'
