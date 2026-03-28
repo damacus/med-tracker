@@ -114,7 +114,7 @@ RSpec.describe 'Person Medications', type: :system do
       within("#person_medication_#{person_medication.id}") do
         expect(page).to have_text(/today's doses/i)
         expect(page).to have_content(take.taken_at.strftime('%l:%M %p').strip)
-        expect(page).to have_content('5IU')
+        expect(page).to have_content('5 IU')
       end
     end
   end
