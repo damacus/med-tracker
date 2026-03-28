@@ -162,10 +162,11 @@ class Medication < ApplicationRecord # :nodoc:
 
   def default_dosage_for_person_type(person_type)
     child_types = %w[minor dependent_adult]
+    loaded = dosages.to_a
     if child_types.include?(person_type.to_s)
-      dosages.to_a.find(&:default_for_children) || dosages.to_a.first
+      loaded.find(&:default_for_children) || loaded.first
     else
-      dosages.to_a.find(&:default_for_adults) || dosages.to_a.first
+      loaded.find(&:default_for_adults) || loaded.first
     end
   end
 

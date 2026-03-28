@@ -37,16 +37,6 @@ class ApplicationController < ActionController::Base
       format.json do
         render json: { error: session_expired_message }, status: :unauthorized
       end
-      format.turbo_stream do
-        redirect_to rodauth.login_path,
-                    alert: session_expired_message,
-                    status: :see_other
-      end
-      format.html do
-        redirect_to rodauth.login_path,
-                    alert: session_expired_message,
-                    status: :see_other
-      end
       format.any do
         redirect_to rodauth.login_path,
                     alert: session_expired_message,
