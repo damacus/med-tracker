@@ -25,6 +25,10 @@ class Schedule < ApplicationRecord
   delegate :name, to: :person, prefix: true
   delegate :amount, :unit, to: :dosage, prefix: true, allow_nil: true
 
+  def default_dose_amount
+    dosage_amount
+  end
+
   def active?
     today = Time.zone.today
     return false if start_date.nil? || end_date.nil?

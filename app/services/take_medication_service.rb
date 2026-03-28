@@ -1,0 +1,72 @@
+# frozen_string_literal: true
+
+# Encapsulates the domain logic for recording a medication dose.
+#
+# Both Schedule and PersonMedication can be the source of a dose. This service
+# handles the shared flow so controllers remain thin.
+#
+# @example
+#   result = TakeMedicationService.new.call(
+#     source: @schedule,
+#     amount_override: params[:amount_ml],
+#     taken_from_medication_id: params[:taken_from_medication_id],
+#     user: current_user,
+#     taken_at: params[:taken_at] || Time.current   # optional, defaults to now
+#   )
+#   result.success  # => true / false
+#   result.take     # => MedicationTake record (when successful)
+#   result.error    # => :out_of_stock | :cooldown | :invalid_amount |
+#                   #    :selection_required | :invalid_source | :create_failed
+class TakeMedicationService
+  Result = Data.define(:success, :take, :error)
+
+  def call(source:, amount_override:, taken_from_medication_id:, user:, taken_at: Time.current)
+    resolver = MedicationStockSourceResolver.new(user: user, source: source)
+    return failure(resolver.blocked_reason) if resolver.blocked_reason
+
+    amount = normalize_amount(amount_override.presence || source.default_dose_amount)
+    return failure(:invalid_amount) if invalid_amount?(amount)
+
+    error, medication = resolve_stock_source(resolver, taken_from_medication_id)
+    return failure(error) if error
+
+    take = record_take(source: source, amount: amount, medication: medication, taken_at: taken_at)
+    take.persisted? ? Result.new(success: true, take: take, error: nil) : failure(:create_failed)
+  end
+
+  private
+
+  def failure(error)
+    Result.new(success: false, take: nil, error: error)
+  end
+
+  def resolve_stock_source(resolver, taken_from_medication_id)
+    return [:selection_required, nil] if resolver.selection_required?(taken_from_medication_id)
+
+    medication = resolver.resolve_selected(taken_from_medication_id)
+    return [:invalid_source, nil] if medication.blank?
+
+    [nil, medication]
+  end
+
+  def record_take(source:, amount:, medication:, taken_at:)
+    source.medication_takes.create(
+      taken_at: taken_at,
+      amount_ml: amount,
+      taken_from_medication: medication,
+      taken_from_location: medication.location
+    )
+  end
+
+  def normalize_amount(raw)
+    return nil if raw.blank?
+
+    BigDecimal(raw.to_s)
+  rescue ArgumentError
+    nil
+  end
+
+  def invalid_amount?(amount)
+    amount.nil? || amount <= 0
+  end
+end

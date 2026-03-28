@@ -6,37 +6,26 @@ class MedicationTakesController < ApplicationController
   before_action :set_schedule, only: [:create]
 
   def create
-    if (reason = take_medication_blocked_reason(@schedule))
-      respond_create_error(message: blocked_reason_message(reason))
-      return
-    end
+    authorize @schedule, :take_medication?
 
-    stock_source_error, taken_from_medication = resolve_taken_from_medication(@schedule)
-    if stock_source_error
-      respond_create_error(message: stock_source_error_message(stock_source_error))
-      return
-    end
-
-    @medication_take = @schedule.medication_takes.build(
-      medication_take_params.merge(
-        taken_from_medication: taken_from_medication,
-        taken_from_location: taken_from_medication.location
-      )
+    result = TakeMedicationService.new.call(
+      source: @schedule,
+      amount_override: nil,
+      taken_from_medication_id: requested_taken_from_medication_id,
+      user: current_user,
+      taken_at: params.dig(:medication_take, :taken_at).presence || Time.current
     )
-    @medication_take.amount_ml ||= @schedule.dosage.amount
-    authorize @medication_take
 
-    if @medication_take.save
+    if result.success
       respond_to do |format|
         format.html { redirect_back_or_to(root_path, notice: t('take_medications.success')) }
         format.json { render json: { success: true, message: t('take_medications.json_success') } }
       end
     else
+      message = failure_message(result.error)
       respond_to do |format|
-        format.html { redirect_back_or_to(root_path, alert: t('take_medications.failure')) }
-        format.json do
-          render json: { success: false, errors: @medication_take.errors.full_messages }, status: :unprocessable_content
-        end
+        format.html { redirect_back_or_to(root_path, alert: message) }
+        format.json { render json: { success: false, errors: [message] }, status: :unprocessable_content }
       end
     end
   end
@@ -47,35 +36,13 @@ class MedicationTakesController < ApplicationController
     @schedule = policy_scope(Schedule).find(params[:schedule_id])
   end
 
-  def medication_take_params
-    if params[:medication_take].present?
-      params.expect(medication_take: %i[taken_at notes taken_from_medication_id]).tap do |whitelisted|
-        whitelisted[:taken_at] ||= Time.current
-      end
-    else
-      {
-        taken_at: Time.current,
-        taken_from_medication_id: requested_taken_from_medication_id
-      }
-    end
-  end
-
-  def blocked_reason_message(reason)
-    reason == :out_of_stock ? 'Cannot take medication: out of stock' : 'Cannot take medication: timing restrictions not met'
-  end
-
-  def stock_source_error_message(stock_source_error)
-    if stock_source_error == :selection_required
-      'Choose a location to record this dose.'
-    else
-      'Selected location is unavailable for this medication.'
-    end
-  end
-
-  def respond_create_error(message:)
-    respond_to do |format|
-      format.html { redirect_back_or_to(root_path, alert: message) }
-      format.json { render json: { success: false, errors: [message] }, status: :unprocessable_content }
+  def failure_message(error)
+    case error
+    when :out_of_stock   then t('take_medications.out_of_stock', default: 'Cannot take medication: out of stock')
+    when :cooldown       then t('take_medications.cooldown', default: 'Cannot take medication: timing restrictions not met')
+    when :selection_required then t('take_medications.location_required', default: 'Choose a location to record this dose.')
+    when :invalid_source then t('take_medications.invalid_location', default: 'Selected location is unavailable for this medication.')
+    else                      t('take_medications.failure')
     end
   end
 end

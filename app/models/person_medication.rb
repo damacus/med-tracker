@@ -28,6 +28,10 @@ class PersonMedication < ApplicationRecord
   validates :dose_unit, presence: true, inclusion: { in: Medication::DOSAGE_UNITS },
                         unless: :legacy_record_without_resolvable_dose?
 
+  def default_dose_amount
+    dose_amount
+  end
+
   def reorder(direction)
     adjacent = adjacent_record(direction)
     return false unless adjacent

@@ -5,32 +5,21 @@ module TakeMedicationGuardable
 
   private
 
-  def invalid_take_amount?(amount)
-    amount.nil? || amount <= 0
-  end
-
-  def take_medication_blocked_reason(source)
-    MedicationStockSourceResolver.new(user: current_user, source: source).blocked_reason
-  end
-
-  def resolve_taken_from_medication(source)
-    resolver = MedicationStockSourceResolver.new(user: current_user, source: source)
-    taken_from_medication_id = requested_taken_from_medication_id
-
-    return [:selection_required, nil] if resolver.selection_required?(taken_from_medication_id)
-
-    medication = resolver.resolve_selected(taken_from_medication_id)
-    return [:invalid_source, nil] if medication.blank?
-
-    [nil, medication]
-  end
-
-  def normalized_take_amount(raw_amount)
-    return nil if raw_amount.blank?
-
-    BigDecimal(raw_amount.to_s)
-  rescue ArgumentError
-    nil
+  # Maps a TakeMedicationService error symbol to the appropriate HTTP response.
+  def handle_take_medication_failure(error, scope:)
+    case error
+    when :out_of_stock, :cooldown
+      default_message = if error == :out_of_stock
+                          'Cannot take medication: out of stock'
+                        else
+                          'Cannot take medication: timing restrictions not met'
+                        end
+      respond_take_medication_error(message: t("#{scope}.cannot_take_medication", default: default_message))
+    when :invalid_amount, :create_failed
+      respond_take_medication_invalid_dose(scope:)
+    when :selection_required, :invalid_source
+      respond_take_medication_stock_source_error(scope:, error:)
+    end
   end
 
   def respond_take_medication_invalid_dose(scope:)
