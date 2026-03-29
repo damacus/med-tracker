@@ -58,3 +58,8 @@ Key pages:
 pip install -r requirements.txt
 task docs:serve
 ```
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, development
+workflow, and coding standards.
