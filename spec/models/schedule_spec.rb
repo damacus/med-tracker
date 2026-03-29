@@ -187,4 +187,34 @@ RSpec.describe Schedule do
     it { is_expected.to belong_to(:dosage) }
     it { is_expected.to have_many(:medication_takes).dependent(:destroy) }
   end
+
+  describe '#frequency vs #dose_cycle' do
+    let(:medication) { medications(:paracetamol) }
+    let(:dosage) { Dosage.create!(medication: medication, amount: 10, unit: 'mg', frequency: 'daily') }
+    let(:schedule) do
+      described_class.create!(
+        person: people(:john),
+        medication: medication,
+        dosage: dosage,
+        frequency: 'Up to 3 times daily, at least 4h apart',
+        dose_cycle: :daily,
+        start_date: Time.zone.today,
+        end_date: 1.year.from_now.to_date,
+        max_daily_doses: 3,
+        min_hours_between_doses: 4
+      )
+    end
+
+    it 'frequency is a free-text display label, independent of dose_cycle' do
+      expect(schedule.frequency).to eq('Up to 3 times daily, at least 4h apart')
+      expect(schedule.dose_cycle).to eq('daily')
+      expect(schedule.cycle_period).to be_a(ActiveSupport::Duration)
+    end
+
+    it 'frequency and dose_cycle can diverge independently' do
+      schedule.update!(dose_cycle: :weekly, frequency: 'Once a week on Mondays')
+      expect(schedule.dose_cycle).to eq('weekly')
+      expect(schedule.frequency).to eq('Once a week on Mondays')
+    end
+  end
 end
