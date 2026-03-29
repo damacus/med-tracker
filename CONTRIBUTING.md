@@ -32,15 +32,6 @@ task docs:serve              # serve docs locally
 
 ## Standards
 
-### Test-driven development
-
-Follow the **Red-Green-Refactor** cycle — no production code without a failing
-test first.
-
-1. **Red** — write a test that fails
-2. **Green** — write the minimum code to make it pass
-3. **Refactor** — clean up while keeping tests green
-
 ### Testing
 
 - Framework: **RSpec** (`spec/**/*_spec.rb`)
