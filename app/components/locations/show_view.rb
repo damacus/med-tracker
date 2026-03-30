@@ -131,7 +131,7 @@ module Components
 
           if location.members.present?
             div(class: 'space-y-3') do
-              # Bolt: Pre-index memberships by person_id to convert O(N^2) linear search into O(N) with O(1) hash lookups
+              # Bolt: Pre-index memberships by person_id to convert O(N^2) search to O(N) with O(1) hash lookups
               memberships_by_person_id = location.location_memberships.index_by(&:person_id)
               location.members.each do |member|
                 div(class: 'flex items-center justify-between group') do
