@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.35](https://github.com/damacus/med-tracker/compare/v0.3.34...v0.3.35) (2026-03-31)
+
+
+### Features
+
+* **api:** add mobile api v1 foundation ([6577d5f](https://github.com/damacus/med-tracker/commit/6577d5f0834f885801b1247597182f90fde4a959))
+
+
+### Bug Fixes
+
+* Extract TakeMedicationService to eliminate duplicated dose-taking logic ([#1052](https://github.com/damacus/med-tracker/issues/1052)) ([71dad99](https://github.com/damacus/med-tracker/commit/71dad99a313499bc311b318ae7fa3b62c39f3e1b))
+
 ## [0.3.34](https://github.com/damacus/med-tracker/compare/v0.3.33...v0.3.34) (2026-03-23)
 
 
