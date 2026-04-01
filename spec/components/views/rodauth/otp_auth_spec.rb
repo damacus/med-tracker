@@ -11,10 +11,12 @@ RSpec.describe Views::Rodauth::OtpAuth, type: :component do
       otp_auth_path: '/otp-auth',
       otp_auth_button: 'Verify code',
       otp_auth_label: 'Authentication code',
-      otp_auth_additional_form_tags: ''
+      otp_auth_additional_form_tags: '',
+      field_error: nil
     )
 
-    allow(controller).to receive_messages(rodauth: rodauth, form_authenticity_token: 'token')
+    controller.request.env['rodauth'] = rodauth
+    allow(view_context).to receive_messages(rodauth: rodauth, form_authenticity_token: 'token', flash: {})
 
     rendered = render_inline(described_class.new)
 

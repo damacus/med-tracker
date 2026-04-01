@@ -59,13 +59,16 @@ tasks:
   rubocop:
     desc: Run RuboCop linter (optionally with autocorrect)
     summary: |
-      Run RuboCop linter with optional autocorrect
+      Run RuboCop linter with optional autocorrect in Docker
       Usage: task rubocop
       Usage: task rubocop AUTOCORRECT=true
     vars:
       autocorrect: '{{ .AUTOCORRECT | default "false" }}'
     cmds:
-      - 'bundle exec rubocop --force-exclusion {{ if eq .autocorrect "true" }}-A{{ end }}'
+      - task: internal:run
+        vars:
+          ENVIRONMENT: test
+          COMMAND: 'bundle exec rubocop --force-exclusion {{ if eq .autocorrect "true" }}-A{{ end }}'
 
   playwright:
     desc: Run local Playwright browser tests
