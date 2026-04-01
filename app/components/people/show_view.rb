@@ -42,7 +42,7 @@ module Components
       private
 
       def render_person_header
-        div(class: 'flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-slate-100') do
+        div(class: 'flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-border') do
           div(class: 'flex items-center gap-6') do
             div(
               class: 'w-24 h-24 rounded-[2rem] bg-primary/10 flex items-center justify-center text-primary ' \
@@ -64,12 +64,12 @@ module Components
           div(class: 'flex gap-3') do
             if view_context.policy(person).update?
               Link(href: person_path(person, editing: true), variant: :outline, size: :lg,
-                   class: 'rounded-2xl font-bold text-sm bg-white') do
+                   class: 'rounded-2xl font-bold text-sm bg-surface-container-lowest') do
                 t('people.show.edit_person')
               end
             end
             Link(href: people_path, variant: :ghost, size: :lg,
-                 class: 'rounded-2xl font-bold text-sm text-slate-400 hover:text-slate-600') do
+                 class: 'rounded-2xl font-bold text-sm text-muted-foreground hover:text-foreground') do
               t('people.show.back')
             end
           end
@@ -93,13 +93,13 @@ module Components
       def overview_item(label, value, icon_class)
         div(class: 'flex items-center gap-4 group') do
           div(
-            class: 'w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 ' \
+            class: 'w-10 h-10 rounded-xl bg-surface-container-low flex items-center justify-center text-muted-foreground ' \
                    'group-hover:bg-primary/5 group-hover:text-primary transition-colors'
           ) do
             render icon_class.new(size: 20)
           end
           div do
-            Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-slate-400') { label }
+            Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-muted-foreground') { label }
             Text(size: '2', weight: 'semibold') { value }
           end
         end
@@ -121,7 +121,7 @@ module Components
                 Link(
                   href: add_medication_person_path(person),
                   variant: :secondary,
-                  class: 'w-full py-6 rounded-xl font-bold text-sm bg-white text-primary border-none shadow-sm',
+                  class: 'w-full py-6 rounded-xl font-bold text-sm bg-surface-container-lowest text-primary border-none shadow-sm',
                   data: { turbo_frame: 'modal' }
                 ) { t('people.show.add_medication') }
               end
@@ -136,7 +136,7 @@ module Components
         div(class: 'space-y-8') do
           div(class: 'flex items-center justify-between px-2') do
             Heading(level: 2, size: '6', class: 'font-bold tracking-tight') { t('people.show.medications_heading') }
-            div(class: 'h-1 flex-1 mx-8 bg-slate-50 rounded-full hidden md:block')
+            div(class: 'h-1 flex-1 mx-8 bg-surface-container-low rounded-full hidden md:block')
           end
 
           div(id: 'medications', class: 'grid grid-cols-1 md:grid-cols-2 gap-6') do
@@ -165,8 +165,8 @@ module Components
 
       def render_empty_state
         div(class: 'col-span-full') do
-          Card(class: 'text-center py-12 px-8 border-dashed border-2 bg-slate-50/50') do
-            Text(size: '3', weight: 'medium', class: 'text-slate-400 mb-6') { t('people.show.no_any_medications') }
+          Card(class: 'text-center py-12 px-8 border-dashed border-2 bg-surface-container-low') do
+            Text(size: '3', weight: 'medium', class: 'text-muted-foreground mb-6') { t('people.show.no_any_medications') }
             if can_add_medication?
               Link(
                 href: add_medication_person_path(person),
@@ -201,11 +201,11 @@ module Components
                 div(class: 'space-y-2') do
                   render RubyUI::FormFieldLabel.new(
                     for: 'person_name',
-                    class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 px-1'
+                    class: 'text-[10px] font-black uppercase tracking-widest text-muted-foreground px-1'
                   ) { t('people.form.name') }
                   render f.text_field(
                     :name,
-                    class: 'rounded-2xl border-slate-100 bg-slate-50/50 py-6 px-5 focus:bg-white focus:ring-4 ' \
+                    class: 'rounded-2xl border-border bg-surface-container-low py-6 px-5 focus:bg-surface-container-lowest focus:ring-4 ' \
                            'focus:ring-primary/5 focus:border-primary transition-all'
                   )
                 end
@@ -213,11 +213,11 @@ module Components
                 div(class: 'space-y-2') do
                   render RubyUI::FormFieldLabel.new(
                     for: 'person_date_of_birth',
-                    class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 px-1'
+                    class: 'text-[10px] font-black uppercase tracking-widest text-muted-foreground px-1'
                   ) { t('people.form.date_of_birth') }
                   render f.date_field(
                     :date_of_birth,
-                    class: 'rounded-2xl border-slate-100 bg-slate-50/50 py-6 px-5 focus:bg-white focus:ring-4 ' \
+                    class: 'rounded-2xl border-border bg-surface-container-low py-6 px-5 focus:bg-surface-container-lowest focus:ring-4 ' \
                            'focus:ring-primary/5 focus:border-primary transition-all'
                   )
                 end
@@ -227,7 +227,7 @@ module Components
                 render Button.new(type: :submit, variant: :primary, class: 'flex-1 py-7 font-bold') {
                   t('people.form.save')
                 }
-                Link(href: person_path(person), variant: :ghost, class: 'py-7 px-8 font-bold text-slate-400') do
+                Link(href: person_path(person), variant: :ghost, class: 'py-7 px-8 font-bold text-muted-foreground') do
                   t('people.form.cancel')
                 end
               end

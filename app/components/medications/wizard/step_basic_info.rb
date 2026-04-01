@@ -17,10 +17,10 @@ module Components
         def view_template
           div(class: 'space-y-6') do
             div(class: 'space-y-1 mb-2') do
-              Heading(level: 3, size: '5', class: 'font-bold tracking-tight text-slate-900') do
+              Heading(level: 3, size: '5', class: 'font-bold tracking-tight text-foreground') do
                 'Medication Details'
               end
-              Text(size: '2', class: 'text-slate-400') do
+              Text(size: '2', class: 'text-muted-foreground') do
                 'Tell us about this medication'
               end
             end

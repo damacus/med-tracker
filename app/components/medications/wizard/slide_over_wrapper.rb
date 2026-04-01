@@ -26,7 +26,7 @@ module Components
 
             # Slide-over panel
             div(
-              class: 'fixed inset-y-0 right-0 z-50 w-full max-w-xl bg-white shadow-2xl ' \
+              class: 'fixed inset-y-0 right-0 z-50 w-full max-w-xl bg-surface-container-lowest shadow-2xl ' \
                      'overflow-y-auto animate-slide-in-right'
             ) do
               render_close_button
@@ -47,8 +47,8 @@ module Components
         def render_close_button
           a(
             href: medications_path,
-            class: 'absolute top-4 right-4 w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 ' \
-                   'flex items-center justify-center text-slate-500 transition-colors z-10',
+            class: 'absolute top-4 right-4 w-10 h-10 rounded-full bg-surface-container hover:bg-accent ' \
+                   'flex items-center justify-center text-muted-foreground transition-colors z-10',
             data: { turbo_frame: '_top' }
           ) do
             render Icons::X.new(size: 18)
@@ -64,10 +64,10 @@ module Components
             ) do
               render Icons::Pill.new(size: 24)
             end
-            Heading(level: 1, size: '6', class: 'font-black tracking-tight text-slate-900') do
+            Heading(level: 1, size: '6', class: 'font-black tracking-tight text-foreground') do
               t('medications.form.new_title')
             end
-            Text(size: '2', class: 'text-slate-400') do
+            Text(size: '2', class: 'text-muted-foreground') do
               t('medications.form.new_subtitle')
             end
           end

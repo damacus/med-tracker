@@ -15,13 +15,13 @@ module Components
         card_id = "timeline_#{dose[:source].class.name.underscore}_#{dose[:source].id}"
         render RubyUI::Card.new(
           class: "border-none border-l-4 #{status_border_class} transition-all duration-300 " \
-                 'hover:scale-[1.01] hover:shadow-md bg-white shadow-sm',
+                 'hover:scale-[1.01] hover:shadow-md bg-surface-container-lowest shadow-sm',
           id: card_id,
           data: { id: "dose_#{dose_id}" }
         ) do
           div(class: 'flex items-center justify-between p-4') do
             div(class: 'flex items-center gap-4') do
-              div(class: 'text-sm font-bold text-slate-500 w-12 hidden md:block') do
+              div(class: 'text-sm font-bold text-muted-foreground w-12 hidden md:block') do
                 if dose[:scheduled_at]
                   dose[:scheduled_at].strftime('%H:%M')
                 else
@@ -56,11 +56,11 @@ module Components
 
       def status_border_class
         case dose[:status]
-        when :taken then 'border-l-emerald-500'
-        when :upcoming then 'border-l-blue-500'
-        when :cooldown then 'border-l-amber-500'
-        when :out_of_stock then 'border-l-rose-500'
-        else 'border-l-slate-200'
+        when :taken then 'border-l-success'
+        when :upcoming then 'border-l-primary'
+        when :cooldown then 'border-l-warning'
+        when :out_of_stock then 'border-l-error'
+        else 'border-l-border'
         end
       end
 
@@ -105,15 +105,15 @@ module Components
       def status_icon
         case dose[:status]
         when :taken
-          render Icons::CheckCircle.new(size: 24, class: 'text-green-500')
+          render Icons::CheckCircle.new(size: 24, class: 'text-on-success-container')
         when :upcoming
-          render Icons::Pill.new(size: 24, class: 'text-blue-500')
+          render Icons::Pill.new(size: 24, class: 'text-on-primary-container')
         when :cooldown
-          render Icons::AlertCircle.new(size: 24, class: 'text-amber-500')
+          render Icons::AlertCircle.new(size: 24, class: 'text-on-warning-container')
         when :out_of_stock
-          render Icons::XCircle.new(size: 24, class: 'text-red-500')
+          render Icons::XCircle.new(size: 24, class: 'text-on-error-container')
         else
-          render Icons::AlertCircle.new(size: 24, class: 'text-red-500')
+          render Icons::AlertCircle.new(size: 24, class: 'text-on-error-container')
         end
       end
 

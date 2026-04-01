@@ -35,7 +35,7 @@ module Components
 
         def render_connecting_line
           div(
-            class: 'absolute top-4 -left-1/2 w-full h-0.5 bg-slate-200 -z-10 transition-colors duration-300',
+            class: 'absolute top-4 -left-1/2 w-full h-0.5 bg-surface-container-high -z-10 transition-colors duration-300',
             data: { indicator_line: true }
           )
         end
@@ -45,7 +45,7 @@ module Components
           active = if index.zero?
                      'bg-primary text-white ring-4 ring-primary/20 scale-110'
                    else
-                     'bg-slate-100 text-slate-400'
+                     'bg-surface-container text-muted-foreground'
                    end
 
           div(class: "#{base} #{active}", data: { indicator_circle: true }) { step[:icon] }
@@ -53,7 +53,7 @@ module Components
 
         def render_label(step, index)
           base = 'mt-2 text-[10px] font-bold uppercase tracking-widest transition-colors duration-300'
-          color = index.zero? ? 'text-primary' : 'text-slate-400'
+          color = index.zero? ? 'text-primary' : 'text-muted-foreground'
 
           span(class: "#{base} #{color}", data: { indicator_label: true }) { step[:label] }
         end

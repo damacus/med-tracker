@@ -68,7 +68,7 @@ module Components
               if badge.present?
                 span(
                   class: 'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ' \
-                         'bg-slate-100 text-slate-700'
+                         'bg-surface-container text-foreground'
                 ) do
                   badge
                 end
@@ -137,11 +137,11 @@ module Components
       end
 
       def background_class
-        variant == :warning ? 'bg-amber-50/50' : 'bg-white/50'
+        variant == :warning ? 'bg-warning-container' : 'bg-surface-container-lowest/50'
       end
 
       def border_class
-        variant == :warning ? 'border-amber-200' : 'border-none'
+        variant == :warning ? 'border-warning' : 'border-none'
       end
 
       def render_icon(size:)
@@ -155,26 +155,26 @@ module Components
       end
 
       def icon_bg_class
-        return 'bg-amber-100' if variant == :warning
+        return 'bg-warning-container' if variant == :warning
 
         case icon_type
-        when 'users' then 'bg-blue-50'
-        when 'pill' then 'bg-emerald-50'
-        when 'check' then 'bg-indigo-50'
-        when 'clock' then 'bg-amber-50'
-        else 'bg-slate-50'
+        when 'users' then 'bg-primary-container'
+        when 'pill' then 'bg-success-container'
+        when 'check' then 'bg-secondary-container'
+        when 'clock' then 'bg-warning-container'
+        else 'bg-surface-container-low'
         end
       end
 
       def value_color_class
-        return 'text-amber-700' if variant == :warning
+        return 'text-on-warning-container' if variant == :warning
 
         case icon_type
-        when 'users' then 'text-blue-600'
-        when 'pill' then 'text-emerald-600'
-        when 'check' then 'text-indigo-600'
-        when 'clock' then 'text-amber-600'
-        else 'text-slate-900'
+        when 'users' then 'text-on-primary-container'
+        when 'pill' then 'text-on-success-container'
+        when 'check' then 'text-on-secondary-container'
+        when 'clock' then 'text-on-warning-container'
+        else 'text-foreground'
         end
       end
     end

@@ -29,7 +29,7 @@ module Components
 
       def render_header
         div(class: 'mb-8') do
-          Text(size: '2', weight: 'medium', class: 'uppercase tracking-wide text-slate-500 mb-2') do
+          Text(size: '2', weight: 'medium', class: 'uppercase tracking-wide text-muted-foreground mb-2') do
             t('person_medications.form.add_medication')
           end
           Heading(level: 1) do

@@ -132,19 +132,19 @@ module Components
         div(class: 'space-y-4 pt-4') do
           Heading(level: 2, size: '5', class: 'font-bold') { t('dashboard.insights.title') }
           render RubyUI::Card.new(
-            class: 'bg-indigo-600 rounded-[2.5rem] p-8 text-white relative overflow-hidden border-none ' \
-                   'transition-all duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-indigo-500/20 ' \
+            class: 'bg-primary rounded-[2.5rem] p-8 text-white relative overflow-hidden border-none ' \
+                   'transition-all duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-primary/20 ' \
                    'group cursor-default'
           ) do
-            div(class: 'absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full blur-2xl ' \
-                       'group-hover:bg-white/20 transition-all')
+            div(class: 'absolute -right-8 -top-8 w-32 h-32 bg-surface-container-lowest/10 rounded-full blur-2xl ' \
+                       'group-hover:bg-surface-container-lowest/20 transition-all')
             div(class: 'relative z-10') do
-              div(class: 'w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center mb-6 ' \
+              div(class: 'w-10 h-10 rounded-xl bg-surface-container-lowest/20 flex items-center justify-center mb-6 ' \
                          'group-hover:scale-110 transition-transform') do
                 render Icons::AlertCircle.new(size: 20)
               end
               Heading(level: 3, size: '4', class: 'font-bold mb-2') { t('dashboard.insights.pattern_detected') }
-              Text(class: 'text-indigo-100 text-sm leading-relaxed mb-6') do
+              Text(class: 'text-primary-foreground/80 text-sm leading-relaxed mb-6') do
                 t('dashboard.insights.message')
               end
               button(
@@ -200,9 +200,9 @@ module Components
       def status_dot_color(status)
         case status
         when :upcoming then 'bg-primary'
-        when :cooldown then 'bg-amber-400'
+        when :cooldown then 'bg-warning'
         when :out_of_stock then 'bg-destructive'
-        else 'bg-slate-300'
+        else 'bg-surface-container-high'
         end
       end
 
@@ -218,7 +218,7 @@ module Components
         div(class: 'space-y-6') do
           Heading(level: 2, size: '5', class: 'font-bold') { t('dashboard.inventory.title') }
           render RubyUI::Card.new(
-            class: 'bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm transition-all ' \
+            class: 'bg-surface-container-lowest p-8 rounded-[2.5rem] border border-border shadow-sm transition-all ' \
                    'duration-300 hover:shadow-md hover:scale-[1.01] cursor-default'
           ) do
             div(class: 'space-y-6') do
@@ -228,8 +228,8 @@ module Components
               render RubyUI::Link.new(
                 href: medications_path,
                 variant: :ghost,
-                class: 'w-full py-4 rounded-2xl bg-slate-50 text-slate-500 text-xs font-bold ' \
-                       'hover:bg-slate-100 transition-all uppercase tracking-widest no-underline flex justify-center'
+                class: 'w-full py-4 rounded-2xl bg-surface-container-low text-muted-foreground text-xs font-bold ' \
+                       'hover:bg-accent transition-all uppercase tracking-widest no-underline flex justify-center'
               ) do
                 t('dashboard.inventory.order_refills')
               end
@@ -245,9 +245,9 @@ module Components
         div(class: 'space-y-2') do
           div(class: 'flex justify-between items-center text-xs') do
             span(class: 'font-bold') { medication.name }
-            span(class: 'text-slate-600 font-bold') { t('dashboard.inventory.left', count: current) }
+            span(class: 'text-muted-foreground font-bold') { t('dashboard.inventory.left', count: current) }
           end
-          div(class: 'h-2 w-full bg-slate-100 rounded-full overflow-hidden') do
+          div(class: 'h-2 w-full bg-surface-container rounded-full overflow-hidden') do
             div(
               class: "h-full #{medication.low_stock? ? 'bg-destructive' : 'bg-primary'} " \
                      'rounded-full transition-all duration-1000',
@@ -272,8 +272,8 @@ module Components
       end
 
       def render_version_footer
-        div(class: 'mt-12 pt-4 border-t border-slate-100 text-center') do
-          span(class: 'text-xs text-slate-500 font-mono') { "v#{app_version}" }
+        div(class: 'mt-12 pt-4 border-t border-border text-center') do
+          span(class: 'text-xs text-muted-foreground font-mono') { "v#{app_version}" }
         end
       end
 

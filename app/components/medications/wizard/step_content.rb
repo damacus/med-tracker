@@ -83,12 +83,12 @@ module Components
         end
 
         def render_navigation
-          div(class: 'flex items-center justify-between pt-6 border-t border-slate-100') do
+          div(class: 'flex items-center justify-between pt-6 border-t border-border') do
             div(class: 'flex items-center gap-3') do
               Button(
                 type: :button,
                 variant: :ghost,
-                class: 'font-bold text-slate-400 hover:text-slate-600 invisible',
+                class: 'font-bold text-muted-foreground hover:text-foreground invisible',
                 data: {
                   wizard_target: 'prevButton',
                   action: 'click->wizard#prev'
@@ -101,7 +101,7 @@ module Components
               if overlay_variant?
                 a(
                   href: medications_path,
-                  class: 'text-sm font-bold text-slate-400 hover:text-slate-600',
+                  class: 'text-sm font-bold text-muted-foreground hover:text-foreground',
                   data: { turbo_frame: '_top' }
                 ) { 'Cancel' }
               end

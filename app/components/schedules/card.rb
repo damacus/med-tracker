@@ -21,7 +21,7 @@ module Components
         render RubyUI::Card.new(
           id: "schedule_#{schedule.id}",
           class: "h-full flex flex-col border-none border-t-4 #{status_top_border_class} " \
-                 'shadow-[0_15px_40px_rgba(0,0,0,0.08)] bg-white rounded-[2rem] transition-all ' \
+                 'shadow-[0_15px_40px_rgba(0,0,0,0.08)] bg-surface-container-lowest rounded-[2rem] transition-all ' \
                  'duration-300 hover:scale-[1.02] hover:shadow-2xl group overflow-hidden'
         ) do
           render_card_header
@@ -52,9 +52,9 @@ module Components
             end
           end
           div do
-            CardTitle(class: 'text-2xl font-black tracking-tight mb-1 text-slate-900') { schedule.medication.name }
+            CardTitle(class: 'text-2xl font-black tracking-tight mb-1 text-foreground') { schedule.medication.name }
             dosage_text = "#{schedule.dosage.amount.to_i}#{schedule.dosage.unit}"
-            CardDescription(class: 'text-slate-600 font-bold uppercase text-[10px] tracking-widest') do
+            CardDescription(class: 'text-muted-foreground font-bold uppercase text-[10px] tracking-widest') do
               "#{dosage_text} • #{schedule.frequency}"
             end
           end
@@ -73,7 +73,7 @@ module Components
 
       def render_card_content
         CardContent(class: 'flex-grow space-y-6 px-8') do
-          div(class: 'pt-4 border-t border-slate-50 space-y-4') do
+          div(class: 'pt-4 border-t border-border space-y-4') do
             render_date_details
             render_notes if schedule.notes.present?
             render_countdown_notice if !can_take_now? && schedule.countdown_display
@@ -90,7 +90,7 @@ module Components
 
       def render_medication_icon
         div(
-          class: 'w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 ' \
+          class: 'w-12 h-12 rounded-2xl bg-surface-container-low flex items-center justify-center text-muted-foreground ' \
                  'group-hover:text-primary group-hover:bg-primary/5 transition-all'
         ) do
           render Icons::Pill.new(size: 24)
@@ -100,20 +100,20 @@ module Components
       def render_date_details
         div(class: 'flex items-center gap-6') do
           div do
-            Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-slate-300') do
+            Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-muted-foreground') do
               t('schedules.card.started')
             end
-            Text(size: '2', weight: 'semibold', class: 'text-slate-600') do
+            Text(size: '2', weight: 'semibold', class: 'text-muted-foreground') do
               schedule.start_date.strftime('%b %d, %Y')
             end
           end
 
           if schedule.end_date
             div do
-              Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-slate-300') do
+              Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-muted-foreground') do
                 t('schedules.card.ends')
               end
-              Text(size: '2', weight: 'semibold', class: 'text-slate-600') do
+              Text(size: '2', weight: 'semibold', class: 'text-muted-foreground') do
                 schedule.end_date.strftime('%b %d, %Y')
               end
             end
@@ -122,33 +122,33 @@ module Components
       end
 
       def render_notes
-        div(class: 'p-4 bg-blue-50/50 border border-blue-100 rounded-2xl') do
+        div(class: 'p-4 bg-primary-container border border-primary/20 rounded-2xl') do
           div(class: 'flex items-center gap-2 mb-1') do
-            render Icons::AlertCircle.new(size: 14, class: 'text-blue-600')
-            Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-blue-600') do
+            render Icons::AlertCircle.new(size: 14, class: 'text-on-primary-container')
+            Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-on-primary-container') do
               t('schedules.card.notes')
             end
           end
-          Text(size: '2', class: 'text-blue-800 leading-relaxed') { schedule.notes }
+          Text(size: '2', class: 'text-on-primary-container leading-relaxed') { schedule.notes }
         end
       end
 
       def render_countdown_notice
-        div(class: 'p-4 bg-amber-50/50 border border-amber-100 rounded-2xl') do
+        div(class: 'p-4 bg-warning-container border border-warning/20 rounded-2xl') do
           div(class: 'flex items-center gap-2 mb-1') do
-            render Icons::AlertCircle.new(size: 14, class: 'text-amber-600')
-            Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-amber-600') do
+            render Icons::AlertCircle.new(size: 14, class: 'text-on-warning-container')
+            Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-on-warning-container') do
               t('schedules.card.next_dose_available')
             end
           end
-          Text(size: '2', class: 'text-amber-800 font-bold') { schedule.countdown_display }
+          Text(size: '2', class: 'text-on-warning-container font-bold') { schedule.countdown_display }
         end
       end
 
       def render_takes_section
         div(class: 'space-y-4 pt-2') do
           div(class: 'flex items-center justify-between') do
-            Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-slate-400') do
+            Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-muted-foreground') do
               t('schedules.card.todays_doses')
             end
             if schedule.max_daily_doses.present?
@@ -171,7 +171,7 @@ module Components
             end
           end
         else
-          Text(size: '2', weight: 'medium', class: 'italic text-slate-300 px-1') do
+          Text(size: '2', weight: 'medium', class: 'italic text-muted-foreground px-1') do
             t('schedules.card.no_doses_today')
           end
         end
@@ -224,19 +224,19 @@ module Components
 
       def render_take_item(take)
         div(
-          class: 'flex items-center justify-between p-3 rounded-xl bg-slate-50/50 group/item transition-colors ' \
-                 'hover:bg-slate-50'
+          class: 'flex items-center justify-between p-3 rounded-xl bg-surface-container-low group/item transition-colors ' \
+                 'hover:bg-accent'
         ) do
           div(class: 'flex items-center gap-3') do
-            render Icons::CheckCircle.new(size: 16, class: 'text-emerald-500')
+            render Icons::CheckCircle.new(size: 16, class: 'text-on-success-container')
             div(class: 'space-y-1') do
-              Text(size: '2', weight: 'bold', class: 'text-slate-700') { take.taken_at.strftime('%l:%M %p').strip }
+              Text(size: '2', weight: 'bold', class: 'text-foreground') { take.taken_at.strftime('%l:%M %p').strip }
               if take.inventory_location.present?
-                Text(size: '1', class: 'text-slate-400') { take.inventory_location.name }
+                Text(size: '1', class: 'text-muted-foreground') { take.inventory_location.name }
               end
             end
           end
-          Text(size: '1', weight: 'black', class: 'text-slate-400 uppercase tracking-tighter') do
+          Text(size: '1', weight: 'black', class: 'text-muted-foreground uppercase tracking-tighter') do
             "#{take.amount_ml.to_i}#{schedule.dosage.unit}"
           end
         end
@@ -294,8 +294,8 @@ module Components
             Link(
               href: edit_person_schedule_path(person, schedule),
               variant: :outline,
-              class: 'w-12 h-12 p-0 rounded-xl border-slate-100 flex items-center justify-center ' \
-                     'text-slate-400 hover:text-slate-600',
+              class: 'w-12 h-12 p-0 rounded-xl border-border flex items-center justify-center ' \
+                     'text-muted-foreground hover:text-foreground',
               data: { turbo_frame: 'modal', testid: "edit-schedule-#{schedule.id}" }
             ) do
               span(class: 'sr-only') { t('schedules.card.edit', default: 'Edit schedule') }
@@ -310,7 +310,7 @@ module Components
         AlertDialog do
           AlertDialogTrigger do
             Button(variant: :ghost,
-                   class: 'w-12 h-12 p-0 rounded-xl text-slate-300 hover:text-destructive hover:bg-destructive/5',
+                   class: 'w-12 h-12 p-0 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/5',
                    data: { testid: "delete-schedule-#{schedule.id}" }) do
               span(class: 'sr-only') { t('schedules.card.delete', default: 'Delete schedule') }
               render Icons::Trash.new(size: 20)
