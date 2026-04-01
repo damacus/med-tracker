@@ -66,3 +66,24 @@ tasks:
       autocorrect: '{{ .AUTOCORRECT | default "false" }}'
     cmds:
       - 'bundle exec rubocop --force-exclusion {{ if eq .autocorrect "true" }}-A{{ end }}'
+
+  playwright:
+    desc: Run local Playwright browser tests
+    summary: |
+      Run the local browser test suite backed by Playwright.
+      This delegates to the local CI-like test environment.
+      Usage: task playwright
+      Usage: task playwright TEST_FILE=spec/system/foo_spec.rb
+    cmds:
+      - task: local:test:browser
+        vars:
+          TEST_FILE: '{{ .TEST_FILE | default "" }}'
+
+  translator:hook:
+    desc: Run the Codex translator hook for staged locale and typography changes
+    summary: |
+      Runs the shared translator skill when staged files include locale YAML
+      or Ruby UI typography components.
+      Usage: task translator:hook
+    cmds:
+      - ./scripts/translator_hook.fish
