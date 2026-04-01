@@ -29,8 +29,10 @@ module Components
 
       def render_header
         div(class: 'space-y-2') do
-          Text(size: '2', weight: 'medium', class: 'uppercase tracking-wide text-slate-500') { 'Schedule workflow' }
-          Heading(level: 1) { 'Create a medication schedule' }
+          Text(size: '2', weight: 'medium', class: 'uppercase tracking-wide text-muted-foreground') do
+            t('schedules.workflow.eyebrow')
+          end
+          Heading(level: 1) { t('schedules.workflow.title') }
         end
       end
 
@@ -44,29 +46,31 @@ module Components
           end
 
           div(class: 'flex justify-end') do
-            Button(type: :submit, variant: :primary) { 'Continue to schedule details' }
+            Button(type: :submit, variant: :primary) { t('schedules.workflow.continue_button') }
           end
         end
       end
 
       def render_schedule_type_field
         FormField do
-          FormFieldLabel(for: 'schedule_type') { 'Type (OTC or prescribed)' }
+          FormFieldLabel(for: 'schedule_type') { t('schedules.workflow.schedule_type_label') }
           select(name: 'schedule_type', id: 'schedule_type',
                  class: 'w-full rounded-md border border-input bg-background px-3 py-2 text-sm') do
-            option(value: '', selected: schedule_type.blank?) { 'Select type' }
-            option(value: 'otc', selected: schedule_type == 'otc') { 'OTC' }
-            option(value: 'prescribed', selected: schedule_type == 'prescribed') { 'Prescribed' }
+            option(value: '', selected: schedule_type.blank?) { t('schedules.workflow.schedule_type_placeholder') }
+            option(value: 'otc', selected: schedule_type == 'otc') { t('schedules.workflow.schedule_type_options.otc') }
+            option(value: 'prescribed', selected: schedule_type == 'prescribed') do
+              t('schedules.workflow.schedule_type_options.prescribed')
+            end
           end
         end
       end
 
       def render_person_field
         FormField do
-          FormFieldLabel(for: 'person_id') { 'Person name' }
+          FormFieldLabel(for: 'person_id') { t('schedules.workflow.person_label') }
           select(name: 'person_id', id: 'person_id', required: true,
                  class: 'w-full rounded-md border border-input bg-background px-3 py-2 text-sm') do
-            option(value: '') { 'Select person' }
+            option(value: '') { t('schedules.workflow.person_placeholder') }
             people.each do |person|
               option(value: person.id, selected: person.id.to_s == selected_person_id.to_s) { person.name }
             end
@@ -76,10 +80,10 @@ module Components
 
       def render_medication_field
         FormField do
-          FormFieldLabel(for: 'medication_id') { 'Name of med' }
+          FormFieldLabel(for: 'medication_id') { t('schedules.workflow.medication_label') }
           select(name: 'medication_id', id: 'medication_id', required: true,
                  class: 'w-full rounded-md border border-input bg-background px-3 py-2 text-sm') do
-            option(value: '') { 'Select medication' }
+            option(value: '') { t('schedules.workflow.medication_placeholder') }
             medications.each do |medication|
               option(value: medication.id, selected: medication.id.to_s == selected_medication_id.to_s) do
                 medication.name
@@ -91,25 +95,25 @@ module Components
 
       def render_frequency_field
         FormField do
-          FormFieldLabel(for: 'frequency') { 'Dose, frequency' }
+          FormFieldLabel(for: 'frequency') { t('schedules.workflow.frequency_label') }
           Input(
             type: :text,
             name: 'frequency',
             id: 'frequency',
             value: frequency,
-            placeholder: 'e.g. Once daily'
+            placeholder: t('schedules.workflow.frequency_placeholder')
           )
         end
       end
 
       def render_summary
         render RubyUI::Card.new(class: 'p-6') do
-          Heading(level: 2, size: '4', class: 'font-semibold mb-4') { 'Schedule (break this down)' }
-          div(class: 'space-y-2 text-sm text-slate-600') do
-            render_summary_row('Name of med', selected_medication&.name)
-            render_summary_row('Person name', selected_person&.name)
-            render_summary_row('Type', schedule_type)
-            render_summary_row('Dose, frequency', frequency)
+          Heading(level: 2, size: '4', class: 'font-semibold mb-4') { t('schedules.workflow.summary_title') }
+          div(class: 'space-y-2 text-sm text-muted-foreground') do
+            render_summary_row(t('schedules.workflow.medication_label'), selected_medication&.name)
+            render_summary_row(t('schedules.workflow.person_label'), selected_person&.name)
+            render_summary_row(t('schedules.workflow.schedule_type_label'), selected_schedule_type)
+            render_summary_row(t('schedules.workflow.frequency_label'), frequency)
           end
         end
       end
@@ -119,7 +123,14 @@ module Components
       end
 
       def summary_value(value)
-        value.presence || '-'
+        value.presence || t('schedules.workflow.none')
+      end
+
+      def selected_schedule_type
+        return t('schedules.workflow.schedule_type_options.otc') if schedule_type == 'otc'
+        return t('schedules.workflow.schedule_type_options.prescribed') if schedule_type == 'prescribed'
+
+        nil
       end
 
       def selected_medication

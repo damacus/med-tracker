@@ -31,13 +31,13 @@ module Components
           render_person_avatar
           div do
             Heading(level: 3) { person.name }
-            Text(size: '2', weight: 'muted') { "Age: #{person.age}" }
+            Text(size: '2', weight: 'muted') { "#{t('dashboard.person_schedule.age')}: #{person.age}" }
           end
         end
       end
 
       def render_person_avatar
-        div(class: 'w-12 h-12 rounded-full flex items-center justify-center bg-slate-100 text-slate-700') do
+        div(class: 'w-12 h-12 rounded-full flex items-center justify-center bg-surface-container text-foreground') do
           render Icons::User.new(size: 24)
         end
       end
@@ -54,7 +54,7 @@ module Components
         Card(id: "schedule_#{schedule.id}", class: 'h-full flex flex-col') do
           CardHeader do
             render_medication_icon
-            Text(size: '4', weight: 'semibold', class: 'leading-none tracking-tight text-slate-900') do
+            Text(size: '4', weight: 'semibold', class: 'leading-none tracking-tight text-foreground') do
               schedule.medication.name
             end
           end
@@ -77,9 +77,9 @@ module Components
 
       def render_schedule_details(schedule)
         div(class: 'space-y-1 text-sm text-muted-foreground') do
-          render_detail_row('Dosage', format_dosage(schedule))
-          render_detail_row('Frequency', schedule.frequency) if schedule.frequency.present?
-          render_detail_row('Ends', format_end_date(schedule)) if schedule.end_date
+          render_detail_row(t('dashboard.person_schedule.dosage'), format_dosage(schedule))
+          render_detail_row(t('dashboard.person_schedule.frequency'), schedule.frequency) if schedule.frequency.present?
+          render_detail_row(t('dashboard.person_schedule.ends'), format_end_date(schedule)) if schedule.end_date
         end
       end
 
@@ -111,13 +111,13 @@ module Components
       end
 
       def render_take_medication_link(schedule)
-        label = blocked_reason_for(schedule) == :out_of_stock ? 'Out of Stock' : 'On Cooldown'
+        label = blocked_reason_for(schedule) == :out_of_stock ? t('dashboard.person_schedule.out_of_stock') : t('dashboard.person_schedule.on_cooldown')
         render Components::Medications::TakeAction.new(
           source: schedule,
           context: { person: person, current_user: current_user },
           amount: schedule.dosage.amount,
           button: {
-            label: 'Take Now',
+            label: t('dashboard.person_schedule.take_now'),
             variant: :ghost,
             size: :sm,
             class: 'text-primary hover:underline font-medium p-0 h-auto',
@@ -138,24 +138,23 @@ module Components
               variant: :destructive_outline,
               size: :sm,
               data: { test_id: "delete-schedule-#{schedule.id}" }
-            ) { 'Delete' }
+            ) { t('dashboard.delete_confirmation.delete') }
           end
           AlertDialogContent do
             AlertDialogHeader do
-              AlertDialogTitle { 'Delete Schedule' }
+              AlertDialogTitle { t('dashboard.delete_confirmation.delete_schedule') }
               AlertDialogDescription do
-                "Are you sure you want to delete this schedule for #{schedule.medication.name}? " \
-                  'This action cannot be undone.'
+                t('dashboard.person_schedule.delete_confirmation', medication: schedule.medication.name)
               end
             end
             AlertDialogFooter do
-              AlertDialogCancel { 'Cancel' }
+              AlertDialogCancel { t('dashboard.delete_confirmation.cancel') }
               form_with(
                 url: person_schedule_path(schedule.person, schedule),
                 method: :delete,
                 class: 'inline'
               ) do
-                Button(variant: :destructive, type: :submit) { 'Delete' }
+                Button(variant: :destructive, type: :submit) { t('dashboard.delete_confirmation.delete') }
               end
             end
           end

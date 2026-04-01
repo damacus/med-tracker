@@ -72,7 +72,11 @@ module Components
                 url: take_path,
                 method: :post,
                 class: 'space-y-4',
-                data: { controller: 'optimistic-take', action: 'submit->optimistic-take#submit' }
+                data: {
+                  controller: 'optimistic-take',
+                  action: 'submit->optimistic-take#submit',
+                  optimistic_take_loading_label_value: t('medications.take_action.loading')
+                }
               ) do
                 input(type: :hidden, name: 'amount_ml', value: formatted_amount)
 
@@ -80,11 +84,11 @@ module Components
                   available_medications.each_with_index do |medication, index|
                     label(
                       for: "taken_from_medication_#{source.class.name.underscore}_#{source.id}_#{medication.id}",
-                      class: 'flex items-center justify-between gap-3 rounded-2xl border border-slate-200 p-4'
+                      class: 'flex items-center justify-between gap-3 rounded-2xl border border-border p-4'
                     ) do
                       div(class: 'space-y-1') do
-                        Text(size: '2', weight: 'bold', class: 'text-slate-900') { medication.location.name }
-                        Text(size: '1', class: 'text-slate-500') { medication_description(medication) }
+                        Text(size: '2', weight: 'bold', class: 'text-foreground') { medication.location.name }
+                        Text(size: '1', class: 'text-muted-foreground') { medication_description(medication) }
                       end
                       div(class: 'flex items-center gap-3') do
                         Badge(variant: :outline, class: 'rounded-full text-[10px]') { inventory_label(medication) }
@@ -119,7 +123,11 @@ module Components
           url: take_path,
           method: :post,
           class: form_class,
-          data: { controller: 'optimistic-take', action: 'submit->optimistic-take#submit' }
+          data: {
+            controller: 'optimistic-take',
+            action: 'submit->optimistic-take#submit',
+            optimistic_take_loading_label_value: t('medications.take_action.loading')
+          }
         ) do
           input(type: :hidden, name: 'amount_ml', value: formatted_amount)
           input(type: :hidden, name: 'taken_from_medication_id', value: selected_medication.id)

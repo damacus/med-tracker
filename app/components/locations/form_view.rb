@@ -33,8 +33,8 @@ module Components
           ) do
             render Icons::Home.new(size: 32)
           end
-          Heading(level: 1, size: '8', class: 'font-black tracking-tight text-slate-900') { title }
-          Text(size: '3', class: 'text-slate-400') { subtitle } if subtitle
+          Heading(level: 1, size: '8', class: 'font-black tracking-tight text-foreground') { title }
+          Text(size: '3', class: 'text-muted-foreground') { subtitle } if subtitle
         end
       end
 
@@ -47,20 +47,23 @@ module Components
           render_errors if location.errors.any?
           input(type: 'hidden', name: 'return_to', value: return_to) if return_to.present?
 
-          Card(class: 'overflow-hidden border-none shadow-2xl rounded-[2.5rem] bg-white') do
+          Card(class: 'overflow-hidden border-none shadow-2xl rounded-[2.5rem] bg-surface-container-lowest') do
             div(class: 'p-10 space-y-8') do
               render_name_field(form)
               render_description_field(form)
             end
 
-            div(class: 'px-10 py-6 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between gap-4') do
+            div(
+              class: 'px-10 py-6 bg-surface-container-low border-t border-border flex items-center ' \
+                     'justify-between gap-4'
+            ) do
               Link(href: return_to.presence || locations_path, variant: :ghost,
-                   class: 'font-bold text-slate-400 hover:text-slate-600') do
-                'Back'
+                   class: 'font-bold text-muted-foreground hover:text-foreground') do
+                t('people.show.back')
               end
               Button(type: :submit, variant: :primary, size: :lg,
                      class: 'px-8 rounded-2xl shadow-lg shadow-primary/20') do
-                'Save Location'
+                t('locations.form.save')
               end
             end
           end
@@ -89,8 +92,8 @@ module Components
         div(class: 'space-y-2') do
           render RubyUI::FormFieldLabel.new(
             for: 'location_name',
-            class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1'
-          ) { 'Name' }
+            class: 'text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1'
+          ) { t('people.form.name') }
           render RubyUI::Input.new(
             type: :text,
             name: 'location[name]',
@@ -98,8 +101,10 @@ module Components
             value: location.name,
             required: true,
             placeholder: t('forms.locations.name_placeholder'),
-            class: 'rounded-2xl border-slate-200 bg-white py-4 px-4 focus:ring-2 focus:ring-primary/10 ' \
-                   "focus:border-primary transition-all #{field_error_class(location, :name)}",
+            class: [
+              'rounded-2xl border-border bg-surface-container-lowest py-4 px-4 focus:ring-2 focus:ring-primary/10',
+              "focus:border-primary transition-all #{field_error_class(location, :name)}"
+            ],
             **field_error_attributes(location, :name, input_id: 'location_name')
           )
           render_field_error(location, :name, input_id: 'location_name')
@@ -110,14 +115,14 @@ module Components
         div(class: 'space-y-2') do
           render RubyUI::FormFieldLabel.new(
             for: 'location_description',
-            class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1'
-          ) { 'Description (optional)' }
+            class: 'text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1'
+          ) { t('locations.form.description_optional') }
           render RubyUI::Textarea.new(
             name: 'location[description]',
             id: 'location_description',
             rows: 3,
             placeholder: t('forms.locations.description_placeholder'),
-            class: 'rounded-2xl border-slate-200 bg-white p-4 focus:ring-2 focus:ring-primary/10 ' \
+            class: 'rounded-2xl border-border bg-surface-container-lowest p-4 focus:ring-2 focus:ring-primary/10 ' \
                    'focus:border-primary transition-all resize-none'
           ) { location.description }
         end

@@ -28,7 +28,7 @@ module Components
                 Time.current.strftime('%A, %b %d')
               end
               Heading(level: 1, size: '8', class: 'font-extrabold tracking-tight') do
-                'Admin Dashboard'
+                t('admin.dashboard.title')
               end
             end
           end
@@ -38,37 +38,37 @@ module Components
         def render_metrics_grid
           div(class: 'grid grid-cols-2 lg:grid-cols-4 auto-rows-fr gap-4 mb-12') do
             render_metric_card(
-              title: 'Total Users',
+              title: t('admin.dashboard.metrics.total_users'),
               value: metrics[:total_users] || 0,
               testid: 'metric-total-users',
               icon_type: 'users'
             )
             render_metric_card(
-              title: 'Active Users',
+              title: t('admin.dashboard.metrics.active_users'),
               value: metrics[:active_users] || 0,
               testid: 'metric-active-users',
               icon_type: 'check'
             )
             render_metric_card(
-              title: 'Recent Signups',
+              title: t('admin.dashboard.metrics.recent_signups'),
               value: metrics[:recent_signups] || 0,
               testid: 'metric-recent-signups',
               icon_type: 'activity'
             )
             render_metric_card(
-              title: 'Total People',
+              title: t('admin.dashboard.metrics.total_people'),
               value: metrics[:total_people] || 0,
               testid: 'metric-total-people',
               icon_type: 'users'
             )
             render_metric_card(
-              title: 'Active Schedules',
+              title: t('admin.dashboard.metrics.active_schedules'),
               value: metrics[:active_schedules] || 0,
               testid: 'metric-active-schedules',
               icon_type: 'pill'
             )
             render_metric_card(
-              title: 'No Carers',
+              title: t('admin.dashboard.metrics.no_carers'),
               value: metrics[:patients_without_carers] || 0,
               testid: 'metric-patients-without-carers',
               icon_type: 'activity',
@@ -91,29 +91,29 @@ module Components
 
         def render_quick_actions
           div(class: 'space-y-6') do
-            Heading(level: 2, size: '5', class: 'font-bold') { 'Quick Actions' }
+            Heading(level: 2, size: '5', class: 'font-bold') { t('admin.dashboard.quick_actions.title') }
             div(class: 'grid gap-4 sm:grid-cols-2 lg:grid-cols-4') do
               render_action_card(
-                title: 'Manage Users',
-                description: 'View and manage user accounts',
+                title: t('admin.dashboard.quick_actions.manage_users_title'),
+                description: t('admin.dashboard.quick_actions.manage_users_description'),
                 href: '/admin/users',
                 icon: Icons::Users.new(size: 24)
               )
               render_action_card(
-                title: 'Invitations',
-                description: 'Invite new users to join',
+                title: t('admin.dashboard.quick_actions.invitations_title'),
+                description: t('admin.dashboard.quick_actions.invitations_description'),
                 href: '/admin/invitations',
                 icon: Icons::User.new(size: 24)
               )
               render_action_card(
-                title: 'Manage People',
-                description: 'View and manage people records',
+                title: t('admin.dashboard.quick_actions.manage_people_title'),
+                description: t('admin.dashboard.quick_actions.manage_people_description'),
                 href: '/people',
                 icon: Icons::Users.new(size: 24)
               )
               render_action_card(
-                title: 'Audit Trail',
-                description: 'View system audit logs',
+                title: t('admin.dashboard.quick_actions.audit_trail_title'),
+                description: t('admin.dashboard.quick_actions.audit_trail_description'),
                 href: '/admin/audit_logs',
                 icon: Icons::Activity.new(size: 24)
               )
@@ -124,15 +124,15 @@ module Components
         def render_action_card(title:, description:, href:, icon: nil)
           a(
             href: href,
-            class: 'flex flex-col gap-3 rounded-2xl bg-white p-6 border border-slate-100 shadow-sm ' \
+            class: 'flex flex-col gap-3 rounded-2xl bg-surface-container-lowest p-6 border border-border shadow-sm ' \
                    'transition-all duration-300 hover:shadow-md hover:scale-[1.02] ' \
                    'cursor-pointer no-underline h-full min-w-0'
           ) do
-            div(class: 'w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-600 shrink-0') do
+            div(class: 'w-10 h-10 rounded-xl bg-surface-container-low flex items-center justify-center text-muted-foreground shrink-0') do
               render icon if icon
             end
             div(class: 'mt-2 min-w-0') do
-              Heading(level: 3, size: '3', class: 'font-bold text-slate-900 mb-1 truncate') { title }
+              Heading(level: 3, size: '3', class: 'font-bold text-foreground mb-1 truncate') { title }
               Text(size: '2', weight: 'muted', class: 'leading-relaxed break-words text-wrap') { description }
             end
           end

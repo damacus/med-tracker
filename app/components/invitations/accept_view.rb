@@ -23,9 +23,9 @@ module Components
 
       def header_section
         div(class: 'mx-auto max-w-xl text-center space-y-3') do
-          Heading(level: 1, class: 'text-4xl font-bold tracking-tight text-foreground sm:text-5xl') { 'MedTracker' }
+          Heading(level: 1, class: 'text-4xl font-bold tracking-tight text-foreground sm:text-5xl') { t('app.name') }
           Text(size: 'lg', class: 'text-muted-foreground sm:text-xl') do
-            "Welcome! You've been invited as a #{@invitation.role.titleize}."
+            t('invitations.accept.welcome', role: t("activerecord.attributes.invitation.roles.#{@invitation.role}"))
           end
         end
       end
@@ -36,9 +36,9 @@ module Components
 
         Card(class: card_classes) do
           CardHeader(class: 'space-y-2 bg-card/60') do
-            CardTitle(class: 'text-2xl font-semibold text-foreground') { 'Complete Your Account' }
+            CardTitle(class: 'text-2xl font-semibold text-foreground') { t('invitations.accept.title') }
             CardDescription(class: 'text-base text-muted-foreground') do
-              plain 'Fill in your details to accept the invitation.'
+              plain t('invitations.accept.description')
             end
           end
 
@@ -55,34 +55,34 @@ module Components
           input(type: 'hidden', name: 'invitation_token', value: @token)
 
           FormField do
-            FormFieldLabel(for: 'name') { 'Name' }
+            FormFieldLabel(for: 'name') { t('invitations.accept.form.name') }
             Input(type: :text, name: 'name', id: 'name', required: true, autofocus: true,
-                  placeholder: 'Enter your full name')
+                  placeholder: t('invitations.accept.form.name_placeholder'))
           end
 
           FormField do
-            FormFieldLabel(for: 'date_of_birth') { 'Date of birth' }
+            FormFieldLabel(for: 'date_of_birth') { t('invitations.accept.form.date_of_birth') }
             Input(type: :date, name: 'date_of_birth', id: 'date_of_birth', required: true)
           end
 
           FormField do
-            FormFieldLabel(for: 'email') { 'Email' }
+            FormFieldLabel(for: 'email') { t('invitations.accept.form.email') }
             Input(type: :email, name: 'email', id: 'email', value: @invitation.email,
                   readonly: true, class: 'bg-muted/70')
           end
 
           FormField do
-            FormFieldLabel(for: 'password') { 'Password' }
+            FormFieldLabel(for: 'password') { t('invitations.accept.form.password') }
             Input(type: :password, name: 'password', id: 'password', required: true, minlength: 12)
           end
 
           FormField do
-            FormFieldLabel(for: 'password-confirm') { 'Confirm Password' }
+            FormFieldLabel(for: 'password-confirm') { t('invitations.accept.form.password_confirmation') }
             Input(type: :password, name: 'password-confirm', id: 'password-confirm', required: true,
                   minlength: 12)
           end
 
-          Button(type: :submit, variant: :primary, size: :md, class: 'w-full') { 'Create Account' }
+          Button(type: :submit, variant: :primary, size: :md, class: 'w-full') { t('invitations.accept.form.submit') }
         end
       end
     end

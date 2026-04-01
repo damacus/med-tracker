@@ -14,7 +14,7 @@ module Components
         end
 
         def view_template
-          div(class: 'flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3 sm:px-6') do
+          div(class: 'flex items-center justify-between border-t border-border bg-surface-container-lowest px-4 py-3 sm:px-6') do
             div(class: 'flex flex-1 justify-between sm:hidden') do
               render_mobile_pagination
             end
@@ -34,9 +34,9 @@ module Components
               variant: :link,
               class: mobile_nav_class,
               data: { turbo_frame: 'admin-users-frame' }
-            ) { 'Previous' }
+            ) { t('admin.users.pagination.previous') }
           else
-            span(class: "#{mobile_nav_class} opacity-50 cursor-not-allowed") { 'Previous' }
+            span(class: "#{mobile_nav_class} opacity-50 cursor-not-allowed") { t('admin.users.pagination.previous') }
           end
 
           if pagy_obj.next
@@ -45,27 +45,27 @@ module Components
               variant: :link,
               class: mobile_nav_class,
               data: { turbo_frame: 'admin-users-frame' }
-            ) { 'Next' }
+            ) { t('admin.users.pagination.next') }
           else
-            span(class: "#{mobile_nav_class} opacity-50 cursor-not-allowed") { 'Next' }
+            span(class: "#{mobile_nav_class} opacity-50 cursor-not-allowed") { t('admin.users.pagination.next') }
           end
         end
 
         def mobile_nav_class
-          'relative inline-flex items-center rounded-md border border-slate-300 bg-white ' \
-            'px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50'
+          'relative inline-flex items-center rounded-md border border-border bg-surface-container-lowest ' \
+            'px-4 py-2 text-sm font-medium text-foreground hover:bg-accent'
         end
 
         def render_pagination_info
           div(data: { testid: 'pagination-info' }) do
-            Text(size: '2', class: 'text-slate-700') do
-              plain 'Showing '
+            Text(size: '2', class: 'text-foreground') do
+              plain "#{t('admin.users.pagination.showing')} "
               span(class: 'font-medium') { pagy_obj.from.to_s }
-              plain ' to '
+              plain " #{t('admin.users.pagination.to')} "
               span(class: 'font-medium') { pagy_obj.to.to_s }
-              plain ' of '
+              plain " #{t('admin.users.pagination.of')} "
               span(class: 'font-medium') { pagy_obj.count.to_s }
-              plain ' results'
+              plain " #{t('admin.users.pagination.results')}"
             end
           end
         end
@@ -73,7 +73,7 @@ module Components
         def render_pagination_nav
           return if pagy_obj.pages <= 1
 
-          nav(class: 'isolate inline-flex -space-x-px rounded-md shadow-sm', aria: { label: 'Pagination' }) do
+          nav(class: 'isolate inline-flex -space-x-px rounded-md shadow-sm', aria: { label: t('admin.users.pagination.label') }) do
             render_prev_button
             render_page_numbers
             render_next_button
@@ -88,12 +88,12 @@ module Components
               class: nav_button_class('rounded-l-md'),
               data: { turbo_frame: 'admin-users-frame' }
             ) do
-              span(class: 'sr-only') { 'Previous' }
+              span(class: 'sr-only') { t('admin.users.pagination.previous') }
               plain '‹'
             end
           else
             span(class: "#{nav_button_class('rounded-l-md')} opacity-50 cursor-not-allowed") do
-              span(class: 'sr-only') { 'Previous' }
+              span(class: 'sr-only') { t('admin.users.pagination.previous') }
               plain '‹'
             end
           end
@@ -107,12 +107,12 @@ module Components
               class: nav_button_class('rounded-r-md'),
               data: { turbo_frame: 'admin-users-frame' }
             ) do
-              span(class: 'sr-only') { 'Next' }
+              span(class: 'sr-only') { t('admin.users.pagination.next') }
               plain '›'
             end
           else
             span(class: "#{nav_button_class('rounded-r-md')} opacity-50 cursor-not-allowed") do
-              span(class: 'sr-only') { 'Next' }
+              span(class: 'sr-only') { t('admin.users.pagination.next') }
               plain '›'
             end
           end
@@ -142,19 +142,19 @@ module Components
         end
 
         def nav_button_class(extra = '')
-          'relative inline-flex items-center px-2 py-2 text-slate-400 ring-1 ring-inset ' \
-            "ring-slate-300 hover:bg-slate-50 focus:z-20 focus:outline-offset-0 #{extra}"
+          'relative inline-flex items-center px-2 py-2 text-muted-foreground ring-1 ring-inset ' \
+            "ring-border hover:bg-accent focus:z-20 focus:outline-offset-0 #{extra}"
         end
 
         def page_number_class(current)
           base = 'relative inline-flex items-center px-4 py-2 text-sm font-semibold ' \
-                 'ring-1 ring-inset ring-slate-300 focus:z-20 focus:outline-offset-0'
-          current ? "#{base} z-10 bg-primary text-white" : "#{base} text-slate-900 hover:bg-slate-50"
+                 'ring-1 ring-inset ring-border focus:z-20 focus:outline-offset-0'
+          current ? "#{base} z-10 bg-primary text-white" : "#{base} text-foreground hover:bg-accent"
         end
 
         def gap_class
           'relative inline-flex items-center px-4 py-2 text-sm font-semibold ' \
-            'text-slate-700 ring-1 ring-inset ring-slate-300'
+            'text-foreground ring-1 ring-inset ring-border'
         end
       end
     end

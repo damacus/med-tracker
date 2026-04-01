@@ -41,16 +41,16 @@ module Components
 
           render_workflow_step(
             1,
-            title: 'Choose a medication',
-            description: 'Start by choosing the medication you want to add.'
+            title: t('person_medications.form.workflow.choose_medication_title'),
+            description: t('person_medications.form.workflow.choose_medication_description')
           ) do
             render_medication_field
           end
 
           render_workflow_step(
             2,
-            title: 'Choose the dose',
-            description: 'Every as-needed medication needs a dose before you continue.'
+            title: t('person_medications.form.workflow.choose_dose_title'),
+            description: t('person_medications.form.workflow.choose_dose_description')
           ) do
             render_selection_summary
             render_dose_field
@@ -58,8 +58,8 @@ module Components
 
           render_workflow_step(
             3,
-            title: 'Add optional guidance',
-            description: 'Add any notes or dose limits you want to track with this medication.'
+            title: t('person_medications.form.workflow.add_guidance_title'),
+            description: t('person_medications.form.workflow.add_guidance_description')
           ) do
             render_selection_summary(show_dose: true)
             render_notes_field
@@ -73,7 +73,7 @@ module Components
             data: { person_medication_form_target: 'stepPanel', step: step_number }) do
           div(class: 'space-y-1') do
             Heading(level: 2, size: '4', class: 'font-semibold') { title }
-            Text(size: '2', class: 'text-slate-500') { description }
+            Text(size: '2', class: 'text-muted-foreground') { description }
           end
           div(class: 'space-y-4', &)
         end
@@ -81,19 +81,19 @@ module Components
 
       def render_selection_summary(show_dose: false)
         div(class: selection_summary_layout_classes(show_dose)) do
-          div(class: 'rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3') do
-            Text(size: '1', weight: 'medium', class: 'uppercase tracking-[0.2em] text-slate-400') { 'Medication' }
+          div(class: 'rounded-2xl border border-border bg-surface-container-low px-4 py-3') do
+            Text(size: '1', weight: 'medium', class: 'uppercase tracking-[0.2em] text-muted-foreground') { t('person_medications.form.medication') }
             Text(size: '3', weight: 'semibold',
                  data: { person_medication_form_target: 'selectedMedicationName' }) do
-              selected_medication_name || 'Choose a medication'
+              selected_medication_name || t('person_medications.form.workflow.choose_medication_title')
             end
           end
 
           if show_dose
-            div(class: 'rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3') do
-              Text(size: '1', weight: 'medium', class: 'uppercase tracking-[0.2em] text-slate-400') { 'Dose' }
+            div(class: 'rounded-2xl border border-border bg-surface-container-low px-4 py-3') do
+              Text(size: '1', weight: 'medium', class: 'uppercase tracking-[0.2em] text-muted-foreground') { t('person_medications.form.dose') }
               Text(size: '3', weight: 'semibold', data: { person_medication_form_target: 'selectedDoseName' }) do
-                selected_dose_label || 'Choose a dose'
+                selected_dose_label || t('person_medications.form.workflow.choose_dose_title')
               end
             end
           end
@@ -102,18 +102,18 @@ module Components
 
       def render_medication_field
         FormField do
-          FormFieldLabel(for: 'person_medication_medication_id_trigger') { 'Medication' }
+          FormFieldLabel(for: 'person_medication_medication_id_trigger') { t('person_medications.form.medication') }
           render RubyUI::Combobox.new(class: 'w-full') do
             render RubyUI::ComboboxTrigger.new(
-              placeholder: selected_medication_name || 'Select a medication',
+              placeholder: selected_medication_name || t('person_medications.form.select_medication'),
               disabled: editing
             )
 
             render RubyUI::ComboboxPopover.new do
-              render RubyUI::ComboboxSearchInput.new(placeholder: 'Search medications…')
+              render RubyUI::ComboboxSearchInput.new(placeholder: t('person_medications.form.search_medications'))
 
               render RubyUI::ComboboxList.new do
-                render(RubyUI::ComboboxEmptyState.new { 'No medications found.' })
+                render(RubyUI::ComboboxEmptyState.new { t('person_medications.form.no_medications_found') })
 
                 medications.each do |med|
                   render RubyUI::ComboboxItem.new do
@@ -137,14 +137,14 @@ module Components
               end
             end
           end
-          FormFieldHint { 'Select a medication from the list' }
+          FormFieldHint { t('person_medications.form.medication_hint') }
         end
       end
 
       def render_dose_field
         FormField do
           FormFieldLabel(for: 'person_medication_dose_option') do
-            plain 'Dose'
+            plain t('person_medications.form.dose')
             span(class: 'text-destructive ml-0.5') { ' *' }
           end
           input(
@@ -169,26 +169,26 @@ module Components
                     action: 'change->person-medication-form#selectDose' }
           ) do
             option(value: '') do
-              person_medication.medication_id.present? ? 'Select a dose' : 'Select a medication first'
+              person_medication.medication_id.present? ? t('person_medications.form.select_dose') : t('person_medications.form.select_medication_first')
             end
             if person_medication.dose_amount.present? && person_medication.dose_unit.present?
               option(value: selected_dose_option_value, selected: true) { selected_dose_label }
             end
           end
-          FormFieldHint { 'All as-needed medications require a dose' }
+          FormFieldHint { t('person_medications.form.dose_hint') }
         end
       end
 
       def render_notes_field
         FormField do
-          FormFieldLabel(for: 'person_medication_notes') { 'Notes' }
+          FormFieldLabel(for: 'person_medication_notes') { t('person_medications.form.notes') }
           Textarea(
             name: 'person_medication[notes]',
             id: 'person_medication_notes',
-            placeholder: 'Add any special instructions or notes',
+            placeholder: t('person_medications.form.notes_placeholder'),
             rows: 3
           ) { person_medication.notes }
-          FormFieldHint { 'Add any special instructions or notes' }
+          FormFieldHint { t('person_medications.form.notes_hint') }
         end
       end
 
@@ -202,23 +202,23 @@ module Components
 
       def render_max_daily_doses_field
         FormField do
-          FormFieldLabel(for: 'person_medication_max_daily_doses') { 'Max doses / cycle' }
+          FormFieldLabel(for: 'person_medication_max_daily_doses') { t('person_medications.form.max_doses_per_cycle') }
           Input(
             type: :number,
             name: 'person_medication[max_daily_doses]',
             id: 'person_medication_max_daily_doses',
             value: person_medication.max_daily_doses,
             min: 1,
-            placeholder: 'Optional',
+            placeholder: t('person_medications.form.optional'),
             data: { person_medication_form_target: 'maxDosesInput' }
           )
-          FormFieldHint { 'Max doses allowed per cycle' }
+          FormFieldHint { t('person_medications.form.max_doses_hint') }
         end
       end
 
       def render_min_hours_field
         FormField do
-          FormFieldLabel(for: 'person_medication_min_hours_between_doses') { 'Min hours apart' }
+          FormFieldLabel(for: 'person_medication_min_hours_between_doses') { t('person_medications.form.min_hours_apart') }
           Input(
             type: :number,
             name: 'person_medication[min_hours_between_doses]',
@@ -226,10 +226,10 @@ module Components
             value: person_medication.min_hours_between_doses,
             min: 1,
             step: 0.5,
-            placeholder: 'Optional',
+            placeholder: t('person_medications.form.optional'),
             data: { person_medication_form_target: 'minHoursInput' }
           )
-          FormFieldHint { 'Min time between doses' }
+          FormFieldHint { t('person_medications.form.min_hours_hint') }
         end
       end
 
@@ -275,7 +275,7 @@ module Components
 
       def workflow_progress_classes(step_number)
         classes = %w[h-2 w-10 rounded-full transition-colors]
-        classes << (step_number <= initial_step ? 'bg-slate-900' : 'bg-slate-200')
+        classes << (step_number <= initial_step ? 'bg-foreground' : 'bg-surface-container-high')
         classes.join(' ')
       end
 
@@ -291,15 +291,15 @@ module Components
 
       def render_dose_cycle_field
         FormField do
-          FormFieldLabel(for: 'person_medication_dose_cycle_trigger') { 'Dose cycle' }
+          FormFieldLabel(for: 'person_medication_dose_cycle_trigger') { t('person_medications.form.dose_cycle') }
           render RubyUI::Combobox.new(class: 'w-full') do
             render RubyUI::ComboboxTrigger.new(
-              placeholder: person_medication.dose_cycle&.titleize || 'Daily'
+              placeholder: person_medication.dose_cycle&.titleize || t('person_medications.form.default_dose_cycle')
             )
 
             render RubyUI::ComboboxPopover.new do
               render RubyUI::ComboboxList.new do
-                render(RubyUI::ComboboxEmptyState.new { 'No options.' })
+                render(RubyUI::ComboboxEmptyState.new { t('person_medications.form.no_options') })
 
                 PersonMedication::DOSE_CYCLE_OPTIONS.each do |label, value|
                   render RubyUI::ComboboxItem.new do
@@ -316,7 +316,7 @@ module Components
               end
             end
           end
-          FormFieldHint { 'Cycle reset period' }
+          FormFieldHint { t('person_medications.form.dose_cycle_hint') }
         end
       end
     end

@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static values = { nextUrl: String }
+  static values = { nextUrl: String, translations: Object }
   static targets = [
     "submit", "dosageSelect", "medicationSelect", "dosageContent",
     "dosageValue", "dosageTrigger", "frequencyInput",
@@ -82,11 +82,11 @@ export default class extends Controller {
 
     const parts = []
     if (max && cycle) {
-      parts.push(max === 1 ? `Once ${cycle}` : `Up to ${max} times ${cycle}`)
+      parts.push(max === 1 ? this.t('frequencyOncePerCycle').replace('%{cycle}', cycle) : this.t('frequencyUpToPerCycle').replace('%{count}', max).replace('%{cycle}', cycle))
     } else if (max) {
-      parts.push(max === 1 ? 'Once per cycle' : `Up to ${max} times per cycle`)
+      parts.push(max === 1 ? this.t('frequencyOnce') : this.t('frequencyUpTo').replace('%{count}', max))
     }
-    if (hours) parts.push(`at least ${hours}h apart`)
+    if (hours) parts.push(this.t('frequencyAtLeastHours').replace('%{hours}', hours))
 
     if (parts.length && this.hasFrequencyInputTarget) {
       this.frequencyInputTarget.value = parts.join(', ')
@@ -112,7 +112,7 @@ export default class extends Controller {
 
     // Reset the displayed value and disable trigger if no medication
     if (this.hasDosageValueTarget) {
-      this.dosageValueTarget.textContent = medicationId ? 'Select a dosage' : 'Select a medication first'
+      this.dosageValueTarget.textContent = medicationId ? this.t('selectDosage') : this.t('selectMedicationFirst')
     }
 
     // Enable/disable the dosage trigger based on medication selection
@@ -215,5 +215,9 @@ export default class extends Controller {
 
     const input = this.element.querySelector(`[name="${fieldName}"]`)
     return !!(input && input.value.trim() !== '')
+  }
+
+  t(key) {
+    return this.translationsValue?.[key] || ''
   }
 }
