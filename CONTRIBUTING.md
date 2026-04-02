@@ -36,7 +36,7 @@ task docs:serve              # serve docs locally
 
 - Framework: **RSpec** (`spec/**/*_spec.rb`)
 - System/integration tests: **Capybara** (`spec/features/`, `spec/system/`)
-- Test data: **Rails fixtures** in `spec/fixtures/` — no factories
+- Test data: **Rails fixtures** in `spec/fixtures/` and **FactoryBot** in `spec/factories/`
 - External HTTP: **VCR** cassettes in `spec/vcr_cassettes/`
 - Test through public APIs only (controller actions, public model methods)
 - Tests document expected business behaviour, not implementation details
