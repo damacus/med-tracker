@@ -2,6 +2,14 @@
 
 > `CLAUDE.md` is a symlink to this file (`agents.md`). Edit `agents.md`.
 
+## TDD
+
+Follow Red-Green-Refactor — no production code without a failing test first.
+
+1. **Red** — write a test that fails
+2. **Green** — write the minimum code to make it pass
+3. **Refactor** — clean up while keeping tests green
+
 ## Non-obvious rules
 
 - **Shell** — Fish syntax only (`set VAR value`, `(cmd)`, `if … end`)

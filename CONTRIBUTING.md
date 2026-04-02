@@ -1,161 +1,101 @@
-# Ruby Development Guidelines
+# Contributing to MedTracker
 
-## Quick Reference
+## Quick setup
 
-**Key Principles:**
-
-- Write tests first (TDD)
-- Test behavior, not implementation
-- Use Rails' strong parameters for validation.
-- Strive for immutability where practical.
-- Write small, focused methods.
-- Follow the Ruby Style Guide.
-
-**Preferred Tools:**
-
-- **Language**: Ruby
-- **Framework**: Ruby on Rails
-- **Testing**: Minitest + Capybara
-- **Test Data**: Standard Rails Fixtures
-- **API Mocking**: VCR
-- **Code Style**: RuboCop
-
-## Testing Principles
-
-### Behavior-Driven Testing
-
-- Tests should verify expected behavior, treating implementation as a black box.
-- Test through the public API (e.g., controller actions, public model methods) exclusively. Internals should be invisible to tests.
-- Tests must document expected business behaviour.
-- 100% test coverage is the goal, achieved by testing business behavior, not implementation details.
-
-### Testing Tools
-
-- We use **Minitest**, the default Rails testing framework.
-- System tests are written with **Capybara** to simulate user interactions.
-- For API mocking, we use **VCR**.
-
-### Test Organization
-
-Rails has a standard directory structure for tests. Our files will be organized as follows:
-
-```text
-test/
-  models/
-    user_test.rb
-  controllers/
-    users_controller_test.rb
-  system/
-    user_sign_up_test.rb
+```bash
+git clone https://github.com/damacus/med-tracker.git
+cd med-tracker
+bin/setup-claude   # installs task, gems, npm packages, Python deps, Playwright
+task dev:up        # start dev server via Docker
+task dev:seed      # seed the database
 ```
 
-### Test Data Pattern
+Open <http://localhost:3000>.
 
-We use standard Rails fixtures for test data.
+> **Note**: `bin/setup-claude` handles several environment quirks (Bundler/CGI
+> proxy issue, offline Playwright browsers, blocked `task` installer). If you
+> are setting up in a restricted network or CI environment, run this script
+> rather than installing dependencies manually.
 
-Example with fixtures:
+## Development workflow
 
-```yaml
-# test/fixtures/users.yml
-david:
-  name: David Heinemeier Hansson
-  birthday: 1979-10-15
-  profession: Creator of Rails
-
-steve:
-  name: Steve Klabnik
-  birthday: 1983-06-08
-  profession: Ruby Hero
+```bash
+task test                    # run RSpec suite in Docker
+task test TEST_FILE=spec/models/user_spec.rb  # run a single file
+task rubocop                 # lint Ruby
+task rubocop AUTOCORRECT=true  # auto-fix style issues
+task dev:up                  # start / restart the dev server
+task stop-all                # stop all Docker environments
+task lighthouse:run          # accessibility/performance audit (requires dev:up)
+task docs:serve              # serve docs locally
 ```
 
-And in a test:
+## Standards
 
-```ruby
-# test/models/user_test.rb
-require "test_helper"
+### Testing
 
-class UserTest < ActiveSupport::TestCase
-  fixtures :users
+- Framework: **RSpec** (`spec/**/*_spec.rb`)
+- System/integration tests: **Capybara** (`spec/features/`, `spec/system/`)
+- Test data: **Rails fixtures** in `spec/fixtures/` and **FactoryBot** in `spec/factories/`
+- External HTTP: **VCR** cassettes in `spec/vcr_cassettes/`
+- Test through public APIs only (controller actions, public model methods)
+- Tests document expected business behaviour, not implementation details
 
-  test "returns the user's name" do
-    assert_equal "David Heinemeier Hansson", users(:david).name
-  end
-end
+### Code style
+
+RuboCop enforces the standard configuration (`.rubocop.yml`). Key rules:
+
+- Guard clauses instead of nested `if/else`
+- Small, single-responsibility methods
+- No nested blocks deeper than 2 levels
+- No inline comments — write self-documenting code with descriptive names
+- Prefer `Enumerable` methods over imperative loops
+
+#### Naming
+
+| Thing | Convention |
+|---|---|
+| Methods / variables | `snake_case` |
+| Classes / modules | `PascalCase` |
+| Constants | `UPPER_SNAKE_CASE` |
+| Files | `snake_case.rb` |
+| Test files | `*_spec.rb` |
+
+### Architecture
+
+- Domain logic lives on the server; the front end renders server-sent HTML via
+  **Hotwire** (Turbo + Stimulus)
+- Views are **Phlex** components under `app/components/` — not ERB
+- Complex business logic that doesn't belong in a model or controller goes in a
+  **service object** (PORO) under `app/services/`
+- Authorization is handled by **Pundit** — check/update policies when touching
+  access control
+
+### Commit messages
+
+Use [Conventional Commits](https://www.conventionalcommits.org/):
+
+```
+feat: add prescription management feature
+fix: resolve dose timing validation error
+docs: update CONTRIBUTING with setup steps
+refactor: extract dosage calculation to service object
+test: add coverage for medication take model
+chore: bump Ruby to 3.4.7
 ```
 
-Key principles:
+- Each commit is a complete, logical unit of work — tests green before merge
+- Avoid "initial commit" or "wip" messages
 
-- Fixtures are a way of organizing test data; they reside in the `test/fixtures/` directory.
-- Each fixture file corresponds to a model.
-- Fixtures are written in YAML.
-- They are pre-loaded before each test run, which can be faster than factories.
+## Stack reference
 
-## Ruby and Rails Guidelines
-
-### Data Validation
-
-- Use Active Record validations in your models to ensure data integrity.
-- Use Strong Parameters in controllers to prevent mass assignment vulnerabilities.
-
-- **Use Guard Clauses**: Avoid nested `if/else` statements by using early returns.
-- **Avoid Deep Nesting**: Keep methods and blocks shallow (max 2 levels).
-- **Single Responsibility Principle**: Keep methods small and focused on a single responsibility.
-- **Readability**: Prefer flat, readable code over clever one-liners.
-
-#### Naming Conventions
-
-- **Methods/Variables**: `snake_case` (e.g., `calculate_total`, `user_name`).
-- **Classes/Modules**: `PascalCase` (e.g., `PaymentRequest`, `UserProfile`).
-- **Constants**: `UPPER_SNAKE_CASE`.
-- **Files**: `snake_case.rb`.
-- **Test files**: `*_spec.rb` (RSpec).
-
-### No Comments in Code
-
-Code should be self-documenting. Comments often indicate that the code itself is not clear enough and can become outdated.
-
-Instead of comments, focus on:
-
-- Choosing descriptive names for variables, methods, and classes.
-- Extracting complex logic into well-named private methods.
-
-#### Good: Self-documenting code with clear names
-
-```ruby
-class DiscountCalculator
-  PREMIUM_DISCOUNT_MULTIPLIER = 0.8
-  STANDARD_DISCOUNT_MULTIPLIER = 0.9
-
-  def self.call(price, customer)
-    new(price, customer).calculate
-  end
-
-  def initialize(price, customer)
-    @price = price
-    @customer = customer
-  end
-
-  def calculate
-    price * discount_multiplier
-  end
-
-  private
-
-  attr_reader :price, :customer
-
-  def discount_multiplier
-    customer.premium? ? PREMIUM_DISCOUNT_MULTIPLIER : STANDARD_DISCOUNT_MULTIPLIER
-  end
-end
-```
-
-## Refactoring
-
-Follow the **Red-Green-Refactor** cycle of TDD:
-
-1. **Red**: Write a simple test that fails.
-2. **Green**: Write the minimum amount of code to make the test pass.
-3. **Refactor**: Clean up the code you just wrote, while keeping the tests green.
-
-- **Assess refactoring after every green test** - Look for opportunities to improve code structure.
-- **Keep project docs current** - update them whenever you introduce meaningful changes.
+| Layer | Technology |
+|---|---|
+| Language | Ruby 3.4.7 |
+| Framework | Ruby on Rails 8.1 |
+| Database | PostgreSQL (Docker) |
+| Frontend | Hotwire, Phlex, TailwindCSS, Propshaft |
+| Testing | RSpec, Capybara, Playwright |
+| Auth | `has_secure_password` + Pundit, OIDC planned |
+| Task runner | [Task](https://taskfile.dev) (`Taskfile.yml`) |
+| CI | GitHub Actions (`.github/workflows/`) |
