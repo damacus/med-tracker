@@ -131,6 +131,8 @@ module Components
 
           if location.members.present?
             div(class: 'space-y-3') do
+              # Bolt: Pre-index memberships by person_id to convert O(N^2) search to O(N) with O(1) hash lookups
+              memberships_by_person_id = location.location_memberships.index_by(&:person_id)
               location.members.each do |member|
                 div(class: 'flex items-center justify-between group') do
                   div(class: 'flex items-center gap-3') do
@@ -141,7 +143,7 @@ module Components
                   end
 
                   if view_context.policy(location).update?
-                    membership = location.location_memberships.find { |lm| lm.person_id == member.id }
+                    membership = memberships_by_person_id[member.id]
                     render_remove_member_dialog(member, membership)
                   end
                 end

@@ -34,3 +34,7 @@
 ## 2026-03-08 - Avoid Redundant Subqueries When Array is Materialized Immediately Afterwards
 **Learning:** In `reports_controller.rb`, extracting `Schedule.where(person_id: person_ids).select(:id)` as a subquery constraint for `MedicationTake` forced an extra database subquery, even though the exact filtered subset of active `schedules` was materialized into an array on the very next line via `.to_a`.
 **Action:** Order ActiveRecord relation evaluations logically to maximize reuse. If a collection must be materialized into a Ruby array anyway, compute it first, and then map its IDs (`schedules.map(&:id)`) to constrain subsequent queries instead of duplicating the database effort with a subquery.
+
+## 2025-03-09 - Avoid O(N^2) Linear Searches in Nested Loops
+**Learning:** In view components (like `Locations::ShowView`), looping over a collection (e.g. `location.members`) and performing a linear search (`.find { ... }`) on another association inside the loop creates an O(N^2) performance bottleneck, especially if both collections can grow.
+**Action:** Before entering the loop, pre-index the association being searched using `.index_by(&:foreign_key)`. Then, perform O(1) hash lookups inside the loop (e.g. `indexed_hash[item.id]`), effectively reducing the operation to O(N).
