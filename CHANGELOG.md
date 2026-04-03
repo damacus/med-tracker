@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.36](https://github.com/damacus/med-tracker/compare/v0.3.35...v0.3.36) (2026-04-03)
+
+
+### Performance Improvements
+
+* ⚡ Bolt: [optimize location members view] ([#1063](https://github.com/damacus/med-tracker/issues/1063)) ([b3a903d](https://github.com/damacus/med-tracker/commit/b3a903d47f621012e9d9cfb7203779a26834a26a))
+
 ## [0.3.35](https://github.com/damacus/med-tracker/compare/v0.3.34...v0.3.35) (2026-03-31)
 
 
