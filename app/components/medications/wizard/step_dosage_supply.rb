@@ -17,10 +17,10 @@ module Components
         def view_template
           div(class: 'space-y-6') do
             div(class: 'space-y-1 mb-2') do
-              Heading(level: 3, size: '5', class: 'font-bold tracking-tight text-slate-900') do
+              Heading(level: 3, size: '5', class: 'font-bold tracking-tight text-foreground') do
                 t('forms.medications.dosage_and_supply')
               end
-              Text(size: '2', class: 'text-slate-400') do
+              Text(size: '2', class: 'text-muted-foreground') do
                 'Set the default dosage and track your supply'
               end
             end
@@ -30,7 +30,7 @@ module Components
               render_dosage_unit_field
             end
 
-            div(class: 'h-px bg-slate-100 w-full')
+            div(class: 'h-px bg-border w-full')
 
             div(class: 'grid grid-cols-1 sm:grid-cols-2 gap-6') do
               render_current_supply_field

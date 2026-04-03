@@ -113,6 +113,7 @@ High-value files for fast orientation:
 ## OPS_RUNBOOK
 - Dev start: `task dev:up` then `task dev:seed`
 - Test: `task test`
+- Local Playwright browser tests: `task playwright`
 - Lint: `task rubocop`
 - Docs: `task docs:serve`, `task docs:build`
 

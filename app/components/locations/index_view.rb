@@ -52,7 +52,7 @@ module Components
       def render_location_card(location)
         Card(
           id: "location_#{location.id}",
-          class: 'h-full flex flex-col border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-white ' \
+          class: 'h-full flex flex-col border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-surface-container-lowest ' \
                  'rounded-[2.5rem] transition-all duration-300 hover:scale-[1.02] hover:shadow-xl ' \
                  'group overflow-hidden'
         ) do
@@ -69,18 +69,18 @@ module Components
 
           CardContent(class: 'flex-grow space-y-4 px-8 pb-4') do
             if location.description.present?
-              Text(size: '2', class: 'text-slate-400 line-clamp-2 leading-relaxed') { location.description }
+              Text(size: '2', class: 'text-muted-foreground line-clamp-2 leading-relaxed') { location.description }
             end
 
             if location.members.present?
-              div(class: 'pt-4 border-t border-slate-100') do
-                Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-slate-500 mb-2 block') do
+              div(class: 'pt-4 border-t border-border') do
+                Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-muted-foreground mb-2 block') do
                   t('locations.index.members')
                 end
                 div(class: 'flex flex-wrap gap-1') do
                   location.members.each do |member|
                     Badge(variant: :outline,
-                          class: 'text-[10px] bg-slate-50/50 text-slate-600 border-slate-200 font-medium') do
+                          class: 'text-[10px] bg-surface-container-low text-muted-foreground border-border font-medium') do
                       member.name
                     end
                   end
@@ -97,7 +97,7 @@ module Components
 
       def render_location_icon
         div(
-          class: 'w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 ' \
+          class: 'w-12 h-12 rounded-2xl bg-surface-container-low flex items-center justify-center text-muted-foreground ' \
                  'group-hover:text-primary group-hover:bg-primary/5 transition-all'
         ) do
           render Icons::Home.new(size: 24)
@@ -110,7 +110,7 @@ module Components
             href: location_path(location),
             variant: :outline,
             size: :sm,
-            class: 'flex-1 rounded-xl py-5 border-slate-100 bg-white hover:bg-slate-50 text-slate-600'
+            class: 'flex-1 rounded-xl py-5 border-border bg-surface-container-lowest hover:bg-accent text-muted-foreground'
           ) do
             t('locations.index.view')
           end
@@ -118,7 +118,7 @@ module Components
             href: edit_location_path(location, return_to: locations_path),
             variant: :outline,
             size: :sm,
-            class: 'rounded-xl w-10 h-10 p-0 border-slate-100 bg-white hover:bg-slate-50 text-slate-400',
+            class: 'rounded-xl w-10 h-10 p-0 border-border bg-surface-container-lowest hover:bg-accent text-muted-foreground',
             aria_label: t('locations.index.edit', default: 'Edit location')
           ) do
             render Icons::Pencil.new(size: 16)
@@ -131,7 +131,7 @@ module Components
         AlertDialog do
           AlertDialogTrigger do
             Button(variant: :ghost, size: :sm,
-                   class: 'rounded-xl w-10 h-10 p-0 text-slate-300 hover:text-destructive hover:bg-destructive/5',
+                   class: 'rounded-xl w-10 h-10 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/5',
                    aria_label: t('locations.index.delete', default: 'Delete location')) do
               render Icons::Trash.new(size: 18)
             end

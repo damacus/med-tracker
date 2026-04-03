@@ -17,7 +17,7 @@ module Views
 
       def render_sheet_trigger
         render SheetTrigger.new do
-          render Button.new(variant: :outline, size: :sm) { 'Change' }
+          render Button.new(variant: :outline, size: :sm) { t('profiles.password_sheet.change_button') }
         end
       end
 
@@ -30,8 +30,8 @@ module Views
 
       def render_sheet_header
         render SheetHeader.new do
-          render(SheetTitle.new { 'Change Password' })
-          render(SheetDescription.new { 'Update your password to keep your account secure.' })
+          render(SheetTitle.new { t('profiles.password_sheet.title') })
+          render(SheetDescription.new { t('profiles.password_sheet.description') })
         end
       end
 
@@ -46,16 +46,16 @@ module Views
 
       def render_password_fields
         div(class: 'space-y-4') do
-          render_password_field('current_password', 'Current Password', 'Enter current password')
-          render_password_field('new_password', 'New Password', 'Enter new password')
-          render_password_field('password_confirmation', 'Confirm New Password', 'Confirm new password')
+          render_password_field('current_password', t('profiles.password_sheet.current_password_label'), t('profiles.password_sheet.current_password_placeholder'))
+          render_password_field('new_password', t('profiles.password_sheet.new_password_label'), t('profiles.password_sheet.new_password_placeholder'))
+          render_password_field('password_confirmation', t('profiles.password_sheet.confirm_password_label'), t('profiles.password_sheet.confirm_password_placeholder'))
         end
       end
 
       def render_sheet_footer
         render SheetFooter.new do
-          render Button.new(variant: :outline, data: { action: 'click->ruby-ui--sheet-content#close' }) { 'Cancel' }
-          render Button.new(type: :submit) { 'Update Password' }
+          render Button.new(variant: :outline, data: { action: 'click->ruby-ui--sheet-content#close' }) { t('profiles.password_sheet.cancel') }
+          render Button.new(type: :submit) { t('profiles.password_sheet.submit') }
         end
       end
 

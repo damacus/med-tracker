@@ -24,7 +24,7 @@ module Components
             render_errors if @invitation.errors.any?
 
             div(class: 'max-w-2xl mx-auto w-full') do
-              Card(class: 'overflow-hidden border-none shadow-2xl rounded-[2.5rem] bg-white') do
+              Card(class: 'overflow-hidden border-none shadow-2xl rounded-[2.5rem] bg-surface-container-lowest') do
                 div(class: 'p-10') do
                   render_form
                 end
@@ -44,9 +44,9 @@ module Components
                 Time.current.strftime('%A, %b %d')
               end
               Heading(level: 1, size: '8', class: 'font-extrabold tracking-tight') do
-                'Invitations'
+                t('admin.invitations.index.title')
               end
-              Text(weight: 'muted', class: 'mt-2 block') { 'Invite new users to join MedTracker.' }
+              Text(weight: 'muted', class: 'mt-2 block') { t('admin.invitations.index.subtitle') }
             end
           end
         end
@@ -64,8 +64,8 @@ module Components
         def render_email_field
           FormField(class: 'space-y-2') do
             FormFieldLabel(for: 'invitation_email',
-                           class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1') do
-              'Email'
+                           class: 'text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1') do
+              t('admin.invitations.index.form.email')
             end
             Input(
               type: :email,
@@ -73,7 +73,7 @@ module Components
               id: 'invitation_email',
               value: @invitation.email,
               required: true,
-              class: 'rounded-md border-slate-200 bg-white py-4 px-4 focus:ring-2 ' \
+              class: 'rounded-md border-border bg-surface-container-lowest py-4 px-4 focus:ring-2 ' \
                      'focus:ring-primary/10 focus:border-primary transition-all'
             )
           end
@@ -82,8 +82,8 @@ module Components
         def render_role_field
           FormField(class: 'space-y-2') do
             FormFieldLabel(for: 'invitation_role',
-                           class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1') do
-              'Role'
+                           class: 'text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1') do
+              t('admin.invitations.index.form.role')
             end
             select(name: 'invitation[role]', id: 'invitation_role', class: select_classes, required: true) do
               Invitation.assignable_roles.each_key do |role|
@@ -97,7 +97,7 @@ module Components
           div(class: 'flex items-center justify-end pt-4') do
             Button(type: :submit, variant: :primary, size: :lg,
                    class: 'px-8 rounded-2xl shadow-lg shadow-primary/20') do
-              'Send invitation'
+              t('admin.invitations.index.form.submit')
             end
           end
         end
@@ -106,12 +106,12 @@ module Components
           return if @invitations.empty?
 
           div(class: 'max-w-4xl mx-auto w-full') do
-            Card(class: 'overflow-hidden border-none shadow-xl rounded-[2rem] bg-white') do
-              div(class: 'px-8 py-6 border-b border-slate-100') do
-                Heading(level: 2, size: '5', class: 'font-bold tracking-tight') { 'Recent invitations' }
+            Card(class: 'overflow-hidden border-none shadow-xl rounded-[2rem] bg-surface-container-lowest') do
+              div(class: 'px-8 py-6 border-b border-border') do
+                Heading(level: 2, size: '5', class: 'font-bold tracking-tight') { t('admin.invitations.index.recent') }
               end
 
-              div(class: 'divide-y divide-slate-100') do
+              div(class: 'divide-y divide-border') do
                 @invitations.each do |invitation|
                   render_invitation_row(invitation)
                 end
@@ -123,17 +123,17 @@ module Components
         def render_invitation_row(invitation)
           div(class: 'px-8 py-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4') do
             div(class: 'space-y-1') do
-              p(class: 'text-sm font-semibold text-slate-900') { invitation.email }
-              p(class: 'text-sm text-slate-500') do
+              p(class: 'text-sm font-semibold text-foreground') { invitation.email }
+              p(class: 'text-sm text-muted-foreground') do
                 plain "#{invitation.role.titleize} • #{invitation_status_label(invitation)}"
               end
-              p(class: 'text-xs text-slate-400') { invitation_metadata(invitation) }
+              p(class: 'text-xs text-muted-foreground') { invitation_metadata(invitation) }
             end
 
             next unless resendable_invitation?(invitation)
 
             form_with(url: resend_admin_invitation_path(invitation), method: :post, class: 'shrink-0') do
-              Button(type: :submit, variant: :outline, size: :sm, class: 'rounded-xl') { 'Resend' }
+              Button(type: :submit, variant: :outline, size: :sm, class: 'rounded-xl') { t('admin.invitations.index.resend') }
             end
           end
         end
@@ -143,19 +143,19 @@ module Components
         end
 
         def invitation_status_label(invitation)
-          return 'Accepted' if invitation.accepted?
-          return 'Expired' if invitation.expired?
+          return t('admin.invitations.index.status.accepted') if invitation.accepted?
+          return t('admin.invitations.index.status.expired') if invitation.expired?
 
-          'Pending'
+          t('admin.invitations.index.status.pending')
         end
 
         def invitation_metadata(invitation)
           if invitation.accepted?
-            "Accepted #{view_context.time_ago_in_words(invitation.accepted_at)} ago"
+            t('admin.invitations.index.metadata.accepted', time: view_context.time_ago_in_words(invitation.accepted_at))
           elsif invitation.expired?
-            "Expired #{view_context.time_ago_in_words(invitation.expires_at)} ago"
+            t('admin.invitations.index.metadata.expired', time: view_context.time_ago_in_words(invitation.expires_at))
           else
-            "Expires #{view_context.time_ago_in_words(invitation.expires_at)} from now"
+            t('admin.invitations.index.metadata.expires', time: view_context.time_ago_in_words(invitation.expires_at))
           end
         end
 

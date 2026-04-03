@@ -39,7 +39,7 @@ module Components
         div(class: 'flex justify-between items-start w-full mb-2') do
           div(class: 'flex items-center gap-2') do
             render_person_avatar
-            span(class: 'font-semibold text-slate-900 truncate') { person.name }
+            span(class: 'font-semibold text-foreground truncate') { person.name }
           end
           render Components::Shared::StockBadge.new(medication: schedule.medication)
         end
@@ -54,7 +54,7 @@ module Components
       def render_medication_info
         div(class: 'flex items-center gap-2 mb-3') do
           render_medication_icon
-          span(class: 'font-medium text-slate-700') { schedule.medication.name }
+          span(class: 'font-medium text-foreground') { schedule.medication.name }
         end
       end
 
@@ -65,17 +65,17 @@ module Components
       end
 
       def render_details
-        div(class: 'grid grid-cols-2 gap-2 text-sm text-slate-600') do
-          render_detail('Dosage', format_dosage)
-          render_detail('Remaining Supply', format_quantity)
-          render_detail('Frequency', schedule.frequency || '—')
-          render_detail('Ends', format_end_date)
+        div(class: 'grid grid-cols-2 gap-2 text-sm text-muted-foreground') do
+          render_detail(t('dashboard.schedule_card.dosage'), format_dosage)
+          render_detail(t('dashboard.schedule_card.remaining_supply'), format_quantity)
+          render_detail(t('dashboard.schedule_card.frequency'), schedule.frequency || '—')
+          render_detail(t('dashboard.schedule_card.ends'), format_end_date)
         end
       end
 
       def render_detail(label, value)
         div do
-          span(class: 'text-slate-500') { "#{label}: " }
+          span(class: 'text-muted-foreground') { "#{label}: " }
           span(class: 'font-medium') { value }
         end
       end
@@ -88,13 +88,13 @@ module Components
       end
 
       def render_take_now_button
-        label = blocked_reason == :out_of_stock ? 'Out of Stock' : 'On Cooldown'
+        label = blocked_reason == :out_of_stock ? t('dashboard.person_schedule.out_of_stock') : t('dashboard.person_schedule.on_cooldown')
         render Components::Medications::TakeAction.new(
           source: schedule,
           context: { person: person, current_user: current_user },
           amount: schedule.dosage.amount,
           button: {
-            label: 'Take Now',
+            label: t('dashboard.person_schedule.take_now'),
             variant: :success_outline,
             size: :md,
             class: 'inline-block',

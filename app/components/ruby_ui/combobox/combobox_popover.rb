@@ -10,7 +10,7 @@ module RubyUI
 
     def default_attrs
       {
-        class: 'inset-auto m-0 absolute border bg-background shadow-lg rounded-lg',
+        class: 'inset-auto m-0 absolute border bg-surface-container-high shadow-elevation-3 rounded-shape-md',
         role: 'popover',
         autofocus: true,
         popover: true,

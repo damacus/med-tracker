@@ -21,7 +21,7 @@ module Components
         render RubyUI::Card.new(
           id: "person_medication_#{person_medication.id}",
           class: 'h-full flex flex-col border-none border-l-4 border-l-primary ' \
-                 'shadow-[0_8px_30px_rgb(0,0,0,0.06)] bg-white rounded-[2.5rem] transition-all ' \
+                 'shadow-[0_8px_30px_rgb(0,0,0,0.06)] bg-surface-container-lowest rounded-[2.5rem] transition-all ' \
                  'duration-300 hover:scale-[1.02] hover:shadow-xl group overflow-hidden'
         ) do
           render_card_header
@@ -39,10 +39,10 @@ module Components
             render Components::Shared::StockBadge.new(medication: person_medication.medication)
           end
           div do
-            CardTitle(class: 'text-2xl font-black tracking-tight mb-1 text-slate-900') do
+            CardTitle(class: 'text-2xl font-black tracking-tight mb-1 text-foreground') do
               person_medication.medication.name
             end
-            CardDescription(class: 'text-slate-500 font-bold uppercase text-[10px] tracking-widest') do
+            CardDescription(class: 'text-muted-foreground font-bold uppercase text-[10px] tracking-widest') do
               medication_description
             end
           end
@@ -51,7 +51,7 @@ module Components
 
       def render_card_content
         CardContent(class: 'flex-grow space-y-6 px-8') do
-          div(class: 'pt-4 border-t border-slate-50 space-y-4') do
+          div(class: 'pt-4 border-t border-border space-y-4') do
             render_notes if person_medication.notes.present?
             render_timing_restrictions if person_medication.timing_restrictions?
             render_countdown_notice if !person_medication.can_take_now? && person_medication.countdown_display
@@ -70,13 +70,14 @@ module Components
         parts = []
         dose = DoseAmount.new(person_medication.dose_amount, person_medication.dose_unit).to_s
         parts << dose if dose.present?
-        parts << 'As needed'
+        parts << t('people.add_medication.otc_title')
         parts.join(' • ')
       end
 
       def render_medication_icon
         div(
-          class: 'w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 ' \
+          class: 'w-12 h-12 rounded-2xl bg-surface-container-low flex items-center justify-center ' \
+                 'text-muted-foreground ' \
                  'group-hover:text-primary group-hover:bg-primary/5 transition-all'
         ) do
           render Icons::Pill.new(size: 24)
@@ -84,38 +85,38 @@ module Components
       end
 
       def render_notes
-        div(class: 'p-4 bg-blue-50/50 border border-blue-100 rounded-2xl') do
+        div(class: 'p-4 bg-primary-container border border-primary/20 rounded-2xl') do
           div(class: 'flex items-center gap-2 mb-1') do
-            render Icons::AlertCircle.new(size: 14, class: 'text-blue-600')
-            Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-blue-600') do
+            render Icons::AlertCircle.new(size: 14, class: 'text-on-primary-container')
+            Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-on-primary-container') do
               t('person_medications.card.notes')
             end
           end
-          Text(size: '2', class: 'text-blue-800 leading-relaxed') { person_medication.notes }
+          Text(size: '2', class: 'text-on-primary-container leading-relaxed') { person_medication.notes }
         end
       end
 
       def render_timing_restrictions
-        div(class: 'p-4 bg-slate-50 border border-slate-100 rounded-2xl') do
+        div(class: 'p-4 bg-surface-container-low border border-border rounded-2xl') do
           div(class: 'flex items-center gap-2 mb-2') do
-            render Icons::Settings.new(size: 14, class: 'text-slate-400')
-            Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-slate-400') do
+            render Icons::Settings.new(size: 14, class: 'text-muted-foreground')
+            Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-muted-foreground') do
               t('person_medications.card.timing_restrictions')
             end
           end
           ul(class: 'space-y-1.5') do
             if person_medication.max_daily_doses.present?
               li(class: 'flex items-center gap-2') do
-                div(class: 'w-1 h-1 rounded-full bg-slate-300')
-                Text(size: '2', weight: 'semibold', class: 'text-slate-600') do
+                div(class: 'w-1 h-1 rounded-full bg-muted-foreground')
+                Text(size: '2', weight: 'semibold', class: 'text-muted-foreground') do
                   t('person_medications.card.max_doses_per_day', count: person_medication.max_daily_doses)
                 end
               end
             end
             if person_medication.min_hours_between_doses.present?
               li(class: 'flex items-center gap-2') do
-                div(class: 'w-1 h-1 rounded-full bg-slate-300')
-                Text(size: '2', weight: 'semibold', class: 'text-slate-600') do
+                div(class: 'w-1 h-1 rounded-full bg-muted-foreground')
+                Text(size: '2', weight: 'semibold', class: 'text-muted-foreground') do
                   t('person_medications.card.wait_hours', hours: person_medication.min_hours_between_doses)
                 end
               end
@@ -125,14 +126,14 @@ module Components
       end
 
       def render_countdown_notice
-        div(class: 'p-4 bg-amber-50/50 border border-amber-100 rounded-2xl') do
+        div(class: 'p-4 bg-warning-container border border-warning/20 rounded-2xl') do
           div(class: 'flex items-center gap-2 mb-1') do
-            render Icons::AlertCircle.new(size: 14, class: 'text-amber-600')
-            Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-amber-600') do
+            render Icons::AlertCircle.new(size: 14, class: 'text-on-warning-container')
+            Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-on-warning-container') do
               t('person_medications.card.next_dose_available')
             end
           end
-          Text(size: '2', class: 'text-amber-800 font-bold') { person_medication.countdown_display }
+          Text(size: '2', class: 'text-on-warning-container font-bold') { person_medication.countdown_display }
         end
       end
 
@@ -141,7 +142,7 @@ module Components
 
         div(class: 'space-y-4 pt-2') do
           div(class: 'flex items-center justify-between') do
-            Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-slate-400') do
+            Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-muted-foreground') do
               t('person_medications.card.todays_doses')
             end
             render_dose_counter(takes) if person_medication.max_daily_doses.present?
@@ -181,7 +182,7 @@ module Components
             end
           end
         else
-          Text(size: '2', weight: 'medium', class: 'italic text-slate-300 px-1') do
+          Text(size: '2', weight: 'medium', class: 'italic text-muted-foreground px-1') do
             t('person_medications.card.no_doses_today')
           end
         end
@@ -189,20 +190,21 @@ module Components
 
       def render_take_item(take)
         div(
-          class: 'flex items-center justify-between p-3 rounded-xl bg-slate-50/50 group/item transition-colors ' \
-                 'hover:bg-slate-50'
+          class: 'flex items-center justify-between p-3 rounded-xl bg-surface-container-low ' \
+                 'group/item transition-colors ' \
+                 'hover:bg-accent'
         ) do
           div(class: 'flex items-center gap-3') do
-            render Icons::CheckCircle.new(size: 16, class: 'text-emerald-500')
+            render Icons::CheckCircle.new(size: 16, class: 'text-on-success-container')
             div(class: 'space-y-1') do
-              Text(size: '2', weight: 'bold', class: 'text-slate-700') { take.taken_at.strftime('%l:%M %p').strip }
+              Text(size: '2', weight: 'bold', class: 'text-foreground') { take.taken_at.strftime('%l:%M %p').strip }
               if take.inventory_location.present?
-                Text(size: '1', class: 'text-slate-400') { take.inventory_location.name }
+                Text(size: '1', class: 'text-muted-foreground') { take.inventory_location.name }
               end
             end
           end
           if take.amount_ml.present?
-            Text(size: '1', weight: 'black', class: 'text-slate-400 uppercase tracking-tighter') do
+            Text(size: '1', weight: 'black', class: 'text-muted-foreground uppercase tracking-tighter') do
               DoseAmount.new(take.amount_ml, person_medication.dose_unit).to_s
             end
           end
@@ -278,8 +280,8 @@ module Components
         a(
           href: edit_person_person_medication_path(person, person_medication),
           data: { turbo_frame: 'modal', testid: "edit-person-medication-#{person_medication.id}" },
-          class: 'inline-flex items-center justify-center w-10 h-10 rounded-xl text-slate-400 ' \
-                 'hover:text-slate-700 hover:bg-slate-100 transition-colors',
+          class: 'inline-flex items-center justify-center w-10 h-10 rounded-xl text-muted-foreground ' \
+                 'hover:text-foreground hover:bg-accent transition-colors',
           aria_label: t('person_medications.card.edit')
         ) do
           render Icons::Pencil.new(size: 16)
@@ -297,7 +299,7 @@ module Components
             Button(
               variant: :ghost,
               type: :submit,
-              class: 'w-10 h-10 p-0 rounded-xl text-slate-400 hover:text-slate-700',
+              class: 'w-10 h-10 p-0 rounded-xl text-muted-foreground hover:text-foreground',
               data: { testid: "move-up-person-medication-#{person_medication.id}" },
               aria_label: t('person_medications.card.move_up_aria_label')
             ) do
@@ -314,7 +316,7 @@ module Components
             Button(
               variant: :ghost,
               type: :submit,
-              class: 'w-10 h-10 p-0 rounded-xl text-slate-400 hover:text-slate-700',
+              class: 'w-10 h-10 p-0 rounded-xl text-muted-foreground hover:text-foreground',
               data: { testid: "move-down-person-medication-#{person_medication.id}" },
               aria_label: t('person_medications.card.move_down_aria_label')
             ) do
@@ -329,7 +331,7 @@ module Components
           AlertDialogTrigger do
             Button(
               variant: :ghost,
-              class: 'w-12 h-12 p-0 rounded-xl text-slate-300 hover:text-destructive hover:bg-destructive/5',
+              class: 'w-12 h-12 p-0 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/5',
               data: { testid: "delete-person-medication-#{person_medication.id}" },
               aria_label: t('person_medications.card.delete_aria_label')
             ) do

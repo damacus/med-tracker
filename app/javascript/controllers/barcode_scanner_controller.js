@@ -8,7 +8,8 @@ export default class extends Controller {
 	static targets = ["video", "status", "result", "manualInput", "startButton", "stopButton", "scannerRegion"]
 	static values = {
 		formats: { type: Array, default: ["EAN_13", "EAN_8", "CODE_128", "CODE_39", "QR_CODE"] },
-		state: { type: String, default: "idle" }
+		state: { type: String, default: "idle" },
+		translations: Object
 	}
 
 	connect() {
@@ -199,17 +200,7 @@ export default class extends Controller {
 	updateStatus() {
 		if (!this.hasStatusTarget) return
 
-		const messages = {
-			idle: "",
-			requesting: "Requesting camera access…",
-			scanning: "Point your camera at a barcode",
-			decoded: "Barcode scanned successfully!",
-			denied: "Camera access was denied. Please use manual entry below.",
-			unavailable: "No camera was found. Please use manual entry below.",
-			error: "Scanner error. Please use manual entry below."
-		}
-
-		this.statusTarget.textContent = messages[this.stateValue] || ""
+		this.statusTarget.textContent = this.translationsValue?.[this.stateValue] || ""
 
 		this.statusTarget.classList.toggle("text-destructive",
 			this.stateValue === "denied" || this.stateValue === "unavailable" || this.stateValue === "error")

@@ -26,8 +26,17 @@ module Views
             end
           end
           render RubyUI::CardContent.new(class: 'space-y-6 p-6 sm:p-8') do
+            flash_section
             webauthn_form
           end
+        end
+      end
+
+      def flash_section
+        return if view_context.flash[:alert].blank?
+
+        render RubyUI::Alert.new(variant: :destructive) do
+          plain(view_context.flash[:alert])
         end
       end
 

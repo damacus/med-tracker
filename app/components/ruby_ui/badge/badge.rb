@@ -31,7 +31,7 @@ module RubyUI
 
     def default_attrs
       {
-        class: ['inline-flex items-center rounded-md font-medium ring-1 ring-inset min-h-[24px] min-w-[24px]', SIZES[@size], COLORS[@variant]]
+        class: ['inline-flex items-center rounded-shape-full font-medium ring-1 ring-inset min-h-[24px] min-w-[24px]', SIZES[@size], COLORS[@variant]]
       }
     end
   end

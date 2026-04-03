@@ -28,7 +28,7 @@ module RubyUI
       {
         data_state: 'open', # For animate in
         class: [
-          'fixed pointer-events-auto z-50 gap-4 bg-background p-6 shadow-lg transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500',
+          'fixed pointer-events-auto z-50 gap-4 bg-surface-container-high p-6 shadow-elevation-4 transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500',
           @side_classes
         ]
       }
@@ -41,7 +41,7 @@ module RubyUI
         data_action: 'click->ruby-ui--sheet-content#close'
       ) do
         render ::Components::Icons::X.new(size: 16)
-        span(class: 'sr-only') { 'Close' }
+        span(class: 'sr-only') { I18n.t('ruby_ui.common.close') }
       end
     end
 
@@ -59,7 +59,7 @@ module RubyUI
       div(
         role: 'dialog',
         aria_modal: 'true',
-        aria_label: 'Navigation menu',
+        aria_label: I18n.t('ruby_ui.common.navigation_menu'),
         tabindex: '-1',
         class: [
           'flex flex-col fixed z-50 h-full w-[80vw] max-w-[300px] overflow-y-auto bg-background p-6 shadow-lg transition-transform duration-300 ease-in-out pointer-events-auto',

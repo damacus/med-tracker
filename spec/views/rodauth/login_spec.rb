@@ -49,7 +49,8 @@ RSpec.describe Views::Rodauth::Login do
       webauthn_auth_challenge_hmac_param: 'webauthn_auth_challenge_hmac',
       webauthn_auth_additional_form_tags: '',
       compute_hmac: 'challenge-hmac',
-      webauthn_credential_options_for_get: credential_options
+      webauthn_credential_options_for_get: credential_options,
+      field_error: nil
     }
   end
 

@@ -28,12 +28,12 @@ module Components
         def render_table_header
           render RubyUI::TableHeader.new do
             render RubyUI::TableRow.new do
-              render(RubyUI::TableHead.new { render_sortable_header('Name', 'name') })
-              render(RubyUI::TableHead.new { render_sortable_header('Email', 'email') })
-              render(RubyUI::TableHead.new { render_sortable_header('Role', 'role') })
-              render(RubyUI::TableHead.new { 'Activation' })
-              render(RubyUI::TableHead.new { 'Verification' })
-              render RubyUI::TableHead.new(class: 'text-center') { 'Actions' }
+              render(RubyUI::TableHead.new { render_sortable_header(t('admin.users.form.name'), 'name') })
+              render(RubyUI::TableHead.new { render_sortable_header(t('admin.users.form.email_address'), 'email') })
+              render(RubyUI::TableHead.new { render_sortable_header(t('admin.users.form.role'), 'role') })
+              render(RubyUI::TableHead.new { t('admin.users.table.activation') })
+              render(RubyUI::TableHead.new { t('admin.users.table.verification') })
+              render RubyUI::TableHead.new(class: 'text-center') { t('admin.users.table.actions') }
             end
           end
         end
@@ -58,8 +58,8 @@ module Components
         end
 
         def sortable_header_class(is_active)
-          base = 'inline-flex items-center gap-1 hover:text-slate-900 cursor-pointer'
-          is_active ? "#{base} text-slate-900 font-semibold" : "#{base} text-slate-600"
+          base = 'inline-flex items-center gap-1 hover:text-foreground cursor-pointer'
+          is_active ? "#{base} text-foreground font-semibold" : "#{base} text-muted-foreground"
         end
 
         def render_sort_indicator(is_active, direction)

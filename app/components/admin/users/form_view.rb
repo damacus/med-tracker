@@ -23,16 +23,16 @@ module Components
 
         private
 
-        def render_header
-          div(class: 'mb-8') do
-            Heading(level: 1, class: 'mb-2') { form_title }
-            Text(weight: 'muted') { 'Fill in the details below to create a new user account.' }
-          end
+      def render_header
+        div(class: 'mb-8') do
+          Heading(level: 1, class: 'mb-2') { form_title }
+          Text(weight: 'muted') { t('admin.users.form.subtitle') }
         end
+      end
 
-        def form_title
-          user.new_record? ? 'Create New User' : 'Edit User'
-        end
+      def form_title
+        user.new_record? ? t('admin.users.form.create_title') : t('admin.users.form.edit_title')
+      end
 
         def render_form
           form_with(
@@ -84,7 +84,7 @@ module Components
 
         def render_name_field(_person_form)
           FormField do
-            FormFieldLabel(for: 'user_person_attributes_name') { 'Name' }
+            FormFieldLabel(for: 'user_person_attributes_name') { t('admin.users.form.name') }
             Input(
               type: :text,
               name: 'user[person_attributes][name]',
@@ -100,7 +100,7 @@ module Components
 
         def render_date_of_birth_field(_person_form)
           FormField do
-            FormFieldLabel(for: 'user_person_attributes_date_of_birth') { 'Date of birth' }
+            FormFieldLabel(for: 'user_person_attributes_date_of_birth') { t('admin.users.form.date_of_birth') }
             Input(
               type: :date,
               name: 'user[person_attributes][date_of_birth]',
@@ -115,12 +115,12 @@ module Components
 
         def render_locations_field(_person_form)
           FormField do
-            FormFieldLabel(for: 'user_person_attributes_location_ids') { 'Locations' }
+            FormFieldLabel(for: 'user_person_attributes_location_ids') { t('admin.users.form.locations') }
             div(class: 'grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2') do
               Location.find_each do |location|
                 label(
-                  class: 'flex items-center gap-2 p-3 rounded-lg border border-slate-200 ' \
-                         'hover:bg-slate-50 cursor-pointer'
+                  class: 'flex items-center gap-2 p-3 rounded-lg border border-border ' \
+                         'hover:bg-accent cursor-pointer'
                 ) do
                   input(
                     type: 'checkbox',
@@ -141,7 +141,7 @@ module Components
 
         def render_email_field(_form)
           FormField do
-            FormFieldLabel(for: 'user_email_address') { 'Email address' }
+            FormFieldLabel(for: 'user_email_address') { t('admin.users.form.email_address') }
             Input(
               type: :email,
               name: 'user[email_address]',
@@ -164,7 +164,7 @@ module Components
 
         def render_password_field
           FormField do
-            FormFieldLabel(for: 'user_password') { 'Password' }
+            FormFieldLabel(for: 'user_password') { t('admin.users.form.password') }
             Input(
               type: :password,
               name: 'user[password]',
@@ -179,7 +179,7 @@ module Components
 
         def render_password_confirmation_field
           FormField do
-            FormFieldLabel(for: 'user_password_confirmation') { 'Password confirmation' }
+            FormFieldLabel(for: 'user_password_confirmation') { t('admin.users.form.password_confirmation') }
             Input(
               type: :password,
               name: 'user[password_confirmation]',
@@ -191,14 +191,14 @@ module Components
 
         def render_role_field(_form)
           FormField do
-            FormFieldLabel(for: 'user_role') { 'Role' }
+            FormFieldLabel(for: 'user_role') { t('admin.users.form.role') }
             select(
               name: 'user[role]',
               id: 'user_role',
               class: select_classes,
               required: true
             ) do
-              option(value: '', selected: user.role.blank?) { 'Select role' }
+              option(value: '', selected: user.role.blank?) { t('admin.users.form.select_role') }
               User.roles.each_key do |role|
                 option(value: role, selected: user.role == role) { role.titleize }
               end
@@ -208,9 +208,9 @@ module Components
 
         def render_form_actions
           div(class: 'flex items-center justify-between pt-6') do
-            Link(href: admin_users_path, variant: :outline) { 'Cancel' }
+            Link(href: admin_users_path, variant: :outline) { t('admin.users.form.cancel') }
             Button(type: :submit, variant: :primary) do
-              user.new_record? ? 'Create User' : 'Update User'
+              user.new_record? ? t('admin.users.form.create_submit') : t('admin.users.form.update_submit')
             end
           end
         end

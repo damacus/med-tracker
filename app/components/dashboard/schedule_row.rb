@@ -34,7 +34,7 @@ module Components
         TableCell(class: 'font-medium') do
           div(class: 'flex items-center gap-2') do
             render_person_avatar
-            span(class: 'font-semibold text-slate-900') { person.name }
+            span(class: 'font-semibold text-foreground') { person.name }
           end
         end
       end
@@ -71,13 +71,17 @@ module Components
       end
 
       def render_take_now_button
-        label = blocked_reason == :out_of_stock ? 'Out of Stock' : 'On Cooldown'
+        label = if blocked_reason == :out_of_stock
+                  t('dashboard.person_schedule.out_of_stock')
+                else
+                  t('dashboard.person_schedule.on_cooldown')
+                end
         render Components::Medications::TakeAction.new(
           source: schedule,
           context: { person: person, current_user: current_user },
           amount: schedule.dosage.amount,
           button: {
-            label: 'Take Now',
+            label: t('dashboard.person_schedule.take_now'),
             variant: :success_outline,
             size: :sm,
             class: 'inline-block',

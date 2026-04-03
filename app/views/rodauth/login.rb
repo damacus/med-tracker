@@ -8,33 +8,30 @@ module Views
       include Views::Rodauth::LoginPasskeySupport
 
       def view_template
-        div(class: 'relative min-h-screen bg-[#fafafa] flex items-center justify-center p-4 sm:p-6 lg:p-8') do
-          div(class: 'w-full max-w-[440px] space-y-12') do
-            render_brand_header
-            render_login_card
-            render_footer_links
-          end
+        page_layout do
+          render_page_header(
+            title: t('app.name'),
+            subtitle: t('sessions.login.subheading')
+          )
+          render_login_card
+          render_footer_links
         end
       end
 
       private
 
-      def render_brand_header
-        div(class: 'flex flex-col items-center space-y-4') do
-          div(class: 'inline-flex h-12 w-12 items-center justify-center rounded-xl bg-zinc-950 text-white shadow-sm') do
-            render Components::Icons::Pill.new(size: 24)
-          end
-          div(class: 'text-center space-y-1') do
-            h1(class: 'text-xl font-bold tracking-tight text-zinc-900') { t('app.name') }
-            Heading(level: 2, size: '4', class: 'sr-only') { t('sessions.login.heading') } # Hidden but present for tests
-            p(class: 'text-sm text-zinc-500') { t('sessions.login.subheading') }
-          end
-        end
-      end
-
       def render_login_card
-        div(class: 'bg-white rounded-3xl border border-zinc-200/60 p-8 sm:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)]') do
-          div(class: 'space-y-8') do
+        render RubyUI::Card.new(class: card_classes) do
+          render RubyUI::CardHeader.new(class: 'space-y-2 bg-card/60') do
+            render RubyUI::CardTitle.new(class: 'text-2xl font-semibold text-foreground') do
+              t('sessions.login.heading')
+            end
+            render RubyUI::CardDescription.new(class: 'text-base text-muted-foreground') do
+              t('sessions.login.subheading')
+            end
+          end
+
+          render RubyUI::CardContent.new(class: 'space-y-6 p-6 sm:p-8') do
             div(id: 'login-flash') { flash_section }
             render_login_form
             render_passkey_section
@@ -55,29 +52,39 @@ module Views
       end
 
       def render_email_field
-        div(class: 'space-y-2') do
-          render RubyUI::FormFieldLabel.new(for: 'email', class: 'text-xs font-semibold uppercase tracking-wider text-zinc-500') do
-            t('sessions.login.email_label')
+        render_form_field(
+          label: t('sessions.login.email_label'),
+          input_attrs: email_input_attrs,
+          error: view_context.rodauth.field_error('email') || view_context.rodauth.field_error('login')
+        )
+      end
+
+      def render_form_field(label:, input_attrs:, error:, actions: nil)
+        render RubyUI::FormField.new do
+          div(class: 'space-y-2') do
+            div(class: 'flex items-center justify-between') do
+              render RubyUI::FormFieldLabel.new(for: input_attrs[:id]) { label }
+              actions&.call
+            end
+
+            render RubyUI::Input.new(**input_attrs)
+            p(class: 'mt-1 text-sm text-error') { error } if error.present?
           end
-          render RubyUI::Input.new(**email_input_attrs,
-                                   class: 'h-12 rounded-xl border-zinc-200 bg-zinc-50/30 px-4 transition-all focus:border-zinc-950 focus:ring-zinc-950')
         end
       end
 
       def render_password_field
-        div(class: 'space-y-2') do
-          div(class: 'flex items-center justify-between') do
-            render RubyUI::FormFieldLabel.new(for: 'password', class: 'text-xs font-semibold uppercase tracking-wider text-zinc-500') do
-              t('sessions.login.password_label')
-            end
+        render_form_field(
+          label: t('sessions.login.password_label'),
+          input_attrs: password_input_attrs,
+          error: view_context.rodauth.field_error('password'),
+          actions: lambda {
             render RubyUI::Link.new(href: view_context.rodauth.reset_password_request_path, variant: :link, size: :sm,
-                                    class: 'h-auto p-0 text-xs font-medium text-zinc-500 hover:text-zinc-950') do
+                                    class: 'h-auto p-0 text-xs font-medium') do
               t('sessions.login.forgot_password')
             end
-          end
-          render RubyUI::Input.new(**password_input_attrs,
-                                   class: 'h-12 rounded-xl border-zinc-200 bg-zinc-50/30 px-4 transition-all focus:border-zinc-950 focus:ring-zinc-950')
-        end
+          }
+        )
       end
 
       def render_form_options
@@ -85,9 +92,9 @@ module Views
           div(class: 'flex items-center gap-2') do
             input(
               type: 'checkbox', name: 'remember', id: 'remember', value: 't',
-              class: 'h-4 w-4 rounded border-zinc-300 text-zinc-950 focus:ring-zinc-950'
+              class: 'h-4 w-4 rounded border-border bg-surface-container-lowest text-primary focus:ring-primary'
             )
-            label(for: 'remember', class: 'text-sm text-zinc-600') do
+            label(for: 'remember', class: 'text-sm text-muted-foreground') do
               t('sessions.login.remember_me')
             end
           end
@@ -95,14 +102,13 @@ module Views
       end
 
       def render_submit_button
-        render RubyUI::Button.new(type: :submit, variant: :primary,
-                                  class: 'w-full h-12 rounded-xl bg-zinc-950 font-semibold text-white transition-all hover:bg-zinc-800 active:scale-[0.98]') do
+        render RubyUI::Button.new(type: :submit, variant: :primary, class: 'w-full h-12 rounded-xl font-semibold') do
           t('sessions.login.submit')
         end
       end
 
       def render_footer_links
-        div(class: 'text-center space-y-4 pt-4') do
+        div(class: 'w-full max-w-xl text-center space-y-4 pt-2') do
           render_signup_link
           render_resend_link
           render_invite_only_oidc_link if invite_only? && oauth_enabled?
@@ -112,10 +118,9 @@ module Views
       def render_signup_link
         return if invite_only?
 
-        p(class: 'text-sm text-zinc-600') do
+        p(class: 'text-sm text-muted-foreground') do
           plain "#{t('sessions.login.need_account')} "
-          render RubyUI::Link.new(href: view_context.rodauth.create_account_path, variant: :link,
-                                  class: 'p-0 h-auto font-semibold text-zinc-950 hover:underline') do
+          render RubyUI::Link.new(href: view_context.rodauth.create_account_path, variant: :link, class: 'p-0 h-auto font-semibold') do
             t('sessions.login.create_account')
           end
         end
@@ -123,8 +128,7 @@ module Views
 
       def render_resend_link
         div do
-          render RubyUI::Link.new(href: view_context.rodauth.verify_account_resend_path, variant: :link,
-                                  class: 'text-xs font-medium text-zinc-400 hover:text-zinc-950') do
+          render RubyUI::Link.new(href: view_context.rodauth.verify_account_resend_path, variant: :link, class: 'text-xs font-medium') do
             t('sessions.login.resend_verification')
           end
         end
@@ -142,10 +146,10 @@ module Views
 
       def render_oauth_divider
         div(class: 'absolute inset-0 flex items-center', aria_hidden: 'true') do
-          div(class: 'w-full border-t border-zinc-100')
+          div(class: 'w-full border-t border-border')
         end
         div(class: 'relative flex justify-center text-xs uppercase tracking-widest') do
-          span(class: 'bg-white px-2 text-zinc-400') { 'or continue with' }
+          span(class: 'bg-card px-2 text-muted-foreground') { t('sessions.login.oauth_divider') }
         end
       end
 
@@ -155,8 +159,8 @@ module Views
           form(action: view_context.rodauth.omniauth_request_path(:oidc), method: 'post', data: { turbo: 'false' }) do
             input(type: 'hidden', name: 'authenticity_token', value: view_context.form_authenticity_token)
             render RubyUI::Button.new(type: :submit, variant: :outline,
-                                      class: 'w-full h-12 rounded-xl border-zinc-200 bg-white font-medium text-zinc-700 transition-all hover:bg-zinc-50 hover:border-zinc-300') do
-              render Components::Icons::Globe.new(size: 18, class: 'mr-2 text-zinc-400')
+                                      class: 'w-full h-12 rounded-xl font-medium') do
+              render Components::Icons::Globe.new(size: 18, class: 'mr-2 text-muted-foreground')
               span { provider_name }
             end
           end
@@ -165,12 +169,11 @@ module Views
 
       def render_invite_only_oidc_link
         provider_name = ENV.fetch('OIDC_PROVIDER_NAME', 'OIDC')
-        div(class: 'space-y-2 text-xs text-zinc-500') do
+        div(class: 'space-y-2 text-xs text-muted-foreground') do
           p { t('sessions.login.invite_only_oidc_notice', default: 'Single sign-on is reserved for invited accounts.') }
           form(action: view_context.rodauth.omniauth_request_path(:oidc), method: 'post', data: { turbo: 'false' }, class: 'inline-block') do
             input(type: 'hidden', name: 'authenticity_token', value: view_context.form_authenticity_token)
-            render RubyUI::Button.new(type: :submit, variant: :link,
-                                      class: 'h-auto p-0 font-semibold text-zinc-500 hover:text-zinc-900') do
+            render RubyUI::Button.new(type: :submit, variant: :link, class: 'h-auto p-0 font-semibold') do
               plain t('sessions.login.invite_only_oidc_cta', default: "Continue with #{provider_name}")
             end
           end
@@ -186,7 +189,8 @@ module Views
           autofocus: true,
           autocomplete: 'username webauthn',
           placeholder: t('sessions.login.email_placeholder'),
-          value: view_context.params[:email]
+          value: view_context.params[:email],
+          class: 'h-12 rounded-xl'
         }
       end
 
@@ -198,7 +202,8 @@ module Views
           required: true,
           autocomplete: 'current-password',
           placeholder: t('sessions.login.password_placeholder'),
-          maxlength: 72
+          maxlength: 72,
+          class: 'h-12 rounded-xl'
         }
       end
 
@@ -217,17 +222,23 @@ module Views
       def flash_section
         return if flash_message.blank?
 
-        render RubyUI::Alert.new(variant: flash_variant, class: 'mb-6 rounded-xl border-zinc-100') do
+        render RubyUI::Alert.new(variant: flash_variant, class: 'rounded-xl') do
           plain(flash_message)
         end
       end
 
       def flash_message
-        view_context.flash[:alert] || view_context.flash[:notice]
+        view_context.flash[:alert] || view_context.flash[:notice] || rodauth_error
+      end
+
+      def rodauth_error
+        view_context.rodauth.field_error('email') ||
+          view_context.rodauth.field_error('login') ||
+          view_context.rodauth.field_error('password')
       end
 
       def flash_variant
-        view_context.flash[:alert].present? ? :destructive : :success
+        view_context.flash[:alert].present? || rodauth_error.present? ? :destructive : :success
       end
     end
   end

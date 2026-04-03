@@ -17,7 +17,7 @@ module Components
         return unless authenticated?
 
         aside(
-          class: 'fixed left-0 top-0 hidden h-full w-20 border-r border-sidebar-border bg-sidebar ' \
+          class: 'fixed left-0 top-0 hidden h-full w-20 border-r border-sidebar-border bg-surface-container ' \
                  'text-sidebar-foreground ' \
                  'md:w-64 ' \
                  'sm:flex flex-col items-center md:items-start py-8 px-4 z-50 transition-all duration-500'
@@ -38,16 +38,17 @@ module Components
         div(class: 'mb-12 px-2 w-full flex justify-center md:justify-start') do
           link_to root_path, class: 'group flex items-center gap-3 no-underline' do
             div(
-              class: 'w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-white font-bold ' \
-                     'text-xl shadow-lg shadow-primary/20 group-hover:scale-110 transition-transform'
+              class: 'w-10 h-10 rounded-shape-lg bg-primary flex items-center justify-center ' \
+                     'text-primary-foreground font-bold ' \
+                     'text-xl shadow-elevation-2 group-hover:scale-110 transition-transform'
             ) do
-              'M'
+              t('app.name').first
             end
             span(
               class: 'hidden md:block font-black text-xl tracking-tight text-foreground ' \
                      'group-hover:translate-x-1 transition-transform'
             ) do
-              'MedTracker'
+              t('app.name')
             end
           end
         end
@@ -72,26 +73,27 @@ module Components
         is_active = current_page?(path)
 
         link_to path,
-                class: 'flex items-center gap-4 px-4 py-3 rounded-2xl transition-all group no-underline ' \
+                class: 'flex items-center gap-4 px-4 py-3 rounded-shape-full transition-all group no-underline ' \
                        "#{if is_active
-                            'bg-primary/5 text-primary'
+                            'bg-secondary-container text-on-secondary-container'
                           else
                             'text-muted-foreground hover:text-foreground hover:bg-accent/60'
                           end}" do
           div(
             class: 'flex items-center justify-center ' \
-                   "#{is_active ? 'text-primary' : 'group-hover:scale-110 transition-transform'}"
+                   "#{is_active ? 'text-on-secondary-container' : 'group-hover:scale-110 transition-transform'}"
           ) do
             render icon_class.new(size: 24)
           end
-          span(class: "hidden md:block font-bold text-sm #{'text-primary' if is_active}") { label }
+          span(class: "hidden md:block font-bold text-sm #{'text-on-secondary-container' if is_active}") { label }
         end
       end
 
       def render_user_profile
         div(class: 'mt-auto w-full space-y-4 px-2') do
           link_to profile_path,
-                  class: 'flex items-center gap-3 rounded-2xl border border-sidebar-border bg-muted/50 p-2 ' \
+                  class: 'flex items-center gap-3 rounded-shape-xl border border-sidebar-border ' \
+                         'bg-surface-container-low p-2 ' \
                          'transition-all no-underline group hover:bg-accent/70' do
             div(
               class: 'w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary ' \
@@ -104,8 +106,12 @@ module Components
               end
             end
             div(class: 'hidden md:block overflow-hidden') do
-              p(class: 'text-xs font-bold truncate text-foreground') { current_user.person&.name || 'User' }
-              p(class: 'text-[10px] font-medium text-muted-foreground') { current_user.role.to_s.humanize }
+              p(class: 'text-xs font-bold truncate text-foreground') do
+                current_user.person&.name || t('layouts.sidebar.user_fallback')
+              end
+              p(class: 'text-[10px] font-medium text-muted-foreground') do
+                t("activerecord.attributes.user.roles.#{current_user.role}", default: current_user.role.to_s.humanize)
+              end
             end
           end
 
@@ -113,7 +119,7 @@ module Components
             input(type: 'hidden', name: 'authenticity_token', value: view_context.form_authenticity_token)
             button(
               type: 'submit',
-              class: 'w-full flex items-center justify-center md:justify-start gap-4 px-4 py-3 rounded-2xl ' \
+              class: 'w-full flex items-center justify-center md:justify-start gap-4 px-4 py-3 rounded-shape-full ' \
                      'text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-all group',
               aria_label: t('layouts.sidebar.sign_out')
             ) do

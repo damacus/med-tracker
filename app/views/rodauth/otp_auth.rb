@@ -26,9 +26,22 @@ module Views
             end
           end
           render RubyUI::CardContent.new(class: 'space-y-6 p-6 sm:p-8') do
+            flash_section
             otp_form
           end
         end
+      end
+
+      def flash_section
+        return if flash_message.blank?
+
+        render RubyUI::Alert.new(variant: :destructive) do
+          plain(flash_message)
+        end
+      end
+
+      def flash_message
+        view_context.flash[:alert] || view_context.rodauth.field_error(rodauth.otp_auth_param)
       end
 
       def otp_form
@@ -55,6 +68,8 @@ module Views
             maxlength: 6,
             placeholder: t('rodauth.views.otp_auth.code_placeholder')
           )
+          error = view_context.rodauth.field_error(rodauth.otp_auth_param)
+          p(class: 'mt-1 text-sm text-error') { error } if error.present?
         end
       end
 

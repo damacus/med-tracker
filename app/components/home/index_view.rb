@@ -5,9 +5,9 @@ module Components
     class IndexView < Components::Base
       def view_template
         div(class: 'container mx-auto px-4 py-8') do
-          div(class: 'mb-8 text-center') do
-            Heading(level: 1, class: 'mb-2') { 'Medication Tracker' }
-            Text(size: '4', weight: 'muted') { 'Welcome to your personal medication tracking application.' }
+        div(class: 'mb-8 text-center') do
+            Heading(level: 1, class: 'mb-2') { t('home.title') }
+            Text(size: '4', weight: 'muted') { t('home.description') }
           end
 
           div(class: 'grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto') do
@@ -23,13 +23,13 @@ module Components
         Link(href: medications_path, variant: :ghost, class: 'block transition-transform hover:scale-105 h-auto p-0') do
           Card(class: 'h-full') do
             CardHeader do
-              div(class: 'w-12 h-12 rounded-xl flex items-center justify-center bg-blue-100 text-blue-700 mb-2') do
+              div(class: 'w-12 h-12 rounded-xl flex items-center justify-center bg-primary-container text-on-primary-container mb-2') do
                 render_medication_icon
               end
             end
             CardContent(class: 'space-y-2') do
-              Heading(level: 2, size: '6', class: 'font-semibold leading-none tracking-tight') { 'Medications' }
-              CardDescription { 'Manage your medication inventory, track stock levels, and view dosage information' }
+              Heading(level: 2, size: '6', class: 'font-semibold leading-none tracking-tight') { t('home.cards.medications.title') }
+              CardDescription { t('home.cards.medications.description') }
             end
           end
         end
@@ -39,13 +39,13 @@ module Components
         Link(href: people_path, variant: :ghost, class: 'block transition-transform hover:scale-105 h-auto p-0') do
           Card(class: 'h-full') do
             CardHeader do
-              div(class: 'w-12 h-12 rounded-xl flex items-center justify-center bg-violet-100 text-violet-700 mb-2') do
+              div(class: 'w-12 h-12 rounded-xl flex items-center justify-center bg-secondary-container text-on-secondary-container mb-2') do
                 render_people_icon
               end
             end
             CardContent(class: 'space-y-2') do
-              Heading(level: 2, size: '6', class: 'font-semibold leading-none tracking-tight') { 'People' }
-              CardDescription { 'Manage people and their schedules, track medication schedules' }
+              Heading(level: 2, size: '6', class: 'font-semibold leading-none tracking-tight') { t('home.cards.people.title') }
+              CardDescription { t('home.cards.people.description') }
             end
           end
         end

@@ -40,6 +40,12 @@ pre-push:
 pre-commit:
   parallel: true
   jobs:
+    - name: translator
+      glob:
+        - "config/locales/**/*.yml"
+        - "app/components/ruby_ui/typography/**/*.rb"
+      run: task translator:hook
+
     - name: rubocop
       glob: "*.rb"
       exclude:

@@ -4,10 +4,10 @@ module Components
   module NotificationSettings
     class FormView < Components::Base
       PERIOD_LABELS = {
-        morning: 'Morning',
-        afternoon: 'Afternoon',
-        evening: 'Evening',
-        night: 'Night'
+        morning: 'morning',
+        afternoon: 'afternoon',
+        evening: 'evening',
+        night: 'night'
       }.freeze
 
       attr_reader :preference
@@ -29,14 +29,14 @@ module Components
 
       def render_header
         div(class: 'mb-8') do
-          h1(class: 'text-3xl font-black text-foreground') { 'Notification Settings' }
-          p(class: 'text-slate-500 mt-2') { 'Manage your medication reminder notifications.' }
+          h1(class: 'text-3xl font-black text-foreground') { t('notification_settings.title') }
+          p(class: 'text-muted-foreground mt-2') { t('notification_settings.description') }
         end
       end
 
       def render_push_subscription_section
         div(
-          class: 'mb-8 p-6 rounded-2xl border border-slate-200 bg-slate-50/50',
+          class: 'mb-8 p-6 rounded-2xl border border-border bg-surface-container-low',
           data: { controller: 'push-notification' }
         ) do
           # VAPID key fallback if not in layout
@@ -45,12 +45,12 @@ module Components
 
           div(class: 'flex items-center gap-3 mb-4') do
             render Icons::Bell.new(size: 24)
-            h2(class: 'text-lg font-bold text-foreground') { 'Browser Notifications' }
+            h2(class: 'text-lg font-bold text-foreground') { t('notification_settings.browser.title') }
           end
           p(
-            class: 'text-sm text-slate-500 mb-4',
+            class: 'text-sm text-muted-foreground mb-4',
             data: { push_notification_target: 'status' }
-          ) { 'Checking notification status...' }
+          ) { t('notification_settings.browser.status') }
           div(class: 'flex flex-col gap-3') do
             div(class: 'flex gap-3') do
               button(
@@ -64,26 +64,27 @@ module Components
                 hidden: true
               ) do
                 render Icons::Bell.new(size: 16)
-                plain 'Enable Notifications'
+                plain t('notification_settings.browser.enable')
               end
               button(
                 type: 'button',
-                class: 'inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 ' \
-                       'text-slate-600 font-bold text-sm hover:bg-slate-100 transition-colors',
+                class: 'inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-border ' \
+                       'text-muted-foreground font-bold text-sm hover:bg-accent transition-colors',
                 data: {
                   push_notification_target: 'unsubscribeButton',
                   action: 'push-notification#unsubscribe'
                 },
                 hidden: true
               ) do
-                'Disable Notifications'
+                t('notification_settings.browser.disable')
               end
             end
 
             button(
               type: 'button',
-              class: 'w-full inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 ' \
-                     'bg-white px-4 py-2.5 text-sm font-bold text-foreground transition-all hover:bg-slate-50 ' \
+              class: 'w-full inline-flex items-center justify-center gap-2 rounded-xl border border-border ' \
+                     'bg-surface-container-lowest px-4 py-2.5 text-sm font-bold text-foreground transition-all ' \
+                     'hover:bg-accent ' \
                      'hover:shadow-sm active:scale-[0.98]',
               data: {
                 push_notification_target: 'testButton',
@@ -92,7 +93,7 @@ module Components
               hidden: true
             ) do
               render Components::Icons::Send.new(size: 16)
-              plain 'Send Test Notification'
+              plain t('notification_settings.browser.test')
             end
           end
         end
@@ -107,13 +108,13 @@ module Components
       end
 
       def render_enabled_toggle(_f)
-        div(class: 'p-6 rounded-2xl border border-slate-200') do
+        div(class: 'p-6 rounded-2xl border border-border') do
           div(class: 'flex items-center justify-between') do
             div do
               label(class: 'font-bold text-foreground', for: 'notification_preference_enabled') do
-                'Enable Reminders'
+                t('notification_settings.reminders.enable')
               end
-              p(class: 'text-sm text-slate-500 mt-1') { 'Send medication reminders at scheduled times.' }
+              p(class: 'text-sm text-muted-foreground mt-1') { t('notification_settings.reminders.description') }
             end
             input(type: 'hidden', name: 'notification_preference[enabled]', value: '0')
             input(
@@ -122,15 +123,15 @@ module Components
               id: 'notification_preference_enabled',
               value: '1',
               checked: preference.enabled,
-              class: 'h-5 w-5 rounded border-slate-300 text-primary focus:ring-primary'
+              class: 'h-5 w-5 rounded border-border text-primary focus:ring-primary'
             )
           end
         end
       end
 
       def render_time_slots(_f)
-        div(class: 'p-6 rounded-2xl border border-slate-200 space-y-4') do
-          h2(class: 'font-bold text-foreground mb-4') { 'Reminder Times' }
+        div(class: 'p-6 rounded-2xl border border-border space-y-4') do
+          h2(class: 'font-bold text-foreground mb-4') { t('notification_settings.reminders.title') }
           NotificationPreference::PERIODS.each do |period|
             render_time_slot(period)
           end
@@ -143,13 +144,13 @@ module Components
           label(
             class: 'font-medium text-sm text-foreground w-24',
             for: "notification_preference_#{period}_time"
-          ) { PERIOD_LABELS[period] }
+          ) { t("notification_settings.period_labels.#{PERIOD_LABELS.fetch(period)}") }
           input(
             type: 'time',
             name: "notification_preference[#{period}_time]",
             id: "notification_preference_#{period}_time",
             value: time_value&.strftime('%H:%M'),
-            class: 'rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none ' \
+            class: 'rounded-xl border border-border px-3 py-2 text-sm focus:outline-none ' \
                    'focus:ring-2 focus:ring-primary/20 focus:border-primary'
           )
         end
@@ -159,14 +160,14 @@ module Components
         div(class: 'flex gap-3 justify-end pt-4') do
           a(
             href: root_path,
-            class: 'inline-flex items-center px-4 py-2 rounded-xl border border-slate-200 ' \
-                   'text-slate-600 font-bold text-sm hover:bg-slate-100 transition-colors no-underline'
-          ) { 'Cancel' }
+            class: 'inline-flex items-center px-4 py-2 rounded-xl border border-border ' \
+                   'text-muted-foreground font-bold text-sm hover:bg-accent transition-colors no-underline'
+          ) { t('notification_settings.actions.cancel') }
           button(
             type: 'submit',
             class: 'inline-flex items-center px-4 py-2 rounded-xl bg-primary text-white font-bold ' \
                    'text-sm hover:bg-primary/90 transition-colors'
-          ) { 'Save Settings' }
+          ) { t('notification_settings.actions.save') }
         end
       end
     end

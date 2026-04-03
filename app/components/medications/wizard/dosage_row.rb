@@ -14,7 +14,7 @@ module Components
         def view_template
           div(
             id: "wizard_dosage_#{dosage.id}",
-            class: 'flex items-center justify-between rounded-xl border border-slate-100 bg-white p-4 shadow-sm'
+            class: 'flex items-center justify-between rounded-xl border border-border bg-surface-container-lowest p-4 shadow-sm'
           ) do
             div(class: 'flex items-center gap-3') do
               div(
@@ -23,10 +23,10 @@ module Components
                 render Icons::Pill.new(size: 18)
               end
               div do
-                span(class: 'font-bold text-sm text-slate-900') do
+                span(class: 'font-bold text-sm text-foreground') do
                   "#{dosage.amount.to_f} #{dosage.unit}"
                 end
-                span(class: 'text-xs text-slate-400 ml-2') { dosage.frequency } if dosage.frequency.present?
+                span(class: 'text-xs text-muted-foreground ml-2') { dosage.frequency } if dosage.frequency.present?
                 render_default_badges
               end
             end

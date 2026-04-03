@@ -15,10 +15,10 @@ module Components
       def view_template
         section(class: 'dashboard__section dashboard__section--stats') do
           Table(class: 'dashboard__stats-table') do
-            caption(class: 'dashboard__section-title text-left') { 'Quick stats' }
+            caption(class: 'dashboard__section-title text-left') { t('dashboard.quick_stats.title') }
             TableBody do
-              render_stat_row('People', people.size)
-              render_stat_row('Active schedules', active_schedules.size)
+              render_stat_row(t('dashboard.quick_stats.people'), people.size)
+              render_stat_row(t('dashboard.quick_stats.active_schedules'), active_schedules.size)
             end
           end
         end

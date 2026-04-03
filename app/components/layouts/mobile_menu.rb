@@ -65,27 +65,27 @@ module Components
       def render_navigation_links
         div(class: 'flex flex-col gap-2') do
           render RubyUI::Link.new(href: root_path, variant: :ghost, size: :xl,
-                                  class: 'justify-start gap-4 px-4 rounded-2xl') do
+                                  class: 'justify-start gap-4 px-4 rounded-shape-full') do
             render Icons::Home.new(size: 24)
-            plain 'Dashboard'
+            plain t('layouts.sidebar.dashboard')
           end
           render RubyUI::Link.new(href: medications_path, variant: :ghost, size: :xl,
-                                  class: 'justify-start gap-4 px-4 rounded-2xl') do
+                                  class: 'justify-start gap-4 px-4 rounded-shape-full') do
             render Icons::Pill.new(size: 24)
-            plain 'Inventory'
+            plain t('layouts.sidebar.inventory')
           end
           render RubyUI::Link.new(href: locations_path, variant: :ghost, size: :xl,
-                                  class: 'justify-start gap-4 px-4 rounded-2xl') do
+                                  class: 'justify-start gap-4 px-4 rounded-shape-full') do
             render Icons::Home.new(size: 24)
             plain t('layouts.sidebar.locations')
           end
           render RubyUI::Link.new(href: people_path, variant: :ghost, size: :xl,
-                                  class: 'justify-start gap-4 px-4 rounded-2xl') do
+                                  class: 'justify-start gap-4 px-4 rounded-shape-full') do
             render Icons::Users.new(size: 24)
             plain t('layouts.mobile_menu.people')
           end
           render RubyUI::Link.new(href: medication_finder_path, variant: :ghost, size: :xl,
-                                  class: 'justify-start gap-4 px-4 rounded-2xl') do
+                                  class: 'justify-start gap-4 px-4 rounded-shape-full') do
             render Icons::Search.new(size: 24)
             plain t('layouts.mobile_menu.medication_finder')
           end
@@ -95,7 +95,7 @@ module Components
       def render_auth_actions
         div(class: 'flex flex-col gap-2 w-full') do
           render RubyUI::Link.new(href: profile_path, variant: :ghost, size: :xl,
-                                  class: 'justify-start gap-4 px-4 rounded-2xl') do
+                                  class: 'justify-start gap-4 px-4 rounded-shape-full') do
             render Icons::User.new(size: 24)
             plain t('layouts.mobile_menu.profile')
           end
@@ -117,7 +117,7 @@ module Components
           input(type: 'hidden', name: 'authenticity_token', value: view_context.form_authenticity_token)
           render RubyUI::Button.new(
             type: :submit, variant: :ghost, size: :xl,
-            class: 'w-full justify-start gap-4 px-4 rounded-2xl text-destructive ' \
+            class: 'w-full justify-start gap-4 px-4 rounded-shape-full text-destructive ' \
                    'hover:text-destructive hover:bg-destructive/5'
           ) do
             render Icons::LogOut.new(size: 24)

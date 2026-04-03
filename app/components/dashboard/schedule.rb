@@ -63,8 +63,8 @@ module Components
       def render_empty_state(message, help_text)
         Card(class: 'text-center py-12') do
           CardContent do
-            Text(size: '5', weight: 'semibold', class: 'text-slate-700 mb-2') { message }
-            Text(class: 'text-slate-600') { help_text }
+            Text(size: '5', weight: 'semibold', class: 'text-foreground mb-2') { message }
+            Text(class: 'text-muted-foreground') { help_text }
           end
         end
       end

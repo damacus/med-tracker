@@ -8,8 +8,8 @@ module Views
       def view_template
         render Card.new(class: 'rounded-[2rem] border border-border/70 bg-card/95 shadow-[0_18px_45px_-32px_rgba(15,23,42,0.45)]') do
           render CardHeader.new do
-            render(CardTitle.new { 'System Information' })
-            render(CardDescription.new { 'Application version and resources' })
+            render(CardTitle.new { t('profiles.version_info.title') })
+            render(CardDescription.new { t('profiles.version_info.description') })
           end
 
           render CardContent.new(class: 'space-y-0') do
@@ -24,14 +24,14 @@ module Views
 
       def render_version_row
         div(class: 'flex items-center justify-between border-b border-border/50 py-3') do
-          dt(class: 'text-sm font-medium text-muted-foreground') { 'App Version' }
+          dt(class: 'text-sm font-medium text-muted-foreground') { t('profiles.version_info.app_version') }
           dd(class: 'text-sm font-mono text-foreground') { "v#{MedTracker::VERSION}" }
         end
       end
 
       def render_release_notes_row
         div(class: 'flex items-center justify-between border-b border-border/50 py-3') do
-          dt(class: 'text-sm font-medium text-muted-foreground') { 'Release Notes' }
+          dt(class: 'text-sm font-medium text-muted-foreground') { t('profiles.version_info.release_notes') }
           dd do
             link_to "v#{MedTracker::VERSION}",
                     "https://github.com/damacus/med-tracker/releases/tag/v#{MedTracker::VERSION}",
@@ -44,9 +44,9 @@ module Views
 
       def render_docs_row
         div(class: 'flex items-center justify-between py-3') do
-          dt(class: 'text-sm font-medium text-muted-foreground') { 'Documentation' }
+          dt(class: 'text-sm font-medium text-muted-foreground') { t('profiles.version_info.documentation') }
           dd do
-            link_to 'View Docs',
+            link_to t('profiles.version_info.view_docs'),
                     'https://damacus.github.io/med-tracker',
                     class: 'text-sm font-medium text-primary hover:underline',
                     target: '_blank',

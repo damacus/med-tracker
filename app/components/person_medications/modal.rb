@@ -18,7 +18,7 @@ module Components
         @medications = medications
         @editing = editing
         @back_path = back_path
-        @title = title || (editing ? "Edit Medication for #{person.name}" : "Add Medication for #{person.name}")
+        @title = title || default_title
         super()
       end
 
@@ -59,7 +59,13 @@ module Components
           data: {
             controller: 'person-medication-form',
             person_type: person.person_type,
-            person_medication_form_current_step_value: workflow_initial_step
+            person_medication_form_current_step_value: workflow_initial_step,
+            person_medication_form_translations_value: {
+              chooseMedication: t('person_medications.form.workflow.choose_medication_title'),
+              chooseDose: t('person_medications.form.workflow.choose_dose_title'),
+              selectDose: t('person_medications.form.select_dose'),
+              noDosesAvailable: t('person_medications.form.no_doses_available')
+            }.to_json
           }
         ) do
           render_form_fields
@@ -88,8 +94,8 @@ module Components
         div(class: 'pt-4') do
           if editing
             div(class: 'flex items-center justify-end gap-6') do
-              Button(variant: :ghost, data: { action: 'click->ruby-ui--dialog#dismiss' }) { 'Cancel' }
-              Button(type: :submit, variant: :primary) { 'Save Changes' }
+              Button(variant: :ghost, data: { action: 'click->ruby-ui--dialog#dismiss' }) { t('person_medications.form.cancel') }
+              Button(type: :submit, variant: :primary) { t('person_medications.form.save_changes_button') }
             end
           else
             div(class: 'flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-6') do
@@ -99,7 +105,7 @@ module Components
                   size: :xl,
                   class: 'w-full justify-center sm:w-auto',
                   data: { action: 'click->ruby-ui--dialog#dismiss' }
-                ) { 'Cancel' }
+                ) { t('person_medications.form.cancel') }
               end
               div(class: 'order-1 flex w-full items-center gap-3 sm:order-2 sm:w-auto') do
                 Button(
@@ -111,7 +117,7 @@ module Components
                     action: 'click->person-medication-form#prevStep',
                     person_medication_form_target: 'prevButton'
                   }
-                ) { 'Back' }
+                ) { t('person_medications.form.back') }
                 Button(
                   type: :button,
                   variant: :primary,
@@ -121,17 +127,25 @@ module Components
                     action: 'click->person-medication-form#nextStep',
                     person_medication_form_target: 'nextButton'
                   }
-                ) { 'Next' }
+                ) { t('person_medications.form.next') }
                 Button(
                   type: :submit,
                   variant: :primary,
                   size: :xl,
                   class: 'hidden min-w-0 flex-1 sm:min-w-28 sm:flex-none',
                   data: { person_medication_form_target: 'submitButton' }
-                ) { 'Add Medication' }
+                ) { t('person_medications.form.add_medication_button') }
               end
             end
           end
+        end
+      end
+
+      def default_title
+        if editing
+          t('person_medications.modal.edit_title', person: person.name)
+        else
+          t('person_medications.modal.new_title', person: person.name)
         end
       end
 

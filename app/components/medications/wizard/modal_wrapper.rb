@@ -26,13 +26,13 @@ module Components
 
             div(
               class: 'fixed left-1/2 top-1/2 z-50 w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 ' \
-                     'rounded-[2.5rem] bg-white shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto'
+                     'rounded-[2.5rem] bg-surface-container-lowest shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto'
             ) do
               a(
                 href: medications_path,
                 data: { turbo_frame: '_top' },
-                class: 'absolute top-4 right-4 w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 ' \
-                       'flex items-center justify-center text-slate-500 transition-colors z-10',
+                class: 'absolute top-4 right-4 w-10 h-10 rounded-full bg-surface-container hover:bg-accent ' \
+                       'flex items-center justify-center text-muted-foreground transition-colors z-10',
                 aria_label: 'Close'
               ) do
                 render Icons::X.new(size: 18)
@@ -61,10 +61,10 @@ module Components
             ) do
               render Icons::Pill.new(size: 24)
             end
-            Heading(level: 1, size: '6', class: 'font-black tracking-tight text-slate-900') do
+            Heading(level: 1, size: '6', class: 'font-black tracking-tight text-foreground') do
               t('medications.form.new_title')
             end
-            Text(size: '2', class: 'text-slate-400') do
+            Text(size: '2', class: 'text-muted-foreground') do
               t('medications.form.new_subtitle')
             end
           end

@@ -27,15 +27,15 @@ module Components
         def render_header
           div(class: 'text-center space-y-3') do
             div(
-              class: 'mx-auto w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center ' \
-                     'text-emerald-600 mb-2'
+              class: 'mx-auto w-14 h-14 rounded-2xl bg-success-container flex items-center justify-center ' \
+                     'text-on-success-container mb-2'
             ) do
               render Icons::CheckCircle.new(size: 28)
             end
-            Heading(level: 3, size: '5', class: 'font-bold tracking-tight text-slate-900') do
+            Heading(level: 3, size: '5', class: 'font-bold tracking-tight text-foreground') do
               "#{medication.name} created!"
             end
-            Text(size: '2', class: 'text-slate-400 max-w-sm mx-auto') do
+            Text(size: '2', class: 'text-muted-foreground max-w-sm mx-auto') do
               'Now add dose size options. For example, different amounts for adults and children.'
             end
           end
@@ -51,7 +51,7 @@ module Components
 
         def render_dosage_form
           turbo_frame_tag 'dosage-form' do
-            div(class: 'rounded-2xl border border-dashed border-slate-200 p-6 bg-slate-50/50') do
+            div(class: 'rounded-2xl border border-dashed border-border p-6 bg-surface-container-low') do
               render WizardDosageForm.new(
                 dosage: medication.dosages.build,
                 medication: medication
@@ -61,11 +61,11 @@ module Components
         end
 
         def render_actions
-          div(class: 'flex items-center justify-between pt-6 border-t border-slate-100') do
+          div(class: 'flex items-center justify-between pt-6 border-t border-border') do
             Link(
               href: medication_path(medication),
               variant: :ghost,
-              class: 'font-bold text-slate-400 hover:text-slate-600',
+              class: 'font-bold text-muted-foreground hover:text-foreground',
               data: { turbo_frame: '_top' }
             ) { 'Skip for now' }
 

@@ -93,7 +93,7 @@ module Views
             maxlength: 72
           )
           error = view_context.rodauth.field_error('password')
-          p(class: 'text-sm text-red-600 mt-1') { error } if error.present?
+          p(class: 'mt-1 text-sm text-error') { error } if error.present?
         end
       end
 
@@ -111,7 +111,7 @@ module Views
             maxlength: 72
           )
           error = view_context.rodauth.field_error('password-confirm')
-          p(class: 'text-sm text-red-600 mt-1') { error } if error.present?
+          p(class: 'mt-1 text-sm text-error') { error } if error.present?
         end
       end
 

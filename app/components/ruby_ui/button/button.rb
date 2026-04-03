@@ -3,7 +3,7 @@
 module RubyUI
   class Button < Base
     BASE_CLASSES = [
-      'whitespace-nowrap inline-flex items-center justify-center rounded-2xl font-medium transition-colors',
+      'whitespace-nowrap inline-flex items-center justify-center rounded-shape-xl font-medium transition-colors',
       'disabled:pointer-events-none disabled:opacity-50',
       'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
       'aria-disabled:pointer-events-none aria-disabled:opacity-50 aria-disabled:cursor-not-allowed'
@@ -63,7 +63,7 @@ module RubyUI
       [
         BASE_CLASSES,
         size_classes,
-        'bg-secondary text-secondary-foreground shadow-sm',
+        'bg-secondary-container text-on-secondary-container shadow-sm',
         'hover:opacity-80 hover:scale-[1.02] active:scale-[0.98] transition-all'
       ]
     end
