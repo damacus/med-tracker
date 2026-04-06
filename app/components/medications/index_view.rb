@@ -174,7 +174,8 @@ module Components
       def current_location_name
         return nil if current_location_id.blank?
 
-        locations.find { |location| location.id == current_location_id }&.name
+        @_locations_by_id ||= locations.index_by(&:id)
+        @_locations_by_id[current_location_id]&.name
       end
 
       def inventory_query_params

@@ -236,7 +236,8 @@ module Components
       def selected_medication_name
         return nil if person_medication.medication_id.blank?
 
-        medications.find { |m| m.id == person_medication.medication_id }&.name
+        @_medications_by_id ||= medications.index_by(&:id)
+        @_medications_by_id[person_medication.medication_id]&.name
       end
 
       def selected_dose_option_value

@@ -123,11 +123,13 @@ module Components
       end
 
       def selected_medication
-        medications.find { |medication| medication.id.to_s == selected_medication_id.to_s }
+        @_medications_by_id ||= medications.index_by { |m| m.id.to_s }
+        @_medications_by_id[selected_medication_id.to_s]
       end
 
       def selected_person
-        people.find { |person| person.id.to_s == selected_person_id.to_s }
+        @_people_by_id ||= people.index_by { |p| p.id.to_s }
+        @_people_by_id[selected_person_id.to_s]
       end
     end
   end

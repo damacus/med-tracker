@@ -274,7 +274,8 @@ module Components
         def selected_location_name
           return nil if medication.location_id.blank?
 
-          locations.find { |l| l.id == medication.location_id }&.name
+          @_locations_by_id ||= locations.index_by(&:id)
+          @_locations_by_id[medication.location_id]&.name
         end
       end
     end
