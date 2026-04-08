@@ -12,15 +12,15 @@ module Components
             action: 'barcode-scanner:decoded->medication-search#barcodeDecoded',
             medication_search_translations_value: {
               loading: t('medications.finder.loading'),
-              idle_text: t('medications.finder.idle_text'),
-              unavailable_title: t('medications.finder.unavailable_title'),
-              unavailable_message: t('medications.finder.unavailable_message'),
-              no_results_title: t('medications.finder.no_results_title'),
-              no_results_message: t('medications.finder.no_results_message'),
-              results_title: t('medications.finder.results_title'),
+              idleText: t('medications.finder.idle_text'),
+              unavailableTitle: t('medications.finder.unavailable_title'),
+              unavailableMessage: t('medications.finder.unavailable_message'),
+              noResultsTitle: t('medications.finder.no_results_title'),
+              noResultsMessage: t('medications.finder.no_results_message'),
+              resultsTitle: t('medications.finder.results_title'),
               source: t('medications.finder.source'),
-              dmd_code: t('medications.finder.dmd_code'),
-              result_count: {
+              dmdCode: t('medications.finder.dmd_code'),
+              resultCount: {
                 one: t('medications.finder.result_count.one'),
                 other: t('medications.finder.result_count.other')
               }

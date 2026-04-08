@@ -8,12 +8,12 @@ module Components
       include Phlex::Rails::Helpers::TurboFrameTag
       include RubyUI
 
-      attr_reader :person, :title, :subtitle, :return_to, :is_modal, :assigned_location
+      attr_reader :person, :return_to, :is_modal, :assigned_location
 
       def initialize(person:, is_modal: false, assigned_location: nil, **options)
         @person = person
-        @title = options[:title] || default_title
-        @subtitle = options[:subtitle] || default_subtitle
+        @explicit_title = options[:title]
+        @explicit_subtitle = options[:subtitle]
         @return_to = options[:return_to]
         @is_modal = is_modal
         @assigned_location = assigned_location
@@ -44,12 +44,28 @@ module Components
         end
       end
 
+      def title
+        @explicit_title || default_title
+      end
+
+      def subtitle
+        @explicit_subtitle || default_subtitle
+      end
+
       def default_title
-        person.new_record? ? t('people.form.new_heading') : t('people.form.edit_heading')
+        if person.new_record?
+          t('people.form.new_heading')
+        else
+          t('people.form.edit_heading')
+        end
       end
 
       def default_subtitle
-        person.new_record? ? t('people.form.new_subheading') : t('people.form.edit_subheading', name: person.name)
+        if person.new_record?
+          t('people.form.new_subheading')
+        else
+          t('people.form.edit_subheading', name: person.name)
+        end
       end
 
       def render_header

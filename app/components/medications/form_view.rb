@@ -78,7 +78,10 @@ module Components
               render_warnings_field(form)
             end
 
-            div(class: 'px-10 py-6 bg-surface-container-low border-t border-border flex items-center justify-between gap-4') do
+            div(
+              class: 'px-10 py-6 bg-surface-container-low border-t border-border ' \
+                     'flex items-center justify-between gap-4'
+            ) do
               Link(href: return_to.presence || medications_path, variant: :ghost,
                    class: 'font-bold text-muted-foreground hover:text-foreground') do
                 t('forms.medications.back')
@@ -177,7 +180,8 @@ module Components
             value: medication.name,
             required: true,
             placeholder: t('forms.medications.name_placeholder'),
-            class: 'rounded-md border-border bg-surface-container-lowest py-4 px-4 focus:ring-2 focus:ring-primary/10 ' \
+            class: 'rounded-md border-border bg-surface-container-lowest py-4 px-4 ' \
+                   'focus:ring-2 focus:ring-primary/10 ' \
                    "focus:border-primary transition-all #{field_error_class(medication, :name)}",
             **field_error_attributes(medication, :name, input_id: 'medication_name')
           )
@@ -269,7 +273,8 @@ module Components
             step: 'any',
             min: '1',
             placeholder: t('forms.medications.standard_dosage_placeholder', default: 'e.g., 500'),
-            class: 'rounded-md border-border bg-surface-container-lowest py-4 px-4 focus:ring-2 focus:ring-primary/10 ' \
+            class: 'rounded-md border-border bg-surface-container-lowest py-4 px-4 ' \
+                   'focus:ring-2 focus:ring-primary/10 ' \
                    'focus:border-primary transition-all',
             **field_error_attributes(medication, :dosage_amount, input_id: 'medication_dosage_amount')
           )
@@ -353,7 +358,8 @@ module Components
             value: medication.current_supply,
             min: '0',
             placeholder: t('forms.medications.current_supply_placeholder', default: 'e.g., 30'),
-            class: 'rounded-md border-border bg-surface-container-lowest py-4 px-4 focus:ring-2 focus:ring-primary/10 ' \
+            class: 'rounded-md border-border bg-surface-container-lowest py-4 px-4 ' \
+                   'focus:ring-2 focus:ring-primary/10 ' \
                    'focus:border-primary transition-all'
           )
         end
@@ -372,7 +378,8 @@ module Components
             value: medication.reorder_threshold,
             min: '1',
             placeholder: t('forms.medications.reorder_threshold_placeholder', default: 'e.g., 5'),
-            class: 'rounded-md border-border bg-surface-container-lowest py-4 px-4 focus:ring-2 focus:ring-primary/10 ' \
+            class: 'rounded-md border-border bg-surface-container-lowest py-4 px-4 ' \
+                   'focus:ring-2 focus:ring-primary/10 ' \
                    'focus:border-primary transition-all'
           )
         end

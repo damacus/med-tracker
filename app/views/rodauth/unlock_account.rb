@@ -20,19 +20,22 @@ module Views
 
       def form_section
         render RubyUI::Card.new(class: card_classes) do
-          render RubyUI::CardHeader.new(class: 'space-y-2 bg-card/60') do
-            render RubyUI::CardTitle.new(class: 'text-2xl font-semibold text-foreground') do
-              rodauth.unlock_account_button
-            end
-            render RubyUI::CardDescription.new(class: 'text-base text-muted-foreground') do
-              plain t('rodauth.unlock_account.instruction')
-            end
-          end
-
+          render_card_header
           render RubyUI::CardContent.new(class: 'space-y-6 p-6 sm:p-8') do
             flash_section
             explanatory_text
             unlock_form
+          end
+        end
+      end
+
+      def render_card_header
+        render RubyUI::CardHeader.new(class: 'space-y-2 bg-card/60') do
+          render RubyUI::CardTitle.new(class: 'text-2xl font-semibold text-foreground') do
+            rodauth.unlock_account_button
+          end
+          render RubyUI::CardDescription.new(class: 'text-base text-muted-foreground') do
+            plain t('rodauth.unlock_account.instruction')
           end
         end
       end
@@ -56,7 +59,10 @@ module Views
       end
 
       def unlock_form
-        render RubyUI::Form.new(action: rodauth.unlock_account_path, method: :post, class: 'space-y-6', data_turbo: 'false') do
+        render RubyUI::Form.new(
+          action: rodauth.unlock_account_path, method: :post,
+          class: 'space-y-6', data_turbo: 'false'
+        ) do
           additional_tags = rodauth.unlock_account_additional_form_tags
           safe(additional_tags) if additional_tags.present?
           authenticity_token_field

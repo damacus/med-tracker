@@ -93,7 +93,8 @@ module Components
       def overview_item(label, value, icon_class)
         div(class: 'flex items-center gap-4 group') do
           div(
-            class: 'w-10 h-10 rounded-xl bg-surface-container-low flex items-center justify-center text-muted-foreground ' \
+            class: 'w-10 h-10 rounded-xl bg-surface-container-low flex items-center ' \
+                   'justify-center text-muted-foreground ' \
                    'group-hover:bg-primary/5 group-hover:text-primary transition-colors'
           ) do
             render icon_class.new(size: 20)
@@ -121,7 +122,8 @@ module Components
                 Link(
                   href: add_medication_person_path(person),
                   variant: :secondary,
-                  class: 'w-full py-6 rounded-xl font-bold text-sm bg-surface-container-lowest text-primary border-none shadow-sm',
+                  class: 'w-full py-6 rounded-xl font-bold text-sm bg-surface-container-lowest ' \
+                         'text-primary border-none shadow-sm',
                   data: { turbo_frame: 'modal' }
                 ) { t('people.show.add_medication') }
               end
@@ -166,7 +168,9 @@ module Components
       def render_empty_state
         div(class: 'col-span-full') do
           Card(class: 'text-center py-12 px-8 border-dashed border-2 bg-surface-container-low') do
-            Text(size: '3', weight: 'medium', class: 'text-muted-foreground mb-6') { t('people.show.no_any_medications') }
+            Text(size: '3', weight: 'medium', class: 'text-muted-foreground mb-6') do
+              t('people.show.no_any_medications')
+            end
             if can_add_medication?
               Link(
                 href: add_medication_person_path(person),
@@ -205,7 +209,8 @@ module Components
                   ) { t('people.form.name') }
                   render f.text_field(
                     :name,
-                    class: 'rounded-2xl border-border bg-surface-container-low py-6 px-5 focus:bg-surface-container-lowest focus:ring-4 ' \
+                    class: 'rounded-2xl border-border bg-surface-container-low py-6 px-5 ' \
+                           'focus:bg-surface-container-lowest focus:ring-4 ' \
                            'focus:ring-primary/5 focus:border-primary transition-all'
                   )
                 end
@@ -217,7 +222,8 @@ module Components
                   ) { t('people.form.date_of_birth') }
                   render f.date_field(
                     :date_of_birth,
-                    class: 'rounded-2xl border-border bg-surface-container-low py-6 px-5 focus:bg-surface-container-lowest focus:ring-4 ' \
+                    class: 'rounded-2xl border-border bg-surface-container-low py-6 px-5 ' \
+                           'focus:bg-surface-container-lowest focus:ring-4 ' \
                            'focus:ring-primary/5 focus:border-primary transition-all'
                   )
                 end

@@ -94,7 +94,10 @@ module Components
         div(class: 'pt-4') do
           if editing
             div(class: 'flex items-center justify-end gap-6') do
-              Button(variant: :ghost, data: { action: 'click->ruby-ui--dialog#dismiss' }) { t('person_medications.form.cancel') }
+              Button(
+                variant: :ghost,
+                data: { action: 'click->ruby-ui--dialog#dismiss' }
+              ) { t('person_medications.form.cancel') }
               Button(type: :submit, variant: :primary) { t('person_medications.form.save_changes_button') }
             end
           else

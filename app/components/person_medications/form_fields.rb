@@ -82,7 +82,10 @@ module Components
       def render_selection_summary(show_dose: false)
         div(class: selection_summary_layout_classes(show_dose)) do
           div(class: 'rounded-2xl border border-border bg-surface-container-low px-4 py-3') do
-            Text(size: '1', weight: 'medium', class: 'uppercase tracking-[0.2em] text-muted-foreground') { t('person_medications.form.medication') }
+            Text(
+              size: '1', weight: 'medium',
+              class: 'uppercase tracking-[0.2em] text-muted-foreground'
+            ) { t('person_medications.form.medication') }
             Text(size: '3', weight: 'semibold',
                  data: { person_medication_form_target: 'selectedMedicationName' }) do
               selected_medication_name || t('person_medications.form.workflow.choose_medication_title')
@@ -91,7 +94,10 @@ module Components
 
           if show_dose
             div(class: 'rounded-2xl border border-border bg-surface-container-low px-4 py-3') do
-              Text(size: '1', weight: 'medium', class: 'uppercase tracking-[0.2em] text-muted-foreground') { t('person_medications.form.dose') }
+              Text(
+                size: '1', weight: 'medium',
+                class: 'uppercase tracking-[0.2em] text-muted-foreground'
+              ) { t('person_medications.form.dose') }
               Text(size: '3', weight: 'semibold', data: { person_medication_form_target: 'selectedDoseName' }) do
                 selected_dose_label || t('person_medications.form.workflow.choose_dose_title')
               end
@@ -169,7 +175,11 @@ module Components
                     action: 'change->person-medication-form#selectDose' }
           ) do
             option(value: '') do
-              person_medication.medication_id.present? ? t('person_medications.form.select_dose') : t('person_medications.form.select_medication_first')
+              if person_medication.medication_id.present?
+                t('person_medications.form.select_dose')
+              else
+                t('person_medications.form.select_medication_first')
+              end
             end
             if person_medication.dose_amount.present? && person_medication.dose_unit.present?
               option(value: selected_dose_option_value, selected: true) { selected_dose_label }
@@ -202,7 +212,9 @@ module Components
 
       def render_max_daily_doses_field
         FormField do
-          FormFieldLabel(for: 'person_medication_max_daily_doses') { t('person_medications.form.max_doses_per_cycle') }
+          FormFieldLabel(for: 'person_medication_max_daily_doses') do
+            t('person_medications.form.max_doses_per_cycle')
+          end
           Input(
             type: :number,
             name: 'person_medication[max_daily_doses]',
@@ -218,7 +230,9 @@ module Components
 
       def render_min_hours_field
         FormField do
-          FormFieldLabel(for: 'person_medication_min_hours_between_doses') { t('person_medications.form.min_hours_apart') }
+          FormFieldLabel(for: 'person_medication_min_hours_between_doses') do
+            t('person_medications.form.min_hours_apart')
+          end
           Input(
             type: :number,
             name: 'person_medication[min_hours_between_doses]',

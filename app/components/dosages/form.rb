@@ -116,9 +116,11 @@ module Components
                 action: 'click->frequency-suggestions#suggest',
                 suggestion: suggestion
               },
-              class: 'inline-flex shrink-0 items-center rounded-full border border-border bg-surface-container-lowest ' \
-                     'px-2.5 py-0.5 text-xs font-medium text-muted-foreground shadow-sm whitespace-nowrap ' \
-                     'hover:bg-accent hover:border-border cursor-pointer transition-colors'
+              class: 'inline-flex shrink-0 items-center rounded-full border ' \
+                     'border-border bg-surface-container-lowest px-2.5 py-0.5 ' \
+                     'text-xs font-medium text-muted-foreground shadow-sm ' \
+                     'whitespace-nowrap hover:bg-accent hover:border-border ' \
+                     'cursor-pointer transition-colors'
             ) { suggestion }
           end
         end

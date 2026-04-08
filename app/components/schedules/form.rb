@@ -92,12 +92,22 @@ module Components
 
       def render_details_step
         div(class: 'space-y-6') do
-          div(class: 'flex items-center justify-between rounded-2xl border border-border bg-surface-container-low px-4 py-3') do
+          div(
+            class: 'flex items-center justify-between rounded-2xl border ' \
+                   'border-border bg-surface-container-low px-4 py-3'
+          ) do
             div do
-              Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-muted-foreground') { t('schedules.form.medication') }
+              Text(
+                size: '1', weight: 'black',
+                class: 'uppercase tracking-widest text-muted-foreground'
+              ) { t('schedules.form.medication') }
               Text(size: '3', weight: 'semibold') { schedule.medication.name }
             end
-            Link(href: new_person_schedule_path(person), variant: :ghost, size: :sm, data: { turbo_frame: 'modal' }) do
+            Link(
+              href: new_person_schedule_path(person),
+              variant: :ghost, size: :sm,
+              data: { turbo_frame: 'modal' }
+            ) do
               t('schedules.form.change')
             end
           end
@@ -201,7 +211,8 @@ module Components
             end
           else
             div(
-              class: 'mt-3 rounded-2xl border border-warning bg-warning-container px-4 py-4 text-sm text-on-warning-container',
+              class: 'mt-3 rounded-2xl border border-warning bg-warning-container ' \
+                     'px-4 py-4 text-sm text-on-warning-container',
               data: { testid: 'schedule-no-dosage-message' }
             ) do
               t('schedules.form.no_dose_options')

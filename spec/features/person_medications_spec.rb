@@ -31,7 +31,7 @@ RSpec.describe 'Person Medications', type: :system do
 
       expect(page).to have_content('Choose the dose')
       # Wait for the async fetch to populate the select options
-      expect(page).to have_css("#person_medication_dose_option option", text: '500 mg', visible: :all)
+      expect(page).to have_css('#person_medication_dose_option option', text: '500 mg', visible: :all)
       select '500 mg', from: 'person_medication_dose_option'
       click_button 'Next'
 

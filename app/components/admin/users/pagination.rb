@@ -14,7 +14,10 @@ module Components
         end
 
         def view_template
-          div(class: 'flex items-center justify-between border-t border-border bg-surface-container-lowest px-4 py-3 sm:px-6') do
+          div(
+            class: 'flex items-center justify-between border-t border-border ' \
+                   'bg-surface-container-lowest px-4 py-3 sm:px-6'
+          ) do
             div(class: 'flex flex-1 justify-between sm:hidden') do
               render_mobile_pagination
             end
@@ -73,7 +76,10 @@ module Components
         def render_pagination_nav
           return if pagy_obj.pages <= 1
 
-          nav(class: 'isolate inline-flex -space-x-px rounded-md shadow-sm', aria: { label: t('admin.users.pagination.label') }) do
+          nav(
+            class: 'isolate inline-flex -space-x-px rounded-md shadow-sm',
+            aria: { label: t('admin.users.pagination.label') }
+          ) do
             render_prev_button
             render_page_numbers
             render_next_button

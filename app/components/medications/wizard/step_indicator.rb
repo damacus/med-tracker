@@ -35,7 +35,8 @@ module Components
 
         def render_connecting_line
           div(
-            class: 'absolute top-4 -left-1/2 w-full h-0.5 bg-surface-container-high -z-10 transition-colors duration-300',
+            class: 'absolute top-4 -left-1/2 w-full h-0.5 bg-surface-container-high ' \
+                   '-z-10 transition-colors duration-300',
             data: { indicator_line: true }
           )
         end

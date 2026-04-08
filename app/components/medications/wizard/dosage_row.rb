@@ -14,7 +14,8 @@ module Components
         def view_template
           div(
             id: "wizard_dosage_#{dosage.id}",
-            class: 'flex items-center justify-between rounded-xl border border-border bg-surface-container-lowest p-4 shadow-sm'
+            class: 'flex items-center justify-between rounded-xl border ' \
+                   'border-border bg-surface-container-lowest p-4 shadow-sm'
           ) do
             div(class: 'flex items-center gap-3') do
               div(

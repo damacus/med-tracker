@@ -2,7 +2,7 @@
 
 module Views
   module Rodauth
-    class Login < Views::Rodauth::Base
+    class Login < Views::Rodauth::Base # rubocop:disable Metrics/ClassLength
       include Phlex::Rails::Helpers::FormWith
       include Phlex::Rails::Helpers::LinkTo
       include Views::Rodauth::LoginPasskeySupport
@@ -20,7 +20,7 @@ module Views
 
       private
 
-      def render_login_card
+      def render_login_card # rubocop:disable Metrics/AbcSize
         render RubyUI::Card.new(class: card_classes) do
           render RubyUI::CardHeader.new(class: 'space-y-2 bg-card/60') do
             render RubyUI::CardTitle.new(class: 'text-2xl font-semibold text-foreground') do

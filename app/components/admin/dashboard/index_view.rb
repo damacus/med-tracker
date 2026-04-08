@@ -128,7 +128,10 @@ module Components
                    'transition-all duration-300 hover:shadow-md hover:scale-[1.02] ' \
                    'cursor-pointer no-underline h-full min-w-0'
           ) do
-            div(class: 'w-10 h-10 rounded-xl bg-surface-container-low flex items-center justify-center text-muted-foreground shrink-0') do
+            div(
+              class: 'w-10 h-10 rounded-xl bg-surface-container-low flex items-center ' \
+                     'justify-center text-muted-foreground shrink-0'
+            ) do
               render icon if icon
             end
             div(class: 'mt-2 min-w-0') do

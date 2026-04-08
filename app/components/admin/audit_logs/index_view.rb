@@ -228,8 +228,11 @@ module Components
         end
 
         def render_pagination
-          nav(class: 'flex items-center justify-between border-t border-border bg-surface-container-lowest px-4 py-3 sm:px-6',
-              'aria-label': 'Pagination') do
+          nav(
+            class: 'flex items-center justify-between border-t border-border ' \
+                   'bg-surface-container-lowest px-4 py-3 sm:px-6',
+            'aria-label': 'Pagination'
+          ) do
             render_pagination_info
             render_pagination_controls
           end

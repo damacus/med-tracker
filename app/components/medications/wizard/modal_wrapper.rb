@@ -26,7 +26,8 @@ module Components
 
             div(
               class: 'fixed left-1/2 top-1/2 z-50 w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 ' \
-                     'rounded-[2.5rem] bg-surface-container-lowest shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto'
+                     'rounded-[2.5rem] bg-surface-container-lowest shadow-2xl ' \
+                     'overflow-hidden max-h-[90vh] overflow-y-auto'
             ) do
               a(
                 href: medications_path,

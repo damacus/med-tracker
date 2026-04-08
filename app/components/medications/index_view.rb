@@ -250,7 +250,8 @@ module Components
 
         div(class: 'space-y-2') do
           div(
-            class: 'flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-muted-foreground'
+            class: 'flex justify-between items-center text-[10px] font-black uppercase ' \
+                   'tracking-widest text-muted-foreground'
           ) do
             span { t('medications.index.inventory_level') }
             span { pluralize(medication.current_supply, 'unit') }
@@ -263,7 +264,8 @@ module Components
 
       def render_medication_icon
         div(
-          class: 'w-12 h-12 rounded-2xl bg-surface-container-low flex items-center justify-center text-muted-foreground ' \
+          class: 'w-12 h-12 rounded-2xl bg-surface-container-low flex items-center ' \
+                 'justify-center text-muted-foreground ' \
                  'group-hover:text-primary group-hover:bg-primary/5 transition-all'
         ) do
           render Icons::Pill.new(size: 24)
@@ -276,7 +278,8 @@ module Components
             href: medication_path(medication),
             variant: :outline,
             size: :sm,
-            class: 'flex-1 rounded-xl py-5 border-border bg-surface-container-lowest hover:bg-surface-container-low text-muted-foreground'
+            class: 'flex-1 rounded-xl py-5 border-border bg-surface-container-lowest ' \
+                   'hover:bg-surface-container-low text-muted-foreground'
           ) do
             t('medications.index.view')
           end
@@ -284,7 +287,8 @@ module Components
             href: edit_medication_path(medication, return_to: medications_path(inventory_query_params)),
             variant: :outline,
             size: :sm,
-            class: 'rounded-xl w-10 h-10 p-0 border-border bg-surface-container-lowest hover:bg-surface-container-low text-muted-foreground',
+            class: 'rounded-xl w-10 h-10 p-0 border-border bg-surface-container-lowest ' \
+                   'hover:bg-surface-container-low text-muted-foreground',
             aria_label: t('medications.index.edit', default: 'Edit medication')
           ) do
             render Icons::Pencil.new(size: 16)
@@ -294,7 +298,8 @@ module Components
                                'flex items-center justify-center rounded-xl w-10 h-10 p-0'
                              else
                                'flex items-center justify-center rounded-xl w-10 h-10 p-0 ' \
-                                 'border-border bg-surface-container-lowest hover:bg-surface-container-low text-muted-foreground'
+                                 'border-border bg-surface-container-lowest ' \
+                                 'hover:bg-surface-container-low text-muted-foreground'
                              end
 
             render Components::Medications::RefillModal.new(
@@ -312,7 +317,8 @@ module Components
         AlertDialog do
           AlertDialogTrigger do
             Button(variant: :ghost, size: :sm,
-                   class: 'rounded-xl w-10 h-10 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/5',
+                   class: 'rounded-xl w-10 h-10 p-0 text-muted-foreground ' \
+                          'hover:text-destructive hover:bg-destructive/5',
                    aria_label: t('medications.index.delete', default: 'Delete medication')) do
               render Icons::Trash.new(size: 18)
             end

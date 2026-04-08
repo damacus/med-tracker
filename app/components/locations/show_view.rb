@@ -90,7 +90,10 @@ module Components
         Card(class: 'p-6 hover:shadow-md transition-shadow') do
           div(class: 'flex items-center justify-between') do
             div(class: 'flex items-center gap-4') do
-              div(class: 'w-10 h-10 rounded-xl bg-surface-container-low flex items-center justify-center text-muted-foreground') do
+              div(
+                class: 'w-10 h-10 rounded-xl bg-surface-container-low flex items-center ' \
+                       'justify-center text-muted-foreground'
+              ) do
                 render Icons::Pill.new(size: 20)
               end
               div do
@@ -99,7 +102,9 @@ module Components
                   medication.name
                 end
                 if medication.dosage_amount.present? && medication.dosage_unit.present?
-                  Text(size: '1', class: 'text-muted-foreground') { "#{medication.dosage_amount} #{medication.dosage_unit}" }
+                  Text(size: '1', class: 'text-muted-foreground') do
+                    "#{medication.dosage_amount} #{medication.dosage_unit}"
+                  end
                 end
               end
             end
@@ -134,7 +139,10 @@ module Components
               location.members.each do |member|
                 div(class: 'flex items-center justify-between group') do
                   div(class: 'flex items-center gap-3') do
-                    div(class: 'w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center text-muted-foreground') do
+                    div(
+                      class: 'w-8 h-8 rounded-full bg-surface-container-high flex items-center ' \
+                             'justify-center text-muted-foreground'
+                    ) do
                       render Icons::User.new(size: 16)
                     end
                     Text(size: '2', weight: 'semibold', class: 'text-foreground') { member.name }
@@ -221,7 +229,8 @@ module Components
             Button(
               variant: :ghost,
               size: :sm,
-              class: 'w-8 h-8 p-0 rounded-full bg-surface-container-low text-muted-foreground hover:text-primary hover:bg-primary/5',
+              class: 'w-8 h-8 p-0 rounded-full bg-surface-container-low text-muted-foreground ' \
+                     'hover:text-primary hover:bg-primary/5',
               aria_label: t('locations.show.add_member.aria_label', default: 'Add member')
             ) do
               render Icons::Plus.new(size: 16)
@@ -266,7 +275,9 @@ module Components
                   ) do
                     render Icons::Users.new(size: 24)
                   end
-                  Text(size: '2', class: 'text-muted-foreground font-medium') { t('locations.show.add_member.all_assigned') }
+                  Text(size: '2', class: 'text-muted-foreground font-medium') do
+                    t('locations.show.add_member.all_assigned')
+                  end
                 end
               end
             end

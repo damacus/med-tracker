@@ -43,12 +43,17 @@ RSpec.describe TakeMedicationService do
     let(:schedule) { schedules(:john_paracetamol) }
 
     context 'when everything is valid and no override amount' do
+      # Travel to a time well past the cooldown window so fixture takes don't interfere
+      before { travel_to Time.current.end_of_day - 1.minute }
+
       let(:result) { call_service(source: schedule) }
 
       it_behaves_like 'a successful dose', 1000 # paracetamol_adult dosage amount
     end
 
     context 'when an explicit amount override is provided' do
+      before { travel_to Time.current.end_of_day - 1.minute }
+
       let(:result) { call_service(source: schedule, amount_override: '750') }
 
       it_behaves_like 'a successful dose', 750

@@ -13,10 +13,10 @@ RSpec.describe Components::Medications::FinderView, type: :component do
 
     expect(payload).to include(
       'loading' => I18n.t('medications.finder.loading'),
-      'results_title' => I18n.t('medications.finder.results_title'),
-      'dmd_code' => I18n.t('medications.finder.dmd_code')
+      'resultsTitle' => I18n.t('medications.finder.results_title'),
+      'dmdCode' => I18n.t('medications.finder.dmd_code')
     )
-    expect(payload.fetch('result_count')).to include(
+    expect(payload.fetch('resultCount')).to include(
       'one' => I18n.t('medications.finder.result_count.one'),
       'other' => I18n.t('medications.finder.result_count.other')
     )

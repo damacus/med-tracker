@@ -77,10 +77,18 @@ module Components
                 class: select_classes,
                 data: { action: 'change->filter-form#submit' }
               ) do
-                option(value: '', selected: search_params[:status].blank?) { t('admin.users.search.all') }
-                option(value: 'active', selected: search_params[:status] == 'active') { t('admin.users.user_row.active') }
-                option(value: 'inactive', selected: search_params[:status] == 'inactive') { t('admin.users.user_row.inactive') }
-                option(value: 'soft_deleted', selected: search_params[:status] == 'soft_deleted') { t('admin.users.user_row.soft_deleted') }
+                option(value: '', selected: search_params[:status].blank?) do
+                  t('admin.users.search.all')
+                end
+                option(value: 'active', selected: search_params[:status] == 'active') do
+                  t('admin.users.user_row.active')
+                end
+                option(value: 'inactive', selected: search_params[:status] == 'inactive') do
+                  t('admin.users.user_row.inactive')
+                end
+                option(value: 'soft_deleted', selected: search_params[:status] == 'soft_deleted') do
+                  t('admin.users.user_row.soft_deleted')
+                end
               end
             end
           end

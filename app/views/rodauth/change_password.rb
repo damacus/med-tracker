@@ -63,7 +63,9 @@ module Views
 
       def new_password_field
         render RubyUI::FormField.new do
-          render RubyUI::FormFieldLabel.new(for: 'new-password') { t('rodauth.views.change_password.new_password_label') }
+          render RubyUI::FormFieldLabel.new(for: 'new-password') do
+            t('rodauth.views.change_password.new_password_label')
+          end
           render RubyUI::Input.new(
             type: :password,
             name: rodauth.new_password_param,
@@ -78,7 +80,9 @@ module Views
 
       def confirm_password_field
         render RubyUI::FormField.new do
-          render RubyUI::FormFieldLabel.new(for: 'password-confirm') { t('rodauth.views.change_password.confirm_password_label') }
+          render RubyUI::FormFieldLabel.new(for: 'password-confirm') do
+            t('rodauth.views.change_password.confirm_password_label')
+          end
           render RubyUI::Input.new(
             type: :password,
             name: rodauth.password_confirm_param,

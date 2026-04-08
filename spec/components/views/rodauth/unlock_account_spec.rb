@@ -3,6 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe Views::Rodauth::UnlockAccount, type: :component do
+  # rubocop:disable RSpec/VerifiedDoubles
   let(:rodauth) do
     double(
       'Rodauth',
@@ -14,6 +15,7 @@ RSpec.describe Views::Rodauth::UnlockAccount, type: :component do
       unlock_account_key_param: 'key'
     )
   end
+  # rubocop:enable RSpec/VerifiedDoubles
 
   before do
     allow(controller).to receive_messages(

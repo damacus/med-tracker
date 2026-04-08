@@ -23,16 +23,16 @@ module Components
 
         private
 
-      def render_header
-        div(class: 'mb-8') do
-          Heading(level: 1, class: 'mb-2') { form_title }
-          Text(weight: 'muted') { t('admin.users.form.subtitle') }
+        def render_header
+          div(class: 'mb-8') do
+            Heading(level: 1, class: 'mb-2') { form_title }
+            Text(weight: 'muted') { t('admin.users.form.subtitle') }
+          end
         end
-      end
 
-      def form_title
-        user.new_record? ? t('admin.users.form.create_title') : t('admin.users.form.edit_title')
-      end
+        def form_title
+          user.new_record? ? t('admin.users.form.create_title') : t('admin.users.form.edit_title')
+        end
 
         def render_form
           form_with(

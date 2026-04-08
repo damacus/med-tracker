@@ -90,7 +90,8 @@ module Components
 
       def render_medication_icon
         div(
-          class: 'w-12 h-12 rounded-2xl bg-surface-container-low flex items-center justify-center text-muted-foreground ' \
+          class: 'w-12 h-12 rounded-2xl bg-surface-container-low flex items-center ' \
+                 'justify-center text-muted-foreground ' \
                  'group-hover:text-primary group-hover:bg-primary/5 transition-all'
         ) do
           render Icons::Pill.new(size: 24)
@@ -224,13 +225,16 @@ module Components
 
       def render_take_item(take)
         div(
-          class: 'flex items-center justify-between p-3 rounded-xl bg-surface-container-low group/item transition-colors ' \
+          class: 'flex items-center justify-between p-3 rounded-xl ' \
+                 'bg-surface-container-low group/item transition-colors ' \
                  'hover:bg-accent'
         ) do
           div(class: 'flex items-center gap-3') do
             render Icons::CheckCircle.new(size: 16, class: 'text-on-success-container')
             div(class: 'space-y-1') do
-              Text(size: '2', weight: 'bold', class: 'text-foreground') { take.taken_at.strftime('%l:%M %p').strip }
+              Text(size: '2', weight: 'bold', class: 'text-foreground') do
+                take.taken_at.strftime('%l:%M %p').strip
+              end
               if take.inventory_location.present?
                 Text(size: '1', class: 'text-muted-foreground') { take.inventory_location.name }
               end
@@ -310,7 +314,8 @@ module Components
         AlertDialog do
           AlertDialogTrigger do
             Button(variant: :ghost,
-                   class: 'w-12 h-12 p-0 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/5',
+                   class: 'w-12 h-12 p-0 rounded-xl text-muted-foreground ' \
+                          'hover:text-destructive hover:bg-destructive/5',
                    data: { testid: "delete-schedule-#{schedule.id}" }) do
               span(class: 'sr-only') { t('schedules.card.delete', default: 'Delete schedule') }
               render Icons::Trash.new(size: 20)

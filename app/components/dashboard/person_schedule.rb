@@ -111,7 +111,11 @@ module Components
       end
 
       def render_take_medication_link(schedule)
-        label = blocked_reason_for(schedule) == :out_of_stock ? t('dashboard.person_schedule.out_of_stock') : t('dashboard.person_schedule.on_cooldown')
+        label = if blocked_reason_for(schedule) == :out_of_stock
+                  t('dashboard.person_schedule.out_of_stock')
+                else
+                  t('dashboard.person_schedule.on_cooldown')
+                end
         render Components::Medications::TakeAction.new(
           source: schedule,
           context: { person: person, current_user: current_user },
