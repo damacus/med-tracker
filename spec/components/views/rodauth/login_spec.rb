@@ -79,13 +79,13 @@ RSpec.describe Views::Rodauth::Login, type: :component do
     expect(rendered.text).to include('Please login to continue')
   end
 
-  it 'renders Rodauth field errors inline on failed login' do
+  it 'renders Rodauth field errors inline next to form fields, not in flash' do
     allow(rodauth).to receive(:field_error).with('login').and_return('There was an error logging in')
 
     rendered = render_inline(described_class.new)
 
     expect(rendered.text).to include('There was an error logging in')
-    expect(rendered.css('#login-flash [role="alert"]').count).to eq(1)
+    expect(rendered.css('#login-flash [role="alert"]').count).to eq(0)
   end
   # rubocop:enable RSpec/VerifiedDoubles
 end

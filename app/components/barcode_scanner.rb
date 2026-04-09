@@ -74,7 +74,7 @@ module Components
         id: 'barcode-scanner-region',
         data: { barcode_scanner_target: 'scannerRegion' },
         hidden: true,
-        class: 'mb-4 rounded-xl overflow-hidden bg-foreground min-h-[200px]'
+        class: 'mb-4 rounded-xl overflow-hidden bg-black min-h-[200px]'
       )
     end
 

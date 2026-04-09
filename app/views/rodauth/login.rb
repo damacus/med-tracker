@@ -228,17 +228,11 @@ module Views
       end
 
       def flash_message
-        view_context.flash[:alert] || view_context.flash[:notice] || rodauth_error
-      end
-
-      def rodauth_error
-        view_context.rodauth.field_error('email') ||
-          view_context.rodauth.field_error('login') ||
-          view_context.rodauth.field_error('password')
+        view_context.flash[:alert] || view_context.flash[:notice]
       end
 
       def flash_variant
-        view_context.flash[:alert].present? || rodauth_error.present? ? :destructive : :success
+        view_context.flash[:alert].present? ? :destructive : :success
       end
     end
   end
