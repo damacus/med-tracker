@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static values = { currentStep: Number }
+  static values = { currentStep: Number, translations: Object }
   static targets = [
     "medicationSelect", "doseOptionInput", "doseAmountInput", "doseUnitInput",
     "maxDosesInput", "minHoursInput", "doseCycleInput", "stepPanel",
@@ -146,7 +146,7 @@ export default class extends Controller {
 
     const placeholder = document.createElement('option')
     placeholder.value = ''
-    placeholder.textContent = options.length > 0 ? 'Select a dose' : 'No doses available'
+    placeholder.textContent = options.length > 0 ? this.t('selectDose') : this.t('noDosesAvailable')
     this.doseOptionInputTarget.appendChild(placeholder)
     this.doseOptionInputTarget.disabled = options.length === 0
 
@@ -248,18 +248,22 @@ export default class extends Controller {
     if (!this.hasSelectedMedicationNameTarget) return
 
     const selectedMedication = this.#selectedMedication()
-    const label = selectedMedication?.dataset.text || 'Choose a medication'
+    const label = selectedMedication?.dataset.text || this.t('chooseMedication')
     this.selectedMedicationNameTargets.forEach((target) => { target.textContent = label })
   }
 
   #syncDoseSummary() {
     if (!this.hasSelectedDoseNameTarget) return
 
-    let label = 'Choose a dose'
+    let label = this.t('chooseDose')
     if (this.hasDoseAmountInputTarget && this.hasDoseUnitInputTarget &&
       this.doseAmountInputTarget.value !== '' && this.doseUnitInputTarget.value !== '') {
       label = `${this.#formatAmount(this.doseAmountInputTarget.value)} ${this.doseUnitInputTarget.value}`
     }
     this.selectedDoseNameTargets.forEach((target) => { target.textContent = label })
+  }
+
+  t(key) {
+    return this.translationsValue?.[key] || ''
   }
 }

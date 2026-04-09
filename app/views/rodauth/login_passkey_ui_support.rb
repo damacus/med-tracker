@@ -9,19 +9,24 @@ module Views
         {
           id: 'passkey-login-section',
           hidden: true,
-          class: 'mt-8 rounded-2xl border border-zinc-100 bg-zinc-50/50 p-6'
+          class: 'mt-8 rounded-2xl border border-border bg-surface-container-low p-6'
         }
       end
 
       def passkey_section_header
         div(class: 'mb-5 flex items-start gap-4') do
-          div(class: 'inline-flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-950 text-white shadow-sm') do
+          div(
+            class: 'inline-flex h-10 w-10 items-center justify-center rounded-lg ' \
+                   'bg-primary text-primary-foreground shadow-sm'
+          ) do
             render Components::Icons::Fingerprint.new(size: 18)
           end
           div(class: 'space-y-1') do
-            p(class: 'text-xs font-semibold uppercase tracking-wider text-zinc-500') { t('sessions.login.passkey_label') }
-            p(class: 'text-sm font-semibold text-zinc-900') { t('sessions.login.passkey_cta') }
-            p(class: 'text-xs leading-relaxed text-zinc-500') { t('sessions.login.passkey_helper') }
+            p(class: 'text-xs font-semibold uppercase tracking-wider text-muted-foreground') do
+              t('sessions.login.passkey_label')
+            end
+            p(class: 'text-sm font-semibold text-foreground') { t('sessions.login.passkey_cta') }
+            p(class: 'text-xs leading-relaxed text-muted-foreground') { t('sessions.login.passkey_helper') }
           end
         end
       end
@@ -41,7 +46,9 @@ module Views
           id: 'passkey-login-trigger',
           hidden: true,
           disabled: true,
-          class: 'w-full h-11 rounded-xl bg-zinc-950 px-5 text-sm font-semibold text-white transition-all hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50',
+          class: 'w-full h-11 rounded-xl bg-primary px-5 text-sm font-semibold ' \
+                 'text-primary-foreground transition-all hover:opacity-90 ' \
+                 'disabled:cursor-not-allowed disabled:opacity-50',
           data_error_unsupported: t('sessions.login.passkey_not_supported'),
           data_error_failed: t('sessions.login.passkey_error')
         }

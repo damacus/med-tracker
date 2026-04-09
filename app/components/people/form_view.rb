@@ -8,12 +8,12 @@ module Components
       include Phlex::Rails::Helpers::TurboFrameTag
       include RubyUI
 
-      attr_reader :person, :title, :subtitle, :return_to, :is_modal, :assigned_location
+      attr_reader :person, :return_to, :is_modal, :assigned_location
 
       def initialize(person:, is_modal: false, assigned_location: nil, **options)
         @person = person
-        @title = options[:title] || default_title
-        @subtitle = options[:subtitle] || default_subtitle
+        @explicit_title = options[:title]
+        @explicit_subtitle = options[:subtitle]
         @return_to = options[:return_to]
         @is_modal = is_modal
         @assigned_location = assigned_location
@@ -25,7 +25,7 @@ module Components
           render_form
         else
           div(class: 'container mx-auto px-4 py-12 max-w-2xl') do
-            Card(class: 'overflow-hidden border-none shadow-2xl rounded-[2.5rem] bg-white') do
+            Card(class: 'overflow-hidden border-none shadow-2xl rounded-[2.5rem] bg-surface-container-lowest') do
               div(class: 'p-10') do
                 render_header_section
                 render_form
@@ -44,12 +44,28 @@ module Components
         end
       end
 
+      def title
+        @explicit_title || default_title
+      end
+
+      def subtitle
+        @explicit_subtitle || default_subtitle
+      end
+
       def default_title
-        person.new_record? ? 'New Person' : 'Edit Person'
+        if person.new_record?
+          t('people.form.new_heading')
+        else
+          t('people.form.edit_heading')
+        end
       end
 
       def default_subtitle
-        person.new_record? ? 'Add a new person to track medications for' : "Update #{person.name}'s details"
+        if person.new_record?
+          t('people.form.new_subheading')
+        else
+          t('people.form.edit_subheading', name: person.name)
+        end
       end
 
       def render_header
@@ -71,9 +87,9 @@ module Components
         return if assigned_location.blank?
 
         Alert(class: 'border-primary/20 bg-primary/5 text-primary') do
-          AlertTitle { 'Location' }
+          AlertTitle { t('people.form.location_title') }
           AlertDescription do
-            plain "This person will be created at #{assigned_location.name}."
+            plain t('people.form.location_description', location: assigned_location.name)
           end
         end
       end
@@ -103,7 +119,7 @@ module Components
 
       def render_name_field(_f)
         FormField do
-          FormFieldLabel(for: 'person_name') { 'Name' }
+          FormFieldLabel(for: 'person_name') { t('people.form.name') }
           Input(
             type: :text,
             name: 'person[name]',
@@ -120,7 +136,7 @@ module Components
 
       def render_email_field(_f)
         FormField do
-          FormFieldLabel(for: 'person_email') { 'Email' }
+          FormFieldLabel(for: 'person_email') { t('people.form.email') }
           Input(
             type: :email,
             name: 'person[email]',
@@ -136,7 +152,7 @@ module Components
 
       def render_date_of_birth_field(_f)
         FormField do
-          FormFieldLabel(for: 'person_date_of_birth') { 'Date of Birth' }
+          FormFieldLabel(for: 'person_date_of_birth') { t('people.form.date_of_birth') }
           Input(
             type: :date,
             name: 'person[date_of_birth]',
@@ -152,7 +168,7 @@ module Components
 
       def render_person_type_field(_f)
         FormField do
-          FormFieldLabel(for: 'person_person_type') { 'Person Type' }
+          FormFieldLabel(for: 'person_person_type') { t('people.form.person_type') }
           Select do
             SelectInput(
               name: 'person[person_type]',
@@ -160,8 +176,8 @@ module Components
               value: selected_person_type
             )
             SelectTrigger do
-              SelectValue(placeholder: 'Select person type') do
-                selected_person_type&.humanize || 'Select person type'
+              SelectValue(placeholder: t('people.form.select_person_type')) do
+                selected_person_type&.humanize || t('people.form.select_person_type')
               end
             end
             SelectContent do
@@ -195,7 +211,7 @@ module Components
               }
             )
             FormFieldLabel(for: 'person_has_capacity', class: 'mb-0') do
-              'Has capacity to manage own medication'
+              t('people.form.has_capacity')
             end
           end
           render_capacity_hint
@@ -205,20 +221,20 @@ module Components
       def render_capacity_hint
         hint_visible = !person.has_capacity
         div(
-          class: ['mt-2 text-sm text-amber-600', ('hidden' unless hint_visible)],
+          class: ['mt-2 text-sm text-on-warning-container', ('hidden' unless hint_visible)],
           data: { capacity_hint_target: 'hint' }
         ) do
-          strong { 'Note: ' }
-          plain 'A person without capacity must have at least one carer assigned.'
-          plain ' Please assign a carer before removing capacity.' if person.persisted? && person.carers.empty?
+          strong { "#{t('people.form.note')} " }
+          plain t('people.form.capacity_hint')
+          plain " #{t('people.form.capacity_hint_assign_carer')}" if person.persisted? && person.carers.empty?
         end
       end
 
       def render_actions(_f)
         div(class: 'flex gap-3 justify-end pt-4') do
-          Button(variant: :ghost, data: { action: 'click->ruby-ui--dialog#dismiss' }) { 'Cancel' }
+          Button(variant: :ghost, data: { action: 'click->ruby-ui--dialog#dismiss' }) { t('people.form.cancel') }
           Button(type: :submit, variant: :primary) do
-            person.new_record? ? 'Create Person' : 'Update Person'
+            person.new_record? ? t('people.form.create') : t('people.form.update')
           end
         end
       end

@@ -26,13 +26,29 @@ module Views
             end
           end
           render RubyUI::CardContent.new(class: 'space-y-6 p-6 sm:p-8') do
+            flash_section
             otp_form
           end
         end
       end
 
+      def flash_section
+        return if flash_message.blank?
+
+        render RubyUI::Alert.new(variant: :destructive) do
+          plain(flash_message)
+        end
+      end
+
+      def flash_message
+        view_context.flash[:alert] || view_context.rodauth.field_error(rodauth.otp_auth_param)
+      end
+
       def otp_form
-        render RubyUI::Form.new(action: rodauth.otp_auth_path, method: :post, class: 'space-y-6', data_turbo: 'false') do
+        render RubyUI::Form.new(
+          action: rodauth.otp_auth_path, method: :post,
+          class: 'space-y-6', data_turbo: 'false'
+        ) do
           additional_tags = rodauth.otp_auth_additional_form_tags
           safe(additional_tags) if additional_tags.present?
           authenticity_token_field
@@ -44,18 +60,28 @@ module Views
       def otp_code_field
         render RubyUI::FormField.new do
           render RubyUI::FormFieldLabel.new(for: 'otp-auth-code') { rodauth.otp_auth_label }
-          render RubyUI::Input.new(
-            type: :text,
-            name: rodauth.otp_auth_param,
-            id: 'otp-auth-code',
-            required: true,
-            autocomplete: 'one-time-code',
-            inputmode: 'numeric',
-            pattern: '[0-9]*',
-            maxlength: 6,
-            placeholder: t('rodauth.views.otp_auth.code_placeholder')
-          )
+          render_otp_input
+          render_otp_error
         end
+      end
+
+      def render_otp_input
+        render RubyUI::Input.new(
+          type: :text,
+          name: rodauth.otp_auth_param,
+          id: 'otp-auth-code',
+          required: true,
+          autocomplete: 'one-time-code',
+          inputmode: 'numeric',
+          pattern: '[0-9]*',
+          maxlength: 6,
+          placeholder: t('rodauth.views.otp_auth.code_placeholder')
+        )
+      end
+
+      def render_otp_error
+        error = view_context.rodauth.field_error(rodauth.otp_auth_param)
+        p(class: 'mt-1 text-sm text-error') { error } if error.present?
       end
 
       def submit_button

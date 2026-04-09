@@ -36,6 +36,7 @@ Use `task` for everything. Never run `docker compose`, `bin/dev`, or `bundle exe
 | Migrate | `task dev:db-migrate` |
 | Rebuild (destructive) | `task dev:rebuild` |
 | Stop everything | `task stop-all` |
+| Run local Playwright browser tests | `task playwright` |
 | List all tasks | `task -l` |
 
 ## Screenshots for PRs

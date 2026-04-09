@@ -42,6 +42,9 @@ RSpec.describe TakeMedicationService do
   describe '#call with a Schedule source' do
     let(:schedule) { schedules(:john_paracetamol) }
 
+    # Travel to a time well past the cooldown window so fixture takes don't interfere
+    before { travel_to Time.current.end_of_day - 1.minute }
+
     context 'when everything is valid and no override amount' do
       let(:result) { call_service(source: schedule) }
 
@@ -145,6 +148,8 @@ RSpec.describe TakeMedicationService do
     let(:schedule) { schedules(:john_paracetamol) }
     let(:custom_time) { 2.hours.ago }
 
+    before { travel_to Time.current.end_of_day - 1.minute }
+
     it 'records the custom taken_at when provided' do
       result = service.call(
         source: schedule,
@@ -165,6 +170,8 @@ RSpec.describe TakeMedicationService do
 
   describe 'result object' do
     let(:schedule) { schedules(:john_paracetamol) }
+
+    before { travel_to Time.current.end_of_day - 1.minute }
 
     it 'exposes success, take, and error attributes' do
       result = call_service(source: schedule)

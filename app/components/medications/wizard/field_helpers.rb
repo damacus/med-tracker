@@ -12,7 +12,7 @@ module Components
           div(class: 'space-y-2') do
             render RubyUI::FormFieldLabel.new(
               for: 'medication_location_id_trigger',
-              class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1'
+              class: 'text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1'
             ) do
               plain t('medications.show.location')
               span(class: 'text-destructive ml-0.5') { ' *' }
@@ -54,7 +54,7 @@ module Components
           div(class: 'space-y-2') do
             render RubyUI::FormFieldLabel.new(
               for: 'medication_name',
-              class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1'
+              class: 'text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1'
             ) do
               plain t('forms.medications.name')
               span(class: 'text-destructive ml-0.5') { ' *' }
@@ -67,7 +67,8 @@ module Components
               required: true,
               placeholder: t('forms.medications.name_placeholder'),
               title: 'Medication name, e.g. Ibuprofen',
-              class: 'rounded-md border-slate-200 bg-white py-4 px-4 focus:ring-2 focus:ring-primary/10 ' \
+              class: 'rounded-md border-border bg-surface-container-lowest py-4 px-4 ' \
+                     'focus:ring-2 focus:ring-primary/10 ' \
                      "focus:border-primary transition-all #{field_error_class(medication, :name)}"
             )
             render_field_error(medication, :name)
@@ -78,7 +79,7 @@ module Components
           div(class: 'space-y-2') do
             render RubyUI::FormFieldLabel.new(
               for: 'medication_category_trigger',
-              class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1'
+              class: 'text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1'
             ) { 'Category' }
             render RubyUI::Combobox.new(class: 'w-full') do
               render RubyUI::ComboboxTrigger.new(
@@ -126,14 +127,14 @@ module Components
           div(class: 'space-y-2') do
             render RubyUI::FormFieldLabel.new(
               for: 'medication_description',
-              class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1'
+              class: 'text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1'
             ) { t('forms.medications.description') }
             render RubyUI::Textarea.new(
               name: 'medication[description]',
               id: 'medication_description',
               rows: 3,
               placeholder: t('forms.medications.description_placeholder'),
-              class: 'rounded-md border-slate-200 bg-white p-4 focus:ring-2 focus:ring-primary/10 ' \
+              class: 'rounded-md border-border bg-surface-container-lowest p-4 focus:ring-2 focus:ring-primary/10 ' \
                      'focus:border-primary transition-all resize-none'
             ) { medication.description }
           end
@@ -143,7 +144,7 @@ module Components
           div(class: 'space-y-2') do
             render RubyUI::FormFieldLabel.new(
               for: 'medication_dosage_amount',
-              class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1'
+              class: 'text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1'
             ) { t('forms.medications.standard_dosage') }
             render RubyUI::Input.new(
               type: :number,
@@ -154,7 +155,8 @@ module Components
               min: '1',
               title: 'Standard dose amount, e.g. 500',
               placeholder: t('forms.medications.standard_dosage_placeholder', default: 'e.g., 500'),
-              class: 'rounded-md border-slate-200 bg-white py-4 px-4 focus:ring-2 focus:ring-primary/10 ' \
+              class: 'rounded-md border-border bg-surface-container-lowest py-4 px-4 ' \
+                     'focus:ring-2 focus:ring-primary/10 ' \
                      'focus:border-primary transition-all'
             )
             render_field_error(medication, :dosage_amount)
@@ -165,7 +167,7 @@ module Components
           div(class: 'space-y-2') do
             render RubyUI::FormFieldLabel.new(
               for: 'medication_dosage_unit_trigger',
-              class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1'
+              class: 'text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1'
             ) { t('forms.medications.unit') }
             render RubyUI::Combobox.new(class: 'w-full') do
               render RubyUI::ComboboxTrigger.new(
@@ -213,7 +215,7 @@ module Components
           div(class: 'space-y-2') do
             render RubyUI::FormFieldLabel.new(
               for: 'medication_current_supply',
-              class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1'
+              class: 'text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1'
             ) { t('forms.medications.current_supply') }
             render RubyUI::Input.new(
               type: :number,
@@ -223,7 +225,8 @@ module Components
               min: '0',
               title: 'Current number of units in stock',
               placeholder: t('forms.medications.current_supply_placeholder', default: 'e.g., 30'),
-              class: 'rounded-md border-slate-200 bg-white py-4 px-4 focus:ring-2 focus:ring-primary/10 ' \
+              class: 'rounded-md border-border bg-surface-container-lowest py-4 px-4 ' \
+                     'focus:ring-2 focus:ring-primary/10 ' \
                      'focus:border-primary transition-all'
             )
           end
@@ -233,7 +236,7 @@ module Components
           div(class: 'space-y-2') do
             render RubyUI::FormFieldLabel.new(
               for: 'medication_reorder_threshold',
-              class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1'
+              class: 'text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1'
             ) { t('forms.medications.reorder_threshold') }
             render RubyUI::Input.new(
               type: :number,
@@ -243,7 +246,8 @@ module Components
               min: '1',
               title: 'Reorder when supply falls below this level',
               placeholder: t('forms.medications.reorder_threshold_placeholder', default: 'e.g., 5'),
-              class: 'rounded-md border-slate-200 bg-white py-4 px-4 focus:ring-2 focus:ring-primary/10 ' \
+              class: 'rounded-md border-border bg-surface-container-lowest py-4 px-4 ' \
+                     'focus:ring-2 focus:ring-primary/10 ' \
                      'focus:border-primary transition-all'
             )
           end
@@ -253,16 +257,16 @@ module Components
           div(class: 'space-y-2') do
             render RubyUI::FormFieldLabel.new(
               for: 'medication_warnings',
-              class: 'text-[10px] font-black uppercase tracking-widest text-rose-400 ml-1'
+              class: 'text-[10px] font-black uppercase tracking-widest text-on-error-container ml-1'
             ) { t('forms.medications.warnings') }
             render RubyUI::Textarea.new(
               name: 'medication[warnings]',
               id: 'medication_warnings',
               rows: 3,
               placeholder: t('forms.medications.warnings_placeholder'),
-              class: 'rounded-md border-rose-100 bg-rose-50/30 p-4 text-rose-900 focus:ring-2 ' \
-                     'focus:ring-rose-500/10 focus:border-rose-500 transition-all resize-none ' \
-                     'placeholder:text-rose-400/50'
+              class: 'rounded-md border-error/20 bg-error-container/30 p-4 text-on-error-container focus:ring-2 ' \
+                     'focus:ring-error/10 focus:border-error transition-all resize-none ' \
+                     'placeholder:text-on-error-container/50'
             ) { medication.warnings }
           end
         end

@@ -38,9 +38,9 @@ RSpec.describe Components::Shared::MetricCard, type: :component do
     )
     html = rendered.to_html
 
-    expect(html).to include('bg-amber-50/50')
-    expect(html).to include('border-amber-200')
-    expect(html).to include('text-amber-700')
+    expect(html).to include('bg-warning-container')
+    expect(html).to include('border-warning')
+    expect(html).to include('text-on-warning-container')
   end
 
   it 'adds custom data attributes to the value element' do

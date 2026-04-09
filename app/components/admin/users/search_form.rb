@@ -35,13 +35,13 @@ module Components
         def render_search_field
           div(class: 'flex-1') do
             render RubyUI::FormField.new do
-              render RubyUI::FormFieldLabel.new(for: 'search') { 'Search' }
+              render RubyUI::FormFieldLabel.new(for: 'search') { t('admin.users.search.search') }
               render RubyUI::Input.new(
                 type: :text,
                 name: 'search',
                 id: 'search',
                 value: search_params[:search],
-                placeholder: 'Search by name or email...',
+                placeholder: t('admin.users.search.search_placeholder'),
                 data: { action: 'input->filter-form#submit' }
               )
             end
@@ -51,14 +51,14 @@ module Components
         def render_role_filter
           div(class: 'w-48') do
             render RubyUI::FormField.new do
-              render RubyUI::FormFieldLabel.new(for: 'role') { 'Role' }
+              render RubyUI::FormFieldLabel.new(for: 'role') { t('admin.users.search.role') }
               select(
                 name: 'role',
                 id: 'role',
                 class: select_classes,
                 data: { action: 'change->filter-form#submit' }
               ) do
-                option(value: '', selected: search_params[:role].blank?) { 'All Roles' }
+                option(value: '', selected: search_params[:role].blank?) { t('admin.users.search.all_roles') }
                 User.roles.each_key do |role|
                   option(value: role, selected: search_params[:role] == role) { role.titleize }
                 end
@@ -70,17 +70,25 @@ module Components
         def render_status_filter
           div(class: 'w-36') do
             render RubyUI::FormField.new do
-              render RubyUI::FormFieldLabel.new(for: 'status') { 'Status' }
+              render RubyUI::FormFieldLabel.new(for: 'status') { t('admin.users.search.status') }
               select(
                 name: 'status',
                 id: 'status',
                 class: select_classes,
                 data: { action: 'change->filter-form#submit' }
               ) do
-                option(value: '', selected: search_params[:status].blank?) { 'All' }
-                option(value: 'active', selected: search_params[:status] == 'active') { 'Active' }
-                option(value: 'inactive', selected: search_params[:status] == 'inactive') { 'Inactive' }
-                option(value: 'soft_deleted', selected: search_params[:status] == 'soft_deleted') { 'Soft deleted' }
+                option(value: '', selected: search_params[:status].blank?) do
+                  t('admin.users.search.all')
+                end
+                option(value: 'active', selected: search_params[:status] == 'active') do
+                  t('admin.users.user_row.active')
+                end
+                option(value: 'inactive', selected: search_params[:status] == 'inactive') do
+                  t('admin.users.user_row.inactive')
+                end
+                option(value: 'soft_deleted', selected: search_params[:status] == 'soft_deleted') do
+                  t('admin.users.user_row.soft_deleted')
+                end
               end
             end
           end
@@ -88,12 +96,12 @@ module Components
 
         def render_actions
           div(class: 'flex gap-2') do
-            Button(type: :submit, variant: :primary, class: 'hidden') { 'Search' }
+            Button(type: :submit, variant: :primary, class: 'hidden') { t('admin.users.search.search') }
             Link(
               href: '/admin/users',
               variant: :outline,
               data: { turbo_frame: 'admin-users-frame' }
-            ) { 'Clear' } if active_filters?
+            ) { t('admin.users.search.clear') } if active_filters?
           end
         end
 

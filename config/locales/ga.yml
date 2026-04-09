@@ -613,6 +613,11 @@ ga:
       reports: "Tuarascálacha"
       administration: "Riarachán"
       sign_out: "Sínigh Amach"
+  reports:
+    index:
+      eyebrow: "Anailís Folláine"
+      title: "Tuarascáil Sláinte"
+      timeline_title: "Amlíne Cloí"
   forms:
     locations:
       name_placeholder: "m.sh. Baile, Scoil, Teach na Mamó"

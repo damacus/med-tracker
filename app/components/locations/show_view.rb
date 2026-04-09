@@ -38,7 +38,7 @@ module Components
       end
 
       def render_header
-        div(class: 'flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-slate-100') do
+        div(class: 'flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-border') do
           div(class: 'flex items-center gap-6') do
             div(
               class: 'w-20 h-20 rounded-[2rem] bg-primary/10 flex items-center justify-center text-primary shadow-inner'
@@ -55,11 +55,11 @@ module Components
 
           div(class: 'flex gap-3') do
             Link(href: edit_location_path(location, return_to: location_path(location)), variant: :outline, size: :lg,
-                 class: 'rounded-2xl font-bold text-sm bg-white') do
+                 class: 'rounded-2xl font-bold text-sm bg-surface-container-lowest') do
               t('locations.show.edit_location')
             end
             Link(href: locations_path, variant: :ghost, size: :lg,
-                 class: 'rounded-2xl font-bold text-sm text-slate-400 hover:text-slate-600') do
+                 class: 'rounded-2xl font-bold text-sm text-muted-foreground hover:text-foreground') do
               t('locations.show.all_locations')
             end
           end
@@ -80,7 +80,7 @@ module Components
             end
           else
             Card(class: 'p-8 text-center') do
-              Text(size: '3', class: 'text-slate-400') { t('locations.show.no_medications') }
+              Text(size: '3', class: 'text-muted-foreground') { t('locations.show.no_medications') }
             end
           end
         end
@@ -90,7 +90,10 @@ module Components
         Card(class: 'p-6 hover:shadow-md transition-shadow') do
           div(class: 'flex items-center justify-between') do
             div(class: 'flex items-center gap-4') do
-              div(class: 'w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400') do
+              div(
+                class: 'w-10 h-10 rounded-xl bg-surface-container-low flex items-center ' \
+                       'justify-center text-muted-foreground'
+              ) do
                 render Icons::Pill.new(size: 20)
               end
               div do
@@ -99,7 +102,9 @@ module Components
                   medication.name
                 end
                 if medication.dosage_amount.present? && medication.dosage_unit.present?
-                  Text(size: '1', class: 'text-slate-400') { "#{medication.dosage_amount} #{medication.dosage_unit}" }
+                  Text(size: '1', class: 'text-muted-foreground') do
+                    "#{medication.dosage_amount} #{medication.dosage_unit}"
+                  end
                 end
               end
             end
@@ -136,10 +141,13 @@ module Components
               location.members.each do |member|
                 div(class: 'flex items-center justify-between group') do
                   div(class: 'flex items-center gap-3') do
-                    div(class: 'w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-600') do
+                    div(
+                      class: 'w-8 h-8 rounded-full bg-surface-container-high flex items-center ' \
+                             'justify-center text-muted-foreground'
+                    ) do
                       render Icons::User.new(size: 16)
                     end
-                    Text(size: '2', weight: 'semibold', class: 'text-slate-700') { member.name }
+                    Text(size: '2', weight: 'semibold', class: 'text-foreground') { member.name }
                   end
 
                   if view_context.policy(location).update?
@@ -150,7 +158,7 @@ module Components
               end
             end
           else
-            Text(size: '2', class: 'text-slate-400 italic') { t('locations.show.no_members') }
+            Text(size: '2', class: 'text-muted-foreground italic') { t('locations.show.no_members') }
           end
         end
       end
@@ -161,7 +169,7 @@ module Components
             Button(
               variant: :ghost,
               size: :sm,
-              class: 'opacity-0 group-hover:opacity-100 transition-opacity text-slate-300 ' \
+              class: 'opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground ' \
                      'hover:text-destructive h-8 w-8 p-0',
               aria_label: t('locations.show.remove_member.aria_label', default: 'Remove member')
             ) do
@@ -199,7 +207,7 @@ module Components
                 href: edit_location_path(location, return_to: location_path(location)),
                 variant: :ghost,
                 size: :sm,
-                class: 'text-slate-400 hover:text-primary h-8 w-8 p-0 flex items-center justify-center',
+                class: 'text-muted-foreground hover:text-primary h-8 w-8 p-0 flex items-center justify-center',
                 aria_label: t('locations.show.edit_details', default: 'Edit location details')
               ) do
                 render Icons::Pencil.new(size: 16)
@@ -208,9 +216,9 @@ module Components
           end
 
           if location.description.present?
-            Text(size: '2', class: 'text-slate-600 leading-relaxed') { location.description }
+            Text(size: '2', class: 'text-muted-foreground leading-relaxed') { location.description }
           else
-            Text(size: '2', class: 'text-slate-400 italic') { t('locations.show.no_details') }
+            Text(size: '2', class: 'text-muted-foreground italic') { t('locations.show.no_details') }
           end
         end
       end
@@ -223,7 +231,8 @@ module Components
             Button(
               variant: :ghost,
               size: :sm,
-              class: 'w-8 h-8 p-0 rounded-full bg-slate-50 text-slate-400 hover:text-primary hover:bg-primary/5',
+              class: 'w-8 h-8 p-0 rounded-full bg-surface-container-low text-muted-foreground ' \
+                     'hover:text-primary hover:bg-primary/5',
               aria_label: t('locations.show.add_member.aria_label', default: 'Add member')
             ) do
               render Icons::Plus.new(size: 16)
@@ -263,12 +272,14 @@ module Components
               else
                 div(class: 'py-8 text-center space-y-2') do
                   div(
-                    class: 'w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center ' \
-                           'text-slate-300 mx-auto'
+                    class: 'w-12 h-12 rounded-full bg-surface-container-low flex items-center justify-center ' \
+                           'text-muted-foreground mx-auto'
                   ) do
                     render Icons::Users.new(size: 24)
                   end
-                  Text(size: '2', class: 'text-slate-500 font-medium') { t('locations.show.add_member.all_assigned') }
+                  Text(size: '2', class: 'text-muted-foreground font-medium') do
+                    t('locations.show.add_member.all_assigned')
+                  end
                 end
               end
             end

@@ -11,9 +11,24 @@ module Views
 
       private
 
+      def flash_section
+        return if flash_message.blank?
+
+        render RubyUI::Alert.new(variant: :destructive) do
+          plain(flash_message)
+        end
+      end
+
+      def flash_message
+        view_context.flash[:alert] ||
+          rodauth.field_error(rodauth.login_param) ||
+          rodauth.field_error(rodauth.password_param)
+      end
+
       def form_section
         render RubyUI::Card.new(class: card_classes) do
           render RubyUI::CardContent.new(class: 'space-y-6 p-6 sm:p-8') do
+            flash_section
             change_login_form
           end
         end
@@ -39,6 +54,8 @@ module Views
             required: true,
             autocomplete: 'username'
           )
+          error = rodauth.field_error(rodauth.login_param)
+          p(class: 'mt-1 text-sm text-error') { error } if error.present?
         end
       end
 
@@ -52,6 +69,8 @@ module Views
             required: true,
             autocomplete: 'current-password'
           )
+          error = rodauth.field_error(rodauth.password_param)
+          p(class: 'mt-1 text-sm text-error') { error } if error.present?
         end
       end
 

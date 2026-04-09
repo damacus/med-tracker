@@ -79,7 +79,7 @@ module Components
         div(class: 'space-y-2') do
           render RubyUI::FormFieldLabel.new(
             for: 'inventory_location_trigger',
-            class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1'
+            class: 'text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1'
           ) { t('medications.show.location') }
           render RubyUI::Combobox.new(class: 'w-full') do
             render RubyUI::ComboboxTrigger.new(
@@ -127,7 +127,7 @@ module Components
         div(class: 'space-y-2') do
           render RubyUI::FormFieldLabel.new(
             for: 'inventory_category_trigger',
-            class: 'text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1'
+            class: 'text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1'
           ) { 'Category' }
           render RubyUI::Combobox.new(class: 'w-full') do
             render RubyUI::ComboboxTrigger.new(
@@ -199,7 +199,7 @@ module Components
       def render_medication_card(medication)
         Card(
           id: "medication_#{medication.id}",
-          class: 'h-full flex flex-col border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-white ' \
+          class: 'h-full flex flex-col border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-surface-container-lowest ' \
                  'rounded-[2.5rem] transition-all duration-300 hover:scale-[1.02] hover:shadow-xl ' \
                  'group overflow-hidden'
         ) do
@@ -216,10 +216,10 @@ module Components
 
           CardContent(class: 'flex-grow space-y-6 px-8 pb-4') do
             if medication.description.present?
-              Text(size: '2', class: 'text-slate-400 line-clamp-2 leading-relaxed') { medication.description }
+              Text(size: '2', class: 'text-muted-foreground line-clamp-2 leading-relaxed') { medication.description }
             end
 
-            div(class: 'pt-4 border-t border-slate-50 space-y-4') do
+            div(class: 'pt-4 border-t border-border space-y-4') do
               render_supply_bar(medication)
             end
           end
@@ -250,12 +250,13 @@ module Components
 
         div(class: 'space-y-2') do
           div(
-            class: 'flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400'
+            class: 'flex justify-between items-center text-[10px] font-black uppercase ' \
+                   'tracking-widest text-muted-foreground'
           ) do
             span { t('medications.index.inventory_level') }
             span { pluralize(medication.current_supply, 'unit') }
           end
-          div(class: 'h-1.5 w-full bg-slate-50 rounded-full overflow-hidden') do
+          div(class: 'h-1.5 w-full bg-surface-container-low rounded-full overflow-hidden') do
             div(class: "h-full #{bar_color} rounded-full transition-all duration-1000", style: "width: #{percentage}%")
           end
         end
@@ -263,7 +264,8 @@ module Components
 
       def render_medication_icon
         div(
-          class: 'w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 ' \
+          class: 'w-12 h-12 rounded-2xl bg-surface-container-low flex items-center ' \
+                 'justify-center text-muted-foreground ' \
                  'group-hover:text-primary group-hover:bg-primary/5 transition-all'
         ) do
           render Icons::Pill.new(size: 24)
@@ -276,7 +278,8 @@ module Components
             href: medication_path(medication),
             variant: :outline,
             size: :sm,
-            class: 'flex-1 rounded-xl py-5 border-slate-100 bg-white hover:bg-slate-50 text-slate-600'
+            class: 'flex-1 rounded-xl py-5 border-border bg-surface-container-lowest ' \
+                   'hover:bg-surface-container-low text-muted-foreground'
           ) do
             t('medications.index.view')
           end
@@ -284,7 +287,8 @@ module Components
             href: edit_medication_path(medication, return_to: medications_path(inventory_query_params)),
             variant: :outline,
             size: :sm,
-            class: 'rounded-xl w-10 h-10 p-0 border-slate-100 bg-white hover:bg-slate-50 text-slate-400',
+            class: 'rounded-xl w-10 h-10 p-0 border-border bg-surface-container-lowest ' \
+                   'hover:bg-surface-container-low text-muted-foreground',
             aria_label: t('medications.index.edit', default: 'Edit medication')
           ) do
             render Icons::Pencil.new(size: 16)
@@ -294,7 +298,8 @@ module Components
                                'flex items-center justify-center rounded-xl w-10 h-10 p-0'
                              else
                                'flex items-center justify-center rounded-xl w-10 h-10 p-0 ' \
-                                 'border-slate-100 bg-white hover:bg-slate-50 text-slate-400'
+                                 'border-border bg-surface-container-lowest ' \
+                                 'hover:bg-surface-container-low text-muted-foreground'
                              end
 
             render Components::Medications::RefillModal.new(
@@ -312,7 +317,8 @@ module Components
         AlertDialog do
           AlertDialogTrigger do
             Button(variant: :ghost, size: :sm,
-                   class: 'rounded-xl w-10 h-10 p-0 text-slate-300 hover:text-destructive hover:bg-destructive/5',
+                   class: 'rounded-xl w-10 h-10 p-0 text-muted-foreground ' \
+                          'hover:text-destructive hover:bg-destructive/5',
                    aria_label: t('medications.index.delete', default: 'Delete medication')) do
               render Icons::Trash.new(size: 18)
             end

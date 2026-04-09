@@ -28,21 +28,23 @@ module Views
       def render_header
         div(class: 'flex flex-col md:flex-row items-center justify-between gap-4') do
           div(class: 'text-center md:text-left space-y-2') do
-            Text(size: '2', weight: 'muted', class: 'uppercase tracking-[0.2em] font-black opacity-40') { 'Wellness Analytics' }
-            Heading(level: 1, size: '9', class: 'font-black tracking-tight text-foreground') { 'Health Report' }
+            Text(size: '2', weight: 'muted', class: 'uppercase tracking-[0.2em] font-black opacity-40') do
+              t('reports.index.eyebrow')
+            end
+            Heading(level: 1, size: '9', class: 'font-black tracking-tight text-foreground') { t('reports.index.title') }
             p(class: 'text-muted-foreground') { "#{@start_date.strftime('%B %d')} — #{@end_date.strftime('%B %d, %Y')}" }
           end
 
           form(action: view_context.reports_path, method: :get, class: 'flex items-center gap-2 rounded-xl border border-border bg-card/70 p-4 shadow-sm backdrop-blur-sm') do
             div(class: 'flex flex-col gap-1') do
-              label(for: 'start_date', class: 'text-xs font-bold uppercase tracking-wider text-muted-foreground') { 'From' }
+              label(for: 'start_date', class: 'text-xs font-bold uppercase tracking-wider text-muted-foreground') { t('reports.index.start_date_label') }
               input(type: 'date', name: 'start_date', id: 'start_date', value: @start_date, class: 'form-input rounded-lg border-border bg-background text-sm text-foreground focus:border-primary focus:ring-primary')
             end
             div(class: 'flex flex-col gap-1') do
-              label(for: 'end_date', class: 'text-xs font-bold uppercase tracking-wider text-muted-foreground') { 'To' }
+              label(for: 'end_date', class: 'text-xs font-bold uppercase tracking-wider text-muted-foreground') { t('reports.index.end_date_label') }
               input(type: 'date', name: 'end_date', id: 'end_date', value: @end_date, class: 'form-input rounded-lg border-border bg-background text-sm text-foreground focus:border-primary focus:ring-primary')
             end
-            button(type: 'submit', class: 'mt-5 rounded-lg bg-primary p-2 text-primary-foreground transition-colors hover:opacity-90', 'aria-label': 'Apply date filters') do
+            button(type: 'submit', class: 'mt-5 rounded-lg bg-primary p-2 text-primary-foreground transition-colors hover:opacity-90', 'aria-label': t('reports.index.apply_filters_aria_label')) do
               render Icons::ChevronRight.new(size: 20)
             end
           end
@@ -62,9 +64,21 @@ module Views
             div(class: 'absolute right-0 top-0 h-64 w-64 rounded-full bg-background/10 blur-3xl -translate-y-1/2 translate-x-1/2')
 
             div(class: 'relative z-10 grid grid-cols-1 md:grid-cols-3 gap-8 text-center') do
-              summary_stat('Overall Compliance', "#{overall_compliance}%", overall_compliance >= 90 ? 'Excellent' : 'Needs attention')
-              summary_stat('Total Doses Logged', "#{total_actual}/#{total_expected}", total_actual >= total_expected ? 'On Track' : 'Missed doses')
-              summary_stat('Current Health Status', 'Optimal', 'Vibrant') # This could be dynamic in the future based on compliance
+              summary_stat(
+                t('reports.index.summary.overall_compliance'),
+                "#{overall_compliance}%",
+                overall_compliance >= 90 ? t('reports.index.summary.excellent') : t('reports.index.summary.needs_attention')
+              )
+              summary_stat(
+                t('reports.index.summary.total_doses_logged'),
+                "#{total_actual}/#{total_expected}",
+                total_actual >= total_expected ? t('reports.index.summary.on_track') : t('reports.index.summary.missed_doses')
+              )
+              summary_stat(
+                t('reports.index.summary.current_health_status'),
+                t('reports.index.summary.optimal'),
+                t('reports.index.summary.vibrant')
+              ) # This could be dynamic in the future based on compliance
             end
           end
         end
@@ -82,8 +96,8 @@ module Views
       def render_compliance_section
         div(class: 'space-y-8') do
           div(class: 'flex items-center justify-between px-2') do
-            Heading(level: 2, size: '5', class: 'font-bold') { 'Adherence Timeline' }
-            render Button.new(variant: :outline, size: :sm, class: 'rounded-full') { 'Download PDF' }
+            Heading(level: 2, size: '5', class: 'font-bold') { t('reports.index.timeline_title') }
+            render Button.new(variant: :outline, size: :sm, class: 'rounded-full') { t('reports.index.download_pdf') }
           end
 
           Card(class: 'border-border bg-card/70 p-8 backdrop-blur-sm sm:p-10') do
@@ -110,7 +124,7 @@ module Views
             ) do
               # Tooltip-like value on hover
               div(class: 'absolute -top-10 left-1/2 -translate-x-1/2 rounded bg-foreground px-2 py-1 text-[10px] font-bold whitespace-nowrap text-background opacity-0 transition-opacity group-hover:opacity-100') do
-                "#{day[:percentage]}% Compliance"
+                t('reports.index.timeline_compliance', percentage: day[:percentage])
               end
             end
           end
@@ -130,9 +144,9 @@ module Views
       def render_achievement_streak
         render_insight_card(
           InsightCard.new(
-            title: 'Achievement Streak',
-            value: '4 Days Uninterrupted',
-            description: "You haven't missed a single dose since Friday morning. Your body is maintaining optimal levels.",
+            title: t('reports.index.achievement_streak.title'),
+            value: t('reports.index.achievement_streak.value'),
+            description: t('reports.index.achievement_streak.description'),
             icon_class: Icons::CheckCircle,
             text_color: 'text-emerald-600',
             bg_color: 'bg-success-light'
@@ -148,15 +162,15 @@ module Views
         days_left = alert[:days_left]
 
         description = if days_left <= 0
-                        "Your #{medication_name} supply is exhausted. Please order an urgent refill."
+                        t('reports.index.inventory_alert.description_zero', medication_name:)
                       else
-                        "Your #{medication_name} supply will be exhausted in #{pluralize(days_left, 'day')}. We recommend ordering a refill this afternoon."
+                        t('reports.index.inventory_alert.description', medication_name:, count: days_left)
                       end
 
         render_insight_card(
           InsightCard.new(
-            title: 'Inventory Alert',
-            value: days_left <= 0 ? 'Out of Stock' : 'Refill Pending',
+            title: t('reports.index.inventory_alert.title'),
+            value: days_left <= 0 ? t('reports.index.inventory_alert.out_of_stock') : t('reports.index.inventory_alert.refill_pending'),
             description: description,
             icon_class: Icons::AlertCircle,
             text_color: 'text-rose-600',
@@ -174,7 +188,7 @@ module Views
             end
             div do
               Heading(level: 3, size: '4', class: "#{card.text_color} font-black") { card.title }
-              Text(size: '1', weight: 'bold', class: 'uppercase tracking-widest opacity-50') { 'Actionable insight' }
+              Text(size: '1', weight: 'bold', class: 'uppercase tracking-widest opacity-50') { t('reports.index.actionable_insight') }
             end
           end
 
@@ -186,10 +200,6 @@ module Views
       end
 
       # rubocop:enable Metrics/AbcSize
-
-      def pluralize(count, singular, plural = nil)
-        "#{count} #{count == 1 ? singular : (plural || singular.pluralize)}"
-      end
     end
   end
 end

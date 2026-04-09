@@ -116,17 +116,19 @@ module Components
                 action: 'click->frequency-suggestions#suggest',
                 suggestion: suggestion
               },
-              class: 'inline-flex shrink-0 items-center rounded-full border border-slate-200 bg-white ' \
-                     'px-2.5 py-0.5 text-xs font-medium text-slate-600 shadow-sm whitespace-nowrap ' \
-                     'hover:bg-slate-50 hover:border-slate-300 cursor-pointer transition-colors'
+              class: 'inline-flex shrink-0 items-center rounded-full border ' \
+                     'border-border bg-surface-container-lowest px-2.5 py-0.5 ' \
+                     'text-xs font-medium text-muted-foreground shadow-sm ' \
+                     'whitespace-nowrap hover:bg-accent hover:border-border ' \
+                     'cursor-pointer transition-colors'
             ) { suggestion }
           end
         end
       end
 
       def render_divider
-        div(class: 'border-t border-slate-100 my-2')
-        p(class: 'text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1') do
+        div(class: 'border-t border-border my-2')
+        p(class: 'text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1') do
           'Scheduling defaults (auto-filled when creating a schedule)'
         end
       end

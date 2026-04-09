@@ -16,7 +16,7 @@ module Components
 
         def view_template
           turbo_frame_tag 'dosage-form' do
-            div(class: 'rounded-2xl border border-dashed border-slate-200 p-6 bg-slate-50/50') do
+            div(class: 'rounded-2xl border border-dashed border-border p-6 bg-surface-container-low') do
               render WizardDosageForm.new(
                 dosage: dosage,
                 medication: medication

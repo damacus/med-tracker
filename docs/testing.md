@@ -26,10 +26,13 @@ Useful local commands:
 
 ```bash
 task local:test
-task local:test:browser
+task playwright
 task local:test:all
 task local:clean
 ```
+
+`task playwright` is the canonical local Playwright entrypoint. It runs the
+browser-backed system tests through the repo's Taskfile wrapper.
 
 ## TDD workflow
 

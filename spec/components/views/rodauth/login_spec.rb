@@ -32,6 +32,7 @@ RSpec.describe Views::Rodauth::Login, type: :component do
   before do
     allow(controller).to receive_messages(rodauth: rodauth, form_authenticity_token: 'token')
     allow(rodauth).to receive(:respond_to?).with(:omniauth_request_path).and_return(false)
+    allow(rodauth).to receive(:field_error).and_return(nil)
   end
 
   it 'renders the login form' do
@@ -76,6 +77,15 @@ RSpec.describe Views::Rodauth::Login, type: :component do
     alert_elements = rendered.css('[role="alert"]')
     expect(alert_elements.length).to eq(1)
     expect(rendered.text).to include('Please login to continue')
+  end
+
+  it 'renders Rodauth field errors inline next to form fields, not in flash' do
+    allow(rodauth).to receive(:field_error).with('login').and_return('There was an error logging in')
+
+    rendered = render_inline(described_class.new)
+
+    expect(rendered.text).to include('There was an error logging in')
+    expect(rendered.css('#login-flash [role="alert"]').count).to eq(0)
   end
   # rubocop:enable RSpec/VerifiedDoubles
 end

@@ -40,7 +40,10 @@ module Components
       end
 
       def render_person_icon
-        div(class: 'w-10 h-10 rounded-xl flex items-center justify-center bg-violet-100 text-violet-700') do
+        div(
+          class: 'w-10 h-10 rounded-xl flex items-center justify-center ' \
+                 'bg-secondary-container text-on-secondary-container'
+        ) do
           render Icons::User.new(size: 20)
         end
       end
@@ -49,15 +52,15 @@ module Components
         CardContent(class: 'flex-grow space-y-2') do
           div(class: 'space-y-1 text-sm text-muted-foreground') do
             p do
-              strong { 'Born: ' }
+              strong { "#{t('people.card.born')} " }
               plain person.date_of_birth.strftime('%B %d, %Y')
             end
             p do
-              strong { 'Age: ' }
+              strong { "#{t('people.card.age')} " }
               plain person.age.to_s
             end
             p do
-              strong { 'Medications: ' }
+              strong { "#{t('people.card.medications')} " }
               plain active_medication_count_text
             end
           end
@@ -86,7 +89,7 @@ module Components
         if active_medications_count.positive?
           view_context.pluralize(active_medications_count, 'active medication')
         else
-          'No active medications'
+          t('people.card.no_active_medications')
         end
       end
 
@@ -94,12 +97,12 @@ module Components
         render RubyUI::Badge.new(
           variant: :warning,
           size: :sm,
-          class: 'h-auto py-1.5 px-3 rounded-xl border-amber-200 bg-amber-50 text-amber-900 ' \
+          class: 'h-auto py-1.5 px-3 rounded-xl border-warning bg-warning-container text-on-warning-container ' \
                  'font-bold uppercase tracking-wider text-[10px]',
           data: { testid: 'needs-carer-badge' }
         ) do
           div(class: 'flex flex-col items-center leading-tight') do
-            plain 'Needs Carer'
+            plain t('people.card.needs_carer')
           end
         end
       end
@@ -115,7 +118,7 @@ module Components
                 variant: :outline,
                 size: :md,
                 class: 'flex-1 rounded-2xl'
-              ) { 'View Medications' }
+              ) { t('people.card.view_medications') }
             end
 
             render_assign_carer_link if person.needs_carer? && can_create?(CarerRelationship)
@@ -129,7 +132,7 @@ module Components
           variant: :primary,
           size: :md,
           class: 'w-full rounded-2xl font-bold py-6'
-        ) { 'Add Medication' }
+        ) { t('people.card.add_medication') }
       end
 
       def can_add_medication?
@@ -142,9 +145,9 @@ module Components
           href: new_admin_carer_relationship_path(patient_id: person.id),
           variant: :outline,
           size: :md,
-          class: 'flex-1 rounded-2xl text-amber-700 border-amber-300 hover:bg-amber-50',
+          class: 'flex-1 rounded-2xl text-on-warning-container border-warning hover:bg-warning-container',
           data: { turbo_frame: 'modal' }
-        ) { 'Assign Carer' }
+        ) { t('people.card.assign_carer') }
       end
 
       def can_create?(record)

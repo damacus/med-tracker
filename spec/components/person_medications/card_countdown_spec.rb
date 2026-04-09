@@ -35,11 +35,11 @@ RSpec.describe Components::PersonMedications::Card, type: :component do
     it 'uses amber/warning styling distinct from notes' do
       rendered = render_card
 
-      countdown_div = rendered.css('[class*="bg-amber-50"]').detect { |el| el.text.include?('Next dose') }
-      notes_div = rendered.css('[class*="bg-blue-50"]').detect { |el| el.text.include?('Notes') }
+      countdown_div = rendered.css('[class*="bg-warning-container"]').detect { |el| el.text.include?('Next dose') }
+      notes_div = rendered.css('[class*="bg-primary-container"]').detect { |el| el.text.include?('Notes') }
 
-      expect(countdown_div).to be_present, 'countdown notice should use amber (warning) background'
-      expect(notes_div).to be_present, 'notes should use blue (info) background'
+      expect(countdown_div).to be_present, 'countdown notice should use warning-container background'
+      expect(notes_div).to be_present, 'notes should use primary-container background'
     end
 
     it 'memoizes blocked reason resolution when the action button is visible' do

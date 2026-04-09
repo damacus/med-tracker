@@ -140,14 +140,14 @@ module Components
         end
 
         def render_empty_state
-          div(class: 'rounded-xl border border-slate-200 bg-white p-12 text-center shadow-sm') do
-            Text(size: '4', class: 'text-slate-600') { t('admin.audit_logs.index.empty.no_logs') }
+          div(class: 'rounded-xl border border-border bg-surface-container-lowest p-12 text-center shadow-sm') do
+            Text(size: '4', class: 'text-muted-foreground') { t('admin.audit_logs.index.empty.no_logs') }
             Text(size: '2', weight: 'muted', class: 'mt-2') { t('admin.audit_logs.index.empty.adjust_filters') }
           end
         end
 
         def render_table_header
-          TableHeader(class: 'bg-slate-50') do
+          TableHeader(class: 'bg-surface-container-low') do
             TableRow do
               TableHead { t('admin.audit_logs.index.table.timestamp') }
               TableHead { t('admin.audit_logs.index.table.record_type') }
@@ -168,18 +168,18 @@ module Components
         end
 
         def render_version_row(version)
-          TableRow(class: 'hover:bg-slate-50', data: { version_id: version.id }) do
-            TableCell(class: 'text-slate-900') do
+          TableRow(class: 'hover:bg-accent', data: { version_id: version.id }) do
+            TableCell(class: 'text-foreground') do
               version.created_at.strftime('%Y-%m-%d %H:%M:%S')
             end
-            TableCell(class: 'text-slate-600') { version.item_type.titleize }
+            TableCell(class: 'text-muted-foreground') { version.item_type.titleize }
             TableCell do
               render_event_badge(version.event)
             end
-            TableCell(class: 'text-slate-600') do
+            TableCell(class: 'text-muted-foreground') do
               render_user_info(version.whodunnit)
             end
-            TableCell(class: 'text-slate-600 font-mono') { version.ip || 'N/A' }
+            TableCell(class: 'text-muted-foreground font-mono') { version.ip || 'N/A' }
             TableCell(class: 'text-right') do
               Link(
                 href: "/admin/audit_logs/#{version.id}",
@@ -199,7 +199,7 @@ module Components
                         when 'destroy'
                           'bg-destructive-light text-destructive-text'
                         else
-                          'bg-slate-100 text-slate-800'
+                          'bg-surface-container text-foreground'
                         end
 
           span(class: "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium #{badge_class}") do
@@ -228,8 +228,11 @@ module Components
         end
 
         def render_pagination
-          nav(class: 'flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3 sm:px-6',
-              'aria-label': 'Pagination') do
+          nav(
+            class: 'flex items-center justify-between border-t border-border ' \
+                   'bg-surface-container-lowest px-4 py-3 sm:px-6',
+            'aria-label': 'Pagination'
+          ) do
             render_pagination_info
             render_pagination_controls
           end
@@ -237,7 +240,7 @@ module Components
 
         def render_pagination_info
           div(class: 'hidden sm:block') do
-            Text(size: '2', class: 'text-slate-700') do
+            Text(size: '2', class: 'text-foreground') do
               plain "#{t('admin.audit_logs.index.pagination.showing')} "
               span(class: 'font-medium') { first_item_number.to_s }
               plain " #{t('admin.audit_logs.index.pagination.to')} "
@@ -293,8 +296,8 @@ module Components
         end
 
         def pagination_button_classes
-          'relative inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold ' \
-            'text-slate-900 ring-1 ring-inset ring-slate-300 hover:bg-slate-50'
+          'relative inline-flex items-center rounded-md bg-surface-container-lowest px-3 py-2 text-sm font-semibold ' \
+            'text-foreground ring-1 ring-inset ring-border hover:bg-accent'
         end
 
         def pagination_url(page)

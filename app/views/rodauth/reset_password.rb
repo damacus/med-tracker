@@ -50,7 +50,9 @@ module Views
 
       def render_card_header
         render RubyUI::CardHeader.new(class: 'space-y-2 bg-card/60') do
-          render RubyUI::CardTitle.new(class: 'text-2xl font-semibold text-foreground') { t('rodauth.views.reset_password.card_title') }
+          render RubyUI::CardTitle.new(class: 'text-2xl font-semibold text-foreground') do
+            t('rodauth.views.reset_password.card_title')
+          end
           render RubyUI::CardDescription.new(class: 'text-base text-muted-foreground') do
             plain t('rodauth.views.reset_password.card_description')
           end
@@ -65,7 +67,10 @@ module Views
       end
 
       def render_reset_form
-        render RubyUI::Form.new(action: view_context.rodauth.reset_password_path, method: :post, class: 'space-y-6', data_turbo: 'false') do
+        render RubyUI::Form.new(
+          action: view_context.rodauth.reset_password_path, method: :post,
+          class: 'space-y-6', data_turbo: 'false'
+        ) do
           authenticity_token_field
           key_field
           password_field
@@ -93,13 +98,15 @@ module Views
             maxlength: 72
           )
           error = view_context.rodauth.field_error('password')
-          p(class: 'text-sm text-red-600 mt-1') { error } if error.present?
+          p(class: 'mt-1 text-sm text-error') { error } if error.present?
         end
       end
 
       def password_confirm_field
         render RubyUI::FormField.new do
-          render RubyUI::FormFieldLabel.new(for: 'password-confirm') { t('rodauth.views.reset_password.confirm_password_label') }
+          render RubyUI::FormFieldLabel.new(for: 'password-confirm') do
+            t('rodauth.views.reset_password.confirm_password_label')
+          end
           render RubyUI::Input.new(
             type: :password,
             name: 'password-confirm',
@@ -111,7 +118,7 @@ module Views
             maxlength: 72
           )
           error = view_context.rodauth.field_error('password-confirm')
-          p(class: 'text-sm text-red-600 mt-1') { error } if error.present?
+          p(class: 'mt-1 text-sm text-error') { error } if error.present?
         end
       end
 

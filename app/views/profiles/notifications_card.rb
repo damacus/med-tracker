@@ -7,10 +7,10 @@ module Views
       include Phlex::Rails::Helpers::Routes
 
       PERIOD_LABELS = {
-        morning: 'Morning',
-        afternoon: 'Afternoon',
-        evening: 'Evening',
-        night: 'Night'
+        morning: 'profiles.notifications.periods.morning',
+        afternoon: 'profiles.notifications.periods.afternoon',
+        evening: 'profiles.notifications.periods.evening',
+        night: 'profiles.notifications.periods.night'
       }.freeze
 
       attr_reader :person
@@ -23,8 +23,8 @@ module Views
       def view_template
         render Card.new do
           render CardHeader.new do
-            render(CardTitle.new { 'Notifications' })
-            render(CardDescription.new { 'Manage medication reminders and browser notifications' })
+            render(CardTitle.new { t('profiles.notifications.title') })
+            render(CardDescription.new { t('profiles.notifications.description') })
           end
           render CardContent.new(class: 'space-y-6') do
             render_push_subscription_section
@@ -46,8 +46,8 @@ module Views
         ) do
           render_vapid_meta
           render_section_header(
-            'Browser Notifications',
-            'Allow this device to receive medication reminders'
+            t('profiles.notifications.browser_title'),
+            t('profiles.notifications.browser_description')
           )
           render_push_status_box
         end
@@ -72,7 +72,7 @@ module Views
           p(
             class: 'text-sm text-muted-foreground',
             data: { push_notification_target: 'status' }
-          ) { 'Checking notification status...' }
+          ) { t('profiles.notifications.checking_status') }
           render_push_action_buttons
         end
       end
@@ -88,7 +88,7 @@ module Views
               action: 'push-notification#subscribe'
             },
             hidden: true
-          ) { 'Enable' }
+          ) { t('profiles.notifications.enable') }
           button(
             type: 'button',
             class: 'inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 ' \
@@ -98,7 +98,7 @@ module Views
               action: 'push-notification#unsubscribe'
             },
             hidden: true
-          ) { 'Disable' }
+          ) { t('profiles.notifications.disable') }
         end
       end
 
@@ -114,7 +114,7 @@ module Views
           hidden: true
         ) do
           render Components::Icons::Send.new(size: 16)
-          plain 'Send Test Notification'
+          plain t('profiles.notifications.send_test_notification')
         end
       end
 
@@ -132,7 +132,7 @@ module Views
               type: 'submit',
               class: 'inline-flex items-center px-4 py-2 rounded-xl bg-primary text-white font-bold ' \
                      'text-sm hover:bg-primary/90 transition-colors'
-            ) { 'Save' }
+            ) { t('profiles.notifications.save') }
           end
         end
       end
@@ -140,8 +140,8 @@ module Views
       def render_enabled_toggle
         div(class: 'flex items-center justify-between') do
           div do
-            p(class: 'text-sm font-medium text-foreground') { 'Enable reminders' }
-            p(class: 'mt-0.5 text-xs text-muted-foreground') { 'Send notifications at the times below' }
+            p(class: 'text-sm font-medium text-foreground') { t('profiles.notifications.enable_reminders') }
+            p(class: 'mt-0.5 text-xs text-muted-foreground') { t('profiles.notifications.enable_reminders_description') }
           end
           div(class: 'flex items-center gap-2') do
             input(type: 'hidden', name: 'notification_preference[enabled]', value: '0')
@@ -159,7 +159,7 @@ module Views
 
       def render_time_slots
         div(class: 'space-y-2 border-t border-border pt-2') do
-          render_section_header('Reminder times', 'Set when you want to receive reminders each day')
+          render_section_header(t('profiles.notifications.reminder_times_title'), t('profiles.notifications.reminder_times_description'))
           div(class: 'grid grid-cols-2 gap-3 mt-2') do
             NotificationPreference::PERIODS.each { |period| render_time_slot(period) }
           end
@@ -171,7 +171,7 @@ module Views
           label(
             class: 'mb-1 block text-xs font-medium text-muted-foreground',
             for: "notification_preference_#{period}_time"
-          ) { PERIOD_LABELS[period] }
+          ) { t(PERIOD_LABELS[period]) }
           input(
             type: 'time',
             name: "notification_preference[#{period}_time]",

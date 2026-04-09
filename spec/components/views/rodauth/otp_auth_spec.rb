@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe Views::Rodauth::OtpAuth, type: :component do
-  # rubocop:disable RSpec/VerifiedDoubles
+  # rubocop:disable RSpec/VerifiedDoubles, RSpec/ExampleLength
   it 'renders the OTP authentication form' do
     rodauth = double(
       'Rodauth',
@@ -11,10 +11,12 @@ RSpec.describe Views::Rodauth::OtpAuth, type: :component do
       otp_auth_path: '/otp-auth',
       otp_auth_button: 'Verify code',
       otp_auth_label: 'Authentication code',
-      otp_auth_additional_form_tags: ''
+      otp_auth_additional_form_tags: '',
+      field_error: nil
     )
 
-    allow(controller).to receive_messages(rodauth: rodauth, form_authenticity_token: 'token')
+    controller.request.env['rodauth'] = rodauth
+    allow(view_context).to receive_messages(rodauth: rodauth, form_authenticity_token: 'token', flash: {})
 
     rendered = render_inline(described_class.new)
 
@@ -23,5 +25,5 @@ RSpec.describe Views::Rodauth::OtpAuth, type: :component do
     expect(rendered.to_html).to include('Verify code')
     expect(rendered.to_html).to include('min-h-screen')
   end
-  # rubocop:enable RSpec/VerifiedDoubles
+  # rubocop:enable RSpec/VerifiedDoubles, RSpec/ExampleLength
 end

@@ -44,7 +44,7 @@ module Components
       end
 
       def render_header
-        div(class: 'flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-slate-100') do
+        div(class: 'flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-border') do
           div(class: 'flex items-center gap-6') do
             div(
               class: 'w-20 h-20 rounded-[2rem] bg-primary/10 flex items-center justify-center text-primary shadow-inner'
@@ -57,8 +57,8 @@ module Components
               end
               Heading(level: 1, size: '8', class: 'font-black tracking-tight') { medication.name }
               div(class: 'flex items-center gap-1 mt-1') do
-                render Icons::Home.new(size: 14, class: 'text-slate-400')
-                Text(size: '2', class: 'text-slate-400') { medication.location.name }
+                render Icons::Home.new(size: 14, class: 'text-muted-foreground')
+                Text(size: '2', class: 'text-muted-foreground') { medication.location.name }
               end
             end
           end
@@ -68,7 +68,7 @@ module Components
               href: edit_medication_path(medication, return_to: medication_path(medication)),
               variant: :outline,
               size: :lg,
-              class: 'rounded-2xl font-bold text-sm bg-white'
+              class: 'rounded-2xl font-bold text-sm bg-surface-container-lowest'
             ) do
               render Icons::Pencil.new(size: 16, class: 'mr-2')
               plain t('medications.show.edit_details')
@@ -77,7 +77,7 @@ module Components
               href: medications_path,
               variant: :ghost,
               size: :lg,
-              class: 'rounded-2xl font-bold text-sm text-slate-400 hover:text-slate-600'
+              class: 'rounded-2xl font-bold text-sm text-muted-foreground hover:text-foreground'
             ) do
               t('medications.show.inventory')
             end
@@ -89,7 +89,7 @@ module Components
         div(class: 'space-y-4') do
           Heading(level: 2, size: '5', class: 'font-bold tracking-tight') { t('medications.show.overview') }
           Card(class: 'p-8') do
-            Text(size: '3', class: 'text-slate-600 leading-relaxed') do
+            Text(size: '3', class: 'text-muted-foreground leading-relaxed') do
               medication.description.presence || t('medications.show.no_description')
             end
           end
@@ -99,13 +99,13 @@ module Components
       def render_warnings_section
         div(class: 'space-y-4') do
           div(class: 'flex items-center gap-2') do
-            render Icons::AlertCircle.new(size: 20, class: 'text-rose-500')
-            Heading(level: 2, size: '5', class: 'font-bold tracking-tight text-rose-500') do
+            render Icons::AlertCircle.new(size: 20, class: 'text-on-error-container')
+            Heading(level: 2, size: '5', class: 'font-bold tracking-tight text-on-error-container') do
               t('medications.show.safety_warnings')
             end
           end
-          Card(class: 'bg-rose-50 border-rose-100 p-8') do
-            Text(size: '3', class: 'text-rose-800 leading-relaxed font-medium') { medication.warnings }
+          Card(class: 'bg-error-container border-error/20 p-8') do
+            Text(size: '3', class: 'text-on-error-container leading-relaxed font-medium') { medication.warnings }
           end
         end
       end
@@ -119,22 +119,28 @@ module Components
 
           div(class: 'space-y-4') do
             div(class: 'flex items-baseline gap-2') do
-              span(class: "text-5xl font-black #{medication.low_stock? ? 'text-rose-600' : 'text-primary'}") do
+              stock_count_class = if medication.low_stock?
+                                    'text-5xl font-black text-on-error-container'
+                                  else
+                                    'text-5xl font-black text-primary'
+                                  end
+
+              span(class: stock_count_class) do
                 current.to_s
               end
-              Text(size: '2', weight: 'bold', class: 'text-slate-400') do
+              Text(size: '2', weight: 'bold', class: 'text-muted-foreground') do
                 current == 1 ? 'unit remaining' : 'units remaining'
               end
             end
 
             div(class: 'space-y-2') do
-              div(class: 'h-2 w-full bg-slate-50 rounded-full overflow-hidden') do
-                div(class: "h-full #{medication.low_stock? ? 'bg-rose-500' : 'bg-primary'} rounded-full",
+              div(class: 'h-2 w-full bg-surface-container-low rounded-full overflow-hidden') do
+                div(class: "h-full #{medication.low_stock? ? 'bg-error' : 'bg-primary'} rounded-full",
                     style: "width: #{percentage}%")
               end
               div(
                 class: 'flex justify-between items-center text-[10px] font-black uppercase ' \
-                       'tracking-widest text-slate-400'
+                       'tracking-widest text-muted-foreground'
               ) do
                 span { t('medications.show.supply_level') }
                 span { t('medications.show.reorder_at', threshold: medication.reorder_threshold) }
@@ -158,7 +164,7 @@ module Components
 
       def render_forecast_section
         if medication.forecast_available?
-          div(class: 'pt-4 border-t border-slate-50 space-y-2') do
+          div(class: 'pt-4 border-t border-surface-container-low space-y-2') do
             if medication.days_until_low_stock&.positive?
               forecast_item(t('medications.show.forecast.low_in_days', days: medication.days_until_low_stock), :warning)
             end
@@ -168,16 +174,18 @@ module Components
             end
           end
         else
-          div(class: 'pt-4 border-t border-slate-50') do
-            Text(size: '2', class: 'text-slate-400 italic') { t('medications.show.forecast_unavailable') }
+          div(class: 'pt-4 border-t border-surface-container-low') do
+            Text(size: '2', class: 'text-muted-foreground italic') { t('medications.show.forecast_unavailable') }
           end
         end
       end
 
       def forecast_item(message, variant)
+        text_class = variant == :destructive ? 'text-on-error-container' : 'text-on-warning-container'
+
         div(class: 'flex items-center gap-2') do
-          render Icons::AlertCircle.new(size: 14, class: variant == :destructive ? 'text-rose-500' : 'text-amber-500')
-          Text(size: '2', weight: 'medium', class: variant == :destructive ? 'text-rose-700' : 'text-amber-700') do
+          render Icons::AlertCircle.new(size: 14, class: text_class)
+          Text(size: '2', weight: 'medium', class: text_class) do
             message
           end
         end
@@ -190,20 +198,21 @@ module Components
           if dosage_specified?
             div(class: 'flex items-center gap-4') do
               div(
-                class: 'w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 shadow-sm'
+                class: 'w-12 h-12 rounded-2xl bg-secondary-container flex items-center justify-center ' \
+                       'text-on-secondary-container shadow-sm'
               ) do
                 render Icons::CheckCircle.new(size: 24)
               end
               div do
-                span(class: 'text-3xl font-black text-slate-900') { medication.dosage_amount.to_s }
-                span(class: 'text-lg font-bold text-slate-400 ml-1') { medication.dosage_unit }
+                span(class: 'text-3xl font-black text-foreground') { medication.dosage_amount.to_s }
+                span(class: 'text-lg font-bold text-muted-foreground ml-1') { medication.dosage_unit }
               end
             end
           else
-            Text(size: '2', class: 'text-slate-400 italic') { t('medications.show.no_dosage') }
+            Text(size: '2', class: 'text-muted-foreground italic') { t('medications.show.no_dosage') }
           end
 
-          div(class: 'pt-4 border-t border-slate-50') do
+          div(class: 'pt-4 border-t border-surface-container-low') do
             overview_item(t('medications.show.reorder_at_label'), pluralize(medication.reorder_threshold, 'unit'), Icons::Settings)
           end
         end
@@ -215,10 +224,11 @@ module Components
             href: add_medication_path(medication_id: medication.id),
             variant: :outline,
             size: :lg,
-            class: 'w-full py-6 rounded-2xl bg-white border-slate-200/60 shadow-sm flex items-center justify-center'
+            class: 'w-full py-6 rounded-2xl bg-surface-container-lowest border-border shadow-sm ' \
+                   'flex items-center justify-center'
           ) do
             render Icons::PlusCircle.new(size: 18, class: 'mr-2 text-primary')
-            span(class: 'font-semibold text-slate-700') { 'Add Schedule' }
+            span(class: 'font-semibold text-foreground') { t('medications.show.add_schedule') }
           end
 
           render Button.new(
@@ -239,9 +249,9 @@ module Components
 
       def render_reorder_actions
         path, label, icon = if medication.reorder_status.nil?
-                              [mark_as_ordered_medication_path(medication), 'Mark as Ordered', Icons::Clock]
+                              [mark_as_ordered_medication_path(medication), t('medications.show.mark_as_ordered'), Icons::Clock]
                             elsif medication.reorder_ordered?
-                              [mark_as_received_medication_path(medication), 'Mark as Received', Icons::Check]
+                              [mark_as_received_medication_path(medication), t('medications.show.mark_as_received'), Icons::Check]
                             end
 
         return unless path
@@ -251,10 +261,11 @@ module Components
           variant: :outline,
           size: :lg,
           data: { turbo_method: :patch },
-          class: 'w-full py-6 rounded-2xl bg-white border-slate-200/60 shadow-sm flex items-center justify-center'
+          class: 'w-full py-6 rounded-2xl bg-surface-container-lowest border-border shadow-sm ' \
+                 'flex items-center justify-center'
         ) do
           render icon.new(size: 18, class: 'mr-2 text-primary')
-          span(class: 'font-semibold text-slate-700') { label }
+          span(class: 'font-semibold text-foreground') { label }
         end
       end
 
@@ -264,14 +275,14 @@ module Components
         button_class = if is_received
                          base_classes
                        else
-                         "#{base_classes} bg-white border-slate-200/60"
+                         "#{base_classes} bg-surface-container-lowest border-border"
                        end
 
         render Components::Medications::RefillModal.new(
           medication: medication,
           button_variant: is_received ? :primary : :outline,
           button_class: button_class,
-          button_label: is_received ? 'Complete Refill' : 'Refill Inventory'
+          button_label: is_received ? t('medications.show.complete_refill') : t('medications.show.refill_inventory')
         )
       end
 
@@ -294,7 +305,7 @@ module Components
                       end
 
           if timestamp
-            Text(size: '1', class: 'text-center text-slate-400 font-medium') do
+            Text(size: '1', class: 'text-center text-muted-foreground font-medium') do
               status_text = t("medications.reorder_statuses.#{medication.reorder_status}")
               time_ago = time_ago_in_words(timestamp)
               "#{status_text} #{time_ago} ago"
@@ -306,13 +317,14 @@ module Components
       def overview_item(label, value, icon_class)
         div(class: 'flex items-center gap-4 group') do
           div(
-            class: 'w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 ' \
+            class: 'w-10 h-10 rounded-xl bg-surface-container-low flex items-center justify-center ' \
+                   'text-muted-foreground ' \
                    'group-hover:bg-primary/5 group-hover:text-primary transition-colors'
           ) do
             render icon_class.new(size: 20)
           end
           div do
-            Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-slate-400') { label }
+            Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-muted-foreground') { label }
             Text(size: '2', weight: 'semibold') { value }
           end
         end
@@ -348,13 +360,13 @@ module Components
               end
             end
           else
-            Text(size: '2', class: 'text-slate-400 italic') { t('medications.show.no_dosages') }
+            Text(size: '2', class: 'text-muted-foreground italic') { t('medications.show.no_dosages') }
           end
         end
       end
 
       def render_dosage_row(dosage, can_manage)
-        div(class: 'flex items-start justify-between gap-3 rounded-lg border border-slate-100 p-3') do
+        div(class: 'flex items-start justify-between gap-3 rounded-lg border border-border p-3') do
           div(class: 'space-y-1') do
             render_dosage_summary(dosage)
             render_dosage_scheduling_hint(dosage)
@@ -377,8 +389,12 @@ module Components
         div(class: 'flex items-center gap-2 flex-wrap') do
           span(class: 'font-semibold text-sm') { "#{dosage.amount.to_f} #{dosage.unit}" }
           span(class: 'text-muted-foreground text-sm') { dosage.frequency }
-          Badge(variant: :outline, class: 'text-xs') { 'Adults' } if dosage.default_for_adults?
-          Badge(variant: :secondary, class: 'text-xs') { 'Children' } if dosage.default_for_children?
+          if dosage.default_for_adults?
+            Badge(variant: :outline, class: 'text-xs') { t('dosages.form.default_for_adults') }
+          end
+          if dosage.default_for_children?
+            Badge(variant: :secondary, class: 'text-xs') { t('medications.show.children') }
+          end
         end
       end
 
@@ -387,8 +403,12 @@ module Components
 
         div(class: 'text-xs text-muted-foreground') do
           parts = []
-          parts << "Max #{dosage.default_max_daily_doses}/cycle" if dosage.default_max_daily_doses
-          parts << "Min #{dosage.default_min_hours_between_doses}h apart" if dosage.default_min_hours_between_doses
+          if dosage.default_max_daily_doses
+            parts << t('medications.show.max_per_cycle', count: dosage.default_max_daily_doses)
+          end
+          if dosage.default_min_hours_between_doses
+            parts << t('medications.show.min_hours_apart', hours: dosage.default_min_hours_between_doses)
+          end
           plain parts.join(' · ')
         end
       end

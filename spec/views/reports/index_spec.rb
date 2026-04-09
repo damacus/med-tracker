@@ -28,7 +28,9 @@ RSpec.describe Views::Reports::Index do
 
   before do
     # rubocop:disable RSpec/SubjectStub
-    allow(report_view).to receive(:view_context).and_return(double(reports_path: '/reports'))
+    helper_view_context = controller.view_context
+    allow(helper_view_context).to receive(:reports_path).and_return('/reports')
+    allow(report_view).to receive(:view_context).and_return(helper_view_context)
     # rubocop:enable RSpec/SubjectStub
   end
 
@@ -57,5 +59,12 @@ RSpec.describe Views::Reports::Index do
     expect(rendered).to include('Inventory Alert')
     expect(rendered).to include('Ibuprofen')
     expect(rendered).to include('exhausted in 3 days')
+  end
+
+  it 'renders report copy from the active locale' do
+    rendered = I18n.with_locale(:ga) { render report_view }
+
+    expect(rendered).to include(I18n.t('reports.index.title', locale: :ga))
+    expect(rendered).to include(I18n.t('reports.index.timeline_title', locale: :ga))
   end
 end
