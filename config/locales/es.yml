@@ -1,9 +1,24 @@
 ---
 es:
   hello: "Hola mundo"
+  ruby_ui:
+    common:
+      close: "Cerrar"
+      navigation_menu: "Menú de navegación"
+      more: "Más"
+    calendar:
+      previous_month: "Ir al mes anterior"
+      next_month: "Ir al mes siguiente"
   activerecord:
     attributes:
       invitation:
+        roles:
+          admin: "Administrador"
+          clinician: "Clínico"
+          carer: "Cuidador"
+          parent: "Padre/Madre"
+          self: "Mismo"
+      user:
         roles:
           admin: "Administrador"
           clinician: "Clínico"
@@ -181,6 +196,23 @@ es:
       resent: "Invitación reenviada"
       cannot_resend_accepted: "Las invitaciones aceptadas no se pueden reenviar"
       resend_failed: "No se pudo reenviar esta invitación. Es posible que ya exista una invitación pendiente para este correo electrónico."
+      index:
+        title: "Invitaciones"
+        subtitle: "Invita a nuevos usuarios a unirse a MedTracker."
+        recent: "Invitaciones recientes"
+        resend: "Reenviar"
+        form:
+          email: "Correo electrónico"
+          role: "Rol"
+          submit: "Enviar invitación"
+        status:
+          accepted: "Aceptada"
+          expired: "Caducada"
+          pending: "Pendiente"
+        metadata:
+          accepted: "Aceptada hace %{time}"
+          expired: "Caducó hace %{time}"
+          expires: "Caduca dentro de %{time}"
     carer_relationships:
       created: "La relación de cuidador se creó correctamente."
       deactivated: "La relación de cuidador ha sido desactivada."
@@ -212,12 +244,50 @@ es:
           results: "resultados"
     users:
       unauthorized: "No está autorizado para realizar esta acción."
+      form:
+        subtitle: "Rellena los datos a continuación para crear una nueva cuenta de usuario."
+        create_title: "Crear nuevo usuario"
+        edit_title: "Editar usuario"
+        name: "Nombre"
+        date_of_birth: "Fecha de nacimiento"
+        locations: "Ubicaciones"
+        email_address: "Dirección de correo electrónico"
+        password: "Contraseña"
+        password_confirmation: "Confirmación de contraseña"
+        role: "Rol"
+        select_role: "Selecciona un rol"
+        cancel: "Cancelar"
+        create_submit: "Crear usuario"
+        update_submit: "Actualizar usuario"
+      search:
+        search: "Buscar"
+        search_placeholder: "Buscar por nombre o correo electrónico..."
+        role: "Rol"
+        all_roles: "Todos los roles"
+        status: "Estado"
+        all: "Todos"
+        clear: "Limpiar"
+      table:
+        activation: "Activación"
+        verification: "Verificación"
+        actions: "Acciones"
+      pagination:
+        label: "Paginación"
+        showing: "Mostrando"
+        to: "a"
+        of: "de"
+        results: "resultados"
+        previous: "Anterior"
+        next: "Siguiente"
       user_row:
         edit: "Editar"
         active: "Activo"
         inactive: "Inactivo"
+        soft_deleted: "Eliminado lógicamente"
         deactivate: "Desactivar"
         activate: "Activar"
+        verify: "Verificar"
+        verified: "Verificado"
         deactivate_dialog:
           title: "Desactivar Cuenta de Usuario"
           confirm: "¿Está seguro de que desea desactivar la cuenta de %{name}? Ya no podrán iniciar sesión."
@@ -236,6 +306,7 @@ es:
           clear_filters: "Limpiar filtros"
         table:
           timestamp: "Marca de Tiempo"
+          activity: "Actividad"
           record_type: "Tipo de Registro"
           event: "Evento"
           user: "Usuario"
@@ -271,9 +342,39 @@ es:
         new_state_create: "El estado del registro cuando fue creado"
         new_state_update: "El estado del registro después de este cambio"
         new_state_other: "El estado actual del registro"
+        changes: "Cambios en los campos"
+        field: "Campo"
+        previous: "Valor anterior"
+        new: "Valor nuevo"
+        record: "Registro"
+        view_title: "Detalle de auditoría"
+        view_subtitle: "Detalles registrados para este evento"
+        snapshot: "Instantánea del objeto"
+        snapshot_description: "El estado completo del registro en este momento"
+        no_data: "No hay datos registrados para esta versión"
+    dashboard:
+      title: "Panel de administración"
+      metrics:
+        total_users: "Usuarios totales"
+        active_users: "Usuarios activos"
+        recent_signups: "Registros recientes"
+        total_people: "Personas totales"
+        active_schedules: "Planes activos"
+        no_carers: "Sin cuidadores"
+      quick_actions:
+        title: "Acciones rápidas"
+        manage_users_title: "Gestionar usuarios"
+        manage_users_description: "Ver y gestionar cuentas de usuario"
+        invitations_title: "Invitaciones"
+        invitations_description: "Invitar a nuevos usuarios a unirse"
+        manage_people_title: "Gestionar personas"
+        manage_people_description: "Ver y gestionar registros de personas"
+        audit_trail_title: "Registro de auditoría"
+        audit_trail_description: "Ver los registros de auditoría del sistema"
 
   authentication:
     login_required: "Por favor, inicie sesión para continuar"
+    session_expired: "Tu sesión ha caducado. Vuelve a iniciar sesión."
     two_factor_required: "Para mayor seguridad, configure la autenticación de dos factores para su cuenta."
 
   invitation_mailer:
