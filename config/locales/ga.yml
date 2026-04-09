@@ -1,8 +1,25 @@
 ---
 ga:
   hello: "Dia dhuit an domhan"
+  ruby_ui:
+    common:
+      close: "Dún"
+      navigation_menu: "Roghchlár nascleanúna"
+      more: "Tuilleadh"
+    calendar:
+      previous_month: "Téigh go dtí an mhí roimhe seo"
+      next_month: "Téigh go dtí an chéad mhí eile"
   app:
     name: "MedTracker"
+  activerecord:
+    attributes:
+      user:
+        roles:
+          admin: "Riarthóir"
+          clinician: "Cliniceoir"
+          carer: "Cúramóir"
+          parent: "Tuismitheoir"
+          self: "Féin"
 
   admin:
     invitations:
@@ -10,6 +27,23 @@ ga:
       resent: "Cuireadh athsheolta"
       cannot_resend_accepted: "Ní féidir cuirí a nglactar leo a athsheoladh"
       resend_failed: "Níorbh fhéidir an cuireadh seo a athsheoladh. Seans go bhfuil cuireadh ar feitheamh don ríomhphost seo ann cheana féin."
+      index:
+        title: "Cuirí"
+        subtitle: "Tabhair cuireadh d'úsáideoirí nua páirt a ghlacadh i MedTracker."
+        recent: "Cuirí le déanaí"
+        resend: "Athsheol"
+        form:
+          email: "Ríomhphost"
+          role: "Ról"
+          submit: "Seol cuireadh"
+        status:
+          accepted: "Glactha"
+          expired: "Imithe in éag"
+          pending: "Ar feitheamh"
+        metadata:
+          accepted: "Glactha %{time} ó shin"
+          expired: "D'imigh sé in éag %{time} ó shin"
+          expires: "Rachaidh sé in éag i gceann %{time}"
     carer_relationships:
       created: "Cruthaíodh an caidreamh cúramóra go rathúil."
       deactivated: "Díghníomhaíodh an caidreamh cúramóra."
@@ -42,6 +76,41 @@ ga:
     users:
       unauthorized: "Níl údarás agat an gníomh seo a dhéanamh."
       missing_account: "Níl cuntas ag an úsáideoir le fíorú."
+      form:
+        subtitle: "Líon isteach na sonraí thíos chun cuntas úsáideora nua a chruthú."
+        create_title: "Cruthaigh úsáideoir nua"
+        edit_title: "Cuir úsáideoir in eagar"
+        name: "Ainm"
+        date_of_birth: "Dáta breithe"
+        locations: "Suíomhanna"
+        email_address: "Seoladh ríomhphoist"
+        password: "Focal faire"
+        password_confirmation: "Deimhniú focail faire"
+        role: "Ról"
+        select_role: "Roghnaigh ról"
+        cancel: "Cealaigh"
+        create_submit: "Cruthaigh úsáideoir"
+        update_submit: "Nuashonraigh úsáideoir"
+      search:
+        search: "Cuardaigh"
+        search_placeholder: "Cuardaigh de réir ainm nó ríomhphoist..."
+        role: "Ról"
+        all_roles: "Gach ról"
+        status: "Stádas"
+        all: "Gach"
+        clear: "Glan"
+      table:
+        activation: "Gníomhachtú"
+        verification: "Fíorú"
+        actions: "Gníomhartha"
+      pagination:
+        label: "Leathanaigh"
+        showing: "Ag taispeáint"
+        to: "go"
+        of: "as"
+        results: "torthaí"
+        previous: "Roimhe Seo"
+        next: "Ar Aghaidh"
       user_row:
         edit: "Cuir in eagar"
         active: "Gníomhach"
@@ -104,9 +173,29 @@ ga:
         new_state_create: "Stáid na taifid nuair a cruthaíodh í"
         new_state_update: "Stáid na taifid tar éis an athraithe seo"
         new_state_other: "Stáid reatha na taifid"
+    dashboard:
+      title: "Painéal riaracháin"
+      metrics:
+        total_users: "Iomlán úsáideoirí"
+        active_users: "Úsáideoirí gníomhacha"
+        recent_signups: "Clárúcháin le déanaí"
+        total_people: "Iomlán daoine"
+        active_schedules: "Sceidil ghníomhacha"
+        no_carers: "Gan chúramóirí"
+      quick_actions:
+        title: "Gníomhartha tapa"
+        manage_users_title: "Bainistigh úsáideoirí"
+        manage_users_description: "Féach agus bainistigh cuntais úsáideora"
+        invitations_title: "Cuirí"
+        invitations_description: "Tabhair cuireadh d'úsáideoirí nua páirt a ghlacadh"
+        manage_people_title: "Bainistigh daoine"
+        manage_people_description: "Féach agus bainistigh taifid daoine"
+        audit_trail_title: "Conair iniúchta"
+        audit_trail_description: "Féach ar logaí iniúchta an chórais"
 
   authentication:
     login_required: "Logáil isteach le leanúint"
+    session_expired: "Chuaigh do sheisiún in éag. Sínigh isteach arís."
     two_factor_required: "Le haghaidh slándála fheabhsaithe, socraigh fíorú dhá fhachtar do chuntas."
 
   invitation_mailer:
@@ -123,6 +212,9 @@ ga:
     created: "Cruthaíodh an suíomh go rathúil."
     updated: "Nuashonraíodh an suíomh go rathúil."
     deleted: "Scriosadh an suíomh go rathúil."
+    form:
+      description_optional: "Cur síos (roghnach)"
+      save: "Sábháil suíomh"
     index:
       manage_locations: "Bainistigh Suíomhanna"
       title: "Suíomhanna"
@@ -320,12 +412,34 @@ ga:
       search_button: "Cuardaigh"
       idle_heading: "Réidh le taispeáint?"
       idle_text: "Cuir ainm leigheas thuas chun na mílte taifid fíoraí a chuardach sa bhunachar sonraí NHS."
+      loading: "Ag cuardach bhunachar sonraí NHS dm+d..."
+      unavailable_title: "Níl cuardach ar fáil"
+      unavailable_message: "Níorbh fhéidir ceangal leis an mbunachar sonraí cógas. Bain triail eile as."
+      no_results_title: "Níor aimsíodh cógais"
+      no_results_message: "Bain triail as téarmaí eile nó seiceáil an litriú."
+      results_title: "Torthaí cuardaigh"
+      source: "Foinse: NHS dm+d"
+      dmd_code: "cód dm+d"
+      result_count:
+        one: "%{count} toradh do \"%{query}\""
+        other: "%{count} toradh do \"%{query}\""
       coming_soon: "Tá an ghné seo ag teacht go luath! Comhdhlónóimid le API bunachair sonraí leigheas chun faisnéis mhionsonraithe a sholáthar faoi mhíochaine."
     created: "Cruthaíodh an leigheas go rathúil."
     updated: "Nuashonraíodh an leigheas go rathúil."
     deleted: "Scriosadh an leigheas go rathúil."
     refilled: "Athlionadh stoc go rathúil."
+    ordered: "Marcáladh an t-athlíonadh mar ordaithe"
+    received: "Marcáladh an t-athlíonadh mar fhaighte"
     refill_button: "Athlionadh"
+    take_action:
+      loading: "Ag glacadh…"
+      choose_location: "Roghnaigh suíomh"
+      choose_location_description: "Roghnaigh cén suíomh as ar cheart an dáileog seo a bhaint."
+      untracked_inventory: "Gan rianú"
+    reorder_statuses:
+      requested: "Iarrtha"
+      ordered: "Ordaithe"
+      received: "Faighte"
     refill_modal:
       refill_inventory: "Athlionadh Fardal"
       title: "Athlionadh %{medication}"
@@ -613,6 +727,51 @@ ga:
       reports: "Tuarascálacha"
       administration: "Riarachán"
       sign_out: "Sínigh Amach"
+      user_fallback: "Úsáideoir"
+  notification_settings:
+    title: "Socruithe fógraí"
+    description: "Bainistigh do chuid fógraí meabhrúcháin cógais."
+    browser:
+      title: "Fógraí brabhsálaí"
+      status: "Ag seiceáil stádas na bhfógraí..."
+      enable: "Cumasaigh fógraí"
+      disable: "Díchumasaigh fógraí"
+      test: "Seol fógra tástála"
+    reminders:
+      enable: "Cumasaigh meabhrúcháin"
+      description: "Seol meabhrúcháin cógais ag na hamanna sceidealta."
+      title: "Amanna meabhrúcháin"
+    period_labels:
+      morning: "Maidin"
+      afternoon: "Tráthnóna"
+      evening: "Oíche"
+      night: "Oíche dhéanach"
+    actions:
+      cancel: "Cealaigh"
+      save: "Sábháil socruithe"
+  invitations:
+    accept:
+      title: "Críochnaigh do chuntas"
+      description: "Líon isteach do chuid sonraí chun glacadh leis an gcuireadh."
+      welcome: "Fáilte! Tugadh cuireadh duit mar %{role}."
+      form:
+        name: "Ainm"
+        name_placeholder: "Cuir d'ainm iomlán isteach"
+        date_of_birth: "Dáta breithe"
+        email: "Ríomhphost"
+        password: "Focal faire"
+        password_confirmation: "Deimhnigh focal faire"
+        submit: "Cruthaigh cuntas"
+  home:
+    title: "Rianaire cógais"
+    description: "Fáilte chuig d'fheidhmchlár pearsanta rianaithe cógais."
+    cards:
+      medications:
+        title: "Cógais"
+        description: "Bainistigh do fhardal cógais, rianaigh leibhéil stoic, agus féach ar fhaisnéis dáileoige"
+      people:
+        title: "Daoine"
+        description: "Bainistigh daoine agus a sceidil, agus rianaigh sceidil chógais"
   reports:
     index:
       eyebrow: "Anailís Folláine"
@@ -698,6 +857,24 @@ ga:
       delete_schedule: "Scrios Oideas Leigheasanna?"
       are_you_sure: "An bhfuil tú cinnte gur mian leat %{medication} do %{person} a scrios? Ní féidir an gníomh seo a chealú."
       cancel: "Cealaigh"
+    person_schedule:
+      age: "Aois"
+      dosage: "Dáileog"
+      frequency: "Minicíocht"
+      ends: "Críochnaíonn"
+      out_of_stock: "As stoc"
+      on_cooldown: "Ar fhuarú"
+      take_now: "Glac anois"
+      delete_confirmation: "An bhfuil tú cinnte gur mian leat an sceideal seo do %{medication} a scriosadh? Ní féidir an gníomh seo a chealú."
+    schedule_card:
+      dosage: "Dáileog"
+      remaining_supply: "Soláthar fágtha"
+      frequency: "Minicíocht"
+      ends: "Críochnaíonn"
+    quick_stats:
+      title: "Staitisticí tapa"
+      people: "Daoine"
+      active_schedules: "Sceidil ghníomhacha"
     quick_actions:
       title: "Gníomhartha Tapa"
       add_medication: "Cuir Leigheas Leis"

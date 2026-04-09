@@ -1,9 +1,24 @@
 ---
 pt:
   hello: "Olá mundo"
+  ruby_ui:
+    common:
+      close: "Fechar"
+      navigation_menu: "Menu de navegação"
+      more: "Mais"
+    calendar:
+      previous_month: "Ir para o mês anterior"
+      next_month: "Ir para o mês seguinte"
   activerecord:
     attributes:
       invitation:
+        roles:
+          admin: "Administrador"
+          clinician: "Clínico"
+          carer: "Cuidador"
+          parent: "Pai/Mãe"
+          self: "Próprio"
+      user:
         roles:
           admin: "Administrador"
           clinician: "Clínico"
@@ -181,6 +196,23 @@ pt:
       resent: "Convite reenviado"
       cannot_resend_accepted: "Convites aceitos não podem ser reenviados"
       resend_failed: "Este convite não pôde ser reenviado. Já pode existir um convite pendente para este e-mail."
+      index:
+        title: "Convites"
+        subtitle: "Convide novos utilizadores para aderirem ao MedTracker."
+        recent: "Convites recentes"
+        resend: "Reenviar"
+        form:
+          email: "Email"
+          role: "Função"
+          submit: "Enviar convite"
+        status:
+          accepted: "Aceite"
+          expired: "Expirado"
+          pending: "Pendente"
+        metadata:
+          accepted: "Aceite há %{time}"
+          expired: "Expirou há %{time}"
+          expires: "Expira dentro de %{time}"
     carer_relationships:
       created: "A relação de cuidador foi criada com sucesso."
       deactivated: "A relação de cuidador foi desativada."
@@ -212,6 +244,42 @@ pt:
           results: "resultados"
     users:
       unauthorized: "Não está autorizado a realizar esta ação."
+      missing_account: "O utilizador não tem uma conta para verificar."
+      form:
+        subtitle: "Preencha os dados abaixo para criar uma nova conta de utilizador."
+        create_title: "Criar novo utilizador"
+        edit_title: "Editar utilizador"
+        name: "Nome"
+        date_of_birth: "Data de nascimento"
+        locations: "Localizações"
+        email_address: "Endereço de email"
+        password: "Palavra-passe"
+        password_confirmation: "Confirmação da palavra-passe"
+        role: "Função"
+        select_role: "Selecionar função"
+        cancel: "Cancelar"
+        create_submit: "Criar utilizador"
+        update_submit: "Atualizar utilizador"
+      search:
+        search: "Pesquisar"
+        search_placeholder: "Pesquisar por nome ou email..."
+        role: "Função"
+        all_roles: "Todas as funções"
+        status: "Estado"
+        all: "Todos"
+        clear: "Limpar"
+      table:
+        activation: "Ativação"
+        verification: "Verificação"
+        actions: "Ações"
+      pagination:
+        label: "Paginação"
+        showing: "A mostrar"
+        to: "a"
+        of: "de"
+        results: "resultados"
+        previous: "Anterior"
+        next: "Seguinte"
       user_row:
         edit: "Editar"
         active: "Ativo"
@@ -271,9 +339,29 @@ pt:
         new_state_create: "O estado do registo quando foi criado"
         new_state_update: "O estado do registo após esta alteração"
         new_state_other: "O estado atual do registo"
+    dashboard:
+      title: "Painel de administração"
+      metrics:
+        total_users: "Total de utilizadores"
+        active_users: "Utilizadores ativos"
+        recent_signups: "Registos recentes"
+        total_people: "Total de pessoas"
+        active_schedules: "Horários ativos"
+        no_carers: "Sem cuidadores"
+      quick_actions:
+        title: "Ações rápidas"
+        manage_users_title: "Gerir utilizadores"
+        manage_users_description: "Ver e gerir contas de utilizador"
+        invitations_title: "Convites"
+        invitations_description: "Convidar novos utilizadores a aderir"
+        manage_people_title: "Gerir pessoas"
+        manage_people_description: "Ver e gerir registos de pessoas"
+        audit_trail_title: "Registo de auditoria"
+        audit_trail_description: "Ver os registos de auditoria do sistema"
 
   authentication:
     login_required: "Por favor, inicie sessão para continuar"
+    session_expired: "A sua sessão expirou. Inicie sessão novamente."
     two_factor_required: "Para maior segurança, configure a autenticação de dois fatores para a sua conta."
 
   invitation_mailer:
@@ -290,6 +378,9 @@ pt:
     created: "Localização criada com sucesso."
     updated: "Localização atualizada com sucesso."
     deleted: "Localização eliminada com sucesso."
+    form:
+      description_optional: "Descrição (opcional)"
+      save: "Guardar localização"
     index:
       manage_locations: "Gerir Localizações"
       title: "Localizações"
@@ -329,12 +420,34 @@ pt:
 
   medications:
     finder:
+      loading: "A pesquisar na base de dados NHS dm+d..."
+      unavailable_title: "Pesquisa indisponível"
+      unavailable_message: "Não foi possível ligar à base de dados de medicamentos. Tente novamente."
+      no_results_title: "Nenhum medicamento encontrado"
+      no_results_message: "Tente pesquisar com termos diferentes ou verifique a ortografia."
+      results_title: "Resultados da pesquisa"
+      source: "Fonte: NHS dm+d"
+      dmd_code: "código dm+d"
+      result_count:
+        one: "%{count} resultado para \"%{query}\""
+        other: "%{count} resultados para \"%{query}\""
       coming_soon: "Esta funcionalidade estará disponível em breve! Iremos integrar com uma API de base de dados de medicamentos para fornecer informações detalhadas sobre os medicamentos."
     created: "Medicamento criado com sucesso."
     updated: "Medicamento atualizado com sucesso."
     deleted: "Medicamento eliminado com sucesso."
     refilled: "Inventário reabastecido com sucesso."
+    ordered: "Reposição marcada como encomendada"
+    received: "Reposição marcada como recebida"
     refill_button: "Reabastecer"
+    take_action:
+      loading: "A tomar…"
+      choose_location: "Escolher localização"
+      choose_location_description: "Selecione de que localização deve ser deduzida esta dose."
+      untracked_inventory: "Sem rastreio"
+    reorder_statuses:
+      requested: "Solicitada"
+      ordered: "Encomendada"
+      received: "Recebida"
     refill_modal:
       refill_inventory: "Reabastecer Inventario"
       title: "Reabastecer %{medication}"
@@ -599,6 +712,52 @@ pt:
       profile: "Perfil"
       administration: "Administração"
       logout: "Terminar sessão"
+    sidebar:
+      user_fallback: "Utilizador"
+  notification_settings:
+    title: "Definições de notificações"
+    description: "Gira as suas notificações de lembrete de medicação."
+    browser:
+      title: "Notificações do navegador"
+      status: "A verificar o estado das notificações..."
+      enable: "Ativar notificações"
+      disable: "Desativar notificações"
+      test: "Enviar notificação de teste"
+    reminders:
+      enable: "Ativar lembretes"
+      description: "Enviar lembretes de medicação nos horários programados."
+      title: "Horários de lembrete"
+    period_labels:
+      morning: "Manhã"
+      afternoon: "Tarde"
+      evening: "Noite"
+      night: "Madrugada"
+    actions:
+      cancel: "Cancelar"
+      save: "Guardar definições"
+  invitations:
+    accept:
+      title: "Concluir a sua conta"
+      description: "Preencha os seus dados para aceitar o convite."
+      welcome: "Bem-vindo! Foi convidado como %{role}."
+      form:
+        name: "Nome"
+        name_placeholder: "Introduza o seu nome completo"
+        date_of_birth: "Data de nascimento"
+        email: "Email"
+        password: "Palavra-passe"
+        password_confirmation: "Confirmar palavra-passe"
+        submit: "Criar conta"
+  home:
+    title: "Gestor de medicação"
+    description: "Bem-vindo à sua aplicação pessoal de acompanhamento de medicação."
+    cards:
+      medications:
+        title: "Medicamentos"
+        description: "Gira o seu inventário de medicamentos, acompanhe os níveis de stock e consulte informações de dosagem"
+      people:
+        title: "Pessoas"
+        description: "Gira pessoas e os seus horários, e acompanhe os planos de medicação"
   forms:
     locations:
       name_placeholder: "p. ex. Casa, Escola, Casa da Avó"
@@ -668,6 +827,24 @@ pt:
       delete_schedule: "Eliminar Prescrição?"
       are_you_sure: "Tem certeza de que deseja eliminar %{medication} para %{person}? Esta ação não pode ser desfeita."
       cancel: "Cancelar"
+    person_schedule:
+      age: "Idade"
+      dosage: "Dosagem"
+      frequency: "Frequência"
+      ends: "Termina"
+      out_of_stock: "Sem stock"
+      on_cooldown: "Em espera"
+      take_now: "Tomar agora"
+      delete_confirmation: "Tem a certeza de que deseja eliminar este horário de %{medication}? Esta ação não pode ser desfeita."
+    schedule_card:
+      dosage: "Dosagem"
+      remaining_supply: "Fornecimento restante"
+      frequency: "Frequência"
+      ends: "Termina"
+    quick_stats:
+      title: "Estatísticas rápidas"
+      people: "Pessoas"
+      active_schedules: "Horários ativos"
     quick_actions:
       title: "Ações Rápidas"
       add_medication: "Adicionar Medicamento"

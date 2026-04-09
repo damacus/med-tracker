@@ -1,9 +1,24 @@
 ---
 es:
   hello: "Hola mundo"
+  ruby_ui:
+    common:
+      close: "Cerrar"
+      navigation_menu: "Menú de navegación"
+      more: "Más"
+    calendar:
+      previous_month: "Ir al mes anterior"
+      next_month: "Ir al mes siguiente"
   activerecord:
     attributes:
       invitation:
+        roles:
+          admin: "Administrador"
+          clinician: "Clínico"
+          carer: "Cuidador"
+          parent: "Padre/Madre"
+          self: "Mismo"
+      user:
         roles:
           admin: "Administrador"
           clinician: "Clínico"
@@ -181,6 +196,23 @@ es:
       resent: "Invitación reenviada"
       cannot_resend_accepted: "Las invitaciones aceptadas no se pueden reenviar"
       resend_failed: "No se pudo reenviar esta invitación. Es posible que ya exista una invitación pendiente para este correo electrónico."
+      index:
+        title: "Invitaciones"
+        subtitle: "Invita a nuevos usuarios a unirse a MedTracker."
+        recent: "Invitaciones recientes"
+        resend: "Reenviar"
+        form:
+          email: "Correo electrónico"
+          role: "Rol"
+          submit: "Enviar invitación"
+        status:
+          accepted: "Aceptada"
+          expired: "Caducada"
+          pending: "Pendiente"
+        metadata:
+          accepted: "Aceptada hace %{time}"
+          expired: "Caducó hace %{time}"
+          expires: "Caduca dentro de %{time}"
     carer_relationships:
       created: "La relación de cuidador se creó correctamente."
       deactivated: "La relación de cuidador ha sido desactivada."
@@ -212,6 +244,42 @@ es:
           results: "resultados"
     users:
       unauthorized: "No está autorizado para realizar esta acción."
+      missing_account: "El usuario no tiene una cuenta para verificar."
+      form:
+        subtitle: "Complete los datos a continuación para crear una nueva cuenta de usuario."
+        create_title: "Crear nuevo usuario"
+        edit_title: "Editar usuario"
+        name: "Nombre"
+        date_of_birth: "Fecha de nacimiento"
+        locations: "Ubicaciones"
+        email_address: "Dirección de correo electrónico"
+        password: "Contraseña"
+        password_confirmation: "Confirmación de contraseña"
+        role: "Rol"
+        select_role: "Seleccionar rol"
+        cancel: "Cancelar"
+        create_submit: "Crear usuario"
+        update_submit: "Actualizar usuario"
+      search:
+        search: "Buscar"
+        search_placeholder: "Buscar por nombre o correo electrónico..."
+        role: "Rol"
+        all_roles: "Todos los roles"
+        status: "Estado"
+        all: "Todos"
+        clear: "Limpiar"
+      table:
+        activation: "Activación"
+        verification: "Verificación"
+        actions: "Acciones"
+      pagination:
+        label: "Paginación"
+        showing: "Mostrando"
+        to: "a"
+        of: "de"
+        results: "resultados"
+        previous: "Anterior"
+        next: "Siguiente"
       user_row:
         edit: "Editar"
         active: "Activo"
@@ -271,9 +339,29 @@ es:
         new_state_create: "El estado del registro cuando fue creado"
         new_state_update: "El estado del registro después de este cambio"
         new_state_other: "El estado actual del registro"
+    dashboard:
+      title: "Panel de administración"
+      metrics:
+        total_users: "Usuarios totales"
+        active_users: "Usuarios activos"
+        recent_signups: "Registros recientes"
+        total_people: "Personas totales"
+        active_schedules: "Horarios activos"
+        no_carers: "Sin cuidadores"
+      quick_actions:
+        title: "Acciones rápidas"
+        manage_users_title: "Gestionar usuarios"
+        manage_users_description: "Ver y gestionar cuentas de usuario"
+        invitations_title: "Invitaciones"
+        invitations_description: "Invitar a nuevos usuarios a unirse"
+        manage_people_title: "Gestionar personas"
+        manage_people_description: "Ver y gestionar registros de personas"
+        audit_trail_title: "Registro de auditoría"
+        audit_trail_description: "Ver los registros de auditoría del sistema"
 
   authentication:
     login_required: "Por favor, inicie sesión para continuar"
+    session_expired: "Tu sesión ha caducado. Vuelve a iniciar sesión."
     two_factor_required: "Para mayor seguridad, configure la autenticación de dos factores para su cuenta."
 
   invitation_mailer:
@@ -290,6 +378,9 @@ es:
     created: "La ubicación se creó correctamente."
     updated: "La ubicación se actualizó correctamente."
     deleted: "La ubicación se eliminó correctamente."
+    form:
+      description_optional: "Descripción (opcional)"
+      save: "Guardar ubicación"
     index:
       manage_locations: "Gestionar Ubicaciones"
       title: "Ubicaciones"
@@ -329,12 +420,34 @@ es:
 
   medications:
     finder:
+      loading: "Buscando en la base de datos NHS dm+d..."
+      unavailable_title: "Búsqueda no disponible"
+      unavailable_message: "No se pudo conectar con la base de datos de medicamentos. Inténtelo de nuevo."
+      no_results_title: "No se encontraron medicamentos"
+      no_results_message: "Pruebe a buscar con términos diferentes o revise la ortografía."
+      results_title: "Resultados de búsqueda"
+      source: "Fuente: NHS dm+d"
+      dmd_code: "código dm+d"
+      result_count:
+        one: "%{count} resultado para \"%{query}\""
+        other: "%{count} resultados para \"%{query}\""
       coming_soon: "¡Esta función llegará pronto! Integraremos con una API de base de datos de medicamentos para proporcionar información detallada sobre los medicamentos."
     created: "Medicamento creado correctamente."
     updated: "Medicamento actualizado correctamente."
     deleted: "Medicamento eliminado correctamente."
     refilled: "Inventario reabastecido correctamente."
+    ordered: "Reposición marcada como pedida"
+    received: "Reposición marcada como recibida"
     refill_button: "Reabastecer"
+    take_action:
+      loading: "Tomando…"
+      choose_location: "Elegir ubicación"
+      choose_location_description: "Selecciona de qué ubicación descontar esta dosis."
+      untracked_inventory: "Sin seguimiento"
+    reorder_statuses:
+      requested: "Solicitada"
+      ordered: "Pedida"
+      received: "Recibida"
     refill_modal:
       refill_inventory: "Reabastecer Inventario"
       title: "Reabastecer %{medication}"
@@ -599,6 +712,52 @@ es:
       profile: "Perfil"
       administration: "Administración"
       logout: "Cerrar sesión"
+    sidebar:
+      user_fallback: "Usuario"
+  notification_settings:
+    title: "Configuración de notificaciones"
+    description: "Gestiona las notificaciones de recordatorio de medicamentos."
+    browser:
+      title: "Notificaciones del navegador"
+      status: "Comprobando el estado de las notificaciones..."
+      enable: "Activar notificaciones"
+      disable: "Desactivar notificaciones"
+      test: "Enviar notificación de prueba"
+    reminders:
+      enable: "Activar recordatorios"
+      description: "Enviar recordatorios de medicación a las horas programadas."
+      title: "Horas de recordatorio"
+    period_labels:
+      morning: "Mañana"
+      afternoon: "Tarde"
+      evening: "Noche"
+      night: "Madrugada"
+    actions:
+      cancel: "Cancelar"
+      save: "Guardar configuración"
+  invitations:
+    accept:
+      title: "Completa tu cuenta"
+      description: "Completa tus datos para aceptar la invitación."
+      welcome: "¡Bienvenido! Has sido invitado como %{role}."
+      form:
+        name: "Nombre"
+        name_placeholder: "Introduce tu nombre completo"
+        date_of_birth: "Fecha de nacimiento"
+        email: "Correo electrónico"
+        password: "Contraseña"
+        password_confirmation: "Confirmar contraseña"
+        submit: "Crear cuenta"
+  home:
+    title: "Seguimiento de medicación"
+    description: "Bienvenido a tu aplicación personal de seguimiento de medicación."
+    cards:
+      medications:
+        title: "Medicamentos"
+        description: "Gestiona tu inventario de medicamentos, controla el stock y consulta la información de dosificación"
+      people:
+        title: "Personas"
+        description: "Gestiona personas y sus horarios, y realiza el seguimiento de los planes de medicación"
   forms:
     locations:
       name_placeholder: "p. ej. Casa, Escuela, Casa de la Abuela"
@@ -668,6 +827,24 @@ es:
       delete_schedule: "¿Eliminar Prescripción?"
       are_you_sure: "¿Está seguro de que desea eliminar %{medication} para %{person}? Esta acción no se puede deshacer."
       cancel: "Cancelar"
+    person_schedule:
+      age: "Edad"
+      dosage: "Dosis"
+      frequency: "Frecuencia"
+      ends: "Finaliza"
+      out_of_stock: "Sin stock"
+      on_cooldown: "En espera"
+      take_now: "Tomar ahora"
+      delete_confirmation: "¿Está seguro de que desea eliminar este horario de %{medication}? Esta acción no se puede deshacer."
+    schedule_card:
+      dosage: "Dosis"
+      remaining_supply: "Suministro restante"
+      frequency: "Frecuencia"
+      ends: "Finaliza"
+    quick_stats:
+      title: "Estadísticas rápidas"
+      people: "Personas"
+      active_schedules: "Horarios activos"
     quick_actions:
       title: "Acciones Rápidas"
       add_medication: "Agregar Medicamento"

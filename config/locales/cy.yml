@@ -1,9 +1,24 @@
 ---
 cy:
   hello: "Helo byd"
+  ruby_ui:
+    common:
+      close: "Cau"
+      navigation_menu: "Dewislen llywio"
+      more: "Mwy"
+    calendar:
+      previous_month: "Mynd i'r mis blaenorol"
+      next_month: "Mynd i'r mis nesaf"
   activerecord:
     attributes:
       invitation:
+        roles:
+          admin: "Gweinyddu"
+          clinician: "Clinigwr"
+          carer: "Gofalwr"
+          parent: "Rhiant"
+          self: "Hunan"
+      user:
         roles:
           admin: "Gweinyddu"
           clinician: "Clinigwr"
@@ -181,6 +196,23 @@ cy:
       resent: "Ailanfonwyd y gwahoddiad"
       cannot_resend_accepted: "Ni ellir ailanfon gwahoddiadau sydd wedi'u derbyn"
       resend_failed: "Ni ellid ailanfon y gwahoddiad hwn. Mae'n bosibl bod gwahoddiad sy'n aros am yr e-bost hwn eisoes yn bodoli."
+      index:
+        title: "Gwahoddiadau"
+        subtitle: "Gwahodd defnyddwyr newydd i ymuno â MedTracker."
+        recent: "Gwahoddiadau diweddar"
+        resend: "Ailanfon"
+        form:
+          email: "E-bost"
+          role: "Rôl"
+          submit: "Anfon gwahoddiad"
+        status:
+          accepted: "Wedi'i dderbyn"
+          expired: "Wedi dod i ben"
+          pending: "Yn aros"
+        metadata:
+          accepted: "Wedi'i dderbyn %{time} yn ôl"
+          expired: "Daeth i ben %{time} yn ôl"
+          expires: "Yn dod i ben ymhen %{time}"
     carer_relationships:
       created: "Crëwyd perthynas gofalwr yn llwyddiannus."
       deactivated: "Mae perthynas gofalwr wedi'i ddadactifadu."
@@ -212,6 +244,42 @@ cy:
           results: "canlyniad"
     users:
       unauthorized: "Nid oes gennych awdurdod i gyflawni'r weithred hon."
+      missing_account: "Nid oes cyfrif gan y defnyddiwr i'w ddilysu."
+      form:
+        subtitle: "Llenwch y manylion isod i greu cyfrif defnyddiwr newydd."
+        create_title: "Creu defnyddiwr newydd"
+        edit_title: "Golygu defnyddiwr"
+        name: "Enw"
+        date_of_birth: "Dyddiad geni"
+        locations: "Lleoliadau"
+        email_address: "Cyfeiriad e-bost"
+        password: "Cyfrinair"
+        password_confirmation: "Cadarnhau cyfrinair"
+        role: "Rôl"
+        select_role: "Dewis rôl"
+        cancel: "Canslo"
+        create_submit: "Creu defnyddiwr"
+        update_submit: "Diweddaru defnyddiwr"
+      search:
+        search: "Chwilio"
+        search_placeholder: "Chwilio yn ôl enw neu e-bost..."
+        role: "Rôl"
+        all_roles: "Pob rôl"
+        status: "Statws"
+        all: "Pob un"
+        clear: "Clirio"
+      table:
+        activation: "Gweithrediad"
+        verification: "Dilysiad"
+        actions: "Gweithredoedd"
+      pagination:
+        label: "Tudaleniad"
+        showing: "Yn dangos"
+        to: "i"
+        of: "o"
+        results: "canlyniadau"
+        previous: "Blaenorol"
+        next: "Nesaf"
       user_row:
         edit: "Golygu"
         active: "Actif"
@@ -271,9 +339,29 @@ cy:
         new_state_create: "Cyflwr y cofnod pan gafodd ei greu"
         new_state_update: "Cyflwr y cofnod ar ôl y newid hwn"
         new_state_other: "Cyflwr cyfredol y cofnod"
+    dashboard:
+      title: "Bwrdd rheoli gweinyddol"
+      metrics:
+        total_users: "Cyfanswm defnyddwyr"
+        active_users: "Defnyddwyr gweithredol"
+        recent_signups: "Cofrestriadau diweddar"
+        total_people: "Cyfanswm pobl"
+        active_schedules: "Amserlenni gweithredol"
+        no_carers: "Dim gofalwyr"
+      quick_actions:
+        title: "Gweithredoedd cyflym"
+        manage_users_title: "Rheoli defnyddwyr"
+        manage_users_description: "Gweld a rheoli cyfrifon defnyddwyr"
+        invitations_title: "Gwahoddiadau"
+        invitations_description: "Gwahodd defnyddwyr newydd i ymuno"
+        manage_people_title: "Rheoli pobl"
+        manage_people_description: "Gweld a rheoli cofnodion pobl"
+        audit_trail_title: "Llwybr archwilio"
+        audit_trail_description: "Gweld logiau archwilio'r system"
 
   authentication:
     login_required: "Mewngofnodwch i barhau"
+    session_expired: "Mae eich sesiwn wedi dod i ben. Mewngofnodwch eto."
     two_factor_required: "Er mwy o ddiogelwch, gosodwch ddilysu dau ffactor ar gyfer eich cyfrif."
 
   invitation_mailer:
@@ -290,6 +378,9 @@ cy:
     created: "Crëwyd y lleoliad yn llwyddiannus."
     updated: "Diweddarwyd y lleoliad yn llwyddiannus."
     deleted: "Dilewyd y lleoliad yn llwyddiannus."
+    form:
+      description_optional: "Disgrifiad (dewisol)"
+      save: "Cadw lleoliad"
     index:
       manage_locations: "Rheoli Lleoliadau"
       title: "Lleoliadau"
@@ -329,12 +420,34 @@ cy:
 
   medications:
     finder:
+      loading: "Yn chwilio cronfa ddata NHS dm+d..."
+      unavailable_title: "Chwiliad ddim ar gael"
+      unavailable_message: "Methu cysylltu â'r gronfa ddata meddyginiaethau. Ceisiwch eto."
+      no_results_title: "Ni chanfuwyd meddyginiaethau"
+      no_results_message: "Ceisiwch chwilio gyda thermau gwahanol neu gwiriwch y sillafu."
+      results_title: "Canlyniadau chwilio"
+      source: "Ffynhonnell: NHS dm+d"
+      dmd_code: "cod dm+d"
+      result_count:
+        one: "%{count} canlyniad ar gyfer \"%{query}\""
+        other: "%{count} canlyniad ar gyfer \"%{query}\""
       coming_soon: "Mae'r nodwedd hon yn dod yn fuan! Byddwn yn integreiddio â API cronfa ddata meddyginiaethau i ddarparu gwybodaeth fanwl am feddyginiaethau."
     created: "Crëwyd y feddyginiaeth yn llwyddiannus."
     updated: "Diweddarwyd y feddyginiaeth yn llwyddiannus."
     deleted: "Dilëwyd y feddyginiaeth yn llwyddiannus."
     refilled: "Ailstociwyd y rhestr stoc yn llwyddiannus."
+    ordered: "Nodwyd yr ail-lenwi fel wedi'i archebu"
+    received: "Nodwyd yr ail-lenwi fel wedi'i dderbyn"
     refill_button: "Ail-llenwi"
+    take_action:
+      loading: "Yn cymryd…"
+      choose_location: "Dewis lleoliad"
+      choose_location_description: "Dewiswch o ba leoliad i dynnu'r dos hwn."
+      untracked_inventory: "Heb ei olrhain"
+    reorder_statuses:
+      requested: "Wedi'i ofyn"
+      ordered: "Wedi'i archebu"
+      received: "Wedi'i dderbyn"
     refill_modal:
       refill_inventory: "Ail-llenwi Rhestr Eiddo"
       title: "Ail-llenwi %{medication}"
@@ -577,6 +690,52 @@ cy:
       profile: "Proffil"
       administration: "Gweinyddu"
       logout: "Allgofnodi"
+    sidebar:
+      user_fallback: "Defnyddiwr"
+  notification_settings:
+    title: "Gosodiadau hysbysiadau"
+    description: "Rheoli eich hysbysiadau atgoffa am feddyginiaeth."
+    browser:
+      title: "Hysbysiadau porwr"
+      status: "Yn gwirio statws hysbysiadau..."
+      enable: "Galluogi hysbysiadau"
+      disable: "Analluogi hysbysiadau"
+      test: "Anfon hysbysiad prawf"
+    reminders:
+      enable: "Galluogi atgoffiadau"
+      description: "Anfon atgoffiadau meddyginiaeth ar yr amseroedd a drefnwyd."
+      title: "Amseroedd atgoffa"
+    period_labels:
+      morning: "Bore"
+      afternoon: "Prynhawn"
+      evening: "Noswaith"
+      night: "Nos"
+    actions:
+      cancel: "Canslo"
+      save: "Cadw gosodiadau"
+  invitations:
+    accept:
+      title: "Cwblhau eich cyfrif"
+      description: "Llenwch eich manylion i dderbyn y gwahoddiad."
+      welcome: "Croeso! Fe'ch gwahoddwyd fel %{role}."
+      form:
+        name: "Enw"
+        name_placeholder: "Rhowch eich enw llawn"
+        date_of_birth: "Dyddiad geni"
+        email: "E-bost"
+        password: "Cyfrinair"
+        password_confirmation: "Cadarnhau cyfrinair"
+        submit: "Creu cyfrif"
+  home:
+    title: "Traciwr meddyginiaeth"
+    description: "Croeso i'ch cymhwysiad personol ar gyfer olrhain meddyginiaeth."
+    cards:
+      medications:
+        title: "Meddyginiaethau"
+        description: "Rheoli eich rhestr o feddyginiaethau, olrhain lefelau stoc, a gweld gwybodaeth dosio"
+      people:
+        title: "Pobl"
+        description: "Rheoli pobl a'u hamserlenni, ac olrhain amserlenni meddyginiaeth"
   forms:
     locations:
       name_placeholder: "e.e. Cartref, Ysgol, Tŷ Mam-gu"
@@ -646,6 +805,24 @@ cy:
       delete_schedule: "Dileu Trwyddedriad?"
       are_you_sure: "Ydych chi'n sicr eich bod am dileu %{medication} ar gyfer %{person}? Ni all y weithred hon gael ei dadwneud."
       cancel: "Canslo"
+    person_schedule:
+      age: "Oedran"
+      dosage: "Dos"
+      frequency: "Amlder"
+      ends: "Yn gorffen"
+      out_of_stock: "Allan o stoc"
+      on_cooldown: "Ar gyfnod aros"
+      take_now: "Cymryd nawr"
+      delete_confirmation: "Ydych chi'n sicr eich bod am ddileu'r amserlen hon ar gyfer %{medication}? Ni ellir dadwneud y weithred hon."
+    schedule_card:
+      dosage: "Dos"
+      remaining_supply: "Cyflenwad sy'n weddill"
+      frequency: "Amlder"
+      ends: "Yn gorffen"
+    quick_stats:
+      title: "Ystadegau cyflym"
+      people: "Pobl"
+      active_schedules: "Amserlenni gweithredol"
     quick_actions:
       title: "Gweithredoedd Cyflym"
       add_medication: "Ychwanegu Meddyginiaeth"
