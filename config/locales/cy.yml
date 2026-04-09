@@ -1,9 +1,24 @@
 ---
 cy:
   hello: "Helo byd"
+  ruby_ui:
+    common:
+      close: "Cau"
+      navigation_menu: "Dewislen llywio"
+      more: "Mwy"
+    calendar:
+      previous_month: "Mynd i'r mis blaenorol"
+      next_month: "Mynd i'r mis nesaf"
   activerecord:
     attributes:
       invitation:
+        roles:
+          admin: "Gweinyddu"
+          clinician: "Clinigwr"
+          carer: "Gofalwr"
+          parent: "Rhiant"
+          self: "Hunan"
+      user:
         roles:
           admin: "Gweinyddu"
           clinician: "Clinigwr"
@@ -181,6 +196,23 @@ cy:
       resent: "Ailanfonwyd y gwahoddiad"
       cannot_resend_accepted: "Ni ellir ailanfon gwahoddiadau sydd wedi'u derbyn"
       resend_failed: "Ni ellid ailanfon y gwahoddiad hwn. Mae'n bosibl bod gwahoddiad sy'n aros am yr e-bost hwn eisoes yn bodoli."
+      index:
+        title: "Gwahoddiadau"
+        subtitle: "Gwahoddwch ddefnyddwyr newydd i ymuno â MedTracker."
+        recent: "Gwahoddiadau diweddar"
+        resend: "Ail-anfon"
+        form:
+          email: "E-bost"
+          role: "Rôl"
+          submit: "Anfon gwahoddiad"
+        status:
+          accepted: "Wedi'i dderbyn"
+          expired: "Wedi dod i ben"
+          pending: "Yn aros"
+        metadata:
+          accepted: "Wedi'i dderbyn %{time} yn ôl"
+          expired: "Daeth i ben %{time} yn ôl"
+          expires: "Yn dod i ben mewn %{time}"
     carer_relationships:
       created: "Crëwyd perthynas gofalwr yn llwyddiannus."
       deactivated: "Mae perthynas gofalwr wedi'i ddadactifadu."
@@ -212,12 +244,51 @@ cy:
           results: "canlyniad"
     users:
       unauthorized: "Nid oes gennych awdurdod i gyflawni'r weithred hon."
+      missing_account: "Nid oes gan y defnyddiwr gyfrif i'w ddilysu."
+      form:
+        subtitle: "Llenwch y manylion isod i greu cyfrif defnyddiwr newydd."
+        create_title: "Creu defnyddiwr newydd"
+        edit_title: "Golygu defnyddiwr"
+        name: "Enw"
+        date_of_birth: "Dyddiad geni"
+        locations: "Lleoliadau"
+        email_address: "Cyfeiriad e-bost"
+        password: "Cyfrinair"
+        password_confirmation: "Cadarnhad cyfrinair"
+        role: "Rôl"
+        select_role: "Dewis rôl"
+        cancel: "Canslo"
+        create_submit: "Creu defnyddiwr"
+        update_submit: "Diweddaru defnyddiwr"
+      search:
+        search: "Chwilio"
+        search_placeholder: "Chwilio yn ôl enw neu e-bost..."
+        role: "Rôl"
+        all_roles: "Pob rôl"
+        status: "Statws"
+        all: "Pawb"
+        clear: "Clirio"
+      table:
+        activation: "Actifadu"
+        verification: "Dilysu"
+        actions: "Gweithredoedd"
+      pagination:
+        label: "Tudalennu"
+        showing: "Yn dangos"
+        to: "i"
+        of: "o"
+        results: "canlyniadau"
+        previous: "Blaenorol"
+        next: "Nesaf"
       user_row:
         edit: "Golygu"
         active: "Actif"
         inactive: "Anactif"
+        soft_deleted: "Wedi'i ddileu'n feddal"
         deactivate: "Dadactifadu"
         activate: "Actifadu"
+        verify: "Dilysu"
+        verified: "Wedi'i ddilysu"
         deactivate_dialog:
           title: "Dadactifadu Cyfrif Defnyddiwr"
           confirm: "Ydych chi'n sicr eich bod am ddadactifadu cyfrif %{name}? Ni fyddant yn gallu mewngofnodi mwyach."
@@ -236,6 +307,7 @@ cy:
           clear_filters: "Clirio hidlwyr"
         table:
           timestamp: "Amser"
+          activity: "Gweithgarwch"
           record_type: "Math o Gofnod"
           event: "Digwyddiad"
           user: "Defnyddiwr"
@@ -271,9 +343,39 @@ cy:
         new_state_create: "Cyflwr y cofnod pan gafodd ei greu"
         new_state_update: "Cyflwr y cofnod ar ôl y newid hwn"
         new_state_other: "Cyflwr cyfredol y cofnod"
+        changes: "Newidiadau maes"
+        field: "Maes"
+        previous: "Gwerth blaenorol"
+        new: "Gwerth newydd"
+        record: "Cofnod"
+        view_title: "Manylyn archwilio"
+        view_subtitle: "Manylion a gofnodwyd ar gyfer y digwyddiad hwn"
+        snapshot: "Ciplun gwrthrych"
+        snapshot_description: "Cyflwr llawn y cofnod ar y foment hon"
+        no_data: "Nid oes data wedi'i gofnodi ar gyfer y fersiwn hon"
+    dashboard:
+      title: "Dangosfwrdd gweinyddol"
+      metrics:
+        total_users: "Cyfanswm defnyddwyr"
+        active_users: "Defnyddwyr gweithredol"
+        recent_signups: "Cofrestriadau diweddar"
+        total_people: "Cyfanswm pobl"
+        active_schedules: "Amserlenni gweithredol"
+        no_carers: "Dim gofalwyr"
+      quick_actions:
+        title: "Camau cyflym"
+        manage_users_title: "Rheoli defnyddwyr"
+        manage_users_description: "Gweld a rheoli cyfrifon defnyddwyr"
+        invitations_title: "Gwahoddiadau"
+        invitations_description: "Gwahodd defnyddwyr newydd i ymuno"
+        manage_people_title: "Rheoli pobl"
+        manage_people_description: "Gweld a rheoli cofnodion pobl"
+        audit_trail_title: "Llwybr archwilio"
+        audit_trail_description: "Gweld logiau archwilio'r system"
 
   authentication:
     login_required: "Mewngofnodwch i barhau"
+    session_expired: "Daeth eich sesiwn i ben. Mewngofnodwch eto."
     two_factor_required: "Er mwy o ddiogelwch, gosodwch ddilysu dau ffactor ar gyfer eich cyfrif."
 
   invitation_mailer:
