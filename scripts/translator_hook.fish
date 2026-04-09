@@ -47,7 +47,7 @@ echo "translator hook: running Codex translator with model $model"
 codex exec \
     --model $model \
     --cd $repo_root \
-    --add-dir /Users/damacus/.agents/skills \
+    --add-dir $HOME/.agents/skills \
     --sandbox workspace-write \
     --full-auto \
     $prompt
