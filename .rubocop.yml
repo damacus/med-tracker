@@ -134,3 +134,8 @@ Rails/ReversibleMigration:
   Exclude:
     - "db/migrate/20250930220140_create_carer_relationships.rb"
 
+# Standard Rails test boilerplate uses abort for safety checks
+Rails/Exit:
+  Exclude:
+    - "spec/rails_helper.rb"
+

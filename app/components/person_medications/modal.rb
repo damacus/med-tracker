@@ -8,7 +8,7 @@ module Components
       include Phlex::Rails::Helpers::TurboFrameTag
       include RubyUI
 
-      attr_reader :person_medication, :person, :medications, :title, :editing, :back_path
+      attr_reader :person_medication, :person, :medications, :editing, :back_path
 
       # rubocop:disable Metrics/ParameterLists
       def initialize(person_medication:, person:, medications:, title: nil, editing: false, back_path: nil)
@@ -18,7 +18,7 @@ module Components
         @medications = medications
         @editing = editing
         @back_path = back_path
-        @title = title || default_title
+        @explicit_title = title
         super()
       end
 
@@ -142,6 +142,10 @@ module Components
             end
           end
         end
+      end
+
+      def title
+        @explicit_title || default_title
       end
 
       def default_title
