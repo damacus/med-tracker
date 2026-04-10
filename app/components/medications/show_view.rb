@@ -96,44 +96,11 @@ module Components
       end
 
       def render_warnings_section
-        div(class: 'space-y-4') do
-          div(class: 'flex items-center gap-2') do
-            render Icons::AlertCircle.new(size: 20, class: 'text-on-error-container')
-            Heading(level: 2, size: '5', class: 'font-bold tracking-tight text-on-error-container') do
-              t('medications.show.safety_warnings')
-            end
-          end
-          Card(class: 'bg-error-container border-error/20 p-8') do
-            Text(size: '3', class: 'text-on-error-container leading-relaxed font-medium') { medication.warnings }
-          end
-        end
+        render Components::Medications::WarningsComponent.new(medication: medication)
       end
 
       def render_dosage_card
-        Card(class: 'p-8 space-y-6') do
-          Heading(level: 3, size: '4', class: 'font-bold') { t('medications.show.standard_dosage') }
-
-          if dosage_specified?
-            div(class: 'flex items-center gap-4') do
-              div(
-                class: 'w-12 h-12 rounded-2xl bg-secondary-container flex items-center justify-center ' \
-                       'text-on-secondary-container shadow-sm'
-              ) do
-                render Icons::CheckCircle.new(size: 24)
-              end
-              div do
-                span(class: 'text-3xl font-black text-foreground') { medication.dosage_amount.to_s }
-                span(class: 'text-lg font-bold text-muted-foreground ml-1') { medication.dosage_unit }
-              end
-            end
-          else
-            Text(size: '2', class: 'text-muted-foreground italic') { t('medications.show.no_dosage') }
-          end
-
-          div(class: 'pt-4 border-t border-surface-container-low') do
-            overview_item(t('medications.show.reorder_at_label'), pluralize(medication.reorder_threshold, 'unit'), Icons::Settings)
-          end
-        end
+        render Components::Medications::StandardDosageComponent.new(medication: medication)
       end
 
       def render_actions_card
@@ -204,107 +171,8 @@ module Components
         )
       end
 
-      def overview_item(label, value, icon_class)
-        div(class: 'flex items-center gap-4 group') do
-          div(
-            class: 'w-10 h-10 rounded-xl bg-surface-container-low flex items-center justify-center ' \
-                   'text-muted-foreground ' \
-                   'group-hover:bg-primary/5 group-hover:text-primary transition-colors'
-          ) do
-            render icon_class.new(size: 20)
-          end
-          div do
-            Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-muted-foreground') { label }
-            Text(size: '2', weight: 'semibold') { value }
-          end
-        end
-      end
-
       def render_dosages_section
-        dosages = medication.dosages.sort_by(&:amount)
-        can_manage = begin
-          view_context.policy(medication).update?
-        rescue StandardError
-          false
-        end
-
-        Card(class: 'p-6') do
-          div(class: 'flex items-center justify-between mb-4') do
-            Heading(level: 3, size: '4', class: 'font-bold') { t('medications.show.dosages_heading') }
-            if can_manage
-              Link(
-                href: view_context.new_medication_dosage_path(medication),
-                variant: :outline,
-                size: :sm,
-                data: { turbo_frame: 'modal' }
-              ) { t('medications.show.add_dosage') }
-            end
-          end
-
-          turbo_frame_tag 'modal'
-
-          if dosages.any?
-            div(class: 'space-y-3') do
-              dosages.each do |dosage|
-                render_dosage_row(dosage, can_manage)
-              end
-            end
-          else
-            Text(size: '2', class: 'text-muted-foreground italic') { t('medications.show.no_dosages') }
-          end
-        end
-      end
-
-      def render_dosage_row(dosage, can_manage)
-        div(class: 'flex items-start justify-between gap-3 rounded-lg border border-border p-3') do
-          div(class: 'space-y-1') do
-            render_dosage_summary(dosage)
-            render_dosage_scheduling_hint(dosage)
-          end
-
-          if can_manage
-            div(class: 'flex gap-2 flex-none') do
-              Link(
-                href: view_context.edit_medication_dosage_path(medication, dosage),
-                variant: :ghost,
-                size: :sm,
-                data: { turbo_frame: 'modal' }
-              ) { t('medications.show.edit_dosage') }
-            end
-          end
-        end
-      end
-
-      def render_dosage_summary(dosage)
-        div(class: 'flex items-center gap-2 flex-wrap') do
-          span(class: 'font-semibold text-sm') { "#{dosage.amount.to_f} #{dosage.unit}" }
-          span(class: 'text-muted-foreground text-sm') { dosage.frequency }
-          if dosage.default_for_adults?
-            Badge(variant: :outline, class: 'text-xs') { t('dosages.form.default_for_adults') }
-          end
-          if dosage.default_for_children?
-            Badge(variant: :secondary, class: 'text-xs') { t('medications.show.children') }
-          end
-        end
-      end
-
-      def render_dosage_scheduling_hint(dosage)
-        return unless dosage.default_max_daily_doses || dosage.default_min_hours_between_doses
-
-        div(class: 'text-xs text-muted-foreground') do
-          parts = []
-          if dosage.default_max_daily_doses
-            parts << t('medications.show.max_per_cycle', count: dosage.default_max_daily_doses)
-          end
-          if dosage.default_min_hours_between_doses
-            parts << t('medications.show.min_hours_apart', hours: dosage.default_min_hours_between_doses)
-          end
-          plain parts.join(' · ')
-        end
-      end
-
-      def dosage_specified?
-        medication.dosage_amount.present? && medication.dosage_unit.present?
+        render Components::Medications::DoseHistoryComponent.new(medication: medication)
       end
     end
   end
