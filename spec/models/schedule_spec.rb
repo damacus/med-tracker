@@ -5,6 +5,27 @@ require 'rails_helper'
 RSpec.describe Schedule do
   fixtures :accounts, :schedules, :people, :locations, :medications, :dosages
 
+  describe '#dose_constraints' do
+    let(:schedule) do
+      create(:schedule, max_daily_doses: 3, min_hours_between_doses: 4)
+    end
+
+    it 'returns a value object built from the persisted timing fields' do
+      expect(schedule.dose_constraints).to have_attributes(
+        max_daily_doses: 3,
+        min_hours_between_doses: 4
+      )
+    end
+  end
+
+  describe '#timing_restrictions?' do
+    it 'delegates to dose_constraints' do
+      schedule = create(:schedule, max_daily_doses: 1)
+
+      expect(schedule.timing_restrictions?).to be true
+    end
+  end
+
   describe 'active flag' do
     let(:schedule) { schedules(:john_paracetamol) }
 

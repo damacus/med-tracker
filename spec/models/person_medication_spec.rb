@@ -3,6 +3,25 @@
 require 'rails_helper'
 
 RSpec.describe PersonMedication do
+  describe '#dose_constraints' do
+    let(:person_medication) { create(:person_medication, max_daily_doses: 3, min_hours_between_doses: 4) }
+
+    it 'returns a value object built from the persisted timing fields' do
+      expect(person_medication.dose_constraints).to have_attributes(
+        max_daily_doses: 3,
+        min_hours_between_doses: 4
+      )
+    end
+  end
+
+  describe '#timing_restrictions?' do
+    it 'delegates to dose_constraints' do
+      person_medication = create(:person_medication, max_daily_doses: 1)
+
+      expect(person_medication.timing_restrictions?).to be true
+    end
+  end
+
   describe 'dose validations' do
     it 'requires a resolvable dose for new records' do
       medication = create(:medication, dosage_amount: nil, dosage_unit: nil)
