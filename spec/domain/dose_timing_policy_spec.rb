@@ -8,8 +8,10 @@ RSpec.describe DoseTimingPolicy do
   def policy(takes: [], max_daily_doses: nil, min_hours_between_doses: nil, dose_cycle: 'daily')
     described_class.new(
       takes: takes,
-      max_daily_doses: max_daily_doses,
-      min_hours_between_doses: min_hours_between_doses,
+      dose_constraints: DoseConstraints.new(
+        max_daily_doses: max_daily_doses,
+        min_hours_between_doses: min_hours_between_doses
+      ),
       dose_cycle: dose_cycle
     )
   end

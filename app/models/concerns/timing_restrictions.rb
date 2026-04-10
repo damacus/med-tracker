@@ -3,6 +3,15 @@
 module TimingRestrictions
   extend ActiveSupport::Concern
 
+  def dose_constraints
+    return @dose_constraints if defined?(@dose_constraints)
+
+    @dose_constraints = DoseConstraints.new(
+      max_daily_doses: max_daily_doses,
+      min_hours_between_doses: min_hours_between_doses
+    )
+  end
+
   def timing_policy
     return @timing_policy if defined?(@timing_policy)
 
@@ -14,20 +23,20 @@ module TimingRestrictions
             end
     @timing_policy = DoseTimingPolicy.new(
       takes: takes,
-      max_daily_doses: max_daily_doses,
-      min_hours_between_doses: min_hours_between_doses,
+      dose_constraints: dose_constraints,
       dose_cycle: cycle
     )
   end
 
   def reload(*)
     remove_instance_variable(:@timing_policy) if defined?(@timing_policy)
+    remove_instance_variable(:@dose_constraints) if defined?(@dose_constraints)
     super
   end
 
-  def timing_restrictions?
-    max_daily_doses.present? || min_hours_between_doses.present?
-  end
+  delegate :restrictions?, to: :dose_constraints, prefix: false
+
+  alias timing_restrictions? restrictions?
 
   def can_take_now?
     return true unless timing_restrictions?
