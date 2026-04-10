@@ -480,6 +480,8 @@ en:
       your_inventory: "Your Inventory"
       title: "Medications"
       add_medication: "Add Medication"
+      empty_title: "No medications yet"
+      empty_description: "Add your first medication to start tracking inventory and dosage."
       all: "All"
       view: "View"
       inventory_level: "Inventory Level"
