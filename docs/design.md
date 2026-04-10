@@ -16,6 +16,8 @@ for timing and daily-dose safety, while preserving an auditable history.
 Domain logic is enforced on the server. UI forms and pages render server-sent
 HTML and use Turbo Streams for updates.
 
+Phlex components are composition roots and rendering units, not the home of core medication business rules. New UI code should consume server-side domain objects and query objects rather than re-implementing supply, filtering, or administration logic inline.
+
 ## Core domain entities
 
 - `Person`: demographic and care-capacity record for an individual

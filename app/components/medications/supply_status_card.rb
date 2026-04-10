@@ -16,29 +16,28 @@ module Components
         Card(class: 'p-8 space-y-6 overflow-hidden relative') do
           Heading(level: 3, size: '4', class: 'font-bold') { t('medications.show.inventory_status') }
 
-          current = medication.current_supply || 0
-          percentage = medication.supply_percentage
+          supply_level = medication.supply_level
 
           div(class: 'space-y-4') do
             div(class: 'flex items-baseline gap-2') do
-              stock_count_class = if medication.low_stock?
+              stock_count_class = if supply_level.low_stock?
                                     'text-5xl font-black text-on-error-container'
                                   else
                                     'text-5xl font-black text-primary'
                                   end
 
               span(class: stock_count_class) do
-                current.to_s
+                supply_level.current.to_s
               end
               Text(size: '2', weight: 'bold', class: 'text-muted-foreground') do
-                current == 1 ? 'unit remaining' : 'units remaining'
+                supply_level.current == 1 ? 'unit remaining' : 'units remaining'
               end
             end
 
             div(class: 'space-y-2') do
               div(class: 'h-2 w-full bg-surface-container-low rounded-full overflow-hidden') do
-                div(class: "h-full #{medication.low_stock? ? 'bg-error' : 'bg-primary'} rounded-full",
-                    style: "width: #{percentage}%")
+                div(class: "h-full #{supply_level.low_stock? ? 'bg-error' : 'bg-primary'} rounded-full",
+                    style: "width: #{supply_level.percentage}%")
               end
               div(
                 class: 'flex justify-between items-center text-[10px] font-black uppercase ' \
@@ -49,7 +48,7 @@ module Components
               end
             end
 
-            if medication.low_stock?
+            if supply_level.low_stock?
               div(class: 'pt-2 space-y-2') do
                 Badge(variant: :destructive, class: 'w-full py-2 rounded-xl justify-center text-xs tracking-wide') do
                   t('medications.show.low_stock_alert')

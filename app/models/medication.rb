@@ -66,6 +66,8 @@ class Medication < ApplicationRecord # :nodoc:
   validates :supply_at_last_restock, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
   validates :reorder_threshold, presence: true, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
 
+  delegate :low_stock?, :out_of_stock?, to: :supply_level
+
   def sync_dosages
     return unless persisted? && switched_to_single_dose_mode?
     return if schedules.exists?
@@ -99,23 +101,7 @@ class Medication < ApplicationRecord # :nodoc:
   end
 
   def supply_percentage
-    current = current_supply || 0
-    denominator = supply_at_last_restock || [reorder_threshold, 1].max
-    return 0 if denominator <= 0
-
-    [current.to_f / denominator * 100, 100].min.round
-  end
-
-  def low_stock?
-    return false if current_supply.nil?
-
-    current_supply <= reorder_threshold
-  end
-
-  def out_of_stock?
-    return false if current_supply.nil?
-
-    current_supply <= 0
+    supply_level.percentage
   end
 
   def estimated_daily_consumption
@@ -140,24 +126,15 @@ class Medication < ApplicationRecord # :nodoc:
   end
 
   def forecast_available?
-    current_supply.present? && estimated_daily_consumption.positive?
+    supply_level.forecast_available?(daily_consumption: estimated_daily_consumption)
   end
 
   def days_until_out_of_stock
-    return nil unless forecast_available?
-    return 0 if out_of_stock?
-
-    (current_supply.to_f / estimated_daily_consumption).ceil
+    supply_level.days_until_out_of_stock(daily_consumption: estimated_daily_consumption)
   end
 
   def days_until_low_stock
-    return nil unless forecast_available?
-    return 0 if low_stock?
-
-    surplus = current_supply - reorder_threshold
-    return 0 if surplus <= 0
-
-    (surplus.to_f / estimated_daily_consumption).ceil
+    supply_level.days_until_low_stock(daily_consumption: estimated_daily_consumption)
   end
 
   def default_dosage_for_person_type(person_type)
@@ -178,6 +155,14 @@ class Medication < ApplicationRecord # :nodoc:
   def low_stock_date
     days = days_until_low_stock
     days ? Time.zone.today + days.days : nil
+  end
+
+  def supply_level
+    SupplyLevel.new(
+      current: current_supply,
+      reorder_threshold: reorder_threshold,
+      last_restock: supply_at_last_restock
+    )
   end
 
   private

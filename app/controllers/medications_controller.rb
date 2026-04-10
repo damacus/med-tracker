@@ -8,18 +8,20 @@ class MedicationsController < ApplicationController # rubocop:disable Metrics/Cl
 
   def index
     @current_category = params[:category]
-    medications = policy_scope(Medication).includes(:location)
-    locations = accessible_inventory_locations(medications)
+    base_scope = policy_scope(Medication).includes(:location)
+    locations = accessible_inventory_locations(base_scope)
     @current_location_id = resolved_inventory_location_id(locations)
 
-    medications = medications.where(location_id: @current_location_id) if @current_location_id.present?
-    categories = medications.where.not(category: [nil, '']).distinct.order(:category).pluck(:category)
-    medications = medications.where(category: @current_category) if @current_category.present?
+    medication_query = MedicationQuery.new(
+      scope: base_scope,
+      category: @current_category,
+      location_id: @current_location_id
+    )
 
     render Components::Medications::IndexView.new(
-      medications: medications,
+      medications: medication_query.call,
       current_category: @current_category,
-      categories: categories,
+      categories: medication_query.categories,
       locations: locations,
       current_location_id: @current_location_id,
       wizard_variant: current_user.wizard_variant
