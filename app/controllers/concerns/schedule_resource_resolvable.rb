@@ -10,6 +10,6 @@ module ScheduleResourceResolvable
   end
 
   def schedule_params
-    params.expect(schedule: %i[medication_id dosage_id frequency start_date end_date notes max_daily_doses min_hours_between_doses dose_cycle])
+    params.expect(schedule: %i[medication_id dose_amount dose_unit frequency start_date end_date notes max_daily_doses min_hours_between_doses dose_cycle])
   end
 end

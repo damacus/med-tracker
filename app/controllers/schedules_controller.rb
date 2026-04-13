@@ -163,8 +163,7 @@ class SchedulesController < ApplicationController
     if result.error == :invalid_amount
       log_invalid_take_attempt(source: 'schedule', amount: nil,
                                metadata: { schedule_id: @schedule.id,
-                                           medication_id: @schedule.medication_id,
-                                           dosage_id: @schedule.dosage_id })
+                                           medication_id: @schedule.medication_id })
     end
 
     return handle_take_medication_failure(result.error, scope: 'schedules') unless result.success

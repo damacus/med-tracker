@@ -17,7 +17,6 @@ RSpec.describe SchedulesIndexQuery do
       expect(result.map(&:id)).not_to include(expired_schedule.id)
       expect(result.first.association(:person)).to be_loaded
       expect(result.first.association(:medication)).to be_loaded
-      expect(result.first.association(:dosage)).to be_loaded
     end
 
     it 'respects the passed scope boundary' do

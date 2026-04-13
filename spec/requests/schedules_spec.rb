@@ -24,7 +24,8 @@ RSpec.describe 'Schedules' do
         inactive_schedule = Schedule.create!(
           person: people(:child_patient),
           medication: medications(:ibuprofen),
-          dosage: dosages(:ibuprofen_child),
+          dose_amount: 200,
+          dose_unit: 'mg',
           frequency: 'Inactive',
           start_date: 10.days.ago.to_date,
           end_date: 1.day.ago.to_date

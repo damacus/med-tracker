@@ -59,6 +59,7 @@ module Components
           data: {
             controller: 'person-medication-form',
             person_type: person.person_type,
+            person_medication_form_dose_options_value: medication_dose_options.to_json,
             person_medication_form_current_step_value: workflow_initial_step,
             person_medication_form_translations_value: {
               chooseMedication: t('person_medications.form.workflow.choose_medication_title'),
@@ -167,6 +168,12 @@ module Components
 
       def dialog_size
         editing ? :xl : :md
+      end
+
+      def medication_dose_options
+        medications.each_with_object({}) do |medication, dose_options|
+          dose_options[medication.id.to_s] = medication.dose_options_payload
+        end
       end
     end
   end

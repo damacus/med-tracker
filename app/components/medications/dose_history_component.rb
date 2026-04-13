@@ -18,15 +18,15 @@ module Components
             Heading(level: 3, size: '4', class: 'font-bold') { t('medications.show.dosages_heading') }
             if can_manage?
               Link(
-                href: view_context.new_medication_dosage_path(medication),
+                href: view_context.edit_medication_path(
+                  medication,
+                  return_to: view_context.medication_path(medication)
+                ),
                 variant: :outline,
-                size: :sm,
-                data: { turbo_frame: 'modal' }
+                size: :sm
               ) { t('medications.show.add_dosage') }
             end
           end
-
-          turbo_frame_tag 'modal'
 
           if dosages.any?
             div(class: 'space-y-3') do
@@ -64,10 +64,12 @@ module Components
           if can_manage?
             div(class: 'flex gap-2 flex-none') do
               Link(
-                href: view_context.edit_medication_dosage_path(medication, dosage),
+                href: view_context.edit_medication_path(
+                  medication,
+                  return_to: view_context.medication_path(medication)
+                ),
                 variant: :ghost,
-                size: :sm,
-                data: { turbo_frame: 'modal' }
+                size: :sm
               ) { t('medications.show.edit_dosage') }
             end
           end

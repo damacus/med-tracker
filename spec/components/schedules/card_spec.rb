@@ -7,11 +7,11 @@ RSpec.describe Components::Schedules::Card, type: :component do
   let(:medication) { create(:medication, name: 'Ibuprofen') }
 
   let(:schedule) do
-    dosage = Dosage.create!(medication: medication, amount: 400.0, unit: 'mg', frequency: 'Twice daily')
     Schedule.create!(
       person: person,
       medication: medication,
-      dosage: dosage,
+      dose_amount: 400.0,
+      dose_unit: 'mg',
       frequency: 'Twice daily',
       start_date: 1.month.ago,
       end_date: 1.month.from_now
@@ -32,7 +32,7 @@ RSpec.describe Components::Schedules::Card, type: :component do
   end
 
   it 'disables the take button when schedule dose is invalid' do
-    schedule.dosage.amount = 0
+    schedule.dose_amount = 0
     vc = view_context
     vc.singleton_class.define_method(:current_user) { nil }
 

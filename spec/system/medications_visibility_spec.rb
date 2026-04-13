@@ -49,9 +49,9 @@ RSpec.describe 'MedicationsVisibility' do
     expect(page).to have_button('Save Medication', visible: :visible)
     click_button 'Save Medication'
 
-    # Step 4: Dosage wizard — skip dosage setup to reach the medication detail page
+    # Step 4: Dosage wizard — finish setup to reach the medication detail page
     expect(page).to have_content('Test Medication E2E created!')
-    click_link 'Skip for now'
+    click_link 'Done'
 
     expect(page).to have_content('Test Medication E2E')
     expect(page).to have_content('Home')

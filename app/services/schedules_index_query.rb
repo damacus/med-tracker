@@ -8,6 +8,6 @@ class SchedulesIndexQuery
   end
 
   def call
-    scope.active.includes(:person, :medication, :dosage).order(:start_date, :id)
+    scope.active.includes(:person, :medication).order(:start_date, :id)
   end
 end

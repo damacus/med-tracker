@@ -19,11 +19,11 @@ RSpec.describe Components::Dashboard::ScheduleHelpers do
   let(:schedule) do
     person = create(:person)
     medication = create(:medication)
-    dosage = Dosage.new(medication: medication, amount: 500.0, unit: 'mg')
     Schedule.new(
       person: person,
       medication: medication,
-      dosage: dosage,
+      dose_amount: 500.0,
+      dose_unit: 'mg',
       end_date: Date.new(2024, 12, 31),
       frequency: 'Twice daily'
     )
@@ -41,8 +41,7 @@ RSpec.describe Components::Dashboard::ScheduleHelpers do
       it 'formats decimal amounts with decimal' do
         person = create(:person)
         medication = create(:medication)
-        dosage = Dosage.new(medication: medication, amount: 2.5, unit: 'ml')
-        custom_schedule = Schedule.new(person: person, medication: medication, dosage: dosage)
+        custom_schedule = Schedule.new(person: person, medication: medication, dose_amount: 2.5, dose_unit: 'ml')
         custom_instance = test_class.new(schedule: custom_schedule, current_user: user)
 
         expect(custom_instance.format_dosage).to eq('2.5 ml')
@@ -53,8 +52,7 @@ RSpec.describe Components::Dashboard::ScheduleHelpers do
       it 'returns em dash' do
         person = create(:person)
         medication = create(:medication)
-        dosage = Dosage.new(medication: medication, amount: nil, unit: 'mg')
-        custom_schedule = Schedule.new(person: person, medication: medication, dosage: dosage)
+        custom_schedule = Schedule.new(person: person, medication: medication, dose_amount: nil, dose_unit: 'mg')
         custom_instance = test_class.new(schedule: custom_schedule, current_user: user)
 
         expect(custom_instance.format_dosage).to eq('—')
@@ -65,8 +63,7 @@ RSpec.describe Components::Dashboard::ScheduleHelpers do
       it 'returns em dash' do
         person = create(:person)
         medication = create(:medication)
-        dosage = Dosage.new(medication: medication, amount: 500.0, unit: nil)
-        custom_schedule = Schedule.new(person: person, medication: medication, dosage: dosage)
+        custom_schedule = Schedule.new(person: person, medication: medication, dose_amount: 500.0, dose_unit: nil)
         custom_instance = test_class.new(schedule: custom_schedule, current_user: user)
 
         expect(custom_instance.format_dosage).to eq('—')
@@ -77,7 +74,7 @@ RSpec.describe Components::Dashboard::ScheduleHelpers do
       it 'returns em dash' do
         person = create(:person)
         medication = create(:medication)
-        custom_schedule = Schedule.new(person: person, medication: medication, dosage: nil)
+        custom_schedule = Schedule.new(person: person, medication: medication)
         custom_instance = test_class.new(schedule: custom_schedule, current_user: user)
 
         expect(custom_instance.format_dosage).to eq('—')
@@ -103,7 +100,7 @@ RSpec.describe Components::Dashboard::ScheduleHelpers do
     context 'when medication is nil' do
       it 'returns em dash' do
         person = create(:person)
-        custom_schedule = Schedule.new(person: person, medication: nil, dosage: nil)
+        custom_schedule = Schedule.new(person: person, medication: nil)
         custom_instance = test_class.new(schedule: custom_schedule, current_user: user)
 
         expect(custom_instance.format_quantity).to eq('—')

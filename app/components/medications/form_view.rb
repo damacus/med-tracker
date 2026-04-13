@@ -75,6 +75,10 @@ module Components
 
               div(class: 'h-px bg-surface-container w-full')
 
+              render_dosage_options_section
+
+              div(class: 'h-px bg-surface-container w-full')
+
               render_warnings_field(form)
             end
 
@@ -343,6 +347,208 @@ module Components
       def render_supply_fields(_form)
         render_current_supply_field
         render_reorder_threshold_field
+      end
+
+      def render_dosage_options_section
+        div(class: 'space-y-6') do
+          Heading(level: 3, size: '4', class: 'font-bold text-foreground') { 'Dose Options' }
+          Text(size: '2', class: 'text-muted-foreground') do
+            'Manage all medication-owned dose options here. Schedules copy these values when they are created.'
+          end
+          div(class: 'space-y-6') do
+            dosage_form_rows.each_with_index do |dosage, index|
+              render_dosage_option_fields(dosage, index)
+            end
+          end
+        end
+      end
+
+      def dosage_form_rows
+        @dosage_form_rows ||= begin
+          rows = medication.dosage_records.to_a.sort_by { |dosage| [dosage.amount.to_f, dosage.id || 0] }
+          rows << medication.dosage_records.build if rows.none?(&:new_record?)
+          rows
+        end
+      end
+
+      def render_dosage_option_fields(dosage, index)
+        div(class: 'rounded-2xl border border-border bg-surface-container-low p-6 space-y-4') do
+          input(type: :hidden, name: dosage_field_name(index, 'id'), value: dosage.id) if dosage.persisted?
+
+          div(class: 'grid grid-cols-1 sm:grid-cols-2 gap-4') do
+            render_dosage_option_amount_field(dosage, index)
+            render_dosage_option_unit_field(dosage, index)
+          end
+
+          div(class: 'space-y-2', data: { controller: 'frequency-suggestions' }) do
+            render RubyUI::FormFieldLabel.new(for: "medication_dosage_records_attributes_#{index}_frequency") do
+              'Frequency label'
+            end
+            div(class: 'flex flex-nowrap overflow-x-auto gap-1.5 mt-1 mb-2 pb-0.5 -mx-0.5 px-0.5') do
+              Components::Dosages::Form::FREQUENCY_SUGGESTIONS.each do |suggestion|
+                button(
+                  type: 'button',
+                  data: {
+                    action: 'click->frequency-suggestions#suggest',
+                    suggestion: suggestion
+                  },
+                  class: 'inline-flex shrink-0 items-center rounded-full border border-border ' \
+                         'bg-surface-container-lowest px-2.5 py-0.5 text-xs font-medium ' \
+                         'text-muted-foreground shadow-sm whitespace-nowrap hover:bg-accent ' \
+                         'hover:border-border cursor-pointer transition-colors'
+                ) { suggestion }
+              end
+            end
+            render RubyUI::Input.new(
+              type: :text,
+              name: dosage_field_name(index, 'frequency'),
+              id: "medication_dosage_records_attributes_#{index}_frequency",
+              value: dosage.frequency,
+              placeholder: 'Once daily',
+              data: { 'frequency-suggestions-target': 'input' }
+            )
+          end
+
+          div(class: 'space-y-2') do
+            render RubyUI::FormFieldLabel.new(for: "medication_dosage_records_attributes_#{index}_description") do
+              'Description / notes'
+            end
+            render RubyUI::Input.new(
+              type: :text,
+              name: dosage_field_name(index, 'description'),
+              id: "medication_dosage_records_attributes_#{index}_description",
+              value: dosage.description,
+              placeholder: 'Optional'
+            )
+          end
+
+          div(class: 'grid grid-cols-1 sm:grid-cols-3 gap-4') do
+            render_dosage_default_number_field(
+              index: index,
+              config: {
+                field: 'default_max_daily_doses',
+                label: 'Max doses / cycle',
+                value: dosage.default_max_daily_doses,
+                min: '1'
+              }
+            )
+            render_dosage_default_number_field(
+              index: index,
+              config: {
+                field: 'default_min_hours_between_doses',
+                label: 'Min hours apart',
+                value: dosage.default_min_hours_between_doses,
+                min: '0',
+                step: '0.5'
+              }
+            )
+            render_dosage_default_cycle_field(dosage, index)
+          end
+
+          div(class: 'flex flex-wrap items-center gap-6') do
+            render_dosage_default_checkbox(dosage, index, 'default_for_adults', 'Default for adults')
+            render_dosage_default_checkbox(dosage, index, 'default_for_children', 'Default for children / dependents')
+            if dosage.persisted?
+              label(class: 'flex items-center gap-2 text-sm cursor-pointer text-destructive') do
+                input(
+                  type: 'checkbox',
+                  name: dosage_field_name(index, '_destroy'),
+                  value: '1',
+                  class: 'rounded border-input'
+                )
+                span { 'Remove this dose option' }
+              end
+            end
+          end
+        end
+      end
+
+      def render_dosage_option_amount_field(dosage, index)
+        div(class: 'space-y-2') do
+          render RubyUI::FormFieldLabel.new(for: "medication_dosage_records_attributes_#{index}_amount") do
+            'Amount'
+          end
+          render RubyUI::Input.new(
+            type: :number,
+            name: dosage_field_name(index, 'amount'),
+            id: "medication_dosage_records_attributes_#{index}_amount",
+            value: dosage.amount&.to_s,
+            step: 'any',
+            min: '0'
+          )
+        end
+      end
+
+      def render_dosage_option_unit_field(dosage, index)
+        div(class: 'space-y-2') do
+          render RubyUI::FormFieldLabel.new(for: "medication_dosage_records_attributes_#{index}_unit") do
+            'Unit'
+          end
+          render RubyUI::Input.new(
+            type: :text,
+            name: dosage_field_name(index, 'unit'),
+            id: "medication_dosage_records_attributes_#{index}_unit",
+            value: dosage.unit,
+            placeholder: 'mg, tablet, ml…',
+            list: "medication_dosage_unit_list_#{index}"
+          )
+          datalist(id: "medication_dosage_unit_list_#{index}") do
+            Medication::DOSAGE_UNITS.each { |unit| option(value: unit) }
+          end
+        end
+      end
+
+      def render_dosage_default_number_field(index:, config:)
+        field = config.fetch(:field)
+        div(class: 'space-y-2') do
+          render RubyUI::FormFieldLabel.new(for: "medication_dosage_records_attributes_#{index}_#{field}") do
+            config.fetch(:label)
+          end
+          options = {
+            type: :number,
+            name: dosage_field_name(index, field),
+            id: "medication_dosage_records_attributes_#{index}_#{field}",
+            value: config[:value]&.to_s,
+            min: config.fetch(:min)
+          }
+          options[:step] = config[:step] if config[:step]
+          render RubyUI::Input.new(**options)
+        end
+      end
+
+      def render_dosage_default_cycle_field(dosage, index)
+        div(class: 'space-y-2') do
+          render RubyUI::FormFieldLabel.new(for: "medication_dosage_records_attributes_#{index}_default_dose_cycle") do
+            'Dose cycle'
+          end
+          select(
+            name: dosage_field_name(index, 'default_dose_cycle'),
+            id: "medication_dosage_records_attributes_#{index}_default_dose_cycle",
+            class: 'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm'
+          ) do
+            option(value: '') { '— none —' }
+            MedicationDosage::DOSE_CYCLE_OPTIONS.each do |label, value|
+              option(value: value, selected: dosage.default_dose_cycle == value) { label }
+            end
+          end
+        end
+      end
+
+      def render_dosage_default_checkbox(dosage, index, field, label)
+        label(class: 'flex items-center gap-2 text-sm cursor-pointer') do
+          input(
+            type: 'checkbox',
+            name: dosage_field_name(index, field),
+            value: '1',
+            checked: dosage.public_send("#{field}?"),
+            class: 'rounded border-input'
+          )
+          span { label }
+        end
+      end
+
+      def dosage_field_name(index, field)
+        "medication[dosage_records_attributes][#{index}][#{field}]"
       end
 
       def render_current_supply_field

@@ -4,7 +4,13 @@ FactoryBot.define do
   factory :schedule do
     person
     medication
-    dosage
+
+    transient do
+      dosage { medication.adult_default_dosage || association(:dosage, medication: medication) }
+    end
+
+    dose_amount { dosage.amount }
+    dose_unit { dosage.unit }
     frequency { 'As needed' }
     start_date { Time.zone.today }
     end_date { 1.year.from_now.to_date }

@@ -55,7 +55,8 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
       Schedule.create!(
         person: jane,
         medication: medications(:paracetamol),
-        dosage: dosages(:paracetamol_adult),
+        dose_amount: 1000,
+        dose_unit: 'mg',
         start_date: 1.year.ago,
         end_date: 1.month.ago,
         frequency: 'Daily'
@@ -74,7 +75,8 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
         Schedule.create!(
           person: people(:john),
           medication: medications(:paracetamol),
-          dosage: dosages(:paracetamol_adult),
+          dose_amount: 1000,
+          dose_unit: 'mg',
           start_date: Time.zone.today,
           end_date: 1.year.from_now.to_date,
           frequency: 'As needed',
@@ -95,7 +97,8 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
         Schedule.create!(
           person: people(:john),
           medication: medications(:ibuprofen),
-          dosage: dosages(:ibuprofen_adult),
+          dose_amount: 400,
+          dose_unit: 'mg',
           start_date: Time.zone.today,
           end_date: 1.year.from_now.to_date,
           frequency: 'Every 2 hours',
@@ -126,7 +129,8 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
         Schedule.create!(
           person: people(:john),
           medication: medications(:paracetamol),
-          dosage: dosages(:paracetamol_adult),
+          dose_amount: 1000,
+          dose_unit: 'mg',
           start_date: Time.zone.today,
           end_date: 1.year.from_now.to_date,
           frequency: 'As needed',
@@ -149,11 +153,12 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
       let!(:schedule) do
         oos_medication = Medication.create!(name: 'OOS Med', current_supply: 0, reorder_threshold: 2,
                                             location: locations(:home))
-        dosage = Dosage.create!(medication: oos_medication, amount: 10, unit: 'mg', frequency: 'daily')
+        Dosage.create!(medication: oos_medication, amount: 10, unit: 'mg', frequency: 'daily')
         Schedule.create!(
           person: people(:john),
           medication: oos_medication,
-          dosage: dosage,
+          dose_amount: 10,
+          dose_unit: 'mg',
           start_date: Time.zone.today,
           end_date: 1.year.from_now.to_date,
           frequency: 'daily',

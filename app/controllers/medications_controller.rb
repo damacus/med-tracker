@@ -173,16 +173,6 @@ class MedicationsController < ApplicationController # rubocop:disable Metrics/Cl
     end
   end
 
-  def dosages
-    medication = policy_scope(Medication).find(params[:id])
-    authorize medication
-    render json: medication.dosages.select(
-      :id, :amount, :unit, :description, :frequency,
-      :default_for_adults, :default_for_children,
-      :default_max_daily_doses, :default_min_hours_between_doses, :default_dose_cycle
-    )
-  end
-
   private
 
   def set_medication
@@ -199,15 +189,32 @@ class MedicationsController < ApplicationController # rubocop:disable Metrics/Cl
 
   def medication_params
     params.expect(
-      medication: %i[name
-                     category
-                     description
-                     dosage_amount
-                     dosage_unit
-                     current_supply
-                     reorder_threshold
-                     warnings
-                     location_id]
+      medication: [
+        :name,
+        :category,
+        :description,
+        :dosage_amount,
+        :dosage_unit,
+        :current_supply,
+        :reorder_threshold,
+        :warnings,
+        :location_id,
+        {
+          dosage_records_attributes: %i[
+            id
+            amount
+            unit
+            frequency
+            description
+            default_for_adults
+            default_for_children
+            default_max_daily_doses
+            default_min_hours_between_doses
+            default_dose_cycle
+            _destroy
+          ]
+        }
+      ]
     )
   end
 
@@ -239,7 +246,7 @@ class MedicationsController < ApplicationController # rubocop:disable Metrics/Cl
   def seed_initial_dosage
     return unless @medication.dosage_amount.present? && @medication.dosage_unit.present?
 
-    @medication.dosages.create!(
+    @medication.dosage_records.create!(
       amount: @medication.dosage_amount,
       unit: @medication.dosage_unit,
       frequency: 'As directed',

@@ -10,7 +10,7 @@ class PersonShowQuery
   end
 
   def call
-    schedules = person.schedules.includes(:medication, :dosage)
+    schedules = person.schedules.includes(:medication)
     person_medications = person.person_medications.includes(:medication).ordered
 
     Result.new(

@@ -14,9 +14,14 @@ RSpec.describe Components::Medications::SupplyStatusCard, type: :component do
   context 'when forecast is available' do
     it 'renders the out-of-stock forecast' do
       medication_with_schedule = create(:medication, name: 'Paracetamol', current_supply: 50)
-      dosage = create(:dosage, medication: medication_with_schedule)
-      create(:schedule, medication: medication_with_schedule, dosage: dosage, max_daily_doses: 10,
-                        dose_cycle: :daily)
+      create(
+        :schedule,
+        medication: medication_with_schedule,
+        dose_amount: 500,
+        dose_unit: 'mg',
+        max_daily_doses: 10,
+        dose_cycle: :daily
+      )
 
       rendered = render_inline(described_class.new(medication: medication_with_schedule))
 
@@ -25,9 +30,14 @@ RSpec.describe Components::Medications::SupplyStatusCard, type: :component do
 
     it 'renders the low-stock forecast' do
       medication_with_schedule = create(:medication, name: 'Paracetamol', current_supply: 50)
-      dosage = create(:dosage, medication: medication_with_schedule)
-      create(:schedule, medication: medication_with_schedule, dosage: dosage, max_daily_doses: 10,
-                        dose_cycle: :daily)
+      create(
+        :schedule,
+        medication: medication_with_schedule,
+        dose_amount: 500,
+        dose_unit: 'mg',
+        max_daily_doses: 10,
+        dose_cycle: :daily
+      )
 
       rendered = render_inline(described_class.new(medication: medication_with_schedule))
 

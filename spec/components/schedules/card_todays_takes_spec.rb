@@ -5,12 +5,12 @@ require 'rails_helper'
 RSpec.describe Components::Schedules::Card, type: :component do
   let(:person) { create(:person) }
   let(:medication) { create(:medication, name: 'Ibuprofen') }
-  let(:dosage) { Dosage.create!(medication: medication, amount: 400.0, unit: 'mg', frequency: 'Twice daily') }
   let(:schedule) do
     Schedule.create!(
       person: person,
       medication: medication,
-      dosage: dosage,
+      dose_amount: 400.0,
+      dose_unit: 'mg',
       frequency: 'Twice daily',
       start_date: 1.month.ago,
       end_date: 1.month.from_now

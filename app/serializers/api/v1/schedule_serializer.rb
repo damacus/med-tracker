@@ -24,7 +24,8 @@ module Api
           id: schedule.id,
           person_id: schedule.person_id,
           medication_id: schedule.medication_id,
-          dosage_id: schedule.dosage_id,
+          dose_amount: schedule.dose_amount,
+          dose_unit: schedule.dose_unit,
           frequency: schedule.frequency,
           dose_cycle: schedule.dose_cycle
         }

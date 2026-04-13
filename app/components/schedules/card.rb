@@ -53,7 +53,7 @@ module Components
           end
           div do
             CardTitle(class: 'text-2xl font-black tracking-tight mb-1 text-foreground') { schedule.medication.name }
-            dosage_text = "#{schedule.dosage.amount.to_i}#{schedule.dosage.unit}"
+            dosage_text = "#{schedule.dose_amount.to_i}#{schedule.dose_unit}"
             CardDescription(class: 'text-muted-foreground font-bold uppercase text-[10px] tracking-widest') do
               "#{dosage_text} • #{schedule.frequency}"
             end
@@ -241,7 +241,7 @@ module Components
             end
           end
           Text(size: '1', weight: 'black', class: 'text-muted-foreground uppercase tracking-tighter') do
-            "#{take.amount_ml.to_i}#{schedule.dosage.unit}"
+            "#{take.amount_ml.to_i}#{schedule.dose_unit}"
           end
         end
       end
@@ -255,7 +255,7 @@ module Components
         render Components::Medications::TakeAction.new(
           source: schedule,
           context: { person: person, current_user: current_user },
-          amount: schedule.dosage.amount,
+          amount: schedule.dose_amount,
           button: {
             label: take_label('schedules'),
             variant: :primary,
@@ -283,7 +283,7 @@ module Components
       end
 
       def invalid_dose_configured?
-        schedule.dosage.amount.to_f <= 0
+        schedule.dose_amount.to_f <= 0
       end
 
       def stock_source_resolver

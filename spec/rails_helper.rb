@@ -31,6 +31,7 @@ begin
 rescue ActiveRecord::PendingMigrationError => e
   abort e.to_s.strip
 end
+
 RSpec.configure do |config|
   # Auto-tag specs that require a browser based on directory or type.
   # This allows CI to split tests with `--tag browser` / `--tag ~browser`

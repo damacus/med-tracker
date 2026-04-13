@@ -25,7 +25,7 @@ RSpec.describe 'Add schedule modal flow' do
 
     select 'Ibuprofen', from: 'Medication'
 
-    choose("schedule_dosage_id_#{dosages(:ibuprofen_child).id}", allow_label_click: true)
+    choose('schedule_dose_option_200_mg', allow_label_click: true)
 
     fill_in 'Frequency', with: 'Twice daily'
     fill_in 'Start date', with: Date.current.strftime('%Y-%m-%d')

@@ -58,4 +58,20 @@ RSpec.describe 'API v1 resources' do
     expect(response.parsed_body.dig('data', 'person_id')).to eq(people(:admin).id)
     expect(response.parsed_body.dig('data', 'morning_time')).to eq('08:00:00')
   end
+
+  it 'serializes schedule dose snapshot fields instead of dosage identity' do
+    login_data = api_login(user)
+
+    get api_v1_schedules_path,
+        headers: api_auth_headers(login_data.fetch('access_token')),
+        as: :json
+
+    schedule = response.parsed_body.fetch('data').find { |row| row.fetch('id') == schedules(:john_paracetamol).id }
+
+    expect(schedule).to include(
+      'dose_amount' => '1000.0',
+      'dose_unit' => 'mg'
+    )
+    expect(schedule).not_to have_key('dosage_id')
+  end
 end

@@ -4,8 +4,8 @@ module Components
   module Dashboard
     module ScheduleHelpers
       def format_dosage
-        amount = schedule.dosage&.amount
-        unit = schedule.dosage&.unit
+        amount = schedule.dose_amount
+        unit = schedule.dose_unit
         return '—' unless amount && unit
 
         formatted_amount = amount == amount.to_i ? amount.to_i : amount
