@@ -45,29 +45,20 @@ module TimelineRefreshable
   end
 
   def other_timeline_streams(taken_source, medication)
+    related_sources = MedicationTimelineQuery.new(medication: medication, excluding: taken_source).call
     streams = []
 
-    other_schedules(taken_source, medication).each do |p|
+    related_sources.schedules.each do |p|
       stream = replace_timeline_item(p)
       streams << stream if stream
     end
 
-    other_pms(taken_source, medication).each do |pm|
+    related_sources.person_medications.each do |pm|
       stream = replace_timeline_item(pm)
       streams << stream if stream
     end
 
     streams
-  end
-
-  def other_schedules(taken_source, medication)
-    scope = Schedule.where(active: true).where(medication: medication).includes(:person, :medication, :dosage)
-    taken_source.is_a?(Schedule) ? scope.where.not(id: taken_source.id) : scope
-  end
-
-  def other_pms(taken_source, medication)
-    scope = PersonMedication.where(medication: medication).includes(:person, :medication)
-    taken_source.is_a?(PersonMedication) ? scope.where.not(id: taken_source.id) : scope
   end
 
   def replace_timeline_item(source)
