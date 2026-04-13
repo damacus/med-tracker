@@ -9,36 +9,19 @@ RSpec.describe Components::Layouts::ProfileMenu, type: :component do
   let(:carer_user) { users(:carer) }
 
   describe 'rendering' do
-    it 'renders a dropdown menu' do
+    it 'renders the dropdown shell and account label' do
       rendered = render_inline(described_class.new(current_user: admin_user))
 
       expect(rendered.text).to include(admin_user.name)
-    end
-
-    it 'renders My Account label' do
-      rendered = render_inline(described_class.new(current_user: admin_user))
-
       expect(rendered.text).to include('My Account')
     end
   end
 
   describe 'menu items' do
-    it 'renders Dashboard link' do
+    it 'renders the account menu links' do
       rendered = render_inline(described_class.new(current_user: admin_user))
 
-      expect(rendered.text).to include('Dashboard')
-    end
-
-    it 'renders Profile link' do
-      rendered = render_inline(described_class.new(current_user: admin_user))
-
-      expect(rendered.text).to include('Profile')
-    end
-
-    it 'renders Logout link' do
-      rendered = render_inline(described_class.new(current_user: admin_user))
-
-      expect(rendered.text).to include('Logout')
+      expect(rendered.text).to include('Dashboard', 'Profile', 'Logout')
     end
   end
 

@@ -18,33 +18,19 @@ RSpec.describe Components::Layouts::Sidebar, type: :component do
   end
 
   context 'when user is authenticated' do
-    it 'renders the brand name' do
-      rendered = render_sidebar(user: admin_user)
-      expect(rendered.text).to include('MedTracker')
-    end
-
-    it 'renders navigation links' do
-      rendered = render_sidebar(user: admin_user)
-      expect(rendered.text).to include('Dashboard')
-      expect(rendered.text).to include('Inventory')
-      expect(rendered.text).to include('Reports')
-    end
-
-    it 'renders Administration link for admin users' do
+    it 'renders the main sidebar content' do
       rendered = render_sidebar(user: admin_user)
 
-      expect(rendered.text).to include('Administration')
-    end
-
-    it 'renders the user profile section' do
-      rendered = render_sidebar(user: admin_user)
-      expect(rendered.text).to include(admin_user.person.name)
-      expect(rendered.text).to include('Administrator')
-    end
-
-    it 'renders the sign out button' do
-      rendered = render_sidebar(user: admin_user)
-      expect(rendered.text).to include('Sign Out')
+      expect(rendered.text).to include(
+        'MedTracker',
+        'Dashboard',
+        'Inventory',
+        'Reports',
+        'Administration',
+        admin_user.person.name,
+        'Administrator',
+        'Sign Out'
+      )
     end
 
     it 'uses a readable active state for the highlighted link' do

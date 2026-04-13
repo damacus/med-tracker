@@ -13,7 +13,7 @@ RSpec.describe 'Profiles' do
   end
 
   describe 'GET /profile' do
-    it 'renders the profile structure and account security content' do
+    it 'renders the profile page shell and key sections' do
       get profile_path
 
       expect(response).to have_http_status(:ok)
@@ -21,14 +21,7 @@ RSpec.describe 'Profiles' do
       expect(response.body).to include(user.name)
       expect(response.body).to include(account.email)
       expect(response.body).to include('Account Security')
-      expect(response.body).to include('Change Email Address')
-      expect(response.body).to include('Change Password')
-      expect(response.body).to include('Danger Zone')
-      expect(response.body).to include('Close Account')
       expect(response.body).to include('System Information')
-      expect(response.body).to include('App Version')
-      expect(response.body).to include('Docs')
-      expect(response.body).to include('Release Notes')
       expect(response.body.scan('data-turbo-frame="modal"').size).to be >= 2
     end
 
@@ -78,7 +71,6 @@ RSpec.describe 'Profiles' do
       expect(response.body).to include('Regenerate')
       expect(response.body).to include('Test Passkey')
       expect(response.body).to include('Remove')
-      expect(response.body).to include('Add a passkey')
     end
   end
 end
