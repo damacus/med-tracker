@@ -50,37 +50,26 @@ module Components
 
       private
 
-      def render_status_badge
-        supply_level = medication.supply_level
+      def presenter
+        @presenter ||= ::Medications::SupplyStatusPresenter.new(medication: medication)
+      end
 
-        if medication.reorder_ordered?
-          Badge(variant: :default) { t('medications.reorder_statuses.ordered') }
-        elsif medication.reorder_received?
-          Badge(variant: :success) { t('medications.reorder_statuses.received') }
-        elsif supply_level.out_of_stock?
-          Badge(variant: :destructive) { t('dashboard.statuses.out_of_stock') }
-        elsif supply_level.low_stock?
-          Badge(variant: :warning) { t('medications.show.low_stock_alert') }
-        else
-          Badge(variant: :success) { t('medications.index.in_stock', default: 'In Stock') }
-        end
+      def render_status_badge
+        Badge(variant: presenter.status_variant) { presenter.status_label }
       end
 
       def render_supply_bar
-        supply_level = medication.supply_level
-        bar_color = supply_level.low_stock? ? 'bg-destructive' : 'bg-primary'
-
         div(class: 'space-y-2') do
           div(
             class: 'flex justify-between items-center text-[10px] font-black uppercase ' \
                    'tracking-widest text-muted-foreground'
           ) do
             span { t('medications.index.inventory_level') }
-            span { pluralize(supply_level.current, 'unit') }
+            span { presenter.inventory_units_label }
           end
           div(class: 'h-1.5 w-full bg-surface-container-low rounded-full overflow-hidden') do
-            div(class: "h-full #{bar_color} rounded-full transition-all duration-1000",
-                style: "width: #{supply_level.percentage}%")
+            div(class: "h-full #{presenter.list_supply_bar_class} rounded-full transition-all duration-1000",
+                style: "width: #{presenter.supply_level.percentage}%")
           end
         end
       end
