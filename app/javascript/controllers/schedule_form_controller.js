@@ -11,6 +11,7 @@ export default class extends Controller {
 
   connect() {
     this.dosageData = {}
+    this.#cacheDoseOptionsForSelectedMedication()
     this.validate()
   }
 
@@ -65,8 +66,8 @@ export default class extends Controller {
 
     const dosageInput = this.element.querySelector('[name="schedule[dose_option_key]"]')
     const optionKey = dosageInput?.value
-    if (optionKey && this.dosageData[optionKey]) {
-      const dosage = this.dosageData[optionKey]
+    const dosage = this.#resolveSelectedDosage(optionKey)
+    if (dosage) {
       this.#fillDoseSnapshot(dosage)
       if (dosage.frequency && this.hasFrequencyInputTarget && !this.frequencyInputTarget.value) {
         this.frequencyInputTarget.value = dosage.frequency
@@ -140,11 +141,7 @@ export default class extends Controller {
     }
 
     try {
-      const dosages = this.doseOptionsValue?.[medicationId] || []
-
-      // Cache dosage data for use in onDosageChange
-      this.dosageData = {}
-      dosages.forEach(d => { this.dosageData[String(d.selection_key)] = d })
+      const dosages = this.#cacheDoseOptionsForMedication(medicationId)
 
       // Identify the default dosage for this person's type
       const isChild = personType === 'minor' || personType === 'dependent_adult'
@@ -221,9 +218,42 @@ export default class extends Controller {
     if (this.hasDoseUnitInputTarget) this.doseUnitInputTarget.value = dosage.unit || ''
   }
 
+  #cacheDoseOptionsForSelectedMedication() {
+    const medicationId = this.#selectedMedicationId()
+    if (!medicationId) return
+
+    this.#cacheDoseOptionsForMedication(medicationId)
+  }
+
+  #cacheDoseOptionsForMedication(medicationId) {
+    const dosages = this.doseOptionsValue?.[medicationId] || []
+    this.dosageData = {}
+    dosages.forEach(d => { this.dosageData[String(d.selection_key)] = d })
+
+    return dosages
+  }
+
+  #resolveSelectedDosage(selectionKey) {
+    if (!selectionKey) return null
+    if (this.dosageData[selectionKey]) return this.dosageData[selectionKey]
+
+    const [amount, unit] = selectionKey.split('|')
+    if (!amount || !unit) return null
+
+    return { amount, unit }
+  }
+
   #clearDoseSnapshot() {
     if (this.hasDoseAmountInputTarget) this.doseAmountInputTarget.value = ''
     if (this.hasDoseUnitInputTarget) this.doseUnitInputTarget.value = ''
+  }
+
+  #selectedMedicationId() {
+    const checked = this.element.querySelector('[name="schedule[medication_id]"]:checked')
+    if (checked) return checked.value
+
+    const input = this.element.querySelector('[name="schedule[medication_id]"]')
+    return input?.value
   }
 
   #fieldPresent(fieldName) {
