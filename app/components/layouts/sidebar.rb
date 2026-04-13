@@ -75,17 +75,17 @@ module Components
         link_to path,
                 class: 'flex items-center gap-4 px-4 py-3 rounded-shape-full transition-all group no-underline ' \
                        "#{if is_active
-                            'bg-secondary-container text-on-secondary-container'
+                            'bg-sidebar-accent text-sidebar-accent-foreground shadow-sm'
                           else
                             'text-muted-foreground hover:text-foreground hover:bg-accent/60'
                           end}" do
           div(
             class: 'flex items-center justify-center ' \
-                   "#{is_active ? 'text-on-secondary-container' : 'group-hover:scale-110 transition-transform'}"
+                   "#{is_active ? 'text-sidebar-accent-foreground' : 'group-hover:scale-110 transition-transform'}"
           ) do
             render icon_class.new(size: 24)
           end
-          span(class: "hidden md:block font-bold text-sm #{'text-on-secondary-container' if is_active}") { label }
+          span(class: "hidden md:block font-bold text-sm #{'text-sidebar-accent-foreground' if is_active}") { label }
         end
       end
 
