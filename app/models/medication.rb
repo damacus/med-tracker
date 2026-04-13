@@ -70,7 +70,10 @@ class Medication < ApplicationRecord # :nodoc:
 
   def sync_dosages
     return unless persisted? && switched_to_single_dose_mode?
-    return if schedules.exists?
+
+    # ⚡ Bolt Optimization: Use `.any?` instead of `.exists?`
+    # This avoids a redundant COUNT/EXISTS query if `schedules` is already loaded in memory
+    return if schedules.any?
 
     # When switching to single-dose mode (dosage_amount is set),
     # remove all orphaned multi-dose records to prevent data pollution.
@@ -169,7 +172,10 @@ class Medication < ApplicationRecord # :nodoc:
 
   def single_dose_switch_requires_no_schedules
     return unless switching_to_single_dose_mode?
-    return unless schedules.exists?
+
+    # ⚡ Bolt Optimization: Use `.any?` instead of `.exists?`
+    # This avoids a redundant COUNT/EXISTS query if `schedules` is already loaded in memory
+    return unless schedules.any?
 
     errors.add(:dosage_amount,
                'cannot switch to a single standard dose while schedules still use dose options')
