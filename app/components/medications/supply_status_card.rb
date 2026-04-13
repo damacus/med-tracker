@@ -16,28 +16,20 @@ module Components
         Card(class: 'p-8 space-y-6 overflow-hidden relative') do
           Heading(level: 3, size: '4', class: 'font-bold') { t('medications.show.inventory_status') }
 
-          supply_level = medication.supply_level
-
           div(class: 'space-y-4') do
             div(class: 'flex items-baseline gap-2') do
-              stock_count_class = if supply_level.low_stock?
-                                    'text-5xl font-black text-on-error-container'
-                                  else
-                                    'text-5xl font-black text-primary'
-                                  end
-
-              span(class: stock_count_class) do
-                supply_level.current.to_s
+              span(class: presenter.stock_count_class) do
+                presenter.supply_level.current.to_s
               end
               Text(size: '2', weight: 'bold', class: 'text-muted-foreground') do
-                supply_level.current == 1 ? 'unit remaining' : 'units remaining'
+                presenter.remaining_units_label
               end
             end
 
             div(class: 'space-y-2') do
               div(class: 'h-2 w-full bg-surface-container-low rounded-full overflow-hidden') do
-                div(class: "h-full #{supply_level.low_stock? ? 'bg-error' : 'bg-primary'} rounded-full",
-                    style: "width: #{supply_level.percentage}%")
+                div(class: "h-full #{presenter.supply_bar_class} rounded-full",
+                    style: "width: #{presenter.supply_level.percentage}%")
               end
               div(
                 class: 'flex justify-between items-center text-[10px] font-black uppercase ' \
@@ -48,13 +40,13 @@ module Components
               end
             end
 
-            if supply_level.low_stock?
+            if presenter.supply_level.low_stock?
               div(class: 'pt-2 space-y-2') do
                 Badge(variant: :destructive, class: 'w-full py-2 rounded-xl justify-center text-xs tracking-wide') do
                   t('medications.show.low_stock_alert')
                 end
 
-                render_reorder_status_badge if medication.reorder_status.present?
+                render_reorder_status_badge if presenter.reorder_status_badge?
               end
             end
 
@@ -65,15 +57,15 @@ module Components
 
       private
 
+      def presenter
+        @presenter ||= ::Medications::SupplyStatusPresenter.new(medication: medication)
+      end
+
       def render_forecast_section
-        if medication.forecast_available?
+        if presenter.forecast_items.any?
           div(class: 'pt-4 border-t border-surface-container-low space-y-2') do
-            if medication.days_until_low_stock&.positive?
-              forecast_item(t('medications.show.forecast.low_in_days', days: medication.days_until_low_stock), :warning)
-            end
-            if medication.days_until_out_of_stock&.positive?
-              forecast_item(t('medications.show.forecast.empty_in_days', days: medication.days_until_out_of_stock),
-                            :destructive)
+            presenter.forecast_items.each do |item|
+              forecast_item(item[:message], item[:variant])
             end
           end
         else
@@ -95,27 +87,18 @@ module Components
       end
 
       def render_reorder_status_badge
-        variant = case medication.reorder_status.to_sym
-                  when :ordered then :default
-                  when :received then :success
-                  else :outline
-                  end
-
         div(class: 'flex flex-col gap-1') do
-          Badge(variant: variant, class: 'w-full py-2 rounded-xl justify-center text-xs tracking-wide') do
-            t("medications.reorder_statuses.#{medication.reorder_status}")
+          Badge(
+            variant: presenter.reorder_status_variant,
+            class: 'w-full py-2 rounded-xl justify-center text-xs tracking-wide'
+          ) do
+            presenter.reorder_status_label
           end
 
-          timestamp = if medication.reorder_received?
-                        medication.reordered_at
-                      elsif medication.reorder_ordered?
-                        medication.ordered_at
-                      end
-
-          if timestamp
+          if presenter.reorder_status_timestamp
             Text(size: '1', class: 'text-center text-muted-foreground font-medium') do
-              status_text = t("medications.reorder_statuses.#{medication.reorder_status}")
-              time_ago = time_ago_in_words(timestamp)
+              status_text = presenter.reorder_status_label
+              time_ago = time_ago_in_words(presenter.reorder_status_timestamp)
               "#{status_text} #{time_ago} ago"
             end
           end
