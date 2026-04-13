@@ -37,6 +37,20 @@ RSpec.describe 'Schedule Card', type: :system do
     expect(page).to have_css('div[data-state="open"]')
   end
 
+  it 'updates the persisted dose when changing the selected dose in the edit modal' do
+    within("#schedule_#{schedule.id}") do
+      find("a[href='#{edit_person_schedule_path(person, schedule)}']").click
+    end
+
+    expect(page).to have_content(/edit schedule/i)
+    find('[data-testid="dosage-trigger"]').click
+    find('[role="option"]', text: /300(?:\.0)? mg - Standard adult dose/).click
+    click_button I18n.t('schedules.form.update_plan')
+
+    expect(page).to have_content(I18n.t('schedules.updated'))
+    expect(schedule.reload).to have_attributes(dose_amount: BigDecimal('300'), dose_unit: 'mg')
+  end
+
   it 'renders a disabled blocked-state take button when the medication is out of stock' do
     medication.update!(current_supply: 0)
     visit person_path(person)
