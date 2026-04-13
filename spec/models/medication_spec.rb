@@ -11,6 +11,32 @@ RSpec.describe Medication do
     )
   end
 
+  def blank_dosage_row_attributes
+    {
+      amount: '',
+      unit: 'ml',
+      frequency: '',
+      description: '',
+      default_max_daily_doses: '',
+      default_min_hours_between_doses: '',
+      default_dose_cycle: 'daily',
+      default_for_adults: '0',
+      default_for_children: '0',
+      _destroy: '0'
+    }
+  end
+
+  def create_persisted_dose_option(medication)
+    medication.dosage_records.create!(
+      amount: 2.5,
+      unit: 'ml',
+      frequency: 'Every morning',
+      default_max_daily_doses: 1,
+      default_min_hours_between_doses: 24,
+      default_dose_cycle: :daily
+    )
+  end
+
   describe 'validations' do
     it { is_expected.to validate_presence_of(:name) }
     it { is_expected.not_to validate_presence_of(:current_supply) }
@@ -56,6 +82,22 @@ RSpec.describe Medication do
     it { is_expected.to belong_to(:location) }
     it { is_expected.to have_many(:dosage_records).class_name('MedicationDosageOption').dependent(:destroy) }
     it { is_expected.to have_many(:schedules).dependent(:destroy) }
+  end
+
+  describe 'nested dosage records' do
+    it 'ignores untouched auto-appended dose option rows on update' do
+      medication = create(:medication, dosage_unit: 'ml')
+      create_persisted_dose_option(medication)
+
+      expect(
+        medication.update(
+          name: 'Updated medication',
+          dosage_records_attributes: { '0' => blank_dosage_row_attributes }
+        )
+      ).to be(true)
+
+      expect(medication.reload.dosage_records.count).to eq(1)
+    end
   end
 
   describe '#restock!' do

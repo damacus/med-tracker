@@ -16,6 +16,10 @@ RSpec.describe Components::Medications::FormView, type: :component do
     persisted ? medication.dosage_records.create!(attributes) : medication.dosage_records.build(attributes)
   end
 
+  def dosage_row_field(rendered, index, field, tag: 'input')
+    rendered.at_css("#{tag}[name='medication[dosage_records_attributes][#{index}][#{field}]']")
+  end
+
   describe 'i18n translations' do
     it 'renders form with default locale translations' do
       medication = Medication.new(name: 'Test Medication')
@@ -153,6 +157,25 @@ RSpec.describe Components::Medications::FormView, type: :component do
       expect(max_doses.attribute('required')).not_to be_nil
       expect(min_hours.attribute('required')).not_to be_nil
       expect(dose_cycle.attribute('required')).not_to be_nil
+    end
+
+    it 'does not mark the auto-appended blank row as required' do
+      medication = create(:medication, dosage_unit: 'ml')
+      build_dose_option(medication, persisted: true, amount: 2.5, frequency: 'Every morning')
+
+      rendered = render_inline(described_class.new(medication: medication, title: 'Test Title'))
+
+      blank_row_fields = [
+        dosage_row_field(rendered, 1, 'amount'),
+        dosage_row_field(rendered, 1, 'frequency'),
+        dosage_row_field(rendered, 1, 'default_max_daily_doses'),
+        dosage_row_field(rendered, 1, 'default_min_hours_between_doses'),
+        dosage_row_field(rendered, 1, 'default_dose_cycle', tag: 'select')
+      ]
+
+      blank_row_fields.each do |field|
+        expect(field.attribute('required')).to be_nil
+      end
     end
 
     it 'renders destructive remove controls instead of a checkbox' do

@@ -476,7 +476,7 @@ module Components
           id: "medication_dosage_records_attributes_#{index}_frequency",
           value: dosage.frequency,
           placeholder: 'Every morning',
-          required: true,
+          required: dosage_row_requires_input?(dosage),
           data: { 'frequency-suggestions-target': 'input' },
           **field_error_attributes(
             dosage,
@@ -549,7 +549,7 @@ module Components
             value: dosage.amount&.to_s,
             step: 'any',
             min: '0',
-            required: true,
+            required: dosage_row_requires_input?(dosage),
             **field_error_attributes(dosage, :amount, input_id: "medication_dosage_records_attributes_#{index}_amount")
           )
           render_field_error(dosage, :amount, input_id: "medication_dosage_records_attributes_#{index}_amount")
@@ -593,7 +593,7 @@ module Components
             id: "medication_dosage_records_attributes_#{index}_#{field}",
             value: config[:value]&.to_s,
             min: config.fetch(:min),
-            required: true,
+            required: dosage_row_requires_input?(dosage),
             data: { 'frequency-suggestions-target': config.fetch(:target) }
           }
           options[:step] = config[:step] if config[:step]
@@ -618,9 +618,10 @@ module Components
             name: dosage_field_name(index, 'default_dose_cycle'),
             id: "medication_dosage_records_attributes_#{index}_default_dose_cycle",
             class: 'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm',
-            required: true,
+            required: dosage_row_requires_input?(dosage),
             data: { 'frequency-suggestions-target': 'doseCycle' }
           ) do
+            option(value: '', selected: dosage.default_dose_cycle.blank?) { 'Select cycle' }
             MedicationDosage::DOSE_CYCLE_OPTIONS.each do |label, value|
               option(value: value, selected: dosage.default_dose_cycle == value) { label }
             end
@@ -648,6 +649,29 @@ module Components
 
       def dosage_field_name(index, field)
         "medication[dosage_records_attributes][#{index}][#{field}]"
+      end
+
+      def dosage_row_requires_input?(dosage)
+        return true if dosage.persisted? || dosage.errors.any?
+
+        dosage_row_values(dosage).any?(&:present?) || dosage_row_default_flags(dosage).any?
+      end
+
+      def dosage_row_values(dosage)
+        [
+          dosage.amount,
+          dosage.frequency,
+          dosage.description,
+          dosage.default_max_daily_doses,
+          dosage.default_min_hours_between_doses
+        ]
+      end
+
+      def dosage_row_default_flags(dosage)
+        [
+          dosage.default_for_adults?,
+          dosage.default_for_children?
+        ]
       end
 
       def render_current_supply_field
