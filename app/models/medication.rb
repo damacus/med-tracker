@@ -144,13 +144,7 @@ class Medication < ApplicationRecord # :nodoc:
   end
 
   def default_dosage_for_person_type(person_type)
-    child_types = %w[minor dependent_adult]
-    loaded = dosages.to_a
-    if child_types.include?(person_type.to_s)
-      loaded.find(&:default_for_children) || loaded.first
-    else
-      loaded.find(&:default_for_adults) || loaded.first
-    end
+    child_person_type?(person_type) ? child_default_dosage : adult_default_dosage
   end
 
   def out_of_stock_date
@@ -180,19 +174,25 @@ class Medication < ApplicationRecord # :nodoc:
   end
 
   def adult_default_dosage
-    dosages.find(&:default_for_adults?) || dosages.first
+    default_dosage(:default_for_adults?)
   end
 
   def child_default_dosage
-    dosages.find(&:default_for_children?) || dosages.first
+    default_dosage(:default_for_children?)
   end
 
-  def dosage_for_person_type(person_type)
-    child_types = %w[minor dependent_adult]
-    child_types.include?(person_type.to_s) ? child_default_dosage : adult_default_dosage
-  end
+  alias dosage_for_person_type default_dosage_for_person_type
 
   private
+
+  def default_dosage(predicate)
+    loaded = dosages.to_a
+    loaded.find(&predicate) || loaded.first
+  end
+
+  def child_person_type?(person_type)
+    %w[minor dependent_adult].include?(person_type.to_s)
+  end
 
   def blank_dosage_record_attributes?(attributes)
     ignored_keys = %w[id _destroy unit default_dose_cycle]
