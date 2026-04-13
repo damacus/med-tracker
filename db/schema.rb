@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_24_090000) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_13_152000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -318,8 +318,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_24_090000) do
   create_table "schedules", force: :cascade do |t|
     t.boolean "active", default: true, null: false
     t.datetime "created_at", null: false
-    t.bigint "dosage_id", null: false
+    t.decimal "dose_amount", precision: 10, scale: 2
     t.integer "dose_cycle"
+    t.string "dose_unit"
     t.date "end_date"
     t.string "frequency"
     t.integer "max_daily_doses", default: 4
@@ -330,7 +331,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_24_090000) do
     t.date "start_date"
     t.datetime "updated_at", null: false
     t.index ["active"], name: "index_schedules_on_active"
-    t.index ["dosage_id"], name: "index_schedules_on_dosage_id"
     t.index ["medication_id"], name: "index_schedules_on_medication_id"
     t.index ["person_id"], name: "index_schedules_on_person_id"
   end
@@ -392,7 +392,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_24_090000) do
   add_foreign_key "person_medications", "medications", deferrable: :deferred
   add_foreign_key "person_medications", "people", deferrable: :deferred
   add_foreign_key "push_subscriptions", "accounts", deferrable: :deferred
-  add_foreign_key "schedules", "dosages", deferrable: :deferred
   add_foreign_key "schedules", "medications", deferrable: :deferred
   add_foreign_key "schedules", "people", deferrable: :deferred
   add_foreign_key "users", "people", deferrable: :deferred

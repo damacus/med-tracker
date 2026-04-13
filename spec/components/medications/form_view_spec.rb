@@ -75,4 +75,31 @@ RSpec.describe Components::Medications::FormView, type: :component do
       expect(dosage_input['min']).to eq('1')
     end
   end
+
+  describe 'dose options management' do
+    it 'renders nested medication-owned dosage fields' do
+      medication = build(:medication)
+      medication.dosage_records.build(amount: 5, unit: 'ml', frequency: 'Once daily')
+
+      rendered = render_inline(described_class.new(medication: medication, title: 'Test Title'))
+      html = rendered.to_html
+
+      expect(html).to include('Dose Options')
+      expect(html).to include('Manage all medication-owned dose options here.')
+      expect(html).to include('name="medication[dosage_records_attributes][0][amount]"')
+      expect(html).to include('name="medication[dosage_records_attributes][0][unit]"')
+      expect(html).to include('name="medication[dosage_records_attributes][0][frequency]"')
+    end
+
+    it 'renders frequency suggestions for medication-owned dosage fields' do
+      medication = build(:medication)
+      medication.dosage_records.build(amount: 5, unit: 'ml', frequency: 'Once daily')
+
+      rendered = render_inline(described_class.new(medication: medication, title: 'Test Title'))
+      html = rendered.to_html
+
+      expect(html).to match(/data-controller="[^"]*frequency-suggestions[^"]*"/)
+      expect(html).to include('data-action="click-&gt;frequency-suggestions#suggest"')
+    end
+  end
 end

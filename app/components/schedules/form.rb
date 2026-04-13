@@ -23,6 +23,7 @@ module Components
             controller: 'schedule-form',
             turbo_stream: true,
             person_type: person.person_type,
+            schedule_form_dose_options_value: medication_dose_options.to_json,
             schedule_form_next_url_value: new_person_schedule_path(person),
             schedule_form_translations_value: {
               selectDosage: t('schedules.form.select_dosage'),
@@ -36,6 +37,7 @@ module Components
           }
         ) do |f|
           render_errors if schedule.errors.any?
+          render_dose_snapshot_inputs
           render_form_fields(f)
           render_actions(f)
         end
@@ -128,6 +130,21 @@ module Components
         end
       end
 
+      def render_dose_snapshot_inputs
+        input(
+          type: :hidden,
+          name: 'schedule[dose_amount]',
+          value: schedule.dose_amount&.to_s,
+          data: { schedule_form_target: 'doseAmountInput' }
+        )
+        input(
+          type: :hidden,
+          name: 'schedule[dose_unit]',
+          value: schedule.dose_unit,
+          data: { schedule_form_target: 'doseUnitInput' }
+        )
+      end
+
       def render_medication_field(_f, action: 'change->schedule-form#updateDosages')
         FormField do
           FormFieldLabel(for: 'schedule_medication_id') do
@@ -179,7 +196,7 @@ module Components
 
       def render_dosage_cards
         FormField(class: 'md:col-span-2') do
-          FormFieldLabel(for: 'schedule_dosage_id') do
+          FormFieldLabel(for: 'schedule_dose_option_key') do
             plain t('schedules.form.dose')
             span(class: 'text-destructive ml-0.5') { ' *' }
           end
@@ -190,17 +207,19 @@ module Components
                 label(class: dosage_card_classes(dosage)) do
                   input(
                     type: :radio,
-                    name: 'schedule[dosage_id]',
-                    id: "schedule_dosage_id_#{dosage.id}",
-                    value: dosage.id,
-                    checked: schedule.dosage_id == dosage.id,
+                    name: 'schedule[dose_option_key]',
+                    id: dosage_dom_id(dosage),
+                    value: dosage.selection_key,
+                    checked: selected_dose_selection_key == dosage.selection_key,
                     required: true,
                     class: 'sr-only',
                     data: {
                       action: 'change->schedule-form#onDosageChange',
+                      amount: dosage.amount.to_s,
+                      unit: dosage.unit,
                       frequency: dosage.frequency,
-                      default_max_daily_doses: dosage.default_max_daily_doses,
-                      default_min_hours_between_doses: dosage.default_min_hours_between_doses,
+                      default_max_daily_doses: dosage.default_max_daily_doses&.to_s,
+                      default_min_hours_between_doses: dosage.default_min_hours_between_doses&.to_s,
                       default_dose_cycle: dosage.default_dose_cycle
                     }
                   )
@@ -232,15 +251,15 @@ module Components
 
       def render_dosage_field(_f)
         FormField do
-          FormFieldLabel(for: 'schedule_dosage_id') do
+          FormFieldLabel(for: 'schedule_dose_option_key') do
             plain t('schedules.form.dosage')
             span(class: 'text-destructive ml-0.5') { ' *' }
           end
           Select(data: { schedule_form_target: 'dosageSelect', testid: 'dosage-select' }) do
             SelectInput(
-              name: 'schedule[dosage_id]',
-              id: 'schedule_dosage_id',
-              value: schedule.dosage_id,
+              name: 'schedule[dose_option_key]',
+              id: 'schedule_dose_option_key',
+              value: selected_dose_selection_key,
               required: true,
               data: { action: 'change->schedule-form#onDosageChange' }
             )
@@ -253,8 +272,8 @@ module Components
                 placeholder: t('schedules.form.select_medication_first'),
                 data: { schedule_form_target: 'dosageValue' }
               ) do
-                if schedule.dosage
-                  format_dosage_option(schedule.dosage)
+                if selected_dosage_option
+                  format_dosage_option(selected_dosage_option)
                 else
                   t('schedules.form.select_medication_first')
                 end
@@ -262,7 +281,7 @@ module Components
             end
             SelectContent(data: { schedule_form_target: 'dosageContent' }) do
               (schedule.medication&.dosages || []).each do |dosage|
-                SelectItem(value: dosage.id.to_s) do
+                SelectItem(value: dosage.selection_key) do
                   format_dosage_option(dosage)
                 end
               end
@@ -410,7 +429,7 @@ module Components
               type: :submit,
               variant: :primary,
               size: :md,
-              disabled: schedule.new_record? && schedule.dosage.blank?,
+              disabled: schedule.new_record? && (schedule.dose_amount.blank? || schedule.dose_unit.blank?),
               data: { schedule_form_target: 'submit' }
             ) { schedule.new_record? ? t('schedules.form.add_plan') : t('schedules.form.update_plan') }
           end
@@ -423,12 +442,34 @@ module Components
 
       def dosage_card_classes(dosage)
         base = 'rounded-2xl border p-4 transition-colors cursor-pointer'
-        selected = if schedule.dosage_id == dosage.id
+        selected = if selected_dose_selection_key == dosage.selection_key
                      ' border-primary bg-primary/5 ring-2 ring-primary/20'
                    else
                      ' border-border bg-surface-container-lowest'
                    end
         "#{base}#{selected}"
+      end
+
+      def selected_dosage_option
+        return @selected_dosage_option if defined?(@selected_dosage_option)
+
+        @selected_dosage_option = (schedule.medication&.dosages || []).find do |dosage|
+          dosage.amount.to_s == schedule.dose_amount.to_s && dosage.unit == schedule.dose_unit
+        end
+      end
+
+      def selected_dose_selection_key
+        selected_dosage_option&.selection_key
+      end
+
+      def dosage_dom_id(dosage)
+        "schedule_dose_option_#{dosage.selection_key.parameterize(separator: '_')}"
+      end
+
+      def medication_dose_options
+        medications.each_with_object({}) do |medication, dose_options|
+          dose_options[medication.id.to_s] = medication.dose_options_payload
+        end
       end
     end
   end

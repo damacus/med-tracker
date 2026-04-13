@@ -86,7 +86,7 @@ module Components
 
       def render_action_button
         source = dose[:source]
-        amount = source.is_a?(::Schedule) ? source.dosage.amount : source.dose_amount
+        amount = source.dose_amount
 
         render Components::Medications::TakeAction.new(
           source: source,

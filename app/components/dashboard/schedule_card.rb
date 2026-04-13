@@ -96,7 +96,7 @@ module Components
         render Components::Medications::TakeAction.new(
           source: schedule,
           context: { person: person, current_user: current_user },
-          amount: schedule.dosage.amount,
+          amount: schedule.dose_amount,
           button: {
             label: t('dashboard.person_schedule.take_now'),
             variant: :success_outline,

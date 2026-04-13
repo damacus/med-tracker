@@ -13,7 +13,7 @@ module Components
 
         def view_template
           div(
-            id: "wizard_dosage_#{dosage.id}",
+            id: "wizard_dosage_#{dom_id_suffix}",
             class: 'flex items-center justify-between rounded-xl border ' \
                    'border-border bg-surface-container-lowest p-4 shadow-sm'
           ) do
@@ -43,6 +43,12 @@ module Components
             Badge(variant: :outline, class: 'text-[10px]') { 'Adults' } if dosage.default_for_adults?
             Badge(variant: :secondary, class: 'text-[10px]') { 'Children' } if dosage.default_for_children?
           end
+        end
+
+        def dom_id_suffix
+          return dosage.selection_key if dosage.respond_to?(:selection_key) && dosage.selection_key.present?
+
+          "#{dosage.amount}_#{dosage.unit}"
         end
       end
     end

@@ -22,4 +22,27 @@ RSpec.describe Components::Medications::DoseHistoryComponent, type: :component d
 
     expect(rendered.text).to include('No dosages')
   end
+
+  it 'links dose management back to the medication editor' do
+    expected_href = Rails.application.routes.url_helpers.edit_medication_path(
+      medication,
+      return_to: Rails.application.routes.url_helpers.medication_path(medication)
+    )
+    component = described_class.new(medication: medication)
+    allow(component).to receive(:can_manage?).and_return(true)
+
+    rendered = render_inline(component)
+
+    expect(rendered.to_html).to include(%(href="#{expected_href}"))
+  end
+
+  it 'does not render dosage route links' do
+    component = described_class.new(medication: medication)
+    allow(component).to receive(:can_manage?).and_return(true)
+
+    rendered = render_inline(component)
+
+    expect(rendered.to_html).not_to include('new_medication_dosage')
+    expect(rendered.to_html).not_to include('edit_medication_dosage')
+  end
 end

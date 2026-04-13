@@ -61,7 +61,7 @@ module Components
       private
 
       def dosage_label(schedule)
-        "#{schedule.dosage.amount} #{schedule.dosage.unit}"
+        "#{schedule.dose_amount} #{schedule.dose_unit}"
       end
 
       def format_date(value)

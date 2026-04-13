@@ -48,9 +48,11 @@ class Medication < ApplicationRecord # :nodoc:
 
   belongs_to :location
 
-  has_many :dosages, dependent: :destroy
+  has_many :dosage_records, class_name: 'MedicationDosageOption', dependent: :destroy, inverse_of: :medication
   has_many :schedules, dependent: :destroy
   has_many :person_medications, dependent: :destroy
+
+  accepts_nested_attributes_for :dosage_records, allow_destroy: true, reject_if: :all_blank
 
   validate :single_dose_switch_requires_no_schedules
   after_commit :sync_dosages, on: :update
@@ -166,6 +168,27 @@ class Medication < ApplicationRecord # :nodoc:
       reorder_threshold: reorder_threshold,
       last_restock: supply_at_last_restock
     )
+  end
+
+  def dosages
+    dosage_records.order(:amount, :id).map(&:to_value)
+  end
+
+  def dose_options_payload
+    dosages.map(&:to_option_payload)
+  end
+
+  def adult_default_dosage
+    dosages.find(&:default_for_adults?) || dosages.first
+  end
+
+  def child_default_dosage
+    dosages.find(&:default_for_children?) || dosages.first
+  end
+
+  def dosage_for_person_type(person_type)
+    child_types = %w[minor dependent_adult]
+    child_types.include?(person_type.to_s) ? child_default_dosage : adult_default_dosage
   end
 
   private

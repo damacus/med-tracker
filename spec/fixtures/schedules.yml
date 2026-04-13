@@ -4,7 +4,8 @@
 john_paracetamol:
   person: john
   medication: paracetamol
-  dosage: paracetamol_adult
+  dose_amount: 1000
+  dose_unit: mg
   frequency: 'As needed'
   start_date: <%= Date.today %>
   end_date: <%= 1.year.from_now.to_date %>
@@ -16,7 +17,8 @@ john_paracetamol:
 jane_ibuprofen:
   person: jane
   medication: ibuprofen
-  dosage: ibuprofen_adult
+  dose_amount: 400
+  dose_unit: mg
   frequency: Every 6-8 hours
   start_date: <%= Date.today %>
   end_date: <%= 1.year.from_now.to_date %>
@@ -29,7 +31,8 @@ jane_ibuprofen:
 bob_aspirin:
   person: bob
   medication: aspirin
-  dosage: aspirin_light
+  dose_amount: 75
+  dose_unit: mg
   frequency: Once daily
   start_date: <%= Date.today %>
   end_date: <%= 1.year.from_now.to_date %>
@@ -42,7 +45,8 @@ bob_aspirin:
 bob_weekly_med:
   person: bob
   medication: vitamin_d
-  dosage: vitamin_d_daily
+  dose_amount: 1000
+  dose_unit: IU
   frequency: Once weekly
   start_date: <%= Date.today %>
   end_date: <%= 1.year.from_now.to_date %>
@@ -54,7 +58,8 @@ bob_weekly_med:
 adult_patient_schedule:
   person: adult_patient_person
   medication: paracetamol
-  dosage: paracetamol_adult
+  dose_amount: 1000
+  dose_unit: mg
   frequency: 'As needed'
   start_date: <%= Date.today %>
   end_date: <%= 1.year.from_now.to_date %>
@@ -66,7 +71,8 @@ adult_patient_schedule:
 patient_schedule:
   person: child_patient
   medication: ibuprofen
-  dosage: ibuprofen_child
+  dose_amount: 200
+  dose_unit: mg
   frequency: 'Every 6 hours'
   start_date: <%= Date.today %>
   end_date: <%= 1.year.from_now.to_date %>
@@ -78,7 +84,8 @@ patient_schedule:
 child_schedule:
   person: child_user_person
   medication: paracetamol
-  dosage: paracetamol_child
+  dose_amount: 250
+  dose_unit: mg
   frequency: 'As needed'
   start_date: <%= Date.today %>
   end_date: <%= 1.year.from_now.to_date %>
@@ -90,7 +97,8 @@ child_schedule:
 active_schedule:
   person: john
   medication: paracetamol
-  dosage: paracetamol_adult
+  dose_amount: 1000
+  dose_unit: mg
   frequency: 'Twice daily'
   start_date: <%= Date.today %>
   end_date: <%= 1.year.from_now.to_date %>

@@ -34,7 +34,7 @@ module FamilyDashboard
         schedules = if person.schedules.loaded?
                       person.schedules.select(&:active?)
                     else
-                      person.schedules.active.includes(:medication, :dosage).to_a
+                      person.schedules.active.includes(:medication).to_a
                     end
         hash[person.id] = schedules
       end

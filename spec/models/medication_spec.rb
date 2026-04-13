@@ -54,7 +54,7 @@ RSpec.describe Medication do
 
   describe 'associations' do
     it { is_expected.to belong_to(:location) }
-    it { is_expected.to have_many(:dosages).dependent(:destroy) }
+    it { is_expected.to have_many(:dosage_records).class_name('MedicationDosageOption').dependent(:destroy) }
     it { is_expected.to have_many(:schedules).dependent(:destroy) }
   end
 

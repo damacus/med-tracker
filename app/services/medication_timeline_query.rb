@@ -20,7 +20,7 @@ class MedicationTimelineQuery
   private
 
   def schedules
-    relation = Schedule.active.where(medication: medication).includes(:person, :medication, :dosage)
+    relation = Schedule.active.where(medication: medication).includes(:person, :medication)
     excluding.is_a?(Schedule) ? relation.where.not(id: excluding.id) : relation
   end
 

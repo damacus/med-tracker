@@ -4,8 +4,6 @@ module Components
   module Medications
     module Wizard
       class StepDosages < Components::Base
-        include Phlex::Rails::Helpers::TurboFrameTag
-
         attr_reader :medication
 
         def initialize(medication:)
@@ -17,7 +15,6 @@ module Components
           div(id: 'wizard-content', class: 'space-y-8') do
             render_header
             render_dosage_list
-            render_dosage_form
             render_actions
           end
         end
@@ -36,26 +33,23 @@ module Components
               "#{medication.name} created!"
             end
             Text(size: '2', class: 'text-muted-foreground max-w-sm mx-auto') do
-              'Now add dose size options. For example, different amounts for adults and children.'
+              'Review the dose options and continue in the medication editor if you need to add or adjust them.'
             end
           end
         end
 
         def render_dosage_list
           div(id: 'dosage-list', class: 'space-y-3') do
-            medication.dosages.reload.order(:amount).each do |dosage|
-              render DosageRow.new(dosage: dosage)
-            end
-          end
-        end
-
-        def render_dosage_form
-          turbo_frame_tag 'dosage-form' do
-            div(class: 'rounded-2xl border border-dashed border-border p-6 bg-surface-container-low') do
-              render WizardDosageForm.new(
-                dosage: medication.dosages.build,
-                medication: medication
-              )
+            if medication.dosages.any?
+              medication.dosages.sort_by(&:amount).each do |dosage|
+                render DosageRow.new(dosage: dosage)
+              end
+            else
+              div(class: 'rounded-2xl border border-dashed border-border p-6 bg-surface-container-low text-center') do
+                Text(size: '2', class: 'text-muted-foreground') do
+                  'No dose options are configured yet.'
+                end
+              end
             end
           end
         end
@@ -63,11 +57,11 @@ module Components
         def render_actions
           div(class: 'flex items-center justify-between pt-6 border-t border-border') do
             Link(
-              href: medication_path(medication),
-              variant: :ghost,
-              class: 'font-bold text-muted-foreground hover:text-foreground',
+              href: edit_medication_path(medication, return_to: medication_path(medication)),
+              variant: :outline,
+              class: 'font-bold',
               data: { turbo_frame: '_top' }
-            ) { 'Skip for now' }
+            ) { 'Manage dose options' }
 
             Link(
               href: medication_path(medication),

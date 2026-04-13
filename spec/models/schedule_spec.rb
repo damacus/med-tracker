@@ -33,7 +33,8 @@ RSpec.describe Schedule do
       new_schedule = described_class.new(
         person: people(:john),
         medication: medications(:paracetamol),
-        dosage: dosages(:paracetamol_adult),
+        dose_amount: 1000,
+        dose_unit: 'mg',
         start_date: Time.zone.today,
         end_date: Time.zone.today + 30.days
       )
@@ -58,7 +59,8 @@ RSpec.describe Schedule do
       described_class.new(
         person: person,
         medication: medication,
-        dosage: dosage,
+        dose_amount: dosage.amount,
+        dose_unit: dosage.unit,
         start_date: Time.zone.today,
         end_date: Time.zone.today + 30.days
       )
@@ -80,7 +82,7 @@ RSpec.describe Schedule do
         reorder_threshold: 10
       )
     end
-    let(:dosage) { Dosage.create!(medication: medication, amount: 10, unit: 'mg', frequency: 'daily') }
+    let(:dosage) { create(:dosage, medication: medication, amount: 10, unit: 'mg', frequency: 'daily') }
 
     it { is_expected.to validate_presence_of(:start_date) }
     it { is_expected.to validate_presence_of(:end_date) }
@@ -103,7 +105,7 @@ RSpec.describe Schedule do
     let(:dosage) { Dosage.create!(medication: medication, amount: 10, unit: 'mg', frequency: 'daily') }
     let(:schedule) do
       described_class.create!(
-        person: person, medication: medication, dosage: dosage,
+        person: person, medication: medication, dose_amount: dosage.amount, dose_unit: dosage.unit,
         start_date: Time.zone.today, end_date: Time.zone.today + 30.days
       )
     end
@@ -143,7 +145,7 @@ RSpec.describe Schedule do
     let(:dosage) { Dosage.create!(medication: medication, amount: 10, unit: 'mg', frequency: 'daily') }
     let(:schedule) do
       described_class.create!(
-        person: person, medication: medication, dosage: dosage,
+        person: person, medication: medication, dose_amount: dosage.amount, dose_unit: dosage.unit,
         start_date: Time.zone.today, end_date: Time.zone.today + 30.days
       )
     end
@@ -205,8 +207,15 @@ RSpec.describe Schedule do
 
   describe 'associations' do
     it { is_expected.to belong_to(:person) }
-    it { is_expected.to belong_to(:dosage) }
     it { is_expected.to have_many(:medication_takes).dependent(:destroy) }
+  end
+
+  describe '#default_dose_amount' do
+    it 'returns the persisted schedule dose amount' do
+      schedule = build(:schedule, dose_amount: 12.5, dose_unit: 'ml')
+
+      expect(schedule.default_dose_amount).to eq(12.5)
+    end
   end
 
   describe '#frequency vs #dose_cycle' do
@@ -216,7 +225,8 @@ RSpec.describe Schedule do
       described_class.create!(
         person: people(:john),
         medication: medication,
-        dosage: dosage,
+        dose_amount: dosage.amount,
+        dose_unit: dosage.unit,
         frequency: 'Up to 3 times daily, at least 4h apart',
         dose_cycle: :daily,
         start_date: Time.zone.today,

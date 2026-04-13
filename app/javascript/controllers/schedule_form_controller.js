@@ -1,11 +1,12 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static values = { nextUrl: String, translations: Object }
+  static values = { nextUrl: String, translations: Object, doseOptions: Object }
   static targets = [
     "submit", "dosageSelect", "medicationSelect", "dosageContent",
     "dosageValue", "dosageTrigger", "frequencyInput",
-    "maxDosesInput", "minHoursInput", "doseCycleInput"
+    "maxDosesInput", "minHoursInput", "doseCycleInput",
+    "doseAmountInput", "doseUnitInput"
   ]
 
   connect() {
@@ -15,10 +16,11 @@ export default class extends Controller {
 
   validate() {
     const medicationSelected = this.#fieldPresent('schedule[medication_id]')
-    const dosageSelected = this.#fieldPresent('schedule[dosage_id]')
+    const doseAmountPresent = this.#fieldPresent('schedule[dose_amount]')
+    const doseUnitPresent = this.#fieldPresent('schedule[dose_unit]')
     const frequencyPresent = this.#fieldPresent('schedule[frequency]')
     const startDatePresent = this.#fieldPresent('schedule[start_date]')
-    const isValid = medicationSelected && dosageSelected && frequencyPresent && startDatePresent
+    const isValid = medicationSelected && doseAmountPresent && doseUnitPresent && frequencyPresent && startDatePresent
 
     if (this.hasSubmitTarget) {
       this.submitTarget.disabled = !isValid
@@ -42,14 +44,17 @@ export default class extends Controller {
   }
 
   onDosageChange() {
-    const selectedRadio = this.element.querySelector('[name="schedule[dosage_id]"]:checked')
+    const selectedRadio = this.element.querySelector('[name="schedule[dose_option_key]"]:checked')
     if (selectedRadio) {
       const dosage = {
+        amount: selectedRadio.dataset.amount,
+        unit: selectedRadio.dataset.unit,
         frequency: selectedRadio.dataset.frequency,
         default_max_daily_doses: selectedRadio.dataset.defaultMaxDailyDoses,
         default_min_hours_between_doses: selectedRadio.dataset.defaultMinHoursBetweenDoses,
         default_dose_cycle: selectedRadio.dataset.defaultDoseCycle
       }
+      this.#fillDoseSnapshot(dosage)
       if (dosage.frequency && this.hasFrequencyInputTarget && !this.frequencyInputTarget.value) {
         this.frequencyInputTarget.value = dosage.frequency
       }
@@ -58,10 +63,11 @@ export default class extends Controller {
       return
     }
 
-    const dosageInput = this.element.querySelector('[name="schedule[dosage_id]"]')
-    const dosageId = dosageInput?.value
-    if (dosageId && this.dosageData[dosageId]) {
-      const dosage = this.dosageData[dosageId]
+    const dosageInput = this.element.querySelector('[name="schedule[dose_option_key]"]')
+    const optionKey = dosageInput?.value
+    if (optionKey && this.dosageData[optionKey]) {
+      const dosage = this.dosageData[optionKey]
+      this.#fillDoseSnapshot(dosage)
       if (dosage.frequency && this.hasFrequencyInputTarget && !this.frequencyInputTarget.value) {
         this.frequencyInputTarget.value = dosage.frequency
       }
@@ -105,10 +111,11 @@ export default class extends Controller {
     }
 
     // Reset the dosage select value
-    const dosageInput = this.element.querySelector('[name="schedule[dosage_id]"]')
+    const dosageInput = this.element.querySelector('[name="schedule[dose_option_key]"]')
     if (dosageInput) {
       dosageInput.value = ''
     }
+    this.#clearDoseSnapshot()
 
     // Reset the displayed value and disable trigger if no medication
     if (this.hasDosageValueTarget) {
@@ -133,12 +140,11 @@ export default class extends Controller {
     }
 
     try {
-      const response = await fetch(`/medications/${medicationId}/dosages.json`)
-      const dosages = await response.json()
+      const dosages = this.doseOptionsValue?.[medicationId] || []
 
       // Cache dosage data for use in onDosageChange
       this.dosageData = {}
-      dosages.forEach(d => { this.dosageData[String(d.id)] = d })
+      dosages.forEach(d => { this.dosageData[String(d.selection_key)] = d })
 
       // Identify the default dosage for this person's type
       const isChild = personType === 'minor' || personType === 'dependent_adult'
@@ -147,22 +153,23 @@ export default class extends Controller {
 
       // Auto-select default dosage if none already selected
       if (defaultDosage && dosageInput && !dosageInput.value) {
-        dosageInput.value = String(defaultDosage.id)
+        dosageInput.value = String(defaultDosage.selection_key)
         if (this.hasDosageValueTarget) {
           this.dosageValueTarget.textContent = `${defaultDosage.amount} ${defaultDosage.unit} - ${defaultDosage.description}`
         }
+        this.#fillDoseSnapshot(defaultDosage)
         this.#fillSchedulingDefaults(defaultDosage)
       }
 
       // Build RubyUI SelectItem markup
       const items = dosages.map((dosage) => {
         const text = `${dosage.amount} ${dosage.unit} - ${dosage.description}`
-        const isSelected = dosageInput && dosageInput.value === String(dosage.id)
+        const isSelected = dosageInput && dosageInput.value === String(dosage.selection_key)
         return `
           <div
             role="option"
             tabindex="0"
-            data-value="${dosage.id}"
+            data-value="${dosage.selection_key}"
             aria-selected="${isSelected}"
             data-orientation="vertical"
             data-controller="ruby-ui--select-item"
@@ -184,7 +191,7 @@ export default class extends Controller {
 
       this.validate()
     } catch (error) {
-      console.error('Error fetching dosages:', error)
+      console.error('Error loading dose options:', error)
     }
   }
 
@@ -207,6 +214,16 @@ export default class extends Controller {
         : dosage.default_dose_cycle
       if (cycleValue) this.doseCycleInputTarget.value = cycleValue
     }
+  }
+
+  #fillDoseSnapshot(dosage) {
+    if (this.hasDoseAmountInputTarget) this.doseAmountInputTarget.value = dosage.amount || ''
+    if (this.hasDoseUnitInputTarget) this.doseUnitInputTarget.value = dosage.unit || ''
+  }
+
+  #clearDoseSnapshot() {
+    if (this.hasDoseAmountInputTarget) this.doseAmountInputTarget.value = ''
+    if (this.hasDoseUnitInputTarget) this.doseUnitInputTarget.value = ''
   }
 
   #fieldPresent(fieldName) {

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 FactoryBot.define do
-  factory :dosage do
+  factory :dosage, class: 'MedicationDosageOption' do
     medication
     amount { 500 }
     unit { 'mg' }

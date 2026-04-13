@@ -33,7 +33,6 @@ RSpec.describe Dosage do
 
   describe 'associations' do
     it { is_expected.to belong_to(:medication) }
-    it { is_expected.to have_many(:schedules).dependent(:destroy) }
   end
 
   describe '#sync_medication_dosage' do

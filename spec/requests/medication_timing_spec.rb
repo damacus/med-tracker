@@ -21,7 +21,8 @@ RSpec.describe 'Medication Timing Restrictions' do
       Schedule.create!(
         person: person,
         medication: medication,
-        dosage: dosages(:paracetamol_adult),
+        dose_amount: 1000,
+        dose_unit: 'mg',
         start_date: Time.zone.today - 1.day,
         end_date: Time.zone.today + 30.days,
         max_daily_doses: 2,

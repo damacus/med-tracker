@@ -68,12 +68,10 @@ Rails.application.routes.draw do
   # Medication management
   resources :medications do
     member do
-      get :dosages
       patch :refill
       patch :mark_as_ordered
       patch :mark_as_received
     end
-    resources :dosages, only: %i[new create edit update destroy]
   end
   get 'medication-finder', to: 'medications#finder', as: :medication_finder
   get 'medication-finder/search', to: 'medications#search', as: :medication_finder_search

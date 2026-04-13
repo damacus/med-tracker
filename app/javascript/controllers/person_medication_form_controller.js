@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static values = { currentStep: Number, translations: Object }
+  static values = { currentStep: Number, translations: Object, doseOptions: Object }
   static targets = [
     "medicationSelect", "doseOptionInput", "doseAmountInput", "doseUnitInput",
     "maxDosesInput", "minHoursInput", "doseCycleInput", "stepPanel",
@@ -50,8 +50,7 @@ export default class extends Controller {
     this.#refreshWorkflow()
 
     try {
-      const response = await fetch(`/medications/${medicationId}/dosages.json`)
-      const dosages = await response.json()
+      const dosages = this.doseOptionsValue?.[medicationId] || []
       const options = dosages.length > 0 ? dosages : (fallbackDose ? [fallbackDose] : [])
 
       this.#renderDoseOptions(options)
@@ -92,7 +91,7 @@ export default class extends Controller {
       this.#syncDoseSummary()
       this.#refreshWorkflow()
     } catch (error) {
-      console.error('Error fetching dosages:', error)
+      console.error('Error loading dose options:', error)
     }
   }
 

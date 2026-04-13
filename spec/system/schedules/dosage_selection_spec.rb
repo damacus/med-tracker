@@ -26,9 +26,9 @@ RSpec.describe 'Schedule dosage selection' do
     select 'Ibuprofen', from: 'Medication'
 
     expect(page).to have_content('Change')
-    expect(page).to have_no_css('[name="schedule[dosage_id]"]:checked', visible: :hidden)
+    expect(page).to have_no_css('[name="schedule[dose_option_key]"]:checked', visible: :hidden)
     expect(page).to have_button('Add Plan', disabled: true)
-    choose("schedule_dosage_id_#{dosages(:ibuprofen_adult).id}", allow_label_click: true)
+    choose('schedule_dose_option_400_mg', allow_label_click: true)
 
     fill_in 'Frequency', with: 'Once daily'
     fill_in 'Start date', with: Date.current.strftime('%Y-%m-%d')

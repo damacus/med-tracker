@@ -91,8 +91,8 @@ module Components
       end
 
       def format_dosage(schedule)
-        amount = schedule.dosage&.amount
-        unit = schedule.dosage&.unit
+        amount = schedule.dose_amount
+        unit = schedule.dose_unit
         [amount, unit].compact.join(' ')
       end
 
@@ -119,7 +119,7 @@ module Components
         render Components::Medications::TakeAction.new(
           source: schedule,
           context: { person: person, current_user: current_user },
-          amount: schedule.dosage.amount,
+          amount: schedule.dose_amount,
           button: {
             label: t('dashboard.person_schedule.take_now'),
             variant: :ghost,
