@@ -6,11 +6,7 @@ module InventoryLocationFilterable
   private
 
   def accessible_inventory_locations(medications)
-    Location.joins(:medications)
-            .merge(medications.except(:includes))
-            .distinct
-            .order(:name)
-            .to_a
+    InventoryLocationsQuery.new(medications_scope: medications).call
   end
 
   def resolved_inventory_location_id(locations)
