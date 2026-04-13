@@ -8,11 +8,10 @@ RSpec.describe Components::Layouts::Sidebar, type: :component do
   let(:admin_user) { users(:admin) }
   let(:carer_user) { users(:carer) }
 
-  def render_sidebar(user: nil)
+  def render_sidebar(user: nil, path: '/')
     vc = view_context
     vc.singleton_class.define_method(:current_user) { user }
-    # Mock current_page?
-    allow(vc).to receive(:current_page?).and_return(false)
+    allow(vc.request).to receive(:path).and_return(path)
 
     html = vc.render(described_class.new(current_user: user))
     Nokogiri::HTML::DocumentFragment.parse(html)
@@ -46,6 +45,16 @@ RSpec.describe Components::Layouts::Sidebar, type: :component do
     it 'renders the sign out button' do
       rendered = render_sidebar(user: admin_user)
       expect(rendered.text).to include('Sign Out')
+    end
+
+    it 'uses a readable active state for the highlighted link' do
+      inventory_path = Rails.application.routes.url_helpers.medications_path
+      rendered = render_sidebar(user: admin_user, path: inventory_path)
+      inventory_link = rendered.at_css(%(a[href="#{inventory_path}"]))
+
+      expect(inventory_link['class']).to include('bg-sidebar-accent')
+      expect(inventory_link['class']).to include('text-sidebar-accent-foreground')
+      expect(inventory_link['class']).not_to include('text-on-secondary-container')
     end
   end
 
