@@ -13,35 +13,15 @@ class PeopleController < ApplicationController
 
   def show
     authorize @person
-    schedules = @person.schedules.includes(:medication, :dosage)
-    person_medications = @person.person_medications.includes(:medication).ordered
+    show_data = PersonShowQuery.new(person: @person).call
     editing = params[:editing] == 'true'
-
-    today_start = Time.current.beginning_of_day
-    schedule_ids = schedules.map(&:id)
-    person_medication_ids = person_medications.map(&:id)
-
-    takes_by_schedule = MedicationTake
-                        .where(schedule_id: schedule_ids, taken_at: today_start..)
-                        .includes(:taken_from_location, :taken_from_medication)
-                        .order(taken_at: :desc)
-                        .group_by(&:schedule_id)
-
-    takes_by_person_medication = MedicationTake
-                                 .where(person_medication_id: person_medication_ids, taken_at: today_start..)
-                                 .includes(:taken_from_location, :taken_from_medication)
-                                 .order(taken_at: :desc)
-                                 .group_by(&:person_medication_id)
 
     render Components::People::ShowView.new(
       person: @person,
-      schedules: schedules,
-      person_medications: person_medications,
+      schedules: show_data.schedules,
+      person_medications: show_data.person_medications,
       editing: editing,
-      preloaded_takes: {
-        schedules: takes_by_schedule,
-        person_medications: takes_by_person_medication
-      },
+      preloaded_takes: show_data.preloaded_takes,
       current_user: current_user
     )
   end
