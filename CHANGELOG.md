@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.3.36](https://github.com/damacus/med-tracker/compare/v0.3.35...v0.3.36) (2026-04-13)
+
+
+### Features
+
+* adopt Material You (M3) design system with expanded i18n coverage ([#1065](https://github.com/damacus/med-tracker/issues/1065)) ([c96186c](https://github.com/damacus/med-tracker/commit/c96186ce79baff6cbad0f86487793c43a572569a))
+
+
+### Bug Fixes
+
+* 🛡️ Sentinel: [MEDIUM] Fix Unvalidated Data Exposure via to_unsafe_h ([#1079](https://github.com/damacus/med-tracker/issues/1079)) ([35e5b6c](https://github.com/damacus/med-tracker/commit/35e5b6cd2c26ddd651d1ea441f8974b7d6bb3819))
+* align admin locale branches ([#1074](https://github.com/damacus/med-tracker/issues/1074)) ([a041fab](https://github.com/damacus/med-tracker/commit/a041fabddb233588713356fd02dd56b41e0c96ef))
+
+
+### Performance Improvements
+
+* ⚡ Bolt: [optimize location members view] ([#1063](https://github.com/damacus/med-tracker/issues/1063)) ([b3a903d](https://github.com/damacus/med-tracker/commit/b3a903d47f621012e9d9cfb7203779a26834a26a))
+* ⚡ Bolt: Replace `.exists?` with `.any?` to leverage preloaded associations ([#1080](https://github.com/damacus/med-tracker/issues/1080)) ([ebdfa75](https://github.com/damacus/med-tracker/commit/ebdfa75f7cd5e02a8034dd3b54aab5f432136320))
+
 ## [0.3.35](https://github.com/damacus/med-tracker/compare/v0.3.34...v0.3.35) (2026-03-31)
 
 
