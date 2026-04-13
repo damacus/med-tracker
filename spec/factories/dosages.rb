@@ -7,5 +7,8 @@ FactoryBot.define do
     unit { 'mg' }
     frequency { 'As needed' }
     description { 'Standard dose' }
+    default_max_daily_doses { 1 }
+    default_min_hours_between_doses { 24 }
+    default_dose_cycle { :daily }
   end
 end

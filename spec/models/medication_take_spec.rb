@@ -18,7 +18,17 @@ RSpec.describe MedicationTake do
     )
   end
 
-  let(:dosage) { Dosage.create!(medication: medication, amount: 10, unit: 'mg', frequency: 'daily') }
+  let(:dosage) do
+    Dosage.create!(
+      medication: medication,
+      amount: 10,
+      unit: 'mg',
+      frequency: 'daily',
+      default_max_daily_doses: 1,
+      default_min_hours_between_doses: 24,
+      default_dose_cycle: :daily
+    )
+  end
 
   let(:schedule) do
     Schedule.create!(
@@ -214,7 +224,15 @@ RSpec.describe MedicationTake do
         current_supply: 100,
         reorder_threshold: 10
       )
-      dosage = Dosage.create!(medication: medication, amount: 10, unit: 'mg', frequency: 'daily')
+      dosage = Dosage.create!(
+        medication: medication,
+        amount: 10,
+        unit: 'mg',
+        frequency: 'daily',
+        default_max_daily_doses: 1,
+        default_min_hours_between_doses: 24,
+        default_dose_cycle: :daily
+      )
 
       Schedule.create!(
         person: person,
