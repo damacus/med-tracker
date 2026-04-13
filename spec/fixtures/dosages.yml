@@ -5,6 +5,9 @@ paracetamol_adult:
   unit: mg
   description: Standard adult dose
   frequency: As needed
+  default_max_daily_doses: 4
+  default_min_hours_between_doses: 4
+  default_dose_cycle: daily
   medication: paracetamol
 
 paracetamol_light:
@@ -12,6 +15,9 @@ paracetamol_light:
   unit: mg
   description: Light adult dose
   frequency: As needed
+  default_max_daily_doses: 4
+  default_min_hours_between_doses: 4
+  default_dose_cycle: daily
   medication: paracetamol
 
 # Ibuprofen dosages
@@ -20,6 +26,9 @@ ibuprofen_adult:
   unit: mg
   description: Standard adult dose
   frequency: Every 6-8 hours
+  default_max_daily_doses: 4
+  default_min_hours_between_doses: 6
+  default_dose_cycle: daily
   medication: ibuprofen
 
 ibuprofen_light:
@@ -27,6 +36,9 @@ ibuprofen_light:
   unit: mg
   description: Light adult dose
   frequency: Every 6-8 hours
+  default_max_daily_doses: 4
+  default_min_hours_between_doses: 6
+  default_dose_cycle: daily
   medication: ibuprofen
 
 # Aspirin dosages
@@ -35,6 +47,9 @@ aspirin_adult:
   unit: mg
   description: Standard adult dose
   frequency: Once daily
+  default_max_daily_doses: 1
+  default_min_hours_between_doses: 24
+  default_dose_cycle: daily
   medication: aspirin
 
 aspirin_light:
@@ -42,6 +57,9 @@ aspirin_light:
   unit: mg
   description: Low dose for heart health
   frequency: Once daily
+  default_max_daily_doses: 1
+  default_min_hours_between_doses: 24
+  default_dose_cycle: daily
   medication: aspirin
 
 vitamin_d_daily:
@@ -49,6 +67,9 @@ vitamin_d_daily:
   unit: IU
   description: Daily Vitamin D supplement
   frequency: Once daily
+  default_max_daily_doses: 1
+  default_min_hours_between_doses: 24
+  default_dose_cycle: daily
   medication: vitamin_d
 
 # Calpol dosages
@@ -57,6 +78,9 @@ calpol_child:
   unit: ml
   description: Standard child dose
   frequency: Every 4-6 hours
+  default_max_daily_doses: 6
+  default_min_hours_between_doses: 4
+  default_dose_cycle: daily
   medication: calpol
 
 calpol_infant:
@@ -64,6 +88,9 @@ calpol_infant:
   unit: ml
   description: Standard infant dose
   frequency: Every 4-6 hours
+  default_max_daily_doses: 6
+  default_min_hours_between_doses: 4
+  default_dose_cycle: daily
   medication: calpol
 
 # Child dosages for paracetamol
@@ -72,6 +99,9 @@ paracetamol_child:
   unit: mg
   description: Standard child dose (6-12 years)
   frequency: Every 4-6 hours
+  default_max_daily_doses: 4
+  default_min_hours_between_doses: 4
+  default_dose_cycle: daily
   medication: paracetamol
 
 # Child dosages for ibuprofen
@@ -80,4 +110,7 @@ ibuprofen_child:
   unit: mg
   description: Standard child dose (6-12 years)
   frequency: Every 6-8 hours
+  default_max_daily_doses: 4
+  default_min_hours_between_doses: 6
+  default_dose_cycle: daily
   medication: ibuprofen

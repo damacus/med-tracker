@@ -13,12 +13,20 @@ RSpec.describe 'Medication dose option suggestions' do
     get edit_medication_path(medication)
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include('Once daily')
-    expect(response.body).to include('Every 4–6 hours')
+    expect(response.body).to include('Twice daily')
+    expect(response.body).to include('Every 4-6 hours')
     expect(response.body).to include('Every morning')
-    expect(response.body).to include('As needed (PRN)')
+    expect(response.body).to include('Every evening')
+    expect(response.body).to include('Once weekly')
     expect(response.body).to include('name="medication[dosage_records_attributes][0][frequency]"')
     expect(response.body).to match(/data-controller="[^"]*frequency-suggestions[^"]*"/)
     expect(response.body).to include('data-action="click->frequency-suggestions#suggest"')
+    expect(response.body).to include('data-frequency-suggestions-frequency-value="Every morning"')
+    expect(response.body).to include('data-frequency-suggestions-max-doses-value="1"')
+    expect(response.body).to include('data-frequency-suggestions-min-hours-value="24"')
+    expect(response.body).to include('data-frequency-suggestions-dose-cycle-value="daily"')
+    expect(response.body).to include('Matches the main dose unit')
+    expect(response.body).to include('id="medication_dosage_records_attributes_0_display_unit"')
+    expect(response.body).to match(/id="medication_dosage_records_attributes_0_display_unit"[^>]*disabled/)
   end
 end

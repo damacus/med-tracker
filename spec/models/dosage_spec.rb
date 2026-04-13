@@ -38,11 +38,11 @@ RSpec.describe Dosage do
   describe '#sync_medication_dosage' do
     let(:medication) { create(:medication, dosage_amount: 500, dosage_unit: 'mg') }
 
-    it 'clears standard dosage fields on the medication when a new dosage is created' do
+    it 'clears the standard dosage amount while preserving the medication unit' do
       expect do
         create(:dosage, medication: medication, amount: 10, unit: 'mg')
       end.to change { medication.reload.dosage_amount }.from(500).to(nil)
-                                                       .and change { medication.reload.dosage_unit }.from('mg').to(nil)
+      expect(medication.reload.dosage_unit).to eq('mg')
     end
   end
 end

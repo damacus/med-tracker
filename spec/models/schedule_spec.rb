@@ -102,7 +102,17 @@ RSpec.describe Schedule do
     let(:person) do
       Person.create!(name: 'Test Person', email: 'test-administer@example.com', date_of_birth: Date.new(1990, 1, 1))
     end
-    let(:dosage) { Dosage.create!(medication: medication, amount: 10, unit: 'mg', frequency: 'daily') }
+    let(:dosage) do
+      Dosage.create!(
+        medication: medication,
+        amount: 10,
+        unit: 'mg',
+        frequency: 'daily',
+        default_max_daily_doses: 1,
+        default_min_hours_between_doses: 24,
+        default_dose_cycle: :daily
+      )
+    end
     let(:schedule) do
       described_class.create!(
         person: person, medication: medication, dose_amount: dosage.amount, dose_unit: dosage.unit,
@@ -142,7 +152,17 @@ RSpec.describe Schedule do
     let(:person) do
       Person.create!(name: 'Test Person2', email: 'test-reason@example.com', date_of_birth: Date.new(1990, 1, 1))
     end
-    let(:dosage) { Dosage.create!(medication: medication, amount: 10, unit: 'mg', frequency: 'daily') }
+    let(:dosage) do
+      Dosage.create!(
+        medication: medication,
+        amount: 10,
+        unit: 'mg',
+        frequency: 'daily',
+        default_max_daily_doses: 1,
+        default_min_hours_between_doses: 24,
+        default_dose_cycle: :daily
+      )
+    end
     let(:schedule) do
       described_class.create!(
         person: person, medication: medication, dose_amount: dosage.amount, dose_unit: dosage.unit,
@@ -220,7 +240,17 @@ RSpec.describe Schedule do
 
   describe '#frequency vs #dose_cycle' do
     let(:medication) { medications(:paracetamol) }
-    let(:dosage) { Dosage.create!(medication: medication, amount: 10, unit: 'mg', frequency: 'daily') }
+    let(:dosage) do
+      Dosage.create!(
+        medication: medication,
+        amount: 10,
+        unit: 'mg',
+        frequency: 'daily',
+        default_max_daily_doses: 1,
+        default_min_hours_between_doses: 24,
+        default_dose_cycle: :daily
+      )
+    end
     let(:schedule) do
       described_class.create!(
         person: people(:john),

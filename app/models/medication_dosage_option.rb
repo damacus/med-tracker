@@ -5,6 +5,7 @@ class MedicationDosageOption < ApplicationRecord
 
   belongs_to :medication
 
+  before_validation :align_unit_with_medication
   after_create :sync_medication_dosage
 
   enum :default_dose_cycle, { daily: 0, weekly: 1, monthly: 2 }, prefix: :default
@@ -15,11 +16,14 @@ class MedicationDosageOption < ApplicationRecord
   validates :amount, presence: true, numericality: { greater_than: 0 }
   validates :unit, presence: true
   validates :frequency, presence: true
+  validates :default_max_daily_doses, presence: true, numericality: { greater_than: 0 }
+  validates :default_min_hours_between_doses, presence: true, numericality: { greater_than_or_equal_to: 0 }
+  validates :default_dose_cycle, presence: true
 
   def to_value
     MedicationDosage.new(
       amount: amount,
-      unit: unit,
+      unit: medication&.dosage_unit.presence || unit,
       frequency: frequency,
       description: description,
       default_for_adults: default_for_adults,
@@ -32,8 +36,12 @@ class MedicationDosageOption < ApplicationRecord
 
   private
 
+  def align_unit_with_medication
+    self.unit = medication&.dosage_unit.presence || unit
+  end
+
   def sync_medication_dosage
-    stmt = 'UPDATE medications SET dosage_amount = NULL, dosage_unit = NULL WHERE id = $1'
+    stmt = 'UPDATE medications SET dosage_amount = NULL WHERE id = $1'
     binds = [
       ActiveRecord::Relation::QueryAttribute.new('id', medication_id, ActiveRecord::Type::BigInteger.new)
     ]

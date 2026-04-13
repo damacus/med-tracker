@@ -25,8 +25,11 @@ module Components
       def view_template
         turbo_frame_tag 'modal' do
           Dialog(open: true) do
-            DialogContent(size: dialog_size) do
-              DialogHeader do
+            DialogContent(
+              size: dialog_size,
+              class: 'overflow-hidden border-border/50 bg-white shadow-[0_32px_90px_rgba(15,23,42,0.18)]'
+            ) do
+              DialogHeader(class: 'bg-gradient-to-b from-[#fffaf1] to-white px-8 pt-8 pb-4') do
                 if back_path
                   a(
                     href: back_path,
@@ -40,7 +43,7 @@ module Components
                 DialogTitle { title }
                 DialogDescription { t('person_medications.modal.subtitle') }
               end
-              DialogMiddle do
+              DialogMiddle(class: 'bg-[#fffdf8] px-8 pb-8 pt-4') do
                 render_form
               end
             end

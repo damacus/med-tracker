@@ -30,13 +30,40 @@ export default class extends Controller {
     event.preventDefault()
     const option = event.target.closest('[data-dosage-options-target="option"]')
     if (option) {
-      const destroyField = option.querySelector('input[name*="_destroy"]')
-      if (destroyField) {
-        destroyField.value = '1'
-        option.style.display = 'none'
-      } else {
-        option.remove()
-      }
+      this.toggleOption(option, true)
     }
+  }
+
+  undo(event) {
+    event.preventDefault()
+    const option = event.target.closest('[data-dosage-options-target="option"]')
+    if (option) {
+      this.toggleOption(option, false)
+    }
+  }
+
+  toggleOption(option, removed) {
+    const destroyField = option.querySelector('[data-dosage-options-target="destroyField"]')
+    const editor = option.querySelector('[data-dosage-options-target="editor"]')
+    const removedState = option.querySelector('[data-dosage-options-target="removedState"]')
+
+    if (destroyField) destroyField.value = removed ? '1' : '0'
+
+    this.toggleEditorControls(editor, removed)
+
+    if (editor) editor.classList.toggle('hidden', removed)
+    if (removedState) {
+      removedState.classList.toggle('hidden', !removed)
+      removedState.classList.toggle('flex', removed)
+    }
+  }
+
+  toggleEditorControls(editor, disabled) {
+    if (!editor) return
+
+    editor.querySelectorAll('input, select, textarea, button').forEach((element) => {
+      if (element.dataset.action?.includes('dosage-options#remove')) return
+      element.disabled = disabled
+    })
   }
 }

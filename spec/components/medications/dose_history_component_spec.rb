@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe Components::Medications::DoseHistoryComponent, type: :component do
-  let(:medication) { create(:medication) }
+  let(:medication) { create(:medication, dosage_unit: 'ml') }
 
   it 'renders dosage rows in ascending amount order' do
     create(:dosage, medication: medication, amount: 10, unit: 'ml', frequency: 'Twice daily')

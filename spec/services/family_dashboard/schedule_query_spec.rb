@@ -153,7 +153,15 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
       let!(:schedule) do
         oos_medication = Medication.create!(name: 'OOS Med', current_supply: 0, reorder_threshold: 2,
                                             location: locations(:home))
-        Dosage.create!(medication: oos_medication, amount: 10, unit: 'mg', frequency: 'daily')
+        Dosage.create!(
+          medication: oos_medication,
+          amount: 10,
+          unit: 'mg',
+          frequency: 'daily',
+          default_max_daily_doses: 1,
+          default_min_hours_between_doses: 24,
+          default_dose_cycle: :daily
+        )
         Schedule.create!(
           person: people(:john),
           medication: oos_medication,

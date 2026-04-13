@@ -250,7 +250,10 @@ class MedicationsController < ApplicationController # rubocop:disable Metrics/Cl
       amount: @medication.dosage_amount,
       unit: @medication.dosage_unit,
       frequency: 'As directed',
-      default_for_adults: true
+      default_for_adults: true,
+      default_max_daily_doses: 1,
+      default_min_hours_between_doses: 24,
+      default_dose_cycle: :daily
     )
   end
 

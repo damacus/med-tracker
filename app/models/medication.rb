@@ -55,6 +55,7 @@ class Medication < ApplicationRecord # :nodoc:
   accepts_nested_attributes_for :dosage_records, allow_destroy: true, reject_if: :all_blank
 
   validate :single_dose_switch_requires_no_schedules
+  validate :nested_dosage_records_are_valid
   after_commit :sync_dosages, on: :update
 
   enum :reorder_status, { requested: 0, ordered: 1, received: 2 }, prefix: :reorder
@@ -64,6 +65,7 @@ class Medication < ApplicationRecord # :nodoc:
   validates :category, inclusion: { in: CATEGORIES }, allow_blank: true
   validates :dosage_amount, numericality: { greater_than: 0 }, allow_nil: true
   validates :dosage_unit, inclusion: { in: DOSAGE_UNITS }, allow_blank: true
+  validates_associated :dosage_records
   validates :current_supply, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
   validates :supply_at_last_restock, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
   validates :reorder_threshold, presence: true, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
@@ -217,5 +219,15 @@ class Medication < ApplicationRecord # :nodoc:
 
     previous_amount, new_amount = change
     previous_amount.blank? && new_amount.present?
+  end
+
+  def nested_dosage_records_are_valid
+    dosage_records.reject(&:marked_for_destruction?).each do |dosage_record|
+      next if dosage_record.valid?
+
+      dosage_record.errors.full_messages.each do |message|
+        errors.add(:base, message)
+      end
+    end
   end
 end
