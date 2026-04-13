@@ -52,7 +52,7 @@ class Medication < ApplicationRecord # :nodoc:
   has_many :schedules, dependent: :destroy
   has_many :person_medications, dependent: :destroy
 
-  accepts_nested_attributes_for :dosage_records, allow_destroy: true, reject_if: :all_blank
+  accepts_nested_attributes_for :dosage_records, allow_destroy: true, reject_if: :blank_dosage_record_attributes?
 
   validate :single_dose_switch_requires_no_schedules
   validate :nested_dosage_records_are_valid
@@ -193,6 +193,15 @@ class Medication < ApplicationRecord # :nodoc:
   end
 
   private
+
+  def blank_dosage_record_attributes?(attributes)
+    ignored_keys = %w[id _destroy unit default_dose_cycle]
+    meaningful_attributes = attributes.except(*ignored_keys)
+
+    meaningful_attributes.values.all? do |value|
+      value.blank? || value == '0'
+    end
+  end
 
   def single_dose_switch_requires_no_schedules
     return unless switching_to_single_dose_mode?
