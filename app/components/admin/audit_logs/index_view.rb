@@ -301,7 +301,9 @@ module Components
         end
 
         def pagination_url(page)
-          base_params = filter_params.respond_to?(:to_unsafe_h) ? filter_params.to_unsafe_h : filter_params.to_h
+          # 🛡️ Sentinel: Using .to_h securely relies on params being explicitly permitted in the controller
+          # Avoid .to_unsafe_h to prevent Unvalidated Data Exposure bypasses
+          base_params = filter_params.to_h
           view_context.admin_audit_logs_path(base_params.merge(page: page))
         end
       end

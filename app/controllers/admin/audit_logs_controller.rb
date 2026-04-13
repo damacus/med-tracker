@@ -22,7 +22,7 @@ module Admin
 
       render Components::Admin::AuditLogs::IndexView.new(
         versions: @versions,
-        filter_params: params.slice(:item_type, :event, :whodunnit),
+        filter_params: params.permit(:item_type, :event, :whodunnit),
         current_page: page_number,
         total_count: @total_count,
         per_page: AUDIT_LOGS_PER_PAGE
