@@ -130,7 +130,9 @@ class Person < ApplicationRecord
 
   def active_carer_relationship?
     carer_relationships.any? { |r| r.active? || r.active.nil? } ||
-      active_carer_relationships.exists?
+      # ⚡ Bolt Optimization: Use `.any?` instead of `.exists?`
+      # This avoids a redundant query if `active_carer_relationships` is already loaded in memory
+      active_carer_relationships.any?
   end
 
   def must_have_at_least_one_location
