@@ -60,7 +60,7 @@ class SchedulesController < ApplicationController
     @schedule.medication_id = params[:medication_id] if params[:medication_id].present?
     @schedule.frequency = params[:frequency] if params[:frequency].present?
     authorize @schedule
-    @medications = policy_scope(Medication)
+    @medications = medication_options_query.call
     render_schedule_form(
       schedule: @schedule,
       medications: @medications,
@@ -71,7 +71,7 @@ class SchedulesController < ApplicationController
 
   def edit
     authorize @schedule
-    @medications = policy_scope(Medication)
+    @medications = medication_options_query.call
     render_schedule_form(
       schedule: @schedule,
       medications: @medications,
@@ -83,7 +83,7 @@ class SchedulesController < ApplicationController
   def create
     @schedule = @person.schedules.build(schedule_params)
     authorize @schedule
-    @medications = policy_scope(Medication)
+    @medications = medication_options_query.call
 
     if @schedule.save
       respond_to do |format|
@@ -99,6 +99,7 @@ class SchedulesController < ApplicationController
         end
       end
     else
+      @medications = medication_options_query.call
       render_schedule_form(
         schedule: @schedule,
         medications: @medications,
@@ -123,7 +124,7 @@ class SchedulesController < ApplicationController
         end
       end
     else
-      @medications = policy_scope(Medication)
+      @medications = medication_options_query.call
       render_schedule_form(
         schedule: @schedule,
         medications: @medications,
@@ -192,5 +193,9 @@ class SchedulesController < ApplicationController
       people_scope: policy_scope(Person),
       medications_scope: policy_scope(Medication)
     )
+  end
+
+  def medication_options_query
+    @medication_options_query ||= MedicationOptionsQuery.new(scope: policy_scope(Medication))
   end
 end

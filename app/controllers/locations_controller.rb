@@ -4,7 +4,7 @@ class LocationsController < ApplicationController
   before_action :set_location, only: %i[show edit update destroy]
 
   def index
-    locations = policy_scope(Location).includes(:medications, :members, :location_memberships)
+    locations = locations_query.index
     render Components::Locations::IndexView.new(locations: locations)
   end
 
@@ -72,10 +72,14 @@ class LocationsController < ApplicationController
   private
 
   def set_location
-    @location = policy_scope(Location).includes(:medications, :members, :location_memberships).find(params[:id])
+    @location = locations_query.find(id: params[:id])
   end
 
   def location_params
     params.expect(location: %i[name description])
+  end
+
+  def locations_query
+    LocationsQuery.new(scope: policy_scope(Location))
   end
 end
