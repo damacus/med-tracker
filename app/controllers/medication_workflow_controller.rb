@@ -3,12 +3,18 @@
 class MedicationWorkflowController < ApplicationController
   def index
     authorize Person, :index?
-    # Preload user person and patients to avoid N+1 in policy checks
-    current_user.person&.patients&.load
-
-    people = policy_scope(Person).order(:name)
-    people = people.select { |person| policy(person).add_medication? }
+    people = medication_workflow_people_query.call
 
     render Components::MedicationWorkflow::PersonSelection.new(people: people, medication_id: params[:medication_id])
+  end
+
+  private
+
+  def medication_workflow_people_query
+    @medication_workflow_people_query ||= MedicationWorkflowPeopleQuery.new(
+      people_scope: policy_scope(Person),
+      preload_person: current_user&.person,
+      can_add_medication: ->(person) { policy(person).add_medication? }
+    )
   end
 end

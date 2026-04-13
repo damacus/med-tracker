@@ -12,8 +12,10 @@ class PersonMedicationsController < ApplicationController
   def new
     authorize PersonMedication
     @person_medication = @person.person_medications.build
-    @person_medication.medication_id = params[:medication_id] if medication_in_scope?(params[:medication_id])
-    @medications = available_medications
+    if medication_options_query.include?(params[:medication_id])
+      @person_medication.medication_id = params[:medication_id]
+    end
+    @medications = medication_options_query.call
 
     is_modal = request.headers['Turbo-Frame'] == 'modal'
     back_path = modal_back_path(@person)
@@ -34,7 +36,7 @@ class PersonMedicationsController < ApplicationController
 
   def edit
     authorize @person_medication
-    @medications = available_medications
+    @medications = medication_options_query.call
 
     is_modal = request.headers['Turbo-Frame'] == 'modal'
 
@@ -55,7 +57,7 @@ class PersonMedicationsController < ApplicationController
   def create
     @person_medication = @person.person_medications.build(person_medication_params)
     authorize @person_medication
-    @medications = available_medications
+    @medications = medication_options_query.call
 
     if explicit_dose_submitted? && @person_medication.save
       respond_to do |format|
@@ -82,7 +84,7 @@ class PersonMedicationsController < ApplicationController
 
   def update
     authorize @person_medication
-    @medications = available_medications
+    @medications = medication_options_query.call
 
     if @person_medication.update(person_medication_update_params)
       respond_to do |format|
@@ -179,12 +181,8 @@ class PersonMedicationsController < ApplicationController
     params.expect(person_medication: %i[dose_amount dose_unit notes max_daily_doses min_hours_between_doses dose_cycle])
   end
 
-  def available_medications
-    policy_scope(Medication).order(:name)
-  end
-
-  def medication_in_scope?(medication_id)
-    available_medications.exists?(id: medication_id)
+  def medication_options_query
+    @medication_options_query ||= MedicationOptionsQuery.new(scope: policy_scope(Medication))
   end
 
   def explicit_dose_submitted?
