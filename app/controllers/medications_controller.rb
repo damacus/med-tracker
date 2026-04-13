@@ -35,7 +35,7 @@ class MedicationsController < ApplicationController # rubocop:disable Metrics/Cl
 
   def new
     @medication = Medication.new
-    @medication.location_id ||= current_primary_location&.id
+    @medication.location_id ||= primary_location&.id
     authorize @medication
 
     render wizard_wrapper_class.new(
@@ -58,7 +58,7 @@ class MedicationsController < ApplicationController # rubocop:disable Metrics/Cl
 
   def create
     @medication = Medication.new(medication_params)
-    @medication.location_id ||= current_primary_location&.id
+    @medication.location_id ||= primary_location&.id
     authorize @medication
 
     if @medication.save
@@ -193,10 +193,8 @@ class MedicationsController < ApplicationController # rubocop:disable Metrics/Cl
     policy_scope(Location).order(:name)
   end
 
-  def current_primary_location
-    return nil unless current_user&.person
-
-    current_user.person.location_memberships.order(:id).first&.location
+  def primary_location
+    PrimaryLocationQuery.new(person: current_user&.person).call
   end
 
   def medication_params

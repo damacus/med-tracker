@@ -30,7 +30,7 @@ class PeopleController < ApplicationController
     @person = Person.new
     authorize @person
     is_modal = request.headers['Turbo-Frame'] == 'modal'
-    assigned_location = current_primary_location
+    assigned_location = primary_location
 
     if is_modal
       render Components::People::Modal.new(person: @person, assigned_location: assigned_location), layout: false
@@ -55,7 +55,7 @@ class PeopleController < ApplicationController
   def create
     @person = Person.new(person_params)
     authorize @person
-    @person.primary_location = current_primary_location
+    @person.primary_location = primary_location
 
     if current_user.parent? || current_user.carer?
       @person.carer_relationships.build(
@@ -78,13 +78,13 @@ class PeopleController < ApplicationController
         end
       else
         format.html do
-          render Components::People::FormView.new(person: @person, assigned_location: current_primary_location),
+          render Components::People::FormView.new(person: @person, assigned_location: primary_location),
                  status: :unprocessable_content
         end
         format.turbo_stream do
           render turbo_stream: turbo_stream.replace(
             'modal',
-            Components::People::Modal.new(person: @person, assigned_location: current_primary_location)
+            Components::People::Modal.new(person: @person, assigned_location: primary_location)
           ), status: :unprocessable_content
         end
       end
@@ -154,9 +154,7 @@ class PeopleController < ApplicationController
     params.expect(person: %i[name date_of_birth email person_type has_capacity])
   end
 
-  def current_primary_location
-    return nil unless current_user&.person
-
-    current_user.person.location_memberships.order(:id).first&.location
+  def primary_location
+    PrimaryLocationQuery.new(person: current_user&.person).call
   end
 end
