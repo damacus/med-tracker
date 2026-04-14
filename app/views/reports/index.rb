@@ -35,7 +35,7 @@ module Views
             p(class: 'text-muted-foreground') { "#{@start_date.strftime('%B %d')} — #{@end_date.strftime('%B %d, %Y')}" }
           end
 
-          form(action: view_context.reports_path, method: :get, class: 'report-glow-panel flex items-end gap-3 rounded-[1.5rem] border border-border/70 p-4') do
+          form(action: view_context.reports_path, method: :get, class: 'flex items-end gap-3 rounded-[1.5rem] border border-border/70 bg-popover p-4 shadow-elevation-1') do
             div(class: 'flex flex-col gap-1') do
               label(for: 'start_date', class: 'text-xs font-semibold uppercase tracking-wider text-muted-foreground') { t('reports.index.start_date_label') }
               input(type: 'date', name: 'start_date', id: 'start_date', value: @start_date, class: 'form-input rounded-lg border-border bg-background text-sm text-foreground focus:border-primary focus:ring-primary')
@@ -58,10 +58,8 @@ module Views
         total_actual = @daily_data.sum { |d| d[:actual] }
         overall_compliance = total_expected.zero? ? 100 : [(total_actual.to_f / total_expected * 100).round, 100].min
 
-        Card(class: 'report-hero-surface overflow-hidden border border-border/70 text-primary-foreground') do
+        Card(class: 'overflow-hidden border border-border/70 bg-primary text-primary-foreground shadow-elevation-3') do
           div(class: 'relative p-8 sm:p-12') do
-            div(class: 'report-glow-orb absolute -right-10 -top-14 h-44 w-44 rounded-full')
-            div(class: 'report-glow-orb absolute bottom-0 left-0 h-36 w-36 -translate-x-1/3 translate-y-1/3 rounded-full opacity-80')
             div(class: 'relative z-10 grid grid-cols-1 md:grid-cols-3 gap-8 text-center') do
               summary_stat(
                 t('reports.index.summary.overall_compliance'),
@@ -99,8 +97,7 @@ module Views
             render Button.new(variant: :outline, size: :sm, class: 'rounded-full') { t('reports.index.download_pdf') }
           end
 
-          Card(class: 'report-glow-panel relative overflow-hidden border border-border/70 p-8 sm:p-10') do
-            div(class: 'report-glow-orb absolute right-10 top-8 h-28 w-28 rounded-full opacity-70')
+          Card(class: 'border border-border/70 bg-card p-8 shadow-elevation-2 sm:p-10') do
             div(class: 'flex items-end justify-between h-64 gap-4 px-2') do
               @daily_data.each do |day|
                 render_bar(day)
@@ -119,7 +116,7 @@ module Views
 
             # Active Bar
             div(
-              class: "report-bar relative w-full rounded-t-xl transition-all duration-700 group-hover:scale-x-105 #{day[:percentage] < 90 ? 'bg-primary/45' : 'report-bar--strong bg-primary'}",
+              class: "relative w-full rounded-t-xl transition-all duration-700 group-hover:scale-x-105 #{day[:percentage] < 90 ? 'bg-primary/40' : 'bg-primary'}",
               style: "height: #{day[:percentage]}%"
             ) do
               # Tooltip-like value on hover
@@ -181,7 +178,7 @@ module Views
 
       # rubocop:disable Metrics/AbcSize
       def render_insight_card(card)
-        Card(class: 'report-glow-panel report-glow-panel--interactive space-y-4 border border-border/70 p-8') do
+        Card(class: 'space-y-4 border border-border/70 bg-card p-8 shadow-elevation-1 transition-transform hover:scale-[1.02] hover:shadow-elevation-2') do
           div(class: 'flex items-center gap-4') do
             div(class: "flex h-12 w-12 items-center justify-center rounded-2xl #{card.icon_background_class} #{card.text_color}") do
               render card.icon_class.new(size: 24)
