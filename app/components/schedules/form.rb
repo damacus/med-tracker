@@ -6,12 +6,13 @@ module Components
     class Form < Components::Base
       include Phlex::Rails::Helpers::FormWith
 
-      attr_reader :schedule, :person, :medications
+      attr_reader :schedule, :person, :medications, :frame_id
 
-      def initialize(schedule:, person:, medications:)
+      def initialize(schedule:, person:, medications:, frame_id: nil)
         @schedule = schedule
         @person = person
         @medications = medications
+        @frame_id = frame_id
         super()
       end
 
@@ -24,6 +25,7 @@ module Components
             turbo_stream: true,
             person_type: person.person_type,
             schedule_form_dose_options_value: medication_dose_options.to_json,
+            schedule_form_frame_id_value: frame_id,
             schedule_form_next_url_value: new_person_schedule_path(person),
             schedule_form_translations_value: {
               selectDosage: t('schedules.form.select_dosage'),
@@ -466,7 +468,21 @@ module Components
       end
 
       def dosage_dom_id(dosage)
-        "schedule_dose_option_#{dosage.selection_key.parameterize(separator: '_')}"
+        key = dosage.selection_key.parameterize(separator: '_')
+        return "schedule_dose_option_#{key}" unless duplicate_dose_selection_keys.include?(dosage.selection_key)
+
+        description = dosage.description.to_s.parameterize(separator: '_').presence || dosage.object_id
+        "schedule_dose_option_#{key}_#{description}"
+      end
+
+      def duplicate_dose_selection_keys
+        dosages = schedule.medication&.dosages || []
+        grouped_dosages = dosages.group_by(&:selection_key)
+
+        @duplicate_dose_selection_keys ||= grouped_dosages.each_with_object([]) do |(selection_key, matching_dosages),
+                                                                                      selection_keys|
+          selection_keys << selection_key if matching_dosages.size > 1
+        end
       end
 
       def medication_dose_options

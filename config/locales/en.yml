@@ -471,6 +471,13 @@ en:
       description: "Add stock quantity and record the restock date."
       quantity: "Quantity"
       restock_date: "Restock date"
+    administration:
+      title: "Log administration for %{medication}"
+      subtitle: "Choose the person and plan you want to record this dose against."
+      scheduled: "Scheduled plan"
+      as_needed: "As-needed medication"
+      empty_title: "No active medication plans"
+      empty_description: "This inventory item is not currently linked to a record you can administer."
     form:
       new_title: "Add a New Medication"
       new_subtitle: "Capture inventory details and dosage information."

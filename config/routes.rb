@@ -68,6 +68,7 @@ Rails.application.routes.draw do
   # Medication management
   resources :medications do
     member do
+      get :administration
       patch :refill
       patch :mark_as_ordered
       patch :mark_as_received

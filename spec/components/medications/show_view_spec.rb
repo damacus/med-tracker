@@ -40,13 +40,25 @@ RSpec.describe Components::Medications::ShowView, type: :component do
 
     it 'uses action button utility tokens' do
       add_schedule_link = rendered.css('a').find { |link| link.text.include?('Add Schedule') }
+      log_administration_link = rendered.css('a').find { |link| link.text.include?('Log Administration') }
       mark_as_ordered_link = rendered.css('a').find { |link| link.text.include?('Mark as Ordered') }
       refill_button = rendered.css('button').find { |button| button.text.include?('Refill Inventory') }
 
       expect(add_schedule_link[:class]).to include('rounded-full')
+      expect(log_administration_link[:class]).to include('rounded-full')
       expect(mark_as_ordered_link[:class]).to include('rounded-full')
       expect(refill_button[:class]).to include('rounded-full')
     end
+  end
+
+  it 'renders log administration as a modal link' do
+    rendered = render_inline(described_class.new(medication: medication))
+
+    log_administration_link = rendered.css('a').find { |link| link.text.include?('Log Administration') }
+
+    expect(log_administration_link).to be_present
+    expect(log_administration_link[:href]).to eq("/medications/#{medication.id}/administration")
+    expect(log_administration_link['data-turbo-frame']).to eq('modal')
   end
 
   it 'renders safety warnings when present' do

@@ -12,6 +12,7 @@ export default class extends Controller {
 
   connect() {
     this.portalElement = null
+    this.sourceFrame = this.element.closest('turbo-frame')
 
     if (this.openValue) {
       this.open()
@@ -44,6 +45,11 @@ export default class extends Controller {
       this.portalElement = null
     } else {
       this.element.remove()
+    }
+
+    if (this.sourceFrame?.id === 'modal') {
+      this.sourceFrame.removeAttribute('src')
+      this.sourceFrame.innerHTML = ''
     }
 
     this.updateBodyScrollLock()

@@ -25,7 +25,7 @@ RSpec.describe 'Add schedule modal flow' do
 
     select 'Ibuprofen', from: 'Medication'
 
-    choose('schedule_dose_option_200_mg', allow_label_click: true)
+    find('label', text: /Standard child dose \(6-12 years\)/).click
 
     fill_in 'Frequency', with: 'Twice daily'
     fill_in 'Start date', with: Date.current.strftime('%Y-%m-%d')
@@ -38,5 +38,25 @@ RSpec.describe 'Add schedule modal flow' do
     expect(page).to have_content('Schedule was successfully created.')
     expect(page).to have_no_content("New Schedule for #{person.name}")
     expect(page).to have_content('Ibuprofen')
+  end
+
+  it 'closes the add schedule modal cleanly when cancelled from the details step' do
+    login_as(admin)
+    visit person_path(person)
+
+    within '[data-testid="quick-actions"]' do
+      click_link 'Add Medication'
+    end
+    click_link 'Prescribed / Scheduled'
+    select 'Ibuprofen', from: 'Medication'
+
+    expect(page).to have_content("New Schedule for #{person.name}")
+    expect(page).to have_content('Schedule details')
+
+    click_button 'Cancel'
+
+    expect(page).to have_current_path(person_path(person))
+    expect(page).to have_no_content("New Schedule for #{person.name}")
+    expect(page).to have_content(person.name)
   end
 end

@@ -120,9 +120,11 @@ module Components
             span { t('medications.show.add_schedule') }
           end
 
-          render Button.new(
+          Link(
+            href: administration_medication_path(medication),
             variant: :success,
             size: :lg,
+            data: { turbo_frame: 'modal' },
             class: "#{base_classes} bg-success text-success-foreground border-none"
           ) do
             render Icons::Activity.new(size: 18, class: 'mr-2')

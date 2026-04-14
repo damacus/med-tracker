@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static values = { nextUrl: String, translations: Object, doseOptions: Object }
+  static values = { nextUrl: String, translations: Object, doseOptions: Object, frameId: String }
   static targets = [
     "submit", "dosageSelect", "medicationSelect", "dosageContent",
     "dosageValue", "dosageTrigger", "frequencyInput",
@@ -34,7 +34,7 @@ export default class extends Controller {
 
     if (!medicationId || !this.hasNextUrlValue) return
 
-    const frame = this.element.closest('turbo-frame')
+    const frame = this.#targetFrame()
     const url = new URL(this.nextUrlValue, window.location.origin)
     url.searchParams.set('medication_id', medicationId)
     if (frame) {
@@ -194,7 +194,11 @@ export default class extends Controller {
 
   cancel(event) {
     event.preventDefault()
-    this.element.closest('turbo-frame').src = null
+    const frame = this.#targetFrame()
+    if (frame) {
+      frame.removeAttribute('src')
+      frame.innerHTML = ''
+    }
   }
 
   #fillSchedulingDefaults(dosage) {
@@ -254,6 +258,14 @@ export default class extends Controller {
 
     const input = this.element.querySelector('[name="schedule[medication_id]"]')
     return input?.value
+  }
+
+  #targetFrame() {
+    if (this.hasFrameIdValue && this.frameIdValue) {
+      return document.getElementById(this.frameIdValue)
+    }
+
+    return this.element.closest('turbo-frame')
   }
 
   #fieldPresent(fieldName) {
