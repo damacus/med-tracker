@@ -17,7 +17,7 @@ module Components
           if dosage_specified?
             div(class: 'flex items-center gap-4') do
               div(
-                class: 'w-12 h-12 rounded-2xl bg-secondary-container flex items-center justify-center ' \
+                class: 'w-12 h-12 rounded-shape-xl bg-secondary-container flex items-center justify-center ' \
                        'text-on-secondary-container shadow-sm'
               ) do
                 render Icons::CheckCircle.new(size: 24)

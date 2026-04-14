@@ -26,6 +26,30 @@ RSpec.describe Components::Medications::ShowView, type: :component do
     expect(rendered.text).to include('Inventory Status')
   end
 
+  describe 'action button styling' do
+    let(:rendered) { render_inline(described_class.new(medication: medication)) }
+
+    it 'uses background tokens consistent with dose cards' do
+      add_schedule_link = rendered.css('a').find { |link| link.text.include?('Add Schedule') }
+      mark_as_ordered_link = rendered.css('a').find { |link| link.text.include?('Mark as Ordered') }
+      refill_button = rendered.css('button').find { |button| button.text.include?('Refill Inventory') }
+
+      expect(add_schedule_link[:class]).to include('bg-surface-container-low')
+      expect(mark_as_ordered_link[:class]).to include('bg-surface-container-low')
+      expect(refill_button[:class]).to include('bg-surface-container-low')
+    end
+
+    it 'uses shadow tokens consistent with dose cards' do
+      add_schedule_link = rendered.css('a').find { |link| link.text.include?('Add Schedule') }
+      mark_as_ordered_link = rendered.css('a').find { |link| link.text.include?('Mark as Ordered') }
+      refill_button = rendered.css('button').find { |button| button.text.include?('Refill Inventory') }
+
+      expect(add_schedule_link[:class]).to include('shadow-elevation-1')
+      expect(mark_as_ordered_link[:class]).to include('shadow-elevation-1')
+      expect(refill_button[:class]).to include('shadow-elevation-1')
+    end
+  end
+
   it 'renders safety warnings when present' do
     medication_with_warnings = create(:medication, warnings: 'Take with food')
     rendered = render_inline(described_class.new(medication: medication_with_warnings))

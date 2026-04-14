@@ -109,7 +109,7 @@ module Components
             href: add_medication_path(medication_id: medication.id),
             variant: :outline,
             size: :lg,
-            class: 'w-full py-6 rounded-2xl bg-surface-container-lowest border-border shadow-sm ' \
+            class: 'w-full py-6 rounded-shape-xl bg-surface-container-low border-border shadow-elevation-1 ' \
                    'flex items-center justify-center'
           ) do
             render Icons::PlusCircle.new(size: 18, class: 'mr-2 text-primary')
@@ -146,7 +146,7 @@ module Components
           variant: :outline,
           size: :lg,
           data: { turbo_method: :patch },
-          class: 'w-full py-6 rounded-2xl bg-surface-container-lowest border-border shadow-sm ' \
+          class: 'w-full py-6 rounded-shape-xl bg-surface-container-low border-border shadow-elevation-1 ' \
                  'flex items-center justify-center'
         ) do
           render icon.new(size: 18, class: 'mr-2 text-primary')
@@ -156,11 +156,11 @@ module Components
 
       def render_refill_modal
         is_received = medication.reorder_received?
-        base_classes = 'w-full py-6 rounded-2xl shadow-sm flex items-center justify-center'
+        base_classes = 'w-full py-6 rounded-shape-xl shadow-elevation-1 flex items-center justify-center'
         button_class = if is_received
                          base_classes
                        else
-                         "#{base_classes} bg-surface-container-lowest border-border"
+                         "#{base_classes} bg-surface-container-low border-border"
                        end
 
         render Components::Medications::RefillModal.new(
