@@ -8,7 +8,7 @@ class MedicationsController < ApplicationController # rubocop:disable Metrics/Cl
 
   def index
     @current_category = params[:category]
-    base_scope = policy_scope(Medication).includes(:location)
+    base_scope = policy_scope(Medication)
     locations = accessible_inventory_locations(base_scope)
     @current_location_id = resolved_inventory_location_id(locations)
 
@@ -180,7 +180,7 @@ class MedicationsController < ApplicationController # rubocop:disable Metrics/Cl
   end
 
   def available_locations
-    policy_scope(Location).order(:name)
+    LocationsQuery.new(scope: policy_scope(Location)).options
   end
 
   def primary_location

@@ -34,4 +34,13 @@ RSpec.describe LocationsQuery do
       end.to raise_error(ActiveRecord::RecordNotFound)
     end
   end
+
+  describe '#options' do
+    it 'returns the passed scope in name order without index preloads' do
+      result = described_class.new(scope: Location.where(id: [locations(:school).id, locations(:home).id])).options
+
+      expect(result.map(&:name)).to eq(%w[Home School])
+      expect(result.first.association(:medications)).not_to be_loaded
+    end
+  end
 end

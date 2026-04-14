@@ -5,11 +5,10 @@ module Admin
   class UsersController < ApplicationController
     def index
       authorize User
-      users = policy_scope(User).includes(:person)
-      users = apply_search(users) if params[:search].present?
-      users = apply_role_filter(users) if params[:role].present?
-      users = apply_status_filter(users) if params[:status].present?
-      users = apply_sorting(users)
+      users = Admin::UsersIndexQuery.new(
+        scope: policy_scope(User),
+        filters: search_params.to_h.symbolize_keys
+      ).call
       @pagy, users = pagy(:offset, users)
       render Components::Admin::Users::IndexView.new(users: users, search_params: search_params, current_user: current_user, pagy: @pagy)
     end
@@ -171,48 +170,6 @@ module Admin
 
     def render_user_form_with_errors
       render Components::Admin::Users::FormView.new(user: @user), status: :unprocessable_content
-    end
-
-    def apply_search(scope)
-      search_term = "%#{ActiveRecord::Base.sanitize_sql_like(params[:search])}%"
-      scope.joins(:person)
-           .where('people.name ILIKE ? OR users.email_address ILIKE ?', search_term, search_term)
-    end
-
-    def apply_role_filter(scope)
-      scope.where(role: params[:role])
-    end
-
-    def apply_status_filter(scope)
-      case params[:status]
-      when 'active' then scope.active
-      when 'inactive' then scope.inactive
-      when 'soft_deleted' then scope.left_joins(person: :account).where(accounts: { id: nil }).or(scope.left_joins(person: :account).where(accounts: { status: Account.statuses[:closed] }))
-      else scope
-      end
-    end
-
-    def apply_sorting(scope)
-      sort_column = params[:sort].presence_in(allowed_sort_columns) || 'created_at'
-      sort_direction = params[:direction].presence_in(%w[asc desc]) || 'asc'
-      direction_sym = { 'asc' => :asc, 'desc' => :desc }[sort_direction]
-
-      case sort_column
-      when 'name'
-        # Security: sort_direction is already validated against %w[asc desc] above
-
-        scope.left_joins(:person).merge(Person.order(name: direction_sym))
-      when 'email'
-        scope.order(email_address: direction_sym)
-      when 'role'
-        scope.order(role: direction_sym)
-      else
-        scope.order(created_at: direction_sym)
-      end
-    end
-
-    def allowed_sort_columns
-      %w[name email created_at role]
     end
 
     def search_params
