@@ -194,6 +194,159 @@ RSpec.describe MedicationTake do
     end
   end
 
+  describe 'low_stock_threshold_reached.med_tracker' do
+    def captured_event_payloads(event_name, &)
+      payloads = []
+      subscriber = lambda do |*args|
+        payloads << ActiveSupport::Notifications::Event.new(*args).payload
+      end
+
+      ActiveSupport::Notifications.subscribed(subscriber, event_name, &)
+
+      payloads
+    end
+
+    def capture_low_stock_payloads(&)
+      captured_event_payloads('low_stock_threshold_reached.med_tracker', &)
+    end
+
+    def expect_low_stock_payload(payloads, take:, expected:)
+      expect(payloads).to contain_exactly(
+        include(
+          take_id: take.id,
+          source_type: 'schedule',
+          source_id: schedule.id,
+          taken_at: take.taken_at,
+          **expected
+        )
+      )
+    end
+
+    def capture_threshold_crossing_for(schedule:, medication:, location:)
+      take = nil
+      payloads = capture_low_stock_payloads do
+        take = create_taken_from_schedule(
+          schedule: schedule,
+          taken_from_medication: medication,
+          taken_from_location: location
+        )
+      end
+
+      [payloads, take]
+    end
+
+    def expect_threshold_crossing_for(schedule:, medication:, location:, expected:)
+      payloads, take = capture_threshold_crossing_for(
+        schedule: schedule,
+        medication: medication,
+        location: location
+      )
+
+      expect_low_stock_payload(
+        payloads,
+        take: take,
+        expected: expected
+      )
+    end
+
+    def create_alternate_inventory_medication(current_supply: 3, reorder_threshold: 2)
+      location = Location.create!(name: 'Event Alt')
+      medication = create_matching_medication(
+        medication: self.medication,
+        location: location,
+        current_supply: current_supply,
+        reorder_threshold: reorder_threshold
+      )
+
+      [location, medication]
+    end
+
+    def expected_low_stock_event(medication:, location:, previous_current_supply:, current_supply:, reorder_threshold:)
+      {
+        medication_id: medication.id,
+        location_id: location.id,
+        previous_current_supply: previous_current_supply,
+        current_supply: current_supply,
+        reorder_threshold: reorder_threshold
+      }
+    end
+
+    it 'publishes when stock crosses the reorder threshold' do
+      medication.update!(current_supply: 11, reorder_threshold: 10)
+      expect_threshold_crossing_for(
+        schedule: schedule,
+        medication: medication,
+        location: medication.location,
+        expected: expected_low_stock_event(
+          medication: medication,
+          location: medication.location,
+          previous_current_supply: 11,
+          current_supply: 10,
+          reorder_threshold: 10
+        )
+      )
+    end
+
+    it 'does not publish when stock remains above the threshold' do
+      medication.update!(current_supply: 12, reorder_threshold: 10)
+
+      payloads = capture_low_stock_payloads do
+        described_class.create!(
+          schedule: schedule,
+          taken_at: Time.current,
+          amount_ml: 10.0
+        )
+      end
+
+      expect(payloads).to be_empty
+    end
+
+    it 'does not publish when stock was already low' do
+      medication.update!(current_supply: 10, reorder_threshold: 10)
+
+      payloads = capture_low_stock_payloads do
+        described_class.create!(
+          schedule: schedule,
+          taken_at: Time.current,
+          amount_ml: 10.0
+        )
+      end
+
+      expect(payloads).to be_empty
+    end
+
+    it 'does not publish when stock is untracked' do
+      medication.update!(current_supply: nil, reorder_threshold: 10)
+
+      payloads = capture_low_stock_payloads do
+        described_class.create!(
+          schedule: schedule,
+          taken_at: Time.current,
+          amount_ml: 10.0
+        )
+      end
+
+      expect(payloads).to be_empty
+    end
+
+    it 'publishes for an alternate inventory medication when that stock crosses the threshold' do
+      alternate_location, alternate_medication = create_alternate_inventory_medication
+
+      expect_threshold_crossing_for(
+        schedule: schedule,
+        medication: alternate_medication,
+        location: alternate_location,
+        expected: expected_low_stock_event(
+          medication: alternate_medication,
+          location: alternate_location,
+          previous_current_supply: 3,
+          current_supply: 2,
+          reorder_threshold: 2
+        )
+      )
+    end
+  end
+
   describe 'taken_from validation' do
     context 'when the selected medication uses a different identity' do
       it 'requires taken_from_medication to match the assigned medication identity' do

@@ -30,6 +30,13 @@ class SupplyLevel
     current <= reorder_threshold
   end
 
+  def crossed_low_stock_threshold_from?(previous_current:)
+    return false unless tracked?
+    return false if previous_current.nil?
+
+    previous_current.to_i > reorder_threshold && current <= reorder_threshold
+  end
+
   def out_of_stock?
     return false unless tracked?
 
