@@ -5,7 +5,7 @@ require 'rails_helper'
 RSpec.describe MedicationQuery do
   fixtures :locations, :medications
 
-  let(:scope) { Medication.includes(:location) }
+  let(:scope) { Medication.all }
 
   before do
     Medication.create!(
@@ -23,6 +23,7 @@ RSpec.describe MedicationQuery do
     results = described_class.new(scope: scope).call
 
     expect(results.map(&:name)).to include('Paracetamol', 'Vitamin D', 'School Only Medicine')
+    expect(results.first.association(:location)).to be_loaded
   end
 
   it 'filters by category' do

@@ -56,10 +56,6 @@ module Admin
       params.expect(invitation: %i[email role])
     end
 
-    def invitations
-      Invitation.order(created_at: :desc)
-    end
-
     def render_index_turbo
       render turbo_stream: [
         turbo_stream.replace('admin_invitations', invitation_index_view),
@@ -68,24 +64,12 @@ module Admin
     end
 
     def invitation_index_view(invitation: Invitation.new)
-      current_invitations = invitations
+      result = Admin::InvitationsIndexQuery.new(scope: Invitation.all).call
       Components::Admin::Invitations::IndexView.new(
         invitation: invitation,
-        invitations: current_invitations,
-        resendable_invitation_ids: resendable_invitation_ids(current_invitations)
+        invitations: result.invitations,
+        resendable_invitation_ids: result.resendable_invitation_ids
       )
-    end
-
-    def resendable_invitation_ids(current_invitations)
-      pending_counts_by_email = Invitation.pending.group(:email).count
-
-      current_invitations.filter_map do |invitation|
-        next if invitation.accepted?
-
-        pending_count = pending_counts_by_email[invitation.email].to_i
-        next invitation.id if invitation.pending? && pending_count == 1
-        next invitation.id if invitation.expired? && pending_count.zero?
-      end
     end
 
     def redirect_with_invitation_notice(message)

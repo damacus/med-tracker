@@ -5,8 +5,7 @@ module Admin
   class CarerRelationshipsController < ApplicationController
     def index
       authorize CarerRelationship
-      relationships = policy_scope(CarerRelationship).includes(:carer, :patient)
-      relationships = relationships.order(created_at: :desc)
+      relationships = Admin::CarerRelationshipsIndexQuery.new(scope: policy_scope(CarerRelationship)).call
       @pagy, relationships = pagy(:offset, relationships)
       render Components::Admin::CarerRelationships::IndexView.new(
         relationships: relationships,
@@ -19,13 +18,14 @@ module Admin
       @relationship = CarerRelationship.new(patient_id: params[:patient_id])
       authorize @relationship
       is_modal = request.headers['Turbo-Frame'] == 'modal'
+      options = carer_relationship_options
 
       respond_to do |format|
         format.html do
           render Components::Admin::CarerRelationships::FormView.new(
             relationship: @relationship,
-            carers: available_carers,
-            patients: available_patients,
+            carers: options.carers,
+            patients: options.patients,
             modal: is_modal
           ), layout: false
         end
@@ -34,8 +34,8 @@ module Admin
             'modal',
             Components::Admin::CarerRelationships::FormView.new(
               relationship: @relationship,
-              carers: available_carers,
-              patients: available_patients,
+              carers: options.carers,
+              patients: options.patients,
               modal: true
             )
           )
@@ -46,6 +46,7 @@ module Admin
     def create
       @relationship = CarerRelationship.new(relationship_params)
       authorize @relationship
+      options = carer_relationship_options
 
       respond_to do |format|
         if @relationship.save
@@ -66,8 +67,8 @@ module Admin
           format.html do
             render Components::Admin::CarerRelationships::FormView.new(
               relationship: @relationship,
-              carers: available_carers,
-              patients: available_patients
+              carers: options.carers,
+              patients: options.patients
             ), status: :unprocessable_content
           end
           format.turbo_stream do
@@ -75,8 +76,8 @@ module Admin
               'modal',
               Components::Admin::CarerRelationships::FormView.new(
                 relationship: @relationship,
-                carers: available_carers,
-                patients: available_patients,
+                carers: options.carers,
+                patients: options.patients,
                 modal: true
               )
             ), status: :unprocessable_content
@@ -119,12 +120,8 @@ module Admin
       params.expect(carer_relationship: %i[carer_id patient_id relationship_type])
     end
 
-    def available_carers
-      Person.joins(:user).where.not(users: { role: :minor }).order(:name)
-    end
-
-    def available_patients
-      Person.order(:name)
+    def carer_relationship_options
+      @carer_relationship_options ||= Admin::CarerRelationshipOptionsQuery.new(scope: policy_scope(Person)).call
     end
 
     def relationship_row_streams(relationship)

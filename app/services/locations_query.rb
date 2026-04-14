@@ -15,6 +15,10 @@ class LocationsQuery
     scoped_locations.find(id)
   end
 
+  def options
+    scope.order(:name)
+  end
+
   private
 
   def scoped_locations

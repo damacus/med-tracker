@@ -10,7 +10,7 @@ class MedicationQuery
   end
 
   def call
-    filtered_scope.order(:name)
+    filtered_scope.includes(:location).order(:name)
   end
 
   def categories

@@ -7,7 +7,7 @@ class PeopleController < ApplicationController
 
   def index
     authorize Person
-    people = policy_scope(Person).includes(:user, :schedules, :person_medications)
+    people = PeopleIndexQuery.new(scope: policy_scope(Person)).call
     render Components::People::IndexView.new(people: people)
   end
 
