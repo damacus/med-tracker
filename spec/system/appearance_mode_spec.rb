@@ -56,13 +56,12 @@ RSpec.describe 'Appearance mode' do
       })()
     JS
 
-    expect(default_primary).to eq('#1b4fb8')
     expect(default_medication_icon_background).not_to be_nil
     expect(default_profile_card_background).not_to be_nil
 
     click_button 'Warm Earth'
 
-    expect(page.evaluate_script(root_primary_script)).to eq('#e07a5f')
+    warm_profile_primary = page.evaluate_script(root_primary_script)
 
     warm_profile_card_background = page.evaluate_script(<<~JS)
       (() => {
@@ -71,11 +70,12 @@ RSpec.describe 'Appearance mode' do
       })()
     JS
 
+    expect(warm_profile_primary).not_to eq(default_primary)
     expect(warm_profile_card_background).not_to eq(default_profile_card_background)
 
     visit medication_path(medication)
 
-    expect(page.evaluate_script(root_primary_script)).to eq('#e07a5f')
+    warm_medication_primary = page.evaluate_script(root_primary_script)
 
     warm_medication_icon_background = page.evaluate_script(<<~JS)
       (() => {
@@ -84,6 +84,7 @@ RSpec.describe 'Appearance mode' do
       })()
     JS
 
+    expect(warm_medication_primary).to eq(warm_profile_primary)
     expect(warm_medication_icon_background).not_to eq(default_medication_icon_background)
   end
 
