@@ -84,7 +84,7 @@ module Components
               CardDescription { t('admin.audit_logs.show.previous_state_description') }
             end
             CardContent do
-              pre(class: 'bg-surface-container-low p-4 rounded-lg overflow-x-auto text-xs font-mono') do
+              pre(class: 'bg-muted p-4 rounded-lg overflow-x-auto text-xs font-mono') do
                 code { format_object(version.object) }
               end
             end
@@ -105,7 +105,7 @@ module Components
               CardDescription { description_for_new_state }
             end
             CardContent do
-              pre(class: 'bg-surface-container-low p-4 rounded-lg overflow-x-auto text-xs font-mono') do
+              pre(class: 'bg-muted p-4 rounded-lg overflow-x-auto text-xs font-mono') do
                 code { format_new_state(new_state) }
               end
             end

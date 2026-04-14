@@ -25,7 +25,7 @@ module Components
           render_form
         else
           div(class: 'container mx-auto px-4 py-12 max-w-2xl') do
-            Card(class: 'overflow-hidden border-none shadow-2xl rounded-[2.5rem] bg-surface-container-lowest') do
+            Card(class: 'overflow-hidden border-none shadow-2xl rounded-[2.5rem] bg-card') do
               div(class: 'p-10') do
                 render_header_section
                 render_form

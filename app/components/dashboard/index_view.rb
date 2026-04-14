@@ -136,10 +136,10 @@ module Components
                    'transition-all duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-primary/20 ' \
                    'group cursor-default'
           ) do
-            div(class: 'absolute -right-8 -top-8 w-32 h-32 bg-surface-container-lowest/10 rounded-full blur-2xl ' \
-                       'group-hover:bg-surface-container-lowest/20 transition-all')
+            div(class: 'absolute -right-8 -top-8 w-32 h-32 bg-card/10 rounded-full blur-2xl ' \
+                       'group-hover:bg-card/20 transition-all')
             div(class: 'relative z-10') do
-              div(class: 'w-10 h-10 rounded-xl bg-surface-container-lowest/20 flex items-center justify-center mb-6 ' \
+              div(class: 'w-10 h-10 rounded-xl bg-card/20 flex items-center justify-center mb-6 ' \
                          'group-hover:scale-110 transition-transform') do
                 render Icons::AlertCircle.new(size: 20)
               end
@@ -218,7 +218,7 @@ module Components
         div(class: 'space-y-6') do
           Heading(level: 2, size: '5', class: 'font-bold') { t('dashboard.inventory.title') }
           render RubyUI::Card.new(
-            class: 'bg-surface-container-lowest p-8 rounded-[2.5rem] border border-border shadow-sm transition-all ' \
+            class: 'bg-card p-8 rounded-[2.5rem] border border-border shadow-sm transition-all ' \
                    'duration-300 hover:shadow-md hover:scale-[1.01] cursor-default'
           ) do
             div(class: 'space-y-6') do
@@ -228,7 +228,7 @@ module Components
               render RubyUI::Link.new(
                 href: medications_path,
                 variant: :ghost,
-                class: 'w-full py-4 rounded-2xl bg-surface-container-low text-muted-foreground text-xs font-bold ' \
+                class: 'w-full py-4 rounded-2xl bg-muted text-muted-foreground text-xs font-bold ' \
                        'hover:bg-accent transition-all uppercase tracking-widest no-underline flex justify-center'
               ) do
                 t('dashboard.inventory.order_refills')

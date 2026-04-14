@@ -20,9 +20,9 @@ module Components
           # ⚡ Bolt Optimization: Use .to_a.any? instead of .any? to materialize the relation
           # into an array in memory. This prevents an extra COUNT/EXISTS query before iterating.
           if schedules.to_a.any?
-            div(class: 'rounded-3xl border border-border bg-surface-container-lowest overflow-hidden shadow-sm') do
+            div(class: 'rounded-3xl border border-border bg-card overflow-hidden shadow-sm') do
               table(class: 'w-full text-sm') do
-                thead(class: 'bg-surface-container-low text-muted-foreground uppercase tracking-widest text-xs') do
+                thead(class: 'bg-muted text-muted-foreground uppercase tracking-widest text-xs') do
                   tr do
                     th(class: 'text-left px-6 py-4') { t('dashboard.table.person') }
                     th(class: 'text-left px-6 py-4') { t('dashboard.table.medication') }

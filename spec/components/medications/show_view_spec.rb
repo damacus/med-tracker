@@ -29,24 +29,14 @@ RSpec.describe Components::Medications::ShowView, type: :component do
   describe 'action button styling' do
     let(:rendered) { render_inline(described_class.new(medication: medication)) }
 
-    it 'uses background tokens consistent with dose cards' do
+    it 'uses action button utility tokens' do
       add_schedule_link = rendered.css('a').find { |link| link.text.include?('Add Schedule') }
       mark_as_ordered_link = rendered.css('a').find { |link| link.text.include?('Mark as Ordered') }
       refill_button = rendered.css('button').find { |button| button.text.include?('Refill Inventory') }
 
-      expect(add_schedule_link[:class]).to include('bg-card')
-      expect(mark_as_ordered_link[:class]).to include('bg-card')
-      expect(refill_button[:class]).to include('bg-card')
-    end
-
-    it 'uses shadow tokens consistent with dose cards' do
-      add_schedule_link = rendered.css('a').find { |link| link.text.include?('Add Schedule') }
-      mark_as_ordered_link = rendered.css('a').find { |link| link.text.include?('Mark as Ordered') }
-      refill_button = rendered.css('button').find { |button| button.text.include?('Refill Inventory') }
-
-      expect(add_schedule_link[:class]).to include('shadow-elevation-1')
-      expect(mark_as_ordered_link[:class]).to include('shadow-elevation-1')
-      expect(refill_button[:class]).to include('shadow-elevation-1')
+      expect(add_schedule_link[:class]).to include('btn-action')
+      expect(mark_as_ordered_link[:class]).to include('btn-action')
+      expect(refill_button[:class]).to include('btn-action')
     end
   end
 

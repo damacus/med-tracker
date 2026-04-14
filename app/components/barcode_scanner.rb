@@ -23,7 +23,7 @@ module Components
             error: t('barcode_scanner.status.error')
           }.to_json
         },
-        class: 'rounded-2xl border border-border bg-surface-container-lowest p-6'
+        class: 'rounded-2xl border border-border bg-card p-6'
       ) do
         render_header
         render_scanner_region

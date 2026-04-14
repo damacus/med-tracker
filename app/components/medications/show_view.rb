@@ -110,20 +110,18 @@ module Components
             href: add_medication_path(medication_id: medication.id),
             variant: :outline,
             size: :lg,
-            class: 'w-full py-6 bg-card border-border shadow-elevation-1 ' \
-                   'flex items-center justify-center'
+            class: 'btn-action bg-card border-border'
           ) do
             render Icons::PlusCircle.new(size: 18, class: 'mr-2 text-primary')
-            span(class: 'font-semibold text-foreground') { t('medications.show.add_schedule') }
+            span { t('medications.show.add_schedule') }
           end
 
           render Button.new(
-            variant: :secondary,
-            class: 'w-full py-6 shadow-elevation-2 flex items-center justify-center ' \
-                   'bg-success text-success-foreground hover:bg-success/90'
+            variant: :success,
+            class: 'btn-action'
           ) do
             render Icons::Activity.new(size: 18, class: 'mr-2')
-            span(class: 'font-semibold') { t('medications.show.log_administration') }
+            span { t('medications.show.log_administration') }
           end
 
           # Reorder & Refill Actions Group
@@ -148,28 +146,24 @@ module Components
           variant: :outline,
           size: :lg,
           data: { turbo_method: :patch },
-          class: 'w-full py-6 bg-card border-border shadow-elevation-1 ' \
-                 'flex items-center justify-center'
+          class: 'btn-action bg-card border-border'
         ) do
           render icon.new(size: 18, class: 'mr-2 text-primary')
-          span(class: 'font-semibold text-foreground') { label }
+          span { label }
         end
       end
 
       def render_refill_modal
         is_received = medication.reorder_received?
-        base_classes = 'w-full py-6 shadow-elevation-1 flex items-center justify-center'
-        button_class = if is_received
-                         base_classes
-                       else
-                         "#{base_classes} bg-card border-border"
-                       end
+        button_class = is_received ? 'btn-action' : 'btn-action bg-card border-border'
 
         render Components::Medications::RefillModal.new(
           medication: medication,
-          button_variant: is_received ? :primary : :outline,
+          button_variant: is_received ? :success : :outline,
+          button_size: :lg,
           button_class: button_class,
-          button_label: is_received ? t('medications.show.complete_refill') : t('medications.show.refill_inventory')
+          button_label: is_received ? t('medications.show.complete_refill') : t('medications.show.refill_inventory'),
+          icon: Icons::RefreshCw
         )
       end
 

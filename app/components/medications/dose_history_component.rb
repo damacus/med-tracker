@@ -55,7 +55,7 @@ module Components
       end
 
       def render_dosage_row(dosage)
-        div(class: 'flex items-start justify-between gap-3 rounded-lg border border-border p-3') do
+        div(class: 'flex items-start justify-between gap-3 rounded-shape-lg border border-border p-3') do
           div(class: 'space-y-1') do
             render_dosage_summary(dosage)
             render_dosage_scheduling_hint(dosage)

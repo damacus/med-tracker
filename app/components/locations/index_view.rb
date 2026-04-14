@@ -52,7 +52,7 @@ module Components
       def render_location_card(location)
         Card(
           id: "location_#{location.id}",
-          class: 'h-full flex flex-col border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-surface-container-lowest ' \
+          class: 'h-full flex flex-col border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card ' \
                  'rounded-[2.5rem] transition-all duration-300 hover:scale-[1.02] hover:shadow-xl ' \
                  'group overflow-hidden'
         ) do
@@ -82,7 +82,7 @@ module Components
                   location.members.each do |member|
                     Badge(
                       variant: :outline,
-                      class: 'text-[10px] bg-surface-container-low ' \
+                      class: 'text-[10px] bg-muted ' \
                              'text-muted-foreground border-border font-medium'
                     ) do
                       member.name
@@ -101,7 +101,7 @@ module Components
 
       def render_location_icon
         div(
-          class: 'w-12 h-12 rounded-2xl bg-surface-container-low flex items-center ' \
+          class: 'w-12 h-12 rounded-2xl bg-muted flex items-center ' \
                  'justify-center text-muted-foreground group-hover:text-primary ' \
                  'group-hover:bg-primary/5 transition-all'
         ) do
@@ -115,7 +115,7 @@ module Components
             href: location_path(location),
             variant: :outline,
             size: :sm,
-            class: 'flex-1 rounded-xl py-5 border-border bg-surface-container-lowest ' \
+            class: 'flex-1 rounded-xl py-5 border-border bg-card ' \
                    'hover:bg-accent text-muted-foreground'
           ) do
             t('locations.index.view')
@@ -125,7 +125,7 @@ module Components
             variant: :outline,
             size: :sm,
             class: 'rounded-xl w-10 h-10 p-0 border-border ' \
-                   'bg-surface-container-lowest hover:bg-accent text-muted-foreground',
+                   'bg-card hover:bg-accent text-muted-foreground',
             aria_label: t('locations.index.edit', default: 'Edit location')
           ) do
             render Icons::Pencil.new(size: 16)

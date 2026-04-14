@@ -96,7 +96,7 @@ module Components
         div(class: 'space-y-6') do
           div(
             class: 'flex items-center justify-between rounded-2xl border ' \
-                   'border-border bg-surface-container-low px-4 py-3'
+                   'border-border bg-muted px-4 py-3'
           ) do
             div do
               Text(
@@ -448,7 +448,7 @@ module Components
         selected = if selected_dose_selection_key == dosage.selection_key
                      ' border-primary bg-primary/5 ring-2 ring-primary/20'
                    else
-                     ' border-border bg-surface-container-lowest'
+                     ' border-border bg-card'
                    end
         "#{base}#{selected}"
       end

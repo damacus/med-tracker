@@ -15,10 +15,10 @@ module Components
       def view_template
         Card(
           class: 'p-10 text-center rounded-[2.5rem] border border-dashed border-border ' \
-                 'bg-surface-container-lowest'
+                 'bg-card'
         ) do
           div(
-            class: 'w-16 h-16 rounded-full bg-surface-container-low flex items-center justify-center ' \
+            class: 'w-16 h-16 rounded-full bg-muted flex items-center justify-center ' \
                    'text-muted-foreground mx-auto mb-5'
           ) do
             render_icon

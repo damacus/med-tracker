@@ -17,7 +17,7 @@ module Components
       def view_template
         Card(
           id: "medication_#{medication.id}",
-          class: 'h-full flex flex-col border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-cardest ' \
+          class: 'h-full flex flex-col border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card ' \
                  'rounded-[2.5rem] transition-all duration-300 hover:scale-[1.02] hover:shadow-xl ' \
                  'group overflow-hidden'
         ) do
@@ -90,7 +90,7 @@ module Components
             href: medication_path(medication),
             variant: :outline,
             size: :sm,
-            class: 'flex-1 rounded-xl py-5 border-border bg-cardest ' \
+            class: 'flex-1 rounded-xl py-5 border-border bg-card ' \
                    'hover:bg-card text-muted-foreground'
           ) do
             t('medications.index.view')
@@ -99,7 +99,7 @@ module Components
             href: edit_medication_path(medication, return_to: medications_path(inventory_query_params)),
             variant: :outline,
             size: :sm,
-            class: 'rounded-xl w-10 h-10 p-0 border-border bg-cardest ' \
+            class: 'rounded-xl w-10 h-10 p-0 border-border bg-card ' \
                    'hover:bg-card text-muted-foreground',
             aria_label: t('medications.index.edit', default: 'Edit medication')
           ) do
@@ -110,7 +110,7 @@ module Components
                                'flex items-center justify-center rounded-xl w-10 h-10 p-0'
                              else
                                'flex items-center justify-center rounded-xl w-10 h-10 p-0 ' \
-                                 'border-border bg-cardest ' \
+                                 'border-border bg-card ' \
                                  'hover:bg-card text-muted-foreground'
                              end
 

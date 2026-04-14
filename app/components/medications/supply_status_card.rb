@@ -27,7 +27,7 @@ module Components
             end
 
             div(class: 'space-y-2') do
-              div(class: 'h-2 w-full bg-card rounded-full overflow-hidden') do
+              div(class: 'h-2 w-full bg-muted rounded-full overflow-hidden shadow-inner') do
                 div(class: "h-full #{presenter.supply_bar_class} rounded-full",
                     style: "width: #{presenter.supply_level.percentage}%")
               end
@@ -63,13 +63,13 @@ module Components
 
       def render_forecast_section
         if presenter.forecast_items.any?
-          div(class: 'pt-4 border-t border-surface-container-low space-y-2') do
+          div(class: 'pt-4 border-t border-border space-y-2') do
             presenter.forecast_items.each do |item|
               forecast_item(item[:message], item[:variant])
             end
           end
         else
-          div(class: 'pt-4 border-t border-surface-container-low') do
+          div(class: 'pt-4 border-t border-border') do
             Text(size: '2', class: 'text-muted-foreground italic') { t('medications.show.forecast_unavailable') }
           end
         end

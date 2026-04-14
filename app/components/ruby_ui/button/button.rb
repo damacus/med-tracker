@@ -112,12 +112,30 @@ module RubyUI
       ]
     end
 
+    def success_classes
+      [
+        BASE_CLASSES,
+        size_classes,
+        'bg-success text-success-foreground shadow-sm',
+        'hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all'
+      ]
+    end
+
+    def large_action_classes
+      [
+        'w-full py-6 rounded-shape-xl flex items-center justify-center font-bold transition-all',
+        'shadow-elevation-1 hover:shadow-elevation-2 active:scale-[0.98]'
+      ]
+    end
+
     def default_classes
       case @variant
       when :primary then primary_classes
       when :link then link_classes
       when :secondary then secondary_classes
       when :destructive then destructive_classes
+      when :success then success_classes
+      when :large_action then large_action_classes
       when :outline then outline_classes
       when :destructive_outline then destructive_outline_classes
       when :success_outline then success_outline_classes

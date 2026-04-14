@@ -124,12 +124,12 @@ module Components
         def render_action_card(title:, description:, href:, icon: nil)
           a(
             href: href,
-            class: 'flex flex-col gap-3 rounded-2xl bg-surface-container-lowest p-6 border border-border shadow-sm ' \
+            class: 'flex flex-col gap-3 rounded-2xl bg-card p-6 border border-border shadow-sm ' \
                    'transition-all duration-300 hover:shadow-md hover:scale-[1.02] ' \
                    'cursor-pointer no-underline h-full min-w-0'
           ) do
             div(
-              class: 'w-10 h-10 rounded-xl bg-surface-container-low flex items-center ' \
+              class: 'w-10 h-10 rounded-xl bg-muted flex items-center ' \
                      'justify-center text-muted-foreground shrink-0'
             ) do
               render icon if icon

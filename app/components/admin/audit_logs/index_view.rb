@@ -140,14 +140,14 @@ module Components
         end
 
         def render_empty_state
-          div(class: 'rounded-xl border border-border bg-surface-container-lowest p-12 text-center shadow-sm') do
+          div(class: 'rounded-xl border border-border bg-card p-12 text-center shadow-sm') do
             Text(size: '4', class: 'text-muted-foreground') { t('admin.audit_logs.index.empty.no_logs') }
             Text(size: '2', weight: 'muted', class: 'mt-2') { t('admin.audit_logs.index.empty.adjust_filters') }
           end
         end
 
         def render_table_header
-          TableHeader(class: 'bg-surface-container-low') do
+          TableHeader(class: 'bg-muted') do
             TableRow do
               TableHead { t('admin.audit_logs.index.table.timestamp') }
               TableHead { t('admin.audit_logs.index.table.record_type') }
@@ -230,7 +230,7 @@ module Components
         def render_pagination
           nav(
             class: 'flex items-center justify-between border-t border-border ' \
-                   'bg-surface-container-lowest px-4 py-3 sm:px-6',
+                   'bg-card px-4 py-3 sm:px-6',
             'aria-label': 'Pagination'
           ) do
             render_pagination_info
@@ -296,7 +296,7 @@ module Components
         end
 
         def pagination_button_classes
-          'relative inline-flex items-center rounded-md bg-surface-container-lowest px-3 py-2 text-sm font-semibold ' \
+          'relative inline-flex items-center rounded-md bg-card px-3 py-2 text-sm font-semibold ' \
             'text-foreground ring-1 ring-inset ring-border hover:bg-accent'
         end
 

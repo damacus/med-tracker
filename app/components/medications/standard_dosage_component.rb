@@ -17,8 +17,8 @@ module Components
           if dosage_specified?
             div(class: 'flex items-center gap-4') do
               div(
-                class: 'w-12 h-12 rounded-shape-xl bg-secondary-container flex items-center justify-center ' \
-                       'text-on-secondary-container shadow-sm'
+                class: 'w-12 h-12 rounded-shape-xl bg-success/10 flex items-center justify-center ' \
+                       'text-success shadow-inner'
               ) do
                 render Icons::CheckCircle.new(size: 24)
               end
@@ -31,7 +31,7 @@ module Components
             Text(size: '2', class: 'text-muted-foreground italic') { t('medications.show.no_dosage') }
           end
 
-          div(class: 'pt-4 border-t border-surface-container-low') do
+          div(class: 'pt-4 border-t border-border') do
             render_overview_item(
               t('medications.show.reorder_at_label'),
               pluralize(medication.reorder_threshold, 'unit')
@@ -48,9 +48,11 @@ module Components
 
       def render_overview_item(label, value)
         div(class: 'flex items-center gap-4 group') do
-          div(class: 'w-10 h-10 rounded-xl bg-secondary-container flex items-center justify-center ' \
-                     'text-on-secondary-container ' \
-                     'group-hover:bg-primary/5 group-hover:text-primary transition-colors shadow-sm') do
+          div(
+            class: 'w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center ' \
+                   'text-primary ' \
+                   'group-hover:bg-primary/20 transition-colors shadow-inner'
+          ) do
             render Icons::Settings.new(size: 20)
           end
           div do

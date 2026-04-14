@@ -24,7 +24,7 @@ module Components
             render_errors if @invitation.errors.any?
 
             div(class: 'max-w-2xl mx-auto w-full') do
-              Card(class: 'overflow-hidden border-none shadow-2xl rounded-[2.5rem] bg-surface-container-lowest') do
+              Card(class: 'overflow-hidden border-none shadow-2xl rounded-[2.5rem] bg-card') do
                 div(class: 'p-10') do
                   render_form
                 end
@@ -73,7 +73,7 @@ module Components
               id: 'invitation_email',
               value: @invitation.email,
               required: true,
-              class: 'rounded-md border-border bg-surface-container-lowest py-4 px-4 focus:ring-2 ' \
+              class: 'rounded-md border-border bg-card py-4 px-4 focus:ring-2 ' \
                      'focus:ring-primary/10 focus:border-primary transition-all'
             )
           end
@@ -106,7 +106,7 @@ module Components
           return if @invitations.empty?
 
           div(class: 'max-w-4xl mx-auto w-full') do
-            Card(class: 'overflow-hidden border-none shadow-xl rounded-[2rem] bg-surface-container-lowest') do
+            Card(class: 'overflow-hidden border-none shadow-xl rounded-[2rem] bg-card') do
               div(class: 'px-8 py-6 border-b border-border') do
                 Heading(level: 2, size: '5', class: 'font-bold tracking-tight') { t('admin.invitations.index.recent') }
               end

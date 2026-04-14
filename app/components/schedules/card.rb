@@ -21,7 +21,7 @@ module Components
         render RubyUI::Card.new(
           id: "schedule_#{schedule.id}",
           class: "h-full flex flex-col border-none border-t-4 #{status_top_border_class} " \
-                 'shadow-[0_15px_40px_rgba(0,0,0,0.08)] bg-surface-container-lowest rounded-[2rem] transition-all ' \
+                 'shadow-[0_15px_40px_rgba(0,0,0,0.08)] bg-card rounded-[2rem] transition-all ' \
                  'duration-300 hover:scale-[1.02] hover:shadow-2xl group overflow-hidden'
         ) do
           render_card_header
@@ -90,7 +90,7 @@ module Components
 
       def render_medication_icon
         div(
-          class: 'w-12 h-12 rounded-2xl bg-surface-container-low flex items-center ' \
+          class: 'w-12 h-12 rounded-2xl bg-muted flex items-center ' \
                  'justify-center text-muted-foreground ' \
                  'group-hover:text-primary group-hover:bg-primary/5 transition-all'
         ) do
@@ -226,7 +226,7 @@ module Components
       def render_take_item(take)
         div(
           class: 'flex items-center justify-between p-3 rounded-xl ' \
-                 'bg-surface-container-low group/item transition-colors ' \
+                 'bg-muted group/item transition-colors ' \
                  'hover:bg-accent'
         ) do
           div(class: 'flex items-center gap-3') do

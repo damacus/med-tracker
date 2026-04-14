@@ -21,7 +21,7 @@ module Components
         render RubyUI::Card.new(
           id: "person_medication_#{person_medication.id}",
           class: 'h-full flex flex-col border-none border-l-4 border-l-primary ' \
-                 'shadow-[0_8px_30px_rgb(0,0,0,0.06)] bg-surface-container-lowest rounded-[2.5rem] transition-all ' \
+                 'shadow-[0_8px_30px_rgb(0,0,0,0.06)] bg-card rounded-[2.5rem] transition-all ' \
                  'duration-300 hover:scale-[1.02] hover:shadow-xl group overflow-hidden'
         ) do
           render_card_header
@@ -76,7 +76,7 @@ module Components
 
       def render_medication_icon
         div(
-          class: 'w-12 h-12 rounded-shape-xl bg-surface-container-low flex items-center justify-center ' \
+          class: 'w-12 h-12 rounded-shape-xl bg-muted flex items-center justify-center ' \
                  'text-muted-foreground ' \
                  'group-hover:text-primary group-hover:bg-primary/5 transition-all'
         ) do
@@ -97,7 +97,7 @@ module Components
       end
 
       def render_timing_restrictions
-        div(class: 'p-4 bg-surface-container-low border border-border rounded-shape-xl') do
+        div(class: 'p-4 bg-muted border border-border rounded-shape-xl') do
           div(class: 'flex items-center gap-2 mb-2') do
             render Icons::Settings.new(size: 14, class: 'text-muted-foreground')
             Text(size: '1', weight: 'bold', class: 'font-black uppercase tracking-widest text-muted-foreground') do
@@ -190,7 +190,7 @@ module Components
 
       def render_take_item(take)
         div(
-          class: 'flex items-center justify-between p-3 rounded-xl bg-surface-container-low ' \
+          class: 'flex items-center justify-between p-3 rounded-xl bg-muted ' \
                  'group/item transition-colors ' \
                  'hover:bg-accent'
         ) do

@@ -69,7 +69,7 @@ module Components
               placeholder: t('medications.finder.placeholder'),
               autocomplete: 'off',
               data: { medication_search_target: 'input' },
-              class: 'block w-full pl-14 pr-32 py-6 border border-border rounded-[1.5rem] leading-5 bg-cardest shadow-[0_10px_40px_rgba(0,0,0,0.03)] focus:shadow-[0_10px_40px_rgba(0,0,0,0.06)] focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary sm:text-base transition-all placeholder:text-muted-foreground'
+              class: 'block w-full pl-14 pr-32 py-6 border border-border rounded-[1.5rem] leading-5 bg-card shadow-[0_10px_40px_rgba(0,0,0,0.03)] focus:shadow-[0_10px_40px_rgba(0,0,0,0.06)] focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary sm:text-base transition-all placeholder:text-muted-foreground'
             )
             div(class: 'absolute inset-y-2 right-2 flex items-center') do
               Button(

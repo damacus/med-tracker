@@ -5,18 +5,21 @@ module Components
     class RefillModal < Components::Base
       include Phlex::Rails::Helpers::FormWith
 
-      attr_reader :medication, :button_variant, :button_class, :quantity, :restock_date, :icon_only, :button_label
+      attr_reader :medication, :button_variant, :button_class, :button_size, :quantity,
+                  :restock_date, :icon_only, :button_label, :icon
 
       # rubocop:disable Metrics/ParameterLists
-      def initialize(medication:, button_variant: :outline, button_class: '',
-                     quantity: nil, restock_date: nil, icon_only: false, button_label: nil)
+      def initialize(medication:, button_variant: :outline, button_class: '', button_size: :md,
+                     quantity: nil, restock_date: nil, icon_only: false, button_label: nil, icon: nil)
         @medication = medication
         @button_variant = button_variant
         @button_class = button_class
+        @button_size = button_size
         @quantity = quantity
         @restock_date = restock_date
         @icon_only = icon_only
         @button_label = button_label
+        @icon = icon
         super()
       end
       # rubocop:enable Metrics/ParameterLists
@@ -24,14 +27,13 @@ module Components
       def view_template
         Dialog do
           DialogTrigger do
-            Button(variant: button_variant, class: button_class) do
+            Button(variant: button_variant, size: button_size, class: button_class) do
               if icon_only
                 render Icons::RefreshCw.new(size: 16)
                 span(class: 'sr-only') { t('medications.refill_modal.refill_inventory') }
-              elsif button_label
-                plain button_label
               else
-                t('medications.refill_modal.refill_inventory')
+                render icon.new(size: 18, class: 'mr-2') if icon
+                span { button_label || t('medications.refill_modal.refill_inventory') }
               end
             end
           end

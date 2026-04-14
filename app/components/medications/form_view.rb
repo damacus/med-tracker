@@ -68,7 +68,7 @@ module Components
           render_errors(form) if medication.errors.any?
           input(type: 'hidden', name: 'return_to', value: return_to) if return_to.present?
 
-          Card(class: 'overflow-visible border-none shadow-2xl rounded-[2.5rem] bg-cardest') do
+          Card(class: 'overflow-visible border-none shadow-2xl rounded-[2.5rem] bg-card') do
             div(class: 'p-10 space-y-8') do
               div(class: 'space-y-6') do
                 render_location_field(form)
@@ -200,7 +200,7 @@ module Components
             value: medication.name,
             required: true,
             placeholder: t('forms.medications.name_placeholder'),
-            class: 'rounded-md border-border bg-cardest py-4 px-4 ' \
+            class: 'rounded-md border-border bg-card py-4 px-4 ' \
                    'focus:ring-2 focus:ring-primary/10 ' \
                    "focus:border-primary transition-all #{field_error_class(medication, :name)}",
             **field_error_attributes(medication, :name, input_id: 'medication_name')
@@ -268,7 +268,7 @@ module Components
             id: 'medication_description',
             rows: 3,
             placeholder: t('forms.medications.description_placeholder'),
-            class: 'rounded-md border-border bg-cardest p-4 focus:ring-2 focus:ring-primary/10 ' \
+            class: 'rounded-md border-border bg-card p-4 focus:ring-2 focus:ring-primary/10 ' \
                    'focus:border-primary transition-all resize-none'
           ) { medication.description }
         end
@@ -293,7 +293,7 @@ module Components
             step: 'any',
             min: '1',
             placeholder: t('forms.medications.standard_dosage_placeholder', default: 'e.g., 500'),
-            class: 'rounded-md border-border bg-cardest py-4 px-4 ' \
+            class: 'rounded-md border-border bg-card py-4 px-4 ' \
                    'focus:ring-2 focus:ring-primary/10 ' \
                    'focus:border-primary transition-all',
             **field_error_attributes(medication, :dosage_amount, input_id: 'medication_dosage_amount')
@@ -687,7 +687,7 @@ module Components
             value: medication.current_supply,
             min: '0',
             placeholder: t('forms.medications.current_supply_placeholder', default: 'e.g., 30'),
-            class: 'rounded-md border-border bg-cardest py-4 px-4 ' \
+            class: 'rounded-md border-border bg-card py-4 px-4 ' \
                    'focus:ring-2 focus:ring-primary/10 ' \
                    'focus:border-primary transition-all'
           )
@@ -707,7 +707,7 @@ module Components
             value: medication.reorder_threshold,
             min: '1',
             placeholder: t('forms.medications.reorder_threshold_placeholder', default: 'e.g., 5'),
-            class: 'rounded-md border-border bg-cardest py-4 px-4 ' \
+            class: 'rounded-md border-border bg-card py-4 px-4 ' \
                    'focus:ring-2 focus:ring-primary/10 ' \
                    'focus:border-primary transition-all'
           )

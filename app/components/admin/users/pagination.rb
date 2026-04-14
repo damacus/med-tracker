@@ -16,7 +16,7 @@ module Components
         def view_template
           div(
             class: 'flex items-center justify-between border-t border-border ' \
-                   'bg-surface-container-lowest px-4 py-3 sm:px-6'
+                   'bg-card px-4 py-3 sm:px-6'
           ) do
             div(class: 'flex flex-1 justify-between sm:hidden') do
               render_mobile_pagination
@@ -55,7 +55,7 @@ module Components
         end
 
         def mobile_nav_class
-          'relative inline-flex items-center rounded-md border border-border bg-surface-container-lowest ' \
+          'relative inline-flex items-center rounded-md border border-border bg-card ' \
             'px-4 py-2 text-sm font-medium text-foreground hover:bg-accent'
         end
 

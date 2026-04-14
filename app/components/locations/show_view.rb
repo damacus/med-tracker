@@ -55,7 +55,7 @@ module Components
 
           div(class: 'flex gap-3') do
             Link(href: edit_location_path(location, return_to: location_path(location)), variant: :outline, size: :lg,
-                 class: 'rounded-2xl font-bold text-sm bg-surface-container-lowest') do
+                 class: 'rounded-2xl font-bold text-sm bg-card') do
               t('locations.show.edit_location')
             end
             Link(href: locations_path, variant: :ghost, size: :lg,
@@ -91,7 +91,7 @@ module Components
           div(class: 'flex items-center justify-between') do
             div(class: 'flex items-center gap-4') do
               div(
-                class: 'w-10 h-10 rounded-xl bg-surface-container-low flex items-center ' \
+                class: 'w-10 h-10 rounded-xl bg-muted flex items-center ' \
                        'justify-center text-muted-foreground'
               ) do
                 render Icons::Pill.new(size: 20)
@@ -231,7 +231,7 @@ module Components
             Button(
               variant: :ghost,
               size: :sm,
-              class: 'w-8 h-8 p-0 rounded-full bg-surface-container-low text-muted-foreground ' \
+              class: 'w-8 h-8 p-0 rounded-full bg-muted text-muted-foreground ' \
                      'hover:text-primary hover:bg-primary/5',
               aria_label: t('locations.show.add_member.aria_label', default: 'Add member')
             ) do
@@ -272,7 +272,7 @@ module Components
               else
                 div(class: 'py-8 text-center space-y-2') do
                   div(
-                    class: 'w-12 h-12 rounded-full bg-surface-container-low flex items-center justify-center ' \
+                    class: 'w-12 h-12 rounded-full bg-muted flex items-center justify-center ' \
                            'text-muted-foreground mx-auto'
                   ) do
                     render Icons::Users.new(size: 24)

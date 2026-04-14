@@ -137,7 +137,7 @@ module Components
       end
 
       def background_class
-        variant == :warning ? 'bg-warning-container' : 'bg-surface-container-lowest/50'
+        variant == :warning ? 'bg-warning-container' : 'bg-card/50'
       end
 
       def border_class
@@ -162,7 +162,7 @@ module Components
         when 'pill' then 'bg-success-container'
         when 'check' then 'bg-secondary-container'
         when 'clock' then 'bg-warning-container'
-        else 'bg-surface-container-low'
+        else 'bg-muted'
         end
       end
 

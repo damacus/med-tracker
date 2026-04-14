@@ -15,7 +15,7 @@ module Components
         card_id = "timeline_#{dose[:source].class.name.underscore}_#{dose[:source].id}"
         render RubyUI::Card.new(
           class: "border-none border-l-4 #{status_border_class} transition-all duration-300 " \
-                 'hover:scale-[1.01] hover:shadow-md bg-surface-container-lowest shadow-sm',
+                 'hover:scale-[1.01] hover:shadow-md bg-card shadow-sm',
           id: card_id,
           data: { id: "dose_#{dose_id}" }
         ) do

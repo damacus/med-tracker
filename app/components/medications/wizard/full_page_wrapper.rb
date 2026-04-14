@@ -17,7 +17,7 @@ module Components
           div(class: 'container mx-auto px-4 py-12 max-w-2xl') do
             render_header
 
-            Card(class: 'overflow-visible border-none shadow-2xl rounded-[2.5rem] bg-cardest') do
+            Card(class: 'overflow-visible border-none shadow-2xl rounded-[2.5rem] bg-card') do
               div(class: 'p-10') do
                 render StepContent.new(
                   medication: medication,

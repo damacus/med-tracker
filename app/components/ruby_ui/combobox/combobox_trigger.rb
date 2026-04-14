@@ -22,7 +22,7 @@ module RubyUI
       {
         type: 'button',
         class: [
-          'flex h-full w-full items-center whitespace-nowrap rounded-shape-sm text-sm ring-offset-background transition-colors border border-input bg-surface-container-lowest h-9 px-4 py-2 justify-between',
+          'flex h-full w-full items-center whitespace-nowrap rounded-shape-sm text-sm ring-offset-background transition-colors border border-input bg-card h-9 px-4 py-2 justify-between',
           'hover:bg-accent hover:text-accent-foreground',
           'disabled:pointer-events-none disabled:opacity-50',
           'aria-disabled:pointer-events-none aria-disabled:opacity-50 aria-disabled:cursor-not-allowed',

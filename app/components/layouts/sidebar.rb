@@ -93,7 +93,7 @@ module Components
         div(class: 'mt-auto w-full space-y-4 px-2') do
           link_to profile_path,
                   class: 'flex items-center gap-3 rounded-shape-xl border border-sidebar-border ' \
-                         'bg-surface-container-low p-2 ' \
+                         'bg-muted p-2 ' \
                          'transition-all no-underline group hover:bg-accent/70' do
             div(
               class: 'w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary ' \

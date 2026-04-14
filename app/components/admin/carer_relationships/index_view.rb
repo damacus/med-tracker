@@ -146,7 +146,7 @@ module Components
         def render_pagination
           div(
             class: 'flex items-center justify-between border-t border-border ' \
-                   'bg-surface-container-lowest px-4 py-3 sm:px-6'
+                   'bg-card px-4 py-3 sm:px-6'
           ) do
             div(data: { testid: 'pagination-info' }) do
               Text(size: '2', class: 'text-foreground') do

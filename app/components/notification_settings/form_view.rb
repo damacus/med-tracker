@@ -36,7 +36,7 @@ module Components
 
       def render_push_subscription_section
         div(
-          class: 'mb-8 p-6 rounded-2xl border border-border bg-surface-container-low',
+          class: 'mb-8 p-6 rounded-2xl border border-border bg-muted',
           data: { controller: 'push-notification' }
         ) do
           # VAPID key fallback if not in layout
@@ -83,7 +83,7 @@ module Components
             button(
               type: 'button',
               class: 'w-full inline-flex items-center justify-center gap-2 rounded-xl border border-border ' \
-                     'bg-surface-container-lowest px-4 py-2.5 text-sm font-bold text-foreground transition-all ' \
+                     'bg-card px-4 py-2.5 text-sm font-bold text-foreground transition-all ' \
                      'hover:bg-accent ' \
                      'hover:shadow-sm active:scale-[0.98]',
               data: {

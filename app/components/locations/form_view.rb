@@ -47,14 +47,14 @@ module Components
           render_errors if location.errors.any?
           input(type: 'hidden', name: 'return_to', value: return_to) if return_to.present?
 
-          Card(class: 'overflow-hidden border-none shadow-2xl rounded-[2.5rem] bg-surface-container-lowest') do
+          Card(class: 'overflow-hidden border-none shadow-2xl rounded-[2.5rem] bg-card') do
             div(class: 'p-10 space-y-8') do
               render_name_field(form)
               render_description_field(form)
             end
 
             div(
-              class: 'px-10 py-6 bg-surface-container-low border-t border-border flex items-center ' \
+              class: 'px-10 py-6 bg-muted border-t border-border flex items-center ' \
                      'justify-between gap-4'
             ) do
               Link(href: return_to.presence || locations_path, variant: :ghost,
@@ -102,7 +102,7 @@ module Components
             required: true,
             placeholder: t('forms.locations.name_placeholder'),
             class: [
-              'rounded-2xl border-border bg-surface-container-lowest py-4 px-4 focus:ring-2 focus:ring-primary/10',
+              'rounded-2xl border-border bg-card py-4 px-4 focus:ring-2 focus:ring-primary/10',
               "focus:border-primary transition-all #{field_error_class(location, :name)}"
             ],
             **field_error_attributes(location, :name, input_id: 'location_name')
@@ -122,7 +122,7 @@ module Components
             id: 'location_description',
             rows: 3,
             placeholder: t('forms.locations.description_placeholder'),
-            class: 'rounded-2xl border-border bg-surface-container-lowest p-4 focus:ring-2 focus:ring-primary/10 ' \
+            class: 'rounded-2xl border-border bg-card p-4 focus:ring-2 focus:ring-primary/10 ' \
                    'focus:border-primary transition-all resize-none'
           ) { location.description }
         end

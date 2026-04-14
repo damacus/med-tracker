@@ -30,29 +30,38 @@ module Components
       private
 
       def render_header
-        div(class: 'flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12') do
-          div do
-            Text(size: '2', weight: 'muted', class: 'uppercase tracking-widest mb-1 block font-bold') do
-              t('medications.index.your_inventory')
+        div(class: 'flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-border mb-12') do
+          div(class: 'flex items-center gap-6') do
+            div(
+              class: 'w-20 h-20 rounded-shape-xl bg-primary/10 flex items-center justify-center ' \
+                     'text-primary shadow-inner'
+            ) do
+              render Icons::Pill.new(size: 32)
             end
-            Heading(level: 1, size: '8', class: 'font-extrabold tracking-tight') { t('medications.index.title') }
+            div(class: 'space-y-1') do
+              Text(size: '2', weight: 'bold', class: 'uppercase tracking-[0.2em] opacity-40 block mb-1 font-black') do
+                t('medications.index.your_inventory')
+              end
+              Heading(level: 1, size: '8', class: 'font-black tracking-tight') { t('medications.index.title') }
+            end
           end
+
           if view_context.policy(Medication).create?
             div(class: 'flex gap-3') do
               Link(
                 href: add_medication_path,
                 variant: :outline,
                 size: :lg,
-                class: 'rounded-shape-xl font-bold text-sm'
+                class: 'font-bold text-sm bg-card'
               ) do
-                render Icons::PlusCircle.new(size: 20, class: 'mr-2')
+                render Icons::PlusCircle.new(size: 20, class: 'mr-2 text-primary')
                 span { 'Add Schedule' }
               end
               Link(
                 href: new_medication_path,
                 variant: :primary,
                 size: :lg,
-                class: 'rounded-shape-xl font-bold text-sm shadow-lg shadow-primary/20',
+                class: 'font-bold text-sm shadow-elevation-2',
                 **wizard_link_data
               ) do
                 render Icons::Pill.new(size: 20, class: 'mr-2')

@@ -26,7 +26,7 @@ module Components
 
             # Slide-over panel
             div(
-              class: 'fixed inset-y-0 right-0 z-50 w-full max-w-xl bg-cardest shadow-2xl ' \
+              class: 'fixed inset-y-0 right-0 z-50 w-full max-w-xl bg-card shadow-2xl ' \
                      'overflow-y-auto animate-slide-in-right'
             ) do
               render_close_button
