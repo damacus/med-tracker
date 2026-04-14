@@ -124,34 +124,18 @@ class MedicationTake < ApplicationRecord
   end
 
   def decrement_inventory_stock(inventory)
-    inventory.class.connection.exec_query(
-      stock_decrement_sql(inventory),
-      'Decrement Medication Stock',
-      stock_decrement_binds(inventory)
-    ).first
-  end
+    inventory.with_lock do
+      previous_current_supply = inventory.current_supply
+      current_supply = [previous_current_supply.to_i - 1, 0].max
 
-  def stock_decrement_sql(inventory)
-    <<~SQL.squish
-      WITH target AS (
-        SELECT id, current_supply AS previous_current_supply, reorder_threshold FROM #{inventory.class.table_name}
-        WHERE id = $1 FOR UPDATE
-      ),
-      updated AS (
-        UPDATE #{inventory.class.table_name} medications
-        SET current_supply = GREATEST(COALESCE(medications.current_supply, 0) - 1, 0)
-        FROM target
-        WHERE medications.id = target.id
-        RETURNING target.previous_current_supply, medications.current_supply, target.reorder_threshold
-      )
-      SELECT * FROM updated
-    SQL
-  end
+      inventory.update!(current_supply: current_supply)
 
-  def stock_decrement_binds(inventory)
-    [
-      ActiveRecord::Relation::QueryAttribute.new('id', inventory.id, ActiveRecord::Type::BigInteger.new)
-    ]
+      {
+        'previous_current_supply' => previous_current_supply,
+        'current_supply' => current_supply,
+        'reorder_threshold' => inventory.reorder_threshold
+      }
+    end
   end
 
   def remember_low_stock_threshold_crossing(inventory:, stock_row:)
