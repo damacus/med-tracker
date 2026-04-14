@@ -823,6 +823,67 @@
 }
 
 @layer components {
+	.report-glow-panel {
+		background:
+			linear-gradient(
+				180deg,
+				color-mix(in oklab, var(--color-card) 76%, var(--color-primary-container)) 0%,
+				color-mix(in oklab, var(--color-card) 92%, var(--color-surface-container-lowest)) 100%
+			);
+		box-shadow:
+			var(--shadow-elevation-2),
+			0 0 0 1px color-mix(in oklab, var(--color-border) 70%, transparent),
+			0 24px 80px -56px oklch(from var(--color-primary) l c h / 0.35);
+	}
+
+	.report-glow-panel--interactive {
+		transition:
+			transform var(--motion-duration-medium) var(--motion-easing-emphasized),
+			box-shadow var(--motion-duration-medium) var(--motion-easing-emphasized);
+	}
+
+	.report-glow-panel--interactive:hover {
+		box-shadow:
+			var(--shadow-elevation-3),
+			0 0 0 1px color-mix(in oklab, var(--color-border) 60%, transparent),
+			0 32px 96px -56px oklch(from var(--color-primary) l c h / 0.42);
+		transform: translateY(-2px);
+	}
+
+	.report-hero-surface {
+		background:
+			linear-gradient(
+				135deg,
+				color-mix(in oklab, var(--color-primary) 88%, var(--color-primary-container)) 0%,
+				color-mix(in oklab, var(--color-primary) 72%, var(--color-secondary-container)) 52%,
+				color-mix(in oklab, var(--color-primary-container) 78%, var(--color-card)) 100%
+			);
+		box-shadow:
+			var(--shadow-elevation-4),
+			0 0 0 1px oklch(from var(--color-primary) l c h / 0.16),
+			0 40px 120px -64px oklch(from var(--color-primary) l c h / 0.5);
+	}
+
+	.report-glow-orb {
+		background:
+			radial-gradient(
+				circle,
+				oklch(from var(--color-primary) l c h / 0.55) 0%,
+				oklch(from var(--color-primary-container) l c h / 0.34) 38%,
+				oklch(from var(--color-primary) l c h / 0) 72%
+			);
+		filter: blur(20px);
+		pointer-events: none;
+	}
+
+	.report-bar {
+		box-shadow: 0 0 24px oklch(from var(--color-primary) l c h / 0.18);
+	}
+
+	.report-bar--strong {
+		box-shadow: 0 0 28px oklch(from var(--color-primary) l c h / 0.28);
+	}
+
 	.nav {
 		@apply sticky top-0 z-40 w-full border-b border-border bg-surface-container-lowest/80 backdrop-blur supports-[backdrop-filter]:bg-surface-container-lowest/65;
 	}

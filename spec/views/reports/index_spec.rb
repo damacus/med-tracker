@@ -68,13 +68,13 @@ RSpec.describe Views::Reports::Index do
     expect(rendered).to include(I18n.t('reports.index.timeline_title', locale: :ga))
   end
 
-  it 'uses token-driven report surfaces instead of bespoke analytics gradients and tinted cards' do
+  it 'uses token-driven glow surfaces instead of hard-coded analytics gradients' do
     rendered = render report_view
 
-    expect(rendered).not_to include('bg-gradient-to-br from-indigo-600 to-violet-700')
-    expect(rendered).not_to include('bg-indigo-300')
-    expect(rendered).not_to include('bg-success-light')
-    expect(rendered).not_to include('bg-destructive-light')
-    expect(rendered).not_to include('bg-card/70')
+    glow_tokens = rendered.scan(/report-(?:hero-surface|glow-panel|glow-orb)/).uniq
+    banned_tokens = ['bg-indigo-300', 'bg-success-light', 'bg-destructive-light', 'from-indigo-600 to-violet-700']
+
+    expect(glow_tokens).to include('report-hero-surface', 'report-glow-panel', 'report-glow-orb')
+    expect(banned_tokens.any? { |token| rendered.include?(token) }).to be(false)
   end
 end
