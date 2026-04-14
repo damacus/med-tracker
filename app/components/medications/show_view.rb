@@ -105,7 +105,7 @@ module Components
       end
 
       def render_actions_card
-        div(class: 'space-y-3') do
+        div(class: 'grid grid-cols-2 gap-3') do
           Link(
             href: add_medication_path(medication_id: medication.id),
             variant: :outline,
@@ -118,38 +118,37 @@ module Components
 
           render Button.new(
             variant: :success,
-            class: 'btn-action'
+            class: 'btn-action !bg-success !text-success-foreground'
           ) do
-            render Icons::Activity.new(size: 18, class: 'mr-2')
+            render Icons::Activity.new(size: 18, class: 'mr-2 text-white')
             span { t('medications.show.log_administration') }
           end
 
-          # Reorder & Refill Actions Group
-          div(class: 'grid grid-cols-2 gap-3') do
-            render_reorder_actions
-            render_refill_modal
-          end
+          render_reorder_actions
+          render_refill_modal
         end
       end
 
       def render_reorder_actions
-        path, label, icon = if medication.reorder_status.nil?
-                              [mark_as_ordered_medication_path(medication), t('medications.show.mark_as_ordered'), Icons::Clock]
-                            elsif medication.reorder_ordered?
-                              [mark_as_received_medication_path(medication), t('medications.show.mark_as_received'), Icons::Check]
-                            end
+        config = if medication.reorder_status.nil?
+                   { path: mark_as_ordered_medication_path(medication), label: t('medications.show.mark_as_ordered'),
+                     icon: Icons::Clock }
+                 elsif medication.reorder_ordered?
+                   { path: mark_as_received_medication_path(medication), label: t('medications.show.mark_as_received'),
+                     icon: Icons::Check }
+                 end
 
-        return unless path
+        return unless config
 
         Link(
-          href: path,
+          href: config[:path],
           variant: :outline,
           size: :lg,
           data: { turbo_method: :patch },
           class: 'btn-action bg-card border-border'
         ) do
-          render icon.new(size: 18, class: 'mr-2 text-primary')
-          span { label }
+          render config[:icon].new(size: 18, class: 'mr-2 text-primary')
+          span { config[:label] }
         end
       end
 
