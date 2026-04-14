@@ -299,7 +299,10 @@ module Components
             id: 'schedule_frequency',
             value: schedule.frequency,
             placeholder: t('schedules.form.frequency_placeholder'),
-            data: { action: 'input->schedule-form#validate', schedule_form_target: 'frequencyInput' }
+            data: {
+              action: 'input->schedule-form#validate change->schedule-form#validate',
+              schedule_form_target: 'frequencyInput'
+            }
           )
         end
       end
@@ -319,7 +322,7 @@ module Components
             placeholder: t('schedules.form.select_date'),
             data: {
               controller: 'ruby-ui--calendar-input',
-              action: 'input->schedule-form#validate'
+              action: 'input->schedule-form#validate change->schedule-form#validate'
             }
           )
           Calendar(
