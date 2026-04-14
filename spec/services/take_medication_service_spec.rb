@@ -183,4 +183,144 @@ RSpec.describe TakeMedicationService do
       expect { result.success = false }.to raise_error(NoMethodError)
     end
   end
+
+  describe 'dose_taken.med_tracker' do
+    def captured_event_payloads(event_name, &)
+      payloads = []
+      subscriber = lambda do |*args|
+        payloads << ActiveSupport::Notifications::Event.new(*args).payload
+      end
+
+      ActiveSupport::Notifications.subscribed(subscriber, event_name, &)
+
+      payloads
+    end
+
+    def expect_dose_taken_payload(payloads, result:, source:, amount_ml:, source_type:)
+      expect(payloads).to contain_exactly(
+        include(
+          take_id: result.take.id,
+          source_type: source_type,
+          source_id: source.id,
+          person_id: source.person_id,
+          medication_id: source.medication_id,
+          inventory_medication_id: source.medication_id,
+          inventory_location_id: source.medication.location_id,
+          amount_ml: amount_ml,
+          taken_at: result.take.taken_at
+        )
+      )
+    end
+
+    it 'publishes one event for a successful scheduled dose' do
+      schedule = schedules(:john_paracetamol)
+      result = nil
+
+      travel_to Time.current.end_of_day - 1.minute do
+        payloads = captured_event_payloads('dose_taken.med_tracker') do
+          result = call_service(source: schedule, amount_override: '750')
+        end
+
+        expect_dose_taken_payload(
+          payloads,
+          result: result,
+          source: schedule,
+          amount_ml: 750.0,
+          source_type: 'schedule'
+        )
+      end
+    end
+
+    it 'publishes one event for a successful as-needed dose' do
+      person_medication = person_medications(:jane_vitamin_d)
+      result = nil
+
+      payloads = captured_event_payloads('dose_taken.med_tracker') do
+        result = call_service(source: person_medication)
+      end
+
+      expect_dose_taken_payload(
+        payloads,
+        result: result,
+        source: person_medication,
+        amount_ml: 1000.0,
+        source_type: 'person_medication'
+      )
+    end
+
+    it 'does not publish when dose creation fails because stock is unavailable' do
+      schedule = schedules(:john_paracetamol)
+      schedule.medication.update!(current_supply: 0)
+
+      payloads = captured_event_payloads('dose_taken.med_tracker') do
+        call_service(source: schedule)
+      end
+
+      expect(payloads).to be_empty
+    end
+
+    it 'does not publish when timing restrictions block the dose' do
+      schedule = schedules(:john_paracetamol)
+
+      travel_to Time.current.end_of_day - 1.minute do
+        schedule.medication_takes.create!(
+          taken_at: 1.minute.ago,
+          amount_ml: schedule.default_dose_amount,
+          taken_from_medication: schedule.medication,
+          taken_from_location: schedule.medication.location
+        )
+
+        payloads = captured_event_payloads('dose_taken.med_tracker') do
+          call_service(source: schedule)
+        end
+
+        expect(payloads).to be_empty
+      end
+    end
+
+    it 'does not publish when the amount is invalid' do
+      schedule = schedules(:john_paracetamol)
+
+      payloads = captured_event_payloads('dose_taken.med_tracker') do
+        call_service(source: schedule, amount_override: '0')
+      end
+
+      expect(payloads).to be_empty
+    end
+
+    it 'does not publish when stock-source selection is required' do
+      schedule = schedules(:john_paracetamol)
+      create_matching_medication(
+        medication: schedule.medication,
+        location: Location.create!(name: 'Selection Required Home')
+      )
+
+      payloads = captured_event_payloads('dose_taken.med_tracker') do
+        call_service(source: schedule)
+      end
+
+      expect(payloads).to be_empty
+    end
+
+    it 'does not publish when the selected inventory source is invalid' do
+      schedule = schedules(:john_paracetamol)
+
+      payloads = captured_event_payloads('dose_taken.med_tracker') do
+        call_service(source: schedule, taken_from_medication_id: -1)
+      end
+
+      expect(payloads).to be_empty
+    end
+  end
+
+  def create_matching_medication(medication:, location:)
+    Medication.create!(
+      name: medication.name,
+      location: location,
+      dosage_amount: medication.dosage_amount,
+      dosage_unit: medication.dosage_unit,
+      current_supply: 12,
+      reorder_threshold: 2
+    )
+  end
 end

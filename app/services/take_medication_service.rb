@@ -31,13 +31,20 @@ class TakeMedicationService
     return failure(error) if error
 
     take = record_take(source: source, amount: amount, medication: medication, taken_at: taken_at)
-    take.persisted? ? Result.new(success: true, take: take, error: nil) : failure(:create_failed)
+    return failure(:create_failed) unless take.persisted?
+
+    success(take)
   end
 
   private
 
   def failure(error)
     Result.new(success: false, take: nil, error: error)
+  end
+
+  def success(take)
+    publish_dose_taken(take)
+    Result.new(success: true, take: take, error: nil)
   end
 
   def resolve_stock_source(resolver, taken_from_medication_id)
@@ -68,5 +75,31 @@ class TakeMedicationService
 
   def invalid_amount?(amount)
     amount.nil? || amount <= 0
+  end
+
+  def publish_dose_taken(take)
+    ActiveSupport::Notifications.instrument('dose_taken.med_tracker', dose_taken_payload(take))
+  end
+
+  def dose_taken_payload(take)
+    {
+      take_id: take.id,
+      source_type: take_source_type(take),
+      source_id: take_source_id(take),
+      person_id: take.person&.id,
+      medication_id: take.medication&.id,
+      inventory_medication_id: take.inventory_medication&.id,
+      inventory_location_id: take.inventory_location&.id,
+      amount_ml: take.amount_ml&.to_f,
+      taken_at: take.taken_at
+    }
+  end
+
+  def take_source_type(take)
+    take.schedule_id.present? ? 'schedule' : 'person_medication'
+  end
+
+  def take_source_id(take)
+    take.schedule_id || take.person_medication_id
   end
 end

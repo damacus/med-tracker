@@ -25,6 +25,7 @@ class MedicationTake < ApplicationRecord
 
   before_validation :assign_taken_from_location
   after_create :decrement_medication_stock
+  after_commit :publish_low_stock_threshold_reached, on: :create
 
   # Delegate to get the source (schedule or person_medication)
   def source
@@ -54,13 +55,10 @@ class MedicationTake < ApplicationRecord
     return unless inventory
     return if inventory.current_supply.blank?
 
-    # rubocop:disable Rails/SkipsModelValidations -- Intentional: atomic SQL update prevents race conditions
-    # Using update_all with GREATEST ensures supply never goes negative even under concurrent requests
-    # We only decrement current_supply (the live dispensable-units counter)
-    # Each 'take' represents one dispensable unit (e.g. 1 tablet, 1 sachet, or 1 multi-ml dose)
-    inventory.class.where(id: inventory.id)
-             .update_all('current_supply = GREATEST(COALESCE(current_supply, 0) - 1, 0)')
-    # rubocop:enable Rails/SkipsModelValidations
+    stock_row = decrement_inventory_stock(inventory)
+    return unless stock_row
+
+    remember_low_stock_threshold_crossing(inventory:, stock_row:)
   end
 
   def exactly_one_source
@@ -123,5 +121,75 @@ class MedicationTake < ApplicationRecord
     attrs = { 'medication_take.taken_from_medication_id' => taken_from_medication_id.to_s }
     attrs['medication_take.taken_from_location_id'] = taken_from_location_id.to_s if taken_from_location_id
     attrs
+  end
+
+  def decrement_inventory_stock(inventory)
+    inventory.class.connection.exec_query(
+      stock_decrement_sql(inventory),
+      'Decrement Medication Stock',
+      stock_decrement_binds(inventory)
+    ).first
+  end
+
+  def stock_decrement_sql(inventory)
+    <<~SQL.squish
+      WITH target AS (
+        SELECT id, current_supply AS previous_current_supply, reorder_threshold FROM #{inventory.class.table_name}
+        WHERE id = $1 FOR UPDATE
+      ),
+      updated AS (
+        UPDATE #{inventory.class.table_name} medications
+        SET current_supply = GREATEST(COALESCE(medications.current_supply, 0) - 1, 0)
+        FROM target
+        WHERE medications.id = target.id
+        RETURNING target.previous_current_supply, medications.current_supply, target.reorder_threshold
+      )
+      SELECT * FROM updated
+    SQL
+  end
+
+  def stock_decrement_binds(inventory)
+    [
+      ActiveRecord::Relation::QueryAttribute.new('id', inventory.id, ActiveRecord::Type::BigInteger.new)
+    ]
+  end
+
+  def remember_low_stock_threshold_crossing(inventory:, stock_row:)
+    return unless low_stock_threshold_crossed?(inventory:, stock_row:)
+
+    @low_stock_threshold_payload = low_stock_threshold_payload(inventory:, stock_row:)
+  end
+
+  def publish_low_stock_threshold_reached
+    return unless @low_stock_threshold_payload
+
+    ActiveSupport::Notifications.instrument(
+      'low_stock_threshold_reached.med_tracker',
+      @low_stock_threshold_payload
+    )
+  ensure
+    @low_stock_threshold_payload = nil
+  end
+
+  def low_stock_threshold_crossed?(inventory:, stock_row:)
+    SupplyLevel.new(
+      current: stock_row['current_supply'],
+      reorder_threshold: stock_row['reorder_threshold'],
+      last_restock: inventory.supply_at_last_restock
+    ).crossed_low_stock_threshold_from?(previous_current: stock_row['previous_current_supply'])
+  end
+
+  def low_stock_threshold_payload(inventory:, stock_row:)
+    {
+      medication_id: inventory.id,
+      location_id: inventory.location_id,
+      take_id: id,
+      source_type: schedule_id.present? ? 'schedule' : 'person_medication',
+      source_id: schedule_id || person_medication_id,
+      previous_current_supply: stock_row['previous_current_supply'],
+      current_supply: stock_row['current_supply'],
+      reorder_threshold: stock_row['reorder_threshold'],
+      taken_at: taken_at
+    }
   end
 end
