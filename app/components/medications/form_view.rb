@@ -389,7 +389,7 @@ module Components
 
       def render_dosage_option_fields(dosage, index)
         div(
-          class: 'rounded-3xl border border-border/70 bg-white p-6 shadow-sm space-y-4',
+          class: 'space-y-4 rounded-3xl border border-border/70 bg-popover p-6 shadow-elevation-1',
           data: { 'dosage-options-target': 'option' }
         ) do
           input(type: :hidden, name: dosage_field_name(index, 'id'), value: dosage.id) if dosage.persisted?
@@ -505,7 +505,7 @@ module Components
                 'frequency-suggestions-dose-cycle-value': template.fetch(:dose_cycle)
               },
               class: 'inline-flex shrink-0 items-center rounded-full border border-border/80 ' \
-                     'bg-white px-3 py-1 text-xs font-semibold text-foreground/80 shadow-sm ' \
+                     'bg-popover px-3 py-1 text-xs font-semibold text-foreground/80 shadow-elevation-1 ' \
                      'whitespace-nowrap hover:bg-primary/5 hover:border-primary/30 ' \
                      'cursor-pointer transition-colors'
             ) { template.fetch(:label) }

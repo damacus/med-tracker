@@ -33,7 +33,7 @@ module Views
       def view_template
         render Card.new(
           id: 'experiments-card',
-          class: 'overflow-hidden rounded-[2rem] border border-border/70 bg-card/95 shadow-[0_18px_45px_-32px_rgba(15,23,42,0.45)]'
+          class: 'overflow-hidden border-border/70 shadow-elevation-2'
         ) do
           render CardHeader.new(class: 'border-b border-border/60 pb-6') do
             div(class: 'flex items-center gap-3 mb-2') do
@@ -71,11 +71,11 @@ module Views
 
       def render_option(option)
         selected = user.wizard_variant == option[:value]
-        border_class = selected ? 'border-primary ring-2 ring-primary/20' : 'border-border/60'
+        border_class = selected ? 'border-primary ring-2 ring-primary/20 shadow-elevation-2' : 'border-border/70'
 
         label(
-          class: "flex items-start gap-4 rounded-[1.2rem] border #{border_class} bg-background/60 " \
-                 'p-4 cursor-pointer hover:border-primary/50 transition-all'
+          class: "flex items-start gap-4 rounded-shape-xl border #{border_class} bg-popover " \
+                 'p-4 shadow-elevation-1 cursor-pointer transition-all hover:border-primary/50 hover:bg-accent/30'
         ) do
           input(
             type: 'radio',

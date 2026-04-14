@@ -523,7 +523,7 @@ en:
       refill_inventory: "Refill Inventory"
       complete_refill: "Complete Refill"
       reorder_at_label: "Reorder At"
-      log_administration: "Log Administration"
+      log_administration: "Log"
       low_stock_alert: "⚠️ Low Stock Alert"
       children: "Children"
       max_per_cycle: "Max %{count}/cycle"
@@ -908,7 +908,7 @@ en:
       title: "Colour Palette"
       description: "Pair your appearance setting with a palette that matches your preference."
       themes:
-        default: "Standard"
+        default: "Command Centre"
         serene_sage: "Serene Sage"
         modern_clinical: "Modern Clinical"
         warm_earth: "Warm Earth"

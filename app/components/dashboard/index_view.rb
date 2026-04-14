@@ -202,7 +202,7 @@ module Components
         when :upcoming then 'bg-primary'
         when :cooldown then 'bg-warning'
         when :out_of_stock then 'bg-destructive'
-        else 'bg-surface-container-high'
+        else 'bg-primary/15'
         end
       end
 

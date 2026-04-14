@@ -34,7 +34,7 @@ module RubyUI
       {
         data_state: 'open',
         class: [
-          'fixed flex flex-col pointer-events-auto left-[50%] top-[50%] z-50 w-full max-h-screen overflow-y-auto translate-x-[-50%] translate-y-[-50%] gap-4 border bg-surface-container-high p-6 shadow-elevation-5 duration-200 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:rounded-shape-xl md:w-full',
+          'fixed flex flex-col pointer-events-auto left-[50%] top-[50%] z-50 w-full max-h-screen overflow-y-auto translate-x-[-50%] translate-y-[-50%] overflow-hidden border border-border/70 bg-popover text-foreground shadow-elevation-5 duration-200 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:rounded-shape-xl md:w-full',
           SIZES[@size]
         ]
       }
@@ -55,7 +55,7 @@ module RubyUI
       div(
         data_state: 'open',
         data_action: 'click->ruby-ui--dialog#dismiss esc->ruby-ui--dialog#dismiss',
-        class: 'fixed pointer-events-auto inset-0 z-50 bg-background/80 backdrop-blur-sm data-[state=open]:animate-in data-[state=open]:fade-in-0'
+        class: 'fixed pointer-events-auto inset-0 z-50 bg-foreground/10 backdrop-blur-[1.5px] data-[state=open]:animate-in data-[state=open]:fade-in-0'
       )
     end
   end

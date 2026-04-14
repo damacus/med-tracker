@@ -25,11 +25,8 @@ module Components
       def view_template
         turbo_frame_tag 'modal' do
           Dialog(open: true) do
-            DialogContent(
-              size: :xl,
-              class: 'overflow-hidden border-border/50 bg-white shadow-[0_32px_90px_rgba(15,23,42,0.18)]'
-            ) do
-              DialogHeader(class: 'bg-gradient-to-b from-[#fffaf1] to-white px-8 pt-8 pb-4') do
+            DialogContent(size: :xl) do
+              DialogHeader do
                 if back_path
                   a(
                     href: back_path,
@@ -43,7 +40,7 @@ module Components
                 DialogTitle { title }
                 DialogDescription { t('schedules.modal.subtitle') }
               end
-              DialogMiddle(class: 'bg-[#fffdf8] px-8 pb-8 pt-4') do
+              DialogMiddle do
                 render Form.new(schedule: schedule, person: person, medications: medications, frame_id: 'modal')
               end
             end

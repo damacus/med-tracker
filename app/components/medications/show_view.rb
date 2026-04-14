@@ -44,11 +44,12 @@ module Components
       end
 
       def render_header
-        div(class: 'flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-border') do
+        div(class: 'flex flex-col justify-between gap-6 border-b border-border/60 pb-8 md:flex-row md:items-end') do
           div(class: 'flex items-center gap-6') do
             div(
               class: 'w-20 h-20 rounded-shape-xl bg-primary/10 flex items-center justify-center ' \
-                     'text-primary shadow-inner'
+                     'text-primary shadow-inner',
+              data: { testid: 'medication-hero-icon' }
             ) do
               render Icons::Pill.new(size: 32)
             end
@@ -89,7 +90,7 @@ module Components
       def render_description_section
         div(class: 'space-y-4') do
           Heading(level: 2, size: '5', class: 'font-bold tracking-tight') { t('medications.show.overview') }
-          Card(class: 'p-8 border-none shadow-elevation-1') do
+          Card(class: 'border border-border/60 p-8 shadow-elevation-1') do
             Text(size: '3', class: 'text-muted-foreground leading-relaxed font-medium') do
               medication.description.presence || t('medications.show.no_description')
             end
@@ -114,7 +115,7 @@ module Components
             href: add_medication_path(medication_id: medication.id),
             variant: :outline,
             size: :lg,
-            class: "#{base_classes} bg-card border-border"
+            class: "#{base_classes} bg-popover border-border"
           ) do
             render Icons::PlusCircle.new(size: 18, class: 'mr-2 text-primary')
             span { t('medications.show.add_schedule') }
@@ -122,10 +123,10 @@ module Components
 
           Link(
             href: administration_medication_path(medication),
-            variant: :success,
+            variant: :primary,
             size: :lg,
             data: { turbo_frame: 'modal' },
-            class: "#{base_classes} bg-success text-success-foreground border-none"
+            class: "#{base_classes} border-none bg-primary text-primary-foreground"
           ) do
             render Icons::Activity.new(size: 18, class: 'mr-2')
             span { t('medications.show.log_administration') }
@@ -152,7 +153,7 @@ module Components
           variant: :outline,
           size: :lg,
           data: { turbo_method: :patch },
-          class: "#{base_classes} bg-card border-border"
+          class: "#{base_classes} bg-popover border-border"
         ) do
           render config[:icon].new(size: 18, class: 'mr-2 text-primary')
           span { config[:label] }
@@ -164,7 +165,7 @@ module Components
         button_class = if is_received
                          "#{base_classes} bg-success text-success-foreground border-none"
                        else
-                         "#{base_classes} bg-card border-border"
+                         "#{base_classes} bg-popover border-border"
                        end
 
         render Components::Medications::RefillModal.new(

@@ -67,4 +67,14 @@ RSpec.describe Views::Reports::Index do
     expect(rendered).to include(I18n.t('reports.index.title', locale: :ga))
     expect(rendered).to include(I18n.t('reports.index.timeline_title', locale: :ga))
   end
+
+  it 'uses token-driven report surfaces instead of bespoke analytics gradients and tinted cards' do
+    rendered = render report_view
+
+    expect(rendered).not_to include('bg-gradient-to-br from-indigo-600 to-violet-700')
+    expect(rendered).not_to include('bg-indigo-300')
+    expect(rendered).not_to include('bg-success-light')
+    expect(rendered).not_to include('bg-destructive-light')
+    expect(rendered).not_to include('bg-card/70')
+  end
 end

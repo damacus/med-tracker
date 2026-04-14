@@ -28,7 +28,7 @@ module RubyUI
       {
         data_state: 'open', # For animate in
         class: [
-          'fixed pointer-events-auto z-50 gap-4 bg-surface-container-high p-6 shadow-elevation-4 transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500',
+          'fixed pointer-events-auto z-50 gap-4 border-border/70 bg-popover p-6 shadow-elevation-4 transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500',
           @side_classes
         ]
       }
@@ -49,7 +49,7 @@ module RubyUI
       div(
         data_testid: 'drawer-backdrop',
         data_action: 'click->ruby-ui--sheet-content#close',
-        class: 'fixed inset-0 z-50 bg-black/80 backdrop-blur-sm transition-opacity duration-300 pointer-events-auto ' \
+        class: 'fixed inset-0 z-50 bg-foreground/10 backdrop-blur-[1.5px] transition-opacity duration-300 pointer-events-auto ' \
                'data-[state=open]:opacity-100 data-[state=closed]:opacity-0',
         aria_hidden: 'true'
       )
@@ -62,7 +62,7 @@ module RubyUI
         aria_label: I18n.t('ruby_ui.common.navigation_menu'),
         tabindex: '-1',
         class: [
-          'flex flex-col fixed z-50 h-full w-[80vw] max-w-[300px] overflow-y-auto bg-background p-6 shadow-lg transition-transform duration-300 ease-in-out pointer-events-auto',
+          'fixed z-50 flex h-full w-[80vw] max-w-[300px] flex-col overflow-y-auto border-border/70 bg-popover p-6 shadow-elevation-4 transition-transform duration-300 ease-in-out pointer-events-auto',
           'data-[state=open]:translate-x-0',
           side_transform_class
         ],

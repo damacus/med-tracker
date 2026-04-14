@@ -6,7 +6,7 @@ module Views
       include Phlex::Rails::Helpers::LinkTo
 
       def view_template
-        render Card.new(class: 'rounded-[2rem] border border-border/70 bg-card/95 shadow-[0_18px_45px_-32px_rgba(15,23,42,0.45)]') do
+        render Card.new(class: 'border-border/70 shadow-elevation-2') do
           render CardHeader.new do
             render(CardTitle.new { t('profiles.version_info.title') })
             render(CardDescription.new { t('profiles.version_info.description') })

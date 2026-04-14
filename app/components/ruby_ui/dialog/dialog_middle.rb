@@ -10,7 +10,7 @@ module RubyUI
 
     def default_attrs
       {
-        class: 'py-4'
+        class: 'bg-popover px-8 pb-8 pt-4'
       }
     end
   end

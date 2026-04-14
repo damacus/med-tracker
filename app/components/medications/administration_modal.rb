@@ -19,15 +19,12 @@ module Components
       def view_template
         turbo_frame_tag 'modal' do
           Dialog(open: true) do
-            DialogContent(
-              size: :xl,
-              class: 'overflow-hidden border-border/50 bg-white shadow-[0_32px_90px_rgba(15,23,42,0.18)]'
-            ) do
-              DialogHeader(class: 'bg-gradient-to-b from-[#eefbf4] to-white px-8 pt-8 pb-4') do
+            DialogContent(size: :xl) do
+              DialogHeader do
                 DialogTitle { t('medications.administration.title', medication: medication.name) }
                 DialogDescription { t('medications.administration.subtitle') }
               end
-              DialogMiddle(class: 'bg-[#fcfffd] px-8 pb-8 pt-4') do
+              DialogMiddle do
                 if administration_options.empty?
                   render_empty_state
                 else
@@ -52,7 +49,7 @@ module Components
       end
 
       def render_option(option)
-        div(class: 'rounded-[28px] border border-border/60 bg-white/90 p-5 shadow-sm') do
+        div(class: 'rounded-shape-xl border border-border/70 bg-popover p-5 shadow-elevation-1') do
           div(class: 'flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between') do
             div(class: 'space-y-2') do
               Text(size: '1', weight: 'black', class: 'uppercase tracking-[0.18em] text-muted-foreground') do
@@ -88,7 +85,7 @@ module Components
       end
 
       def render_empty_state
-        div(class: 'rounded-[28px] border border-dashed border-border/70 bg-[#fcfffd] px-6 py-10 text-center') do
+        div(class: 'rounded-shape-xl border border-dashed border-border/70 bg-muted/35 px-6 py-10 text-center') do
           Heading(level: 2, size: '4', class: 'font-semibold tracking-tight') do
             t('medications.administration.empty_title')
           end

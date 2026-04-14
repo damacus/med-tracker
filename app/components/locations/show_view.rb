@@ -142,7 +142,7 @@ module Components
                 div(class: 'flex items-center justify-between group') do
                   div(class: 'flex items-center gap-3') do
                     div(
-                      class: 'w-8 h-8 rounded-full bg-surface-container-high flex items-center ' \
+                      class: 'w-8 h-8 rounded-full bg-primary/10 flex items-center ' \
                              'justify-center text-muted-foreground'
                     ) do
                       render Icons::User.new(size: 16)

@@ -6,7 +6,7 @@ module Views
       include Phlex::Rails::Helpers::T
 
       def view_template
-        div(class: 'flex items-start justify-between rounded-lg border border-border bg-card/70 p-4 transition-colors hover:bg-accent/50') do
+        div(class: 'flex items-start justify-between rounded-shape-lg border border-destructive/20 bg-popover p-4 shadow-elevation-1 transition-colors hover:border-destructive/30 hover:bg-accent/40') do
           render_account_info
           render_alert_dialog
         end

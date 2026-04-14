@@ -31,4 +31,15 @@ RSpec.describe Views::Profiles::ThemePickerCard, type: :component do
     expect(palette_grid).to be_present
     expect(palette_grid.css('button[data-theme]').count).to eq(described_class::THEMES.count)
   end
+
+  it 'uses token-driven surfaces instead of bespoke gradients and literal white fills' do
+    rendered = render_inline(described_class.new)
+    html = rendered.to_html
+
+    banned_classes = ['bg-[radial-gradient', 'bg-white/80', "[font-family:'Outfit',sans-serif]",
+                      'rounded-[2rem]', 'rounded-[1.5rem]', 'rounded-[1.1rem]', 'bg-card/95',
+                      'bg-muted/45']
+
+    expect(banned_classes.none? { |class_name| html.include?(class_name) }).to be(true)
+  end
 end

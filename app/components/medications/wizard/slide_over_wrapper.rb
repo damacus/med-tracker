@@ -19,14 +19,15 @@ module Components
           turbo_frame_tag 'modal' do
             a(
               href: medications_path,
-              class: 'fixed inset-0 z-50 bg-black/40 backdrop-blur-sm',
+              class: 'fixed inset-0 z-50 bg-foreground/10 backdrop-blur-[1.5px]',
               data: { turbo_frame: '_top' },
               aria_label: 'Close'
             )
 
             # Slide-over panel
             div(
-              class: 'fixed inset-y-0 right-0 z-50 w-full max-w-xl bg-card shadow-2xl ' \
+              class: 'fixed inset-y-0 right-0 z-50 w-full max-w-xl border-l border-border/70 ' \
+                     'bg-popover shadow-elevation-5 ' \
                      'overflow-y-auto animate-slide-in-right'
             ) do
               render_close_button
@@ -47,8 +48,9 @@ module Components
         def render_close_button
           a(
             href: medications_path,
-            class: 'absolute top-4 right-4 w-10 h-10 rounded-full bg-surface-container hover:bg-accent ' \
-                   'flex items-center justify-center text-muted-foreground transition-colors z-10',
+            class: 'absolute top-4 right-4 z-10 flex h-10 w-10 items-center justify-center ' \
+                   'rounded-full border border-border/60 bg-popover/90 text-muted-foreground ' \
+                   'shadow-elevation-1 transition-colors hover:bg-accent',
             data: { turbo_frame: '_top' }
           ) do
             render Icons::X.new(size: 18)

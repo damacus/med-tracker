@@ -40,7 +40,7 @@ RSpec.describe Components::Medications::ShowView, type: :component do
 
     it 'uses action button utility tokens' do
       add_schedule_link = rendered.css('a').find { |link| link.text.include?('Add Schedule') }
-      log_administration_link = rendered.css('a').find { |link| link.text.include?('Log Administration') }
+      log_administration_link = rendered.css('a').find { |link| link.text.include?('Log') }
       mark_as_ordered_link = rendered.css('a').find { |link| link.text.include?('Mark as Ordered') }
       refill_button = rendered.css('button').find { |button| button.text.include?('Refill Inventory') }
 
@@ -54,7 +54,7 @@ RSpec.describe Components::Medications::ShowView, type: :component do
   it 'renders log administration as a modal link' do
     rendered = render_inline(described_class.new(medication: medication))
 
-    log_administration_link = rendered.css('a').find { |link| link.text.include?('Log Administration') }
+    log_administration_link = rendered.css('a').find { |link| link.text.include?('Log') }
 
     expect(log_administration_link).to be_present
     expect(log_administration_link[:href]).to eq("/medications/#{medication.id}/administration")

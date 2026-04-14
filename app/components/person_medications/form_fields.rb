@@ -81,7 +81,7 @@ module Components
 
       def render_selection_summary(show_dose: false)
         div(class: selection_summary_layout_classes(show_dose)) do
-          div(class: 'rounded-shape-xl border border-border/60 bg-white px-4 py-3 shadow-sm') do
+          div(class: 'rounded-shape-xl border border-border/60 bg-popover px-4 py-3 shadow-elevation-1') do
             Text(
               size: '1', weight: 'medium',
               class: 'uppercase tracking-[0.2em] text-muted-foreground'
@@ -93,7 +93,7 @@ module Components
           end
 
           if show_dose
-            div(class: 'rounded-shape-xl border border-border/60 bg-white px-4 py-3 shadow-sm') do
+            div(class: 'rounded-shape-xl border border-border/60 bg-popover px-4 py-3 shadow-elevation-1') do
               Text(
                 size: '1', weight: 'medium',
                 class: 'uppercase tracking-[0.2em] text-muted-foreground'
@@ -289,7 +289,7 @@ module Components
 
       def workflow_progress_classes(step_number)
         classes = %w[h-2 w-10 rounded-full transition-colors]
-        classes << (step_number <= initial_step ? 'bg-foreground' : 'bg-surface-container-high')
+        classes << (step_number <= initial_step ? 'bg-foreground' : 'bg-primary/15')
         classes.join(' ')
       end
 
