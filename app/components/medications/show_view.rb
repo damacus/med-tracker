@@ -37,7 +37,7 @@ module Components
       private
 
       def render_notice
-        render RubyUI::Alert.new(variant: :success, class: 'mb-8 rounded-2xl border-none shadow-sm') do
+        render RubyUI::Alert.new(variant: :success, class: 'mb-8 rounded-shape-xl border-none shadow-sm') do
           plain(notice)
         end
       end
@@ -46,18 +46,19 @@ module Components
         div(class: 'flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-border') do
           div(class: 'flex items-center gap-6') do
             div(
-              class: 'w-20 h-20 rounded-[2rem] bg-primary/10 flex items-center justify-center text-primary shadow-inner'
+              class: 'w-20 h-20 rounded-shape-xl bg-primary/10 flex items-center justify-center ' \
+                     'text-primary shadow-inner'
             ) do
               render Icons::Pill.new(size: 32)
             end
             div(class: 'space-y-1') do
-              Text(size: '2', weight: 'black', class: 'uppercase tracking-[0.2em] font-bold opacity-40 block mb-1') do
+              Text(size: '2', weight: 'bold', class: 'uppercase tracking-[0.2em] opacity-40 block mb-1 font-black') do
                 t('medications.show.profile')
               end
               Heading(level: 1, size: '8', class: 'font-black tracking-tight') { medication.name }
               div(class: 'flex items-center gap-1 mt-1') do
                 render Icons::Home.new(size: 14, class: 'text-muted-foreground')
-                Text(size: '2', class: 'text-muted-foreground') { medication.location.name }
+                Text(size: '2', class: 'text-muted-foreground font-medium') { medication.location.name }
               end
             end
           end
@@ -67,16 +68,16 @@ module Components
               href: edit_medication_path(medication, return_to: medication_path(medication)),
               variant: :outline,
               size: :lg,
-              class: 'rounded-2xl font-bold text-sm bg-surface-container-lowest'
+              class: 'font-bold text-sm bg-card'
             ) do
-              render Icons::Pencil.new(size: 16, class: 'mr-2')
+              render Icons::Pencil.new(size: 16, class: 'mr-2 text-primary')
               plain t('medications.show.edit_details')
             end
             Link(
               href: medications_path,
               variant: :ghost,
               size: :lg,
-              class: 'rounded-2xl font-bold text-sm text-muted-foreground hover:text-foreground'
+              class: 'font-bold text-sm text-muted-foreground hover:text-foreground'
             ) do
               t('medications.show.inventory')
             end
@@ -87,8 +88,8 @@ module Components
       def render_description_section
         div(class: 'space-y-4') do
           Heading(level: 2, size: '5', class: 'font-bold tracking-tight') { t('medications.show.overview') }
-          Card(class: 'p-8') do
-            Text(size: '3', class: 'text-muted-foreground leading-relaxed') do
+          Card(class: 'p-8 border-none shadow-elevation-1') do
+            Text(size: '3', class: 'text-muted-foreground leading-relaxed font-medium') do
               medication.description.presence || t('medications.show.no_description')
             end
           end
@@ -109,7 +110,7 @@ module Components
             href: add_medication_path(medication_id: medication.id),
             variant: :outline,
             size: :lg,
-            class: 'w-full py-6 rounded-shape-xl bg-surface-container-low border-border shadow-elevation-1 ' \
+            class: 'w-full py-6 bg-card border-border shadow-elevation-1 ' \
                    'flex items-center justify-center'
           ) do
             render Icons::PlusCircle.new(size: 18, class: 'mr-2 text-primary')
@@ -117,8 +118,9 @@ module Components
           end
 
           render Button.new(
-            variant: :primary,
-            class: 'w-full py-6 rounded-2xl shadow-lg shadow-primary/20 flex items-center justify-center'
+            variant: :secondary,
+            class: 'w-full py-6 shadow-elevation-2 flex items-center justify-center ' \
+                   'bg-success text-success-foreground hover:bg-success/90'
           ) do
             render Icons::Activity.new(size: 18, class: 'mr-2')
             span(class: 'font-semibold') { t('medications.show.log_administration') }
@@ -146,7 +148,7 @@ module Components
           variant: :outline,
           size: :lg,
           data: { turbo_method: :patch },
-          class: 'w-full py-6 rounded-shape-xl bg-surface-container-low border-border shadow-elevation-1 ' \
+          class: 'w-full py-6 bg-card border-border shadow-elevation-1 ' \
                  'flex items-center justify-center'
         ) do
           render icon.new(size: 18, class: 'mr-2 text-primary')
@@ -156,11 +158,11 @@ module Components
 
       def render_refill_modal
         is_received = medication.reorder_received?
-        base_classes = 'w-full py-6 rounded-shape-xl shadow-elevation-1 flex items-center justify-center'
+        base_classes = 'w-full py-6 shadow-elevation-1 flex items-center justify-center'
         button_class = if is_received
                          base_classes
                        else
-                         "#{base_classes} bg-surface-container-low border-border"
+                         "#{base_classes} bg-card border-border"
                        end
 
         render Components::Medications::RefillModal.new(

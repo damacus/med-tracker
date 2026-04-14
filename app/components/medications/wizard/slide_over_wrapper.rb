@@ -26,7 +26,7 @@ module Components
 
             # Slide-over panel
             div(
-              class: 'fixed inset-y-0 right-0 z-50 w-full max-w-xl bg-surface-container-lowest shadow-2xl ' \
+              class: 'fixed inset-y-0 right-0 z-50 w-full max-w-xl bg-cardest shadow-2xl ' \
                      'overflow-y-auto animate-slide-in-right'
             ) do
               render_close_button
@@ -59,7 +59,7 @@ module Components
         def render_header
           div(class: 'mb-8 space-y-2') do
             div(
-              class: 'w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center ' \
+              class: 'w-12 h-12 rounded-shape-xl bg-primary/10 flex items-center justify-center ' \
                      'text-primary mb-4'
             ) do
               render Icons::Pill.new(size: 24)

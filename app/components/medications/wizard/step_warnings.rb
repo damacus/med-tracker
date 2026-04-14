@@ -30,7 +30,7 @@ module Components
 
             render_warnings_field
 
-            div(class: 'rounded-2xl bg-warning-container border border-warning p-4') do
+            div(class: 'rounded-shape-xl bg-warning-container border border-warning p-4') do
               div(class: 'flex gap-3') do
                 render Icons::AlertCircle.new(size: 16, class: 'text-on-warning-container mt-0.5 shrink-0')
                 Text(size: '2', class: 'text-on-warning-container') do

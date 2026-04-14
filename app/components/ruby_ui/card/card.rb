@@ -10,7 +10,7 @@ module RubyUI
 
     def default_attrs
       {
-        class: 'rounded-shape-xl border bg-surface-container-low shadow-elevation-1'
+        class: 'rounded-shape-xl border bg-card shadow-elevation-1'
       }
     end
   end

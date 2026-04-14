@@ -17,7 +17,7 @@ module Components
           div(class: 'container mx-auto px-4 py-12 max-w-2xl') do
             render_header
 
-            Card(class: 'overflow-visible border-none shadow-2xl rounded-[2.5rem] bg-surface-container-lowest') do
+            Card(class: 'overflow-visible border-none shadow-2xl rounded-[2.5rem] bg-cardest') do
               div(class: 'p-10') do
                 render StepContent.new(
                   medication: medication,
@@ -39,7 +39,7 @@ module Components
             ) do
               render Icons::Pill.new(size: 32)
             end
-            Text(size: '2', weight: 'black', class: 'uppercase tracking-[0.2em] font-bold opacity-40') do
+            Text(size: '2', weight: 'bold', class: 'uppercase tracking-[0.2em] font-black opacity-40') do
               t('forms.medications.inventory_management')
             end
             Heading(level: 1, size: '8', class: 'font-black tracking-tight text-foreground') do

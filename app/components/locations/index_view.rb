@@ -74,7 +74,8 @@ module Components
 
             if location.members.present?
               div(class: 'pt-4 border-t border-border') do
-                Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-muted-foreground mb-2 block') do
+                Text(size: '1', weight: 'bold',
+                     class: 'uppercase tracking-widest text-muted-foreground mb-2 block font-black') do
                   t('locations.index.members')
                 end
                 div(class: 'flex flex-wrap gap-1') do

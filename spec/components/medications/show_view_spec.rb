@@ -34,9 +34,9 @@ RSpec.describe Components::Medications::ShowView, type: :component do
       mark_as_ordered_link = rendered.css('a').find { |link| link.text.include?('Mark as Ordered') }
       refill_button = rendered.css('button').find { |button| button.text.include?('Refill Inventory') }
 
-      expect(add_schedule_link[:class]).to include('bg-surface-container-low')
-      expect(mark_as_ordered_link[:class]).to include('bg-surface-container-low')
-      expect(refill_button[:class]).to include('bg-surface-container-low')
+      expect(add_schedule_link[:class]).to include('bg-card')
+      expect(mark_as_ordered_link[:class]).to include('bg-card')
+      expect(refill_button[:class]).to include('bg-card')
     end
 
     it 'uses shadow tokens consistent with dose cards' do

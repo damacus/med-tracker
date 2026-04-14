@@ -26,7 +26,7 @@ module Components
 
             div(
               class: 'fixed left-1/2 top-1/2 z-50 w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 ' \
-                     'rounded-[2.5rem] bg-surface-container-lowest shadow-2xl ' \
+                     'rounded-[2.5rem] bg-cardest shadow-2xl ' \
                      'overflow-hidden max-h-[90vh] overflow-y-auto'
             ) do
               a(
@@ -57,7 +57,7 @@ module Components
         def render_header
           div(class: 'mb-8 space-y-2') do
             div(
-              class: 'w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center ' \
+              class: 'w-12 h-12 rounded-shape-xl bg-primary/10 flex items-center justify-center ' \
                      'text-primary mb-4'
             ) do
               render Icons::Pill.new(size: 24)

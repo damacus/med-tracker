@@ -51,7 +51,7 @@ module Components
         end
 
         def render_errors
-          render RubyUI::Alert.new(variant: :destructive, class: 'mb-4 rounded-2xl border-none shadow-sm') do
+          render RubyUI::Alert.new(variant: :destructive, class: 'mb-4 rounded-shape-xl border-none shadow-sm') do
             div(class: 'flex items-start gap-3') do
               render Icons::AlertCircle.new(size: 20)
               div do
@@ -112,7 +112,7 @@ module Components
                 type: :button,
                 variant: :primary,
                 size: :lg,
-                class: 'px-8 rounded-2xl shadow-lg shadow-primary/20',
+                class: 'px-8 rounded-shape-xl shadow-lg shadow-primary/20',
                 data: {
                   wizard_target: 'nextButton',
                   action: 'click->wizard#next'
@@ -125,7 +125,7 @@ module Components
                 type: :submit,
                 variant: :primary,
                 size: :lg,
-                class: 'px-8 rounded-2xl shadow-lg shadow-primary/20 hidden',
+                class: 'px-8 rounded-shape-xl shadow-lg shadow-primary/20 hidden',
                 data: { wizard_target: 'submitButton' }
               ) do
                 plain t('forms.medications.save_medication')

@@ -27,7 +27,7 @@ module Components
             end
 
             div(class: 'space-y-2') do
-              div(class: 'h-2 w-full bg-surface-container-low rounded-full overflow-hidden') do
+              div(class: 'h-2 w-full bg-card rounded-full overflow-hidden') do
                 div(class: "h-full #{presenter.supply_bar_class} rounded-full",
                     style: "width: #{presenter.supply_level.percentage}%")
               end

@@ -76,7 +76,7 @@ module Components
 
       def render_medication_icon
         div(
-          class: 'w-12 h-12 rounded-2xl bg-surface-container-low flex items-center justify-center ' \
+          class: 'w-12 h-12 rounded-shape-xl bg-surface-container-low flex items-center justify-center ' \
                  'text-muted-foreground ' \
                  'group-hover:text-primary group-hover:bg-primary/5 transition-all'
         ) do
@@ -85,10 +85,10 @@ module Components
       end
 
       def render_notes
-        div(class: 'p-4 bg-primary-container border border-primary/20 rounded-2xl') do
+        div(class: 'p-4 bg-primary-container border border-primary/20 rounded-shape-xl') do
           div(class: 'flex items-center gap-2 mb-1') do
             render Icons::AlertCircle.new(size: 14, class: 'text-on-primary-container')
-            Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-on-primary-container') do
+            Text(size: '1', weight: 'bold', class: 'font-black uppercase tracking-widest text-on-primary-container') do
               t('person_medications.card.notes')
             end
           end
@@ -97,10 +97,10 @@ module Components
       end
 
       def render_timing_restrictions
-        div(class: 'p-4 bg-surface-container-low border border-border rounded-2xl') do
+        div(class: 'p-4 bg-surface-container-low border border-border rounded-shape-xl') do
           div(class: 'flex items-center gap-2 mb-2') do
             render Icons::Settings.new(size: 14, class: 'text-muted-foreground')
-            Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-muted-foreground') do
+            Text(size: '1', weight: 'bold', class: 'font-black uppercase tracking-widest text-muted-foreground') do
               t('person_medications.card.timing_restrictions')
             end
           end
@@ -126,10 +126,10 @@ module Components
       end
 
       def render_countdown_notice
-        div(class: 'p-4 bg-warning-container border border-warning/20 rounded-2xl') do
+        div(class: 'p-4 bg-warning-container border border-warning/20 rounded-shape-xl') do
           div(class: 'flex items-center gap-2 mb-1') do
             render Icons::AlertCircle.new(size: 14, class: 'text-on-warning-container')
-            Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-on-warning-container') do
+            Text(size: '1', weight: 'bold', class: 'font-black uppercase tracking-widest text-on-warning-container') do
               t('person_medications.card.next_dose_available')
             end
           end
@@ -142,7 +142,7 @@ module Components
 
         div(class: 'space-y-4 pt-2') do
           div(class: 'flex items-center justify-between') do
-            Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-muted-foreground') do
+            Text(size: '1', weight: 'bold', class: 'font-black uppercase tracking-widest text-muted-foreground') do
               t('person_medications.card.todays_doses')
             end
             render_dose_counter(takes) if person_medication.max_daily_doses.present?
@@ -204,7 +204,7 @@ module Components
             end
           end
           if take.amount_ml.present?
-            Text(size: '1', weight: 'black', class: 'text-muted-foreground uppercase tracking-tighter') do
+            Text(size: '1', weight: 'bold', class: 'font-black text-muted-foreground uppercase tracking-tighter') do
               DoseAmount.new(take.amount_ml, person_medication.dose_unit).to_s
             end
           end

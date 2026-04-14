@@ -62,7 +62,8 @@ module Components
               required: true,
               value: quantity,
               min: '1',
-              class: 'w-full rounded-md border border-input bg-background px-3 py-2 text-sm'
+              class: 'w-full rounded-shape-sm border border-input bg-background px-3 py-2 text-sm ' \
+                     'focus:ring-2 focus:ring-primary/20 transition-all'
             )
           end
 
@@ -76,7 +77,8 @@ module Components
               name: 'refill[restock_date]',
               required: true,
               value: restock_date_value,
-              class: 'w-full rounded-md border border-input bg-background px-3 py-2 text-sm'
+              class: 'w-full rounded-shape-sm border border-input bg-background px-3 py-2 text-sm ' \
+                     'focus:ring-2 focus:ring-primary/20 transition-all'
             )
           end
 

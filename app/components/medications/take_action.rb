@@ -84,7 +84,7 @@ module Components
                   available_medications.each_with_index do |medication, index|
                     label(
                       for: "taken_from_medication_#{source.class.name.underscore}_#{source.id}_#{medication.id}",
-                      class: 'flex items-center justify-between gap-3 rounded-2xl border border-border p-4'
+                      class: 'flex items-center justify-between gap-3 rounded-shape-xl border border-border p-4'
                     ) do
                       div(class: 'space-y-1') do
                         Text(size: '2', weight: 'bold', class: 'text-foreground') { medication.location.name }

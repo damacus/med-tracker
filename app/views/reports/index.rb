@@ -130,7 +130,7 @@ module Views
           end
 
           # Day Label
-          Text(size: '1', weight: 'black', class: 'text-muted-foreground uppercase tracking-tighter') { day[:day_name] }
+          Text(size: '1', weight: 'bold', class: 'text-muted-foreground uppercase tracking-tighter font-black') { day[:day_name] }
         end
       end
 

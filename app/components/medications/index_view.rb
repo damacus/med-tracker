@@ -43,7 +43,7 @@ module Components
                 href: add_medication_path,
                 variant: :outline,
                 size: :lg,
-                class: 'rounded-2xl font-bold text-sm'
+                class: 'rounded-shape-xl font-bold text-sm'
               ) do
                 render Icons::PlusCircle.new(size: 20, class: 'mr-2')
                 span { 'Add Schedule' }
@@ -52,7 +52,7 @@ module Components
                 href: new_medication_path,
                 variant: :primary,
                 size: :lg,
-                class: 'rounded-2xl font-bold text-sm shadow-lg shadow-primary/20',
+                class: 'rounded-shape-xl font-bold text-sm shadow-lg shadow-primary/20',
                 **wizard_link_data
               ) do
                 render Icons::Pill.new(size: 20, class: 'mr-2')

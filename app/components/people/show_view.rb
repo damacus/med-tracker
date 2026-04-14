@@ -100,7 +100,9 @@ module Components
             render icon_class.new(size: 20)
           end
           div do
-            Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-muted-foreground') { label }
+            Text(size: '1', weight: 'bold', class: 'uppercase tracking-widest text-muted-foreground font-black') do
+              label
+            end
             Text(size: '2', weight: 'semibold') { value }
           end
         end

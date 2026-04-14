@@ -46,7 +46,7 @@ module Components
               render Icons::Home.new(size: 32)
             end
             div(class: 'space-y-1') do
-              Text(size: '2', weight: 'black', class: 'uppercase tracking-[0.2em] font-bold opacity-40 block mb-1') do
+              Text(size: '2', weight: 'bold', class: 'uppercase tracking-[0.2em] font-black opacity-40 block mb-1') do
                 t('locations.show.location')
               end
               Heading(level: 1, size: '8', class: 'font-black tracking-tight') { location.name }

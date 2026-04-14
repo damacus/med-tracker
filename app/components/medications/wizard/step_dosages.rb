@@ -24,7 +24,7 @@ module Components
         def render_header
           div(class: 'text-center space-y-3') do
             div(
-              class: 'mx-auto w-14 h-14 rounded-2xl bg-success-container flex items-center justify-center ' \
+              class: 'mx-auto w-14 h-14 rounded-shape-xl bg-success-container flex items-center justify-center ' \
                      'text-on-success-container mb-2'
             ) do
               render Icons::CheckCircle.new(size: 28)
@@ -45,7 +45,9 @@ module Components
                 render DosageRow.new(dosage: dosage)
               end
             else
-              div(class: 'rounded-2xl border border-dashed border-border p-6 bg-surface-container-low text-center') do
+              div(
+                class: 'rounded-shape-xl border border-dashed border-border p-6 bg-card text-center'
+              ) do
                 Text(size: '2', class: 'text-muted-foreground') do
                   'No dose options are configured yet.'
                 end
@@ -67,7 +69,7 @@ module Components
               href: medication_path(medication),
               variant: :primary,
               size: :lg,
-              class: 'px-8 rounded-2xl shadow-lg shadow-primary/20',
+              class: 'px-8 rounded-shape-xl shadow-lg shadow-primary/20',
               data: { turbo_frame: '_top' }
             ) { 'Done' }
           end

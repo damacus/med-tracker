@@ -48,15 +48,15 @@ module Components
 
       def render_overview_item(label, value)
         div(class: 'flex items-center gap-4 group') do
-          div(
-            class: 'w-10 h-10 rounded-xl bg-surface-container-low flex items-center justify-center ' \
-                   'text-muted-foreground ' \
-                   'group-hover:bg-primary/5 group-hover:text-primary transition-colors'
-          ) do
+          div(class: 'w-10 h-10 rounded-xl bg-secondary-container flex items-center justify-center ' \
+                     'text-on-secondary-container ' \
+                     'group-hover:bg-primary/5 group-hover:text-primary transition-colors shadow-sm') do
             render Icons::Settings.new(size: 20)
           end
           div do
-            Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-muted-foreground') { label }
+            Text(size: '1', weight: 'bold', class: 'uppercase tracking-widest text-muted-foreground font-black') do
+              label
+            end
             Text(size: '2', weight: 'semibold') { value }
           end
         end
