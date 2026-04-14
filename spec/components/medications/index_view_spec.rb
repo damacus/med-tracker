@@ -24,4 +24,13 @@ RSpec.describe Components::Medications::IndexView, type: :component do
     expect(rendered.text).to include('No medications yet')
     expect(rendered.text).to include('Add Medication')
   end
+
+  it 'offsets the content to align with the header title column' do
+    rendered = render_view(medications: [])
+
+    content = rendered.at_css("[data-testid='medications-content']")
+
+    expect(content).to be_present
+    expect(content[:class]).to include('md:pl-[6.5rem]')
+  end
 end

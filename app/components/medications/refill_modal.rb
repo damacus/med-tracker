@@ -32,7 +32,10 @@ module Components
                 render Icons::RefreshCw.new(size: 16)
                 span(class: 'sr-only') { t('medications.refill_modal.refill_inventory') }
               else
-                render icon.new(size: 18, class: 'mr-2') if icon
+                if icon
+                  icon_class = button_variant == :outline ? 'mr-2 text-primary' : 'mr-2'
+                  render icon.new(size: 18, class: icon_class)
+                end
                 span { button_label || t('medications.refill_modal.refill_inventory') }
               end
             end

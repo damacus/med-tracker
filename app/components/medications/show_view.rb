@@ -18,7 +18,8 @@ module Components
           render_notice if notice.present?
           render_header
 
-          div(class: 'grid grid-cols-1 lg:grid-cols-3 gap-12') do
+          div(class: "grid grid-cols-1 lg:grid-cols-3 gap-12 #{header_content_offset_class}",
+              data: { testid: 'medication-content' }) do
             div(class: 'lg:col-span-2 space-y-8') do
               render_description_section
               render_warnings_section if medication.warnings.present?
@@ -105,12 +106,15 @@ module Components
       end
 
       def render_actions_card
+        base_classes = 'w-full py-6 rounded-full flex items-center justify-center ' \
+                       'font-bold transition-all shadow-elevation-1 hover:shadow-elevation-2 active:scale-[0.98]'
+
         div(class: 'grid grid-cols-2 gap-3') do
           Link(
             href: add_medication_path(medication_id: medication.id),
             variant: :outline,
             size: :lg,
-            class: 'btn-action bg-card border-border'
+            class: "#{base_classes} bg-card border-border"
           ) do
             render Icons::PlusCircle.new(size: 18, class: 'mr-2 text-primary')
             span { t('medications.show.add_schedule') }
@@ -118,18 +122,19 @@ module Components
 
           render Button.new(
             variant: :success,
-            class: 'btn-action !bg-success !text-success-foreground'
+            size: :lg,
+            class: "#{base_classes} bg-success text-success-foreground border-none"
           ) do
-            render Icons::Activity.new(size: 18, class: 'mr-2 text-white')
+            render Icons::Activity.new(size: 18, class: 'mr-2')
             span { t('medications.show.log_administration') }
           end
 
-          render_reorder_actions
-          render_refill_modal
+          render_reorder_actions(base_classes)
+          render_refill_modal(base_classes)
         end
       end
 
-      def render_reorder_actions
+      def render_reorder_actions(base_classes)
         config = if medication.reorder_status.nil?
                    { path: mark_as_ordered_medication_path(medication), label: t('medications.show.mark_as_ordered'),
                      icon: Icons::Clock }
@@ -145,16 +150,20 @@ module Components
           variant: :outline,
           size: :lg,
           data: { turbo_method: :patch },
-          class: 'btn-action bg-card border-border'
+          class: "#{base_classes} bg-card border-border"
         ) do
           render config[:icon].new(size: 18, class: 'mr-2 text-primary')
           span { config[:label] }
         end
       end
 
-      def render_refill_modal
+      def render_refill_modal(base_classes)
         is_received = medication.reorder_received?
-        button_class = is_received ? 'btn-action' : 'btn-action bg-card border-border'
+        button_class = if is_received
+                         "#{base_classes} bg-success text-success-foreground border-none"
+                       else
+                         "#{base_classes} bg-card border-border"
+                       end
 
         render Components::Medications::RefillModal.new(
           medication: medication,
@@ -168,6 +177,10 @@ module Components
 
       def render_dosages_section
         render Components::Medications::DoseHistoryComponent.new(medication: medication)
+      end
+
+      def header_content_offset_class
+        'md:pl-[6.5rem]'
       end
     end
   end

@@ -21,8 +21,10 @@ module Components
       def view_template
         div(class: 'container mx-auto px-4 py-12 max-w-6xl', data: { testid: 'medications-list' }) do
           render_header
-          render_filters_section
-          render_medications_grid
+          div(class: header_content_offset_class, data: { testid: 'medications-content' }) do
+            render_filters_section
+            render_medications_grid
+          end
           turbo_frame_tag 'modal'
         end
       end
@@ -52,7 +54,7 @@ module Components
                 href: add_medication_path,
                 variant: :outline,
                 size: :lg,
-                class: 'font-bold text-sm bg-card'
+                class: 'rounded-full font-bold text-sm bg-card shadow-sm border-border'
               ) do
                 render Icons::PlusCircle.new(size: 20, class: 'mr-2 text-primary')
                 span { 'Add Schedule' }
@@ -61,7 +63,7 @@ module Components
                 href: new_medication_path,
                 variant: :primary,
                 size: :lg,
-                class: 'font-bold text-sm shadow-elevation-2',
+                class: 'rounded-full font-bold text-sm shadow-elevation-2',
                 **wizard_link_data
               ) do
                 render Icons::Pill.new(size: 20, class: 'mr-2')
@@ -113,6 +115,10 @@ module Components
 
       def manageable_medication?(medication)
         view_context.policy(medication).update?
+      end
+
+      def header_content_offset_class
+        'md:pl-[6.5rem]'
       end
     end
   end

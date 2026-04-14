@@ -342,10 +342,6 @@
 	--motion-duration-long: 500ms;
 }
 
-@utility btn-action {
-  @apply w-full py-6 rounded-shape-xl flex items-center justify-center font-bold transition-all shadow-elevation-1 hover:shadow-elevation-2 active:scale-[0.98];
-}
-
 .dark {
 	color-scheme: dark;
 	--background: oklch(0.16 0.01 260);

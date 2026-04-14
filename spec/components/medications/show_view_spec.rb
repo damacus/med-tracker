@@ -26,6 +26,15 @@ RSpec.describe Components::Medications::ShowView, type: :component do
     expect(rendered.text).to include('Inventory Status')
   end
 
+  it 'offsets the content to align with the header title column' do
+    rendered = render_inline(described_class.new(medication: medication))
+
+    content = rendered.at_css("[data-testid='medication-content']")
+
+    expect(content).to be_present
+    expect(content[:class]).to include('md:pl-[6.5rem]')
+  end
+
   describe 'action button styling' do
     let(:rendered) { render_inline(described_class.new(medication: medication)) }
 
@@ -34,9 +43,9 @@ RSpec.describe Components::Medications::ShowView, type: :component do
       mark_as_ordered_link = rendered.css('a').find { |link| link.text.include?('Mark as Ordered') }
       refill_button = rendered.css('button').find { |button| button.text.include?('Refill Inventory') }
 
-      expect(add_schedule_link[:class]).to include('btn-action')
-      expect(mark_as_ordered_link[:class]).to include('btn-action')
-      expect(refill_button[:class]).to include('btn-action')
+      expect(add_schedule_link[:class]).to include('rounded-full')
+      expect(mark_as_ordered_link[:class]).to include('rounded-full')
+      expect(refill_button[:class]).to include('rounded-full')
     end
   end
 
