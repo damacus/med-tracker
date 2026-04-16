@@ -51,13 +51,8 @@ module Components
         render Components::Dashboard::PersonSchedule.new(
           person: person,
           schedules: schedules,
-          take_medication_url_generator: take_medication_url_generator,
           current_user: current_user
         )
-      end
-
-      def take_medication_url_generator
-        ->(schedule) { schedule_medication_takes_path(schedule) }
       end
 
       def render_empty_state(message, help_text)

@@ -43,36 +43,35 @@ class DashboardPresenter
   def load_people
     return Person.none if current_user.nil?
 
-    return all_people if full_access?
-    return carer_patients if carer?
-    return parent_minor_patients if parent?
+    return people_scope(Person.all) if full_access?
 
-    own_person
+    current_person_scope
   end
 
-  def all_people
-    Person.includes(:user, schedules: [:medication], person_medications: :medication).all
+  def people_scope(scope_or_ids)
+    scope = if scope_or_ids.is_a?(ActiveRecord::Relation)
+              scope_or_ids
+            else
+              Person.where(id: Array(scope_or_ids).uniq)
+            end
+
+    scope.includes(:user, schedules: [:medication], person_medications: :medication)
   end
 
-  def carer_patients
-    return Person.none if current_user.person.nil?
-
-    current_user.person.patients.includes(:user, schedules: [:medication], person_medications: :medication)
+  def current_person
+    current_user.person
   end
 
-  def parent_minor_patients
-    return Person.none if current_user.person.nil?
+  def current_person_scope
+    return Person.none if current_person.nil?
+    return people_scope(current_person.patients) if carer?
+    return people_scope(parent_people_ids) if parent?
 
-    people_ids = [current_user.person.id] + current_user.person.patients.where(person_type: :minor).pluck(:id)
-    Person.where(id: people_ids.uniq)
-          .includes(:user, schedules: [:medication], person_medications: :medication)
+    people_scope(current_person.id)
   end
 
-  def own_person
-    return Person.none if current_user.person.nil?
-
-    Person.where(id: current_user.person.id)
-          .includes(:user, schedules: [:medication], person_medications: :medication)
+  def parent_people_ids
+    [current_person.id] + current_person.patients.where(person_type: :minor).pluck(:id)
   end
 
   def carer?

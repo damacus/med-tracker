@@ -4,12 +4,8 @@ module Components
   module Layouts
     # Navigation component that renders differently based on authentication state
     class Navigation < Components::Base
+      include Components::Layouts::CurrentUserContext
       include Phlex::Rails::Helpers::LinkTo
-
-      def initialize(current_user: nil)
-        @current_user = current_user
-        super()
-      end
 
       def view_template
         header(
@@ -38,13 +34,9 @@ module Components
         ) { t('layouts.navigation.skip_to_content') }
       end
 
-      def authenticated?
-        @current_user.present?
-      end
-
       def render_left_section
         div(class: 'nav__left flex items-center gap-6') do
-          render Components::Layouts::MobileMenu.new(current_user: @current_user) if authenticated?
+          render Components::Layouts::MobileMenu.new(current_user: current_user) if authenticated?
           render_brand
         end
       end
@@ -64,7 +56,7 @@ module Components
       def render_auth_actions
         div(class: 'nav__user-menu hidden md:block') do
           if authenticated?
-            render Components::Layouts::ProfileMenu.new(current_user: @current_user)
+            render Components::Layouts::ProfileMenu.new(current_user: current_user)
           else
             link_to(t('layouts.navigation.login'), '/login', class: 'nav__link text-sm font-medium')
           end

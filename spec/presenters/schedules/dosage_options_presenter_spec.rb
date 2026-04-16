@@ -35,7 +35,7 @@ RSpec.describe Schedules::DosageOptionsPresenter do
 
   describe '#selected_dosage_option' do
     it 'returns the dosage matching the schedule selection' do
-      presenter = described_class.new(schedule: schedule, medications: [medication])
+      presenter = described_class.new(schedule: schedule)
 
       expect(presenter.selected_dosage_option).to eq(matching_dosage)
     end
@@ -43,7 +43,7 @@ RSpec.describe Schedules::DosageOptionsPresenter do
 
   describe '#duplicate_dose_selection_keys' do
     it 'memoizes duplicate selection key calculation' do
-      presenter = described_class.new(schedule: schedule, medications: [medication])
+      presenter = described_class.new(schedule: schedule)
 
       2.times { presenter.duplicate_dose_selection_keys }
 
@@ -54,17 +54,9 @@ RSpec.describe Schedules::DosageOptionsPresenter do
 
   describe '#dosage_dom_id' do
     it 'adds a description suffix when selection keys are duplicated' do
-      presenter = described_class.new(schedule: schedule, medications: [medication])
+      presenter = described_class.new(schedule: schedule)
 
       expect(presenter.dosage_dom_id(duplicate_dosage)).to eq('schedule_dose_option_200_mg_capsule')
-    end
-  end
-
-  describe '#medication_dose_options' do
-    it 'maps medications to their dose option payloads' do
-      presenter = described_class.new(schedule: schedule, medications: [medication])
-
-      expect(presenter.medication_dose_options).to eq('123' => [{ 'amount' => '1' }])
     end
   end
 end

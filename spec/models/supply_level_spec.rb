@@ -47,6 +47,26 @@ RSpec.describe SupplyLevel do
     end
   end
 
+  describe '#status' do
+    it 'returns out_of_stock before low_stock' do
+      supply_level = described_class.new(current: 0, reorder_threshold: 10, last_restock: 50)
+
+      expect(supply_level.status).to eq(:out_of_stock)
+    end
+
+    it 'returns low_stock at the reorder threshold' do
+      supply_level = described_class.new(current: 10, reorder_threshold: 10, last_restock: 50)
+
+      expect(supply_level.status).to eq(:low_stock)
+    end
+
+    it 'returns in_stock above the reorder threshold' do
+      supply_level = described_class.new(current: 11, reorder_threshold: 10, last_restock: 50)
+
+      expect(supply_level.status).to eq(:in_stock)
+    end
+  end
+
   describe '#days_until_low_stock' do
     it 'returns nil when daily consumption is not positive' do
       supply_level = described_class.new(current: 50, reorder_threshold: 10, last_restock: 80)

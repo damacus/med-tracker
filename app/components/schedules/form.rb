@@ -230,9 +230,9 @@ module Components
                   input(
                     type: :radio,
                     name: 'schedule[dose_option_key]',
-                    id: dosage_dom_id(dosage),
+                    id: dosage_options.dosage_dom_id(dosage),
                     value: dosage.selection_key,
-                    checked: selected_dose_selection_key == dosage.selection_key,
+                    checked: dosage_options.selected_dose_selection_key == dosage.selection_key,
                     required: true,
                     class: 'sr-only',
                     data: {
@@ -286,7 +286,7 @@ module Components
             SelectInput(
               name: 'schedule[dose_option_key]',
               id: 'schedule_dose_option_key',
-              value: selected_dose_selection_key,
+              value: dosage_options.selected_dose_selection_key,
               required: true,
               data: { action: 'change->schedule-form#onDosageChange' }
             )
@@ -513,13 +513,9 @@ module Components
         end
       end
 
-      def format_dosage_option(dosage)
-        dosage_options.format_dosage_option(dosage)
-      end
-
       def dosage_card_classes(dosage)
         base = 'rounded-2xl border p-4 transition-colors cursor-pointer'
-        selected = if selected_dose_selection_key == dosage.selection_key
+        selected = if dosage_options.selected_dose_selection_key == dosage.selection_key
                      ' border-primary bg-primary/5 ring-2 ring-primary/20'
                    else
                      ' border-border bg-card'
@@ -527,28 +523,8 @@ module Components
         "#{base}#{selected}"
       end
 
-      def selected_dosage_option
-        dosage_options.selected_dosage_option
-      end
-
-      def selected_dose_selection_key
-        dosage_options.selected_dose_selection_key
-      end
-
-      def dosage_dom_id(dosage)
-        dosage_options.dosage_dom_id(dosage)
-      end
-
-      def duplicate_dose_selection_keys
-        dosage_options.duplicate_dose_selection_keys
-      end
-
-      def medication_dose_options
-        dosage_options.medication_dose_options
-      end
-
       def dosage_options
-        @dosage_options ||= ::Schedules::DosageOptionsPresenter.new(schedule: schedule, medications: medications)
+        @dosage_options ||= ::Schedules::DosageOptionsPresenter.new(schedule: schedule)
       end
 
       def form_payload

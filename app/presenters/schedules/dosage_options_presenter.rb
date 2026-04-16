@@ -2,11 +2,10 @@
 
 module Schedules
   class DosageOptionsPresenter
-    attr_reader :schedule, :medications
+    attr_reader :schedule
 
-    def initialize(schedule:, medications:)
+    def initialize(schedule:)
       @schedule = schedule
-      @medications = medications
     end
 
     def format_dosage_option(dosage)
@@ -38,12 +37,6 @@ module Schedules
                                                                                                 selection_keys|
         selection_key, matching_dosages = group
         selection_keys << selection_key if matching_dosages.size > 1
-      end
-    end
-
-    def medication_dose_options
-      medications.each_with_object({}) do |medication, dose_options|
-        dose_options[medication.id.to_s] = medication.dose_options_payload
       end
     end
 

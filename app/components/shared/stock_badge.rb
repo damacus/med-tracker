@@ -21,24 +21,25 @@ module Components
       private
 
       def badge_variant
-        if medication.out_of_stock?
-          :destructive
-        elsif medication.low_stock?
-          :warning
-        else
-          :outline
+        case stock_status
+        when :out_of_stock then :destructive
+        when :low_stock then :warning
+        else :outline
         end
       end
 
       def badge_text
         count = medication.current_supply.to_i
-        if medication.out_of_stock?
-          "Out of Stock (#{count})"
-        elsif medication.low_stock?
-          "Low Stock (#{count})"
-        else
-          "#{count} left"
+
+        case stock_status
+        when :out_of_stock then "Out of Stock (#{count})"
+        when :low_stock then "Low Stock (#{count})"
+        else "#{count} left"
         end
+      end
+
+      def stock_status
+        medication.supply_level.status
       end
     end
   end

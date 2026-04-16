@@ -16,7 +16,9 @@ module Schedules
         controller: 'schedule-form',
         turbo_stream: true,
         person_type: person.person_type,
-        schedule_form_dose_options_value: medication_dose_options.to_json,
+        schedule_form_dose_options_value: ::Medications::DoseOptionsPayloadPresenter.new(
+          medications: medications
+        ).to_h.to_json,
         schedule_form_frame_id_value: frame_id,
         schedule_form_next_url_value: view_context.new_person_schedule_path(person),
         schedule_form_translations_value: translations.to_json
@@ -24,12 +26,6 @@ module Schedules
     end
 
     private
-
-    def medication_dose_options
-      medications.each_with_object({}) do |medication, dose_options|
-        dose_options[medication.id.to_s] = medication.dose_options_payload
-      end
-    end
 
     def translations
       {

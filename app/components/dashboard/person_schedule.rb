@@ -7,12 +7,11 @@ module Components
       include Phlex::Rails::Helpers::ButtonTo
       include Pundit::Authorization
 
-      attr_reader :person, :schedules, :take_medication_url_generator, :current_user
+      attr_reader :person, :schedules, :current_user
 
-      def initialize(person:, schedules:, take_medication_url_generator: nil, current_user: nil)
+      def initialize(person:, schedules:, current_user: nil)
         @person = person
         @schedules = schedules
-        @take_medication_url_generator = take_medication_url_generator
         @current_user = current_user
         super()
       end
