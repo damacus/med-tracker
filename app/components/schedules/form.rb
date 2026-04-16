@@ -477,8 +477,7 @@ module Components
                       id: "schedule_dose_cycle_#{value}",
                       value: value,
                       checked: schedule.dose_cycle == value,
-                      data: { schedule_form_target: 'doseCycleInput',
-                              action: 'change->schedule-form#generateFrequency' }
+                      data: { action: 'change->schedule-form#generateFrequency' }
                     )
                     span { label }
                   end

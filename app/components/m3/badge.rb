@@ -83,14 +83,17 @@ module Components
         ]
       end
 
-      def default_classes
-        case @m3_variant
-        when :filled then primary_classes
-        when :tonal then secondary_classes
-        when :outlined then outline_classes
-        when :destructive then destructive_classes
-        else super
-        end
+      def default_attrs
+        { class: m3_variant_classes.fetch(@m3_variant) { return super } }
+      end
+
+      def m3_variant_classes
+        {
+          filled: primary_classes,
+          tonal: secondary_classes,
+          outlined: outline_classes,
+          destructive: destructive_classes
+        }
       end
     end
   end

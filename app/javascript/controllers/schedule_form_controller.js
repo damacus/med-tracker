@@ -5,7 +5,7 @@ export default class extends Controller {
   static targets = [
     "submit", "dosageSelect", "medicationSelect", "dosageContent",
     "dosageValue", "dosageTrigger", "frequencyInput",
-    "maxDosesInput", "minHoursInput", "doseCycleInput",
+    "maxDosesInput", "minHoursInput",
     "doseAmountInput", "doseUnitInput"
   ]
 
@@ -79,7 +79,7 @@ export default class extends Controller {
   generateFrequency() {
     const max = parseInt(this.hasMaxDosesInputTarget ? this.maxDosesInputTarget.value : '') || null
     const hours = parseFloat(this.hasMinHoursInputTarget ? this.minHoursInputTarget.value : '') || null
-    const cycle = this.hasDoseCycleInputTarget ? this.doseCycleInputTarget.value : ''
+    const cycle = this.#selectedDoseCycleValue()
 
     if (!max && !hours) {
       this.validate()
@@ -207,12 +207,12 @@ export default class extends Controller {
     if (this.hasMinHoursInputTarget && !this.minHoursInputTarget.value && dosage.default_min_hours_between_doses) {
       this.minHoursInputTarget.value = dosage.default_min_hours_between_doses
     }
-    if (this.hasDoseCycleInputTarget && !this.doseCycleInputTarget.value && dosage.default_dose_cycle !== null) {
+    if (!this.#selectedDoseCycleValue() && dosage.default_dose_cycle !== null) {
       const cycleMap = { 0: 'daily', 1: 'weekly', 2: 'monthly' }
       const cycleValue = typeof dosage.default_dose_cycle === 'number'
         ? cycleMap[dosage.default_dose_cycle]
         : dosage.default_dose_cycle
-      if (cycleValue) this.doseCycleInputTarget.value = cycleValue
+      if (cycleValue) this.#setDoseCycleValue(cycleValue)
     }
   }
 
@@ -257,6 +257,15 @@ export default class extends Controller {
 
     const input = this.element.querySelector('[name="schedule[medication_id]"]')
     return input?.value
+  }
+
+  #selectedDoseCycleValue() {
+    return this.element.querySelector('[name="schedule[dose_cycle]"]:checked')?.value || ''
+  }
+
+  #setDoseCycleValue(value) {
+    const radio = this.element.querySelector(`[name="schedule[dose_cycle]"][value="${value}"]`)
+    if (radio) radio.checked = true
   }
 
   #targetFrame() {
