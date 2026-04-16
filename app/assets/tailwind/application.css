@@ -456,8 +456,6 @@
 	--sidebar-ring: oklch(0.708 0 0);
 	--primary-container: oklch(from var(--primary) l c h / 0.12);
 	--on-primary-container: oklch(from var(--primary) l c h / 0.9);
-	--secondary-container: oklch(from var(--secondary) l c h / 0.12);
-	--on-secondary-container: oklch(from var(--secondary) l c h / 0.9);
 	--surface: var(--background);
 	--on-surface: var(--foreground);
 	--on-surface-variant: oklch(0.556 0 0);
