@@ -32,4 +32,17 @@ RSpec.describe Components::M3::Button, type: :component do
     rendered = render_inline(described_class.new(variant: :text) { 'Text' })
     expect(rendered.to_html).to include('bg-transparent')
   end
+
+  it 'renders semantic outline variants with M3 base classes' do
+    destructive = render_inline(described_class.new(variant: :destructive_outline) { 'Delete' })
+    success = render_inline(described_class.new(variant: :success_outline) { 'Activate' })
+
+    [destructive, success].each do |rendered|
+      expect(rendered.to_html).to include('rounded-shape-full')
+      expect(rendered.to_html).to include('state-layer')
+    end
+
+    expect(destructive.to_html).to include('text-error')
+    expect(success.to_html).to include('text-success')
+  end
 end

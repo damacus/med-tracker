@@ -18,7 +18,7 @@ module RubyUI
     }.freeze
 
     def initialize(variant: :primary, size: :md, **args)
-      @variant = variant
+      @variant = normalize_variant(variant)
       @size = size
       super(**args)
     end
@@ -28,6 +28,14 @@ module RubyUI
     end
 
     private
+
+    def normalize_variant(variant)
+      case variant.to_sym
+      when :outlined then :outline
+      when :tonal then :secondary
+      else variant.to_sym
+      end
+    end
 
     def default_attrs
       {

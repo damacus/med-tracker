@@ -112,16 +112,49 @@ module Components
         ]
       end
 
+      def destructive_outline_classes
+        [
+          BASE_CLASSES,
+          size_classes,
+          %w[
+            border
+            border-outline
+            bg-transparent
+            text-error
+            hover:bg-error-container
+          ].join(' ')
+        ]
+      end
+
+      def success_outline_classes
+        [
+          BASE_CLASSES,
+          size_classes,
+          %w[
+            border
+            border-outline
+            bg-transparent
+            text-success
+            hover:bg-success-container
+          ].join(' ')
+        ]
+      end
+
       def default_classes
-        case @m3_variant
-        when :filled then primary_classes
-        when :tonal then secondary_classes
-        when :elevated then elevated_classes
-        when :outlined then outline_classes
-        when :text then ghost_classes
-        when :destructive then destructive_classes
-        else super
-        end
+        m3_variant_classes.fetch(@m3_variant) { return super }
+      end
+
+      def m3_variant_classes
+        {
+          filled: primary_classes,
+          tonal: secondary_classes,
+          elevated: elevated_classes,
+          outlined: outline_classes,
+          text: ghost_classes,
+          destructive: destructive_classes,
+          destructive_outline: destructive_outline_classes,
+          success_outline: success_outline_classes
+        }
       end
     end
   end
