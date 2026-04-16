@@ -43,23 +43,10 @@ module Views
       end
 
       def form_section
-        render RubyUI::Card.new(class: card_classes) do
-          render_card_header
-          render_card_content
-        end
-      end
-
-      def render_card_header
-        render RubyUI::CardHeader.new(class: 'space-y-2 bg-card/60') do
-          render RubyUI::CardTitle.new(class: 'text-2xl font-semibold text-foreground') { t('rodauth.views.create_account.card_title') }
-          render RubyUI::CardDescription.new(class: 'text-base text-muted-foreground') do
-            plain t('rodauth.views.create_account.card_description')
-          end
-        end
-      end
-
-      def render_card_content
-        render RubyUI::CardContent.new(class: 'space-y-6 p-6 sm:p-8') do
+        render_auth_card(
+          title: t('rodauth.views.create_account.card_title'),
+          subtitle: t('rodauth.views.create_account.card_description')
+        ) do
           flash_section
           render_signup_form
           render_other_options
@@ -79,7 +66,7 @@ module Views
       end
 
       def name_field
-        render_form_field(
+        render_m3_form_field(
           label: t('rodauth.views.create_account.name_label'),
           input_attrs: {
             type: :text,
@@ -96,7 +83,7 @@ module Views
       end
 
       def date_of_birth_field
-        render_form_field(
+        render_m3_form_field(
           label: t('rodauth.views.create_account.date_of_birth_label'),
           input_attrs: {
             type: :date,
@@ -111,7 +98,7 @@ module Views
       end
 
       def email_field
-        render_form_field(
+        render_m3_form_field(
           label: t('rodauth.views.create_account.email_label'),
           input_attrs: {
             type: :email,
@@ -127,7 +114,7 @@ module Views
       end
 
       def password_field
-        render_form_field(
+        render_m3_form_field(
           label: t('rodauth.views.create_account.password_label'),
           input_attrs: {
             type: :password,
@@ -144,7 +131,7 @@ module Views
       end
 
       def password_confirm_field
-        render_form_field(
+        render_m3_form_field(
           label: t('rodauth.views.create_account.confirm_password_label'),
           input_attrs: {
             type: :password,
@@ -160,24 +147,15 @@ module Views
         )
       end
 
-      def render_form_field(label:, input_attrs:, error: nil)
-        render RubyUI::FormField.new do
-          render RubyUI::FormFieldLabel.new(for: input_attrs[:id]) { label }
-          render RubyUI::Input.new(**input_attrs)
-
-          p(class: 'mt-1 text-sm text-error') { error } if error.present?
-        end
-      end
-
       def submit_button
-        render RubyUI::Button.new(type: :submit, variant: :primary, size: :md, class: 'w-full') { t('rodauth.views.create_account.submit') }
+        render_m3_submit_button(t('rodauth.views.create_account.submit'))
       end
 
       def render_other_options
-        div(class: 'space-y-3 border-t border-border pt-6') do
-          h3(class: 'text-sm font-medium text-foreground') { t('rodauth.views.create_account.existing_account') }
-          div(class: 'flex flex-col gap-2 text-sm') do
-            render RubyUI::Link.new(href: view_context.rodauth.login_path, variant: :link) do
+        div(class: 'space-y-4 border-t border-outline-variant/30 pt-8') do
+          m3_text(variant: :body_medium, class: 'text-on-surface-variant font-medium') do
+            plain "#{t('rodauth.views.create_account.existing_account')} "
+            m3_link(href: view_context.rodauth.login_path, variant: :text, class: 'p-0 h-auto font-black underline') do
               t('rodauth.views.create_account.sign_in')
             end
           end

@@ -13,16 +13,16 @@ module Components
       end
 
       def view_template
-        Card(class: 'p-6') do
+        m3_card(class: 'p-6') do
           div(class: 'flex items-center justify-between mb-4') do
-            Heading(level: 3, size: '4', class: 'font-bold') { t('medications.show.dosages_heading') }
+            m3_heading(variant: :title_medium, level: 3, class: 'font-bold') { t('medications.show.dosages_heading') }
             if can_manage?
-              Link(
+              m3_link(
                 href: view_context.edit_medication_path(
                   medication,
                   return_to: view_context.medication_path(medication)
                 ),
-                variant: :outline,
+                variant: :outlined,
                 size: :sm
               ) { t('medications.show.add_dosage') }
             end
@@ -35,7 +35,9 @@ module Components
               end
             end
           else
-            Text(size: '2', class: 'text-muted-foreground italic') { t('medications.show.no_dosages') }
+            m3_text(variant: :body_medium, class: 'text-on-surface-variant italic font-medium') do
+              t('medications.show.no_dosages')
+            end
           end
         end
       end
@@ -63,12 +65,12 @@ module Components
 
           if can_manage?
             div(class: 'flex gap-2 flex-none') do
-              Link(
+              m3_link(
                 href: view_context.edit_medication_path(
                   medication,
                   return_to: view_context.medication_path(medication)
                 ),
-                variant: :ghost,
+                variant: :text,
                 size: :sm
               ) { t('medications.show.edit_dosage') }
             end
@@ -79,20 +81,18 @@ module Components
       def render_dosage_summary(dosage)
         div(class: 'flex items-center gap-2 flex-wrap') do
           span(class: 'font-semibold text-sm') { "#{dosage.amount.to_f} #{dosage.unit}" }
-          span(class: 'text-muted-foreground text-sm') { dosage.frequency }
+          span(class: 'text-on-surface-variant text-sm') { dosage.frequency }
           if dosage.default_for_adults?
-            Badge(variant: :outline, class: 'text-xs') { t('dosages.form.default_for_adults') }
+            m3_badge(variant: :outlined, class: 'text-xs') { t('dosages.form.default_for_adults') }
           end
-          if dosage.default_for_children?
-            Badge(variant: :secondary, class: 'text-xs') { t('medications.show.children') }
-          end
+          m3_badge(variant: :tonal, class: 'text-xs') { t('medications.show.children') } if dosage.default_for_children?
         end
       end
 
       def render_dosage_scheduling_hint(dosage)
         return unless dosage.default_max_daily_doses || dosage.default_min_hours_between_doses
 
-        div(class: 'text-xs text-muted-foreground') do
+        div(class: 'text-xs text-on-surface-variant font-medium') do
           parts = []
           if dosage.default_max_daily_doses
             parts << t('medications.show.max_per_cycle', count: dosage.default_max_daily_doses)

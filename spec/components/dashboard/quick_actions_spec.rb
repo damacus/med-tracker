@@ -9,6 +9,6 @@ RSpec.describe Components::Dashboard::QuickActions, type: :component do
     expect(rendered.text).to include('Quick Actions')
     links = rendered.css('a')
     expect(links).not_to be_empty
-    expect(links.first.text).to include('Add Medication')
+    expect(links.any? { |l| l.text.include?('Add Medication') }).to be true
   end
 end

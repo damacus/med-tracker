@@ -8,11 +8,13 @@ module Views
 
       def view_template
         page_layout do
-          render_page_header(
-            title: t('app.name'),
-            subtitle: t('rodauth.views.reset_password.page_subtitle')
-          )
-          form_section
+          render_auth_card(
+            title: t('rodauth.views.reset_password.card_title'),
+            subtitle: t('rodauth.views.reset_password.card_description')
+          ) do
+            flash_section
+            render_reset_form
+          end
         end
       end
 
@@ -22,9 +24,7 @@ module Views
         return if flash_message.blank?
 
         div(id: 'reset-flash') do
-          render RubyUI::Alert.new(variant: flash_variant) do
-            plain(flash_message)
-          end
+          render_m3_alert(flash_message, variant: flash_variant)
         end
       end
 
@@ -41,31 +41,6 @@ module Views
         view_context.flash[:alert].present? || rodauth_error.present? ? :destructive : :success
       end
 
-      def form_section
-        render RubyUI::Card.new(class: card_classes) do
-          render_card_header
-          render_card_content
-        end
-      end
-
-      def render_card_header
-        render RubyUI::CardHeader.new(class: 'space-y-2 bg-card/60') do
-          render RubyUI::CardTitle.new(class: 'text-2xl font-semibold text-foreground') do
-            t('rodauth.views.reset_password.card_title')
-          end
-          render RubyUI::CardDescription.new(class: 'text-base text-muted-foreground') do
-            plain t('rodauth.views.reset_password.card_description')
-          end
-        end
-      end
-
-      def render_card_content
-        render RubyUI::CardContent.new(class: 'space-y-6 p-6 sm:p-8') do
-          flash_section
-          render_reset_form
-        end
-      end
-
       def render_reset_form
         render RubyUI::Form.new(
           action: view_context.rodauth.reset_password_path, method: :post,
@@ -73,9 +48,9 @@ module Views
         ) do
           authenticity_token_field
           key_field
-          password_field
-          password_confirm_field
-          submit_button
+          render_password_field
+          render_password_confirm_field
+          render_submit_button
         end
       end
 
@@ -83,10 +58,10 @@ module Views
         input(type: 'hidden', name: 'key', value: view_context.params[:key])
       end
 
-      def password_field
-        render RubyUI::FormField.new do
-          render RubyUI::FormFieldLabel.new(for: 'password') { t('rodauth.views.reset_password.new_password_label') }
-          render RubyUI::Input.new(
+      def render_password_field
+        render_m3_form_field(
+          label: t('rodauth.views.reset_password.new_password_label'),
+          input_attrs: {
             type: :password,
             name: 'password',
             id: 'password',
@@ -96,18 +71,15 @@ module Views
             placeholder: t('rodauth.views.reset_password.new_password_placeholder'),
             minlength: 12,
             maxlength: 72
-          )
-          error = view_context.rodauth.field_error('password')
-          p(class: 'mt-1 text-sm text-error') { error } if error.present?
-        end
+          },
+          error: view_context.rodauth.field_error('password')
+        )
       end
 
-      def password_confirm_field
-        render RubyUI::FormField.new do
-          render RubyUI::FormFieldLabel.new(for: 'password-confirm') do
-            t('rodauth.views.reset_password.confirm_password_label')
-          end
-          render RubyUI::Input.new(
+      def render_password_confirm_field
+        render_m3_form_field(
+          label: t('rodauth.views.reset_password.confirm_password_label'),
+          input_attrs: {
             type: :password,
             name: 'password-confirm',
             id: 'password-confirm',
@@ -116,16 +88,13 @@ module Views
             placeholder: t('rodauth.views.reset_password.confirm_password_placeholder'),
             minlength: 12,
             maxlength: 72
-          )
-          error = view_context.rodauth.field_error('password-confirm')
-          p(class: 'mt-1 text-sm text-error') { error } if error.present?
-        end
+          },
+          error: view_context.rodauth.field_error('password-confirm')
+        )
       end
 
-      def submit_button
-        render RubyUI::Button.new(type: :submit, variant: :primary, size: :md, class: 'w-full') do
-          t('rodauth.views.reset_password.submit')
-        end
+      def render_submit_button
+        render_m3_submit_button(t('rodauth.views.reset_password.submit'))
       end
     end
   end

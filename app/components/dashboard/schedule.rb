@@ -15,7 +15,7 @@ module Components
 
       def view_template
         div(class: 'space-y-6') do
-          Heading(level: 2) { 'Medication Schedule' }
+          m3_heading(level: 2) { 'Medication Schedule' }
           render_schedule_section
         end
       end
@@ -61,10 +61,10 @@ module Components
       end
 
       def render_empty_state(message, help_text)
-        Card(class: 'text-center py-12') do
+        m3_card(class: 'text-center py-12') do
           CardContent do
-            Text(size: '5', weight: 'semibold', class: 'text-foreground mb-2') { message }
-            Text(class: 'text-muted-foreground') { help_text }
+            m3_text(size: '5', weight: 'semibold', class: 'text-foreground mb-2') { message }
+            m3_text(class: 'text-on-surface-variant') { help_text }
           end
         end
       end

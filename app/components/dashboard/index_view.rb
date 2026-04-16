@@ -46,10 +46,10 @@ module Components
       def render_header
         div(class: 'flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12') do
           div do
-            Text(size: '2', weight: 'muted', class: 'uppercase tracking-widest mb-1 block font-bold') do
+            m3_text(variant: :label_large, class: 'uppercase tracking-[0.2em] mb-1 block font-black opacity-40') do
               Time.current.strftime('%A, %b %d')
             end
-            Heading(level: 1, size: '8', class: 'font-extrabold tracking-tight') do
+            m3_heading(variant: :display_small, level: 1, class: 'font-black tracking-tight text-foreground') do
               if current_user.person&.name.present?
                 t(greeting_key, name: current_user.person.name.split.first)
               else
@@ -59,18 +59,20 @@ module Components
           end
           div(class: 'flex gap-3') do
             if can_create_person?
-              render RubyUI::Link.new(
+              m3_link(
                 href: new_person_path,
-                variant: :outline,
-                size: :lg
+                variant: :outlined,
+                size: :lg,
+                class: 'rounded-xl font-bold bg-surface-container-low transition-all'
               ) do
                 t('dashboard.quick_actions.add_person')
               end
             end
-            render RubyUI::Link.new(
+            m3_link(
               href: add_medication_path,
-              variant: :primary,
+              variant: :filled,
               size: :lg,
+              class: 'rounded-xl font-bold px-8 shadow-lg shadow-primary/20 transition-all',
               data: { turbo_frame: 'modal' }
             ) do
               render Icons::PlusCircle.new(size: 20, class: 'mr-2')
@@ -110,8 +112,10 @@ module Components
 
       def render_timeline_section
         div(class: 'space-y-6') do
-          div(class: 'flex items-center justify-between mb-2') do
-            Heading(level: 2, size: '5', class: 'font-bold') { t('dashboard.todays_schedule') }
+          div(class: 'flex items-center justify-between mb-2 px-1') do
+            m3_heading(variant: :title_large, level: 2, class: 'font-bold tracking-tight') do
+              t('dashboard.todays_schedule')
+            end
           end
 
           if doses.any?
@@ -121,8 +125,12 @@ module Components
               end
             end
           else
-            render RubyUI::Card.new(class: 'p-12 text-center rounded-[2rem] border-dashed border-2') do
-              Text(weight: :muted) { t('dashboard.empty_state') }
+            m3_card(variant: :filled,
+                    class: 'p-16 text-center rounded-[2.5rem] border-dashed border-2 ' \
+                           'border-outline-variant/50 bg-surface-container-low') do
+              m3_text(variant: :body_large, class: 'text-on-surface-variant font-medium italic') do
+                t('dashboard.empty_state')
+              end
             end
           end
         end
@@ -130,26 +138,33 @@ module Components
 
       def render_health_insights
         div(class: 'space-y-4 pt-4') do
-          Heading(level: 2, size: '5', class: 'font-bold') { t('dashboard.insights.title') }
-          render RubyUI::Card.new(
-            class: 'bg-primary rounded-[2.5rem] p-8 text-white relative overflow-hidden border-none ' \
-                   'transition-all duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-primary/20 ' \
+          m3_heading(variant: :title_large, level: 2, class: 'font-bold tracking-tight') do
+            t('dashboard.insights.title')
+          end
+          m3_card(
+            variant: :filled,
+            class: 'bg-primary rounded-[2.5rem] p-10 text-on-primary relative overflow-hidden border-none ' \
+                   'transition-all duration-300 hover:shadow-xl hover:shadow-primary/30 ' \
                    'group cursor-default'
           ) do
-            div(class: 'absolute -right-8 -top-8 w-32 h-32 bg-card/10 rounded-full blur-2xl ' \
-                       'group-hover:bg-card/20 transition-all')
+            div(class: 'absolute -right-12 -top-12 w-48 h-48 bg-white/10 rounded-full blur-3xl ' \
+                       'group-hover:bg-white/20 transition-all')
             div(class: 'relative z-10') do
-              div(class: 'w-10 h-10 rounded-xl bg-card/20 flex items-center justify-center mb-6 ' \
-                         'group-hover:scale-110 transition-transform') do
-                render Icons::AlertCircle.new(size: 20)
+              div(class: 'w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center mb-6 ' \
+                         'group-hover:scale-110 transition-transform shadow-inner') do
+                render Icons::AlertCircle.new(size: 24)
               end
-              Heading(level: 3, size: '4', class: 'font-bold mb-2') { t('dashboard.insights.pattern_detected') }
-              Text(class: 'text-primary-foreground/80 text-sm leading-relaxed mb-6') do
+              m3_heading(variant: :headline_small, level: 3, class: 'font-black mb-2 tracking-tight') do
+                t('dashboard.insights.pattern_detected')
+              end
+              m3_text(variant: :body_large, class: 'text-on-primary/90 leading-relaxed mb-8 font-medium') do
                 t('dashboard.insights.message')
               end
-              button(
-                class: 'text-xs font-bold uppercase tracking-widest text-white border-b border-white/30 ' \
-                       'pb-1 hover:border-white transition-all'
+              m3_button(
+                variant: :text,
+                class: 'p-0 h-auto font-black uppercase tracking-widest text-on-primary ' \
+                       'border-b-2 border-on-primary/30 ' \
+                       'rounded-none hover:border-on-primary hover:bg-transparent transition-all'
               ) do
                 t('dashboard.insights.view_report')
               end
@@ -163,7 +178,9 @@ module Components
         return if upcoming_doses.empty?
 
         div(class: 'space-y-6') do
-          Heading(level: 2, size: '5', class: 'font-bold') { t('dashboard.medication_schedule') }
+          m3_heading(variant: :title_large, level: 2, class: 'font-bold tracking-tight') do
+            t('dashboard.medication_schedule')
+          end
           div(class: 'space-y-4') do
             upcoming_doses.each { |dose| upcoming_dose_item(dose) }
           end
@@ -189,8 +206,8 @@ module Components
         div(class: 'flex items-start gap-3 p-1') do
           div(class: "w-2 h-2 rounded-full mt-2 flex-shrink-0 #{status_dot_color(status)}")
           div do
-            Text(weight: 'bold', size: '3') { "#{time_str} — #{medication.name}" }
-            Text(size: '2', weight: 'muted') do
+            m3_text(weight: 'bold', size: '3') { "#{time_str} — #{medication.name}" }
+            m3_text(size: '2', weight: 'muted') do
               "#{dose[:person].name} · #{dosage_label(source)}"
             end
           end
@@ -202,7 +219,7 @@ module Components
         when :upcoming then 'bg-primary'
         when :cooldown then 'bg-warning'
         when :out_of_stock then 'bg-destructive'
-        else 'bg-surface-container-high'
+        else 'bg-primary/15'
         end
       end
 
@@ -216,20 +233,23 @@ module Components
 
       def render_supply_levels
         div(class: 'space-y-6') do
-          Heading(level: 2, size: '5', class: 'font-bold') { t('dashboard.inventory.title') }
-          render RubyUI::Card.new(
-            class: 'bg-card p-8 rounded-[2.5rem] border border-border shadow-sm transition-all ' \
-                   'duration-300 hover:shadow-md hover:scale-[1.01] cursor-default'
+          m3_heading(variant: :title_large, level: 2, class: 'font-bold tracking-tight') do
+            t('dashboard.inventory.title')
+          end
+          m3_card(
+            variant: :elevated,
+            class: 'bg-surface-container-low p-8 rounded-[2.5rem] border-none shadow-elevation-1 transition-all ' \
+                   'duration-300 hover:shadow-elevation-2 cursor-default'
           ) do
-            div(class: 'space-y-6') do
+            div(class: 'space-y-8') do
               active_schedules.take(3).each do |p|
                 render_supply_item(p.medication)
               end
-              render RubyUI::Link.new(
+              m3_link(
                 href: medications_path,
-                variant: :ghost,
-                class: 'w-full py-4 rounded-2xl bg-muted text-muted-foreground text-xs font-bold ' \
-                       'hover:bg-accent transition-all uppercase tracking-widest no-underline flex justify-center'
+                variant: :tonal,
+                size: :lg,
+                class: 'w-full py-6 rounded-xl font-black uppercase tracking-widest transition-all'
               ) do
                 t('dashboard.inventory.order_refills')
               end
@@ -242,14 +262,18 @@ module Components
         current = medication.current_supply || 0
         percentage = medication.supply_percentage
 
-        div(class: 'space-y-2') do
-          div(class: 'flex justify-between items-center text-xs') do
-            span(class: 'font-bold') { medication.name }
-            span(class: 'text-muted-foreground font-bold') { t('dashboard.inventory.left', count: current) }
+        div(class: 'space-y-3') do
+          div(class: 'flex justify-between items-center') do
+            m3_text(variant: :label_large, class: 'font-black text-foreground uppercase tracking-tight') do
+              medication.name
+            end
+            m3_text(variant: :label_medium, class: 'text-on-surface-variant font-black') do
+              t('dashboard.inventory.left', count: current)
+            end
           end
-          div(class: 'h-2 w-full bg-surface-container rounded-full overflow-hidden') do
+          div(class: 'h-3 w-full bg-surface-container rounded-full overflow-hidden shadow-inner') do
             div(
-              class: "h-full #{medication.low_stock? ? 'bg-destructive' : 'bg-primary'} " \
+              class: "h-full #{medication.low_stock? ? 'bg-error' : 'bg-primary'} " \
                      'rounded-full transition-all duration-1000',
               style: "width: #{percentage}%"
             )
@@ -272,8 +296,10 @@ module Components
       end
 
       def render_version_footer
-        div(class: 'mt-12 pt-4 border-t border-border text-center') do
-          span(class: 'text-xs text-muted-foreground font-mono') { "v#{app_version}" }
+        div(class: 'mt-16 pt-6 border-t border-outline-variant/30 text-center') do
+          span(class: 'text-[10px] text-on-surface-variant/50 font-mono font-bold uppercase tracking-widest') do
+            "v#{app_version}"
+          end
         end
       end
 

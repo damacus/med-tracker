@@ -50,7 +50,7 @@ export default class extends Controller {
 
   showLoading() {
     this.resultsTarget.innerHTML = `
-      <div class="text-center py-12 text-muted-foreground" data-medication-search-target="loading">
+      <div class="text-center py-12 text-on-surface-variant" data-medication-search-target="loading">
         <div class="inline-flex items-center gap-2">
           <svg class="animate-spin h-4 w-4 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -64,7 +64,7 @@ export default class extends Controller {
 
   showIdle() {
     this.resultsTarget.innerHTML = `
-      <div class="text-center py-12 text-muted-foreground">
+      <div class="text-center py-12 text-on-surface-variant">
         <p class="text-sm">${this.escapeHtml(this.t("idleText"))}</p>
       </div>
     `
@@ -82,7 +82,7 @@ export default class extends Controller {
   showResults(query, results) {
     if (results.length === 0) {
       this.resultsTarget.innerHTML = `
-        <div class="text-center py-12 text-muted-foreground" data-testid="no-results">
+        <div class="text-center py-12 text-on-surface-variant" data-testid="no-results">
           <p class="text-sm font-medium">${this.escapeHtml(this.t("noResultsTitle"))}</p>
           <p class="text-sm mt-1">${this.escapeHtml(this.t("noResultsMessage"))}</p>
         </div>
@@ -94,9 +94,9 @@ export default class extends Controller {
       <div class="flex items-center justify-between mb-3">
         <p class="text-sm font-medium text-foreground" data-testid="search-results-header">
           ${this.escapeHtml(this.t("resultsTitle"))}
-          <span class="text-muted-foreground font-normal">— ${this.escapeHtml(this.resultCountText(results.length, query))}</span>
+          <span class="text-on-surface-variant font-normal">— ${this.escapeHtml(this.resultCountText(results.length, query))}</span>
         </p>
-        <p class="text-xs text-muted-foreground">${this.escapeHtml(this.t("source"))}</p>
+        <p class="text-xs text-on-surface-variant">${this.escapeHtml(this.t("source"))}</p>
       </div>
     `
 
@@ -111,7 +111,7 @@ export default class extends Controller {
       : ''
 
     const label = result.concept_class_label && result.concept_class_label !== result.concept_class
-      ? `<span class="text-xs text-muted-foreground">${this.escapeHtml(result.concept_class_label)}</span>`
+      ? `<span class="text-xs text-on-surface-variant">${this.escapeHtml(result.concept_class_label)}</span>`
       : ''
 
     return `
@@ -119,7 +119,7 @@ export default class extends Controller {
         <div class="flex items-start justify-between gap-3">
           <div class="flex-1 min-w-0">
             <p class="text-sm font-medium text-foreground truncate">${this.escapeHtml(result.display)}</p>
-            <p class="text-xs text-muted-foreground mt-0.5">${this.escapeHtml(this.t("dmdCode"))}: ${this.escapeHtml(result.code)}</p>
+            <p class="text-xs text-on-surface-variant mt-0.5">${this.escapeHtml(this.t("dmdCode"))}: ${this.escapeHtml(result.code)}</p>
           </div>
           <div class="flex flex-col items-end gap-1 shrink-0">
             ${badge}

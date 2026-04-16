@@ -1,11 +1,11 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static values = { nextUrl: String, translations: Object, doseOptions: Object }
+  static values = { nextUrl: String, translations: Object, doseOptions: Object, frameId: String }
   static targets = [
     "submit", "dosageSelect", "medicationSelect", "dosageContent",
     "dosageValue", "dosageTrigger", "frequencyInput",
-    "maxDosesInput", "minHoursInput", "doseCycleInput",
+    "maxDosesInput", "minHoursInput",
     "doseAmountInput", "doseUnitInput"
   ]
 
@@ -29,12 +29,11 @@ export default class extends Controller {
   }
 
   advanceToDetails() {
-    const medicationInput = this.element.querySelector('[name="schedule[medication_id]"]')
-    const medicationId = medicationInput?.value
+    const medicationId = this.#selectedMedicationId()
 
     if (!medicationId || !this.hasNextUrlValue) return
 
-    const frame = this.element.closest('turbo-frame')
+    const frame = this.#targetFrame()
     const url = new URL(this.nextUrlValue, window.location.origin)
     url.searchParams.set('medication_id', medicationId)
     if (frame) {
@@ -80,7 +79,7 @@ export default class extends Controller {
   generateFrequency() {
     const max = parseInt(this.hasMaxDosesInputTarget ? this.maxDosesInputTarget.value : '') || null
     const hours = parseFloat(this.hasMinHoursInputTarget ? this.minHoursInputTarget.value : '') || null
-    const cycle = this.hasDoseCycleInputTarget ? this.doseCycleInputTarget.value : ''
+    const cycle = this.#selectedDoseCycleValue()
 
     if (!max && !hours) {
       this.validate()
@@ -172,7 +171,7 @@ export default class extends Controller {
             data-controller="ruby-ui--select-item"
             data-action="click->ruby-ui--select#selectItem keydown.enter->ruby-ui--select#selectItem keydown.down->ruby-ui--select#handleKeyDown keydown.up->ruby-ui--select#handleKeyUp keydown.esc->ruby-ui--select#handleEsc"
             data-ruby-ui__select-target="item"
-            class="item group relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground hover:bg-accent hover:text-accent-foreground"
+            class="item group relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-tertiary-container focus:text-on-tertiary-container hover:bg-tertiary-container hover:text-on-tertiary-container"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="${isSelected ? 'visible' : 'invisible'} group-aria-selected:visible mr-2 h-4 w-4 flex-none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
             ${text}
@@ -194,7 +193,11 @@ export default class extends Controller {
 
   cancel(event) {
     event.preventDefault()
-    this.element.closest('turbo-frame').src = null
+    const frame = this.#targetFrame()
+    if (frame) {
+      frame.removeAttribute('src')
+      frame.innerHTML = ''
+    }
   }
 
   #fillSchedulingDefaults(dosage) {
@@ -204,12 +207,12 @@ export default class extends Controller {
     if (this.hasMinHoursInputTarget && !this.minHoursInputTarget.value && dosage.default_min_hours_between_doses) {
       this.minHoursInputTarget.value = dosage.default_min_hours_between_doses
     }
-    if (this.hasDoseCycleInputTarget && !this.doseCycleInputTarget.value && dosage.default_dose_cycle !== null) {
+    if (!this.#selectedDoseCycleValue() && dosage.default_dose_cycle !== null) {
       const cycleMap = { 0: 'daily', 1: 'weekly', 2: 'monthly' }
       const cycleValue = typeof dosage.default_dose_cycle === 'number'
         ? cycleMap[dosage.default_dose_cycle]
         : dosage.default_dose_cycle
-      if (cycleValue) this.doseCycleInputTarget.value = cycleValue
+      if (cycleValue) this.#setDoseCycleValue(cycleValue)
     }
   }
 
@@ -254,6 +257,23 @@ export default class extends Controller {
 
     const input = this.element.querySelector('[name="schedule[medication_id]"]')
     return input?.value
+  }
+
+  #selectedDoseCycleValue() {
+    return this.element.querySelector('[name="schedule[dose_cycle]"]:checked')?.value || ''
+  }
+
+  #setDoseCycleValue(value) {
+    const radio = this.element.querySelector(`[name="schedule[dose_cycle]"][value="${value}"]`)
+    if (radio) radio.checked = true
+  }
+
+  #targetFrame() {
+    if (this.hasFrameIdValue && this.frameIdValue) {
+      return document.getElementById(this.frameIdValue)
+    }
+
+    return this.element.closest('turbo-frame')
   }
 
   #fieldPresent(fieldName) {

@@ -38,8 +38,8 @@ module Components
         def render_header
           header(class: 'flex items-center justify-between') do
             div(class: 'space-y-2') do
-              Heading(level: 1) { t('admin.audit_logs.index.title') }
-              Text(weight: 'muted') { t('admin.audit_logs.index.subtitle') }
+              m3_heading(level: 1) { t('admin.audit_logs.index.title') }
+              m3_text(weight: 'muted') { t('admin.audit_logs.index.subtitle') }
             end
           end
         end
@@ -105,7 +105,7 @@ module Components
 
         def render_filter_actions
           div(class: 'flex gap-2') do
-            Button(type: :submit, variant: :primary, class: 'hidden') do
+            m3_button(type: :submit, variant: :filled, class: 'hidden') do
               t('admin.audit_logs.index.filter.filter_button')
             end
             render_clear_button if filters_active?
@@ -121,8 +121,8 @@ module Components
             href: '/admin/audit_logs',
             variant: :link,
             class: 'inline-flex items-center justify-center rounded-md font-medium transition-colors ' \
-                   'px-4 py-2 h-10 text-sm border border-input bg-background hover:bg-accent ' \
-                   'hover:text-accent-foreground'
+                   'px-4 py-2 h-10 text-sm border border-outline bg-background hover:bg-tertiary-container ' \
+                   'hover:text-on-tertiary-container'
           ) { t('admin.audit_logs.index.filter.clear_filters') }
         end
 
@@ -141,13 +141,13 @@ module Components
 
         def render_empty_state
           div(class: 'rounded-xl border border-border bg-card p-12 text-center shadow-sm') do
-            Text(size: '4', class: 'text-muted-foreground') { t('admin.audit_logs.index.empty.no_logs') }
-            Text(size: '2', weight: 'muted', class: 'mt-2') { t('admin.audit_logs.index.empty.adjust_filters') }
+            m3_text(size: '4', class: 'text-on-surface-variant') { t('admin.audit_logs.index.empty.no_logs') }
+            m3_text(size: '2', weight: 'muted', class: 'mt-2') { t('admin.audit_logs.index.empty.adjust_filters') }
           end
         end
 
         def render_table_header
-          TableHeader(class: 'bg-muted') do
+          TableHeader(class: 'bg-secondary-container') do
             TableRow do
               TableHead { t('admin.audit_logs.index.table.timestamp') }
               TableHead { t('admin.audit_logs.index.table.record_type') }
@@ -168,18 +168,18 @@ module Components
         end
 
         def render_version_row(version)
-          TableRow(class: 'hover:bg-accent', data: { version_id: version.id }) do
+          TableRow(class: 'hover:bg-tertiary-container', data: { version_id: version.id }) do
             TableCell(class: 'text-foreground') do
               version.created_at.strftime('%Y-%m-%d %H:%M:%S')
             end
-            TableCell(class: 'text-muted-foreground') { version.item_type.titleize }
+            TableCell(class: 'text-on-surface-variant') { version.item_type.titleize }
             TableCell do
               render_event_badge(version.event)
             end
-            TableCell(class: 'text-muted-foreground') do
+            TableCell(class: 'text-on-surface-variant') do
               render_user_info(version.whodunnit)
             end
-            TableCell(class: 'text-muted-foreground font-mono') { version.ip || 'N/A' }
+            TableCell(class: 'text-on-surface-variant font-mono') { version.ip || 'N/A' }
             TableCell(class: 'text-right') do
               Link(
                 href: "/admin/audit_logs/#{version.id}",
@@ -195,7 +195,7 @@ module Components
                         when 'create'
                           'bg-success-light text-success-text'
                         when 'update'
-                          'bg-accent text-accent-foreground'
+                          'bg-tertiary-container text-on-tertiary-container'
                         when 'destroy'
                           'bg-destructive-light text-destructive-text'
                         else
@@ -240,7 +240,7 @@ module Components
 
         def render_pagination_info
           div(class: 'hidden sm:block') do
-            Text(size: '2', class: 'text-foreground') do
+            m3_text(size: '2', class: 'text-foreground') do
               plain "#{t('admin.audit_logs.index.pagination.showing')} "
               span(class: 'font-medium') { first_item_number.to_s }
               plain " #{t('admin.audit_logs.index.pagination.to')} "
@@ -297,7 +297,7 @@ module Components
 
         def pagination_button_classes
           'relative inline-flex items-center rounded-md bg-card px-3 py-2 text-sm font-semibold ' \
-            'text-foreground ring-1 ring-inset ring-border hover:bg-accent'
+            'text-foreground ring-1 ring-inset ring-border hover:bg-tertiary-container'
         end
 
         def pagination_url(page)

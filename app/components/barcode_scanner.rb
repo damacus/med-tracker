@@ -38,7 +38,7 @@ module Components
       div(class: 'flex items-center justify-between mb-4') do
         div(class: 'flex items-center gap-2') do
           render Icons::Camera.new(size: 20)
-          Heading(level: 3, size: '4', class: 'font-semibold') { t('barcode_scanner.title') }
+          m3_heading(level: 3, size: '4', class: 'font-semibold') { t('barcode_scanner.title') }
         end
         render_control_buttons
       end
@@ -46,8 +46,8 @@ module Components
 
     def render_control_buttons
       div(class: 'flex gap-2') do
-        Button(
-          variant: :outline,
+        m3_button(
+          variant: :outlined,
           size: :sm,
           data: {
             barcode_scanner_target: 'startButton',
@@ -56,8 +56,8 @@ module Components
           class: 'min-h-[44px] min-w-[44px]'
         ) { t('barcode_scanner.start') }
 
-        Button(
-          variant: :outline,
+        m3_button(
+          variant: :outlined,
           size: :sm,
           data: {
             barcode_scanner_target: 'stopButton',
@@ -81,7 +81,7 @@ module Components
     def render_status
       p(
         data: { barcode_scanner_target: 'status' },
-        class: 'text-sm text-muted-foreground mb-4 min-h-[1.25rem]',
+        class: 'text-sm text-on-surface-variant mb-4 min-h-[1.25rem]',
         role: 'status',
         aria_live: 'polite'
       )
@@ -103,8 +103,8 @@ module Components
             data: { barcode_scanner_target: 'manualInput' },
             class: 'flex-1 rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary'
           )
-          Button(
-            variant: :outline,
+          m3_button(
+            variant: :outlined,
             size: :sm,
             data: { action: 'barcode-scanner#submitManual' },
             class: 'min-h-[44px] min-w-[44px]'

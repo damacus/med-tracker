@@ -8,43 +8,24 @@ module Views
 
       def view_template
         page_layout do
-          render_page_header(
-            title: t('app.name'),
-            subtitle: t('rodauth.unlock_account.title')
-          )
-          form_section
+          render_auth_card(
+            title: rodauth.unlock_account_button,
+            subtitle: t('rodauth.unlock_account.instruction')
+          ) do
+            flash_section
+            render_explanatory_text
+            render_unlock_form
+          end
         end
       end
 
       private
 
-      def form_section
-        render RubyUI::Card.new(class: card_classes) do
-          render_card_header
-          render RubyUI::CardContent.new(class: 'space-y-6 p-6 sm:p-8') do
-            flash_section
-            explanatory_text
-            unlock_form
-          end
-        end
-      end
-
-      def render_card_header
-        render RubyUI::CardHeader.new(class: 'space-y-2 bg-card/60') do
-          render RubyUI::CardTitle.new(class: 'text-2xl font-semibold text-foreground') do
-            rodauth.unlock_account_button
-          end
-          render RubyUI::CardDescription.new(class: 'text-base text-muted-foreground') do
-            plain t('rodauth.unlock_account.instruction')
-          end
-        end
-      end
-
       def flash_section
         return if flash_message.blank?
 
         div(id: 'unlock-account-flash') do
-          render RubyUI::Alert.new(variant: :destructive) { plain(flash_message) }
+          render_m3_alert(flash_message)
         end
       end
 
@@ -52,13 +33,13 @@ module Views
         view_context.flash[:alert]
       end
 
-      def explanatory_text
-        div(class: 'text-sm leading-6 text-muted-foreground') do
+      def render_explanatory_text
+        div(class: 'text-sm leading-6 text-on-surface-variant font-medium') do
           safe(rodauth.unlock_account_explanatory_text)
         end
       end
 
-      def unlock_form
+      def render_unlock_form
         render RubyUI::Form.new(
           action: rodauth.unlock_account_path, method: :post,
           class: 'space-y-6', data_turbo: 'false'
@@ -67,8 +48,8 @@ module Views
           safe(additional_tags) if additional_tags.present?
           authenticity_token_field
           key_field
-          password_field if rodauth.unlock_account_requires_password?
-          submit_button
+          render_password_field if rodauth.unlock_account_requires_password?
+          render_submit_button
         end
       end
 
@@ -77,24 +58,22 @@ module Views
         input(type: 'hidden', name: rodauth.unlock_account_key_param, value: key) if key.present?
       end
 
-      def password_field
-        render RubyUI::FormField.new do
-          render RubyUI::FormFieldLabel.new(for: 'password') { t('sessions.login.password_label') }
-          render RubyUI::Input.new(
+      def render_password_field
+        render_m3_form_field(
+          label: t('sessions.login.password_label'),
+          input_attrs: {
             type: :password,
             name: rodauth.password_param,
             id: 'password',
             required: true,
             autocomplete: 'current-password',
             placeholder: t('sessions.login.password_placeholder')
-          )
-        end
+          }
+        )
       end
 
-      def submit_button
-        render RubyUI::Button.new(type: :submit, variant: :primary, class: 'w-full') do
-          rodauth.unlock_account_button
-        end
+      def render_submit_button
+        render_m3_submit_button(rodauth.unlock_account_button)
       end
     end
   end

@@ -29,10 +29,10 @@ module RubyUI
         data_orientation: 'vertical',
         class: [
           'item group relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors',
-          'focus:bg-accent focus:text-accent-foreground',
-          'hover:bg-accent hover:text-accent-foreground',
+          'focus:bg-tertiary-container focus:text-on-tertiary-container',
+          'hover:bg-tertiary-container hover:text-on-tertiary-container',
           'disabled:pointer-events-none disabled:opacity-50',
-          'aria-selected:bg-accent aria-selected:text-accent-foreground',
+          'aria-selected:bg-tertiary-container aria-selected:text-on-tertiary-container',
           'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
           'aria-disabled:pointer-events-none aria-disabled:opacity-50 aria-disabled:cursor-not-allowed'
         ],

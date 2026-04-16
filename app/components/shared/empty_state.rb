@@ -13,18 +13,18 @@ module Components
       end
 
       def view_template
-        Card(
+        m3_card(
           class: 'p-10 text-center rounded-[2.5rem] border border-dashed border-border ' \
                  'bg-card'
         ) do
           div(
-            class: 'w-16 h-16 rounded-full bg-muted flex items-center justify-center ' \
-                   'text-muted-foreground mx-auto mb-5'
+            class: 'w-16 h-16 rounded-full bg-secondary-container flex items-center justify-center ' \
+                   'text-on-surface-variant mx-auto mb-5'
           ) do
             render_icon
           end
-          Heading(level: 2, size: '5', class: 'font-bold tracking-tight mb-2') { title }
-          Text(size: '3', class: 'text-muted-foreground max-w-md mx-auto') { description }
+          m3_heading(level: 2, size: '5', class: 'font-bold tracking-tight mb-2') { title }
+          m3_text(size: '3', class: 'text-on-surface-variant max-w-md mx-auto') { description }
         end
       end
 

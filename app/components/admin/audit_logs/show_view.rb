@@ -31,17 +31,17 @@ module Components
         def render_header
           header(class: 'flex items-center justify-between') do
             div(class: 'space-y-2') do
-              Heading(level: 1) { t('admin.audit_logs.show.title') }
-              Text(weight: 'muted') { "#{version.item_type} ##{version.item_id} - #{version.event.titleize}" }
+              m3_heading(level: 1) { t('admin.audit_logs.show.title') }
+              m3_text(weight: 'muted') { "#{version.item_type} ##{version.item_id} - #{version.event.titleize}" }
             end
-            Link(href: '/admin/audit_logs', variant: :outline) { t('admin.audit_logs.show.back') }
+            Link(href: '/admin/audit_logs', variant: :outlined) { t('admin.audit_logs.show.back') }
           end
         end
 
         def render_version_details
           Card do
             CardHeader do
-              Heading(level: 2, size: '4', class: 'font-semibold leading-none tracking-tight') do
+              m3_heading(level: 2, size: '4', class: 'font-semibold leading-none tracking-tight') do
                 t('admin.audit_logs.show.event_information')
               end
             end
@@ -61,7 +61,7 @@ module Components
 
         def render_detail_item(label, value)
           div do
-            dt(class: 'text-sm font-medium text-muted-foreground') { label }
+            dt(class: 'text-sm font-medium text-on-surface-variant') { label }
             dd(class: 'mt-1 text-sm text-foreground') { value }
           end
         end
@@ -78,13 +78,13 @@ module Components
 
           Card do
             CardHeader do
-              Heading(level: 2, size: '4', class: 'font-semibold leading-none tracking-tight') do
+              m3_heading(level: 2, size: '4', class: 'font-semibold leading-none tracking-tight') do
                 t('admin.audit_logs.show.previous_state')
               end
               CardDescription { t('admin.audit_logs.show.previous_state_description') }
             end
             CardContent do
-              pre(class: 'bg-muted p-4 rounded-lg overflow-x-auto text-xs font-mono') do
+              pre(class: 'bg-secondary-container p-4 rounded-lg overflow-x-auto text-xs font-mono') do
                 code { format_object(version.object) }
               end
             end
@@ -99,13 +99,13 @@ module Components
 
           Card do
             CardHeader do
-              Heading(level: 2, size: '4', class: 'font-semibold leading-none tracking-tight') do
+              m3_heading(level: 2, size: '4', class: 'font-semibold leading-none tracking-tight') do
                 t('admin.audit_logs.show.new_state')
               end
               CardDescription { description_for_new_state }
             end
             CardContent do
-              pre(class: 'bg-muted p-4 rounded-lg overflow-x-auto text-xs font-mono') do
+              pre(class: 'bg-secondary-container p-4 rounded-lg overflow-x-auto text-xs font-mono') do
                 code { format_new_state(new_state) }
               end
             end

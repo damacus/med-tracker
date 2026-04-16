@@ -6,12 +6,13 @@ module Components
     class Form < Components::Base
       include Phlex::Rails::Helpers::FormWith
 
-      attr_reader :schedule, :person, :medications
+      attr_reader :schedule, :person, :medications, :frame_id
 
-      def initialize(schedule:, person:, medications:)
+      def initialize(schedule:, person:, medications:, frame_id: nil)
         @schedule = schedule
         @person = person
         @medications = medications
+        @frame_id = frame_id
         super()
       end
 
@@ -24,6 +25,7 @@ module Components
             turbo_stream: true,
             person_type: person.person_type,
             schedule_form_dose_options_value: medication_dose_options.to_json,
+            schedule_form_frame_id_value: frame_id,
             schedule_form_next_url_value: new_person_schedule_path(person),
             schedule_form_translations_value: {
               selectDosage: t('schedules.form.select_dosage'),
@@ -46,12 +48,18 @@ module Components
       private
 
       def render_errors
-        Alert(variant: :destructive, class: 'mb-6') do
-          AlertTitle { "#{schedule.errors.count} error(s) prohibited this schedule from being saved:" }
-          AlertDescription do
-            ul(class: 'my-2 ml-6 list-disc [&>li]:mt-1') do
-              schedule.errors.full_messages.each do |message|
-                li { message }
+        render RubyUI::Alert.new(variant: :destructive,
+                                 class: 'mb-8 rounded-shape-xl border-none shadow-elevation-1') do
+          div(class: 'flex items-start gap-3') do
+            render Icons::AlertCircle.new(size: 20)
+            div do
+              m3_heading(variant: :title_medium, level: 2, class: 'font-bold mb-1') do
+                plain "#{schedule.errors.count} error(s) prohibited this schedule from being saved:"
+              end
+              ul(class: 'text-sm opacity-90 list-disc pl-4 space-y-1 font-medium') do
+                schedule.errors.full_messages.each do |message|
+                  li { message }
+                end
               end
             end
           end
@@ -83,8 +91,10 @@ module Components
       def render_medication_step
         div(class: 'space-y-6') do
           div(class: 'space-y-2') do
-            Heading(level: 2, size: '4', class: 'font-semibold') { t('schedules.form.choose_medication_title') }
-            Text(size: '2', class: 'text-muted-foreground') do
+            m3_heading(variant: :title_medium, level: 2, class: 'font-semibold') do
+              t('schedules.form.choose_medication_title')
+            end
+            m3_text(variant: :body_medium, class: 'text-on-surface-variant font-medium') do
               t('schedules.form.choose_medication_description')
             end
           end
@@ -96,18 +106,19 @@ module Components
         div(class: 'space-y-6') do
           div(
             class: 'flex items-center justify-between rounded-2xl border ' \
-                   'border-border bg-muted px-4 py-3'
+                   'border-outline-variant/30 bg-surface-container-low px-4 py-3'
           ) do
             div do
-              Text(
-                size: '1', weight: 'black',
-                class: 'uppercase tracking-widest text-muted-foreground'
+              m3_text(
+                variant: :label_small,
+                class: 'uppercase tracking-widest text-on-surface-variant font-black'
               ) { t('schedules.form.medication') }
-              Text(size: '3', weight: 'semibold') { schedule.medication.name }
+              m3_text(variant: :title_medium, class: 'font-bold') { schedule.medication.name }
             end
-            Link(
+            m3_link(
               href: new_person_schedule_path(person),
-              variant: :ghost, size: :sm,
+              variant: :text, size: :sm,
+              class: 'font-bold',
               data: { turbo_frame: 'modal' }
             ) do
               t('schedules.form.change')
@@ -174,21 +185,43 @@ module Components
       end
 
       def render_medication_step_field
-        FormField do
-          FormFieldLabel(for: 'schedule_medication_id') do
-            plain t('schedules.form.medication')
-            span(class: 'text-destructive ml-0.5') { ' *' }
-          end
-          select(
-            name: 'schedule[medication_id]',
-            id: 'schedule_medication_id',
-            required: true,
-            class: 'w-full rounded-md border border-input bg-background px-3 py-2 text-sm',
-            data: { action: 'change->schedule-form#advanceToDetails' }
+        div(class: 'space-y-2') do
+          render RubyUI::FormFieldLabel.new(
+            for: 'schedule_medication_id_trigger',
+            class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
           ) do
-            option(value: '') { t('schedules.form.select_medication') }
-            medications.each do |medication|
-              option(value: medication.id, selected: schedule.medication_id == medication.id) { medication.name }
+            plain t('schedules.form.medication')
+            span(class: 'text-error ml-0.5') { ' *' }
+          end
+          render RubyUI::Combobox.new(class: 'w-full') do
+            render RubyUI::ComboboxTrigger.new(
+              id: 'medication_trigger',
+              placeholder: schedule.medication&.name || t('schedules.form.select_medication'),
+              class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all'
+            )
+
+            render RubyUI::ComboboxPopover.new do
+              render RubyUI::ComboboxSearchInput.new(
+                placeholder: t('schedules.form.select_medication')
+              )
+
+              render RubyUI::ComboboxList.new do
+                render(RubyUI::ComboboxEmptyState.new { t('schedules.form.select_medication') })
+
+                medications.each do |medication|
+                  render RubyUI::ComboboxItem.new do
+                    render RubyUI::ComboboxRadio.new(
+                      name: 'schedule[medication_id]',
+                      id: "schedule_medication_id_#{medication.id}",
+                      value: medication.id,
+                      checked: schedule.medication_id == medication.id,
+                      required: true,
+                      data: { action: 'change->schedule-form#advanceToDetails' }
+                    )
+                    span { medication.name }
+                  end
+                end
+              end
             end
           end
         end
@@ -196,11 +229,16 @@ module Components
 
       def render_dosage_cards
         FormField(class: 'md:col-span-2') do
-          FormFieldLabel(for: 'schedule_dose_option_key') do
+          render RubyUI::FormFieldLabel.new(
+            for: 'schedule_dose_option_key',
+            class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
+          ) do
             plain t('schedules.form.dose')
-            span(class: 'text-destructive ml-0.5') { ' *' }
+            span(class: 'text-error ml-0.5') { ' *' }
           end
-          Text(size: '2', class: 'text-muted-foreground') { t('schedules.form.choose_one_dose') }
+          m3_text(variant: :body_medium, class: 'text-on-surface-variant font-medium') do
+            t('schedules.form.choose_one_dose')
+          end
           if schedule.medication.dosages.any?
             div(class: 'mt-3 grid grid-cols-1 md:grid-cols-2 gap-3') do
               schedule.medication.dosages.each do |dosage|
@@ -223,15 +261,15 @@ module Components
                       default_dose_cycle: dosage.default_dose_cycle
                     }
                   )
-                  div(class: 'font-semibold text-foreground') { "#{dosage.amount.to_f} #{dosage.unit}" }
-                  div(class: 'text-sm text-muted-foreground') { dosage.description }
+                  div(class: 'font-bold text-foreground') { "#{dosage.amount.to_f} #{dosage.unit}" }
+                  div(class: 'text-sm text-on-surface-variant font-medium') { dosage.description }
                 end
               end
             end
           else
             div(
-              class: 'mt-3 rounded-2xl border border-warning bg-warning-container ' \
-                     'px-4 py-4 text-sm text-on-warning-container',
+              class: 'mt-3 rounded-2xl border border-outline-variant/30 bg-secondary-container/20 ' \
+                     'px-4 py-4 text-sm text-on-surface-variant font-medium',
               data: { testid: 'schedule-no-dosage-message' }
             ) do
               t('schedules.form.no_dose_options')
@@ -242,8 +280,10 @@ module Components
 
       def render_details_intro
         div(class: 'md:col-span-2 space-y-1') do
-          Heading(level: 2, size: '4', class: 'font-semibold') { t('schedules.form.schedule_details_title') }
-          Text(size: '2', class: 'text-muted-foreground') do
+          m3_heading(variant: :title_medium, level: 2, class: 'font-semibold') do
+            t('schedules.form.schedule_details_title')
+          end
+          m3_text(variant: :body_medium, class: 'text-on-surface-variant font-medium') do
             t('schedules.form.schedule_details_description')
           end
         end
@@ -251,9 +291,12 @@ module Components
 
       def render_dosage_field(_f)
         FormField do
-          FormFieldLabel(for: 'schedule_dose_option_key') do
+          render RubyUI::FormFieldLabel.new(
+            for: 'schedule_dose_option_key',
+            class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
+          ) do
             plain t('schedules.form.dosage')
-            span(class: 'text-destructive ml-0.5') { ' *' }
+            span(class: 'text-error ml-0.5') { ' *' }
           end
           Select(data: { schedule_form_target: 'dosageSelect', testid: 'dosage-select' }) do
             SelectInput(
@@ -266,6 +309,7 @@ module Components
             SelectTrigger(
               disabled: schedule.medication.nil?,
               aria_disabled: schedule.medication.nil?,
+              class: 'rounded-md border-outline-variant bg-surface-container-lowest',
               data: { testid: 'dosage-trigger', schedule_form_target: 'dosageTrigger' }
             ) do
               SelectValue(
@@ -292,13 +336,17 @@ module Components
 
       def render_frequency_field(_f)
         FormField(class: 'md:col-span-2') do
-          FormFieldLabel(for: 'schedule_frequency') { t('schedules.form.frequency') }
-          Input(
+          render RubyUI::FormFieldLabel.new(
+            for: 'schedule_frequency',
+            class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
+          ) { t('schedules.form.frequency') }
+          m3_input(
             type: :text,
             name: 'schedule[frequency]',
             id: 'schedule_frequency',
             value: schedule.frequency,
             placeholder: t('schedules.form.frequency_placeholder'),
+            class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all',
             data: {
               action: 'input->schedule-form#validate change->schedule-form#validate',
               schedule_form_target: 'frequencyInput'
@@ -309,17 +357,21 @@ module Components
 
       def render_start_date_field(_f)
         FormField do
-          FormFieldLabel(for: 'schedule_start_date') do
+          render RubyUI::FormFieldLabel.new(
+            for: 'schedule_start_date',
+            class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
+          ) do
             plain t('schedules.form.start_date')
-            span(class: 'text-destructive ml-0.5') { ' *' }
+            span(class: 'text-error ml-0.5') { ' *' }
           end
-          Input(
+          m3_input(
             type: :string,
             name: 'schedule[start_date]',
             id: 'schedule_start_date',
             value: schedule.start_date&.to_fs(:db),
             required: true,
             placeholder: t('schedules.form.select_date'),
+            class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all',
             data: {
               controller: 'ruby-ui--calendar-input',
               action: 'input->schedule-form#validate change->schedule-form#validate'
@@ -328,41 +380,51 @@ module Components
           Calendar(
             input_id: '#schedule_start_date',
             date_format: 'yyyy-MM-dd',
-            class: 'rounded-md border shadow'
+            class: 'rounded-md border shadow-elevation-2 bg-surface-container-high'
           )
         end
       end
 
       def render_end_date_field(_f)
         FormField do
-          FormFieldLabel(for: 'schedule_end_date') { t('schedules.form.end_date') }
-          Input(
+          render RubyUI::FormFieldLabel.new(
+            for: 'schedule_end_date',
+            class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
+          ) { t('schedules.form.end_date') }
+          m3_input(
             type: :string,
             name: 'schedule[end_date]',
             id: 'schedule_end_date',
             value: schedule.end_date&.to_fs(:db),
             placeholder: t('schedules.form.select_date'),
+            class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all',
             data: { controller: 'ruby-ui--calendar-input' }
           )
           Calendar(
             input_id: '#schedule_end_date',
             date_format: 'yyyy-MM-dd',
-            class: 'rounded-md border shadow'
+            class: 'rounded-md border shadow-elevation-2 bg-surface-container-high'
           )
         end
       end
 
       def render_max_doses_field(_f)
         FormField do
-          FormFieldLabel(for: 'schedule_max_daily_doses') { t('schedules.form.max_doses_per_cycle') }
-          FormFieldHint { t('schedules.form.max_doses_hint') }
-          Input(
+          render RubyUI::FormFieldLabel.new(
+            for: 'schedule_max_daily_doses',
+            class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
+          ) { t('schedules.form.max_doses_per_cycle') }
+          render RubyUI::FormFieldHint.new(
+            class: 'text-xs text-on-surface-variant font-medium ml-1 mb-1'
+          ) { t('schedules.form.max_doses_hint') }
+          m3_input(
             type: :number,
             name: 'schedule[max_daily_doses]',
             id: 'schedule_max_daily_doses',
             value: schedule.max_daily_doses,
             placeholder: t('schedules.form.max_doses_placeholder'),
             min: 1,
+            class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all',
             data: { schedule_form_target: 'maxDosesInput', action: 'input->schedule-form#generateFrequency' }
           )
         end
@@ -370,9 +432,14 @@ module Components
 
       def render_min_hours_field(_f)
         FormField do
-          FormFieldLabel(for: 'schedule_min_hours_between_doses') { t('schedules.form.min_hours_between_doses') }
-          FormFieldHint { t('schedules.form.min_hours_hint') }
-          Input(
+          render RubyUI::FormFieldLabel.new(
+            for: 'schedule_min_hours_between_doses',
+            class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
+          ) { t('schedules.form.min_hours_between_doses') }
+          render RubyUI::FormFieldHint.new(
+            class: 'text-xs text-on-surface-variant font-medium ml-1 mb-1'
+          ) { t('schedules.form.min_hours_hint') }
+          m3_input(
             type: :number,
             name: 'schedule[min_hours_between_doses]',
             id: 'schedule_min_hours_between_doses',
@@ -380,30 +447,41 @@ module Components
             placeholder: t('schedules.form.min_hours_placeholder'),
             min: 0,
             step: '0.5',
+            class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all',
             data: { schedule_form_target: 'minHoursInput', action: 'input->schedule-form#generateFrequency' }
           )
         end
       end
 
       def render_dose_cycle_field(_f)
-        FormField do
-          FormFieldLabel(for: 'schedule_dose_cycle') { t('schedules.form.dose_cycle') }
-          FormFieldHint { t('schedules.form.dose_cycle_hint') }
-          Select do
-            SelectInput(
-              name: 'schedule[dose_cycle]',
-              id: 'schedule_dose_cycle',
-              value: schedule.dose_cycle,
-              data: { schedule_form_target: 'doseCycleInput', action: 'change->schedule-form#generateFrequency' }
+        div(class: 'space-y-2') do
+          render RubyUI::FormFieldLabel.new(
+            for: 'schedule_dose_cycle_trigger',
+            class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
+          ) { t('schedules.form.dose_cycle') }
+          render RubyUI::FormFieldHint.new(
+            class: 'text-xs text-on-surface-variant font-medium ml-1 mb-1'
+          ) { t('schedules.form.dose_cycle_hint') }
+          render RubyUI::Combobox.new(class: 'w-full') do
+            render RubyUI::ComboboxTrigger.new(
+              placeholder: schedule.dose_cycle&.titleize || t('schedules.form.select_cycle'),
+              class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all'
             )
-            SelectTrigger do
-              SelectValue(placeholder: t('schedules.form.select_cycle')) do
-                schedule.dose_cycle&.titleize || t('schedules.form.select_cycle')
-              end
-            end
-            SelectContent do
-              Schedule::DOSE_CYCLE_OPTIONS.each do |label, value|
-                SelectItem(value: value) { label }
+
+            render RubyUI::ComboboxPopover.new do
+              render RubyUI::ComboboxList.new do
+                Schedule::DOSE_CYCLE_OPTIONS.each do |label, value|
+                  render RubyUI::ComboboxItem.new do
+                    render RubyUI::ComboboxRadio.new(
+                      name: 'schedule[dose_cycle]',
+                      id: "schedule_dose_cycle_#{value}",
+                      value: value,
+                      checked: schedule.dose_cycle == value,
+                      data: { action: 'change->schedule-form#generateFrequency' }
+                    )
+                    span { label }
+                  end
+                end
               end
             end
           end
@@ -412,26 +490,38 @@ module Components
 
       def render_notes_field(_f)
         FormField(class: 'md:col-span-2') do
-          FormFieldLabel(for: 'schedule_notes') { t('schedules.form.notes') }
-          FormFieldHint { t('schedules.form.notes_hint') }
-          Textarea(
+          render RubyUI::FormFieldLabel.new(
+            for: 'schedule_notes',
+            class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
+          ) { t('schedules.form.notes') }
+          render RubyUI::FormFieldHint.new(
+            class: 'text-xs text-on-surface-variant font-medium ml-1 mb-1'
+          ) { t('schedules.form.notes_hint') }
+          render RubyUI::Textarea.new(
             rows: 3,
             name: 'schedule[notes]',
             id: 'schedule_notes',
             placeholder: t('schedules.form.notes_placeholder'),
-            value: schedule.notes
+            value: schedule.notes,
+            class: 'rounded-md border-outline-variant bg-surface-container-lowest p-4 ' \
+                   'focus:ring-2 focus:ring-primary/10 ' \
+                   'focus:border-primary transition-all resize-none'
           )
         end
       end
 
       def render_actions(_f)
-        div(class: 'flex gap-3 justify-end') do
-          Button(variant: :ghost, data: { action: 'click->ruby-ui--dialog#dismiss' }) { t('schedules.form.cancel') }
+        div(class: 'flex gap-3 justify-end pt-4') do
+          m3_button(variant: :text, size: :lg, class: 'font-bold',
+                    data: { action: 'click->ruby-ui--dialog#dismiss' }) do
+            t('schedules.form.cancel')
+          end
           unless schedule.new_record? && schedule.medication.blank?
-            Button(
+            m3_button(
               type: :submit,
-              variant: :primary,
-              size: :md,
+              variant: :filled,
+              size: :lg,
+              class: 'px-8 rounded-shape-xl shadow-lg shadow-primary/20',
               disabled: schedule.new_record? && (schedule.dose_amount.blank? || schedule.dose_unit.blank?),
               data: { schedule_form_target: 'submit' }
             ) { schedule.new_record? ? t('schedules.form.add_plan') : t('schedules.form.update_plan') }
@@ -466,7 +556,22 @@ module Components
       end
 
       def dosage_dom_id(dosage)
-        "schedule_dose_option_#{dosage.selection_key.parameterize(separator: '_')}"
+        key = dosage.selection_key.parameterize(separator: '_')
+        return "schedule_dose_option_#{key}" unless duplicate_dose_selection_keys.include?(dosage.selection_key)
+
+        description = dosage.description.to_s.parameterize(separator: '_').presence || dosage.object_id
+        "schedule_dose_option_#{key}_#{description}"
+      end
+
+      def duplicate_dose_selection_keys
+        @duplicate_dose_selection_keys ||= begin
+          dosages = schedule.medication&.dosages || []
+          grouped_dosages = dosages.group_by(&:selection_key)
+
+          grouped_dosages.each_with_object([]) do |(selection_key, matching_dosages), selection_keys|
+            selection_keys << selection_key if matching_dosages.size > 1
+          end
+        end
       end
 
       def medication_dose_options

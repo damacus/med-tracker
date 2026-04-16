@@ -18,42 +18,11 @@ module Views
 
       private
 
-      def flash_section
-        return if flash_message.blank?
-
-        div(id: 'verify-flash') do
-          render RubyUI::Alert.new(variant: flash_variant) do
-            plain(flash_message)
-          end
-        end
-      end
-
-      def flash_message
-        view_context.flash[:alert] || view_context.flash[:notice]
-      end
-
-      def flash_variant
-        view_context.flash[:alert].present? ? :destructive : :success
-      end
-
       def form_section
-        render RubyUI::Card.new(class: card_classes) do
-          render_card_header
-          render_card_content
-        end
-      end
-
-      def render_card_header
-        render RubyUI::CardHeader.new(class: 'space-y-2 bg-card/60') do
-          render RubyUI::CardTitle.new(class: 'text-2xl font-semibold text-foreground') { t('rodauth.views.verify_account_resend.card_title') }
-          render RubyUI::CardDescription.new(class: 'text-base text-muted-foreground') do
-            plain t('rodauth.views.verify_account_resend.card_description')
-          end
-        end
-      end
-
-      def render_card_content
-        render RubyUI::CardContent.new(class: 'space-y-6 p-6 sm:p-8') do
+        render_auth_card(
+          title: t('rodauth.views.verify_account_resend.card_title'),
+          subtitle: t('rodauth.views.verify_account_resend.card_description')
+        ) do
           flash_section
           render_resend_form
           render_other_options
@@ -69,9 +38,9 @@ module Views
       end
 
       def email_field
-        render RubyUI::FormField.new do
-          render RubyUI::FormFieldLabel.new(for: 'email') { t('rodauth.views.verify_account_resend.email_label') }
-          render RubyUI::Input.new(
+        render_m3_form_field(
+          label: t('rodauth.views.verify_account_resend.email_label'),
+          input_attrs: {
             type: :email,
             name: 'email',
             id: 'email',
@@ -80,28 +49,37 @@ module Views
             autocomplete: 'email',
             placeholder: t('rodauth.views.verify_account_resend.email_placeholder'),
             value: view_context.params[:email]
-          )
-        end
+          }
+        )
       end
 
       def submit_button
-        render RubyUI::Button.new(type: :submit, variant: :primary, size: :md, class: 'w-full') do
-          t('rodauth.views.verify_account_resend.submit')
-        end
+        render_m3_submit_button(t('rodauth.views.verify_account_resend.submit'))
       end
 
       def render_other_options
-        div(class: 'space-y-3 border-t border-border pt-6') do
-          h3(class: 'text-sm font-medium text-foreground') { t('rodauth.views.verify_account_resend.other_options') }
-          div(class: 'flex flex-col gap-2 text-sm') do
-            render RubyUI::Link.new(href: view_context.rodauth.login_path, variant: :link) do
-              t('rodauth.views.verify_account_resend.back_to_login')
-            end
-            render RubyUI::Link.new(href: view_context.rodauth.create_account_path, variant: :link) do
-              t('rodauth.views.verify_account_resend.create_account')
+        div(class: 'space-y-4 border-t border-outline-variant/30 pt-8') do
+          m3_text(variant: :body_medium, class: 'text-on-surface-variant font-medium') do
+            plain "#{t('rodauth.views.verify_account_resend.back_to_login')} "
+            m3_link(href: view_context.rodauth.login_path, variant: :text, class: 'p-0 h-auto font-black underline') do
+              t('sessions.login.heading')
             end
           end
         end
+      end
+
+      def flash_section
+        return if flash_message.blank?
+
+        render_m3_alert(flash_message, variant: flash_variant)
+      end
+
+      def flash_message
+        view_context.flash[:alert] || view_context.flash[:notice]
+      end
+
+      def flash_variant
+        view_context.flash[:alert].present? ? :destructive : :success
       end
     end
   end

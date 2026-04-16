@@ -46,20 +46,21 @@ module Components
               render Icons::Home.new(size: 32)
             end
             div(class: 'space-y-1') do
-              Text(size: '2', weight: 'bold', class: 'uppercase tracking-[0.2em] font-black opacity-40 block mb-1') do
+              m3_text(size: '2', weight: 'bold',
+                      class: 'uppercase tracking-[0.2em] font-black opacity-40 block mb-1') do
                 t('locations.show.location')
               end
-              Heading(level: 1, size: '8', class: 'font-black tracking-tight') { location.name }
+              m3_heading(level: 1, size: '8', class: 'font-black tracking-tight') { location.name }
             end
           end
 
           div(class: 'flex gap-3') do
-            Link(href: edit_location_path(location, return_to: location_path(location)), variant: :outline, size: :lg,
+            Link(href: edit_location_path(location, return_to: location_path(location)), variant: :outlined, size: :lg,
                  class: 'rounded-2xl font-bold text-sm bg-card') do
               t('locations.show.edit_location')
             end
-            Link(href: locations_path, variant: :ghost, size: :lg,
-                 class: 'rounded-2xl font-bold text-sm text-muted-foreground hover:text-foreground') do
+            Link(href: locations_path, variant: :text, size: :lg,
+                 class: 'rounded-2xl font-bold text-sm text-on-surface-variant hover:text-foreground') do
               t('locations.show.all_locations')
             end
           end
@@ -69,7 +70,9 @@ module Components
       def render_medications_section
         div(class: 'space-y-4') do
           div(class: 'flex items-center justify-between') do
-            Heading(level: 2, size: '5', class: 'font-bold tracking-tight') { t('locations.show.medications_heading') }
+            m3_heading(level: 2, size: '5', class: 'font-bold tracking-tight') do
+              t('locations.show.medications_heading')
+            end
           end
 
           if location.medications.present?
@@ -79,20 +82,20 @@ module Components
               end
             end
           else
-            Card(class: 'p-8 text-center') do
-              Text(size: '3', class: 'text-muted-foreground') { t('locations.show.no_medications') }
+            m3_card(class: 'p-8 text-center') do
+              m3_text(size: '3', class: 'text-on-surface-variant') { t('locations.show.no_medications') }
             end
           end
         end
       end
 
       def render_medication_card(medication)
-        Card(class: 'p-6 hover:shadow-md transition-shadow') do
+        m3_card(class: 'p-6 hover:shadow-md transition-shadow') do
           div(class: 'flex items-center justify-between') do
             div(class: 'flex items-center gap-4') do
               div(
-                class: 'w-10 h-10 rounded-xl bg-muted flex items-center ' \
-                       'justify-center text-muted-foreground'
+                class: 'w-10 h-10 rounded-xl bg-secondary-container flex items-center ' \
+                       'justify-center text-on-surface-variant'
               ) do
                 render Icons::Pill.new(size: 20)
               end
@@ -102,7 +105,7 @@ module Components
                   medication.name
                 end
                 if medication.dosage_amount.present? && medication.dosage_unit.present?
-                  Text(size: '1', class: 'text-muted-foreground') do
+                  m3_text(size: '1', class: 'text-on-surface-variant') do
                     "#{medication.dosage_amount} #{medication.dosage_unit}"
                   end
                 end
@@ -119,7 +122,7 @@ module Components
             div(class: 'pt-4') do
               render Components::Medications::RefillModal.new(
                 medication: medication,
-                button_variant: :outline,
+                button_variant: :outlined,
                 button_class: 'w-full'
               )
             end
@@ -128,9 +131,9 @@ module Components
       end
 
       def render_members_card
-        Card(class: 'p-8 space-y-6') do
+        m3_card(class: 'p-8 space-y-6') do
           div(class: 'flex items-center justify-between') do
-            Heading(level: 3, size: '4', class: 'font-bold') { t('locations.show.members') }
+            m3_heading(level: 3, size: '4', class: 'font-bold') { t('locations.show.members') }
             render_add_member_dialog if view_context.policy(location).update?
           end
 
@@ -142,12 +145,12 @@ module Components
                 div(class: 'flex items-center justify-between group') do
                   div(class: 'flex items-center gap-3') do
                     div(
-                      class: 'w-8 h-8 rounded-full bg-surface-container-high flex items-center ' \
-                             'justify-center text-muted-foreground'
+                      class: 'w-8 h-8 rounded-full bg-primary/10 flex items-center ' \
+                             'justify-center text-on-surface-variant'
                     ) do
                       render Icons::User.new(size: 16)
                     end
-                    Text(size: '2', weight: 'semibold', class: 'text-foreground') { member.name }
+                    m3_text(size: '2', weight: 'semibold', class: 'text-foreground') { member.name }
                   end
 
                   if view_context.policy(location).update?
@@ -158,7 +161,7 @@ module Components
               end
             end
           else
-            Text(size: '2', class: 'text-muted-foreground italic') { t('locations.show.no_members') }
+            m3_text(size: '2', class: 'text-on-surface-variant italic') { t('locations.show.no_members') }
           end
         end
       end
@@ -166,10 +169,10 @@ module Components
       def render_remove_member_dialog(member, membership)
         AlertDialog do
           AlertDialogTrigger do
-            Button(
-              variant: :ghost,
+            m3_button(
+              variant: :text,
               size: :sm,
-              class: 'opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground ' \
+              class: 'opacity-0 group-hover:opacity-100 transition-opacity text-on-surface-variant ' \
                      'hover:text-destructive h-8 w-8 p-0',
               aria_label: t('locations.show.remove_member.aria_label', default: 'Remove member')
             ) do
@@ -189,7 +192,7 @@ module Components
               AlertDialogCancel(class: 'rounded-xl') { t('locations.show.remove_member.cancel') }
               form_with(url: location_location_membership_path(location, membership), method: :delete,
                         class: 'inline') do
-                Button(variant: :destructive, type: :submit, class: 'rounded-xl shadow-lg shadow-destructive/20') do
+                m3_button(variant: :destructive, type: :submit, class: 'rounded-xl shadow-lg shadow-destructive/20') do
                   t('locations.show.remove_member.submit')
                 end
               end
@@ -199,15 +202,15 @@ module Components
       end
 
       def render_details_card
-        Card(class: 'p-8 space-y-4') do
+        m3_card(class: 'p-8 space-y-4') do
           div(class: 'flex items-center justify-between') do
-            Heading(level: 3, size: '4', class: 'font-bold') { t('locations.show.details') }
+            m3_heading(level: 3, size: '4', class: 'font-bold') { t('locations.show.details') }
             if view_context.policy(location).update?
               Link(
                 href: edit_location_path(location, return_to: location_path(location)),
-                variant: :ghost,
+                variant: :text,
                 size: :sm,
-                class: 'text-muted-foreground hover:text-primary h-8 w-8 p-0 flex items-center justify-center',
+                class: 'text-on-surface-variant hover:text-primary h-8 w-8 p-0 flex items-center justify-center',
                 aria_label: t('locations.show.edit_details', default: 'Edit location details')
               ) do
                 render Icons::Pencil.new(size: 16)
@@ -216,9 +219,9 @@ module Components
           end
 
           if location.description.present?
-            Text(size: '2', class: 'text-muted-foreground leading-relaxed') { location.description }
+            m3_text(size: '2', class: 'text-on-surface-variant leading-relaxed') { location.description }
           else
-            Text(size: '2', class: 'text-muted-foreground italic') { t('locations.show.no_details') }
+            m3_text(size: '2', class: 'text-on-surface-variant italic') { t('locations.show.no_details') }
           end
         end
       end
@@ -228,10 +231,10 @@ module Components
 
         Dialog do
           DialogTrigger do
-            Button(
-              variant: :ghost,
+            m3_button(
+              variant: :text,
               size: :sm,
-              class: 'w-8 h-8 p-0 rounded-full bg-muted text-muted-foreground ' \
+              class: 'w-8 h-8 p-0 rounded-full bg-secondary-container text-on-surface-variant ' \
                      'hover:text-primary hover:bg-primary/5',
               aria_label: t('locations.show.add_member.aria_label', default: 'Add member')
             ) do
@@ -266,18 +269,18 @@ module Components
                   end
 
                   div(class: 'flex justify-end gap-3 pt-2') do
-                    Button(type: :submit, variant: :primary) { t('locations.show.add_member.submit') }
+                    m3_button(type: :submit, variant: :filled) { t('locations.show.add_member.submit') }
                   end
                 end
               else
                 div(class: 'py-8 text-center space-y-2') do
                   div(
-                    class: 'w-12 h-12 rounded-full bg-muted flex items-center justify-center ' \
-                           'text-muted-foreground mx-auto'
+                    class: 'w-12 h-12 rounded-full bg-secondary-container flex items-center justify-center ' \
+                           'text-on-surface-variant mx-auto'
                   ) do
                     render Icons::Users.new(size: 24)
                   end
-                  Text(size: '2', class: 'text-muted-foreground font-medium') do
+                  m3_text(size: '2', class: 'text-on-surface-variant font-medium') do
                     t('locations.show.add_member.all_assigned')
                   end
                 end

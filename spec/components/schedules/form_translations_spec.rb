@@ -26,4 +26,16 @@ RSpec.describe Components::Schedules::Form, type: :component do
       'frequencyOncePerCycle' => I18n.t('schedules.form.frequency_once_per_cycle')
     )
   end
+
+  it 'memoizes duplicate dose selection key computation' do
+    duplicate_a = double(selection_key: '200|mg')
+    duplicate_b = double(selection_key: '200|mg')
+    component = described_class.new(schedule:, person:, medications: [medication])
+
+    allow(medication).to receive(:dosages).and_return([duplicate_a, duplicate_b])
+
+    2.times { component.send(:duplicate_dose_selection_keys) }
+
+    expect(medication).to have_received(:dosages).once
+  end
 end

@@ -49,7 +49,7 @@ module Components
               method: :post,
               class: 'inline-block'
             ) do
-              Button(
+              m3_button(
                 type: :submit,
                 variant: :success_outline,
                 size: :sm
@@ -61,7 +61,7 @@ module Components
         def render_deactivate_dialog
           render RubyUI::AlertDialog.new do
             render RubyUI::AlertDialogTrigger.new do
-              Button(variant: :destructive_outline, size: :sm) do
+              m3_button(variant: :destructive_outline, size: :sm) do
                 t('admin.carer_relationships.index.deactivate')
               end
             end
@@ -77,7 +77,7 @@ module Components
               render RubyUI::AlertDialogFooter.new do
                 render(RubyUI::AlertDialogCancel.new { t('admin.carer_relationships.index.deactivate_dialog.cancel') })
                 form_with(url: "/admin/carer_relationships/#{relationship.id}", method: :delete, class: 'inline') do
-                  Button(variant: :destructive, type: :submit) do
+                  m3_button(variant: :destructive, type: :submit) do
                     t('admin.carer_relationships.index.deactivate_dialog.submit')
                   end
                 end

@@ -17,7 +17,7 @@ module Views
 
       def render_sheet_trigger
         render SheetTrigger.new do
-          render Button.new(variant: :outline, size: :sm) { t('profiles.password_sheet.change_button') }
+          m3_button(variant: :outlined, size: :sm) { t('profiles.password_sheet.change_button') }
         end
       end
 
@@ -54,15 +54,15 @@ module Views
 
       def render_sheet_footer
         render SheetFooter.new do
-          render Button.new(variant: :outline, data: { action: 'click->ruby-ui--sheet-content#close' }) { t('profiles.password_sheet.cancel') }
-          render Button.new(type: :submit) { t('profiles.password_sheet.submit') }
+          m3_button(variant: :outlined, data: { action: 'click->ruby-ui--sheet-content#close' }) { t('profiles.password_sheet.cancel') }
+          m3_button(type: :submit) { t('profiles.password_sheet.submit') }
         end
       end
 
       def render_password_field(name, label_text, placeholder)
         div do
           label(class: 'mb-2 block text-sm font-medium text-foreground') { label_text }
-          render Input.new(
+          m3_input(
             type: 'password',
             name: name,
             placeholder: placeholder,

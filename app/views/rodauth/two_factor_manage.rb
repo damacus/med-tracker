@@ -7,8 +7,9 @@ module Views
 
       def view_template
         page_layout do
-          render_page_header(title: header_title, subtitle: header_subtitle)
-          content_section
+          render_auth_card(title: header_title, subtitle: header_subtitle) do
+            render_card_content
+          end
         end
       end
 
@@ -30,30 +31,8 @@ module Views
         end
       end
 
-      def content_section
-        render RubyUI::Card.new(class: card_classes) do
-          render_card_header
-          render_card_content
-        end
-      end
-
-      def card_classes
-        "#{CARD_CLASSES} overflow-hidden"
-      end
-
-      def render_card_header
-        render RubyUI::CardHeader.new(class: 'space-y-2 bg-card/60') do
-          render RubyUI::CardTitle.new(class: 'text-xl font-semibold text-foreground') do
-            t('rodauth.views.two_factor_manage.card_title')
-          end
-          render RubyUI::CardDescription.new(class: 'text-base text-muted-foreground') do
-            plain t('rodauth.views.two_factor_manage.card_description')
-          end
-        end
-      end
-
       def render_card_content
-        render RubyUI::CardContent.new(class: 'space-y-4 p-6 sm:p-8') do
+        div(class: 'space-y-4') do
           render_webauthn_option
           render_totp_option
           render_recovery_codes_option if rodauth.two_factor_authentication_setup?
@@ -100,32 +79,32 @@ module Views
       end
 
       def render_auth_method_card(method_config) # rubocop:disable Metrics/AbcSize
-        div(class: 'flex items-start gap-4 rounded-xl border border-border bg-card/70 p-4 transition-colors hover:bg-accent/40') do
+        div(class: 'flex items-start gap-4 rounded-[2rem] border border-outline-variant/50 bg-surface-container-low p-6 transition-all hover:bg-surface-container-high hover:shadow-md') do
           render_method_icon(method_config[:icon], method_config[:enabled])
 
-          div(class: 'flex-1 min-w-0') do
+          div(class: 'flex-1 min-w-0 py-1') do
             div(class: 'flex items-center gap-2') do
-              h4(class: 'font-medium text-foreground') { method_config[:title] }
+              h4(class: 'font-black text-foreground tracking-tight') { method_config[:title] }
               render_status_badge(method_config[:enabled]) if method_config[:enabled]
             end
-            p(class: 'mt-1 text-sm text-muted-foreground') { method_config[:description] }
+            p(class: 'mt-1 text-sm text-on-surface-variant font-medium line-clamp-2') { method_config[:description] }
           end
 
-          div(class: 'flex-shrink-0') do
+          div(class: 'flex-shrink-0 self-center') do
             if method_config[:enabled] && method_config[:manage_path]
-              render RubyUI::Link.new(href: method_config[:manage_path], variant: :outline, size: :sm) { method_config[:manage_text] }
-            else
-              render RubyUI::Link.new(href: method_config[:setup_path], variant: :primary, size: :sm) { method_config[:setup_text] }
+              m3_link(href: method_config[:manage_path], variant: :outlined, size: :sm, class: 'font-bold') { method_config[:manage_text] }
+            elsif !method_config[:enabled] && method_config[:setup_path]
+              m3_link(href: method_config[:setup_path], variant: :filled, size: :sm, class: 'font-bold shadow-sm') { method_config[:setup_text] }
             end
           end
         end
       end
 
       def render_method_icon(icon_type, enabled)
-        bg_class = enabled ? 'bg-success-light' : 'bg-muted'
-        icon_class = enabled ? 'text-success' : 'text-muted-foreground'
+        bg_class = enabled ? 'bg-primary/10' : 'bg-surface-container-highest'
+        icon_class = enabled ? 'text-primary' : 'text-on-surface-variant/70'
 
-        div(class: "flex-shrink-0 w-12 h-12 #{bg_class} rounded-full flex items-center justify-center") do
+        div(class: "flex-shrink-0 w-14 h-14 #{bg_class} rounded-2xl flex items-center justify-center transition-colors") do
           case icon_type
           when :passkey
             render_passkey_icon(icon_class)
@@ -138,21 +117,21 @@ module Views
       end
 
       def render_passkey_icon(icon_class)
-        render Icons::Fingerprint.new(size: 24, class: icon_class)
+        render Icons::Fingerprint.new(size: 28, class: icon_class)
       end
 
       def render_totp_icon(icon_class)
-        render Icons::Smartphone.new(size: 24, class: icon_class)
+        render Icons::Smartphone.new(size: 28, class: icon_class)
       end
 
       def render_recovery_icon(icon_class)
-        render Icons::Key.new(size: 24, class: icon_class)
+        render Icons::Key.new(size: 28, class: icon_class)
       end
 
       def render_status_badge(enabled)
         return unless enabled
 
-        span(class: 'inline-flex items-center rounded-full bg-success-light px-2 py-0.5 text-xs font-medium text-success-text') do
+        m3_badge(variant: :success, class: 'px-2.5 py-0.5 font-bold text-[10px] uppercase tracking-wider') do
           t('rodauth.views.two_factor_manage.status_enabled')
         end
       end

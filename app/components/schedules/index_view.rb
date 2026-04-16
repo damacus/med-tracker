@@ -11,18 +11,28 @@ module Components
       end
 
       def view_template
-        div(class: 'container mx-auto px-4 py-8 max-w-6xl', data: { testid: 'active-schedules-list' }) do
-          div(class: 'mb-8') do
-            Heading(level: 1, size: '8', class: 'font-extrabold tracking-tight') { t('schedules.index.title') }
-            Text(weight: :muted) { t('schedules.index.subtitle') }
+        div(class: 'container mx-auto px-4 py-12 max-w-6xl', data: { testid: 'active-schedules-list' }) do
+          div(class: 'mb-10 space-y-2') do
+            m3_heading(variant: :display_small, level: 1, class: 'font-black tracking-tight') do
+              t('schedules.index.title')
+            end
+            m3_text(variant: :body_large, class: 'text-on-surface-variant font-medium') do
+              t('schedules.index.subtitle')
+            end
           end
 
           # ⚡ Bolt Optimization: Use .to_a.any? instead of .any? to materialize the relation
           # into an array in memory. This prevents an extra COUNT/EXISTS query before iterating.
           if schedules.to_a.any?
-            div(class: 'rounded-3xl border border-border bg-card overflow-hidden shadow-sm') do
+            div(
+              class: 'rounded-shape-xl border border-outline-variant/30 bg-surface-container-lowest ' \
+                     'overflow-hidden shadow-elevation-1'
+            ) do
               table(class: 'w-full text-sm') do
-                thead(class: 'bg-muted text-muted-foreground uppercase tracking-widest text-xs') do
+                thead(
+                  class: 'bg-surface-container-low text-on-surface-variant uppercase tracking-widest ' \
+                         'text-[10px] font-black'
+                ) do
                   tr do
                     th(class: 'text-left px-6 py-4') { t('dashboard.table.person') }
                     th(class: 'text-left px-6 py-4') { t('dashboard.table.medication') }
@@ -32,27 +42,31 @@ module Components
                     th(class: 'text-left px-6 py-4') { t('dashboard.table.end_date') }
                   end
                 end
-                tbody(class: 'divide-y divide-border') do
+                tbody(class: 'divide-y divide-outline-variant/30') do
                   schedules.each do |schedule|
                     tr do
-                      td(class: 'px-6 py-4 font-semibold text-foreground') do
-                        Link(href: person_path(schedule.person), variant: :ghost, class: 'p-0 h-auto no-underline') do
+                      td(class: 'px-6 py-5 font-bold text-foreground') do
+                        m3_link(href: person_path(schedule.person), variant: :text, size: :sm,
+                                class: 'p-0 h-auto no-underline hover:text-primary') do
                           schedule.person.name
                         end
                       end
-                      td(class: 'px-6 py-4 text-foreground') { schedule.medication.name }
-                      td(class: 'px-6 py-4 text-foreground') { dosage_label(schedule) }
-                      td(class: 'px-6 py-4 text-foreground') { schedule.frequency }
-                      td(class: 'px-6 py-4 text-foreground') { format_date(schedule.start_date) }
-                      td(class: 'px-6 py-4 text-foreground') { format_date(schedule.end_date) }
+                      td(class: 'px-6 py-5 text-foreground font-medium') { schedule.medication.name }
+                      td(class: 'px-6 py-5 text-foreground font-medium') { dosage_label(schedule) }
+                      td(class: 'px-6 py-5 text-foreground font-medium') { schedule.frequency }
+                      td(class: 'px-6 py-5 text-on-surface-variant font-medium') { format_date(schedule.start_date) }
+                      td(class: 'px-6 py-5 text-on-surface-variant font-medium') { format_date(schedule.end_date) }
                     end
                   end
                 end
               end
             end
           else
-            render RubyUI::Card.new(class: 'p-12 text-center rounded-[2rem] border-dashed border-2') do
-              Text(weight: :muted) { t('schedules.index.empty') }
+            m3_card(variant: :elevated,
+                    class: 'p-16 text-center rounded-[2.5rem] border-dashed border-2 border-outline-variant/50') do
+              m3_text(variant: :body_large, class: 'text-on-surface-variant font-medium italic') do
+                t('schedules.index.empty')
+              end
             end
           end
         end

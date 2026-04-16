@@ -10,7 +10,7 @@ RSpec.describe 'Authentication Features', type: :system do
       visit login_path
       fill_in 'Email address', with: 'damacus@example.com'
       fill_in 'Password', with: 'password'
-      click_button 'Sign In to Dashboard'
+      click_on 'Sign In'
 
       expect(page).to have_current_path('/otp-auth')
     end
@@ -36,7 +36,7 @@ RSpec.describe 'Authentication Features', type: :system do
       visit login_path
       fill_in 'Email address', with: 'unverified@example.com'
       fill_in 'Password', with: 'SecureP@ssword123!'
-      click_button 'Sign In to Dashboard'
+      click_on 'Sign In'
 
       # Account remains unverified but login succeeds in test env
       expect(account.reload.status).to eq('unverified')
@@ -54,11 +54,11 @@ RSpec.describe 'Authentication Features', type: :system do
 
     it 'allows user to request password reset' do
       visit login_path
-      click_link 'Forgot?'
+      find("a[href$='/reset-password-request']").click
 
       expect(page).to have_current_path('/reset-password-request')
       fill_in 'Email address', with: 'resetme@example.com'
-      click_button 'Request Password Reset'
+      click_on 'Request Password Reset'
 
       expect(page).to have_content(/email|sent|reset/i)
     end
@@ -66,7 +66,7 @@ RSpec.describe 'Authentication Features', type: :system do
     it 'shows error for non-existent email' do
       visit '/reset-password-request'
       fill_in 'Email address', with: 'nonexistent@example.com'
-      click_button 'Request Password Reset'
+      click_on 'Request Password Reset'
 
       # Rodauth may show success message for security (to prevent email enumeration)
       # or may show an error - depends on configuration
@@ -109,7 +109,7 @@ RSpec.describe 'Authentication Features', type: :system do
       fill_in 'Email address', with: 'remember@example.com'
       fill_in 'Password', with: 'SecureP@ssword123!'
       check 'remember'
-      click_button 'Sign In to Dashboard'
+      click_on 'Sign In'
 
       expect(page).to have_current_path('/dashboard')
       # Verify remember key was created in account_remember_keys table
@@ -149,7 +149,7 @@ RSpec.describe 'Authentication Features', type: :system do
       visit login_path
       fill_in 'Email address', with: 'blocked@example.com'
       fill_in 'Password', with: 'SecureP@ssword123!'
-      click_button 'Sign In to Dashboard'
+      click_on 'Sign In'
 
       # Login should succeed in test env (grace period active)
       # Note: May redirect to verify account page or dashboard depending on config
@@ -170,7 +170,7 @@ RSpec.describe 'Authentication Features', type: :system do
       visit login_path
       fill_in 'Email address', with: 'closed@example.com'
       fill_in 'Password', with: 'SecureP@ssword123!'
-      click_button 'Sign In to Dashboard'
+      click_on 'Sign In'
 
       # Should show error and not redirect to dashboard
       expect(page).to have_no_current_path('/dashboard')
@@ -189,13 +189,13 @@ RSpec.describe 'Authentication Features', type: :system do
 
     it 'shows resend verification link on login page' do
       visit login_path
-      expect(page).to have_link('Resend verification email')
+      expect(page).to have_content('Resend verification email')
     end
 
     it 'allows requesting verification email resend' do
       visit '/verify-account-resend'
       fill_in 'Email address', with: 'resend@example.com'
-      click_button 'Resend Verify Account Information'
+      click_on 'Resend Verify Account Information'
 
       expect(page).to have_content(/sent|email|verification/i)
     end

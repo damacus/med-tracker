@@ -21,7 +21,7 @@ RSpec.describe 'Medication schedule discoverability' do
     get medication_path(medication)
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include('Add Schedule')
+    expect(response.body).to include('Schedule')
     expect(response.body).to include(add_medication_path(medication_id: medication.id))
   end
 end

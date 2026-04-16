@@ -25,16 +25,13 @@ module Components
       def view_template
         turbo_frame_tag 'modal' do
           Dialog(open: true) do
-            DialogContent(
-              size: dialog_size,
-              class: 'overflow-hidden border-border/50 bg-white shadow-[0_32px_90px_rgba(15,23,42,0.18)]'
-            ) do
-              DialogHeader(class: 'bg-gradient-to-b from-[#fffaf1] to-white px-8 pt-8 pb-4') do
+            DialogContent(size: dialog_size) do
+              DialogHeader do
                 if back_path
                   a(
                     href: back_path,
                     data: { turbo_frame: 'modal' },
-                    class: 'inline-flex items-center text-sm text-muted-foreground hover:text-foreground ' \
+                    class: 'inline-flex items-center text-sm text-on-surface-variant hover:text-foreground ' \
                            'transition-colors mb-2 no-underline'
                   ) do
                     plain t('medication_workflow.back')
@@ -43,7 +40,7 @@ module Components
                 DialogTitle { title }
                 DialogDescription { t('person_medications.modal.subtitle') }
               end
-              DialogMiddle(class: 'bg-[#fffdf8] px-8 pb-8 pt-4') do
+              DialogMiddle do
                 render_form
               end
             end
@@ -98,26 +95,26 @@ module Components
         div(class: 'pt-4') do
           if editing
             div(class: 'flex items-center justify-end gap-6') do
-              Button(
-                variant: :ghost,
+              m3_button(
+                variant: :text,
                 data: { action: 'click->ruby-ui--dialog#dismiss' }
               ) { t('person_medications.form.cancel') }
-              Button(type: :submit, variant: :primary) { t('person_medications.form.save_changes_button') }
+              m3_button(type: :submit, variant: :filled) { t('person_medications.form.save_changes_button') }
             end
           else
             div(class: 'flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-6') do
               div(class: 'order-2 sm:order-1 sm:mr-auto') do
-                Button(
-                  variant: :ghost,
+                m3_button(
+                  variant: :text,
                   size: :xl,
                   class: 'w-full justify-center sm:w-auto',
                   data: { action: 'click->ruby-ui--dialog#dismiss' }
                 ) { t('person_medications.form.cancel') }
               end
               div(class: 'order-1 flex w-full items-center gap-3 sm:order-2 sm:w-auto') do
-                Button(
+                m3_button(
                   type: :button,
-                  variant: :outline,
+                  variant: :outlined,
                   size: :xl,
                   class: 'hidden min-w-0 flex-1 sm:min-w-28 sm:flex-none',
                   data: {
@@ -125,9 +122,9 @@ module Components
                     person_medication_form_target: 'prevButton'
                   }
                 ) { t('person_medications.form.back') }
-                Button(
+                m3_button(
                   type: :button,
-                  variant: :primary,
+                  variant: :filled,
                   size: :xl,
                   class: 'min-w-0 flex-1 sm:min-w-28 sm:flex-none',
                   data: {
@@ -135,9 +132,9 @@ module Components
                     person_medication_form_target: 'nextButton'
                   }
                 ) { t('person_medications.form.next') }
-                Button(
+                m3_button(
                   type: :submit,
-                  variant: :primary,
+                  variant: :filled,
                   size: :xl,
                   class: 'hidden min-w-0 flex-1 sm:min-w-28 sm:flex-none',
                   data: { person_medication_form_target: 'submitButton' }

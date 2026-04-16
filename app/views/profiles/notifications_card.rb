@@ -21,7 +21,7 @@ module Views
       end
 
       def view_template
-        render Card.new do
+        Card do
           render CardHeader.new do
             render(CardTitle.new { t('profiles.notifications.title') })
             render(CardDescription.new { t('profiles.notifications.description') })
@@ -59,7 +59,7 @@ module Views
       end
 
       def render_push_status_box
-        div(class: 'rounded-lg border border-border bg-muted/60 p-4') do
+        div(class: 'rounded-lg border border-border bg-secondary-container/60 p-4') do
           div(class: 'flex flex-col gap-4') do
             render_status_row
             render_test_button
@@ -70,7 +70,7 @@ module Views
       def render_status_row
         div(class: 'flex items-center justify-between') do
           p(
-            class: 'text-sm text-muted-foreground',
+            class: 'text-sm text-on-surface-variant',
             data: { push_notification_target: 'status' }
           ) { t('profiles.notifications.checking_status') }
           render_push_action_buttons
@@ -92,7 +92,7 @@ module Views
           button(
             type: 'button',
             class: 'inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 ' \
-                   'text-sm font-medium text-muted-foreground transition-colors hover:bg-accent',
+                   'text-sm font-medium text-on-surface-variant transition-colors hover:bg-tertiary-container',
             data: {
               push_notification_target: 'unsubscribeButton',
               action: 'push-notification#unsubscribe'
@@ -106,7 +106,7 @@ module Views
         button(
           type: 'button',
           class: 'w-full inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-background px-4 py-2.5 ' \
-                 'text-sm font-bold text-foreground transition-all hover:bg-accent hover:shadow-sm active:scale-[0.98]',
+                 'text-sm font-bold text-foreground transition-all hover:bg-tertiary-container hover:shadow-sm active:scale-[0.98]',
           data: {
             push_notification_target: 'testButton',
             action: 'push-notification#sendTest'
@@ -141,7 +141,7 @@ module Views
         div(class: 'flex items-center justify-between') do
           div do
             p(class: 'text-sm font-medium text-foreground') { t('profiles.notifications.enable_reminders') }
-            p(class: 'mt-0.5 text-xs text-muted-foreground') { t('profiles.notifications.enable_reminders_description') }
+            p(class: 'mt-0.5 text-xs text-on-surface-variant') { t('profiles.notifications.enable_reminders_description') }
           end
           div(class: 'flex items-center gap-2') do
             input(type: 'hidden', name: 'notification_preference[enabled]', value: '0')
@@ -169,7 +169,7 @@ module Views
       def render_time_slot(period)
         div do
           label(
-            class: 'mb-1 block text-xs font-medium text-muted-foreground',
+            class: 'mb-1 block text-xs font-medium text-on-surface-variant',
             for: "notification_preference_#{period}_time"
           ) { t(PERIOD_LABELS[period]) }
           input(
@@ -186,7 +186,7 @@ module Views
       def render_section_header(title, description)
         div(class: 'space-y-0.5') do
           h3(class: 'text-sm font-semibold text-foreground') { title }
-          p(class: 'text-xs text-muted-foreground') { description }
+          p(class: 'text-xs text-on-surface-variant') { description }
         end
       end
     end

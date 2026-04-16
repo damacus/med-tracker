@@ -51,14 +51,15 @@ module Components
         end
 
         def render_errors
-          render RubyUI::Alert.new(variant: :destructive, class: 'mb-4 rounded-shape-xl border-none shadow-sm') do
+          render RubyUI::Alert.new(variant: :destructive,
+                                   class: 'mb-4 rounded-shape-xl border-none shadow-elevation-1') do
             div(class: 'flex items-start gap-3') do
               render Icons::AlertCircle.new(size: 20)
               div do
-                Heading(level: 2, size: '3', class: 'font-bold mb-1') do
+                m3_heading(variant: :title_medium, level: 2, class: 'font-bold mb-1') do
                   t('forms.medications.validation_errors', count: medication.errors.count)
                 end
-                ul(class: 'text-sm opacity-90 list-disc pl-4 space-y-1') do
+                ul(class: 'text-sm opacity-90 list-disc pl-4 space-y-1 font-medium') do
                   medication.errors.full_messages.each do |message|
                     li { message }
                   end
@@ -83,12 +84,12 @@ module Components
         end
 
         def render_navigation
-          div(class: 'flex items-center justify-between pt-6 border-t border-border') do
+          div(class: 'flex items-center justify-between pt-6 border-t border-outline-variant/30') do
             div(class: 'flex items-center gap-3') do
-              Button(
+              m3_button(
                 type: :button,
-                variant: :ghost,
-                class: 'font-bold text-muted-foreground hover:text-foreground invisible',
+                variant: :text,
+                class: 'font-bold text-on-surface-variant hover:text-foreground invisible',
                 data: {
                   wizard_target: 'prevButton',
                   action: 'click->wizard#prev'
@@ -99,18 +100,20 @@ module Components
               end
 
               if overlay_variant?
-                a(
+                m3_link(
                   href: medications_path,
-                  class: 'text-sm font-bold text-muted-foreground hover:text-foreground',
+                  variant: :text,
+                  size: :sm,
+                  class: 'font-bold text-on-surface-variant hover:text-foreground',
                   data: { turbo_frame: '_top' }
                 ) { 'Cancel' }
               end
             end
 
             div(class: 'flex gap-3') do
-              Button(
+              m3_button(
                 type: :button,
-                variant: :primary,
+                variant: :filled,
                 size: :lg,
                 class: 'px-8 rounded-shape-xl shadow-lg shadow-primary/20',
                 data: {
@@ -121,9 +124,9 @@ module Components
                 plain 'Continue'
               end
 
-              Button(
+              m3_button(
                 type: :submit,
-                variant: :primary,
+                variant: :filled,
                 size: :lg,
                 class: 'px-8 rounded-shape-xl shadow-lg shadow-primary/20 hidden',
                 data: { wizard_target: 'submitButton' }

@@ -27,7 +27,7 @@ module Components
                   a(
                     href: back_path,
                     data: { turbo_frame: 'modal' },
-                    class: 'inline-flex items-center text-sm text-muted-foreground hover:text-foreground ' \
+                    class: 'inline-flex items-center text-sm text-on-surface-variant hover:text-foreground ' \
                            'transition-colors mb-2 no-underline'
                   ) do
                     plain t('medication_workflow.back')
@@ -67,7 +67,7 @@ module Components
         a(
           href: href,
           data: { turbo_frame: 'modal' },
-          class: 'flex items-start gap-4 w-full rounded-2xl border-2 border-input p-6 ' \
+          class: 'flex items-start gap-4 w-full rounded-2xl border-2 border-outline p-6 ' \
                  'hover:border-primary hover:bg-primary/5 active:bg-primary/10 ' \
                  'transition-all cursor-pointer no-underline'
         ) do
@@ -77,7 +77,7 @@ module Components
           end
           div do
             div(class: 'font-semibold text-base text-foreground') { title }
-            div(class: 'text-muted-foreground text-sm mt-1') { description }
+            div(class: 'text-on-surface-variant text-sm mt-1') { description }
           end
         end
       end

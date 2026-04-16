@@ -31,7 +31,7 @@ module Components
                   a(
                     href: back_path,
                     data: { turbo_frame: 'modal' },
-                    class: 'inline-flex items-center text-sm text-muted-foreground hover:text-foreground ' \
+                    class: 'inline-flex items-center text-sm text-on-surface-variant hover:text-foreground ' \
                            'transition-colors mb-2 no-underline'
                   ) do
                     plain t('medication_workflow.back')
@@ -41,7 +41,7 @@ module Components
                 DialogDescription { t('schedules.modal.subtitle') }
               end
               DialogMiddle do
-                render Form.new(schedule: schedule, person: person, medications: medications)
+                render Form.new(schedule: schedule, person: person, medications: medications, frame_id: 'modal')
               end
             end
           end

@@ -11,7 +11,7 @@ module RubyUI
 
     def initialize(href: '#', variant: :link, size: :md, icon: false, **attrs)
       @href = href
-      @variant = variant.to_sym
+      @variant = normalize_variant(variant)
       @size = size.to_sym
       @icon = icon
       super(**attrs)
@@ -22,6 +22,15 @@ module RubyUI
     end
 
     private
+
+    def normalize_variant(variant)
+      case variant.to_sym
+      when :filled then :primary
+      when :outlined then :outline
+      when :text then :ghost
+      else variant.to_sym
+      end
+    end
 
     def size_classes
       if @icon
@@ -81,8 +90,8 @@ module RubyUI
       [
         BASE_CLASSES,
         size_classes,
-        'border border-input bg-background no-underline',
-        'hover:bg-accent hover:text-accent-foreground hover:scale-[1.02] transition-all'
+        'border border-outline bg-background no-underline',
+        'hover:bg-tertiary-container hover:text-on-tertiary-container hover:scale-[1.02] transition-all'
       ]
     end
 
@@ -90,7 +99,7 @@ module RubyUI
       [
         BASE_CLASSES,
         size_classes,
-        'border border-input bg-background no-underline',
+        'border border-outline bg-background no-underline',
         'text-error hover:bg-error-container hover:scale-[1.02] transition-all'
       ]
     end
@@ -99,7 +108,7 @@ module RubyUI
       [
         BASE_CLASSES,
         size_classes,
-        'border border-input bg-background no-underline',
+        'border border-outline bg-background no-underline',
         'text-success hover:bg-success-container hover:scale-[1.02] transition-all'
       ]
     end
@@ -108,7 +117,7 @@ module RubyUI
       [
         BASE_CLASSES,
         size_classes,
-        'no-underline hover:bg-accent hover:text-accent-foreground'
+        'no-underline hover:bg-tertiary-container hover:text-on-tertiary-container'
       ]
     end
 

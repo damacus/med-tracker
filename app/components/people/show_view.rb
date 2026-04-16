@@ -42,7 +42,10 @@ module Components
       private
 
       def render_person_header
-        div(class: 'flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-border') do
+        div(
+          class: 'flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b ' \
+                 'border-outline-variant/30'
+        ) do
           div(class: 'flex items-center gap-6') do
             div(
               class: 'w-24 h-24 rounded-[2rem] bg-primary/10 flex items-center justify-center text-primary ' \
@@ -52,24 +55,27 @@ module Components
             end
             div(class: 'space-y-1') do
               div(class: 'flex items-center gap-3') do
-                Heading(level: 1, size: '8', class: 'font-black tracking-tight') { person.name }
-                Badge(variant: :outline, class: 'rounded-full uppercase text-[10px] tracking-widest py-1 px-3') do
+                m3_heading(variant: :display_small, level: 1, class: 'font-black tracking-tight') { person.name }
+                m3_badge(variant: :outlined,
+                         class: 'rounded-full uppercase text-[10px] font-black tracking-widest py-1 px-3') do
                   person.person_type.humanize
                 end
               end
-              Text(size: '4', weight: 'muted') { "#{t('people.show.age')} #{person.age}" }
+              m3_text(variant: :body_large, class: 'text-on-surface-variant font-medium') do
+                "#{t('people.show.age')} #{person.age}"
+              end
             end
           end
 
           div(class: 'flex gap-3') do
             if view_context.policy(person).update?
-              Link(href: person_path(person, editing: true), variant: :outline, size: :lg,
-                   class: 'rounded-2xl font-bold text-sm bg-card') do
+              m3_link(href: person_path(person, editing: true), variant: :outlined, size: :lg,
+                      class: 'rounded-xl font-bold bg-surface-container-low transition-all') do
                 t('people.show.edit_person')
               end
             end
-            Link(href: people_path, variant: :ghost, size: :lg,
-                 class: 'rounded-2xl font-bold text-sm text-muted-foreground hover:text-foreground') do
+            m3_link(href: people_path, variant: :text, size: :lg,
+                    class: 'rounded-xl font-bold text-on-surface-variant hover:text-foreground') do
               t('people.show.back')
             end
           end
@@ -77,15 +83,18 @@ module Components
       end
 
       def render_person_overview_card
-        Card(class: 'p-8 space-y-6') do
-          Heading(level: 2, size: '4', class: 'font-bold') { t('people.overview.title') }
+        m3_card(variant: :elevated, class: 'p-8 space-y-6 border-none shadow-elevation-1 rounded-[2.5rem]') do
+          m3_heading(variant: :title_large, level: 2, class: 'font-bold') { t('people.overview.title') }
 
           div(class: 'space-y-4') do
             overview_item(t('people.overview.dob'), person.date_of_birth.strftime('%B %d, %Y'), Icons::CheckCircle)
             overview_item(t('people.overview.assigned_user'),
                           person.user&.email_address || t('people.overview.no_user'), Icons::User)
-            overview_item(t('people.overview.capacity'),
-                          person.has_capacity ? t('people.overview.has_capacity') : t('people.overview.dependent'), Icons::Key)
+            overview_item(
+              t('people.overview.capacity'),
+              person.has_capacity ? t('people.overview.has_capacity') : t('people.overview.dependent'),
+              Icons::Key
+            )
           end
         end
       end
@@ -93,39 +102,43 @@ module Components
       def overview_item(label, value, icon_class)
         div(class: 'flex items-center gap-4 group') do
           div(
-            class: 'w-10 h-10 rounded-xl bg-muted flex items-center ' \
-                   'justify-center text-muted-foreground ' \
-                   'group-hover:bg-primary/5 group-hover:text-primary transition-colors'
+            class: 'w-10 h-10 rounded-xl bg-secondary-container flex items-center ' \
+                   'justify-center text-on-secondary-container ' \
+                   'group-hover:bg-primary/10 group-hover:text-primary transition-all'
           ) do
             render icon_class.new(size: 20)
           end
           div do
-            Text(size: '1', weight: 'bold', class: 'uppercase tracking-widest text-muted-foreground font-black') do
+            m3_text(variant: :label_small, class: 'uppercase tracking-widest text-on-surface-variant font-black') do
               label
             end
-            Text(size: '2', weight: 'semibold') { value }
+            m3_text(variant: :body_medium, class: 'font-bold') { value }
           end
         end
       end
 
       def render_quick_actions_card
-        Card(class: 'bg-primary p-8 text-white border-none shadow-xl shadow-primary/20',
-             data: { testid: 'quick-actions' }) do
+        m3_card(
+          variant: :filled,
+          class: 'bg-primary p-8 text-on-primary border-none shadow-xl shadow-primary/20 ' \
+                 'rounded-[2.5rem]',
+          data: { testid: 'quick-actions' }
+        ) do
           div(class: 'space-y-6') do
             div do
-              Heading(level: 3, size: '5', class: 'font-bold mb-2') { t('people.actions.title') }
-              Text(size: '2', class: 'text-primary-foreground opacity-80') do
+              m3_heading(variant: :headline_small, level: 3, class: 'font-bold mb-2') { t('people.actions.title') }
+              m3_text(variant: :body_medium, class: 'text-on-primary/80 font-medium') do
                 t('people.actions.subtitle')
               end
             end
 
             div(class: 'space-y-3') do
               if can_add_medication?
-                Link(
+                m3_link(
                   href: add_medication_person_path(person),
-                  variant: :secondary,
-                  class: 'w-full py-6 rounded-xl font-bold text-sm bg-card ' \
-                         'text-primary border-none shadow-sm',
+                  variant: :tonal,
+                  size: :lg,
+                  class: 'w-full py-6 rounded-xl font-bold shadow-elevation-1 transition-all',
                   data: { turbo_frame: 'modal' }
                 ) { t('people.show.add_medication') }
               end
@@ -139,8 +152,10 @@ module Components
 
         div(class: 'space-y-8') do
           div(class: 'flex items-center justify-between px-2') do
-            Heading(level: 2, size: '6', class: 'font-bold tracking-tight') { t('people.show.medications_heading') }
-            div(class: 'h-1 flex-1 mx-8 bg-muted rounded-full hidden md:block')
+            m3_heading(variant: :title_large, level: 2, class: 'font-bold tracking-tight') do
+              t('people.show.medications_heading')
+            end
+            div(class: 'h-1 flex-1 mx-8 bg-outline-variant/20 rounded-full hidden md:block')
           end
 
           div(id: 'medications', class: 'grid grid-cols-1 md:grid-cols-2 gap-6') do
@@ -169,15 +184,18 @@ module Components
 
       def render_empty_state
         div(class: 'col-span-full') do
-          Card(class: 'text-center py-12 px-8 border-dashed border-2 bg-muted') do
-            Text(size: '3', weight: 'medium', class: 'text-muted-foreground mb-6') do
+          m3_card(variant: :filled,
+                  class: 'text-center py-16 px-8 border-dashed border-2 border-outline-variant/50 ' \
+                         'bg-surface-container-low rounded-[2.5rem]') do
+            m3_text(variant: :body_large, class: 'text-on-surface-variant mb-6 font-medium italic') do
               t('people.show.no_any_medications')
             end
             if can_add_medication?
-              Link(
+              m3_link(
                 href: add_medication_person_path(person),
-                variant: :primary,
-                class: 'rounded-xl',
+                variant: :filled,
+                size: :lg,
+                class: 'rounded-xl px-8',
                 data: { turbo_frame: 'modal' }
               ) { t('people.show.add_first_any_medication') }
             end
@@ -196,46 +214,50 @@ module Components
       def render_edit_form
         # Keep current logic for editing, just wrapping in new aesthetic container
         div(class: 'container mx-auto px-4 py-12 max-w-2xl') do
-          Card(class: 'overflow-hidden border-none shadow-2xl') do
+          m3_card(variant: :elevated, class: 'overflow-hidden border-none shadow-elevation-3 rounded-[2.5rem]') do
             form_with(model: person, class: 'space-y-8 p-10', data: { controller: 'auto-submit' }) do |f|
               div do
-                Heading(level: 2, size: '6', class: 'font-bold mb-1') { t('people.form.edit_heading') }
-                Text(size: '2', weight: 'muted') { t('people.form.edit_subheading', name: person.name) }
+                m3_heading(variant: :headline_small, level: 2, class: 'font-bold mb-1') do
+                  t('people.form.edit_heading')
+                end
+                m3_text(variant: :body_medium, class: 'text-on-surface-variant font-medium') do
+                  t('people.form.edit_subheading', name: person.name)
+                end
               end
 
               div(class: 'space-y-6') do
                 div(class: 'space-y-2') do
                   render RubyUI::FormFieldLabel.new(
                     for: 'person_name',
-                    class: 'text-[10px] font-black uppercase tracking-widest text-muted-foreground px-1'
+                    class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant px-1'
                   ) { t('people.form.name') }
                   render f.text_field(
                     :name,
-                    class: 'rounded-2xl border-border bg-muted py-6 px-5 ' \
-                           'focus:bg-card focus:ring-4 ' \
-                           'focus:ring-primary/5 focus:border-primary transition-all'
+                    class: 'rounded-2xl border-outline-variant bg-surface-container-lowest py-6 px-5 ' \
+                           'focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all'
                   )
                 end
 
                 div(class: 'space-y-2') do
                   render RubyUI::FormFieldLabel.new(
                     for: 'person_date_of_birth',
-                    class: 'text-[10px] font-black uppercase tracking-widest text-muted-foreground px-1'
+                    class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant px-1'
                   ) { t('people.form.date_of_birth') }
                   render f.date_field(
                     :date_of_birth,
-                    class: 'rounded-2xl border-border bg-muted py-6 px-5 ' \
-                           'focus:bg-card focus:ring-4 ' \
-                           'focus:ring-primary/5 focus:border-primary transition-all'
+                    class: 'rounded-2xl border-outline-variant bg-surface-container-lowest py-6 px-5 ' \
+                           'focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all'
                   )
                 end
               end
 
               div(class: 'flex gap-3 pt-4') do
-                render Button.new(type: :submit, variant: :primary, class: 'flex-1 py-7 font-bold') {
+                m3_button(type: :submit, variant: :filled, size: :lg,
+                          class: 'flex-1 py-7 font-bold shadow-lg shadow-primary/20') do
                   t('people.form.save')
-                }
-                Link(href: person_path(person), variant: :ghost, class: 'py-7 px-8 font-bold text-muted-foreground') do
+                end
+                m3_link(href: person_path(person), variant: :text, size: :lg,
+                        class: 'py-7 px-8 font-bold text-on-surface-variant hover:text-foreground') do
                   t('people.form.cancel')
                 end
               end

@@ -32,7 +32,7 @@ module Components
         div(class: 'space-y-2') do
           render RubyUI::FormFieldLabel.new(
             for: 'inventory_location_trigger',
-            class: 'text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1'
+            class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
           ) { t('medications.show.location') }
           render RubyUI::Combobox.new(class: 'w-full') do
             render RubyUI::ComboboxTrigger.new(
@@ -80,7 +80,7 @@ module Components
         div(class: 'space-y-2') do
           render RubyUI::FormFieldLabel.new(
             for: 'inventory_category_trigger',
-            class: 'text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1'
+            class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
           ) { 'Category' }
           render RubyUI::Combobox.new(class: 'w-full') do
             render RubyUI::ComboboxTrigger.new(

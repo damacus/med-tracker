@@ -37,23 +37,24 @@ module Components
       private
 
       def render_card(as_link: false)
-        Card(
+        m3_card(
+          variant: :elevated,
           class: "#{border_class} #{card_height_class} #{min_height_class} " \
-                 "shadow-sm #{background_class} backdrop-blur-sm #{hover_class} " \
-                 "#{cursor_class} group",
+                 "shadow-elevation-1 bg-surface-container-low #{hover_class} " \
+                 "#{cursor_class} group relative state-layer overflow-hidden",
           data: testid.present? && !as_link ? { testid: testid } : nil
         ) do
-          CardContent(class: "#{content_padding_class} #{content_height_class} flex flex-col") do
+          m3_card_content(class: "#{content_padding_class} #{content_height_class} flex flex-col z-10") do
             div(class: "flex items-center justify-between gap-2 #{header_margin_class} min-w-0") do
-              Text(
-                size: '1', weight: 'muted',
-                class: "uppercase font-black tracking-widest truncate #{title_class}"
+              m3_text(
+                variant: :label_small,
+                class: "uppercase font-black tracking-widest truncate #{title_class} text-on-surface-variant"
               ) do
                 title
               end
               div(
-                class: "#{icon_padding_class} rounded-lg flex-shrink-0 " \
-                       "#{icon_bg_class} #{value_color_class} transition-colors"
+                class: "#{icon_padding_class} rounded-xl flex-shrink-0 " \
+                       "#{icon_bg_class} #{value_color_class} transition-all shadow-inner"
               ) do
                 render_icon(size: icon_size)
               end
@@ -66,9 +67,9 @@ module Components
                 value.to_s
               end
               if badge.present?
-                span(
-                  class: 'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ' \
-                         'bg-surface-container text-foreground'
+                m3_badge(
+                  variant: :tonal,
+                  class: 'px-2.5 py-1 text-[10px] font-black uppercase tracking-wider'
                 ) do
                   badge
                 end
@@ -109,7 +110,7 @@ module Components
       def hover_class
         return '' if compact?
 
-        'transition-all duration-300 md:hover:scale-[1.02] md:hover:shadow-xl md:hover:shadow-primary/5'
+        'transition-all duration-300 md:hover:scale-[1.02] md:hover:shadow-elevation-2'
       end
 
       def content_padding_class
@@ -125,23 +126,24 @@ module Components
       end
 
       def icon_padding_class
-        compact? ? 'p-1.5' : 'p-2'
+        compact? ? 'p-1.5' : 'p-2.5'
       end
 
       def icon_size
-        compact? ? 14 : 16
+        compact? ? 14 : 20
       end
 
       def value_size_class
-        compact? ? 'text-2xl' : 'text-3xl'
+        compact? ? 'text-2xl' : 'text-4xl'
       end
 
       def background_class
-        variant == :warning ? 'bg-warning-container' : 'bg-card/50'
+        # No longer used directly, but kept for logic if needed
+        variant == :warning ? 'bg-warning-container' : 'bg-surface-container-low'
       end
 
       def border_class
-        variant == :warning ? 'border-warning' : 'border-none'
+        variant == :warning ? 'border border-warning/30' : 'border-none'
       end
 
       def render_icon(size:)
@@ -155,14 +157,12 @@ module Components
       end
 
       def icon_bg_class
-        return 'bg-warning-container' if variant == :warning
+        return 'bg-warning-container/40' if variant == :warning
 
         case icon_type
-        when 'users' then 'bg-primary-container'
-        when 'pill' then 'bg-success-container'
-        when 'check' then 'bg-secondary-container'
-        when 'clock' then 'bg-warning-container'
-        else 'bg-muted'
+        when 'users' then 'bg-primary/10'
+        when 'pill' then 'bg-success-container/50'
+        else 'bg-secondary-container'
         end
       end
 
@@ -170,7 +170,7 @@ module Components
         return 'text-on-warning-container' if variant == :warning
 
         case icon_type
-        when 'users' then 'text-on-primary-container'
+        when 'users' then 'text-primary'
         when 'pill' then 'text-on-success-container'
         when 'check' then 'text-on-secondary-container'
         when 'clock' then 'text-on-warning-container'

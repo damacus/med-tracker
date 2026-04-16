@@ -38,9 +38,8 @@ RSpec.describe Components::Layouts::Sidebar, type: :component do
       rendered = render_sidebar(user: admin_user, path: inventory_path)
       inventory_link = rendered.at_css(%(a[href="#{inventory_path}"]))
 
-      expect(inventory_link['class']).to include('bg-sidebar-accent')
-      expect(inventory_link['class']).to include('text-sidebar-accent-foreground')
-      expect(inventory_link['class']).not_to include('text-on-secondary-container')
+      expect(inventory_link['class']).to include('bg-secondary-container')
+      expect(inventory_link['class']).to include('text-on-secondary-container')
     end
   end
 

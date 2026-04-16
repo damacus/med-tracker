@@ -27,7 +27,7 @@ module Components
               div(class: 'flex gap-2 justify-center') do
                 render RubyUI::Link.new(
                   href: "/admin/users/#{user.id}/edit",
-                  variant: :outline,
+                  variant: :outlined,
                   size: :sm,
                   data: { turbo_frame: '_top' }
                 ) { t('admin.users.user_row.edit') }
@@ -41,7 +41,7 @@ module Components
 
         def render_status_badge
           if user.soft_deleted?
-            render RubyUI::Badge.new(variant: :secondary) { t('admin.users.user_row.soft_deleted') }
+            render RubyUI::Badge.new(variant: :tonal) { t('admin.users.user_row.soft_deleted') }
           elsif user.active?
             render RubyUI::Badge.new(variant: :success) { t('admin.users.user_row.active') }
           else
@@ -56,7 +56,7 @@ module Components
 
           if user.active?
             if is_current_user
-              render RubyUI::Button.new(variant: :destructive_outline, size: :sm, disabled: true) { t('admin.users.user_row.deactivate') }
+              render M3::Button.new(variant: :destructive_outline, size: :sm, disabled: true) { t('admin.users.user_row.deactivate') }
             else
               render_deactivate_dialog
             end
@@ -71,7 +71,7 @@ module Components
             method: :post,
             class: 'inline-block'
           ) do
-            Button(
+            m3_button(
               type: :submit,
               variant: :success_outline,
               size: :sm
@@ -88,27 +88,27 @@ module Components
             method: :post,
             class: 'inline-block'
           ) do
-            Button(
+            m3_button(
               type: :submit,
-              variant: :outline,
+              variant: :outlined,
               size: :sm
             ) { t('admin.users.user_row.verify') }
           end
         end
 
         def render_verified_button
-          Button(
+          m3_button(
             type: :button,
-            variant: :outline,
+            variant: :outlined,
             size: :sm,
             disabled: true
           ) { t('admin.users.user_row.verified') }
         end
 
         def render_soft_deleted_button
-          Button(
+          m3_button(
             type: :button,
-            variant: :outline,
+            variant: :outlined,
             size: :sm,
             disabled: true
           ) { t('admin.users.user_row.soft_deleted') }
@@ -117,7 +117,7 @@ module Components
         def render_deactivate_dialog
           render RubyUI::AlertDialog.new do
             render RubyUI::AlertDialogTrigger.new do
-              Button(variant: :destructive_outline, size: :sm) do
+              m3_button(variant: :destructive_outline, size: :sm) do
                 t('admin.users.user_row.deactivate')
               end
             end
@@ -131,7 +131,7 @@ module Components
               render RubyUI::AlertDialogFooter.new do
                 render(RubyUI::AlertDialogCancel.new { t('admin.users.user_row.deactivate_dialog.cancel') })
                 form_with(url: "/admin/users/#{user.id}", method: :delete, class: 'inline') do
-                  Button(variant: :destructive, type: :submit) { t('admin.users.user_row.deactivate_dialog.submit') }
+                  m3_button(variant: :destructive, type: :submit) { t('admin.users.user_row.deactivate_dialog.submit') }
                 end
               end
             end

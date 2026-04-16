@@ -10,6 +10,10 @@ RSpec.describe 'Appearance mode' do
     'getComputedStyle(document.body).backgroundColor'
   end
 
+  let(:root_primary_script) do
+    'getComputedStyle(document.documentElement).getPropertyValue("--primary").trim().toLowerCase()'
+  end
+
   it 'lets signed-in users switch appearance modes without losing their palette' do
     sign_in(user)
     visit profile_path
@@ -27,6 +31,61 @@ RSpec.describe 'Appearance mode' do
     expect(page.evaluate_script('localStorage.getItem("med-tracker-theme")')).to eq('warm-earth')
     expect(page.evaluate_script('document.documentElement.classList.contains("dark")')).to be(true)
     expect(page.evaluate_script('document.documentElement.classList.contains("theme-warm-earth")')).to be(true)
+  end
+
+  it 'applies palette changes from profile to medication surfaces in the same session' do
+    medication = create(:medication, location: create(:location), name: 'Theme Proof')
+
+    sign_in(user)
+    visit medication_path(medication)
+
+    default_primary = page.evaluate_script(root_primary_script)
+    default_medication_icon_background = page.evaluate_script(<<~JS)
+      (() => {
+        const icon = document.querySelector('[data-testid="medication-hero-icon"]')
+        return icon ? getComputedStyle(icon).backgroundColor : null
+      })()
+    JS
+
+    visit profile_path
+
+    default_profile_card_background = page.evaluate_script(<<~JS)
+      (() => {
+        const card = document.querySelector('[data-testid="profile-personal-info-card"]')
+        return card ? getComputedStyle(card).backgroundColor : null
+      })()
+    JS
+
+    expect(default_medication_icon_background).not_to be_nil
+    expect(default_profile_card_background).not_to be_nil
+
+    click_button 'Warm Earth'
+
+    warm_profile_primary = page.evaluate_script(root_primary_script)
+
+    warm_profile_card_background = page.evaluate_script(<<~JS)
+      (() => {
+        const card = document.querySelector('[data-testid="profile-personal-info-card"]')
+        return card ? getComputedStyle(card).backgroundColor : null
+      })()
+    JS
+
+    expect(warm_profile_primary).not_to eq(default_primary)
+    expect(warm_profile_card_background).not_to eq(default_profile_card_background)
+
+    visit medication_path(medication)
+
+    warm_medication_primary = page.evaluate_script(root_primary_script)
+
+    warm_medication_icon_background = page.evaluate_script(<<~JS)
+      (() => {
+        const icon = document.querySelector('[data-testid="medication-hero-icon"]')
+        return icon ? getComputedStyle(icon).backgroundColor : null
+      })()
+    JS
+
+    expect(warm_medication_primary).to eq(warm_profile_primary)
+    expect(warm_medication_icon_background).not_to eq(default_medication_icon_background)
   end
 
   it 'honors system dark appearance on signed-out pages' do

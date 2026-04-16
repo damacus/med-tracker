@@ -43,7 +43,7 @@ module Components
             a(
               href: add_medication_person_path(person, source: :workflow, medication_id: medication_id),
               data: { turbo_frame: 'modal' },
-              class: 'flex items-center gap-4 w-full rounded-2xl border-2 border-input p-4 ' \
+              class: 'flex items-center gap-4 w-full rounded-2xl border-2 border-outline p-4 ' \
                      'hover:border-primary hover:bg-primary/5 active:bg-primary/10 ' \
                      'transition-all cursor-pointer no-underline'
             ) do
@@ -53,7 +53,7 @@ module Components
               end
               div do
                 div(class: 'font-semibold text-sm text-foreground') { person.name }
-                div(class: 'text-muted-foreground text-xs mt-0.5') { person.person_type.humanize }
+                div(class: 'text-on-surface-variant text-xs mt-0.5') { person.person_type.humanize }
               end
             end
           end

@@ -13,7 +13,7 @@ RSpec.describe Components::People::PersonCard, type: :component do
     badge = rendered.at_css('[data-testid="needs-carer-badge"]')
     expect(badge).to be_present, 'Expected Needs Carer badge to be rendered'
     expect(badge.name).to eq('span')
-    expect(badge['class']).to include('ring-warning/20'),
-                              'Expected badge to use RubyUI::Badge warning variant classes'
+    expect(badge['class']).to include('border-warning/50'),
+                              'Expected badge to use M3 badge tokens'
   end
 end

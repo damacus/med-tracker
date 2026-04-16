@@ -4,7 +4,7 @@ class MedicationsController < ApplicationController # rubocop:disable Metrics/Cl
   include InventoryLocationFilterable
   include MedicationRefillable
 
-  before_action :set_medication, only: %i[show edit update destroy refill mark_as_ordered mark_as_received]
+  before_action :set_medication, only: %i[show administration edit update destroy refill mark_as_ordered mark_as_received]
 
   def index
     @current_category = params[:category]
@@ -31,6 +31,17 @@ class MedicationsController < ApplicationController # rubocop:disable Metrics/Cl
   def show
     authorize @medication
     render Components::Medications::ShowView.new(medication: @medication, notice: flash[:notice])
+  end
+
+  def administration
+    authorize @medication, :show?
+
+    render Components::Medications::AdministrationModal.new(
+      medication: @medication,
+      schedules: administration_schedules,
+      person_medications: administration_person_medications,
+      current_user: current_user
+    ), layout: false
   end
 
   def new
@@ -266,5 +277,22 @@ class MedicationsController < ApplicationController # rubocop:disable Metrics/Cl
 
   def render_medication_search_unavailable
     render json: { results: [], error: 'Medication search is temporarily unavailable.' }, status: :service_unavailable
+  end
+
+  def administration_schedules
+    policy_scope(Schedule)
+      .includes(:person, :medication)
+      .where(medication: @medication)
+      .active
+      .select { |schedule| policy(schedule).take_medication? }
+      .sort_by { |schedule| [schedule.person.name, schedule.id] }
+  end
+
+  def administration_person_medications
+    policy_scope(PersonMedication)
+      .includes(:person, :medication)
+      .where(medication: @medication)
+      .select { |person_medication| policy(person_medication).take_medication? }
+      .sort_by { |person_medication| [person_medication.person.name, person_medication.id] }
   end
 end

@@ -33,4 +33,17 @@ RSpec.describe Components::Medications::IndexView, type: :component do
     expect(content).to be_present
     expect(content[:class]).to include('md:pl-[6.5rem]')
   end
+
+  it 'renders medication actions with m3 link variants' do
+    rendered = render_view(medications: [])
+
+    add_schedule_link = rendered.css('a').find { |link| link.text.include?('Add Schedule') }
+    add_medication_link = rendered.css('a').find { |link| link.text.include?('Add Medication') }
+
+    expect(add_schedule_link[:class]).to include('rounded-full')
+    expect(add_schedule_link[:class]).to include('hover:bg-tertiary-container')
+    expect(add_schedule_link[:class]).to include('bg-card')
+    expect(add_medication_link[:class]).to include('bg-primary')
+    expect(add_medication_link[:class]).to include('text-primary-foreground')
+  end
 end

@@ -5,7 +5,10 @@ module Views
     class ChangePassword < Views::Rodauth::Base
       def view_template
         page_layout do
-          form_section
+          render_auth_card(title: rodauth.change_password_button) do
+            flash_section
+            render_change_password_form
+          end
         end
       end
 
@@ -14,9 +17,7 @@ module Views
       def flash_section
         return if flash_message.blank?
 
-        render RubyUI::Alert.new(variant: :destructive) do
-          plain(flash_message)
-        end
+        render_m3_alert(flash_message)
       end
 
       def flash_message
@@ -26,79 +27,61 @@ module Views
           rodauth.field_error(rodauth.password_confirm_param)
       end
 
-      def form_section
-        render RubyUI::Card.new(class: card_classes) do
-          render RubyUI::CardContent.new(class: 'space-y-6 p-6 sm:p-8') do
-            flash_section
-            change_password_form
-          end
-        end
-      end
-
-      def change_password_form
+      def render_change_password_form
         render RubyUI::Form.new(action: rodauth.change_password_path, method: :post, class: 'space-y-6',
                                 data_turbo: 'false') do
           authenticity_token_field
-          current_password_field
-          new_password_field
-          confirm_password_field
-          submit_button
+          render_current_password_field
+          render_new_password_field
+          render_confirm_password_field
+          render_submit_button
         end
       end
 
-      def current_password_field
-        render RubyUI::FormField.new do
-          render RubyUI::FormFieldLabel.new(for: 'password') { t('rodauth.views.change_password.password_label') }
-          render RubyUI::Input.new(
+      def render_current_password_field
+        render_m3_form_field(
+          label: t('rodauth.views.change_password.password_label'),
+          input_attrs: {
             type: :password,
             name: rodauth.password_param,
             id: 'password',
             required: true,
             autocomplete: 'current-password'
-          )
-          error = rodauth.field_error(rodauth.password_param)
-          p(class: 'mt-1 text-sm text-error') { error } if error.present?
-        end
+          },
+          error: rodauth.field_error(rodauth.password_param)
+        )
       end
 
-      def new_password_field
-        render RubyUI::FormField.new do
-          render RubyUI::FormFieldLabel.new(for: 'new-password') do
-            t('rodauth.views.change_password.new_password_label')
-          end
-          render RubyUI::Input.new(
+      def render_new_password_field
+        render_m3_form_field(
+          label: t('rodauth.views.change_password.new_password_label'),
+          input_attrs: {
             type: :password,
             name: rodauth.new_password_param,
             id: 'new-password',
             required: true,
             autocomplete: 'new-password'
-          )
-          error = rodauth.field_error(rodauth.new_password_param)
-          p(class: 'mt-1 text-sm text-error') { error } if error.present?
-        end
+          },
+          error: rodauth.field_error(rodauth.new_password_param)
+        )
       end
 
-      def confirm_password_field
-        render RubyUI::FormField.new do
-          render RubyUI::FormFieldLabel.new(for: 'password-confirm') do
-            t('rodauth.views.change_password.confirm_password_label')
-          end
-          render RubyUI::Input.new(
+      def render_confirm_password_field
+        render_m3_form_field(
+          label: t('rodauth.views.change_password.confirm_password_label'),
+          input_attrs: {
             type: :password,
             name: rodauth.password_confirm_param,
             id: 'password-confirm',
             required: true,
             autocomplete: 'new-password'
-          )
-          error = rodauth.field_error(rodauth.password_confirm_param)
-          p(class: 'mt-1 text-sm text-error') { error } if error.present?
-        end
+          },
+          error: rodauth.field_error(rodauth.password_confirm_param)
+        )
       end
 
-      def submit_button
-        render RubyUI::Button.new(type: :submit, variant: :primary, size: :md, class: 'w-full') do
-          rodauth.change_password_button
-        end
+      def render_submit_button
+        render_m3_submit_button(rodauth.change_password_button)
       end
     end
   end

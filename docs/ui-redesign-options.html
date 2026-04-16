@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MedTracker UI Redesign Options</title>
+    <style>
+      :root {
+        --ink: #172033;
+        --muted: #5c667a;
+        --line: rgba(23, 32, 51, 0.1);
+        --paper: #fbfaf7;
+        --panel: rgba(255, 255, 255, 0.82);
+        --panel-strong: rgba(255, 255, 255, 0.94);
+        --shadow: 0 28px 80px rgba(24, 37, 61, 0.14);
+        --radius-xl: 28px;
+        --radius-lg: 22px;
+        --radius-md: 16px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Plus Jakarta Sans", "Segoe UI", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at top left, rgba(194, 225, 208, 0.48), transparent 30%),
+          radial-gradient(circle at top right, rgba(255, 214, 176, 0.42), transparent 28%),
+          linear-gradient(180deg, #f7f4ef 0%, #fdfcfa 45%, #f3f5f8 100%);
+      }
+
+      .shell {
+        width: min(1320px, calc(100vw - 48px));
+        margin: 0 auto;
+        padding: 32px 0 72px;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr;
+        gap: 24px;
+        align-items: stretch;
+        margin-bottom: 28px;
+      }
+
+      .panel {
+        border: 1px solid var(--line);
+        border-radius: var(--radius-xl);
+        background: var(--panel);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(20px);
+      }
+
+      .hero-main {
+        padding: 38px 42px;
+      }
+
+      .eyebrow {
+        margin: 0 0 14px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.26em;
+        text-transform: uppercase;
+        color: #718096;
+      }
+
+      h1 {
+        margin: 0;
+        max-width: 12ch;
+        font-size: clamp(2.6rem, 5vw, 4.7rem);
+        line-height: 0.95;
+        letter-spacing: -0.05em;
+      }
+
+      .hero-main p {
+        max-width: 58ch;
+        margin: 20px 0 0;
+        font-size: 1.02rem;
+        line-height: 1.75;
+        color: var(--muted);
+      }
+
+      .hero-aside {
+        display: grid;
+        gap: 16px;
+        padding: 22px;
+      }
+
+      .mini-card {
+        border: 1px solid rgba(23, 32, 51, 0.08);
+        border-radius: var(--radius-lg);
+        background: var(--panel-strong);
+        padding: 18px 18px 20px;
+      }
+
+      .mini-card h2,
+      .roadmap h2,
+      .options h2 {
+        margin: 0 0 10px;
+        font-size: 0.92rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .mini-card ul,
+      .roadmap ol {
+        margin: 0;
+        padding-left: 18px;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      .mini-card strong {
+        color: var(--ink);
+      }
+
+      .options,
+      .roadmap {
+        padding: 26px;
+      }
+
+      .section-label {
+        margin: 0 0 6px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+        color: #7b8699;
+      }
+
+      .section-intro {
+        margin: 0 0 24px;
+        max-width: 72ch;
+        color: var(--muted);
+        line-height: 1.75;
+      }
+
+      .option-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+      }
+
+      .option {
+        border: 1px solid rgba(23, 32, 51, 0.08);
+        border-radius: 26px;
+        overflow: hidden;
+        background: rgba(255, 255, 255, 0.86);
+      }
+
+      .option.recommended {
+        outline: 2px solid rgba(105, 145, 124, 0.42);
+        box-shadow: 0 30px 70px rgba(77, 119, 95, 0.16);
+      }
+
+      .option-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 18px 20px;
+        border-bottom: 1px solid rgba(23, 32, 51, 0.08);
+      }
+
+      .option-title {
+        margin: 0;
+        font-size: 1.35rem;
+        letter-spacing: -0.03em;
+      }
+
+      .option-subtitle {
+        margin: 6px 0 0;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      .badge {
+        align-self: flex-start;
+        border-radius: 999px;
+        padding: 8px 12px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        background: rgba(18, 25, 38, 0.06);
+        color: #334155;
+      }
+
+      .badge.success {
+        background: rgba(114, 153, 129, 0.16);
+        color: #355646;
+      }
+
+      .preview {
+        padding: 18px;
+      }
+
+      .preview-frame {
+        position: relative;
+        min-height: 250px;
+        border-radius: 24px;
+        overflow: hidden;
+        border: 1px solid rgba(23, 32, 51, 0.08);
+      }
+
+      .preview-ui {
+        position: absolute;
+        inset: 0;
+        padding: 18px;
+        display: grid;
+        grid-template-columns: 132px 1fr;
+        gap: 16px;
+      }
+
+      .preview-nav,
+      .preview-main,
+      .mock-card,
+      .mock-modal {
+        border-radius: 20px;
+      }
+
+      .preview-nav {
+        padding: 14px;
+      }
+
+      .nav-pill,
+      .mock-row,
+      .metric,
+      .action-pill,
+      .modal-line,
+      .swatch {
+        border-radius: 999px;
+      }
+
+      .nav-pill {
+        height: 12px;
+        margin-bottom: 12px;
+      }
+
+      .preview-main {
+        display: grid;
+        grid-template-rows: auto 1fr;
+        gap: 14px;
+      }
+
+      .preview-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .headline {
+        width: 42%;
+        height: 18px;
+        border-radius: 12px;
+      }
+
+      .action-pill {
+        width: 126px;
+        height: 36px;
+      }
+
+      .content-grid {
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr;
+        gap: 14px;
+      }
+
+      .mock-card {
+        padding: 16px;
+      }
+
+      .metric {
+        width: 64px;
+        height: 64px;
+        margin-bottom: 14px;
+      }
+
+      .mock-row {
+        height: 12px;
+        margin-top: 10px;
+      }
+
+      .mock-row.short {
+        width: 52%;
+      }
+
+      .mock-row.mid {
+        width: 74%;
+      }
+
+      .mock-row.long {
+        width: 92%;
+      }
+
+      .mock-modal {
+        position: absolute;
+        right: 18px;
+        bottom: 18px;
+        width: 46%;
+        padding: 18px;
+        border: 1px solid rgba(255, 255, 255, 0.24);
+      }
+
+      .modal-line {
+        height: 11px;
+        margin-top: 10px;
+      }
+
+      .option-body {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
+        padding: 0 20px 22px;
+      }
+
+      .detail h3 {
+        margin: 0 0 10px;
+        font-size: 0.9rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .detail p,
+      .detail li {
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      .detail ul {
+        margin: 0;
+        padding-left: 18px;
+      }
+
+      .swatch-row {
+        display: flex;
+        gap: 8px;
+        margin-top: 14px;
+      }
+
+      .swatch {
+        width: 34px;
+        height: 34px;
+        border: 1px solid rgba(23, 32, 51, 0.08);
+      }
+
+      .roadmap-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .step {
+        border: 1px solid rgba(23, 32, 51, 0.08);
+        border-radius: 24px;
+        background: rgba(255, 255, 255, 0.84);
+        padding: 18px 18px 20px;
+      }
+
+      .step-number {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        margin-bottom: 14px;
+        font-size: 0.92rem;
+        font-weight: 700;
+        background: rgba(18, 25, 38, 0.08);
+      }
+
+      .step h3 {
+        margin: 0 0 10px;
+        font-size: 1.1rem;
+      }
+
+      .step p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      .footer-note {
+        margin-top: 18px;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      .clinical {
+        background:
+          linear-gradient(160deg, rgba(246, 250, 247, 0.95), rgba(237, 244, 240, 0.96)),
+          #f4f8f5;
+      }
+
+      .clinical .preview-nav { background: rgba(255, 255, 255, 0.82); }
+      .clinical .preview-main { background: rgba(255, 255, 255, 0.62); padding: 14px; border-radius: 22px; }
+      .clinical .nav-pill,
+      .clinical .mock-row,
+      .clinical .headline { background: rgba(44, 84, 62, 0.16); }
+      .clinical .metric { background: linear-gradient(135deg, #dcebe1, #f8fbf9); }
+      .clinical .action-pill { background: linear-gradient(135deg, #7ba48d, #5f836f); }
+      .clinical .mock-card { background: rgba(255, 255, 255, 0.9); }
+      .clinical .mock-modal { background: rgba(255, 255, 255, 0.84); backdrop-filter: blur(14px); }
+      .clinical .modal-line { background: rgba(44, 84, 62, 0.18); }
+
+      .editorial {
+        background:
+          radial-gradient(circle at top left, rgba(245, 193, 140, 0.32), transparent 28%),
+          linear-gradient(155deg, #fff8f1, #f4efe7 60%, #f0ebe6);
+      }
+
+      .editorial .preview-nav { background: rgba(255, 250, 244, 0.78); }
+      .editorial .preview-main { background: rgba(255, 249, 243, 0.56); padding: 14px; border-radius: 22px; }
+      .editorial .nav-pill,
+      .editorial .mock-row,
+      .editorial .headline { background: rgba(116, 74, 41, 0.18); }
+      .editorial .metric { background: linear-gradient(145deg, #f4d1b2, #fff0df); }
+      .editorial .action-pill { background: linear-gradient(135deg, #cb7b52, #7b4f37); }
+      .editorial .mock-card { background: rgba(255, 251, 247, 0.88); }
+      .editorial .mock-modal { background: rgba(123, 79, 55, 0.12); backdrop-filter: blur(12px); }
+      .editorial .modal-line { background: rgba(123, 79, 55, 0.18); }
+
+      .command {
+        background:
+          linear-gradient(160deg, #edf2f8 0%, #e5edf8 50%, #dce6f2 100%);
+      }
+
+      .command .preview-nav { background: rgba(30, 52, 84, 0.92); }
+      .command .preview-main { background: rgba(255, 255, 255, 0.48); padding: 14px; border-radius: 22px; }
+      .command .nav-pill { background: rgba(255, 255, 255, 0.16); }
+      .command .mock-row,
+      .command .headline { background: rgba(24, 52, 96, 0.18); }
+      .command .metric { background: linear-gradient(135deg, #d8e5f9, #f1f6fd); }
+      .command .action-pill { background: linear-gradient(135deg, #2f6ef2, #1b4fb8); }
+      .command .mock-card { background: rgba(255, 255, 255, 0.88); }
+      .command .mock-modal { background: rgba(255, 255, 255, 0.92); }
+      .command .modal-line { background: rgba(24, 52, 96, 0.18); }
+
+      .material {
+        background:
+          radial-gradient(circle at top right, rgba(173, 192, 243, 0.28), transparent 24%),
+          linear-gradient(160deg, #f6f7fb, #eef2f8 64%, #e8edf5);
+      }
+
+      .material .preview-nav { background: rgba(241, 245, 252, 0.88); }
+      .material .preview-main { background: rgba(255, 255, 255, 0.36); padding: 14px; border-radius: 22px; }
+      .material .nav-pill,
+      .material .mock-row,
+      .material .headline { background: rgba(57, 84, 140, 0.17); }
+      .material .metric { background: linear-gradient(145deg, #e8eefb, #f8fbff); }
+      .material .action-pill { background: linear-gradient(135deg, #697bda, #5563b8); }
+      .material .mock-card { background: rgba(255, 255, 255, 0.82); backdrop-filter: blur(14px); }
+      .material .mock-modal { background: rgba(255, 255, 255, 0.72); backdrop-filter: blur(18px); }
+      .material .modal-line { background: rgba(57, 84, 140, 0.16); }
+
+      @media (max-width: 1100px) {
+        .hero,
+        .option-grid,
+        .roadmap-grid,
+        .option-body {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .shell {
+          width: min(100vw - 24px, 1320px);
+          padding-top: 16px;
+        }
+
+        .hero-main,
+        .options,
+        .roadmap {
+          padding: 22px;
+        }
+
+        .preview-ui,
+        .content-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .preview-nav {
+          display: none;
+        }
+
+        .mock-modal {
+          position: relative;
+          right: auto;
+          bottom: auto;
+          width: 100%;
+          margin-top: 14px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <section class="hero">
+        <div class="panel hero-main">
+          <p class="eyebrow">MedTracker UI System Plan</p>
+          <h1>Choose one visual language, then make the whole product obey it.</h1>
+          <p>
+            The product already has solid flows. The design problem is cohesion: the app currently mixes
+            multiple surface systems, several typographic voices, and too many special-case shells across
+            navigation, cards, forms, popovers, sheets, and modals. This plan treats the redesign as a
+            system cleanup, not a random beautification pass.
+          </p>
+        </div>
+
+        <aside class="panel hero-aside">
+          <div class="mini-card">
+            <h2>Subagent Findings</h2>
+            <ul>
+              <li><strong>Audit 1:</strong> design-system drift is strongest in surfaces, shadows, radii, and control chrome.</li>
+              <li><strong>Audit 2:</strong> the app is readable, but not visually decisive; modals and navigation feel like separate products.</li>
+              <li><strong>Conclusion:</strong> unify shells first, then page families, then premium brand moments.</li>
+            </ul>
+          </div>
+
+          <div class="mini-card">
+            <h2>Non-Negotiables</h2>
+            <ul>
+              <li>One modal sheet/dialog/popover contract</li>
+              <li>One control surface recipe for buttons, inputs, selects, comboboxes</li>
+              <li>One navigation shell across sidebar, top bar, bottom nav, and menus</li>
+              <li>One typography hierarchy with brand moments used sparingly</li>
+            </ul>
+          </div>
+        </aside>
+      </section>
+
+      <section class="panel options">
+        <p class="section-label">Direction Choice</p>
+        <h2>Four coherent directions</h2>
+        <p class="section-intro">
+          A decision is required here. These options are intentionally distinct so the application stops
+          drifting between moods. Pick one direction and the implementation plan below will lock the rest of
+          the UI to it.
+        </p>
+
+        <div class="option-grid">
+          <article class="option recommended">
+            <div class="option-header">
+              <div>
+                <h3 class="option-title">Clinical White + Sage</h3>
+                <p class="option-subtitle">
+                  Calm, premium, and trustworthy. White surfaces stay crisp; sage carries the accent burden;
+                  gradients become rare and intentional.
+                </p>
+              </div>
+              <span class="badge success">Recommended</span>
+            </div>
+            <div class="preview">
+              <div class="preview-frame clinical">
+                <div class="preview-ui">
+                  <div class="preview-nav">
+                    <div class="nav-pill"></div>
+                    <div class="nav-pill"></div>
+                    <div class="nav-pill"></div>
+                    <div class="nav-pill"></div>
+                  </div>
+                  <div class="preview-main">
+                    <div class="preview-top">
+                      <div class="headline"></div>
+                      <div class="action-pill"></div>
+                    </div>
+                    <div class="content-grid">
+                      <div class="mock-card">
+                        <div class="metric"></div>
+                        <div class="mock-row long"></div>
+                        <div class="mock-row mid"></div>
+                        <div class="mock-row short"></div>
+                      </div>
+                      <div class="mock-card">
+                        <div class="metric"></div>
+                        <div class="mock-row long"></div>
+                        <div class="mock-row short"></div>
+                      </div>
+                    </div>
+                    <div class="mock-modal">
+                      <div class="modal-line" style="width: 44%;"></div>
+                      <div class="modal-line" style="width: 76%;"></div>
+                      <div class="modal-line" style="width: 64%;"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="option-body">
+              <div class="detail">
+                <h3>Character</h3>
+                <p>
+                  This is the best match for healthcare without becoming cold. It gives MedTracker a cleaner,
+                  more expensive feel while keeping tasks obvious and stress-free.
+                </p>
+                <div class="swatch-row">
+                  <div class="swatch" style="background:#fbfaf7;"></div>
+                  <div class="swatch" style="background:#dcebe1;"></div>
+                  <div class="swatch" style="background:#7ba48d;"></div>
+                  <div class="swatch" style="background:#172033;"></div>
+                </div>
+              </div>
+              <div class="detail">
+                <h3>Best For</h3>
+                <ul>
+                  <li>Modals, forms, and administration flows</li>
+                  <li>Inventory and medication detail pages</li>
+                  <li>A calmer, cleaner app-wide shell</li>
+                </ul>
+              </div>
+            </div>
+          </article>
+
+          <article class="option">
+            <div class="option-header">
+              <div>
+                <h3 class="option-title">Editorial Wellness</h3>
+                <p class="option-subtitle">
+                  Warm, tactile, and a little luxurious. More atmosphere, richer gradients, and stronger hero moments.
+                </p>
+              </div>
+              <span class="badge">Expressive</span>
+            </div>
+            <div class="preview">
+              <div class="preview-frame editorial">
+                <div class="preview-ui">
+                  <div class="preview-nav">
+                    <div class="nav-pill"></div>
+                    <div class="nav-pill"></div>
+                    <div class="nav-pill"></div>
+                    <div class="nav-pill"></div>
+                  </div>
+                  <div class="preview-main">
+                    <div class="preview-top">
+                      <div class="headline"></div>
+                      <div class="action-pill"></div>
+                    </div>
+                    <div class="content-grid">
+                      <div class="mock-card">
+                        <div class="metric"></div>
+                        <div class="mock-row long"></div>
+                        <div class="mock-row mid"></div>
+                        <div class="mock-row short"></div>
+                      </div>
+                      <div class="mock-card">
+                        <div class="metric"></div>
+                        <div class="mock-row long"></div>
+                        <div class="mock-row short"></div>
+                      </div>
+                    </div>
+                    <div class="mock-modal">
+                      <div class="modal-line" style="width: 42%;"></div>
+                      <div class="modal-line" style="width: 74%;"></div>
+                      <div class="modal-line" style="width: 58%;"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="option-body">
+              <div class="detail">
+                <h3>Character</h3>
+                <p>
+                  This pushes MedTracker toward a more branded and memorable identity, especially on profile,
+                  onboarding, and dashboard storytelling moments.
+                </p>
+                <div class="swatch-row">
+                  <div class="swatch" style="background:#fff8f1;"></div>
+                  <div class="swatch" style="background:#f4d1b2;"></div>
+                  <div class="swatch" style="background:#cb7b52;"></div>
+                  <div class="swatch" style="background:#50392d;"></div>
+                </div>
+              </div>
+              <div class="detail">
+                <h3>Risk</h3>
+                <ul>
+                  <li>Can become decorative if applied to every utility screen</li>
+                  <li>Needs strong restraint on alerts, tables, and inventory tools</li>
+                  <li>Best used if brand personality matters as much as operational speed</li>
+                </ul>
+              </div>
+            </div>
+          </article>
+
+          <article class="option">
+            <div class="option-header">
+              <div>
+                <h3 class="option-title">Command Center</h3>
+                <p class="option-subtitle">
+                  Sharper, more operational, and more decisive. Higher information density, stronger action hierarchy, cleaner status cues.
+                </p>
+              </div>
+              <span class="badge">Operational</span>
+            </div>
+            <div class="preview">
+              <div class="preview-frame command">
+                <div class="preview-ui">
+                  <div class="preview-nav">
+                    <div class="nav-pill"></div>
+                    <div class="nav-pill"></div>
+                    <div class="nav-pill"></div>
+                    <div class="nav-pill"></div>
+                  </div>
+                  <div class="preview-main">
+                    <div class="preview-top">
+                      <div class="headline"></div>
+                      <div class="action-pill"></div>
+                    </div>
+                    <div class="content-grid">
+                      <div class="mock-card">
+                        <div class="metric"></div>
+                        <div class="mock-row long"></div>
+                        <div class="mock-row mid"></div>
+                        <div class="mock-row short"></div>
+                      </div>
+                      <div class="mock-card">
+                        <div class="metric"></div>
+                        <div class="mock-row long"></div>
+                        <div class="mock-row short"></div>
+                      </div>
+                    </div>
+                    <div class="mock-modal">
+                      <div class="modal-line" style="width: 40%;"></div>
+                      <div class="modal-line" style="width: 70%;"></div>
+                      <div class="modal-line" style="width: 52%;"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="option-body">
+              <div class="detail">
+                <h3>Character</h3>
+                <p>
+                  This is the best direction if MedTracker should feel more like a clinical operations console
+                  than a wellness product. It improves scan speed and task confidence.
+                </p>
+                <div class="swatch-row">
+                  <div class="swatch" style="background:#edf2f8;"></div>
+                  <div class="swatch" style="background:#d8e5f9;"></div>
+                  <div class="swatch" style="background:#2f6ef2;"></div>
+                  <div class="swatch" style="background:#183460;"></div>
+                </div>
+              </div>
+              <div class="detail">
+                <h3>Best For</h3>
+                <ul>
+                  <li>Medication actions and stock administration</li>
+                  <li>Timeline, reports, and inventory dashboards</li>
+                  <li>Dense mobile and tablet workflows</li>
+                </ul>
+              </div>
+            </div>
+          </article>
+
+          <article class="option">
+            <div class="option-header">
+              <div>
+                <h3 class="option-title">Soft Material System</h3>
+                <p class="option-subtitle">
+                  Layered, translucent, and smooth. A system-first direction focused on consistency rather than brand drama.
+                </p>
+              </div>
+              <span class="badge">Systematic</span>
+            </div>
+            <div class="preview">
+              <div class="preview-frame material">
+                <div class="preview-ui">
+                  <div class="preview-nav">
+                    <div class="nav-pill"></div>
+                    <div class="nav-pill"></div>
+                    <div class="nav-pill"></div>
+                    <div class="nav-pill"></div>
+                  </div>
+                  <div class="preview-main">
+                    <div class="preview-top">
+                      <div class="headline"></div>
+                      <div class="action-pill"></div>
+                    </div>
+                    <div class="content-grid">
+                      <div class="mock-card">
+                        <div class="metric"></div>
+                        <div class="mock-row long"></div>
+                        <div class="mock-row mid"></div>
+                        <div class="mock-row short"></div>
+                      </div>
+                      <div class="mock-card">
+                        <div class="metric"></div>
+                        <div class="mock-row long"></div>
+                        <div class="mock-row short"></div>
+                      </div>
+                    </div>
+                    <div class="mock-modal">
+                      <div class="modal-line" style="width: 44%;"></div>
+                      <div class="modal-line" style="width: 76%;"></div>
+                      <div class="modal-line" style="width: 60%;"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="option-body">
+              <div class="detail">
+                <h3>Character</h3>
+                <p>
+                  This is the lowest-risk route if consistency is the top priority and you want fewer visual extremes.
+                </p>
+                <div class="swatch-row">
+                  <div class="swatch" style="background:#f6f7fb;"></div>
+                  <div class="swatch" style="background:#e8eefb;"></div>
+                  <div class="swatch" style="background:#697bda;"></div>
+                  <div class="swatch" style="background:#39548c;"></div>
+                </div>
+              </div>
+              <div class="detail">
+                <h3>Risk</h3>
+                <ul>
+                  <li>Can drift back toward washed-out grey if contrast is not policed</li>
+                  <li>Less memorable than the other three directions</li>
+                  <li>Needs very disciplined typography to avoid feeling generic</li>
+                </ul>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel roadmap">
+        <p class="section-label">Execution Plan</p>
+        <h2>Rollout in three passes</h2>
+        <p class="section-intro">
+          Once a direction is chosen, the implementation should move in this order so the app becomes cohesive
+          quickly without creating another layer of drift.
+        </p>
+
+        <div class="roadmap-grid">
+          <article class="step">
+            <div class="step-number">1</div>
+            <h3>Foundation Pass</h3>
+            <p>
+              Lock typography, radii, shadows, borders, and the surface stack. Unify dialogs, sheets,
+              popovers, dropdowns, selects, comboboxes, and control chrome before touching page-specific styling.
+            </p>
+          </article>
+
+          <article class="step">
+            <div class="step-number">2</div>
+            <h3>Shell Pass</h3>
+            <p>
+              Rebuild the app chrome so sidebar, mobile nav, top bar, profile menus, and flash/overlay behavior
+              all feel like one product. This is where the app starts feeling intentional.
+            </p>
+          </article>
+
+          <article class="step">
+            <div class="step-number">3</div>
+            <h3>Page-Family Pass</h3>
+            <p>
+              Normalize the highest-traffic families: dashboard, medications, people, workflows/forms, and profile.
+              Reserve premium or expressive moments for a few strategic hero surfaces only.
+            </p>
+          </article>
+        </div>
+
+        <p class="footer-note">
+          Recommended implementation order if you choose <strong>Clinical White + Sage</strong>:
+          modal and floating surfaces, control primitives, navigation shell, dashboard and medications family,
+          then profile/settings as the final polish pass.
+        </p>
+      </section>
+    </div>
+  </body>
+</html>

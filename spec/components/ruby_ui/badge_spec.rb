@@ -21,4 +21,18 @@ RSpec.describe RubyUI::Badge, type: :component do
     badge = rendered.css('span').first
     expect(badge['class']).to include('text-on-primary-container')
   end
+
+  it 'normalizes outlined to outline' do
+    rendered = render_inline(described_class.new(variant: :outlined)) { 'Badge' }
+
+    badge = rendered.css('span').first
+    expect(badge['class']).to include('ring-border')
+  end
+
+  it 'normalizes tonal to secondary' do
+    rendered = render_inline(described_class.new(variant: :tonal)) { 'Badge' }
+
+    badge = rendered.css('span').first
+    expect(badge['class']).to include('text-secondary-foreground')
+  end
 end

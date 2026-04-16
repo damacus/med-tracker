@@ -35,7 +35,7 @@ module Components
 
         def render_connecting_line
           div(
-            class: 'absolute top-4 -left-1/2 w-full h-0.5 bg-surface-container-high ' \
+            class: 'absolute top-4 -left-1/2 w-full h-0.5 bg-primary/15 ' \
                    '-z-10 transition-colors duration-300',
             data: { indicator_line: true }
           )
@@ -44,9 +44,9 @@ module Components
         def render_circle(step, index)
           base = 'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300'
           active = if index.zero?
-                     'bg-primary text-white ring-4 ring-primary/20 scale-110'
+                     'bg-primary text-on-primary shadow-elevation-2 scale-110'
                    else
-                     'bg-surface-container text-muted-foreground'
+                     'bg-surface-container-highest text-on-surface-variant'
                    end
 
           div(class: "#{base} #{active}", data: { indicator_circle: true }) { step[:icon] }
@@ -54,9 +54,11 @@ module Components
 
         def render_label(step, index)
           base = 'mt-2 text-[10px] font-bold uppercase tracking-widest transition-colors duration-300'
-          color = index.zero? ? 'text-primary' : 'text-muted-foreground'
+          color = index.zero? ? 'text-primary' : 'text-on-surface-variant'
 
-          span(class: "#{base} #{color}", data: { indicator_label: true }) { step[:label] }
+          m3_text(variant: :label_small, class: "#{base} #{color}", data: { indicator_label: true }) do
+            step[:label]
+          end
         end
       end
     end

@@ -12,7 +12,7 @@ module RubyUI
       {
         role: 'separator',
         aria_orientation: 'horizontal',
-        class: '-mx-1 my-1 h-px bg-muted'
+        class: '-mx-1 my-1 h-px bg-secondary-container'
       }
     end
   end

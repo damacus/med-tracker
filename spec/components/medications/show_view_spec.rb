@@ -5,6 +5,10 @@ require 'rails_helper'
 RSpec.describe Components::Medications::ShowView, type: :component do
   let(:medication) { create(:medication, name: 'Paracetamol', current_supply: 50) }
 
+  def fetch_action_element(rendered, selector, message)
+    rendered.at_css(selector) || raise(message)
+  end
+
   it 'renders the medication name' do
     rendered = render_inline(described_class.new(medication: medication))
 
@@ -36,17 +40,68 @@ RSpec.describe Components::Medications::ShowView, type: :component do
   end
 
   describe 'action button styling' do
+    let(:medication) { create(:medication, name: 'Paracetamol', current_supply: 50, reorder_status: nil) }
     let(:rendered) { render_inline(described_class.new(medication: medication)) }
 
-    it 'uses action button utility tokens' do
-      add_schedule_link = rendered.css('a').find { |link| link.text.include?('Add Schedule') }
-      mark_as_ordered_link = rendered.css('a').find { |link| link.text.include?('Mark as Ordered') }
-      refill_button = rendered.css('button').find { |button| button.text.include?('Refill Inventory') }
+    it 'uses action button utility tokens for add schedule' do
+      add_schedule_link = fetch_action_element(rendered, "a[href*='/add_medication']", 'Add Schedule link not found')
 
-      expect(add_schedule_link[:class]).to include('rounded-full')
-      expect(mark_as_ordered_link[:class]).to include('rounded-full')
-      expect(refill_button[:class]).to include('rounded-full')
+      expect(add_schedule_link[:class]).to include('rounded-shape-full')
     end
+
+    it 'uses action button utility tokens for log administration' do
+      log_administration_link = fetch_action_element(
+        rendered,
+        "a[href$='/administration']",
+        'Log Administration link not found'
+      )
+
+      expect(log_administration_link[:class]).to include('rounded-shape-full')
+    end
+
+    it 'uses action button utility tokens for mark as ordered' do
+      mark_as_ordered_link = fetch_action_element(
+        rendered,
+        "a[href$='/mark_as_ordered']",
+        'Mark as Ordered link not found'
+      )
+
+      expect(mark_as_ordered_link[:class]).to include('rounded-shape-full')
+    end
+
+    it 'uses action button utility tokens for refill' do
+      refill_button = fetch_action_element(
+        rendered,
+        "[data-controller='ruby-ui--dialog'] button",
+        'Refill button not found'
+      )
+
+      expect(refill_button[:class]).to include('rounded-shape-full')
+    end
+  end
+
+  it 'renders the log administration link' do
+    rendered = render_inline(described_class.new(medication: medication))
+
+    log_administration_link = rendered.css('a').find { |link| link.text.include?('Log') }
+
+    expect(log_administration_link).to be_present
+  end
+
+  it 'renders the log administration href' do
+    rendered = render_inline(described_class.new(medication: medication))
+
+    log_administration_link = rendered.css('a').find { |link| link.text.include?('Log') }
+
+    expect(log_administration_link[:href]).to eq("/medications/#{medication.id}/administration")
+  end
+
+  it 'renders log administration as a modal link' do
+    rendered = render_inline(described_class.new(medication: medication))
+
+    log_administration_link = rendered.css('a').find { |link| link.text.include?('Log') }
+
+    expect(log_administration_link['data-turbo-frame']).to eq('modal')
   end
 
   it 'renders safety warnings when present' do
@@ -54,6 +109,12 @@ RSpec.describe Components::Medications::ShowView, type: :component do
     rendered = render_inline(described_class.new(medication: medication_with_warnings))
 
     expect(rendered.text).to include('Safety Warnings')
+  end
+
+  it 'renders warning content when present' do
+    medication_with_warnings = create(:medication, warnings: 'Take with food')
+    rendered = render_inline(described_class.new(medication: medication_with_warnings))
+
     expect(rendered.text).to include('Take with food')
   end
 

@@ -25,7 +25,7 @@ module Components
           render_form
         else
           div(class: 'container mx-auto px-4 py-12 max-w-2xl') do
-            Card(class: 'overflow-hidden border-none shadow-2xl rounded-[2.5rem] bg-card') do
+            m3_card(variant: :elevated, class: 'overflow-visible border-none shadow-elevation-3 rounded-[2.5rem]') do
               div(class: 'p-10') do
                 render_header_section
                 render_form
@@ -38,9 +38,9 @@ module Components
       private
 
       def render_header_section
-        div(class: 'mb-8 space-y-2') do
-          Heading(level: 1, size: '7', class: 'font-black tracking-tight') { title }
-          Text(weight: 'muted') { subtitle }
+        div(class: 'mb-8 space-y-2 text-center md:text-left') do
+          m3_heading(variant: :display_small, level: 1, class: 'font-black tracking-tight') { title }
+          m3_text(variant: :body_large, class: 'text-on-surface-variant font-medium') { subtitle }
         end
       end
 
@@ -95,12 +95,18 @@ module Components
       end
 
       def render_errors
-        Alert(variant: :destructive, class: 'mb-6') do
-          AlertTitle { "#{person.errors.count} error(s) prohibited this person from being saved:" }
-          AlertDescription do
-            ul(class: 'my-2 ml-6 list-disc [&>li]:mt-1') do
-              person.errors.full_messages.each do |message|
-                li { message }
+        render RubyUI::Alert.new(variant: :destructive,
+                                 class: 'mb-6 rounded-shape-xl border-none shadow-elevation-1') do
+          div(class: 'flex items-start gap-3') do
+            render Icons::AlertCircle.new(size: 20)
+            div do
+              m3_heading(variant: :title_medium, level: 2, class: 'font-bold mb-1') do
+                plain "#{person.errors.count} error(s) prohibited this person from being saved:"
+              end
+              ul(class: 'text-sm opacity-90 list-disc pl-4 space-y-1 font-medium') do
+                person.errors.full_messages.each do |message|
+                  li { message }
+                end
               end
             end
           end
@@ -118,16 +124,20 @@ module Components
       end
 
       def render_name_field(_f)
-        FormField do
-          FormFieldLabel(for: 'person_name') { t('people.form.name') }
-          Input(
+        div(class: 'space-y-2') do
+          render RubyUI::FormFieldLabel.new(
+            for: 'person_name',
+            class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant px-1'
+          ) { t('people.form.name') }
+          m3_input(
             type: :text,
             name: 'person[name]',
             id: 'person_name',
             value: person.name,
             required: true,
             placeholder: t('forms.people.name_placeholder', default: 'e.g., Jane Doe'),
-            class: field_error_class(person, :name),
+            class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 ' \
+                   "#{field_error_class(person, :name)}",
             **field_error_attributes(person, :name, input_id: 'person_name')
           )
           render_field_error(person, :name, input_id: 'person_name')
@@ -135,15 +145,19 @@ module Components
       end
 
       def render_email_field(_f)
-        FormField do
-          FormFieldLabel(for: 'person_email') { t('people.form.email') }
-          Input(
+        div(class: 'space-y-2') do
+          render RubyUI::FormFieldLabel.new(
+            for: 'person_email',
+            class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant px-1'
+          ) { t('people.form.email') }
+          m3_input(
             type: :email,
             name: 'person[email]',
             id: 'person_email',
             value: person.email,
             placeholder: t('forms.people.email_placeholder', default: 'e.g., jane@example.com'),
-            class: field_error_class(person, :email),
+            class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 ' \
+                   "#{field_error_class(person, :email)}",
             **field_error_attributes(person, :email, input_id: 'person_email')
           )
           render_field_error(person, :email, input_id: 'person_email')
@@ -151,38 +165,60 @@ module Components
       end
 
       def render_date_of_birth_field(_f)
-        FormField do
-          FormFieldLabel(for: 'person_date_of_birth') { t('people.form.date_of_birth') }
-          Input(
-            type: :date,
+        div(class: 'space-y-2') do
+          render RubyUI::FormFieldLabel.new(
+            for: 'person_date_of_birth',
+            class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant px-1'
+          ) { t('people.form.date_of_birth') }
+          m3_input(
+            type: :string,
             name: 'person[date_of_birth]',
             id: 'person_date_of_birth',
-            value: person.date_of_birth&.to_s,
+            value: person.date_of_birth&.to_fs(:db),
             required: true,
-            class: field_error_class(person, :date_of_birth),
+            placeholder: 'YYYY-MM-DD',
+            class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 ' \
+                   'transition-all ' \
+                   "#{field_error_class(person, :date_of_birth)}",
+            data: {
+              controller: 'ruby-ui--calendar-input'
+            },
             **field_error_attributes(person, :date_of_birth, input_id: 'person_date_of_birth')
+          )
+          render RubyUI::Calendar.new(
+            input_id: '#person_date_of_birth',
+            date_format: 'yyyy-MM-dd',
+            class: 'rounded-md border shadow-elevation-2 bg-surface-container-high'
           )
           render_field_error(person, :date_of_birth, input_id: 'person_date_of_birth')
         end
       end
 
       def render_person_type_field(_f)
-        FormField do
-          FormFieldLabel(for: 'person_person_type') { t('people.form.person_type') }
-          Select do
-            SelectInput(
-              name: 'person[person_type]',
-              id: 'person_person_type',
-              value: selected_person_type
+        div(class: 'space-y-2') do
+          render RubyUI::FormFieldLabel.new(
+            for: 'person_person_type_trigger',
+            class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant px-1'
+          ) { t('people.form.person_type') }
+          render RubyUI::Combobox.new(class: 'w-full') do
+            render RubyUI::ComboboxTrigger.new(
+              placeholder: selected_person_type&.humanize || t('people.form.select_person_type'),
+              class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all'
             )
-            SelectTrigger do
-              SelectValue(placeholder: t('people.form.select_person_type')) do
-                selected_person_type&.humanize || t('people.form.select_person_type')
-              end
-            end
-            SelectContent do
-              available_person_types.each do |type|
-                SelectItem(value: type) { type.humanize }
+
+            render RubyUI::ComboboxPopover.new do
+              render RubyUI::ComboboxList.new do
+                available_person_types.each do |type|
+                  render RubyUI::ComboboxItem.new do
+                    render RubyUI::ComboboxRadio.new(
+                      name: 'person[person_type]',
+                      id: "person_person_type_#{type}",
+                      value: type,
+                      checked: selected_person_type == type
+                    )
+                    span { type.humanize }
+                  end
+                end
               end
             end
           end
@@ -190,8 +226,11 @@ module Components
       end
 
       def render_capacity_field(_f)
-        FormField do
-          div(class: 'flex items-center gap-3') do
+        div(class: 'space-y-2') do
+          div(
+            class: 'flex items-center gap-3 p-4 rounded-xl border border-outline-variant ' \
+                   'bg-surface-container-low state-layer relative'
+          ) do
             input(
               type: 'hidden',
               name: 'person[has_capacity]',
@@ -203,14 +242,15 @@ module Components
               id: 'person_has_capacity',
               value: '1',
               checked: person.has_capacity,
-              class: checkbox_classes,
+              class: "z-10 #{checkbox_classes}",
               data: {
                 controller: 'capacity-hint',
                 action: 'capacity-hint#toggleHint',
                 capacity_hint_target: 'checkbox'
               }
             )
-            FormFieldLabel(for: 'person_has_capacity', class: 'mb-0') do
+            render RubyUI::FormFieldLabel.new(for: 'person_has_capacity',
+                                              class: 'mb-0 z-10 font-bold text-foreground cursor-pointer') do
               t('people.form.has_capacity')
             end
           end
@@ -221,10 +261,10 @@ module Components
       def render_capacity_hint
         hint_visible = !person.has_capacity
         div(
-          class: ['mt-2 text-sm text-on-warning-container', ('hidden' unless hint_visible)],
+          class: ['mt-2 text-sm text-on-warning-container font-medium px-1', ('hidden' unless hint_visible)],
           data: { capacity_hint_target: 'hint' }
         ) do
-          strong { "#{t('people.form.note')} " }
+          strong { "#{t('people.form.note')}: " }
           plain t('people.form.capacity_hint')
           plain " #{t('people.form.capacity_hint_assign_carer')}" if person.persisted? && person.carers.empty?
         end
@@ -232,8 +272,8 @@ module Components
 
       def render_actions(_f)
         div(class: 'flex gap-3 justify-end pt-4') do
-          Button(variant: :ghost, data: { action: 'click->ruby-ui--dialog#dismiss' }) { t('people.form.cancel') }
-          Button(type: :submit, variant: :primary) do
+          m3_button(variant: :text, data: { action: 'click->ruby-ui--dialog#dismiss' }) { t('people.form.cancel') }
+          m3_button(type: :submit, variant: :filled) do
             person.new_record? ? t('people.form.create') : t('people.form.update')
           end
         end

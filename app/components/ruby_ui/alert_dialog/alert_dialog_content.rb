@@ -14,7 +14,7 @@ module RubyUI
     def background
       div(
         data_state: 'open',
-        class: 'fixed inset-0 z-50 bg-black/80 backdrop-blur-sm data-[state=open]:animate-in pointer-events-auto',
+        class: 'fixed inset-0 z-50 bg-foreground/10 backdrop-blur-[1.5px] data-[state=open]:animate-in pointer-events-auto',
         data_aria_hidden: 'true',
         aria_hidden: 'true'
       )
@@ -24,7 +24,7 @@ module RubyUI
       div(
         role: 'alertdialog',
         data_state: 'open',
-        class: 'flex flex-col fixed left-[50%] top-[50%] z-50 w-full max-w-lg max-h-screen overflow-y-auto translate-x-[-50%] translate-y-[-50%] gap-4 border bg-surface-container-high p-6 shadow-elevation-5 duration-200 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:rounded-shape-xl md:w-full pointer-events-auto',
+        class: 'fixed left-[50%] top-[50%] z-50 flex max-h-screen w-full max-w-lg translate-x-[-50%] translate-y-[-50%] flex-col gap-4 overflow-y-auto border border-border/70 bg-popover p-8 text-foreground shadow-elevation-5 duration-200 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:rounded-shape-xl md:w-full pointer-events-auto',
         &
       )
     end

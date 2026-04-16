@@ -6,7 +6,7 @@ module Views
       include Phlex::Rails::Helpers::LinkTo
 
       def view_template
-        render Card.new(class: 'rounded-[2rem] border border-border/70 bg-card/95 shadow-[0_18px_45px_-32px_rgba(15,23,42,0.45)]') do
+        m3_card(class: 'border-border/70 shadow-elevation-2') do
           render CardHeader.new do
             render(CardTitle.new { t('profiles.version_info.title') })
             render(CardDescription.new { t('profiles.version_info.description') })
@@ -24,14 +24,14 @@ module Views
 
       def render_version_row
         div(class: 'flex items-center justify-between border-b border-border/50 py-3') do
-          dt(class: 'text-sm font-medium text-muted-foreground') { t('profiles.version_info.app_version') }
+          dt(class: 'text-sm font-medium text-on-surface-variant') { t('profiles.version_info.app_version') }
           dd(class: 'text-sm font-mono text-foreground') { "v#{MedTracker::VERSION}" }
         end
       end
 
       def render_release_notes_row
         div(class: 'flex items-center justify-between border-b border-border/50 py-3') do
-          dt(class: 'text-sm font-medium text-muted-foreground') { t('profiles.version_info.release_notes') }
+          dt(class: 'text-sm font-medium text-on-surface-variant') { t('profiles.version_info.release_notes') }
           dd do
             link_to "v#{MedTracker::VERSION}",
                     "https://github.com/damacus/med-tracker/releases/tag/v#{MedTracker::VERSION}",
@@ -44,7 +44,7 @@ module Views
 
       def render_docs_row
         div(class: 'flex items-center justify-between py-3') do
-          dt(class: 'text-sm font-medium text-muted-foreground') { t('profiles.version_info.documentation') }
+          dt(class: 'text-sm font-medium text-on-surface-variant') { t('profiles.version_info.documentation') }
           dd do
             link_to t('profiles.version_info.view_docs'),
                     'https://damacus.github.io/med-tracker',

@@ -11,16 +11,11 @@ RSpec.describe Components::Admin::Users::SearchForm, type: :component do
       expect(rendered.css('input[name="search"]')).to be_present
     end
 
-    it 'renders role and status select elements using select_classes from FormHelpers' do
+    it 'renders role and status select elements using combobox components' do
       rendered = render_inline(described_class.new)
 
-      role_select = rendered.css('select[name="role"]').first
-      status_select = rendered.css('select[name="status"]').first
-
-      expect(role_select).to be_present
-      expect(status_select).to be_present
-      expect(role_select['class']).to include('rounded-md')
-      expect(status_select['class']).to include('rounded-md')
+      expect(rendered.css('[data-controller="ruby-ui--combobox"]')).to be_present
+      expect(rendered.css('[data-ruby-ui--combobox-target="trigger"]')).to be_present
     end
   end
 
@@ -45,21 +40,16 @@ RSpec.describe Components::Admin::Users::SearchForm, type: :component do
     it 'renders all user roles as options' do
       rendered = render_inline(described_class.new)
 
-      role_select = rendered.css('select[name="role"]').first
-      options = role_select.css('option')
-
-      expect(options.first.text).to eq('All Roles')
+      expect(rendered.text).to include('All Roles')
       User.roles.each_key do |role|
-        expect(options.map(&:text)).to include(role.titleize)
+        expect(rendered.text).to include(role.titleize)
       end
     end
 
     it 'pre-selects the current role filter' do
       rendered = render_inline(described_class.new(search_params: { role: 'administrator' }))
 
-      role_select = rendered.css('select[name="role"]').first
-      selected = role_select.css('option[selected]')
-      expect(selected.first['value']).to eq('administrator')
+      expect(rendered.css('input[name="role"][value="administrator"][checked]')).to be_present
     end
   end
 
@@ -67,26 +57,22 @@ RSpec.describe Components::Admin::Users::SearchForm, type: :component do
     it 'renders active, inactive, and soft deleted status options' do
       rendered = render_inline(described_class.new)
 
-      status_select = rendered.css('select[name="status"]').first
-      options = status_select.css('option').map(&:text)
-
-      expect(options).to include('All', 'Active', 'Inactive', 'Soft deleted')
+      expect(rendered.text).to include('All')
+      expect(rendered.text).to include('Active')
+      expect(rendered.text).to include('Inactive')
+      expect(rendered.text).to include('Soft deleted')
     end
 
     it 'pre-selects the current status filter' do
       rendered = render_inline(described_class.new(search_params: { status: 'active' }))
 
-      status_select = rendered.css('select[name="status"]').first
-      selected = status_select.css('option[selected]')
-      expect(selected.first['value']).to eq('active')
+      expect(rendered.css('input[name="status"][value="active"][checked]')).to be_present
     end
 
     it 'pre-selects the soft deleted status filter' do
       rendered = render_inline(described_class.new(search_params: { status: 'soft_deleted' }))
 
-      status_select = rendered.css('select[name="status"]').first
-      selected = status_select.css('option[selected]')
-      expect(selected.first['value']).to eq('soft_deleted')
+      expect(rendered.css('input[name="status"][value="soft_deleted"][checked]')).to be_present
     end
   end
 
@@ -116,16 +102,16 @@ RSpec.describe Components::Admin::Users::SearchForm, type: :component do
       rendered = render_inline(described_class.new)
 
       expect(rendered.css('label[for="search"]')).to be_present
-      expect(rendered.css('label[for="role"]')).to be_present
-      expect(rendered.css('label[for="status"]')).to be_present
+      expect(rendered.css('label[for="role_trigger"]')).to be_present
+      expect(rendered.css('label[for="status_trigger"]')).to be_present
     end
 
     it 'associates labels with their inputs via matching ids' do
       rendered = render_inline(described_class.new)
 
       expect(rendered.css('input#search')).to be_present
-      expect(rendered.css('select#role')).to be_present
-      expect(rendered.css('select#status')).to be_present
+      expect(rendered.css('button#role_trigger')).to be_present
+      expect(rendered.css('button#status_trigger')).to be_present
     end
   end
 end

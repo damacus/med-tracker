@@ -40,7 +40,7 @@ module Views
 
       def render_info_row(label, value)
         div(class: 'flex items-center justify-between border-b border-border py-3 last:border-0') do
-          dt(class: 'text-sm font-medium text-muted-foreground') { label }
+          dt(class: 'text-sm font-medium text-on-surface-variant') { label }
           dd(class: 'text-sm text-foreground') { value || 'Not set' }
         end
       end
