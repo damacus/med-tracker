@@ -67,7 +67,9 @@ module Components
               required: true,
               placeholder: t('forms.medications.name_placeholder'),
               title: 'Medication name, e.g. Ibuprofen',
-              class: "rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 #{field_error_class(medication, :name)}"
+              class: "rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 #{field_error_class(
+                medication, :name
+              )}"
             )
             render_field_error(medication, :name)
           end
@@ -132,7 +134,8 @@ module Components
               id: 'medication_description',
               rows: 3,
               placeholder: t('forms.medications.description_placeholder'),
-              class: 'rounded-md border-outline-variant bg-surface-container-lowest p-4 focus:ring-2 focus:ring-primary/10 ' \
+              class: 'rounded-md border-outline-variant bg-surface-container-lowest p-4 ' \
+                     'focus:ring-2 focus:ring-primary/10 ' \
                      'focus:border-primary transition-all resize-none'
             ) { medication.description }
           end
@@ -262,7 +265,8 @@ module Components
               id: 'medication_warnings',
               rows: 3,
               placeholder: t('forms.medications.warnings_placeholder'),
-              class: 'rounded-md border-error/20 bg-error-container/10 p-4 text-on-error-container focus:ring-2 ' \
+              class: 'rounded-md border-error/20 bg-error-container/10 p-4 ' \
+                     'text-on-error-container focus:ring-2 ' \
                      'focus:ring-error/10 focus:border-error transition-all resize-none ' \
                      'placeholder:text-on-error-container/50 font-medium'
             ) { medication.warnings }

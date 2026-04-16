@@ -39,7 +39,8 @@ module Components
       ) do
         div(
           class: [
-            'relative w-full bg-surface-container-high border-outline-variant shadow-elevation-5 sm:rounded-[2.5rem] overflow-hidden flex flex-col',
+            'relative w-full bg-surface-container-high border-outline-variant shadow-elevation-5 ' \
+            'sm:rounded-[2.5rem] overflow-hidden flex flex-col',
             SIZES[@size]
           ]
         ) do

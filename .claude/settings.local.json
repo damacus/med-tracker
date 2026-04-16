@@ -29,7 +29,9 @@
       "WebFetch(domain:google-gemini.github.io)",
       "WebFetch(domain:developers.openai.com)",
       "WebFetch(domain:geminicli.com)",
-      "Skill(pr)"
+      "Skill(pr)",
+      "Bash(RUBYOPT=\"-rcgi\" bundle exec rubocop -A --format simple)",
+      "Bash(RUBYOPT=\"-rcgi\" bundle exec rubocop --format simple)"
     ]
   }
 }

@@ -33,7 +33,8 @@ module Components
               variant: :text,
               class: 'p-0 h-auto no-underline hover:no-underline'
             ) do
-              m3_heading(variant: :title_large, level: 2, class: 'font-black tracking-tight text-foreground hover:text-primary transition-colors') do
+              m3_heading(variant: :title_large, level: 2,
+                         class: 'font-black tracking-tight text-foreground hover:text-primary transition-colors') do
                 person.name
               end
             end
@@ -54,15 +55,21 @@ module Components
         m3_card_content(class: 'flex-grow space-y-2') do
           div(class: 'space-y-1.5 text-sm text-on-surface-variant font-medium') do
             p do
-              strong(class: 'font-black uppercase tracking-widest text-[10px] opacity-60 mr-2') { "#{t('people.card.born')} " }
+              strong(class: 'font-black uppercase tracking-widest text-[10px] opacity-60 mr-2') do
+                "#{t('people.card.born')} "
+              end
               plain person.date_of_birth.strftime('%B %d, %Y')
             end
             p do
-              strong(class: 'font-black uppercase tracking-widest text-[10px] opacity-60 mr-2') { "#{t('people.card.age')} " }
+              strong(class: 'font-black uppercase tracking-widest text-[10px] opacity-60 mr-2') do
+                "#{t('people.card.age')} "
+              end
               plain person.age.to_s
             end
             p do
-              strong(class: 'font-black uppercase tracking-widest text-[10px] opacity-60 mr-2') { "#{t('people.card.medications')} " }
+              strong(class: 'font-black uppercase tracking-widest text-[10px] opacity-60 mr-2') do
+                "#{t('people.card.medications')} "
+              end
               plain active_medication_count_text
             end
           end

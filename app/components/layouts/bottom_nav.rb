@@ -23,13 +23,22 @@ module Components
 
       def render_nav_item(path, icon_class, label)
         is_active = current_page?(path)
+        active_icon_classes =
+          if is_active
+            'px-5 py-1 bg-secondary-container rounded-shape-full ' \
+              'text-on-secondary-container'
+          end
+
         link_to(
           path,
           class: 'flex flex-col items-center justify-center gap-1.5 min-h-[44px] min-w-[44px] ' \
                  'transition-all no-underline relative state-layer rounded-xl ' \
                  "#{is_active ? 'text-primary' : 'text-on-surface-variant hover:text-on-surface'}"
         ) do
-          div(class: "relative flex items-center justify-center transition-all z-10 #{'px-5 py-1 bg-secondary-container rounded-shape-full text-on-secondary-container' if is_active}") do
+          div(
+            class: 'relative flex items-center justify-center transition-all z-10 ' \
+                   "#{active_icon_classes}"
+          ) do
             render icon_class.new(size: 24)
           end
           span(class: "text-[11px] z-10 #{is_active ? 'font-black' : 'font-bold'}") do

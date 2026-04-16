@@ -51,7 +51,8 @@ module Components
         end
 
         def render_errors
-          render RubyUI::Alert.new(variant: :destructive, class: 'mb-4 rounded-shape-xl border-none shadow-elevation-1') do
+          render RubyUI::Alert.new(variant: :destructive,
+                                   class: 'mb-4 rounded-shape-xl border-none shadow-elevation-1') do
             div(class: 'flex items-start gap-3') do
               render Icons::AlertCircle.new(size: 20)
               div do

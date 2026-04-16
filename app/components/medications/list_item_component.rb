@@ -34,7 +34,9 @@ module Components
 
           CardContent(class: 'flex-grow space-y-6 px-8 pb-4') do
             if medication.description.present?
-              m3_text(size: '2', class: 'text-on-surface-variant line-clamp-2 leading-relaxed') { medication.description }
+              m3_text(size: '2', class: 'text-on-surface-variant line-clamp-2 leading-relaxed') do
+                medication.description
+              end
             end
 
             div(class: 'pt-4 border-t border-border space-y-4') do
@@ -129,9 +131,9 @@ module Components
         AlertDialog do
           AlertDialogTrigger do
             m3_button(variant: :text, size: :sm,
-                   class: 'rounded-xl w-10 h-10 p-0 text-on-surface-variant ' \
-                          'hover:text-destructive hover:bg-destructive/5',
-                   aria_label: t('medications.index.delete', default: 'Delete medication')) do
+                      class: 'rounded-xl w-10 h-10 p-0 text-on-surface-variant ' \
+                             'hover:text-destructive hover:bg-destructive/5',
+                      aria_label: t('medications.index.delete', default: 'Delete medication')) do
               render Icons::Trash.new(size: 18)
             end
           end

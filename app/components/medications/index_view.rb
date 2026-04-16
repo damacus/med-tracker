@@ -41,7 +41,8 @@ module Components
               render Icons::Pill.new(size: 32)
             end
             div(class: 'space-y-1') do
-              m3_text(size: '2', weight: 'bold', class: 'uppercase tracking-[0.2em] opacity-40 block mb-1 font-black') do
+              m3_text(size: '2', weight: 'bold',
+                      class: 'uppercase tracking-[0.2em] opacity-40 block mb-1 font-black') do
                 t('medications.index.your_inventory')
               end
               m3_heading(level: 1, size: '8', class: 'font-black tracking-tight') { t('medications.index.title') }

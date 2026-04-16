@@ -63,8 +63,8 @@ module Components
               span(class: 'text-destructive ml-0.5') { ' *' }
             end
             m3_input(type: :number, name: 'dosage[amount]', id: 'dosage_amount',
-                  value: dosage.amount, step: 'any', min: '0', required: true,
-                  **field_error_attributes(dosage, :amount, input_id: 'dosage_amount'))
+                     value: dosage.amount, step: 'any', min: '0', required: true,
+                     **field_error_attributes(dosage, :amount, input_id: 'dosage_amount'))
             render_field_error(dosage, :amount, input_id: 'dosage_amount')
           end
 
@@ -74,10 +74,10 @@ module Components
               span(class: 'text-destructive ml-0.5') { ' *' }
             end
             m3_input(type: :text, name: 'dosage[unit]', id: 'dosage_unit',
-                  value: dosage.unit, required: true,
-                  placeholder: 'mg, tablet, ml…',
-                  list: 'dosage_unit_list',
-                  **field_error_attributes(dosage, :unit, input_id: 'dosage_unit'))
+                     value: dosage.unit, required: true,
+                     placeholder: 'mg, tablet, ml…',
+                     list: 'dosage_unit_list',
+                     **field_error_attributes(dosage, :unit, input_id: 'dosage_unit'))
             render_field_error(dosage, :unit, input_id: 'dosage_unit')
             datalist(id: 'dosage_unit_list') do
               Medication::DOSAGE_UNITS.each { |u| option(value: u) }
@@ -93,17 +93,17 @@ module Components
           FormFieldHint { 'Short description, e.g. "Once daily", "Every 4–6 hours"' }
           render_frequency_suggestions
           m3_input(type: :text, name: 'dosage[frequency]', id: 'dosage_frequency',
-                value: dosage.frequency, required: true,
-                placeholder: 'Once daily',
-                data: { 'frequency-suggestions-target': 'input' },
-                **field_error_attributes(dosage, :frequency, input_id: 'dosage_frequency'))
+                   value: dosage.frequency, required: true,
+                   placeholder: 'Once daily',
+                   data: { 'frequency-suggestions-target': 'input' },
+                   **field_error_attributes(dosage, :frequency, input_id: 'dosage_frequency'))
           render_field_error(dosage, :frequency, input_id: 'dosage_frequency')
         end
 
         FormField(class: 'mt-4') do
           FormFieldLabel(for: 'dosage_description') { 'Description / notes' }
           m3_input(type: :text, name: 'dosage[description]', id: 'dosage_description',
-                value: dosage.description, placeholder: 'Optional')
+                   value: dosage.description, placeholder: 'Optional')
         end
       end
 
@@ -138,17 +138,17 @@ module Components
           FormField do
             FormFieldLabel(for: 'dosage_default_max_daily_doses') { 'Max doses / cycle' }
             m3_input(type: :number, name: 'dosage[default_max_daily_doses]',
-                  id: 'dosage_default_max_daily_doses',
-                  placeholder: 'e.g., 4',
-                  value: dosage.default_max_daily_doses, min: 1)
+                     id: 'dosage_default_max_daily_doses',
+                     placeholder: 'e.g., 4',
+                     value: dosage.default_max_daily_doses, min: 1)
           end
 
           FormField do
             FormFieldLabel(for: 'dosage_default_min_hours_between_doses') { 'Min hours apart' }
             m3_input(type: :number, name: 'dosage[default_min_hours_between_doses]',
-                  id: 'dosage_default_min_hours_between_doses',
-                  placeholder: 'e.g., 6',
-                  value: dosage.default_min_hours_between_doses, min: 0, step: '0.5')
+                     id: 'dosage_default_min_hours_between_doses',
+                     placeholder: 'e.g., 6',
+                     value: dosage.default_min_hours_between_doses, min: 0, step: '0.5')
           end
 
           FormField do

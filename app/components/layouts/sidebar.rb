@@ -73,7 +73,8 @@ module Components
         is_active = current_page?(path)
 
         link_to path,
-                class: 'flex items-center gap-4 px-4 py-3 rounded-full transition-all group no-underline relative state-layer ' \
+                class: 'flex items-center gap-4 px-4 py-3 rounded-full transition-all ' \
+                       'group no-underline relative state-layer ' \
                        "#{if is_active
                             'bg-secondary-container text-on-secondary-container'
                           else
@@ -85,7 +86,11 @@ module Components
           ) do
             render icon_class.new(size: 24)
           end
-          m3_text(variant: :label_large, class: "hidden md:block z-10 #{is_active ? 'text-on-secondary-container font-bold' : 'font-semibold'}") do
+          m3_text(
+            variant: :label_large,
+            class: 'hidden md:block z-10 ' \
+                   "#{is_active ? 'text-on-secondary-container font-bold' : 'font-semibold'}"
+          ) do
             label
           end
         end

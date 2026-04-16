@@ -161,7 +161,8 @@ module Components
           a(
             href: root_path,
             class: 'inline-flex items-center px-4 py-2 rounded-xl border border-border ' \
-                   'text-on-surface-variant font-bold text-sm hover:bg-tertiary-container transition-colors no-underline'
+                   'text-on-surface-variant font-bold text-sm hover:bg-tertiary-container ' \
+                   'transition-colors no-underline'
           ) { t('notification_settings.actions.cancel') }
           button(
             type: 'submit',

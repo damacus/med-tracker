@@ -87,7 +87,7 @@ module Components
               class: 'uppercase tracking-[0.2em] text-on-surface-variant'
             ) { t('person_medications.form.medication') }
             m3_text(size: '3', weight: 'semibold',
-                 data: { person_medication_form_target: 'selectedMedicationName' }) do
+                    data: { person_medication_form_target: 'selectedMedicationName' }) do
               selected_medication_name || t('person_medications.form.workflow.choose_medication_title')
             end
           end

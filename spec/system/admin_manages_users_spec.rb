@@ -58,9 +58,9 @@ RSpec.describe 'AdminManagesUsers' do
       fill_in 'Email address', with: 'newuser@example.com'
       fill_in 'user_password', with: 'password123'
       fill_in 'user_password_confirmation', with: 'password123'
-      
+
       # Interact with Combobox for Role
-      find('#role_trigger').click
+      find_by_id('role_trigger').click
       all('label', text: 'Doctor', visible: :all).last.click
 
       click_on 'Create User'
@@ -80,8 +80,8 @@ RSpec.describe 'AdminManagesUsers' do
       fill_in 'Date of birth', with: '1990-01-01'
       fill_in 'user_password', with: 'password123'
       fill_in 'user_password_confirmation', with: 'password123'
-      
-      find('#role_trigger').click
+
+      find_by_id('role_trigger').click
       all('label', text: 'Doctor', visible: :all).last.click
 
       # Clear email field and submit
@@ -104,8 +104,8 @@ RSpec.describe 'AdminManagesUsers' do
       fill_in 'Email address', with: admin.email_address
       fill_in 'user_password', with: 'password123'
       fill_in 'user_password_confirmation', with: 'password123'
-      
-      find('#role_trigger').click
+
+      find_by_id('role_trigger').click
       all('label', text: 'Doctor', visible: :all).last.click
 
       click_on 'Create User'
@@ -123,8 +123,8 @@ RSpec.describe 'AdminManagesUsers' do
       fill_in 'Email address', with: 'loginable@example.com'
       fill_in 'user_password', with: 'SecureP@ssword123!'
       fill_in 'user_password_confirmation', with: 'SecureP@ssword123!'
-      
-      find('#role_trigger').click
+
+      find_by_id('role_trigger').click
       all('label', text: 'Carer', visible: :all).last.click
 
       click_on 'Create User'
@@ -160,7 +160,7 @@ RSpec.describe 'AdminManagesUsers' do
       expect(page).to have_field('Email address', with: carer.email_address)
 
       fill_in 'Email address', with: 'updated_carer@example.com'
-      
+
       click_on 'Carer'
       all('label', text: 'Nurse', visible: :all).last.click
 
@@ -304,9 +304,9 @@ RSpec.describe 'AdminManagesUsers' do
 
       visit admin_users_path
 
-      find('#role_trigger').click
+      find_by_id('role_trigger').click
       all('label', text: 'Carer', visible: :all).last.click
-      
+
       expect(page).to have_content('test_carer@example.com')
       expect(page).to have_no_content(admin.email_address)
     end
@@ -319,7 +319,7 @@ RSpec.describe 'AdminManagesUsers' do
 
       click_on 'All'
       all('label', text: 'Inactive', visible: :all).last.click
-      
+
       expect(page).to have_content(carer.email_address)
       expect(page).to have_no_content(admin.email_address)
     end
@@ -332,7 +332,7 @@ RSpec.describe 'AdminManagesUsers' do
 
       click_on 'All'
       all('label', text: 'Active', visible: :all).last.click
-      
+
       expect(page).to have_no_content(carer.email_address)
       expect(page).to have_content(admin.email_address)
     end
@@ -352,16 +352,16 @@ RSpec.describe 'AdminManagesUsers' do
       visit admin_users_path
 
       fill_in 'Search', with: 'Carer'
-      
+
       # Wait for potential auto-submit from search field and DOM to be stable
       using_wait_time(5) do
         expect(page).to have_content('Carer User')
       end
       sleep 0.5 # Small delay to ensure any frame replacement has finished
 
-      find('#role_trigger').click
+      find_by_id('role_trigger').click
       all('label', text: 'Carer', visible: :all).last.click
-      
+
       within '[data-testid="admin-users"]' do
         expect(page).to have_content('Carer User')
         expect(page).to have_no_content(admin.name)

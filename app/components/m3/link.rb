@@ -12,7 +12,7 @@ module Components
 
       def initialize(variant: :filled, **attrs)
         @m3_variant = variant.to_sym
-        
+
         base_variant = case @m3_variant
                        when :filled then :primary
                        when :tonal then :secondary
@@ -20,7 +20,7 @@ module Components
                        when :outlined then :outline
                        else @m3_variant
                        end
-        
+
         super(variant: base_variant, **attrs)
       end
 

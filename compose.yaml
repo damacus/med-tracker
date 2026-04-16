@@ -35,6 +35,8 @@ services:
       RAILS_ENV: development
       RAILS_FORCE_SSL: "false"
       DATABASE_URL: postgresql://medtracker:medtracker_password@db-dev:5432/medtracker
+      NHS_DMD_CLIENT_ID: ${NHS_DMD_CLIENT_ID:-}
+      NHS_DMD_CLIENT_SECRET: ${NHS_DMD_CLIENT_SECRET:-}
     volumes:
       - .:/app
       - medtracker_dev_bundle:/usr/local/bundle

@@ -57,7 +57,7 @@ module Components
           FormField do
             FormFieldLabel(for: 'name') { t('invitations.accept.form.name') }
             m3_input(type: :text, name: 'name', id: 'name', required: true, autofocus: true,
-                  placeholder: t('invitations.accept.form.name_placeholder'))
+                     placeholder: t('invitations.accept.form.name_placeholder'))
           end
 
           FormField do
@@ -68,7 +68,7 @@ module Components
           FormField do
             FormFieldLabel(for: 'email') { t('invitations.accept.form.email') }
             m3_input(type: :email, name: 'email', id: 'email', value: @invitation.email,
-                  readonly: true, class: 'bg-secondary-container/70')
+                     readonly: true, class: 'bg-secondary-container/70')
           end
 
           FormField do
@@ -79,7 +79,7 @@ module Components
           FormField do
             FormFieldLabel(for: 'password-confirm') { t('invitations.accept.form.password_confirmation') }
             m3_input(type: :password, name: 'password-confirm', id: 'password-confirm', required: true,
-                  minlength: 12)
+                     minlength: 12)
           end
 
           m3_button(type: :submit, variant: :filled, size: :md, class: 'w-full') { t('invitations.accept.form.submit') }

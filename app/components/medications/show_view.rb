@@ -60,7 +60,9 @@ module Components
               m3_heading(variant: :display_small, level: 1, class: 'font-black tracking-tight') { medication.name }
               div(class: 'flex items-center gap-1 mt-1') do
                 render Icons::Home.new(size: 14, class: 'text-on-surface-variant')
-                m3_text(variant: :label_medium, class: 'text-on-surface-variant font-medium') { medication.location.name }
+                m3_text(variant: :label_medium, class: 'text-on-surface-variant font-medium') do
+                  medication.location.name
+                end
               end
             end
           end
@@ -89,7 +91,9 @@ module Components
 
       def render_description_section
         div(class: 'space-y-4') do
-          m3_heading(variant: :title_large, level: 2, class: 'font-bold tracking-tight') { t('medications.show.overview') }
+          m3_heading(variant: :title_large, level: 2, class: 'font-bold tracking-tight') do
+            t('medications.show.overview')
+          end
           m3_card(variant: :elevated, class: 'border border-border/60 p-8') do
             m3_text(variant: :body_large, class: 'text-on-surface-variant leading-relaxed font-medium') do
               medication.description.presence || t('medications.show.no_description')

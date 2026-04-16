@@ -95,7 +95,8 @@ module Components
       end
 
       def render_errors
-        render RubyUI::Alert.new(variant: :destructive, class: 'mb-6 rounded-shape-xl border-none shadow-elevation-1') do
+        render RubyUI::Alert.new(variant: :destructive,
+                                 class: 'mb-6 rounded-shape-xl border-none shadow-elevation-1') do
           div(class: 'flex items-start gap-3') do
             render Icons::AlertCircle.new(size: 20)
             div do
@@ -124,7 +125,10 @@ module Components
 
       def render_name_field(_f)
         div(class: 'space-y-2') do
-          render RubyUI::FormFieldLabel.new(for: 'person_name', class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant px-1') { t('people.form.name') }
+          render RubyUI::FormFieldLabel.new(
+            for: 'person_name',
+            class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant px-1'
+          ) { t('people.form.name') }
           m3_input(
             type: :text,
             name: 'person[name]',
@@ -132,7 +136,8 @@ module Components
             value: person.name,
             required: true,
             placeholder: t('forms.people.name_placeholder', default: 'e.g., Jane Doe'),
-            class: "rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 #{field_error_class(person, :name)}",
+            class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 ' \
+                   "#{field_error_class(person, :name)}",
             **field_error_attributes(person, :name, input_id: 'person_name')
           )
           render_field_error(person, :name, input_id: 'person_name')
@@ -141,14 +146,18 @@ module Components
 
       def render_email_field(_f)
         div(class: 'space-y-2') do
-          render RubyUI::FormFieldLabel.new(for: 'person_email', class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant px-1') { t('people.form.email') }
+          render RubyUI::FormFieldLabel.new(
+            for: 'person_email',
+            class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant px-1'
+          ) { t('people.form.email') }
           m3_input(
             type: :email,
             name: 'person[email]',
             id: 'person_email',
             value: person.email,
             placeholder: t('forms.people.email_placeholder', default: 'e.g., jane@example.com'),
-            class: "rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 #{field_error_class(person, :email)}",
+            class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 ' \
+                   "#{field_error_class(person, :email)}",
             **field_error_attributes(person, :email, input_id: 'person_email')
           )
           render_field_error(person, :email, input_id: 'person_email')
@@ -157,7 +166,10 @@ module Components
 
       def render_date_of_birth_field(_f)
         div(class: 'space-y-2') do
-          render RubyUI::FormFieldLabel.new(for: 'person_date_of_birth', class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant px-1') { t('people.form.date_of_birth') }
+          render RubyUI::FormFieldLabel.new(
+            for: 'person_date_of_birth',
+            class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant px-1'
+          ) { t('people.form.date_of_birth') }
           m3_input(
             type: :string,
             name: 'person[date_of_birth]',
@@ -165,7 +177,9 @@ module Components
             value: person.date_of_birth&.to_fs(:db),
             required: true,
             placeholder: 'YYYY-MM-DD',
-            class: "rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all #{field_error_class(person, :date_of_birth)}",
+            class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 ' \
+                   'transition-all ' \
+                   "#{field_error_class(person, :date_of_birth)}",
             data: {
               controller: 'ruby-ui--calendar-input'
             },
@@ -182,7 +196,10 @@ module Components
 
       def render_person_type_field(_f)
         div(class: 'space-y-2') do
-          render RubyUI::FormFieldLabel.new(for: 'person_person_type_trigger', class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant px-1') { t('people.form.person_type') }
+          render RubyUI::FormFieldLabel.new(
+            for: 'person_person_type_trigger',
+            class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant px-1'
+          ) { t('people.form.person_type') }
           render RubyUI::Combobox.new(class: 'w-full') do
             render RubyUI::ComboboxTrigger.new(
               placeholder: selected_person_type&.humanize || t('people.form.select_person_type'),
@@ -210,7 +227,10 @@ module Components
 
       def render_capacity_field(_f)
         div(class: 'space-y-2') do
-          div(class: 'flex items-center gap-3 p-4 rounded-xl border border-outline-variant bg-surface-container-low state-layer relative') do
+          div(
+            class: 'flex items-center gap-3 p-4 rounded-xl border border-outline-variant ' \
+                   'bg-surface-container-low state-layer relative'
+          ) do
             input(
               type: 'hidden',
               name: 'person[has_capacity]',
@@ -229,7 +249,8 @@ module Components
                 capacity_hint_target: 'checkbox'
               }
             )
-            render RubyUI::FormFieldLabel.new(for: 'person_has_capacity', class: 'mb-0 z-10 font-bold text-foreground cursor-pointer') do
+            render RubyUI::FormFieldLabel.new(for: 'person_has_capacity',
+                                              class: 'mb-0 z-10 font-bold text-foreground cursor-pointer') do
               t('people.form.has_capacity')
             end
           end

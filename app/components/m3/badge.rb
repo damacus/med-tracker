@@ -5,14 +5,14 @@ module Components
     class Badge < RubyUI::Badge
       def initialize(variant: :filled, **attrs)
         @m3_variant = variant.to_sym
-        
+
         base_variant = case @m3_variant
                        when :filled then :primary
                        when :tonal then :secondary
                        when :outlined then :outline
                        else @m3_variant
                        end
-        
+
         super(variant: base_variant, **attrs)
       end
 
@@ -20,25 +20,66 @@ module Components
 
       def primary_classes
         [
-          'inline-flex items-center rounded-shape-full px-2.5 py-0.5 text-xs font-semibold bg-primary text-on-primary'
+          %w[
+            inline-flex
+            items-center
+            rounded-shape-full
+            px-2.5
+            py-0.5
+            text-xs
+            font-semibold
+            bg-primary
+            text-on-primary
+          ].join(' ')
         ]
       end
 
       def secondary_classes
         [
-          'inline-flex items-center rounded-shape-full px-2.5 py-0.5 text-xs font-semibold bg-secondary-container text-on-secondary-container'
+          %w[
+            inline-flex
+            items-center
+            rounded-shape-full
+            px-2.5
+            py-0.5
+            text-xs
+            font-semibold
+            bg-secondary-container
+            text-on-secondary-container
+          ].join(' ')
         ]
       end
 
       def outline_classes
         [
-          'inline-flex items-center rounded-shape-full border border-outline px-2.5 py-0.5 text-xs font-semibold text-primary'
+          %w[
+            inline-flex
+            items-center
+            rounded-shape-full
+            border
+            border-outline
+            px-2.5
+            py-0.5
+            text-xs
+            font-semibold
+            text-primary
+          ].join(' ')
         ]
       end
 
       def destructive_classes
         [
-          'inline-flex items-center rounded-shape-full px-2.5 py-0.5 text-xs font-semibold bg-error text-on-error'
+          %w[
+            inline-flex
+            items-center
+            rounded-shape-full
+            px-2.5
+            py-0.5
+            text-xs
+            font-semibold
+            bg-error
+            text-on-error
+          ].join(' ')
         ]
       end
 

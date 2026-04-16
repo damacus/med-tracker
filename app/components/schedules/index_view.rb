@@ -13,16 +13,26 @@ module Components
       def view_template
         div(class: 'container mx-auto px-4 py-12 max-w-6xl', data: { testid: 'active-schedules-list' }) do
           div(class: 'mb-10 space-y-2') do
-            m3_heading(variant: :display_small, level: 1, class: 'font-black tracking-tight') { t('schedules.index.title') }
-            m3_text(variant: :body_large, class: 'text-on-surface-variant font-medium') { t('schedules.index.subtitle') }
+            m3_heading(variant: :display_small, level: 1, class: 'font-black tracking-tight') do
+              t('schedules.index.title')
+            end
+            m3_text(variant: :body_large, class: 'text-on-surface-variant font-medium') do
+              t('schedules.index.subtitle')
+            end
           end
 
           # ⚡ Bolt Optimization: Use .to_a.any? instead of .any? to materialize the relation
           # into an array in memory. This prevents an extra COUNT/EXISTS query before iterating.
           if schedules.to_a.any?
-            div(class: 'rounded-shape-xl border border-outline-variant/30 bg-surface-container-lowest overflow-hidden shadow-elevation-1') do
+            div(
+              class: 'rounded-shape-xl border border-outline-variant/30 bg-surface-container-lowest ' \
+                     'overflow-hidden shadow-elevation-1'
+            ) do
               table(class: 'w-full text-sm') do
-                thead(class: 'bg-surface-container-low text-on-surface-variant uppercase tracking-widest text-[10px] font-black') do
+                thead(
+                  class: 'bg-surface-container-low text-on-surface-variant uppercase tracking-widest ' \
+                         'text-[10px] font-black'
+                ) do
                   tr do
                     th(class: 'text-left px-6 py-4') { t('dashboard.table.person') }
                     th(class: 'text-left px-6 py-4') { t('dashboard.table.medication') }
@@ -36,7 +46,8 @@ module Components
                   schedules.each do |schedule|
                     tr do
                       td(class: 'px-6 py-5 font-bold text-foreground') do
-                        m3_link(href: person_path(schedule.person), variant: :text, size: :sm, class: 'p-0 h-auto no-underline hover:text-primary') do
+                        m3_link(href: person_path(schedule.person), variant: :text, size: :sm,
+                                class: 'p-0 h-auto no-underline hover:text-primary') do
                           schedule.person.name
                         end
                       end
@@ -51,8 +62,11 @@ module Components
               end
             end
           else
-            m3_card(variant: :elevated, class: 'p-16 text-center rounded-[2.5rem] border-dashed border-2 border-outline-variant/50') do
-              m3_text(variant: :body_large, class: 'text-on-surface-variant font-medium italic') { t('schedules.index.empty') }
+            m3_card(variant: :elevated,
+                    class: 'p-16 text-center rounded-[2.5rem] border-dashed border-2 border-outline-variant/50') do
+              m3_text(variant: :body_large, class: 'text-on-surface-variant font-medium italic') do
+                t('schedules.index.empty')
+              end
             end
           end
         end

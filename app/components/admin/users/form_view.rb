@@ -25,8 +25,15 @@ module Components
 
         def render_header
           div(class: 'text-center mb-10 space-y-2') do
-            m3_heading(variant: :display_small, level: 1, class: 'font-black tracking-tight text-foreground') { form_title }
-            m3_text(variant: :body_large, class: 'text-on-surface-variant font-medium') { t('admin.users.form.subtitle') }
+            m3_heading(
+              variant: :display_small, level: 1,
+              class: 'font-black tracking-tight text-foreground'
+            ) do
+              form_title
+            end
+            m3_text(variant: :body_large, class: 'text-on-surface-variant font-medium') do
+              t('admin.users.form.subtitle')
+            end
           end
         end
 
@@ -47,7 +54,8 @@ module Components
         end
 
         def render_errors
-          render RubyUI::Alert.new(variant: :destructive, class: 'mb-8 rounded-shape-xl border-none shadow-elevation-1') do
+          render RubyUI::Alert.new(variant: :destructive,
+                                   class: 'mb-8 rounded-shape-xl border-none shadow-elevation-1') do
             div(class: 'flex items-start gap-3') do
               render Icons::AlertCircle.new(size: 20)
               div do
@@ -90,7 +98,10 @@ module Components
 
         def render_name_field(_person_form)
           div(class: 'space-y-2') do
-            render RubyUI::FormFieldLabel.new(for: 'user_person_attributes_name', class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1') do
+            render RubyUI::FormFieldLabel.new(
+              for: 'user_person_attributes_name',
+              class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
+            ) do
               plain t('admin.users.form.name')
               span(class: 'text-error ml-0.5') { ' *' }
             end
@@ -100,7 +111,8 @@ module Components
               id: 'user_person_attributes_name',
               value: user.person&.name,
               required: true,
-              class: "rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 #{person_field_error_class(:name)}",
+              class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 ' \
+                     "#{person_field_error_class(:name)}",
               **person_field_error_attributes(:name, input_id: 'user_person_attributes_name')
             )
             render_person_field_error(:name, input_id: 'user_person_attributes_name')
@@ -109,7 +121,10 @@ module Components
 
         def render_date_of_birth_field(_person_form)
           div(class: 'space-y-2') do
-            render RubyUI::FormFieldLabel.new(for: 'user_person_attributes_date_of_birth', class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1') do
+            render RubyUI::FormFieldLabel.new(
+              for: 'user_person_attributes_date_of_birth',
+              class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
+            ) do
               plain t('admin.users.form.date_of_birth')
               span(class: 'text-error ml-0.5') { ' *' }
             end
@@ -137,11 +152,15 @@ module Components
 
         def render_locations_field(_person_form)
           div(class: 'space-y-2') do
-            render RubyUI::FormFieldLabel.new(for: 'user_person_attributes_location_ids', class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1') { t('admin.users.form.locations') }
+            render RubyUI::FormFieldLabel.new(
+              for: 'user_person_attributes_location_ids',
+              class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
+            ) { t('admin.users.form.locations') }
             div(class: 'grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2') do
               Location.find_each do |location|
                 label(
-                  class: 'flex items-center gap-3 p-4 rounded-xl border border-outline-variant bg-surface-container-low ' \
+                  class: 'flex items-center gap-3 p-4 rounded-xl border border-outline-variant ' \
+                         'bg-surface-container-low ' \
                          'hover:bg-surface-container-high cursor-pointer transition-all state-layer relative'
                 ) do
                   input(
@@ -163,7 +182,10 @@ module Components
 
         def render_email_field(_form)
           div(class: 'space-y-2') do
-            render RubyUI::FormFieldLabel.new(for: 'user_email_address', class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1') do
+            render RubyUI::FormFieldLabel.new(
+              for: 'user_email_address',
+              class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
+            ) do
               plain t('admin.users.form.email_address')
               span(class: 'text-error ml-0.5') { ' *' }
             end
@@ -174,7 +196,8 @@ module Components
               value: user.email_address,
               required: true,
               placeholder: 'email@example.com',
-              class: "rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 #{field_error_class(user, :email_address)}",
+              class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 ' \
+                     "#{field_error_class(user, :email_address)}",
               **field_error_attributes(user, :email_address, input_id: 'user_email_address')
             )
             render_field_error(user, :email_address, input_id: 'user_email_address')
@@ -190,7 +213,10 @@ module Components
 
         def render_password_field
           div(class: 'space-y-2') do
-            render RubyUI::FormFieldLabel.new(for: 'user_password', class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1') do
+            render RubyUI::FormFieldLabel.new(
+              for: 'user_password',
+              class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
+            ) do
               plain t('admin.users.form.password')
               span(class: 'text-error ml-0.5') { ' *' } if user.new_record?
             end
@@ -200,7 +226,8 @@ module Components
               id: 'user_password',
               required: user.new_record?,
               placeholder: '••••••••',
-              class: "rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 #{field_error_class(user, :password)}",
+              class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 ' \
+                     "#{field_error_class(user, :password)}",
               **field_error_attributes(user, :password, input_id: 'user_password')
             )
             render_field_error(user, :password, input_id: 'user_password')
@@ -209,7 +236,10 @@ module Components
 
         def render_password_confirmation_field
           div(class: 'space-y-2') do
-            render RubyUI::FormFieldLabel.new(for: 'user_password_confirmation', class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1') do
+            render RubyUI::FormFieldLabel.new(
+              for: 'user_password_confirmation',
+              class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
+            ) do
               plain t('admin.users.form.password_confirmation')
               span(class: 'text-error ml-0.5') { ' *' } if user.new_record?
             end
@@ -226,7 +256,10 @@ module Components
 
         def render_role_field(_form)
           div(class: 'space-y-2') do
-            render RubyUI::FormFieldLabel.new(for: 'user_role_trigger', class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1') do
+            render RubyUI::FormFieldLabel.new(
+              for: 'user_role_trigger',
+              class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
+            ) do
               plain t('admin.users.form.role')
               span(class: 'text-error ml-0.5') { ' *' }
             end
@@ -269,11 +302,11 @@ module Components
                    'flex items-center justify-between gap-4 rounded-b-[2.5rem]'
           ) do
             m3_link(href: admin_users_path, variant: :text, size: :lg,
-                 class: 'font-bold text-on-surface-variant hover:text-foreground transition-all') do
+                    class: 'font-bold text-on-surface-variant hover:text-foreground transition-all') do
               t('admin.users.form.cancel')
             end
             m3_button(type: :submit, variant: :filled, size: :lg,
-                   class: 'px-8 rounded-shape-xl shadow-lg shadow-primary/20 transition-all') do
+                      class: 'px-8 rounded-shape-xl shadow-lg shadow-primary/20 transition-all') do
               user.new_record? ? t('admin.users.form.create_submit') : t('admin.users.form.update_submit')
             end
           end

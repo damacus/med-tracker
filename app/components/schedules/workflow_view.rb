@@ -111,7 +111,9 @@ module Components
 
       def render_summary
         m3_card(variant: :elevated, class: 'p-8 border-none shadow-elevation-2 rounded-[2.5rem]') do
-          m3_heading(variant: :title_large, level: 2, class: 'font-bold mb-6 tracking-tight') { t('schedules.workflow.summary_title') }
+          m3_heading(variant: :title_large, level: 2, class: 'font-bold mb-6 tracking-tight') do
+            t('schedules.workflow.summary_title')
+          end
           div(class: 'grid grid-cols-1 md:grid-cols-2 gap-6') do
             render_summary_row(t('schedules.workflow.medication_label'), selected_medication&.name)
             render_summary_row(t('schedules.workflow.person_label'), selected_person&.name)
@@ -123,7 +125,9 @@ module Components
 
       def render_summary_row(label, value)
         div(class: 'space-y-1') do
-          m3_text(variant: :label_small, class: 'uppercase tracking-widest text-on-surface-variant font-black') { label }
+          m3_text(variant: :label_small, class: 'uppercase tracking-widest text-on-surface-variant font-black') do
+            label
+          end
           m3_text(variant: :body_large, class: 'font-bold text-foreground') { summary_value(value) }
         end
       end

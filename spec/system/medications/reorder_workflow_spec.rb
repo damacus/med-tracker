@@ -32,7 +32,7 @@ RSpec.describe 'Medication reorder workflow' do
     expect(page).to have_content('Refill marked as received')
     expect(page).to have_content('Received')
     expect(medication.reload.reordered_at).to be_present
-    
+
     # Check for Restock button within content area
     within "[data-testid='medication-content']" do
       expect(page).to have_content('Restock')

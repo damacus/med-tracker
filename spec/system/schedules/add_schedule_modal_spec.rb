@@ -23,7 +23,7 @@ RSpec.describe 'Add schedule modal flow' do
     expect(page).to have_content("New Schedule for #{person.name}")
     expect(page).to have_content('Choose a medication')
 
-    find('#medication_trigger').click
+    find_by_id('medication_trigger').click
     find('label', text: 'Ibuprofen', visible: :all, wait: 10).click
 
     sleep 1.0 # Wait for dosage cards to render
@@ -49,8 +49,8 @@ RSpec.describe 'Add schedule modal flow' do
       click_on 'Add Medication'
     end
     click_on 'Prescribed / Scheduled'
-    
-    find('#medication_trigger').click
+
+    find_by_id('medication_trigger').click
     find('label', text: 'Ibuprofen', visible: :all, wait: 10).click
 
     expect(page).to have_content("New Schedule for #{person.name}")

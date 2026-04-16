@@ -48,7 +48,8 @@ module Components
       private
 
       def render_errors
-        render RubyUI::Alert.new(variant: :destructive, class: 'mb-8 rounded-shape-xl border-none shadow-elevation-1') do
+        render RubyUI::Alert.new(variant: :destructive,
+                                 class: 'mb-8 rounded-shape-xl border-none shadow-elevation-1') do
           div(class: 'flex items-start gap-3') do
             render Icons::AlertCircle.new(size: 20)
             div do
@@ -90,7 +91,9 @@ module Components
       def render_medication_step
         div(class: 'space-y-6') do
           div(class: 'space-y-2') do
-            m3_heading(variant: :title_medium, level: 2, class: 'font-semibold') { t('schedules.form.choose_medication_title') }
+            m3_heading(variant: :title_medium, level: 2, class: 'font-semibold') do
+              t('schedules.form.choose_medication_title')
+            end
             m3_text(variant: :body_medium, class: 'text-on-surface-variant font-medium') do
               t('schedules.form.choose_medication_description')
             end
@@ -183,7 +186,10 @@ module Components
 
       def render_medication_step_field
         div(class: 'space-y-2') do
-          render RubyUI::FormFieldLabel.new(for: 'schedule_medication_id_trigger', class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1') do
+          render RubyUI::FormFieldLabel.new(
+            for: 'schedule_medication_id_trigger',
+            class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
+          ) do
             plain t('schedules.form.medication')
             span(class: 'text-error ml-0.5') { ' *' }
           end
@@ -223,11 +229,16 @@ module Components
 
       def render_dosage_cards
         FormField(class: 'md:col-span-2') do
-          render RubyUI::FormFieldLabel.new(for: 'schedule_dose_option_key', class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1') do
+          render RubyUI::FormFieldLabel.new(
+            for: 'schedule_dose_option_key',
+            class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
+          ) do
             plain t('schedules.form.dose')
             span(class: 'text-error ml-0.5') { ' *' }
           end
-          m3_text(variant: :body_medium, class: 'text-on-surface-variant font-medium') { t('schedules.form.choose_one_dose') }
+          m3_text(variant: :body_medium, class: 'text-on-surface-variant font-medium') do
+            t('schedules.form.choose_one_dose')
+          end
           if schedule.medication.dosages.any?
             div(class: 'mt-3 grid grid-cols-1 md:grid-cols-2 gap-3') do
               schedule.medication.dosages.each do |dosage|
@@ -269,7 +280,9 @@ module Components
 
       def render_details_intro
         div(class: 'md:col-span-2 space-y-1') do
-          m3_heading(variant: :title_medium, level: 2, class: 'font-semibold') { t('schedules.form.schedule_details_title') }
+          m3_heading(variant: :title_medium, level: 2, class: 'font-semibold') do
+            t('schedules.form.schedule_details_title')
+          end
           m3_text(variant: :body_medium, class: 'text-on-surface-variant font-medium') do
             t('schedules.form.schedule_details_description')
           end
@@ -278,7 +291,10 @@ module Components
 
       def render_dosage_field(_f)
         FormField do
-          render RubyUI::FormFieldLabel.new(for: 'schedule_dose_option_key', class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1') do
+          render RubyUI::FormFieldLabel.new(
+            for: 'schedule_dose_option_key',
+            class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
+          ) do
             plain t('schedules.form.dosage')
             span(class: 'text-error ml-0.5') { ' *' }
           end
@@ -320,7 +336,10 @@ module Components
 
       def render_frequency_field(_f)
         FormField(class: 'md:col-span-2') do
-          render RubyUI::FormFieldLabel.new(for: 'schedule_frequency', class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1') { t('schedules.form.frequency') }
+          render RubyUI::FormFieldLabel.new(
+            for: 'schedule_frequency',
+            class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
+          ) { t('schedules.form.frequency') }
           m3_input(
             type: :text,
             name: 'schedule[frequency]',
@@ -338,7 +357,10 @@ module Components
 
       def render_start_date_field(_f)
         FormField do
-          render RubyUI::FormFieldLabel.new(for: 'schedule_start_date', class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1') do
+          render RubyUI::FormFieldLabel.new(
+            for: 'schedule_start_date',
+            class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
+          ) do
             plain t('schedules.form.start_date')
             span(class: 'text-error ml-0.5') { ' *' }
           end
@@ -365,7 +387,10 @@ module Components
 
       def render_end_date_field(_f)
         FormField do
-          render RubyUI::FormFieldLabel.new(for: 'schedule_end_date', class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1') { t('schedules.form.end_date') }
+          render RubyUI::FormFieldLabel.new(
+            for: 'schedule_end_date',
+            class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
+          ) { t('schedules.form.end_date') }
           m3_input(
             type: :string,
             name: 'schedule[end_date]',
@@ -385,8 +410,13 @@ module Components
 
       def render_max_doses_field(_f)
         FormField do
-          render RubyUI::FormFieldLabel.new(for: 'schedule_max_daily_doses', class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1') { t('schedules.form.max_doses_per_cycle') }
-          render RubyUI::FormFieldHint.new(class: 'text-xs text-on-surface-variant font-medium ml-1 mb-1') { t('schedules.form.max_doses_hint') }
+          render RubyUI::FormFieldLabel.new(
+            for: 'schedule_max_daily_doses',
+            class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
+          ) { t('schedules.form.max_doses_per_cycle') }
+          render RubyUI::FormFieldHint.new(
+            class: 'text-xs text-on-surface-variant font-medium ml-1 mb-1'
+          ) { t('schedules.form.max_doses_hint') }
           m3_input(
             type: :number,
             name: 'schedule[max_daily_doses]',
@@ -402,8 +432,13 @@ module Components
 
       def render_min_hours_field(_f)
         FormField do
-          render RubyUI::FormFieldLabel.new(for: 'schedule_min_hours_between_doses', class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1') { t('schedules.form.min_hours_between_doses') }
-          render RubyUI::FormFieldHint.new(class: 'text-xs text-on-surface-variant font-medium ml-1 mb-1') { t('schedules.form.min_hours_hint') }
+          render RubyUI::FormFieldLabel.new(
+            for: 'schedule_min_hours_between_doses',
+            class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
+          ) { t('schedules.form.min_hours_between_doses') }
+          render RubyUI::FormFieldHint.new(
+            class: 'text-xs text-on-surface-variant font-medium ml-1 mb-1'
+          ) { t('schedules.form.min_hours_hint') }
           m3_input(
             type: :number,
             name: 'schedule[min_hours_between_doses]',
@@ -420,8 +455,13 @@ module Components
 
       def render_dose_cycle_field(_f)
         div(class: 'space-y-2') do
-          render RubyUI::FormFieldLabel.new(for: 'schedule_dose_cycle_trigger', class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1') { t('schedules.form.dose_cycle') }
-          render RubyUI::FormFieldHint.new(class: 'text-xs text-on-surface-variant font-medium ml-1 mb-1') { t('schedules.form.dose_cycle_hint') }
+          render RubyUI::FormFieldLabel.new(
+            for: 'schedule_dose_cycle_trigger',
+            class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
+          ) { t('schedules.form.dose_cycle') }
+          render RubyUI::FormFieldHint.new(
+            class: 'text-xs text-on-surface-variant font-medium ml-1 mb-1'
+          ) { t('schedules.form.dose_cycle_hint') }
           render RubyUI::Combobox.new(class: 'w-full') do
             render RubyUI::ComboboxTrigger.new(
               placeholder: schedule.dose_cycle&.titleize || t('schedules.form.select_cycle'),
@@ -437,7 +477,8 @@ module Components
                       id: "schedule_dose_cycle_#{value}",
                       value: value,
                       checked: schedule.dose_cycle == value,
-                      data: { schedule_form_target: 'doseCycleInput', action: 'change->schedule-form#generateFrequency' }
+                      data: { schedule_form_target: 'doseCycleInput',
+                              action: 'change->schedule-form#generateFrequency' }
                     )
                     span { label }
                   end
@@ -450,15 +491,21 @@ module Components
 
       def render_notes_field(_f)
         FormField(class: 'md:col-span-2') do
-          render RubyUI::FormFieldLabel.new(for: 'schedule_notes', class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1') { t('schedules.form.notes') }
-          render RubyUI::FormFieldHint.new(class: 'text-xs text-on-surface-variant font-medium ml-1 mb-1') { t('schedules.form.notes_hint') }
+          render RubyUI::FormFieldLabel.new(
+            for: 'schedule_notes',
+            class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
+          ) { t('schedules.form.notes') }
+          render RubyUI::FormFieldHint.new(
+            class: 'text-xs text-on-surface-variant font-medium ml-1 mb-1'
+          ) { t('schedules.form.notes_hint') }
           render RubyUI::Textarea.new(
             rows: 3,
             name: 'schedule[notes]',
             id: 'schedule_notes',
             placeholder: t('schedules.form.notes_placeholder'),
             value: schedule.notes,
-            class: 'rounded-md border-outline-variant bg-surface-container-lowest p-4 focus:ring-2 focus:ring-primary/10 ' \
+            class: 'rounded-md border-outline-variant bg-surface-container-lowest p-4 ' \
+                   'focus:ring-2 focus:ring-primary/10 ' \
                    'focus:border-primary transition-all resize-none'
           )
         end
@@ -466,7 +513,10 @@ module Components
 
       def render_actions(_f)
         div(class: 'flex gap-3 justify-end pt-4') do
-          m3_button(variant: :text, size: :lg, class: 'font-bold', data: { action: 'click->ruby-ui--dialog#dismiss' }) { t('schedules.form.cancel') }
+          m3_button(variant: :text, size: :lg, class: 'font-bold',
+                    data: { action: 'click->ruby-ui--dialog#dismiss' }) do
+            t('schedules.form.cancel')
+          end
           unless schedule.new_record? && schedule.medication.blank?
             m3_button(
               type: :submit,

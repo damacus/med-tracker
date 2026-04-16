@@ -2,7 +2,7 @@
 
 module Views
   module Rodauth
-    class Login < Views::Rodauth::Base # rubocop:disable Metrics/ClassLength
+    class Login < Views::Rodauth::Base
       include Phlex::Rails::Helpers::FormWith
       include Phlex::Rails::Helpers::LinkTo
       include Views::Rodauth::LoginPasskeySupport
@@ -20,7 +20,7 @@ module Views
 
       private
 
-      def render_login_card # rubocop:disable Metrics/AbcSize
+      def render_login_card
         render_auth_card(
           title: t('sessions.login.heading'),
           subtitle: t('sessions.login.subheading')

@@ -113,7 +113,9 @@ module Components
       def render_timeline_section
         div(class: 'space-y-6') do
           div(class: 'flex items-center justify-between mb-2 px-1') do
-            m3_heading(variant: :title_large, level: 2, class: 'font-bold tracking-tight') { t('dashboard.todays_schedule') }
+            m3_heading(variant: :title_large, level: 2, class: 'font-bold tracking-tight') do
+              t('dashboard.todays_schedule')
+            end
           end
 
           if doses.any?
@@ -123,8 +125,12 @@ module Components
               end
             end
           else
-            m3_card(variant: :filled, class: 'p-16 text-center rounded-[2.5rem] border-dashed border-2 border-outline-variant/50 bg-surface-container-low') do
-              m3_text(variant: :body_large, class: 'text-on-surface-variant font-medium italic') { t('dashboard.empty_state') }
+            m3_card(variant: :filled,
+                    class: 'p-16 text-center rounded-[2.5rem] border-dashed border-2 ' \
+                           'border-outline-variant/50 bg-surface-container-low') do
+              m3_text(variant: :body_large, class: 'text-on-surface-variant font-medium italic') do
+                t('dashboard.empty_state')
+              end
             end
           end
         end
@@ -132,7 +138,9 @@ module Components
 
       def render_health_insights
         div(class: 'space-y-4 pt-4') do
-          m3_heading(variant: :title_large, level: 2, class: 'font-bold tracking-tight') { t('dashboard.insights.title') }
+          m3_heading(variant: :title_large, level: 2, class: 'font-bold tracking-tight') do
+            t('dashboard.insights.title')
+          end
           m3_card(
             variant: :filled,
             class: 'bg-primary rounded-[2.5rem] p-10 text-on-primary relative overflow-hidden border-none ' \
@@ -146,13 +154,16 @@ module Components
                          'group-hover:scale-110 transition-transform shadow-inner') do
                 render Icons::AlertCircle.new(size: 24)
               end
-              m3_heading(variant: :headline_small, level: 3, class: 'font-black mb-2 tracking-tight') { t('dashboard.insights.pattern_detected') }
+              m3_heading(variant: :headline_small, level: 3, class: 'font-black mb-2 tracking-tight') do
+                t('dashboard.insights.pattern_detected')
+              end
               m3_text(variant: :body_large, class: 'text-on-primary/90 leading-relaxed mb-8 font-medium') do
                 t('dashboard.insights.message')
               end
               m3_button(
                 variant: :text,
-                class: 'p-0 h-auto font-black uppercase tracking-widest text-on-primary border-b-2 border-on-primary/30 ' \
+                class: 'p-0 h-auto font-black uppercase tracking-widest text-on-primary ' \
+                       'border-b-2 border-on-primary/30 ' \
                        'rounded-none hover:border-on-primary hover:bg-transparent transition-all'
               ) do
                 t('dashboard.insights.view_report')
@@ -167,7 +178,9 @@ module Components
         return if upcoming_doses.empty?
 
         div(class: 'space-y-6') do
-          m3_heading(variant: :title_large, level: 2, class: 'font-bold tracking-tight') { t('dashboard.medication_schedule') }
+          m3_heading(variant: :title_large, level: 2, class: 'font-bold tracking-tight') do
+            t('dashboard.medication_schedule')
+          end
           div(class: 'space-y-4') do
             upcoming_doses.each { |dose| upcoming_dose_item(dose) }
           end
@@ -220,7 +233,9 @@ module Components
 
       def render_supply_levels
         div(class: 'space-y-6') do
-          m3_heading(variant: :title_large, level: 2, class: 'font-bold tracking-tight') { t('dashboard.inventory.title') }
+          m3_heading(variant: :title_large, level: 2, class: 'font-bold tracking-tight') do
+            t('dashboard.inventory.title')
+          end
           m3_card(
             variant: :elevated,
             class: 'bg-surface-container-low p-8 rounded-[2.5rem] border-none shadow-elevation-1 transition-all ' \
@@ -249,8 +264,12 @@ module Components
 
         div(class: 'space-y-3') do
           div(class: 'flex justify-between items-center') do
-            m3_text(variant: :label_large, class: 'font-black text-foreground uppercase tracking-tight') { medication.name }
-            m3_text(variant: :label_medium, class: 'text-on-surface-variant font-black') { t('dashboard.inventory.left', count: current) }
+            m3_text(variant: :label_large, class: 'font-black text-foreground uppercase tracking-tight') do
+              medication.name
+            end
+            m3_text(variant: :label_medium, class: 'text-on-surface-variant font-black') do
+              t('dashboard.inventory.left', count: current)
+            end
           end
           div(class: 'h-3 w-full bg-surface-container rounded-full overflow-hidden shadow-inner') do
             div(
@@ -278,7 +297,9 @@ module Components
 
       def render_version_footer
         div(class: 'mt-16 pt-6 border-t border-outline-variant/30 text-center') do
-          span(class: 'text-[10px] text-on-surface-variant/50 font-mono font-bold uppercase tracking-widest') { "v#{app_version}" }
+          span(class: 'text-[10px] text-on-surface-variant/50 font-mono font-bold uppercase tracking-widest') do
+            "v#{app_version}"
+          end
         end
       end
 

@@ -85,9 +85,7 @@ module Components
           if dosage.default_for_adults?
             m3_badge(variant: :outlined, class: 'text-xs') { t('dosages.form.default_for_adults') }
           end
-          if dosage.default_for_children?
-            m3_badge(variant: :tonal, class: 'text-xs') { t('medications.show.children') }
-          end
+          m3_badge(variant: :tonal, class: 'text-xs') { t('medications.show.children') } if dosage.default_for_children?
         end
       end
 

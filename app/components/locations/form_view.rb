@@ -58,11 +58,11 @@ module Components
                      'flex items-center justify-between gap-4 rounded-b-[2.5rem]'
             ) do
               m3_link(href: return_to.presence || locations_path, variant: :text, size: :lg,
-                   class: 'font-bold text-on-surface-variant hover:text-foreground transition-all') do
+                      class: 'font-bold text-on-surface-variant hover:text-foreground transition-all') do
                 t('people.show.back')
               end
               m3_button(type: :submit, variant: :filled, size: :lg,
-                     class: 'px-8 rounded-shape-xl shadow-lg shadow-primary/20 transition-all') do
+                        class: 'px-8 rounded-shape-xl shadow-lg shadow-primary/20 transition-all') do
                 t('locations.form.save')
               end
             end
@@ -71,7 +71,8 @@ module Components
       end
 
       def render_errors
-        render RubyUI::Alert.new(variant: :destructive, class: 'mb-8 rounded-shape-xl border-none shadow-elevation-1') do
+        render RubyUI::Alert.new(variant: :destructive,
+                                 class: 'mb-8 rounded-shape-xl border-none shadow-elevation-1') do
           div(class: 'flex items-start gap-3') do
             render Icons::AlertCircle.new(size: 20)
             div do
@@ -101,8 +102,10 @@ module Components
             value: location.name,
             required: true,
             placeholder: t('forms.locations.name_placeholder'),
-            class: "rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 focus:ring-2 focus:ring-primary/10 " \
-                   "focus:border-primary transition-all #{field_error_class(location, :name)}",
+            class: 'rounded-md border-outline-variant bg-surface-container-lowest ' \
+                   'py-4 px-4 focus:ring-2 focus:ring-primary/10 ' \
+                   'focus:border-primary transition-all ' \
+                   "#{field_error_class(location, :name)}",
             **field_error_attributes(location, :name, input_id: 'location_name')
           )
           render_field_error(location, :name, input_id: 'location_name')
@@ -120,7 +123,8 @@ module Components
             id: 'location_description',
             rows: 3,
             placeholder: t('forms.locations.description_placeholder'),
-            class: 'rounded-md border-outline-variant bg-surface-container-lowest p-4 focus:ring-2 focus:ring-primary/10 ' \
+            class: 'rounded-md border-outline-variant bg-surface-container-lowest ' \
+                   'p-4 focus:ring-2 focus:ring-primary/10 ' \
                    'focus:border-primary transition-all resize-none'
           ) { location.description }
         end

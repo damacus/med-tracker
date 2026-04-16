@@ -6,7 +6,12 @@ module Components
     class QuickActions < Components::Base
       def view_template
         div(class: 'space-y-6') do
-          m3_heading(variant: :title_large, level: 2, class: 'font-bold tracking-tight') { t('dashboard.quick_actions.title') }
+          m3_heading(
+            variant: :title_large, level: 2,
+            class: 'font-bold tracking-tight'
+          ) do
+            t('dashboard.quick_actions.title')
+          end
           div(class: 'grid grid-cols-1 gap-3') do
             action_links.each do |label, url, icon|
               m3_link(

@@ -16,7 +16,7 @@ RSpec.describe 'Minor role in user form' do
 
     visit new_admin_user_path
 
-    find('#role_trigger').click
+    find_by_id('role_trigger').click
     expect(page).to have_content('Minor')
   end
 
@@ -30,8 +30,8 @@ RSpec.describe 'Minor role in user form' do
     fill_in 'Email address', with: 'minor@example.com'
     fill_in 'user_password', with: 'password123'
     fill_in 'user_password_confirmation', with: 'password123'
-    
-    find('#role_trigger').click
+
+    find_by_id('role_trigger').click
     all('label', text: 'Minor', visible: :all).last.click
 
     click_on 'Create User'

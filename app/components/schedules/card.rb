@@ -327,9 +327,9 @@ module Components
         AlertDialog do
           AlertDialogTrigger do
             m3_button(variant: :text,
-                   class: 'w-12 h-12 p-0 rounded-xl text-on-surface-variant ' \
-                          'hover:text-error hover:bg-error/5 transition-all',
-                   data: { testid: "delete-schedule-#{schedule.id}" }) do
+                      class: 'w-12 h-12 p-0 rounded-xl text-on-surface-variant ' \
+                             'hover:text-error hover:bg-error/5 transition-all',
+                      data: { testid: "delete-schedule-#{schedule.id}" }) do
               span(class: 'sr-only') { t('schedules.card.delete', default: 'Delete schedule') }
               render Icons::Trash.new(size: 20)
             end

@@ -75,7 +75,7 @@ module Components
             if location.members.present?
               div(class: 'pt-4 border-t border-border') do
                 m3_text(size: '1', weight: 'bold',
-                     class: 'uppercase tracking-widest text-on-surface-variant mb-2 block font-black') do
+                        class: 'uppercase tracking-widest text-on-surface-variant mb-2 block font-black') do
                   t('locations.index.members')
                 end
                 div(class: 'flex flex-wrap gap-1') do
@@ -138,9 +138,9 @@ module Components
         AlertDialog do
           AlertDialogTrigger do
             m3_button(variant: :text, size: :sm,
-                   class: 'rounded-xl w-10 h-10 p-0 text-on-surface-variant ' \
-                          'hover:text-destructive hover:bg-destructive/5',
-                   aria_label: t('locations.index.delete', default: 'Delete location')) do
+                      class: 'rounded-xl w-10 h-10 p-0 text-on-surface-variant ' \
+                             'hover:text-destructive hover:bg-destructive/5',
+                      aria_label: t('locations.index.delete', default: 'Delete location')) do
               render Icons::Trash.new(size: 18)
             end
           end

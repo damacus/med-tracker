@@ -42,7 +42,10 @@ module Components
       private
 
       def render_person_header
-        div(class: 'flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-outline-variant/30') do
+        div(
+          class: 'flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b ' \
+                 'border-outline-variant/30'
+        ) do
           div(class: 'flex items-center gap-6') do
             div(
               class: 'w-24 h-24 rounded-[2rem] bg-primary/10 flex items-center justify-center text-primary ' \
@@ -53,7 +56,8 @@ module Components
             div(class: 'space-y-1') do
               div(class: 'flex items-center gap-3') do
                 m3_heading(variant: :display_small, level: 1, class: 'font-black tracking-tight') { person.name }
-                m3_badge(variant: :outlined, class: 'rounded-full uppercase text-[10px] font-black tracking-widest py-1 px-3') do
+                m3_badge(variant: :outlined,
+                         class: 'rounded-full uppercase text-[10px] font-black tracking-widest py-1 px-3') do
                   person.person_type.humanize
                 end
               end
@@ -66,12 +70,12 @@ module Components
           div(class: 'flex gap-3') do
             if view_context.policy(person).update?
               m3_link(href: person_path(person, editing: true), variant: :outlined, size: :lg,
-                   class: 'rounded-xl font-bold bg-surface-container-low transition-all') do
+                      class: 'rounded-xl font-bold bg-surface-container-low transition-all') do
                 t('people.show.edit_person')
               end
             end
             m3_link(href: people_path, variant: :text, size: :lg,
-                 class: 'rounded-xl font-bold text-on-surface-variant hover:text-foreground') do
+                    class: 'rounded-xl font-bold text-on-surface-variant hover:text-foreground') do
               t('people.show.back')
             end
           end
@@ -86,8 +90,11 @@ module Components
             overview_item(t('people.overview.dob'), person.date_of_birth.strftime('%B %d, %Y'), Icons::CheckCircle)
             overview_item(t('people.overview.assigned_user'),
                           person.user&.email_address || t('people.overview.no_user'), Icons::User)
-            overview_item(t('people.overview.capacity'),
-                          person.has_capacity ? t('people.overview.has_capacity') : t('people.overview.dependent'), Icons::Key)
+            overview_item(
+              t('people.overview.capacity'),
+              person.has_capacity ? t('people.overview.has_capacity') : t('people.overview.dependent'),
+              Icons::Key
+            )
           end
         end
       end
@@ -111,8 +118,12 @@ module Components
       end
 
       def render_quick_actions_card
-        m3_card(variant: :filled, class: 'bg-primary p-8 text-on-primary border-none shadow-xl shadow-primary/20 rounded-[2.5rem]',
-             data: { testid: 'quick-actions' }) do
+        m3_card(
+          variant: :filled,
+          class: 'bg-primary p-8 text-on-primary border-none shadow-xl shadow-primary/20 ' \
+                 'rounded-[2.5rem]',
+          data: { testid: 'quick-actions' }
+        ) do
           div(class: 'space-y-6') do
             div do
               m3_heading(variant: :headline_small, level: 3, class: 'font-bold mb-2') { t('people.actions.title') }
@@ -141,7 +152,9 @@ module Components
 
         div(class: 'space-y-8') do
           div(class: 'flex items-center justify-between px-2') do
-            m3_heading(variant: :title_large, level: 2, class: 'font-bold tracking-tight') { t('people.show.medications_heading') }
+            m3_heading(variant: :title_large, level: 2, class: 'font-bold tracking-tight') do
+              t('people.show.medications_heading')
+            end
             div(class: 'h-1 flex-1 mx-8 bg-outline-variant/20 rounded-full hidden md:block')
           end
 
@@ -171,7 +184,9 @@ module Components
 
       def render_empty_state
         div(class: 'col-span-full') do
-          m3_card(variant: :filled, class: 'text-center py-16 px-8 border-dashed border-2 border-outline-variant/50 bg-surface-container-low rounded-[2.5rem]') do
+          m3_card(variant: :filled,
+                  class: 'text-center py-16 px-8 border-dashed border-2 border-outline-variant/50 ' \
+                         'bg-surface-container-low rounded-[2.5rem]') do
             m3_text(variant: :body_large, class: 'text-on-surface-variant mb-6 font-medium italic') do
               t('people.show.no_any_medications')
             end
@@ -202,8 +217,12 @@ module Components
           m3_card(variant: :elevated, class: 'overflow-hidden border-none shadow-elevation-3 rounded-[2.5rem]') do
             form_with(model: person, class: 'space-y-8 p-10', data: { controller: 'auto-submit' }) do |f|
               div do
-                m3_heading(variant: :headline_small, level: 2, class: 'font-bold mb-1') { t('people.form.edit_heading') }
-                m3_text(variant: :body_medium, class: 'text-on-surface-variant font-medium') { t('people.form.edit_subheading', name: person.name) }
+                m3_heading(variant: :headline_small, level: 2, class: 'font-bold mb-1') do
+                  t('people.form.edit_heading')
+                end
+                m3_text(variant: :body_medium, class: 'text-on-surface-variant font-medium') do
+                  t('people.form.edit_subheading', name: person.name)
+                end
               end
 
               div(class: 'space-y-6') do
@@ -233,10 +252,12 @@ module Components
               end
 
               div(class: 'flex gap-3 pt-4') do
-                m3_button(type: :submit, variant: :filled, size: :lg, class: 'flex-1 py-7 font-bold shadow-lg shadow-primary/20') {
+                m3_button(type: :submit, variant: :filled, size: :lg,
+                          class: 'flex-1 py-7 font-bold shadow-lg shadow-primary/20') do
                   t('people.form.save')
-                }
-                m3_link(href: person_path(person), variant: :text, size: :lg, class: 'py-7 px-8 font-bold text-on-surface-variant hover:text-foreground') do
+                end
+                m3_link(href: person_path(person), variant: :text, size: :lg,
+                        class: 'py-7 px-8 font-bold text-on-surface-variant hover:text-foreground') do
                   t('people.form.cancel')
                 end
               end

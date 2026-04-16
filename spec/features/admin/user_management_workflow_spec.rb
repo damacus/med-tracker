@@ -41,8 +41,8 @@ RSpec.describe 'Admin User Management Workflow', type: :system do
     fill_in 'Email address', with: 'newuser@example.com'
     fill_in 'user_password', with: 'SecurePass123'
     fill_in 'user_password_confirmation', with: 'SecurePass123'
-    
-    find('#role_trigger').click
+
+    find_by_id('role_trigger').click
     all('label', text: 'Nurse', visible: :all).last.click
 
     # Step 10: Submit form

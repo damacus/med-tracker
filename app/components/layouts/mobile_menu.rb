@@ -34,7 +34,9 @@ module Components
               class: 'bg-surface-container-high border-outline-variant/30 w-[85vw] max-w-[320px]'
             ) do
               render RubyUI::SheetHeader.new(class: 'flex flex-row items-center justify-between px-2') do
-                m3_heading(variant: :title_large, level: 2, class: 'font-black tracking-tight') { t('layouts.mobile_menu.brand') }
+                m3_heading(variant: :title_large, level: 2, class: 'font-black tracking-tight') do
+                  t('layouts.mobile_menu.brand')
+                end
                 close_drawer_button
               end
 
@@ -82,7 +84,8 @@ module Components
           href: path,
           variant: is_active ? :tonal : :text,
           size: :lg,
-          class: "justify-start gap-4 px-4 py-4 rounded-full font-bold #{is_active ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface-variant'}"
+          class: 'justify-start gap-4 px-4 py-4 rounded-full font-bold ' \
+                 "#{is_active ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface-variant'}"
         ) do
           render icon_class.new(size: 24)
           plain label

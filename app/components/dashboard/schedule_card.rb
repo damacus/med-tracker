@@ -17,7 +17,8 @@ module Components
       end
 
       def view_template
-        m3_card(variant: :elevated, class: 'p-6 bg-surface-container-low shadow-elevation-1', id: "schedule_#{schedule.id}") do
+        m3_card(variant: :elevated, class: 'p-6 bg-surface-container-low shadow-elevation-1',
+                id: "schedule_#{schedule.id}") do
           render_card_content
           render_card_actions
         end
@@ -46,7 +47,10 @@ module Components
       end
 
       def render_person_avatar
-        div(class: 'w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container shadow-inner') do
+        div(
+          class: 'w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center ' \
+                 'text-on-secondary-container shadow-inner'
+        ) do
           span(class: 'text-xs font-black') { person.name.first.upcase }
         end
       end
@@ -54,12 +58,17 @@ module Components
       def render_medication_info
         div(class: 'flex items-center gap-3') do
           render_medication_icon
-          m3_heading(variant: :title_medium, class: 'font-bold text-foreground tracking-tight') { schedule.medication.name }
+          m3_heading(variant: :title_medium, class: 'font-bold text-foreground tracking-tight') do
+            schedule.medication.name
+          end
         end
       end
 
       def render_medication_icon
-        div(class: 'w-10 h-10 rounded-xl flex items-center justify-center bg-success-container/30 text-on-success-container flex-shrink-0 shadow-inner') do
+        div(
+          class: 'w-10 h-10 rounded-xl flex items-center justify-center bg-success-container/30 ' \
+                 'text-on-success-container flex-shrink-0 shadow-inner'
+        ) do
           render Icons::Pill.new(size: 20)
         end
       end
@@ -75,7 +84,10 @@ module Components
 
       def render_detail(label, value)
         div(class: 'space-y-0.5') do
-          m3_text(variant: :label_small, class: 'uppercase tracking-widest text-on-surface-variant/60 font-black text-[9px]') { label }
+          m3_text(variant: :label_small,
+                  class: 'uppercase tracking-widest text-on-surface-variant/60 font-black text-[9px]') do
+            label
+          end
           m3_text(variant: :body_small, class: 'font-bold text-on-surface-variant') { value }
         end
       end

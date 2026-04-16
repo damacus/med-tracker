@@ -162,7 +162,6 @@ module Components
         case icon_type
         when 'users' then 'bg-primary/10'
         when 'pill' then 'bg-success-container/50'
-        when 'check', 'clock' then 'bg-secondary-container'
         else 'bg-secondary-container'
         end
       end

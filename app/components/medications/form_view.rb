@@ -103,11 +103,11 @@ module Components
                      'flex items-center justify-between gap-4 rounded-b-[2.5rem]'
             ) do
               m3_link(href: return_to.presence || medications_path, variant: :text, size: :lg,
-                   class: 'font-bold text-on-surface-variant hover:text-foreground') do
+                      class: 'font-bold text-on-surface-variant hover:text-foreground') do
                 t('forms.medications.back')
               end
               m3_button(type: :submit, variant: :filled, size: :lg,
-                     class: 'px-8 rounded-shape-xl shadow-lg shadow-primary/20') do
+                        class: 'px-8 rounded-shape-xl shadow-lg shadow-primary/20') do
                 t('forms.medications.save_medication')
               end
             end
@@ -116,7 +116,8 @@ module Components
       end
 
       def render_errors(_form)
-        render RubyUI::Alert.new(variant: :destructive, class: 'mb-8 rounded-shape-xl border-none shadow-elevation-1') do
+        render RubyUI::Alert.new(variant: :destructive,
+                                 class: 'mb-8 rounded-shape-xl border-none shadow-elevation-1') do
           div(class: 'flex items-start gap-3') do
             render Icons::AlertCircle.new(size: 20)
             div do
@@ -268,7 +269,8 @@ module Components
             id: 'medication_description',
             rows: 3,
             placeholder: t('forms.medications.description_placeholder'),
-            class: 'rounded-md border-outline-variant bg-surface-container-lowest p-4 focus:ring-2 focus:ring-primary/10 ' \
+            class: 'rounded-md border-outline-variant bg-surface-container-lowest p-4 ' \
+                   'focus:ring-2 focus:ring-primary/10 ' \
                    'focus:border-primary transition-all resize-none'
           ) { medication.description }
         end
@@ -389,7 +391,8 @@ module Components
 
       def render_dosage_option_fields(dosage, index)
         div(
-          class: 'space-y-4 rounded-3xl border border-outline-variant/50 bg-surface-container-low p-6 shadow-elevation-1',
+          class: 'space-y-4 rounded-3xl border border-outline-variant/50 ' \
+                 'bg-surface-container-low p-6 shadow-elevation-1',
           data: { 'dosage-options-target': 'option' }
         ) do
           input(type: :hidden, name: dosage_field_name(index, 'id'), value: dosage.id) if dosage.persisted?
@@ -505,7 +508,8 @@ module Components
                 'frequency-suggestions-dose-cycle-value': template.fetch(:dose_cycle)
               },
               class: 'inline-flex shrink-0 items-center rounded-full border border-outline-variant/50 ' \
-                     'bg-surface-container px-3 py-1 text-xs font-semibold text-on-surface-variant shadow-elevation-1 ' \
+                     'bg-surface-container px-3 py-1 text-xs font-semibold ' \
+                     'text-on-surface-variant shadow-elevation-1 ' \
                      'whitespace-nowrap hover:bg-secondary-container hover:text-on-secondary-container ' \
                      'cursor-pointer transition-all'
             ) { template.fetch(:label) }
@@ -531,7 +535,8 @@ module Components
           m3_text(variant: :body_medium, class: 'font-medium text-on-error-container') { 'Dose option removed' }
           button(
             type: 'button',
-            class: 'inline-flex items-center gap-2 text-sm font-semibold text-primary hover:text-primary/80 transition-colors',
+            class: 'inline-flex items-center gap-2 text-sm font-semibold text-primary ' \
+                   'hover:text-primary/80 transition-colors',
             data: { action: 'click->dosage-options#undo' }
           ) { 'Undo' }
         end

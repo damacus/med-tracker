@@ -96,7 +96,7 @@ module Components
         def render_actions
           div(class: 'flex items-center justify-end pt-4') do
             m3_button(type: :submit, variant: :filled, size: :lg,
-                   class: 'px-8 rounded-2xl shadow-lg shadow-primary/20') do
+                      class: 'px-8 rounded-2xl shadow-lg shadow-primary/20') do
               t('admin.invitations.index.form.submit')
             end
           end
@@ -108,7 +108,9 @@ module Components
           div(class: 'max-w-4xl mx-auto w-full') do
             m3_card(class: 'overflow-hidden border-none shadow-xl rounded-[2rem] bg-card') do
               div(class: 'px-8 py-6 border-b border-border') do
-                m3_heading(level: 2, size: '5', class: 'font-bold tracking-tight') { t('admin.invitations.index.recent') }
+                m3_heading(level: 2, size: '5', class: 'font-bold tracking-tight') do
+                  t('admin.invitations.index.recent')
+                end
               end
 
               div(class: 'divide-y divide-border') do

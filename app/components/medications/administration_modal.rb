@@ -85,7 +85,8 @@ module Components
       end
 
       def render_empty_state
-        m3_card(variant: :filled, class: 'bg-secondary-container/35 px-6 py-10 text-center border-dashed border-border/70') do
+        m3_card(variant: :filled,
+                class: 'bg-secondary-container/35 px-6 py-10 text-center border-dashed border-border/70') do
           m3_heading(variant: :title_medium, level: 2, class: 'font-semibold tracking-tight') do
             t('medications.administration.empty_title')
           end

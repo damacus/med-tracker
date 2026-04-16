@@ -312,6 +312,13 @@
 	--success-container: oklch(from var(--success) l c h / 0.12);
 	--on-success-container: oklch(from var(--success) 0.3 c h);
 
+	/* M3 Surface & Outline Tokens */
+	--surface: var(--background);
+	--on-surface: var(--foreground);
+	--on-surface-variant: oklch(from #5c6a82 l c h);
+	--outline: oklch(from #8492a8 l c h);
+	--outline-variant: oklch(from #c2cedf l c h);
+
 	/* M3 Surface Container Scale */
 	--surface-container-lowest: oklch(from #fbfdff l c h);
 	--surface-container-low: oklch(from #f5f8fc l c h);
@@ -397,6 +404,13 @@
 	--success-container: oklch(from var(--success) 0.34 c h / 0.42);
 	--on-success-container: oklch(0.95 0.01 255);
 
+	/* M3 Surface & Outline Tokens (dark) */
+	--surface: var(--background);
+	--on-surface: var(--foreground);
+	--on-surface-variant: oklch(from #b0bdd0 l c h);
+	--outline: oklch(from #7a8da5 l c h);
+	--outline-variant: oklch(from #3d4f6a l c h);
+
 	/* M3 Surface Container Scale (dark) */
 	--surface-container-lowest: oklch(from #101a2d l c h);
 	--surface-container-low: oklch(from #152139 l c h);
@@ -444,6 +458,11 @@
 	--on-primary-container: oklch(from var(--primary) l c h / 0.9);
 	--secondary-container: oklch(from var(--secondary) l c h / 0.12);
 	--on-secondary-container: oklch(from var(--secondary) l c h / 0.9);
+	--surface: var(--background);
+	--on-surface: var(--foreground);
+	--on-surface-variant: oklch(0.556 0 0);
+	--outline: oklch(0.708 0 0);
+	--outline-variant: oklch(0.87 0 0);
 	--surface-container-lowest: oklch(1 0 0);
 	--surface-container-low: oklch(0.98 0 0);
 	--surface-container: oklch(0.96 0 0);
@@ -488,6 +507,11 @@
 	--on-primary-container: oklch(0.95 0.01 255);
 	--secondary-container: oklch(from var(--secondary) 0.34 c h / 0.42);
 	--on-secondary-container: oklch(0.95 0.01 255);
+	--surface: var(--background);
+	--on-surface: var(--foreground);
+	--on-surface-variant: oklch(0.72 0.01 255);
+	--outline: oklch(0.58 0.012 255);
+	--outline-variant: oklch(0.38 0.012 255);
 	--surface-container-lowest: oklch(0.13 0.01 260);
 	--surface-container-low: oklch(0.19 0.012 260);
 	--surface-container: oklch(0.22 0.012 260);
@@ -573,6 +597,13 @@
 	--color-success-text: var(--on-success-container);
 	--color-warning-text: var(--on-warning-container);
 
+	/* M3 Surface, On-Surface & Outline Colors */
+	--color-surface: var(--surface);
+	--color-on-surface: var(--on-surface);
+	--color-on-surface-variant: var(--on-surface-variant);
+	--color-outline: var(--outline);
+	--color-outline-variant: var(--outline-variant);
+
 	/* M3 Surface Container Colors */
 	--color-surface-container-lowest: var(--surface-container-lowest);
 	--color-surface-container-low: var(--surface-container-low);
@@ -655,6 +686,11 @@
 	--on-primary-container: oklch(from #16386c l c h) !important;
 	--secondary-container: color-mix(in oklab, var(--palette-color) 10%, oklch(1 0 0)) !important;
 	--on-secondary-container: oklch(from #22406f l c h) !important;
+	--surface: var(--background);
+	--on-surface: var(--foreground);
+	--on-surface-variant: oklch(from #5c6a82 l c h) !important;
+	--outline: oklch(from #8492a8 l c h) !important;
+	--outline-variant: oklch(from #c2cedf l c h) !important;
 	--surface-container-lowest: oklch(from #fbfdff l c h) !important;
 	--surface-container-low: oklch(from #f5f8fc l c h) !important;
 	--surface-container: oklch(from #edf2f8 l c h) !important;
@@ -703,6 +739,11 @@
 	--on-primary-container: var(--foreground);
 	--secondary-container: color-mix(in oklab, var(--palette-color) 18%, oklch(from #13223c l c h)) !important;
 	--on-secondary-container: var(--foreground);
+	--surface: var(--background);
+	--on-surface: var(--foreground);
+	--on-surface-variant: oklch(from #b0bdd0 l c h) !important;
+	--outline: oklch(from #7a8da5 l c h) !important;
+	--outline-variant: oklch(from #3d4f6a l c h) !important;
 	--surface-container-lowest: oklch(from #101a2d l c h) !important;
 	--surface-container-low: oklch(from #152139 l c h) !important;
 	--surface-container: oklch(from #182741 l c h) !important;

@@ -46,7 +46,8 @@ module Components
               render Icons::Home.new(size: 32)
             end
             div(class: 'space-y-1') do
-              m3_text(size: '2', weight: 'bold', class: 'uppercase tracking-[0.2em] font-black opacity-40 block mb-1') do
+              m3_text(size: '2', weight: 'bold',
+                      class: 'uppercase tracking-[0.2em] font-black opacity-40 block mb-1') do
                 t('locations.show.location')
               end
               m3_heading(level: 1, size: '8', class: 'font-black tracking-tight') { location.name }
@@ -69,7 +70,9 @@ module Components
       def render_medications_section
         div(class: 'space-y-4') do
           div(class: 'flex items-center justify-between') do
-            m3_heading(level: 2, size: '5', class: 'font-bold tracking-tight') { t('locations.show.medications_heading') }
+            m3_heading(level: 2, size: '5', class: 'font-bold tracking-tight') do
+              t('locations.show.medications_heading')
+            end
           end
 
           if location.medications.present?

@@ -55,7 +55,9 @@ module Views
           if title || subtitle
             m3_card_header(class: 'space-y-2 pb-2 pt-8 px-8 md:px-10') do
               m3_card_title(class: 'text-3xl font-black tracking-tight text-foreground') { title } if title
-              m3_card_description(variant: :body_large, class: 'text-on-surface-variant font-medium') { subtitle } if subtitle
+              if subtitle
+                m3_card_description(variant: :body_large, class: 'text-on-surface-variant font-medium') { subtitle }
+              end
             end
           end
 

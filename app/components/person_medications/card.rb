@@ -88,7 +88,8 @@ module Components
         div(class: 'p-4 bg-primary-container border border-primary/20 rounded-shape-xl') do
           div(class: 'flex items-center gap-2 mb-1') do
             render Icons::AlertCircle.new(size: 14, class: 'text-on-primary-container')
-            m3_text(size: '1', weight: 'bold', class: 'font-black uppercase tracking-widest text-on-primary-container') do
+            m3_text(size: '1', weight: 'bold',
+                    class: 'font-black uppercase tracking-widest text-on-primary-container') do
               t('person_medications.card.notes')
             end
           end
@@ -129,7 +130,8 @@ module Components
         div(class: 'p-4 bg-warning-container border border-warning/20 rounded-shape-xl') do
           div(class: 'flex items-center gap-2 mb-1') do
             render Icons::AlertCircle.new(size: 14, class: 'text-on-warning-container')
-            m3_text(size: '1', weight: 'bold', class: 'font-black uppercase tracking-widest text-on-warning-container') do
+            m3_text(size: '1', weight: 'bold',
+                    class: 'font-black uppercase tracking-widest text-on-warning-container') do
               t('person_medications.card.next_dose_available')
             end
           end
@@ -204,7 +206,8 @@ module Components
             end
           end
           if take.amount_ml.present?
-            m3_text(size: '1', weight: 'bold', class: 'font-black text-on-surface-variant uppercase tracking-tighter') do
+            m3_text(size: '1', weight: 'bold',
+                    class: 'font-black text-on-surface-variant uppercase tracking-tighter') do
               DoseAmount.new(take.amount_ml, person_medication.dose_unit).to_s
             end
           end
