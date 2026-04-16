@@ -20,23 +20,7 @@ module Components
         form_with(
           model: [person, schedule],
           class: 'space-y-6',
-          data: {
-            controller: 'schedule-form',
-            turbo_stream: true,
-            person_type: person.person_type,
-            schedule_form_dose_options_value: medication_dose_options.to_json,
-            schedule_form_frame_id_value: frame_id,
-            schedule_form_next_url_value: new_person_schedule_path(person),
-            schedule_form_translations_value: {
-              selectDosage: t('schedules.form.select_dosage'),
-              selectMedicationFirst: t('schedules.form.select_medication_first'),
-              frequencyOncePerCycle: t('schedules.form.frequency_once_per_cycle'),
-              frequencyUpToPerCycle: t('schedules.form.frequency_up_to_per_cycle'),
-              frequencyOnce: t('schedules.form.frequency_once'),
-              frequencyUpTo: t('schedules.form.frequency_up_to'),
-              frequencyAtLeastHours: t('schedules.form.frequency_at_least_hours')
-            }.to_json
-          }
+          data: form_payload
         ) do |f|
           render_errors if schedule.errors.any?
           render_dose_snapshot_inputs
@@ -316,8 +300,8 @@ module Components
                 placeholder: t('schedules.form.select_medication_first'),
                 data: { schedule_form_target: 'dosageValue' }
               ) do
-                if selected_dosage_option
-                  format_dosage_option(selected_dosage_option)
+                if dosage_options.selected_dosage_option
+                  dosage_options.format_dosage_option(dosage_options.selected_dosage_option)
                 else
                   t('schedules.form.select_medication_first')
                 end
@@ -326,7 +310,7 @@ module Components
             SelectContent(data: { schedule_form_target: 'dosageContent' }) do
               (schedule.medication&.dosages || []).each do |dosage|
                 SelectItem(value: dosage.selection_key) do
-                  format_dosage_option(dosage)
+                  dosage_options.format_dosage_option(dosage)
                 end
               end
             end
@@ -530,7 +514,7 @@ module Components
       end
 
       def format_dosage_option(dosage)
-        "#{dosage.amount.to_f} #{dosage.unit} - #{dosage.description}"
+        dosage_options.format_dosage_option(dosage)
       end
 
       def dosage_card_classes(dosage)
@@ -544,40 +528,36 @@ module Components
       end
 
       def selected_dosage_option
-        return @selected_dosage_option if defined?(@selected_dosage_option)
-
-        @selected_dosage_option = (schedule.medication&.dosages || []).find do |dosage|
-          dosage.amount.to_s == schedule.dose_amount.to_s && dosage.unit == schedule.dose_unit
-        end
+        dosage_options.selected_dosage_option
       end
 
       def selected_dose_selection_key
-        selected_dosage_option&.selection_key
+        dosage_options.selected_dose_selection_key
       end
 
       def dosage_dom_id(dosage)
-        key = dosage.selection_key.parameterize(separator: '_')
-        return "schedule_dose_option_#{key}" unless duplicate_dose_selection_keys.include?(dosage.selection_key)
-
-        description = dosage.description.to_s.parameterize(separator: '_').presence || dosage.object_id
-        "schedule_dose_option_#{key}_#{description}"
+        dosage_options.dosage_dom_id(dosage)
       end
 
       def duplicate_dose_selection_keys
-        @duplicate_dose_selection_keys ||= begin
-          dosages = schedule.medication&.dosages || []
-          grouped_dosages = dosages.group_by(&:selection_key)
-
-          grouped_dosages.each_with_object([]) do |(selection_key, matching_dosages), selection_keys|
-            selection_keys << selection_key if matching_dosages.size > 1
-          end
-        end
+        dosage_options.duplicate_dose_selection_keys
       end
 
       def medication_dose_options
-        medications.each_with_object({}) do |medication, dose_options|
-          dose_options[medication.id.to_s] = medication.dose_options_payload
-        end
+        dosage_options.medication_dose_options
+      end
+
+      def dosage_options
+        @dosage_options ||= ::Schedules::DosageOptionsPresenter.new(schedule: schedule, medications: medications)
+      end
+
+      def form_payload
+        @form_payload ||= ::Schedules::FormPayloadPresenter.new(
+          person: person,
+          medications: medications,
+          frame_id: frame_id,
+          view_context: self
+        ).data
       end
     end
   end
