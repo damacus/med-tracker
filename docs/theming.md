@@ -1,87 +1,92 @@
-# Theming and Styling
+# Design System & Theming
 
-MedTracker uses **RubyUI** (Phlex components) and **Tailwind CSS v4** for styling. This document outlines how to manage themes and ensure consistent styling across the application.
+MedTracker uses a custom design system based on **Material Design 3 (M3)**, implemented with **Phlex components** and **Tailwind CSS v4**. All colors are defined using the **OKLCH** color space for perceptual uniformity and accessibility.
 
 ## Core Principles
 
-- **Utility First**: Leverage Tailwind CSS utility classes whenever possible.
-- **Component-Based**: Use `RubyUI` components for standard UI elements (buttons, inputs, cards, etc.).
-- **Variables for Tokens**: Use CSS variables for colors and spacing to support theming and dark mode.
-- **Accessibility First**: All styles must meet the criteria in [Accessibility Guidelines](accessibility.md).
+- **Material 3 Foundation**: We follow M3 guidelines for surface hierarchy, elevation, and interaction states.
+- **OKLCH Semantic Tokens**: Every color is a semantic token (e.g., `primary`, `on-surface-variant`) instead of literal hex codes or generic Tailwind colors.
+- **Component-First**: Use `Components::M3` wrappers instead of legacy `RubyUI` components or raw Tailwind classes for consistent UI patterns.
+- **State Layers**: Interactive elements use the `.state-layer` utility to handle hover, focus, and pressed states with standard opacity overlays.
 
-## CSS Variables
+## CSS Tokens (OKLCH)
 
-The application's theme is defined in `app/assets/tailwind/application.css` using CSS variables in the `:root` and `.dark` blocks.
+Tokens are defined in `app/assets/tailwind/application.css`. They are automatically mapped to Tailwind colors (e.g., `bg-primary`, `text-on-surface`).
 
-### Primary Colors
+### Semantic Roles
+- `primary` / `on-primary`: Main brand color and its contrasting text.
+- `secondary-container` / `on-secondary-container`: Subtle backgrounds for secondary UI elements.
+- `error` / `error-container` / `on-error-container`: Destructive actions and critical alerts.
+- `warning-container` / `on-warning-container`: Cautionary alerts.
+- `success-container` / `on-success-container`: Positive feedback.
 
-- `--primary`: The main brand color (used for primary buttons, links, etc.).
-- `--primary-foreground`: Contrast color for text on primary backgrounds.
-- `--secondary`: Background for secondary elements.
-- `--secondary-foreground`: Text color for secondary elements.
+### Surface Hierarchy
+M3 uses a tiered surface system instead of a single "card" background. Use these to create depth:
+- `surface-container-lowest`: Main page background.
+- `surface-container-low`: Default card background.
+- `surface-container`: Default secondary containers.
+- `surface-container-high`: Modals and floating elements.
+- `surface-container-highest`: Accent containers.
 
-### Semantic Colors
+## Components (M3)
 
-- `--destructive`: Used for dangerous actions (delete, remove).
-- `--destructive-light`: Light tint background for outline destructive buttons and badges.
-- `--destructive-text`: Dark text color for use on light destructive backgrounds (alerts, badges).
-- `--warning`: Used for cautionary alerts.
-- `--warning-text`: Dark text color for use on light warning backgrounds.
-- `--success`: Used for positive feedback.
-- `--success-light`: Light tint background for outline success buttons and badges.
-- `--success-text`: Dark text color for use on light success backgrounds.
+Always prefer the `m3_` helpers defined in `Components::M3Helpers`.
 
-## Button Styling
+### M3::Button
+Wraps `RubyUI::Button` with M3 styling and state layers.
+- **Variants**: `:filled`, `:tonal`, `:outlined`, `:elevated`, `:text`, `:destructive`.
+- **Usage**: `m3_button(variant: :filled) { "Save Changes" }`
 
-All buttons in the application should use the `RubyUI::Button` component to ensure consistency and accessibility.
+### M3::Card
+Provides elevated or outlined containers. Inherits from `RubyUI::Card` but enforces M3 tokens.
+- **Variants**: `:elevated` (default), `:outlined`, `:filled`.
+- **Sub-components**: `m3_card_header`, `m3_card_title`, `m3_card_description`, `m3_card_content`, `m3_card_footer`.
+- **Usage**:
+  ```ruby
+  m3_card(variant: :elevated) do
+    m3_card_header do
+      m3_card_title { "Inventory Status" }
+      m3_card_description { "Current stock levels for this location" }
+    end
+    m3_card_content { "..." }
+  end
+  ```
 
-### Usage
+### M3::Typography
+Standardizes text sizes and weights according to the M3 scale. This replaces legacy `RubyUI` `size` and `weight` attributes.
+- **Heading Variants**: `:display_large/medium/small`, `:headline_large/medium/small`, `:title_large/medium/small`.
+- **Text Variants**: `:body_large/medium/small`, `:label_large/medium/small`.
+- **Usage**: `m3_heading(variant: :display_small, level: 1) { "Medication Name" }`
 
-```ruby
-# In a Phlex view or component
-render RubyUI::Button.new(variant: :primary, size: :md) { "Save Changes" }
-```
+### M3::Link
+Accessible links that support button-like variants for primary actions.
+- **Variants**: `:filled`, `:tonal`, `:outlined`, `:text`.
+- **Usage**: `m3_link(href: path, variant: :outlined) { "Edit Details" }`
 
-### Variants
+## Utilities & Styles
 
-- `:primary` (default): Main actions.
-- `:secondary`: Alternative actions.
-- `:outline`: Subtle actions with a border.
-- `:destructive_outline`: Subordinate destructive actions (delete triggers, deactivate).
-- `:success_outline`: Subordinate positive actions (activate, take now).
-- `:ghost`: Low-emphasis actions.
-- `:destructive`: Dangerous actions (confirmation dialogs).
-- `:link`: Actions styled as text links.
+### State Layers
+The `.state-layer` class adds a `::after` pseudo-element that provides a standard 8% opacity overlay on hover and 12% on press. It should be applied to all custom interactive elements.
 
-All variants use CSS variables exclusively — no hard-coded Tailwind color classes. This means changing the theme in `application.css` updates every button in the app.
+### Shape Tokens
+Use `rounded-shape-*` classes for consistent corner radiuses:
+- `rounded-shape-xs`: 4px
+- `rounded-shape-sm`: 8px
+- `rounded-shape-md`: 12px
+- `rounded-shape-lg`: 16px (Buttons)
+- `rounded-shape-xl`: 28px (Main Cards)
+- `rounded-shape-full`: 9999px (Pills)
 
-### Accessibility Requirements
-
-Buttons must follow the [WCAG 2.2 Target Size](accessibility.md#target-size-requirements-sc-258) standards:
-
-- **Minimum size**: 24×24px (standard for `sm`, `md`, `lg`, `xl` sizes in `RubyUI::Button`).
-- **Recommended touch target**: 44×44px (use `size: :xl` or `min-h-[44px]`).
+### Elevation
+Use `shadow-elevation-*` (0 to 5) for M3-style elevation shadows.
 
 ## Changing the Theme
+Theme updates must be done by modifying the OKLCH values in `application.css`. 
 
-To update the application's look and feel:
+**Note**: Avoid hardcoding hex colors, `hsl()`, or literal Tailwind colors (e.g., `bg-blue-500`) in views. Always use semantic tokens.
 
-1. Open `app/assets/tailwind/application.css`.
-2. Modify the `oklch` or `hsl` values in the `:root` block for light mode.
-3. Modify the corresponding values in the `.dark` block for dark mode.
-4. Ensure the `@theme inline` block correctly maps these variables to Tailwind theme colors.
-
-Example:
 ```css
 :root {
-  --primary: oklch(0.5 0.2 240); /* New primary color */
+  --primary: oklch(0.57 0.21 260); /* Update primary using OKLCH */
 }
 ```
-
-## CSS Architecture
-
-- **Base Styles**: Reset and standard element styles live in the `@layer base` block.
-- **Components**: Shared class patterns (like `.nav` classes) live in the `@layer components` block.
-- **Utilities**: Custom utility classes live in the `@layer utilities` block.
-
-**Note**: Prefer Phlex components over creating new CSS classes in `@layer components`.

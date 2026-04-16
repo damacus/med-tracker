@@ -43,13 +43,13 @@ module Components
         def render_header
           div(class: 'flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12') do
             div do
-              Text(size: '2', weight: 'muted', class: 'uppercase tracking-widest mb-1 block font-bold') do
+              m3_text(size: '2', weight: 'muted', class: 'uppercase tracking-widest mb-1 block font-bold') do
                 Time.current.strftime('%A, %b %d')
               end
-              Heading(level: 1, size: '8', class: 'font-extrabold tracking-tight') do
+              m3_heading(level: 1, size: '8', class: 'font-extrabold tracking-tight') do
                 'User Management'
               end
-              Text(weight: 'muted', class: 'mt-2 block') do
+              m3_text(weight: 'muted', class: 'mt-2 block') do
                 'Review roles and access levels for everyone using MedTracker.'
               end
             end

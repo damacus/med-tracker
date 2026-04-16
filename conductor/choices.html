@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Material 3 Design Choices</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            /* M3 Primary */
+            --m3-primary: #6750A4;
+            --m3-on-primary: #FFFFFF;
+            --m3-primary-container: #EADDFF;
+            --m3-on-primary-container: #21005D;
+
+            /* M3 Secondary */
+            --m3-secondary: #625B71;
+            --m3-on-secondary: #FFFFFF;
+            --m3-secondary-container: #E8DEF8;
+            --m3-on-secondary-container: #1D192B;
+
+            /* M3 Surface */
+            --m3-surface: #FEF7FF;
+            --m3-on-surface: #1D1B20;
+            --m3-surface-variant: #E7E0EC;
+            --m3-on-surface-variant: #49454F;
+            --m3-surface-container-low: #F7F2FA;
+            --m3-surface-container: #F3EDF7;
+
+            /* Shadcn-style tokens (Current) */
+            --current-primary: #0f172a;
+            --current-primary-foreground: #f8fafc;
+            --current-muted: #f1f5f9;
+        }
+
+        .m3-btn {
+            position: relative;
+            overflow: hidden;
+            border-radius: 9999px;
+            padding: 10px 24px;
+            font-weight: 500;
+            transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        .m3-btn::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: currentColor;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .m3-btn:hover::before { opacity: 0.08; }
+        .m3-btn:active::before { opacity: 0.12; }
+
+        .m3-filled { background: var(--m3-primary); color: var(--m3-on-primary); }
+        .m3-tonal { background: var(--m3-secondary-container); color: var(--m3-on-secondary-container); }
+        .m3-outlined { background: transparent; color: var(--m3-primary); border: 1px solid var(--m3-on-surface-variant); }
+        .m3-text { background: transparent; color: var(--m3-primary); padding: 10px 12px; }
+        .m3-elevated { background: var(--m3-surface-container-low); color: var(--m3-primary); box-shadow: 0 1px 3px rgba(0,0,0,0.15), 0 1px 2px rgba(0,0,0,0.3); }
+
+        .current-btn {
+            border-radius: 0.375rem;
+            padding: 0.5rem 1rem;
+            font-weight: 500;
+            transition: background-color 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        .current-primary { background: var(--current-primary); color: var(--current-primary-foreground); }
+        .current-primary:hover { background: #1e293b; }
+        .current-secondary { background: var(--current-muted); color: #0f172a; }
+        .current-secondary:hover { background: #e2e8f0; }
+
+        body { font-family: system-ui, sans-serif; background: #f9fafb; color: #111827; }
+    </style>
+</head>
+<body class="p-8 max-w-5xl mx-auto">
+    <h1 class="text-3xl font-bold mb-2">Material Design 3 vs Current UI</h1>
+    <p class="text-gray-600 mb-8">Visualizing the design drift between the current RubyUI implementation and strict Material 3 guidelines.</p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <!-- Current Approach -->
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+            <h2 class="text-xl font-semibold mb-4 border-b pb-2">Current Architecture (RubyUI Hybrid)</h2>
+            <p class="text-sm text-gray-600 mb-6">Mixes semantic roles (muted, accent) with border-radius defaults typically found in standard Tailwind libraries.</p>
+
+            <div class="space-y-4">
+                <div>
+                    <p class="text-xs text-gray-500 mb-2 font-mono">Button: Primary</p>
+                    <button class="current-btn current-primary">Save Changes</button>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-500 mb-2 font-mono">Button: Secondary</p>
+                    <button class="current-btn current-secondary">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Strict M3 Approach -->
+        <div class="bg-[#FEF7FF] p-6 rounded-3xl shadow-md border border-[#E7E0EC]">
+            <h2 class="text-xl font-semibold mb-4 border-b border-[#E7E0EC] pb-2 text-[#1D1B20]">Strict Material 3</h2>
+            <p class="text-sm text-[#49454F] mb-6">Uses Tonal Palettes, State Layers for interaction, fully rounded corners for buttons, and elevation-based surfaces.</p>
+
+            <div class="space-y-4">
+                <div class="flex flex-wrap gap-3">
+                    <button class="m3-btn m3-filled">Filled</button>
+                    <button class="m3-btn m3-tonal">Tonal</button>
+                    <button class="m3-btn m3-elevated">Elevated</button>
+                    <button class="m3-btn m3-outlined">Outlined</button>
+                    <button class="m3-btn m3-text">Text</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -45,10 +45,10 @@ module Components
 
         def render_header
           header(class: 'mb-8') do
-            Heading(level: 1) do
+            m3_heading(level: 1) do
               relationship.new_record? ? 'New Carer Relationship' : 'Edit Carer Relationship'
             end
-            Text(weight: 'muted', class: 'mt-2') { 'Assign a carer to a patient.' }
+            m3_text(weight: 'muted', class: 'mt-2') { 'Assign a carer to a patient.' }
           end
         end
 
@@ -134,11 +134,11 @@ module Components
 
         def render_submit_button(_form)
           div(class: 'flex items-center gap-4') do
-            Button(type: :submit, variant: :primary) do
+            m3_button(type: :submit, variant: :filled) do
               relationship.new_record? ? 'Create Relationship' : 'Update Relationship'
             end
             if modal
-              Button(variant: :ghost, data: { action: 'click->ruby-ui--dialog#dismiss' }) { 'Cancel' }
+              m3_button(variant: :text, data: { action: 'click->ruby-ui--dialog#dismiss' }) { 'Cancel' }
             else
               Link(href: '/admin/carer_relationships', variant: :link) { 'Cancel' }
             end

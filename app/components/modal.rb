@@ -3,6 +3,7 @@
 module Components
   class Modal < ::RubyUI::Base
     include RubyUI
+    include Components::M3Helpers
     # Include necessary helpers from Components::Base
     include Phlex::Rails::Helpers::Routes
     include Phlex::Rails::Helpers::LinkTo
@@ -38,12 +39,12 @@ module Components
       ) do
         div(
           class: [
-            'relative w-full bg-background border shadow-lg sm:rounded-lg overflow-hidden flex flex-col',
+            'relative w-full bg-surface-container-high border-outline-variant shadow-elevation-5 sm:rounded-[2.5rem] overflow-hidden flex flex-col',
             SIZES[@size]
           ]
         ) do
           render_header if @title || @subtitle
-          div(class: 'p-6 overflow-y-auto max-h-[80vh]') { block.call if block_given? }
+          div(class: 'p-8 overflow-y-auto max-h-[80vh]') { block.call if block_given? }
           close_button
         end
       end
@@ -61,21 +62,22 @@ module Components
     end
 
     def render_header
-      div(class: 'p-6 border-b space-y-1.5') do
-        Heading(level: 2, size: '6', class: 'font-semibold leading-none tracking-tight') { @title } if @title
-        Text(weight: 'muted', size: '2') { @subtitle } if @subtitle
+      div(class: 'px-8 pt-8 pb-4 border-b border-outline-variant/30 space-y-1.5') do
+        m3_heading(variant: :headline_small, level: 2, class: 'font-black tracking-tight') { @title } if @title
+        m3_text(variant: :body_medium, class: 'text-on-surface-variant font-medium') { @subtitle } if @subtitle
       end
     end
 
     def close_button
-      button(
-        type: 'button',
-        class: 'absolute right-4 top-4 rounded-sm opacity-70 transition-opacity ' \
-               'hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring ' \
-               'focus:ring-offset-2',
-        data_action: 'click->modal#close'
+      a(
+        href: '#',
+        class: 'absolute right-6 top-6 flex h-10 w-10 items-center justify-center rounded-full ' \
+               'border border-outline-variant/30 bg-surface-container-highest/90 text-on-surface-variant ' \
+               'shadow-elevation-1 transition-all hover:bg-secondary-container hover:text-on-secondary-container',
+        data_action: 'click->modal#close',
+        aria_label: 'Close'
       ) do
-        render ::Components::Icons::X.new(size: 16)
+        render ::Components::Icons::X.new(size: 18)
         span(class: 'sr-only') { 'Close' }
       end
     end

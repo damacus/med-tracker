@@ -29,10 +29,10 @@ module Components
             ) do
               render Icons::CheckCircle.new(size: 28)
             end
-            Heading(level: 3, size: '5', class: 'font-bold tracking-tight text-foreground') do
+            m3_heading(level: 3, size: '5', class: 'font-bold tracking-tight text-foreground') do
               "#{medication.name} created!"
             end
-            Text(size: '2', class: 'text-muted-foreground max-w-sm mx-auto') do
+            m3_text(size: '2', class: 'text-on-surface-variant max-w-sm mx-auto') do
               'Review the dose options and continue in the medication editor if you need to add or adjust them.'
             end
           end
@@ -48,7 +48,7 @@ module Components
               div(
                 class: 'rounded-shape-xl border border-dashed border-border p-6 bg-card text-center'
               ) do
-                Text(size: '2', class: 'text-muted-foreground') do
+                m3_text(size: '2', class: 'text-on-surface-variant') do
                   'No dose options are configured yet.'
                 end
               end
@@ -60,14 +60,14 @@ module Components
           div(class: 'flex items-center justify-between pt-6 border-t border-border') do
             Link(
               href: edit_medication_path(medication, return_to: medication_path(medication)),
-              variant: :outline,
+              variant: :outlined,
               class: 'font-bold',
               data: { turbo_frame: '_top' }
             ) { 'Manage dose options' }
 
             Link(
               href: medication_path(medication),
-              variant: :primary,
+              variant: :filled,
               size: :lg,
               class: 'px-8 rounded-shape-xl shadow-lg shadow-primary/20',
               data: { turbo_frame: '_top' }

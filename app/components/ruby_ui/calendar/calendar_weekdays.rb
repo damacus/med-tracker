@@ -21,7 +21,7 @@ module RubyUI
     def render_day(day)
       th(
         scope: 'col',
-        class: 'text-muted-foreground rounded-md w-8 font-normal text-[0.8rem]',
+        class: 'text-on-surface-variant rounded-md w-8 font-normal text-[0.8rem]',
         aria_label: day
       ) { day[0..1] }
     end

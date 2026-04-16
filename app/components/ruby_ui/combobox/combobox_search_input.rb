@@ -8,7 +8,7 @@ module RubyUI
     end
 
     def view_template
-      div class: 'flex text-muted-foreground items-center border-b px-3' do
+      div class: 'flex text-on-surface-variant items-center border-b px-3' do
         icon
         input(**attrs)
       end
@@ -27,7 +27,7 @@ module RubyUI
         class: [
           'flex h-9 w-full rounded-md bg-transparent py-3 text-sm outline-none border-none',
           'focus:ring-0',
-          'placeholder:text-muted-foreground',
+          'placeholder:text-on-surface-variant',
           'disabled:cursor-not-allowed disabled:opacity-50',
           'aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:pointer-events-none'
         ],

@@ -21,20 +21,20 @@ RSpec.describe 'Profile Editing' do
 
   describe 'changing email', :js do
     it 'opens modal when clicking change' do
-      first('a', text: 'Change').click
+      click_on 'Change', match: :prefer_exact
 
       expect(page).to have_css('dialog[open]')
       expect(page).to have_content('Change Login')
     end
 
     it 'submits email change request when saving' do
-      first('a', text: 'Change').click
+      click_on 'Change', match: :prefer_exact
 
       expect(page).to have_css('dialog[open]')
 
       fill_in 'New Login', with: 'newemail@example.com'
       fill_in 'Password', with: 'password'
-      click_button 'Change Login'
+      click_on 'Change Login'
 
       expect(page).to have_content('An email has been sent to you with a link to verify your login change')
     end
@@ -42,6 +42,7 @@ RSpec.describe 'Profile Editing' do
 
   describe 'changing password', :js do
     it 'opens modal when clicking change' do
+      # In M3, these are likely m3_links which are anchors
       all('a', text: 'Change')[1].click
 
       expect(page).to have_css('dialog[open]')
@@ -53,22 +54,22 @@ RSpec.describe 'Profile Editing' do
     it 'shows confirmation dialog when clicking close account' do
       expect(page).to have_css('[data-ruby-ui--alert-dialog-target="content"]', visible: :hidden, wait: 5)
 
-      click_button 'Close Account'
+      click_on 'Close Account'
 
       # Wait for AlertDialog content to appear
       expect(page).to have_content('Are you absolutely sure?', wait: 10)
       expect(page).to have_content('This action cannot be undone')
       expect(page).to have_button('Cancel')
-      expect(page).to have_button('Yes, delete my account')
+      expect(page).to have_content('Yes, delete my account')
     end
 
     it 'can cancel account closure' do
       expect(page).to have_css('[data-ruby-ui--alert-dialog-target="content"]', visible: :hidden, wait: 5)
 
-      click_button 'Close Account'
+      click_on 'Close Account'
       expect(page).to have_content('Are you absolutely sure?', wait: 10)
 
-      click_button 'Cancel'
+      click_on 'Cancel'
 
       # Dialog should close and we're still on profile page
       expect(page).to have_content('My Profile')
@@ -77,11 +78,11 @@ RSpec.describe 'Profile Editing' do
     it 'closes the account and prevents future login' do
       expect(page).to have_css('[data-ruby-ui--alert-dialog-target="content"]', visible: :hidden, wait: 5)
 
-      click_button 'Close Account'
+      click_on 'Close Account'
       expect(page).to have_content('Are you absolutely sure?', wait: 10)
 
       fill_in 'Password', with: 'password'
-      click_button 'Yes, delete my account'
+      click_on 'Yes, delete my account'
 
       expect(page).to have_current_path('/login')
       expect(account.reload).to be_closed
@@ -89,7 +90,7 @@ RSpec.describe 'Profile Editing' do
 
       fill_in 'Email address', with: account.email
       fill_in 'Password', with: 'password'
-      click_button 'Sign In to Dashboard'
+      click_on 'Sign In'
 
       expect(page).to have_no_current_path('/dashboard')
       expect(page).to have_content(/closed|invalid|error/i)

@@ -6,8 +6,8 @@ module Components
       def view_template
         div(class: 'container mx-auto px-4 py-8') do
           div(class: 'mb-8 text-center') do
-            Heading(level: 1, class: 'mb-2') { t('home.title') }
-            Text(size: '4', weight: 'muted') { t('home.description') }
+            m3_heading(level: 1, class: 'mb-2') { t('home.title') }
+            m3_text(size: '4', weight: 'muted') { t('home.description') }
           end
 
           div(class: 'grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto') do
@@ -21,7 +21,7 @@ module Components
 
       def medications_card
         Link(href: medications_path, variant: :ghost, class: 'block transition-transform hover:scale-105 h-auto p-0') do
-          Card(class: 'h-full') do
+          m3_card(class: 'h-full') do
             CardHeader do
               div(
                 class: 'w-12 h-12 rounded-xl flex items-center justify-center ' \
@@ -31,7 +31,7 @@ module Components
               end
             end
             CardContent(class: 'space-y-2') do
-              Heading(level: 2, size: '6', class: 'font-semibold leading-none tracking-tight') do
+              m3_heading(level: 2, size: '6', class: 'font-semibold leading-none tracking-tight') do
                 t('home.cards.medications.title')
               end
               CardDescription { t('home.cards.medications.description') }
@@ -42,7 +42,7 @@ module Components
 
       def people_card
         Link(href: people_path, variant: :ghost, class: 'block transition-transform hover:scale-105 h-auto p-0') do
-          Card(class: 'h-full') do
+          m3_card(class: 'h-full') do
             CardHeader do
               div(
                 class: 'w-12 h-12 rounded-xl flex items-center justify-center ' \
@@ -52,7 +52,7 @@ module Components
               end
             end
             CardContent(class: 'space-y-2') do
-              Heading(level: 2, size: '6', class: 'font-semibold leading-none tracking-tight') do
+              m3_heading(level: 2, size: '6', class: 'font-semibold leading-none tracking-tight') do
                 t('home.cards.people.title')
               end
               CardDescription { t('home.cards.people.description') }

@@ -43,6 +43,24 @@ RSpec.describe ThemeTokenContract do
     end
   end
 
+  it 'aliases legacy tokens to M3 semantic roles for backward compatibility' do
+    block = css_block('@theme inline')
+
+    expect(block).to include('--color-muted: var(--secondary-container)')
+    expect(block).to include('--color-muted-foreground: var(--on-secondary-container)')
+    expect(block).to include('--color-accent: var(--tertiary-container)')
+    expect(block).to include('--color-accent-foreground: var(--on-tertiary-container)')
+  end
+
+  it 'defines the full M3 surface container scale' do
+    block = css_block(':root')
+
+    %w[lowest low high highest].each do |level|
+      expect(block).to include("--surface-container-#{level}:")
+    end
+    expect(block).to include('--surface-container:')
+  end
+
   def css_block(selector)
     match = source.match(/#{Regexp.escape(selector)}\s*\{(?<body>.*?)^\}/m)
 

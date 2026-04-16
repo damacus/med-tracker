@@ -5,7 +5,10 @@ module Views
     class ChangeLogin < Views::Rodauth::Base
       def view_template
         page_layout do
-          form_section
+          render_auth_card(title: rodauth.change_login_button) do
+            flash_section
+            render_change_login_form
+          end
         end
       end
 
@@ -14,9 +17,7 @@ module Views
       def flash_section
         return if flash_message.blank?
 
-        render RubyUI::Alert.new(variant: :destructive) do
-          plain(flash_message)
-        end
+        render_m3_alert(flash_message)
       end
 
       def flash_message
@@ -25,59 +26,46 @@ module Views
           rodauth.field_error(rodauth.password_param)
       end
 
-      def form_section
-        render RubyUI::Card.new(class: card_classes) do
-          render RubyUI::CardContent.new(class: 'space-y-6 p-6 sm:p-8') do
-            flash_section
-            change_login_form
-          end
-        end
-      end
-
-      def change_login_form
+      def render_change_login_form
         render RubyUI::Form.new(action: rodauth.change_login_path, method: :post, class: 'space-y-6',
                                 data_turbo: 'false') do
           authenticity_token_field
-          login_field
-          password_field
-          submit_button
+          render_login_field
+          render_password_field
+          render_submit_button
         end
       end
 
-      def login_field
-        render RubyUI::FormField.new do
-          render RubyUI::FormFieldLabel.new(for: 'login') { t('rodauth.views.change_login.new_login_label') }
-          render RubyUI::Input.new(
+      def render_login_field
+        render_m3_form_field(
+          label: t('rodauth.views.change_login.new_login_label'),
+          input_attrs: {
             type: :email,
             name: rodauth.login_param,
             id: 'login',
             required: true,
             autocomplete: 'username'
-          )
-          error = rodauth.field_error(rodauth.login_param)
-          p(class: 'mt-1 text-sm text-error') { error } if error.present?
-        end
+          },
+          error: rodauth.field_error(rodauth.login_param)
+        )
       end
 
-      def password_field
-        render RubyUI::FormField.new do
-          render RubyUI::FormFieldLabel.new(for: 'password') { t('rodauth.views.change_login.password_label') }
-          render RubyUI::Input.new(
+      def render_password_field
+        render_m3_form_field(
+          label: t('rodauth.views.change_login.password_label'),
+          input_attrs: {
             type: :password,
             name: rodauth.password_param,
             id: 'password',
             required: true,
             autocomplete: 'current-password'
-          )
-          error = rodauth.field_error(rodauth.password_param)
-          p(class: 'mt-1 text-sm text-error') { error } if error.present?
-        end
+          },
+          error: rodauth.field_error(rodauth.password_param)
+        )
       end
 
-      def submit_button
-        render RubyUI::Button.new(type: :submit, variant: :primary, size: :md, class: 'w-full') do
-          rodauth.change_login_button
-        end
+      def render_submit_button
+        render_m3_submit_button(rodauth.change_login_button)
       end
     end
   end

@@ -38,8 +38,8 @@ module Components
       private
 
       def render_disabled_button
-        render Button.new(
-          variant: :secondary,
+        m3_button(
+          variant: :tonal,
           size: button_size,
           disabled: true,
           class: "#{button_class} grayscale",
@@ -50,7 +50,7 @@ module Components
       def render_location_dialog
         Dialog do
           DialogTrigger do
-            render Button.new(
+            m3_button(
               variant: button_variant,
               size: button_size,
               class: button_class,
@@ -87,11 +87,11 @@ module Components
                       class: 'flex items-center justify-between gap-3 rounded-shape-xl border border-border p-4'
                     ) do
                       div(class: 'space-y-1') do
-                        Text(size: '2', weight: 'bold', class: 'text-foreground') { medication.location.name }
-                        Text(size: '1', class: 'text-muted-foreground') { medication_description(medication) }
+                        m3_text(size: '2', weight: 'bold', class: 'text-foreground') { medication.location.name }
+                        m3_text(size: '1', class: 'text-on-surface-variant') { medication_description(medication) }
                       end
                       div(class: 'flex items-center gap-3') do
-                        Badge(variant: :outline, class: 'rounded-full text-[10px]') { inventory_label(medication) }
+                        Badge(variant: :outlined, class: 'rounded-full text-[10px]') { inventory_label(medication) }
                         input(
                           type: :radio,
                           id: "taken_from_medication_#{source.class.name.underscore}_#{source.id}_#{medication.id}",
@@ -105,9 +105,9 @@ module Components
                 end
 
                 div(class: 'flex justify-end') do
-                  render RubyUI::Button.new(
+                  render M3::Button.new(
                     type: :submit,
-                    variant: :primary,
+                    variant: :filled,
                     class: 'rounded-xl',
                     data: { optimistic_take_target: 'button' }
                   ) { button_label }
@@ -131,7 +131,7 @@ module Components
         ) do
           input(type: :hidden, name: 'amount_ml', value: formatted_amount)
           input(type: :hidden, name: 'taken_from_medication_id', value: selected_medication.id)
-          render RubyUI::Button.new(
+          render M3::Button.new(
             type: :submit,
             variant: button_variant,
             size: button_size,

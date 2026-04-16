@@ -17,8 +17,8 @@ module Components
         return unless authenticated?
 
         aside(
-          class: 'fixed left-0 top-0 hidden h-full w-20 border-r border-sidebar-border bg-surface-container ' \
-                 'text-sidebar-foreground ' \
+          class: 'fixed left-0 top-0 hidden h-full w-20 border-r border-outline-variant bg-surface-container-low ' \
+                 'text-on-surface-variant ' \
                  'md:w-64 ' \
                  'sm:flex flex-col items-center md:items-start py-8 px-4 z-50 transition-all duration-500'
         ) do
@@ -35,11 +35,11 @@ module Components
       end
 
       def render_brand
-        div(class: 'mb-12 px-2 w-full flex justify-center md:justify-start') do
-          link_to root_path, class: 'group flex items-center gap-3 no-underline' do
+        div(class: 'mb-12 px-4 w-full flex justify-center md:justify-start') do
+          link_to root_path, class: 'group flex items-center gap-3 no-underline outline-none' do
             div(
               class: 'w-10 h-10 rounded-shape-lg bg-primary flex items-center justify-center ' \
-                     'text-primary-foreground font-bold ' \
+                     'text-on-primary font-bold ' \
                      'text-xl shadow-elevation-2 group-hover:scale-110 transition-transform'
             ) do
               t('app.name').first
@@ -55,7 +55,7 @@ module Components
       end
 
       def render_navigation
-        nav(class: 'flex-1 space-y-2 w-full') do
+        nav(class: 'flex-1 space-y-1 w-full') do
           render_nav_link(root_path, Icons::Home, t('layouts.sidebar.dashboard'))
           render_nav_link(medications_path, Icons::Pill, t('layouts.sidebar.inventory'))
           render_nav_link(locations_path, Icons::Home, t('layouts.sidebar.locations'))
@@ -73,31 +73,33 @@ module Components
         is_active = current_page?(path)
 
         link_to path,
-                class: 'flex items-center gap-4 px-4 py-3 rounded-shape-full transition-all group no-underline ' \
+                class: 'flex items-center gap-4 px-4 py-3 rounded-full transition-all group no-underline relative state-layer ' \
                        "#{if is_active
-                            'bg-sidebar-accent text-sidebar-accent-foreground shadow-sm'
+                            'bg-secondary-container text-on-secondary-container'
                           else
-                            'text-muted-foreground hover:text-foreground hover:bg-accent/60'
+                            'text-on-surface-variant hover:text-on-surface'
                           end}" do
           div(
-            class: 'flex items-center justify-center ' \
-                   "#{is_active ? 'text-sidebar-accent-foreground' : 'group-hover:scale-110 transition-transform'}"
+            class: 'flex items-center justify-center z-10 ' \
+                   "#{is_active ? 'text-on-secondary-container' : 'group-hover:scale-110 transition-transform'}"
           ) do
             render icon_class.new(size: 24)
           end
-          span(class: "hidden md:block font-bold text-sm #{'text-sidebar-accent-foreground' if is_active}") { label }
+          m3_text(variant: :label_large, class: "hidden md:block z-10 #{is_active ? 'text-on-secondary-container font-bold' : 'font-semibold'}") do
+            label
+          end
         end
       end
 
       def render_user_profile
-        div(class: 'mt-auto w-full space-y-4 px-2') do
+        div(class: 'mt-auto w-full space-y-2 px-2') do
           link_to profile_path,
-                  class: 'flex items-center gap-3 rounded-shape-xl border border-sidebar-border ' \
-                         'bg-muted p-2 ' \
-                         'transition-all no-underline group hover:bg-accent/70' do
+                  class: 'flex items-center gap-3 rounded-full p-2 ' \
+                         'transition-all no-underline group relative state-layer ' \
+                         'bg-surface-container-high text-on-surface' do
             div(
               class: 'w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary ' \
-                     'font-bold text-xs overflow-hidden flex-shrink-0'
+                     'font-bold text-xs overflow-hidden flex-shrink-0 z-10'
             ) do
               if current_user.person&.name.present?
                 current_user.person.name.split.map(&:first).join.upcase
@@ -105,11 +107,11 @@ module Components
                 'U'
               end
             end
-            div(class: 'hidden md:block overflow-hidden') do
+            div(class: 'hidden md:block overflow-hidden z-10') do
               p(class: 'text-xs font-bold truncate text-foreground') do
                 current_user.person&.name || t('layouts.sidebar.user_fallback')
               end
-              p(class: 'text-[10px] font-medium text-muted-foreground') do
+              p(class: 'text-[10px] font-medium text-on-surface-variant') do
                 t("activerecord.attributes.user.roles.#{current_user.role}", default: current_user.role.to_s.humanize)
               end
             end
@@ -119,14 +121,14 @@ module Components
             input(type: 'hidden', name: 'authenticity_token', value: view_context.form_authenticity_token)
             button(
               type: 'submit',
-              class: 'w-full flex items-center justify-center md:justify-start gap-4 px-4 py-3 rounded-shape-full ' \
-                     'text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-all group',
+              class: 'w-full flex items-center justify-center md:justify-start gap-4 px-4 py-3 rounded-full ' \
+                     'text-on-surface-variant hover:text-error transition-all group relative state-layer',
               aria_label: t('layouts.sidebar.sign_out')
             ) do
-              div(class: 'group-hover:scale-110 transition-transform flex items-center justify-center') do
+              div(class: 'group-hover:scale-110 transition-transform flex items-center justify-center z-10') do
                 render Icons::LogOut.new(size: 24)
               end
-              span(class: 'hidden md:block font-bold text-sm') { t('layouts.sidebar.sign_out') }
+              m3_text(variant: :label_large, class: 'hidden md:block font-bold z-10') { t('layouts.sidebar.sign_out') }
             end
           end
         end

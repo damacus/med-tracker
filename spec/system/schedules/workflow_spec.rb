@@ -13,7 +13,7 @@ RSpec.describe 'Schedules workflow' do
   it 'is discoverable from medication details' do
     visit medication_path(medications(:paracetamol))
 
-    click_link 'Add Schedule'
+    click_on 'Schedule'
 
     expect(page).to have_current_path(add_medication_path(medication_id: medications(:paracetamol).id))
   end

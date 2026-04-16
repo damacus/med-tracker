@@ -17,7 +17,7 @@ module RubyUI
     def colors
       case @variant
       when nil
-        'ring-border bg-muted/20 text-foreground [&>svg]:opacity-80'
+        'ring-border bg-secondary-container/20 text-foreground [&>svg]:opacity-80'
       when :warning
         'ring-warning/50 bg-warning-container text-on-warning-container [&>svg]:text-warning'
       when :success

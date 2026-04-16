@@ -19,7 +19,7 @@ module Views
       end
 
       def view_template
-        render Card.new do
+        Card do
           render CardHeader.new do
             render(CardTitle.new { 'Two-Factor Authentication' })
             render(CardDescription.new do
@@ -85,17 +85,17 @@ module Views
       end
 
       def render_recovery_codes_actions
-        div(class: 'flex items-center justify-between rounded-lg border border-border bg-muted/60 p-3') do
+        div(class: 'flex items-center justify-between rounded-lg border border-border bg-secondary-container/60 p-3') do
           div(class: 'flex items-center gap-2') do
             render Components::Icons::CheckCircle.new(size: 20, class: 'text-green-600')
             div do
               p(class: 'text-sm font-medium text-foreground') { 'Recovery codes generated' }
-              p(class: 'text-xs text-muted-foreground') { "#{recovery_codes_count} codes available" }
+              p(class: 'text-xs text-on-surface-variant') { "#{recovery_codes_count} codes available" }
             end
           end
           div(class: 'flex gap-2') do
             render RubyUI::Link.new(
-              variant: :outline,
+              variant: :outlined,
               size: :sm,
               href: '/recovery-codes'
             ) { 'View codes' }
@@ -103,7 +103,7 @@ module Views
               'Regenerate',
               '/recovery-codes',
               method: :post,
-              class: 'inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background border border-input hover:bg-accent hover:text-accent-foreground h-9 px-3',
+              class: 'inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background border border-outline hover:bg-tertiary-container hover:text-on-tertiary-container h-9 px-3',
               data: { turbo_confirm: 'This will invalidate your existing recovery codes. Continue?' }
             )
           end
@@ -146,10 +146,10 @@ module Views
       def render_passkey_item(passkey)
         div(class: 'flex items-center justify-between rounded-lg border border-border bg-card/70 p-3') do
           div(class: 'flex items-center gap-3 flex-1') do
-            render Components::Icons::Key.new(size: 20, class: 'text-muted-foreground')
+            render Components::Icons::Key.new(size: 20, class: 'text-on-surface-variant')
             div do
               p(class: 'text-sm font-medium text-foreground') { passkey.nickname }
-              p(class: 'text-xs text-muted-foreground') do
+              p(class: 'text-xs text-on-surface-variant') do
                 "Added #{passkey.created_at.strftime('%B %d, %Y')}"
               end
             end
@@ -165,7 +165,7 @@ module Views
       def render_add_passkey_button
         div(class: 'pt-2') do
           render RubyUI::Link.new(
-            variant: :outline,
+            variant: :outlined,
             size: :sm,
             href: '/webauthn-setup'
           ) { 'Add a passkey' }
@@ -175,7 +175,7 @@ module Views
       def render_section_header(title, description)
         div(class: 'space-y-1') do
           h3(class: 'text-sm font-semibold text-foreground') { title }
-          p(class: 'text-xs text-muted-foreground') { description }
+          p(class: 'text-xs text-on-surface-variant') { description }
         end
       end
 
@@ -186,7 +186,7 @@ module Views
             p(class: 'text-sm font-medium text-success-text') { status_text }
           end
           render RubyUI::Link.new(
-            variant: :outline,
+            variant: :outlined,
             size: :sm,
             href: disable_path
           ) { disable_text }
@@ -194,10 +194,10 @@ module Views
       end
 
       def render_disabled_method(status_text, setup_path:, setup_text:)
-        div(class: 'flex items-center justify-between rounded-lg border border-border bg-muted/60 p-3') do
+        div(class: 'flex items-center justify-between rounded-lg border border-border bg-secondary-container/60 p-3') do
           div(class: 'flex items-center gap-2') do
-            render Components::Icons::XCircle.new(size: 20, class: 'text-muted-foreground')
-            p(class: 'text-sm text-muted-foreground') { status_text }
+            render Components::Icons::XCircle.new(size: 20, class: 'text-on-surface-variant')
+            p(class: 'text-sm text-on-surface-variant') { status_text }
           end
           render RubyUI::Link.new(
             variant: :default,

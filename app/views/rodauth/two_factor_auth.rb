@@ -5,36 +5,23 @@ module Views
     class TwoFactorAuth < Views::Rodauth::Base
       def view_template
         page_layout do
-          render_page_header(
+          render_auth_card(
             title: t('rodauth.views.two_factor_auth.page_title'),
             subtitle: t('rodauth.views.two_factor_auth.page_subtitle')
-          )
-          links_section
+          ) do
+            render_method_links
+          end
         end
       end
 
       private
 
-      def links_section
-        render RubyUI::Card.new(class: card_classes) do
-          render RubyUI::CardHeader.new(class: 'space-y-2 bg-card/60') do
-            render RubyUI::CardTitle.new(class: 'text-xl font-semibold text-foreground') do
-              t('rodauth.views.two_factor_auth.card_title')
+      def render_method_links
+        div(class: 'flex flex-col gap-4') do
+          rodauth.two_factor_auth_links.each do |_, link, text|
+            m3_link(variant: :outlined, size: :lg, href: link, class: 'w-full py-6 font-bold bg-surface-container-low') do
+              text
             end
-            render RubyUI::CardDescription.new(class: 'text-base text-muted-foreground') do
-              t('rodauth.views.two_factor_auth.card_description')
-            end
-          end
-          render RubyUI::CardContent.new(class: 'space-y-4 p-6 sm:p-8') do
-            method_links
-          end
-        end
-      end
-
-      def method_links
-        rodauth.two_factor_auth_links.each do |_, link, text|
-          render RubyUI::Link.new(variant: :outline, size: :lg, href: link, class: 'w-full') do
-            text
           end
         end
       end

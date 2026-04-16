@@ -13,27 +13,27 @@ module Components
       end
 
       def view_template
-        Card(class: 'p-8 space-y-6 overflow-hidden relative') do
-          Heading(level: 3, size: '4', class: 'font-bold') { t('medications.show.inventory_status') }
+        m3_card(class: 'p-8 space-y-6 overflow-hidden relative') do
+          m3_heading(variant: :title_medium, level: 3, class: 'font-bold') { t('medications.show.inventory_status') }
 
           div(class: 'space-y-4') do
             div(class: 'flex items-baseline gap-2') do
-              span(class: presenter.stock_count_class) do
+              span(class: "#{presenter.stock_count_class} text-3xl font-black tracking-tight") do
                 presenter.supply_level.current.to_s
               end
-              Text(size: '2', weight: 'bold', class: 'text-muted-foreground') do
+              m3_text(variant: :label_large, class: 'text-on-surface-variant font-bold') do
                 presenter.remaining_units_label
               end
             end
 
             div(class: 'space-y-2') do
-              div(class: 'h-2 w-full bg-muted rounded-full overflow-hidden shadow-inner') do
+              div(class: 'h-2 w-full bg-secondary-container rounded-full overflow-hidden shadow-inner') do
                 div(class: "h-full #{presenter.supply_bar_class} rounded-full",
                     style: "width: #{presenter.supply_level.percentage}%")
               end
               div(
                 class: 'flex justify-between items-center text-[10px] font-black uppercase ' \
-                       'tracking-widest text-muted-foreground'
+                       'tracking-widest text-on-surface-variant'
               ) do
                 span { t('medications.show.supply_level') }
                 span { t('medications.show.reorder_at', threshold: medication.reorder_threshold) }
@@ -42,7 +42,7 @@ module Components
 
             if presenter.supply_level.low_stock?
               div(class: 'pt-2 space-y-2') do
-                Badge(variant: :destructive, class: 'w-full py-2 rounded-xl justify-center text-xs tracking-wide') do
+                m3_badge(variant: :destructive, class: 'w-full py-2 justify-center text-xs tracking-wide') do
                   t('medications.show.low_stock_alert')
                 end
 
@@ -70,7 +70,9 @@ module Components
           end
         else
           div(class: 'pt-4 border-t border-border') do
-            Text(size: '2', class: 'text-muted-foreground italic') { t('medications.show.forecast_unavailable') }
+            m3_text(variant: :body_small, class: 'text-on-surface-variant italic font-medium') do
+              t('medications.show.forecast_unavailable')
+            end
           end
         end
       end
@@ -80,7 +82,7 @@ module Components
 
         div(class: 'flex items-center gap-2') do
           render Icons::AlertCircle.new(size: 14, class: text_class)
-          Text(size: '2', weight: 'medium', class: text_class) do
+          m3_text(variant: :body_small, class: "#{text_class} font-medium") do
             message
           end
         end
@@ -88,15 +90,15 @@ module Components
 
       def render_reorder_status_badge
         div(class: 'flex flex-col gap-1') do
-          Badge(
-            variant: presenter.reorder_status_variant,
-            class: 'w-full py-2 rounded-xl justify-center text-xs tracking-wide'
+          m3_badge(
+            variant: presenter.reorder_status_variant == :destructive ? :destructive : :tonal,
+            class: 'w-full py-2 justify-center text-xs tracking-wide'
           ) do
             presenter.reorder_status_label
           end
 
           if presenter.reorder_status_timestamp
-            Text(size: '1', class: 'text-center text-muted-foreground font-medium') do
+            m3_text(variant: :label_small, class: 'text-center text-on-surface-variant font-medium') do
               status_text = presenter.reorder_status_label
               time_ago = time_ago_in_words(presenter.reorder_status_timestamp)
               "#{status_text} #{time_ago} ago"

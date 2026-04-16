@@ -62,7 +62,7 @@ module Components
               plain 'Amount'
               span(class: 'text-destructive ml-0.5') { ' *' }
             end
-            Input(type: :number, name: 'dosage[amount]', id: 'dosage_amount',
+            m3_input(type: :number, name: 'dosage[amount]', id: 'dosage_amount',
                   value: dosage.amount, step: 'any', min: '0', required: true,
                   **field_error_attributes(dosage, :amount, input_id: 'dosage_amount'))
             render_field_error(dosage, :amount, input_id: 'dosage_amount')
@@ -73,7 +73,7 @@ module Components
               plain 'Unit'
               span(class: 'text-destructive ml-0.5') { ' *' }
             end
-            Input(type: :text, name: 'dosage[unit]', id: 'dosage_unit',
+            m3_input(type: :text, name: 'dosage[unit]', id: 'dosage_unit',
                   value: dosage.unit, required: true,
                   placeholder: 'mg, tablet, ml…',
                   list: 'dosage_unit_list',
@@ -92,7 +92,7 @@ module Components
           end
           FormFieldHint { 'Short description, e.g. "Once daily", "Every 4–6 hours"' }
           render_frequency_suggestions
-          Input(type: :text, name: 'dosage[frequency]', id: 'dosage_frequency',
+          m3_input(type: :text, name: 'dosage[frequency]', id: 'dosage_frequency',
                 value: dosage.frequency, required: true,
                 placeholder: 'Once daily',
                 data: { 'frequency-suggestions-target': 'input' },
@@ -102,7 +102,7 @@ module Components
 
         FormField(class: 'mt-4') do
           FormFieldLabel(for: 'dosage_description') { 'Description / notes' }
-          Input(type: :text, name: 'dosage[description]', id: 'dosage_description',
+          m3_input(type: :text, name: 'dosage[description]', id: 'dosage_description',
                 value: dosage.description, placeholder: 'Optional')
         end
       end
@@ -118,8 +118,8 @@ module Components
               },
               class: 'inline-flex shrink-0 items-center rounded-full border ' \
                      'border-border bg-card px-2.5 py-0.5 ' \
-                     'text-xs font-medium text-muted-foreground shadow-sm ' \
-                     'whitespace-nowrap hover:bg-accent hover:border-border ' \
+                     'text-xs font-medium text-on-surface-variant shadow-sm ' \
+                     'whitespace-nowrap hover:bg-tertiary-container hover:border-border ' \
                      'cursor-pointer transition-colors'
             ) { suggestion }
           end
@@ -128,7 +128,7 @@ module Components
 
       def render_divider
         div(class: 'border-t border-border my-2')
-        p(class: 'text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1') do
+        p(class: 'text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1') do
           'Scheduling defaults (auto-filled when creating a schedule)'
         end
       end
@@ -137,7 +137,7 @@ module Components
         div(class: 'grid grid-cols-3 gap-4') do
           FormField do
             FormFieldLabel(for: 'dosage_default_max_daily_doses') { 'Max doses / cycle' }
-            Input(type: :number, name: 'dosage[default_max_daily_doses]',
+            m3_input(type: :number, name: 'dosage[default_max_daily_doses]',
                   id: 'dosage_default_max_daily_doses',
                   placeholder: 'e.g., 4',
                   value: dosage.default_max_daily_doses, min: 1)
@@ -145,7 +145,7 @@ module Components
 
           FormField do
             FormFieldLabel(for: 'dosage_default_min_hours_between_doses') { 'Min hours apart' }
-            Input(type: :number, name: 'dosage[default_min_hours_between_doses]',
+            m3_input(type: :number, name: 'dosage[default_min_hours_between_doses]',
                   id: 'dosage_default_min_hours_between_doses',
                   placeholder: 'e.g., 6',
                   value: dosage.default_min_hours_between_doses, min: 0, step: '0.5')
@@ -156,7 +156,7 @@ module Components
             select(
               name: 'dosage[default_dose_cycle]',
               id: 'dosage_default_dose_cycle',
-              class: 'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm'
+              class: 'flex h-9 w-full rounded-md border border-outline bg-transparent px-3 py-1 text-sm shadow-sm'
             ) do
               option(value: '') { '— none —' }
               Dosage::DOSE_CYCLE_OPTIONS.each do |label, value|
@@ -172,14 +172,14 @@ module Components
           label(class: 'flex items-center gap-2 text-sm cursor-pointer') do
             input(type: 'checkbox', name: 'dosage[default_for_adults]', value: '1',
                   checked: dosage.default_for_adults?,
-                  class: 'rounded border-input')
+                  class: 'rounded border-outline')
             span { 'Default for adults' }
           end
 
           label(class: 'flex items-center gap-2 text-sm cursor-pointer') do
             input(type: 'checkbox', name: 'dosage[default_for_children]', value: '1',
                   checked: dosage.default_for_children?,
-                  class: 'rounded border-input')
+                  class: 'rounded border-outline')
             span { 'Default for children / dependents' }
           end
         end
@@ -187,8 +187,8 @@ module Components
 
       def render_actions
         div(class: 'flex gap-3 justify-end pt-2') do
-          Button(variant: :ghost, data: { action: 'click->ruby-ui--dialog#dismiss' }) { 'Cancel' }
-          Button(type: :submit, variant: :primary) do
+          m3_button(variant: :text, data: { action: 'click->ruby-ui--dialog#dismiss' }) { 'Cancel' }
+          m3_button(type: :submit, variant: :filled) do
             dosage.new_record? ? 'Add Dosage' : 'Update Dosage'
           end
         end

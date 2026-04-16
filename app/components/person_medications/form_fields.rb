@@ -72,8 +72,8 @@ module Components
         div(class: workflow_step_classes(step_number),
             data: { person_medication_form_target: 'stepPanel', step: step_number }) do
           div(class: 'space-y-1') do
-            Heading(level: 2, size: '4', class: 'font-semibold') { title }
-            Text(size: '2', class: 'text-muted-foreground') { description }
+            m3_heading(level: 2, size: '4', class: 'font-semibold') { title }
+            m3_text(size: '2', class: 'text-on-surface-variant') { description }
           end
           div(class: 'space-y-4', &)
         end
@@ -82,11 +82,11 @@ module Components
       def render_selection_summary(show_dose: false)
         div(class: selection_summary_layout_classes(show_dose)) do
           div(class: 'rounded-shape-xl border border-border/60 bg-popover px-4 py-3 shadow-elevation-1') do
-            Text(
+            m3_text(
               size: '1', weight: 'medium',
-              class: 'uppercase tracking-[0.2em] text-muted-foreground'
+              class: 'uppercase tracking-[0.2em] text-on-surface-variant'
             ) { t('person_medications.form.medication') }
-            Text(size: '3', weight: 'semibold',
+            m3_text(size: '3', weight: 'semibold',
                  data: { person_medication_form_target: 'selectedMedicationName' }) do
               selected_medication_name || t('person_medications.form.workflow.choose_medication_title')
             end
@@ -94,11 +94,11 @@ module Components
 
           if show_dose
             div(class: 'rounded-shape-xl border border-border/60 bg-popover px-4 py-3 shadow-elevation-1') do
-              Text(
+              m3_text(
                 size: '1', weight: 'medium',
-                class: 'uppercase tracking-[0.2em] text-muted-foreground'
+                class: 'uppercase tracking-[0.2em] text-on-surface-variant'
               ) { t('person_medications.form.dose') }
-              Text(size: '3', weight: 'semibold', data: { person_medication_form_target: 'selectedDoseName' }) do
+              m3_text(size: '3', weight: 'semibold', data: { person_medication_form_target: 'selectedDoseName' }) do
                 selected_dose_label || t('person_medications.form.workflow.choose_dose_title')
               end
             end
@@ -170,7 +170,7 @@ module Components
             name: 'dose_option',
             required: true,
             disabled: person_medication.medication_id.blank?,
-            class: 'w-full rounded-md border border-input bg-background px-3 py-2 text-sm',
+            class: 'w-full rounded-md border border-outline bg-background px-3 py-2 text-sm',
             data: { person_medication_form_target: 'doseOptionInput',
                     action: 'change->person-medication-form#selectDose' }
           ) do
@@ -215,7 +215,7 @@ module Components
           FormFieldLabel(for: 'person_medication_max_daily_doses') do
             t('person_medications.form.max_doses_per_cycle')
           end
-          Input(
+          m3_input(
             type: :number,
             name: 'person_medication[max_daily_doses]',
             id: 'person_medication_max_daily_doses',
@@ -233,7 +233,7 @@ module Components
           FormFieldLabel(for: 'person_medication_min_hours_between_doses') do
             t('person_medications.form.min_hours_apart')
           end
-          Input(
+          m3_input(
             type: :number,
             name: 'person_medication[min_hours_between_doses]',
             id: 'person_medication_min_hours_between_doses',

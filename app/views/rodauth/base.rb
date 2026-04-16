@@ -4,13 +4,11 @@ module Views
   module Rodauth
     class Base < Views::Base
       include Phlex::Rails::Helpers::TurboFrameTag
+      include Components::M3Helpers
 
-      CARD_CLASSES = 'w-full rounded-2xl border border-border/70 bg-card/85 shadow-2xl ring-1 ring-ring/10 backdrop-blur'
-      PAGE_CLASSES = 'relative min-h-screen bg-gradient-to-br from-background via-background to-muted py-16 sm:py-20'
-      CONTENT_WRAPPER_CLASSES = 'relative mx-auto flex w-full max-w-2xl flex-col items-center gap-8 px-4 sm:px-6 lg:px-8'
-      HEADER_WRAPPER_CLASSES = 'mx-auto max-w-xl text-center space-y-3'
-      TITLE_CLASSES = 'text-3xl font-bold tracking-tight text-foreground sm:text-4xl'
-      SUBTITLE_CLASSES = 'text-lg text-muted-foreground'
+      PAGE_CLASSES = 'relative min-h-screen bg-surface-container-lowest py-16 sm:py-20 flex flex-col items-center'
+      CONTENT_WRAPPER_CLASSES = 'relative mx-auto flex w-full max-w-2xl flex-col items-center gap-8 px-4 sm:px-6 lg:px-8 z-10'
+      HEADER_WRAPPER_CLASSES = 'mx-auto max-w-xl text-center space-y-2'
 
       private
 
@@ -41,19 +39,59 @@ module Views
 
       def render_page_header(title:, subtitle:)
         div(class: HEADER_WRAPPER_CLASSES) do
-          h1(class: TITLE_CLASSES) { title }
-          p(class: SUBTITLE_CLASSES) { subtitle }
+          m3_heading(variant: :display_small, level: 1, class: 'font-black tracking-tight') { title }
+          m3_text(variant: :body_large, class: 'text-on-surface-variant font-medium') { subtitle }
         end
       end
 
       def decorative_glow
-        div(class: 'pointer-events-none absolute inset-x-0 top-24 flex justify-center opacity-60') do
-          div(class: 'h-64 w-64 rounded-full bg-primary/20 blur-3xl sm:h-80 sm:w-80')
+        div(class: 'pointer-events-none absolute inset-x-0 top-24 flex justify-center opacity-40') do
+          div(class: 'h-64 w-64 rounded-full bg-primary/10 blur-3xl sm:h-80 sm:w-80')
         end
       end
 
-      def card_classes
-        CARD_CLASSES
+      def render_auth_card(title: nil, subtitle: nil, &block)
+        m3_card(variant: :elevated, class: 'w-full rounded-[2.5rem] border-none shadow-elevation-3 overflow-visible') do
+          if title || subtitle
+            m3_card_header(class: 'space-y-2 pb-2 pt-8 px-8 md:px-10') do
+              m3_card_title(class: 'text-3xl font-black tracking-tight text-foreground') { title } if title
+              m3_card_description(variant: :body_large, class: 'text-on-surface-variant font-medium') { subtitle } if subtitle
+            end
+          end
+
+          m3_card_content(class: 'space-y-6 p-8 md:p-10') do
+            block.call if block_given?
+          end
+        end
+      end
+
+      def render_m3_form_field(label:, input_attrs:, error: nil, actions: nil)
+        div(class: 'space-y-2') do
+          div(class: 'flex items-center justify-between px-1') do
+            render RubyUI::FormFieldLabel.new(for: input_attrs[:id], class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant') { label }
+            actions&.call
+          end
+
+          # Standardize input styling for auth forms
+          input_attrs[:class] = "h-14 rounded-2xl bg-surface-container-lowest border-outline-variant focus:ring-2 focus:ring-primary/10 transition-all #{input_attrs[:class]}"
+          m3_input(**input_attrs)
+          p(class: 'mt-1 px-1 text-sm text-error font-medium') { error } if error.present?
+        end
+      end
+
+      def render_m3_submit_button(label)
+        m3_button(type: :submit, variant: :filled, size: :lg, class: 'w-full py-6 font-bold shadow-lg shadow-primary/20') do
+          label
+        end
+      end
+
+      def render_m3_alert(message, variant: :destructive)
+        render RubyUI::Alert.new(variant: variant, class: 'rounded-2xl border-none shadow-sm') do
+          div(class: 'flex items-center gap-2') do
+            render Icons::AlertCircle.new(size: 18)
+            span(class: 'font-medium') { message }
+          end
+        end
       end
 
       def authenticity_token_field

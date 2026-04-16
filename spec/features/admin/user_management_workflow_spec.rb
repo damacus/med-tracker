@@ -21,15 +21,16 @@ RSpec.describe 'Admin User Management Workflow', type: :system do
     # Step 3: Verify user list displayed with columns
     within '[data-testid="admin-users"]' do
       expect(page).to have_content('User Management')
-      expect(page).to have_content('Name')
-      expect(page).to have_content('Email')
-      expect(page).to have_content('Role')
-      expect(page).to have_content('Status')
-      expect(page).to have_content('Actions')
+      expect(page).to have_css('th', text: 'Name')
+      expect(page).to have_css('th', text: 'Email')
+      expect(page).to have_css('th', text: 'Role')
+      expect(page).to have_css('th', text: 'Activation')
+      expect(page).to have_css('th', text: 'Verification')
+      expect(page).to have_css('th', text: 'Actions')
     end
 
     # Step 4: Click New User button
-    click_link 'New User'
+    click_on 'New User'
 
     # Verify we're on the new user form
     expect(page).to have_content('Create New User')
@@ -38,12 +39,14 @@ RSpec.describe 'Admin User Management Workflow', type: :system do
     fill_in 'Name', with: 'New Test User'
     fill_in 'Date of birth', with: '1990-01-15'
     fill_in 'Email address', with: 'newuser@example.com'
-    fill_in 'Password', with: 'SecurePass123'
-    fill_in 'Password confirmation', with: 'SecurePass123'
-    select 'Nurse', from: 'Role'
+    fill_in 'user_password', with: 'SecurePass123'
+    fill_in 'user_password_confirmation', with: 'SecurePass123'
+    
+    find('#role_trigger').click
+    all('label', text: 'Nurse', visible: :all).last.click
 
     # Step 10: Submit form
-    click_button 'Create User'
+    click_on 'Create User'
 
     # Step 11: Verify success message
     expect(page).to have_content('User was successfully created')
@@ -60,7 +63,7 @@ RSpec.describe 'Admin User Management Workflow', type: :system do
 
     # Step 13: Click Edit on new user
     within "[data-user-id='#{new_user.id}']" do
-      click_link 'Edit'
+      click_on 'Edit'
     end
 
     # Verify we're on the edit page
@@ -68,10 +71,11 @@ RSpec.describe 'Admin User Management Workflow', type: :system do
     expect(page).to have_field('Email address', with: 'newuser@example.com')
 
     # Step 14: Change role to doctor
-    select 'Doctor', from: 'Role'
+    click_on 'Nurse'
+    all('label', text: 'Doctor', visible: :all).last.click
 
     # Step 15: Submit changes
-    click_button 'Update User'
+    click_on 'Update User'
 
     # Step 16: Verify role updated
     expect(page).to have_content('User was successfully updated')
@@ -82,14 +86,14 @@ RSpec.describe 'Admin User Management Workflow', type: :system do
     # Step 17: Click Deactivate
     within "[data-user-id='#{new_user.id}']" do
       expect(page).to have_content('Active')
-      click_button 'Deactivate'
+      click_on 'Deactivate'
     end
 
     # Step 18: Confirm deactivation
     within('[role="alertdialog"]') do
       expect(page).to have_content('Deactivate User Account')
       expect(page).to have_content("Are you sure you want to deactivate New Test User's account?")
-      click_button 'Deactivate'
+      click_on 'Deactivate'
     end
 
     # Step 19: Verify user marked inactive
@@ -100,7 +104,7 @@ RSpec.describe 'Admin User Management Workflow', type: :system do
 
     # Step 20: Click Activate
     within "[data-user-id='#{new_user.id}']" do
-      click_button 'Activate'
+      click_on 'Activate'
     end
 
     # Step 21: Verify user marked active again

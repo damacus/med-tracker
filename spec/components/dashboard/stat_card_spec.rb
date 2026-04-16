@@ -33,7 +33,7 @@ RSpec.describe Components::Dashboard::StatCard, type: :component do
     it 'renders within a card component' do
       rendered = render_inline(described_class.new(title: 'Test', value: 0, icon_type: 'users'))
 
-      expect(rendered.css('[class*="backdrop-blur"]')).to be_present
+      expect(rendered.css('[class*="bg-surface-container-low"]')).to be_present
     end
 
     it 'renders the title' do

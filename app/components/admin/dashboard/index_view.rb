@@ -24,10 +24,10 @@ module Components
         def render_header
           div(class: 'flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12') do
             div do
-              Text(size: '2', weight: 'muted', class: 'uppercase tracking-widest mb-1 block font-bold') do
+              m3_text(size: '2', weight: 'muted', class: 'uppercase tracking-widest mb-1 block font-bold') do
                 Time.current.strftime('%A, %b %d')
               end
-              Heading(level: 1, size: '8', class: 'font-extrabold tracking-tight') do
+              m3_heading(level: 1, size: '8', class: 'font-extrabold tracking-tight') do
                 t('admin.dashboard.title')
               end
             end
@@ -91,7 +91,7 @@ module Components
 
         def render_quick_actions
           div(class: 'space-y-6') do
-            Heading(level: 2, size: '5', class: 'font-bold') { t('admin.dashboard.quick_actions.title') }
+            m3_heading(level: 2, size: '5', class: 'font-bold') { t('admin.dashboard.quick_actions.title') }
             div(class: 'grid gap-4 sm:grid-cols-2 lg:grid-cols-4') do
               render_action_card(
                 title: t('admin.dashboard.quick_actions.manage_users_title'),
@@ -129,14 +129,14 @@ module Components
                    'cursor-pointer no-underline h-full min-w-0'
           ) do
             div(
-              class: 'w-10 h-10 rounded-xl bg-muted flex items-center ' \
-                     'justify-center text-muted-foreground shrink-0'
+              class: 'w-10 h-10 rounded-xl bg-secondary-container flex items-center ' \
+                     'justify-center text-on-surface-variant shrink-0'
             ) do
               render icon if icon
             end
             div(class: 'mt-2 min-w-0') do
-              Heading(level: 3, size: '3', class: 'font-bold text-foreground mb-1 truncate') { title }
-              Text(size: '2', weight: 'muted', class: 'leading-relaxed break-words text-wrap') { description }
+              m3_heading(level: 3, size: '3', class: 'font-bold text-foreground mb-1 truncate') { title }
+              m3_text(size: '2', weight: 'muted', class: 'leading-relaxed break-words text-wrap') { description }
             end
           end
         end

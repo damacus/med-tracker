@@ -15,19 +15,19 @@ RSpec.describe 'Refill medication inventory' do
 
   it 'shows refill actions on inventory pages' do
     visit medications_path
-    expect(page).to have_button('Refill Inventory')
+    expect(page).to have_content('Restock')
 
     visit location_path(medication.location)
-    expect(page).to have_button('Refill Inventory')
+    expect(page).to have_content('Restock')
 
     visit medication_path(medication)
-    expect(page).to have_button('Refill Inventory')
+    expect(page).to have_content('Restock')
   end
 
   it 'links medication cards on location pages to medication details' do
     visit location_path(medication.location)
 
-    click_link medication.name
+    click_on medication.name
 
     expect(page).to have_current_path(medication_path(medication))
   end
@@ -35,14 +35,14 @@ RSpec.describe 'Refill medication inventory' do
   it 'refills supply from medication detail with quantity and restock date' do
     visit medication_path(medication)
 
-    click_button 'Refill Inventory'
+    click_on 'Restock'
 
     expect(page).to have_field('refill_quantity')
     expect(page).to have_field('refill_restock_date', with: Date.current.to_s)
 
     fill_in 'refill_quantity', with: '12'
     fill_in 'refill_restock_date', with: Date.current.to_s
-    click_button 'Refill'
+    click_on 'Refill'
 
     expect(page).to have_content('Inventory refilled successfully.')
     expect(page).to have_no_css('div[data-state="open"]')
@@ -54,11 +54,11 @@ RSpec.describe 'Refill medication inventory' do
   it 'shows validation errors when refill quantity is invalid' do
     visit medication_path(medication)
 
-    click_button 'Refill Inventory'
+    click_on 'Restock'
     fill_in 'refill_quantity', with: '0'
     fill_in 'refill_restock_date', with: Date.current.to_s
 
-    click_button 'Refill'
+    click_on 'Refill'
 
     expect(page).to have_css('#refill_quantity:invalid')
   end

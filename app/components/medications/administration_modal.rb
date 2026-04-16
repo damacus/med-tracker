@@ -52,11 +52,11 @@ module Components
         div(class: 'rounded-shape-xl border border-border/70 bg-popover p-5 shadow-elevation-1') do
           div(class: 'flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between') do
             div(class: 'space-y-2') do
-              Text(size: '1', weight: 'black', class: 'uppercase tracking-[0.18em] text-muted-foreground') do
+              m3_text(variant: :label_small, class: 'uppercase tracking-[0.18em] text-on-surface-variant font-black') do
                 option_label(option)
               end
-              Heading(level: 2, size: '4', class: 'font-semibold tracking-tight') { option.person.name }
-              Text(size: '2', class: 'text-muted-foreground') { option_summary(option) }
+              m3_heading(variant: :title_medium, level: 2, class: 'font-semibold tracking-tight') { option.person.name }
+              m3_text(variant: :body_medium, class: 'text-on-surface-variant font-medium') { option_summary(option) }
             end
 
             render Components::Medications::TakeAction.new(
@@ -65,7 +65,7 @@ module Components
               amount: option.default_dose_amount,
               button: {
                 label: t('medications.show.log_administration'),
-                variant: :primary,
+                variant: :filled,
                 size: :lg,
                 class: 'w-full rounded-full lg:w-auto',
                 testid: "log-administration-#{option.class.name.underscore}-#{option.id}",
@@ -85,11 +85,11 @@ module Components
       end
 
       def render_empty_state
-        div(class: 'rounded-shape-xl border border-dashed border-border/70 bg-muted/35 px-6 py-10 text-center') do
-          Heading(level: 2, size: '4', class: 'font-semibold tracking-tight') do
+        m3_card(variant: :filled, class: 'bg-secondary-container/35 px-6 py-10 text-center border-dashed border-border/70') do
+          m3_heading(variant: :title_medium, level: 2, class: 'font-semibold tracking-tight') do
             t('medications.administration.empty_title')
           end
-          Text(size: '2', class: 'mt-2 text-muted-foreground') do
+          m3_text(variant: :body_medium, class: 'mt-2 text-on-surface-variant font-medium') do
             t('medications.administration.empty_description')
           end
         end

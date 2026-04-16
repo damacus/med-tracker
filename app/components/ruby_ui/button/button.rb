@@ -81,8 +81,8 @@ module RubyUI
       [
         BASE_CLASSES,
         size_classes,
-        'border border-input bg-background',
-        'hover:bg-accent hover:text-accent-foreground hover:scale-[1.02] transition-all'
+        'border border-outline bg-background',
+        'hover:bg-tertiary-container hover:text-on-tertiary-container hover:scale-[1.02] transition-all'
       ]
     end
 
@@ -90,7 +90,7 @@ module RubyUI
       [
         BASE_CLASSES,
         size_classes,
-        'border border-input bg-background',
+        'border border-outline bg-background',
         'text-error hover:bg-error-container hover:scale-[1.02] transition-all'
       ]
     end
@@ -99,7 +99,7 @@ module RubyUI
       [
         BASE_CLASSES,
         size_classes,
-        'border border-input bg-background',
+        'border border-outline bg-background',
         'text-success hover:bg-success-container hover:scale-[1.02] transition-all'
       ]
     end
@@ -108,7 +108,7 @@ module RubyUI
       [
         BASE_CLASSES,
         size_classes,
-        'hover:bg-accent hover:text-accent-foreground'
+        'hover:bg-tertiary-container hover:text-on-tertiary-container'
       ]
     end
 

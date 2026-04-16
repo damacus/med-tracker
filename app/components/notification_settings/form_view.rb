@@ -30,13 +30,13 @@ module Components
       def render_header
         div(class: 'mb-8') do
           h1(class: 'text-3xl font-black text-foreground') { t('notification_settings.title') }
-          p(class: 'text-muted-foreground mt-2') { t('notification_settings.description') }
+          p(class: 'text-on-surface-variant mt-2') { t('notification_settings.description') }
         end
       end
 
       def render_push_subscription_section
         div(
-          class: 'mb-8 p-6 rounded-2xl border border-border bg-muted',
+          class: 'mb-8 p-6 rounded-2xl border border-border bg-secondary-container',
           data: { controller: 'push-notification' }
         ) do
           # VAPID key fallback if not in layout
@@ -48,7 +48,7 @@ module Components
             h2(class: 'text-lg font-bold text-foreground') { t('notification_settings.browser.title') }
           end
           p(
-            class: 'text-sm text-muted-foreground mb-4',
+            class: 'text-sm text-on-surface-variant mb-4',
             data: { push_notification_target: 'status' }
           ) { t('notification_settings.browser.status') }
           div(class: 'flex flex-col gap-3') do
@@ -69,7 +69,7 @@ module Components
               button(
                 type: 'button',
                 class: 'inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-border ' \
-                       'text-muted-foreground font-bold text-sm hover:bg-accent transition-colors',
+                       'text-on-surface-variant font-bold text-sm hover:bg-tertiary-container transition-colors',
                 data: {
                   push_notification_target: 'unsubscribeButton',
                   action: 'push-notification#unsubscribe'
@@ -84,7 +84,7 @@ module Components
               type: 'button',
               class: 'w-full inline-flex items-center justify-center gap-2 rounded-xl border border-border ' \
                      'bg-card px-4 py-2.5 text-sm font-bold text-foreground transition-all ' \
-                     'hover:bg-accent ' \
+                     'hover:bg-tertiary-container ' \
                      'hover:shadow-sm active:scale-[0.98]',
               data: {
                 push_notification_target: 'testButton',
@@ -114,7 +114,7 @@ module Components
               label(class: 'font-bold text-foreground', for: 'notification_preference_enabled') do
                 t('notification_settings.reminders.enable')
               end
-              p(class: 'text-sm text-muted-foreground mt-1') { t('notification_settings.reminders.description') }
+              p(class: 'text-sm text-on-surface-variant mt-1') { t('notification_settings.reminders.description') }
             end
             input(type: 'hidden', name: 'notification_preference[enabled]', value: '0')
             input(
@@ -161,7 +161,7 @@ module Components
           a(
             href: root_path,
             class: 'inline-flex items-center px-4 py-2 rounded-xl border border-border ' \
-                   'text-muted-foreground font-bold text-sm hover:bg-accent transition-colors no-underline'
+                   'text-on-surface-variant font-bold text-sm hover:bg-tertiary-container transition-colors no-underline'
           ) { t('notification_settings.actions.cancel') }
           button(
             type: 'submit',

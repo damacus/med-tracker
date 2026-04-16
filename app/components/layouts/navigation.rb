@@ -12,7 +12,7 @@ module Components
       end
 
       def view_template
-        header(class: 'sticky top-0 z-40 w-full border-b bg-card shadow-elevation-1 md:hidden') do
+        header(class: 'sticky top-0 z-40 w-full border-b border-outline-variant bg-surface-container shadow-elevation-1 md:hidden') do
           render_skip_link
           nav(class: 'nav') do
             div(class: 'nav__container flex h-16 items-center justify-between px-4') do

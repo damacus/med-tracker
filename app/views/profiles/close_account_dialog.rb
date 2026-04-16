@@ -6,7 +6,7 @@ module Views
       include Phlex::Rails::Helpers::T
 
       def view_template
-        div(class: 'flex items-start justify-between rounded-shape-lg border border-destructive/20 bg-popover p-4 shadow-elevation-1 transition-colors hover:border-destructive/30 hover:bg-accent/40') do
+        div(class: 'flex items-start justify-between rounded-shape-lg border border-destructive/20 bg-popover p-4 shadow-elevation-1 transition-colors hover:border-destructive/30 hover:bg-tertiary-container/40') do
           render_account_info
           render_alert_dialog
         end
@@ -17,7 +17,7 @@ module Views
       def render_account_info
         div(class: 'flex-1') do
           h3(class: 'text-sm font-medium text-foreground') { t('profiles.close_account.title') }
-          p(class: 'mt-1 text-sm text-muted-foreground') { t('profiles.close_account.description') }
+          p(class: 'mt-1 text-sm text-on-surface-variant') { t('profiles.close_account.description') }
         end
       end
 
@@ -25,7 +25,7 @@ module Views
         div(class: 'ml-4') do
           render AlertDialog.new do
             render AlertDialogTrigger.new do
-              render Button.new(variant: :destructive, size: :sm) { t('profiles.close_account.title') }
+              m3_button(variant: :destructive, size: :sm) { t('profiles.close_account.title') }
             end
             render AlertDialogContent.new do
               render_dialog_header
@@ -55,7 +55,7 @@ module Views
         render RubyUI::Form.new(action: view_context.rodauth.close_account_path, method: :post, class: 'space-y-3') do
           render_close_account_hidden_fields
           render_close_account_password_field
-          render Button.new(type: :submit, variant: :destructive, class: 'w-full') { t('profiles.close_account.confirm_button') }
+          m3_button(type: :submit, variant: :destructive, class: 'w-full') { t('profiles.close_account.confirm_button') }
         end
       end
 
@@ -68,7 +68,7 @@ module Views
       def render_close_account_password_field
         render RubyUI::FormField.new do
           render RubyUI::FormFieldLabel.new(for: 'close-account-password') { t('rodauth.views.change_login.password_label') }
-          render RubyUI::Input.new(
+          m3_input(
             type: :password,
             name: view_context.rodauth.password_param,
             id: 'close-account-password',

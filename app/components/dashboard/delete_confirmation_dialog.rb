@@ -17,7 +17,7 @@ module Components
       def view_template
         AlertDialog do
           AlertDialogTrigger do
-            Button(
+            m3_button(
               variant: :destructive_outline,
               size: :sm,
               class: button_class,
@@ -51,7 +51,7 @@ module Components
           class: 'inline',
           data: { turbo_frame: '_top' }
         ) do
-          Button(
+          m3_button(
             variant: :destructive,
             type: :submit,
             data: { test_id: "confirm-delete-#{schedule.id}" }

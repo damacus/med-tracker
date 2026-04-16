@@ -31,7 +31,7 @@ module Views
       end
 
       def view_template
-        render Card.new(
+        m3_card(
           id: 'experiments-card',
           class: 'overflow-hidden border-border/70 shadow-elevation-2'
         ) do
@@ -52,7 +52,7 @@ module Views
 
       def render_wizard_section
         div(class: 'space-y-4') do
-          p(class: 'text-[0.7rem] font-semibold uppercase tracking-[0.28em] text-muted-foreground') do
+          p(class: 'text-[0.7rem] font-semibold uppercase tracking-[0.28em] text-on-surface-variant') do
             'Add Medication Wizard Style'
           end
           form_with(
@@ -75,7 +75,7 @@ module Views
 
         label(
           class: "flex items-start gap-4 rounded-shape-xl border #{border_class} bg-popover " \
-                 'p-4 shadow-elevation-1 cursor-pointer transition-all hover:border-primary/50 hover:bg-accent/30'
+                 'p-4 shadow-elevation-1 cursor-pointer transition-all hover:border-primary/50 hover:bg-tertiary-container/30'
         ) do
           input(
             type: 'radio',
@@ -93,7 +93,7 @@ module Views
                 class: selected ? 'text-primary' : 'invisible'
               )
             end
-            p(class: 'text-xs text-muted-foreground mt-0.5') { option[:description] }
+            p(class: 'text-xs text-on-surface-variant mt-0.5') { option[:description] }
           end
         end
       end

@@ -31,8 +31,8 @@ module RubyUI
           activedescendant: true
         },
         class: [
-          'truncate w-full flex h-9 items-center justify-between whitespace-nowrap rounded-shape-sm border border-input bg-card px-3 py-2 text-sm shadow-sm ring-offset-background',
-          'placeholder:text-muted-foreground',
+          'truncate w-full flex h-9 items-center justify-between whitespace-nowrap rounded-shape-sm border border-outline bg-card px-3 py-2 text-sm shadow-sm ring-offset-background',
+          'placeholder:text-on-surface-variant',
           'focus:outline-none focus:ring-1 focus:ring-ring',
           'disabled:cursor-not-allowed disabled:opacity-50',
           'aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:pointer-events-none'

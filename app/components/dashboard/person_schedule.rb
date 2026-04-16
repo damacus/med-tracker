@@ -30,8 +30,8 @@ module Components
         div(class: 'flex items-center gap-3 mb-2') do
           render_person_avatar
           div do
-            Heading(level: 3) { person.name }
-            Text(size: '2', weight: 'muted') { "#{t('dashboard.person_schedule.age')}: #{person.age}" }
+            m3_heading(level: 3) { person.name }
+            m3_text(size: '2', weight: 'muted') { "#{t('dashboard.person_schedule.age')}: #{person.age}" }
           end
         end
       end
@@ -51,10 +51,10 @@ module Components
       end
 
       def render_schedule_card(schedule)
-        Card(id: "schedule_#{schedule.id}", class: 'h-full flex flex-col') do
+        m3_card(id: "schedule_#{schedule.id}", class: 'h-full flex flex-col') do
           CardHeader do
             render_medication_icon
-            Text(size: '4', weight: 'semibold', class: 'leading-none tracking-tight text-foreground') do
+            m3_text(size: '4', weight: 'semibold', class: 'leading-none tracking-tight text-foreground') do
               schedule.medication.name
             end
           end
@@ -76,7 +76,7 @@ module Components
       end
 
       def render_schedule_details(schedule)
-        div(class: 'space-y-1 text-sm text-muted-foreground') do
+        div(class: 'space-y-1 text-sm text-on-surface-variant') do
           render_detail_row(t('dashboard.person_schedule.dosage'), format_dosage(schedule))
           render_detail_row(t('dashboard.person_schedule.frequency'), schedule.frequency) if schedule.frequency.present?
           render_detail_row(t('dashboard.person_schedule.ends'), format_end_date(schedule)) if schedule.end_date
@@ -122,7 +122,7 @@ module Components
           amount: schedule.dose_amount,
           button: {
             label: t('dashboard.person_schedule.take_now'),
-            variant: :ghost,
+            variant: :text,
             size: :sm,
             class: 'text-primary hover:underline font-medium p-0 h-auto',
             testid: "take-medication-#{schedule.id}",
@@ -138,7 +138,7 @@ module Components
       def render_delete_link(schedule)
         AlertDialog do
           AlertDialogTrigger do
-            Button(
+            m3_button(
               variant: :destructive_outline,
               size: :sm,
               data: { test_id: "delete-schedule-#{schedule.id}" }
@@ -158,7 +158,7 @@ module Components
                 method: :delete,
                 class: 'inline'
               ) do
-                Button(variant: :destructive, type: :submit) { t('dashboard.delete_confirmation.delete') }
+                m3_button(variant: :destructive, type: :submit) { t('dashboard.delete_confirmation.delete') }
               end
             end
           end

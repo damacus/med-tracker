@@ -265,10 +265,12 @@
 	--primary-foreground: oklch(1 0 0);
 	--secondary: oklch(from #dce6f4 l c h);
 	--secondary-foreground: oklch(from #22406f l c h);
-	--muted: oklch(from #e5edf8 l c h);
-	--muted-foreground: oklch(from #5e6d86 l c h);
-	--accent: oklch(from #d6e3fb l c h);
-	--accent-foreground: oklch(from #1b4fb8 l c h);
+	--secondary-container: color-mix(in oklab, var(--primary) 10%, oklch(1 0 0));
+	--on-secondary-container: oklch(from #22406f l c h);
+	--tertiary: oklch(from #d6e3fb l c h);
+	--tertiary-foreground: oklch(from #1b4fb8 l c h);
+	--tertiary-container: oklch(from #d6e3fb l c h);
+	--on-tertiary-container: oklch(from #1b4fb8 l c h);
 	--destructive: oklch(0.577 0.245 27.325);
 	--destructive-foreground: oklch(0.985 0 0);
 	--border: oklch(from #cfdae9 l c h);
@@ -309,9 +311,6 @@
 	--success-foreground: oklch(1 0 0);
 	--success-container: oklch(from var(--success) l c h / 0.12);
 	--on-success-container: oklch(from var(--success) 0.3 c h);
-
-	--secondary-container: color-mix(in oklab, var(--primary) 10%, oklch(1 0 0));
-	--on-secondary-container: oklch(from #22406f l c h);
 
 	/* M3 Surface Container Scale */
 	--surface-container-lowest: oklch(from #fbfdff l c h);
@@ -359,10 +358,12 @@
 	--primary-foreground: oklch(from #102447 l c h);
 	--secondary: oklch(from #1b2a45 l c h);
 	--secondary-foreground: var(--foreground);
-	--muted: oklch(from #22314c l c h);
-	--muted-foreground: oklch(from #a9b9d8 l c h);
-	--accent: oklch(from #21365d l c h);
-	--accent-foreground: oklch(from #dce7ff l c h);
+	--secondary-container: color-mix(in oklab, var(--primary) 18%, oklch(from #13223c l c h));
+	--on-secondary-container: var(--foreground);
+	--tertiary: oklch(from #21365d l c h);
+	--tertiary-foreground: oklch(from #dce7ff l c h);
+	--tertiary-container: oklch(from #21365d l c h);
+	--on-tertiary-container: oklch(from #dce7ff l c h);
 	--destructive: oklch(0.68 0.2 23);
 	--destructive-foreground: oklch(0.98 0.01 255);
 	--border: oklch(from #2d3d5a l c h);
@@ -395,8 +396,6 @@
 	--success-foreground: oklch(0.2 0.02 150);
 	--success-container: oklch(from var(--success) 0.34 c h / 0.42);
 	--on-success-container: oklch(0.95 0.01 255);
-	--secondary-container: color-mix(in oklab, var(--primary) 18%, oklch(from #13223c l c h));
-	--on-secondary-container: var(--foreground);
 
 	/* M3 Surface Container Scale (dark) */
 	--surface-container-lowest: oklch(from #101a2d l c h);
@@ -424,10 +423,12 @@
 	--primary-foreground: oklch(0.985 0 0);
 	--secondary: oklch(0.97 0 0);
 	--secondary-foreground: oklch(0.205 0 0);
-	--muted: oklch(0.97 0 0);
-	--muted-foreground: oklch(0.4 0 0);
-	--accent: oklch(0.97 0 0);
-	--accent-foreground: oklch(0.205 0 0);
+	--secondary-container: oklch(from var(--secondary) l c h / 0.12);
+	--on-secondary-container: oklch(from var(--secondary) l c h / 0.9);
+	--tertiary: oklch(0.97 0 0);
+	--tertiary-foreground: oklch(0.205 0 0);
+	--tertiary-container: oklch(from var(--tertiary) l c h / 0.12);
+	--on-tertiary-container: oklch(from var(--tertiary) l c h / 0.9);
 	--border: oklch(0.922 0 0);
 	--input: oklch(0.922 0 0);
 	--ring: oklch(0.708 0 0);
@@ -466,10 +467,12 @@
 	--primary-foreground: oklch(0.19 0.02 255);
 	--secondary: oklch(0.28 0.012 260);
 	--secondary-foreground: oklch(0.94 0.01 255);
-	--muted: oklch(0.27 0.012 260);
-	--muted-foreground: oklch(0.74 0.015 255);
-	--accent: oklch(0.29 0.015 250);
-	--accent-foreground: oklch(0.97 0.01 255);
+	--secondary-container: oklch(from var(--secondary) 0.34 c h / 0.42);
+	--on-secondary-container: oklch(0.95 0.01 255);
+	--tertiary: oklch(0.29 0.015 250);
+	--tertiary-foreground: oklch(0.97 0.01 255);
+	--tertiary-container: oklch(from var(--tertiary) 0.34 c h / 0.42);
+	--on-tertiary-container: oklch(0.95 0.01 255);
 	--border: oklch(0.34 0.012 255);
 	--input: oklch(0.32 0.012 255);
 	--ring: oklch(0.7 0.08 250);
@@ -508,10 +511,8 @@
 	--color-primary-foreground: var(--primary-foreground);
 	--color-secondary: var(--secondary);
 	--color-secondary-foreground: var(--secondary-foreground);
-	--color-muted: var(--muted);
-	--color-muted-foreground: var(--muted-foreground);
-	--color-accent: var(--accent);
-	--color-accent-foreground: var(--accent-foreground);
+	--color-tertiary: var(--tertiary);
+	--color-tertiary-foreground: var(--tertiary-foreground);
 	--color-destructive: var(--destructive);
 	--color-destructive-foreground: var(--destructive-foreground);
 	--color-border: var(--border);
@@ -553,12 +554,19 @@
 	--color-secondary-container: var(--secondary-container);
 	--color-on-secondary-container: var(--on-secondary-container);
 
+	--color-tertiary-container: var(--tertiary-container);
+	--color-on-tertiary-container: var(--on-tertiary-container);
+
 	--color-warning: var(--warning);
 	--color-warning-foreground: var(--warning-foreground);
 	--color-warning-container: var(--warning-container);
 	--color-on-warning-container: var(--on-warning-container);
 
 	/* Aliases for backward compatibility during transition */
+	--color-muted: var(--secondary-container);
+	--color-muted-foreground: var(--on-secondary-container);
+	--color-accent: var(--tertiary-container);
+	--color-accent-foreground: var(--on-tertiary-container);
 	--color-destructive-light: var(--error-container);
 	--color-destructive-text: var(--on-error-container);
 	--color-success-light: var(--success-container);
@@ -626,10 +634,12 @@
 	--primary-foreground: oklch(1 0 0) !important;
 	--secondary: oklch(from #dce6f4 l c h) !important;
 	--secondary-foreground: oklch(from #22406f l c h) !important;
-	--muted: oklch(from #e5edf8 l c h) !important;
-	--muted-foreground: oklch(from #5e6d86 l c h) !important;
-	--accent: oklch(from #d6e3fb l c h) !important;
-	--accent-foreground: oklch(from #1b4fb8 l c h) !important;
+	--secondary-container: color-mix(in oklab, var(--palette-color) 10%, oklch(1 0 0)) !important;
+	--on-secondary-container: oklch(from #22406f l c h) !important;
+	--tertiary: oklch(from #d6e3fb l c h) !important;
+	--tertiary-foreground: oklch(from #1b4fb8 l c h) !important;
+	--tertiary-container: oklch(from #d6e3fb l c h) !important;
+	--on-tertiary-container: oklch(from #1b4fb8 l c h) !important;
 	--border: oklch(from #cfdae9 l c h) !important;
 	--input: oklch(from #c5d3e5 l c h) !important;
 	--ring: oklch(from #1b4fb8 l c h) !important;
@@ -672,10 +682,12 @@
 	--primary-foreground: oklch(from #102447 l c h) !important;
 	--secondary: oklch(from #1b2a45 l c h) !important;
 	--secondary-foreground: var(--foreground);
-	--muted: oklch(from #22314c l c h) !important;
-	--muted-foreground: oklch(from #a9b9d8 l c h) !important;
-	--accent: oklch(from #21365d l c h) !important;
-	--accent-foreground: oklch(from #dce7ff l c h) !important;
+	--secondary-container: color-mix(in oklab, var(--palette-color) 18%, oklch(from #13223c l c h)) !important;
+	--on-secondary-container: var(--foreground);
+	--tertiary: oklch(from #21365d l c h) !important;
+	--tertiary-foreground: oklch(from #dce7ff l c h) !important;
+	--tertiary-container: oklch(from #21365d l c h) !important;
+	--on-tertiary-container: oklch(from #dce7ff l c h) !important;
 	--border: oklch(from #2d3d5a l c h) !important;
 	--input: oklch(from #314566 l c h) !important;
 	--ring: oklch(from #79a4ff l c h) !important;
@@ -761,9 +773,8 @@
 	--primary-foreground: oklch(1 0 0) !important;
 	--secondary: color-mix(in oklab, var(--palette-color) 10%, oklch(1 0 0)) !important;
 	--secondary-foreground: oklch(from #203454 l c h) !important;
-	--muted: color-mix(in oklab, var(--palette-color) 8%, oklch(1 0 0)) !important;
-	--accent: color-mix(in oklab, var(--palette-color) 16%, oklch(1 0 0)) !important;
-	--accent-foreground: color-mix(in oklab, var(--palette-color) 78%, oklch(0 0 0)) !important;
+	--tertiary: color-mix(in oklab, var(--palette-color) 16%, oklch(1 0 0)) !important;
+	--tertiary-foreground: color-mix(in oklab, var(--palette-color) 78%, oklch(0 0 0)) !important;
 	--border: color-mix(in oklab, var(--palette-color) 18%, oklch(1 0 0)) !important;
 	--input: color-mix(in oklab, var(--palette-color) 14%, oklch(1 0 0)) !important;
 	--ring: oklch(from var(--palette-color) l c h) !important;
@@ -774,6 +785,8 @@
 	--on-primary-container: color-mix(in oklab, var(--palette-color) 76%, oklch(0 0 0)) !important;
 	--secondary-container: color-mix(in oklab, var(--palette-color) 11%, oklch(1 0 0)) !important;
 	--on-secondary-container: color-mix(in oklab, var(--palette-color) 72%, oklch(0 0 0)) !important;
+	--tertiary-container: color-mix(in oklab, var(--palette-color) 16%, oklch(1 0 0)) !important;
+	--on-tertiary-container: color-mix(in oklab, var(--palette-color) 78%, oklch(0 0 0)) !important;
 	--surface-container-lowest: color-mix(in oklab, var(--palette-color) 1%, oklch(1 0 0)) !important;
 	--surface-container-low: color-mix(in oklab, var(--palette-color) 3%, oklch(1 0 0)) !important;
 	--surface-container: color-mix(in oklab, var(--palette-color) 6%, oklch(1 0 0)) !important;
@@ -786,16 +799,18 @@
 	--card: color-mix(in oklab, var(--palette-color) 9%, oklch(0.22 0.012 260)) !important;
 	--popover: color-mix(in oklab, var(--palette-color) 10%, oklch(0.2 0.012 260)) !important;
 	--secondary: color-mix(in oklab, var(--palette-color) 10%, oklch(0.28 0.012 260)) !important;
-	--muted: color-mix(in oklab, var(--palette-color) 16%, oklch(0.27 0.012 260)) !important;
-	--accent: color-mix(in oklab, var(--palette-color) 23%, oklch(0.29 0.015 250)) !important;
+	--secondary-container: color-mix(in oklab, var(--palette-color) 20%, oklch(0.24 0.012 255)) !important;
+	--tertiary: color-mix(in oklab, var(--palette-color) 23%, oklch(0.29 0.015 250)) !important;
+	--tertiary-container: color-mix(in oklab, var(--palette-color) 23%, oklch(0.29 0.015 250)) !important;
 	--border: color-mix(in oklab, var(--palette-color) 18%, oklch(0.34 0.012 255)) !important;
 	--input: color-mix(in oklab, var(--palette-color) 14%, oklch(0.32 0.012 255)) !important;
 	--ring: color-mix(in oklab, var(--palette-color) 72%, oklch(1 0 0)) !important;
 	--sidebar: color-mix(in oklab, var(--palette-color) 12%, oklch(0.18 0.012 260)) !important;
 	--sidebar-accent: color-mix(in oklab, var(--palette-color) 20%, oklch(0.25 0.014 250)) !important;
 	--primary-container: color-mix(in oklab, var(--palette-color) 32%, oklch(0.24 0.012 255)) !important;
-	--secondary-container: color-mix(in oklab, var(--palette-color) 20%, oklch(0.24 0.012 255)) !important;
-	--accent-foreground: oklch(0.97 0.01 255) !important;
+	--on-secondary-container: oklch(0.95 0.01 255) !important;
+	--on-tertiary-container: oklch(0.95 0.01 255) !important;
+	--on-tertiary-container: oklch(0.97 0.01 255) !important;
 	--sidebar-ring: var(--ring) !important;
 	--surface-container-lowest: color-mix(in oklab, var(--palette-color) 4%, oklch(0.13 0.01 260)) !important;
 	--surface-container-low: color-mix(in oklab, var(--palette-color) 7%, oklch(0.19 0.012 260)) !important;
@@ -809,8 +824,9 @@
 	--card: oklch(0.19 0.005 255) !important;
 	--popover: oklch(0.18 0.005 255) !important;
 	--secondary: oklch(0.24 0.005 255) !important;
-	--muted: oklch(0.26 0.005 255) !important;
-	--accent: oklch(0.29 0.005 255) !important;
+	--secondary-container: oklch(0.31 0.005 255 / 0.4) !important;
+	--tertiary: oklch(0.29 0.005 255) !important;
+	--tertiary-container: oklch(0.29 0.005 255) !important;
 	--border: oklch(0.31 0.005 255) !important;
 	--input: oklch(0.28 0.005 255) !important;
 	--ring: oklch(0.82 0.005 255) !important;
@@ -818,7 +834,7 @@
 	--sidebar-accent: oklch(0.22 0.005 255) !important;
 	--primary-container: oklch(0.34 0.005 255 / 0.52) !important;
 	--secondary-container: oklch(0.31 0.005 255 / 0.4) !important;
-	--accent-foreground: oklch(0.96 0.01 255) !important;
+	--on-tertiary-container: oklch(0.96 0.01 255) !important;
 	--sidebar-ring: var(--ring) !important;
 }
 
@@ -845,11 +861,11 @@
 	}
 
 	.nav__menu {
-		@apply hidden items-center gap-3 text-sm font-medium text-muted-foreground sm:flex;
+		@apply hidden items-center gap-3 text-sm font-medium text-on-surface-variant sm:flex;
 	}
 
 	.nav__link {
-		@apply inline-flex items-center rounded-md px-3 py-2 min-h-[24px] text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
+		@apply inline-flex items-center rounded-md px-3 py-2 min-h-[24px] text-sm font-medium text-on-surface-variant transition-colors hover:text-foreground hover:bg-tertiary-container focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
 	}
 
 	.nav__user-menu {

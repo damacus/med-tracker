@@ -11,8 +11,8 @@ module Components
       end
 
       def view_template
-        Card(class: 'p-8 space-y-6') do
-          Heading(level: 3, size: '4', class: 'font-bold') { t('medications.show.standard_dosage') }
+        m3_card(class: 'p-8 space-y-6') do
+          m3_heading(variant: :title_medium, level: 3, class: 'font-bold') { t('medications.show.standard_dosage') }
 
           if dosage_specified?
             div(class: 'flex items-center gap-4') do
@@ -23,12 +23,14 @@ module Components
                 render Icons::CheckCircle.new(size: 24)
               end
               div do
-                span(class: 'text-3xl font-black text-foreground') { medication.dosage_amount.to_s }
-                span(class: 'text-lg font-bold text-muted-foreground ml-1') { medication.dosage_unit }
+                span(class: 'text-3xl font-black text-foreground tracking-tight') { medication.dosage_amount.to_s }
+                span(class: 'text-lg font-bold text-on-surface-variant ml-1') { medication.dosage_unit }
               end
             end
           else
-            Text(size: '2', class: 'text-muted-foreground italic') { t('medications.show.no_dosage') }
+            m3_text(variant: :body_medium, class: 'text-on-surface-variant italic font-medium') do
+              t('medications.show.no_dosage')
+            end
           end
 
           div(class: 'pt-4 border-t border-border') do
@@ -49,17 +51,17 @@ module Components
       def render_overview_item(label, value)
         div(class: 'flex items-center gap-4 group') do
           div(
-            class: 'w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center ' \
+            class: 'w-10 h-10 rounded-shape-xl bg-primary/10 flex items-center justify-center ' \
                    'text-primary ' \
                    'group-hover:bg-primary/20 transition-colors shadow-inner'
           ) do
             render Icons::Settings.new(size: 20)
           end
           div do
-            Text(size: '1', weight: 'bold', class: 'uppercase tracking-widest text-muted-foreground font-black') do
+            m3_text(variant: :label_small, class: 'uppercase tracking-widest text-on-surface-variant font-black') do
               label
             end
-            Text(size: '2', weight: 'semibold') { value }
+            m3_text(variant: :body_medium, class: 'font-semibold') { value }
           end
         end
       end

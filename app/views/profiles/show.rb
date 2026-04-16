@@ -44,13 +44,13 @@ module Views
 
       def render_header_copy
         div(class: 'max-w-2xl') do
-          p(class: 'mb-3 text-[0.7rem] font-semibold uppercase tracking-[0.34em] text-muted-foreground') do
+          p(class: 'mb-3 text-[0.7rem] font-semibold uppercase tracking-[0.34em] text-on-surface-variant') do
             t('profiles.show.eyebrow')
           end
           h1(class: 'text-4xl font-semibold tracking-tight text-foreground sm:text-5xl') do
             t('profiles.show.title')
           end
-          p(class: 'mt-3 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base') do
+          p(class: 'mt-3 max-w-xl text-sm leading-6 text-on-surface-variant sm:text-base') do
             t('profiles.show.description')
           end
         end
@@ -82,7 +82,7 @@ module Views
       end
 
       def render_personal_info_card
-        render Card.new(
+        m3_card(
           class: 'overflow-hidden border border-border/70 shadow-elevation-2',
           data: { testid: 'profile-personal-info-card' }
         ) do
@@ -96,7 +96,7 @@ module Views
 
       def render_header_stat(label, value)
         div(class: 'rounded-shape-xl border border-border/70 bg-popover px-4 py-4 shadow-elevation-1') do
-          p(class: 'text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-muted-foreground') { label }
+          p(class: 'text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-on-surface-variant') { label }
           p(class: 'mt-2 truncate text-sm font-semibold text-foreground sm:text-base') { value.presence || t('profiles.show.not_set') }
         end
       end

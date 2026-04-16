@@ -41,7 +41,7 @@ module RubyUI
 
     def weight_to_class
       {
-        'muted' => 'text-muted-foreground',
+        'muted' => 'text-on-surface-variant',
         'light' => 'font-light',
         'regular' => 'font-normal',
         'medium' => 'font-medium',

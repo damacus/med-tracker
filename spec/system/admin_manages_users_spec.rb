@@ -45,22 +45,25 @@ RSpec.describe 'AdminManagesUsers' do
       end
     end
 
-    it 'allows admin to create a new user' do
+    it 'allows admin to create a new user', :js do
       login_as(admin)
 
       visit admin_users_path
-      click_link 'New User'
+      click_on 'New User'
 
       expect(page).to have_content('Create New User')
 
       fill_in 'Name', with: 'New Test User'
       fill_in 'Date of birth', with: '1985-05-15'
       fill_in 'Email address', with: 'newuser@example.com'
-      fill_in 'Password', with: 'password123'
-      fill_in 'Password confirmation', with: 'password123'
-      select 'Doctor', from: 'Role'
+      fill_in 'user_password', with: 'password123'
+      fill_in 'user_password_confirmation', with: 'password123'
+      
+      # Interact with Combobox for Role
+      find('#role_trigger').click
+      all('label', text: 'Doctor', visible: :all).last.click
 
-      click_button 'Create User'
+      click_on 'Create User'
 
       expect(page).to have_content('User was successfully created')
       expect(page).to have_content('newuser@example.com')
@@ -75,21 +78,23 @@ RSpec.describe 'AdminManagesUsers' do
       # Fill in required fields except email to bypass HTML5 validation
       fill_in 'Name', with: 'Test User'
       fill_in 'Date of birth', with: '1990-01-01'
-      fill_in 'Password', with: 'password123'
-      fill_in 'Password confirmation', with: 'password123'
-      select 'Doctor', from: 'Role'
+      fill_in 'user_password', with: 'password123'
+      fill_in 'user_password_confirmation', with: 'password123'
+      
+      find('#role_trigger').click
+      all('label', text: 'Doctor', visible: :all).last.click
 
       # Clear email field and submit
       fill_in 'Email address', with: ''
 
       # Use JavaScript to remove required attribute and submit
       page.execute_script("document.getElementById('user_email_address').removeAttribute('required')")
-      click_button 'Create User'
+      click_on 'Create User'
 
       expect(page).to have_content("Email address can't be blank")
     end
 
-    it 'shows error when creating user with duplicate email' do
+    it 'shows error when creating user with duplicate email', :js do
       login_as(admin)
 
       visit new_admin_user_path
@@ -97,11 +102,13 @@ RSpec.describe 'AdminManagesUsers' do
       fill_in 'Name', with: 'Duplicate User'
       fill_in 'Date of birth', with: '1985-05-15'
       fill_in 'Email address', with: admin.email_address
-      fill_in 'Password', with: 'password123'
-      fill_in 'Password confirmation', with: 'password123'
-      select 'Doctor', from: 'Role'
+      fill_in 'user_password', with: 'password123'
+      fill_in 'user_password_confirmation', with: 'password123'
+      
+      find('#role_trigger').click
+      all('label', text: 'Doctor', visible: :all).last.click
 
-      click_button 'Create User'
+      click_on 'Create User'
 
       expect(page).to have_content('has already been taken')
     end
@@ -114,11 +121,13 @@ RSpec.describe 'AdminManagesUsers' do
       fill_in 'Name', with: 'Loginable User'
       fill_in 'Date of birth', with: '1985-05-15'
       fill_in 'Email address', with: 'loginable@example.com'
-      fill_in 'Password', with: 'SecureP@ssword123!'
-      fill_in 'Password confirmation', with: 'SecureP@ssword123!'
-      select 'Carer', from: 'Role'
+      fill_in 'user_password', with: 'SecureP@ssword123!'
+      fill_in 'user_password_confirmation', with: 'SecureP@ssword123!'
+      
+      find('#role_trigger').click
+      all('label', text: 'Carer', visible: :all).last.click
 
-      click_button 'Create User'
+      click_on 'Create User'
 
       expect(page).to have_content('User was successfully created')
 
@@ -128,32 +137,34 @@ RSpec.describe 'AdminManagesUsers' do
       end
 
       # Log out admin
-      click_button 'Sign Out'
+      click_on 'Sign Out'
 
       # Log in as newly created user
       visit login_path
       fill_in 'email', with: 'loginable@example.com'
       fill_in 'password', with: 'SecureP@ssword123!'
-      click_button 'Sign In to Dashboard'
+      click_on 'Sign In'
 
       expect(page).to have_content('Loginable User')
     end
 
-    it 'allows admin to edit an existing user' do
+    it 'allows admin to edit an existing user', :js do
       login_as(admin)
 
       visit admin_users_path
       within "[data-user-id='#{carer.id}']" do
-        click_link 'Edit'
+        click_on 'Edit'
       end
 
       expect(page).to have_content('Edit User')
       expect(page).to have_field('Email address', with: carer.email_address)
 
       fill_in 'Email address', with: 'updated_carer@example.com'
-      select 'Nurse', from: 'Role'
+      
+      click_on 'Carer'
+      all('label', text: 'Nurse', visible: :all).last.click
 
-      click_button 'Update User'
+      click_on 'Update User'
 
       expect(page).to have_content('User was successfully updated')
       expect(page).to have_content('updated_carer@example.com')
@@ -288,40 +299,40 @@ RSpec.describe 'AdminManagesUsers' do
       expect(page).to have_no_content(admin.email_address)
     end
 
-    it 'allows admin to filter users by role' do
+    it 'allows admin to filter users by role', :js do
       login_as(admin)
 
       visit admin_users_path
 
-      select 'Carer', from: 'Role'
-      click_button 'Search'
-
+      find('#role_trigger').click
+      all('label', text: 'Carer', visible: :all).last.click
+      
       expect(page).to have_content('test_carer@example.com')
       expect(page).to have_no_content(admin.email_address)
     end
 
-    it 'allows admin to filter users by status' do
+    it 'allows admin to filter users by status', :js do
       carer.deactivate!
       login_as(admin)
 
       visit admin_users_path
 
-      select 'Inactive', from: 'Status'
-      click_button 'Search'
-
+      click_on 'All'
+      all('label', text: 'Inactive', visible: :all).last.click
+      
       expect(page).to have_content(carer.email_address)
       expect(page).to have_no_content(admin.email_address)
     end
 
-    it 'allows admin to filter active users only' do
+    it 'allows admin to filter active users only', :js do
       carer.deactivate!
       login_as(admin)
 
       visit admin_users_path
 
-      select 'Active', from: 'Status'
-      click_button 'Search'
-
+      click_on 'All'
+      all('label', text: 'Active', visible: :all).last.click
+      
       expect(page).to have_no_content(carer.email_address)
       expect(page).to have_content(admin.email_address)
     end
@@ -335,15 +346,22 @@ RSpec.describe 'AdminManagesUsers' do
       expect(page).to have_css('[data-testid="pagination-info"]', visible: :all)
     end
 
-    it 'allows admin to combine search and filter' do
+    it 'allows admin to combine search and filter', :js do
       login_as(admin)
 
       visit admin_users_path
 
       fill_in 'Search', with: 'Carer'
-      select 'Carer', from: 'Role'
-      click_button 'Search'
+      
+      # Wait for potential auto-submit from search field and DOM to be stable
+      using_wait_time(5) do
+        expect(page).to have_content('Carer User')
+      end
+      sleep 0.5 # Small delay to ensure any frame replacement has finished
 
+      find('#role_trigger').click
+      all('label', text: 'Carer', visible: :all).last.click
+      
       within '[data-testid="admin-users"]' do
         expect(page).to have_content('Carer User')
         expect(page).to have_no_content(admin.name)

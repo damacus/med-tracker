@@ -26,15 +26,15 @@ module Components
 
             div(
               class: 'fixed left-1/2 top-1/2 z-50 w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 ' \
-                     'rounded-[2.5rem] border border-border/70 bg-popover shadow-elevation-5 ' \
+                     'rounded-[2.5rem] border border-outline-variant/30 bg-surface-container-high shadow-elevation-5 ' \
                      'overflow-hidden max-h-[90vh] overflow-y-auto'
             ) do
               a(
                 href: medications_path,
                 data: { turbo_frame: '_top' },
                 class: 'absolute top-4 right-4 z-10 flex h-10 w-10 items-center justify-center ' \
-                       'rounded-full border border-border/60 bg-popover/90 text-muted-foreground ' \
-                       'shadow-elevation-1 transition-colors hover:bg-accent',
+                       'rounded-full border border-outline-variant/30 bg-surface-container-highest/90 text-on-surface-variant ' \
+                       'shadow-elevation-1 transition-all hover:bg-secondary-container hover:text-on-secondary-container',
                 aria_label: 'Close'
               ) do
                 render Icons::X.new(size: 18)
@@ -63,10 +63,10 @@ module Components
             ) do
               render Icons::Pill.new(size: 24)
             end
-            Heading(level: 1, size: '6', class: 'font-black tracking-tight text-foreground') do
+            m3_heading(variant: :headline_small, level: 1, class: 'font-black tracking-tight text-foreground') do
               t('medications.form.new_title')
             end
-            Text(size: '2', class: 'text-muted-foreground') do
+            m3_text(variant: :body_medium, class: 'text-on-surface-variant font-medium') do
               t('medications.form.new_subtitle')
             end
           end

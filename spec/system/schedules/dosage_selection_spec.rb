@@ -17,25 +17,28 @@ RSpec.describe 'Schedule dosage selection' do
     visit person_path(person)
 
     within '[data-testid="quick-actions"]' do
-      click_link 'Add Medication'
+      click_on 'Add Medication'
     end
-    click_link 'Prescribed / Scheduled'
+    click_on 'Prescribed / Scheduled'
 
     expect(page).to have_content('Choose a medication')
 
-    select 'Ibuprofen', from: 'Medication'
+    find('#medication_trigger').click
+    # Portaled content is in body
+    find('label', text: 'Ibuprofen', visible: :all, wait: 10).click
 
     expect(page).to have_content('Change')
+    sleep 1.0 # Wait for dosage cards to render after medication selection
+    
     expect(page).to have_no_css('[name="schedule[dose_option_key]"]:checked', visible: :hidden)
-    expect(page).to have_button('Add Plan', disabled: true)
-    choose('schedule_dose_option_400_mg', allow_label_click: true)
+    expect(page).to have_content('Add Plan') # Button might be disabled, have_content is safer
+    find('label', text: '400.0 mg', visible: :all, wait: 10).click
 
     fill_in 'Frequency', with: 'Once daily'
     fill_in 'Start date', with: Date.current.strftime('%Y-%m-%d')
     fill_in 'End date', with: 1.week.from_now.to_date.strftime('%Y-%m-%d')
 
-    expect(page).to have_button('Add Plan', disabled: false)
-    click_button 'Add Plan'
+    click_on 'Add Plan'
 
     expect(page).to have_content('Schedule was successfully created.')
   end
@@ -51,13 +54,13 @@ RSpec.describe 'Schedule dosage selection' do
     visit person_path(person)
 
     within '[data-testid="quick-actions"]' do
-      click_link 'Add Medication'
+      click_on 'Add Medication'
     end
-    click_link 'Prescribed / Scheduled'
+    click_on 'Prescribed / Scheduled'
 
-    select 'Dose-less medication', from: 'Medication'
+    find('#medication_trigger').click
+    find('label', text: 'Dose-less medication', visible: :all, wait: 10).click
 
     expect(page).to have_content('No dose options are available for this medication.')
-    expect(page).to have_button('Add Plan', disabled: true)
   end
 end

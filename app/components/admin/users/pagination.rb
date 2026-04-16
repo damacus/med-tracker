@@ -56,12 +56,12 @@ module Components
 
         def mobile_nav_class
           'relative inline-flex items-center rounded-md border border-border bg-card ' \
-            'px-4 py-2 text-sm font-medium text-foreground hover:bg-accent'
+            'px-4 py-2 text-sm font-medium text-foreground hover:bg-tertiary-container'
         end
 
         def render_pagination_info
           div(data: { testid: 'pagination-info' }) do
-            Text(size: '2', class: 'text-foreground') do
+            m3_text(size: '2', class: 'text-foreground') do
               plain "#{t('admin.users.pagination.showing')} "
               span(class: 'font-medium') { pagy_obj.from.to_s }
               plain " #{t('admin.users.pagination.to')} "
@@ -148,14 +148,14 @@ module Components
         end
 
         def nav_button_class(extra = '')
-          'relative inline-flex items-center px-2 py-2 text-muted-foreground ring-1 ring-inset ' \
-            "ring-border hover:bg-accent focus:z-20 focus:outline-offset-0 #{extra}"
+          'relative inline-flex items-center px-2 py-2 text-on-surface-variant ring-1 ring-inset ' \
+            "ring-border hover:bg-tertiary-container focus:z-20 focus:outline-offset-0 #{extra}"
         end
 
         def page_number_class(current)
           base = 'relative inline-flex items-center px-4 py-2 text-sm font-semibold ' \
                  'ring-1 ring-inset ring-border focus:z-20 focus:outline-offset-0'
-          current ? "#{base} z-10 bg-primary text-white" : "#{base} text-foreground hover:bg-accent"
+          current ? "#{base} z-10 bg-primary text-white" : "#{base} text-foreground hover:bg-tertiary-container"
         end
 
         def gap_class

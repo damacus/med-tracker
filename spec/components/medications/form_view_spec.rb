@@ -206,7 +206,7 @@ RSpec.describe Components::Medications::FormView, type: :component do
       expect(hidden_unit['value']).to eq('ml')
       expect(display_unit['value']).to eq('ml')
       expect(display_unit['disabled']).to eq('disabled')
-      expect(display_unit['class']).to include('bg-muted/70')
+      expect(display_unit['class']).to include('bg-secondary-container/70')
     end
   end
 end

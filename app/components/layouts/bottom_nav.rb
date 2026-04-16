@@ -9,7 +9,7 @@ module Components
       def view_template
         nav(
           class: 'mobile-nav fixed bottom-0 left-0 z-50 flex h-20 w-full items-center justify-around ' \
-                 'border-t border-border bg-background/80 px-6 pb-safe backdrop-blur-xl md:hidden ' \
+                 'border-t border-outline-variant bg-surface-container px-6 pb-safe md:hidden ' \
                  'transition-all duration-500'
         ) do
           render_nav_item(root_path, Icons::Home, 'Home')
@@ -26,12 +26,13 @@ module Components
         link_to(
           path,
           class: 'flex flex-col items-center justify-center gap-1.5 min-h-[44px] min-w-[44px] ' \
-                 "transition-all no-underline #{is_active ? 'text-primary' : 'text-muted-foreground'}"
+                 'transition-all no-underline relative state-layer rounded-xl ' \
+                 "#{is_active ? 'text-primary' : 'text-on-surface-variant hover:text-on-surface'}"
         ) do
-          div(class: "transition-transform #{'scale-110' if is_active}") do
+          div(class: "relative flex items-center justify-center transition-all z-10 #{'px-5 py-1 bg-secondary-container rounded-shape-full text-on-secondary-container' if is_active}") do
             render icon_class.new(size: 24)
           end
-          span(class: 'text-[10px] font-black uppercase tracking-widest') do
+          span(class: "text-[11px] z-10 #{is_active ? 'font-black' : 'font-bold'}") do
             label
           end
         end

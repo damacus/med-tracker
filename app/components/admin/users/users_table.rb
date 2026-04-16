@@ -59,7 +59,7 @@ module Components
 
         def sortable_header_class(is_active)
           base = 'inline-flex items-center gap-1 hover:text-foreground cursor-pointer'
-          is_active ? "#{base} text-foreground font-semibold" : "#{base} text-muted-foreground"
+          is_active ? "#{base} text-foreground font-semibold" : "#{base} text-on-surface-variant"
         end
 
         def render_sort_indicator(is_active, direction)

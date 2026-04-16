@@ -13,15 +13,16 @@ module Components
 
       def view_template
         card_id = "timeline_#{dose[:source].class.name.underscore}_#{dose[:source].id}"
-        render RubyUI::Card.new(
+        render M3::Card.new(
+          variant: :elevated,
           class: "border-none border-l-4 #{status_border_class} transition-all duration-300 " \
-                 'hover:scale-[1.01] hover:shadow-md bg-card shadow-sm',
+                 'hover:scale-[1.01] hover:shadow-elevation-2 bg-surface-container-low',
           id: card_id,
           data: { id: "dose_#{dose_id}" }
         ) do
-          div(class: 'flex items-center justify-between p-4') do
-            div(class: 'flex items-center gap-4') do
-              div(class: 'text-sm font-bold text-muted-foreground w-12 hidden md:block') do
+          div(class: 'flex items-center justify-between p-5') do
+            div(class: 'flex items-center gap-5') do
+              m3_text(variant: :label_large, class: 'text-on-surface-variant w-14 hidden md:block font-black') do
                 if dose[:scheduled_at]
                   dose[:scheduled_at].strftime('%H:%M')
                 else
@@ -29,8 +30,8 @@ module Components
                 end
               end
               div do
-                Heading(level: 3, size: '4', class: 'font-semibold') { dose[:source].medication.name }
-                Text(size: '2', weight: 'muted') { subtitle_text }
+                m3_heading(variant: :title_medium, level: 3, class: 'font-bold tracking-tight') { dose[:source].medication.name }
+                m3_text(variant: :body_medium, class: 'text-on-surface-variant font-medium') { subtitle_text }
               end
             end
 
@@ -94,7 +95,7 @@ module Components
           amount: amount,
           button: {
             label: take_label,
-            variant: :outline,
+            variant: :outlined,
             size: :md,
             testid: "take-dose-#{dose_id}",
             form_class: nil
@@ -119,12 +120,12 @@ module Components
 
       def status_badge
         variant_map = {
-          taken: :success,
-          upcoming: :default,
-          cooldown: :warning,
+          taken: :tonal,
+          upcoming: :filled,
+          cooldown: :outlined,
           out_of_stock: :destructive
         }
-        variant = variant_map[dose[:status]] || :destructive
+        m3_variant = variant_map[dose[:status]] || :destructive
 
         label = if dose[:status] == :cooldown && dose[:source].respond_to?(:countdown_display)
                   "#{t('dashboard.statuses.cooldown')} (#{dose[:source].countdown_display})"
@@ -132,7 +133,7 @@ module Components
                   t("dashboard.statuses.#{dose[:status]}")
                 end
 
-        render RubyUI::Badge.new(variant: variant) do
+        m3_badge(variant: m3_variant, class: 'px-3 py-1 text-[10px] font-black uppercase tracking-wider') do
           label
         end
       end

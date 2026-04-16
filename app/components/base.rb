@@ -3,6 +3,7 @@
 module Components
   class Base < Phlex::HTML
     include RubyUI
+    include Components::M3Helpers
     # Include any helpers you want to be available across all components
     include Phlex::Rails::Helpers::Routes
     include Phlex::Rails::Helpers::LinkTo

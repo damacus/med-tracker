@@ -23,10 +23,10 @@ module Views
       ].freeze
 
       def view_template
-        render Card.new(class: 'overflow-hidden border border-border/70 shadow-elevation-2') do
+        m3_card(class: 'overflow-hidden border border-border/70 shadow-elevation-2') do
           render CardHeader.new(class: 'relative overflow-hidden border-b border-border/60 pb-6') do
             div(class: 'absolute right-0 top-0 hidden h-24 w-24 rounded-full bg-primary/8 blur-2xl sm:block')
-            p(class: 'relative mb-3 text-[0.7rem] font-semibold uppercase tracking-[0.34em] text-muted-foreground') do
+            p(class: 'relative mb-3 text-[0.7rem] font-semibold uppercase tracking-[0.34em] text-on-surface-variant') do
               'Appearance Studio'
             end
             render(CardTitle.new(class: 'relative text-2xl tracking-tight sm:text-3xl') do
@@ -52,10 +52,10 @@ module Views
       def render_appearance_section
         div(class: 'grid gap-5 lg:grid-cols-[minmax(0,15rem)_minmax(0,1fr)] lg:items-start') do
           div(class: 'space-y-2') do
-            p(class: 'text-[0.7rem] font-semibold uppercase tracking-[0.28em] text-muted-foreground') do
+            p(class: 'text-[0.7rem] font-semibold uppercase tracking-[0.28em] text-on-surface-variant') do
               t('profiles.appearance.mode_label')
             end
-            p(class: 'text-sm leading-6 text-muted-foreground') do
+            p(class: 'text-sm leading-6 text-on-surface-variant') do
               'Switch the overall light balance first, then fine-tune the palette below.'
             end
           end
@@ -69,10 +69,10 @@ module Views
 
       def render_palette_section
         div(class: 'space-y-4') do
-          p(class: 'text-[0.7rem] font-semibold uppercase tracking-[0.28em] text-muted-foreground') do
+          p(class: 'text-[0.7rem] font-semibold uppercase tracking-[0.28em] text-on-surface-variant') do
             t('profiles.theme_picker.title')
           end
-          p(class: 'text-sm text-muted-foreground') do
+          p(class: 'text-sm text-on-surface-variant') do
             t('profiles.theme_picker.description')
           end
           div(class: 'grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4') do
@@ -87,7 +87,7 @@ module Views
         button(
           type: 'button',
           aria_pressed: 'false',
-          class: 'inline-flex min-h-14 items-center justify-center gap-2 rounded-shape-lg border border-transparent bg-popover px-4 py-3 text-sm font-semibold text-muted-foreground shadow-elevation-1 transition-all duration-300 hover:-translate-y-0.5 hover:border-border/80 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[active=true]:border-primary/30 data-[active=true]:bg-popover data-[active=true]:text-foreground data-[active=true]:shadow-elevation-2',
+          class: 'inline-flex min-h-14 items-center justify-center gap-2 rounded-shape-lg border border-transparent bg-popover px-4 py-3 text-sm font-semibold text-on-surface-variant shadow-elevation-1 transition-all duration-300 hover:-translate-y-0.5 hover:border-border/80 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[active=true]:border-primary/30 data-[active=true]:bg-popover data-[active=true]:text-foreground data-[active=true]:shadow-elevation-2',
           style: "animation-delay: #{index * 70}ms",
           data: {
             action: 'click->appearance#switchAppearance',

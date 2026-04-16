@@ -29,10 +29,10 @@ module Components
 
       def render_header
         div(class: 'mb-8') do
-          Text(size: '2', weight: 'medium', class: 'uppercase tracking-wide text-muted-foreground mb-2') do
+          m3_text(size: '2', weight: 'medium', class: 'uppercase tracking-wide text-on-surface-variant mb-2') do
             t('person_medications.form.add_medication')
           end
-          Heading(level: 1) do
+          m3_heading(level: 1) do
             if editing
               t('person_medications.form.edit_medication_for', person: person.name)
             else
@@ -86,8 +86,8 @@ module Components
 
       def render_actions
         div(class: 'flex justify-end gap-3 pt-4') do
-          Link(href: person_path(person), variant: :outline) { t('person_medications.form.cancel') }
-          Button(type: :submit, variant: :primary) do
+          Link(href: person_path(person), variant: :outlined) { t('person_medications.form.cancel') }
+          m3_button(type: :submit, variant: :filled) do
             if editing
               t('person_medications.form.save_changes_button')
             else

@@ -10,6 +10,6 @@ RSpec.describe Components::Layouts::Navigation, type: :component do
     expect(html).not_to include('bg-card/95')
     expect(html).not_to include('bg-card/60')
     expect(html).not_to include('backdrop-blur')
-    expect(html).to include('border-b bg-card shadow-elevation-1 md:hidden')
+    expect(html).to include('border-b border-outline-variant bg-surface-container shadow-elevation-1 md:hidden')
   end
 end

@@ -30,17 +30,17 @@ module Components
         def render_header
           div(class: 'flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12') do
             div do
-              Text(size: '2', weight: 'muted', class: 'uppercase tracking-widest mb-1 block font-bold') do
+              m3_text(size: '2', weight: 'muted', class: 'uppercase tracking-widest mb-1 block font-bold') do
                 Time.current.strftime('%A, %b %d')
               end
-              Heading(level: 1, size: '8', class: 'font-extrabold tracking-tight') do
+              m3_heading(level: 1, size: '8', class: 'font-extrabold tracking-tight') do
                 t('admin.carer_relationships.index.title')
               end
-              Text(weight: 'muted', class: 'mt-2 block') { t('admin.carer_relationships.index.subtitle') }
+              m3_text(weight: 'muted', class: 'mt-2 block') { t('admin.carer_relationships.index.subtitle') }
             end
             render RubyUI::Link.new(
               href: '/admin/carer_relationships/new',
-              variant: :primary,
+              variant: :filled,
               size: :lg,
               class: 'rounded-2xl shadow-lg shadow-primary/20',
               data: { turbo_frame: 'modal' }
@@ -73,7 +73,7 @@ module Components
           render RubyUI::TableBody.new(id: 'carer_relationships_rows') do
             if relationships.empty?
               render RubyUI::TableRow.new(id: 'carer_relationships_empty') do
-                render RubyUI::TableCell.new(colspan: 5, class: 'py-8 text-center text-muted-foreground') do
+                render RubyUI::TableCell.new(colspan: 5, class: 'py-8 text-center text-on-surface-variant') do
                   t('admin.carer_relationships.index.empty')
                 end
               end
@@ -106,7 +106,7 @@ module Components
               method: :post,
               class: 'inline-block'
             ) do
-              Button(
+              m3_button(
                 type: :submit,
                 variant: :success_outline,
                 size: :sm
@@ -118,7 +118,7 @@ module Components
         def render_deactivate_dialog(relationship)
           render RubyUI::AlertDialog.new do
             render RubyUI::AlertDialogTrigger.new do
-              Button(variant: :destructive_outline, size: :sm) do
+              m3_button(variant: :destructive_outline, size: :sm) do
                 t('admin.carer_relationships.index.deactivate')
               end
             end
@@ -134,7 +134,7 @@ module Components
               render RubyUI::AlertDialogFooter.new do
                 render(RubyUI::AlertDialogCancel.new { t('admin.carer_relationships.index.deactivate_dialog.cancel') })
                 form_with(url: "/admin/carer_relationships/#{relationship.id}", method: :delete, class: 'inline') do
-                  Button(variant: :destructive, type: :submit) do
+                  m3_button(variant: :destructive, type: :submit) do
                     t('admin.carer_relationships.index.deactivate_dialog.submit')
                   end
                 end
@@ -149,7 +149,7 @@ module Components
                    'bg-card px-4 py-3 sm:px-6'
           ) do
             div(data: { testid: 'pagination-info' }) do
-              Text(size: '2', class: 'text-foreground') do
+              m3_text(size: '2', class: 'text-foreground') do
                 plain "#{t('admin.carer_relationships.index.pagination.showing')} "
                 span(class: 'font-medium') { pagy_obj.from.to_s }
                 plain " #{t('admin.carer_relationships.index.pagination.to')} "

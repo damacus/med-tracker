@@ -29,7 +29,7 @@ module Views
 
       def render_sheet_trigger
         render SheetTrigger.new do
-          render Button.new(variant: :outline, size: :sm) { @button_text }
+          m3_button(variant: :outlined, size: :sm) { @button_text }
         end
       end
 
@@ -58,8 +58,8 @@ module Views
 
       def render_sheet_footer
         render SheetFooter.new do
-          render Button.new(variant: :outline, data: { action: 'click->ruby-ui--sheet-content#close' }) { 'Cancel' }
-          render Button.new(type: :submit) { 'Save' }
+          m3_button(variant: :outlined, data: { action: 'click->ruby-ui--sheet-content#close' }) { 'Cancel' }
+          m3_button(type: :submit) { 'Save' }
         end
       end
 
@@ -67,7 +67,7 @@ module Views
         case @field
         when :email
           label(class: 'mb-2 block text-sm font-medium text-foreground') { 'Email Address' }
-          render Input.new(
+          m3_input(
             type: 'email',
             name: 'account[email]',
             placeholder: 'your.email@example.com',
@@ -75,7 +75,7 @@ module Views
           )
         when :date_of_birth
           label(class: 'mb-2 block text-sm font-medium text-foreground') { 'Date of Birth' }
-          render Input.new(
+          m3_input(
             type: 'date',
             name: 'person[date_of_birth]',
             value: @person.date_of_birth&.strftime('%Y-%m-%d')

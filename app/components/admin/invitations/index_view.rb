@@ -24,7 +24,7 @@ module Components
             render_errors if @invitation.errors.any?
 
             div(class: 'max-w-2xl mx-auto w-full') do
-              Card(class: 'overflow-hidden border-none shadow-2xl rounded-[2.5rem] bg-card') do
+              m3_card(class: 'overflow-hidden border-none shadow-2xl rounded-[2.5rem] bg-card') do
                 div(class: 'p-10') do
                   render_form
                 end
@@ -40,13 +40,13 @@ module Components
         def render_header
           div(class: 'flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12') do
             div do
-              Text(size: '2', weight: 'muted', class: 'uppercase tracking-widest mb-1 block font-bold') do
+              m3_text(size: '2', weight: 'muted', class: 'uppercase tracking-widest mb-1 block font-bold') do
                 Time.current.strftime('%A, %b %d')
               end
-              Heading(level: 1, size: '8', class: 'font-extrabold tracking-tight') do
+              m3_heading(level: 1, size: '8', class: 'font-extrabold tracking-tight') do
                 t('admin.invitations.index.title')
               end
-              Text(weight: 'muted', class: 'mt-2 block') { t('admin.invitations.index.subtitle') }
+              m3_text(weight: 'muted', class: 'mt-2 block') { t('admin.invitations.index.subtitle') }
             end
           end
         end
@@ -64,10 +64,10 @@ module Components
         def render_email_field
           FormField(class: 'space-y-2') do
             FormFieldLabel(for: 'invitation_email',
-                           class: 'text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1') do
+                           class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1') do
               t('admin.invitations.index.form.email')
             end
-            Input(
+            m3_input(
               type: :email,
               name: 'invitation[email]',
               id: 'invitation_email',
@@ -82,7 +82,7 @@ module Components
         def render_role_field
           FormField(class: 'space-y-2') do
             FormFieldLabel(for: 'invitation_role',
-                           class: 'text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1') do
+                           class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1') do
               t('admin.invitations.index.form.role')
             end
             select(name: 'invitation[role]', id: 'invitation_role', class: select_classes, required: true) do
@@ -95,7 +95,7 @@ module Components
 
         def render_actions
           div(class: 'flex items-center justify-end pt-4') do
-            Button(type: :submit, variant: :primary, size: :lg,
+            m3_button(type: :submit, variant: :filled, size: :lg,
                    class: 'px-8 rounded-2xl shadow-lg shadow-primary/20') do
               t('admin.invitations.index.form.submit')
             end
@@ -106,9 +106,9 @@ module Components
           return if @invitations.empty?
 
           div(class: 'max-w-4xl mx-auto w-full') do
-            Card(class: 'overflow-hidden border-none shadow-xl rounded-[2rem] bg-card') do
+            m3_card(class: 'overflow-hidden border-none shadow-xl rounded-[2rem] bg-card') do
               div(class: 'px-8 py-6 border-b border-border') do
-                Heading(level: 2, size: '5', class: 'font-bold tracking-tight') { t('admin.invitations.index.recent') }
+                m3_heading(level: 2, size: '5', class: 'font-bold tracking-tight') { t('admin.invitations.index.recent') }
               end
 
               div(class: 'divide-y divide-border') do
@@ -124,16 +124,16 @@ module Components
           div(class: 'px-8 py-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4') do
             div(class: 'space-y-1') do
               p(class: 'text-sm font-semibold text-foreground') { invitation.email }
-              p(class: 'text-sm text-muted-foreground') do
+              p(class: 'text-sm text-on-surface-variant') do
                 plain "#{invitation.role.titleize} • #{invitation_status_label(invitation)}"
               end
-              p(class: 'text-xs text-muted-foreground') { invitation_metadata(invitation) }
+              p(class: 'text-xs text-on-surface-variant') { invitation_metadata(invitation) }
             end
 
             next unless resendable_invitation?(invitation)
 
             form_with(url: resend_admin_invitation_path(invitation), method: :post, class: 'shrink-0') do
-              Button(type: :submit, variant: :outline, size: :sm, class: 'rounded-xl') do
+              m3_button(type: :submit, variant: :outlinedd, size: :sm, class: 'rounded-xl') do
                 t('admin.invitations.index.resend')
               end
             end
@@ -164,7 +164,7 @@ module Components
         def render_errors
           render RubyUI::Alert.new(variant: :destructive, class: 'mb-6') do
             div do
-              Heading(level: 2, size: '3', class: 'font-semibold mb-2') do
+              m3_heading(level: 2, size: '3', class: 'font-semibold mb-2') do
                 plain "#{pluralize(@invitation.errors.count, 'error')} prevented this invitation from being saved:"
               end
               ul(class: 'my-2 ml-6 list-disc [&>li]:mt-1') do

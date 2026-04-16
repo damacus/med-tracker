@@ -5,58 +5,43 @@ module Views
     class OtpDisable < Views::Rodauth::Base
       def view_template
         page_layout do
-          render_page_header(
+          render_auth_card(
             title: t('rodauth.views.otp_disable.page_title'),
             subtitle: t('rodauth.views.otp_disable.page_subtitle')
-          )
-          form_section
+          ) do
+            render_otp_disable_form
+          end
         end
       end
 
       private
 
-      def form_section
-        render RubyUI::Card.new(class: card_classes) do
-          render RubyUI::CardHeader.new(class: 'space-y-2 bg-card/60') do
-            render RubyUI::CardTitle.new(class: 'text-xl font-semibold text-foreground') do
-              t('rodauth.views.otp_disable.card_title')
-            end
-            render RubyUI::CardDescription.new(class: 'text-base text-muted-foreground') do
-              t('rodauth.views.otp_disable.card_description')
-            end
-          end
-          render RubyUI::CardContent.new(class: 'space-y-6 p-6 sm:p-8') do
-            otp_disable_form
-          end
-        end
-      end
-
-      def otp_disable_form
+      def render_otp_disable_form
         render RubyUI::Form.new(action: rodauth.otp_disable_path, method: :post, class: 'space-y-6', data_turbo: 'false') do
           additional_tags = rodauth.otp_disable_additional_form_tags
           safe(additional_tags) if additional_tags.present?
           authenticity_token_field
-          password_field if rodauth.two_factor_modifications_require_password?
-          submit_button
+          render_password_field if rodauth.two_factor_modifications_require_password?
+          render_submit_button
         end
       end
 
-      def password_field
-        render RubyUI::FormField.new do
-          render RubyUI::FormFieldLabel.new(for: 'password') { t('rodauth.views.otp_disable.password_label') }
-          render RubyUI::Input.new(
+      def render_password_field
+        render_m3_form_field(
+          label: t('rodauth.views.otp_disable.password_label'),
+          input_attrs: {
             type: :password,
             name: 'password',
             id: 'password',
             required: true,
             autocomplete: 'current-password',
             placeholder: t('rodauth.views.otp_disable.password_placeholder')
-          )
-        end
+          }
+        )
       end
 
-      def submit_button
-        render RubyUI::Button.new(type: :submit, variant: :destructive, size: :md, class: 'w-full') do
+      def render_submit_button
+        m3_button(type: :submit, variant: :destructive, size: :lg, class: 'w-full py-6 font-bold shadow-lg shadow-error/20') do
           rodauth.otp_disable_button
         end
       end

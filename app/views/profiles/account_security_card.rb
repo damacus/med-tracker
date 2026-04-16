@@ -11,7 +11,7 @@ module Views
       end
 
       def view_template
-        render Card.new(class: 'border-border/70 shadow-elevation-2') do
+        m3_card(class: 'border-border/70 shadow-elevation-2') do
           render CardHeader.new do
             render(CardTitle.new { t('profiles.account_security.title') })
             render(CardDescription.new do
@@ -28,14 +28,14 @@ module Views
       private
 
       def render_email_change_sheet
-        div(class: 'flex items-start justify-between rounded-shape-lg border border-border/70 bg-popover p-4 shadow-elevation-1 transition-colors hover:border-primary/20 hover:bg-accent/40') do
+        div(class: 'flex items-start justify-between rounded-shape-lg border border-border/70 bg-popover p-4 shadow-elevation-1 transition-colors hover:border-primary/20 hover:bg-tertiary-container/40') do
           div(class: 'flex-1') do
             h3(class: 'text-sm font-medium text-foreground') { t('profiles.account_security.change_email_title') }
-            p(class: 'mt-1 text-sm text-muted-foreground') { t('profiles.account_security.change_email_description') }
+            p(class: 'mt-1 text-sm text-on-surface-variant') { t('profiles.account_security.change_email_description') }
           end
           div(class: 'ml-4') do
             render RubyUI::Link.new(
-              variant: :outline,
+              variant: :outlined,
               size: :sm,
               href: '/change-login',
               data: { turbo_frame: 'modal' }
@@ -45,14 +45,14 @@ module Views
       end
 
       def render_password_change_sheet
-        div(class: 'flex items-start justify-between rounded-shape-lg border border-border/70 bg-popover p-4 shadow-elevation-1 transition-colors hover:border-primary/20 hover:bg-accent/40') do
+        div(class: 'flex items-start justify-between rounded-shape-lg border border-border/70 bg-popover p-4 shadow-elevation-1 transition-colors hover:border-primary/20 hover:bg-tertiary-container/40') do
           div(class: 'flex-1') do
             h3(class: 'text-sm font-medium text-foreground') { t('profiles.account_security.change_password_title') }
-            p(class: 'mt-1 text-sm text-muted-foreground') { t('profiles.account_security.change_password_description') }
+            p(class: 'mt-1 text-sm text-on-surface-variant') { t('profiles.account_security.change_password_description') }
           end
           div(class: 'ml-4') do
             render RubyUI::Link.new(
-              variant: :outline,
+              variant: :outlined,
               size: :sm,
               href: '/change-password',
               data: { turbo_frame: 'modal' }

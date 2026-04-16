@@ -36,18 +36,25 @@ RSpec.describe Components::Medications::ShowView, type: :component do
   end
 
   describe 'action button styling' do
+    let(:medication) { create(:medication, name: 'Paracetamol', current_supply: 50, reorder_status: nil) }
     let(:rendered) { render_inline(described_class.new(medication: medication)) }
 
     it 'uses action button utility tokens' do
-      add_schedule_link = rendered.css('a').find { |link| link.text.include?('Add Schedule') }
-      log_administration_link = rendered.css('a').find { |link| link.text.include?('Log') }
-      mark_as_ordered_link = rendered.css('a').find { |link| link.text.include?('Mark as Ordered') }
-      refill_button = rendered.css('button').find { |button| button.text.include?('Refill Inventory') }
+      # Find elements by href patterns or type which is more stable than text content
+      add_schedule_link = rendered.at_css("a[href*='/add_medication']")
+      log_administration_link = rendered.at_css("a[href$='/administration']")
+      mark_as_ordered_link = rendered.at_css("a[href$='/mark_as_ordered']")
+      refill_button = rendered.at_css("[data-controller='ruby-ui--dialog'] button")
 
-      expect(add_schedule_link[:class]).to include('rounded-full')
-      expect(log_administration_link[:class]).to include('rounded-full')
-      expect(mark_as_ordered_link[:class]).to include('rounded-full')
-      expect(refill_button[:class]).to include('rounded-full')
+      expect(add_schedule_link).to be_present, "Add Schedule link not found"
+      expect(log_administration_link).to be_present, "Log Administration link not found"
+      expect(mark_as_ordered_link).to be_present, "Mark as Ordered link not found"
+      expect(refill_button).to be_present, "Refill button not found"
+
+      expect(add_schedule_link[:class]).to include('rounded-shape-full')
+      expect(log_administration_link[:class]).to include('rounded-shape-full')
+      expect(mark_as_ordered_link[:class]).to include('rounded-shape-full')
+      expect(refill_button[:class]).to include('rounded-shape-full')
     end
   end
 

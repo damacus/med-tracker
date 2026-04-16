@@ -21,11 +21,7 @@ module Views
       def flash_section
         return if flash_message.blank?
 
-        div(id: 'verify-flash') do
-          render RubyUI::Alert.new(variant: flash_variant) do
-            plain(flash_message)
-          end
-        end
+        render_m3_alert(flash_message, variant: flash_variant)
       end
 
       def flash_message
@@ -37,23 +33,10 @@ module Views
       end
 
       def form_section
-        render RubyUI::Card.new(class: card_classes) do
-          render_card_header
-          render_card_content
-        end
-      end
-
-      def render_card_header
-        render RubyUI::CardHeader.new(class: 'space-y-2 bg-card/60') do
-          render RubyUI::CardTitle.new(class: 'text-2xl font-semibold text-foreground') { t('rodauth.views.verify_account.card_title') }
-          render RubyUI::CardDescription.new(class: 'text-base text-muted-foreground') do
-            plain t('rodauth.views.verify_account.card_description')
-          end
-        end
-      end
-
-      def render_card_content
-        render RubyUI::CardContent.new(class: 'space-y-6 p-6 sm:p-8') do
+        render_auth_card(
+          title: t('rodauth.views.verify_account.card_title'),
+          subtitle: t('rodauth.views.verify_account.card_description')
+        ) do
           flash_section
           render_verify_form
         end
@@ -72,9 +55,7 @@ module Views
       end
 
       def submit_button
-        render RubyUI::Button.new(type: :submit, variant: :primary, size: :md, class: 'w-full') do
-          t('rodauth.views.verify_account.submit')
-        end
+        render_m3_submit_button(t('rodauth.views.verify_account.submit'))
       end
     end
   end

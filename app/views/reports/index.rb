@@ -28,23 +28,23 @@ module Views
       def render_header
         div(class: 'mb-12 flex flex-col gap-6 md:flex-row md:items-end md:justify-between') do
           div(class: 'space-y-2 text-center md:text-left') do
-            Text(size: '2', weight: 'muted', class: 'font-bold uppercase tracking-widest text-muted-foreground') do
+            m3_text(size: '2', weight: 'muted', class: 'font-bold uppercase tracking-widest text-on-surface-variant') do
               t('reports.index.eyebrow')
             end
-            Heading(level: 1, size: '8', class: 'font-extrabold tracking-tight text-foreground') { t('reports.index.title') }
-            p(class: 'text-muted-foreground') { "#{@start_date.strftime('%B %d')} — #{@end_date.strftime('%B %d, %Y')}" }
+            m3_heading(level: 1, size: '8', class: 'font-extrabold tracking-tight text-foreground') { t('reports.index.title') }
+            p(class: 'text-on-surface-variant') { "#{@start_date.strftime('%B %d')} — #{@end_date.strftime('%B %d, %Y')}" }
           end
 
           form(action: view_context.reports_path, method: :get, class: 'flex items-end gap-3 rounded-[1.5rem] border border-border/70 bg-popover p-4 shadow-elevation-1') do
             div(class: 'flex flex-col gap-1') do
-              label(for: 'start_date', class: 'text-xs font-semibold uppercase tracking-wider text-muted-foreground') { t('reports.index.start_date_label') }
+              label(for: 'start_date', class: 'text-xs font-semibold uppercase tracking-wider text-on-surface-variant') { t('reports.index.start_date_label') }
               input(type: 'date', name: 'start_date', id: 'start_date', value: @start_date, class: 'form-input rounded-lg border-border bg-background text-sm text-foreground focus:border-primary focus:ring-primary')
             end
             div(class: 'flex flex-col gap-1') do
-              label(for: 'end_date', class: 'text-xs font-semibold uppercase tracking-wider text-muted-foreground') { t('reports.index.end_date_label') }
+              label(for: 'end_date', class: 'text-xs font-semibold uppercase tracking-wider text-on-surface-variant') { t('reports.index.end_date_label') }
               input(type: 'date', name: 'end_date', id: 'end_date', value: @end_date, class: 'form-input rounded-lg border-border bg-background text-sm text-foreground focus:border-primary focus:ring-primary')
             end
-            render Button.new(type: 'submit', class: 'rounded-xl shadow-elevation-1', 'aria-label': t('reports.index.apply_filters_aria_label')) do
+            m3_button(type: 'submit', class: 'rounded-xl shadow-elevation-1', 'aria-label': t('reports.index.apply_filters_aria_label')) do
               render Icons::ChevronRight.new(size: 20)
             end
           end
@@ -58,7 +58,7 @@ module Views
         total_actual = @daily_data.sum { |d| d[:actual] }
         overall_compliance = total_expected.zero? ? 100 : [(total_actual.to_f / total_expected * 100).round, 100].min
 
-        Card(class: 'overflow-hidden border border-border/70 bg-primary text-primary-foreground shadow-elevation-3') do
+        m3_card(class: 'overflow-hidden border border-border/70 bg-primary text-primary-foreground shadow-elevation-3') do
           div(class: 'relative p-8 sm:p-12') do
             div(class: 'relative z-10 grid grid-cols-1 md:grid-cols-3 gap-8 text-center') do
               summary_stat(
@@ -84,20 +84,20 @@ module Views
 
       def summary_stat(label, value, subtext)
         div(class: 'space-y-1') do
-          Text(size: '1', class: 'font-bold uppercase tracking-widest text-primary-foreground/70') { label }
-          Heading(level: 2, size: '8', class: 'font-black') { value }
-          Text(size: '1', class: 'inline-block rounded-full bg-primary-foreground/12 px-2 py-0.5 font-bold text-primary-foreground') { subtext }
+          m3_text(size: '1', class: 'font-bold uppercase tracking-widest text-primary-foreground/70') { label }
+          m3_heading(level: 2, size: '8', class: 'font-black') { value }
+          m3_text(size: '1', class: 'inline-block rounded-full bg-primary-foreground/12 px-2 py-0.5 font-bold text-primary-foreground') { subtext }
         end
       end
 
       def render_compliance_section
         div(class: 'space-y-8') do
           div(class: 'flex items-center justify-between px-2') do
-            Heading(level: 2, size: '5', class: 'font-bold') { t('reports.index.timeline_title') }
-            render Button.new(variant: :outline, size: :sm, class: 'rounded-full') { t('reports.index.download_pdf') }
+            m3_heading(level: 2, size: '5', class: 'font-bold') { t('reports.index.timeline_title') }
+            m3_button(variant: :outlinedd, size: :sm, class: 'rounded-full') { t('reports.index.download_pdf') }
           end
 
-          Card(class: 'border border-border/70 bg-card p-8 shadow-elevation-2 sm:p-10') do
+          m3_card(class: 'border border-border/70 bg-card p-8 shadow-elevation-2 sm:p-10') do
             div(class: 'flex items-end justify-between h-64 gap-4 px-2') do
               @daily_data.each do |day|
                 render_bar(day)
@@ -127,7 +127,7 @@ module Views
           end
 
           # Day Label
-          Text(size: '1', weight: 'bold', class: 'text-muted-foreground uppercase tracking-tighter font-black') { day[:day_name] }
+          m3_text(size: '1', weight: 'bold', class: 'text-on-surface-variant uppercase tracking-tighter font-black') { day[:day_name] }
         end
       end
 
@@ -178,20 +178,20 @@ module Views
 
       # rubocop:disable Metrics/AbcSize
       def render_insight_card(card)
-        Card(class: 'space-y-4 border border-border/70 bg-card p-8 shadow-elevation-1 transition-transform hover:scale-[1.02] hover:shadow-elevation-2') do
+        m3_card(class: 'space-y-4 border border-border/70 bg-card p-8 shadow-elevation-1 transition-transform hover:scale-[1.02] hover:shadow-elevation-2') do
           div(class: 'flex items-center gap-4') do
             div(class: "flex h-12 w-12 items-center justify-center rounded-2xl #{card.icon_background_class} #{card.text_color}") do
               render card.icon_class.new(size: 24)
             end
             div do
-              Heading(level: 3, size: '4', class: "#{card.text_color} font-black") { card.title }
-              Text(size: '1', weight: 'bold', class: 'uppercase tracking-widest opacity-50') { t('reports.index.actionable_insight') }
+              m3_heading(level: 3, size: '4', class: "#{card.text_color} font-black") { card.title }
+              m3_text(size: '1', weight: 'bold', class: 'uppercase tracking-widest opacity-50') { t('reports.index.actionable_insight') }
             end
           end
 
           div(class: 'space-y-2') do
-            Heading(level: 4, size: '5', class: 'font-bold') { card.value }
-            Text(size: '2', class: 'text-muted-foreground leading-relaxed') { card.description }
+            m3_heading(level: 4, size: '5', class: 'font-bold') { card.value }
+            m3_text(size: '2', class: 'text-on-surface-variant leading-relaxed') { card.description }
           end
         end
       end

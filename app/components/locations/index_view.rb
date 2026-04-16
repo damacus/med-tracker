@@ -25,14 +25,14 @@ module Components
       def render_header
         div(class: 'flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12') do
           div do
-            Text(size: '2', weight: 'muted', class: 'uppercase tracking-widest mb-1 block font-bold') do
+            m3_text(size: '2', weight: 'muted', class: 'uppercase tracking-widest mb-1 block font-bold') do
               t('locations.index.manage_locations')
             end
-            Heading(level: 1, size: '8', class: 'font-extrabold tracking-tight') { t('locations.index.title') }
+            m3_heading(level: 1, size: '8', class: 'font-extrabold tracking-tight') { t('locations.index.title') }
           end
           Link(
             href: new_location_path,
-            variant: :primary,
+            variant: :filled,
             size: :lg,
             class: 'rounded-2xl font-bold text-sm shadow-lg shadow-primary/20'
           ) do
@@ -50,7 +50,7 @@ module Components
       end
 
       def render_location_card(location)
-        Card(
+        m3_card(
           id: "location_#{location.id}",
           class: 'h-full flex flex-col border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card ' \
                  'rounded-[2.5rem] transition-all duration-300 hover:scale-[1.02] hover:shadow-xl ' \
@@ -60,30 +60,30 @@ module Components
             div(class: 'flex justify-between items-start mb-4') do
               render_location_icon
               # Fallback for medication word
-              Badge(variant: :outline) do
+              Badge(variant: :outlined) do
                 pluralize(location.medications.size, t('medications.created').split.first.downcase)
               end
             end
-            Heading(level: 2, size: '5', class: 'font-bold tracking-tight') { location.name }
+            m3_heading(level: 2, size: '5', class: 'font-bold tracking-tight') { location.name }
           end
 
           CardContent(class: 'flex-grow space-y-4 px-8 pb-4') do
             if location.description.present?
-              Text(size: '2', class: 'text-muted-foreground line-clamp-2 leading-relaxed') { location.description }
+              m3_text(size: '2', class: 'text-on-surface-variant line-clamp-2 leading-relaxed') { location.description }
             end
 
             if location.members.present?
               div(class: 'pt-4 border-t border-border') do
-                Text(size: '1', weight: 'bold',
-                     class: 'uppercase tracking-widest text-muted-foreground mb-2 block font-black') do
+                m3_text(size: '1', weight: 'bold',
+                     class: 'uppercase tracking-widest text-on-surface-variant mb-2 block font-black') do
                   t('locations.index.members')
                 end
                 div(class: 'flex flex-wrap gap-1') do
                   location.members.each do |member|
                     Badge(
-                      variant: :outline,
-                      class: 'text-[10px] bg-muted ' \
-                             'text-muted-foreground border-border font-medium'
+                      variant: :outlined,
+                      class: 'text-[10px] bg-secondary-container ' \
+                             'text-on-surface-variant border-border font-medium'
                     ) do
                       member.name
                     end
@@ -101,8 +101,8 @@ module Components
 
       def render_location_icon
         div(
-          class: 'w-12 h-12 rounded-2xl bg-muted flex items-center ' \
-                 'justify-center text-muted-foreground group-hover:text-primary ' \
+          class: 'w-12 h-12 rounded-2xl bg-secondary-container flex items-center ' \
+                 'justify-center text-on-surface-variant group-hover:text-primary ' \
                  'group-hover:bg-primary/5 transition-all'
         ) do
           render Icons::Home.new(size: 24)
@@ -113,19 +113,19 @@ module Components
         div(class: 'flex items-center gap-2 w-full') do
           Link(
             href: location_path(location),
-            variant: :outline,
+            variant: :outlined,
             size: :sm,
             class: 'flex-1 rounded-xl py-5 border-border bg-card ' \
-                   'hover:bg-accent text-muted-foreground'
+                   'hover:bg-tertiary-container text-on-surface-variant'
           ) do
             t('locations.index.view')
           end
           Link(
             href: edit_location_path(location, return_to: locations_path),
-            variant: :outline,
+            variant: :outlined,
             size: :sm,
             class: 'rounded-xl w-10 h-10 p-0 border-border ' \
-                   'bg-card hover:bg-accent text-muted-foreground',
+                   'bg-card hover:bg-tertiary-container text-on-surface-variant',
             aria_label: t('locations.index.edit', default: 'Edit location')
           ) do
             render Icons::Pencil.new(size: 16)
@@ -137,8 +137,8 @@ module Components
       def render_delete_dialog(location)
         AlertDialog do
           AlertDialogTrigger do
-            Button(variant: :ghost, size: :sm,
-                   class: 'rounded-xl w-10 h-10 p-0 text-muted-foreground ' \
+            m3_button(variant: :text, size: :sm,
+                   class: 'rounded-xl w-10 h-10 p-0 text-on-surface-variant ' \
                           'hover:text-destructive hover:bg-destructive/5',
                    aria_label: t('locations.index.delete', default: 'Delete location')) do
               render Icons::Trash.new(size: 18)
@@ -154,7 +154,7 @@ module Components
             AlertDialogFooter do
               AlertDialogCancel(class: 'rounded-xl') { t('locations.index.delete_dialog.cancel') }
               form_with(url: location_path(location), method: :delete, class: 'inline') do
-                Button(variant: :destructive, type: :submit, class: 'rounded-xl shadow-lg shadow-destructive/20') do
+                m3_button(variant: :destructive, type: :submit, class: 'rounded-xl shadow-lg shadow-destructive/20') do
                   t('locations.index.delete_dialog.submit')
                 end
               end

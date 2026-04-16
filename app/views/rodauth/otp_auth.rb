@@ -16,28 +16,19 @@ module Views
       private
 
       def form_section
-        render RubyUI::Card.new(class: card_classes) do
-          render RubyUI::CardHeader.new(class: 'space-y-2 bg-card/60') do
-            render RubyUI::CardTitle.new(class: 'text-xl font-semibold text-foreground') do
-              t('rodauth.views.otp_auth.card_title')
-            end
-            render RubyUI::CardDescription.new(class: 'text-base text-muted-foreground') do
-              t('rodauth.views.otp_auth.card_description')
-            end
-          end
-          render RubyUI::CardContent.new(class: 'space-y-6 p-6 sm:p-8') do
-            flash_section
-            otp_form
-          end
+        render_auth_card(
+          title: t('rodauth.views.otp_auth.card_title'),
+          subtitle: t('rodauth.views.otp_auth.card_description')
+        ) do
+          flash_section
+          otp_form
         end
       end
 
       def flash_section
         return if flash_message.blank?
 
-        render RubyUI::Alert.new(variant: :destructive) do
-          plain(flash_message)
-        end
+        render_m3_alert(flash_message)
       end
 
       def flash_message
@@ -58,36 +49,25 @@ module Views
       end
 
       def otp_code_field
-        render RubyUI::FormField.new do
-          render RubyUI::FormFieldLabel.new(for: 'otp-auth-code') { rodauth.otp_auth_label }
-          render_otp_input
-          render_otp_error
-        end
-      end
-
-      def render_otp_input
-        render RubyUI::Input.new(
-          type: :text,
-          name: rodauth.otp_auth_param,
-          id: 'otp-auth-code',
-          required: true,
-          autocomplete: 'one-time-code',
-          inputmode: 'numeric',
-          pattern: '[0-9]*',
-          maxlength: 6,
-          placeholder: t('rodauth.views.otp_auth.code_placeholder')
+        render_m3_form_field(
+          label: rodauth.otp_auth_label,
+          input_attrs: {
+            type: :text,
+            name: rodauth.otp_auth_param,
+            id: 'otp-auth-code',
+            required: true,
+            autocomplete: 'one-time-code',
+            inputmode: 'numeric',
+            pattern: '[0-9]*',
+            maxlength: 6,
+            placeholder: t('rodauth.views.otp_auth.code_placeholder')
+          },
+          error: view_context.rodauth.field_error(rodauth.otp_auth_param)
         )
       end
 
-      def render_otp_error
-        error = view_context.rodauth.field_error(rodauth.otp_auth_param)
-        p(class: 'mt-1 text-sm text-error') { error } if error.present?
-      end
-
       def submit_button
-        render RubyUI::Button.new(type: :submit, variant: :primary, size: :md, class: 'w-full') do
-          rodauth.otp_auth_button
-        end
+        render_m3_submit_button(rodauth.otp_auth_button)
       end
     end
   end

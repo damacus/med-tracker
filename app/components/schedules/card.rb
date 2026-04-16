@@ -18,7 +18,7 @@ module Components
       end
 
       def view_template
-        render RubyUI::Card.new(
+        render M3::Card.new(
           id: "schedule_#{schedule.id}",
           class: "h-full flex flex-col border-none border-t-4 #{status_top_border_class} " \
                  'shadow-[0_15px_40px_rgba(0,0,0,0.08)] bg-card rounded-[2rem] transition-all ' \
@@ -52,9 +52,11 @@ module Components
             end
           end
           div do
-            CardTitle(class: 'text-2xl font-black tracking-tight mb-1 text-foreground') { schedule.medication.name }
+            m3_heading(variant: :title_large, level: 3, class: 'font-black tracking-tight mb-1 text-foreground') do
+              schedule.medication.name
+            end
             dosage_text = "#{schedule.dose_amount.to_i}#{schedule.dose_unit}"
-            CardDescription(class: 'text-muted-foreground font-bold uppercase text-[10px] tracking-widest') do
+            m3_text(variant: :label_small, class: 'text-on-surface-variant font-black uppercase tracking-widest') do
               "#{dosage_text} • #{schedule.frequency}"
             end
           end
@@ -65,9 +67,13 @@ module Components
         return if out_of_stock?
 
         if can_take_now?
-          Badge(variant: :success, class: 'rounded-full text-[10px] py-0.5') { t('schedules.card.ready_now') }
+          m3_badge(variant: :tonal, class: 'px-3 py-1 text-[10px] font-black uppercase tracking-wider') do
+            t('schedules.card.ready_now')
+          end
         else
-          Badge(variant: :warning, class: 'rounded-full text-[10px] py-0.5') { t('schedules.card.waiting') }
+          m3_badge(variant: :outlined, class: 'px-3 py-1 text-[10px] font-black uppercase tracking-wider') do
+            t('schedules.card.waiting')
+          end
         end
       end
 
@@ -90,8 +96,8 @@ module Components
 
       def render_medication_icon
         div(
-          class: 'w-12 h-12 rounded-2xl bg-muted flex items-center ' \
-                 'justify-center text-muted-foreground ' \
+          class: 'w-12 h-12 rounded-2xl bg-secondary-container flex items-center ' \
+                 'justify-center text-on-surface-variant ' \
                  'group-hover:text-primary group-hover:bg-primary/5 transition-all'
         ) do
           render Icons::Pill.new(size: 24)
@@ -101,20 +107,20 @@ module Components
       def render_date_details
         div(class: 'flex items-center gap-6') do
           div do
-            Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-muted-foreground') do
+            m3_text(variant: :label_small, class: 'uppercase tracking-widest text-on-surface-variant font-black') do
               t('schedules.card.started')
             end
-            Text(size: '2', weight: 'semibold', class: 'text-muted-foreground') do
+            m3_text(variant: :body_medium, class: 'text-on-surface-variant font-bold') do
               schedule.start_date.strftime('%b %d, %Y')
             end
           end
 
           if schedule.end_date
             div do
-              Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-muted-foreground') do
+              m3_text(variant: :label_small, class: 'uppercase tracking-widest text-on-surface-variant font-black') do
                 t('schedules.card.ends')
               end
-              Text(size: '2', weight: 'semibold', class: 'text-muted-foreground') do
+              m3_text(variant: :body_medium, class: 'text-on-surface-variant font-bold') do
                 schedule.end_date.strftime('%b %d, %Y')
               end
             end
@@ -123,37 +129,41 @@ module Components
       end
 
       def render_notes
-        div(class: 'p-4 bg-primary-container border border-primary/20 rounded-2xl') do
+        div(class: 'p-4 bg-primary-container/40 border border-primary/20 rounded-2xl') do
           div(class: 'flex items-center gap-2 mb-1') do
             render Icons::AlertCircle.new(size: 14, class: 'text-on-primary-container')
-            Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-on-primary-container') do
+            m3_text(variant: :label_small, class: 'uppercase tracking-widest text-on-primary-container font-black') do
               t('schedules.card.notes')
             end
           end
-          Text(size: '2', class: 'text-on-primary-container leading-relaxed') { schedule.notes }
+          m3_text(variant: :body_medium, class: 'text-on-primary-container leading-relaxed font-medium') do
+            schedule.notes
+          end
         end
       end
 
       def render_countdown_notice
-        div(class: 'p-4 bg-warning-container border border-warning/20 rounded-2xl') do
+        div(class: 'p-4 bg-error-container/20 border border-error/20 rounded-2xl') do
           div(class: 'flex items-center gap-2 mb-1') do
-            render Icons::AlertCircle.new(size: 14, class: 'text-on-warning-container')
-            Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-on-warning-container') do
+            render Icons::AlertCircle.new(size: 14, class: 'text-on-error-container')
+            m3_text(variant: :label_small, class: 'uppercase tracking-widest text-on-error-container font-black') do
               t('schedules.card.next_dose_available')
             end
           end
-          Text(size: '2', class: 'text-on-warning-container font-bold') { schedule.countdown_display }
+          m3_text(variant: :body_medium, class: 'text-on-error-container font-bold') do
+            schedule.countdown_display
+          end
         end
       end
 
       def render_takes_section
         div(class: 'space-y-4 pt-2') do
           div(class: 'flex items-center justify-between') do
-            Text(size: '1', weight: 'black', class: 'uppercase tracking-widest text-muted-foreground') do
+            m3_text(variant: :label_small, class: 'uppercase tracking-widest text-on-surface-variant font-black') do
               t('schedules.card.todays_doses')
             end
             if schedule.max_daily_doses.present?
-              Badge(variant: :outline, class: 'rounded-full text-[10px]') do
+              m3_badge(variant: :outlined, class: 'px-2 py-0.5 text-[10px] font-black') do
                 "#{todays_takes_count}/#{schedule.max_daily_doses}"
               end
             end
@@ -172,7 +182,7 @@ module Components
             end
           end
         else
-          Text(size: '2', weight: 'medium', class: 'italic text-muted-foreground px-1') do
+          m3_text(variant: :body_medium, class: 'italic text-on-surface-variant px-1 font-medium') do
             t('schedules.card.no_doses_today')
           end
         end
@@ -226,21 +236,23 @@ module Components
       def render_take_item(take)
         div(
           class: 'flex items-center justify-between p-3 rounded-xl ' \
-                 'bg-muted group/item transition-colors ' \
-                 'hover:bg-accent'
+                 'bg-surface-container-low group/item transition-colors ' \
+                 'hover:bg-surface-container-high'
         ) do
           div(class: 'flex items-center gap-3') do
-            render Icons::CheckCircle.new(size: 16, class: 'text-on-success-container')
+            render Icons::CheckCircle.new(size: 16, class: 'text-primary')
             div(class: 'space-y-1') do
-              Text(size: '2', weight: 'bold', class: 'text-foreground') do
+              m3_text(variant: :body_medium, class: 'text-foreground font-bold') do
                 take.taken_at.strftime('%l:%M %p').strip
               end
               if take.inventory_location.present?
-                Text(size: '1', class: 'text-muted-foreground') { take.inventory_location.name }
+                m3_text(variant: :label_small, class: 'text-on-surface-variant font-medium') do
+                  take.inventory_location.name
+                end
               end
             end
           end
-          Text(size: '1', weight: 'black', class: 'text-muted-foreground uppercase tracking-tighter') do
+          m3_text(variant: :label_small, class: 'text-on-surface-variant font-black uppercase tracking-widest') do
             "#{take.amount_ml.to_i}#{schedule.dose_unit}"
           end
         end
@@ -258,10 +270,10 @@ module Components
           amount: schedule.dose_amount,
           button: {
             label: take_label('schedules'),
-            variant: :primary,
+            variant: :filled,
             size: :lg,
             class: 'w-full rounded-xl py-6 font-bold shadow-lg shadow-primary/20 hover:shadow-xl ' \
-                   'hover:shadow-primary/30',
+                   'hover:shadow-primary/30 transition-all',
             testid: "take-schedule-#{schedule.id}",
             form_class: 'flex-1'
           },
@@ -295,11 +307,12 @@ module Components
           render_take_medication_button
 
           if view_context.current_user&.administrator?
-            Link(
+            m3_link(
               href: edit_person_schedule_path(person, schedule),
-              variant: :outline,
-              class: 'w-12 h-12 p-0 rounded-xl border-border flex items-center justify-center ' \
-                     'text-muted-foreground hover:text-foreground',
+              variant: :outlined,
+              size: :lg,
+              class: 'w-12 h-12 p-0 rounded-xl border-outline text-on-surface-variant ' \
+                     'hover:text-primary hover:border-primary/50 transition-all',
               data: { turbo_frame: 'modal', testid: "edit-schedule-#{schedule.id}" }
             ) do
               span(class: 'sr-only') { t('schedules.card.edit', default: 'Edit schedule') }
@@ -313,15 +326,15 @@ module Components
       def render_delete_dialog
         AlertDialog do
           AlertDialogTrigger do
-            Button(variant: :ghost,
-                   class: 'w-12 h-12 p-0 rounded-xl text-muted-foreground ' \
-                          'hover:text-destructive hover:bg-destructive/5',
+            m3_button(variant: :text,
+                   class: 'w-12 h-12 p-0 rounded-xl text-on-surface-variant ' \
+                          'hover:text-error hover:bg-error/5 transition-all',
                    data: { testid: "delete-schedule-#{schedule.id}" }) do
               span(class: 'sr-only') { t('schedules.card.delete', default: 'Delete schedule') }
               render Icons::Trash.new(size: 20)
             end
           end
-          AlertDialogContent(class: 'rounded-[2rem] border-none shadow-2xl') do
+          AlertDialogContent(class: 'rounded-[2rem] border-none shadow-elevation-5 bg-surface-container-high') do
             AlertDialogHeader do
               AlertDialogTitle { t('schedules.card.delete_dialog.title') }
               AlertDialogDescription do
@@ -335,7 +348,7 @@ module Components
                 method: :delete,
                 class: 'inline'
               ) do
-                Button(variant: :destructive, type: :submit, class: 'rounded-xl shadow-lg shadow-destructive/20') do
+                m3_button(variant: :destructive, type: :submit, class: 'rounded-xl shadow-lg shadow-error/20') do
                   t('schedules.card.delete_dialog.submit')
                 end
               end

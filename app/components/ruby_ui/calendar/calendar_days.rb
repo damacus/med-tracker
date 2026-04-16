@@ -41,7 +41,7 @@ module RubyUI
           class:
                 [
                   BASE_CLASS,
-                  'bg-accent text-accent-foreground hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground'
+                  'bg-tertiary-container text-on-tertiary-container hover:bg-tertiary-container hover:text-on-tertiary-container focus:bg-tertiary-container focus:text-on-tertiary-container'
                 ],
           role: 'gridcell',
           tabindex: '-1',
@@ -59,7 +59,7 @@ module RubyUI
           class:
                 [
                   BASE_CLASS,
-                  'bg-background text-foreground hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground'
+                  'bg-background text-foreground hover:bg-tertiary-container hover:text-on-tertiary-container focus:bg-tertiary-container focus:text-on-tertiary-container'
                 ],
           role: 'gridcell',
           tabindex: '-1',
@@ -77,7 +77,7 @@ module RubyUI
           class:
                 [
                   BASE_CLASS,
-                  'bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground'
+                  'bg-background text-on-surface-variant hover:bg-tertiary-container hover:text-on-tertiary-container focus:bg-tertiary-container focus:text-on-tertiary-container'
                 ],
           role: 'gridcell',
           tabindex: '-1',
@@ -90,7 +90,7 @@ module RubyUI
       template(data: { ruby_ui__calendar_target: target }) do
         td(
           class:
-                'relative p-0 text-center text-sm focus-within:relative focus-within:z-20 [&:has([aria-selected])]:bg-accent [&:has([aria-selected])]:rounded-md',
+                'relative p-0 text-center text-sm focus-within:relative focus-within:z-20 [&:has([aria-selected])]:bg-tertiary-container [&:has([aria-selected])]:rounded-md',
           role: 'presentation',
           &
         )

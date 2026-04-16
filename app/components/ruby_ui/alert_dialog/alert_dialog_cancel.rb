@@ -3,7 +3,7 @@
 module RubyUI
   class AlertDialogCancel < Base
     def view_template(&)
-      render RubyUI::Button.new(**attrs, &)
+      Button(**attrs, &)
     end
 
     private

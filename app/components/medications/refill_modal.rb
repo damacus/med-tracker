@@ -9,7 +9,7 @@ module Components
                   :restock_date, :icon_only, :button_label, :icon
 
       # rubocop:disable Metrics/ParameterLists
-      def initialize(medication:, button_variant: :outline, button_class: '', button_size: :md,
+      def initialize(medication:, button_variant: :outlined, button_class: '', button_size: :md,
                      quantity: nil, restock_date: nil, icon_only: false, button_label: nil, icon: nil)
         @medication = medication
         @button_variant = button_variant
@@ -27,13 +27,13 @@ module Components
       def view_template
         Dialog do
           DialogTrigger do
-            Button(variant: button_variant, size: button_size, class: button_class) do
+            m3_button(variant: button_variant, size: button_size, class: button_class) do
               if icon_only
                 render Icons::RefreshCw.new(size: 16)
                 span(class: 'sr-only') { t('medications.refill_modal.refill_inventory') }
               else
                 if icon
-                  icon_class = button_variant == :outline ? 'mr-2 text-primary' : 'mr-2'
+                  icon_class = button_variant == :outlined ? 'mr-2 text-primary' : 'mr-2'
                   render icon.new(size: 18, class: icon_class)
                 end
                 span { button_label || t('medications.refill_modal.refill_inventory') }
@@ -67,7 +67,7 @@ module Components
               required: true,
               value: quantity,
               min: '1',
-              class: 'w-full rounded-shape-sm border border-input bg-background px-3 py-2 text-sm ' \
+              class: 'w-full rounded-shape-sm border border-outline bg-background px-3 py-2 text-sm ' \
                      'focus:ring-2 focus:ring-primary/20 transition-all'
             )
           end
@@ -82,13 +82,13 @@ module Components
               name: 'refill[restock_date]',
               required: true,
               value: restock_date_value,
-              class: 'w-full rounded-shape-sm border border-input bg-background px-3 py-2 text-sm ' \
+              class: 'w-full rounded-shape-sm border border-outline bg-background px-3 py-2 text-sm ' \
                      'focus:ring-2 focus:ring-primary/20 transition-all'
             )
           end
 
           div(class: 'flex justify-end gap-3 pt-2') do
-            Button(type: :submit, variant: :primary) { t('medications.refill_button') }
+            m3_button(type: :submit, variant: :filled) { t('medications.refill_button') }
           end
         end
       end

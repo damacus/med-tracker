@@ -23,11 +23,13 @@ module Components
       private
 
       def render_header
-        div(class: 'mb-8') do
-          Text(size: '2', weight: 'medium', class: 'uppercase tracking-wide text-muted-foreground mb-2') do
+        div(class: 'mb-8 space-y-2') do
+          m3_text(variant: :label_medium, class: 'uppercase tracking-[0.2em] font-black opacity-40') do
             'Edit Schedule'
           end
-          Heading(level: 1) { "Update schedule for #{person.name}" }
+          m3_heading(variant: :display_small, level: 1, class: 'font-black tracking-tight text-foreground') do
+            "Update schedule for #{person.name}"
+          end
         end
       end
     end
