@@ -94,7 +94,7 @@ module Views
         div(class: 'space-y-8') do
           div(class: 'flex items-center justify-between px-2') do
             m3_heading(level: 2, size: '5', class: 'font-bold') { t('reports.index.timeline_title') }
-            m3_button(variant: :outlinedd, size: :sm, class: 'rounded-full') { t('reports.index.download_pdf') }
+            m3_button(variant: :outlined, size: :sm, class: 'rounded-full') { t('reports.index.download_pdf') }
           end
 
           m3_card(class: 'border border-border/70 bg-card p-8 shadow-elevation-2 sm:p-10') do

@@ -81,7 +81,9 @@ module Components
       end
 
       def option_summary(option)
-        [option.medication.name, option.dose_display, option.frequency.presence].compact.join(' • ')
+        frequency = option.frequency.presence if option.respond_to?(:frequency)
+
+        [option.medication.name, option.dose_display, frequency].compact.join(' • ')
       end
 
       def render_empty_state

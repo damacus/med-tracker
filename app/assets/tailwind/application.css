@@ -850,7 +850,6 @@
 	--sidebar-accent: color-mix(in oklab, var(--palette-color) 20%, oklch(0.25 0.014 250)) !important;
 	--primary-container: color-mix(in oklab, var(--palette-color) 32%, oklch(0.24 0.012 255)) !important;
 	--on-secondary-container: oklch(0.95 0.01 255) !important;
-	--on-tertiary-container: oklch(0.95 0.01 255) !important;
 	--on-tertiary-container: oklch(0.97 0.01 255) !important;
 	--sidebar-ring: var(--ring) !important;
 	--surface-container-lowest: color-mix(in oklab, var(--palette-color) 4%, oklch(0.13 0.01 260)) !important;

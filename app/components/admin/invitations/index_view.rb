@@ -135,7 +135,7 @@ module Components
             next unless resendable_invitation?(invitation)
 
             form_with(url: resend_admin_invitation_path(invitation), method: :post, class: 'shrink-0') do
-              m3_button(type: :submit, variant: :outlinedd, size: :sm, class: 'rounded-xl') do
+              m3_button(type: :submit, variant: :outlined, size: :sm, class: 'rounded-xl') do
                 t('admin.invitations.index.resend')
               end
             end
