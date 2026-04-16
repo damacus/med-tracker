@@ -143,6 +143,19 @@ tasks:
           ENVIRONMENT: dev
           COMMAND: 'rails runner ''load Rails.root.join("db/seeds/seed_users.rb")'''
 
+  import-dmd-barcodes:
+    desc: Import NHS dm+d GTIN barcode mappings from CSV
+    summary: |
+      Import barcode-to-dm+d mappings into the development database.
+      Usage: task dev:import-dmd-barcodes FILE=/absolute/path/to/barcodes.csv
+    requires:
+      vars: [FILE]
+    cmds:
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: dev
+          COMMAND: 'rails runner db/seeds/import_nhs_dmd_barcodes.rb "{{ .FILE }}"'
+
   port:
     desc: Print the host port of the running development server
     summary: |

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_13_152000) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_16_161000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -257,6 +257,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_13_152000) do
     t.index ["account_id", "platform"], name: "index_native_device_tokens_on_account_id_and_platform"
     t.index ["account_id"], name: "index_native_device_tokens_on_account_id"
     t.index ["device_token"], name: "index_native_device_tokens_on_device_token", unique: true
+  end
+
+  create_table "nhs_dmd_barcodes", force: :cascade do |t|
+    t.string "code", null: false
+    t.string "concept_class"
+    t.datetime "created_at", null: false
+    t.string "display", null: false
+    t.string "gtin", null: false
+    t.string "system", default: "https://dmd.nhs.uk", null: false
+    t.datetime "updated_at", null: false
+    t.index ["code"], name: "index_nhs_dmd_barcodes_on_code"
+    t.index ["gtin"], name: "index_nhs_dmd_barcodes_on_gtin", unique: true
   end
 
   create_table "notification_preferences", force: :cascade do |t|

@@ -3,9 +3,10 @@
 require 'rails_helper'
 
 RSpec.describe NhsDmd::Search do
-  subject(:search) { described_class.new(client: client) }
+  subject(:search) { described_class.new(client: client, barcode_lookup: barcode_lookup) }
 
   let(:client) { instance_double(NhsDmd::Client) }
+  let(:barcode_lookup) { instance_double(NhsDmd::BarcodeLookup, lookup: nil) }
 
   describe '#call' do
     context 'when the service is not configured (credentials absent)' do
@@ -71,6 +72,37 @@ RSpec.describe NhsDmd::Search do
         expect(first.code).to eq('39720311000001101')
         expect(first.display).to eq('Aspirin 300mg tablets')
         expect(first.concept_class).to eq('VMP')
+      end
+    end
+
+    context 'when the query is a known barcode' do
+      let(:barcode_result) do
+        {
+          code: '13629411000001105',
+          display: 'Laxido Orange oral powder sachets (Galen Ltd)',
+          system: 'https://dmd.nhs.uk',
+          concept_class: 'AMPP'
+        }
+      end
+
+      before do
+        allow(client).to receive(:configured?).and_return(true)
+        allow(barcode_lookup).to receive(:lookup).with('5016298210989').and_return(barcode_result)
+        allow(client).to receive(:search)
+      end
+
+      it 'returns the mapped dm+d result without calling the remote search' do
+        result = search.call('5016298210989')
+
+        expect(result).to be_success
+        expect(result.results.map(&:to_h)).to contain_exactly(
+          a_hash_including(
+            code: '13629411000001105',
+            display: 'Laxido Orange oral powder sachets (Galen Ltd)',
+            concept_class: 'AMPP'
+          )
+        )
+        expect(client).not_to have_received(:search)
       end
     end
 
