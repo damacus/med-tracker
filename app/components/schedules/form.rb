@@ -564,12 +564,13 @@ module Components
       end
 
       def duplicate_dose_selection_keys
-        dosages = schedule.medication&.dosages || []
-        grouped_dosages = dosages.group_by(&:selection_key)
+        @duplicate_dose_selection_keys ||= begin
+          dosages = schedule.medication&.dosages || []
+          grouped_dosages = dosages.group_by(&:selection_key)
 
-        @duplicate_dose_selection_keys ||= grouped_dosages.each_with_object([]) do |(selection_key, matching_dosages),
-                                                                                      selection_keys|
-          selection_keys << selection_key if matching_dosages.size > 1
+          grouped_dosages.each_with_object([]) do |(selection_key, matching_dosages), selection_keys|
+            selection_keys << selection_key if matching_dosages.size > 1
+          end
         end
       end
 
