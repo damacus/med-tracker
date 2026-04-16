@@ -29,8 +29,7 @@ export default class extends Controller {
   }
 
   advanceToDetails() {
-    const medicationInput = this.element.querySelector('[name="schedule[medication_id]"]')
-    const medicationId = medicationInput?.value
+    const medicationId = this.#selectedMedicationId()
 
     if (!medicationId || !this.hasNextUrlValue) return
 
@@ -172,7 +171,7 @@ export default class extends Controller {
             data-controller="ruby-ui--select-item"
             data-action="click->ruby-ui--select#selectItem keydown.enter->ruby-ui--select#selectItem keydown.down->ruby-ui--select#handleKeyDown keydown.up->ruby-ui--select#handleKeyUp keydown.esc->ruby-ui--select#handleEsc"
             data-ruby-ui__select-target="item"
-            class="item group relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground hover:bg-accent hover:text-accent-foreground"
+            class="item group relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-tertiary-container focus:text-on-tertiary-container hover:bg-tertiary-container hover:text-on-tertiary-container"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="${isSelected ? 'visible' : 'invisible'} group-aria-selected:visible mr-2 h-4 w-4 flex-none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
             ${text}
