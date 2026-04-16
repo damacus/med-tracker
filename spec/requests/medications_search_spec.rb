@@ -119,6 +119,35 @@ RSpec.describe 'GET /medication-finder/search' do
       end
     end
 
+    context 'when the query is a locally imported barcode' do
+      before do
+        login_as_doctor
+        NhsDmdBarcode.create!(
+          gtin: '05016298210989',
+          code: '13629411000001105',
+          display: 'Laxido Orange oral powder sachets (Galen Ltd)',
+          system: 'https://dmd.nhs.uk',
+          concept_class: 'AMPP'
+        )
+        allow(ENV).to receive(:fetch).and_call_original
+        allow(ENV).to receive(:fetch).with('NHS_DMD_CLIENT_ID', nil).and_return(nil)
+        allow(ENV).to receive(:fetch).with('NHS_DMD_CLIENT_SECRET', nil).and_return(nil)
+      end
+
+      it 'returns the local barcode match without NHS API credentials' do
+        get medication_finder_search_path(format: :json), params: { q: '5016298210989' }
+
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body['results']).to contain_exactly(
+          a_hash_including(
+            'code' => '13629411000001105',
+            'display' => 'Laxido Orange oral powder sachets (Galen Ltd)',
+            'concept_class' => 'AMPP'
+          )
+        )
+      end
+    end
+
     context 'when the user is not authenticated' do
       it 'redirects to login' do
         get medication_finder_search_path(format: :json), params: { q: 'aspirin' }

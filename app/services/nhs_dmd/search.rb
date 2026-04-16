@@ -8,13 +8,18 @@ module NhsDmd
       end
     end
 
-    def initialize(client: Client.new)
+    def initialize(client: Client.new, barcode_lookup: BarcodeLookup.new)
       @client = client
+      @barcode_lookup = barcode_lookup
     end
 
     def call(query)
-      return not_configured_result unless @client.configured?
       return Result.new(results: [], error: nil) if query.blank?
+
+      barcode_match = @barcode_lookup.lookup(query)
+      return Result.new(results: [build_result(barcode_match)], error: nil) if barcode_match
+
+      return not_configured_result unless @client.configured?
 
       Result.new(results: search_results(query), error: nil)
     rescue Client::ApiError => e

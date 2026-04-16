@@ -67,6 +67,7 @@ gem 'bootsnap', require: false
 # Add HTTP asset caching/compression and X-Sendfile acceleration to Puma [https://github.com/basecamp/thruster/]
 gem 'thruster', require: false
 # Use Phlex for views [https://github.com/phlex-rb/phlex-rails]
+gem 'csv'
 gem 'phlex-rails'
 gem 'tailwindcss-rails'
 gem 'tailwind_merge'

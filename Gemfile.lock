@@ -118,6 +118,7 @@ GEM
       bigdecimal
       rexml
     crass (1.0.6)
+    csv (3.3.5)
     database_cleaner-active_record (2.2.2)
       activerecord (>= 5.a)
       database_cleaner-core (~> 2.0)
@@ -786,6 +787,7 @@ DEPENDENCIES
   bundler-audit
   capybara
   capybara-playwright-driver
+  csv
   database_cleaner-active_record
   debug
   ecs-logging
