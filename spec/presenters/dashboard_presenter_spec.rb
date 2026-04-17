@@ -92,6 +92,19 @@ RSpec.describe DashboardPresenter do
     end
   end
 
+  describe 'private people scope assembly' do
+    it 'builds an eager-loaded scope for explicit person ids' do
+      presenter = described_class.new(current_user: parent_user)
+
+      scoped_people = presenter.send(:people_scope, [parent_user.person.id, parent_user.person.id]).to_a
+
+      expect(scoped_people.map(&:id)).to eq([parent_user.person.id])
+      expect(scoped_people.first.association(:user)).to be_loaded
+      expect(scoped_people.first.association(:schedules)).to be_loaded
+      expect(scoped_people.first.association(:person_medications)).to be_loaded
+    end
+  end
+
   describe '#active_schedules' do
     it 'returns date-active schedules for scoped people' do
       presenter = described_class.new(current_user: admin_user)

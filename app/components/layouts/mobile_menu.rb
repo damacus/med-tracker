@@ -4,15 +4,9 @@ module Components
   module Layouts
     # Mobile hamburger menu using RubyUI::Sheet
     class MobileMenu < Components::Base
+      include Components::Layouts::CurrentUserContext
       include Phlex::Rails::Helpers::LinkTo
       include Phlex::Rails::Helpers::CurrentPage
-
-      attr_reader :current_user
-
-      def initialize(current_user: nil)
-        @current_user = current_user
-        super()
-      end
 
       def view_template
         div(class: 'md:hidden') do
@@ -113,10 +107,6 @@ module Components
             plain t('layouts.mobile_menu.logout')
           end
         end
-      end
-
-      def user_is_admin?
-        current_user&.administrator? || false
       end
     end
   end

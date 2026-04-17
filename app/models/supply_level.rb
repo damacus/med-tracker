@@ -43,6 +43,13 @@ class SupplyLevel
     current <= 0
   end
 
+  def status
+    return :out_of_stock if out_of_stock?
+    return :low_stock if low_stock?
+
+    :in_stock
+  end
+
   def days_until_low_stock(daily_consumption:)
     return nil unless forecast_available?(daily_consumption:)
     return 0 if low_stock?

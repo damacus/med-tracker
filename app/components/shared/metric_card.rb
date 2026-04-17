@@ -137,11 +137,6 @@ module Components
         compact? ? 'text-2xl' : 'text-4xl'
       end
 
-      def background_class
-        # No longer used directly, but kept for logic if needed
-        variant == :warning ? 'bg-warning-container' : 'bg-surface-container-low'
-      end
-
       def border_class
         variant == :warning ? 'border border-warning/30' : 'border-none'
       end

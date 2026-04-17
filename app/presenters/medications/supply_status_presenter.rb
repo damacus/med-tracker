@@ -13,19 +13,23 @@ module Medications
     def status_variant
       return :default if medication.reorder_ordered?
       return :success if medication.reorder_received?
-      return :destructive if supply_level.out_of_stock?
-      return :warning if supply_level.low_stock?
 
-      :success
+      case supply_level.status
+      when :out_of_stock then :destructive
+      when :low_stock then :warning
+      else :success
+      end
     end
 
     def status_label
       return I18n.t('medications.reorder_statuses.ordered') if medication.reorder_ordered?
       return I18n.t('medications.reorder_statuses.received') if medication.reorder_received?
-      return I18n.t('dashboard.statuses.out_of_stock') if supply_level.out_of_stock?
-      return I18n.t('medications.show.low_stock_alert') if supply_level.low_stock?
 
-      I18n.t('medications.index.in_stock', default: 'In Stock')
+      case supply_level.status
+      when :out_of_stock then I18n.t('dashboard.statuses.out_of_stock')
+      when :low_stock then I18n.t('medications.show.low_stock_alert')
+      else I18n.t('medications.index.in_stock', default: 'In Stock')
+      end
     end
 
     def stock_count_class

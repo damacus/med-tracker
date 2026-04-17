@@ -2,12 +2,7 @@
 
 module RubyUI
   class Link < Base
-    BASE_CLASSES = [
-      'whitespace-nowrap inline-flex items-center justify-center rounded-shape-xl font-medium transition-colors',
-      'disabled:pointer-events-none disabled:opacity-50',
-      'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
-      'aria-disabled:pointer-events-none aria-disabled:opacity-50 aria-disabled:cursor-not-allowed'
-    ].freeze
+    include ActionStyleHelpers
 
     def initialize(href: '#', variant: :link, size: :md, icon: false, **attrs)
       @href = href
@@ -32,27 +27,9 @@ module RubyUI
       end
     end
 
-    def size_classes
-      if @icon
-        case @size
-        when :sm then 'h-8 w-8 min-h-[32px] min-w-[32px]'
-        when :md then 'h-9 w-9 min-h-[36px] min-w-[36px]'
-        when :lg then 'h-10 w-10 min-h-[40px] min-w-[40px]'
-        when :xl then 'h-12 w-12 min-h-[48px] min-w-[48px]'
-        end
-      else
-        case @size
-        when :sm then 'px-3 py-1.5 h-8 min-h-[32px] text-xs'
-        when :md then 'px-4 py-2 h-9 min-h-[36px] text-sm'
-        when :lg then 'px-4 py-2 h-10 min-h-[40px] text-base'
-        when :xl then 'px-6 py-3 h-12 min-h-[48px] text-base'
-        end
-      end
-    end
-
     def primary_classes
       [
-        BASE_CLASSES,
+        base_classes,
         size_classes,
         'bg-primary text-primary-foreground no-underline',
         'hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all'
@@ -61,7 +38,7 @@ module RubyUI
 
     def link_classes
       [
-        BASE_CLASSES,
+        base_classes,
         size_classes,
         'text-primary underline-offset-4 font-bold',
         'hover:underline hover:opacity-80 transition-all'
@@ -70,7 +47,7 @@ module RubyUI
 
     def secondary_classes
       [
-        BASE_CLASSES,
+        base_classes,
         size_classes,
         'bg-secondary text-secondary-foreground no-underline shadow-sm',
         'hover:opacity-80 hover:scale-[1.02] active:scale-[0.98] transition-all'
@@ -79,7 +56,7 @@ module RubyUI
 
     def destructive_classes
       [
-        BASE_CLASSES,
+        base_classes,
         size_classes,
         'bg-error text-on-error no-underline',
         'hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition-all'
@@ -88,7 +65,7 @@ module RubyUI
 
     def outline_classes
       [
-        BASE_CLASSES,
+        base_classes,
         size_classes,
         'border border-outline bg-background no-underline',
         'hover:bg-tertiary-container hover:text-on-tertiary-container hover:scale-[1.02] transition-all'
@@ -97,7 +74,7 @@ module RubyUI
 
     def destructive_outline_classes
       [
-        BASE_CLASSES,
+        base_classes,
         size_classes,
         'border border-outline bg-background no-underline',
         'text-error hover:bg-error-container hover:scale-[1.02] transition-all'
@@ -106,7 +83,7 @@ module RubyUI
 
     def success_outline_classes
       [
-        BASE_CLASSES,
+        base_classes,
         size_classes,
         'border border-outline bg-background no-underline',
         'text-success hover:bg-success-container hover:scale-[1.02] transition-all'
@@ -115,7 +92,7 @@ module RubyUI
 
     def ghost_classes
       [
-        BASE_CLASSES,
+        base_classes,
         size_classes,
         'no-underline hover:bg-tertiary-container hover:text-on-tertiary-container'
       ]

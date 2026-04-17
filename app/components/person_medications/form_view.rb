@@ -56,7 +56,9 @@ module Components
           data: {
             controller: 'person-medication-form',
             person_type: person.person_type,
-            person_medication_form_dose_options_value: medication_dose_options.to_json
+            person_medication_form_dose_options_value: ::Medications::DoseOptionsPayloadPresenter.new(
+              medications: medications
+            ).to_h.to_json
           }
         ) do |form|
           render_errors if person_medication.errors.any?
@@ -94,12 +96,6 @@ module Components
               t('person_medications.form.add_medication_button')
             end
           end
-        end
-      end
-
-      def medication_dose_options
-        medications.each_with_object({}) do |medication, dose_options|
-          dose_options[medication.id.to_s] = medication.dose_options_payload
         end
       end
     end

@@ -3,15 +3,9 @@
 module Components
   module Layouts
     class Sidebar < Components::Base
+      include Components::Layouts::CurrentUserContext
       include Phlex::Rails::Helpers::LinkTo
       include Phlex::Rails::Helpers::Routes
-
-      attr_reader :current_user
-
-      def initialize(current_user: nil)
-        @current_user = current_user
-        super()
-      end
 
       def view_template
         return unless authenticated?
@@ -29,10 +23,6 @@ module Components
       end
 
       private
-
-      def authenticated?
-        @current_user.present?
-      end
 
       def render_brand
         div(class: 'mb-12 px-4 w-full flex justify-center md:justify-start') do
@@ -62,7 +52,7 @@ module Components
           render_nav_link(medication_finder_path, Icons::Search, t('layouts.sidebar.finder'))
           render_nav_link(people_path, Icons::Users, t('layouts.sidebar.people'))
           render_nav_link(reports_path, Icons::AlertCircle, t('layouts.sidebar.reports'))
-          if current_user.administrator?
+          if user_is_admin?
             render_nav_link(admin_root_path, Icons::Settings,
                             t('layouts.sidebar.administration'))
           end
@@ -106,15 +96,11 @@ module Components
               class: 'w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary ' \
                      'font-bold text-xs overflow-hidden flex-shrink-0 z-10'
             ) do
-              if current_user.person&.name.present?
-                current_user.person.name.split.map(&:first).join.upcase
-              else
-                'U'
-              end
+              current_user_initials
             end
             div(class: 'hidden md:block overflow-hidden z-10') do
               p(class: 'text-xs font-bold truncate text-foreground') do
-                current_user.person&.name || t('layouts.sidebar.user_fallback')
+                current_user_name || t('layouts.sidebar.user_fallback')
               end
               p(class: 'text-[10px] font-medium text-on-surface-variant') do
                 t("activerecord.attributes.user.roles.#{current_user.role}", default: current_user.role.to_s.humanize)
