@@ -31,7 +31,9 @@
       "WebFetch(domain:geminicli.com)",
       "Skill(pr)",
       "Bash(RUBYOPT=\"-rcgi\" bundle exec rubocop -A --format simple)",
-      "Bash(RUBYOPT=\"-rcgi\" bundle exec rubocop --format simple)"
+      "Bash(RUBYOPT=\"-rcgi\" bundle exec rubocop --format simple)",
+      "Bash(playwright-cli open *)",
+      "Bash(playwright-cli eval *)"
     ]
   }
 }
