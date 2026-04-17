@@ -2,6 +2,8 @@
 
 module RubyUI
   class DivWrapper < Base
+    DEFAULT_CLASS = ''
+
     def view_template(&)
       div(**attrs, &)
     end

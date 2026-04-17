@@ -30,4 +30,15 @@ RSpec.describe RubyUI::DivWrapper, type: :component do
       expect(root['class'].split).to include(*default_classes.split)
     end
   end
+
+  it 'falls back to a blank class when a subclass does not set DEFAULT_CLASS' do
+    subclass = Class.new(described_class)
+
+    rendered = render_inline(subclass.new(class: 'only-custom') { 'Body' })
+    root = Nokogiri::HTML.fragment(rendered.to_html).element_children.first
+
+    expect(root.name).to eq('div')
+    expect(root.text).to include('Body')
+    expect(root['class'].to_s.split).to include('only-custom')
+  end
 end

@@ -2,13 +2,14 @@
 
 module Schedules
   class FormPayloadPresenter
-    attr_reader :person, :medications, :frame_id, :view_context
+    attr_reader :person, :medications, :frame_id, :next_url, :translations
 
-    def initialize(person:, medications:, frame_id:, view_context:)
+    def initialize(person:, medications:, frame_id:, next_url:, translations:)
       @person = person
       @medications = medications
       @frame_id = frame_id
-      @view_context = view_context
+      @next_url = next_url
+      @translations = translations
     end
 
     def data
@@ -20,22 +21,8 @@ module Schedules
           medications: medications
         ).to_h.to_json,
         schedule_form_frame_id_value: frame_id,
-        schedule_form_next_url_value: view_context.new_person_schedule_path(person),
+        schedule_form_next_url_value: next_url,
         schedule_form_translations_value: translations.to_json
-      }
-    end
-
-    private
-
-    def translations
-      {
-        selectDosage: view_context.t('schedules.form.select_dosage'),
-        selectMedicationFirst: view_context.t('schedules.form.select_medication_first'),
-        frequencyOncePerCycle: view_context.t('schedules.form.frequency_once_per_cycle'),
-        frequencyUpToPerCycle: view_context.t('schedules.form.frequency_up_to_per_cycle'),
-        frequencyOnce: view_context.t('schedules.form.frequency_once'),
-        frequencyUpTo: view_context.t('schedules.form.frequency_up_to'),
-        frequencyAtLeastHours: view_context.t('schedules.form.frequency_at_least_hours')
       }
     end
   end

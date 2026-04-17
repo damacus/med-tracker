@@ -532,8 +532,21 @@ module Components
           person: person,
           medications: medications,
           frame_id: frame_id,
-          view_context: self
+          next_url: new_person_schedule_path(person),
+          translations: form_translations
         ).data
+      end
+
+      def form_translations
+        {
+          selectDosage: t('schedules.form.select_dosage'),
+          selectMedicationFirst: t('schedules.form.select_medication_first'),
+          frequencyOncePerCycle: t('schedules.form.frequency_once_per_cycle'),
+          frequencyUpToPerCycle: t('schedules.form.frequency_up_to_per_cycle'),
+          frequencyOnce: t('schedules.form.frequency_once'),
+          frequencyUpTo: t('schedules.form.frequency_up_to'),
+          frequencyAtLeastHours: t('schedules.form.frequency_at_least_hours')
+        }
       end
     end
   end

@@ -8,26 +8,26 @@ RSpec.describe Schedules::FormPayloadPresenter do
     let(:medication) do
       instance_double(Medication, id: 123, dose_options_payload: [{ 'amount' => '1' }])
     end
-    let(:view_context) do
-      instance_double(
-        Components::Schedules::Form,
-        new_person_schedule_path: '/people/1/schedules/new'
-      )
+    let(:translations) do
+      {
+        selectDosage: 'Select dosage',
+        selectMedicationFirst: 'Select medication first',
+        frequencyAtLeastHours: 'At least %<hours>s hours apart'
+      }
     end
 
-    before do
-      allow(view_context).to receive(:t) { |key| I18n.t(key) }
-    end
-
-    it 'includes the core stimulus metadata' do
-      data = described_class.new(
+    def build_presenter
+      described_class.new(
         person: person,
         medications: [medication],
         frame_id: 'schedule_frame',
-        view_context: view_context
-      ).data
+        next_url: '/people/1/schedules/new',
+        translations: translations
+      )
+    end
 
-      expect(data).to include(
+    it 'includes the core stimulus metadata' do
+      expect(build_presenter.data).to include(
         controller: 'schedule-form',
         turbo_stream: true,
         person_type: 'adult',
@@ -37,18 +37,13 @@ RSpec.describe Schedules::FormPayloadPresenter do
     end
 
     it 'builds the schedule form stimulus payload' do
-      data = described_class.new(
-        person: person,
-        medications: [medication],
-        frame_id: 'schedule_frame',
-        view_context: view_context
-      ).data
+      data = build_presenter.data
 
       expect(data[:schedule_form_dose_options_value]).to eq({ '123' => [{ 'amount' => '1' }] }.to_json)
       expect(JSON.parse(data[:schedule_form_translations_value])).to include(
-        'selectDosage' => I18n.t('schedules.form.select_dosage'),
-        'selectMedicationFirst' => I18n.t('schedules.form.select_medication_first'),
-        'frequencyAtLeastHours' => I18n.t('schedules.form.frequency_at_least_hours')
+        'selectDosage' => 'Select dosage',
+        'selectMedicationFirst' => 'Select medication first',
+        'frequencyAtLeastHours' => 'At least %<hours>s hours apart'
       )
     end
   end

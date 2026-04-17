@@ -84,9 +84,9 @@ module Views
 
       def summary_stat(label, value, subtext)
         div(class: 'space-y-1') do
-          m3_text(size: '1', class: 'font-bold uppercase tracking-widest text-primary-foreground/70') { label }
+          m3_text(size: '1', class: 'font-bold uppercase tracking-widest text-primary-foreground/85') { label }
           m3_heading(level: 2, size: '8', class: 'font-black') { value }
-          m3_text(size: '1', class: 'inline-block rounded-full bg-primary-foreground/12 px-2 py-0.5 font-bold text-primary-foreground') { subtext }
+          m3_text(size: '1', class: 'inline-block rounded-full bg-primary-foreground/20 px-2 py-0.5 font-bold text-primary-foreground') { subtext }
         end
       end
 
