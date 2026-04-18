@@ -4,6 +4,11 @@ module NhsDmd
   class BarcodeLookup
     CACHE_PREFIX = 'nhs_dmd/barcode'
 
+    def self.barcode_query?(barcode)
+      normalized = NhsDmdBarcode.normalize_gtin(barcode)
+      normalized.match?(/\A\d{13,14}\z/)
+    end
+
     def lookup(barcode)
       barcode_candidates(barcode).filter_map { |candidate| fetch(candidate) }.first
     end
@@ -20,8 +25,9 @@ module NhsDmd
     end
 
     def self.candidates_for(barcode)
+      return [] unless barcode_query?(barcode)
+
       normalized = NhsDmdBarcode.normalize_gtin(barcode)
-      return [] if normalized.blank?
 
       candidates = [normalized]
       candidates << normalized.rjust(14, '0') if normalized.length == 13

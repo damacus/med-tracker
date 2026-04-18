@@ -25,6 +25,13 @@ pt:
           carer: "Cuidador"
           parent: "Pai/Mãe"
           self: "Próprio"
+    errors:
+      models:
+        medication:
+          attributes:
+            barcode:
+              invalid: "deve ser um GTIN de 13 ou 14 dígitos"
+              taken: "já está vinculado a outro medicamento no inventário"
 
   app:
     name: "MedTracker"

@@ -10,7 +10,9 @@ version: "3"
 vars:
   COMPOSE_PROJECT:
     sh: basename $PWD
-  COMPOSE_CMD: docker compose -p {{ .COMPOSE_PROJECT }}
+  GIT_COMMON_DIR:
+    sh: git rev-parse --path-format=absolute --git-common-dir
+  COMPOSE_CMD: MEDTRACKER_GIT_COMMON_DIR={{ .GIT_COMMON_DIR }} docker compose -p {{ .COMPOSE_PROJECT }}
 
 tasks:
   # Execute arbitrary commands in Docker containers

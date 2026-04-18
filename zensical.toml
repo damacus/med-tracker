@@ -25,6 +25,7 @@ nav = [
   ] },
   { "🩺 For Clinicians" = [
     { "NHS dm+d Integration" = "nhs-dmd-integration.md" },
+    { "Kubernetes dm+d Import" = "kubernetes-nhs-dmd-import.md" },
     { "UK Regulatory Compliance" = "uk-regulatory-compliance-plan.md" }
   ] },
   { "Advanced Setup" = [

@@ -37,7 +37,14 @@ export default class extends Controller {
       if (data.error) {
         this.showError(data.error)
       } else {
-        this.showResults(query, data.results)
+        const resolvedQuery = data.query || query
+        const barcode = data.barcode || this.barcodeQuery(query)
+
+        if (data.query && data.query !== query) {
+          this.inputTarget.value = data.query
+        }
+
+        this.showResults(resolvedQuery, data.results, barcode)
       }
     } catch (error) {
       this.showError(this.t("unavailableMessage"))
@@ -79,7 +86,7 @@ export default class extends Controller {
     `
   }
 
-  showResults(query, results) {
+  showResults(query, results, barcode) {
     if (results.length === 0) {
       this.resultsTarget.innerHTML = `
         <div class="text-center py-12 text-on-surface-variant" data-testid="no-results">
@@ -100,18 +107,30 @@ export default class extends Controller {
       </div>
     `
 
-    const items = results.map(result => this.renderResultCard(result)).join('')
+    const items = results.map(result => this.renderResultCard(result, barcode)).join('')
 
     this.resultsTarget.innerHTML = header + `<div class="space-y-2" data-testid="results-list">${items}</div>`
   }
 
-  renderResultCard(result) {
+  renderResultCard(result, barcode) {
     const badge = result.concept_class
       ? `<span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-primary-container text-on-primary-container">${this.escapeHtml(result.concept_class)}</span>`
       : ''
 
     const label = result.concept_class_label && result.concept_class_label !== result.concept_class
       ? `<span class="text-xs text-on-surface-variant">${this.escapeHtml(result.concept_class_label)}</span>`
+      : ''
+
+    const addAction = result.display
+      ? `
+        <div class="mt-4 flex justify-end">
+          <a
+            href="${this.hrefAttribute(this.addMedicationUrl(result, barcode))}"
+            class="inline-flex items-center rounded-full bg-primary px-4 py-2 text-sm font-medium text-on-primary shadow-sm transition-all hover:shadow-md"
+            data-testid="add-medication-link"
+          >${this.escapeHtml(this.t("addMedication"))}</a>
+        </div>
+      `
       : ''
 
     return `
@@ -126,14 +145,43 @@ export default class extends Controller {
             ${label}
           </div>
         </div>
+        ${addAction}
       </div>
     `
+  }
+
+  addMedicationUrl(result, barcode) {
+    const url = new URL("/medications/new", window.location.origin)
+    url.searchParams.set("name", result.display || "")
+
+    if (barcode) {
+      url.searchParams.set("barcode", barcode)
+    }
+
+    if (result.code) {
+      url.searchParams.set("dmd_code", result.code)
+      url.searchParams.set("dmd_system", result.system || "")
+      url.searchParams.set("dmd_concept_class", result.concept_class || "")
+    }
+
+    return url.toString()
+  }
+
+  barcodeQuery(query) {
+    const normalized = String(query || "").trim().replace(/\D/g, "")
+    return /^\d{13,14}$/.test(normalized) ? normalized : null
   }
 
   escapeHtml(str) {
     const div = document.createElement('div')
     div.appendChild(document.createTextNode(String(str || '')))
     return div.innerHTML
+  }
+
+  hrefAttribute(url) {
+    const link = document.createElement('a')
+    link.setAttribute('href', String(url || ''))
+    return link.getAttribute('href') || ''
   }
 
   t(key) {

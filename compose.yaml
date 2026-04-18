@@ -39,6 +39,7 @@ services:
       NHS_DMD_CLIENT_SECRET: ${NHS_DMD_CLIENT_SECRET:-}
     volumes:
       - .:/app
+      - ${MEDTRACKER_GIT_COMMON_DIR:-.git}:${MEDTRACKER_GIT_COMMON_DIR:-.git}:ro
       - medtracker_dev_bundle:/usr/local/bundle
       - medtracker_dev_node_modules:/app/node_modules
       - medtracker_dev_storage:/app/storage
@@ -63,6 +64,7 @@ services:
     environment: *rails_env_dev
     volumes:
       - .:/app
+      - ${MEDTRACKER_GIT_COMMON_DIR:-.git}:${MEDTRACKER_GIT_COMMON_DIR:-.git}:ro
       - medtracker_dev_bundle:/usr/local/bundle
       - medtracker_dev_node_modules:/app/node_modules
       - medtracker_dev_storage:/app/storage
@@ -109,6 +111,7 @@ services:
       SMTP_ADDRESS: mail-test
     volumes:
       - .:/app
+      - ${MEDTRACKER_GIT_COMMON_DIR:-.git}:${MEDTRACKER_GIT_COMMON_DIR:-.git}:ro
       - medtracker_test_bundle:/usr/local/bundle
       - medtracker_test_node_modules:/app/node_modules
 
@@ -130,6 +133,7 @@ services:
     environment: *rails_env_test
     volumes:
       - .:/app
+      - ${MEDTRACKER_GIT_COMMON_DIR:-.git}:${MEDTRACKER_GIT_COMMON_DIR:-.git}:ro
       - medtracker_test_bundle:/usr/local/bundle
       - medtracker_test_node_modules:/app/node_modules
       - ./tmp/capybara:/app/tmp/capybara

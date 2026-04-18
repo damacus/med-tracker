@@ -84,17 +84,31 @@ RSpec.describe NhsDmd::Search do
           concept_class: 'AMPP'
         }
       end
+      let(:translated_results) do
+        [
+          {
+            code: '13629411000001105',
+            display: 'Laxido Orange oral powder sachets (Galen Ltd)',
+            system: 'https://dmd.nhs.uk',
+            concept_class: 'AMPP'
+          }
+        ]
+      end
 
       before do
         allow(client).to receive(:configured?).and_return(true)
         allow(barcode_lookup).to receive(:lookup).with('5016298210989').and_return(barcode_result)
         allow(client).to receive(:search)
+          .with('Laxido Orange oral powder sachets (Galen Ltd)')
+          .and_return(translated_results)
       end
 
-      it 'returns the mapped dm+d result without calling the remote search' do
+      it 'translates the barcode into a searchable dm+d query while preserving the scanned barcode' do
         result = search.call('5016298210989')
 
         expect(result).to be_success
+        expect(result.resolved_query).to eq('Laxido Orange oral powder sachets (Galen Ltd)')
+        expect(result.barcode).to eq('5016298210989')
         expect(result.results.map(&:to_h)).to contain_exactly(
           a_hash_including(
             code: '13629411000001105',
@@ -102,7 +116,47 @@ RSpec.describe NhsDmd::Search do
             concept_class: 'AMPP'
           )
         )
-        expect(client).not_to have_received(:search)
+        expect(client).to have_received(:search).with('Laxido Orange oral powder sachets (Galen Ltd)')
+      end
+    end
+
+    context 'when the barcode catalogue match needs dm+d enrichment by display name' do
+      let(:barcode_result) do
+        {
+          display: 'Calprofen 100mg/5ml oral suspension',
+          source: 'cd_data'
+        }
+      end
+      let(:translated_results) do
+        [
+          {
+            code: '4585411000001109',
+            display: 'Calprofen 100mg/5ml oral suspension (McNeil Products Ltd) 100 ml',
+            system: 'https://dmd.nhs.uk',
+            concept_class: 'AMPP'
+          }
+        ]
+      end
+
+      before do
+        allow(client).to receive(:configured?).and_return(true)
+        allow(barcode_lookup).to receive(:lookup).with('3574661385488').and_return(barcode_result)
+        allow(client).to receive(:search).with('Calprofen 100mg/5ml oral suspension').and_return(translated_results)
+      end
+
+      it 'returns enriched dm+d results keyed from the external barcode match' do
+        result = search.call('3574661385488')
+
+        expect(result).to be_success
+        expect(result.resolved_query).to eq('Calprofen 100mg/5ml oral suspension')
+        expect(result.barcode).to eq('3574661385488')
+        expect(result.results.map(&:to_h)).to contain_exactly(
+          a_hash_including(
+            code: '4585411000001109',
+            display: 'Calprofen 100mg/5ml oral suspension (McNeil Products Ltd) 100 ml',
+            concept_class: 'AMPP'
+          )
+        )
       end
     end
 

@@ -85,6 +85,7 @@ Kubernetes operators should use the dedicated runbook for complete seeding
 procedures:
 
 - [Kubernetes User Seeding Runbook](kubernetes-user-seeding.md)
+- [Kubernetes NHS dm+d Release Import Runbook](kubernetes-nhs-dmd-import.md)
 
 Quick flow selection:
 

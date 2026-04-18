@@ -24,6 +24,17 @@ RSpec.describe 'Medication Lookup', type: :system do
     ]
   end
 
+  let(:barcode_results) do
+    [
+      {
+        code: '13629411000001105',
+        display: 'Laxido Orange oral powder sachets (Galen Ltd)',
+        system: 'https://dmd.nhs.uk',
+        concept_class: 'AMPP'
+      }
+    ]
+  end
+
   before do
     # Set credentials for NhsDmd::Client
     allow(ENV).to receive(:fetch).and_call_original
@@ -77,6 +88,72 @@ RSpec.describe 'Medication Lookup', type: :system do
     click_button 'Search'
 
     expect(page).to have_content('Search unavailable')
+  end
+
+  it 'allows selecting a search result and prefill a new inventory item' do
+    stub_nhs_dmd_search(query: '5016298210989', results: barcode_results)
+
+    sign_in(doctor)
+    visit medication_finder_path
+
+    fill_in 'medication-search-input', with: '5016298210989'
+    click_button 'Search'
+    within('[data-testid="result-card"]', match: :first) do
+      click_link 'Add Medication'
+    end
+
+    expect(page).to have_current_path(%r{/medications/new})
+    expect(page).to have_field('medication_name', with: 'Laxido Orange oral powder sachets (Galen Ltd)')
+    expect(page).to have_field('medication[barcode]', with: '5016298210989', type: :hidden)
+  end
+
+  it 'translates an imported barcode into a searchable dm+d term in the finder UI' do
+    NhsDmdBarcode.create!(
+      gtin: '05016298210989',
+      code: '13629411000001105',
+      display: 'Laxido Orange oral powder sachets (Galen Ltd)',
+      system: 'https://dmd.nhs.uk',
+      concept_class: 'AMPP'
+    )
+    stub_nhs_dmd_search(query: 'Laxido Orange oral powder sachets (Galen Ltd)', results: barcode_results)
+
+    sign_in(doctor)
+    visit medication_finder_path
+
+    fill_in 'medication-search-input', with: '5016298210989'
+    click_button 'Search'
+
+    expect(page).to have_field('medication-search-input', with: 'Laxido Orange oral powder sachets (Galen Ltd)')
+    expect(page).to have_css(
+      '[data-testid="search-results-header"]',
+      text: 'Laxido Orange oral powder sachets (Galen Ltd)'
+    )
+    expect(page).to have_no_css('[data-testid="search-results-header"]', text: '5016298210989')
+
+    within('[data-testid="result-card"]', match: :first) do
+      click_link 'Add Medication'
+    end
+
+    expect(page).to have_current_path(%r{/medications/new})
+    expect(page).to have_field('medication_name', with: 'Laxido Orange oral powder sachets (Galen Ltd)')
+    expect(page).to have_field('medication[barcode]', with: '5016298210989', type: :hidden)
+  end
+
+  it 'does not persist a non-GTIN numeric query as a barcode' do
+    stub_nhs_dmd_search(query: '1234567890', results: aspirin_results)
+
+    sign_in(doctor)
+    visit medication_finder_path
+
+    fill_in 'medication-search-input', with: '1234567890'
+    click_button 'Search'
+    within('[data-testid="result-card"]', match: :first) do
+      click_link 'Add Medication'
+    end
+
+    expect(page).to have_current_path(%r{/medications/new})
+    expect(page).to have_field('medication_name', with: 'Aspirin 300mg tablets')
+    expect(page).to have_no_field('medication[barcode]', type: :hidden)
   end
 
   it 'User views drug interactions (not yet implemented)' do

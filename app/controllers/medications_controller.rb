@@ -48,6 +48,7 @@ class MedicationsController < ApplicationController # rubocop:disable Metrics/Cl
     @medication = Medication.new
     @medication.location_id ||= primary_location&.id
     authorize @medication
+    @medication.assign_attributes(finder_prefill_attributes)
 
     render wizard_wrapper_class.new(
       medication: @medication,
@@ -178,7 +179,11 @@ class MedicationsController < ApplicationController # rubocop:disable Metrics/Cl
     return render_medication_search_unavailable unless result
 
     if result.success?
-      render json: { results: result.results.map(&:to_h) }
+      render json: {
+        results: result.results.map(&:to_h),
+        query: result.resolved_query.presence || query,
+        barcode: result.barcode
+      }
     else
       render_medication_search_unavailable
     end
@@ -202,6 +207,10 @@ class MedicationsController < ApplicationController # rubocop:disable Metrics/Cl
     params.expect(
       medication: [
         :name,
+        :barcode,
+        :dmd_code,
+        :dmd_system,
+        :dmd_concept_class,
         :category,
         :description,
         :dosage_amount,
@@ -277,6 +286,18 @@ class MedicationsController < ApplicationController # rubocop:disable Metrics/Cl
 
   def render_medication_search_unavailable
     render json: { results: [], error: 'Medication search is temporarily unavailable.' }, status: :service_unavailable
+  end
+
+  def finder_prefill_attributes
+    attrs = {}
+    attrs[:name] = params[:name].presence if params[:name].present?
+
+    barcode = params[:barcode].presence
+    attrs[:barcode] = barcode if NhsDmd::BarcodeLookup.barcode_query?(barcode)
+    attrs[:dmd_code] = params[:dmd_code].presence if params[:dmd_code].present?
+    attrs[:dmd_system] = params[:dmd_system].presence if params[:dmd_code].present?
+    attrs[:dmd_concept_class] = params[:dmd_concept_class].presence if params[:dmd_code].present?
+    attrs
   end
 
   def administration_schedules

@@ -63,18 +63,43 @@ RSpec.describe Medication do
     it { is_expected.to allow_value(nil).for(:barcode) }
     it { is_expected.to allow_value('').for(:barcode) }
     it { is_expected.to allow_value('5000158100138').for(:barcode) }
+    it { is_expected.to allow_value('05000158100138').for(:barcode) }
+    it { is_expected.to allow_value(nil).for(:dmd_code) }
+    it { is_expected.to allow_value('').for(:dmd_code) }
+
+    it 'rejects non-GTIN barcodes' do
+      medication.barcode = '1234567890'
+      medication.valid?
+
+      expect(medication.errors[:barcode]).to include('must be a 13 or 14 digit GTIN')
+    end
+
+    it 'rejects non-numeric barcodes' do
+      medication.barcode = 'abc123'
+      medication.valid?
+
+      expect(medication.errors[:barcode]).to include('must be a 13 or 14 digit GTIN')
+    end
 
     it 'rejects duplicate barcodes' do
       create(:medication, barcode: '5000158100138')
       medication.barcode = '5000158100138'
       medication.valid?
-      expect(medication.errors[:barcode]).to include('has already been taken')
+      expect(medication.errors[:barcode]).to include('is already linked to another medication in inventory')
     end
 
     it 'allows multiple nil barcodes' do
       create(:medication, barcode: nil)
       other = build(:medication, barcode: nil)
       expect(other).to be_valid
+    end
+
+    it 'requires a dm+d system when a dm+d code is present' do
+      medication.dmd_code = '4585411000001109'
+      medication.dmd_system = ''
+      medication.valid?
+
+      expect(medication.errors[:dmd_system]).to include("can't be blank")
     end
   end
 

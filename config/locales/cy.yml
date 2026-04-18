@@ -25,6 +25,13 @@ cy:
           carer: "Gofalwr"
           parent: "Rhiant"
           self: "Hunan"
+    errors:
+      models:
+        medication:
+          attributes:
+            barcode:
+              invalid: "rhaid iddo fod yn GTIN 13 neu 14 digid"
+              taken: "eisoes wedi'i gysylltu â meddyginiaeth arall yn y rhestr"
 
   app:
     name: "MedTracker"

@@ -66,50 +66,71 @@ module Components
           data: { testid: 'medication-form' }
         ) do |form|
           render_errors(form) if medication.errors.any?
-          input(type: 'hidden', name: 'return_to', value: return_to) if return_to.present?
+          render_hidden_form_state
+          render_form_card(form)
+        end
+      end
 
-          m3_card(variant: :elevated, class: 'overflow-visible border-none shadow-elevation-3 rounded-[2.5rem]') do
-            div(class: 'p-10 space-y-8') do
-              div(class: 'space-y-6') do
-                render_location_field(form)
-                render_name_field(form)
-                render_category_field(form)
-                render_description_field(form)
-              end
+      def render_hidden_form_state
+        render_hidden_input('return_to', return_to) if return_to.present?
+        render_hidden_input('medication[barcode]', medication.barcode) if medication.barcode.present?
+        render_hidden_dmd_state
+      end
 
-              div(class: 'h-px bg-outline-variant w-full opacity-50')
+      def render_hidden_dmd_state
+        return if medication.dmd_code.blank?
 
-              div(class: 'space-y-6') do
-                m3_heading(variant: :title_large, level: 3, class: 'font-bold text-foreground') do
-                  t('forms.medications.dosage_and_supply')
-                end
-                div(class: 'grid grid-cols-1 sm:grid-cols-2 gap-6') do
-                  render_dosage_fields(form)
-                  render_supply_fields(form)
-                end
-              end
+        render_hidden_input('medication[dmd_code]', medication.dmd_code)
+        render_hidden_input('medication[dmd_system]', medication.dmd_system)
+        render_hidden_input('medication[dmd_concept_class]', medication.dmd_concept_class)
+      end
 
-              div(class: 'h-px bg-outline-variant w-full opacity-50')
+      def render_hidden_input(name, value)
+        input(type: 'hidden', name: name, value: value)
+      end
 
-              render_dosage_options_section
-
-              div(class: 'h-px bg-outline-variant w-full opacity-50')
-
-              render_warnings_field(form)
+      def render_form_card(form)
+        m3_card(variant: :elevated, class: 'overflow-visible border-none shadow-elevation-3 rounded-[2.5rem]') do
+          div(class: 'p-10 space-y-8') do
+            div(class: 'space-y-6') do
+              render_location_field(form)
+              render_name_field(form)
+              render_category_field(form)
+              render_description_field(form)
             end
 
-            div(
-              class: 'px-10 py-6 bg-surface-container-low border-t border-outline-variant/30 ' \
-                     'flex items-center justify-between gap-4 rounded-b-[2.5rem]'
-            ) do
-              m3_link(href: return_to.presence || medications_path, variant: :text, size: :lg,
-                      class: 'font-bold text-on-surface-variant hover:text-foreground') do
-                t('forms.medications.back')
+            div(class: 'h-px bg-outline-variant w-full opacity-50')
+
+            div(class: 'space-y-6') do
+              m3_heading(variant: :title_large, level: 3, class: 'font-bold text-foreground') do
+                t('forms.medications.dosage_and_supply')
               end
-              m3_button(type: :submit, variant: :filled, size: :lg,
-                        class: 'px-8 rounded-shape-xl shadow-lg shadow-primary/20') do
-                t('forms.medications.save_medication')
+              div(class: 'grid grid-cols-1 sm:grid-cols-2 gap-6') do
+                render_dosage_fields(form)
+                render_supply_fields(form)
               end
+            end
+
+            div(class: 'h-px bg-outline-variant w-full opacity-50')
+
+            render_dosage_options_section
+
+            div(class: 'h-px bg-outline-variant w-full opacity-50')
+
+            render_warnings_field(form)
+          end
+
+          div(
+            class: 'px-10 py-6 bg-surface-container-low border-t border-outline-variant/30 ' \
+                   'flex items-center justify-between gap-4 rounded-b-[2.5rem]'
+          ) do
+            m3_link(href: return_to.presence || medications_path, variant: :text, size: :lg,
+                    class: 'font-bold text-on-surface-variant hover:text-foreground') do
+              t('forms.medications.back')
+            end
+            m3_button(type: :submit, variant: :filled, size: :lg,
+                      class: 'px-8 rounded-shape-xl shadow-lg shadow-primary/20') do
+              t('forms.medications.save_medication')
             end
           end
         end

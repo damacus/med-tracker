@@ -20,6 +20,7 @@ module Components
               resultsTitle: t('medications.finder.results_title'),
               source: t('medications.finder.source'),
               dmdCode: t('medications.finder.dmd_code'),
+              addMedication: t('medications.index.add_medication'),
               resultCount: {
                 one: t('medications.finder.result_count.one'),
                 other: t('medications.finder.result_count.other')
