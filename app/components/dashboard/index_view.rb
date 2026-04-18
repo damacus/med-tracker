@@ -21,8 +21,6 @@ module Components
               render_timeline_section
             end
             div(class: 'space-y-8') do
-              render_right_rail_next_dose
-              render_schedules_section
               render_supply_levels
             end
             div(class: 'lg:col-span-2') do
@@ -170,64 +168,6 @@ module Components
               end
             end
           end
-        end
-      end
-
-      def render_schedules_section
-        upcoming_doses = doses.reject { |d| d[:status] == :taken }.first(5)
-        return if upcoming_doses.empty?
-
-        div(class: 'space-y-6') do
-          m3_heading(variant: :title_large, level: 2, class: 'font-bold tracking-tight') do
-            t('dashboard.medication_schedule')
-          end
-          div(class: 'space-y-4') do
-            upcoming_doses.each { |dose| upcoming_dose_item(dose) }
-          end
-        end
-      end
-
-      def render_right_rail_next_dose
-        render Components::Shared::MetricCard.new(
-          title: t('dashboard.stats.next_dose'),
-          value: next_dose_value,
-          icon_type: 'clock',
-          layout: :compact,
-          testid: 'dashboard-right-rail-next-dose'
-        )
-      end
-
-      def upcoming_dose_item(dose)
-        source = dose[:source]
-        medication = source.medication
-        time_str = dose[:scheduled_at]&.strftime('%H:%M') || '--:--'
-        status = dose[:status]
-
-        div(class: 'flex items-start gap-3 p-1') do
-          div(class: "w-2 h-2 rounded-full mt-2 flex-shrink-0 #{status_dot_color(status)}")
-          div do
-            m3_text(weight: 'bold', size: '3') { "#{time_str} — #{medication.name}" }
-            m3_text(size: '2', weight: 'muted') do
-              "#{dose[:person].name} · #{dosage_label(source)}"
-            end
-          end
-        end
-      end
-
-      def status_dot_color(status)
-        case status
-        when :upcoming then 'bg-primary'
-        when :cooldown then 'bg-warning'
-        when :out_of_stock then 'bg-destructive'
-        else 'bg-primary/15'
-        end
-      end
-
-      def dosage_label(source)
-        if source.is_a?(::Schedule)
-          "#{source.dose_amount} #{source.dose_unit}"
-        else
-          source.dose_display
         end
       end
 

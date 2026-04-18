@@ -104,24 +104,22 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       expect(rendered.text).to include('Stock Inventory')
     end
 
-    it 'renders a compact Next Dose card in the right rail' do
+    it 'does not render a duplicate Next Dose card in the right rail' do
       rendered = render_inline(dashboard_view)
-      expected_value = presenter.next_dose_time&.strftime('%H:%M') || I18n.t('dashboard.stats.no_upcoming_doses')
 
-      compact_card = rendered.at_css('[data-testid="dashboard-right-rail-next-dose"]')
-
-      expect(compact_card).to be_present
-      expect(compact_card.text).to include('Next Dose')
-      expect(compact_card.text).to include(expected_value)
-      expect(compact_card.to_html).to include('min-h-[7rem]')
-      expect(compact_card[:class]).not_to include('h-full')
+      expect(rendered.at_css('[data-testid="dashboard-right-rail-next-dose"]')).not_to be_present
     end
 
-    it 'renders the mobile content flow with schedule and inventory before insights' do
+    it 'does not render a duplicate Medication Schedule section in the right rail' do
+      rendered = render_inline(dashboard_view)
+
+      expect(rendered.css('h2').map(&:text)).not_to include('Medication Schedule')
+    end
+
+    it 'renders the mobile content flow with inventory before insights' do
       rendered = render_inline(dashboard_view)
       html = rendered.to_html
 
-      expect(html.index('Medication Schedule')).to be < html.index('Smart Insights')
       expect(html.index('Stock Inventory')).to be < html.index('Smart Insights')
     end
   end
