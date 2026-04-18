@@ -25,6 +25,13 @@ ga:
           carer: "Cúramóir"
           parent: "Tuismitheoir"
           self: "Féin"
+    errors:
+      models:
+        medication:
+          attributes:
+            barcode:
+              invalid: "caithfidh sé a bheith ina GTIN 13 nó 14 digit"
+              taken: "ceangailte cheana le cógas eile sa stórliosta"
   app:
     name: "MedTracker"
 

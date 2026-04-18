@@ -156,6 +156,28 @@ tasks:
           ENVIRONMENT: dev
           COMMAND: 'rails runner db/seeds/import_nhs_dmd_barcodes.rb "{{ .FILE }}"'
 
+  import-dmd-release:
+    desc: Import NHS dm+d release XML (AMPP names + GTIN barcodes)
+    summary: |
+      Parse the dm+d release XML files and import AMPP product names
+      with their GTIN barcodes into the development database.
+      Automatically extracts the GTIN zip if only the zip is present.
+      RELEASE_DIR is a host path; it is bind-mounted into the container.
+      Usage: task dev:import-dmd-release RELEASE_DIR=storage/nhs_dmd/releases/current
+    requires:
+      vars: [RELEASE_DIR]
+    vars:
+      COMPOSE_PROJECT:
+        sh: basename $PWD
+      ABS_RELEASE_DIR:
+        sh: 'cd "{{ .RELEASE_DIR }}" && pwd'
+      CONTAINER_MOUNT: /tmp/dmd-release
+    cmds:
+      - >-
+        docker compose -p {{ .COMPOSE_PROJECT }} --profile dev run --rm
+        -v "{{ .ABS_RELEASE_DIR }}:{{ .CONTAINER_MOUNT }}:ro"
+        web-dev rails runner db/seeds/import_nhs_dmd_release.rb "{{ .CONTAINER_MOUNT }}"
+
   port:
     desc: Print the host port of the running development server
     summary: |

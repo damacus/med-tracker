@@ -33,6 +33,14 @@ module Components
             ) do |_form|
               render_errors if medication.errors.any?
               input(type: 'hidden', name: 'wizard', value: 'true')
+              if medication.barcode.present?
+                input(type: 'hidden', name: 'medication[barcode]', value: medication.barcode)
+              end
+              if medication.dmd_code.present?
+                input(type: 'hidden', name: 'medication[dmd_code]', value: medication.dmd_code)
+                input(type: 'hidden', name: 'medication[dmd_system]', value: medication.dmd_system)
+                input(type: 'hidden', name: 'medication[dmd_concept_class]', value: medication.dmd_concept_class)
+              end
 
               render_step_panels
               render_navigation

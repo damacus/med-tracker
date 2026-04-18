@@ -28,6 +28,13 @@ en:
           carer: "Carer"
           parent: "Parent"
           self: "Self"
+    errors:
+      models:
+        medication:
+          attributes:
+            barcode:
+              invalid: "must be a 13 or 14 digit GTIN"
+              taken: "is already linked to another medication in inventory"
 
   admin:
     invitations:

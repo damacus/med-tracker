@@ -30,6 +30,7 @@ ensuring medications are given on time and safely.
 *These guides focus on clinical accuracy and deep integrations.*
 
 - [NHS dm+d Integration](nhs-dmd-integration.md): use the UK's medicine dictionary to find accurate names.
+- [Kubernetes NHS dm+d Release Import](kubernetes-nhs-dmd-import.md): import dm+d AMPP and GTIN release files in production.
 - [UK Regulatory Compliance Plan](uk-regulatory-compliance-plan.md): how MedTracker aligns with health data standards.
 - [Audit Trail](audit-trail.md): how we ensure clinical records are safe and traceable.
 

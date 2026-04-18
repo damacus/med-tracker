@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_16_161000) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_18_083600) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -149,6 +149,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_16_161000) do
     t.index ["revoked_at"], name: "index_api_sessions_on_revoked_at"
   end
 
+  create_table "barcode_catalog_entries", force: :cascade do |t|
+    t.string "code"
+    t.string "concept_class"
+    t.datetime "created_at", null: false
+    t.string "display", null: false
+    t.string "gtin", null: false
+    t.string "source", null: false
+    t.string "system"
+    t.datetime "updated_at", null: false
+    t.index ["gtin"], name: "index_barcode_catalog_entries_on_gtin"
+    t.index ["source", "gtin"], name: "index_barcode_catalog_entries_on_source_and_gtin", unique: true
+  end
+
   create_table "carer_relationships", force: :cascade do |t|
     t.boolean "active", default: true, null: false
     t.bigint "carer_id", null: false
@@ -231,6 +244,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_16_161000) do
     t.datetime "created_at", null: false
     t.integer "current_supply"
     t.text "description"
+    t.string "dmd_code"
+    t.string "dmd_concept_class"
+    t.string "dmd_system"
     t.float "dosage_amount"
     t.string "dosage_unit"
     t.date "expiry_date"
@@ -244,6 +260,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_16_161000) do
     t.datetime "updated_at", null: false
     t.text "warnings"
     t.index ["barcode"], name: "index_medications_on_barcode", unique: true, where: "((barcode IS NOT NULL) AND ((barcode)::text <> ''::text))"
+    t.index ["dmd_code"], name: "index_medications_on_dmd_code"
     t.index ["location_id"], name: "index_medications_on_location_id"
   end
 

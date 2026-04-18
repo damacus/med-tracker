@@ -2,13 +2,13 @@
 
 module NhsDmd
   class Search
-    Result = Struct.new(:results, :error, keyword_init: true) do
+    Result = Struct.new(:results, :error, :resolved_query, :barcode, keyword_init: true) do
       def success?
         error.nil?
       end
     end
 
-    def initialize(client: Client.new, barcode_lookup: BarcodeLookup.new)
+    def initialize(client: Client.new, barcode_lookup: BarcodeCatalog::Lookup.new)
       @client = client
       @barcode_lookup = barcode_lookup
     end
@@ -17,7 +17,7 @@ module NhsDmd
       return Result.new(results: [], error: nil) if query.blank?
 
       barcode_match = @barcode_lookup.lookup(query)
-      return Result.new(results: [build_result(barcode_match)], error: nil) if barcode_match
+      return barcode_result(query, barcode_match) if barcode_match
 
       return not_configured_result unless @client.configured?
 
@@ -35,7 +35,7 @@ module NhsDmd
     end
 
     def search_results(query)
-      @client.search(query).map { |item| build_result(item) }
+      build_results(@client.search(query))
     end
 
     def failed_result(message, exception = nil)
@@ -58,6 +58,34 @@ module NhsDmd
         system: item[:system],
         concept_class: item[:concept_class]
       )
+    end
+
+    def barcode_result(query, barcode_match)
+      translated_query = barcode_match[:display]
+
+      Result.new(
+        results: build_results(barcode_items(translated_query, barcode_match)),
+        error: nil,
+        resolved_query: translated_query,
+        barcode: NhsDmdBarcode.normalize_gtin(query)
+      )
+    end
+
+    def build_results(items)
+      items.uniq { |item| item[:code] }.map { |item| build_result(item) }
+    end
+
+    def barcode_items(translated_query, barcode_match)
+      items = []
+      items << barcode_match if barcode_match[:code].present?
+      items.concat(@client.search(translated_query)) if @client.configured?
+      items
+    rescue Client::ApiError => e
+      log_failure(e.message)
+      [barcode_match]
+    rescue StandardError => e
+      log_failure('unexpected_error', e)
+      [barcode_match]
     end
   end
 end

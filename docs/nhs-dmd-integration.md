@@ -182,6 +182,27 @@ To test the live API locally:
 4. Visit `/medication-finder` and search for a medication name,
    for example `Aspirin`.
 
+## Importing dm+d release GTIN data
+
+Barcode lookup uses imported NHS release files in addition to live
+Terminology Server search.
+
+Local development:
+
+```fish
+task dev:import-dmd-release RELEASE_DIR=storage/nhs_dmd/releases/current
+```
+
+Production Kubernetes:
+
+- use a one-off Job per release
+- stage extracted XML files or expand the GTIN ZIP in the Job init container
+- mount the release into the Job at a stable path
+- run `bundle exec rails runner db/seeds/import_nhs_dmd_release.rb /work/nhs-dmd/current`
+
+See the full operational runbook:
+[Kubernetes NHS dm+d Release Import Runbook](kubernetes-nhs-dmd-import.md)
+
 ## Drug interactions
 
 The dm+d API provides **no interaction data** — it is a

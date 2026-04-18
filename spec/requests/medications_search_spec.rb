@@ -145,6 +145,8 @@ RSpec.describe 'GET /medication-finder/search' do
             'concept_class' => 'AMPP'
           )
         )
+        expect(response.parsed_body['query']).to eq('Laxido Orange oral powder sachets (Galen Ltd)')
+        expect(response.parsed_body['barcode']).to eq('5016298210989')
       end
     end
 
