@@ -125,14 +125,14 @@ class RodauthMain < Rodauth::Rails::Auth
       remember_login if param_or_nil('remember')
 
       # Store OIDC ID token and sync Zitadel role on every OIDC login
-      id_token = omniauth_credentials&.dig('id_token')
+      id_token = omniauth_auth&.dig('credentials', 'id_token')
       next unless id_token
 
       session[:oidc_id_token] = id_token
       user = Account.find(account_id).person&.user
       if user
         new_role = zitadel_role_for(omniauth_auth)
-        user.update!(role: new_role) if user.role.to_sym != new_role
+        user.update(role: new_role) if new_role && user.role.to_sym != new_role
       end
     end
 
@@ -394,7 +394,9 @@ class RodauthMain < Rodauth::Rails::Auth
 
       def zitadel_role_for(auth_data)
         raw_info = auth_data.dig('extra', 'raw_info') || {}
-        zitadel_roles = raw_info.fetch('urn:zitadel:iam:org:project:roles', {}).keys
+        return nil unless raw_info.key?('urn:zitadel:iam:org:project:roles')
+
+        zitadel_roles = raw_info['urn:zitadel:iam:org:project:roles'].keys
         valid_roles = User.roles.keys & zitadel_roles
         valid_roles.first&.to_sym || :parent
       end

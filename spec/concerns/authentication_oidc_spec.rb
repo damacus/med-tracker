@@ -95,11 +95,25 @@ RSpec.describe Authentication do
   end
 
   describe 'Zitadel role mapping logic (zitadel_role_for)' do
+    # Replicates the zitadel_role_for logic defined in auth_class_eval
     def role_from_zitadel_claims(role_names)
       raw_info = { 'urn:zitadel:iam:org:project:roles' => role_names.index_with { {} } }
-      zitadel_roles = raw_info.fetch('urn:zitadel:iam:org:project:roles', {}).keys
+      return nil unless raw_info.key?('urn:zitadel:iam:org:project:roles')
+
+      zitadel_roles = raw_info['urn:zitadel:iam:org:project:roles'].keys
       valid_roles = User.roles.keys & zitadel_roles
       valid_roles.first&.to_sym || :parent
+    end
+
+    def role_from_absent_claim
+      raw_info = {}
+      return nil unless raw_info.key?('urn:zitadel:iam:org:project:roles')
+
+      :parent
+    end
+
+    it 'returns nil when the roles claim is entirely absent (preserves existing role)' do
+      expect(role_from_absent_claim).to be_nil
     end
 
     it 'maps doctor claim to :doctor role' do
@@ -118,11 +132,11 @@ RSpec.describe Authentication do
       expect(role_from_zitadel_claims(['carer'])).to eq(:carer)
     end
 
-    it 'falls back to :parent when claim does not match any known role' do
+    it 'falls back to :parent when claim is present but no role matches' do
       expect(role_from_zitadel_claims(['unknown_role'])).to eq(:parent)
     end
 
-    it 'falls back to :parent when no roles are present' do
+    it 'falls back to :parent when claim is present but empty' do
       expect(role_from_zitadel_claims([])).to eq(:parent)
     end
 

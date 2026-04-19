@@ -49,7 +49,11 @@ RSpec.describe 'Zitadel OIDC Enhancements' do # rubocop:disable RSpec/DescribeCl
       expect(rodauth_source).to include('User.roles.keys & zitadel_roles')
     end
 
-    it 'falls back to :parent when no Zitadel role matches a known role' do
+    it 'returns nil when the roles claim is absent to preserve existing roles' do
+      expect(rodauth_source).to include("return nil unless raw_info.key?('urn:zitadel:iam:org:project:roles')")
+    end
+
+    it 'falls back to :parent when the claim is present but no role matches' do
       expect(rodauth_source).to include(':parent')
       expect(rodauth_source).to match(/valid_roles\.first.*\|\| :parent/)
     end
@@ -58,12 +62,13 @@ RSpec.describe 'Zitadel OIDC Enhancements' do # rubocop:disable RSpec/DescribeCl
       expect(rodauth_source).to include('role: zitadel_role_for(omniauth_auth)')
     end
 
-    it 'stores OIDC ID token in session on every OIDC login via after_login' do
+    it 'stores OIDC ID token via omniauth_auth in session on every OIDC login' do
+      expect(rodauth_source).to include("omniauth_auth&.dig('credentials', 'id_token')")
       expect(rodauth_source).to include('session[:oidc_id_token] = id_token')
     end
 
-    it 'syncs role on every OIDC login (not just account creation)' do
-      expect(rodauth_source).to include('user.update!(role: new_role)')
+    it 'only syncs role when claim is present (nil-guard prevents silent downgrade)' do
+      expect(rodauth_source).to include('user.update(role: new_role) if new_role &&')
     end
   end
 
