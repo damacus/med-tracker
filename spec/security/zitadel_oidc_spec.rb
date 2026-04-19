@@ -55,7 +55,7 @@ RSpec.describe 'Zitadel OIDC Enhancements' do # rubocop:disable RSpec/DescribeCl
     end
 
     it 'applies role mapping on account creation via after_omniauth_create_account' do
-      expect(rodauth_source).to include('role: zitadel_role_for(omniauth_data)')
+      expect(rodauth_source).to include('role: zitadel_role_for(omniauth_auth)')
     end
 
     it 'stores OIDC ID token in session on every OIDC login via after_login' do
