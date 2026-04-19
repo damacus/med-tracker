@@ -45,7 +45,22 @@ Open `http://localhost:8080` and log in with the default admin credentials:
 2. Create a new user with a verified email address
 3. Set a password for the user
 
-### 5. Configure MedTracker
+### 5. Configure Project Roles (Optional)
+
+MedTracker maps Zitadel project roles to its internal roles (`administrator`, `doctor`,
+`nurse`, `carer`, `parent`, `minor`). Without a role assignment, users default to `parent`.
+
+To assign a role:
+
+1. Navigate to your project → **Roles** and create a role matching one of the MedTracker
+   role names exactly (e.g., `doctor`)
+2. Go to the user → **Authorizations** and assign them that role in your project
+3. In your Zitadel application settings, enable **Assert Roles on Authentication** so
+   the `urn:zitadel:iam:org:project:roles` claim is included in the ID token
+
+The role is synced on every login, so changes in Zitadel take effect at the next sign-in.
+
+### 6. Configure MedTracker
 
 Set environment variables for MedTracker:
 
@@ -56,18 +71,20 @@ set -x OIDC_CLIENT_SECRET "your-zitadel-client-secret"
 set -x OIDC_PROVIDER_NAME "Zitadel"
 ```
 
-### 6. Start MedTracker
+### 7. Start MedTracker
 
 ```bash
 task dev:up
 ```
 
-### 7. Test the Flow
+### 8. Test the Flow
 
 1. Visit `http://localhost:3000/login`
 2. Click **Continue with Zitadel**
 3. Log in with the test user created in step 4
 4. Verify redirect to MedTracker dashboard
+5. Log out of MedTracker — you should be redirected to Zitadel's logout page
+6. If you assigned a project role, verify the user's role in MedTracker matches
 
 ## Verify Discovery Endpoint
 
