@@ -419,7 +419,7 @@ class RodauthMain < Rodauth::Rails::Auth
       next unless @oidc_id_token_for_logout
 
       issuer = Rails.application.credentials.dig(:oidc, :issuer_url) || ENV.fetch('OIDC_ISSUER_URL', nil)
-      next unless issuer.present?
+      next if issuer.blank?
 
       end_session_url = "#{issuer}/oidc/v1/end_session"
       app_url = ENV.fetch('APP_URL', 'http://localhost:3000')

@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Authentication concern — OIDC enhancements' do
+RSpec.describe Authentication do
   fixtures :accounts, :people, :users, :account_identities
 
   # Thin anonymous controller so we can call concern methods in a proper Rails context
@@ -22,7 +22,7 @@ RSpec.describe 'Authentication concern — OIDC enhancements' do
   end
 
   def stub_rodauth(logged_in: true)
-    dbl = double('rodauth', logged_in?: logged_in)
+    dbl = instance_double(RodauthMain, logged_in?: logged_in)
     allow(controller).to receive(:rodauth).and_return(dbl)
   end
 
@@ -132,7 +132,7 @@ RSpec.describe 'Authentication concern — OIDC enhancements' do
     end
 
     it 'ignores unknown roles even when mixed with valid ones' do
-      expect(role_from_zitadel_claims(['unknown', 'nurse'])).to eq(:nurse)
+      expect(role_from_zitadel_claims(%w[unknown nurse])).to eq(:nurse)
     end
   end
 end
