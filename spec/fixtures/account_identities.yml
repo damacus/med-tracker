@@ -1,8 +1,0 @@
-# Fixtures for OAuth/OIDC account identities
-
-oidc_damacus:
-  account: damacus
-  provider: oidc
-  uid: zitadel-sub-damacus-001
-  created_at: <%= Time.current %>
-  updated_at: <%= Time.current %>

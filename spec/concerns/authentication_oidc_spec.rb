@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe Authentication do
-  fixtures :accounts, :people, :users, :account_identities
+  fixtures :accounts, :people, :users
 
   # Thin anonymous controller so we can call concern methods in a proper Rails context
   let(:controller) do
@@ -27,8 +27,11 @@ RSpec.describe Authentication do
   end
 
   describe '#oidc_authenticated?' do
-    context 'when the account has an OIDC identity (fixture: oidc_damacus)' do
-      before { stub_account(accounts(:damacus)) }
+    context 'when the account has an OIDC identity' do
+      before do
+        AccountIdentity.find_or_create_by!(account: accounts(:damacus), provider: 'oidc', uid: 'zitadel-sub-damacus-001')
+        stub_account(accounts(:damacus))
+      end
 
       it 'returns true' do
         expect(controller.oidc_authenticated?).to be true
