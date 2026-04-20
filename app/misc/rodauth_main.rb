@@ -431,7 +431,7 @@ class RodauthMain < Rodauth::Rails::Auth
       next if issuer.blank?
 
       end_session_url = "#{issuer}/oidc/v1/end_session"
-      app_url = Rails.env.production? ? ENV.fetch('APP_URL') : ENV.fetch('APP_URL', 'http://localhost:3000')
+      app_url = ENV.fetch('APP_URL', request.base_url)
       redirect "#{end_session_url}?" \
                "id_token_hint=#{CGI.escape(@oidc_id_token_for_logout)}&" \
                "post_logout_redirect_uri=#{CGI.escape(app_url)}"

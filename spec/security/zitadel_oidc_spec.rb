@@ -31,8 +31,8 @@ RSpec.describe 'Zitadel OIDC Enhancements' do # rubocop:disable RSpec/DescribeCl
       expect(rodauth_source).to include('CGI.escape(app_url)')
     end
 
-    it 'fails fast when APP_URL is missing in production' do
-      expect(rodauth_source).to include("Rails.env.production? ? ENV.fetch('APP_URL')")
+    it 'falls back to request.base_url when APP_URL is not set' do
+      expect(rodauth_source).to include("ENV.fetch('APP_URL', request.base_url)")
     end
   end
 
