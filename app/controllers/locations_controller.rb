@@ -52,7 +52,7 @@ class LocationsController < ApplicationController
   def update
     authorize @location
     if @location.update(location_params)
-      redirect_to params[:return_to].presence || @location, notice: t('locations.updated')
+      redirect_to safe_redirect_path(params[:return_to]) || @location, notice: t('locations.updated')
     else
       render Components::Locations::FormView.new(
         location: @location,

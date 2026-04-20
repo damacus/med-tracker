@@ -24,6 +24,11 @@ class ApplicationController < ActionController::Base
     { ip: request.remote_ip }
   end
 
+  def safe_redirect_path(path)
+    url_from(path)
+  end
+  helper_method :safe_redirect_path
+
   def user_not_authorized
     flash[:alert] = t('pundit.not_authorized', default: 'You are not authorized to perform this action.')
     redirect_back_or_to(root_path)
