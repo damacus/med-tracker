@@ -29,7 +29,8 @@ RSpec.describe Authentication do
   describe '#oidc_authenticated?' do
     context 'when the account has an OIDC identity' do
       before do
-        AccountIdentity.find_or_create_by!(account: accounts(:damacus), provider: 'oidc', uid: 'zitadel-sub-damacus-001')
+        AccountIdentity.find_or_create_by!(account: accounts(:damacus), provider: 'oidc',
+                                           uid: 'zitadel-sub-damacus-001')
         stub_account(accounts(:damacus))
       end
 
