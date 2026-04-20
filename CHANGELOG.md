@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.3.37](https://github.com/damacus/med-tracker/compare/v0.3.36...v0.3.37) (2026-04-20)
+
+
+### Features
+
+* add initial architecture decision records (ADRs 1-5) ([0f08434](https://github.com/damacus/med-tracker/commit/0f08434403527ca5a84f81e08f44bdb26aa8ec5f))
+* add local NHS dm+d barcode import and lookup ([#1098](https://github.com/damacus/med-tracker/issues/1098)) ([527d79b](https://github.com/damacus/med-tracker/commit/527d79bb185a5ba8c01f5ab75025d46b84291742))
+* add OIDC enhancements ([c80be98](https://github.com/damacus/med-tracker/commit/c80be98fc180ed74c96dd385a31194bc0a880764))
+* **nhs-dmd:** import release GTIN data and persist dm+d identity ([59b11dd](https://github.com/damacus/med-tracker/commit/59b11ddbc9e9f33ec9a04753e4b8b964f9905b9b))
+* publish medication domain events ([#1093](https://github.com/damacus/med-tracker/issues/1093)) ([6ad450c](https://github.com/damacus/med-tracker/commit/6ad450c05adc5bbc5061b1fb9245da641f96bd11))
+* unify M3 surfaces and fix medication workflow regressions ([6f172b1](https://github.com/damacus/med-tracker/commit/6f172b19f4d699a29514caf16594ac633203be13))
+
+
+### Bug Fixes
+
+* **dashboard:** remove duplicate right-rail sections ([5865c11](https://github.com/damacus/med-tracker/commit/5865c1113c3d9fe8d9a64f436dea6b2193183631))
+* ignore blank medication dose rows ([258e8f6](https://github.com/damacus/med-tracker/commit/258e8f661f659714f7b3ca015fd5db1a029fc3cc))
+* improve sidebar active contrast ([8ffd101](https://github.com/damacus/med-tracker/commit/8ffd1016e76784fae0058998fcf7fc7b47d79020))
+* preserve dose snapshots when editing schedules ([ae1056c](https://github.com/damacus/med-tracker/commit/ae1056ca1ef20bfef9a8d5dc0836edbf4d7b49f1))
+* refine medication dose editor ([65fabcd](https://github.com/damacus/med-tracker/commit/65fabcdd7768fe11fc5033025a56fe38db1d42f4))
+* unify M3 surfaces and fix medication workflow regressions ([#1095](https://github.com/damacus/med-tracker/issues/1095)) ([6f172b1](https://github.com/damacus/med-tracker/commit/6f172b19f4d699a29514caf16594ac633203be13))
+
 ## [0.3.36](https://github.com/damacus/med-tracker/compare/v0.3.35...v0.3.36) (2026-04-13)
 
 
