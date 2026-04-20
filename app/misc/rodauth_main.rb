@@ -398,7 +398,7 @@ class RodauthMain < Rodauth::Rails::Auth
 
         zitadel_roles = raw_info['urn:zitadel:iam:org:project:roles'].keys
         valid_roles = User.roles.keys & zitadel_roles
-        valid_roles.first&.to_sym || :parent
+        valid_roles.first&.to_sym
       end
     end
 

@@ -53,13 +53,13 @@ RSpec.describe 'Zitadel OIDC Enhancements' do # rubocop:disable RSpec/DescribeCl
       expect(rodauth_source).to include("return nil unless raw_info.key?('urn:zitadel:iam:org:project:roles')")
     end
 
-    it 'falls back to :parent when the claim is present but no role matches' do
-      expect(rodauth_source).to include(':parent')
-      expect(rodauth_source).to match(/valid_roles\.first.*\|\| :parent/)
+    it 'returns nil (not :parent) when the claim is present but no role matches' do
+      expect(rodauth_source).to include('valid_roles.first&.to_sym')
+      expect(rodauth_source).not_to match(/valid_roles\.first.*\|\| :parent/)
     end
 
-    it 'applies role mapping on account creation via after_omniauth_create_account' do
-      expect(rodauth_source).to include('role: zitadel_role_for(omniauth_auth)')
+    it 'applies role mapping on account creation with :parent as system default' do
+      expect(rodauth_source).to include('role: zitadel_role_for(omniauth_auth) || :parent')
     end
 
     it 'stores OIDC ID token via omniauth_auth in session on every OIDC login' do

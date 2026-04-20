@@ -99,21 +99,22 @@ RSpec.describe Authentication do
   end
 
   describe 'Zitadel role mapping logic (zitadel_role_for)' do
-    # Replicates the zitadel_role_for logic defined in auth_class_eval
+    # Replicates the zitadel_role_for logic defined in auth_class_eval.
+    # Returns nil for all "no valid role" cases — callers supply their own default.
     def role_from_zitadel_claims(role_names)
       raw_info = { 'urn:zitadel:iam:org:project:roles' => role_names.index_with { {} } }
       return nil unless raw_info.key?('urn:zitadel:iam:org:project:roles')
 
       zitadel_roles = raw_info['urn:zitadel:iam:org:project:roles'].keys
       valid_roles = User.roles.keys & zitadel_roles
-      valid_roles.first&.to_sym || :parent
+      valid_roles.first&.to_sym
     end
 
     def role_from_absent_claim
       raw_info = {}
       return nil unless raw_info.key?('urn:zitadel:iam:org:project:roles')
 
-      :parent
+      nil
     end
 
     it 'returns nil when the roles claim is entirely absent (preserves existing role)' do
@@ -136,12 +137,12 @@ RSpec.describe Authentication do
       expect(role_from_zitadel_claims(['carer'])).to eq(:carer)
     end
 
-    it 'falls back to :parent when claim is present but no role matches' do
-      expect(role_from_zitadel_claims(['unknown_role'])).to eq(:parent)
+    it 'returns nil when claim is present but no role matches (caller supplies default)' do
+      expect(role_from_zitadel_claims(['unknown_role'])).to be_nil
     end
 
-    it 'falls back to :parent when claim is present but empty' do
-      expect(role_from_zitadel_claims([])).to eq(:parent)
+    it 'returns nil when claim is present but empty (caller supplies default)' do
+      expect(role_from_zitadel_claims([])).to be_nil
     end
 
     it 'uses the first valid role when multiple roles are present' do
