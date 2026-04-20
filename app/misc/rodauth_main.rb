@@ -121,7 +121,27 @@ class RodauthMain < Rodauth::Rails::Auth
       end
     end
 
-    after_login { remember_login if param_or_nil('remember') }
+    after_login do
+      remember_login if param_or_nil('remember')
+
+      id_token = omniauth_auth&.dig('credentials', 'id_token')
+      next unless id_token
+
+      session[:oidc_id_token] = id_token
+
+      # Flag whether Zitadel satisfied MFA this session (amr claim, RFC 8176).
+      # Only skip local 2FA enforcement when the IdP actually performed MFA.
+      amr = Array(omniauth_auth.dig('extra', 'raw_info', 'amr'))
+      session[:oidc_mfa_verified] = amr.intersect?(%w[mfa otp u2f hwk swk])
+
+      user = Account.find_by(id: account_id)&.person&.user
+      if user
+        new_role = zitadel_role_for(omniauth_auth)
+        if new_role && user.role.to_sym != new_role && !user.update(role: new_role)
+          Rails.logger.warn("[OIDC] Role sync failed for #{account_id}: #{user.errors.full_messages.join(', ')}")
+        end
+      end
+    end
 
     # Extend user's remember period when remembered via a cookie
     extend_remember_deadline? true
@@ -340,7 +360,7 @@ class RodauthMain < Rodauth::Rails::Auth
         User.create!(
           person: person,
           email_address: email,
-          role: :parent,
+          role: zitadel_role_for(omniauth_auth) || :parent,
           active: true
         )
       end
@@ -378,6 +398,15 @@ class RodauthMain < Rodauth::Rails::Auth
           super
         end
       end
+
+      def zitadel_role_for(auth_data)
+        raw_info = auth_data.dig('extra', 'raw_info') || {}
+        return nil unless raw_info.key?('urn:zitadel:iam:org:project:roles')
+
+        zitadel_roles = raw_info['urn:zitadel:iam:org:project:roles'].keys
+        valid_roles = User.roles.keys & zitadel_roles
+        valid_roles.first&.to_sym
+      end
     end
 
     # ==> Redirects
@@ -388,6 +417,25 @@ class RodauthMain < Rodauth::Rails::Auth
 
     # Redirect to dashboard after account creation (since autologin is enabled)
     create_account_redirect { login_redirect }
+
+    # Capture OIDC ID token before session is cleared on logout
+    before_logout do
+      @oidc_id_token_for_logout = session[:oidc_id_token]
+    end
+
+    # Redirect to OIDC provider's end_session endpoint for single sign-out
+    after_logout do
+      next unless @oidc_id_token_for_logout
+
+      issuer = Rails.application.credentials.dig(:oidc, :issuer_url) || ENV.fetch('OIDC_ISSUER_URL', nil)
+      next if issuer.blank?
+
+      end_session_url = "#{issuer}/oidc/v1/end_session"
+      app_url = ENV.fetch('APP_URL', request.base_url)
+      redirect "#{end_session_url}?" \
+               "id_token_hint=#{CGI.escape(@oidc_id_token_for_logout)}&" \
+               "post_logout_redirect_uri=#{CGI.escape(app_url)}"
+    end
 
     # Redirect to home page after logout.
     logout_redirect '/'

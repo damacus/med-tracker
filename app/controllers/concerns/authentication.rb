@@ -60,8 +60,13 @@ module Authentication
     return false unless rodauth.logged_in?
     return false unless current_user
     return false if two_factor_configured?
+    return false if oidc_authenticated?
 
     ROLES_REQUIRING_2FA.include?(current_user.role)
+  end
+
+  def oidc_authenticated?
+    session[:oidc_mfa_verified] == true
   end
 
   # Check if user has any 2FA method configured
