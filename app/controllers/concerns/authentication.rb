@@ -66,9 +66,7 @@ module Authentication
   end
 
   def oidc_authenticated?
-    return false unless current_account
-
-    AccountIdentity.exists?(account_id: current_account.id, provider: 'oidc')
+    session[:oidc_mfa_verified] == true
   end
 
   # Check if user has any 2FA method configured

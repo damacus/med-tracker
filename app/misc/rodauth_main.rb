@@ -124,15 +124,22 @@ class RodauthMain < Rodauth::Rails::Auth
     after_login do
       remember_login if param_or_nil('remember')
 
-      # Store OIDC ID token and sync Zitadel role on every OIDC login
       id_token = omniauth_auth&.dig('credentials', 'id_token')
       next unless id_token
 
       session[:oidc_id_token] = id_token
-      user = Account.find(account_id).person&.user
+
+      # Flag whether Zitadel satisfied MFA this session (amr claim, RFC 8176).
+      # Only skip local 2FA enforcement when the IdP actually performed MFA.
+      amr = Array(omniauth_auth.dig('extra', 'raw_info', 'amr'))
+      session[:oidc_mfa_verified] = amr.intersect?(%w[mfa otp u2f hwk swk])
+
+      user = Account.find_by(id: account_id)&.person&.user
       if user
         new_role = zitadel_role_for(omniauth_auth)
-        user.update(role: new_role) if new_role && user.role.to_sym != new_role
+        if new_role && user.role.to_sym != new_role && !user.update(role: new_role)
+          Rails.logger.warn("[OIDC] Role sync failed for #{account_id}: #{user.errors.full_messages.join(', ')}")
+        end
       end
     end
 
@@ -424,7 +431,7 @@ class RodauthMain < Rodauth::Rails::Auth
       next if issuer.blank?
 
       end_session_url = "#{issuer}/oidc/v1/end_session"
-      app_url = ENV.fetch('APP_URL', 'http://localhost:3000')
+      app_url = Rails.env.production? ? ENV.fetch('APP_URL') : ENV.fetch('APP_URL', 'http://localhost:3000')
       redirect "#{end_session_url}?" \
                "id_token_hint=#{CGI.escape(@oidc_id_token_for_logout)}&" \
                "post_logout_redirect_uri=#{CGI.escape(app_url)}"

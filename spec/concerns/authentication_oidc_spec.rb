@@ -13,6 +13,10 @@ RSpec.describe Authentication do
     end.new
   end
 
+  def stub_session(data = {})
+    allow(controller).to receive(:session).and_return(data.with_indifferent_access)
+  end
+
   def stub_account(account)
     allow(controller).to receive(:current_account).and_return(account)
   end
@@ -27,30 +31,26 @@ RSpec.describe Authentication do
   end
 
   describe '#oidc_authenticated?' do
-    context 'when the account has an OIDC identity' do
-      before do
-        AccountIdentity.find_or_create_by!(account: accounts(:damacus), provider: 'oidc',
-                                           uid: 'zitadel-sub-damacus-001')
-        stub_account(accounts(:damacus))
-      end
+    context 'when the session has oidc_mfa_verified: true (Zitadel performed MFA)' do
+      before { stub_session('oidc_mfa_verified' => true) }
 
       it 'returns true' do
         expect(controller.oidc_authenticated?).to be true
       end
     end
 
-    context 'when the account has no OIDC identity (password-only user)' do
-      before { stub_account(accounts(:john_doe)) }
+    context 'when oidc_mfa_verified is false (OIDC login without MFA)' do
+      before { stub_session('oidc_mfa_verified' => false) }
 
       it 'returns false' do
         expect(controller.oidc_authenticated?).to be false
       end
     end
 
-    context 'when current_account is nil' do
-      before { stub_account(nil) }
+    context 'when oidc_mfa_verified is absent (password login)' do
+      before { stub_session({}) }
 
-      it 'returns false without raising' do
+      it 'returns false' do
         expect(controller.oidc_authenticated?).to be false
       end
     end
@@ -67,18 +67,24 @@ RSpec.describe Authentication do
       allow(controller).to receive(:two_factor_configured?).and_return(false)
     end
 
-    context 'when doctor signed in via Zitadel (has OIDC identity)' do
-      before do
-        AccountIdentity.find_or_create_by!(account: doctor_account, provider: 'oidc', uid: 'zitadel-dr-jones')
-      end
+    context 'when doctor signed in via Zitadel with MFA (amr claim present)' do
+      before { stub_session('oidc_mfa_verified' => true) }
 
       it 'does not prompt for 2FA setup' do
         expect(controller.should_setup_two_factor?).to be false
       end
     end
 
-    context 'when doctor signed in via password (no OIDC identity)' do
-      before { AccountIdentity.where(account: doctor_account, provider: 'oidc').delete_all }
+    context 'when doctor signed in via Zitadel without MFA' do
+      before { stub_session('oidc_mfa_verified' => false) }
+
+      it 'prompts for 2FA setup' do
+        expect(controller.should_setup_two_factor?).to be true
+      end
+    end
+
+    context 'when doctor signed in via password (no OIDC session flag)' do
+      before { stub_session({}) }
 
       it 'prompts for 2FA setup' do
         expect(controller.should_setup_two_factor?).to be true
@@ -89,7 +95,7 @@ RSpec.describe Authentication do
       before do
         stub_user(users(:parent))
         stub_account(accounts(:parent))
-        AccountIdentity.where(account: accounts(:parent), provider: 'oidc').delete_all
+        stub_session({})
       end
 
       it 'does not prompt for 2FA setup regardless of auth method' do
