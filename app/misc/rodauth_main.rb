@@ -353,7 +353,7 @@ class RodauthMain < Rodauth::Rails::Auth
         User.create!(
           person: person,
           email_address: email,
-          role: zitadel_role_for(omniauth_auth),
+          role: zitadel_role_for(omniauth_auth) || :parent,
           active: true
         )
       end
