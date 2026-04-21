@@ -61,6 +61,17 @@ RSpec.describe 'Medications category filter' do
     expect(response.body).not_to include('Vitamin D')
   end
 
+  it 'marks the remembered location cookie as secure for HTTPS requests' do
+    get medications_path(location_id: locations(:school).id), headers: { 'HTTPS' => 'on' }
+
+    cookie_header = response.headers['Set-Cookie'].find do |header|
+      header.include?('medications_location_id=')
+    end
+
+    expect(cookie_header).to include('medications_location_id=')
+    expect(cookie_header).to include('secure')
+  end
+
   it 'clears the remembered location when all locations are selected' do
     get medications_path(location_id: locations(:school).id)
     expect(response.cookies['medications_location_id']).to be_present

@@ -25,7 +25,8 @@ module InventoryLocationFilterable
     if selected_location_id.present? && location_ids.include?(selected_location_id)
       cookies.signed[:medications_location_id] = {
         value: selected_location_id,
-        httponly: true
+        httponly: true,
+        secure: request.ssl?
       }
       selected_location_id
     else
