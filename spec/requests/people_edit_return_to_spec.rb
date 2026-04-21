@@ -5,7 +5,7 @@ require 'rails_helper'
 RSpec.describe 'People edit return_to sanitization' do
   fixtures :accounts, :people, :users, :locations, :location_memberships, :carer_relationships
 
-  let(:user) { users(:jane) }
+  let(:user) { users(:admin) }
   let(:person) { people(:jane) }
 
   before { sign_in(user) }
