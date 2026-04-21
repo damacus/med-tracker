@@ -155,15 +155,6 @@ module Components
         end
       end
 
-      # Form fields renderers remain mostly the same logic, but we can enhance the
-      # input styles if needed via global classes.
-      # For now, relying on the central input styling updates we made earlier.
-
-      def render_form_fields(form)
-        # This method is now redundant as logic is moved to render_form,
-        # but keeping helper methods below for field rendering
-      end
-
       def render_location_field(_form)
         div(class: 'space-y-2') do
           render RubyUI::FormFieldLabel.new(
