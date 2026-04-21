@@ -42,7 +42,7 @@ class PeopleController < ApplicationController
   def edit
     @person = policy_scope(Person).find(params[:id])
     authorize @person
-    @return_to = params[:return_to]
+    @return_to = url_from(params[:return_to])
     is_modal = request.headers['Turbo-Frame'] == 'modal'
 
     if is_modal
@@ -108,12 +108,12 @@ class PeopleController < ApplicationController
         format.json { render :show, status: :ok, location: @person }
       else
         format.html do
-          render Components::People::FormView.new(person: @person, return_to: params[:return_to]), status: :unprocessable_content
+          render Components::People::FormView.new(person: @person, return_to: url_from(params[:return_to])), status: :unprocessable_content
         end
         format.turbo_stream do
           render turbo_stream: turbo_stream.replace(
             'modal',
-            Components::People::Modal.new(person: @person, return_to: params[:return_to])
+            Components::People::Modal.new(person: @person, return_to: url_from(params[:return_to]))
           ), status: :unprocessable_content
         end
         format.json { render json: @person.errors, status: :unprocessable_content }

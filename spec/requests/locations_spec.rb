@@ -96,6 +96,29 @@ RSpec.describe 'Locations' do
     end
   end
 
+  describe 'GET /locations/:id/edit' do
+    let(:location) { locations(:home) }
+
+    context 'when authenticated as admin' do
+      before { post '/login', params: { email: admin.email_address, password: 'password' } }
+
+      it 'preserves a safe internal return_to path' do
+        get edit_location_path(location, return_to: '/locations')
+        expect(response.body).to include('href="/locations"')
+      end
+
+      it 'strips an external return_to url from rendered links' do
+        get edit_location_path(location, return_to: 'https://evil.com/phish')
+        expect(response.body).not_to include('evil.com')
+      end
+
+      it 'strips a javascript: return_to scheme from rendered links' do
+        get edit_location_path(location, return_to: 'javascript:alert(1)')
+        expect(response.body).not_to include('javascript:alert')
+      end
+    end
+  end
+
   describe 'POST /locations' do
     context 'when authenticated as admin' do
       before { post '/login', params: { email: admin.email_address, password: 'password' } }
