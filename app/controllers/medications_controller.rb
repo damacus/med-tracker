@@ -58,7 +58,7 @@ class MedicationsController < ApplicationController # rubocop:disable Metrics/Cl
 
   def edit
     authorize @medication
-    @return_to = params[:return_to]
+    @return_to = url_from(params[:return_to])
     render Components::Medications::FormView.new(
       medication: @medication,
       locations: available_locations,
@@ -100,7 +100,7 @@ class MedicationsController < ApplicationController # rubocop:disable Metrics/Cl
         locations: available_locations,
         title: t('medications.form.edit_title'),
         subtitle: t('medications.form.edit_subtitle', name: @medication.name),
-        return_to: params[:return_to]
+        return_to: url_from(params[:return_to])
       ), status: :unprocessable_content
     end
   end
