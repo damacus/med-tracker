@@ -68,10 +68,6 @@ module Components
         end
       end
 
-      def render_header
-        # Header is rendered by Modal component
-      end
-
       def render_form
         form_with(model: person, id: 'person_form', class: 'space-y-6') do |f|
           render_errors if person.errors.any?
