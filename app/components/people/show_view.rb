@@ -7,14 +7,13 @@ module Components
       include Phlex::Rails::Helpers::TurboFrameTag
       include Phlex::Rails::Helpers::FormWith
 
-      attr_reader :person, :schedules, :person_medications, :editing,
+      attr_reader :person, :schedules, :person_medications,
                   :takes_by_schedule, :takes_by_person_medication, :current_user
 
-      def initialize(person:, schedules:, person_medications: nil, editing: false, **opts)
+      def initialize(person:, schedules:, person_medications: nil, **opts)
         @person = person
         @schedules = schedules
         @person_medications = person_medications || person.person_medications
-        @editing = editing
         preloaded_takes = opts.fetch(:preloaded_takes, {})
         @takes_by_schedule = preloaded_takes.fetch(:schedules, {})
         @takes_by_person_medication = preloaded_takes.fetch(:person_medications, {})
@@ -209,61 +208,6 @@ module Components
 
       def can_add_medication?
         can_create_schedule? || view_context.policy(PersonMedication.new(person: person)).create?
-      end
-
-      def render_edit_form
-        # Keep current logic for editing, just wrapping in new aesthetic container
-        div(class: 'container mx-auto px-4 py-12 max-w-2xl') do
-          m3_card(variant: :elevated, class: 'overflow-hidden border-none shadow-elevation-3 rounded-[2.5rem]') do
-            form_with(model: person, class: 'space-y-8 p-10', data: { controller: 'auto-submit' }) do |f|
-              div do
-                m3_heading(variant: :headline_small, level: 2, class: 'font-bold mb-1') do
-                  t('people.form.edit_heading')
-                end
-                m3_text(variant: :body_medium, class: 'text-on-surface-variant font-medium') do
-                  t('people.form.edit_subheading', name: person.name)
-                end
-              end
-
-              div(class: 'space-y-6') do
-                div(class: 'space-y-2') do
-                  render RubyUI::FormFieldLabel.new(
-                    for: 'person_name',
-                    class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant px-1'
-                  ) { t('people.form.name') }
-                  render f.text_field(
-                    :name,
-                    class: 'rounded-2xl border-outline-variant bg-surface-container-lowest py-6 px-5 ' \
-                           'focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all'
-                  )
-                end
-
-                div(class: 'space-y-2') do
-                  render RubyUI::FormFieldLabel.new(
-                    for: 'person_date_of_birth',
-                    class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant px-1'
-                  ) { t('people.form.date_of_birth') }
-                  render f.date_field(
-                    :date_of_birth,
-                    class: 'rounded-2xl border-outline-variant bg-surface-container-lowest py-6 px-5 ' \
-                           'focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all'
-                  )
-                end
-              end
-
-              div(class: 'flex gap-3 pt-4') do
-                m3_button(type: :submit, variant: :filled, size: :lg,
-                          class: 'flex-1 py-7 font-bold shadow-lg shadow-primary/20') do
-                  t('people.form.save')
-                end
-                m3_link(href: person_path(person), variant: :text, size: :lg,
-                        class: 'py-7 px-8 font-bold text-on-surface-variant hover:text-foreground') do
-                  t('people.form.cancel')
-                end
-              end
-            end
-          end
-        end
       end
     end
   end

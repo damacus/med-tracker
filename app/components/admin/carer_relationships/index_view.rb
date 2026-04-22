@@ -4,9 +4,6 @@ module Components
   module Admin
     module CarerRelationships
       class IndexView < Components::Base
-        include Phlex::Rails::Helpers::ButtonTo
-        include Phlex::Rails::Helpers::FormWith
-
         attr_reader :relationships, :current_user, :pagy_obj
 
         def initialize(relationships:, current_user: nil, pagy: nil)
@@ -87,60 +84,6 @@ module Components
 
         def render_relationship_row(relationship)
           render Row.new(relationship: relationship)
-        end
-
-        def render_status_badge(relationship)
-          if relationship.active?
-            render RubyUI::Badge.new(variant: :success) { t('admin.carer_relationships.index.active') }
-          else
-            render RubyUI::Badge.new(variant: :destructive) { t('admin.carer_relationships.index.inactive') }
-          end
-        end
-
-        def render_activation_button(relationship)
-          if relationship.active?
-            render_deactivate_dialog(relationship)
-          else
-            form_with(
-              url: "/admin/carer_relationships/#{relationship.id}/activate",
-              method: :post,
-              class: 'inline-block'
-            ) do
-              m3_button(
-                type: :submit,
-                variant: :success_outline,
-                size: :sm
-              ) { t('admin.carer_relationships.index.activate') }
-            end
-          end
-        end
-
-        def render_deactivate_dialog(relationship)
-          render RubyUI::AlertDialog.new do
-            render RubyUI::AlertDialogTrigger.new do
-              m3_button(variant: :destructive_outline, size: :sm) do
-                t('admin.carer_relationships.index.deactivate')
-              end
-            end
-            render RubyUI::AlertDialogContent.new do
-              render RubyUI::AlertDialogHeader.new do
-                render(RubyUI::AlertDialogTitle.new { t('admin.carer_relationships.index.deactivate_dialog.title') })
-                render RubyUI::AlertDialogDescription.new do
-                  t('admin.carer_relationships.index.deactivate_dialog.confirm',
-                    carer: relationship.carer.name,
-                    patient: relationship.patient.name)
-                end
-              end
-              render RubyUI::AlertDialogFooter.new do
-                render(RubyUI::AlertDialogCancel.new { t('admin.carer_relationships.index.deactivate_dialog.cancel') })
-                form_with(url: "/admin/carer_relationships/#{relationship.id}", method: :delete, class: 'inline') do
-                  m3_button(variant: :destructive, type: :submit) do
-                    t('admin.carer_relationships.index.deactivate_dialog.submit')
-                  end
-                end
-              end
-            end
-          end
         end
 
         def render_pagination
