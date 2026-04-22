@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Medication < ApplicationRecord # :nodoc:
-  DOSAGE_UNITS = %w[tablet mg ml g mcg IU spray drop sachet].freeze
+  DOSAGE_UNITS = %w[tablet capsule mg ml g mcg IU spray drop sachet pad].freeze
   CATEGORIES = [
     'Analgesic',
     'Antibiotic',
@@ -72,6 +72,22 @@ class Medication < ApplicationRecord # :nodoc:
   validates :reorder_threshold, presence: true, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
 
   delegate :low_stock?, :out_of_stock?, to: :supply_level
+
+  def sync_inventory_from_dosage_records!
+    tracked_dosages = dosage_records.where.not(current_supply: nil)
+    return if tracked_dosages.none?
+
+    current_supply_total = tracked_dosages.sum(:current_supply)
+    reorder_threshold_total = tracked_dosages.sum('COALESCE(reorder_threshold, 0)')
+    last_restock = supply_at_last_restock
+    last_restock = current_supply_total if last_restock.blank? || current_supply_total > last_restock
+
+    update!(
+      current_supply: current_supply_total,
+      reorder_threshold: reorder_threshold_total,
+      supply_at_last_restock: last_restock
+    )
+  end
 
   def sync_dosages
     return unless persisted? && switched_to_single_dose_mode?

@@ -14,7 +14,7 @@ RSpec.describe 'Medication dose options editor' do
     visit edit_medication_path(medications(:calpol))
 
     within first("[data-dosage-options-target='option']") do
-      expect(page).to have_field('medication_dosage_records_attributes_0_display_unit', with: 'ml', disabled: true)
+      expect(page).to have_select('medication[dosage_records_attributes][0][unit]', selected: 'ml')
 
       click_button 'Every morning'
 

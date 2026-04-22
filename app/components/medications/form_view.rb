@@ -469,6 +469,21 @@ module Components
               render_dosage_default_cycle_field(dosage, index)
             end
 
+            div(class: 'grid grid-cols-1 sm:grid-cols-2 gap-4') do
+              render_dosage_inventory_field(
+                dosage: dosage,
+                index: index,
+                field: 'current_supply',
+                label: 'Tracked supply'
+              )
+              render_dosage_inventory_field(
+                dosage: dosage,
+                index: index,
+                field: 'reorder_threshold',
+                label: 'Dose stock threshold'
+              )
+            end
+
             div(class: 'flex flex-wrap items-center gap-6') do
               render_dosage_default_checkbox(dosage, index, 'default_for_adults', 'Default for adults')
               render_dosage_default_checkbox(dosage, index, 'default_for_children', 'Default for children / dependents')
@@ -573,28 +588,36 @@ module Components
         end
       end
 
-      def render_dosage_option_unit_field(_dosage, index)
+      def render_dosage_option_unit_field(dosage, index)
         div(class: 'space-y-2') do
-          render RubyUI::FormFieldLabel.new(for: "medication_dosage_records_attributes_#{index}_display_unit") do
+          render RubyUI::FormFieldLabel.new(for: "medication_dosage_records_attributes_#{index}_unit") do
             'Unit'
           end
-          input(
-            type: :hidden,
+          select(
             name: dosage_field_name(index, 'unit'),
             id: "medication_dosage_records_attributes_#{index}_unit",
-            value: medication.dosage_unit
-          )
-          m3_input(
-            type: :text,
-            id: "medication_dosage_records_attributes_#{index}_display_unit",
-            value: medication.dosage_unit,
-            disabled: true,
-            readonly: true,
-            class: 'rounded-md border-outline-variant bg-secondary-container/70 text-on-surface-variant py-4 px-4'
-          )
-          m3_text(variant: :body_small, class: 'text-on-surface-variant font-medium') do
-            'Matches the main dose unit'
+            class: 'flex h-9 w-full rounded-md border border-outline bg-transparent px-3 py-1 text-sm shadow-sm'
+          ) do
+            option(value: '', selected: dosage.unit.blank?) { 'Select unit' }
+            dosage_units.each do |unit|
+              option(value: unit, selected: dosage.unit == unit) { unit }
+            end
           end
+        end
+      end
+
+      def render_dosage_inventory_field(dosage:, index:, field:, label:)
+        div(class: 'space-y-2') do
+          render RubyUI::FormFieldLabel.new(for: "medication_dosage_records_attributes_#{index}_#{field}") do
+            label
+          end
+          m3_input(
+            type: :number,
+            name: dosage_field_name(index, field),
+            id: "medication_dosage_records_attributes_#{index}_#{field}",
+            value: dosage.public_send(field),
+            min: '0'
+          )
         end
       end
 
@@ -677,10 +700,13 @@ module Components
       def dosage_row_values(dosage)
         [
           dosage.amount,
+          dosage.unit,
           dosage.frequency,
           dosage.description,
           dosage.default_max_daily_doses,
-          dosage.default_min_hours_between_doses
+          dosage.default_min_hours_between_doses,
+          dosage.current_supply,
+          dosage.reorder_threshold
         ]
       end
 
@@ -722,7 +748,7 @@ module Components
             name: 'medication[reorder_threshold]',
             id: 'medication_reorder_threshold',
             value: medication.reorder_threshold,
-            min: '1',
+            min: '0',
             placeholder: t('forms.medications.reorder_threshold_placeholder', default: 'e.g., 5'),
             class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 ' \
                    'focus:ring-2 focus:ring-primary/10 ' \

@@ -1,0 +1,96 @@
+products:
+  - gtin: "5021265232062"
+    code: "35394411000001103"
+    display: "Pregnacare Plus tablets and capsules (Vitabiotics Ltd)"
+    system: "https://dmd.nhs.uk"
+    concept_class: "AMPP"
+    suggested_doses:
+      - amount: 1
+        unit: "tablet"
+        frequency: "As directed"
+        description: "Tablet"
+        default_max_daily_doses: 1
+        default_min_hours_between_doses: 24
+        default_dose_cycle: "daily"
+        current_supply: 56
+        reorder_threshold: 14
+      - amount: 1
+        unit: "capsule"
+        frequency: "As directed"
+        description: "Capsule"
+        default_max_daily_doses: 1
+        default_min_hours_between_doses: 24
+        default_dose_cycle: "daily"
+        current_supply: 28
+        reorder_threshold: 7
+  - gtin: "3574661646435"
+    display: "Calpol Vapour Plug & Nightlight + 3 Refill Pads"
+    system: "Curated product catalog"
+    concept_class: "Accessory"
+    suggested_doses:
+      - amount: 1
+        unit: "pad"
+        frequency: "As directed"
+        description: "Refill pad"
+        default_max_daily_doses: 1
+        default_min_hours_between_doses: 24
+        default_dose_cycle: "daily"
+        current_supply: 3
+        reorder_threshold: 0
+  - code: "316811000001106"
+    display: "Calpol Six Plus 250mg/5ml oral suspension (McNeil Products Ltd)"
+    system: "https://dmd.nhs.uk"
+    concept_class: "AMP"
+    category: "Analgesic"
+    description: "For the treatment of mild to moderate pain and fever in children aged 6 years and over, and in adults who prefer a liquid suspension."
+    warnings: "Contains paracetamol. Leave at least 4 hours between doses. Do not give more than 4 doses in 24 hours. Do not use with any other paracetamol-containing products."
+    suggested_doses:
+      - amount: 5
+        unit: "ml"
+        frequency: "Every 4 hours as needed"
+        description: "Children 6-8 years"
+        default_max_daily_doses: 4
+        default_min_hours_between_doses: 4
+        default_dose_cycle: "daily"
+      - amount: 7.5
+        unit: "ml"
+        frequency: "Every 4 hours as needed"
+        description: "Children 8-10 years"
+        default_max_daily_doses: 4
+        default_min_hours_between_doses: 4
+        default_dose_cycle: "daily"
+      - amount: 10
+        unit: "ml"
+        frequency: "Every 4 hours as needed"
+        description: "Children 10-12 years"
+        default_max_daily_doses: 4
+        default_min_hours_between_doses: 4
+        default_dose_cycle: "daily"
+      - amount: 10
+        unit: "ml"
+        frequency: "Every 4 hours as needed"
+        description: "Children 12-16 years"
+        default_max_daily_doses: 4
+        default_min_hours_between_doses: 4
+        default_dose_cycle: "daily"
+      - amount: 15
+        unit: "ml"
+        frequency: "Every 4 hours as needed"
+        description: "Children 12-16 years"
+        default_max_daily_doses: 4
+        default_min_hours_between_doses: 4
+        default_dose_cycle: "daily"
+      - amount: 10
+        unit: "ml"
+        frequency: "Every 4 hours as needed"
+        description: "Adults and children over 16 years"
+        default_max_daily_doses: 4
+        default_min_hours_between_doses: 4
+        default_dose_cycle: "daily"
+      - amount: 20
+        unit: "ml"
+        frequency: "Every 4 hours as needed"
+        description: "Adults and children over 16 years"
+        default_max_daily_doses: 4
+        default_min_hours_between_doses: 4
+        default_dose_cycle: "daily"

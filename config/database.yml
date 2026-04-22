@@ -3,8 +3,13 @@
 # All environments use DATABASE_URL environment variable
 
 development:
-  adapter: postgresql
-  url: <%= ENV['DATABASE_URL'] %>
+  primary:
+    adapter: postgresql
+    url: <%= ENV['DATABASE_URL'] %>
+  queue:
+    adapter: postgresql
+    url: <%= ENV.fetch('SOLID_QUEUE_DATABASE_URL') { ENV['DATABASE_URL']&.gsub(/\/[^\/]+$/, '/medtracker_queue') } %>
+    migrations_paths: db/queue_migrate
 
 test:
   adapter: postgresql

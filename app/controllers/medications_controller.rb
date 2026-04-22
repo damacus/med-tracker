@@ -30,7 +30,11 @@ class MedicationsController < ApplicationController # rubocop:disable Metrics/Cl
 
   def show
     authorize @medication
-    render Components::Medications::ShowView.new(medication: @medication, notice: flash[:notice])
+    render Components::Medications::ShowView.new(
+      medication: @medication,
+      notice: flash[:notice],
+      nhs_guidance: NhsWebsiteContent::MedicineGuidanceLookup.new.call(@medication.name)
+    )
   end
 
   def administration
@@ -49,6 +53,7 @@ class MedicationsController < ApplicationController # rubocop:disable Metrics/Cl
     @medication.location_id ||= primary_location&.id
     authorize @medication
     @medication.assign_attributes(finder_prefill_attributes)
+    apply_onboarding_prefill(@medication)
 
     render wizard_wrapper_class.new(
       medication: @medication,
@@ -69,7 +74,7 @@ class MedicationsController < ApplicationController # rubocop:disable Metrics/Cl
   end
 
   def create
-    @medication = Medication.new(medication_params)
+    @medication = Medication.new(apply_onboarding_prefill_to_attributes(medication_params.to_h.deep_symbolize_keys))
     @medication.location_id ||= primary_location&.id
     authorize @medication
 
@@ -231,6 +236,8 @@ class MedicationsController < ApplicationController # rubocop:disable Metrics/Cl
             default_max_daily_doses
             default_min_hours_between_doses
             default_dose_cycle
+            current_supply
+            reorder_threshold
             _destroy
           ]
         }
@@ -264,6 +271,7 @@ class MedicationsController < ApplicationController # rubocop:disable Metrics/Cl
   end
 
   def seed_initial_dosage
+    return if @medication.dosage_records.exists?
     return unless @medication.dosage_amount.present? && @medication.dosage_unit.present?
 
     @medication.dosage_records.create!(
@@ -298,6 +306,96 @@ class MedicationsController < ApplicationController # rubocop:disable Metrics/Cl
     attrs[:dmd_system] = params[:dmd_system].presence if params[:dmd_code].present?
     attrs[:dmd_concept_class] = params[:dmd_concept_class].presence if params[:dmd_code].present?
     attrs
+  end
+
+  def apply_onboarding_prefill(medication)
+    defaults = onboarding_prefill_for(
+      barcode: medication.barcode,
+      code: medication.dmd_code,
+      name: medication.name
+    )
+
+    defaults.medication_attributes.each do |key, value|
+      medication.public_send("#{key}=", value)
+    end
+    build_onboarding_dosage_records!(medication, defaults.dosage_records_attributes)
+  end
+
+  def apply_onboarding_prefill_to_attributes(attrs)
+    defaults = onboarding_prefill_for(
+      barcode: attrs[:barcode],
+      code: attrs[:dmd_code],
+      name: attrs[:name]
+    )
+    explicit_inventory_override = explicit_inventory_override?(attrs)
+
+    merge_onboarding_medication_defaults!(attrs, defaults.medication_attributes)
+    merge_onboarding_dosage_defaults!(
+      attrs,
+      defaults.dosage_records_attributes,
+      explicit_inventory_override: explicit_inventory_override
+    )
+
+    attrs
+  end
+
+  def onboarding_prefill_for(barcode:, code:, name:)
+    MedicationOnboardingPrefill.new.call(barcode: barcode, code: code, name: name)
+  end
+
+  def dosage_records_blank?(dosage_records_attributes)
+    return true if dosage_records_attributes.blank?
+
+    dosage_records_attributes.values.all? do |attributes|
+      attributes.except(:id, :_destroy, :default_dose_cycle).values.all?(&:blank?)
+    end
+  end
+
+  def merge_onboarding_medication_defaults!(attrs, defaults)
+    defaults.each do |key, value|
+      assign_onboarding_attribute!(attrs, key, value)
+    end
+  end
+
+  def merge_onboarding_dosage_defaults!(attrs, dosage_defaults, explicit_inventory_override:)
+    return unless dosage_records_blank?(attrs[:dosage_records_attributes]) && dosage_defaults.any?
+
+    attrs[:dosage_records_attributes] = serialized_onboarding_dosages(
+      dosage_defaults_for_merge(dosage_defaults, explicit_inventory_override:)
+    )
+  end
+
+  def dosage_defaults_for_merge(dosage_defaults, explicit_inventory_override:)
+    return dosage_defaults unless explicit_inventory_override
+
+    dosage_defaults.map { |dosage| dosage.except(:current_supply, :reorder_threshold) }
+  end
+
+  def serialized_onboarding_dosages(dosage_defaults)
+    dosage_defaults.each_with_index.to_h do |dosage, index|
+      [index.to_s, dosage]
+    end
+  end
+
+  def explicit_inventory_override?(attrs)
+    attrs[:current_supply].present? || attrs[:reorder_threshold].present?
+  end
+
+  def build_onboarding_dosage_records!(medication, dosage_defaults)
+    return if medication.dosage_records.any? || dosage_defaults.blank?
+
+    dosage_defaults.each do |attributes|
+      medication.dosage_records.build(attributes)
+    end
+  end
+
+  def assign_onboarding_attribute!(target, key, value)
+    if target.respond_to?(:[])
+      target[key] = value if target[key].blank?
+      return
+    end
+
+    target.public_send("#{key}=", value) if target.public_send(key).blank?
   end
 
   def administration_schedules

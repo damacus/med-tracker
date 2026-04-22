@@ -107,7 +107,7 @@ RSpec.describe Components::Medications::FormView, type: :component do
         'name="medication[dosage_records_attributes][0][amount]"',
         'name="medication[dosage_records_attributes][0][unit]"',
         'name="medication[dosage_records_attributes][0][frequency]"',
-        'Matches the main dose unit'
+        'Tracked supply'
       )
     end
 
@@ -194,19 +194,32 @@ RSpec.describe Components::Medications::FormView, type: :component do
       ).to be_empty
     end
 
-    it 'greys out dose option units and keeps them aligned with the main medication unit' do
+    it 'renders editable dose option units independent from the main medication unit' do
       medication = build(:medication, dosage_unit: 'ml')
-      build_dose_option(medication, amount: 2.5, unit: 'mg', frequency: 'Every morning')
+      build_dose_option(medication, amount: 2.5, unit: 'capsule', frequency: 'Every morning')
 
       rendered = render_inline(described_class.new(medication: medication, title: 'Test Title'))
 
-      hidden_unit = rendered.at_css("input[type='hidden'][name='medication[dosage_records_attributes][0][unit]']")
-      display_unit = rendered.at_css('#medication_dosage_records_attributes_0_display_unit')
+      unit_select = rendered.at_css("select[name='medication[dosage_records_attributes][0][unit]']")
+      capsule_option = rendered.at_css(
+        "select[name='medication[dosage_records_attributes][0][unit]'] option[value='capsule'][selected]"
+      )
 
-      expect(hidden_unit['value']).to eq('ml')
-      expect(display_unit['value']).to eq('ml')
-      expect(display_unit['disabled']).to eq('disabled')
-      expect(display_unit['class']).to include('bg-secondary-container/70')
+      expect(unit_select).not_to be_nil
+      expect(capsule_option).not_to be_nil
+    end
+
+    it 'renders per-dose inventory fields' do
+      medication = build(:medication, dosage_unit: 'tablet')
+      build_dose_option(medication, amount: 1, unit: 'tablet', current_supply: 56, reorder_threshold: 14)
+
+      rendered = render_inline(described_class.new(medication: medication, title: 'Test Title'))
+
+      current_supply = rendered.at_css("input[name='medication[dosage_records_attributes][0][current_supply]']")
+      expect(
+        rendered.at_css("input[name='medication[dosage_records_attributes][0][reorder_threshold]']")['value']
+      ).to eq('14')
+      expect(current_supply['value']).to eq('56')
     end
   end
 end

@@ -19,6 +19,7 @@ module Components
               noResultsMessage: t('medications.finder.no_results_message'),
               resultsTitle: t('medications.finder.results_title'),
               source: t('medications.finder.source'),
+              barcode: t('medications.finder.barcode'),
               dmdCode: t('medications.finder.dmd_code'),
               addMedication: t('medications.index.add_medication'),
               resultCount: {

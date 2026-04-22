@@ -190,6 +190,7 @@ Terminology Server search.
 Local development:
 
 ```fish
+task dev:extract-dmd-release
 task dev:import-dmd-release RELEASE_DIR=storage/nhs_dmd/releases/current
 ```
 

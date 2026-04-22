@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_18_083600) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_22_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -178,6 +178,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_18_083600) do
   create_table "dosages", force: :cascade do |t|
     t.decimal "amount"
     t.datetime "created_at", null: false
+    t.integer "current_supply"
     t.integer "default_dose_cycle"
     t.boolean "default_for_adults", default: false, null: false
     t.boolean "default_for_children", default: false, null: false
@@ -186,6 +187,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_18_083600) do
     t.string "description"
     t.string "frequency"
     t.bigint "medication_id", null: false
+    t.integer "reorder_threshold"
     t.string "unit"
     t.datetime "updated_at", null: false
     t.index ["medication_id"], name: "index_dosages_on_medication_id"
@@ -286,6 +288,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_18_083600) do
     t.datetime "updated_at", null: false
     t.index ["code"], name: "index_nhs_dmd_barcodes_on_code"
     t.index ["gtin"], name: "index_nhs_dmd_barcodes_on_gtin", unique: true
+  end
+
+  create_table "nhs_dmd_imports", force: :cascade do |t|
+    t.string "archive_path"
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.text "error_message"
+    t.integer "imported_count", default: 0, null: false
+    t.text "log"
+    t.integer "processed_records", default: 0, null: false
+    t.integer "skipped_count", default: 0, null: false
+    t.datetime "started_at"
+    t.integer "status", default: 0, null: false
+    t.integer "total_records", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.string "uploaded_filename", null: false
   end
 
   create_table "notification_preferences", force: :cascade do |t|

@@ -168,6 +168,71 @@ RSpec.describe TakeMedicationService do
     end
   end
 
+  describe 'per-dose inventory tracking' do
+    let(:location) { locations(:home) }
+    let(:inventory_medication) do
+      create(
+        :medication,
+        name: 'Pregnacare Plus tablets and capsules (Vitabiotics Ltd)',
+        location: location,
+        dosage_amount: nil,
+        dosage_unit: nil,
+        current_supply: 84,
+        supply_at_last_restock: 84,
+        reorder_threshold: 21
+      )
+    end
+    let!(:tablet_option) do
+      create(
+        :dosage,
+        medication: inventory_medication,
+        amount: 1,
+        unit: 'tablet',
+        frequency: 'As directed',
+        current_supply: 56,
+        reorder_threshold: 14
+      )
+    end
+    let!(:capsule_option) do
+      create(
+        :dosage,
+        medication: inventory_medication,
+        amount: 1,
+        unit: 'capsule',
+        frequency: 'As directed',
+        current_supply: 28,
+        reorder_threshold: 7
+      )
+    end
+
+    def build_combo_person_medication(medication)
+      create(
+        :person_medication,
+        person: people(:john),
+        medication: medication,
+        dose_amount: 1,
+        dose_unit: 'tablet',
+        max_daily_doses: 1,
+        min_hours_between_doses: 24,
+        dose_cycle: :daily
+      )
+    end
+
+    it 'decrements only the matching dose-option inventory and keeps aggregate stock in sync' do
+      person_medication = build_combo_person_medication(inventory_medication)
+      result = nil
+
+      expect do
+        result = call_service(source: person_medication)
+        expect(result.success).to be(true)
+      end.to change(MedicationTake, :count).by(1)
+
+      expect(tablet_option.reload.current_supply).to eq(55)
+      expect(capsule_option.reload.current_supply).to eq(28)
+      expect(inventory_medication.reload.current_supply).to eq(83)
+    end
+  end
+
   describe 'result object' do
     let(:schedule) { schedules(:john_paracetamol) }
 

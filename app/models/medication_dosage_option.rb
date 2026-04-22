@@ -5,8 +5,8 @@ class MedicationDosageOption < ApplicationRecord
 
   belongs_to :medication
 
-  before_validation :align_unit_with_medication
   after_create :sync_medication_dosage
+  after_commit :sync_medication_inventory, on: %i[create update destroy]
 
   enum :default_dose_cycle, { daily: 0, weekly: 1, monthly: 2 }, prefix: :default
 
@@ -19,11 +19,13 @@ class MedicationDosageOption < ApplicationRecord
   validates :default_max_daily_doses, presence: true, numericality: { greater_than: 0 }
   validates :default_min_hours_between_doses, presence: true, numericality: { greater_than_or_equal_to: 0 }
   validates :default_dose_cycle, presence: true
+  validates :current_supply, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
+  validates :reorder_threshold, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
 
   def to_value
     MedicationDosage.new(
       amount: amount,
-      unit: medication&.dosage_unit.presence || unit,
+      unit: unit,
       frequency: frequency,
       description: description,
       default_for_adults: default_for_adults,
@@ -36,15 +38,15 @@ class MedicationDosageOption < ApplicationRecord
 
   private
 
-  def align_unit_with_medication
-    self.unit = medication&.dosage_unit.presence || unit
-  end
-
   def sync_medication_dosage
     stmt = 'UPDATE medications SET dosage_amount = NULL WHERE id = $1'
     binds = [
       ActiveRecord::Relation::QueryAttribute.new('id', medication_id, ActiveRecord::Type::BigInteger.new)
     ]
     ActiveRecord::Base.connection.exec_update(stmt, 'Sync Medication Dosage', binds)
+  end
+
+  def sync_medication_inventory
+    medication&.sync_inventory_from_dosage_records!
   end
 end

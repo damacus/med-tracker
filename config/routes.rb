@@ -25,6 +25,7 @@ Rails.application.routes.draw do
 
   namespace :admin do
     root to: 'dashboard#index'
+    resource :nhs_dmd_import, only: %i[new create]
     resources :users, only: %i[index new create edit update destroy] do
       member do
         post :activate

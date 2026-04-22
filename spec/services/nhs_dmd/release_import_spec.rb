@@ -51,6 +51,53 @@ RSpec.describe NhsDmd::ReleaseImport do
     NhsDmdBarcode.find_by!(gtin: gtin)
   end
 
+  def progress_ampp_entries
+    [
+      { appid: '111', nm: 'Product One' },
+      { appid: '222', nm: 'Product Two' }
+    ]
+  end
+
+  def progress_gtin_entries
+    [
+      gtin_entry(
+        amppid: '111',
+        gtins: [
+          { gtin: '1111111111111', startdt: '2020-01-01' },
+          { gtin: '2222222222222', startdt: '2020-01-01' }
+        ]
+      ),
+      gtin_entry(
+        amppid: '222',
+        gtins: [
+          { gtin: '3333333333333', startdt: '2020-01-01' }
+        ]
+      )
+    ]
+  end
+
+  def write_progress_fixture
+    write_ampp_xml(progress_ampp_entries)
+    write_gtin_xml(progress_gtin_entries)
+  end
+
+  def expect_progress_update(progress_updates, **expected)
+    expect(progress_updates).to include(hash_including(**expected))
+  end
+
+  def expect_multi_phase_progress(progress_updates)
+    expect_progress_update(progress_updates, status: :counting, total_records: 5, processed_records: 0,
+                                             message: 'Counted 2 AMPP records and 3 GTIN records')
+    expect_progress_update(progress_updates, status: :importing, total_records: 5, processed_records: 0,
+                                             message: 'Starting AMPP name import')
+    expect_progress_update(progress_updates, status: :importing, total_records: 5, processed_records: 2,
+                                             message: 'Processed 2 AMPP records')
+    expect_progress_update(progress_updates, status: :importing, total_records: 5, processed_records: 2,
+                                             message: 'Starting GTIN import')
+    expect(progress_updates.last).to include(status: :importing, total_records: 5, processed_records: 5,
+                                             imported_count: 3, skipped_count: 0)
+  end
+
   it 'imports active GTINs matched to AMPP names' do
     write_ampp_xml([{ appid: '111', nm: 'Paracetamol 500mg tablets (Acme Ltd) 16 tablet' }])
     write_single_gtin_xml(amppid: '111', gtin: '5016298210989', startdt: '2020-01-01')
@@ -161,5 +208,14 @@ RSpec.describe NhsDmd::ReleaseImport do
 
     expect { importer.import(release_dir) }
       .to raise_error(ArgumentError, /No GTIN XML or ZIP found/)
+  end
+
+  it 'reports progress across both AMPP parsing and GTIN import work' do
+    write_progress_fixture
+    progress_updates = []
+
+    importer.import(release_dir, progress_callback: ->(payload) { progress_updates << payload })
+
+    expect_multi_phase_progress(progress_updates)
   end
 end

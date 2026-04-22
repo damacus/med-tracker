@@ -36,6 +36,8 @@ module Components
               render_current_supply_field
               render_reorder_threshold_field
             end
+
+            render_suggested_dosage_records_section
           end
         end
       end

@@ -53,7 +53,7 @@ class MedicationTake < ApplicationRecord
   def decrement_medication_stock
     inventory = inventory_medication
     return unless inventory
-    return if inventory.current_supply.blank?
+    return if inventory.current_supply.blank? && matching_inventory_dosage_option(inventory).blank?
 
     stock_row = decrement_inventory_stock(inventory)
     return unless stock_row
@@ -89,7 +89,14 @@ class MedicationTake < ApplicationRecord
   end
 
   def taken_from_medication_is_in_stock
-    return if taken_from_medication.blank? || !taken_from_medication.out_of_stock?
+    return if taken_from_medication.blank?
+    return if inventory_option_in_stock?(taken_from_medication)
+
+    if matching_inventory_dosage_option(taken_from_medication)&.current_supply.present?
+      errors.add(:taken_from_medication, 'must be in stock')
+      return
+    end
+    return unless taken_from_medication.out_of_stock?
 
     errors.add(:taken_from_medication, 'must be in stock')
   end
@@ -124,6 +131,9 @@ class MedicationTake < ApplicationRecord
   end
 
   def decrement_inventory_stock(inventory)
+    dosage_option = matching_inventory_dosage_option(inventory)
+    return decrement_dosage_option_stock(inventory, dosage_option) if dosage_option&.current_supply.present?
+
     inventory.with_lock do
       previous_current_supply = inventory.current_supply
       current_supply = [previous_current_supply.to_i - 1, 0].max
@@ -136,6 +146,26 @@ class MedicationTake < ApplicationRecord
         'reorder_threshold' => inventory.reorder_threshold
       }
     end
+  end
+
+  def decrement_dosage_option_stock(inventory, dosage_option)
+    previous_current_supply = inventory.current_supply
+
+    inventory.with_lock do
+      dosage_option.with_lock do
+        dosage_option.update!(current_supply: [dosage_option.current_supply.to_i - 1, 0].max)
+      end
+
+      inventory.sync_inventory_from_dosage_records!
+    end
+
+    inventory.reload
+
+    {
+      'previous_current_supply' => previous_current_supply,
+      'current_supply' => inventory.current_supply,
+      'reorder_threshold' => inventory.reorder_threshold
+    }
   end
 
   def remember_low_stock_threshold_crossing(inventory:, stock_row:)
@@ -175,5 +205,19 @@ class MedicationTake < ApplicationRecord
       reorder_threshold: stock_row['reorder_threshold'],
       taken_at: taken_at
     }
+  end
+
+  def matching_inventory_dosage_option(inventory)
+    return if inventory.blank? || source.blank?
+    return if source.default_dose_amount.blank? || source.dose_unit.blank?
+
+    inventory.dosage_records.find_by(amount: source.default_dose_amount, unit: source.dose_unit)
+  end
+
+  def inventory_option_in_stock?(inventory)
+    dosage_option = matching_inventory_dosage_option(inventory)
+    return true if dosage_option.blank? || dosage_option.current_supply.blank?
+
+    dosage_option.current_supply.to_i.positive?
   end
 end

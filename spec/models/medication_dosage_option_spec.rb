@@ -20,13 +20,29 @@ RSpec.describe MedicationDosageOption do
   end
 
   describe 'unit alignment' do
-    it 'follows the medication main unit' do
-      medication = build(:medication, dosage_unit: 'ml')
-      dosage_option = build(:dosage, medication: medication, unit: 'mg')
+    it 'allows a dose option to keep its own unit' do
+      medication = build(:medication, dosage_unit: 'tablet')
+      dosage_option = build(:dosage, medication: medication, unit: 'capsule')
 
       dosage_option.valid?
 
-      expect(dosage_option.unit).to eq('ml')
+      expect(dosage_option.unit).to eq('capsule')
+    end
+  end
+
+  describe 'inventory fields' do
+    it 'allows nil inventory values for legacy dose options' do
+      dosage_option = build(:dosage, current_supply: nil, reorder_threshold: nil)
+
+      expect(dosage_option).to be_valid
+    end
+
+    it 'validates non-negative tracked inventory values' do
+      dosage_option = build(:dosage, current_supply: -1, reorder_threshold: -1)
+
+      expect(dosage_option).not_to be_valid
+      expect(dosage_option.errors[:current_supply]).to include('must be greater than or equal to 0')
+      expect(dosage_option.errors[:reorder_threshold]).to include('must be greater than or equal to 0')
     end
   end
 end

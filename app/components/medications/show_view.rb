@@ -5,11 +5,12 @@ module Components
     class ShowView < Components::Base
       include Phlex::Rails::Helpers::TurboFrameTag
 
-      attr_reader :medication, :notice
+      attr_reader :medication, :notice, :nhs_guidance
 
-      def initialize(medication:, notice: nil)
+      def initialize(medication:, notice: nil, nhs_guidance: nil)
         @medication = medication
         @notice = notice
+        @nhs_guidance = nhs_guidance
         super()
       end
 
@@ -22,6 +23,7 @@ module Components
               data: { testid: 'medication-content' }) do
             div(class: 'lg:col-span-2 space-y-8') do
               render_description_section
+              render_nhs_guidance_section if nhs_guidance.present?
               render_warnings_section if medication.warnings.present?
               render_dosages_section
             end
@@ -106,6 +108,76 @@ module Components
         render Components::Medications::WarningsComponent.new(medication: medication)
       end
 
+      def render_nhs_guidance_section
+        div(class: 'space-y-4') do
+          m3_heading(variant: :title_large, level: 2, class: 'font-bold tracking-tight') do
+            t('medications.show.nhs_guidance_title')
+          end
+          m3_card(variant: :elevated, class: 'border border-border/60 p-8 space-y-6') do
+            div(class: 'flex flex-col gap-4 md:flex-row md:items-start md:justify-between') do
+              div(class: 'space-y-2') do
+                m3_heading(variant: :title_medium, level: 3, class: 'font-bold') { nhs_guidance.title }
+                m3_text(variant: :body_large, class: 'text-on-surface-variant leading-relaxed font-medium') do
+                  nhs_guidance.description
+                end
+                if nhs_guidance.last_reviewed_on.present?
+                  m3_text(variant: :label_medium, class: 'text-on-surface-variant') do
+                    t('medications.show.nhs_guidance_reviewed_on',
+                      date: I18n.l(nhs_guidance.last_reviewed_on, format: :long))
+                  end
+                end
+              end
+
+              if nhs_guidance_author_logo.present?
+                a(href: nhs_guidance.webpage, target: '_blank', rel: 'noopener', class: 'shrink-0') do
+                  img(src: nhs_guidance_author_logo, alt: nhs_guidance_author_name, class: 'h-10 w-auto')
+                end
+              end
+            end
+
+            if nhs_guidance.sections.any?
+              div(class: 'grid gap-4') do
+                nhs_guidance.sections.each do |section|
+                  div(class: 'rounded-shape-xl bg-surface-container-low p-4 space-y-2') do
+                    m3_heading(variant: :title_small, level: 4, class: 'font-bold') { section.title }
+                    m3_text(variant: :body_medium, class: 'text-on-surface-variant leading-relaxed') do
+                      section.text
+                    end
+                  end
+                end
+              end
+            end
+
+            div(class: 'flex flex-wrap items-center justify-between gap-4 pt-2') do
+              if nhs_guidance_author_name.present?
+                if nhs_guidance_author_url.present?
+                  m3_text(variant: :label_medium, class: 'text-on-surface-variant') do
+                    a(href: nhs_guidance_author_url, target: '_blank', rel: 'noopener',
+                      class: 'underline decoration-border underline-offset-4') do
+                      plain t('medications.show.nhs_guidance_source', source: nhs_guidance_author_name)
+                    end
+                  end
+                else
+                  m3_text(variant: :label_medium, class: 'text-on-surface-variant') do
+                    plain t('medications.show.nhs_guidance_source', source: nhs_guidance_author_name)
+                  end
+                end
+              end
+
+              m3_link(
+                href: nhs_guidance.webpage,
+                target: '_blank',
+                rel: 'noopener',
+                variant: :outlined,
+                size: :md
+              ) do
+                t('medications.show.nhs_guidance_link')
+              end
+            end
+          end
+        end
+      end
+
       def render_dosage_card
         render Components::Medications::StandardDosageComponent.new(medication: medication)
       end
@@ -178,6 +250,18 @@ module Components
 
       def header_content_offset_class
         'md:pl-[6.5rem]'
+      end
+
+      def nhs_guidance_author_logo
+        nhs_guidance.author_logo if nhs_guidance.respond_to?(:author_logo)
+      end
+
+      def nhs_guidance_author_name
+        nhs_guidance.author_name if nhs_guidance.respond_to?(:author_name)
+      end
+
+      def nhs_guidance_author_url
+        nhs_guidance.author_url if nhs_guidance.respond_to?(:author_url)
       end
     end
   end
