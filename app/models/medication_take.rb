@@ -32,6 +32,14 @@ class MedicationTake < ApplicationRecord
     schedule || person_medication
   end
 
+  def source_type
+    schedule_id.present? ? 'schedule' : 'person_medication'
+  end
+
+  def source_record_id
+    schedule_id || person_medication_id
+  end
+
   def person
     schedule&.person || person_medication&.person
   end
@@ -168,8 +176,8 @@ class MedicationTake < ApplicationRecord
       medication_id: inventory.id,
       location_id: inventory.location_id,
       take_id: id,
-      source_type: schedule_id.present? ? 'schedule' : 'person_medication',
-      source_id: schedule_id || person_medication_id,
+      source_type: source_type,
+      source_id: source_record_id,
       previous_current_supply: stock_row['previous_current_supply'],
       current_supply: stock_row['current_supply'],
       reorder_threshold: stock_row['reorder_threshold'],
