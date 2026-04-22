@@ -14,13 +14,11 @@ class PeopleController < ApplicationController
   def show
     authorize @person
     show_data = PersonShowQuery.new(person: @person).call
-    editing = params[:editing] == 'true'
 
     render Components::People::ShowView.new(
       person: @person,
       schedules: show_data.schedules,
       person_medications: show_data.person_medications,
-      editing: editing,
       preloaded_takes: show_data.preloaded_takes,
       current_user: current_user
     )
