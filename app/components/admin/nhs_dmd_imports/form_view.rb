@@ -93,6 +93,25 @@ module Components
               render_stat(t('admin.nhs_dmd_imports.latest_run.skipped'), @import_run.skipped_count)
             end
 
+            render_breakdown_section(
+              t('admin.nhs_dmd_imports.latest_run.breakdown_heading'),
+              [
+                [t('admin.nhs_dmd_imports.latest_run.created'), @import_run.created_count],
+                [t('admin.nhs_dmd_imports.latest_run.updated'), @import_run.updated_count],
+                [t('admin.nhs_dmd_imports.latest_run.unchanged'), @import_run.unchanged_count]
+              ]
+            )
+
+            render_breakdown_section(
+              t('admin.nhs_dmd_imports.latest_run.skipped_heading'),
+              [
+                [t('admin.nhs_dmd_imports.latest_run.skipped_expired'), @import_run.skipped_expired_count],
+                [t('admin.nhs_dmd_imports.latest_run.skipped_missing_name'),
+                 @import_run.skipped_missing_name_count],
+                [t('admin.nhs_dmd_imports.latest_run.skipped_invalid'), @import_run.skipped_invalid_count]
+              ]
+            )
+
             if @import_run.error_message.present?
               div(class: 'rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive') do
                 @import_run.error_message
@@ -104,11 +123,23 @@ module Components
                 t('admin.nhs_dmd_imports.latest_run.log')
               end
               pre(
-                class: 'max-h-60 overflow-y-auto rounded-xl border border-border bg-surface-container-lowest ' \
-                       'p-4 text-sm whitespace-pre-wrap'
+                data: { import_log: true, controller: 'log-tail' },
+                class: 'h-48 overflow-y-auto rounded-xl border border-border bg-surface-container-lowest ' \
+                       'p-4 text-sm leading-5 whitespace-pre-wrap font-mono'
               ) do
                 plain @import_run.log.presence || t('admin.nhs_dmd_imports.latest_run.no_log')
               end
+            end
+          end
+        end
+
+        def render_breakdown_section(heading, entries)
+          div(class: 'space-y-3') do
+            m3_text(variant: :label_large, class: 'font-black uppercase tracking-widest text-on-surface-variant') do
+              heading
+            end
+            div(class: 'grid gap-3 sm:grid-cols-3') do
+              entries.each { |label, value| render_stat(label, value) }
             end
           end
         end

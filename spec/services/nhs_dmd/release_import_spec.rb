@@ -91,7 +91,7 @@ RSpec.describe NhsDmd::ReleaseImport do
     expect_progress_update(progress_updates, status: :importing, total_records: 5, processed_records: 0,
                                              message: 'Starting AMPP name import')
     expect_progress_update(progress_updates, status: :importing, total_records: 5, processed_records: 2,
-                                             message: 'Processed 2 AMPP records')
+                                             message: 'Processed 2 AMPP records (2 updated, 0 skipped)')
     expect_progress_update(progress_updates, status: :importing, total_records: 5, processed_records: 2,
                                              message: 'Starting GTIN import')
     expect(progress_updates.last).to include(status: :importing, total_records: 5, processed_records: 5,
@@ -190,10 +190,48 @@ RSpec.describe NhsDmd::ReleaseImport do
     result = importer.import(release_dir)
 
     expect(result.imported_count).to eq(1)
+    expect(result.updated_count).to eq(1)
+    expect(result.created_count).to eq(0)
+    expect(result.unchanged_count).to eq(0)
     expect(barcode_record('5016298210989')).to have_attributes(
       code: '777',
       display: 'Updated Name'
     )
+  end
+
+  it 'reports unchanged records when re-importing the same release' do
+    write_ampp_xml([{ appid: '888', nm: 'Stable Product' }])
+    write_single_gtin_xml(amppid: '888', gtin: '4444444444444', startdt: '2020-01-01')
+
+    first = importer.import(release_dir)
+    second = described_class.new.import(release_dir)
+
+    expect(first.created_count).to eq(1)
+    expect(first.unchanged_count).to eq(0)
+    expect(second.created_count).to eq(0)
+    expect(second.updated_count).to eq(0)
+    expect(second.unchanged_count).to eq(1)
+    expect(second.imported_count).to eq(0)
+  end
+
+  it 'categorises skip reasons separately' do
+    write_ampp_xml([{ appid: 'NAMED', nm: 'Known Product' }])
+    write_gtin_xml(
+      [
+        gtin_entry(amppid: 'NAMED', gtins: [{ gtin: '', startdt: '2020-01-01' }]),
+        gtin_entry(amppid: 'NAMED',
+                   gtins: [{ gtin: '5555555555555', startdt: '2019-01-01', enddt: '2019-12-31' }]),
+        gtin_entry(amppid: 'UNKNOWN', gtins: [{ gtin: '6666666666666', startdt: '2020-01-01' }])
+      ]
+    )
+
+    result = importer.import(release_dir)
+
+    expect(result.skipped_invalid_count).to eq(1)
+    expect(result.skipped_expired_count).to eq(1)
+    expect(result.skipped_missing_name_count).to eq(1)
+    expect(result.skipped_count).to eq(3)
+    expect(result.imported_count).to eq(0)
   end
 
   it 'raises when AMPP XML is missing' do

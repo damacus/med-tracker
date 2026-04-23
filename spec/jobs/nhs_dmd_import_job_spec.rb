@@ -37,7 +37,14 @@ RSpec.describe NhsDmdImportJob do
       progress_callback.call(
         progress_update('Processed 880 import records', processed_records: 880, imported_count: 480, skipped_count: 20)
       )
-      NhsDmd::ReleaseImport::Result.new(imported_count: 900, skipped_count: 30)
+      NhsDmd::ReleaseImport::Result.new(
+        created_count: 700,
+        updated_count: 200,
+        unchanged_count: 50,
+        skipped_expired_count: 10,
+        skipped_missing_name_count: 15,
+        skipped_invalid_count: 5
+      )
     end
   end
 
@@ -52,7 +59,13 @@ RSpec.describe NhsDmdImportJob do
       total_records: 1200,
       processed_records: 1200,
       imported_count: 900,
-      skipped_count: 30
+      skipped_count: 30,
+      created_count: 700,
+      updated_count: 200,
+      unchanged_count: 50,
+      skipped_expired_count: 10,
+      skipped_missing_name_count: 15,
+      skipped_invalid_count: 5
     )
     expect(import_run.log).to include('Starting AMPP name import')
     expect(import_run.log).to include('Starting GTIN import')

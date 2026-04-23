@@ -52,26 +52,26 @@ RSpec.describe 'Admin::NhsDmdImports' do
         expect(response.body).to include('500 / 900')
       end
 
-      it 'renders the latest import log in a scrollable panel' do
-        log_lines = (1..12).map { |index| format('Entry %<index>02d', index: index) }.join("\n")
+      it 'renders the full log in a scrollable fixed-height panel pinned to bottom' do
+        log_lines = (1..15).map { |index| format('Entry %<index>02d', index: index) }.join("\n")
 
         NhsDmdImport.create!(
           uploaded_filename: 'nhsbsa_dmd_release.zip',
           status: :importing,
           log: log_lines,
-          total_records: 12,
-          processed_records: 12,
-          imported_count: 12,
+          total_records: 15,
+          processed_records: 15,
+          imported_count: 15,
           skipped_count: 0
         )
 
         get new_admin_nhs_dmd_import_path
 
         expect(response.body).to include('Entry 01')
-        expect(response.body).to include('Entry 02')
-        expect(response.body).to include('Entry 03')
-        expect(response.body).to include('Entry 12')
-        expect(response.body).to include('max-h-60 overflow-y-auto')
+        expect(response.body).to include('Entry 15')
+        expect(response.body).to include('h-48 overflow-y-auto')
+        expect(response.body).to include('data-import-log')
+        expect(response.body).to include('data-controller="log-tail"')
       end
     end
 

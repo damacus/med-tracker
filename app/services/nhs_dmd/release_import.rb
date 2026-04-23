@@ -6,7 +6,19 @@ module NhsDmd
   class ReleaseImport
     PROGRESS_BATCH_SIZE = 250
 
-    Result = Struct.new(:imported_count, :skipped_count, keyword_init: true)
+    RESULT_KEYS = %i[
+      created_count
+      updated_count
+      unchanged_count
+      skipped_expired_count
+      skipped_missing_name_count
+      skipped_invalid_count
+    ].freeze
+
+    Result = Struct.new(*RESULT_KEYS, keyword_init: true) do
+      def imported_count = created_count + updated_count
+      def skipped_count = skipped_expired_count + skipped_missing_name_count + skipped_invalid_count
+    end
 
     def import(release_dir, progress_callback: nil)
       dir = Pathname.new(release_dir)
@@ -53,8 +65,12 @@ module NhsDmd
         appid = node_text(doc, 'APPID')
         name = node_text(doc, 'NM')
         track_ampp_progress(counts, progress_callback)
-        next if appid.blank? || name.blank?
+        if appid.blank? || name.blank?
+          counts[:ampp_skipped] += 1
+          next
+        end
 
+        counts[:ampp_named] += 1
         names[appid] = name
       end
     ensure
@@ -70,7 +86,7 @@ module NhsDmd
 
       emit_progress(counts, progress_callback, force: true, message: gtin_progress_message(counts))
 
-      Result.new(imported_count: counts[:imported], skipped_count: counts[:skipped])
+      build_result(counts)
     end
 
     def each_ampp_doc(path)
@@ -104,21 +120,22 @@ module NhsDmd
     def import_gtin_data(gtin_data, amppid:, display:, today:, counts:)
       mark_gtin_processed(counts)
       gtin = node_text(gtin_data, 'GTIN')
-      return skip_record(counts) if gtin.blank? || expired?(gtin_data, today)
-      return skip_record(counts) if display.blank?
+      return increment(counts, :skipped_invalid) if gtin.blank?
+      return increment(counts, :skipped_expired) if expired?(gtin_data, today)
+      return increment(counts, :skipped_missing_name) if display.blank?
 
-      persist(
+      outcome = persist(
         gtin: NhsDmdBarcode.normalize_gtin(gtin),
         code: amppid,
         display: display,
         system: 'https://dmd.nhs.uk',
         concept_class: 'AMPP'
       )
-      counts[:imported] += 1
+      increment(counts, outcome)
     end
 
-    def skip_record(counts)
-      counts[:skipped] += 1
+    def increment(counts, key)
+      counts[key] += 1
       nil
     end
 
@@ -134,7 +151,16 @@ module NhsDmd
     def persist(attrs)
       record = NhsDmdBarcode.find_or_initialize_by(gtin: attrs[:gtin])
       record.assign_attributes(attrs)
-      record.save!
+
+      if record.new_record?
+        record.save!
+        :created
+      elsif record.changed?
+        record.save!
+        :updated
+      else
+        :unchanged
+      end
     end
 
     def count_gtin_records(path) = count_records(path, 'GTINDATA')
@@ -151,14 +177,32 @@ module NhsDmd
       return unless progress_callback
       return unless force || progress_batch_reached?(counts)
 
-      progress_callback.call(
+      progress_callback.call(progress_payload(counts, message))
+    end
+
+    def progress_payload(counts, message)
+      {
         status: :importing,
         message: message,
         total_records: counts[:total],
-        processed_records: counts[:processed],
-        imported_count: counts[:imported],
-        skipped_count: counts[:skipped]
-      )
+        processed_records: counts[:processed]
+      }.merge(breakdown_payload(counts))
+    end
+
+    def breakdown_payload(counts)
+      imported = counts[:created] + counts[:updated]
+      skipped = counts[:skipped_expired] + counts[:skipped_missing_name] + counts[:skipped_invalid]
+
+      {
+        imported_count: imported,
+        skipped_count: skipped,
+        created_count: counts[:created],
+        updated_count: counts[:updated],
+        unchanged_count: counts[:unchanged],
+        skipped_expired_count: counts[:skipped_expired],
+        skipped_missing_name_count: counts[:skipped_missing_name],
+        skipped_invalid_count: counts[:skipped_invalid]
+      }
     end
 
     def emit_initial_progress(progress_callback, counts)
@@ -171,7 +215,7 @@ module NhsDmd
     def process_unmatched_gtins(doc, counts, progress_callback)
       doc.css('GTINDATA').each do
         mark_gtin_processed(counts)
-        counts[:skipped] += 1
+        counts[:skipped_missing_name] += 1
         emit_progress(counts, progress_callback, message: gtin_progress_message(counts))
       end
     end
@@ -215,7 +259,13 @@ module NhsDmd
         total_records: total_records,
         processed_records: 0,
         imported_count: 0,
-        skipped_count: 0
+        skipped_count: 0,
+        created_count: 0,
+        updated_count: 0,
+        unchanged_count: 0,
+        skipped_expired_count: 0,
+        skipped_missing_name_count: 0,
+        skipped_invalid_count: 0
       }
     end
 
@@ -229,10 +279,27 @@ module NhsDmd
         total: ampp_total + gtin_total,
         processed: 0,
         ampp_processed: 0,
+        ampp_named: 0,
+        ampp_skipped: 0,
         gtin_processed: 0,
-        imported: 0,
-        skipped: 0
+        created: 0,
+        updated: 0,
+        unchanged: 0,
+        skipped_expired: 0,
+        skipped_missing_name: 0,
+        skipped_invalid: 0
       }
+    end
+
+    def build_result(counts)
+      Result.new(
+        created_count: counts[:created],
+        updated_count: counts[:updated],
+        unchanged_count: counts[:unchanged],
+        skipped_expired_count: counts[:skipped_expired],
+        skipped_missing_name_count: counts[:skipped_missing_name],
+        skipped_invalid_count: counts[:skipped_invalid]
+      )
     end
 
     def track_ampp_progress(counts, progress_callback)
@@ -247,11 +314,18 @@ module NhsDmd
     end
 
     def ampp_progress_message(counts)
-      "Processed #{counts[:ampp_processed]} AMPP records"
+      "Processed #{counts[:ampp_processed]} AMPP records " \
+        "(#{counts[:ampp_named]} updated, #{counts[:ampp_skipped]} skipped)"
     end
 
     def gtin_progress_message(counts)
-      "Processed #{counts[:processed]} import records"
+      "Processed #{counts[:processed]} records " \
+        "(#{counts[:created]} new, #{counts[:updated]} updated, " \
+        "#{counts[:unchanged]} unchanged, #{skipped_total(counts)} skipped)"
+    end
+
+    def skipped_total(counts)
+      counts[:skipped_expired] + counts[:skipped_missing_name] + counts[:skipped_invalid]
     end
   end
 end

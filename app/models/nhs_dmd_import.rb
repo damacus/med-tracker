@@ -43,6 +43,12 @@ class NhsDmdImport < ApplicationRecord
       processed_records: final_total,
       imported_count: result.imported_count,
       skipped_count: result.skipped_count,
+      created_count: result.created_count,
+      updated_count: result.updated_count,
+      unchanged_count: result.unchanged_count,
+      skipped_expired_count: result.skipped_expired_count,
+      skipped_missing_name_count: result.skipped_missing_name_count,
+      skipped_invalid_count: result.skipped_invalid_count,
       completed_at: Time.current,
       error_message: nil
     )
@@ -85,18 +91,31 @@ class NhsDmdImport < ApplicationRecord
     [log.presence, message].compact.join("\n")
   end
 
+  PROGRESS_COUNTER_KEYS = %i[
+    total_records
+    processed_records
+    imported_count
+    skipped_count
+    created_count
+    updated_count
+    unchanged_count
+    skipped_expired_count
+    skipped_missing_name_count
+    skipped_invalid_count
+  ].freeze
+
   def progress_attributes(progress)
     normalized = progress.symbolize_keys
+
+    counter_attrs = PROGRESS_COUNTER_KEYS.each_with_object({}) do |key, acc|
+      acc[key] = value_or_current(normalized, key)
+    end
 
     {
       status: normalized[:status].presence,
       started_at: started_at || Time.current,
-      total_records: value_or_current(normalized, :total_records),
-      processed_records: value_or_current(normalized, :processed_records),
-      imported_count: value_or_current(normalized, :imported_count),
-      skipped_count: value_or_current(normalized, :skipped_count),
       log: normalized[:message].present? ? appended_log(normalized[:message]) : log
-    }.compact
+    }.merge(counter_attrs).compact
   end
 
   def value_or_current(progress, key)
