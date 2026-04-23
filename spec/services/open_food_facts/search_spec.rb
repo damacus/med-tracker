@@ -10,6 +10,7 @@ RSpec.describe OpenFoodFacts::Search do
   def wellman_result_matcher
     a_hash_including(
       name: 'Wellman Original',
+      description: 'Daily multivitamin food supplement',
       display: 'Wellman Original (Vitabiotics) 30 tablets',
       barcode: '5021265221301',
       category: 'Supplement',
@@ -21,20 +22,22 @@ RSpec.describe OpenFoodFacts::Search do
     )
   end
 
-  def product_payload(code:, name:, brands:, quantity:, categories:)
+  def product_payload(attributes)
     {
-      'code' => code,
-      'product_name' => name,
-      'brands' => brands,
-      'quantity' => quantity,
-      'categories_tags_en' => categories
+      'code' => attributes.fetch(:code),
+      'product_name' => attributes.fetch(:name),
+      'generic_name' => attributes.fetch(:generic_name),
+      'brands' => attributes.fetch(:brands),
+      'quantity' => attributes.fetch(:quantity),
+      'categories_tags_en' => attributes.fetch(:categories)
     }
   end
 
   it 'builds supplement search results from Open Food Facts product matches' do
     allow(client).to receive(:search_products).with('wellman', page_size: 10).and_return(
       [product_payload(code: '5021265221301', name: 'Wellman Original', brands: 'Vitabiotics',
-                       quantity: '30 tablets', categories: %w[Supplements Vitamins])]
+                       generic_name: 'Daily multivitamin food supplement', quantity: '30 tablets',
+                       categories: %w[Supplements Vitamins])]
     )
 
     result = search.search('wellman')
@@ -44,7 +47,7 @@ RSpec.describe OpenFoodFacts::Search do
 
   it 'filters out non-supplement search results' do
     allow(client).to receive(:search_products).with('nutella', page_size: 10).and_return(
-      [product_payload(code: '3017620422003', name: 'Nutella', brands: 'Ferrero',
+      [product_payload(code: '3017620422003', name: 'Nutella', brands: 'Ferrero', generic_name: 'Hazelnut cocoa spread',
                        quantity: '400 g', categories: ['Chocolate spreads'])]
     )
 

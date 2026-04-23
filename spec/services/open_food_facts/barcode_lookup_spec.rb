@@ -10,6 +10,7 @@ RSpec.describe OpenFoodFacts::BarcodeLookup do
   def expect_wellman_result(result)
     expect(result).to include(
       name: 'Wellman Original',
+      description: 'Daily multivitamin food supplement',
       display: 'Wellman Original (Vitabiotics) 30 tablets',
       category: 'Supplement',
       package_size: '30 tablets',
@@ -25,6 +26,7 @@ RSpec.describe OpenFoodFacts::BarcodeLookup do
       {
         'product' => {
           'product_name' => 'Wellman Original',
+          'generic_name' => 'Daily multivitamin food supplement',
           'brands' => 'Vitabiotics',
           'quantity' => '30 tablets',
           'categories_tags_en' => %w[Supplements Vitamins]

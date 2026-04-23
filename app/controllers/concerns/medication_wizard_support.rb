@@ -8,7 +8,6 @@ module MedicationWizardSupport
   def create_success
     return redirect_to(@medication, notice: t('medications.created')) unless params[:wizard] == 'true'
 
-    seed_initial_dosage
     respond_to do |format|
       format.turbo_stream do
         render turbo_stream: turbo_stream.replace(
@@ -26,20 +25,5 @@ module MedicationWizardSupport
     when 'slideover' then Components::Medications::Wizard::SlideOverWrapper
     else                  Components::Medications::Wizard::FullPageWrapper
     end
-  end
-
-  def seed_initial_dosage
-    return if @medication.dosage_records.exists?
-    return unless @medication.dosage_amount.present? && @medication.dosage_unit.present?
-
-    @medication.dosage_records.create!(
-      amount: @medication.dosage_amount,
-      unit: @medication.dosage_unit,
-      frequency: 'As directed',
-      default_for_adults: true,
-      default_max_daily_doses: 1,
-      default_min_hours_between_doses: 24,
-      default_dose_cycle: :daily
-    )
   end
 end

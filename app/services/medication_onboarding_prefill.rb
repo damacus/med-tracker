@@ -19,7 +19,7 @@ class MedicationOnboardingPrefill
   }.freeze
   DEFAULT_TIMING = {
     frequency: 'As directed',
-    default_for_adults: false,
+    default_for_adults: true,
     default_for_children: false,
     default_max_daily_doses: 1,
     default_min_hours_between_doses: 24,

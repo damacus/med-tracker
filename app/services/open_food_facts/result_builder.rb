@@ -40,6 +40,7 @@ module OpenFoodFacts
         code: nil,
         barcode: normalized_barcode(payload),
         name: product_name(payload),
+        description: generic_name(payload),
         display: display_for(payload),
         system: Client::BASE_URL,
         category: 'Supplement',
@@ -69,6 +70,10 @@ module OpenFoodFacts
 
     def product_name(payload)
       payload['product_name'].to_s.strip
+    end
+
+    def generic_name(payload)
+      payload['generic_name'].to_s.strip.presence
     end
 
     def brand_segment(payload)

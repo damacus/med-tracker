@@ -175,6 +175,10 @@ export default class extends Controller {
       url.searchParams.set("category", result.category)
     }
 
+    if (result.description) {
+      url.searchParams.set("description", result.description)
+    }
+
     if (barcode) {
       url.searchParams.set("barcode", barcode)
     }

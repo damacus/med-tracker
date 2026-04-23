@@ -91,11 +91,18 @@ module NhsDmd
 
     def build_result(item)
       SearchResult.new(
-        barcode: item[:barcode],
         code: item[:code],
-        name: item[:name],
         display: item[:display],
         system: item[:system],
+        **search_result_attributes(item)
+      )
+    end
+
+    def search_result_attributes(item)
+      {
+        barcode: item[:barcode],
+        name: item[:name],
+        description: item[:description],
         concept_class: item[:concept_class],
         category: item[:category],
         package_size: item[:package_size],
@@ -104,7 +111,7 @@ module NhsDmd
         directions: item[:directions],
         warnings: item[:warnings],
         match_reason: item[:match_reason]
-      )
+      }
     end
 
     def barcode_result(query, barcode_match)

@@ -212,6 +212,64 @@ module Components
           end
         end
 
+        def render_primary_dosage_option_fields
+          dosage = primary_dosage_record_for_wizard
+          index = 0
+
+          div(
+            class: 'space-y-4 rounded-3xl border border-outline-variant/50 ' \
+                   'bg-surface-container-low p-6 shadow-elevation-1',
+            data: { controller: 'frequency-suggestions' }
+          ) do
+            input(type: 'hidden', name: dosage_field_name(index, 'id'), value: dosage.id) if dosage.persisted?
+            hidden_primary_dosage_field(index, 'description', dosage.description)
+
+            div(class: 'grid grid-cols-1 sm:grid-cols-2 gap-4') do
+              render_primary_dosage_amount_field(dosage, index)
+              render_primary_dosage_unit_field(dosage, index)
+            end
+
+            div(class: 'space-y-2') { render_primary_frequency_field(dosage, index) }
+
+            div(class: 'grid grid-cols-1 sm:grid-cols-3 gap-4') do
+              render_primary_dosage_default_number_field(
+                dosage: dosage,
+                index: index,
+                config: {
+                  field: 'default_max_daily_doses',
+                  label: 'Max doses / cycle',
+                  value: dosage.default_max_daily_doses,
+                  min: '1',
+                  target: 'maxDoses'
+                }
+              )
+              render_primary_dosage_default_number_field(
+                dosage: dosage,
+                index: index,
+                config: {
+                  field: 'default_min_hours_between_doses',
+                  label: 'Min hours apart',
+                  value: dosage.default_min_hours_between_doses,
+                  min: '0',
+                  step: '0.5',
+                  target: 'minHours'
+                }
+              )
+              render_primary_dosage_default_cycle_field(dosage, index)
+            end
+
+            div(class: 'flex flex-wrap items-center gap-6') do
+              render_primary_dosage_default_checkbox(dosage, index, 'default_for_adults', 'Default for adults')
+              render_primary_dosage_default_checkbox(
+                dosage,
+                index,
+                'default_for_children',
+                'Default for children / dependents'
+              )
+            end
+          end
+        end
+
         def render_current_supply_field
           div(class: 'space-y-2') do
             render RubyUI::FormFieldLabel.new(
@@ -278,7 +336,7 @@ module Components
         end
 
         def render_suggested_dosage_records_section
-          return if dosage_records_for_wizard.empty?
+          return if suggested_dosage_records_for_wizard.empty?
 
           div(class: 'space-y-4') do
             div(class: 'space-y-1') do
@@ -291,8 +349,8 @@ module Components
             end
 
             div(class: 'space-y-3') do
-              dosage_records_for_wizard.each_with_index do |dosage, index|
-                render_suggested_dosage_record(dosage, index)
+              suggested_dosage_records_for_wizard.each_with_index do |dosage, index|
+                render_suggested_dosage_record(dosage, index + 1)
               end
             end
           end
@@ -308,6 +366,17 @@ module Components
           @dosage_records_for_wizard ||= medication.dosage_records.to_a.sort_by do |dosage|
             [dosage.amount.to_f, dosage.description.to_s, dosage.id || 0]
           end
+        end
+
+        def primary_dosage_record_for_wizard
+          return @primary_dosage_record_for_wizard if defined?(@primary_dosage_record_for_wizard)
+
+          @primary_dosage_record_for_wizard =
+            dosage_records_for_wizard.find(&:default_for_adults?) || dosage_records_for_wizard.first
+        end
+
+        def suggested_dosage_records_for_wizard
+          dosage_records_for_wizard.reject { |dosage| dosage.equal?(primary_dosage_record_for_wizard) }
         end
 
         def render_suggested_dosage_record(dosage, index)
@@ -348,8 +417,6 @@ module Components
           hidden_dosage_field(index, 'default_max_daily_doses', dosage.default_max_daily_doses)
           hidden_dosage_field(index, 'default_min_hours_between_doses', dosage.default_min_hours_between_doses)
           hidden_dosage_field(index, 'default_dose_cycle', dosage.default_dose_cycle)
-          hidden_dosage_field(index, 'current_supply', dosage.current_supply)
-          hidden_dosage_field(index, 'reorder_threshold', dosage.reorder_threshold)
         end
 
         def hidden_dosage_field(index, field, value)
@@ -390,6 +457,171 @@ module Components
             parts << "Max #{dosage.default_max_daily_doses} doses per #{dosage.default_dose_cycle}"
           end
           parts.join(' • ')
+        end
+
+        def render_primary_dosage_amount_field(dosage, index)
+          div(class: 'space-y-2') do
+            render RubyUI::FormFieldLabel.new(for: "medication_dosage_records_attributes_#{index}_amount") do
+              'Amount'
+            end
+            m3_input(
+              type: :number,
+              name: dosage_field_name(index, 'amount'),
+              id: "medication_dosage_records_attributes_#{index}_amount",
+              value: dosage.amount&.to_s,
+              step: 'any',
+              min: '0',
+              required: true,
+              **field_error_attributes(
+                dosage,
+                :amount,
+                input_id: "medication_dosage_records_attributes_#{index}_amount"
+              )
+            )
+            render_field_error(dosage, :amount, input_id: "medication_dosage_records_attributes_#{index}_amount")
+          end
+        end
+
+        def render_primary_dosage_unit_field(dosage, index)
+          div(class: 'space-y-2') do
+            render RubyUI::FormFieldLabel.new(for: "medication_dosage_records_attributes_#{index}_unit") do
+              'Unit'
+            end
+            select(
+              name: dosage_field_name(index, 'unit'),
+              id: "medication_dosage_records_attributes_#{index}_unit",
+              class: 'flex h-9 w-full rounded-md border border-outline bg-transparent px-3 py-1 text-sm shadow-sm',
+              required: true
+            ) do
+              option(value: '', selected: dosage.unit.blank?) { 'Select unit' }
+              dosage_units.each do |unit|
+                option(value: unit, selected: dosage.unit == unit) { unit }
+              end
+            end
+          end
+        end
+
+        def render_primary_frequency_field(dosage, index)
+          render RubyUI::FormFieldLabel.new(for: "medication_dosage_records_attributes_#{index}_frequency") do
+            'Frequency label'
+          end
+          render_frequency_template_buttons
+          m3_input(
+            type: :text,
+            name: dosage_field_name(index, 'frequency'),
+            id: "medication_dosage_records_attributes_#{index}_frequency",
+            value: dosage.frequency,
+            placeholder: 'Every morning',
+            required: true,
+            data: { 'frequency-suggestions-target': 'input' },
+            **field_error_attributes(
+              dosage,
+              :frequency,
+              input_id: "medication_dosage_records_attributes_#{index}_frequency"
+            )
+          )
+          render_field_error(
+            dosage,
+            :frequency,
+            input_id: "medication_dosage_records_attributes_#{index}_frequency"
+          )
+        end
+
+        def render_primary_dosage_default_number_field(dosage:, index:, config:)
+          field = config.fetch(:field)
+          div(class: 'space-y-2') do
+            render RubyUI::FormFieldLabel.new(for: "medication_dosage_records_attributes_#{index}_#{field}") do
+              config.fetch(:label)
+            end
+            options = {
+              type: :number,
+              name: dosage_field_name(index, field),
+              id: "medication_dosage_records_attributes_#{index}_#{field}",
+              value: config[:value]&.to_s,
+              min: config.fetch(:min),
+              required: true,
+              data: { 'frequency-suggestions-target': config.fetch(:target) }
+            }
+            options[:step] = config[:step] if config[:step]
+            options.merge!(
+              field_error_attributes(
+                dosage,
+                field,
+                input_id: "medication_dosage_records_attributes_#{index}_#{field}"
+              )
+            )
+            m3_input(**options)
+            render_field_error(dosage, field, input_id: "medication_dosage_records_attributes_#{index}_#{field}")
+          end
+        end
+
+        def render_primary_dosage_default_cycle_field(dosage, index)
+          div(class: 'space-y-2') do
+            render RubyUI::FormFieldLabel.new(
+              for: "medication_dosage_records_attributes_#{index}_default_dose_cycle"
+            ) do
+              'Dose cycle'
+            end
+            select(
+              name: dosage_field_name(index, 'default_dose_cycle'),
+              id: "medication_dosage_records_attributes_#{index}_default_dose_cycle",
+              class: 'flex h-9 w-full rounded-md border border-outline bg-transparent px-3 py-1 text-sm shadow-sm',
+              required: true,
+              data: { 'frequency-suggestions-target': 'doseCycle' }
+            ) do
+              option(value: '', selected: dosage.default_dose_cycle.blank?) { 'Select cycle' }
+              MedicationDosage::DOSE_CYCLE_OPTIONS.each do |label, value|
+                option(value: value, selected: dosage.default_dose_cycle == value) { label }
+              end
+            end
+            render_field_error(
+              dosage,
+              :default_dose_cycle,
+              input_id: "medication_dosage_records_attributes_#{index}_default_dose_cycle"
+            )
+          end
+        end
+
+        def render_primary_dosage_default_checkbox(dosage, index, field, label)
+          input(type: 'hidden', name: dosage_field_name(index, field), value: '0')
+          label(class: 'flex items-center gap-2 text-sm cursor-pointer') do
+            input(
+              type: 'checkbox',
+              name: dosage_field_name(index, field),
+              value: '1',
+              checked: dosage.public_send("#{field}?"),
+              class: 'rounded border-outline'
+            )
+            span { label }
+          end
+        end
+
+        def hidden_primary_dosage_field(index, field, value)
+          return if value.blank?
+
+          input(type: 'hidden', name: dosage_field_name(index, field), value: serialize_hidden_dosage_value(value))
+        end
+
+        def render_frequency_template_buttons
+          div(class: 'flex flex-nowrap overflow-x-auto gap-1.5 mt-1 mb-2 pb-0.5 -mx-0.5 px-0.5') do
+            Components::Medications::FormView::FREQUENCY_TEMPLATES.each do |template|
+              button(
+                type: 'button',
+                data: {
+                  action: 'click->frequency-suggestions#suggest',
+                  frequency: template.fetch(:label),
+                  'frequency-suggestions-frequency-value': template.fetch(:frequency),
+                  'frequency-suggestions-max-doses-value': template.fetch(:max_doses),
+                  'frequency-suggestions-min-hours-value': template.fetch(:min_hours),
+                  'frequency-suggestions-dose-cycle-value': template.fetch(:dose_cycle)
+                },
+                class: 'inline-flex shrink-0 items-center rounded-full border border-outline-variant/50 ' \
+                       'bg-surface-container px-3 py-1 text-xs font-semibold ' \
+                       'text-on-surface-variant shadow-elevation-1 whitespace-nowrap ' \
+                       'hover:bg-secondary-container hover:text-on-secondary-container cursor-pointer transition-all'
+              ) { template.fetch(:label) }
+            end
+          end
         end
       end
     end

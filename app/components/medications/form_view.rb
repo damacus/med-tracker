@@ -675,6 +675,7 @@ module Components
       end
 
       def render_dosage_default_checkbox(dosage, index, field, label)
+        input(type: 'hidden', name: dosage_field_name(index, field), value: '0')
         label(class: 'flex items-center gap-2 text-sm cursor-pointer') do
           input(
             type: 'checkbox',

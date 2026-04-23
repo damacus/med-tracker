@@ -11,6 +11,24 @@ RSpec.describe 'Medication creation scope' do
   before { sign_in(parent_user) }
 
   describe 'GET /medications/new' do
+    it 'renders nested primary dose controls alongside stock setup in the wizard' do
+      get new_medication_path
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include('name="medication[dosage_records_attributes][0][amount]"')
+      expect(response.body).to include('name="medication[dosage_records_attributes][0][unit]"')
+      expect(response.body).to include('name="medication[dosage_records_attributes][0][frequency]"')
+      expect(response.body).to include('name="medication[dosage_records_attributes][0][default_max_daily_doses]"')
+      expect(response.body).to include(
+        'name="medication[dosage_records_attributes][0][default_min_hours_between_doses]"'
+      )
+      expect(response.body).to include('name="medication[dosage_records_attributes][0][default_dose_cycle]"')
+      expect(response.body).to include('name="medication[dosage_records_attributes][0][default_for_adults]"')
+      expect(response.body).to include('name="medication[dosage_records_attributes][0][default_for_children]"')
+      expect(response.body).to include('name="medication[current_supply]"')
+      expect(response.body).to include('name="medication[reorder_threshold]"')
+    end
+
     it 'shows only authorized locations in the form' do
       get new_medication_path
 
@@ -84,7 +102,7 @@ RSpec.describe 'Medication creation scope' do
       expect(response.body).to include('Analgesic')
       expect(response.body).to include('mild to moderate pain')
       expect(response.body).to include('Contains paracetamol')
-      expect(response.body).to include('name="medication[dosage_unit]"')
+      expect(response.body).to include('name="medication[dosage_records_attributes][0][unit]"')
       expect(response.body).to include('value="ml"')
       expect(response.body).to include('name="medication[dosage_records_attributes][0][amount]"')
       expect(response.body).to include('Children 6-8 years')
@@ -107,6 +125,7 @@ RSpec.describe 'Medication creation scope' do
     it 'prefills clean supplement onboarding data from Open Food Facts metadata' do
       get new_medication_path, params: {
         name: 'Wellman Original',
+        description: 'Daily multivitamin food supplement',
         barcode: '5021265221301',
         category: 'Supplement',
         package_quantity: '29',
@@ -115,19 +134,22 @@ RSpec.describe 'Medication creation scope' do
 
       html = Nokogiri::HTML(response.body)
       selected_category = html.at_css('input[name="medication[category]"][value="Supplement"]')
+      description = html.at_css('textarea[name="medication[description]"]')
+      amount = html.at_css("input[name='medication[dosage_records_attributes][0][amount]']")
+      unit = html.at_css(
+        "select[name='medication[dosage_records_attributes][0][unit]'] option[value='tablet'][selected]"
+      )
 
       expect(response).to have_http_status(:ok)
       expect(response.body).to include('value="Wellman Original"')
       expect(response.body).not_to include('Wellman Original (Wellman) 29')
+      expect(description.text).to eq('Daily multivitamin food supplement')
       expect(selected_category).to be_present
       expect(selected_category['checked']).to be_present
       expect(response.body).to include('name="medication[current_supply]"')
       expect(response.body).to include('value="29"')
-      expect(response.body).to include('name="medication[dosage_amount]"')
-      expect(response.body).to include('value="1"')
-      expect(response.body).to include('name="medication[dosage_unit]"')
-      expect(response.body).to include('value="tablet"')
-      expect(response.body).to include('Set the default dosage and starting supply')
+      expect(amount['value']).to eq('1.0')
+      expect(unit).to be_present
     end
   end
 

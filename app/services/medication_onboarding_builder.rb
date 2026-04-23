@@ -60,13 +60,18 @@ class MedicationOnboardingBuilder
   end
 
   def finder_identity_attributes(params)
-    attrs = {}
-    attrs[:name] = params[:name].presence if params[:name].present?
-    attrs[:category] = params[:category].presence if params[:category].present?
-
+    attrs = finder_text_attributes(params)
     barcode = params[:barcode].presence
     attrs[:barcode] = barcode if NhsDmd::BarcodeLookup.barcode_query?(barcode)
     attrs
+  end
+
+  def finder_text_attributes(params)
+    {
+      name: params[:name].presence,
+      description: params[:description].presence,
+      category: params[:category].presence
+    }.compact
   end
 
   def finder_code_attributes(params)
@@ -118,9 +123,11 @@ class MedicationOnboardingBuilder
   end
 
   def build_onboarding_dosage_records!(medication, dosage_defaults)
-    return if medication.dosage_records.any? || dosage_defaults.blank?
+    return if medication.dosage_records.any?
 
-    dosage_defaults.each do |attributes|
+    dosage_rows = dosage_defaults.presence || [default_primary_dosage_attributes(medication)]
+
+    dosage_rows.each do |attributes|
       medication.dosage_records.build(attributes)
     end
   end
@@ -132,5 +139,12 @@ class MedicationOnboardingBuilder
     end
 
     target.public_send("#{key}=", value) if target.public_send(key).blank?
+  end
+
+  def default_primary_dosage_attributes(medication)
+    MedicationOnboardingPrefill::DEFAULT_TIMING.merge(
+      amount: medication.dosage_amount,
+      unit: medication.dosage_unit
+    ).compact
   end
 end

@@ -11,7 +11,7 @@ module OpenFoodFacts
     BASE_URL = 'https://world.openfoodfacts.org'
     CACHE_PREFIX = 'open_food_facts'
     TIMEOUT_SECONDS = 5
-    DEFAULT_FIELDS = %w[product_name brands quantity categories_tags_en image_url].freeze
+    DEFAULT_FIELDS = %w[product_name generic_name brands quantity categories_tags_en image_url].freeze
     DEFAULT_SEARCH_PAGE_SIZE = 10
     NETWORK_ERRORS = [
       Net::OpenTimeout,

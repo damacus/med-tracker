@@ -35,12 +35,10 @@ RSpec.describe 'MedicationsVisibility' do
     click_button 'Continue'
 
     # Step 2: Dosage & Supply — wait for step to become visible
-    expect(page).to have_css('#medication_dosage_amount', visible: :visible)
-    fill_in 'medication_dosage_amount', with: '500'
-
-    all('[data-ruby-ui--combobox-target="trigger"]').last.click
-    find('label', text: 'mg').click
-    page.send_keys(:escape)
+    expect(page).to have_field('Amount')
+    fill_in 'Amount', with: '500'
+    select 'mg', from: 'Unit'
+    fill_in 'Frequency label', with: 'As directed'
     fill_in 'medication_current_supply', with: '50'
 
     click_button 'Continue'

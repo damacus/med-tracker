@@ -22,6 +22,7 @@ RSpec.describe 'GET /medication-finder/search via Open Food Facts' do
           NhsDmd::SearchResult.new(
             code: nil,
             name: 'Wellman Original',
+            description: 'Daily multivitamin food supplement',
             display: 'Wellman Original (Vitabiotics) 30 tablets',
             system: 'https://world.openfoodfacts.org',
             concept_class: 'Supplement',
@@ -45,6 +46,7 @@ RSpec.describe 'GET /medication-finder/search via Open Food Facts' do
       a_hash_including(
         'code' => nil,
         'name' => 'Wellman Original',
+        'description' => 'Daily multivitamin food supplement',
         'display' => 'Wellman Original (Vitabiotics) 30 tablets',
         'concept_class' => 'Supplement',
         'category' => 'Supplement',
@@ -67,6 +69,7 @@ RSpec.describe 'GET /medication-finder/search via Open Food Facts' do
             code: nil,
             barcode: '5021265221301',
             name: 'Wellman Original',
+            description: 'Daily multivitamin food supplement',
             display: 'Wellman Original (Vitabiotics) 30 tablets',
             system: 'https://world.openfoodfacts.org',
             concept_class: 'Supplement',
@@ -89,6 +92,7 @@ RSpec.describe 'GET /medication-finder/search via Open Food Facts' do
         'code' => nil,
         'barcode' => '5021265221301',
         'name' => 'Wellman Original',
+        'description' => 'Daily multivitamin food supplement',
         'display' => 'Wellman Original (Vitabiotics) 30 tablets',
         'category' => 'Supplement',
         'package_size' => '30 tablets',

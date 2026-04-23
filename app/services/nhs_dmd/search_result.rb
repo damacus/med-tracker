@@ -3,13 +3,17 @@
 module NhsDmd
   class SearchResult
     attr_reader :barcode, :code, :display, :system, :concept_class, :match_reason, :name, :category, :package_size,
-                :package_quantity, :package_unit, :directions, :warnings
+                :package_quantity, :package_unit, :description, :directions, :warnings
 
     def initialize(code:, display:, system:, **attributes)
-      @barcode = attributes[:barcode]
       @code = code
       @display = display
       @system = system
+      assign_optional_attributes(attributes)
+    end
+
+    def assign_optional_attributes(attributes)
+      @barcode = attributes[:barcode]
       @concept_class = attributes[:concept_class]
       @match_reason = attributes[:match_reason]
       @name = attributes[:name]
@@ -17,9 +21,12 @@ module NhsDmd
       @package_size = attributes[:package_size]
       @package_quantity = attributes[:package_quantity]
       @package_unit = attributes[:package_unit]
+      @description = attributes[:description]
       @directions = attributes[:directions]
       @warnings = attributes[:warnings]
     end
+
+    private :assign_optional_attributes
 
     def concept_class_label
       case concept_class
@@ -56,6 +63,7 @@ module NhsDmd
         barcode: barcode,
         code: code,
         name: name,
+        description: description,
         display: display,
         system: system,
         concept_class: concept_class,
