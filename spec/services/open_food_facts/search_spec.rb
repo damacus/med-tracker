@@ -7,6 +7,20 @@ RSpec.describe OpenFoodFacts::Search do
 
   let(:client) { instance_double(OpenFoodFacts::Client) }
 
+  def wellman_result_matcher
+    a_hash_including(
+      name: 'Wellman Original',
+      display: 'Wellman Original (Vitabiotics) 30 tablets',
+      barcode: '5021265221301',
+      category: 'Supplement',
+      package_size: '30 tablets',
+      package_quantity: 30,
+      package_unit: 'tablet',
+      concept_class: 'Supplement',
+      source: 'open_food_facts'
+    )
+  end
+
   def product_payload(code:, name:, brands:, quantity:, categories:)
     {
       'code' => code,
@@ -25,10 +39,7 @@ RSpec.describe OpenFoodFacts::Search do
 
     result = search.search('wellman')
 
-    expect(result).to contain_exactly(
-      a_hash_including(display: 'Wellman Original (Vitabiotics) 30 tablets', barcode: '5021265221301',
-                       concept_class: 'Supplement', source: 'open_food_facts')
-    )
+    expect(result).to contain_exactly(wellman_result_matcher)
   end
 
   it 'filters out non-supplement search results' do

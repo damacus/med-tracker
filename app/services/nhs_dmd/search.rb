@@ -93,9 +93,16 @@ module NhsDmd
       SearchResult.new(
         barcode: item[:barcode],
         code: item[:code],
+        name: item[:name],
         display: item[:display],
         system: item[:system],
         concept_class: item[:concept_class],
+        category: item[:category],
+        package_size: item[:package_size],
+        package_quantity: item[:package_quantity],
+        package_unit: item[:package_unit],
+        directions: item[:directions],
+        warnings: item[:warnings],
         match_reason: item[:match_reason]
       )
     end

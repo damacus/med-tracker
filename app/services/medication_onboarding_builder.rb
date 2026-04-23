@@ -11,7 +11,9 @@ class MedicationOnboardingBuilder
     defaults = onboarding_prefill_for(
       barcode: medication.barcode,
       code: medication.dmd_code,
-      name: medication.name
+      name: medication.name,
+      package_quantity: params[:package_quantity],
+      package_unit: params[:package_unit]
     )
 
     defaults.medication_attributes.each do |key, value|
@@ -25,7 +27,9 @@ class MedicationOnboardingBuilder
     defaults = onboarding_prefill_for(
       barcode: attrs[:barcode],
       code: attrs[:dmd_code],
-      name: attrs[:name]
+      name: attrs[:name],
+      package_quantity: attrs[:package_quantity],
+      package_unit: attrs[:package_unit]
     )
     explicit_inventory_override = explicit_inventory_override?(attrs)
 
@@ -45,13 +49,20 @@ class MedicationOnboardingBuilder
     finder_identity_attributes(params).merge(finder_code_attributes(params))
   end
 
-  def onboarding_prefill_for(barcode:, code:, name:)
-    @prefill.call(barcode: barcode, code: code, name: name)
+  def onboarding_prefill_for(barcode:, code:, name:, package_quantity: nil, package_unit: nil)
+    @prefill.call(
+      barcode: barcode,
+      code: code,
+      name: name,
+      package_quantity: package_quantity,
+      package_unit: package_unit
+    )
   end
 
   def finder_identity_attributes(params)
     attrs = {}
     attrs[:name] = params[:name].presence if params[:name].present?
+    attrs[:category] = params[:category].presence if params[:category].present?
 
     barcode = params[:barcode].presence
     attrs[:barcode] = barcode if NhsDmd::BarcodeLookup.barcode_query?(barcode)

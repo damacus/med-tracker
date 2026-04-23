@@ -217,14 +217,14 @@ module Components
             render RubyUI::FormFieldLabel.new(
               for: 'medication_current_supply',
               class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
-            ) { t('forms.medications.current_supply') }
+            ) { t('forms.medications.starting_supply', default: 'Starting Supply') }
             m3_input(
               type: :number,
               name: 'medication[current_supply]',
               id: 'medication_current_supply',
               value: medication.current_supply,
               min: '0',
-              title: 'Current number of units in stock',
+              title: 'Starting supply for a new medication',
               placeholder: t('forms.medications.current_supply_placeholder', default: 'e.g., 30'),
               class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 ' \
                      'focus:ring-2 focus:ring-primary/10 ' \

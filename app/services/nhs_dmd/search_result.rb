@@ -2,7 +2,8 @@
 
 module NhsDmd
   class SearchResult
-    attr_reader :barcode, :code, :display, :system, :concept_class, :match_reason
+    attr_reader :barcode, :code, :display, :system, :concept_class, :match_reason, :name, :category, :package_size,
+                :package_quantity, :package_unit, :directions, :warnings
 
     def initialize(code:, display:, system:, **attributes)
       @barcode = attributes[:barcode]
@@ -11,6 +12,13 @@ module NhsDmd
       @system = system
       @concept_class = attributes[:concept_class]
       @match_reason = attributes[:match_reason]
+      @name = attributes[:name]
+      @category = attributes[:category]
+      @package_size = attributes[:package_size]
+      @package_quantity = attributes[:package_quantity]
+      @package_unit = attributes[:package_unit]
+      @directions = attributes[:directions]
+      @warnings = attributes[:warnings]
     end
 
     def concept_class_label
@@ -38,12 +46,30 @@ module NhsDmd
     end
 
     def to_h
+      core_attributes.merge(derived_attributes)
+    end
+
+    private
+
+    def core_attributes
       {
         barcode: barcode,
         code: code,
+        name: name,
         display: display,
         system: system,
         concept_class: concept_class,
+        category: category,
+        package_size: package_size,
+        package_quantity: package_quantity,
+        package_unit: package_unit,
+        directions: directions,
+        warnings: warnings
+      }
+    end
+
+    def derived_attributes
+      {
         concept_class_label: concept_class_label,
         source_label: source_label,
         match_reason: match_reason,

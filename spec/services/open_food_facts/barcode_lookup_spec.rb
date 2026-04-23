@@ -7,6 +7,19 @@ RSpec.describe OpenFoodFacts::BarcodeLookup do
 
   let(:client) { instance_double(OpenFoodFacts::Client) }
 
+  def expect_wellman_result(result)
+    expect(result).to include(
+      name: 'Wellman Original',
+      display: 'Wellman Original (Vitabiotics) 30 tablets',
+      category: 'Supplement',
+      package_size: '30 tablets',
+      package_quantity: 30,
+      package_unit: 'tablet',
+      concept_class: 'Supplement',
+      source: 'open_food_facts'
+    )
+  end
+
   it 'builds a supplement result from an Open Food Facts product payload' do
     allow(client).to receive(:product).with('5021265221301').and_return(
       {
@@ -19,11 +32,7 @@ RSpec.describe OpenFoodFacts::BarcodeLookup do
       }
     )
 
-    expect(lookup.lookup('5021265221301')).to include(
-      display: 'Wellman Original (Vitabiotics) 30 tablets',
-      concept_class: 'Supplement',
-      source: 'open_food_facts'
-    )
+    expect_wellman_result(lookup.lookup('5021265221301'))
   end
 
   it 'returns nil when Open Food Facts does not know the barcode' do

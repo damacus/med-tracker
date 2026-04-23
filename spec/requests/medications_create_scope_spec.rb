@@ -103,6 +103,32 @@ RSpec.describe 'Medication creation scope' do
       expect(response.body).not_to include('name="medication[barcode]"')
       expect(response.body).not_to include('value="1234567890"')
     end
+
+    it 'prefills clean supplement onboarding data from Open Food Facts metadata' do
+      get new_medication_path, params: {
+        name: 'Wellman Original',
+        barcode: '5021265221301',
+        category: 'Supplement',
+        package_quantity: '29',
+        package_unit: 'tablet'
+      }
+
+      html = Nokogiri::HTML(response.body)
+      selected_category = html.at_css('input[name="medication[category]"][value="Supplement"]')
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include('value="Wellman Original"')
+      expect(response.body).not_to include('Wellman Original (Wellman) 29')
+      expect(selected_category).to be_present
+      expect(selected_category['checked']).to be_present
+      expect(response.body).to include('name="medication[current_supply]"')
+      expect(response.body).to include('value="29"')
+      expect(response.body).to include('name="medication[dosage_amount]"')
+      expect(response.body).to include('value="1"')
+      expect(response.body).to include('name="medication[dosage_unit]"')
+      expect(response.body).to include('value="tablet"')
+      expect(response.body).to include('Set the default dosage and starting supply')
+    end
   end
 
   describe 'POST /medications' do

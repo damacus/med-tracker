@@ -1145,6 +1145,7 @@ en:
       unit: "Unit"
       select_unit: "Select unit"
       current_supply: "Remaining Supply"
+      starting_supply: "Starting Supply"
       reorder_threshold: "Reorder Threshold"
       warnings: "Warnings"
       warnings_placeholder: "Any side effects or usage warnings?"

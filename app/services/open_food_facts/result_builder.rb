@@ -2,15 +2,20 @@
 
 module OpenFoodFacts
   module ResultBuilder
-    SUPPLEMENT_CATEGORY_KEYWORDS = [
-      'supplement',
-      'supplements',
-      'food supplements',
-      'vitamin',
-      'vitamins',
-      'multivitamin',
-      'multivitamins'
-    ].freeze
+    PACK_UNIT_MAP = ({
+      'tablet' => %w[tablet tablets],
+      'capsule' => %w[capsule capsules],
+      'sachet' => %w[sachet sachets],
+      'spray' => %w[spray sprays],
+      'drop' => %w[drop drops],
+      'pad' => %w[pad pads],
+      'ml' => %w[ml millilitre millilitres milliliter milliliters],
+      'g' => %w[g gram grams]
+    }.each_with_object({}) do |(normalized, units), map|
+      units.each { |unit| map[unit] = normalized }
+    end).freeze
+    SUPPLEMENT_CATEGORY_KEYWORDS = ['supplement', 'supplements', 'food supplements', 'vitamin', 'vitamins',
+                                    'multivitamin', 'multivitamins'].freeze
 
     module_function
 
@@ -34,8 +39,13 @@ module OpenFoodFacts
       {
         code: nil,
         barcode: normalized_barcode(payload),
+        name: product_name(payload),
         display: display_for(payload),
         system: Client::BASE_URL,
+        category: 'Supplement',
+        package_size: quantity_segment(payload),
+        package_quantity: package_quantity(payload),
+        package_unit: package_unit(payload),
         concept_class: 'Supplement',
         source: 'open_food_facts'
       }
@@ -47,11 +57,7 @@ module OpenFoodFacts
     end
 
     def display_for(payload)
-      [
-        product_name(payload),
-        brand_segment(payload),
-        quantity_segment(payload)
-      ].compact_blank.join(' ')
+      [product_name(payload), brand_segment(payload), quantity_segment(payload)].compact_blank.join(' ')
     end
 
     def supplement_product?(payload)
@@ -76,11 +82,35 @@ module OpenFoodFacts
       payload['quantity'].to_s.strip.presence
     end
 
+    def quantity_match(payload)
+      quantity_segment(payload)&.match(/\A\s*(\d+(?:[.,]\d+)?)\s*([[:alpha:]]+)?\b/i)
+    end
+
+    def package_quantity(payload)
+      normalize_quantity(quantity_match(payload)&.captures&.first)
+    end
+
+    def package_unit(payload)
+      raw_unit = quantity_match(payload)&.captures&.second
+      return nil if raw_unit.blank?
+
+      PACK_UNIT_MAP.fetch(raw_unit.downcase, nil)
+    end
+
     def normalized_barcode(payload)
       code = payload['code'].to_s
       return nil if code.blank?
 
       BarcodeCatalogEntry.normalize_gtin(code)
+    end
+
+    def normalize_quantity(raw_quantity)
+      return nil if raw_quantity.blank?
+
+      numeric = raw_quantity.tr(',', '.')
+      return numeric.to_i if numeric.match?(/\A\d+\z/)
+
+      numeric.to_f
     end
   end
 end

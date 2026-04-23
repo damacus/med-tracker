@@ -25,10 +25,12 @@ class MedicationOnboardingPrefill
     default_min_hours_between_doses: 24,
     default_dose_cycle: 'daily'
   }.freeze
+  DISCRETE_PACKAGE_UNITS = %w[tablet capsule sachet spray drop pad].freeze
 
-  def call(barcode: nil, code: nil, name: nil)
+  def call(barcode: nil, code: nil, name: nil, package_quantity: nil, package_unit: nil)
     curated_product = BarcodeCatalog::CuratedProducts.find(barcode: barcode, code: code, name: name)
     return result_from_curated_product(curated_product) if curated_product
+    return result_from_package_metadata(package_quantity:, package_unit:) if package_quantity.present?
 
     result_from_dosages(parsed_dosages(name))
   end
@@ -51,6 +53,17 @@ class MedicationOnboardingPrefill
       medication_attributes: medication_attributes_from_dosages(compact_dosages),
       dosage_records_attributes: compact_dosages
     )
+  end
+
+  def result_from_package_metadata(package_quantity:, package_unit:)
+    quantity = normalize_package_quantity(package_quantity)
+    return blank_result unless quantity
+    return blank_result if package_unit.blank?
+
+    normalized_unit = DISPLAY_UNIT_MAP.fetch(package_unit.to_s.downcase, package_unit.to_s.downcase)
+    return supply_only_result(quantity) unless discrete_package_unit?(normalized_unit)
+
+    result_from_dosages([package_dosage(unit: normalized_unit, quantity: quantity)])
   end
 
   def medication_attributes_from_dosages(dosages)
@@ -138,5 +151,37 @@ class MedicationOnboardingPrefill
       current_supply: current_supply,
       reorder_threshold: reorder_threshold
     )
+  end
+
+  def normalize_package_quantity(quantity)
+    numeric = quantity.to_s.strip.tr(',', '.')
+    return nil if numeric.blank? || !numeric.match?(/\A\d+(?:\.\d+)?\z/)
+
+    return numeric.to_i if numeric.match?(/\A\d+\z/)
+
+    numeric.to_f
+  end
+
+  def package_dosage(unit:, quantity:)
+    build_dosage(unit: unit, current_supply: quantity, reorder_threshold: quantity / 4)
+  end
+
+  def supply_only_result(quantity)
+    Result.new(
+      medication_attributes: {
+        current_supply: quantity,
+        supply_at_last_restock: quantity,
+        reorder_threshold: quantity / 4
+      },
+      dosage_records_attributes: []
+    )
+  end
+
+  def blank_result
+    Result.new(medication_attributes: {}, dosage_records_attributes: [])
+  end
+
+  def discrete_package_unit?(unit)
+    DISCRETE_PACKAGE_UNITS.include?(unit)
   end
 end

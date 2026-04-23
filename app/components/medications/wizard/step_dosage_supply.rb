@@ -21,7 +21,7 @@ module Components
                 t('forms.medications.dosage_and_supply')
               end
               m3_text(size: '2', class: 'text-on-surface-variant') do
-                'Set the default dosage and track your supply'
+                'Set the default dosage and starting supply'
               end
             end
 

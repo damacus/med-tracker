@@ -95,5 +95,34 @@ RSpec.describe MedicationOnboardingPrefill do
       )
       expect_calpol_six_plus_doses(result.dosage_records_attributes)
     end
+
+    it 'uses explicit pack metadata without polluting the medication name' do
+      result = described_class.new.call(
+        name: 'Wellman Original',
+        package_quantity: '29',
+        package_unit: 'tablet'
+      )
+
+      expect(result.medication_attributes).to include(
+        dosage_amount: 1,
+        dosage_unit: 'tablet',
+        current_supply: 29,
+        reorder_threshold: 7
+      )
+      expect(result.dosage_records_attributes).to contain_exactly(
+        a_hash_including(amount: 1, unit: 'tablet', current_supply: 29, reorder_threshold: 7)
+      )
+    end
+
+    it 'leaves supply and dosage blank when pack metadata has no usable unit' do
+      result = described_class.new.call(
+        name: 'Wellman Original',
+        package_quantity: '29',
+        package_unit: nil
+      )
+
+      expect(result.medication_attributes).not_to include(:dosage_amount, :dosage_unit, :current_supply)
+      expect(result.dosage_records_attributes).to eq([])
+    end
   end
 end

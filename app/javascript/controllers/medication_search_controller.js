@@ -129,7 +129,7 @@ export default class extends Controller {
       ? `<span class="text-xs text-on-surface-variant">${this.escapeHtml(result.concept_class_label)}</span>`
       : ''
 
-    const addAction = result.display
+    const addAction = (result.name || result.display)
       ? `
         <div class="mt-4 flex justify-end">
           <a
@@ -142,12 +142,17 @@ export default class extends Controller {
       : ''
 
     const identifier = this.renderIdentifier(result)
+    const title = result.name || result.display
+    const packageSize = result.package_size
+      ? `<p class="text-xs text-on-surface-variant mt-0.5">Pack size: ${this.escapeHtml(result.package_size)}</p>`
+      : ''
 
     return `
       <div class="rounded-lg border border-border bg-surface-container-lowest p-4 hover:border-primary hover:shadow-sm transition-all" data-testid="result-card">
         <div class="flex items-start justify-between gap-3">
           <div class="flex-1 min-w-0">
-            <p class="text-sm font-medium text-foreground truncate">${this.escapeHtml(result.display)}</p>
+            <p class="text-sm font-medium text-foreground truncate">${this.escapeHtml(title)}</p>
+            ${packageSize}
             ${identifier}
           </div>
           <div class="flex flex-col items-end gap-1 shrink-0">
@@ -164,10 +169,22 @@ export default class extends Controller {
 
   addMedicationUrl(result, barcode) {
     const url = new URL("/medications/new", window.location.origin)
-    url.searchParams.set("name", result.display || "")
+    url.searchParams.set("name", result.name || result.display || "")
+
+    if (result.category) {
+      url.searchParams.set("category", result.category)
+    }
 
     if (barcode) {
       url.searchParams.set("barcode", barcode)
+    }
+
+    if (result.package_quantity !== null && result.package_quantity !== undefined) {
+      url.searchParams.set("package_quantity", result.package_quantity)
+    }
+
+    if (result.package_unit) {
+      url.searchParams.set("package_unit", result.package_unit)
     }
 
     if (result.code && result.system === 'https://dmd.nhs.uk') {

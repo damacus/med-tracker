@@ -21,9 +21,14 @@ RSpec.describe 'GET /medication-finder/search via Open Food Facts' do
         results: [
           NhsDmd::SearchResult.new(
             code: nil,
+            name: 'Wellman Original',
             display: 'Wellman Original (Vitabiotics) 30 tablets',
             system: 'https://world.openfoodfacts.org',
-            concept_class: 'Supplement'
+            concept_class: 'Supplement',
+            category: 'Supplement',
+            package_size: '30 tablets',
+            package_quantity: 30,
+            package_unit: 'tablet'
           )
         ],
         error: nil,
@@ -39,8 +44,13 @@ RSpec.describe 'GET /medication-finder/search via Open Food Facts' do
     expect(response.parsed_body['results']).to contain_exactly(
       a_hash_including(
         'code' => nil,
+        'name' => 'Wellman Original',
         'display' => 'Wellman Original (Vitabiotics) 30 tablets',
-        'concept_class' => 'Supplement'
+        'concept_class' => 'Supplement',
+        'category' => 'Supplement',
+        'package_size' => '30 tablets',
+        'package_quantity' => 30,
+        'package_unit' => 'tablet'
       )
     )
     expect(response.parsed_body['barcode']).to eq('5021265221301')
@@ -56,9 +66,14 @@ RSpec.describe 'GET /medication-finder/search via Open Food Facts' do
           NhsDmd::SearchResult.new(
             code: nil,
             barcode: '5021265221301',
+            name: 'Wellman Original',
             display: 'Wellman Original (Vitabiotics) 30 tablets',
             system: 'https://world.openfoodfacts.org',
-            concept_class: 'Supplement'
+            concept_class: 'Supplement',
+            category: 'Supplement',
+            package_size: '30 tablets',
+            package_quantity: 30,
+            package_unit: 'tablet'
           )
         ],
         error: nil
@@ -73,7 +88,12 @@ RSpec.describe 'GET /medication-finder/search via Open Food Facts' do
       a_hash_including(
         'code' => nil,
         'barcode' => '5021265221301',
+        'name' => 'Wellman Original',
         'display' => 'Wellman Original (Vitabiotics) 30 tablets',
+        'category' => 'Supplement',
+        'package_size' => '30 tablets',
+        'package_quantity' => 30,
+        'package_unit' => 'tablet',
         'source_label' => 'Open Food Facts'
       )
     )
