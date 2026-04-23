@@ -149,9 +149,11 @@ class MedicationTake < ApplicationRecord
   end
 
   def decrement_dosage_option_stock(inventory, dosage_option)
-    previous_current_supply = inventory.current_supply
+    previous_current_supply = nil
 
     inventory.with_lock do
+      previous_current_supply = inventory.current_supply
+
       dosage_option.with_lock do
         dosage_option.update!(current_supply: [dosage_option.current_supply.to_i - 1, 0].max)
       end
