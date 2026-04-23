@@ -165,6 +165,12 @@ module Components
             value: person_medication.dose_unit,
             data: { person_medication_form_target: 'doseUnitInput' }
           )
+          input(
+            type: :hidden,
+            name: 'person_medication[source_dosage_option_id]',
+            value: person_medication.source_dosage_option_id,
+            data: { person_medication_form_target: 'sourceDosageOptionIdInput' }
+          )
           select(
             id: 'person_medication_dose_option',
             name: 'dose_option',
@@ -254,7 +260,8 @@ module Components
       end
 
       def selected_dose_option_value
-        "#{decimal_string(person_medication.dose_amount)}|#{person_medication.dose_unit}"
+        person_medication.source_dosage_option_id.presence ||
+          "#{decimal_string(person_medication.dose_amount)}|#{person_medication.dose_unit}"
       end
 
       def selected_dose_label

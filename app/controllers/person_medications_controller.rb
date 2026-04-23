@@ -174,11 +174,32 @@ class PersonMedicationsController < ApplicationController
   end
 
   def person_medication_params
-    params.expect(person_medication: %i[medication_id dose_amount dose_unit notes max_daily_doses min_hours_between_doses dose_cycle])
+    params.expect(
+      person_medication: %i[
+        medication_id
+        dose_amount
+        dose_unit
+        source_dosage_option_id
+        notes
+        max_daily_doses
+        min_hours_between_doses
+        dose_cycle
+      ]
+    )
   end
 
   def person_medication_update_params
-    params.expect(person_medication: %i[dose_amount dose_unit notes max_daily_doses min_hours_between_doses dose_cycle])
+    params.expect(
+      person_medication: %i[
+        dose_amount
+        dose_unit
+        source_dosage_option_id
+        notes
+        max_daily_doses
+        min_hours_between_doses
+        dose_cycle
+      ]
+    )
   end
 
   def medication_options_query

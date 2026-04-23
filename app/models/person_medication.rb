@@ -8,6 +8,7 @@ class PersonMedication < ApplicationRecord
 
   belongs_to :person
   belongs_to :medication
+  belongs_to :source_dosage_option, class_name: 'MedicationDosageOption', optional: true
   has_many :medication_takes, dependent: :destroy
 
   enum :dose_cycle, { daily: 0, weekly: 1, monthly: 2 }, prefix: :dose
@@ -27,6 +28,8 @@ class PersonMedication < ApplicationRecord
                           unless: :legacy_record_without_resolvable_dose?
   validates :dose_unit, presence: true, inclusion: { in: Medication::DOSAGE_UNITS },
                         unless: :legacy_record_without_resolvable_dose?
+  validate :source_dosage_option_matches_medication
+  validate :source_dosage_option_matches_snapshot
 
   def default_dose_amount
     dose_amount
@@ -50,9 +53,10 @@ class PersonMedication < ApplicationRecord
   private
 
   def assign_default_dose
-    return if dose_amount.present? && dose_unit.present?
     return if medication.blank?
 
+    self.source_dosage_option ||= resolved_dosage_record
+    self.source_dosage_option ||= uniquely_matching_dosage_option
     self.dose_amount ||= resolved_dose_amount
     self.dose_unit ||= resolved_dose_unit
   end
@@ -87,18 +91,50 @@ class PersonMedication < ApplicationRecord
   end
 
   def resolved_dose_amount
-    dosage = resolved_dosage
+    dosage = resolved_dosage_record
     dosage&.amount || medication&.dosage_amount
   end
 
   def resolved_dose_unit
-    dosage = resolved_dosage
+    dosage = resolved_dosage_record
     dosage&.unit || medication&.dosage_unit
   end
 
-  def resolved_dosage
+  def resolved_dosage_record
     return if medication.blank?
 
-    medication.default_dosage_for_person_type(person&.person_type) || medication.dosages.first
+    if child_person_type?
+      child_default = medication.dosage_records.child_default.first
+      return child_default if child_default
+    end
+
+    medication.dosage_records.adult_default.first || medication.dosage_records.order(:amount, :id).first
+  end
+
+  def child_person_type?
+    %w[minor dependent_adult].include?(person&.person_type.to_s)
+  end
+
+  def source_dosage_option_matches_medication
+    return if source_dosage_option.blank? || medication.blank?
+    return if source_dosage_option.medication_id == medication_id
+
+    errors.add(:source_dosage_option, 'must belong to the selected medication')
+  end
+
+  def source_dosage_option_matches_snapshot
+    return if source_dosage_option.blank? || dose_amount.blank? || dose_unit.blank?
+    return if source_dosage_option.amount.to_s == dose_amount.to_s && source_dosage_option.unit == dose_unit
+
+    errors.add(:source_dosage_option, 'must match the selected dose')
+  end
+
+  def uniquely_matching_dosage_option
+    return if medication.blank? || dose_amount.blank? || dose_unit.blank?
+
+    matches = medication.dosage_records.where(amount: dose_amount, unit: dose_unit)
+    return matches.first if matches.one?
+
+    nil
   end
 end

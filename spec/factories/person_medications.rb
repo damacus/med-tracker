@@ -4,8 +4,25 @@ FactoryBot.define do
   factory :person_medication do
     person
     medication
-    dose_amount { medication.dosage_amount }
-    dose_unit { medication.dosage_unit }
+
+    transient do
+      dosage do
+        if %w[minor dependent_adult].include?(person.person_type.to_s)
+          medication.dosage_records.child_default.first ||
+            medication.dosage_records.adult_default.first ||
+            medication.dosage_records.order(:amount, :id).first
+        else
+          medication.dosage_records.adult_default.first ||
+            medication.dosage_records.order(:amount, :id).first
+        end
+      end
+    end
+
+    source_dosage_option do
+      dosage if dosage.is_a?(MedicationDosageOption)
+    end
+    dose_amount { dosage&.amount || medication.dosage_amount }
+    dose_unit { dosage&.unit || medication.dosage_unit }
     notes { nil }
     max_daily_doses { nil }
     min_hours_between_doses { nil }

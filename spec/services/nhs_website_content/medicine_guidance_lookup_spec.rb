@@ -79,4 +79,48 @@ RSpec.describe NhsWebsiteContent::MedicineGuidanceLookup do
 
     expect(lookup.call('Paracetamol')).to be_nil
   end
+
+  it 'deduplicates repeated matches for the same NHS page before checking ambiguity' do
+    duplicate_page = index_response['significantLink'].first
+
+    allow(client).to receive(:list_medicines).with(category: 'P', page: '1').and_return(
+      index_response.merge('significantLink' => [duplicate_page, duplicate_page])
+    )
+
+    result = lookup.call('Paracetamol 500mg tablets')
+
+    expect(result&.title).to eq('Paracetamol for adults')
+  end
+
+  it 'still returns nil when the best matches are genuinely different pages' do
+    allow(client).to receive(:list_medicines).with(category: 'P', page: '1').and_return(ambiguous_index_response)
+
+    expect(lookup.call('Paracetamol')).to be_nil
+  end
+
+  def ambiguous_index_response
+    {
+      'significantLink' => [
+        guidance_index_link(
+          name: 'Paracetamol for adults',
+          description: 'Find out how paracetamol for adults treats pain and high temperature.',
+          slug: 'paracetamol-for-adults'
+        ),
+        guidance_index_link(
+          name: 'Paracetamol for children',
+          description: 'Find out how paracetamol for children treats pain and high temperature.',
+          slug: 'paracetamol-for-children'
+        )
+      ],
+      'relatedLink' => []
+    }
+  end
+
+  def guidance_index_link(name:, description:, slug:)
+    {
+      'name' => name,
+      'description' => description,
+      'url' => "https://api.service.nhs.uk/nhs-website-content/medicines/#{slug}/"
+    }
+  end
 end

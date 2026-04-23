@@ -209,16 +209,35 @@ module NhsWebsiteContent
     end
 
     def ranked_matches(name)
-      candidate_queries(name)
-        .flat_map { |query| scored_pages_for(query) }
-        .select { |(_page, match_score)| match_score >= 40 }
-        .sort_by { |(_page, match_score)| -match_score }
+      deduplicated_ranked_matches(scored_ranked_matches(name)).sort_by { |(_page, match_score)| -match_score }
     end
 
     def scored_pages_for(query)
       return [] if query.blank?
 
       list_pages_for(query.first.upcase).map { |page| [page, score(page, query)] }
+    end
+
+    def page_key(page)
+      page['url'].presence || normalized(page['name'])
+    end
+
+    def scored_ranked_matches(name)
+      candidate_queries(name)
+        .flat_map { |query| scored_pages_for(query) }
+        .select { |(_page, match_score)| match_score >= 40 }
+    end
+
+    def deduplicated_ranked_matches(scored_matches)
+      ranked_pages = {}
+
+      scored_matches.each do |page, match_score|
+        key = page_key(page)
+        current = ranked_pages[key]
+        ranked_pages[key] = [page, match_score] if current.blank? || match_score > current.last
+      end
+
+      ranked_pages.values
     end
   end
 end

@@ -20,6 +20,7 @@ class MedicationTake < ApplicationRecord
   validates :amount_ml, presence: true, numericality: { greater_than: 0 }
   validate :exactly_one_source
   validate :taken_from_medication_matches_source
+  validate :taken_from_medication_matches_selected_dose
   validate :taken_from_location_matches_medication
   validate :taken_from_medication_is_in_stock
 
@@ -81,6 +82,14 @@ class MedicationTake < ApplicationRecord
     errors.add(:taken_from_medication, 'must match the assigned medication')
   end
 
+  def taken_from_medication_matches_selected_dose
+    return if taken_from_medication.blank?
+    return unless inventory_dosage_option_resolver(taken_from_medication).tracked_inventory?
+    return if matching_inventory_dosage_option(taken_from_medication).present?
+
+    errors.add(:taken_from_medication, 'must include stock for the selected dose')
+  end
+
   def taken_from_location_matches_medication
     return if taken_from_medication.blank? && taken_from_location.blank?
     return if taken_from_medication&.location == taken_from_location
@@ -90,9 +99,10 @@ class MedicationTake < ApplicationRecord
 
   def taken_from_medication_is_in_stock
     return if taken_from_medication.blank?
+    return if tracked_inventory_dosage_option_missing?(taken_from_medication)
     return if inventory_option_in_stock?(taken_from_medication)
 
-    if matching_inventory_dosage_option(taken_from_medication)&.current_supply.present?
+    if tracked_inventory_dosage_option(taken_from_medication)&.current_supply.present?
       errors.add(:taken_from_medication, 'must be in stock')
       return
     end
@@ -210,16 +220,25 @@ class MedicationTake < ApplicationRecord
   end
 
   def matching_inventory_dosage_option(inventory)
-    return if inventory.blank? || source.blank?
-    return if source.default_dose_amount.blank? || source.dose_unit.blank?
-
-    inventory.dosage_records.find_by(amount: source.default_dose_amount, unit: source.dose_unit)
+    inventory_dosage_option_resolver(inventory).call
   end
 
   def inventory_option_in_stock?(inventory)
-    dosage_option = matching_inventory_dosage_option(inventory)
+    dosage_option = tracked_inventory_dosage_option(inventory)
     return true if dosage_option.blank? || dosage_option.current_supply.blank?
 
     dosage_option.current_supply.to_i.positive?
+  end
+
+  def tracked_inventory_dosage_option(inventory)
+    matching_inventory_dosage_option(inventory) if inventory_dosage_option_resolver(inventory).tracked_inventory?
+  end
+
+  def tracked_inventory_dosage_option_missing?(inventory)
+    inventory_dosage_option_resolver(inventory).tracked_inventory? && tracked_inventory_dosage_option(inventory).blank?
+  end
+
+  def inventory_dosage_option_resolver(inventory)
+    InventoryDosageOptionResolver.new(inventory: inventory, source: source)
   end
 end

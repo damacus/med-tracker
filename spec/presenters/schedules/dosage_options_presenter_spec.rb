@@ -6,25 +6,30 @@ RSpec.describe Schedules::DosageOptionsPresenter do
   let(:schedule) { Schedule.new(dose_amount: 200, dose_unit: 'mg') }
   let(:matching_dosage) do
     double(
+      id: 1,
       amount: schedule.dose_amount,
       unit: 'mg',
       description: 'tablet',
-      selection_key: '200|mg'
+      selection_key: '200|mg',
+      option_value: '1'
     )
   end
   let(:duplicate_dosage) do
     double(
+      id: 2,
       amount: schedule.dose_amount,
       unit: 'mg',
       description: 'capsule',
-      selection_key: '200|mg'
+      selection_key: '200|mg',
+      option_value: '2'
     )
   end
+  let(:dosage_records) { instance_double(ActiveRecord::Relation, order: [matching_dosage, duplicate_dosage]) }
   let(:medication) do
     instance_double(
       Medication,
       id: 123,
-      dosages: [matching_dosage, duplicate_dosage],
+      dosage_records: dosage_records,
       dose_options_payload: [{ 'amount' => '1' }]
     )
   end
@@ -47,7 +52,7 @@ RSpec.describe Schedules::DosageOptionsPresenter do
 
       2.times { presenter.duplicate_dose_selection_keys }
 
-      expect(medication).to have_received(:dosages).once
+      expect(medication).to have_received(:dosage_records).once
       expect(presenter.duplicate_dose_selection_keys).to eq(['200|mg'])
     end
   end

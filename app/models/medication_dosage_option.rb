@@ -22,6 +22,26 @@ class MedicationDosageOption < ApplicationRecord
   validates :current_supply, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
   validates :reorder_threshold, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
 
+  delegate :selection_key, to: :to_value
+
+  def option_value
+    id.to_s
+  end
+
+  def inventory_match_signature
+    {
+      amount: amount.to_s,
+      unit: unit,
+      frequency: frequency,
+      description: description.to_s,
+      default_for_adults: default_for_adults,
+      default_for_children: default_for_children,
+      default_max_daily_doses: default_max_daily_doses,
+      default_min_hours_between_doses: default_min_hours_between_doses,
+      default_dose_cycle: default_dose_cycle_before_type_cast
+    }
+  end
+
   def to_value
     MedicationDosage.new(
       amount: amount,
@@ -36,6 +56,10 @@ class MedicationDosageOption < ApplicationRecord
     )
   end
 
+  def to_option_payload
+    to_value.to_option_payload.merge(id: id, option_value: option_value)
+  end
+
   private
 
   def sync_medication_dosage
@@ -47,6 +71,14 @@ class MedicationDosageOption < ApplicationRecord
   end
 
   def sync_medication_inventory
+    return unless tracked_inventory_change?
+
     medication&.sync_inventory_from_dosage_records!
+  end
+
+  def tracked_inventory_change?
+    return current_supply.present? if destroyed?
+
+    current_supply.present? || saved_change_to_current_supply?
   end
 end

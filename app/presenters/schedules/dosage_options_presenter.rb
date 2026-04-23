@@ -15,13 +15,15 @@ module Schedules
     def selected_dosage_option
       return @selected_dosage_option if defined?(@selected_dosage_option)
 
-      @selected_dosage_option = dosages.find do |dosage|
-        dosage.amount.to_s == schedule.dose_amount.to_s && dosage.unit == schedule.dose_unit
-      end
+      @selected_dosage_option = dosage_selected_by_id || dosage_selected_by_snapshot
     end
 
     def selected_dose_selection_key
       selected_dosage_option&.selection_key
+    end
+
+    def selected_dose_option_value
+      selected_dosage_option&.option_value
     end
 
     def dosage_dom_id(dosage)
@@ -40,10 +42,20 @@ module Schedules
       end
     end
 
+    def dosages
+      schedule.medication&.dosage_records&.order(:amount, :id).to_a
+    end
+
     private
 
-    def dosages
-      schedule.medication&.dosages || []
+    def dosage_selected_by_id
+      return if schedule.source_dosage_option_id.blank?
+
+      dosages.find { |dosage| dosage.id == schedule.source_dosage_option_id }
+    end
+
+    def dosage_selected_by_snapshot
+      dosages.find { |dosage| dosage.amount.to_s == schedule.dose_amount.to_s && dosage.unit == schedule.dose_unit }
     end
   end
 end

@@ -138,6 +138,12 @@ module Components
           value: schedule.dose_unit,
           data: { schedule_form_target: 'doseUnitInput' }
         )
+        input(
+          type: :hidden,
+          name: 'schedule[source_dosage_option_id]',
+          value: schedule.source_dosage_option_id,
+          data: { schedule_form_target: 'sourceDosageOptionIdInput' }
+        )
       end
 
       def render_medication_field(_f, action: 'change->schedule-form#updateDosages')
@@ -223,20 +229,21 @@ module Components
           m3_text(variant: :body_medium, class: 'text-on-surface-variant font-medium') do
             t('schedules.form.choose_one_dose')
           end
-          if schedule.medication.dosages.any?
+          if dosage_options.dosages.any?
             div(class: 'mt-3 grid grid-cols-1 md:grid-cols-2 gap-3') do
-              schedule.medication.dosages.each do |dosage|
+              dosage_options.dosages.each do |dosage|
                 label(class: dosage_card_classes(dosage)) do
                   input(
                     type: :radio,
                     name: 'schedule[dose_option_key]',
                     id: dosage_options.dosage_dom_id(dosage),
-                    value: dosage.selection_key,
-                    checked: dosage_options.selected_dose_selection_key == dosage.selection_key,
+                    value: dosage.option_value,
+                    checked: dosage_options.selected_dose_option_value == dosage.option_value,
                     required: true,
                     class: 'sr-only',
                     data: {
                       action: 'change->schedule-form#onDosageChange',
+                      id: dosage.id,
                       amount: dosage.amount.to_s,
                       unit: dosage.unit,
                       frequency: dosage.frequency,
@@ -286,7 +293,7 @@ module Components
             SelectInput(
               name: 'schedule[dose_option_key]',
               id: 'schedule_dose_option_key',
-              value: dosage_options.selected_dose_selection_key,
+              value: dosage_options.selected_dose_option_value,
               required: true,
               data: { action: 'change->schedule-form#onDosageChange' }
             )
@@ -308,8 +315,8 @@ module Components
               end
             end
             SelectContent(data: { schedule_form_target: 'dosageContent' }) do
-              (schedule.medication&.dosages || []).each do |dosage|
-                SelectItem(value: dosage.selection_key) do
+              dosage_options.dosages.each do |dosage|
+                SelectItem(value: dosage.option_value) do
                   dosage_options.format_dosage_option(dosage)
                 end
               end
@@ -515,7 +522,7 @@ module Components
 
       def dosage_card_classes(dosage)
         base = 'rounded-2xl border p-4 transition-colors cursor-pointer'
-        selected = if dosage_options.selected_dose_selection_key == dosage.selection_key
+        selected = if dosage_options.selected_dose_option_value == dosage.option_value
                      ' border-primary bg-primary/5 ring-2 ring-primary/20'
                    else
                      ' border-border bg-card'

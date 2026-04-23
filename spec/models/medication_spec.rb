@@ -37,6 +37,59 @@ RSpec.describe Medication do
     )
   end
 
+  def create_tracked_dosage_record(medication:, frequency:, current_supply:, reorder_threshold:)
+    create(
+      :dosage,
+      medication: medication,
+      amount: 1,
+      unit: 'tablet',
+      frequency: frequency,
+      current_supply: current_supply,
+      reorder_threshold: reorder_threshold
+    )
+  end
+
+  def create_morning_tracked_dosage_record(medication:, current_supply:, reorder_threshold:)
+    create_tracked_dosage_record(
+      medication: medication,
+      frequency: 'Morning',
+      current_supply: current_supply,
+      reorder_threshold: reorder_threshold
+    )
+  end
+
+  def create_evening_tracked_dosage_record(medication:, current_supply:, reorder_threshold:)
+    create_tracked_dosage_record(
+      medication: medication,
+      frequency: 'Evening',
+      current_supply: current_supply,
+      reorder_threshold: reorder_threshold
+    )
+  end
+
+  def create_remaining_tracked_dosage_records(medication)
+    {
+      morning: create_morning_tracked_dosage_record(
+        medication: medication,
+        current_supply: 5,
+        reorder_threshold: 2
+      ),
+      evening: create_evening_tracked_dosage_record(
+        medication: medication,
+        current_supply: 3,
+        reorder_threshold: 1
+      )
+    }
+  end
+
+  def expect_inventory_aggregate(medication:, current_supply:, supply_at_last_restock:, reorder_threshold:)
+    expect(medication.reload).to have_attributes(
+      current_supply: current_supply,
+      supply_at_last_restock: supply_at_last_restock,
+      reorder_threshold: reorder_threshold
+    )
+  end
+
   describe 'validations' do
     it { is_expected.to validate_presence_of(:name) }
     it { is_expected.not_to validate_presence_of(:current_supply) }
@@ -144,6 +197,46 @@ RSpec.describe Medication do
 
     it 'returns false for negative quantity' do
       expect(medication.restock!(quantity: -5)).to be(false)
+    end
+  end
+
+  describe '#sync_inventory_from_dosage_records!' do
+    let(:medication) do
+      create(
+        :medication,
+        current_supply: 8,
+        supply_at_last_restock: 8,
+        reorder_threshold: 3
+      )
+    end
+
+    it 'clears aggregate inventory when the last tracked dosage record is removed' do
+      create(
+        :dosage,
+        medication: medication,
+        amount: 1,
+        unit: 'tablet',
+        frequency: 'Morning',
+        current_supply: 8,
+        reorder_threshold: 3
+      ).destroy!
+
+      expect_inventory_aggregate(
+        medication: medication,
+        current_supply: nil,
+        supply_at_last_restock: nil,
+        reorder_threshold: 0
+      )
+    end
+
+    it 'recomputes aggregate inventory from the remaining tracked dosage records' do
+      dosage_records = create_remaining_tracked_dosage_records(medication)
+
+      dosage_records[:morning].destroy!
+
+      expect_inventory_aggregate(medication: medication, current_supply: 3, supply_at_last_restock: 8,
+                                 reorder_threshold: 1)
+      expect(dosage_records[:evening].reload.current_supply).to eq(3)
     end
   end
 

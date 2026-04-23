@@ -4,6 +4,7 @@ export default class extends Controller {
   static values = { currentStep: Number, translations: Object, doseOptions: Object }
   static targets = [
     "medicationSelect", "doseOptionInput", "doseAmountInput", "doseUnitInput",
+    "sourceDosageOptionIdInput",
     "maxDosesInput", "minHoursInput", "doseCycleInput", "stepPanel",
     "stepIndicator", "prevButton", "nextButton", "submitButton",
     "selectedMedicationName", "selectedDoseName"
@@ -38,7 +39,7 @@ export default class extends Controller {
     if (fallbackDose) {
       this.#renderDoseOptions([fallbackDose])
       if (this.hasDoseOptionInputTarget) {
-        this.doseOptionInputTarget.value = `${fallbackDose.amount}|${fallbackDose.unit}`
+        this.doseOptionInputTarget.value = this.#optionValue(fallbackDose)
       }
       this.#applyDose(fallbackDose)
     }
@@ -62,16 +63,14 @@ export default class extends Controller {
       }
 
       const isChild = personType === 'minor' || personType === 'dependent_adult'
-      const currentValue = this.hasDoseAmountInputTarget && this.hasDoseUnitInputTarget
-        ? `${this.doseAmountInputTarget.value}|${this.doseUnitInputTarget.value}`
-        : null
-      const defaultDosage = options.find(d => `${d.amount}|${d.unit}` === currentValue)
+      const currentValue = this.#currentDoseOptionValue()
+      const defaultDosage = options.find(d => this.#optionValue(d) === currentValue)
         || options.find(d => isChild ? d.default_for_children : d.default_for_adults)
         || options[0]
 
       if (defaultDosage) {
         if (this.hasDoseOptionInputTarget) {
-          this.doseOptionInputTarget.value = `${defaultDosage.amount}|${defaultDosage.unit}`
+          this.doseOptionInputTarget.value = this.#optionValue(defaultDosage)
         }
         this.#applyDose(defaultDosage)
         if (this.hasMaxDosesInputTarget && !this.maxDosesInputTarget.value) {
@@ -102,6 +101,7 @@ export default class extends Controller {
     if (!selected || !selected.value) return
 
     this.#applyDose({
+      id: selected.dataset.id,
       amount: selected.dataset.amount,
       unit: selected.dataset.unit
     })
@@ -132,7 +132,6 @@ export default class extends Controller {
     if (!checkedRadio?.dataset.doseAmount || !checkedRadio?.dataset.doseUnit) return null
 
     return {
-      id: 'standard',
       amount: checkedRadio.dataset.doseAmount,
       unit: checkedRadio.dataset.doseUnit
     }
@@ -151,10 +150,11 @@ export default class extends Controller {
 
     options.forEach((dose) => {
       const option = document.createElement('option')
-      option.value = `${dose.amount}|${dose.unit}`
+      option.value = this.#optionValue(dose)
       const amount = this.#formatAmount(dose.amount)
       const description = this.#displayDoseDescription(dose.description)
       option.textContent = description ? `${amount} ${dose.unit} - ${description}` : `${amount} ${dose.unit}`
+      if (dose.id) option.dataset.id = dose.id
       option.dataset.amount = dose.amount
       option.dataset.unit = dose.unit
       this.doseOptionInputTarget.appendChild(option)
@@ -168,6 +168,9 @@ export default class extends Controller {
     if (this.hasDoseUnitInputTarget) {
       this.doseUnitInputTarget.value = dose.unit
     }
+    if (this.hasSourceDosageOptionIdInputTarget) {
+      this.sourceDosageOptionIdInputTarget.value = dose.id || ''
+    }
     this.#syncDoseSummary()
   }
 
@@ -178,7 +181,33 @@ export default class extends Controller {
     if (this.hasDoseUnitInputTarget) {
       this.doseUnitInputTarget.value = ''
     }
+    if (this.hasSourceDosageOptionIdInputTarget) {
+      this.sourceDosageOptionIdInputTarget.value = ''
+    }
     this.#syncDoseSummary()
+  }
+
+  #currentDoseOptionValue() {
+    if (this.hasSourceDosageOptionIdInputTarget && this.sourceDosageOptionIdInputTarget.value !== '') {
+      return this.sourceDosageOptionIdInputTarget.value
+    }
+
+    if (this.hasDoseAmountInputTarget && this.hasDoseUnitInputTarget) {
+      return `${this.doseAmountInputTarget.value}|${this.doseUnitInputTarget.value}`
+    }
+
+    return null
+  }
+
+  #optionValue(dose) {
+    if (dose.option_value) {
+      return String(dose.option_value)
+    }
+    if (dose.id) {
+      return String(dose.id)
+    }
+
+    return `${dose.amount}|${dose.unit}`
   }
 
   #formatAmount(amount) {

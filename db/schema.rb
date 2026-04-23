@@ -349,11 +349,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_23_120000) do
     t.text "notes"
     t.bigint "person_id", null: false
     t.integer "position", null: false
+    t.bigint "source_dosage_option_id"
     t.datetime "updated_at", null: false
     t.index ["medication_id"], name: "index_person_medications_on_medication_id"
     t.index ["person_id", "medication_id"], name: "index_person_medications_on_person_id_and_medication_id", unique: true
     t.index ["person_id", "position"], name: "index_person_medications_on_person_id_and_position"
     t.index ["person_id"], name: "index_person_medications_on_person_id"
+    t.index ["source_dosage_option_id"], name: "index_person_medications_on_source_dosage_option_id"
   end
 
   create_table "push_subscriptions", force: :cascade do |t|
@@ -381,11 +383,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_23_120000) do
     t.integer "min_hours_between_doses"
     t.text "notes"
     t.bigint "person_id", null: false
+    t.bigint "source_dosage_option_id"
     t.date "start_date"
     t.datetime "updated_at", null: false
     t.index ["active"], name: "index_schedules_on_active"
     t.index ["medication_id"], name: "index_schedules_on_medication_id"
     t.index ["person_id"], name: "index_schedules_on_person_id"
+    t.index ["source_dosage_option_id"], name: "index_schedules_on_source_dosage_option_id"
   end
 
   create_table "users", force: :cascade do |t|
@@ -444,8 +448,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_23_120000) do
   add_foreign_key "people", "accounts", deferrable: :deferred
   add_foreign_key "person_medications", "medications", deferrable: :deferred
   add_foreign_key "person_medications", "people", deferrable: :deferred
+  add_foreign_key "person_medications", "dosages", column: "source_dosage_option_id"
   add_foreign_key "push_subscriptions", "accounts", deferrable: :deferred
   add_foreign_key "schedules", "medications", deferrable: :deferred
   add_foreign_key "schedules", "people", deferrable: :deferred
+  add_foreign_key "schedules", "dosages", column: "source_dosage_option_id"
   add_foreign_key "users", "people", deferrable: :deferred
 end

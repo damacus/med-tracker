@@ -229,7 +229,7 @@ module NhsDmd
         item[:code] == barcode_match[:code] && item[:system] == barcode_match[:system]
       end
     rescue Client::ApiError => e
-      log_failure(e.message)
+      log_failure(e.message, e)
       nil
     rescue StandardError => e
       log_failure('unexpected_error', e)
