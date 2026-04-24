@@ -206,12 +206,8 @@ RSpec.describe NhsDmd::ReleaseImport do
     first = importer.import(release_dir)
     second = described_class.new.import(release_dir)
 
-    expect(first.created_count).to eq(1)
-    expect(first.unchanged_count).to eq(0)
-    expect(second.created_count).to eq(0)
-    expect(second.updated_count).to eq(0)
-    expect(second.unchanged_count).to eq(1)
-    expect(second.imported_count).to eq(0)
+    expect(first).to have_attributes(created_count: 1, unchanged_count: 0)
+    expect(second).to have_attributes(created_count: 0, updated_count: 0, unchanged_count: 1, imported_count: 0)
   end
 
   it 'categorises skip reasons separately' do

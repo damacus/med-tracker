@@ -1171,6 +1171,7 @@ en:
           title: "Dose schedule"
           description: "Build the first schedule by choosing who takes it, the dose, and the rhythm."
           person_title: "Who will take this?"
+          person_description: "Select the person or dependent this schedule belongs to."
           person_types:
             adult: "Adult"
             minor: "Minor"
@@ -1204,6 +1205,9 @@ en:
           dose_time: "Dose time"
           weekly_day: "Day"
           specific_dates: "Dates"
+          specific_date_to_add: "Date to add"
+          add_specific_date: "Add date"
+          no_specific_dates: "No dates selected yet"
           specific_dates_placeholder: "2026-04-24, 2026-04-25"
           max_daily_doses: "Max daily doses"
           min_hours_between: "Minimum hours between doses"

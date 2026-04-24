@@ -1055,6 +1055,7 @@ cy:
           title: "Amserlen dos"
           description: "Adeiladwch yr amserlen gyntaf drwy ddewis pwy sy'n ei gymryd, y dos, a'r rhythm."
           person_title: "Pwy fydd yn cymryd hwn?"
+          person_description: "Dewiswch y person neu'r dibynnydd mae'r amserlen hon ar ei gyfer."
           person_types:
             adult: "Oedolyn"
             minor: "Plentyn"
@@ -1088,6 +1089,9 @@ cy:
           dose_time: "Amser dos"
           weekly_day: "Diwrnod"
           specific_dates: "Dyddiadau"
+          specific_date_to_add: "Dyddiad i'w ychwanegu"
+          add_specific_date: "Ychwanegu dyddiad"
+          no_specific_dates: "Dim dyddiadau wedi'u dewis eto"
           specific_dates_placeholder: "2026-04-24, 2026-04-25"
           max_daily_doses: "Uchafswm dosau dyddiol"
           min_hours_between: "Isafswm oriau rhwng dosau"

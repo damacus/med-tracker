@@ -153,13 +153,34 @@ module Components
         end
 
         def render_person_selection
-          section(class: 'space-y-3') do
-            m3_heading(level: 4, size: '4', class: 'font-bold tracking-tight text-foreground') do
-              t('forms.medications.wizard.dose.person_title')
+          section(class: 'space-y-3 rounded-3xl border border-outline-variant/60 bg-surface p-5') do
+            div(class: 'space-y-1') do
+              render RubyUI::FormFieldLabel.new(for: 'wizard_schedule_person') do
+                t('forms.medications.wizard.dose.person_title')
+              end
+              m3_text(size: '2', class: 'text-on-surface-variant') do
+                t('forms.medications.wizard.dose.person_description')
+              end
             end
-            div(class: 'grid grid-cols-1 sm:grid-cols-2 gap-3') do
+            select(
+              id: 'wizard_schedule_person',
+              class: 'flex h-14 min-h-[56px] w-full rounded-shape-xs border border-outline bg-transparent ' \
+                     'px-4 py-4 text-base transition-all focus-visible:outline-none focus-visible:ring-2 ' \
+                     'focus-visible:ring-primary',
+              data: {
+                action: 'change->medication-schedule-wizard#selectPerson',
+                'medication-schedule-wizard-target': 'personSelect'
+              }
+            ) do
               selectable_people.each do |person|
-                render_person_card(person)
+                option(
+                  value: person.id,
+                  selected: person == selected_person,
+                  data: {
+                    person_name: person.name,
+                    person_type: person.person_type
+                  }
+                ) { person.name }
               end
             end
           end
@@ -191,7 +212,7 @@ module Components
         def render_dose_fields
           dosage = primary_dosage_record_for_wizard
 
-          section(class: 'grid grid-cols-1 sm:grid-cols-2 gap-4') do
+          section(class: 'grid grid-cols-[minmax(0,1fr)_minmax(6.5rem,10rem)] gap-3 sm:gap-4 items-end') do
             div(class: 'space-y-2') do
               render RubyUI::FormFieldLabel.new(for: 'wizard_dose_amount') do
                 t('forms.medications.wizard.dose.amount')
@@ -343,19 +364,48 @@ module Components
 
         def render_specific_dates_fields
           div(class: schedule_panel_classes('specific_dates'), data: schedule_panel_data('specific_dates')) do
-            div(class: 'space-y-2') do
-              render RubyUI::FormFieldLabel.new(for: 'specific_dates_list') do
-                t('forms.medications.wizard.dose.specific_dates')
+            div(class: 'space-y-4') do
+              div(class: 'space-y-2') do
+                render RubyUI::FormFieldLabel.new(for: 'specific_date_to_add') do
+                  t('forms.medications.wizard.dose.specific_date_to_add')
+                end
+                div(class: 'grid grid-cols-[minmax(0,1fr)_auto] gap-3 items-end') do
+                  m3_input(
+                    type: :date,
+                    id: 'specific_date_to_add',
+                    value: Time.zone.today.to_s,
+                    data: {
+                      action: 'input->medication-schedule-wizard#update',
+                      'medication-schedule-wizard-target': 'specificDateInput'
+                    }
+                  )
+                  m3_button(
+                    type: :button,
+                    variant: :outlined,
+                    class: 'h-14 rounded-shape-xs px-4',
+                    data: { action: 'click->medication-schedule-wizard#addSpecificDate' }
+                  ) do
+                    t('forms.medications.wizard.dose.add_specific_date')
+                  end
+                end
               end
               m3_input(
-                type: :text,
+                type: :hidden,
                 id: 'specific_dates_list',
-                placeholder: t('forms.medications.wizard.dose.specific_dates_placeholder'),
-                data: {
-                  action: 'input->medication-schedule-wizard#update',
-                  'medication-schedule-wizard-target': 'specificDatesInput'
-                }
+                data: { 'medication-schedule-wizard-target': 'specificDatesInput' }
               )
+              div(
+                class: 'flex flex-wrap gap-2 rounded-2xl border border-outline-variant/60 ' \
+                       'bg-surface-container-lowest p-3',
+                data: {
+                  'medication-schedule-wizard-target': 'specificDatesList',
+                  empty_text: t('forms.medications.wizard.dose.no_specific_dates')
+                }
+              ) do
+                span(class: 'text-sm font-semibold text-on-surface-variant') do
+                  t('forms.medications.wizard.dose.no_specific_dates')
+                end
+              end
             end
           end
         end
@@ -539,11 +589,15 @@ module Components
         end
 
         def default_for_adults_value
-          selected_person&.adult? ? '1' : '0'
+          dependent_person_type?(selected_person) ? '0' : '1'
         end
 
         def default_for_children_value
-          selected_person&.adult? ? '0' : '1'
+          dependent_person_type?(selected_person) ? '1' : '0'
+        end
+
+        def dependent_person_type?(person)
+          %w[minor dependent_adult].include?(person&.person_type.to_s)
         end
       end
     end

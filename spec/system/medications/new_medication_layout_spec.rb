@@ -33,7 +33,7 @@ RSpec.describe 'MedicationNewLayout' do
         expect(page).to have_button('Tapering')
       end
 
-      click_button 'John Doe'
+      select 'John Doe', from: 'Who will take this?'
       fill_in 'Amount', with: 200
       select 'mg', from: 'Unit'
       click_button 'Multiple daily'
@@ -120,7 +120,7 @@ RSpec.describe 'MedicationNewLayout' do
       fill_in 'Name', with: 'Three Times Daily Medicine'
       click_button 'Continue'
 
-      click_button 'John Doe'
+      select 'John Doe', from: 'Who will take this?'
       fill_in 'Amount', with: 5
       select 'ml', from: 'Unit'
       click_button 'Multiple daily'
@@ -145,5 +145,43 @@ RSpec.describe 'MedicationNewLayout' do
     expect(schedule.max_daily_doses).to eq(3)
     expect(schedule.schedule_config).to include('times' => %w[08:00 14:00 20:00])
     expect(schedule.expected_doses_on(Time.zone.today)).to eq(3)
+  end
+
+  it 'allows adding multiple selected dates without typing a comma-separated list' do
+    sign_in(users(:john))
+
+    visit new_medication_path
+
+    within('[data-testid="medication-wizard-form"]') do
+      fill_in 'Name', with: 'Selected Dates Medicine'
+      click_button 'Continue'
+
+      select 'John Doe', from: 'Who will take this?'
+      fill_in 'Amount', with: 1
+      select 'tablet', from: 'Unit'
+      click_button 'Specific dates'
+      fill_in 'Date to add', with: Time.zone.today.to_s
+      click_button 'Add date'
+      fill_in 'Date to add', with: 2.days.from_now.to_date.to_s
+      click_button 'Add date'
+      fill_in 'Start date', with: Time.zone.today.to_s
+      fill_in 'End date', with: 1.month.from_now.to_date.to_s
+      click_button 'Review dose schedule'
+      click_button 'Continue'
+
+      fill_in 'Starting Supply', with: 10
+      fill_in 'Reorder Threshold', with: 2
+      click_button 'Continue'
+      click_button 'Save Medication'
+    end
+
+    schedule = Medication.last.schedules.last
+
+    expect(schedule.schedule_type).to eq('specific_dates')
+    expect(schedule.schedule_config).to include(
+      'dates' => [Time.zone.today.to_s, 2.days.from_now.to_date.to_s]
+    )
+    expect(schedule.applies_on?(Time.zone.today)).to be true
+    expect(schedule.applies_on?(1.day.from_now.to_date)).to be false
   end
 end

@@ -7,7 +7,16 @@ RSpec.describe NhsDmd::ReleaseArchiveImport do
 
   let(:importer) { instance_double(NhsDmd::ReleaseImport) }
   let(:extractor) { instance_double(NhsDmd::ReleaseArchiveExtractor) }
-  let(:result) { NhsDmd::ReleaseImport::Result.new(imported_count: 12, skipped_count: 3) }
+  let(:result) do
+    NhsDmd::ReleaseImport::Result.new(
+      created_count: 10,
+      updated_count: 2,
+      unchanged_count: 0,
+      skipped_expired_count: 1,
+      skipped_missing_name_count: 1,
+      skipped_invalid_count: 1
+    )
+  end
   let(:uploaded_file) { Struct.new(:path).new('/tmp/release.zip') }
 
   it 'extracts the uploaded archive into a temp directory before importing it' do

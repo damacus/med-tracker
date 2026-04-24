@@ -992,6 +992,7 @@ ga:
           title: "Sceideal dáileoige"
           description: "Tóg an chéad sceideal trí roghnú cé a ghlacann é, an dáileog, agus an rithim."
           person_title: "Cé a ghlacfaidh é seo?"
+          person_description: "Roghnaigh an duine nó an cleithiúnaí lena mbaineann an sceideal seo."
           person_types:
             adult: "Duine fásta"
             minor: "Mionaoiseach"
@@ -1025,6 +1026,9 @@ ga:
           dose_time: "Am dáileoige"
           weekly_day: "Lá"
           specific_dates: "Dátaí"
+          specific_date_to_add: "Dáta le cur leis"
+          add_specific_date: "Cuir dáta leis"
+          no_specific_dates: "Níl aon dátaí roghnaithe fós"
           specific_dates_placeholder: "2026-04-24, 2026-04-25"
           max_daily_doses: "Uasmhéid dáileoga laethúla"
           min_hours_between: "Íosuaireanta idir dáileoga"

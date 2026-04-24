@@ -3,6 +3,7 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
   static targets = [
     "personCard",
+    "personSelect",
     "scheduleTypeCard",
     "schedulePanel",
     "amountInput",
@@ -14,7 +15,9 @@ export default class extends Controller {
     "dailyTimeInput",
     "weeklyDayInput",
     "weeklyTimeInput",
+    "specificDateInput",
     "specificDatesInput",
+    "specificDatesList",
     "prnMaxDailyInput",
     "prnHoursApartInput",
     "taperingPlanInput",
@@ -45,14 +48,20 @@ export default class extends Controller {
 
   connect() {
     this.selectedPersonCard = this.personCardTargets.find((card) => card.dataset.personId === this.personIdFieldTarget.value)
+    this.updateSpecificDatesList()
     this.updateHiddenFields()
     this.updateVisiblePanels()
   }
 
   selectPerson(event) {
-    this.selectedPersonCard = event.currentTarget
-    this.personIdFieldTarget.value = event.currentTarget.dataset.personId
-    this.updateCardSelection(this.personCardTargets, event.currentTarget)
+    if (event.currentTarget === this.personSelectTarget) {
+      this.personIdFieldTarget.value = event.currentTarget.value
+    } else {
+      this.selectedPersonCard = event.currentTarget
+      this.personIdFieldTarget.value = event.currentTarget.dataset.personId
+      this.updateCardSelection(this.personCardTargets, event.currentTarget)
+    }
+
     this.clearReview()
     this.updateHiddenFields()
   }
@@ -66,6 +75,30 @@ export default class extends Controller {
   }
 
   update() {
+    this.clearReview()
+    this.updateHiddenFields()
+  }
+
+  addSpecificDate(event) {
+    event.preventDefault()
+
+    const date = this.valueFor("specificDateInput")
+    if (!date) return
+
+    const dates = this.specificDates()
+    if (!dates.includes(date)) dates.push(date)
+
+    this.specificDatesInputTarget.value = dates.join(", ")
+    this.specificDateInputTarget.value = ""
+    this.updateSpecificDatesList()
+    this.clearReview()
+    this.updateHiddenFields()
+  }
+
+  removeSpecificDate(event) {
+    const date = event.currentTarget.dataset.date
+    this.specificDatesInputTarget.value = this.specificDates().filter((selectedDate) => selectedDate !== date).join(", ")
+    this.updateSpecificDatesList()
     this.clearReview()
     this.updateHiddenFields()
   }
@@ -157,7 +190,7 @@ export default class extends Controller {
       config.weekdays = [this.valueFor("weeklyDayInput", "monday")]
       config.times = [this.valueFor("weeklyTimeInput", "08:00")]
     } else if (this.scheduleTypeValue === "specific_dates") {
-      config.dates = this.valueFor("specificDatesInput").split(",").map((date) => date.trim()).filter(Boolean)
+      config.dates = this.specificDates()
     } else if (this.scheduleTypeValue === "prn") {
       config.as_needed = true
     } else if (this.scheduleTypeValue === "tapering") {
@@ -183,7 +216,7 @@ export default class extends Controller {
   reviewSentence() {
     const timing = this.timingDefaults()
     const dose = [this.valueFor("amountInput"), this.valueFor("unitInput")].filter(Boolean).join(" ")
-    const person = this.selectedPersonCard?.dataset.personName || "the selected person"
+    const person = this.selectedPersonName()
     const dates = [this.valueFor("startDateInput"), this.valueFor("endDateInput")].filter(Boolean).join(" to ")
 
     return `${dose}, ${timing.frequency} for ${person}${dates ? ` from ${dates}` : ""}.`
@@ -225,7 +258,48 @@ export default class extends Controller {
   }
 
   selectedPersonType() {
-    return this.selectedPersonCard?.dataset.personType || "adult"
+    return this.selectedPersonDataset().personType || "adult"
+  }
+
+  selectedPersonName() {
+    return this.selectedPersonDataset().personName || "the selected person"
+  }
+
+  selectedPersonDataset() {
+    if (this.hasPersonSelectTarget) {
+      return this.personSelectTarget.selectedOptions[0]?.dataset || {}
+    }
+
+    return this.selectedPersonCard?.dataset || {}
+  }
+
+  specificDates() {
+    return this.valueFor("specificDatesInput").split(",").map((date) => date.trim()).filter(Boolean)
+  }
+
+  updateSpecificDatesList() {
+    if (!this.hasSpecificDatesListTarget) return
+
+    this.specificDatesListTarget.replaceChildren()
+
+    const dates = this.specificDates()
+    if (dates.length === 0) {
+      const empty = document.createElement("span")
+      empty.className = "text-sm font-semibold text-on-surface-variant"
+      empty.textContent = this.specificDatesListTarget.dataset.emptyText || "No dates selected yet"
+      this.specificDatesListTarget.append(empty)
+      return
+    }
+
+    dates.forEach((date) => {
+      const chip = document.createElement("button")
+      chip.type = "button"
+      chip.className = "inline-flex min-h-9 items-center rounded-full border border-outline-variant bg-primary/10 px-3 text-sm font-bold text-primary"
+      chip.dataset.date = date
+      chip.dataset.action = "click->medication-schedule-wizard#removeSpecificDate"
+      chip.textContent = date
+      this.specificDatesListTarget.append(chip)
+    })
   }
 
   valueFor(targetName, fallback = "") {

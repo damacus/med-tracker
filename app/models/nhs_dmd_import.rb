@@ -3,6 +3,19 @@
 require 'fileutils'
 
 class NhsDmdImport < ApplicationRecord
+  PROGRESS_COUNTER_KEYS = %i[
+    total_records
+    processed_records
+    imported_count
+    skipped_count
+    created_count
+    updated_count
+    unchanged_count
+    skipped_expired_count
+    skipped_missing_name_count
+    skipped_invalid_count
+  ].freeze
+
   enum :status, {
     queued: 0,
     extracting: 1,
@@ -91,25 +104,10 @@ class NhsDmdImport < ApplicationRecord
     [log.presence, message].compact.join("\n")
   end
 
-  PROGRESS_COUNTER_KEYS = %i[
-    total_records
-    processed_records
-    imported_count
-    skipped_count
-    created_count
-    updated_count
-    unchanged_count
-    skipped_expired_count
-    skipped_missing_name_count
-    skipped_invalid_count
-  ].freeze
-
   def progress_attributes(progress)
     normalized = progress.symbolize_keys
 
-    counter_attrs = PROGRESS_COUNTER_KEYS.each_with_object({}) do |key, acc|
-      acc[key] = value_or_current(normalized, key)
-    end
+    counter_attrs = PROGRESS_COUNTER_KEYS.index_with { |key| value_or_current(normalized, key) }
 
     {
       status: normalized[:status].presence,

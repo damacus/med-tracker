@@ -30,31 +30,34 @@ RSpec.describe NhsDmdImportJob do
 
   def complete_import_via(service)
     allow(service).to receive(:import) do |_path, progress_callback:|
-      progress_callback.call(progress_update('Extracting release archive', status: :extracting))
-      progress_callback.call(progress_update('Counted 270 AMPP records and 930 GTIN records', status: :counting))
-      progress_callback.call(progress_update('Starting AMPP name import', processed_records: 0))
-      progress_callback.call(progress_update('Starting GTIN import', processed_records: 270))
-      progress_callback.call(
-        progress_update('Processed 880 import records', processed_records: 880, imported_count: 480, skipped_count: 20)
-      )
-      NhsDmd::ReleaseImport::Result.new(
-        created_count: 700,
-        updated_count: 200,
-        unchanged_count: 50,
-        skipped_expired_count: 10,
-        skipped_missing_name_count: 15,
-        skipped_invalid_count: 5
-      )
+      completed_progress_updates.each { |progress| progress_callback.call(progress) }
+      completed_import_result
     end
   end
 
-  it 'marks the import as completed and captures progress updates' do
-    complete_import_via(service)
+  def completed_progress_updates
+    [
+      progress_update('Extracting release archive', status: :extracting),
+      progress_update('Counted 270 AMPP records and 930 GTIN records', status: :counting),
+      progress_update('Starting AMPP name import', processed_records: 0),
+      progress_update('Starting GTIN import', processed_records: 270),
+      progress_update('Processed 880 import records', processed_records: 880, imported_count: 480, skipped_count: 20)
+    ]
+  end
 
-    described_class.perform_now(import_run.id)
+  def completed_import_result
+    NhsDmd::ReleaseImport::Result.new(
+      created_count: 700,
+      updated_count: 200,
+      unchanged_count: 50,
+      skipped_expired_count: 10,
+      skipped_missing_name_count: 15,
+      skipped_invalid_count: 5
+    )
+  end
 
-    import_run.reload
-    expect(import_run).to have_attributes(
+  def completed_import_attributes
+    {
       status: 'completed',
       total_records: 1200,
       processed_records: 1200,
@@ -66,10 +69,19 @@ RSpec.describe NhsDmdImportJob do
       skipped_expired_count: 10,
       skipped_missing_name_count: 15,
       skipped_invalid_count: 5
-    )
+    }
+  end
+
+  it 'marks the import as completed and captures progress updates' do
+    complete_import_via(service)
+
+    described_class.perform_now(import_run.id)
+
+    import_run.reload
+    expect(import_run).to have_attributes(completed_import_attributes)
     expect(import_run.log).to include('Starting AMPP name import')
-    expect(import_run.log).to include('Starting GTIN import')
-    expect(import_run.log).to include('Processed 880 import records')
+      .and include('Starting GTIN import')
+      .and include('Processed 880 import records')
   end
 
   it 'marks the import as failed when the archive import errors' do

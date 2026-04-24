@@ -1025,6 +1025,7 @@ es:
           title: "Horario de dosis"
           description: "Crea el primer horario eligiendo quién lo toma, la dosis y el ritmo."
           person_title: "¿Quién tomará esto?"
+          person_description: "Selecciona la persona o dependiente para este horario."
           person_types:
             adult: "Adulto"
             minor: "Menor"
@@ -1058,6 +1059,9 @@ es:
           dose_time: "Hora de la dosis"
           weekly_day: "Día"
           specific_dates: "Fechas"
+          specific_date_to_add: "Fecha para añadir"
+          add_specific_date: "Añadir fecha"
+          no_specific_dates: "Aún no hay fechas seleccionadas"
           specific_dates_placeholder: "2026-04-24, 2026-04-25"
           max_daily_doses: "Dosis máximas diarias"
           min_hours_between: "Horas mínimas entre dosis"
