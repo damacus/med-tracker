@@ -150,7 +150,7 @@ export default class extends Controller {
     const config = { schedule_type: this.scheduleTypeValue, frequency: timing.frequency }
 
     if (this.scheduleTypeValue === "multiple_daily") {
-      config.times = [this.valueFor("firstTimeInput", "08:00"), this.valueFor("secondTimeInput", "20:00")].filter(Boolean)
+      config.times = this.multipleDailyTimes()
     } else if (this.scheduleTypeValue === "daily") {
       config.times = [this.valueFor("dailyTimeInput", "08:00")]
     } else if (this.scheduleTypeValue === "weekly") {
@@ -195,6 +195,33 @@ export default class extends Controller {
     if (count === 2) return "Twice daily"
     if (count === 3) return "Three times daily"
     return `${count} times daily`
+  }
+
+  multipleDailyTimes() {
+    const count = Math.max(Number.parseInt(this.valueFor("dosesPerDayInput", "2"), 10) || 2, 1)
+    const firstTime = this.valueFor("firstTimeInput", "08:00")
+    const secondTime = this.valueFor("secondTimeInput", "20:00")
+
+    if (count === 1) return [firstTime].filter(Boolean)
+    if (count === 2) return [firstTime, secondTime].filter(Boolean)
+
+    const hoursApart = Number.parseFloat(this.valueFor("hoursApartInput", "12"))
+    if (!Number.isFinite(hoursApart) || hoursApart <= 0) return [firstTime, secondTime].filter(Boolean)
+
+    return Array.from({ length: count }, (_value, index) => this.shiftTime(firstTime, hoursApart * index)).filter(Boolean)
+  }
+
+  shiftTime(time, hours) {
+    const match = /^(\d{1,2}):(\d{2})$/.exec(time)
+    if (!match) return ""
+
+    const startMinutes = Number.parseInt(match[1], 10) * 60 + Number.parseInt(match[2], 10)
+    const shiftedMinutes = (startMinutes + Math.round(hours * 60)) % (24 * 60)
+    const normalizedMinutes = shiftedMinutes < 0 ? shiftedMinutes + 24 * 60 : shiftedMinutes
+    const hour = Math.floor(normalizedMinutes / 60).toString().padStart(2, "0")
+    const minute = (normalizedMinutes % 60).toString().padStart(2, "0")
+
+    return `${hour}:${minute}`
   }
 
   selectedPersonType() {

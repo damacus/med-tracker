@@ -37,11 +37,19 @@ class MedicationOnboardingCreateService
   end
 
   def primary_dosage_option
-    medication.dosage_records.find(&:default_for_adults?) || medication.dosage_records.first
+    default_dosage_for_schedule_person || medication.dosage_records.first
+  end
+
+  def default_dosage_for_schedule_person
+    if schedule_person.adult?
+      medication.dosage_records.find(&:default_for_adults?)
+    else
+      medication.dosage_records.find(&:default_for_children?)
+    end
   end
 
   def schedule_person
-    people_scope.find(schedule_attributes.fetch(:person_id))
+    @schedule_person ||= people_scope.find(schedule_attributes.fetch(:person_id))
   end
 
   def schedule_attributes_for(dosage)

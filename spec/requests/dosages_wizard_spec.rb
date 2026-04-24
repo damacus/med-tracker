@@ -96,6 +96,71 @@ RSpec.describe 'Medication wizard dose option follow-up' do
     )
   end
 
+  it 'creates the initial child schedule from the edited primary dose when suggested adult doses are present' do
+    sign_in(users(:admin))
+
+    post medications_path,
+         params: {
+           wizard: 'true',
+           onboarding_schedule: {
+             person_id: people(:child_patient).id,
+             schedule_type: 'daily',
+             frequency: 'Once daily',
+             start_date: Time.zone.today.to_s,
+             end_date: 1.month.from_now.to_date.to_s,
+             max_daily_doses: '1',
+             min_hours_between_doses: '24',
+             dose_cycle: 'daily',
+             schedule_config: JSON.generate(
+               schedule_type: 'daily',
+               frequency: 'Once daily',
+               times: %w[08:00]
+             )
+           },
+           medication: {
+             name: 'Child Wizard Medication',
+             category: 'Vitamin',
+             current_supply: '10',
+             reorder_threshold: '1',
+             location_id: locations(:home).id,
+             dosage_records_attributes: {
+               '0' => {
+                 amount: '5',
+                 unit: 'ml',
+                 frequency: 'Once daily',
+                 default_for_adults: '0',
+                 default_for_children: '1',
+                 default_max_daily_doses: '1',
+                 default_min_hours_between_doses: '24',
+                 default_dose_cycle: 'daily'
+               },
+               '1' => {
+                 amount: '500',
+                 unit: 'mg',
+                 frequency: 'Once daily',
+                 default_for_adults: '1',
+                 default_for_children: '0',
+                 default_max_daily_doses: '1',
+                 default_min_hours_between_doses: '24',
+                 default_dose_cycle: 'daily'
+               }
+             }
+           }
+         },
+         headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+    medication = Medication.order(:id).last
+    child_dosage = medication.dosage_records.find_by!(amount: BigDecimal('5'), unit: 'ml')
+    schedule = Schedule.order(:id).last
+
+    expect(schedule).to have_attributes(
+      person: people(:child_patient),
+      source_dosage_option: child_dosage,
+      dose_amount: BigDecimal('5'),
+      dose_unit: 'ml'
+    )
+  end
+
   it 'rolls back medication creation when the onboarding schedule person is unauthorized' do
     sign_in(users(:jane))
 

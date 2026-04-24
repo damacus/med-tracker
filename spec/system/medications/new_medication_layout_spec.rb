@@ -110,4 +110,40 @@ RSpec.describe 'MedicationNewLayout' do
 
     expect(checked_location.value).to eq(locations(:home).id.to_s)
   end
+
+  it 'stores one configured time for each multiple-daily dose' do
+    sign_in(users(:john))
+
+    visit new_medication_path
+
+    within('[data-testid="medication-wizard-form"]') do
+      fill_in 'Name', with: 'Three Times Daily Medicine'
+      click_button 'Continue'
+
+      click_button 'John Doe'
+      fill_in 'Amount', with: 5
+      select 'ml', from: 'Unit'
+      click_button 'Multiple daily'
+      fill_in 'Doses per day', with: 3
+      fill_in 'Hours apart', with: 6
+      fill_in 'First dose', with: '08:00'
+      fill_in 'Second dose', with: '14:00'
+      fill_in 'Start date', with: Time.zone.today.to_s
+      fill_in 'End date', with: 1.month.from_now.to_date.to_s
+      click_button 'Review dose schedule'
+      click_button 'Continue'
+
+      fill_in 'Starting Supply', with: 40
+      fill_in 'Reorder Threshold', with: 10
+      click_button 'Continue'
+      click_button 'Save Medication'
+    end
+
+    schedule = Medication.last.schedules.last
+
+    expect(schedule.frequency).to eq('Three times daily')
+    expect(schedule.max_daily_doses).to eq(3)
+    expect(schedule.schedule_config).to include('times' => %w[08:00 14:00 20:00])
+    expect(schedule.expected_doses_on(Time.zone.today)).to eq(3)
+  end
 end
