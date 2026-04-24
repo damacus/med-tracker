@@ -24,6 +24,8 @@ FactoryBot.define do
     max_daily_doses { 4 }
     min_hours_between_doses { 4 }
     dose_cycle { :daily }
+    schedule_type { :daily }
+    schedule_config { {} }
 
     trait :weekly do
       dose_cycle { :weekly }

@@ -69,7 +69,7 @@ module Reports
     end
 
     def expected_doses_for(date)
-      schedules_for(date).sum { |schedule| schedule.max_daily_doses || 1 }
+      schedules_for(date).sum { |schedule| schedule.expected_doses_on(date) }
     end
 
     def schedules_for(date)

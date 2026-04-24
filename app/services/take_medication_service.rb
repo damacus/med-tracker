@@ -24,7 +24,7 @@ class TakeMedicationService
     resolver = MedicationStockSourceResolver.new(user: user, source: source)
     return failure(resolver.blocked_reason) if resolver.blocked_reason
 
-    amount = normalize_amount(amount_override.presence || source.default_dose_amount)
+    amount = normalize_amount(amount_override.presence || default_dose_amount_for(source, taken_at))
     return failure(:invalid_amount) if invalid_amount?(amount)
 
     error, medication = resolve_stock_source(resolver, taken_from_medication_id)
@@ -71,6 +71,18 @@ class TakeMedicationService
     BigDecimal(raw.to_s)
   rescue ArgumentError
     nil
+  end
+
+  def default_dose_amount_for(source, taken_at)
+    return source.effective_dose_amount(effective_date(taken_at)) if source.respond_to?(:effective_dose_amount)
+
+    source.default_dose_amount
+  end
+
+  def effective_date(taken_at)
+    return taken_at.to_date if taken_at.respond_to?(:to_date)
+
+    Time.zone.today
   end
 
   def invalid_amount?(amount)

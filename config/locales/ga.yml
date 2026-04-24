@@ -980,6 +980,65 @@ ga:
       standard_dosage_placeholder: "e.g., 500"
       current_supply_placeholder: "e.g., 30"
       reorder_threshold_placeholder: "e.g., 5"
+      wizard:
+        progress_label: "Dul chun cinn socraithe leighis"
+        continue: "Lean ar aghaidh"
+        steps:
+          details: "Sonraí"
+          dose: "Dáileog"
+          supply: "Soláthar"
+          warnings: "Rabhaidh"
+        dose:
+          title: "Sceideal dáileoige"
+          description: "Tóg an chéad sceideal trí roghnú cé a ghlacann é, an dáileog, agus an rithim."
+          person_title: "Cé a ghlacfaidh é seo?"
+          person_types:
+            adult: "Duine fásta"
+            minor: "Mionaoiseach"
+            dependent_adult: "Duine fásta spleách"
+          amount: "Méid"
+          unit: "Aonad"
+          schedule_type_title: "Cé chomh minic a thógtar é?"
+          schedule_types:
+            multiple_daily:
+              title: "Roinnt uaireanta sa lá"
+              description: "Roinnt dáileoga pleanáilte gach lá"
+            daily:
+              title: "Laethúil"
+              description: "Dáileog amháin ag an am céanna"
+            weekly:
+              title: "Seachtainiúil"
+              description: "Dáileog sheachtainiúil athfhillteach"
+            specific_dates:
+              title: "Dátaí sonracha"
+              description: "Ar dhátaí roghnaithe amháin"
+            prn:
+              title: "De réir mar is gá"
+              description: "PRN le teorainneacha sábháilteachta"
+            tapering:
+              title: "Laghdú de réir a chéile"
+              description: "Plean dáileoige atá ag athrú"
+          doses_per_day: "Dáileoga sa lá"
+          hours_apart: "Uaireanta eatarthu"
+          first_dose: "An chéad dáileog"
+          second_dose: "An dara dáileog"
+          dose_time: "Am dáileoige"
+          weekly_day: "Lá"
+          specific_dates: "Dátaí"
+          specific_dates_placeholder: "2026-04-24, 2026-04-25"
+          max_daily_doses: "Uasmhéid dáileoga laethúla"
+          min_hours_between: "Íosuaireanta idir dáileoga"
+          tapering_plan: "Plean laghdaithe"
+          tapering_placeholder: "Déan cur síos ar athruithe dáileoige le himeacht ama"
+          start_date: "Dáta tosaithe"
+          end_date: "Dáta deiridh"
+          review_title: "Athbhreithniú i ngnáthchaint"
+          review_placeholder: "Athbhreithnigh an sceideal dáileoige sula leanann tú ar aghaidh."
+          review_button: "Athbhreithnigh sceideal dáileoige"
+          review_required: "Athbhreithnigh an sceideal dáileoige sula leanann tú ar aghaidh."
+        supply:
+          title: "Socrú soláthair"
+          description: "Rianaigh cé mhéad atá sa phaca agus cathain le hathordú."
       validation_errors:
         one: "Chuir 1 earráid cosc ar an leigheas a shábháil:"
         other: "Chuir %{count} earráid cosc ar an leigheas a shábháil:"

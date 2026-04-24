@@ -5,14 +5,15 @@ module Components
     module Wizard
       class StepIndicator < Components::Base
         STEPS = [
-          { label: 'Details', icon: '1' },
-          { label: 'Dosage', icon: '2' },
-          { label: 'Warnings', icon: '3' }
+          { label_key: 'details', icon: '1' },
+          { label_key: 'dose', icon: '2' },
+          { label_key: 'supply', icon: '3' },
+          { label_key: 'warnings', icon: '4' }
         ].freeze
 
         def view_template
-          nav(class: 'mb-10', aria_label: 'Wizard progress') do
-            ol(class: 'flex items-center justify-between max-w-md mx-auto') do
+          nav(class: 'mb-10', aria_label: t('forms.medications.wizard.progress_label')) do
+            ol(class: 'flex items-center justify-between max-w-xl mx-auto') do
               STEPS.each_with_index do |step, index|
                 render_step_indicator(step, index)
               end
@@ -57,7 +58,7 @@ module Components
           color = index.zero? ? 'text-primary' : 'text-on-surface-variant'
 
           m3_text(variant: :label_small, class: "#{base} #{color}", data: { indicator_label: true }) do
-            step[:label]
+            t("forms.medications.wizard.steps.#{step.fetch(:label_key)}")
           end
         end
       end

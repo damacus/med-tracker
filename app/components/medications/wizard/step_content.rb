@@ -6,11 +6,12 @@ module Components
       class StepContent < Components::Base
         include Phlex::Rails::Helpers::FormWith
 
-        attr_reader :medication, :locations, :variant
+        attr_reader :medication, :locations, :people, :variant
 
-        def initialize(medication:, locations:, variant: 'fullpage')
+        def initialize(medication:, locations:, people:, variant: 'fullpage')
           @medication = medication
           @locations = locations
+          @people = people
           @variant = variant
           super()
         end
@@ -83,7 +84,11 @@ module Components
           end
 
           div(class: 'hidden', data: { wizard_target: 'step' }) do
-            render StepDosageSupply.new(medication: medication)
+            render StepDoseSchedule.new(medication: medication, people: people)
+          end
+
+          div(class: 'hidden', data: { wizard_target: 'step' }) do
+            render StepSupply.new(medication: medication)
           end
 
           div(class: 'hidden', data: { wizard_target: 'step' }) do
@@ -104,7 +109,7 @@ module Components
                 }
               ) do
                 render Icons::ChevronLeft.new(size: 16, class: 'mr-1')
-                plain 'Back'
+                plain t('forms.medications.back')
               end
 
               if overlay_variant?
@@ -129,7 +134,7 @@ module Components
                   action: 'click->wizard#next'
                 }
               ) do
-                plain 'Continue'
+                plain t('forms.medications.wizard.continue')
               end
 
               m3_button(

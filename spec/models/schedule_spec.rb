@@ -238,6 +238,120 @@ RSpec.describe Schedule do
     end
   end
 
+  describe 'schedule configuration' do
+    let(:monday) { Date.new(2026, 4, 20) }
+    let(:taper_steps) do
+      [
+        {
+          'start_date' => '2026-04-20',
+          'end_date' => '2026-04-22',
+          'amount' => '10',
+          'unit' => 'mg',
+          'max_daily_doses' => 3,
+          'min_hours_between_doses' => 6
+        },
+        {
+          'start_date' => '2026-04-23',
+          'end_date' => '2026-04-26',
+          'amount' => '5',
+          'unit' => 'mg',
+          'max_daily_doses' => 1,
+          'min_hours_between_doses' => 24
+        }
+      ]
+    end
+    let(:tapering_schedule) do
+      build(
+        :schedule,
+        schedule_type: :tapering,
+        schedule_config: { 'taper_steps' => taper_steps },
+        dose_amount: 20,
+        dose_unit: 'mg',
+        start_date: monday,
+        end_date: monday + 1.week
+      )
+    end
+
+    it 'defaults to daily schedule behavior for legacy-compatible rows' do
+      schedule = build(:schedule, start_date: monday, end_date: monday + 1.week, max_daily_doses: 4)
+
+      expect(schedule.schedule_type).to eq('daily')
+      expect(schedule.schedule_config).to eq({})
+      expect(schedule.applies_on?(monday + 1.day)).to be true
+      expect(schedule.expected_doses_on(monday + 1.day)).to eq(4)
+    end
+
+    it 'supports multiple daily doses from configured times' do
+      schedule = build(
+        :schedule,
+        schedule_type: :multiple_daily,
+        schedule_config: { 'times' => %w[08:00 14:00 20:00] },
+        start_date: monday,
+        end_date: monday + 1.week
+      )
+
+      expect(schedule.applies_on?(monday)).to be true
+      expect(schedule.expected_doses_on(monday)).to eq(3)
+    end
+
+    it 'supports weekly schedules using weekday names and integers' do
+      schedule = build(
+        :schedule,
+        schedule_type: :weekly,
+        schedule_config: { 'weekdays' => ['Monday', 3] },
+        start_date: monday,
+        end_date: monday + 1.week,
+        max_daily_doses: 1
+      )
+
+      expect(schedule.applies_on?(monday)).to be true
+      expect(schedule.applies_on?(monday + 2.days)).to be true
+      expect(schedule.applies_on?(monday + 1.day)).to be false
+      expect(schedule.expected_doses_on(monday + 2.days)).to eq(1)
+    end
+
+    it 'supports schedules on specific ISO dates' do
+      schedule = build(
+        :schedule,
+        schedule_type: :specific_dates,
+        schedule_config: { 'dates' => %w[2026-04-21 2026-04-24] },
+        start_date: monday,
+        end_date: monday + 1.week
+      )
+
+      expect(schedule.applies_on?(Date.new(2026, 4, 21))).to be true
+      expect(schedule.applies_on?(Date.new(2026, 4, 22))).to be false
+    end
+
+    it 'treats PRN schedules as active but not expected' do
+      schedule = build(:schedule, schedule_type: :prn, start_date: monday, end_date: monday + 1.week)
+
+      expect(schedule.applies_on?(monday + 1.day)).to be true
+      expect(schedule.expected_doses_on(monday + 1.day)).to eq(0)
+    end
+
+    it 'supports every-other-day schedules from the start date' do
+      schedule = build(:schedule, schedule_type: :every_other_day, start_date: monday, end_date: monday + 1.week)
+
+      expect(schedule.applies_on?(monday)).to be true
+      expect(schedule.applies_on?(monday + 1.day)).to be false
+      expect(schedule.applies_on?(monday + 2.days)).to be true
+    end
+
+    it 'uses the current taper step for effective dose and restrictions' do
+      date = Date.new(2026, 4, 24)
+
+      aggregate_failures do
+        expect(tapering_schedule.applies_on?(date)).to be true
+        expect(tapering_schedule.effective_dose_amount(date)).to eq(BigDecimal('5'))
+        expect(tapering_schedule.effective_dose_unit(date)).to eq('mg')
+        expect(tapering_schedule.effective_max_daily_doses(date)).to eq(1)
+        expect(tapering_schedule.effective_min_hours_between_doses(date)).to eq(24)
+        expect(tapering_schedule.expected_doses_on(date)).to eq(1)
+      end
+    end
+  end
+
   describe '#frequency vs #dose_cycle' do
     let(:medication) { medications(:paracetamol) }
     let(:dosage) do

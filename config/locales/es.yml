@@ -1013,6 +1013,65 @@ es:
       standard_dosage_placeholder: "e.g., 500"
       current_supply_placeholder: "e.g., 30"
       reorder_threshold_placeholder: "e.g., 5"
+      wizard:
+        progress_label: "Progreso de configuración del medicamento"
+        continue: "Continuar"
+        steps:
+          details: "Detalles"
+          dose: "Dosis"
+          supply: "Suministro"
+          warnings: "Advertencias"
+        dose:
+          title: "Horario de dosis"
+          description: "Crea el primer horario eligiendo quién lo toma, la dosis y el ritmo."
+          person_title: "¿Quién tomará esto?"
+          person_types:
+            adult: "Adulto"
+            minor: "Menor"
+            dependent_adult: "Adulto dependiente"
+          amount: "Cantidad"
+          unit: "Unidad"
+          schedule_type_title: "¿Con qué frecuencia se toma?"
+          schedule_types:
+            multiple_daily:
+              title: "Varias al día"
+              description: "Varias dosis planificadas cada día"
+            daily:
+              title: "Diaria"
+              description: "Una dosis a la misma hora"
+            weekly:
+              title: "Semanal"
+              description: "Una dosis semanal repetida"
+            specific_dates:
+              title: "Fechas concretas"
+              description: "Solo en fechas seleccionadas"
+            prn:
+              title: "Según necesidad"
+              description: "PRN con límites de seguridad"
+            tapering:
+              title: "Reducción gradual"
+              description: "Un plan de dosis cambiante"
+          doses_per_day: "Dosis por día"
+          hours_apart: "Horas de separación"
+          first_dose: "Primera dosis"
+          second_dose: "Segunda dosis"
+          dose_time: "Hora de la dosis"
+          weekly_day: "Día"
+          specific_dates: "Fechas"
+          specific_dates_placeholder: "2026-04-24, 2026-04-25"
+          max_daily_doses: "Dosis máximas diarias"
+          min_hours_between: "Horas mínimas entre dosis"
+          tapering_plan: "Plan de reducción gradual"
+          tapering_placeholder: "Describe los cambios de dosis con el tiempo"
+          start_date: "Fecha de inicio"
+          end_date: "Fecha de fin"
+          review_title: "Revisión en lenguaje claro"
+          review_placeholder: "Revisa el horario de dosis antes de continuar."
+          review_button: "Revisar horario de dosis"
+          review_required: "Revisa el horario de dosis antes de continuar."
+        supply:
+          title: "Configuración de suministro"
+          description: "Controla cuánto hay en el envase y cuándo volver a pedir."
       validation_errors:
         one: "1 error impidió que este medicamento se guardara:"
         other: "%{count} errores impidieron que este medicamento se guardara:"

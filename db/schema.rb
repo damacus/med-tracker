@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_23_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_24_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -383,12 +383,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_23_120000) do
     t.integer "min_hours_between_doses"
     t.text "notes"
     t.bigint "person_id", null: false
+    t.jsonb "schedule_config", default: {}, null: false
+    t.integer "schedule_type", default: 0, null: false
     t.bigint "source_dosage_option_id"
     t.date "start_date"
     t.datetime "updated_at", null: false
     t.index ["active"], name: "index_schedules_on_active"
     t.index ["medication_id"], name: "index_schedules_on_medication_id"
     t.index ["person_id"], name: "index_schedules_on_person_id"
+    t.index ["schedule_config"], name: "index_schedules_on_schedule_config", using: :gin
+    t.index ["schedule_type"], name: "index_schedules_on_schedule_type"
     t.index ["source_dosage_option_id"], name: "index_schedules_on_source_dosage_option_id"
   end
 
@@ -446,12 +450,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_23_120000) do
   add_foreign_key "native_device_tokens", "accounts"
   add_foreign_key "notification_preferences", "people", deferrable: :deferred
   add_foreign_key "people", "accounts", deferrable: :deferred
+  add_foreign_key "person_medications", "dosages", column: "source_dosage_option_id"
   add_foreign_key "person_medications", "medications", deferrable: :deferred
   add_foreign_key "person_medications", "people", deferrable: :deferred
-  add_foreign_key "person_medications", "dosages", column: "source_dosage_option_id"
   add_foreign_key "push_subscriptions", "accounts", deferrable: :deferred
+  add_foreign_key "schedules", "dosages", column: "source_dosage_option_id"
   add_foreign_key "schedules", "medications", deferrable: :deferred
   add_foreign_key "schedules", "people", deferrable: :deferred
-  add_foreign_key "schedules", "dosages", column: "source_dosage_option_id"
   add_foreign_key "users", "people", deferrable: :deferred
 end

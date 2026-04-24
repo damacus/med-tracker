@@ -11,10 +11,15 @@ RSpec.describe 'Medication creation scope' do
   before { sign_in(parent_user) }
 
   describe 'GET /medications/new' do
-    it 'renders nested primary dose controls alongside stock setup in the wizard' do
+    it 'renders the guided dose schedule step separately from stock setup' do
       get new_medication_path
 
       expect(response).to have_http_status(:ok)
+      expect(response.body).to include('Details')
+      expect(response.body).to include('Dose')
+      expect(response.body).to include('Supply')
+      expect(response.body).to include('Warnings')
+      expect(response.body).to include('data-controller="medication-schedule-wizard"')
       expect(response.body).to include('name="medication[dosage_records_attributes][0][amount]"')
       expect(response.body).to include('name="medication[dosage_records_attributes][0][unit]"')
       expect(response.body).to include('name="medication[dosage_records_attributes][0][frequency]"')
@@ -25,8 +30,24 @@ RSpec.describe 'Medication creation scope' do
       expect(response.body).to include('name="medication[dosage_records_attributes][0][default_dose_cycle]"')
       expect(response.body).to include('name="medication[dosage_records_attributes][0][default_for_adults]"')
       expect(response.body).to include('name="medication[dosage_records_attributes][0][default_for_children]"')
+      expect(response.body).to include('name="onboarding_schedule[person_id]"')
+      expect(response.body).to include('name="onboarding_schedule[schedule_type]"')
+      expect(response.body).to include('name="onboarding_schedule[frequency]"')
+      expect(response.body).to include('name="onboarding_schedule[start_date]"')
+      expect(response.body).to include('name="onboarding_schedule[end_date]"')
+      expect(response.body).to include('name="onboarding_schedule[max_daily_doses]"')
+      expect(response.body).to include('name="onboarding_schedule[min_hours_between_doses]"')
+      expect(response.body).to include('name="onboarding_schedule[dose_cycle]"')
+      expect(response.body).to include('name="onboarding_schedule[schedule_config]"')
+      expect(response.body).to include('Multiple daily')
+      expect(response.body).to include('Specific dates')
+      expect(response.body).to include('As needed')
+      expect(response.body).to include('Tapering')
+      expect(response.body).to include('Review dose schedule')
       expect(response.body).to include('name="medication[current_supply]"')
       expect(response.body).to include('name="medication[reorder_threshold]"')
+      expect(response.body).to include('Supply setup')
+      expect(response.body).not_to include('Dosage &amp; Supply')
     end
 
     it 'shows only authorized locations in the form' do
@@ -136,9 +157,7 @@ RSpec.describe 'Medication creation scope' do
       selected_category = html.at_css('input[name="medication[category]"][value="Supplement"]')
       description = html.at_css('textarea[name="medication[description]"]')
       amount = html.at_css("input[name='medication[dosage_records_attributes][0][amount]']")
-      unit = html.at_css(
-        "select[name='medication[dosage_records_attributes][0][unit]'] option[value='tablet'][selected]"
-      )
+      unit = html.at_css("input[name='medication[dosage_records_attributes][0][unit]'][value='tablet']")
 
       expect(response).to have_http_status(:ok)
       expect(response.body).to include('value="Wellman Original"')

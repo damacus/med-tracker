@@ -21,25 +21,36 @@ RSpec.describe 'MedicationNewLayout' do
       fill_in 'Description', with: 'Pain relief'
       click_button 'Continue'
 
-      aggregate_failures 'form fields' do
+      aggregate_failures 'dose schedule fields' do
+        expect(page).to have_content('Who will take this?')
         expect(page).to have_field('Amount')
         expect(page).to have_select('Unit', with_options: %w[mg sachet])
-        expect(page).to have_field('Frequency label')
-        expect(page).to have_field('Max doses / cycle')
-        expect(page).to have_field('Min hours apart')
-        expect(page).to have_select('Dose cycle', with_options: %w[Daily Weekly Monthly])
-        expect(page).to have_checked_field('Default for adults')
-        expect(page).to have_unchecked_field('Default for children / dependents')
-        expect(page).to have_field('Starting Supply')
-        expect(page).to have_field('Reorder Threshold')
+        expect(page).to have_button('Multiple daily')
+        expect(page).to have_button('Daily')
+        expect(page).to have_button('Weekly')
+        expect(page).to have_button('Specific dates')
+        expect(page).to have_button('As needed')
+        expect(page).to have_button('Tapering')
       end
 
       fill_in 'Amount', with: 200
       select 'mg', from: 'Unit'
-      fill_in 'Frequency label', with: 'Twice daily'
-      fill_in 'Max doses / cycle', with: 2
-      fill_in 'Min hours apart', with: 12
-      select 'Daily', from: 'Dose cycle'
+      click_button 'Multiple daily'
+      fill_in 'Doses per day', with: 2
+      fill_in 'Hours apart', with: 12
+      fill_in 'First dose', with: '08:00'
+      fill_in 'Second dose', with: '20:00'
+      fill_in 'Start date', with: Time.zone.today.to_s
+      fill_in 'End date', with: 1.month.from_now.to_date.to_s
+      click_button 'Review dose schedule'
+      expect(page).to have_content('200 mg, Twice daily')
+      expect(page).to have_field('medication_schedule_review_complete', with: 'reviewed', visible: :all)
+      click_button 'Continue'
+
+      aggregate_failures 'supply fields' do
+        expect(page).to have_field('Starting Supply')
+        expect(page).to have_field('Reorder Threshold')
+      end
       fill_in 'Starting Supply', with: 40
       fill_in 'Reorder Threshold', with: 10
       click_button 'Continue'

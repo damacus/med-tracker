@@ -1043,6 +1043,65 @@ cy:
       standard_dosage_placeholder: "e.g., 500"
       current_supply_placeholder: "e.g., 30"
       reorder_threshold_placeholder: "e.g., 5"
+      wizard:
+        progress_label: "Cynnydd gosod meddyginiaeth"
+        continue: "Parhau"
+        steps:
+          details: "Manylion"
+          dose: "Dos"
+          supply: "Cyflenwad"
+          warnings: "Rhybuddion"
+        dose:
+          title: "Amserlen dos"
+          description: "Adeiladwch yr amserlen gyntaf drwy ddewis pwy sy'n ei gymryd, y dos, a'r rhythm."
+          person_title: "Pwy fydd yn cymryd hwn?"
+          person_types:
+            adult: "Oedolyn"
+            minor: "Plentyn"
+            dependent_adult: "Oedolyn dibynnol"
+          amount: "Swm"
+          unit: "Uned"
+          schedule_type_title: "Pa mor aml caiff ei gymryd?"
+          schedule_types:
+            multiple_daily:
+              title: "Sawl gwaith y dydd"
+              description: "Sawl dos wedi'u cynllunio bob dydd"
+            daily:
+              title: "Bob dydd"
+              description: "Un dos ar yr un amser"
+            weekly:
+              title: "Wythnosol"
+              description: "Dos wythnosol ailadroddus"
+            specific_dates:
+              title: "Dyddiadau penodol"
+              description: "Dim ond ar ddyddiadau dethol"
+            prn:
+              title: "Yn ôl yr angen"
+              description: "PRN gyda therfynau diogelwch"
+            tapering:
+              title: "Lleihau'n raddol"
+              description: "Cynllun dos sy'n newid"
+          doses_per_day: "Dosau y dydd"
+          hours_apart: "Oriau ar wahân"
+          first_dose: "Dos cyntaf"
+          second_dose: "Ail ddos"
+          dose_time: "Amser dos"
+          weekly_day: "Diwrnod"
+          specific_dates: "Dyddiadau"
+          specific_dates_placeholder: "2026-04-24, 2026-04-25"
+          max_daily_doses: "Uchafswm dosau dyddiol"
+          min_hours_between: "Isafswm oriau rhwng dosau"
+          tapering_plan: "Cynllun lleihau"
+          tapering_placeholder: "Disgrifiwch newidiadau dos dros amser"
+          start_date: "Dyddiad dechrau"
+          end_date: "Dyddiad gorffen"
+          review_title: "Adolygiad mewn iaith glir"
+          review_placeholder: "Adolygwch yr amserlen dos cyn parhau."
+          review_button: "Adolygu amserlen dos"
+          review_required: "Adolygwch yr amserlen dos cyn parhau."
+        supply:
+          title: "Gosod cyflenwad"
+          description: "Traciwch faint sydd gennych yn y pecyn a phryd i ail-archebu."
       validation_errors:
         one: "1 gwall wedi atal y meddyginiaeth hon rhag cael ei chadw:"
         other: "%{count} wall wedi atal y meddyginiaeth hon rhag cael ei chadw:"

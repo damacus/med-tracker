@@ -59,7 +59,8 @@ class MedicationsController < ApplicationController
 
     render wizard_wrapper_class.new(
       medication: @medication,
-      locations: available_locations
+      locations: available_locations,
+      people: available_people
     )
   end
 
@@ -80,12 +81,15 @@ class MedicationsController < ApplicationController
     @medication.location_id ||= primary_location&.id
     authorize @medication
 
-    if @medication.save
+    result = create_medication_from_request
+
+    if result.success
       create_success
     elsif params[:wizard] == 'true'
       render wizard_wrapper_class.new(
         medication: @medication,
-        locations: available_locations
+        locations: available_locations,
+        people: available_people
       ), status: :unprocessable_content
     else
       render Components::Medications::FormView.new(
@@ -188,5 +192,25 @@ class MedicationsController < ApplicationController
 
   def set_medication
     @medication = policy_scope(Medication).find(params[:id])
+  end
+
+  def create_medication_from_request
+    unless onboarding_schedule?
+      return MedicationOnboardingCreateService::Result.new(
+        success: @medication.save,
+        medication: @medication,
+        schedule: nil
+      )
+    end
+
+    MedicationOnboardingCreateService.new(
+      medication: @medication,
+      schedule_attributes: onboarding_schedule_params.to_h.deep_symbolize_keys,
+      people_scope: policy_scope(Person)
+    ).call
+  end
+
+  def onboarding_schedule?
+    params[:wizard] == 'true' && params[:onboarding_schedule].present?
   end
 end

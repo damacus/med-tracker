@@ -4,6 +4,11 @@
 class Schedule < ApplicationRecord
   include TimingRestrictions
 
+  WEEKDAY_INDEXES = Date::DAYNAMES.each_with_index.with_object({}) do |(name, index), indexes|
+    indexes[name.downcase] = index
+    indexes[name.downcase.first(3)] = index
+  end.freeze
+
   attr_accessor :dosage
 
   belongs_to :person
@@ -11,6 +16,15 @@ class Schedule < ApplicationRecord
   belongs_to :source_dosage_option, class_name: 'MedicationDosageOption', optional: true
 
   enum :dose_cycle, { daily: 0, weekly: 1, monthly: 2 }
+  enum :schedule_type, {
+    daily: 0,
+    multiple_daily: 1,
+    weekly: 2,
+    specific_dates: 3,
+    prn: 4,
+    tapering: 5,
+    every_other_day: 6
+  }, prefix: :schedule_type
 
   has_many :medication_takes, dependent: :destroy
 
@@ -33,8 +47,44 @@ class Schedule < ApplicationRecord
   delegate :name, to: :person, prefix: true
   delegate :amount, :unit, to: :dose_snapshot, prefix: true, allow_nil: true
 
-  def default_dose_amount
-    dose_amount
+  def default_dose_amount = dose_amount
+
+  def applies_on?(date)
+    date = normalize_date(date)
+    return false if date.blank?
+    return false unless within_schedule_range?(date)
+
+    case schedule_type
+    when 'weekly' then configured_weekday?(date)
+    when 'specific_dates' then configured_date?(date)
+    when 'every_other_day' then every_other_day_from_start?(date)
+    when 'tapering' then current_taper_step(date).present?
+    else true
+    end
+  end
+
+  def expected_doses_on(date)
+    date = normalize_date(date)
+    return 0 if date.blank? || !applies_on?(date) || schedule_type_prn?
+
+    configured_times.presence&.size || effective_max_daily_doses(date).presence || 1
+  end
+
+  def effective_dose_amount(date = Time.zone.today)
+    decimal_config_value(effective_config_for(date), 'amount', 'dose_amount') || dose_amount
+  end
+
+  def effective_dose_unit(date = Time.zone.today)
+    config_value(effective_config_for(date), 'unit', 'dose_unit') || dose_unit
+  end
+
+  def effective_max_daily_doses(date = Time.zone.today)
+    integer_config_value(effective_config_for(date), 'max_daily_doses', 'max_doses', 'max') || max_daily_doses
+  end
+
+  def effective_min_hours_between_doses(date = Time.zone.today)
+    numeric_config_value(effective_config_for(date), 'min_hours_between_doses', 'min_hours', 'minimum_hours') ||
+      min_hours_between_doses
   end
 
   def active?
@@ -113,6 +163,107 @@ class Schedule < ApplicationRecord
     matches = medication.dosage_records.where(amount: dose_amount, unit: dose_unit)
     return matches.first if matches.one?
 
+    nil
+  end
+
+  def within_schedule_range?(date)
+    return false if start_date.blank? || end_date.blank?
+
+    date.between?(start_date, end_date)
+  end
+
+  def configured_weekday?(date)
+    Array(config_value(schedule_config_hash, 'weekdays')).any? { |weekday| weekday_matches?(weekday, date) }
+  end
+
+  def configured_date?(date)
+    dates = Array(config_value(schedule_config_hash, 'dates')).filter_map do |configured_date|
+      normalize_date(configured_date)
+    end
+    dates.include?(date)
+  end
+
+  def every_other_day_from_start?(date) = ((date - start_date).to_i % 2).zero?
+
+  def configured_times = Array(config_value(schedule_config_hash, 'times')).compact_blank
+
+  def effective_config_for(date)
+    date = normalize_date(date)
+    return schedule_config_hash unless schedule_type_tapering? && date.present?
+
+    current_taper_step(date) || schedule_config_hash
+  end
+
+  def current_taper_step(date)
+    Array(config_value(schedule_config_hash, 'taper_steps')).find do |step|
+      step_applies_on?(step, date)
+    end
+  end
+
+  def step_applies_on?(step, date)
+    step_start = normalize_date(config_value(step, 'start_date'))
+    step_end = normalize_date(config_value(step, 'end_date'))
+    return false if step_start.blank? || step_end.blank?
+
+    date.between?(step_start, step_end)
+  end
+
+  def weekday_matches?(weekday, date)
+    weekday_index = normalize_weekday(weekday)
+    return false if weekday_index.blank?
+
+    weekday_index == date.wday || weekday_index == date.cwday
+  end
+
+  def normalize_weekday(weekday)
+    return weekday if weekday.is_a?(Integer)
+
+    weekday = weekday.to_s.strip.downcase
+    return if weekday.blank?
+    return weekday.to_i if weekday.match?(/\A\d+\z/)
+
+    WEEKDAY_INDEXES[weekday]
+  end
+
+  def normalize_date(value)
+    return value if value.is_a?(Date)
+    return value.to_date if value.respond_to?(:to_date) && !value.is_a?(String)
+
+    Date.iso8601(value.to_s)
+  rescue Date::Error, TypeError
+    nil
+  end
+
+  def schedule_config_hash = schedule_config || {}
+
+  def config_value(hash, *keys)
+    return if hash.blank?
+
+    keys.each do |key|
+      return hash[key.to_s] if hash.key?(key.to_s)
+      return hash[key.to_sym] if hash.key?(key.to_sym)
+    end
+
+    nil
+  end
+
+  def decimal_config_value(hash, *keys)
+    value = config_value(hash, *keys)
+    return if value.blank?
+
+    BigDecimal(value.to_s)
+  rescue ArgumentError
+    nil
+  end
+
+  def integer_config_value(hash, *keys) = numeric_config_value(hash, *keys)&.to_i
+
+  def numeric_config_value(hash, *keys)
+    value = config_value(hash, *keys)
+    return if value.blank?
+
+    BigDecimal(value.to_s)
+  rescue ArgumentError
     nil
   end
 end

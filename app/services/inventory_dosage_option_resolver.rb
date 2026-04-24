@@ -33,7 +33,7 @@ class InventoryDosageOptionResolver
   end
 
   def resolved_from_source_snapshot
-    return if source.default_dose_amount.blank? || source.dose_unit.blank?
+    return if source_dose_amount.blank? || source_dose_unit.blank?
 
     matches = tracked_inventory_dosage_records.select(&method(:matching_source_snapshot?))
     matches.one? ? matches.first : nil
@@ -58,6 +58,18 @@ class InventoryDosageOptionResolver
   end
 
   def matching_source_snapshot?(dosage_option)
-    dosage_option.amount.to_s == source.default_dose_amount.to_s && dosage_option.unit == source.dose_unit
+    dosage_option.amount.to_s == source_dose_amount.to_s && dosage_option.unit == source_dose_unit
+  end
+
+  def source_dose_amount
+    return source.effective_dose_amount if source.respond_to?(:effective_dose_amount)
+
+    source.default_dose_amount
+  end
+
+  def source_dose_unit
+    return source.effective_dose_unit if source.respond_to?(:effective_dose_unit)
+
+    source.dose_unit
   end
 end

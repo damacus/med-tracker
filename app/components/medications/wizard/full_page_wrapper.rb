@@ -4,11 +4,12 @@ module Components
   module Medications
     module Wizard
       class FullPageWrapper < Components::Base
-        attr_reader :medication, :locations, :variant
+        attr_reader :medication, :locations, :people, :variant
 
-        def initialize(medication:, locations:)
+        def initialize(medication:, locations:, people:)
           @medication = medication
           @locations = locations
+          @people = people
           @variant = 'fullpage'
           super()
         end
@@ -22,6 +23,7 @@ module Components
                 render StepContent.new(
                   medication: medication,
                   locations: locations,
+                  people: people,
                   variant: variant
                 )
               end

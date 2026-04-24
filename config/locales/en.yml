@@ -1159,6 +1159,65 @@ en:
       standard_dosage_placeholder: "e.g., 500"
       current_supply_placeholder: "e.g., 30"
       reorder_threshold_placeholder: "e.g., 5"
+      wizard:
+        progress_label: "Medication setup progress"
+        continue: "Continue"
+        steps:
+          details: "Details"
+          dose: "Dose"
+          supply: "Supply"
+          warnings: "Warnings"
+        dose:
+          title: "Dose schedule"
+          description: "Build the first schedule by choosing who takes it, the dose, and the rhythm."
+          person_title: "Who will take this?"
+          person_types:
+            adult: "Adult"
+            minor: "Minor"
+            dependent_adult: "Dependent adult"
+          amount: "Amount"
+          unit: "Unit"
+          schedule_type_title: "How often is it taken?"
+          schedule_types:
+            multiple_daily:
+              title: "Multiple daily"
+              description: "Several planned doses each day"
+            daily:
+              title: "Daily"
+              description: "One dose at the same time"
+            weekly:
+              title: "Weekly"
+              description: "A repeating weekly dose"
+            specific_dates:
+              title: "Specific dates"
+              description: "Only on selected dates"
+            prn:
+              title: "As needed"
+              description: "PRN with safety limits"
+            tapering:
+              title: "Tapering"
+              description: "A changing dose plan"
+          doses_per_day: "Doses per day"
+          hours_apart: "Hours apart"
+          first_dose: "First dose"
+          second_dose: "Second dose"
+          dose_time: "Dose time"
+          weekly_day: "Day"
+          specific_dates: "Dates"
+          specific_dates_placeholder: "2026-04-24, 2026-04-25"
+          max_daily_doses: "Max daily doses"
+          min_hours_between: "Minimum hours between doses"
+          tapering_plan: "Tapering plan"
+          tapering_placeholder: "Describe dose changes over time"
+          start_date: "Start date"
+          end_date: "End date"
+          review_title: "Plain-English review"
+          review_placeholder: "Review the dose schedule before continuing."
+          review_button: "Review dose schedule"
+          review_required: "Review the dose schedule before continuing."
+        supply:
+          title: "Supply setup"
+          description: "Track how much you have in the pack and when to reorder."
       validation_errors:
         one: "1 error prevented this medication from being saved:"
         other: "%{count} errors prevented this medication from being saved:"
