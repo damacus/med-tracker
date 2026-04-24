@@ -6,8 +6,38 @@ RSpec.describe Schedule do
   fixtures :accounts, :schedules, :people, :locations, :medications, :dosages
 
   describe '#dose_constraints' do
+    let(:active_date) { Date.new(2026, 4, 24) }
     let(:schedule) do
       create(:schedule, max_daily_doses: 3, min_hours_between_doses: 4)
+    end
+    let(:tapering_schedule) do
+      create(
+        :schedule,
+        dosage: nil,
+        source_dosage_option: nil,
+        schedule_type: :tapering,
+        dose_amount: 10,
+        dose_unit: 'mg',
+        max_daily_doses: 4,
+        min_hours_between_doses: 4,
+        start_date: active_date,
+        end_date: active_date,
+        schedule_config: tapering_schedule_config
+      )
+    end
+    let(:tapering_schedule_config) do
+      {
+        'taper_steps' => [
+          {
+            'start_date' => active_date.iso8601,
+            'end_date' => active_date.iso8601,
+            'amount' => '5',
+            'unit' => 'mg',
+            'max_daily_doses' => 1,
+            'min_hours_between_doses' => 24
+          }
+        ]
+      }
     end
 
     it 'returns a value object built from the persisted timing fields' do
@@ -15,6 +45,15 @@ RSpec.describe Schedule do
         max_daily_doses: 3,
         min_hours_between_doses: 4
       )
+    end
+
+    it 'uses the active taper step timing values' do
+      travel_to active_date.noon do
+        expect(tapering_schedule.dose_constraints).to have_attributes(
+          max_daily_doses: 1,
+          min_hours_between_doses: 24
+        )
+      end
     end
   end
 

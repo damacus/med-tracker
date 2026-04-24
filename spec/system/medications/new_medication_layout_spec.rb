@@ -33,6 +33,7 @@ RSpec.describe 'MedicationNewLayout' do
         expect(page).to have_button('Tapering')
       end
 
+      click_button 'John Doe'
       fill_in 'Amount', with: 200
       select 'mg', from: 'Unit'
       click_button 'Multiple daily'
@@ -42,8 +43,18 @@ RSpec.describe 'MedicationNewLayout' do
       fill_in 'Second dose', with: '20:00'
       fill_in 'Start date', with: Time.zone.today.to_s
       fill_in 'End date', with: 1.month.from_now.to_date.to_s
+      click_button 'Continue'
+      expect(page).to have_content('Who will take this?')
+      expect(page).to have_no_field('Starting Supply')
       click_button 'Review dose schedule'
       expect(page).to have_content('200 mg, Twice daily')
+      expect(page).to have_field('medication_schedule_review_complete', with: 'reviewed', visible: :all)
+      fill_in 'Hours apart', with: 12
+      expect(page).to have_field('medication_schedule_review_complete', with: '', visible: :all)
+      click_button 'Continue'
+      expect(page).to have_content('Who will take this?')
+      expect(page).to have_no_field('Starting Supply')
+      click_button 'Review dose schedule'
       expect(page).to have_field('medication_schedule_review_complete', with: 'reviewed', visible: :all)
       click_button 'Continue'
 
@@ -75,6 +86,18 @@ RSpec.describe 'MedicationNewLayout' do
         unit: 'mg',
         default_max_daily_doses: 2
       )
+      expect(Medication.last.schedules.last).to have_attributes(
+        person: users(:john).person,
+        frequency: 'Twice daily',
+        dose_amount: BigDecimal('200'),
+        dose_unit: 'mg',
+        max_daily_doses: 2,
+        min_hours_between_doses: 12,
+        start_date: Time.zone.today,
+        end_date: 1.month.from_now.to_date
+      )
+      expect(Medication.last.schedules.last.schedule_type).to eq('multiple_daily')
+      expect(Medication.last.schedules.last.schedule_config).to include('times' => %w[08:00 20:00])
     end
   end
 

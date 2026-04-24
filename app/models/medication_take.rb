@@ -239,6 +239,6 @@ class MedicationTake < ApplicationRecord
   end
 
   def inventory_dosage_option_resolver(inventory)
-    InventoryDosageOptionResolver.new(inventory: inventory, source: source)
+    InventoryDosageOptionResolver.new(inventory: inventory, source: source, effective_date: taken_at&.to_date)
   end
 end

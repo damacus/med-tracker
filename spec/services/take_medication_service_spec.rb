@@ -261,16 +261,71 @@ RSpec.describe TakeMedicationService do
     def effective_capsule_schedule_config
       {
         'taper_steps' => [
-          {
-            'start_date' => Time.zone.today.iso8601,
-            'end_date' => Time.zone.today.iso8601,
-            'amount' => '1',
-            'unit' => 'capsule',
-            'max_daily_doses' => 1,
-            'min_hours_between_doses' => 24
-          }
+          taper_step_config(date: Time.zone.today, unit: 'capsule')
         ]
       }
+    end
+
+    def two_step_taper_schedule_config(capsule_date:, tablet_date:)
+      {
+        'taper_steps' => [
+          taper_step_config(date: capsule_date, unit: 'capsule'),
+          taper_step_config(date: tablet_date, unit: 'tablet')
+        ]
+      }
+    end
+
+    def taper_step_config(date:, unit:)
+      {
+        'start_date' => date.iso8601,
+        'end_date' => date.iso8601,
+        'amount' => '1',
+        'unit' => unit,
+        'max_daily_doses' => 1,
+        'min_hours_between_doses' => 24
+      }
+    end
+
+    def build_source_tablet_taper_schedule(attributes = {})
+      create(
+        :schedule,
+        {
+          person: people(:john),
+          medication: inventory_medication,
+          dosage: tablet_option,
+          dose_amount: 1,
+          dose_unit: 'tablet',
+          max_daily_doses: 1,
+          min_hours_between_doses: 24,
+          schedule_type: :tapering
+        }.merge(attributes)
+      )
+    end
+
+    def take_schedule_at(schedule:, travel_date:, taken_at:)
+      result = nil
+
+      travel_to travel_date.noon do
+        expect do
+          result = service.call(
+            source: schedule,
+            amount_override: nil,
+            taken_from_medication_id: nil,
+            user: user,
+            taken_at: taken_at
+          )
+          expect(result.success).to be(true)
+        end.to change(MedicationTake, :count).by(1)
+      end
+
+      result
+    end
+
+    def expect_inventory_supply(tablet:, capsule:, medication:)
+      expect(
+        [tablet_option.reload.current_supply, capsule_option.reload.current_supply,
+         inventory_medication.reload.current_supply]
+      ).to eq([tablet, capsule, medication])
     end
 
     it 'decrements only the matching dose-option inventory and keeps aggregate stock in sync' do
@@ -299,6 +354,32 @@ RSpec.describe TakeMedicationService do
       expect(tablet_option.reload.current_supply).to eq(56)
       expect(capsule_option.reload.current_supply).to eq(27)
       expect(inventory_medication.reload.current_supply).to eq(83)
+    end
+
+    it 'prefers the active taper step dose over the source dose option for inventory matching' do
+      schedule = build_source_tablet_taper_schedule(schedule_config: effective_capsule_schedule_config)
+      result = nil
+
+      expect do
+        result = call_service(source: schedule)
+        expect(result.success).to be(true)
+      end.to change(MedicationTake, :count).by(1)
+
+      expect_inventory_supply(tablet: 56, capsule: 27, medication: 83)
+    end
+
+    it 'matches tapering inventory using the provided taken_at date' do
+      capsule_date = Date.new(2026, 4, 21)
+      tablet_date = Date.new(2026, 4, 24)
+      schedule = build_source_tablet_taper_schedule(
+        start_date: capsule_date,
+        end_date: tablet_date,
+        schedule_config: two_step_taper_schedule_config(capsule_date: capsule_date, tablet_date: tablet_date)
+      )
+      result = take_schedule_at(schedule: schedule, travel_date: tablet_date, taken_at: capsule_date.noon)
+
+      expect(result.take.amount_ml).to eq(BigDecimal('1'))
+      expect_inventory_supply(tablet: 56, capsule: 27, medication: 83)
     end
   end
 

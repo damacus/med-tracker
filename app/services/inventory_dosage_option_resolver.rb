@@ -1,11 +1,12 @@
 # frozen_string_literal: true
 
 class InventoryDosageOptionResolver
-  attr_reader :inventory, :source
+  attr_reader :inventory, :source, :effective_date
 
-  def initialize(inventory:, source:)
+  def initialize(inventory:, source:, effective_date: Time.zone.today)
     @inventory = inventory
     @source = source
+    @effective_date = effective_date || Time.zone.today
   end
 
   def tracked_inventory?
@@ -16,6 +17,7 @@ class InventoryDosageOptionResolver
     return if inventory.blank? || source.blank?
     return if tracked_inventory_dosage_records.empty?
 
+    return resolved_from_source_snapshot || resolved_from_source_dosage_option if prefer_effective_snapshot?
     return resolved_from_source_dosage_option if source_dosage_option.present?
 
     resolved_from_source_snapshot
@@ -61,14 +63,18 @@ class InventoryDosageOptionResolver
     dosage_option.amount.to_s == source_dose_amount.to_s && dosage_option.unit == source_dose_unit
   end
 
+  def prefer_effective_snapshot?
+    source.respond_to?(:schedule_type_tapering?) && source.schedule_type_tapering?
+  end
+
   def source_dose_amount
-    return source.effective_dose_amount if source.respond_to?(:effective_dose_amount)
+    return source.effective_dose_amount(effective_date) if source.respond_to?(:effective_dose_amount)
 
     source.default_dose_amount
   end
 
   def source_dose_unit
-    return source.effective_dose_unit if source.respond_to?(:effective_dose_unit)
+    return source.effective_dose_unit(effective_date) if source.respond_to?(:effective_dose_unit)
 
     source.dose_unit
   end

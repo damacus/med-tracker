@@ -5,9 +5,9 @@ require 'rails_helper'
 RSpec.describe 'Medication wizard dose option follow-up' do
   fixtures :accounts, :people, :users, :locations, :location_memberships, :medications
 
-  before { sign_in(users(:admin)) }
-
   it 'creates the medication, primary dose option, and first schedule from the wizard' do
+    sign_in(users(:admin))
+
     post medications_path,
          params: {
            wizard: 'true',
@@ -20,9 +20,11 @@ RSpec.describe 'Medication wizard dose option follow-up' do
              max_daily_doses: '2',
              min_hours_between_doses: '12',
              dose_cycle: 'daily',
-             schedule_config: {
+             schedule_config: JSON.generate(
+               schedule_type: 'multiple_daily',
+               frequency: 'Twice daily',
                times: %w[08:00 20:00]
-             }
+             )
            },
            medication: {
              name: 'Wizard Medication',
@@ -87,10 +89,108 @@ RSpec.describe 'Medication wizard dose option follow-up' do
     )
     expect(schedule.dose_cycle).to eq('daily')
     expect(schedule.schedule_type).to eq('multiple_daily')
-    expect(schedule.schedule_config).to include('times' => %w[08:00 20:00])
+    expect(schedule.schedule_config).to include(
+      'schedule_type' => 'multiple_daily',
+      'frequency' => 'Twice daily',
+      'times' => %w[08:00 20:00]
+    )
+  end
+
+  it 'rolls back medication creation when the onboarding schedule person is unauthorized' do
+    sign_in(users(:jane))
+
+    medication_count = Medication.count
+    schedule_count = Schedule.count
+
+    post medications_path,
+         params: {
+           wizard: 'true',
+           onboarding_schedule: {
+             person_id: people(:john).id,
+             schedule_type: 'daily',
+             frequency: 'Once daily',
+             start_date: Time.zone.today.to_s,
+             end_date: 1.month.from_now.to_date.to_s,
+             max_daily_doses: '1',
+             min_hours_between_doses: '24',
+             dose_cycle: 'daily',
+             schedule_config: JSON.generate(times: ['08:00'])
+           },
+           medication: {
+             name: 'Unauthorized Person Schedule Medication',
+             category: 'Vitamin',
+             current_supply: '10',
+             reorder_threshold: '1',
+             location_id: locations(:home).id,
+             dosage_records_attributes: {
+               '0' => {
+                 amount: '5',
+                 unit: 'ml',
+                 frequency: 'Once daily',
+                 default_for_adults: '1',
+                 default_for_children: '0',
+                 default_max_daily_doses: '1',
+                 default_min_hours_between_doses: '24',
+                 default_dose_cycle: 'daily'
+               }
+             }
+           }
+         }
+
+    expect(response).to have_http_status(:not_found)
+    expect(Medication.count).to eq(medication_count)
+    expect(Schedule.count).to eq(schedule_count)
+  end
+
+  it 'rolls back medication creation when the onboarding schedule person does not exist' do
+    sign_in(users(:admin))
+
+    medication_count = Medication.count
+    schedule_count = Schedule.count
+
+    post medications_path,
+         params: {
+           wizard: 'true',
+           onboarding_schedule: {
+             person_id: Person.maximum(:id) + 1,
+             schedule_type: 'daily',
+             frequency: 'Once daily',
+             start_date: Time.zone.today.to_s,
+             end_date: 1.month.from_now.to_date.to_s,
+             max_daily_doses: '1',
+             min_hours_between_doses: '24',
+             dose_cycle: 'daily',
+             schedule_config: JSON.generate(times: ['08:00'])
+           },
+           medication: {
+             name: 'Invalid Person Schedule Medication',
+             category: 'Vitamin',
+             current_supply: '10',
+             reorder_threshold: '1',
+             location_id: locations(:home).id,
+             dosage_records_attributes: {
+               '0' => {
+                 amount: '5',
+                 unit: 'ml',
+                 frequency: 'Once daily',
+                 default_for_adults: '1',
+                 default_for_children: '0',
+                 default_max_daily_doses: '1',
+                 default_min_hours_between_doses: '24',
+                 default_dose_cycle: 'daily'
+               }
+             }
+           }
+         }
+
+    expect(response).to have_http_status(:not_found)
+    expect(Medication.count).to eq(medication_count)
+    expect(Schedule.count).to eq(schedule_count)
   end
 
   it 'rolls back medication creation when the onboarding schedule is invalid' do
+    sign_in(users(:admin))
+
     expect do
       post medications_path,
            params: {
@@ -135,6 +235,8 @@ RSpec.describe 'Medication wizard dose option follow-up' do
   end
 
   it 'falls back to the medication page for non-turbo requests' do
+    sign_in(users(:admin))
+
     post medications_path,
          params: {
            wizard: 'true',
