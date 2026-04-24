@@ -41,11 +41,15 @@ class MedicationOnboardingCreateService
   end
 
   def default_dosage_for_schedule_person
-    if schedule_person.adult?
-      medication.dosage_records.find(&:default_for_adults?)
-    else
+    if dependent_person_type?
       medication.dosage_records.find(&:default_for_children?)
+    else
+      medication.dosage_records.find(&:default_for_adults?)
     end
+  end
+
+  def dependent_person_type?
+    %w[minor dependent_adult].include?(schedule_person.person_type.to_s)
   end
 
   def schedule_person
