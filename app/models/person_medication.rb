@@ -55,10 +55,20 @@ class PersonMedication < ApplicationRecord
   def assign_default_dose
     return if medication.blank?
 
-    self.source_dosage_option ||= resolved_dosage_record
-    self.source_dosage_option ||= uniquely_matching_dosage_option
+    assign_source_dosage_option
     self.dose_amount ||= resolved_dose_amount
     self.dose_unit ||= resolved_dose_unit
+  end
+
+  def assign_source_dosage_option
+    self.source_dosage_option ||= uniquely_matching_dosage_option
+    return if source_dosage_option.present? || complete_dose_snapshot?
+
+    self.source_dosage_option = resolved_dosage_record
+  end
+
+  def complete_dose_snapshot?
+    dose_amount.present? && dose_unit.present?
   end
 
   def assign_position

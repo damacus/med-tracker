@@ -49,11 +49,9 @@ class NhsDmdImport < ApplicationRecord
   end
 
   def complete!(result)
-    final_total = total_records.positive? ? total_records : result.imported_count + result.skipped_count
-
     update!(
       status: :completed,
-      processed_records: final_total,
+      processed_records: final_processed_records(result),
       imported_count: result.imported_count,
       skipped_count: result.skipped_count,
       created_count: result.created_count,
@@ -87,6 +85,12 @@ class NhsDmdImport < ApplicationRecord
   end
 
   private
+
+  def final_processed_records(result)
+    return total_records if total_records.positive?
+
+    result.imported_count + result.skipped_count + result.unchanged_count
+  end
 
   def archive_directory
     Rails.root.join('storage', 'nhs_dmd', 'imports', id.to_s)

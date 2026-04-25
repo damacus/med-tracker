@@ -112,7 +112,7 @@ module NhsDmd
     end
 
     def access_token
-      @access_token ||= Rails.cache.fetch(token_cache_key, expires_in: TOKEN_CACHE_TTL) do
+      Rails.cache.fetch(token_cache_key, expires_in: TOKEN_CACHE_TTL) do
         fetch_access_token
       end
     end

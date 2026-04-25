@@ -217,6 +217,26 @@ RSpec.describe NhsDmd::Client do
 
         expect(WebMock).to have_requested(:post, %r{openid-connect/token}).once
       end
+
+      it 're-reads the cache for reused client instances after token eviction' do
+        stub_request(:post, %r{openid-connect/token})
+          .to_return(
+            { status: 200, body: { 'access_token' => 'first-token' }.to_json,
+              headers: { 'Content-Type' => 'application/json' } },
+            { status: 200, body: { 'access_token' => 'second-token' }.to_json,
+              headers: { 'Content-Type' => 'application/json' } }
+          )
+
+        client.search('aspirin')
+        Rails.cache.clear
+        client.search('ibuprofen')
+
+        expect(WebMock).to have_requested(:post, %r{openid-connect/token}).twice
+        expect(WebMock).to have_requested(:get, /ontology\.nhs\.uk/)
+          .with(headers: { 'Authorization' => 'Bearer first-token' }).twice
+        expect(WebMock).to have_requested(:get, /ontology\.nhs\.uk/)
+          .with(headers: { 'Authorization' => 'Bearer second-token' }).twice
+      end
     end
   end
 end
