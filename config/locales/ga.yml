@@ -988,6 +988,9 @@ ga:
           dose: "Dáileog"
           supply: "Soláthar"
           warnings: "Rabhaidh"
+        details:
+          title: "Sonraí an chógais"
+          description: "Inis dúinn faoin gcógas seo."
         dose:
           title: "Sceideal dáileoige"
           description: "Tóg an chéad sceideal trí roghnú cé a ghlacann é, an dáileog, agus an rithim."

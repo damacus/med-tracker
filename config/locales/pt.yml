@@ -1157,6 +1157,9 @@ pt:
           dose: "Dose"
           supply: "Fornecimento"
           warnings: "Avisos"
+        details:
+          title: "Detalhes do medicamento"
+          description: "Conte-nos sobre este medicamento."
         dose:
           title: "Horário da dose"
           description: "Crie o primeiro horário escolhendo quem toma, a dose e o ritmo."

@@ -1021,6 +1021,9 @@ es:
           dose: "Dosis"
           supply: "Suministro"
           warnings: "Advertencias"
+        details:
+          title: "Detalles del medicamento"
+          description: "Cuéntanos sobre este medicamento."
         dose:
           title: "Horario de dosis"
           description: "Crea el primer horario eligiendo quién lo toma, la dosis y el ritmo."

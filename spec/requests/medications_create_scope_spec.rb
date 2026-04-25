@@ -173,6 +173,35 @@ RSpec.describe 'Medication creation scope' do
       expect(amount['value']).to eq('1.0')
       expect(unit).to be_present
     end
+
+    it 'looks up Open Food Facts supplement metadata when only the barcode is supplied' do
+      open_food_facts_lookup = instance_double(
+        OpenFoodFacts::BarcodeLookup,
+        lookup: {
+          name: 'Wellman Original',
+          description: 'Daily multivitamin food supplement',
+          category: 'Supplement',
+          package_quantity: 30,
+          package_unit: 'tablet'
+        }
+      )
+      allow(OpenFoodFacts::BarcodeLookup).to receive(:new).and_return(open_food_facts_lookup)
+
+      get new_medication_path, params: { barcode: '5021265221301' }
+
+      html = Nokogiri::HTML(response.body)
+      description = html.at_css('textarea[name="medication[description]"]')
+      amount = html.at_css("input[name='medication[dosage_records_attributes][0][amount]']")
+      unit = html.at_css("input[name='medication[dosage_records_attributes][0][unit]'][value='tablet']")
+
+      expect(response).to have_http_status(:ok)
+      expect(open_food_facts_lookup).to have_received(:lookup).with('5021265221301')
+      expect(response.body).to include('value="Wellman Original"')
+      expect(description.text).to eq('Daily multivitamin food supplement')
+      expect(response.body).to include('value="30"')
+      expect(amount['value']).to eq('1.0')
+      expect(unit).to be_present
+    end
   end
 
   describe 'POST /medications' do

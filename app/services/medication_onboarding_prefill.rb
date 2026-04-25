@@ -27,10 +27,24 @@ class MedicationOnboardingPrefill
   }.freeze
   DISCRETE_PACKAGE_UNITS = %w[tablet capsule sachet spray drop pad].freeze
 
+  def initialize(open_food_facts_lookup: OpenFoodFacts::BarcodeLookup.new)
+    @open_food_facts_lookup = open_food_facts_lookup
+  end
+
   def call(barcode: nil, code: nil, name: nil, package_quantity: nil, package_unit: nil)
     curated_product = BarcodeCatalog::CuratedProducts.find(barcode: barcode, code: code, name: name)
     return result_from_curated_product(curated_product) if curated_product
+
     return result_from_package_metadata(package_quantity:, package_unit:) if package_quantity.present?
+
+    open_food_facts_result = open_food_facts_result_for(barcode:, code:, name:)
+    if open_food_facts_result
+      return result_from_open_food_facts_result(
+        open_food_facts_result,
+        package_quantity: package_quantity,
+        package_unit: package_unit
+      )
+    end
 
     result_from_dosages(parsed_dosages(name))
   end
@@ -52,6 +66,20 @@ class MedicationOnboardingPrefill
     Result.new(
       medication_attributes: medication_attributes_from_dosages(compact_dosages),
       dosage_records_attributes: compact_dosages
+    )
+  end
+
+  def result_from_open_food_facts_result(open_food_facts_result, package_quantity:, package_unit:)
+    package_result = result_from_package_metadata(
+      package_quantity: package_quantity.presence || open_food_facts_result[:package_quantity],
+      package_unit: package_unit.presence || open_food_facts_result[:package_unit]
+    )
+
+    Result.new(
+      medication_attributes: package_result.medication_attributes.merge(
+        open_food_facts_medication_attributes(open_food_facts_result)
+      ),
+      dosage_records_attributes: package_result.dosage_records_attributes
     )
   end
 
@@ -183,5 +211,21 @@ class MedicationOnboardingPrefill
 
   def discrete_package_unit?(unit)
     DISCRETE_PACKAGE_UNITS.include?(unit)
+  end
+
+  def open_food_facts_result_for(barcode:, code:, name:)
+    return nil if code.present?
+    return nil if name.present?
+    return nil unless NhsDmd::BarcodeLookup.barcode_query?(barcode)
+
+    @open_food_facts_lookup.lookup(barcode)
+  end
+
+  def open_food_facts_medication_attributes(open_food_facts_result)
+    {
+      name: open_food_facts_result[:name],
+      description: open_food_facts_result[:description],
+      category: open_food_facts_result[:category]
+    }.compact_blank
   end
 end

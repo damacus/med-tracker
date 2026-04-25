@@ -1167,6 +1167,9 @@ en:
           dose: "Dose"
           supply: "Supply"
           warnings: "Warnings"
+        details:
+          title: "Medication details"
+          description: "Tell us about this medication."
         dose:
           title: "Dose schedule"
           description: "Build the first schedule by choosing who takes it, the dose, and the rhythm."

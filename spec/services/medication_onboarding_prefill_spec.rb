@@ -29,6 +29,32 @@ RSpec.describe MedicationOnboardingPrefill do
     )
   end
 
+  def wellman_open_food_facts_lookup
+    instance_double(OpenFoodFacts::BarcodeLookup, lookup: wellman_open_food_facts_result)
+  end
+
+  def wellman_open_food_facts_result
+    {
+      name: 'Wellman Original',
+      description: 'Daily multivitamin food supplement',
+      category: 'Supplement',
+      package_quantity: 30,
+      package_unit: 'tablet'
+    }
+  end
+
+  def expect_wellman_prefill(result)
+    expect(result.medication_attributes).to include(
+      name: 'Wellman Original',
+      description: 'Daily multivitamin food supplement',
+      category: 'Supplement',
+      dosage_amount: 1,
+      dosage_unit: 'tablet',
+      current_supply: 30,
+      reorder_threshold: 7
+    )
+  end
+
   describe '#call' do
     it 'returns curated combo-pack defaults for Pregnacare Plus' do
       result = described_class.new.call(
@@ -123,6 +149,32 @@ RSpec.describe MedicationOnboardingPrefill do
 
       expect(result.medication_attributes).not_to include(:dosage_amount, :dosage_unit, :current_supply)
       expect(result.dosage_records_attributes).to eq([])
+    end
+
+    it 'looks up Open Food Facts supplement metadata from a barcode' do
+      open_food_facts_lookup = wellman_open_food_facts_lookup
+
+      result = described_class.new(open_food_facts_lookup: open_food_facts_lookup).call(
+        barcode: '5021265221301'
+      )
+
+      expect(open_food_facts_lookup).to have_received(:lookup).with('5021265221301')
+      expect_wellman_prefill(result)
+      expect(result.dosage_records_attributes).to contain_exactly(
+        a_hash_including(amount: 1, unit: 'tablet', current_supply: 30, reorder_threshold: 7)
+      )
+    end
+
+    it 'does not look up Open Food Facts for a dm+d-coded medication' do
+      open_food_facts_lookup = instance_double(OpenFoodFacts::BarcodeLookup, lookup: nil)
+
+      described_class.new(open_food_facts_lookup: open_food_facts_lookup).call(
+        barcode: '5016298210989',
+        code: '13629411000001105',
+        name: 'Laxido Orange oral powder sachets (Galen Ltd)'
+      )
+
+      expect(open_food_facts_lookup).not_to have_received(:lookup)
     end
   end
 end

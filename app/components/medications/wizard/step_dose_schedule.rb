@@ -186,29 +186,6 @@ module Components
           end
         end
 
-        def render_person_card(person)
-          selected = person == selected_person
-          button(
-            type: 'button',
-            class: selection_card_classes(selected),
-            data: {
-              action: 'click->medication-schedule-wizard#selectPerson',
-              'medication-schedule-wizard-target': 'personCard',
-              person_id: person.id,
-              person_name: person.name,
-              person_type: person.person_type
-            }
-          ) do
-            span(class: 'text-sm font-black text-foreground') { person.name }
-            span(class: 'text-xs font-semibold text-on-surface-variant') do
-              t(
-                "forms.medications.wizard.dose.person_types.#{person.person_type}",
-                default: person.person_type.to_s.humanize
-              )
-            end
-          end
-        end
-
         def render_dose_fields
           dosage = primary_dosage_record_for_wizard
 
@@ -369,7 +346,7 @@ module Components
                 render RubyUI::FormFieldLabel.new(for: 'specific_date_to_add') do
                   t('forms.medications.wizard.dose.specific_date_to_add')
                 end
-                div(class: 'grid grid-cols-[minmax(0,1fr)_auto] gap-3 items-end') do
+                div(class: 'grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end') do
                   m3_input(
                     type: :date,
                     id: 'specific_date_to_add',
@@ -382,7 +359,7 @@ module Components
                   m3_button(
                     type: :button,
                     variant: :outlined,
-                    class: 'h-14 rounded-shape-xs px-4',
+                    class: 'h-14 w-full rounded-shape-xs px-4 sm:w-auto',
                     data: { action: 'click->medication-schedule-wizard#addSpecificDate' }
                   ) do
                     t('forms.medications.wizard.dose.add_specific_date')
@@ -467,7 +444,7 @@ module Components
 
         def render_review_panel
           section(class: 'space-y-3 rounded-3xl bg-primary/5 border border-primary/20 p-5') do
-            div(class: 'flex items-start justify-between gap-4') do
+            div(class: 'flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between') do
               div(class: 'space-y-1') do
                 m3_heading(level: 4, size: '4', class: 'font-bold tracking-tight text-foreground') do
                   t('forms.medications.wizard.dose.review_title')
@@ -483,7 +460,7 @@ module Components
               m3_button(
                 type: :button,
                 variant: :outlined,
-                class: 'shrink-0',
+                class: 'w-full shrink-0 sm:w-auto',
                 data: { action: 'click->medication-schedule-wizard#review' }
               ) do
                 t('forms.medications.wizard.dose.review_button')

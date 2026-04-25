@@ -43,7 +43,8 @@ module Components
         end
 
         def render_circle(step, index)
-          base = 'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300'
+          base = 'w-8 h-8 rounded-shape-full flex items-center justify-center text-xs font-bold ' \
+                 'transition-all duration-300'
           active = if index.zero?
                      'bg-primary text-on-primary shadow-elevation-2 scale-110'
                    else

@@ -1051,6 +1051,9 @@ cy:
           dose: "Dos"
           supply: "Cyflenwad"
           warnings: "Rhybuddion"
+        details:
+          title: "Manylion y feddyginiaeth"
+          description: "Dywedwch wrthym am y feddyginiaeth hon."
         dose:
           title: "Amserlen dos"
           description: "Adeiladwch yr amserlen gyntaf drwy ddewis pwy sy'n ei gymryd, y dos, a'r rhythm."
