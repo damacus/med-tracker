@@ -29,6 +29,37 @@ RSpec.describe MedicationTake do
     expect(alternate_medication.reload.current_supply).to eq(9)
   end
 
+  it 'syncs aggregate inventory once when decrementing a dosage record' do
+    schedule = create_ambiguous_schedule(person: person, medication: medication)
+    alternate_medication, = create_alternate_medication_with_ambiguous_options(
+      assigned_medication: medication,
+      location_name: 'Single Sync Alt'
+    )
+
+    allow(alternate_medication).to receive(:sync_inventory_from_dosage_records!).and_call_original
+
+    create_taken_from_schedule(schedule: schedule, taken_from_medication: alternate_medication)
+
+    expect(alternate_medication).to have_received(:sync_inventory_from_dosage_records!).once
+  end
+
+  it 'locks the dosage record before locking aggregate inventory' do
+    schedule = create_ambiguous_schedule(person: person, medication: medication)
+    alternate_medication, inventory_options = create_alternate_medication_with_ambiguous_options(
+      assigned_medication: medication,
+      location_name: 'Lock Order Alt'
+    )
+    lock_order = record_lock_order(inventory: alternate_medication, dosage_option: inventory_options[:evening])
+
+    build_taken_from_schedule(schedule: schedule, taken_from_medication: alternate_medication).send(
+      :decrement_dosage_option_stock,
+      alternate_medication,
+      inventory_options[:evening]
+    )
+
+    expect(lock_order).to eq(%i[dosage inventory])
+  end
+
   it 'rejects an alternate medication that does not have the selected dosage record' do
     schedule = create_ambiguous_schedule(person: person, medication: medication)
     alternate_medication = create_incomplete_alternate_medication(assigned_medication: medication)
@@ -92,6 +123,20 @@ RSpec.describe MedicationTake do
     )
 
     alternate_medication
+  end
+
+  def record_lock_order(inventory:, dosage_option:)
+    lock_order = []
+    record_lock(dosage_option, lock_order, :dosage)
+    record_lock(inventory, lock_order, :inventory)
+    lock_order
+  end
+
+  def record_lock(record, lock_order, label)
+    allow(record).to receive(:with_lock).and_wrap_original do |method, *args, &block|
+      lock_order << label
+      method.call(*args, &block)
+    end
   end
 
   def create_matching_medication(medication:, location:, **overrides)

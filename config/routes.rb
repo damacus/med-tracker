@@ -70,6 +70,7 @@ Rails.application.routes.draw do
   resources :medications do
     member do
       get :administration
+      get :nhs_guidance
       patch :refill
       patch :mark_as_ordered
       patch :mark_as_received

@@ -235,6 +235,36 @@ RSpec.describe NhsDmd::Search do
       end
     end
 
+    context 'when a barcode catalogue hit needs enrichment but the NHS API fails' do
+      let(:barcode_result) do
+        {
+          display: 'Calprofen 100mg/5ml oral suspension',
+          source: 'cd_data'
+        }
+      end
+
+      before do
+        allow(client).to receive(:configured?).and_return(true)
+        allow(barcode_lookup).to receive(:lookup).with('3574661385488').and_return(barcode_result)
+        allow(client).to receive(:search)
+          .with('Calprofen 100mg/5ml oral suspension')
+          .and_raise(NhsDmd::Client::ApiError, 'Service unavailable')
+      end
+
+      it 'falls back to the local barcode catalogue hit' do
+        result = search.call('3574661385488')
+
+        expect(result).to be_success
+        expect(result.error).to be_nil
+        expect(result.resolved_query).to eq('Calprofen 100mg/5ml oral suspension')
+        expect(result.results.map(&:to_h)).to contain_exactly(
+          a_hash_including(
+            display: 'Calprofen 100mg/5ml oral suspension'
+          )
+        )
+      end
+    end
+
     context 'when the barcode is not in dm+d and Open Food Facts has a supplement match' do
       let(:off_result) do
         {

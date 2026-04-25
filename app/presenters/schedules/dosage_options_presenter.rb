@@ -43,7 +43,9 @@ module Schedules
     end
 
     def dosages
-      schedule.medication&.dosage_records&.order(:amount, :id).to_a
+      return @dosages if defined?(@dosages)
+
+      @dosages = schedule.medication ? schedule.medication.dosage_records.order(:amount, :id).to_a : []
     end
 
     private

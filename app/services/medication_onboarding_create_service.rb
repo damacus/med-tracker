@@ -27,6 +27,8 @@ class MedicationOnboardingCreateService
       end
     end
 
+    reset_rolled_back_records unless success
+
     Result.new(success: success, medication: medication, schedule: schedule)
   end
 
@@ -97,5 +99,16 @@ class MedicationOnboardingCreateService
     schedule.errors.full_messages.each do |message|
       medication.errors.add(:base, message)
     end
+  end
+
+  def reset_rolled_back_records
+    reset_record_for_resubmission(medication)
+    medication.dosage_records.each { |dosage_record| reset_record_for_resubmission(dosage_record) }
+  end
+
+  def reset_record_for_resubmission(record)
+    record.id = nil
+    record.instance_variable_set(:@new_record, true)
+    record.instance_variable_set(:@destroyed, false)
   end
 end

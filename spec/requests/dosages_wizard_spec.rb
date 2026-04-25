@@ -368,6 +368,7 @@ RSpec.describe 'Medication wizard dose option follow-up' do
 
     expect(response).to have_http_status(:unprocessable_content)
     expect(response.body).to include('must be after the start date')
+    expect(response.body).not_to include('medication[dosage_records_attributes][0][id]')
   end
 
   it 'falls back to the medication page for non-turbo requests' do

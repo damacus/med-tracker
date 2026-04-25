@@ -135,7 +135,7 @@ module NhsDmd
 
       fallback_barcode_items(translated_query, barcode_match)
     rescue Client::ApiError => e
-      log_failure(e.message)
+      log_failure(e.message, e)
       [barcode_match]
     rescue StandardError => e
       log_failure('unexpected_error', e)

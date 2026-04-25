@@ -7,6 +7,8 @@ class MedicationDosageOption < ApplicationRecord
 
   after_create :sync_medication_dosage
   after_commit :sync_medication_inventory, on: %i[create update destroy]
+  after_commit :reset_inventory_sync_suppression, on: %i[create update destroy]
+  after_rollback :reset_inventory_sync_suppression
 
   enum :default_dose_cycle, { daily: 0, weekly: 1, monthly: 2 }, prefix: :default
 
@@ -60,6 +62,18 @@ class MedicationDosageOption < ApplicationRecord
     to_value.to_option_payload.merge(id: id, option_value: option_value)
   end
 
+  def suppress_inventory_sync_once!
+    @suppress_inventory_sync = true
+  end
+
+  def with_inventory_sync_suppressed
+    suppress_inventory_sync_once!
+    yield
+  rescue StandardError
+    reset_inventory_sync_suppression
+    raise
+  end
+
   private
 
   def sync_medication_dosage
@@ -77,8 +91,17 @@ class MedicationDosageOption < ApplicationRecord
   end
 
   def tracked_inventory_change?
+    return false if suppress_inventory_sync?
     return current_supply.present? if destroyed?
 
     current_supply.present? || saved_change_to_current_supply?
+  end
+
+  def suppress_inventory_sync?
+    @suppress_inventory_sync == true
+  end
+
+  def reset_inventory_sync_suppression
+    @suppress_inventory_sync = false
   end
 end

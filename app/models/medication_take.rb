@@ -159,25 +159,28 @@ class MedicationTake < ApplicationRecord
   end
 
   def decrement_dosage_option_stock(inventory, dosage_option)
-    previous_current_supply = nil
+    decrement_dosage_option_current_supply(dosage_option)
 
     inventory.with_lock do
       previous_current_supply = inventory.current_supply
 
-      dosage_option.with_lock do
+      inventory.sync_inventory_from_dosage_records!
+      inventory.reload
+
+      {
+        'previous_current_supply' => previous_current_supply,
+        'current_supply' => inventory.current_supply,
+        'reorder_threshold' => inventory.reorder_threshold
+      }
+    end
+  end
+
+  def decrement_dosage_option_current_supply(dosage_option)
+    dosage_option.with_lock do
+      dosage_option.with_inventory_sync_suppressed do
         dosage_option.update!(current_supply: [dosage_option.current_supply.to_i - 1, 0].max)
       end
-
-      inventory.sync_inventory_from_dosage_records!
     end
-
-    inventory.reload
-
-    {
-      'previous_current_supply' => previous_current_supply,
-      'current_supply' => inventory.current_supply,
-      'reorder_threshold' => inventory.reorder_threshold
-    }
   end
 
   def remember_low_stock_threshold_crossing(inventory:, stock_row:)

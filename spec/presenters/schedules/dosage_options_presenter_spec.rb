@@ -57,6 +57,25 @@ RSpec.describe Schedules::DosageOptionsPresenter do
     end
   end
 
+  describe '#dosages' do
+    it 'memoizes the ordered dosage records across public presenter calls' do
+      presenter = described_class.new(schedule: schedule)
+
+      presenter.dosages
+      presenter.selected_dosage_option
+      presenter.duplicate_dose_selection_keys
+      presenter.dosage_dom_id(duplicate_dosage)
+
+      expect(medication).to have_received(:dosage_records).once
+    end
+
+    it 'returns an empty list when the schedule has no medication' do
+      presenter = described_class.new(schedule: Schedule.new)
+
+      expect(presenter.dosages).to eq([])
+    end
+  end
+
   describe '#dosage_dom_id' do
     it 'adds a description suffix when selection keys are duplicated' do
       presenter = described_class.new(schedule: schedule)

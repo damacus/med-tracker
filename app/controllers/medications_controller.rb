@@ -7,7 +7,8 @@ class MedicationsController < ApplicationController
   include MedicationRefillable
   include MedicationWizardSupport
 
-  before_action :set_medication, only: %i[show administration edit update destroy refill mark_as_ordered mark_as_received]
+  before_action :set_medication,
+                only: %i[show nhs_guidance administration edit update destroy refill mark_as_ordered mark_as_received]
 
   def index
     @current_category = params[:category]
@@ -35,9 +36,17 @@ class MedicationsController < ApplicationController
     authorize @medication
     render Components::Medications::ShowView.new(
       medication: @medication,
-      notice: flash[:notice],
-      nhs_guidance: NhsWebsiteContent::MedicineGuidanceLookup.new.call(@medication.name)
+      notice: flash[:notice]
     )
+  end
+
+  def nhs_guidance
+    authorize @medication, :show?
+
+    render Components::Medications::NhsGuidanceFrame.new(
+      medication: @medication,
+      guidance: NhsWebsiteContent::MedicineGuidanceLookup.new.call(@medication.name)
+    ), layout: false
   end
 
   def administration
