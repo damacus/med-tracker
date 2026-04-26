@@ -94,21 +94,21 @@ RSpec.describe DoseCycle do
 
     describe 'cycles crossing a DST spring-forward boundary' do
       it 'daily range_for on the spring-forward day covers the full calendar day' do
-        Time.use_zone('Eastern Time (US & Canada)') do
-          # 2026-03-08: US clocks spring forward at 02:00 -> 03:00
-          travel_to Time.zone.local(2026, 3, 8, 10, 0, 0) do
+        Time.use_zone('London') do
+          # 2026-03-29: UK clocks spring forward at 01:00 GMT -> 02:00 BST
+          travel_to Time.zone.local(2026, 3, 29, 10, 0, 0) do
             range = described_class.new('daily').range_for(Time.current)
-            expect(range.first.to_date).to eq(Date.new(2026, 3, 8))
-            expect(range.last.to_date).to eq(Date.new(2026, 3, 8))
+            expect(range.first.to_date).to eq(Date.new(2026, 3, 29))
+            expect(range.last.to_date).to eq(Date.new(2026, 3, 29))
           end
         end
       end
 
       it 'daily next_reset_time on the spring-forward day lands on the following day' do
-        Time.use_zone('Eastern Time (US & Canada)') do
-          travel_to Time.zone.local(2026, 3, 8, 10, 0, 0) do
+        Time.use_zone('London') do
+          travel_to Time.zone.local(2026, 3, 29, 10, 0, 0) do
             reset = described_class.new('daily').next_reset_time(Time.current)
-            expect(reset.to_date).to eq(Date.new(2026, 3, 9))
+            expect(reset.to_date).to eq(Date.new(2026, 3, 30))
           end
         end
       end
