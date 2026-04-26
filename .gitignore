@@ -55,3 +55,6 @@ vendor/**/*
 
 # Downloaded browser packages
 *.deb
+
+# Import Files
+*.zip

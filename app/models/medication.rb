@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Medication < ApplicationRecord # :nodoc:
-  DOSAGE_UNITS = %w[tablet mg ml g mcg IU spray drop sachet].freeze
+  DOSAGE_UNITS = %w[tablet capsule mg ml g mcg IU spray drop sachet pad].freeze
   CATEGORIES = [
     'Analgesic',
     'Antibiotic',
@@ -72,6 +72,18 @@ class Medication < ApplicationRecord # :nodoc:
   validates :reorder_threshold, presence: true, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
 
   delegate :low_stock?, :out_of_stock?, to: :supply_level
+
+  def sync_inventory_from_dosage_records!
+    tracked_dosages = dosage_records.where.not(current_supply: nil)
+    return reset_inventory_tracking! if tracked_dosages.none?
+
+    current_supply_total = tracked_dosages.sum(:current_supply)
+    update!(
+      current_supply: current_supply_total,
+      reorder_threshold: tracked_dosages.sum('COALESCE(reorder_threshold, 0)'),
+      supply_at_last_restock: next_supply_at_last_restock(current_supply_total)
+    )
+  end
 
   def sync_dosages
     return unless persisted? && switched_to_single_dose_mode?
@@ -150,13 +162,11 @@ class Medication < ApplicationRecord # :nodoc:
   end
 
   def out_of_stock_date
-    days = days_until_out_of_stock
-    days ? Time.zone.today + days.days : nil
+    days_until_out_of_stock&.then { |days| Time.zone.today + days.days }
   end
 
   def low_stock_date
-    days = days_until_low_stock
-    days ? Time.zone.today + days.days : nil
+    days_until_low_stock&.then { |days| Time.zone.today + days.days }
   end
 
   def supply_level
@@ -172,7 +182,7 @@ class Medication < ApplicationRecord # :nodoc:
   end
 
   def dose_options_payload
-    dosages.map(&:to_option_payload)
+    dosage_records.order(:amount, :id).map(&:to_option_payload)
   end
 
   def adult_default_dosage
@@ -190,6 +200,16 @@ class Medication < ApplicationRecord # :nodoc:
   def default_dosage(predicate)
     loaded = dosages.to_a
     loaded.find(&predicate) || loaded.first
+  end
+
+  def reset_inventory_tracking!
+    update!(current_supply: nil, reorder_threshold: 0, supply_at_last_restock: nil)
+  end
+
+  def next_supply_at_last_restock(current_supply_total)
+    return current_supply_total if supply_at_last_restock.blank? || current_supply_total > supply_at_last_restock
+
+    supply_at_last_restock
   end
 
   def child_person_type?(person_type)

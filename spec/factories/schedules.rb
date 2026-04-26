@@ -6,9 +6,16 @@ FactoryBot.define do
     medication
 
     transient do
-      dosage { medication.adult_default_dosage || association(:dosage, medication: medication) }
+      dosage do
+        medication.dosage_records.adult_default.first ||
+          medication.dosage_records.order(:amount, :id).first ||
+          association(:dosage, medication: medication)
+      end
     end
 
+    source_dosage_option do
+      dosage if dosage.is_a?(MedicationDosageOption)
+    end
     dose_amount { dosage.amount }
     dose_unit { dosage.unit }
     frequency { 'As needed' }
@@ -17,6 +24,8 @@ FactoryBot.define do
     max_daily_doses { 4 }
     min_hours_between_doses { 4 }
     dose_cycle { :daily }
+    schedule_type { :daily }
+    schedule_config { {} }
 
     trait :weekly do
       dose_cycle { :weekly }

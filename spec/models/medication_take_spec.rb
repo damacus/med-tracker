@@ -5,8 +5,6 @@ require 'rails_helper'
 RSpec.describe MedicationTake do
   subject(:medication_take) { described_class.new(schedule: schedule, taken_at: Time.current, amount_ml: 10.0) }
 
-  let(:person) { Person.create!(name: 'Jane Doe', date_of_birth: '1990-01-01') }
-
   let(:medication) do
     Medication.create!(
       name: 'Lisinopril',
@@ -18,34 +16,8 @@ RSpec.describe MedicationTake do
     )
   end
 
-  let(:dosage) do
-    Dosage.create!(
-      medication: medication,
-      amount: 10,
-      unit: 'mg',
-      frequency: 'daily',
-      default_max_daily_doses: 1,
-      default_min_hours_between_doses: 24,
-      default_dose_cycle: :daily
-    )
-  end
-
   let(:schedule) do
-    Schedule.create!(
-      person: person,
-      medication: medication,
-      dosage: dosage,
-      start_date: Time.zone.today,
-      end_date: Time.zone.today + 30.days
-    )
-  end
-
-  let(:person_medication) do
-    PersonMedication.create!(
-      person: person,
-      medication: medication,
-      notes: 'Test notes'
-    )
+    create_schedule_for(person: person, medication: medication, dosage: default_dosage_for(medication))
   end
 
   describe 'validations' do
@@ -385,7 +357,7 @@ RSpec.describe MedicationTake do
     end
   end
 
-  describe 'versioning' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+  describe 'versioning' do
     fixtures :accounts, :people, :users
 
     let(:admin) { users(:admin) }
@@ -494,13 +466,123 @@ RSpec.describe MedicationTake do
     end
   end # rubocop:enable RSpec/MultipleMemoizedHelpers
 
-  def create_matching_medication(medication:, location:, name: medication.name, current_supply: 12,
-                                 reorder_threshold: 2)
+  def person
+    @person ||= Person.create!(name: 'Jane Doe', date_of_birth: '1990-01-01')
+  end
+
+  def person_medication
+    @person_medication ||= PersonMedication.create!(
+      person: person,
+      medication: medication,
+      notes: 'Test notes'
+    )
+  end
+
+  def default_dosage_for(medication)
+    Dosage.create!(
+      medication: medication,
+      amount: 10,
+      unit: 'mg',
+      frequency: 'daily',
+      default_max_daily_doses: 1,
+      default_min_hours_between_doses: 24,
+      default_dose_cycle: :daily
+    )
+  end
+
+  def create_schedule_for(person:, medication:, dosage:)
+    Schedule.create!(
+      person: person,
+      medication: medication,
+      dosage: dosage,
+      start_date: Time.zone.today,
+      end_date: Time.zone.today + 30.days
+    )
+  end
+
+  def create_ambiguous_schedule(medication:)
+    options = create_ambiguous_tracked_options(
+      medication: medication,
+      current_supply: 10,
+      reorder_threshold: 2
+    )
+
+    create_schedule_for(person: person, medication: medication, dosage: options[:evening])
+  end
+
+  def create_ambiguous_tracked_options(medication:, current_supply:, reorder_threshold:)
+    create_option_pair(
+      medication: medication,
+      current_supply_by_frequency: { 'Morning' => current_supply, 'Evening' => current_supply },
+      reorder_threshold: reorder_threshold
+    )
+  end
+
+  def create_alternate_medication_with_ambiguous_options(assigned_medication:, location_name:)
+    alternate_medication = create_matching_medication(
+      medication: assigned_medication,
+      location: Location.create!(name: location_name),
+      current_supply: 10,
+      reorder_threshold: 2
+    )
+
+    options = create_option_pair(
+      medication: alternate_medication,
+      current_supply_by_frequency: { 'Morning' => 6, 'Evening' => 4 },
+      reorder_threshold: 1
+    )
+
+    [alternate_medication, options]
+  end
+
+  def create_incomplete_alternate_medication(assigned_medication:)
+    alternate_medication = create_matching_medication(
+      medication: assigned_medication,
+      location: Location.create!(name: 'Validation Dose Alt'),
+      current_supply: 10,
+      reorder_threshold: 2
+    )
+    create_option_pair(
+      medication: alternate_medication,
+      current_supply_by_frequency: { 'Morning' => 6 },
+      reorder_threshold: 1
+    )
+    alternate_medication
+  end
+
+  def create_matching_medication(medication:, location:, **overrides)
     Medication.create!(
-      name: name,
-      location: location,
-      dosage_amount: medication.dosage_amount,
-      dosage_unit: medication.dosage_unit,
+      {
+        name: medication.name,
+        location: location,
+        dosage_amount: medication.dosage_amount,
+        dosage_unit: medication.dosage_unit,
+        current_supply: 12,
+        reorder_threshold: 2
+      }.merge(overrides)
+    )
+  end
+
+  def create_option_pair(medication:, current_supply_by_frequency:, reorder_threshold:)
+    current_supply_by_frequency.each_with_object({}) do |(frequency, current_supply), options|
+      options[frequency.downcase.to_sym] = create_tracked_dosage(
+        medication: medication,
+        frequency: frequency,
+        description: "#{frequency} tablet",
+        current_supply: current_supply,
+        reorder_threshold: reorder_threshold
+      )
+    end
+  end
+
+  def create_tracked_dosage(medication:, frequency:, description:, current_supply:, reorder_threshold:)
+    create(
+      :dosage,
+      medication: medication,
+      amount: 1,
+      unit: 'tablet',
+      frequency: frequency,
+      description: description,
       current_supply: current_supply,
       reorder_threshold: reorder_threshold
     )

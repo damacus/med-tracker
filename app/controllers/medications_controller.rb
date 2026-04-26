@@ -1,10 +1,14 @@
 # frozen_string_literal: true
 
-class MedicationsController < ApplicationController # rubocop:disable Metrics/ClassLength
+class MedicationsController < ApplicationController
   include InventoryLocationFilterable
+  include MedicationAdministrationOptions
+  include MedicationFormContext
   include MedicationRefillable
+  include MedicationWizardSupport
 
-  before_action :set_medication, only: %i[show administration edit update destroy refill mark_as_ordered mark_as_received]
+  before_action :set_medication,
+                only: %i[show nhs_guidance administration edit update destroy refill mark_as_ordered mark_as_received]
 
   def index
     @current_category = params[:category]
@@ -30,7 +34,19 @@ class MedicationsController < ApplicationController # rubocop:disable Metrics/Cl
 
   def show
     authorize @medication
-    render Components::Medications::ShowView.new(medication: @medication, notice: flash[:notice])
+    render Components::Medications::ShowView.new(
+      medication: @medication,
+      notice: flash[:notice]
+    )
+  end
+
+  def nhs_guidance
+    authorize @medication, :show?
+
+    render Components::Medications::NhsGuidanceFrame.new(
+      medication: @medication,
+      guidance: NhsWebsiteContent::MedicineGuidanceLookup.new.call(@medication.name)
+    ), layout: false
   end
 
   def administration
@@ -48,11 +64,12 @@ class MedicationsController < ApplicationController # rubocop:disable Metrics/Cl
     @medication = Medication.new
     @medication.location_id ||= primary_location&.id
     authorize @medication
-    @medication.assign_attributes(finder_prefill_attributes)
+    onboarding_builder.build_new(medication: @medication, params: params)
 
     render wizard_wrapper_class.new(
       medication: @medication,
-      locations: available_locations
+      locations: available_locations,
+      people: available_people
     )
   end
 
@@ -69,16 +86,19 @@ class MedicationsController < ApplicationController # rubocop:disable Metrics/Cl
   end
 
   def create
-    @medication = Medication.new(medication_params)
+    @medication = Medication.new(onboarding_builder.merge_create_attributes(medication_params.to_h.deep_symbolize_keys))
     @medication.location_id ||= primary_location&.id
     authorize @medication
 
-    if @medication.save
+    result = create_medication_from_request
+
+    if result.success
       create_success
     elsif params[:wizard] == 'true'
       render wizard_wrapper_class.new(
         medication: @medication,
-        locations: available_locations
+        locations: available_locations,
+        people: available_people
       ), status: :unprocessable_content
     else
       render Components::Medications::FormView.new(
@@ -172,21 +192,9 @@ class MedicationsController < ApplicationController # rubocop:disable Metrics/Cl
 
   def search
     authorize Medication, :finder?
-    query = params[:q].to_s.strip
-    return render json: { results: [] } if query.blank?
+    response = medication_finder_search_responder.call(query: params[:q])
 
-    result = search_results_for(query)
-    return render_medication_search_unavailable unless result
-
-    if result.success?
-      render json: {
-        results: result.results.map(&:to_h),
-        query: result.resolved_query.presence || query,
-        barcode: result.barcode
-      }
-    else
-      render_medication_search_unavailable
-    end
+    render json: response.body, status: response.status
   end
 
   private
@@ -195,125 +203,23 @@ class MedicationsController < ApplicationController # rubocop:disable Metrics/Cl
     @medication = policy_scope(Medication).find(params[:id])
   end
 
-  def available_locations
-    LocationsQuery.new(scope: policy_scope(Location)).options
-  end
-
-  def primary_location
-    PrimaryLocationQuery.new(person: current_user&.person).call
-  end
-
-  def medication_params
-    params.expect(
-      medication: [
-        :name,
-        :barcode,
-        :dmd_code,
-        :dmd_system,
-        :dmd_concept_class,
-        :category,
-        :description,
-        :dosage_amount,
-        :dosage_unit,
-        :current_supply,
-        :reorder_threshold,
-        :warnings,
-        :location_id,
-        {
-          dosage_records_attributes: %i[
-            id
-            amount
-            unit
-            frequency
-            description
-            default_for_adults
-            default_for_children
-            default_max_daily_doses
-            default_min_hours_between_doses
-            default_dose_cycle
-            _destroy
-          ]
-        }
-      ]
-    )
-  end
-
-  def create_success
-    if params[:wizard] == 'true'
-      seed_initial_dosage
-      respond_to do |format|
-        format.turbo_stream do
-          render turbo_stream: turbo_stream.replace(
-            'wizard-content',
-            Components::Medications::Wizard::StepDosages.new(medication: @medication)
-          )
-        end
-        format.html { redirect_to @medication, notice: t('medications.created') }
-      end
-    else
-      redirect_to @medication, notice: t('medications.created')
+  def create_medication_from_request
+    unless onboarding_schedule?
+      return MedicationOnboardingCreateService::Result.new(
+        success: @medication.save,
+        medication: @medication,
+        schedule: nil
+      )
     end
+
+    MedicationOnboardingCreateService.new(
+      medication: @medication,
+      schedule_attributes: onboarding_schedule_params.to_h.deep_symbolize_keys,
+      people_scope: policy_scope(Person)
+    ).call
   end
 
-  def wizard_wrapper_class
-    case current_user.wizard_variant
-    when 'modal'     then Components::Medications::Wizard::ModalWrapper
-    when 'slideover' then Components::Medications::Wizard::SlideOverWrapper
-    else                  Components::Medications::Wizard::FullPageWrapper
-    end
-  end
-
-  def seed_initial_dosage
-    return unless @medication.dosage_amount.present? && @medication.dosage_unit.present?
-
-    @medication.dosage_records.create!(
-      amount: @medication.dosage_amount,
-      unit: @medication.dosage_unit,
-      frequency: 'As directed',
-      default_for_adults: true,
-      default_max_daily_doses: 1,
-      default_min_hours_between_doses: 24,
-      default_dose_cycle: :daily
-    )
-  end
-
-  def search_results_for(query)
-    NhsDmd::Search.new.call(query)
-  rescue StandardError => e
-    Rails.logger.error("Medication finder search failed: #{e.class}: #{e.message}")
-    nil
-  end
-
-  def render_medication_search_unavailable
-    render json: { results: [], error: 'Medication search is temporarily unavailable.' }, status: :service_unavailable
-  end
-
-  def finder_prefill_attributes
-    attrs = {}
-    attrs[:name] = params[:name].presence if params[:name].present?
-
-    barcode = params[:barcode].presence
-    attrs[:barcode] = barcode if NhsDmd::BarcodeLookup.barcode_query?(barcode)
-    attrs[:dmd_code] = params[:dmd_code].presence if params[:dmd_code].present?
-    attrs[:dmd_system] = params[:dmd_system].presence if params[:dmd_code].present?
-    attrs[:dmd_concept_class] = params[:dmd_concept_class].presence if params[:dmd_code].present?
-    attrs
-  end
-
-  def administration_schedules
-    policy_scope(Schedule)
-      .includes(:person, :medication)
-      .where(medication: @medication)
-      .active
-      .select { |schedule| policy(schedule).take_medication? }
-      .sort_by { |schedule| [schedule.person.name, schedule.id] }
-  end
-
-  def administration_person_medications
-    policy_scope(PersonMedication)
-      .includes(:person, :medication)
-      .where(medication: @medication)
-      .select { |person_medication| policy(person_medication).take_medication? }
-      .sort_by { |person_medication| [person_medication.person.name, person_medication.id] }
+  def onboarding_schedule?
+    params[:wizard] == 'true' && params[:onboarding_schedule].present?
   end
 end

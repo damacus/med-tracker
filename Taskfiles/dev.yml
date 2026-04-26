@@ -156,6 +156,24 @@ tasks:
           ENVIRONMENT: dev
           COMMAND: 'rails runner db/seeds/import_nhs_dmd_barcodes.rb "{{ .FILE }}"'
 
+  extract-dmd-release:
+    desc: Extract NHS dm+d release ZIP into the local release directory
+    summary: |
+      Unzip an NHS dm+d release archive into storage/nhs_dmd/releases/current
+      so it can be imported with task dev:import-dmd-release.
+      Existing files in the destination are removed first.
+      Usage: task dev:extract-dmd-release
+      Usage: task dev:extract-dmd-release ZIP_FILE=/absolute/path/to/release.zip
+      Usage: task dev:extract-dmd-release ZIP_FILE=nhsbsa_dmd_4.1.0_20260413000001.zip
+    vars:
+      ZIP_FILE: '{{ .ZIP_FILE | default "nhsbsa_dmd_4.1.0_20260413000001.zip" }}'
+      DEST_DIR: storage/nhs_dmd/releases/current
+    cmds:
+      - test -f "{{ .ZIP_FILE }}"
+      - mkdir -p "{{ .DEST_DIR }}"
+      - find "{{ .DEST_DIR }}" -mindepth 1 -delete
+      - unzip -o "{{ .ZIP_FILE }}" -d "{{ .DEST_DIR }}"
+
   import-dmd-release:
     desc: Import NHS dm+d release XML (AMPP names + GTIN barcodes)
     summary: |

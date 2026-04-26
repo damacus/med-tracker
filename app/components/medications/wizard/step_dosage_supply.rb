@@ -21,21 +21,32 @@ module Components
                 t('forms.medications.dosage_and_supply')
               end
               m3_text(size: '2', class: 'text-on-surface-variant') do
-                'Set the default dosage and track your supply'
+                'Set a primary dose option, then confirm the starting supply.'
               end
             end
 
-            div(class: 'grid grid-cols-1 sm:grid-cols-2 gap-6') do
-              render_dosage_amount_field
-              render_dosage_unit_field
+            div(class: 'space-y-4') do
+              m3_heading(level: 4, size: '4', class: 'font-bold tracking-tight text-foreground') { 'How to take it' }
+              m3_text(size: '2', class: 'text-on-surface-variant') do
+                'This becomes the primary dose option saved with the medication.'
+              end
+              render_primary_dosage_option_fields
             end
 
             div(class: 'h-px bg-border w-full')
 
-            div(class: 'grid grid-cols-1 sm:grid-cols-2 gap-6') do
-              render_current_supply_field
-              render_reorder_threshold_field
+            div(class: 'space-y-4') do
+              m3_heading(level: 4, size: '4', class: 'font-bold tracking-tight text-foreground') { 'Supply setup' }
+              m3_text(size: '2', class: 'text-on-surface-variant') do
+                'Track how much you have in the pack and when to reorder.'
+              end
+              div(class: 'grid grid-cols-1 sm:grid-cols-2 gap-6') do
+                render_current_supply_field
+                render_reorder_threshold_field
+              end
             end
+
+            render_suggested_dosage_records_section
           end
         end
       end

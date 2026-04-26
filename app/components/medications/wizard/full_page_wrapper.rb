@@ -4,11 +4,12 @@ module Components
   module Medications
     module Wizard
       class FullPageWrapper < Components::Base
-        attr_reader :medication, :locations, :variant
+        attr_reader :medication, :locations, :people, :variant
 
-        def initialize(medication:, locations:)
+        def initialize(medication:, locations:, people:)
           @medication = medication
           @locations = locations
+          @people = people
           @variant = 'fullpage'
           super()
         end
@@ -17,11 +18,12 @@ module Components
           div(class: 'container mx-auto px-4 py-12 max-w-2xl') do
             render_header
 
-            m3_card(variant: :elevated, class: 'overflow-visible border-none shadow-elevation-3 rounded-[2.5rem]') do
+            m3_card(variant: :elevated, class: 'overflow-visible border-none shadow-elevation-3 rounded-shape-xl') do
               div(class: 'p-10') do
                 render StepContent.new(
                   medication: medication,
                   locations: locations,
+                  people: people,
                   variant: variant
                 )
               end
@@ -34,7 +36,7 @@ module Components
         def render_header
           div(class: 'text-center mb-10 space-y-2') do
             div(
-              class: 'mx-auto w-16 h-16 rounded-[1.5rem] bg-primary/10 flex items-center justify-center ' \
+              class: 'mx-auto w-16 h-16 rounded-shape-xl bg-primary/10 flex items-center justify-center ' \
                      'text-primary shadow-inner mb-6'
             ) do
               render Icons::Pill.new(size: 32)

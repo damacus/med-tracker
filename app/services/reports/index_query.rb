@@ -29,6 +29,7 @@ module Reports
       alerts = Schedule.active.where(person_id: person_ids)
                        .includes(:medication)
                        .map { |schedule| inventory_alert_for(schedule) }
+                       .compact
 
       alerts.select { |alert| alert[:days_left] < 14 }
             .sort_by { |alert| alert[:days_left] }
@@ -69,7 +70,7 @@ module Reports
     end
 
     def expected_doses_for(date)
-      schedules_for(date).sum { |schedule| schedule.max_daily_doses || 1 }
+      schedules_for(date).sum { |schedule| schedule.expected_doses_on(date) }
     end
 
     def schedules_for(date)
@@ -79,7 +80,9 @@ module Reports
     end
 
     def inventory_alert_for(schedule)
-      burn_rate = schedule.max_daily_doses || 1
+      burn_rate = inventory_burn_rate_for(schedule)
+      return if burn_rate <= 0
+
       current = schedule.medication.current_supply || 0
       days_left = (current.to_f / burn_rate).floor
 
@@ -89,6 +92,21 @@ module Reports
         doses_left: current,
         low_stock: days_left <= 3
       }
+    end
+
+    def inventory_burn_rate_for(schedule)
+      dates = inventory_projection_dates_for(schedule)
+      return 0 if dates.empty?
+
+      dates.sum { |date| schedule.expected_doses_on(date) }.to_f / dates.size
+    end
+
+    def inventory_projection_dates_for(schedule)
+      projection_start = [Time.zone.today, schedule.start_date].max
+      projection_end = [Time.zone.today + 30.days, schedule.end_date].compact.min
+      return [] if projection_end < projection_start
+
+      (projection_start..projection_end).to_a
     end
 
     def compliance_percentage(expected_doses:, actual_doses:)

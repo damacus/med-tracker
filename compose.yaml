@@ -7,8 +7,11 @@ services:
       service: postgres
     profiles: [dev]
     networks: [dev]
+    environment:
+      POSTGRES_MULTIPLE_DATABASES: medtracker_queue
     volumes:
       - medtracker_dev_postgres:/var/lib/postgresql/data
+      - ./compose/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh:ro
 
   mail-dev:
     image: axllent/mailpit:latest
@@ -35,6 +38,7 @@ services:
       RAILS_ENV: development
       RAILS_FORCE_SSL: "false"
       DATABASE_URL: postgresql://medtracker:medtracker_password@db-dev:5432/medtracker
+      SOLID_QUEUE_DATABASE_URL: postgresql://medtracker:medtracker_password@db-dev:5432/medtracker_queue
       NHS_DMD_CLIENT_ID: ${NHS_DMD_CLIENT_ID:-}
       NHS_DMD_CLIENT_SECRET: ${NHS_DMD_CLIENT_SECRET:-}
     volumes:
@@ -61,7 +65,9 @@ services:
         condition: service_started
       migrate-dev:
         condition: service_completed_successfully
-    environment: *rails_env_dev
+    environment:
+      <<: *rails_env_dev
+      SOLID_QUEUE_IN_PUMA: "true"
     volumes:
       - .:/app
       - ${MEDTRACKER_GIT_COMMON_DIR:-.git}:${MEDTRACKER_GIT_COMMON_DIR:-.git}:ro
@@ -190,7 +196,9 @@ services:
         condition: service_healthy
       migrate-prod:
         condition: service_completed_successfully
-    environment: *rails_env_prod
+    environment:
+      <<: *rails_env_prod
+      SOLID_QUEUE_IN_PUMA: "true"
     ports:
       - "80"
     volumes:

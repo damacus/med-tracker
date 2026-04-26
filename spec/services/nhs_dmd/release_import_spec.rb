@@ -51,6 +51,53 @@ RSpec.describe NhsDmd::ReleaseImport do
     NhsDmdBarcode.find_by!(gtin: gtin)
   end
 
+  def progress_ampp_entries
+    [
+      { appid: '111', nm: 'Product One' },
+      { appid: '222', nm: 'Product Two' }
+    ]
+  end
+
+  def progress_gtin_entries
+    [
+      gtin_entry(
+        amppid: '111',
+        gtins: [
+          { gtin: '1111111111111', startdt: '2020-01-01' },
+          { gtin: '2222222222222', startdt: '2020-01-01' }
+        ]
+      ),
+      gtin_entry(
+        amppid: '222',
+        gtins: [
+          { gtin: '3333333333333', startdt: '2020-01-01' }
+        ]
+      )
+    ]
+  end
+
+  def write_progress_fixture
+    write_ampp_xml(progress_ampp_entries)
+    write_gtin_xml(progress_gtin_entries)
+  end
+
+  def expect_progress_update(progress_updates, **expected)
+    expect(progress_updates).to include(hash_including(**expected))
+  end
+
+  def expect_multi_phase_progress(progress_updates)
+    expect_progress_update(progress_updates, status: :counting, total_records: 5, processed_records: 0,
+                                             message: 'Counted 2 AMPP records and 3 GTIN records')
+    expect_progress_update(progress_updates, status: :importing, total_records: 5, processed_records: 0,
+                                             message: 'Starting AMPP name import')
+    expect_progress_update(progress_updates, status: :importing, total_records: 5, processed_records: 2,
+                                             message: 'Processed 2 AMPP records (2 updated, 0 skipped)')
+    expect_progress_update(progress_updates, status: :importing, total_records: 5, processed_records: 2,
+                                             message: 'Starting GTIN import')
+    expect(progress_updates.last).to include(status: :importing, total_records: 5, processed_records: 5,
+                                             imported_count: 3, skipped_count: 0)
+  end
+
   it 'imports active GTINs matched to AMPP names' do
     write_ampp_xml([{ appid: '111', nm: 'Paracetamol 500mg tablets (Acme Ltd) 16 tablet' }])
     write_single_gtin_xml(amppid: '111', gtin: '5016298210989', startdt: '2020-01-01')
@@ -143,10 +190,44 @@ RSpec.describe NhsDmd::ReleaseImport do
     result = importer.import(release_dir)
 
     expect(result.imported_count).to eq(1)
+    expect(result.updated_count).to eq(1)
+    expect(result.created_count).to eq(0)
+    expect(result.unchanged_count).to eq(0)
     expect(barcode_record('5016298210989')).to have_attributes(
       code: '777',
       display: 'Updated Name'
     )
+  end
+
+  it 'reports unchanged records when re-importing the same release' do
+    write_ampp_xml([{ appid: '888', nm: 'Stable Product' }])
+    write_single_gtin_xml(amppid: '888', gtin: '4444444444444', startdt: '2020-01-01')
+
+    first = importer.import(release_dir)
+    second = described_class.new.import(release_dir)
+
+    expect(first).to have_attributes(created_count: 1, unchanged_count: 0)
+    expect(second).to have_attributes(created_count: 0, updated_count: 0, unchanged_count: 1, imported_count: 0)
+  end
+
+  it 'categorises skip reasons separately' do
+    write_ampp_xml([{ appid: 'NAMED', nm: 'Known Product' }])
+    write_gtin_xml(
+      [
+        gtin_entry(amppid: 'NAMED', gtins: [{ gtin: '', startdt: '2020-01-01' }]),
+        gtin_entry(amppid: 'NAMED',
+                   gtins: [{ gtin: '5555555555555', startdt: '2019-01-01', enddt: '2019-12-31' }]),
+        gtin_entry(amppid: 'UNKNOWN', gtins: [{ gtin: '6666666666666', startdt: '2020-01-01' }])
+      ]
+    )
+
+    result = importer.import(release_dir)
+
+    expect(result.skipped_invalid_count).to eq(1)
+    expect(result.skipped_expired_count).to eq(1)
+    expect(result.skipped_missing_name_count).to eq(1)
+    expect(result.skipped_count).to eq(3)
+    expect(result.imported_count).to eq(0)
   end
 
   it 'raises when AMPP XML is missing' do
@@ -161,5 +242,14 @@ RSpec.describe NhsDmd::ReleaseImport do
 
     expect { importer.import(release_dir) }
       .to raise_error(ArgumentError, /No GTIN XML or ZIP found/)
+  end
+
+  it 'reports progress across both AMPP parsing and GTIN import work' do
+    write_progress_fixture
+    progress_updates = []
+
+    importer.import(release_dir, progress_callback: ->(payload) { progress_updates << payload })
+
+    expect_multi_phase_progress(progress_updates)
   end
 end

@@ -37,14 +37,9 @@ export default class extends Controller {
       if (data.error) {
         this.showError(data.error)
       } else {
-        const resolvedQuery = data.query || query
         const barcode = data.barcode || this.barcodeQuery(query)
-
-        if (data.query && data.query !== query) {
-          this.inputTarget.value = data.query
-        }
-
-        this.showResults(resolvedQuery, data.results, barcode)
+        const displayQuery = barcode || query
+        this.showResults(displayQuery, data.results, barcode)
       }
     } catch (error) {
       this.showError(this.t("unavailableMessage"))
@@ -97,13 +92,18 @@ export default class extends Controller {
       return
     }
 
+    const sources = [...new Set(results.map((result) => result.source_label).filter(Boolean))]
+    const sourceText = sources.length > 0
+      ? `${this.escapeHtml(this.t("source"))}: ${this.escapeHtml(sources.join(", "))}`
+      : this.escapeHtml(this.t("source"))
+
     const header = `
       <div class="flex items-center justify-between mb-3">
         <p class="text-sm font-medium text-foreground" data-testid="search-results-header">
           ${this.escapeHtml(this.t("resultsTitle"))}
           <span class="text-on-surface-variant font-normal">— ${this.escapeHtml(this.resultCountText(results.length, query))}</span>
         </p>
-        <p class="text-xs text-on-surface-variant">${this.escapeHtml(this.t("source"))}</p>
+        <p class="text-xs text-on-surface-variant">${sourceText}</p>
       </div>
     `
 
@@ -113,6 +113,14 @@ export default class extends Controller {
   }
 
   renderResultCard(result, barcode) {
+    const matchReasonBadge = result.match_reason_label
+      ? `<span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-tertiary-container text-on-tertiary-container">${this.escapeHtml(result.match_reason_label)}</span>`
+      : ''
+
+    const sourceBadge = result.source_label
+      ? `<span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-secondary-container text-on-secondary-container">${this.escapeHtml(result.source_label)}</span>`
+      : ''
+
     const badge = result.concept_class
       ? `<span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-primary-container text-on-primary-container">${this.escapeHtml(result.concept_class)}</span>`
       : ''
@@ -121,11 +129,11 @@ export default class extends Controller {
       ? `<span class="text-xs text-on-surface-variant">${this.escapeHtml(result.concept_class_label)}</span>`
       : ''
 
-    const addAction = result.display
+    const addAction = (result.name || result.display)
       ? `
         <div class="mt-4 flex justify-end">
           <a
-            href="${this.hrefAttribute(this.addMedicationUrl(result, barcode))}"
+            href="${this.hrefAttribute(this.addMedicationUrl(result, barcode || result.barcode))}"
             class="inline-flex items-center rounded-full bg-primary px-4 py-2 text-sm font-medium text-on-primary shadow-sm transition-all hover:shadow-md"
             data-testid="add-medication-link"
           >${this.escapeHtml(this.t("addMedication"))}</a>
@@ -133,14 +141,23 @@ export default class extends Controller {
       `
       : ''
 
+    const identifier = this.renderIdentifier(result)
+    const title = result.name || result.display
+    const packageSize = result.package_size
+      ? `<p class="text-xs text-on-surface-variant mt-0.5">Pack size: ${this.escapeHtml(result.package_size)}</p>`
+      : ''
+
     return `
       <div class="rounded-lg border border-border bg-surface-container-lowest p-4 hover:border-primary hover:shadow-sm transition-all" data-testid="result-card">
         <div class="flex items-start justify-between gap-3">
           <div class="flex-1 min-w-0">
-            <p class="text-sm font-medium text-foreground truncate">${this.escapeHtml(result.display)}</p>
-            <p class="text-xs text-on-surface-variant mt-0.5">${this.escapeHtml(this.t("dmdCode"))}: ${this.escapeHtml(result.code)}</p>
+            <p class="text-sm font-medium text-foreground truncate">${this.escapeHtml(title)}</p>
+            ${packageSize}
+            ${identifier}
           </div>
           <div class="flex flex-col items-end gap-1 shrink-0">
+            ${matchReasonBadge}
+            ${sourceBadge}
             ${badge}
             ${label}
           </div>
@@ -152,19 +169,47 @@ export default class extends Controller {
 
   addMedicationUrl(result, barcode) {
     const url = new URL("/medications/new", window.location.origin)
-    url.searchParams.set("name", result.display || "")
+    url.searchParams.set("name", result.name || result.display || "")
+
+    if (result.category) {
+      url.searchParams.set("category", result.category)
+    }
+
+    if (result.description) {
+      url.searchParams.set("description", result.description)
+    }
 
     if (barcode) {
       url.searchParams.set("barcode", barcode)
     }
 
-    if (result.code) {
+    if (result.package_quantity !== null && result.package_quantity !== undefined) {
+      url.searchParams.set("package_quantity", result.package_quantity)
+    }
+
+    if (result.package_unit) {
+      url.searchParams.set("package_unit", result.package_unit)
+    }
+
+    if (result.code && result.system === 'https://dmd.nhs.uk') {
       url.searchParams.set("dmd_code", result.code)
       url.searchParams.set("dmd_system", result.system || "")
       url.searchParams.set("dmd_concept_class", result.concept_class || "")
     }
 
     return url.toString()
+  }
+
+  renderIdentifier(result) {
+    if (result.code) {
+      return `<p class="text-xs text-on-surface-variant mt-0.5">${this.escapeHtml(this.t("dmdCode"))}: ${this.escapeHtml(result.code)}</p>`
+    }
+
+    if (result.barcode) {
+      return `<p class="text-xs text-on-surface-variant mt-0.5">${this.escapeHtml(this.t("barcode"))}: ${this.escapeHtml(result.barcode)}</p>`
+    }
+
+    return ''
   }
 
   barcodeQuery(query) {

@@ -460,7 +460,8 @@ es:
       no_results_title: "No se encontraron medicamentos"
       no_results_message: "Pruebe con otros términos o revise la ortografía."
       results_title: "Resultados de la búsqueda"
-      source: "Fuente: NHS dm+d"
+      source: "Fuente"
+      barcode: "Código de barras"
       dmd_code: "código dm+d"
       result_count:
         one: "%{count} resultado para \"%{query}\""
@@ -522,6 +523,10 @@ es:
       edit_details: "Editar Detalles"
       inventory: "Inventario"
       add_schedule: "Programar"
+      nhs_guidance_title: "Guía del NHS sobre el medicamento"
+      nhs_guidance_link: "Ver la guía completa del NHS"
+      nhs_guidance_source: "Fuente: %{source}"
+      nhs_guidance_reviewed_on: "Última revisión %{date}"
       mark_as_ordered: "Pedir"
       mark_as_received: "Recibido"
       refill_inventory: "Reabastecer"
@@ -1008,6 +1013,72 @@ es:
       standard_dosage_placeholder: "e.g., 500"
       current_supply_placeholder: "e.g., 30"
       reorder_threshold_placeholder: "e.g., 5"
+      wizard:
+        progress_label: "Progreso de configuración del medicamento"
+        continue: "Continuar"
+        steps:
+          details: "Detalles"
+          dose: "Dosis"
+          supply: "Suministro"
+          warnings: "Advertencias"
+        details:
+          title: "Detalles del medicamento"
+          description: "Cuéntanos sobre este medicamento."
+        dose:
+          title: "Horario de dosis"
+          description: "Crea el primer horario eligiendo quién lo toma, la dosis y el ritmo."
+          person_title: "¿Quién tomará esto?"
+          person_description: "Selecciona la persona o dependiente para este horario."
+          person_types:
+            adult: "Adulto"
+            minor: "Menor"
+            dependent_adult: "Adulto dependiente"
+          amount: "Cantidad"
+          unit: "Unidad"
+          schedule_type_title: "¿Con qué frecuencia se toma?"
+          schedule_types:
+            multiple_daily:
+              title: "Varias al día"
+              description: "Varias dosis planificadas cada día"
+            daily:
+              title: "Diaria"
+              description: "Una dosis a la misma hora"
+            weekly:
+              title: "Semanal"
+              description: "Una dosis semanal repetida"
+            specific_dates:
+              title: "Fechas concretas"
+              description: "Solo en fechas seleccionadas"
+            prn:
+              title: "Según necesidad"
+              description: "PRN con límites de seguridad"
+            tapering:
+              title: "Reducción gradual"
+              description: "Un plan de dosis cambiante"
+          doses_per_day: "Dosis por día"
+          hours_apart: "Horas de separación"
+          first_dose: "Primera dosis"
+          second_dose: "Segunda dosis"
+          dose_time: "Hora de la dosis"
+          weekly_day: "Día"
+          specific_dates: "Fechas"
+          specific_date_to_add: "Fecha para añadir"
+          add_specific_date: "Añadir fecha"
+          no_specific_dates: "Aún no hay fechas seleccionadas"
+          specific_dates_placeholder: "2026-04-24, 2026-04-25"
+          max_daily_doses: "Dosis máximas diarias"
+          min_hours_between: "Horas mínimas entre dosis"
+          tapering_plan: "Plan de reducción gradual"
+          tapering_placeholder: "Describe los cambios de dosis con el tiempo"
+          start_date: "Fecha de inicio"
+          end_date: "Fecha de fin"
+          review_title: "Revisión en lenguaje claro"
+          review_placeholder: "Revisa el horario de dosis antes de continuar."
+          review_button: "Revisar horario de dosis"
+          review_required: "Revisa el horario de dosis antes de continuar."
+        supply:
+          title: "Configuración de suministro"
+          description: "Controla cuánto hay en el envase y cuándo volver a pedir."
       validation_errors:
         one: "1 error impidió que este medicamento se guardara:"
         other: "%{count} errores impidieron que este medicamento se guardara:"

@@ -7,8 +7,8 @@ module TimingRestrictions
     return @dose_constraints if defined?(@dose_constraints)
 
     @dose_constraints = DoseConstraints.new(
-      max_daily_doses: max_daily_doses,
-      min_hours_between_doses: min_hours_between_doses
+      max_daily_doses: effective_constraint_value(:max_daily_doses),
+      min_hours_between_doses: effective_constraint_value(:min_hours_between_doses)
     )
   end
 
@@ -56,5 +56,14 @@ module TimingRestrictions
     return :cooldown unless can_take_now?
 
     nil
+  end
+
+  private
+
+  def effective_constraint_value(attribute)
+    method_name = "effective_#{attribute}"
+    return public_send(method_name) if respond_to?(method_name)
+
+    public_send(attribute)
   end
 end

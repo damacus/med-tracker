@@ -9,6 +9,9 @@ module BarcodeCatalog
 
         local = lookup_local(candidate)
         return local if local
+
+        curated = lookup_curated(candidate)
+        return curated if curated
       end
 
       nil
@@ -44,6 +47,10 @@ module BarcodeCatalog
         concept_class: record.concept_class,
         source: 'nhs_dmd'
       }
+    end
+
+    def lookup_curated(candidate)
+      BarcodeCatalog::CuratedProducts.lookup_gtin(candidate)&.lookup_attributes
     end
   end
 end

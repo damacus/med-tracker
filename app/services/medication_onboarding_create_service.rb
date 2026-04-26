@@ -1,0 +1,114 @@
+# frozen_string_literal: true
+
+class MedicationOnboardingCreateService
+  Result = Data.define(:success, :medication, :schedule)
+
+  attr_reader :medication, :schedule_attributes, :people_scope
+
+  def initialize(medication:, schedule_attributes:, people_scope:)
+    @medication = medication
+    @schedule_attributes = schedule_attributes
+    @people_scope = people_scope
+  end
+
+  def call
+    schedule = nil
+    success = false
+
+    ActiveRecord::Base.transaction do
+      raise ActiveRecord::Rollback unless medication.save
+
+      schedule = build_schedule
+      if schedule.save
+        success = true
+      else
+        copy_schedule_errors(schedule)
+        raise ActiveRecord::Rollback
+      end
+    end
+
+    reset_rolled_back_records unless success
+
+    Result.new(success: success, medication: medication, schedule: schedule)
+  end
+
+  private
+
+  def build_schedule
+    schedule_person.schedules.build(schedule_attributes_for(primary_dosage_option))
+  end
+
+  def primary_dosage_option
+    default_dosage_for_schedule_person || medication.dosage_records.first
+  end
+
+  def default_dosage_for_schedule_person
+    if dependent_person_type?
+      medication.dosage_records.find(&:default_for_children?)
+    else
+      medication.dosage_records.find(&:default_for_adults?)
+    end
+  end
+
+  def dependent_person_type?
+    %w[minor dependent_adult].include?(schedule_person.person_type.to_s)
+  end
+
+  def schedule_person
+    @schedule_person ||= people_scope.find(schedule_attributes.fetch(:person_id))
+  end
+
+  def schedule_attributes_for(dosage)
+    schedule_dose_attributes(dosage).merge(schedule_timing_attributes(dosage))
+  end
+
+  def schedule_dose_attributes(dosage)
+    {
+      medication: medication,
+      source_dosage_option: dosage,
+      dose_amount: dosage.amount,
+      dose_unit: dosage.unit,
+      frequency: schedule_attributes[:frequency].presence || dosage.frequency
+    }
+  end
+
+  def schedule_timing_attributes(_dosage)
+    {
+      start_date: schedule_attributes[:start_date],
+      end_date: schedule_attributes[:end_date],
+      max_daily_doses: schedule_attributes[:max_daily_doses],
+      min_hours_between_doses: schedule_attributes[:min_hours_between_doses],
+      dose_cycle: schedule_attributes[:dose_cycle],
+      schedule_type: schedule_attributes[:schedule_type],
+      schedule_config: normalized_schedule_config
+    }
+  end
+
+  def normalized_schedule_config
+    raw = schedule_attributes[:schedule_config]
+    return {} if raw.blank?
+    return raw.to_unsafe_h if raw.respond_to?(:to_unsafe_h)
+    return raw.to_h if raw.respond_to?(:to_h)
+
+    JSON.parse(raw.to_s)
+  rescue JSON::ParserError
+    {}
+  end
+
+  def copy_schedule_errors(schedule)
+    schedule.errors.full_messages.each do |message|
+      medication.errors.add(:base, message)
+    end
+  end
+
+  def reset_rolled_back_records
+    reset_record_for_resubmission(medication)
+    medication.dosage_records.each { |dosage_record| reset_record_for_resubmission(dosage_record) }
+  end
+
+  def reset_record_for_resubmission(record)
+    record.id = nil
+    record.instance_variable_set(:@new_record, true)
+    record.instance_variable_set(:@destroyed, false)
+  end
+end

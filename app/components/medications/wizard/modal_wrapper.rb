@@ -6,11 +6,12 @@ module Components
       class ModalWrapper < Components::Base
         include Phlex::Rails::Helpers::TurboFrameTag
 
-        attr_reader :medication, :locations, :variant
+        attr_reader :medication, :locations, :people, :variant
 
-        def initialize(medication:, locations:)
+        def initialize(medication:, locations:, people:)
           @medication = medication
           @locations = locations
+          @people = people
           @variant = 'modal'
           super()
         end
@@ -26,7 +27,7 @@ module Components
 
             div(
               class: 'fixed left-1/2 top-1/2 z-50 w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 ' \
-                     'rounded-[2.5rem] border border-outline-variant/30 bg-surface-container-high shadow-elevation-5 ' \
+                     'rounded-shape-xl border border-outline-variant/30 bg-surface-container-high shadow-elevation-5 ' \
                      'overflow-hidden max-h-[90vh] overflow-y-auto'
             ) do
               a(
@@ -48,6 +49,7 @@ module Components
                 render StepContent.new(
                   medication: medication,
                   locations: locations,
+                  people: people,
                   variant: variant
                 )
               end

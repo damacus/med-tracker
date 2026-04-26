@@ -35,6 +35,15 @@ RSpec.describe 'Medication Lookup', type: :system do
     ]
   end
 
+  let(:exact_barcode_result) do
+    {
+      code: '19736211000001105',
+      display: 'Phenoxymethylpenicillin 125mg/5ml oral solution (Medreich Plc) 100 ml',
+      system: 'https://dmd.nhs.uk',
+      concept_class: 'AMPP'
+    }
+  end
+
   before do
     # Set credentials for NhsDmd::Client
     allow(ENV).to receive(:fetch).and_call_original
@@ -123,12 +132,16 @@ RSpec.describe 'Medication Lookup', type: :system do
     fill_in 'medication-search-input', with: '5016298210989'
     click_button 'Search'
 
-    expect(page).to have_field('medication-search-input', with: 'Laxido Orange oral powder sachets (Galen Ltd)')
+    expect(page).to have_field('medication-search-input', with: '5016298210989')
     expect(page).to have_css(
+      '[data-testid="search-results-header"]',
+      text: '5016298210989'
+    )
+    expect(page).to have_no_css(
       '[data-testid="search-results-header"]',
       text: 'Laxido Orange oral powder sachets (Galen Ltd)'
     )
-    expect(page).to have_no_css('[data-testid="search-results-header"]', text: '5016298210989')
+    expect(page).to have_content('Barcode match')
 
     within('[data-testid="result-card"]', match: :first) do
       click_link 'Add Medication'
@@ -137,6 +150,45 @@ RSpec.describe 'Medication Lookup', type: :system do
     expect(page).to have_current_path(%r{/medications/new})
     expect(page).to have_field('medication_name', with: 'Laxido Orange oral powder sachets (Galen Ltd)')
     expect(page).to have_field('medication[barcode]', with: '5016298210989', type: :hidden)
+  end
+
+  it 'shows the exact scanned match instead of a fuzzy barcode sibling list' do
+    NhsDmdBarcode.create!(
+      gtin: '05000123456789',
+      code: '19736211000001105',
+      display: 'Phenoxymethylpenicillin 125mg/5ml oral solution (Medreich Plc) 100 ml',
+      system: 'https://dmd.nhs.uk',
+      concept_class: 'AMPP'
+    )
+    stub_nhs_dmd_search(
+      query: 'Phenoxymethylpenicillin 125mg/5ml oral solution (Medreich Plc) 100 ml',
+      results: [
+        exact_barcode_result,
+        {
+          code: '23189811000001102',
+          display: 'Flucloxacillin 125mg/5ml oral solution (Medreich Plc)',
+          system: 'https://dmd.nhs.uk',
+          concept_class: 'AMPP'
+        },
+        {
+          code: '18719011000001104',
+          display: 'Phenoxymethylpenicillin 125mg/5ml oral solution (Sigma Pharmaceuticals Plc)',
+          system: 'https://dmd.nhs.uk',
+          concept_class: 'AMPP'
+        }
+      ]
+    )
+
+    sign_in(doctor)
+    visit medication_finder_path
+
+    fill_in 'medication-search-input', with: '5000123456789'
+    click_button 'Search'
+
+    expect(page).to have_content('Phenoxymethylpenicillin 125mg/5ml oral solution (Medreich Plc) 100 ml')
+    expect(page).to have_content('Barcode match')
+    expect(page).to have_no_content('Flucloxacillin 125mg/5ml oral solution (Medreich Plc)')
+    expect(page).to have_no_content('Phenoxymethylpenicillin 125mg/5ml oral solution (Sigma Pharmaceuticals Plc)')
   end
 
   it 'does not persist a non-GTIN numeric query as a barcode' do

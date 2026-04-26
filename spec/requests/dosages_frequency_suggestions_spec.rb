@@ -25,8 +25,8 @@ RSpec.describe 'Medication dose option suggestions' do
     expect(response.body).to include('data-frequency-suggestions-max-doses-value="1"')
     expect(response.body).to include('data-frequency-suggestions-min-hours-value="24"')
     expect(response.body).to include('data-frequency-suggestions-dose-cycle-value="daily"')
-    expect(response.body).to include('Matches the main dose unit')
-    expect(response.body).to include('id="medication_dosage_records_attributes_0_display_unit"')
-    expect(response.body).to match(/id="medication_dosage_records_attributes_0_display_unit"[^>]*disabled/)
+    expect(response.body).to include('name="medication[dosage_records_attributes][0][unit]"')
+    expect(response.body).to include('Tracked supply')
+    expect(response.body).to include('Dose stock threshold')
   end
 end

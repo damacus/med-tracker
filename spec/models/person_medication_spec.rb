@@ -23,6 +23,37 @@ RSpec.describe PersonMedication do
   end
 
   describe 'dose validations' do
+    it 'does not assign a mismatched default dosage option for an explicit custom dose' do
+      medication = create(:medication, dosage_amount: nil, dosage_unit: nil)
+      create(:dosage, medication: medication, amount: 500, unit: 'mg', default_for_adults: true)
+      person_medication = build(
+        :person_medication,
+        medication: medication,
+        source_dosage_option: nil,
+        dose_amount: 750,
+        dose_unit: 'mg'
+      )
+
+      expect(person_medication).to be_valid
+      expect(person_medication.source_dosage_option).to be_nil
+    end
+
+    it 'assigns the matching dosage option for an explicit dose snapshot' do
+      medication = create(:medication, dosage_amount: nil, dosage_unit: nil)
+      create(:dosage, medication: medication, amount: 500, unit: 'mg', default_for_adults: true)
+      matching_dosage = create(:dosage, medication: medication, amount: 750, unit: 'mg')
+      person_medication = build(
+        :person_medication,
+        medication: medication,
+        source_dosage_option: nil,
+        dose_amount: 750,
+        dose_unit: 'mg'
+      )
+
+      expect(person_medication).to be_valid
+      expect(person_medication.source_dosage_option).to eq(matching_dosage)
+    end
+
     it 'requires a resolvable dose for new records' do
       medication = create(:medication, dosage_amount: nil, dosage_unit: nil)
       person_medication = build(:person_medication, medication: medication, dose_amount: nil, dose_unit: nil)

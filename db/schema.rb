@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_18_083600) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_24_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -178,6 +178,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_18_083600) do
   create_table "dosages", force: :cascade do |t|
     t.decimal "amount"
     t.datetime "created_at", null: false
+    t.integer "current_supply"
     t.integer "default_dose_cycle"
     t.boolean "default_for_adults", default: false, null: false
     t.boolean "default_for_children", default: false, null: false
@@ -186,6 +187,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_18_083600) do
     t.string "description"
     t.string "frequency"
     t.bigint "medication_id", null: false
+    t.integer "reorder_threshold"
     t.string "unit"
     t.datetime "updated_at", null: false
     t.index ["medication_id"], name: "index_dosages_on_medication_id"
@@ -288,6 +290,28 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_18_083600) do
     t.index ["gtin"], name: "index_nhs_dmd_barcodes_on_gtin", unique: true
   end
 
+  create_table "nhs_dmd_imports", force: :cascade do |t|
+    t.string "archive_path"
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.integer "created_count", default: 0, null: false
+    t.text "error_message"
+    t.integer "imported_count", default: 0, null: false
+    t.text "log"
+    t.integer "processed_records", default: 0, null: false
+    t.integer "skipped_count", default: 0, null: false
+    t.integer "skipped_expired_count", default: 0, null: false
+    t.integer "skipped_invalid_count", default: 0, null: false
+    t.integer "skipped_missing_name_count", default: 0, null: false
+    t.datetime "started_at"
+    t.integer "status", default: 0, null: false
+    t.integer "total_records", default: 0, null: false
+    t.integer "unchanged_count", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.integer "updated_count", default: 0, null: false
+    t.string "uploaded_filename", null: false
+  end
+
   create_table "notification_preferences", force: :cascade do |t|
     t.time "afternoon_time", default: "2000-01-01 14:00:00"
     t.datetime "created_at", null: false
@@ -325,11 +349,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_18_083600) do
     t.text "notes"
     t.bigint "person_id", null: false
     t.integer "position", null: false
+    t.bigint "source_dosage_option_id"
     t.datetime "updated_at", null: false
     t.index ["medication_id"], name: "index_person_medications_on_medication_id"
     t.index ["person_id", "medication_id"], name: "index_person_medications_on_person_id_and_medication_id", unique: true
     t.index ["person_id", "position"], name: "index_person_medications_on_person_id_and_position"
     t.index ["person_id"], name: "index_person_medications_on_person_id"
+    t.index ["source_dosage_option_id"], name: "index_person_medications_on_source_dosage_option_id"
   end
 
   create_table "push_subscriptions", force: :cascade do |t|
@@ -357,11 +383,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_18_083600) do
     t.integer "min_hours_between_doses"
     t.text "notes"
     t.bigint "person_id", null: false
+    t.jsonb "schedule_config", default: {}, null: false
+    t.integer "schedule_type", default: 0, null: false
+    t.bigint "source_dosage_option_id"
     t.date "start_date"
     t.datetime "updated_at", null: false
     t.index ["active"], name: "index_schedules_on_active"
     t.index ["medication_id"], name: "index_schedules_on_medication_id"
     t.index ["person_id"], name: "index_schedules_on_person_id"
+    t.index ["schedule_config"], name: "index_schedules_on_schedule_config", using: :gin
+    t.index ["schedule_type"], name: "index_schedules_on_schedule_type"
+    t.index ["source_dosage_option_id"], name: "index_schedules_on_source_dosage_option_id"
   end
 
   create_table "users", force: :cascade do |t|
@@ -418,9 +450,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_18_083600) do
   add_foreign_key "native_device_tokens", "accounts"
   add_foreign_key "notification_preferences", "people", deferrable: :deferred
   add_foreign_key "people", "accounts", deferrable: :deferred
+  add_foreign_key "person_medications", "dosages", column: "source_dosage_option_id"
   add_foreign_key "person_medications", "medications", deferrable: :deferred
   add_foreign_key "person_medications", "people", deferrable: :deferred
   add_foreign_key "push_subscriptions", "accounts", deferrable: :deferred
+  add_foreign_key "schedules", "dosages", column: "source_dosage_option_id"
   add_foreign_key "schedules", "medications", deferrable: :deferred
   add_foreign_key "schedules", "people", deferrable: :deferred
   add_foreign_key "users", "people", deferrable: :deferred

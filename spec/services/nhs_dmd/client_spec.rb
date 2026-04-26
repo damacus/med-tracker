@@ -8,8 +8,11 @@ RSpec.describe NhsDmd::Client do
   let(:base_url) { 'https://ontology.nhs.uk/production1/fhir' }
   let(:vmp_url) { 'https://dmd.nhs.uk/ValueSet/VMP' }
   let(:amp_url) { 'https://dmd.nhs.uk/ValueSet/AMP' }
+  let(:cache_store) { ActiveSupport::Cache::MemoryStore.new }
 
   before do
+    allow(Rails).to receive(:cache).and_return(cache_store)
+    Rails.cache.clear
     allow(ENV).to receive(:fetch).and_call_original
     allow(ENV).to receive(:fetch).with('NHS_DMD_CLIENT_ID', nil).and_return('test-client-id')
     allow(ENV).to receive(:fetch).with('NHS_DMD_CLIENT_SECRET', nil).and_return('test-secret')
@@ -183,6 +186,56 @@ RSpec.describe NhsDmd::Client do
 
         expect(WebMock).to have_requested(:get, /ontology\.nhs\.uk/)
           .with(query: hash_including('count' => '5')).twice
+      end
+    end
+
+    context 'when the same query is requested repeatedly' do
+      before do
+        stub_request(:get, /ontology\.nhs\.uk/)
+          .to_return(status: 200, body: '{"resourceType":"ValueSet","expansion":{"total":0,"contains":[]}}',
+                     headers: { 'Content-Type' => 'application/json' })
+      end
+
+      it 'caches value set lookups across client instances' do
+        described_class.new.search('aspirin')
+        described_class.new.search('aspirin')
+
+        expect(WebMock).to have_requested(:get, /ontology\.nhs\.uk/).twice
+      end
+    end
+
+    context 'when the token is reused for different queries' do
+      before do
+        stub_request(:get, /ontology\.nhs\.uk/)
+          .to_return(status: 200, body: '{"resourceType":"ValueSet","expansion":{"total":0,"contains":[]}}',
+                     headers: { 'Content-Type' => 'application/json' })
+      end
+
+      it 'caches the access token across client instances' do
+        described_class.new.search('aspirin')
+        described_class.new.search('ibuprofen')
+
+        expect(WebMock).to have_requested(:post, %r{openid-connect/token}).once
+      end
+
+      it 're-reads the cache for reused client instances after token eviction' do
+        stub_request(:post, %r{openid-connect/token})
+          .to_return(
+            { status: 200, body: { 'access_token' => 'first-token' }.to_json,
+              headers: { 'Content-Type' => 'application/json' } },
+            { status: 200, body: { 'access_token' => 'second-token' }.to_json,
+              headers: { 'Content-Type' => 'application/json' } }
+          )
+
+        client.search('aspirin')
+        Rails.cache.clear
+        client.search('ibuprofen')
+
+        expect(WebMock).to have_requested(:post, %r{openid-connect/token}).twice
+        expect(WebMock).to have_requested(:get, /ontology\.nhs\.uk/)
+          .with(headers: { 'Authorization' => 'Bearer first-token' }).twice
+        expect(WebMock).to have_requested(:get, /ontology\.nhs\.uk/)
+          .with(headers: { 'Authorization' => 'Bearer second-token' }).twice
       end
     end
   end

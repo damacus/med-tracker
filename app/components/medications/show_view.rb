@@ -3,13 +3,12 @@
 module Components
   module Medications
     class ShowView < Components::Base
-      include Phlex::Rails::Helpers::TurboFrameTag
-
       attr_reader :medication, :notice
 
-      def initialize(medication:, notice: nil)
+      def initialize(medication:, notice: nil, nhs_guidance: nil)
         @medication = medication
         @notice = notice
+        @nhs_guidance = nhs_guidance
         super()
       end
 
@@ -22,6 +21,7 @@ module Components
               data: { testid: 'medication-content' }) do
             div(class: 'lg:col-span-2 space-y-8') do
               render_description_section
+              render_nhs_guidance_frame
               render_warnings_section if medication.warnings.present?
               render_dosages_section
             end
@@ -104,6 +104,14 @@ module Components
 
       def render_warnings_section
         render Components::Medications::WarningsComponent.new(medication: medication)
+      end
+
+      def render_nhs_guidance_frame
+        render Components::Medications::NhsGuidanceFrame.new(
+          medication: medication,
+          guidance: @nhs_guidance,
+          src: @nhs_guidance.present? ? nil : nhs_guidance_medication_path(medication)
+        )
       end
 
       def render_dosage_card

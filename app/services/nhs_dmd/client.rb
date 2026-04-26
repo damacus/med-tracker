@@ -3,6 +3,7 @@
 require 'net/http'
 require 'uri'
 require 'json'
+require 'digest'
 
 module NhsDmd
   class Client
@@ -10,7 +11,10 @@ module NhsDmd
 
     BASE_URL = 'https://ontology.nhs.uk/production1/fhir'
     TOKEN_URL = 'https://ontology.nhs.uk/authorisation/auth/realms/nhs-digital-terminology/protocol/openid-connect/token'
+    CACHE_PREFIX = 'nhs_dmd'
     DEFAULT_COUNT = 20
+    SEARCH_CACHE_TTL = 12.hours
+    TOKEN_CACHE_TTL = 50.minutes
     TIMEOUT_SECONDS = 10
 
     VMP_VALUE_SET = 'https://dmd.nhs.uk/ValueSet/VMP'
@@ -42,9 +46,13 @@ module NhsDmd
     private
 
     def fetch_value_set(value_set_url, query, count:)
-      uri = build_uri(value_set_url, query, count)
-      response = perform_request(uri)
-      parse_response(response)
+      normalized_query = query.to_s.strip.downcase
+
+      Rails.cache.fetch(value_set_cache_key(value_set_url, normalized_query, count), expires_in: SEARCH_CACHE_TTL) do
+        uri = build_uri(value_set_url, query, count)
+        response = perform_request(uri)
+        parse_response(response)
+      end
     end
 
     def build_uri(value_set_url, query, count)
@@ -104,7 +112,9 @@ module NhsDmd
     end
 
     def access_token
-      @access_token ||= fetch_access_token
+      Rails.cache.fetch(token_cache_key, expires_in: TOKEN_CACHE_TTL) do
+        fetch_access_token
+      end
     end
 
     def fetch_access_token
@@ -130,6 +140,15 @@ module NhsDmd
 
     def client_secret
       ENV.fetch('NHS_DMD_CLIENT_SECRET', nil)
+    end
+
+    def value_set_cache_key(value_set_url, query, count)
+      "#{CACHE_PREFIX}/search/#{Digest::SHA256.hexdigest(value_set_url)}/#{count}/#{query}"
+    end
+
+    def token_cache_key
+      token_fingerprint = Digest::SHA256.hexdigest("#{client_id}:#{client_secret}")
+      "#{CACHE_PREFIX}/access_token/#{token_fingerprint}"
     end
   end
 end

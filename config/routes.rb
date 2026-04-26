@@ -25,6 +25,7 @@ Rails.application.routes.draw do
 
   namespace :admin do
     root to: 'dashboard#index'
+    resource :nhs_dmd_import, only: %i[new create]
     resources :users, only: %i[index new create edit update destroy] do
       member do
         post :activate
@@ -69,6 +70,7 @@ Rails.application.routes.draw do
   resources :medications do
     member do
       get :administration
+      get :nhs_guidance
       patch :refill
       patch :mark_as_ordered
       patch :mark_as_received

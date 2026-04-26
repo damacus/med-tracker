@@ -6,7 +6,7 @@ export default class extends Controller {
     "submit", "dosageSelect", "medicationSelect", "dosageContent",
     "dosageValue", "dosageTrigger", "frequencyInput",
     "maxDosesInput", "minHoursInput",
-    "doseAmountInput", "doseUnitInput"
+    "doseAmountInput", "doseUnitInput", "sourceDosageOptionIdInput"
   ]
 
   connect() {
@@ -47,6 +47,7 @@ export default class extends Controller {
     const selectedRadio = this.element.querySelector('[name="schedule[dose_option_key]"]:checked')
     if (selectedRadio) {
       const dosage = {
+        id: selectedRadio.dataset.id,
         amount: selectedRadio.dataset.amount,
         unit: selectedRadio.dataset.unit,
         frequency: selectedRadio.dataset.frequency,
@@ -149,7 +150,7 @@ export default class extends Controller {
 
       // Auto-select default dosage if none already selected
       if (defaultDosage && dosageInput && !dosageInput.value) {
-        dosageInput.value = String(defaultDosage.selection_key)
+        dosageInput.value = String(defaultDosage.option_value || defaultDosage.selection_key)
         if (this.hasDosageValueTarget) {
           this.dosageValueTarget.textContent = `${defaultDosage.amount} ${defaultDosage.unit} - ${defaultDosage.description}`
         }
@@ -160,12 +161,13 @@ export default class extends Controller {
       // Build RubyUI SelectItem markup
       const items = dosages.map((dosage) => {
         const text = `${dosage.amount} ${dosage.unit} - ${dosage.description}`
-        const isSelected = dosageInput && dosageInput.value === String(dosage.selection_key)
+        const optionValue = String(dosage.option_value || dosage.selection_key)
+        const isSelected = dosageInput && dosageInput.value === optionValue
         return `
           <div
             role="option"
             tabindex="0"
-            data-value="${dosage.selection_key}"
+            data-value="${optionValue}"
             aria-selected="${isSelected}"
             data-orientation="vertical"
             data-controller="ruby-ui--select-item"
@@ -219,6 +221,9 @@ export default class extends Controller {
   #fillDoseSnapshot(dosage) {
     if (this.hasDoseAmountInputTarget) this.doseAmountInputTarget.value = dosage.amount || ''
     if (this.hasDoseUnitInputTarget) this.doseUnitInputTarget.value = dosage.unit || ''
+    if (this.hasSourceDosageOptionIdInputTarget) {
+      this.sourceDosageOptionIdInputTarget.value = dosage.id || dosage.option_value || ''
+    }
   }
 
   #cacheDoseOptionsForSelectedMedication() {
@@ -231,7 +236,7 @@ export default class extends Controller {
   #cacheDoseOptionsForMedication(medicationId) {
     const dosages = this.doseOptionsValue?.[medicationId] || []
     this.dosageData = {}
-    dosages.forEach(d => { this.dosageData[String(d.selection_key)] = d })
+    dosages.forEach(d => { this.dosageData[String(d.option_value || d.selection_key)] = d })
 
     return dosages
   }
@@ -249,6 +254,7 @@ export default class extends Controller {
   #clearDoseSnapshot() {
     if (this.hasDoseAmountInputTarget) this.doseAmountInputTarget.value = ''
     if (this.hasDoseUnitInputTarget) this.doseUnitInputTarget.value = ''
+    if (this.hasSourceDosageOptionIdInputTarget) this.sourceDosageOptionIdInputTarget.value = ''
   }
 
   #selectedMedicationId() {

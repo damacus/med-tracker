@@ -117,6 +117,12 @@ module Components
                 href: '/admin/audit_logs',
                 icon: Icons::Activity.new(size: 24)
               )
+              render_action_card(
+                title: t('admin.dashboard.quick_actions.import_dmd_title'),
+                description: t('admin.dashboard.quick_actions.import_dmd_description'),
+                href: '/admin/nhs_dmd_import/new',
+                icon: Icons::RefreshCw.new(size: 24)
+              )
             end
           end
         end

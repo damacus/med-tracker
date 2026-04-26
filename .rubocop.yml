@@ -139,3 +139,6 @@ Rails/Exit:
   Exclude:
     - "spec/rails_helper.rb"
 
+Rails/StrongParametersExpect:
+  Exclude:
+    - "app/controllers/concerns/medication_form_context.rb"
