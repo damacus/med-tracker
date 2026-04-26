@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.3.38](https://github.com/damacus/med-tracker/compare/v0.3.37...v0.3.38) (2026-04-26)
+
+
+### Features
+
+* enrich medication import and onboarding ([#1115](https://github.com/damacus/med-tracker/issues/1115)) ([4addce5](https://github.com/damacus/med-tracker/commit/4addce5153fb9c2d0e48648cc473134d9a1ede65))
+
+
+### Bug Fixes
+
+* harden cookies and add auth coverage ([#1109](https://github.com/damacus/med-tracker/issues/1109)) ([523569d](https://github.com/damacus/med-tracker/commit/523569d0b585bb0a9825b8aa0490a38140a2295c))
+* **security:** prevent open redirect via return_to parameter ([#1104](https://github.com/damacus/med-tracker/issues/1104)) ([368151b](https://github.com/damacus/med-tracker/commit/368151ba78c01f8d788ee853fd831fb9c6dd70a3))
+* **security:** sanitize return_to href sinks and scope native device token create ([#1108](https://github.com/damacus/med-tracker/issues/1108)) ([1dd12b4](https://github.com/damacus/med-tracker/commit/1dd12b440fa0ab5cf7fc6d4d85bb59e59b576297))
+* **security:** sanitize return_to href sinks and scope native device token create ([#1111](https://github.com/damacus/med-tracker/issues/1111)) ([5349267](https://github.com/damacus/med-tracker/commit/5349267e311abac8fdd0a0b2330a583bc9e879fd))
+
 ## [0.3.37](https://github.com/damacus/med-tracker/compare/v0.3.36...v0.3.37) (2026-04-20)
 
 
