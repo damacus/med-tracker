@@ -58,7 +58,7 @@ class Medication < ApplicationRecord # :nodoc:
   validate :nested_dosage_records_are_valid
   after_commit :sync_dosages, on: :update
 
-  enum :reorder_status, { requested: 0, ordered: 1, received: 2 }, prefix: :reorder
+  enum :reorder_status, { ordered: 1, received: 2 }, prefix: :reorder
 
   validates :barcode, format: { with: /\A\d{13,14}\z/ }, allow_blank: true
   validates :barcode, uniqueness: true, allow_blank: true

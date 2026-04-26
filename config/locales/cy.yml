@@ -478,7 +478,6 @@ cy:
       choose_location_description: "Dewiswch pa leoliad i ddidynnu'r dos hwn ohono."
       untracked_inventory: "Heb ei olrhain"
     reorder_statuses:
-      requested: "Wedi gofyn"
       ordered: "Wedi archebu"
       received: "Wedi derbyn"
     administration:
