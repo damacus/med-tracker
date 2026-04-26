@@ -3,6 +3,18 @@
 require 'rails_helper'
 
 RSpec.describe PersonMedication do
+  describe 'associations' do
+    it { is_expected.to have_many(:medication_takes).dependent(:destroy) }
+
+    it 'destroys medication takes when destroyed' do
+      person_medication = create(:person_medication)
+      take = create(:medication_take, :for_person_medication, person_medication: person_medication)
+
+      expect { person_medication.destroy! }
+        .to change { MedicationTake.exists?(take.id) }.from(true).to(false)
+    end
+  end
+
   describe '#dose_constraints' do
     let(:person_medication) { create(:person_medication, max_daily_doses: 3, min_hours_between_doses: 4) }
 

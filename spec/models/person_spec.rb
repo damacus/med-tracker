@@ -21,6 +21,20 @@ RSpec.describe Person do
     it { is_expected.to have_many(:patient_relationships).dependent(:destroy) }
     it { is_expected.to have_many(:active_patient_relationships) }
     it { is_expected.to have_many(:patients).through(:active_patient_relationships) }
+
+    it 'destroys carer relationships when the patient is destroyed' do
+      relationship = create(:carer_relationship)
+
+      expect { relationship.patient.destroy! }
+        .to change { CarerRelationship.exists?(relationship.id) }.from(true).to(false)
+    end
+
+    it 'destroys carer relationships when the carer is destroyed' do
+      relationship = create(:carer_relationship)
+
+      expect { relationship.carer.destroy! }
+        .to change { CarerRelationship.exists?(relationship.id) }.from(true).to(false)
+    end
   end
 
   describe 'validations' do
