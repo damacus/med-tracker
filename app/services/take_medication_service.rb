@@ -96,8 +96,8 @@ class TakeMedicationService
   def dose_taken_payload(take)
     {
       take_id: take.id,
-      source_type: take_source_type(take),
-      source_id: take_source_id(take),
+      source_type: take.source_type,
+      source_id: take.source_record_id,
       person_id: take.person&.id,
       medication_id: take.medication&.id,
       inventory_medication_id: take.inventory_medication&.id,
@@ -105,13 +105,5 @@ class TakeMedicationService
       amount_ml: take.amount_ml&.to_f,
       taken_at: take.taken_at
     }
-  end
-
-  def take_source_type(take)
-    take.schedule_id.present? ? 'schedule' : 'person_medication'
-  end
-
-  def take_source_id(take)
-    take.schedule_id || take.person_medication_id
   end
 end
