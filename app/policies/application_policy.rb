@@ -41,7 +41,7 @@ class ApplicationPolicy
   end
 
   def carer_with_patient?
-    return false unless carer_or_parent? && user&.person
+    return false unless user&.carer? && user.person
 
     user.person.patients.exists?(person_id_for_authorization)
   end
@@ -49,7 +49,9 @@ class ApplicationPolicy
   def parent_with_minor?
     return false unless user&.parent? && user.person
 
-    user.person.patients.where(person_type: :minor).exists?(person_id_for_authorization)
+    user.person.patients
+        .where(person_type: %i[minor dependent_adult], has_capacity: false)
+        .exists?(person_id_for_authorization)
   end
 
   class Scope
@@ -80,7 +82,13 @@ class ApplicationPolicy
     end
 
     def parent_minor_patient_ids
-      Array(Person.where(id: user.person&.patient_ids, person_type: :minor).pluck(:id))
+      Array(
+        Person.where(
+          id: user.person&.patient_ids,
+          person_type: %i[minor dependent_adult],
+          has_capacity: false
+        ).pluck(:id)
+      )
     end
 
     def accessible_person_ids
