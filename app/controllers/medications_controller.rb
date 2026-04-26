@@ -93,7 +93,7 @@ class MedicationsController < ApplicationController # rubocop:disable Metrics/Cl
   def update
     authorize @medication
     if @medication.update(medication_params)
-      redirect_to params[:return_to].presence || @medication, notice: t('medications.updated')
+      redirect_to safe_redirect_path(params[:return_to]) || @medication, notice: t('medications.updated')
     else
       render Components::Medications::FormView.new(
         medication: @medication,

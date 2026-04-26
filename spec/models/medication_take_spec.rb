@@ -61,6 +61,26 @@ RSpec.describe MedicationTake do
     it { is_expected.to belong_to(:taken_from_location).class_name('Location').optional }
   end
 
+  describe '#source_type' do
+    it 'returns schedule for scheduled doses' do
+      expect(described_class.new(schedule: schedule).source_type).to eq('schedule')
+    end
+
+    it 'returns person_medication for as-needed doses' do
+      expect(described_class.new(person_medication: person_medication).source_type).to eq('person_medication')
+    end
+  end
+
+  describe '#source_record_id' do
+    it 'returns the schedule id for scheduled doses' do
+      expect(described_class.new(schedule: schedule).source_record_id).to eq(schedule.id)
+    end
+
+    it 'returns the person_medication id for as-needed doses' do
+      expect(described_class.new(person_medication: person_medication).source_record_id).to eq(person_medication.id)
+    end
+  end
+
   describe 'source validation' do
     context 'when neither schedule nor person_medication is set' do
       subject(:medication_take) { described_class.new(taken_at: Time.current, amount_ml: 10.0) }

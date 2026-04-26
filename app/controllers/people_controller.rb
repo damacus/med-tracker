@@ -14,13 +14,11 @@ class PeopleController < ApplicationController
   def show
     authorize @person
     show_data = PersonShowQuery.new(person: @person).call
-    editing = params[:editing] == 'true'
 
     render Components::People::ShowView.new(
       person: @person,
       schedules: show_data.schedules,
       person_medications: show_data.person_medications,
-      editing: editing,
       preloaded_takes: show_data.preloaded_takes,
       current_user: current_user
     )
@@ -95,7 +93,7 @@ class PeopleController < ApplicationController
     authorize @person
     respond_to do |format|
       if @person.update(person_params)
-        format.html { redirect_to params[:return_to].presence || @person, notice: t('people.updated') }
+        format.html { redirect_to safe_redirect_path(params[:return_to]) || @person, notice: t('people.updated') }
         format.turbo_stream do
           flash.now[:notice] = t('people.updated')
           render turbo_stream: [

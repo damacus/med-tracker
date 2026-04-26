@@ -2,10 +2,6 @@
 import { Turbo } from "@hotwired/turbo-rails"
 import "session_expiry"
 
-// Enable debug mode
-// Turbo.config.drive.progressBarDelay = 0
-// Turbo.config.drive.enabled = true
-
 // Import all controllers
 import "controllers"
 
