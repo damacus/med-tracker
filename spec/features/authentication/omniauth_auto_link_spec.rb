@@ -6,7 +6,8 @@ RSpec.describe 'AUTH: OmniAuth Auto Linking', type: :system do
   fixtures :accounts, :people, :users
 
   before do
-    skip 'OIDC not configured' unless ENV.key?('OIDC_CLIENT_ID') && ENV.key?('OIDC_ISSUER_URL')
+    skip 'OIDC not configured' unless ENV.fetch('OIDC_CLIENT_ID', nil).present? &&
+                                      ENV.fetch('OIDC_ISSUER_URL', nil).present?
 
     OmniAuth.config.test_mode = true
   end

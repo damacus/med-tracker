@@ -37,4 +37,41 @@ RSpec.describe YAML do
     expect(compose_config.dig('services', 'migrate-test', 'image')).to eq('med-tracker-web-test')
     expect(compose_config.dig('services', 'migrate-test', 'build', 'target')).to eq('test')
   end
+
+  it 'passes OIDC environment through to Rails containers used for local OIDC flows' do
+    expected_keys = %w[
+      APP_URL
+      OIDC_CLIENT_ID
+      OIDC_CLIENT_SECRET
+      OIDC_ISSUER_URL
+      OIDC_PROVIDER_NAME
+      OIDC_REDIRECT_URI
+    ]
+
+    expected_keys.each do |key|
+      expect(compose_config.dig('services', 'migrate-dev', 'environment')).to include(key)
+      expect(compose_config.dig('services', 'web-dev', 'environment')).to include(key)
+      expect(compose_config.dig('services', 'migrate-test', 'environment')).to include(key)
+      expect(compose_config.dig('services', 'web-test', 'environment')).to include(key)
+    end
+  end
+
+  it 'keeps normal test runs isolated from local development OIDC credentials' do
+    test_environment = compose_config.dig('services', 'migrate-test', 'environment')
+
+    expect(test_environment.slice('APP_URL', 'OIDC_CLIENT_ID', 'OIDC_CLIENT_SECRET', 'OIDC_ISSUER_URL',
+                                  'OIDC_PROVIDER_NAME', 'OIDC_REDIRECT_URI')).to eq(
+                                    'APP_URL' => '${TEST_APP_URL:-http://localhost:3000}',
+                                    'OIDC_CLIENT_ID' => '${TEST_OIDC_CLIENT_ID:-}',
+                                    'OIDC_CLIENT_SECRET' => '${TEST_OIDC_CLIENT_SECRET:-}',
+                                    'OIDC_ISSUER_URL' => '${TEST_OIDC_ISSUER_URL:-}',
+                                    'OIDC_PROVIDER_NAME' => '${TEST_OIDC_PROVIDER_NAME:-OIDC}',
+                                    'OIDC_REDIRECT_URI' => '${TEST_OIDC_REDIRECT_URI:-}'
+                                  )
+  end
+
+  it 'keeps development and test web host ports Docker-assigned for parallel worktrees' do
+    expect(compose_config.dig('services', 'web-dev', 'ports')).to be_nil
+    expect(compose_config.dig('services', 'web-test', 'ports')).to be_nil
+  end
 end

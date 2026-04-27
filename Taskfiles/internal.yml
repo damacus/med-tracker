@@ -162,15 +162,10 @@ tasks:
     internal: false
     requires:
       vars: [ENVIRONMENT]
+    vars:
+      WEB_SERVICE: "web-{{ .ENVIRONMENT }}"
     cmds:
-      - |
-        PORT=$(docker ps --format {{`"{{.Ports}}"`}} -f name={{ .COMPOSE_PROJECT }}-web-{{ .ENVIRONMENT }} | grep -oE '0\.0\.0\.0:[0-9]+' | cut -d':' -f2)
-        if [ -z "$PORT" ]; then
-          echo "Error: Could not find running container {{ .COMPOSE_PROJECT }}-web-{{ .ENVIRONMENT }}"
-          echo "Run 'task {{.ENVIRONMENT}}:up' first to start the {{.ENVIRONMENT}} server"
-          exit 1
-        fi
-        echo $PORT
+      - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} port {{ .WEB_SERVICE }} 3000 | sed -E 's/.*:([0-9]+)$/\\1/'"
 
   open-ui:
     desc: Open WebUI

@@ -65,6 +65,11 @@ RSpec.describe 'OIDC Security' do # rubocop:disable RSpec/DescribeClass
       rodauth_file = Rails.root.join('app/misc/rodauth_main.rb').read
       expect(rodauth_file).to include('/auth/oidc/callback')
     end
+
+    it 'treats a blank redirect URI environment variable as unset' do
+      rodauth_file = Rails.root.join('app/misc/rodauth_main.rb').read
+      expect(rodauth_file).to include("ENV.fetch('OIDC_REDIRECT_URI', nil).presence ||")
+    end
   end
 
   describe 'OIDC-SEC-007: Access token not stored long-term' do

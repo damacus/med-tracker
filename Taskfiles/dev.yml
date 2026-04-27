@@ -33,6 +33,18 @@ tasks:
       - task: :internal:up
         vars: { ENVIRONMENT: dev }
 
+  portless:
+    desc: Start development server and register a Portless OIDC URL
+    summary: |
+      Start the development server, register its Docker-assigned host port with
+      Portless, and print the stable local OIDC URL.
+      Requires a globally installed Portless CLI:
+        npm install -g portless
+        portless trust
+      Usage: task dev:portless
+    cmds:
+      - ./scripts/portless_oidc.fish dev med-tracker
+
   seed:
     desc: Seed development database with fixtures
     summary: |
