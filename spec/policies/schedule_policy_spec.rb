@@ -90,6 +90,45 @@ RSpec.describe SchedulePolicy, type: :policy do
     end
   end
 
+  describe 'for carer after relationship removal' do
+    let(:current_user) { users(:carer) }
+    let(:schedule) { schedules(:patient_schedule) }
+
+    before do
+      current_user.person.patients.load
+      carer_relationships(:carer_cares_for_patient).destroy!
+    end
+
+    it 'forbids viewing and administering' do
+      expect(policy.show?).to be false
+      expect(policy.take_medication?).to be false
+    end
+  end
+
+  describe 'for carer who is also a patient' do
+    let(:current_user) { users(:carer) }
+    let(:schedule) do
+      Schedule.create!(
+        person: current_user.person,
+        medication: medications(:vitamin_d),
+        dose_amount: 1000,
+        dose_unit: 'IU',
+        frequency: 'Daily',
+        start_date: Date.current,
+        end_date: 1.year.from_now.to_date,
+        max_daily_doses: 1,
+        dose_cycle: :daily
+      )
+    end
+
+    it 'does not grant access to unrelated patient schedules' do
+      other_schedule = schedules(:adult_patient_schedule)
+
+      expect(described_class.new(current_user, schedule).show?).to be true
+      expect(described_class.new(current_user, other_schedule).show?).to be false
+    end
+  end
+
   describe 'for parent with child' do
     let(:current_user) { users(:parent) }
     let(:schedule) { schedules(:child_schedule) }
@@ -113,6 +152,20 @@ RSpec.describe SchedulePolicy, type: :policy do
     let(:schedule) { schedules(:adult_patient_schedule) }
 
     it 'forbids access' do
+      expect(policy.show?).to be false
+      expect(policy.take_medication?).to be false
+    end
+  end
+
+  describe 'for parent after child becomes a self-managing adult' do
+    let(:current_user) { users(:parent) }
+    let(:schedule) { schedules(:child_schedule) }
+
+    before do
+      schedule.person.update!(person_type: :adult, has_capacity: true)
+    end
+
+    it 'forbids viewing and administering' do
       expect(policy.show?).to be false
       expect(policy.take_medication?).to be false
     end
@@ -202,6 +255,12 @@ RSpec.describe SchedulePolicy, type: :policy do
       it 'returns schedules for their children only' do
         expect(scope).to include(schedules(:child_schedule))
         expect(scope).not_to include(schedules(:adult_patient_schedule))
+      end
+
+      it 'excludes former child patients after they become self-managing adults' do
+        schedules(:child_schedule).person.update!(person_type: :adult, has_capacity: true)
+
+        expect(scope).not_to include(schedules(:child_schedule))
       end
     end
 

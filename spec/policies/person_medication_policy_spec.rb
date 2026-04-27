@@ -45,6 +45,13 @@ RSpec.describe PersonMedicationPolicy do
       it { is_expected.to permit_action(:show) }
     end
 
+    context 'when user is a parent with their child' do
+      let(:user) { parent_user }
+      let(:person_medication) { PersonMedication.create!(person: child_patient, medication: medications(:vitamin_d)) }
+
+      it { is_expected.to permit_action(:show) }
+    end
+
     context 'when user is a carer without assigned patient' do
       let(:user) { carer_user }
       let(:person_medication) { PersonMedication.create!(person: adult_patient, medication: medications(:vitamin_d)) }
@@ -210,7 +217,7 @@ RSpec.describe PersonMedicationPolicy do
       let(:user) { parent_user }
       let(:person_medication) { PersonMedication.create!(person: child_patient, medication: medications(:vitamin_d)) }
 
-      # Parents can take medication for their children via carer_with_patient?
+      # Parents can take medication for their children via parent_with_dependent_patient?
       it { is_expected.to permit_action(:take_medication) }
     end
 
@@ -220,6 +227,36 @@ RSpec.describe PersonMedicationPolicy do
 
       # Carers can take medication for their patients via carer_with_patient?
       it { is_expected.to permit_action(:take_medication) }
+    end
+
+    context 'when carer relationship has been removed' do
+      let(:user) { carer_user }
+      let(:person_medication) { PersonMedication.create!(person: child_patient, medication: medications(:vitamin_d)) }
+
+      before do
+        user.person.patients.load
+        CarerRelationship.where(carer: user.person, patient: child_patient).destroy_all
+      end
+
+      it { is_expected.not_to permit_action(:take_medication) }
+    end
+
+    context 'when carer is also a patient' do
+      let(:user) { carer_user }
+      let(:person_medication) { PersonMedication.create!(person: adult_patient, medication: medications(:vitamin_d)) }
+
+      it { is_expected.not_to permit_action(:take_medication) }
+    end
+
+    context 'when parent relationship patient becomes a self-managing adult' do
+      let(:user) { parent_user }
+      let(:person_medication) { PersonMedication.create!(person: child_patient, medication: medications(:vitamin_d)) }
+
+      before do
+        child_patient.update!(person_type: :adult, has_capacity: true)
+      end
+
+      it { is_expected.not_to permit_action(:take_medication) }
     end
 
     context 'when user takes medication for unrelated person' do
@@ -276,6 +313,50 @@ RSpec.describe PersonMedicationPolicy do
         it 'returns their own and linked child person medications only' do
           scope = described_class::Scope.new(user, PersonMedication.all).resolve
           expect(scope.pluck(:person_id).uniq).to contain_exactly(user.person_id, child_patient.id)
+        end
+      end
+
+      context 'when a parent relationship is removed after patients were loaded' do
+        let(:user) { parent_user }
+
+        before do
+          user.person.patients.load
+          PersonMedication.create!(person: child_patient, medication: medications(:vitamin_d))
+          CarerRelationship.where(carer: user.person, patient: child_patient).destroy_all
+        end
+
+        it 'excludes the removed patient person medications' do
+          scope = described_class::Scope.new(user, PersonMedication.all).resolve
+          expect(scope.pluck(:person_id)).not_to include(child_patient.id)
+        end
+      end
+
+      context 'when a carer relationship is removed after patients were loaded' do
+        let(:user) { carer_user }
+
+        before do
+          user.person.patients.load
+          PersonMedication.create!(person: child_patient, medication: medications(:vitamin_d))
+          CarerRelationship.where(carer: user.person, patient: child_patient).destroy_all
+        end
+
+        it 'excludes the removed patient person medications' do
+          scope = described_class::Scope.new(user, PersonMedication.all).resolve
+          expect(scope.pluck(:person_id)).not_to include(child_patient.id)
+        end
+      end
+
+      context 'when parent relationship patient becomes a self-managing adult' do
+        let(:user) { parent_user }
+
+        before do
+          PersonMedication.create!(person: child_patient, medication: medications(:vitamin_d))
+          child_patient.update!(person_type: :adult, has_capacity: true)
+        end
+
+        it 'excludes the former child patient person medications' do
+          scope = described_class::Scope.new(user, PersonMedication.all).resolve
+          expect(scope.pluck(:person_id)).not_to include(child_patient.id)
         end
       end
 

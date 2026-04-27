@@ -2,7 +2,7 @@
 
 class SchedulePolicy < ApplicationPolicy
   def index?
-    admin? || doctor? || nurse? || carer_with_patient? || parent_with_minor?
+    admin? || doctor? || nurse? || carer_with_patient? || parent_with_dependent_patient?
   end
 
   def show?
@@ -32,7 +32,7 @@ class SchedulePolicy < ApplicationPolicy
   private
 
   def schedule_access?
-    admin? || doctor? || nurse? || carer_with_patient? || parent_with_minor?
+    admin? || doctor? || nurse? || carer_with_patient? || parent_with_dependent_patient?
   end
 
   def minor_with_supervision?
@@ -40,7 +40,7 @@ class SchedulePolicy < ApplicationPolicy
   end
 
   def supervisor?
-    parent_with_minor? || carer_with_patient?
+    parent_with_dependent_patient? || carer_with_patient?
   end
 
   def medical_staff_or_carer?

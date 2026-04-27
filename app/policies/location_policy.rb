@@ -50,17 +50,21 @@ class LocationPolicy < ApplicationPolicy
     def accessible_person_ids
       return [] unless user&.person
 
-      [user.person_id, *carer_patient_ids, *parent_minor_patient_ids].compact.uniq
+      [user.person_id, *carer_patient_ids, *parent_dependent_patient_ids].compact.uniq
     end
 
     def carer_patient_ids
-      user.carer? ? user.person.patient_ids : []
+      user.carer? ? active_patient_relationships.pluck(:patient_id) : []
     end
 
-    def parent_minor_patient_ids
+    def parent_dependent_patient_ids
       return [] unless user.parent?
 
-      user.person.patients.where(person_type: :minor).pluck(:id)
+      Person.where(
+        id: active_patient_relationships.select(:patient_id),
+        person_type: %i[minor dependent_adult],
+        has_capacity: false
+      ).pluck(:id)
     end
   end
 
@@ -80,16 +84,20 @@ class LocationPolicy < ApplicationPolicy
   def accessible_person_ids_for_policy
     return [] unless user&.person
 
-    [user.person_id, *carer_patient_ids_for_policy, *parent_minor_patient_ids_for_policy].compact.uniq
+    [user.person_id, *carer_patient_ids_for_policy, *parent_dependent_patient_ids_for_policy].compact.uniq
   end
 
   def carer_patient_ids_for_policy
-    user.carer? ? user.person.patient_ids : []
+    user.carer? ? active_patient_relationships.pluck(:patient_id) : []
   end
 
-  def parent_minor_patient_ids_for_policy
+  def parent_dependent_patient_ids_for_policy
     return [] unless user.parent?
 
-    user.person.patients.where(person_type: :minor).pluck(:id)
+    Person.where(
+      id: active_patient_relationships.select(:patient_id),
+      person_type: %i[minor dependent_adult],
+      has_capacity: false
+    ).pluck(:id)
   end
 end
