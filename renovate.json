@@ -2,5 +2,52 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "local>damacus/renovate-config"
+  ],
+  "automerge": false,
+  "lockFileMaintenance": {
+    "enabled": true,
+    "automerge": true,
+    "automergeType": "pr",
+    "ignoreTests": false
+  },
+  "packageRules": [
+    {
+      "description": "Auto-merge GitHub Actions non-major updates after checks pass",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "automerge": true,
+      "automergeType": "pr",
+      "ignoreTests": false
+    },
+    {
+      "description": "Auto-merge npm development dependency non-major updates after checks pass",
+      "matchManagers": ["npm"],
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true,
+      "automergeType": "pr",
+      "ignoreTests": false
+    },
+    {
+      "description": "Auto-merge Bundler patch updates after checks pass",
+      "matchManagers": ["bundler"],
+      "matchUpdateTypes": ["patch"],
+      "automerge": true,
+      "automergeType": "pr",
+      "ignoreTests": false
+    },
+    {
+      "description": "Auto-merge Docker patch and digest updates after checks pass",
+      "matchManagers": ["dockerfile", "docker-compose"],
+      "matchUpdateTypes": ["patch", "digest"],
+      "automerge": true,
+      "automergeType": "pr",
+      "ignoreTests": false
+    },
+    {
+      "description": "Keep major updates manual",
+      "matchUpdateTypes": ["major"],
+      "automerge": false
+    }
   ]
 }
