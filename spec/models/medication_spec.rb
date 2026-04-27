@@ -618,5 +618,60 @@ RSpec.describe Medication do
         end.not_to change(medication.dosages, :count)
       end
     end
+
+    context 'when switching from multi-dose to single-dose with take history' do
+      it 'keeps existing person medication takes linked to their source' do
+        person_medication = create(:person_medication, medication: medication)
+        take = create(:medication_take, :for_person_medication, person_medication: person_medication)
+
+        medication.update!(dosage_amount: 500, dosage_unit: 'mg')
+
+        expect(take.reload.person_medication).to eq(person_medication)
+        expect(person_medication.reload.source_dosage_option).to be_nil
+        expect(medication.reload.dosages).to be_empty
+      end
+
+      it 'keeps dose constraints effective immediately after the switch' do
+        person_medication = create(:person_medication, medication: medication, max_daily_doses: 1)
+        create(:medication_take, :for_person_medication, :today, person_medication: person_medication)
+
+        medication.update!(dosage_amount: 500, dosage_unit: 'mg')
+
+        expect(person_medication.reload.can_take_now?).to be false
+      end
+
+      it 'keeps supply forecasts based on max daily doses' do
+        person_medication = create(:person_medication, medication: medication, max_daily_doses: 2)
+        before_switch = medication.days_until_low_stock
+
+        medication.update!(dosage_amount: 500, dosage_unit: 'mg')
+        refreshed_medication = described_class.find(medication.id)
+
+        expect(refreshed_medication.days_until_low_stock).to eq(before_switch)
+        expect(person_medication.reload.medication).to eq(medication)
+      end
+    end
+  end
+
+  describe 'dose mode transitions' do
+    context 'when switching from single-dose to multi-dose with take history' do
+      let(:medication) { create(:medication, dosage_amount: 500, dosage_unit: 'mg') }
+
+      it 'keeps existing person medication behavior intact' do
+        person_medication = create(:person_medication, medication: medication, max_daily_doses: 1)
+        take = create(:medication_take, :for_person_medication, :today, person_medication: person_medication)
+        before_low_stock = medication.days_until_low_stock
+        before_out_of_stock = medication.days_until_out_of_stock
+
+        create(:dosage, medication: medication, amount: 250, unit: 'mg')
+        refreshed_medication = described_class.find(medication.id)
+
+        expect(take.reload.person_medication).to eq(person_medication)
+        expect(medication.reload.dosage_amount).to be_nil
+        expect(person_medication.reload.can_take_now?).to be false
+        expect(refreshed_medication.days_until_low_stock).to eq(before_low_stock)
+        expect(refreshed_medication.days_until_out_of_stock).to eq(before_out_of_stock)
+      end
+    end
   end
 end
