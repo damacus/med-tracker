@@ -36,15 +36,13 @@ if test -z "$port"
     exit 1
 end
 
-portless proxy start
+portless proxy start --port 443 --https --force
 portless alias $route_name $port --force
 
-set route_line (portless list | string match -r "https://$route_name\\.localhost[^ ]*")
-if not string match -qr "https://$route_name\\.localhost\\s" $route_line
-    echo "Portless registered $route_line, not $base_url." >&2
-    echo "For Zitadel's clean redirect URI, restart Portless on port 443 from an interactive terminal:" >&2
-    echo "  portless proxy stop -p 1355" >&2
-    echo "  portless proxy start" >&2
+if not curl --silent --show-error --head --fail --max-time 5 $base_url >/dev/null
+    echo "Portless did not respond at $base_url." >&2
+    echo "For Zitadel's clean redirect URI, restart Portless on port 443:" >&2
+    echo "  portless proxy start --port 443 --https --force" >&2
     exit 1
 end
 
