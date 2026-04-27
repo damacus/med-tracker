@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.39](https://github.com/damacus/med-tracker/compare/v0.3.38...v0.3.39) (2026-04-27)
+
+
+### Bug Fixes
+
+* tighten carer policy access ([#1117](https://github.com/damacus/med-tracker/issues/1117)) ([452a2b7](https://github.com/damacus/med-tracker/commit/452a2b77162404148641879eef771ff6666f9e24))
+* wrap long medication names ([#1125](https://github.com/damacus/med-tracker/issues/1125)) ([c91e653](https://github.com/damacus/med-tracker/commit/c91e653569d3d6004b8e8e01333c5174716c86f5))
+
 ## [0.3.38](https://github.com/damacus/med-tracker/compare/v0.3.37...v0.3.38) (2026-04-26)
 
 
