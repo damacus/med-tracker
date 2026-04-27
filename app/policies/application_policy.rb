@@ -46,12 +46,13 @@ class ApplicationPolicy
     CarerRelationship.active.exists?(carer_id: user.person_id, patient_id: person_id_for_authorization)
   end
 
-  def parent_with_minor?
+  def parent_with_dependent_patient?
     return false unless user&.parent? && user.person
 
-    user.person.patients
-        .where(person_type: %i[minor dependent_adult], has_capacity: false)
-        .exists?(person_id_for_authorization)
+    active_patient_relationships
+      .joins(:patient)
+      .where(patient_id: person_id_for_authorization)
+      .exists?(people: { person_type: %i[minor dependent_adult], has_capacity: false })
   end
 
   class Scope
@@ -73,22 +74,20 @@ class ApplicationPolicy
     def accessible_patient_ids
       [].tap do |ids|
         ids.concat(carer_patient_ids) if user.carer?
-        ids.concat(parent_minor_patient_ids) if user.parent?
+        ids.concat(parent_dependent_patient_ids) if user.parent?
       end
     end
 
     def carer_patient_ids
-      Array(user.person&.patient_ids)
+      active_patient_relationships.pluck(:patient_id)
     end
 
-    def parent_minor_patient_ids
-      Array(
-        Person.where(
-          id: user.person&.patient_ids,
-          person_type: %i[minor dependent_adult],
-          has_capacity: false
-        ).pluck(:id)
-      )
+    def parent_dependent_patient_ids
+      Person.where(
+        id: active_patient_relationships.select(:patient_id),
+        person_type: %i[minor dependent_adult],
+        has_capacity: false
+      ).pluck(:id)
     end
 
     def accessible_person_ids
@@ -96,5 +95,17 @@ class ApplicationPolicy
       ids.merge(accessible_patient_ids)
       ids.to_a
     end
+
+    def active_patient_relationships
+      return CarerRelationship.none unless user&.person_id
+
+      CarerRelationship.active.where(carer_id: user.person_id)
+    end
+  end
+
+  def active_patient_relationships
+    return CarerRelationship.none unless user&.person_id
+
+    CarerRelationship.active.where(carer_id: user.person_id)
   end
 end

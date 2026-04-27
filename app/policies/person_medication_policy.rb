@@ -6,7 +6,7 @@ class PersonMedicationPolicy < ApplicationPolicy
   end
 
   def show?
-    admin_or_clinician? || self_or_dependent? || carer_with_patient? || parent_with_minor?
+    admin_or_clinician? || self_or_dependent? || carer_with_patient? || parent_with_dependent_patient?
   end
 
   def create?
@@ -19,23 +19,23 @@ class PersonMedicationPolicy < ApplicationPolicy
   alias new? create?
 
   def update?
-    admin? || self_or_dependent? || parent_with_minor?
+    admin? || self_or_dependent? || parent_with_dependent_patient?
   end
 
   alias edit? update?
 
   def destroy?
-    admin? || self_or_dependent? || parent_with_minor?
+    admin? || self_or_dependent? || parent_with_dependent_patient?
   end
 
   def take_medication?
-    admin? || self_or_dependent? || carer_with_patient? || parent_with_minor?
+    admin? || self_or_dependent? || carer_with_patient? || parent_with_dependent_patient?
   end
 
   private
 
   def create_person_permitted?
-    admin? || self_or_dependent? || parent_with_minor?
+    admin? || self_or_dependent? || parent_with_dependent_patient?
   end
 
   def permitted_medications

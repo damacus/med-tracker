@@ -6,7 +6,7 @@ class PersonPolicy < ApplicationPolicy
   end
 
   def show?
-    admin? || medical_staff? || owns_record? || carer_with_patient? || parent_with_minor?
+    admin? || medical_staff? || owns_record? || carer_with_patient? || parent_with_dependent_patient?
   end
 
   def new?

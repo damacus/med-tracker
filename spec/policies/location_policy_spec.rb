@@ -10,6 +10,23 @@ RSpec.describe LocationPolicy, type: :policy do
 
   let(:location) { locations(:home) }
 
+  def patient_at_school_for(carer, name:)
+    patient = Person.new(
+      name: name,
+      date_of_birth: 6.years.ago.to_date,
+      person_type: :minor,
+      has_capacity: false,
+      primary_location: locations(:school)
+    )
+    patient.carer_relationships.build(
+      carer: carer,
+      relationship_type: :professional_carer,
+      active: true
+    )
+    patient.save!
+    patient
+  end
+
   describe 'for administrator' do
     let(:current_user) { users(:admin) }
 
@@ -75,6 +92,16 @@ RSpec.describe LocationPolicy, type: :policy do
       scoped_policy = described_class.new(current_user, foreign_location)
       expect(scoped_policy.show?).to be false
     end
+
+    it 'denies viewing a removed patient location after patients were loaded' do
+      former_patient = patient_at_school_for(current_user.person, name: 'Former Location Patient')
+      current_user.person.patients.load
+
+      CarerRelationship.where(carer: current_user.person, patient: former_patient).destroy_all
+
+      scoped_policy = described_class.new(current_user, locations(:school))
+      expect(scoped_policy.show?).to be false
+    end
   end
 
   describe 'for parent' do
@@ -122,6 +149,18 @@ RSpec.describe LocationPolicy, type: :policy do
 
       it 'returns only their household locations' do
         expect(scope).to contain_exactly(locations(:home))
+      end
+
+      context 'when a carer relationship is removed after patients were loaded' do
+        before do
+          former_patient = patient_at_school_for(current_user.person, name: 'Former Scoped Location Patient')
+          current_user.person.patients.load
+          CarerRelationship.where(carer: current_user.person, patient: former_patient).destroy_all
+        end
+
+        it 'excludes the removed patient locations' do
+          expect(scope).to contain_exactly(locations(:home))
+        end
       end
     end
 

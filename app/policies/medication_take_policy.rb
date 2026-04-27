@@ -2,7 +2,7 @@
 
 class MedicationTakePolicy < ApplicationPolicy
   def create?
-    admin? || medical_staff? || carer_with_patient? || parent_with_minor? || adult_with_own_medication?
+    admin? || medical_staff? || carer_with_patient? || parent_with_dependent_patient? || adult_with_own_medication?
   end
 
   def new?
