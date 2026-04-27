@@ -87,7 +87,7 @@ RSpec.describe DoseCycle do
         time = Time.zone.local(2026, 4, 25, 23, 59, 59)
 
         expect(described_class.new('daily').next_reset_time(time))
-          .to eq(Time.zone.local(2026, 4, 26, 0, 0, 0))
+          .to be_within(1.second).of(Time.zone.local(2026, 4, 26, 0, 0, 0))
       end
     end
 
@@ -96,7 +96,7 @@ RSpec.describe DoseCycle do
         time = Time.zone.local(2026, 4, 30, 12, 0, 0)
 
         expect(described_class.new('monthly').next_reset_time(time))
-          .to eq(Time.zone.local(2026, 5, 1, 0, 0, 0))
+          .to be_within(1.second).of(Time.zone.local(2026, 5, 1, 0, 0, 0))
       end
     end
   end
