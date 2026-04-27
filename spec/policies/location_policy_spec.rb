@@ -88,6 +88,20 @@ RSpec.describe LocationPolicy, type: :policy do
         expect(policy.destroy?).to be false
       end
     end
+
+    it 'permits viewing a dependent adult patient location' do
+      dependent_adult = Person.new(
+        name: 'Dependent Adult',
+        date_of_birth: 70.years.ago.to_date,
+        person_type: :dependent_adult,
+        has_capacity: false,
+        primary_location: locations(:school)
+      )
+      dependent_adult.carer_relationships.build(carer: current_user.person, relationship_type: :parent, active: true)
+      dependent_adult.save!
+
+      expect(described_class.new(current_user, locations(:school)).show?).to be true
+    end
   end
 
   describe 'for nil user' do
@@ -115,6 +129,26 @@ RSpec.describe LocationPolicy, type: :policy do
       let(:current_user) { users(:jane) }
 
       it 'returns the locations tied to their household' do
+        expect(scope).to contain_exactly(locations(:home), locations(:school))
+      end
+    end
+
+    context 'when user is a parent with a dependent adult patient' do
+      let(:current_user) { users(:parent) }
+
+      before do
+        dependent_adult = Person.new(
+          name: 'Dependent Adult',
+          date_of_birth: 70.years.ago.to_date,
+          person_type: :dependent_adult,
+          has_capacity: false,
+          primary_location: locations(:school)
+        )
+        dependent_adult.carer_relationships.build(carer: current_user.person, relationship_type: :parent, active: true)
+        dependent_adult.save!
+      end
+
+      it 'returns the dependent adult patient locations' do
         expect(scope).to contain_exactly(locations(:home), locations(:school))
       end
     end

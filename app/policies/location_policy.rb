@@ -60,7 +60,7 @@ class LocationPolicy < ApplicationPolicy
     def parent_minor_patient_ids
       return [] unless user.parent?
 
-      user.person.patients.where(person_type: :minor).pluck(:id)
+      user.person.patients.where(person_type: %i[minor dependent_adult], has_capacity: false).pluck(:id)
     end
   end
 
@@ -90,6 +90,6 @@ class LocationPolicy < ApplicationPolicy
   def parent_minor_patient_ids_for_policy
     return [] unless user.parent?
 
-    user.person.patients.where(person_type: :minor).pluck(:id)
+    user.person.patients.where(person_type: %i[minor dependent_adult], has_capacity: false).pluck(:id)
   end
 end
