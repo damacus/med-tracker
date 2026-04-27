@@ -45,6 +45,13 @@ RSpec.describe PersonMedicationPolicy do
       it { is_expected.to permit_action(:show) }
     end
 
+    context 'when user is a parent with their child' do
+      let(:user) { parent_user }
+      let(:person_medication) { PersonMedication.create!(person: child_patient, medication: medications(:vitamin_d)) }
+
+      it { is_expected.to permit_action(:show) }
+    end
+
     context 'when user is a carer without assigned patient' do
       let(:user) { carer_user }
       let(:person_medication) { PersonMedication.create!(person: adult_patient, medication: medications(:vitamin_d)) }
@@ -228,7 +235,7 @@ RSpec.describe PersonMedicationPolicy do
 
       before do
         user.person.patients.load
-        carer_relationships(:carer_cares_for_patient).destroy!
+        CarerRelationship.where(carer: user.person, patient: child_patient).destroy_all
       end
 
       it { is_expected.not_to permit_action(:take_medication) }

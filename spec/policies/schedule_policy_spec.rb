@@ -115,6 +115,7 @@ RSpec.describe SchedulePolicy, type: :policy do
         dose_unit: 'IU',
         frequency: 'Daily',
         start_date: Date.current,
+        end_date: 1.year.from_now.to_date,
         max_daily_doses: 1,
         dose_cycle: :daily
       )

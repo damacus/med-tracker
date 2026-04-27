@@ -43,7 +43,7 @@ class ApplicationPolicy
   def carer_with_patient?
     return false unless user&.carer? && user.person
 
-    user.person.patients.exists?(person_id_for_authorization)
+    CarerRelationship.active.exists?(carer_id: user.person_id, patient_id: person_id_for_authorization)
   end
 
   def parent_with_minor?

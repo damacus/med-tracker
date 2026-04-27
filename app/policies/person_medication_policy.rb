@@ -6,7 +6,7 @@ class PersonMedicationPolicy < ApplicationPolicy
   end
 
   def show?
-    admin_or_clinician? || self_or_dependent? || carer_with_patient?
+    admin_or_clinician? || self_or_dependent? || carer_with_patient? || parent_with_minor?
   end
 
   def create?
@@ -29,7 +29,7 @@ class PersonMedicationPolicy < ApplicationPolicy
   end
 
   def take_medication?
-    admin? || self_or_dependent? || carer_with_patient?
+    admin? || self_or_dependent? || carer_with_patient? || parent_with_minor?
   end
 
   private
