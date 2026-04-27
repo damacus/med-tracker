@@ -38,8 +38,8 @@ module Components
             render_medication_icon
             render Components::Shared::StockBadge.new(medication: person_medication.medication)
           end
-          div do
-            CardTitle(class: 'text-2xl font-black tracking-tight mb-1 text-foreground') do
+          div(class: 'min-w-0') do
+            CardTitle(class: 'text-2xl font-black tracking-tight mb-1 text-foreground break-words leading-tight') do
               person_medication.medication.name
             end
             CardDescription(class: 'text-on-surface-variant font-bold uppercase text-[10px] tracking-widest') do

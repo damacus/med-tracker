@@ -45,19 +45,21 @@ module Components
 
       def render_header
         div(class: 'flex flex-col justify-between gap-6 border-b border-border/60 pb-8 md:flex-row md:items-end') do
-          div(class: 'flex items-center gap-6') do
+          div(class: 'flex items-center gap-6 min-w-0') do
             div(
               class: 'w-20 h-20 rounded-shape-xl bg-primary/10 flex items-center justify-center ' \
-                     'text-primary shadow-inner',
+                     'text-primary shadow-inner flex-shrink-0',
               data: { testid: 'medication-hero-icon' }
             ) do
               render Icons::Pill.new(size: 32)
             end
-            div(class: 'space-y-1') do
+            div(class: 'space-y-1 min-w-0') do
               m3_text(variant: :label_medium, class: 'uppercase tracking-[0.2em] opacity-40 block mb-1 font-black') do
                 t('medications.show.profile')
               end
-              m3_heading(variant: :display_small, level: 1, class: 'font-black tracking-tight') { medication.name }
+              m3_heading(variant: :display_small, level: 1, class: 'font-black tracking-tight break-words') do
+                medication.name
+              end
               div(class: 'flex items-center gap-1 mt-1') do
                 render Icons::Home.new(size: 14, class: 'text-on-surface-variant')
                 m3_text(variant: :label_medium, class: 'text-on-surface-variant font-medium') do

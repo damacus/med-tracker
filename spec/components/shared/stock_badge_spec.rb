@@ -29,6 +29,14 @@ RSpec.describe Components::Shared::StockBadge, type: :component do
         result = render_inline(component)
         expect(result.text).to include('100 left')
       end
+
+      it 'does not allow the count to wrap in compact card headers' do
+        result = render_inline(component)
+        badge = result.at_css('span')
+
+        expect(badge['class']).to include('whitespace-nowrap')
+        expect(badge['class']).to include('shrink-0')
+      end
     end
 
     context 'when medication is low stock' do

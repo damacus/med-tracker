@@ -53,7 +53,11 @@ module Components
         m3_card(id: "schedule_#{schedule.id}", class: 'h-full flex flex-col') do
           CardHeader do
             render_medication_icon
-            m3_text(size: '4', weight: 'semibold', class: 'leading-none tracking-tight text-foreground') do
+            m3_text(
+              size: '4',
+              weight: 'semibold',
+              class: 'leading-tight tracking-tight text-foreground break-words'
+            ) do
               schedule.medication.name
             end
           end

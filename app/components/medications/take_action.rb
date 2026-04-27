@@ -84,14 +84,19 @@ module Components
                   available_medications.each_with_index do |medication, index|
                     label(
                       for: "taken_from_medication_#{source.class.name.underscore}_#{source.id}_#{medication.id}",
-                      class: 'flex items-center justify-between gap-3 rounded-shape-xl border border-border p-4'
+                      class: 'flex flex-col gap-3 rounded-shape-xl border border-border p-4 sm:flex-row ' \
+                             'sm:items-center sm:justify-between'
                     ) do
-                      div(class: 'space-y-1') do
+                      div(class: 'space-y-1 min-w-0') do
                         m3_text(size: '2', weight: 'bold', class: 'text-foreground') { medication.location.name }
-                        m3_text(size: '1', class: 'text-on-surface-variant') { medication_description(medication) }
+                        m3_text(size: '1', class: 'text-on-surface-variant break-words') do
+                          medication_description(medication)
+                        end
                       end
-                      div(class: 'flex items-center gap-3') do
-                        Badge(variant: :outlined, class: 'rounded-full text-[10px]') { inventory_label(medication) }
+                      div(class: 'flex items-center gap-3 shrink-0') do
+                        Badge(variant: :outlined, class: 'rounded-full text-[10px] whitespace-nowrap justify-center') do
+                          inventory_label(medication)
+                        end
                         input(
                           type: :radio,
                           id: "taken_from_medication_#{source.class.name.underscore}_#{source.id}_#{medication.id}",

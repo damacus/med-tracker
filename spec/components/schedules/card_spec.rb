@@ -50,6 +50,15 @@ RSpec.describe Components::Schedules::Card, type: :component do
     expect(rendered.text).to include('Schedule Alt Location')
   end
 
+  it 'wraps full medication names inside the card header' do
+    medication.update!(name: 'Calpol Six Plus 250mg/5ml oral suspension (McNeil Products Ltd)')
+    rendered = render_schedule_card
+
+    heading = rendered.at_css('h3')
+    expect(heading.text).to include(medication.name)
+    expect(heading['class']).to include('break-words')
+  end
+
   def render_schedule_card
     vc = view_context
     vc.singleton_class.define_method(:current_user) { nil }

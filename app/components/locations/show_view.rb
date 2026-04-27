@@ -90,18 +90,21 @@ module Components
       end
 
       def render_medication_card(medication)
-        m3_card(class: 'p-6 hover:shadow-md transition-shadow') do
-          div(class: 'flex items-center justify-between') do
-            div(class: 'flex items-center gap-4') do
+        m3_card(class: 'p-6 hover:shadow-md transition-shadow overflow-hidden') do
+          div(class: 'flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between') do
+            div(class: 'flex items-start gap-4 min-w-0 flex-1') do
               div(
                 class: 'w-10 h-10 rounded-xl bg-secondary-container flex items-center ' \
-                       'justify-center text-on-surface-variant'
+                       'justify-center text-on-surface-variant flex-shrink-0'
               ) do
                 render Icons::Pill.new(size: 20)
               end
-              div do
-                Link(href: medication_path(medication), variant: :link,
-                     class: 'font-semibold text-base no-underline') do
+              div(class: 'min-w-0 flex-1') do
+                Link(
+                  href: medication_path(medication),
+                  variant: :link,
+                  class: 'font-semibold text-base no-underline whitespace-normal break-words text-left leading-snug'
+                ) do
                   medication.name
                 end
                 if medication.dosage_amount.present? && medication.dosage_unit.present?
@@ -112,9 +115,11 @@ module Components
               end
             end
             if medication.low_stock?
-              Badge(variant: :destructive) { 'Low Stock' }
+              Badge(variant: :destructive, class: 'shrink-0 whitespace-nowrap justify-center') { 'Low Stock' }
             else
-              Badge(variant: :success) { pluralize(medication.current_supply, 'unit') }
+              Badge(variant: :success, class: 'shrink-0 whitespace-nowrap justify-center') do
+                pluralize(medication.current_supply, 'unit')
+              end
             end
           end
 
