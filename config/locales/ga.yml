@@ -479,7 +479,6 @@ ga:
       choose_location_description: "Roghnaigh cén suíomh as a dtabharfar an dáileog seo."
       untracked_inventory: "Neamhrianaithe"
     reorder_statuses:
-      requested: "Iarrtha"
       ordered: "Ordaithe"
       received: "Faighte"
     refill_modal:

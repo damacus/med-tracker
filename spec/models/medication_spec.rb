@@ -163,6 +163,12 @@ RSpec.describe Medication do
     it { is_expected.to have_many(:schedules).dependent(:destroy) }
   end
 
+  describe 'reorder_status' do
+    it 'only exposes reachable reorder workflow states' do
+      expect(described_class.reorder_statuses).to eq('ordered' => 1, 'received' => 2)
+    end
+  end
+
   describe 'nested dosage records' do
     it 'ignores untouched auto-appended dose option rows on update' do
       medication = create(:medication, dosage_unit: 'ml')

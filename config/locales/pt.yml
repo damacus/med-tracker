@@ -479,7 +479,6 @@ pt:
       choose_location_description: "Selecione de que localização quer deduzir esta dose."
       untracked_inventory: "Não rastreado"
     reorder_statuses:
-      requested: "Pedido"
       ordered: "Encomendado"
       received: "Recebido"
     administration:

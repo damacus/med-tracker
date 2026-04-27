@@ -507,7 +507,6 @@ en:
       choose_location_description: "Select which location to deduct this dose from."
       untracked_inventory: "Untracked"
     reorder_statuses:
-      requested: "Requested"
       ordered: "Ordered"
       received: "Received"
     refill_modal:
