@@ -656,33 +656,18 @@ RSpec.describe Medication do
     context 'when switching from single-dose to multi-dose with take history' do
       let(:medication) { create(:medication, dosage_amount: 500, dosage_unit: 'mg') }
 
-      it 'keeps existing person medication takes linked to their source' do
-        person_medication = create(:person_medication, medication: medication)
-        take = create(:medication_take, :for_person_medication, person_medication: person_medication)
-
-        create(:dosage, medication: medication, amount: 250, unit: 'mg')
-
-        expect(take.reload.person_medication).to eq(person_medication)
-        expect(medication.reload.dosage_amount).to be_nil
-      end
-
-      it 'keeps dose constraints effective after the switch' do
+      it 'keeps existing person medication behavior intact' do
         person_medication = create(:person_medication, medication: medication, max_daily_doses: 1)
-        create(:medication_take, :for_person_medication, :today, person_medication: person_medication)
-
-        create(:dosage, medication: medication, amount: 250, unit: 'mg')
-
-        expect(person_medication.reload.can_take_now?).to be false
-      end
-
-      it 'keeps supply forecasts based on max daily doses after the switch' do
-        create(:person_medication, medication: medication, max_daily_doses: 2)
+        take = create(:medication_take, :for_person_medication, :today, person_medication: person_medication)
         before_low_stock = medication.days_until_low_stock
         before_out_of_stock = medication.days_until_out_of_stock
 
         create(:dosage, medication: medication, amount: 250, unit: 'mg')
         refreshed_medication = described_class.find(medication.id)
 
+        expect(take.reload.person_medication).to eq(person_medication)
+        expect(medication.reload.dosage_amount).to be_nil
+        expect(person_medication.reload.can_take_now?).to be false
         expect(refreshed_medication.days_until_low_stock).to eq(before_low_stock)
         expect(refreshed_medication.days_until_out_of_stock).to eq(before_out_of_stock)
       end
