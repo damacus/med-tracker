@@ -30,15 +30,23 @@ else
     set -lx OIDC_REDIRECT_URI $callback_url
 end
 
-task internal:up ENVIRONMENT=$environment
-
 set port (task "$environment:port")
 if test -z "$port"
     echo "Could not determine the Docker-assigned $environment web port." >&2
     exit 1
 end
 
+portless proxy start
 portless alias $route_name $port --force
+
+set route_line (portless list | string match -r "https://$route_name\\.localhost[^ ]*")
+if not string match -qr "https://$route_name\\.localhost\\s" $route_line
+    echo "Portless registered $route_line, not $base_url." >&2
+    echo "For Zitadel's clean redirect URI, restart Portless on port 443 from an interactive terminal:" >&2
+    echo "  portless proxy stop -p 1355" >&2
+    echo "  portless proxy start" >&2
+    exit 1
+end
 
 echo "Portless URL: $base_url"
 echo "OIDC callback: $callback_url"

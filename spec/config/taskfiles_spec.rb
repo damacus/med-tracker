@@ -24,6 +24,11 @@ RSpec.describe 'Taskfiles' do
     expect(portless_script).not_to include('npx portless')
   end
 
+  it 'fails clearly when Portless is not serving the clean HTTPS URL' do
+    expect(portless_script).to include('Portless registered $route_line, not $base_url.')
+    expect(portless_script).to include('portless proxy start')
+  end
+
   it 'uses test-scoped OIDC variables for the Portless test task' do
     expect(portless_script).to include('set -lx TEST_APP_URL $base_url')
     expect(portless_script).to include('set -lx TEST_OIDC_CLIENT_ID $OIDC_CLIENT_ID')

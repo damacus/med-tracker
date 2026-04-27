@@ -43,6 +43,8 @@ tasks:
         portless trust
       Usage: task dev:portless
     cmds:
+      - task: :internal:up
+        vars: { ENVIRONMENT: dev }
       - ./scripts/portless_oidc.fish dev med-tracker
 
   seed:
