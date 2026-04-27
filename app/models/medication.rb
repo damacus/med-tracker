@@ -95,11 +95,13 @@ class Medication < ApplicationRecord # :nodoc:
     # When switching to single-dose mode (dosage_amount is set),
     # remove all orphaned multi-dose records to prevent data pollution.
     # Uses SQL to comply with RuboCop and project standards.
-    stmt = 'DELETE FROM dosages WHERE medication_id = $1'
-    binds = [
-      ActiveRecord::Relation::QueryAttribute.new('medication_id', id, ActiveRecord::Type::BigInteger.new)
-    ]
-    ActiveRecord::Base.connection.exec_delete(stmt, 'Sync Dosages', binds)
+    binds = [ActiveRecord::Relation::QueryAttribute.new('medication_id', id, ActiveRecord::Type::BigInteger.new)]
+    ActiveRecord::Base.connection.exec_update(
+      'UPDATE person_medications SET source_dosage_option_id = NULL WHERE medication_id = $1',
+      'Sync Person Medication Dosage Sources',
+      binds
+    )
+    ActiveRecord::Base.connection.exec_delete('DELETE FROM dosages WHERE medication_id = $1', 'Sync Dosages', binds)
   end
 
   def restock!(quantity:) # rubocop:disable Naming/PredicateMethod

@@ -627,6 +627,7 @@ RSpec.describe Medication do
         medication.update!(dosage_amount: 500, dosage_unit: 'mg')
 
         expect(take.reload.person_medication).to eq(person_medication)
+        expect(person_medication.reload.source_dosage_option).to be_nil
         expect(medication.reload.dosages).to be_empty
       end
 
