@@ -34,4 +34,18 @@ RSpec.describe Components::Medications::ListItemComponent, type: :component do
 
     expect(rendered.text).not_to include('Refill Inventory')
   end
+
+  it 'allows full medication names to wrap inside the card' do
+    medication.update!(name: 'Calpol Six Plus 250mg/5ml oral suspension (McNeil Products Ltd)')
+
+    rendered = render_inline(described_class.new(
+                               medication: medication,
+                               inventory_query_params: {},
+                               can_manage: false
+                             ))
+
+    heading = rendered.at_css('h2')
+    expect(heading.text).to include(medication.name)
+    expect(heading['class']).to include('break-words')
+  end
 end

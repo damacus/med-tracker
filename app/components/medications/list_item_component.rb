@@ -27,7 +27,9 @@ module Components
               render_status_badge
             end
             div(class: 'space-y-2') do
-              m3_heading(level: 2, size: '5', class: 'font-bold tracking-tight') { medication.name }
+              m3_heading(level: 2, size: '5', class: 'font-bold tracking-tight break-words leading-tight') do
+                medication.name
+              end
               Badge(variant: :outlined, class: 'w-fit rounded-full text-[10px]') { medication.location.name }
             end
           end
@@ -57,7 +59,9 @@ module Components
       end
 
       def render_status_badge
-        Badge(variant: presenter.status_variant) { presenter.status_label }
+        Badge(variant: presenter.status_variant, class: 'shrink-0 whitespace-nowrap justify-center') do
+          presenter.status_label
+        end
       end
 
       def render_supply_bar

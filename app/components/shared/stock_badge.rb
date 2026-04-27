@@ -15,7 +15,10 @@ module Components
       def view_template
         return if medication.current_supply.blank?
 
-        render RubyUI::Badge.new(variant: badge_variant, class: 'rounded-full text-[10px] py-0.5 px-2') { badge_text }
+        render RubyUI::Badge.new(
+          variant: badge_variant,
+          class: 'rounded-full text-[10px] py-0.5 px-2 shrink-0 whitespace-nowrap justify-center'
+        ) { badge_text }
       end
 
       private

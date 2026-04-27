@@ -46,13 +46,17 @@ module Components
         CardHeader(class: 'pb-4 pt-8 px-8') do
           div(class: 'flex justify-between items-start mb-4') do
             render_medication_icon
-            div(class: 'flex flex-col items-end gap-2') do
+            div(class: 'flex flex-col items-end gap-2 shrink-0') do
               render Components::Shared::StockBadge.new(medication: schedule.medication)
               status_badge
             end
           end
-          div do
-            m3_heading(variant: :title_large, level: 3, class: 'font-black tracking-tight mb-1 text-foreground') do
+          div(class: 'min-w-0') do
+            m3_heading(
+              variant: :title_large,
+              level: 3,
+              class: 'font-black tracking-tight mb-1 text-foreground break-words leading-tight'
+            ) do
               schedule.medication.name
             end
             dosage_text = "#{schedule.dose_amount.to_i}#{schedule.dose_unit}"

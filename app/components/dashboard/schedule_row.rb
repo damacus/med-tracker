@@ -48,9 +48,9 @@ module Components
       def render_medication_cell
         TableCell do
           div(class: 'flex justify-between items-center w-full gap-2') do
-            div(class: 'flex items-center gap-2') do
+            div(class: 'flex items-start gap-2 min-w-0') do
               render_medication_icon
-              span(class: 'font-medium') { schedule.medication.name }
+              span(class: 'font-medium break-words leading-snug') { schedule.medication.name }
             end
             render Components::Shared::StockBadge.new(medication: schedule.medication)
           end

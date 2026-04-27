@@ -37,8 +37,8 @@ module Components
       end
 
       def render_header
-        div(class: 'flex justify-between items-center w-full') do
-          div(class: 'flex items-center gap-3') do
+        div(class: 'flex justify-between items-center w-full gap-3') do
+          div(class: 'flex items-center gap-3 min-w-0') do
             render_person_avatar
             m3_text(variant: :label_large, class: 'font-bold text-foreground truncate') { person.name }
           end
@@ -56,9 +56,12 @@ module Components
       end
 
       def render_medication_info
-        div(class: 'flex items-center gap-3') do
+        div(class: 'flex items-start gap-3 min-w-0') do
           render_medication_icon
-          m3_heading(variant: :title_medium, class: 'font-bold text-foreground tracking-tight') do
+          m3_heading(
+            variant: :title_medium,
+            class: 'font-bold text-foreground tracking-tight break-words leading-tight'
+          ) do
             schedule.medication.name
           end
         end
