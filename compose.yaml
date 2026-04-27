@@ -10,7 +10,7 @@ services:
     environment:
       POSTGRES_MULTIPLE_DATABASES: medtracker_queue
     volumes:
-      - medtracker_dev_postgres:/var/lib/postgresql/data
+      - medtracker_dev_postgres:/var/lib/postgresql
       - ./compose/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh:ro
 
   mail-dev:
@@ -28,8 +28,13 @@ services:
     extends:
       file: compose/base.yml
       service: rails
+    image: med-tracker-web-dev
     profiles: [dev]
     networks: [dev]
+    build:
+      target: assets
+      args:
+        RAILS_ENV: development
     command: bin/rails db:prepare
     depends_on:
       db-dev:
@@ -105,8 +110,11 @@ services:
     extends:
       file: compose/base.yml
       service: rails
+    image: med-tracker-web-test
     profiles: [test]
     networks: [test]
+    build:
+      target: test
     command: bin/rails db:prepare
     depends_on:
       db-test:
@@ -160,7 +168,7 @@ services:
     environment:
       POSTGRES_MULTIPLE_DATABASES: medtracker_production_queue,medtracker_production_cache,medtracker_production_cable
     volumes:
-      - medtracker_prod_postgres:/var/lib/postgresql/data
+      - medtracker_prod_postgres:/var/lib/postgresql
       - ./compose/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh:ro
 
   migrate-prod:
