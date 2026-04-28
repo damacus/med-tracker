@@ -21,7 +21,7 @@ class TakeMedicationService
   Result = Data.define(:success, :take, :error)
 
   def call(source:, amount_override:, taken_from_medication_id:, user:, taken_at: Time.current)
-    resolver = MedicationStockSourceResolver.new(user: user, source: source)
+    resolver = MedicationStockSourceResolver.new(user: user, source: source, taken_at: taken_at)
     return failure(resolver.blocked_reason) if resolver.blocked_reason
 
     amount = normalize_amount(amount_override.presence || default_dose_amount_for(source, taken_at))

@@ -503,6 +503,13 @@ en:
     refill_button: "Refill"
     take_action:
       loading: "Taking…"
+      title: "Record dose"
+      description: "Confirm the person, medication, time, and inventory source."
+      person: "Person"
+      medication: "Medication"
+      dose: "Dose"
+      taken_at: "Taken at"
+      stock_source: "Stock source"
       choose_location: "Choose location"
       choose_location_description: "Select which location to deduct this dose from."
       untracked_inventory: "Untracked"
@@ -885,6 +892,8 @@ en:
     success: "Medication taken successfully."
     failure: "Failed to record medication taken."
     json_success: "Medication taken successfully."
+    invalid_taken_at: "Choose a valid dose time."
+    future_taken_at: "Dose time cannot be in the future."
 
   barcode_scanner:
     title: "Scan Barcode"

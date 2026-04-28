@@ -1,11 +1,12 @@
 # frozen_string_literal: true
 
 class MedicationStockSourceResolver
-  attr_reader :user, :source
+  attr_reader :user, :source, :taken_at
 
-  def initialize(user:, source:)
+  def initialize(user:, source:, taken_at: Time.current)
     @user = user
     @source = source
+    @taken_at = taken_at
   end
 
   def available_medications
@@ -14,7 +15,7 @@ class MedicationStockSourceResolver
 
   def blocked_reason
     return :out_of_stock if available_medications.empty?
-    return :cooldown unless source.can_take_now?
+    return :cooldown unless source.can_take_at?(taken_at)
 
     nil
   end

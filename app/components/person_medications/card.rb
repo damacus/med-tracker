@@ -236,7 +236,7 @@ module Components
             form_class: 'flex-1'
           },
           state: {
-            disabled: invalid_dose_configured? || blocked_reason.present?,
+            disabled: invalid_dose_configured? || blocked_reason == :out_of_stock,
             label: label
           }
         )

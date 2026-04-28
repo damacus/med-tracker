@@ -50,7 +50,7 @@ RSpec.describe 'Person Medications', type: :system do
   describe 'recording medication takes' do
     let(:person_medication) { person_medications(:john_vitamin_d) }
 
-    it 'allows recording a medication take' do
+    it 'allows recording a medication take', :js do
       person_medication.update!(max_daily_doses: 3, min_hours_between_doses: nil)
       person_medication.medication_takes.delete_all
 
@@ -59,11 +59,12 @@ RSpec.describe 'Person Medications', type: :system do
       within("#person_medication_#{person_medication.id}") do
         click_button '💊 Take'
       end
+      confirm_record_dose(person_medication)
 
       expect(page).to have_content('Medication taken successfully')
     end
 
-    it 'disables the take button when max daily doses reached' do
+    it 'rejects the default dose time when max daily doses reached', :js do
       person_medication.update!(max_daily_doses: 2, min_hours_between_doses: nil)
       person_medication.medication_takes.delete_all
       2.times do
@@ -77,11 +78,16 @@ RSpec.describe 'Person Medications', type: :system do
       visit person_path(person)
 
       within("#person_medication_#{person_medication.id}") do
-        expect(page).to have_button('💊 Take', disabled: true)
+        expect(page).to have_button('💊 Take', disabled: false)
+        click_button '💊 Take'
       end
+      expect do
+        confirm_record_dose(person_medication)
+        expect(page).to have_content('Cannot take medication')
+      end.not_to change(MedicationTake, :count)
     end
 
-    it 'disables the take button when minimum hours not passed' do
+    it 'rejects the default dose time when minimum hours not passed', :js do
       person_medication.update!(max_daily_doses: nil, min_hours_between_doses: 6)
       person_medication.medication_takes.delete_all
       MedicationTake.create!(
@@ -93,8 +99,13 @@ RSpec.describe 'Person Medications', type: :system do
       visit person_path(person)
 
       within("#person_medication_#{person_medication.id}") do
-        expect(page).to have_button('💊 Take', disabled: true)
+        expect(page).to have_button('💊 Take', disabled: false)
+        click_button '💊 Take'
       end
+      expect do
+        confirm_record_dose(person_medication)
+        expect(page).to have_content('Cannot take medication')
+      end.not_to change(MedicationTake, :count)
     end
   end
 
@@ -117,6 +128,14 @@ RSpec.describe 'Person Medications', type: :system do
         expect(page).to have_content(take.taken_at.strftime('%l:%M %p').strip)
         expect(page).to have_content('5 IU')
       end
+    end
+  end
+
+  def confirm_record_dose(person_medication)
+    path = take_medication_person_person_medication_path(person, person_medication)
+
+    within("form[action='#{path}']") do
+      click_button '💊 Take'
     end
   end
 end

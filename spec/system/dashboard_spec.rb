@@ -7,6 +7,8 @@ RSpec.describe 'Dashboard' do
            :carer_relationships, :person_medications, :medication_takes
 
   it 'loads the dashboard and allows taking a dose from the timeline' do
+    driven_by(:playwright)
+
     travel_to(Time.current.beginning_of_day + 9.hours) do
       sign_in(users(:jane))
       visit dashboard_path
@@ -21,6 +23,9 @@ RSpec.describe 'Dashboard' do
 
       expect do
         button.click
+        within(first("form[action*='take_medication']", visible: :all)) do
+          click_button I18n.t('person_medications.card.take')
+        end
         expect(page).to have_content('Medication taken successfully.', wait: 10)
       end.to change(MedicationTake, :count).by(1)
     end

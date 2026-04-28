@@ -22,6 +22,10 @@ RSpec.describe 'Schedule Card', type: :system do
     within("#schedule_#{schedule.id}") do
       expect(page).to have_content(I18n.t('schedules.card.no_doses_today'))
       click_button I18n.t('schedules.card.give')
+    end
+    confirm_record_dose
+
+    within("#schedule_#{schedule.id}") do
       expect(page).to have_no_content(I18n.t('schedules.card.no_doses_today'))
     end
 
@@ -57,6 +61,12 @@ RSpec.describe 'Schedule Card', type: :system do
 
     within("#schedule_#{schedule.id}") do
       expect(page).to have_button(I18n.t('schedules.card.out_of_stock'), disabled: true)
+    end
+  end
+
+  def confirm_record_dose
+    within("form[action='#{take_medication_person_schedule_path(person, schedule)}']") do
+      click_button I18n.t('schedules.card.give')
     end
   end
 end
