@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.41](https://github.com/damacus/med-tracker/compare/v0.3.40...v0.3.41) (2026-04-28)
+
+
+### Features
+
+* record historical dose times ([#1133](https://github.com/damacus/med-tracker/issues/1133)) ([2801034](https://github.com/damacus/med-tracker/commit/2801034d823ca68522a49cf1ff6e756b59098c74))
+
+
+### Bug Fixes
+
+* stabilize OIDC local setup ([#1130](https://github.com/damacus/med-tracker/issues/1130)) ([2458b18](https://github.com/damacus/med-tracker/commit/2458b185554b6f3b1371d578c983b0007b35f698))
+* update metric icons ([#1135](https://github.com/damacus/med-tracker/issues/1135)) ([494e978](https://github.com/damacus/med-tracker/commit/494e9780fbd704ae647a31c13ab543b3376df965))
+
 ## [0.3.40](https://github.com/damacus/med-tracker/compare/v0.3.39...v0.3.40) (2026-04-27)
 
 
