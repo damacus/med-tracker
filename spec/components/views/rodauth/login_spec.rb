@@ -42,12 +42,32 @@ RSpec.describe Views::Rodauth::Login, type: :component do
     expect(rendered.text).to include('MedTracker')
   end
 
+  it 'renders the split auth surface from the storyboard reference' do
+    rendered = render_inline(described_class.new)
+
+    landmark_counts = {
+      surface: rendered.css('[data-login-surface="split-auth"]').count,
+      brand_panel: rendered.css('[data-login-panel="brand"]').count,
+      form_panel: rendered.css('[data-login-panel="form"]').count,
+      illustration: rendered.css('[data-login-illustration="medication"]').count
+    }
+    expect(landmark_counts).to eq(surface: 1, brand_panel: 1, form_panel: 1, illustration: 1)
+    expect(rendered.text).to include('Stay on track', 'Your schedule', 'Track your progress',
+                                     'Insights that help', 'Other sign-in options')
+  end
+
   it 'renders passkey controls for login autofill and explicit sign-in' do
     rendered = render_inline(described_class.new)
 
     expect(rendered.text).to include('Continue with Passkey')
     expect(rendered.css('#webauthn-login-form').count).to eq(1)
     expect(rendered.css('#passkey-login-trigger').count).to eq(1)
+  end
+
+  it 'hides secondary sign-in options until a visible option is available' do
+    rendered = render_inline(described_class.new)
+
+    expect(rendered.css('#secondary-sign-in-options[hidden]').count).to eq(1)
   end
 
   it 'renders passkey login form fields and login autocomplete hints' do

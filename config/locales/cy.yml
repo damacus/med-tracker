@@ -843,7 +843,7 @@ cy:
     login:
       tagline: "Porth Lles"
       heading: "Croeso yn ôl"
-      subheading: "Mewngofnodwch i'ch cyfrif"
+      subheading: "Mewngofnodwch i'ch cyfrif i barhau"
       email_label: "Cyfeiriad e-bost"
       email_placeholder: "eich@ebost.com"
       password_label: "Cyfrinair"
@@ -851,13 +851,31 @@ cy:
       forgot_password: "Wedi anghofio?"
       remember_me: "Cofio fi"
       submit: "Mewngofnodi i'r Dangosfwrdd"
+      medication_illustration_label: "Darlun o botel feddyginiaeth"
+      other_sign_in_options: "Opsiynau mewngofnodi eraill"
+      benefits:
+        stay_on_track:
+          title: "Arhoswch ar y trywydd iawn"
+          detail: "Peidiwch byth â cholli dos"
+        schedule:
+          title: "Eich amserlen"
+          detail: "Eich holl feddyginiaethau mewn un lle"
+        progress:
+          title: "Dilynwch eich cynnydd"
+          detail: "Arferion gwell, iechyd gwell"
+        insights:
+          title: "Mewnwelediadau sy'n helpu"
+          detail: "Deallwch eich iechyd"
       passkey_label: "Passkey"
       passkey_helper: "Defnyddiwch Face ID, Touch ID, Windows Hello, neu allwedd ddiogelwch."
       passkey_cta: "Parhau gyda Phasskey"
       passkey_not_supported: "Nid yw passkeys yn cael eu cefnogi yn y porwr hwn."
       passkey_error: "Nid oedd modd eich mewngofnodi gyda'r passkey hwn. Ceisiwch eto neu defnyddiwch eich cyfrinair."
       oauth_continue: "Parhau gyda %{provider}"
-      oauth_divider: "neu barhau gyda"
+      oauth_sso: "Mewngofnodi gyda %{provider} (SSO)"
+      oauth_divider: "neu"
+      invite_only_oidc_notice: "Mae mewngofnodi sengl wedi'i gadw ar gyfer cyfrifon gwahoddedig."
+      invite_only_oidc_cta: "Parhau gyda %{provider}"
       need_account: "Angen cyfrif?"
       create_account: "Creu un"
       resend_verification: "Ailanfon e-bost dilysu"

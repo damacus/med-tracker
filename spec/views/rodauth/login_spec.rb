@@ -101,8 +101,8 @@ RSpec.describe Views::Rodauth::Login do
   it 'renders the OAuth button when invite-only is disabled' do
     rendered = render_login(oauth_enabled: true, invite_only: false)
 
-    expect(rendered.text).to include('or continue with')
-    expect(rendered.text).to include('OIDC')
+    expect(rendered.text).to include('Other sign-in options')
+    expect(rendered.text).to include('Login with OIDC (SSO)')
   end
 
   it 'hides the OAuth CTA and shows invite-only notice when invite-only is active' do

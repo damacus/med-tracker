@@ -19,6 +19,7 @@ const noopError = (error) =>
 const initPasskeyLogin = () => {
   const form = document.getElementById("webauthn-login-form");
   const section = document.getElementById("passkey-login-section");
+  const secondaryOptions = document.getElementById("secondary-sign-in-options");
   const trigger = document.getElementById("passkey-login-trigger");
   const errorElement = document.getElementById("passkey-login-error");
   const authInput = document.getElementById("webauthn-auth");
@@ -42,6 +43,7 @@ const initPasskeyLogin = () => {
   }
 
   section.hidden = false;
+  if (secondaryOptions) secondaryOptions.hidden = false;
   trigger.hidden = false;
   trigger.disabled = false;
 
