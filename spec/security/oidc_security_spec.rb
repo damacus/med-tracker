@@ -82,6 +82,14 @@ RSpec.describe 'OIDC Security' do # rubocop:disable RSpec/DescribeClass
       expect(columns).not_to include('access_token')
       expect(columns).not_to include('refresh_token')
     end
+
+    it 'uses database timestamp defaults for Rodauth-managed identities' do
+      columns = ActiveRecord::Base.connection.columns(:account_identities)
+      defaults = columns.index_by(&:name).transform_values(&:default_function)
+
+      expect(defaults['created_at']).to eq('CURRENT_TIMESTAMP')
+      expect(defaults['updated_at']).to eq('CURRENT_TIMESTAMP')
+    end
   end
 
   describe 'OIDC-SEC-011: Account hijacking prevention via email verification' do
