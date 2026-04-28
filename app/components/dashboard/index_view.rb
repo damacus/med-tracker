@@ -91,13 +91,13 @@ module Components
           render Components::Shared::MetricCard.new(
             title: t('dashboard.stats.active_schedules'),
             value: active_schedules.size,
-            icon_type: 'pill',
+            icon_type: 'active_schedules',
             href: schedules_path
           )
           render Components::Shared::MetricCard.new(
             title: t('dashboard.stats.compliance'),
             value: "#{compliance_percentage}%",
-            icon_type: 'check',
+            icon_type: 'compliance',
             href: reports_path
           )
           render Components::Shared::MetricCard.new(
