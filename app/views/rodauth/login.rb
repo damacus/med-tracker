@@ -6,6 +6,7 @@ module Views
       include Phlex::Rails::Helpers::FormWith
       include Phlex::Rails::Helpers::LinkTo
       include Views::Rodauth::LoginBrandSupport
+      include Views::Rodauth::LoginBenefitsSupport
       include Views::Rodauth::LoginFormSupport
       include Views::Rodauth::LoginInputAttrsSupport
       include Views::Rodauth::LoginLayoutSupport
@@ -87,7 +88,10 @@ module Views
       end
 
       def flash_message
-        view_context.flash[:alert] || view_context.flash[:notice]
+        message = view_context.flash[:alert] || view_context.flash[:notice]
+        return if message == I18n.t('authentication.login_required', default: 'Please login to continue')
+
+        message
       end
 
       def flash_variant

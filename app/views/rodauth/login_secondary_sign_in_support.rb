@@ -11,15 +11,19 @@ module Views
           p(class: 'text-sm font-semibold text-on-surface-variant') { t('sessions.login.other_sign_in_options') }
           div(class: 'space-y-3') do
             render_passkey_section
-            render_oauth_button if oauth_enabled? && !invite_only?
+            render_oauth_button if secondary_sign_in_visible?
           end
         end
       end
 
       def secondary_sign_in_options_attributes
         attrs = { id: 'secondary-sign-in-options', class: 'mt-9 space-y-4' }
-        attrs[:hidden] = true unless oauth_enabled? && !invite_only?
+        attrs[:hidden] = true unless secondary_sign_in_visible?
         attrs
+      end
+
+      def secondary_sign_in_visible?
+        oauth_enabled? && !invite_only?
       end
 
       def render_oauth_divider
