@@ -39,6 +39,45 @@ RSpec.describe 'Medication Timing Restrictions' do
         expect(response).to redirect_to(person_path(person))
         expect(flash[:notice]).to include('Medication taken')
       end
+
+      it 'records the submitted historical taken_at timestamp' do
+        submitted_time = Time.zone.local(2026, 4, 27, 8, 30)
+
+        travel_to(Time.zone.local(2026, 4, 28, 12, 0)) do
+          expect do
+            post take_medication_person_schedule_path(person, schedule),
+                 params: { medication_take: { taken_at: submitted_time.strftime('%Y-%m-%dT%H:%M') } }
+          end.to change(MedicationTake, :count).by(1)
+        end
+
+        expect(MedicationTake.order(:id).last.taken_at).to be_within(1.second).of(submitted_time)
+      end
+    end
+
+    context 'when submitted taken_at is invalid' do
+      it 'does not create a medication take' do
+        expect do
+          post take_medication_person_schedule_path(person, schedule),
+               params: { medication_take: { taken_at: 'not-a-date' } }
+        end.not_to change(MedicationTake, :count)
+
+        expect(response).to redirect_to(person_path(person))
+        expect(flash[:alert]).to include('valid dose time')
+      end
+    end
+
+    context 'when submitted taken_at is in the future' do
+      it 'does not create a medication take' do
+        travel_to(Time.zone.local(2026, 4, 28, 12, 0)) do
+          expect do
+            post take_medication_person_schedule_path(person, schedule),
+                 params: { medication_take: { taken_at: 1.minute.from_now.strftime('%Y-%m-%dT%H:%M') } }
+          end.not_to change(MedicationTake, :count)
+        end
+
+        expect(response).to redirect_to(person_path(person))
+        expect(flash[:alert]).to include('future')
+      end
     end
 
     context 'when max daily doses reached' do
@@ -111,6 +150,45 @@ RSpec.describe 'Medication Timing Restrictions' do
 
         expect(response).to redirect_to(person_path(person))
         expect(flash[:notice]).to include('Medication taken')
+      end
+
+      it 'records the submitted historical taken_at timestamp' do
+        submitted_time = Time.zone.local(2026, 4, 27, 9, 15)
+
+        travel_to(Time.zone.local(2026, 4, 28, 12, 0)) do
+          expect do
+            post take_medication_person_person_medication_path(person, person_medication),
+                 params: { medication_take: { taken_at: submitted_time.strftime('%Y-%m-%dT%H:%M') } }
+          end.to change(MedicationTake, :count).by(1)
+        end
+
+        expect(MedicationTake.order(:id).last.taken_at).to be_within(1.second).of(submitted_time)
+      end
+    end
+
+    context 'when submitted taken_at is invalid' do
+      it 'does not create a medication take' do
+        expect do
+          post take_medication_person_person_medication_path(person, person_medication),
+               params: { medication_take: { taken_at: 'not-a-date' } }
+        end.not_to change(MedicationTake, :count)
+
+        expect(response).to redirect_to(person_path(person))
+        expect(flash[:alert]).to include('valid dose time')
+      end
+    end
+
+    context 'when submitted taken_at is in the future' do
+      it 'does not create a medication take' do
+        travel_to(Time.zone.local(2026, 4, 28, 12, 0)) do
+          expect do
+            post take_medication_person_person_medication_path(person, person_medication),
+                 params: { medication_take: { taken_at: 1.minute.from_now.strftime('%Y-%m-%dT%H:%M') } }
+          end.not_to change(MedicationTake, :count)
+        end
+
+        expect(response).to redirect_to(person_path(person))
+        expect(flash[:alert]).to include('future')
       end
     end
 

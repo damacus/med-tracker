@@ -65,14 +65,23 @@ RSpec.describe 'Person medication workflow' do
       expect(page).to have_button('💊 Give')
       click_button '💊 Give'
     end
+    confirm_record_dose(created_person_medication)
 
     expect(page).to have_content('Medication taken successfully')
 
     within("#person_medication_#{created_person_medication.id}") do
       expect(page).to have_text(/today's doses/i)
       expect(page).to have_text(/2\.5 ml/i)
-      expect(page).to have_button('💊 Give', disabled: true)
+      expect(page).to have_button('💊 Give', disabled: false)
       expect(page).to have_content('1/1')
+    end
+  end
+
+  def confirm_record_dose(person_medication)
+    path = take_medication_person_person_medication_path(person, person_medication)
+
+    within("form[action='#{path}']") do
+      click_button '💊 Give'
     end
   end
 end

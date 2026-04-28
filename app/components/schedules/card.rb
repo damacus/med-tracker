@@ -282,7 +282,7 @@ module Components
             form_class: 'flex-1'
           },
           state: {
-            disabled: invalid_dose_configured? || !can_administer?,
+            disabled: invalid_dose_configured? || out_of_stock?,
             label: label
           }
         )

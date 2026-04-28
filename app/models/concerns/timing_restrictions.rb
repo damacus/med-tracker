@@ -38,10 +38,14 @@ module TimingRestrictions
 
   alias timing_restrictions? restrictions?
 
-  def can_take_now?
+  def can_take_at?(check_time = Time.current)
     return true unless timing_restrictions?
 
-    timing_policy.can_take_at?
+    timing_policy.can_take_at?(check_time)
+  end
+
+  def can_take_now?
+    can_take_at?
   end
   delegate :next_available_time, :time_until_next_dose, :countdown_display, to: :timing_policy
 

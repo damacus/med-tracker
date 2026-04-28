@@ -835,6 +835,8 @@ es:
     success: "Toma de medicamento registrada correctamente."
     failure: "Error al registrar la toma de medicamento."
     json_success: "Toma de medicamento registrada correctamente."
+    invalid_taken_at: "Elige una hora de dosis válida."
+    future_taken_at: "La hora de la dosis no puede estar en el futuro."
 
   profiles:
     updated: "Perfil actualizado correctamente."

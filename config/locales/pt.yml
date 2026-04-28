@@ -834,6 +834,8 @@ pt:
     success: "Toma de medicamento registada com sucesso."
     failure: "Falha ao registar toma de medicamento."
     json_success: "Toma de medicamento registada com sucesso."
+    invalid_taken_at: "Escolha uma hora de dose válida."
+    future_taken_at: "A hora da dose não pode ser no futuro."
 
   barcode_scanner:
     title: "Ler Código de Barras"

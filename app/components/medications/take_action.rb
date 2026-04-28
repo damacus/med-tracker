@@ -28,10 +28,8 @@ module Components
       def view_template
         if disabled
           render_disabled_button
-        elsif available_medications.many?
-          render_location_dialog
         else
-          render_take_form(selected_medication: available_medications.first)
+          render_take_dialog
         end
       end
 
@@ -47,9 +45,9 @@ module Components
         ) { disabled_label }
       end
 
-      def render_location_dialog
-        Dialog do
-          DialogTrigger do
+      def render_take_dialog
+        Dialog(class: form_class) do
+          DialogTrigger(class: 'block w-full') do
             m3_button(
               variant: button_variant,
               size: button_size,
@@ -60,89 +58,144 @@ module Components
 
           DialogContent(size: :md) do
             DialogHeader do
-              DialogTitle { t('medications.take_action.choose_location', default: 'Choose location') }
+              DialogTitle { t('medications.take_action.title', default: 'Record dose') }
               DialogDescription do
-                t('medications.take_action.choose_location_description',
-                  default: 'Select which location to deduct this dose from.')
+                t('medications.take_action.description',
+                  default: 'Confirm the person, medication, time, and inventory source.')
               end
             end
 
-            DialogMiddle do
-              form_with(
-                url: take_path,
-                method: :post,
-                class: 'space-y-4',
-                data: {
-                  controller: 'optimistic-take',
-                  action: 'submit->optimistic-take#submit',
-                  optimistic_take_loading_label_value: t('medications.take_action.loading')
-                }
-              ) do
-                input(type: :hidden, name: 'amount_ml', value: formatted_amount)
-
-                div(class: 'space-y-2') do
-                  available_medications.each_with_index do |medication, index|
-                    label(
-                      for: "taken_from_medication_#{source.class.name.underscore}_#{source.id}_#{medication.id}",
-                      class: 'flex flex-col gap-3 rounded-shape-xl border border-border p-4 sm:flex-row ' \
-                             'sm:items-center sm:justify-between'
-                    ) do
-                      div(class: 'space-y-1 min-w-0') do
-                        m3_text(size: '2', weight: 'bold', class: 'text-foreground') { medication.location.name }
-                        m3_text(size: '1', class: 'text-on-surface-variant break-words') do
-                          medication_description(medication)
-                        end
-                      end
-                      div(class: 'flex items-center gap-3 shrink-0') do
-                        Badge(variant: :outlined, class: 'rounded-full text-[10px] whitespace-nowrap justify-center') do
-                          inventory_label(medication)
-                        end
-                        input(
-                          type: :radio,
-                          id: "taken_from_medication_#{source.class.name.underscore}_#{source.id}_#{medication.id}",
-                          name: 'taken_from_medication_id',
-                          value: medication.id,
-                          checked: index.zero?
-                        )
-                      end
-                    end
-                  end
+            form_with(
+              url: take_path,
+              method: :post,
+              class: 'contents',
+              data: {
+                controller: 'optimistic-take',
+                action: 'submit->optimistic-take#submit',
+                optimistic_take_loading_label_value: t('medications.take_action.loading')
+              }
+            ) do
+              DialogMiddle do
+                div(class: 'space-y-5') do
+                  input(type: :hidden, name: 'amount_ml', value: formatted_amount)
+                  render_context
+                  render_taken_at_field
+                  render_stock_source_selection
                 end
+              end
 
-                div(class: 'flex justify-end') do
-                  render M3::Button.new(
-                    type: :submit,
-                    variant: :filled,
-                    class: 'rounded-xl',
-                    data: { optimistic_take_target: 'button' }
-                  ) { button_label }
-                end
+              DialogFooter(class: 'border-t border-border/70 bg-popover px-8 pb-8 pt-4') do
+                render M3::Button.new(
+                  type: :submit,
+                  variant: :filled,
+                  class: 'w-full rounded-xl sm:w-auto',
+                  data: { optimistic_take_target: 'button' }
+                ) { button_label }
               end
             end
           end
         end
       end
 
-      def render_take_form(selected_medication:)
-        form_with(
-          url: take_path,
-          method: :post,
-          class: form_class,
-          data: {
-            controller: 'optimistic-take',
-            action: 'submit->optimistic-take#submit',
-            optimistic_take_loading_label_value: t('medications.take_action.loading')
-          }
+      def render_context
+        div(class: 'rounded-shape-xl border border-border/70 bg-surface-container-low p-4') do
+          dl(class: 'grid gap-3 sm:grid-cols-2') do
+            div(class: 'space-y-1') do
+              dt(class: 'text-xs font-black uppercase text-on-surface-variant') do
+                t('medications.take_action.person', default: 'Person')
+              end
+              dd(class: 'text-sm font-semibold text-foreground') { person.name }
+            end
+            div(class: 'space-y-1') do
+              dt(class: 'text-xs font-black uppercase text-on-surface-variant') do
+                t('medications.take_action.medication', default: 'Medication')
+              end
+              dd(class: 'text-sm font-semibold text-foreground') { source.medication.name }
+            end
+            div(class: 'space-y-1 sm:col-span-2') do
+              dt(class: 'text-xs font-black uppercase text-on-surface-variant') do
+                t('medications.take_action.dose', default: 'Dose')
+              end
+              dd(class: 'text-sm font-semibold text-foreground') { dose_label }
+            end
+          end
+        end
+      end
+
+      def render_taken_at_field
+        div(class: 'space-y-2') do
+          render RubyUI::FormFieldLabel.new(for: taken_at_input_id) do
+            t('medications.take_action.taken_at', default: 'Taken at')
+          end
+          m3_input(
+            id: taken_at_input_id,
+            type: 'datetime-local',
+            name: 'medication_take[taken_at]',
+            value: taken_at_field_value,
+            max: taken_at_field_value
+          )
+        end
+      end
+
+      def render_stock_source_selection
+        if available_medications.many?
+          render_stock_source_options
+        elsif available_medications.one?
+          input(type: :hidden, name: 'medication_take[taken_from_medication_id]', value: available_medications.first.id)
+          render_selected_stock_source(available_medications.first)
+        end
+      end
+
+      def render_stock_source_options
+        fieldset(class: 'space-y-2') do
+          legend(class: 'text-sm font-semibold text-foreground') do
+            t('medications.take_action.stock_source', default: 'Stock source')
+          end
+          available_medications.each_with_index do |medication, index|
+            render_stock_source_option(medication, index)
+          end
+        end
+      end
+
+      def render_stock_source_option(medication, index)
+        label(
+          for: stock_source_input_id(medication),
+          class: 'flex flex-col gap-3 rounded-shape-xl border border-border p-4 sm:flex-row ' \
+                 'sm:items-center sm:justify-between'
         ) do
-          input(type: :hidden, name: 'amount_ml', value: formatted_amount)
-          input(type: :hidden, name: 'taken_from_medication_id', value: selected_medication.id)
-          render M3::Button.new(
-            type: :submit,
-            variant: button_variant,
-            size: button_size,
-            class: button_class,
-            data: { optimistic_take_target: 'button', testid: testid, test_id: testid }
-          ) { button_label }
+          render_stock_source_details(medication)
+          div(class: 'flex items-center gap-3 shrink-0') do
+            Badge(variant: :outlined, class: 'rounded-full text-[10px] whitespace-nowrap justify-center') do
+              inventory_label(medication)
+            end
+            input(
+              type: :radio,
+              id: stock_source_input_id(medication),
+              name: 'medication_take[taken_from_medication_id]',
+              value: medication.id,
+              checked: index.zero?
+            )
+          end
+        end
+      end
+
+      def render_selected_stock_source(medication)
+        div(class: 'space-y-2') do
+          m3_text(variant: :label_medium, class: 'font-semibold text-foreground') do
+            t('medications.take_action.stock_source', default: 'Stock source')
+          end
+          div(class: 'rounded-shape-xl border border-border p-4') do
+            render_stock_source_details(medication)
+          end
+        end
+      end
+
+      def render_stock_source_details(medication)
+        div(class: 'space-y-1 min-w-0') do
+          m3_text(size: '2', weight: 'bold', class: 'text-foreground') { medication.location.name }
+          m3_text(size: '1', class: 'text-on-surface-variant break-words') do
+            medication_description(medication)
+          end
         end
       end
 
@@ -175,6 +228,29 @@ module Components
 
       def formatted_amount
         amount.to_s
+      end
+
+      def dose_label
+        dose = DoseAmount.new(amount, source_dose_unit).to_s
+        dose.presence || formatted_amount
+      end
+
+      def source_dose_unit
+        return source.dose_unit if source.respond_to?(:dose_unit)
+
+        source.medication.dosage_unit
+      end
+
+      def taken_at_input_id
+        @taken_at_input_id ||= "medication_take_taken_at_#{source.class.name.underscore}_#{source.id}"
+      end
+
+      def stock_source_input_id(medication)
+        "taken_from_medication_#{source.class.name.underscore}_#{source.id}_#{medication.id}"
+      end
+
+      def taken_at_field_value
+        @taken_at_field_value ||= Time.current.strftime('%Y-%m-%dT%H:%M')
       end
 
       def stock_source_resolver

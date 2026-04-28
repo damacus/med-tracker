@@ -152,12 +152,15 @@ class SchedulesController < ApplicationController
 
   def take_medication
     authorize @schedule, :take_medication?
+    taken_at = medication_taken_at_or_respond(scope: 'schedules')
+    return unless taken_at
 
     result = TakeMedicationService.new.call(
       source: @schedule,
       amount_override: params[:amount_ml],
       taken_from_medication_id: requested_taken_from_medication_id,
-      user: current_user
+      user: current_user,
+      taken_at: taken_at
     )
 
     if result.error == :invalid_amount

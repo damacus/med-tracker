@@ -134,12 +134,15 @@ class PersonMedicationsController < ApplicationController
 
   def take_medication
     authorize @person_medication, :take_medication?
+    taken_at = medication_taken_at_or_respond(scope: 'person_medications')
+    return unless taken_at
 
     result = TakeMedicationService.new.call(
       source: @person_medication,
       amount_override: params[:amount_ml],
       taken_from_medication_id: requested_taken_from_medication_id,
-      user: current_user
+      user: current_user,
+      taken_at: taken_at
     )
 
     if result.error == :invalid_amount

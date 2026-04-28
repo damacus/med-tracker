@@ -769,6 +769,8 @@ ga:
     success: "Cláraíodh an leigheas tógtha go rathúil."
     failure: "Theip ar chlárú an leighis tógtha."
     json_success: "Cláraíodh an leigheas tógtha go rathúil."
+    invalid_taken_at: "Roghnaigh am dáileoige bailí."
+    future_taken_at: "Ní féidir am na dáileoige a bheith sa todhchaí."
 
   profiles:
     updated: "Nuashonraíodh an phróifíl go rathúil."

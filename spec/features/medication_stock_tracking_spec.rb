@@ -70,11 +70,18 @@ RSpec.describe 'Medication Stock Tracking', type: :system do
       # Use the specific test ID for the Take button
       find("[data-testid='take-schedule-#{schedule.id}']").click
     end
+    confirm_record_dose(take_medication_person_schedule_path(person, schedule), I18n.t('schedules.card.give'))
 
     expect(page).to have_content(/taken successfully/)
 
     within "#schedule_#{schedule.id}" do
       expect(page).to have_content('9 left')
+    end
+  end
+
+  def confirm_record_dose(path, label)
+    within("form[action='#{path}']") do
+      click_button label
     end
   end
 end
