@@ -898,18 +898,6 @@
 		object-position: center bottom;
 	}
 
-	.login-med-illustration__picture--dark {
-		display: none;
-	}
-
-	.dark .login-med-illustration__picture--light {
-		display: none;
-	}
-
-	.dark .login-med-illustration__picture--dark {
-		display: block;
-	}
-
 	@media (min-width: 768px) {
 		.login-med-illustration {
 			width: min(100%, 28rem);

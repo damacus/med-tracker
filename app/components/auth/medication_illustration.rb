@@ -5,14 +5,12 @@ module Components
     class MedicationIllustration < Components::Base
       LIGHT_ASSETS = {
         desktop: 'auth/login-med-illustration-light-desktop.png',
-        mobile: 'auth/login-med-illustration-light-mobile.png',
-        class: 'login-med-illustration__picture--light'
+        mobile: 'auth/login-med-illustration-light-mobile.png'
       }.freeze
 
       DARK_ASSETS = {
         desktop: 'auth/login-med-illustration-dark-desktop.png',
-        mobile: 'auth/login-med-illustration-dark-mobile.png',
-        class: 'login-med-illustration__picture--dark'
+        mobile: 'auth/login-med-illustration-dark-mobile.png'
       }.freeze
 
       def initialize(label:, image_path_resolver:)
@@ -22,27 +20,50 @@ module Components
       end
 
       def view_template
-        div(data_login_illustration: 'medication', role: 'img', aria_label: label, class: 'login-med-illustration') do
-          render_picture(LIGHT_ASSETS)
-          render_picture(DARK_ASSETS)
-        end
+        div(**illustration_attrs) { render_picture }
+        render_activation_script
       end
 
       private
 
       attr_reader :label, :image_path_resolver
 
-      def render_picture(assets)
-        picture(class: "login-med-illustration__picture #{assets.fetch(:class)}") do
-          source(media: '(max-width: 520px)', srcset: image_path_resolver.call(assets.fetch(:mobile)))
+      def illustration_attrs
+        {
+          data_login_illustration: 'medication',
+          data_login_illustration_light_desktop_src: asset_path(LIGHT_ASSETS.fetch(:desktop)),
+          data_login_illustration_light_mobile_src: asset_path(LIGHT_ASSETS.fetch(:mobile)),
+          data_login_illustration_dark_desktop_src: asset_path(DARK_ASSETS.fetch(:desktop)),
+          data_login_illustration_dark_mobile_src: asset_path(DARK_ASSETS.fetch(:mobile)),
+          role: 'img',
+          aria_label: label,
+          class: 'login-med-illustration'
+        }
+      end
+
+      def render_picture
+        picture(class: 'login-med-illustration__picture') do
+          source(media: '(max-width: 520px)', data_login_illustration_source: 'mobile')
           img(
-            src: image_path_resolver.call(assets.fetch(:desktop)),
             alt: '',
             aria_hidden: 'true',
             loading: 'eager',
+            fetchpriority: 'high',
+            decoding: 'async',
+            data_login_illustration_image: true,
             class: 'login-med-illustration__image'
           )
         end
+      end
+
+      def render_activation_script
+        script(nonce: view_context.content_security_policy_nonce) do
+          plain 'window.MedTrackerAuth?.applyLoginIllustrations?.()'
+        end
+      end
+
+      def asset_path(asset)
+        image_path_resolver.call(asset)
       end
     end
   end

@@ -16,6 +16,32 @@ const unpack = (value) =>
 const noopError = (error) =>
   error?.name === "AbortError" || error?.name === "NotAllowedError";
 
+const applyLoginIllustration = (illustration) => {
+  const source = illustration.querySelector("[data-login-illustration-source='mobile']");
+  const image = illustration.querySelector("[data-login-illustration-image]");
+  const theme = document.documentElement.classList.contains("dark") ? "Dark" : "Light";
+  const mobileSrc = illustration.dataset[`loginIllustration${theme}MobileSrc`];
+  const desktopSrc = illustration.dataset[`loginIllustration${theme}DesktopSrc`];
+
+  if (!source || !image || !mobileSrc || !desktopSrc) {
+    return;
+  }
+
+  if (source.getAttribute("srcset") !== mobileSrc) {
+    source.setAttribute("srcset", mobileSrc);
+  }
+
+  if (image.getAttribute("src") !== desktopSrc) {
+    image.setAttribute("src", desktopSrc);
+  }
+};
+
+const applyLoginIllustrations = (root = document) => {
+  root
+    .querySelectorAll("[data-login-illustration='medication']")
+    .forEach(applyLoginIllustration);
+};
+
 const initPasskeyLogin = () => {
   const form = document.getElementById("webauthn-login-form");
   const section = document.getElementById("passkey-login-section");
@@ -159,10 +185,12 @@ const initPasskeyLogin = () => {
 };
 
 const bootPasskeyLogin = () => {
+  applyLoginIllustrations();
   initPasskeyLogin();
 };
 
 window.MedTrackerAuth = window.MedTrackerAuth || {};
+window.MedTrackerAuth.applyLoginIllustrations = applyLoginIllustrations;
 window.MedTrackerAuth.initPasskeyLogin = bootPasskeyLogin;
 
 if (document.readyState === "loading") {

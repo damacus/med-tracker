@@ -74,15 +74,17 @@ RSpec.describe Views::Rodauth::Login, type: :component do
     expect(illustration_counts).to eq(layers: 0, canvases: 0, backgrounds: 0)
   end
 
-  it 'renders the medication illustration asset variants' do
+  it 'renders one medication illustration picture with deferred theme assets' do
     rendered = render_inline(described_class.new)
     illustration = rendered.at_css('[data-login-illustration="medication"]')
     picture_counts = {
-      light_picture: illustration.css('picture.login-med-illustration__picture--light').count,
-      dark_picture: illustration.css('picture.login-med-illustration__picture--dark').count
+      pictures: illustration.css('picture.login-med-illustration__picture').count,
+      images: illustration.css('img.login-med-illustration__image').count
     }
 
-    expect(picture_counts).to eq(light_picture: 1, dark_picture: 1)
+    expect(picture_counts).to eq(pictures: 1, images: 1)
+    expect(illustration.css('img.login-med-illustration__image[src]')).to be_empty
+    expect(illustration.css('picture.login-med-illustration__picture--dark')).to be_empty
     expect(illustration.to_html).to include(
       'login-med-illustration-light-desktop',
       'login-med-illustration-dark-mobile',
