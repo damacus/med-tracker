@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.40](https://github.com/damacus/med-tracker/compare/v0.3.39...v0.3.40) (2026-04-27)
+
+
+### Bug Fixes
+
+* make dev rebuild work with postgres 18 ([#1127](https://github.com/damacus/med-tracker/issues/1127)) ([0e4c7d3](https://github.com/damacus/med-tracker/commit/0e4c7d39ef457d327a8fb4fbe45c89cfe6108211))
+
 ## [0.3.39](https://github.com/damacus/med-tracker/compare/v0.3.38...v0.3.39) (2026-04-27)
 
 
