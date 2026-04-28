@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_24_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_28_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -26,10 +26,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_24_120000) do
 
   create_table "account_identities", force: :cascade do |t|
     t.bigint "account_id", null: false
-    t.datetime "created_at", null: false
+    t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
     t.string "provider", null: false
     t.string "uid", null: false
-    t.datetime "updated_at", null: false
+    t.datetime "updated_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
     t.index ["account_id"], name: "index_account_identities_on_account_id"
     t.index ["provider", "uid"], name: "index_account_identities_on_provider_and_uid", unique: true
   end

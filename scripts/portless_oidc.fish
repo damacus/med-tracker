@@ -1,0 +1,59 @@
+#!/usr/bin/env fish
+
+set environment $argv[1]
+set route_name $argv[2]
+
+if test -z "$environment"; or test -z "$route_name"
+    echo "Usage: scripts/portless_oidc.fish <dev|test> <route-name>" >&2
+    exit 64
+end
+
+if not type -q portless
+    echo "Portless is required for this task." >&2
+    echo "Install it globally with: npm install -g portless" >&2
+    echo "Then trust its local CA once with: portless trust" >&2
+    exit 127
+end
+
+set base_url "https://$route_name.localhost"
+set callback_url "$base_url/auth/oidc/callback"
+
+if test "$environment" = test
+    set -lx TEST_APP_URL $base_url
+    set -lx TEST_OIDC_CLIENT_ID $OIDC_CLIENT_ID
+    set -lx TEST_OIDC_CLIENT_SECRET $OIDC_CLIENT_SECRET
+    set -lx TEST_OIDC_ISSUER_URL $OIDC_ISSUER_URL
+    set -lx TEST_OIDC_PROVIDER_NAME $OIDC_PROVIDER_NAME
+    set -lx TEST_OIDC_REDIRECT_URI $callback_url
+else
+    set -lx APP_URL $base_url
+    set -lx OIDC_REDIRECT_URI $callback_url
+end
+
+set port (task "$environment:port")
+if test -z "$port"
+    echo "Could not determine the Docker-assigned $environment web port." >&2
+    exit 1
+end
+
+portless proxy start --port 443 --https --force
+portless alias $route_name $port --force
+
+set portless_ready false
+for attempt in (seq 1 10)
+    if curl --silent --show-error --head --fail --max-time 5 $base_url >/dev/null
+        set portless_ready true
+        break
+    end
+    sleep 1
+end
+
+if test "$portless_ready" != true
+    echo "Portless did not respond at $base_url." >&2
+    echo "For Zitadel's clean redirect URI, restart Portless on port 443:" >&2
+    echo "  portless proxy start --port 443 --https --force" >&2
+    exit 1
+end
+
+echo "Portless URL: $base_url"
+echo "OIDC callback: $callback_url"

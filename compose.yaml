@@ -46,6 +46,12 @@ services:
       SOLID_QUEUE_DATABASE_URL: postgresql://medtracker:medtracker_password@db-dev:5432/medtracker_queue
       NHS_DMD_CLIENT_ID: ${NHS_DMD_CLIENT_ID:-}
       NHS_DMD_CLIENT_SECRET: ${NHS_DMD_CLIENT_SECRET:-}
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
+      OIDC_ISSUER_URL: ${OIDC_ISSUER_URL:-}
+      OIDC_PROVIDER_NAME: ${OIDC_PROVIDER_NAME:-OIDC}
+      OIDC_REDIRECT_URI: ${OIDC_REDIRECT_URI:-}
     volumes:
       - .:/app
       - ${MEDTRACKER_GIT_COMMON_DIR:-.git}:${MEDTRACKER_GIT_COMMON_DIR:-.git}:ro
@@ -123,6 +129,12 @@ services:
       RAILS_ENV: test
       DATABASE_URL: postgresql://medtracker:medtracker_password@db-test:5432/medtracker
       SMTP_ADDRESS: mail-test
+      APP_URL: ${TEST_APP_URL:-http://localhost:3000}
+      OIDC_CLIENT_ID: ${TEST_OIDC_CLIENT_ID:-}
+      OIDC_CLIENT_SECRET: ${TEST_OIDC_CLIENT_SECRET:-}
+      OIDC_ISSUER_URL: ${TEST_OIDC_ISSUER_URL:-}
+      OIDC_PROVIDER_NAME: ${TEST_OIDC_PROVIDER_NAME:-OIDC}
+      OIDC_REDIRECT_URI: ${TEST_OIDC_REDIRECT_URI:-}
     volumes:
       - .:/app
       - ${MEDTRACKER_GIT_COMMON_DIR:-.git}:${MEDTRACKER_GIT_COMMON_DIR:-.git}:ro
