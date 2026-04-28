@@ -2,12 +2,12 @@
 
 require 'rails_helper'
 require 'fileutils'
+require 'tmpdir'
 
 RSpec.describe NhsDmd::ReleaseImport do
   let(:importer) { described_class.new }
-  let(:release_dir) { Rails.root.join('tmp/dmd-release-spec') }
+  let(:release_dir) { Pathname.new(Dir.mktmpdir('dmd-release-spec', Rails.root.join('tmp'))) }
 
-  before { FileUtils.mkdir_p(release_dir) }
   after { FileUtils.rm_rf(release_dir) }
 
   def write_ampp_xml(entries)

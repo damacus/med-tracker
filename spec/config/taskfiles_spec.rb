@@ -25,9 +25,14 @@ RSpec.describe 'Taskfiles' do
   end
 
   it 'probes the clean HTTPS URL after registering the alias' do
-    expect(portless_script).to include('curl --silent --show-error --head --fail --max-time 5 $base_url')
-    expect(portless_script).to include('Portless did not respond at $base_url.')
-    expect(portless_script).to include('portless proxy start --port 443 --https --force')
+    expect(portless_script).to include(
+      'set portless_ready false',
+      'for attempt in (seq 1 10)',
+      'curl --silent --show-error --head --fail --max-time 5 $base_url',
+      'sleep 1',
+      'Portless did not respond at $base_url.',
+      'portless proxy start --port 443 --https --force'
+    )
   end
 
   it 'uses test-scoped OIDC variables for the Portless test task' do

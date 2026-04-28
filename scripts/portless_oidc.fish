@@ -39,7 +39,16 @@ end
 portless proxy start --port 443 --https --force
 portless alias $route_name $port --force
 
-if not curl --silent --show-error --head --fail --max-time 5 $base_url >/dev/null
+set portless_ready false
+for attempt in (seq 1 10)
+    if curl --silent --show-error --head --fail --max-time 5 $base_url >/dev/null
+        set portless_ready true
+        break
+    end
+    sleep 1
+end
+
+if test "$portless_ready" != true
     echo "Portless did not respond at $base_url." >&2
     echo "For Zitadel's clean redirect URI, restart Portless on port 443:" >&2
     echo "  portless proxy start --port 443 --https --force" >&2
