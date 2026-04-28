@@ -65,7 +65,7 @@ module Components
               title: t('admin.dashboard.metrics.active_schedules'),
               value: metrics[:active_schedules] || 0,
               testid: 'metric-active-schedules',
-              icon_type: 'pill'
+              icon_type: 'active_schedules'
             )
             render_metric_card(
               title: t('admin.dashboard.metrics.no_carers'),

@@ -145,7 +145,9 @@ module Components
         case icon_type
         when 'users' then render Icons::Users.new(size: size)
         when 'pill' then render Icons::Pill.new(size: size)
+        when 'active_schedules' then render Icons::ActiveSchedules.new(size: size)
         when 'check' then render Icons::CheckCircle.new(size: size)
+        when 'compliance' then render Icons::Compliance.new(size: size)
         when 'clock' then render Icons::Clock.new(size: size)
         else render Icons::Activity.new(size: size)
         end
@@ -156,7 +158,7 @@ module Components
 
         case icon_type
         when 'users' then 'bg-primary/10'
-        when 'pill' then 'bg-success-container/50'
+        when 'pill', 'active_schedules' then 'bg-success-container/50'
         else 'bg-secondary-container'
         end
       end
@@ -166,8 +168,8 @@ module Components
 
         case icon_type
         when 'users' then 'text-primary'
-        when 'pill' then 'text-on-success-container'
-        when 'check' then 'text-on-secondary-container'
+        when 'pill', 'active_schedules' then 'text-on-success-container'
+        when 'check', 'compliance' then 'text-on-secondary-container'
         when 'clock' then 'text-on-warning-container'
         else 'text-foreground'
         end
