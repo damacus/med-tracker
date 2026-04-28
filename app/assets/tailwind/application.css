@@ -877,6 +877,54 @@
 }
 
 @layer components {
+	.login-med-illustration {
+		position: relative;
+		width: min(100%, 18rem);
+		aspect-ratio: 4 / 3;
+		margin: 1rem auto 0;
+		overflow: hidden;
+		flex: none;
+	}
+
+	.login-med-illustration__picture,
+	.login-med-illustration__image {
+		display: block;
+		width: 100%;
+		height: 100%;
+	}
+
+	.login-med-illustration__image {
+		object-fit: contain;
+		object-position: center bottom;
+	}
+
+	.login-med-illustration__picture--dark {
+		display: none;
+	}
+
+	.dark .login-med-illustration__picture--light {
+		display: none;
+	}
+
+	.dark .login-med-illustration__picture--dark {
+		display: block;
+	}
+
+	@media (min-width: 768px) {
+		.login-med-illustration {
+			width: min(100%, 28rem);
+			max-width: none;
+			margin: auto auto 0;
+		}
+	}
+
+	@media (max-width: 520px) {
+		.login-med-illustration {
+			width: min(42vw, 6rem);
+			aspect-ratio: 2 / 3;
+		}
+	}
+
 	.nav {
 		@apply sticky top-0 z-40 w-full border-b border-border bg-surface-container-lowest/80 backdrop-blur supports-[backdrop-filter]:bg-surface-container-lowest/65;
 	}

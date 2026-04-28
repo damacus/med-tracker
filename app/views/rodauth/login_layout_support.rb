@@ -19,24 +19,24 @@ module Views
       def login_surface_attributes
         {
           data_login_surface: 'split-auth',
-          class: 'grid w-full overflow-hidden rounded-3xl border border-outline-variant/70 bg-surface-container-lowest/95 shadow-elevation-4 backdrop-blur md:grid-cols-2 dark:bg-surface-container-low/90'
+          class: 'grid w-full overflow-hidden rounded-2xl border border-outline-variant/70 bg-surface-container-lowest/95 shadow-elevation-4 backdrop-blur md:grid-cols-2 md:rounded-3xl dark:bg-surface-container-low/90'
         }
       end
 
       def login_page_classes
-        'relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_50%_-10%,rgb(240_249_255)_0%,rgb(248_250_252)_42%,rgb(226_232_240)_100%)] px-4 py-8 text-foreground sm:px-6 lg:px-8 dark:bg-[radial-gradient(circle_at_50%_-10%,rgb(15_23_42)_0%,rgb(2_8_23)_58%,rgb(1_5_14)_100%)]'
+        'relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_50%_-10%,rgb(240_249_255)_0%,rgb(248_250_252)_42%,rgb(226_232_240)_100%)] px-4 py-4 text-foreground sm:px-6 md:py-8 lg:px-8 dark:bg-[radial-gradient(circle_at_50%_-10%,rgb(15_23_42)_0%,rgb(2_8_23)_58%,rgb(1_5_14)_100%)]'
       end
 
       def login_content_classes
-        'relative z-10 mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-6xl flex-col justify-center gap-5'
+        'relative z-10 mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-6xl flex-col justify-center gap-4 md:min-h-[calc(100vh-4rem)] md:gap-5'
       end
 
       def brand_panel_classes
-        'relative flex min-h-[42rem] flex-col gap-8 overflow-hidden border-b border-r border-outline-variant/60 p-8 sm:p-12'
+        'relative flex flex-col gap-3 overflow-hidden border-b border-outline-variant/60 p-4 sm:p-8 md:min-h-[42rem] md:gap-8 md:border-r md:p-12'
       end
 
       def form_panel_classes
-        'flex flex-col justify-center p-8 sm:p-12 lg:p-16'
+        'flex flex-col justify-center p-4 sm:p-8 md:p-12 lg:p-16'
       end
 
       def secondary_sign_in_button_classes

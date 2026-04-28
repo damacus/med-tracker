@@ -52,8 +52,44 @@ RSpec.describe Views::Rodauth::Login, type: :component do
       illustration: rendered.css('[data-login-illustration="medication"]').count
     }
     expect(landmark_counts).to eq(surface: 1, brand_panel: 1, form_panel: 1, illustration: 1)
+    expect(rendered.css('svg[data-login-logo="mt"]').count).to eq(1)
+    illustration = rendered.at_css('[data-login-illustration="medication"]')
+    expect(illustration['class']).not_to include('hidden')
+    expect(illustration.css('[data-login-illustration-layer]').count).to eq(0)
+    expect(illustration.css('canvas').count).to eq(0)
+    expect(illustration.css('[style*="background-image"]').count).to eq(0)
+    expect(illustration.css('picture.login-med-illustration__picture--light').count).to eq(1)
+    expect(illustration.css('picture.login-med-illustration__picture--dark').count).to eq(1)
+    %w[
+      login-med-illustration-light-desktop
+      login-med-illustration-dark-mobile
+      login-med-illustration-light-mobile
+      login-med-illustration-dark-desktop
+    ].each do |asset|
+      expect(illustration.to_html).to include(asset)
+    end
+    expect(rendered.css('svg[data-login-benefit-icon="stay-on-track"]').count).to eq(1)
+    benefit_list = rendered.at_css('[data-login-benefits]')
+    expect(benefit_list['class']).to include('hidden')
+    expect(benefit_list['class']).to include('md:block')
+    expect(rendered.css('svg[data-login-benefit-icon="schedule"]').count).to eq(1)
+    expect(rendered.to_html).to include('M200-80q-33 0-56.5-23.5T120-160')
+    expect(rendered.css('svg[data-login-benefit-icon="progress"]').count).to eq(1)
+    expect(rendered.css('svg[data-login-benefit-icon="insights"]').count).to eq(1)
+    expect(rendered.to_html).to include('M400-320q100 0 170-70t70-170')
     expect(rendered.text).to include('Stay on track', 'Your schedule', 'Track your progress',
                                      'Insights that help', 'Other sign-in options')
+  end
+
+  it 'places the welcome copy in the brand panel instead of the form panel' do
+    rendered = render_inline(described_class.new)
+
+    brand_panel = rendered.at_css('[data-login-panel="brand"]')
+    form_panel = rendered.at_css('[data-login-panel="form"]')
+
+    expect(brand_panel.css('h1').text).to include('Welcome back')
+    expect(brand_panel.text).to include('Sign in to your account to continue')
+    expect(form_panel.css('h1')).to be_empty
   end
 
   it 'renders passkey controls for login autofill and explicit sign-in' do
@@ -62,6 +98,25 @@ RSpec.describe Views::Rodauth::Login, type: :component do
     expect(rendered.text).to include('Continue with Passkey')
     expect(rendered.css('#webauthn-login-form').count).to eq(1)
     expect(rendered.css('#passkey-login-trigger').count).to eq(1)
+    expect(rendered.css('svg[data-login-sign-in-icon="passkey"]').count).to eq(1)
+    expect(rendered.to_html).to include('M3 20v-2.35c0 -0.63335')
+    expect(rendered.css('svg[data-login-sign-in-chevron="passkey"] path[d="M9 5L16 12L9 19"]').count).to eq(1)
+  end
+
+  it 'renders the OIDC sign-in option with the supplied SSO icon when available' do
+    allow(rodauth).to receive(:respond_to?).with(:omniauth_request_path).and_return(true)
+    allow(rodauth).to receive(:omniauth_request_path).with(:oidc).and_return('/auth/oidc')
+    allow(Rails.application.credentials).to receive(:dig).and_call_original
+    allow(Rails.application.credentials).to receive(:dig).with(:oidc, :client_id).and_return('test-client-id')
+    allow(Rails.application.credentials).to receive(:dig).with(:oidc, :issuer_url).and_return('https://issuer.example.com')
+    allow(User).to receive(:administrator).and_return(instance_double(ActiveRecord::Relation, exists?: false))
+
+    rendered = render_inline(described_class.new)
+
+    expect(rendered.text).to include('Login with OIDC (SSO)')
+    expect(rendered.css('svg[data-login-sign-in-icon="sso"]').count).to eq(1)
+    expect(rendered.to_html).to include('M480-380Zm80 220H260q-91 0-155.5-63T40-377')
+    expect(rendered.css('svg[data-login-sign-in-chevron="sso"] path[d="M9 5L16 12L9 19"]').count).to eq(1)
   end
 
   it 'hides secondary sign-in options until a visible option is available' do
@@ -96,6 +151,7 @@ RSpec.describe Views::Rodauth::Login, type: :component do
 
     alert_elements = rendered.css('[role="alert"]')
     expect(alert_elements.length).to eq(1)
+    expect(rendered.css('#login-flash [role="alert"]').count).to eq(1)
     expect(rendered.text).to include('Please login to continue')
   end
 

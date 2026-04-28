@@ -13,7 +13,7 @@ RSpec.describe 'Navigation' do
   context 'when user is not authenticated' do
     it 'shows navigation with a login link' do
       page.current_window.resize_to(375, 667)
-      visit root_path
+      visit '/verify-account-resend'
 
       expect(page).to have_link('Login')
     end

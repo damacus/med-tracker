@@ -7,18 +7,14 @@ module Views
 
       def render_form_panel
         div(data_login_panel: 'form', class: form_panel_classes) do
-          div(class: 'mb-8 space-y-3') do
-            h1(class: 'text-4xl font-bold leading-tight text-foreground sm:text-5xl') { t('sessions.login.heading') }
-            p(class: 'text-base font-medium text-on-surface-variant') { t('sessions.login.subheading') }
-          end
-          div(id: 'login-flash', class: 'mb-5') { flash_section }
+          div(id: 'login-flash', class: 'mb-4') { flash_section } if flash_message.present?
           render_login_form
           render_secondary_sign_in_options
         end
       end
 
       def render_login_form
-        render RubyUI::Form.new(action: view_context.rodauth.login_path, method: :post, class: 'space-y-5',
+        render RubyUI::Form.new(action: view_context.rodauth.login_path, method: :post, class: 'space-y-4 md:space-y-5',
                                 data_turbo: 'false') do
           authenticity_token_field
           render_email_field
@@ -60,7 +56,7 @@ module Views
           end
           div(class: 'relative') do
             input_attrs[:class] =
-              'h-14 rounded-lg border-outline-variant bg-surface-container-lowest pr-12 shadow-sm ' \
+              'h-12 rounded-lg border-outline-variant bg-surface-container-lowest pr-12 shadow-sm md:h-14 ' \
               "focus-visible:ring-2 focus-visible:ring-teal-500/25 #{input_attrs[:class]}"
             m3_input(**input_attrs)
             div(class: 'pointer-events-none absolute inset-y-0 right-4 flex items-center text-on-surface-variant') do
@@ -96,7 +92,7 @@ module Views
 
       def render_submit_button
         m3_button(type: :submit, variant: :filled, size: :lg,
-                  class: 'w-full rounded-lg bg-teal-600 py-6 font-bold shadow-lg shadow-teal-700/15 hover:bg-teal-700 dark:bg-teal-500 dark:text-slate-950 dark:hover:bg-teal-400') do
+                  class: 'w-full rounded-lg bg-teal-600 py-5 font-bold shadow-lg shadow-teal-700/15 hover:bg-teal-700 md:py-6 dark:bg-teal-500 dark:text-slate-950 dark:hover:bg-teal-400') do
           span(class: 'flex w-full items-center justify-center') do
             span(class: 'flex-1') { t('sessions.login.submit') }
             render Components::Icons::ChevronRight.new(size: 22)
