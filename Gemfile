@@ -46,36 +46,61 @@ gem 'webauthn'
 gem 'web-push'
 
 # OpenTelemetry for observability [https://opentelemetry.io/docs/languages/ruby/]
-gem 'opentelemetry-exporter-otlp'
-gem 'opentelemetry-instrumentation-all'
-gem 'opentelemetry-sdk'
-
-# Structured logging for production
-gem 'ecs-logging'
-gem 'lograge'
+gem 'opentelemetry-api'
 
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
 gem 'tzinfo-data', platforms: %i[windows jruby]
-# Use the database-backed adapters for Rails.cache, Active Job, and Action Cable
-gem 'solid_cable'
-# Solid Cache is a database-backed Active Support cache store [https://github.com/rails/solid_cache]
-gem 'solid_cache'
 # Solid Queue is a database-based queuing backend for Active Job [https://github.com/rails/solid_queue]
 gem 'solid_queue'
 # Reduces boot times through caching; required in config/boot.rb
 gem 'bootsnap', require: false
-# Add HTTP asset caching/compression and X-Sendfile acceleration to Puma [https://github.com/basecamp/thruster/]
-gem 'thruster', require: false
 # Use Phlex for views [https://github.com/phlex-rb/phlex-rails]
 gem 'csv'
 gem 'phlex-rails'
+gem 'ruby_ui', require: false
 gem 'tailwindcss-rails'
 gem 'tailwind_merge'
 
-group :development, :test do
-  # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
-  gem 'debug', platforms: %i[mri windows], require: 'debug/prelude'
+group :production, :test do
+  # OpenTelemetry for observability [https://opentelemetry.io/docs/languages/ruby/]
+  gem 'opentelemetry-exporter-otlp'
+  gem 'opentelemetry-instrumentation-net_http'
+  gem 'opentelemetry-instrumentation-pg'
+  gem 'opentelemetry-instrumentation-rack'
+  gem 'opentelemetry-instrumentation-rails'
+  gem 'opentelemetry-sdk'
+end
 
+group :production do
+  # Structured logging for production
+  gem 'ecs-logging'
+  gem 'lograge'
+
+  # Use the database-backed adapters for Rails.cache, Active Job, and Action Cable
+  gem 'solid_cable'
+  # Solid Cache is a database-backed Active Support cache store [https://github.com/rails/solid_cache]
+  gem 'solid_cache'
+  # Add HTTP asset caching/compression and X-Sendfile acceleration to Puma [https://github.com/basecamp/thruster/]
+  gem 'thruster', require: false
+end
+
+group :test do
+  # Clean database between tests
+  gem 'database_cleaner-active_record'
+
+  # Playwright for end-to-end testing
+  gem 'capybara'
+  gem 'capybara-playwright-driver'
+  gem 'factory_bot_rails'
+  gem 'pundit-matchers'
+  gem 'rspec-rails'
+  gem 'shoulda-matchers'
+
+  # HTTP request stubbing [https://github.com/bblimke/webmock]
+  gem 'webmock'
+end
+
+group :tools do
   # Static analysis for security vulnerabilities [https://brakemanscanner.org/]
   gem 'brakeman', require: false
 
@@ -88,31 +113,15 @@ group :development, :test do
   # Factory Bot [https://github.com/thoughtbot/factory_bot_rails]
   gem 'rubocop-factory_bot', require: false
 
-  # Clean database between tests
-  gem 'database_cleaner-active_record'
-
-  # Playwright for end-to-end testing
-  gem 'capybara'
-  gem 'capybara-playwright-driver'
-  gem 'factory_bot_rails'
-  gem 'pundit-matchers'
-  gem 'rails-controller-testing'
   gem 'rspec-github', require: false
-  gem 'rspec-rails'
-  gem 'shoulda-matchers'
-
-  # HTTP request stubbing [https://github.com/bblimke/webmock]
-  gem 'webmock'
-
-  # Parallel test execution for local development [https://github.com/grosser/parallel_tests]
-  gem 'parallel_tests'
-end
-
-group :development do
   gem 'rubocop-capybara'
   gem 'rubocop-rails'
   gem 'rubocop-rspec'
   gem 'rubocop-rspec_rails'
-  gem 'ruby_ui', require: false
+end
+
+group :development do
+  # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
+  gem 'debug', platforms: %i[mri windows], require: 'debug/prelude'
   gem 'web-console'
 end
