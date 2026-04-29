@@ -33,7 +33,7 @@ module Views
         div(class: 'w-full max-w-5xl text-center space-y-4') do
           render_signup_link
           render_resend_link
-          render_invite_only_oidc_link if invite_only? && oauth_enabled?
+          render_version_display
         end
       end
 
@@ -56,16 +56,9 @@ module Views
         end
       end
 
-      def render_invite_only_oidc_link
-        provider_name = ENV.fetch('OIDC_PROVIDER_NAME', 'OIDC')
-        div(class: 'space-y-2 text-xs text-on-surface-variant font-medium') do
-          p { t('sessions.login.invite_only_oidc_notice') }
-          form(action: view_context.rodauth.omniauth_request_path(:oidc), method: 'post', data: { turbo: 'false' }, class: 'inline-block') do
-            input(type: 'hidden', name: 'authenticity_token', value: view_context.form_authenticity_token)
-            m3_button(type: :submit, variant: :text, size: :sm, class: 'h-auto p-0 font-bold underline') do
-              plain t('sessions.login.invite_only_oidc_cta', provider: provider_name)
-            end
-          end
+      def render_version_display
+        span(class: 'block text-[10px] text-on-surface-variant/50 font-mono font-bold uppercase tracking-widest') do
+          "v#{ENV.fetch('APP_VERSION', MedTracker::VERSION)}"
         end
       end
 
