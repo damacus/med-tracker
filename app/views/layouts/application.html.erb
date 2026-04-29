@@ -36,8 +36,12 @@
   </head>
 
   <body class="bg-background text-foreground transition-colors duration-300">
+    <% hide_signed_out_chrome = !current_user && request.path == "/login" %>
+    <% main_classes = ["transition-all duration-500"] %>
+    <% main_classes << "sm:ml-20 md:ml-64 pb-24 md:pb-0" if current_user %>
+    <% main_classes << "pb-24 md:pb-0" if !current_user && !hide_signed_out_chrome %>
     <%= render Components::Layouts::Sidebar.new(current_user: current_user) %>
-    <%= render Components::Layouts::Navigation.new(current_user: current_user) %>
+    <%= render Components::Layouts::Navigation.new(current_user: current_user) unless hide_signed_out_chrome %>
 
     <% if content_for?(:flash) %>
       <%= yield :flash %>
@@ -47,7 +51,7 @@
       </div>
     <% end %>
 
-    <main class="<%= current_user ? 'sm:ml-20 md:ml-64' : '' %> pb-24 md:pb-0 transition-all duration-500">
+    <main class="<%= main_classes.join(" ") %>">
       <div id="main-content">
         <%= yield %>
       </div>

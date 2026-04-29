@@ -812,7 +812,7 @@ es:
     login:
       tagline: "Portal de Bienestar"
       heading: "Bienvenido de nuevo"
-      subheading: "Por favor, inicie sesión en su cuenta"
+      subheading: "Inicie sesión en su cuenta para continuar"
       email_label: "Dirección de correo electrónico"
       email_placeholder: "su@correo.com"
       password_label: "Contraseña"
@@ -820,13 +820,31 @@ es:
       forgot_password: "¿Olvidó?"
       remember_me: "Recordarme"
       submit: "Iniciar Sesión en el Panel"
+      medication_illustration_label: "Ilustración de frasco de medicamento"
+      other_sign_in_options: "Otras opciones de inicio de sesión"
+      benefits:
+        stay_on_track:
+          title: "Manténgase al día"
+          detail: "No vuelva a olvidar una dosis"
+        schedule:
+          title: "Su horario"
+          detail: "Todos sus medicamentos en un solo lugar"
+        progress:
+          title: "Siga su progreso"
+          detail: "Mejores hábitos, mejor salud"
+        insights:
+          title: "Información útil"
+          detail: "Comprenda su salud"
       passkey_label: "Passkey"
       passkey_helper: "Usa Face ID, Touch ID, Windows Hello o una llave de seguridad."
       passkey_cta: "Continuar con Passkey"
       passkey_not_supported: "Las passkeys no son compatibles con este navegador."
       passkey_error: "No pudimos iniciar sesión con esa passkey. Inténtelo de nuevo o use su contraseña."
       oauth_continue: "Continuar con %{provider}"
-      oauth_divider: "o continuar con"
+      oauth_sso: "Iniciar sesión con %{provider} (SSO)"
+      oauth_divider: "o"
+      invite_only_oidc_notice: "El inicio de sesión único está reservado para cuentas invitadas."
+      invite_only_oidc_cta: "Continuar con %{provider}"
       need_account: "¿Necesita una cuenta?"
       create_account: "Crear una"
       resend_verification: "Reenviar correo de verificación"

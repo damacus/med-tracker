@@ -811,7 +811,7 @@ pt:
     login:
       tagline: "Portal de Saúde"
       heading: "Bem-vindo de volta"
-      subheading: "Por favor, inicie sessão na sua conta"
+      subheading: "Inicie sessão na sua conta para continuar"
       email_label: "Endereço de email"
       email_placeholder: "o.seu@email.com"
       password_label: "Palavra-passe"
@@ -819,13 +819,31 @@ pt:
       forgot_password: "Esqueceu?"
       remember_me: "Lembrar-me"
       submit: "Iniciar Sessão no Painel"
+      medication_illustration_label: "Ilustração de frasco de medicamento"
+      other_sign_in_options: "Outras opções de início de sessão"
+      benefits:
+        stay_on_track:
+          title: "Mantenha-se no caminho certo"
+          detail: "Nunca perca uma dose"
+        schedule:
+          title: "O seu horário"
+          detail: "Todos os seus medicamentos num só lugar"
+        progress:
+          title: "Acompanhe o seu progresso"
+          detail: "Melhores hábitos, melhor saúde"
+        insights:
+          title: "Informações que ajudam"
+          detail: "Compreenda a sua saúde"
       passkey_label: "Passkey"
       passkey_helper: "Use Face ID, Touch ID, Windows Hello ou uma chave de segurança."
       passkey_cta: "Continuar com Passkey"
       passkey_not_supported: "As passkeys não são suportadas neste navegador."
       passkey_error: "Não foi possível iniciar sessão com essa passkey. Tente novamente ou use a sua palavra-passe."
       oauth_continue: "Continuar com %{provider}"
-      oauth_divider: "ou continuar com"
+      oauth_sso: "Iniciar sessão com %{provider} (SSO)"
+      oauth_divider: "ou"
+      invite_only_oidc_notice: "O início de sessão único está reservado para contas convidadas."
+      invite_only_oidc_cta: "Continuar com %{provider}"
       need_account: "Precisa de uma conta?"
       create_account: "Criar uma"
       resend_verification: "Reenviar email de verificação"

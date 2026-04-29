@@ -1,0 +1,14 @@
+<svg width="251" height="259" viewBox="0 0 251 259" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="MedTracker">
+  <defs>
+    <linearGradient id="round-teal" x1="39" y1="30" x2="177" y2="164" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#12A797"/>
+      <stop offset="100%" stop-color="#48C2B4"/>
+    </linearGradient>
+  </defs>
+  <path d="M126 31C78.5 31 40 69.5 40 117C40 164.5 78.5 203 126 203C143.5 203 159.7 197.8 173.3 188.9" stroke="url(#round-teal)" stroke-width="11" stroke-linecap="round"/>
+  <circle cx="192" cy="139" r="7" fill="#1A9E94"/>
+  <circle cx="180" cy="159" r="7" fill="#2FAFA4"/>
+  <circle cx="161" cy="175" r="7" fill="#44BFB2"/>
+  <path d="M80 113L106 139L154 86" stroke="#182333" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="5" y="232" fill="#172033" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="700" letter-spacing="-1">med tracker</text>
+</svg>

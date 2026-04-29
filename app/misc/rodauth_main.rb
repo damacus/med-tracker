@@ -381,11 +381,9 @@ class RodauthMain < Rodauth::Rails::Auth
     # Render Phlex components directly for speed (no ERB indirection)
     auth_class_eval do
       def set_redirect_error_flash(message) # rubocop:disable Naming/AccessorMethodName
-        if message == require_login_error_flash
-          set_notice_flash(message)
-        else
-          super
-        end
+        return if message == require_login_error_flash
+
+        super
       end
 
       def view(page, title)

@@ -869,7 +869,7 @@ en:
     login:
       tagline: "Wellness Portal"
       heading: "Welcome back"
-      subheading: "Please sign in to your account"
+      subheading: "Sign in to your account to continue"
       email_label: "Email address"
       email_placeholder: "your@email.com"
       password_label: "Password"
@@ -877,13 +877,31 @@ en:
       forgot_password: "Forgot?"
       remember_me: "Remember me"
       submit: "Sign In to Dashboard"
+      medication_illustration_label: "Medication bottle illustration"
+      other_sign_in_options: "Other sign-in options"
+      benefits:
+        stay_on_track:
+          title: "Stay on track"
+          detail: "Never miss a dose"
+        schedule:
+          title: "Your schedule"
+          detail: "All your meds in one place"
+        progress:
+          title: "Track your progress"
+          detail: "Better habits, better health"
+        insights:
+          title: "Insights that help"
+          detail: "Understand your health"
       passkey_label: "Passkey"
       passkey_helper: "Use Face ID, Touch ID, Windows Hello, or a security key."
       passkey_cta: "Continue with Passkey"
       passkey_not_supported: "Passkeys are not supported in this browser."
       passkey_error: "We could not sign you in with that passkey. Try again or use your password."
       oauth_continue: "Continue with %{provider}"
-      oauth_divider: "or continue with"
+      oauth_sso: "Login with %{provider} (SSO)"
+      oauth_divider: "or"
+      invite_only_oidc_notice: "Single sign-on is reserved for invited accounts."
+      invite_only_oidc_cta: "Continue with %{provider}"
       need_account: "Need an account?"
       create_account: "Create one"
       resend_verification: "Resend verification email"
