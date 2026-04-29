@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.43](https://github.com/damacus/med-tracker/compare/v0.3.42...v0.3.43) (2026-04-29)
+
+
+### Features
+
+* elevate OIDC button and restore version identifier on login page ([#1145](https://github.com/damacus/med-tracker/issues/1145)) ([f3a36b6](https://github.com/damacus/med-tracker/commit/f3a36b621638b9cbd39c99ce0d52c9897a48386d))
+
 ## [0.3.42](https://github.com/damacus/med-tracker/compare/v0.3.41...v0.3.42) (2026-04-29)
 
 
