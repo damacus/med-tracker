@@ -126,7 +126,7 @@ RSpec.describe 'Person Medications Authorization' do
       )
     end
 
-    it 'allows carers to take medication for assigned patients' do
+    it 'allows carers to take medication for assigned patients', :js do
       login_as(carer)
       visit person_path(assigned_patient)
 
@@ -134,6 +134,7 @@ RSpec.describe 'Person Medications Authorization' do
         expect(page).to have_button('💊 Give')
         click_button '💊 Give'
       end
+      confirm_record_dose(person_medication)
 
       expect(page).to have_content('Medication taken successfully')
     end
@@ -400,6 +401,14 @@ RSpec.describe 'Person Medications Authorization' do
       visit person_path(unrelated_person)
 
       expect(page).to have_content('You are not authorized to perform this action')
+    end
+  end
+
+  def confirm_record_dose(person_medication)
+    path = take_medication_person_person_medication_path(assigned_patient, person_medication)
+
+    within("form[action='#{path}']") do
+      click_button '💊 Give'
     end
   end
 end

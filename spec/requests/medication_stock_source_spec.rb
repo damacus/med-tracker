@@ -30,6 +30,43 @@ RSpec.describe 'Medication stock sources' do
       expect(alternate_medication.reload.current_supply).to eq(6)
     end
 
+    it 'keeps the selected alternate source when recording a historical dose' do
+      schedule = build_schedule
+      alternate_medication = build_alternate_medication
+      submitted_time = Time.zone.local(2026, 4, 27, 7, 45)
+
+      travel_to(Time.zone.local(2026, 4, 28, 12, 0)) do
+        expect do
+          post take_medication_person_schedule_path(person, schedule),
+               params: {
+                 medication_take: {
+                   taken_at: submitted_time.strftime('%Y-%m-%dT%H:%M'),
+                   taken_from_medication_id: alternate_medication.id
+                 }
+               }
+        end.to change(MedicationTake, :count).by(1)
+      end
+
+      take = MedicationTake.order(:id).last
+      expect(take.taken_at).to be_within(1.second).of(submitted_time)
+      expect(take.taken_from_medication).to eq(alternate_medication)
+      expect(take.inventory_location).to eq(locations(:school))
+      expect(alternate_medication.reload.current_supply).to eq(6)
+    end
+
+    it 'rejects a selected source with a different dosage' do
+      schedule = build_schedule
+      incompatible_medication = build_incompatible_medication
+
+      expect do
+        post take_medication_person_schedule_path(person, schedule),
+             params: { medication_take: { taken_from_medication_id: incompatible_medication.id } }
+      end.not_to change(MedicationTake, :count)
+
+      expect(response).to redirect_to(person_path(person))
+      expect(flash[:alert]).to include('Selected location is unavailable')
+    end
+
     it 'requires an explicit location selection when multiple stock sources are available' do
       build_alternate_medication
       schedule = build_schedule
@@ -57,6 +94,43 @@ RSpec.describe 'Medication stock sources' do
       expect(take.taken_from_medication).to eq(alternate_medication)
       expect(take.inventory_location).to eq(locations(:school))
       expect(alternate_medication.reload.current_supply).to eq(6)
+    end
+
+    it 'keeps the selected alternate source when recording a historical PRN dose' do
+      person_medication = build_person_medication
+      alternate_medication = build_alternate_medication
+      submitted_time = Time.zone.local(2026, 4, 27, 10, 5)
+
+      travel_to(Time.zone.local(2026, 4, 28, 12, 0)) do
+        expect do
+          post take_medication_person_person_medication_path(person, person_medication),
+               params: {
+                 medication_take: {
+                   taken_at: submitted_time.strftime('%Y-%m-%dT%H:%M'),
+                   taken_from_medication_id: alternate_medication.id
+                 }
+               }
+        end.to change(MedicationTake, :count).by(1)
+      end
+
+      take = MedicationTake.order(:id).last
+      expect(take.taken_at).to be_within(1.second).of(submitted_time)
+      expect(take.taken_from_medication).to eq(alternate_medication)
+      expect(take.inventory_location).to eq(locations(:school))
+      expect(alternate_medication.reload.current_supply).to eq(6)
+    end
+
+    it 'rejects a selected PRN source with a different dosage' do
+      person_medication = build_person_medication
+      incompatible_medication = build_incompatible_medication
+
+      expect do
+        post take_medication_person_person_medication_path(person, person_medication),
+             params: { medication_take: { taken_from_medication_id: incompatible_medication.id } }
+      end.not_to change(MedicationTake, :count)
+
+      expect(response).to redirect_to(person_path(person))
+      expect(flash[:alert]).to include('Selected location is unavailable')
     end
   end
 
@@ -100,6 +174,18 @@ RSpec.describe 'Medication stock sources' do
       location: locations(:school),
       category: source_medication.category,
       dosage_amount: source_medication.dosage_amount,
+      dosage_unit: source_medication.dosage_unit,
+      current_supply: 7,
+      reorder_threshold: 1
+    )
+  end
+
+  def build_incompatible_medication
+    Medication.create!(
+      name: source_medication.name,
+      location: locations(:school),
+      category: source_medication.category,
+      dosage_amount: source_medication.dosage_amount + 100,
       dosage_unit: source_medication.dosage_unit,
       current_supply: 7,
       reorder_threshold: 1

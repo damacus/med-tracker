@@ -884,6 +884,8 @@ cy:
     success: "Cofnodwyd cymryd y feddyginiaeth yn llwyddiannus."
     failure: "Methwyd â chofnodi cymryd y feddyginiaeth."
     json_success: "Cofnodwyd cymryd y feddyginiaeth yn llwyddiannus."
+    invalid_taken_at: "Dewiswch amser dos dilys."
+    future_taken_at: "Ni all amser y dos fod yn y dyfodol."
 
   profiles:
     updated: "Diweddarwyd y proffil yn llwyddiannus."

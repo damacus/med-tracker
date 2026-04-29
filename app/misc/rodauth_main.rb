@@ -240,8 +240,8 @@ class RodauthMain < Rodauth::Rails::Auth
                         client_options: {
                           identifier: oidc_client_id,
                           secret: oidc_client_secret,
-                          redirect_uri: ENV.fetch('OIDC_REDIRECT_URI',
-                                                  "#{ENV.fetch('APP_URL', 'http://localhost:3000')}/auth/oidc/callback")
+                          redirect_uri: ENV.fetch('OIDC_REDIRECT_URI', nil).presence ||
+                                        "#{ENV.fetch('APP_URL', 'http://localhost:3000')}/auth/oidc/callback"
                         }
     end
 

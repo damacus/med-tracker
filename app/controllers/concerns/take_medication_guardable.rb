@@ -39,11 +39,32 @@ module TakeMedicationGuardable
   def respond_take_medication_error(message:)
     respond_to do |format|
       format.html { redirect_back_or_to(respond_take_medication_redirect_path, alert: message) }
+      format.json { render json: { success: false, errors: [message] }, status: :unprocessable_content }
       format.turbo_stream do
         flash.now[:alert] = message
         render turbo_stream: turbo_stream.update('flash', Components::Layouts::Flash.new(alert: flash[:alert]))
       end
     end
+  end
+
+  def medication_taken_at_or_respond(scope:)
+    taken_at = parsed_medication_taken_at
+
+    if taken_at.blank?
+      respond_take_medication_error(
+        message: t("#{scope}.invalid_taken_at", default: t('take_medications.invalid_taken_at'))
+      )
+      return
+    end
+
+    if taken_at.future?
+      respond_take_medication_error(
+        message: t("#{scope}.future_taken_at", default: t('take_medications.future_taken_at'))
+      )
+      return
+    end
+
+    taken_at
   end
 
   def log_invalid_take_attempt(source:, amount:, metadata: {})
@@ -62,7 +83,24 @@ module TakeMedicationGuardable
     params[:taken_from_medication_id].presence || params.dig(:medication_take, :taken_from_medication_id).presence
   end
 
+  def parsed_medication_taken_at
+    raw_taken_at = params.dig(:medication_take, :taken_at).presence
+    return Time.current if raw_taken_at.blank?
+
+    medication_taken_at_formats.each do |format|
+      return Time.zone.strptime(raw_taken_at, format)
+    rescue ArgumentError, TypeError
+      next
+    end
+
+    nil
+  end
+
   def respond_take_medication_redirect_path
     defined?(@person) && @person.present? ? person_path(@person) : root_path
+  end
+
+  def medication_taken_at_formats
+    ['%Y-%m-%dT%H:%M', '%Y-%m-%dT%H:%M:%S']
   end
 end

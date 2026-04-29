@@ -65,6 +65,11 @@ RSpec.describe 'OIDC Security' do # rubocop:disable RSpec/DescribeClass
       rodauth_file = Rails.root.join('app/misc/rodauth_main.rb').read
       expect(rodauth_file).to include('/auth/oidc/callback')
     end
+
+    it 'treats a blank redirect URI environment variable as unset' do
+      rodauth_file = Rails.root.join('app/misc/rodauth_main.rb').read
+      expect(rodauth_file).to include("ENV.fetch('OIDC_REDIRECT_URI', nil).presence ||")
+    end
   end
 
   describe 'OIDC-SEC-007: Access token not stored long-term' do
@@ -76,6 +81,14 @@ RSpec.describe 'OIDC Security' do # rubocop:disable RSpec/DescribeClass
       expect(columns).to include('uid')
       expect(columns).not_to include('access_token')
       expect(columns).not_to include('refresh_token')
+    end
+
+    it 'uses database timestamp defaults for Rodauth-managed identities' do
+      columns = ActiveRecord::Base.connection.columns(:account_identities)
+      defaults = columns.index_by(&:name).transform_values(&:default_function)
+
+      expect(defaults['created_at']).to eq('CURRENT_TIMESTAMP')
+      expect(defaults['updated_at']).to eq('CURRENT_TIMESTAMP')
     end
   end
 

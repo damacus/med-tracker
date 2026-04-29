@@ -48,7 +48,7 @@ RSpec.describe Components::Dashboard::TimelineItem, type: :component do
     rendered = render_inline(component)
 
     expect(rendered.to_html).to include('Jane Doe')
-    expect(rendered.to_html).not_to include('Taken at')
+    expect(rendered.to_html).not_to include('Jane Doe • Taken at')
   end
 
   describe 'cooldown badge' do

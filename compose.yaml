@@ -32,7 +32,7 @@ services:
     profiles: [dev]
     networks: [dev]
     build:
-      target: assets
+      target: development
       args:
         RAILS_ENV: development
     command: bin/rails db:prepare
@@ -46,6 +46,12 @@ services:
       SOLID_QUEUE_DATABASE_URL: postgresql://medtracker:medtracker_password@db-dev:5432/medtracker_queue
       NHS_DMD_CLIENT_ID: ${NHS_DMD_CLIENT_ID:-}
       NHS_DMD_CLIENT_SECRET: ${NHS_DMD_CLIENT_SECRET:-}
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
+      OIDC_ISSUER_URL: ${OIDC_ISSUER_URL:-}
+      OIDC_PROVIDER_NAME: ${OIDC_PROVIDER_NAME:-OIDC}
+      OIDC_REDIRECT_URI: ${OIDC_REDIRECT_URI:-}
     volumes:
       - .:/app
       - ${MEDTRACKER_GIT_COMMON_DIR:-.git}:${MEDTRACKER_GIT_COMMON_DIR:-.git}:ro
@@ -60,7 +66,7 @@ services:
     profiles: [dev]
     networks: [dev]
     build:
-      target: assets
+      target: development
       args:
         RAILS_ENV: development
     depends_on:
@@ -123,6 +129,12 @@ services:
       RAILS_ENV: test
       DATABASE_URL: postgresql://medtracker:medtracker_password@db-test:5432/medtracker
       SMTP_ADDRESS: mail-test
+      APP_URL: ${TEST_APP_URL:-http://localhost:3000}
+      OIDC_CLIENT_ID: ${TEST_OIDC_CLIENT_ID:-}
+      OIDC_CLIENT_SECRET: ${TEST_OIDC_CLIENT_SECRET:-}
+      OIDC_ISSUER_URL: ${TEST_OIDC_ISSUER_URL:-}
+      OIDC_PROVIDER_NAME: ${TEST_OIDC_PROVIDER_NAME:-OIDC}
+      OIDC_REDIRECT_URI: ${TEST_OIDC_REDIRECT_URI:-}
     volumes:
       - .:/app
       - ${MEDTRACKER_GIT_COMMON_DIR:-.git}:${MEDTRACKER_GIT_COMMON_DIR:-.git}:ro
@@ -151,6 +163,28 @@ services:
       - medtracker_test_bundle:/usr/local/bundle
       - medtracker_test_node_modules:/app/node_modules
       - ./tmp/capybara:/app/tmp/capybara
+    tmpfs:
+      - /app/tmp/pids:uid=1000,gid=1000
+      - /app/tmp/cache:uid=1000,gid=1000
+      - /app/public/assets:uid=1000,gid=1000
+    healthcheck:
+      disable: true
+
+  tools-test:
+    extends:
+      file: compose/base.yml
+      service: rails
+    image: med-tracker-tools-test
+    profiles: [test]
+    networks: [test]
+    build:
+      target: tools
+    environment:
+      RAILS_ENV: test
+    volumes:
+      - .:/app
+      - ${MEDTRACKER_GIT_COMMON_DIR:-.git}:${MEDTRACKER_GIT_COMMON_DIR:-.git}:ro
+      - medtracker_tools_bundle:/usr/local/bundle
     tmpfs:
       - /app/tmp/pids:uid=1000,gid=1000
       - /app/tmp/cache:uid=1000,gid=1000
@@ -229,5 +263,6 @@ volumes:
   medtracker_dev_storage:
   medtracker_test_bundle:
   medtracker_test_node_modules:
+  medtracker_tools_bundle:
   medtracker_prod_postgres:
   medtracker_prod_storage:

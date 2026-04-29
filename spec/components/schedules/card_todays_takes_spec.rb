@@ -62,7 +62,7 @@ RSpec.describe Components::Schedules::Card, type: :component do
 
     it 'reuses one medication_takes load for the dose badge and list' do
       schedule.update!(max_daily_doses: 4)
-      allow(schedule).to receive_messages(out_of_stock?: false, can_take_now?: true)
+      allow(schedule).to receive_messages(out_of_stock?: false, can_take_at?: true, can_take_now?: true)
 
       take
 
@@ -76,7 +76,7 @@ RSpec.describe Components::Schedules::Card, type: :component do
         available_medications: [medication]
       )
       allow(MedicationStockSourceResolver).to receive(:new).and_return(resolver)
-      allow(schedule).to receive(:can_take_now?).and_return(true)
+      allow(schedule).to receive_messages(can_take_at?: true, can_take_now?: true)
 
       render_card
 

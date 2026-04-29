@@ -25,6 +25,20 @@ tasks:
       - task: :internal:up-db
         vars: { ENVIRONMENT: test }
 
+  portless:
+    desc: Start test server and register a Portless OIDC URL
+    summary: |
+      Start the test web server, register its Docker-assigned host port with
+      Portless, and print the stable local OIDC URL.
+      Requires a globally installed Portless CLI:
+        npm install -g portless
+        portless trust
+      Usage: task test:portless
+    cmds:
+      - task: :internal:up
+        vars: { ENVIRONMENT: test }
+      - ./scripts/portless_oidc.fish test med-tracker-test
+
   seed:
     desc: Seed test database with fixtures
     summary: |
