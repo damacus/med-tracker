@@ -69,7 +69,11 @@ module Schedules
     end
 
     def take_disabled?
-      invalid_dose_configured? || out_of_stock?
+      invalid_dose_configured? || !can_administer?
+    end
+
+    def can_administer?
+      blocked_reason.nil?
     end
 
     def take_label
@@ -79,6 +83,7 @@ module Schedules
     def take_state_label
       return I18n.t('schedules.card.invalid_dose') if invalid_dose_configured?
       return I18n.t('schedules.card.out_of_stock') if out_of_stock?
+      return I18n.t('schedules.card.waiting') unless can_administer?
 
       take_label
     end

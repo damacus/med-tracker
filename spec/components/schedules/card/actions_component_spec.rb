@@ -38,4 +38,20 @@ RSpec.describe Components::Schedules::Card::ActionsComponent, type: :component d
       expect(button.text).to include('Invalid Dose Configured')
     end
   end
+
+  context 'when the schedule is on cooldown' do
+    it 'renders a disabled waiting action' do
+      allow(MedicationStockSourceResolver).to receive(:new).and_return(
+        instance_double(MedicationStockSourceResolver, blocked_reason: :cooldown)
+      )
+
+      rendered = render_inline(
+        described_class.new(schedule: schedule, person: person, presenter: presenter, current_user: nil)
+      )
+
+      button = rendered.at_css("button[data-testid='take-schedule-#{schedule.id}-disabled'][disabled]")
+      expect(button).to be_present
+      expect(button.text).to include('Waiting')
+    end
+  end
 end

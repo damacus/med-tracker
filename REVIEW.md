@@ -50,7 +50,7 @@ Added focused component specs:
 - [Dose status component spec](file:///Users/damacus/.codex/worktrees/3d0a/med-tracker/spec/components/schedules/card/dose_status_component_spec.rb#L24)
 - [Actions component spec](file:///Users/damacus/.codex/worktrees/3d0a/med-tracker/spec/components/schedules/card/actions_component_spec.rb#L21)
 
-Existing `Components::Schedules::Card` specs still cover integration behavior, invalid dose disabling, i18n, memoization, and preloaded take histories.
+Existing `Components::Schedules::Card` specs still cover integration behavior, invalid dose disabling, cooldown disabling, i18n, memoization, and preloaded take histories.
 
 ## Tool Reports
 
@@ -65,8 +65,8 @@ SimpleCov is not configured in this repo (`rg 'SimpleCov|COVERAGE|simplecov'` fo
 ### Verification
 
 - `task rubocop`: passed with no offenses.
-- `task test TEST_FILE=spec/components/schedules`: passed, 17 examples.
-- `task test`: passed, 1997 examples, 0 failures, 2 expected pending.
+- `task test TEST_FILE=spec/components/schedules`: passed, 18 examples.
+- `task test`: passed, 1998 examples, 0 failures, 2 expected pending.
 
 ## Recommendations
 
