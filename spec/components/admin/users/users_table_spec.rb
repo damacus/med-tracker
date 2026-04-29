@@ -7,6 +7,7 @@ RSpec.describe Components::Admin::Users::UsersTable, type: :component do
 
   let(:user_list) { User.all }
   let(:current_user) { users(:admin) }
+  let(:target_user) { users(:john) }
 
   describe 'rendering' do
     it 'renders a table' do
@@ -27,6 +28,15 @@ RSpec.describe Components::Admin::Users::UsersTable, type: :component do
 
       rows = rendered.css('tbody tr')
       expect(rows.length).to eq(user_list.count)
+    end
+
+    it 'renders edit links with outline button styling' do
+      rendered = render_inline(described_class.new(users: user_list, current_user: current_user))
+
+      row = rendered.css("[data-user-id='#{target_user.id}']").first
+      edit_link = row.css('a').find { |link| link.text.include?('Edit') }
+      expect(edit_link['href']).to include("/admin/users/#{target_user.id}/edit")
+      expect(edit_link['class']).to include('border')
     end
   end
 
