@@ -49,6 +49,17 @@ module Rack
       end
     end
 
+    throttle('ai_medication_suggestions/ip', limit: 10, period: 1.minute) do |req|
+      req.ip if req.path == '/ai-medication-suggestions' && req.post?
+    end
+
+    throttle('ai_medication_suggestions/user', limit: 20, period: 1.hour) do |req|
+      if req.path == '/ai-medication-suggestions' && req.post?
+        session = req.env['rack.session']
+        session && session['account_id']
+      end
+    end
+
     self.throttled_responder = lambda do |request|
       match_data = request.env['rack.attack.match_data']
       now = match_data[:epoch_time]

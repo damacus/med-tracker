@@ -6,12 +6,13 @@ module Components
       class StepContent < Components::Base
         include Phlex::Rails::Helpers::FormWith
 
-        attr_reader :medication, :locations, :people, :variant
+        attr_reader :medication, :locations, :people, :current_user, :variant
 
-        def initialize(medication:, locations:, people:, variant: 'fullpage')
+        def initialize(medication:, locations:, people:, current_user: nil, variant: 'fullpage')
           @medication = medication
           @locations = locations
           @people = people
+          @current_user = current_user
           @variant = variant
           super()
         end
@@ -20,8 +21,9 @@ module Components
           div(
             id: 'wizard-content',
             data: {
-              controller: 'wizard',
-              wizard_current_value: 0
+              controller: ai_medication_help_enabled? ? 'wizard ai-medication-help' : 'wizard',
+              wizard_current_value: 0,
+              ai_medication_help_url_value: ai_medication_suggestions_path
             }
           ) do
             render StepIndicator.new
@@ -34,6 +36,14 @@ module Components
             ) do |_form|
               render_errors if medication.errors.any?
               input(type: 'hidden', name: 'wizard', value: 'true')
+              if ai_medication_help_enabled?
+                input(
+                  type: 'hidden',
+                  name: 'ai_medication_suggestion_applied',
+                  value: '',
+                  data: { 'ai-medication-help-target': 'appliedField' }
+                )
+              end
               if medication.barcode.present?
                 input(type: 'hidden', name: 'medication[barcode]', value: medication.barcode)
               end
@@ -80,7 +90,11 @@ module Components
 
         def render_step_panels
           div(data: { wizard_target: 'step' }) do
-            render StepBasicInfo.new(medication: medication, locations: locations)
+            render StepBasicInfo.new(
+              medication: medication,
+              locations: locations,
+              ai_medication_help_enabled: ai_medication_help_enabled?
+            )
           end
 
           div(class: 'hidden', data: { wizard_target: 'step' }) do
@@ -92,8 +106,15 @@ module Components
           end
 
           div(class: 'hidden', data: { wizard_target: 'step' }) do
-            render StepWarnings.new(medication: medication)
+            render StepWarnings.new(
+              medication: medication,
+              ai_medication_help_enabled: ai_medication_help_enabled?
+            )
           end
+        end
+
+        def ai_medication_help_enabled?
+          PaidFeature.enabled?(:ai_medication_help, user: current_user)
         end
 
         def render_navigation
