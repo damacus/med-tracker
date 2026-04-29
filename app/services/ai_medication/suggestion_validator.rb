@@ -2,6 +2,10 @@
 
 module AiMedication
   class SuggestionValidator
+    def initialize(allowlist: TrustedSourceAllowlist.new)
+      @allowlist = allowlist
+    end
+
     def call(suggestion)
       Suggestion.new(
         medication: valid_medication_attributes(suggestion.medication),
@@ -13,6 +17,8 @@ module AiMedication
 
     private
 
+    attr_reader :allowlist
+
     def valid_medication_attributes(attributes)
       attributes.slice('name', 'category', 'description', 'warnings')
     end
@@ -22,7 +28,11 @@ module AiMedication
     end
 
     def valid_sources(sources)
-      sources.select { |source| source['url'].present? && source['title'].present? }
+      sources.select { |source| source_valid?(source) }
+    end
+
+    def source_valid?(source)
+      source['url'].present? && source['title'].present? && allowlist.allowed?(source['url'])
     end
 
     def valid_dose?(dose)
@@ -38,7 +48,8 @@ module AiMedication
       evidence.is_a?(Hash) &&
         evidence['url'].present? &&
         evidence['title'].present? &&
-        evidence['text'].present?
+        evidence['text'].present? &&
+        allowlist.allowed?(evidence['url'])
     end
 
     def positive_number?(value)
