@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.42](https://github.com/damacus/med-tracker/compare/v0.3.41...v0.3.42) (2026-04-29)
+
+
+### Features
+
+* redesign login page ([#1134](https://github.com/damacus/med-tracker/issues/1134)) ([936b26d](https://github.com/damacus/med-tracker/commit/936b26da3412484a1517bd7fbae9680699893817))
+
 ## [0.3.41](https://github.com/damacus/med-tracker/compare/v0.3.40...v0.3.41) (2026-04-28)
 
 
