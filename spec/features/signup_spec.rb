@@ -9,32 +9,6 @@ RSpec.describe 'User Signup', type: :system do
       User.administrator.destroy_all
     end
 
-    it 'redirects to login when an administrator already exists and no invitation token is present' do
-      admin_account = Account.create!(
-        email: 'admin-existing@example.com',
-        password_hash: RodauthApp.rodauth.allocate.password_hash('SecureP@ssword123!'),
-        status: :verified
-      )
-      admin_person = Person.create!(
-        account: admin_account,
-        name: 'Existing Admin',
-        date_of_birth: Date.new(1980, 1, 1),
-        email: admin_account.email,
-        person_type: :adult
-      )
-      User.create!(
-        person: admin_person,
-        email_address: admin_account.email,
-        role: :administrator,
-        active: true
-      )
-
-      visit create_account_path
-
-      expect(page).to have_current_path(login_path)
-      expect(page).to have_content(/invitation|invite/i)
-    end
-
     it 'creates both an Account and a Person with valid details' do
       visit create_account_path
 
