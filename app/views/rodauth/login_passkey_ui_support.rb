@@ -23,7 +23,12 @@ module Views
             render_passkey_sign_in_icon
             span { t('sessions.login.passkey_cta') }
           end
-          render Components::Icons::ChevronRight.new(size: 24, data_login_sign_in_chevron: 'passkey')
+          render Components::Icons::ChevronRight.new(
+            size: 24,
+            path: 'M9 5L16 12L9 19',
+            stroke_width: '2.5',
+            data_login_sign_in_chevron: 'passkey'
+          )
         end
       end
 

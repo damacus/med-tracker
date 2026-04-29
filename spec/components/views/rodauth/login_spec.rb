@@ -61,6 +61,16 @@ RSpec.describe Views::Rodauth::Login, type: :component do
     expect(rendered.css('svg[data-login-logo="mt"]').count).to eq(1)
   end
 
+  it 'renders the new bar and check MedTracker logo' do
+    rendered = render_inline(described_class.new)
+    logo = rendered.at_css('svg[data-login-logo="mt"]')
+
+    expect(logo['viewbox']).to eq('0 0 192 96')
+    expect(logo.css('[data-login-logo-part="bar"]').count).to eq(3)
+    expect(logo.css('[data-login-logo-part="check-badge"]').count).to eq(1)
+    expect(logo.css('[data-login-logo-part="check-mark"]').count).to eq(1)
+  end
+
   it 'renders the medication illustration without generated layers' do
     rendered = render_inline(described_class.new)
     illustration = rendered.at_css('[data-login-illustration="medication"]')

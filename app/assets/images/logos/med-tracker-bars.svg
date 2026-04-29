@@ -1,0 +1,18 @@
+<svg width="245" height="257" viewBox="0 0 245 257" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="MedTracker">
+  <defs>
+    <linearGradient id="bars-teal" x1="35" y1="63" x2="170" y2="173" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#7ED6CA"/>
+      <stop offset="100%" stop-color="#0B978E"/>
+    </linearGradient>
+    <linearGradient id="bars-blue" x1="130" y1="29" x2="174" y2="113" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#347DDA"/>
+      <stop offset="100%" stop-color="#2361AA"/>
+    </linearGradient>
+  </defs>
+  <rect x="35" y="94" width="35" height="78" rx="17.5" fill="url(#bars-teal)"/>
+  <rect x="81" y="62" width="33" height="110" rx="16.5" fill="url(#bars-teal)"/>
+  <path d="M128 48C128 38.06 136.06 30 146 30C155.94 30 164 38.06 164 48V112H128V48Z" fill="url(#bars-blue)"/>
+  <circle cx="157" cy="143" r="33" fill="url(#bars-teal)"/>
+  <path d="M141.5 142.5L153 154L174 130" stroke="white" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="20" y="228" fill="#172033" font-family="Inter, Arial, sans-serif" font-size="35" font-weight="700" letter-spacing="-1">med tracker</text>
+</svg>

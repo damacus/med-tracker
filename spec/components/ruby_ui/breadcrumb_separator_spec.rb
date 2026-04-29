@@ -8,7 +8,7 @@ RSpec.describe RubyUI::BreadcrumbSeparator, type: :component do
 
     li = rendered.css('li[role="presentation"][aria-hidden="true"]').first
     expect(li).to be_present
-    expect(rendered.to_html).to include('M9 5L16 12L9 19')
+    expect(rendered.to_html).to include('m9 18 6-6-6-6')
   end
 
   it 'renders the default icon at size 14 using numeric sizing' do

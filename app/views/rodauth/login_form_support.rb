@@ -95,7 +95,11 @@ module Views
                   class: 'w-full rounded-lg bg-teal-600 py-5 font-bold shadow-lg shadow-teal-700/15 hover:bg-teal-700 md:py-6 dark:bg-teal-500 dark:text-slate-950 dark:hover:bg-teal-400') do
           span(class: 'flex w-full items-center justify-center') do
             span(class: 'flex-1') { t('sessions.login.submit') }
-            render Components::Icons::ChevronRight.new(size: 22)
+            render Components::Icons::ChevronRight.new(
+              size: 22,
+              path: 'M9 5L16 12L9 19',
+              stroke_width: '2.5'
+            )
           end
         end
       end

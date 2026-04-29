@@ -116,3 +116,7 @@ group :development do
   gem 'ruby_ui', require: false
   gem 'web-console'
 end
+
+gem 'ruby-lsp', '~> 0.26.9', group: :development
+
+gem 'ruby-lsp-rails', '~> 0.4.8', group: :development

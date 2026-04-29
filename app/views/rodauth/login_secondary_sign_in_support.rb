@@ -48,7 +48,12 @@ module Views
             render_oauth_icon_tile
             span { t('sessions.login.oauth_sso', provider: provider_name) }
           end
-          render Components::Icons::ChevronRight.new(size: 24, data_login_sign_in_chevron: 'sso')
+          render Components::Icons::ChevronRight.new(
+            size: 24,
+            path: 'M9 5L16 12L9 19',
+            stroke_width: '2.5',
+            data_login_sign_in_chevron: 'sso'
+          )
         end
       end
 
