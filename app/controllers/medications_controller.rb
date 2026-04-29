@@ -2,6 +2,7 @@
 
 class MedicationsController < ApplicationController
   include InventoryLocationFilterable
+  include MedicationAiSuggestionConfirmation
   include MedicationAdministrationOptions
   include MedicationFormContext
   include MedicationRefillable
@@ -69,7 +70,8 @@ class MedicationsController < ApplicationController
     render wizard_wrapper_class.new(
       medication: @medication,
       locations: available_locations,
-      people: available_people
+      people: available_people,
+      current_user: current_user
     )
   end
 
@@ -90,6 +92,8 @@ class MedicationsController < ApplicationController
     @medication.location_id ||= primary_location&.id
     authorize @medication
 
+    return if reject_unconfirmed_ai_medication_suggestion?
+
     result = create_medication_from_request
 
     if result.success
@@ -98,7 +102,8 @@ class MedicationsController < ApplicationController
       render wizard_wrapper_class.new(
         medication: @medication,
         locations: available_locations,
-        people: available_people
+        people: available_people,
+        current_user: current_user
       ), status: :unprocessable_content
     else
       render Components::Medications::FormView.new(

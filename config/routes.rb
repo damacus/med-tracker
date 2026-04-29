@@ -78,6 +78,7 @@ Rails.application.routes.draw do
   end
   get 'medication-finder', to: 'medications#finder', as: :medication_finder
   get 'medication-finder/search', to: 'medications#search', as: :medication_finder_search
+  post 'ai-medication-suggestions', to: 'ai_medication_suggestions#create', as: :ai_medication_suggestions
 
   # Authentication - Rodauth handles /login, /logout, /create-account via middleware
 

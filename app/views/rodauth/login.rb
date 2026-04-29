@@ -63,6 +63,14 @@ module Views
       end
 
       def oauth_enabled?
+        oidc_configured? && !invite_only?
+      end
+
+      def invite_only_oidc_available?
+        oidc_configured? && invite_only?
+      end
+
+      def oidc_configured?
         return false unless view_context.rodauth.respond_to?(:omniauth_request_path)
 
         oidc_client_id = Rails.application.credentials.dig(:oidc, :client_id) || ENV.fetch('OIDC_CLIENT_ID', nil)

@@ -6,12 +6,13 @@ module Components
       class SlideOverWrapper < Components::Base
         include Phlex::Rails::Helpers::TurboFrameTag
 
-        attr_reader :medication, :locations, :people, :variant
+        attr_reader :medication, :locations, :people, :current_user, :variant
 
-        def initialize(medication:, locations:, people:)
+        def initialize(medication:, locations:, people:, current_user: nil)
           @medication = medication
           @locations = locations
           @people = people
+          @current_user = current_user
           @variant = 'slideover'
           super()
         end
@@ -38,6 +39,7 @@ module Components
                   medication: medication,
                   locations: locations,
                   people: people,
+                  current_user: current_user,
                   variant: variant
                 )
               end

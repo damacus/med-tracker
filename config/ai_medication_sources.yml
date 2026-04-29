@@ -1,0 +1,30 @@
+sources:
+  - name: calpol
+    domains:
+      - calpol.co.uk
+      - www.calpol.co.uk
+    path_patterns:
+      - "^/our-products/"
+    seed_urls:
+      - url: "https://www.calpol.co.uk/our-products/calpol-sixplus-oral-suspension-paracetamol"
+        title: "CALPOL SixPlus Oral Suspension"
+        keywords:
+          - calpol
+          - sixplus
+          - six plus
+          - paracetamol
+          - oral suspension
+  - name: medicines_org_uk
+    domains:
+      - medicines.org.uk
+      - www.medicines.org.uk
+    path_patterns:
+      - "^/emc/"
+    seed_urls: []
+  - name: nhs
+    domains:
+      - nhs.uk
+      - www.nhs.uk
+    path_patterns:
+      - "^/medicines/"
+    seed_urls: []

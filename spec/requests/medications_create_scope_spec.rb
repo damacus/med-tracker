@@ -51,6 +51,18 @@ RSpec.describe 'Medication creation scope' do
       expect(response.body).to include('name="medication[reorder_threshold]"')
       expect(response.body).to include('Supply setup')
       expect(response.body).not_to include('Dosage &amp; Supply')
+      expect(response.body).not_to include('Help fill this in')
+    end
+
+    it 'shows the AI medication help action when the paid feature is enabled' do
+      parent_user.person.account.update!(subscription_plan: 'family_plus')
+      allow(ENV).to receive(:fetch).with('MEDTRACKER_AI_MEDICATION_HELP_ENABLED', 'false').and_return('true')
+
+      get new_medication_path
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include('Help fill this in')
+      expect(response.body).to include('data-controller="wizard ai-medication-help"')
     end
 
     it 'shows only authorized locations in the form' do
@@ -409,6 +421,34 @@ RSpec.describe 'Medication creation scope' do
       end.not_to change(Medication, :count)
 
       expect(response).to redirect_to(root_path)
+    end
+
+    it 'rejects unconfirmed AI medication help suggestions' do
+      expect do
+        post medications_path, params: {
+          ai_medication_suggestion_applied: '1',
+          medication: {
+            name: 'Calpol Six Plus 250mg/5ml oral suspension (McNeil Products Ltd)',
+            category: 'Analgesic',
+            location_id: locations(:home).id,
+            dosage_records_attributes: {
+              '0' => {
+                amount: '5',
+                unit: 'ml',
+                frequency: 'Children 6-8 years',
+                default_max_daily_doses: '4',
+                default_min_hours_between_doses: '4',
+                default_dose_cycle: 'daily'
+              }
+            }
+          }
+        }
+      end.not_to change(Medication, :count)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.body).to include(
+        'Check AI suggestions against the packet, leaflet, or linked guidance before saving.'
+      )
     end
   end
 end
