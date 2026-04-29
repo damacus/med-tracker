@@ -4,6 +4,7 @@ class Account < ApplicationRecord
   include Rodauth::Rails.model
 
   enum :status, { unverified: 1, verified: 2, closed: 3 }
+  enum :subscription_plan, { free: 'free', family_plus: 'family_plus' }, validate: true
 
   has_one :person, dependent: :nullify
   has_many :api_sessions, dependent: :destroy

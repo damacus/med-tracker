@@ -55,7 +55,8 @@ RSpec.describe 'Medication creation scope' do
     end
 
     it 'shows the AI medication help action when the paid feature is enabled' do
-      allow(PaidFeature).to receive(:enabled?).with(:ai_medication_help, user: parent_user).and_return(true)
+      parent_user.person.account.update!(subscription_plan: 'family_plus')
+      allow(ENV).to receive(:fetch).with('MEDTRACKER_AI_MEDICATION_HELP_ENABLED', 'false').and_return('true')
 
       get new_medication_path
 

@@ -7,8 +7,17 @@ RSpec.describe 'AI medication suggestions' do
 
   before { sign_in(users(:admin)) }
 
-  it 'is unavailable when the paid feature is disabled' do
-    allow(PaidFeature).to receive(:enabled?).with(:ai_medication_help, user: users(:admin)).and_return(false)
+  it 'is unavailable when the environment flag is disabled' do
+    users(:admin).person.account.update!(subscription_plan: 'family_plus')
+    allow(ENV).to receive(:fetch).with('MEDTRACKER_AI_MEDICATION_HELP_ENABLED', 'false').and_return('false')
+
+    post ai_medication_suggestions_path, params: { medication: { name: 'Calpol Six Plus' } }
+
+    expect(response).to have_http_status(:not_found)
+  end
+
+  it 'is unavailable when the account plan is not entitled' do
+    allow(ENV).to receive(:fetch).with('MEDTRACKER_AI_MEDICATION_HELP_ENABLED', 'false').and_return('true')
 
     post ai_medication_suggestions_path, params: { medication: { name: 'Calpol Six Plus' } }
 
@@ -42,7 +51,8 @@ RSpec.describe 'AI medication suggestions' do
     )
     service = instance_double(AiMedication::SuggestionService, call: suggestion)
 
-    allow(PaidFeature).to receive(:enabled?).with(:ai_medication_help, user: users(:admin)).and_return(true)
+    users(:admin).person.account.update!(subscription_plan: 'family_plus')
+    allow(ENV).to receive(:fetch).with('MEDTRACKER_AI_MEDICATION_HELP_ENABLED', 'false').and_return('true')
     allow(AiMedication::SuggestionService).to receive(:new).and_return(service)
 
     post ai_medication_suggestions_path, params: { medication: { name: 'Calpol Six Plus' } }
