@@ -17,7 +17,7 @@ tasks:
     cmds:
       - |
         echo "Running Lighthouse audit on {{ .URL }}..."
-        npx lighthouse {{ .URL }} \
+        npx --yes lighthouse@13 {{ .URL }} \
           --output=json,html \
           --output-path=./lighthouse-report \
           --chrome-flags="--headless --no-sandbox" \
@@ -84,7 +84,7 @@ tasks:
       - |
         set -euo pipefail
         echo "Running Lighthouse CI audit on {{ .URL }}..."
-        npx lighthouse {{ .URL }} \
+        npx --yes lighthouse@13 {{ .URL }} \
           --output=json,html \
           --output-path={{ .REPORT_PATH }} \
           --chrome-flags="--headless --no-sandbox --disable-gpu" \

@@ -25,7 +25,7 @@ tasks:
     requires:
       vars: [ENVIRONMENT, COMMAND]
     vars:
-      WEB_SERVICE: "web-{{ .ENVIRONMENT }}"
+      WEB_SERVICE: '{{ .SERVICE | default (printf "web-%s" .ENVIRONMENT) }}'
     cmds:
       - "{{ .COMPOSE_CMD }} --profile {{ .ENVIRONMENT }} run --rm {{ .WEB_SERVICE }} {{ .COMMAND }}"
 

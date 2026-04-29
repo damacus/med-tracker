@@ -68,6 +68,7 @@ tasks:
       - task: internal:run
         vars:
           ENVIRONMENT: test
+          SERVICE: tools-test
           COMMAND: 'bundle exec rubocop --force-exclusion {{ if eq .autocorrect "true" }}-A{{ end }}'
 
   playwright:

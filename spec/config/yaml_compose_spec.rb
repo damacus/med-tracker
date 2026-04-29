@@ -29,7 +29,7 @@ RSpec.describe YAML do
 
   it 'builds the development migrate container from the development image target' do
     expect(compose_config.dig('services', 'migrate-dev', 'image')).to eq('med-tracker-web-dev')
-    expect(compose_config.dig('services', 'migrate-dev', 'build', 'target')).to eq('assets')
+    expect(compose_config.dig('services', 'migrate-dev', 'build', 'target')).to eq('development')
     expect(compose_config.dig('services', 'migrate-dev', 'build', 'args', 'RAILS_ENV')).to eq('development')
   end
 
