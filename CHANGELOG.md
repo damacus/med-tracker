@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.44](https://github.com/damacus/med-tracker/compare/v0.3.43...v0.3.44) (2026-04-29)
+
+
+### Features
+
+* Add paid AI medication help guardrails ([#1148](https://github.com/damacus/med-tracker/issues/1148)) ([3b6babd](https://github.com/damacus/med-tracker/commit/3b6babdc0277bbcbee31addefd9baec5b9fc666e))
+
 ## [0.3.43](https://github.com/damacus/med-tracker/compare/v0.3.42...v0.3.43) (2026-04-29)
 
 
