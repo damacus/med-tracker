@@ -59,17 +59,17 @@ RSpec.describe 'Medication Lookup', type: :system do
     sign_in(doctor)
     visit medication_finder_path
 
-    expect(page).to have_content('Medication Finder')
+    expect(page).to have_text('Medication Finder')
     expect(page).to have_field('medication-search-input')
     expect(page).to have_button('Search')
 
     fill_in 'medication-search-input', with: 'Aspirin'
     click_button 'Search'
 
-    expect(page).to have_content('Search Results')
-    expect(page).to have_content('Aspirin 300mg tablets')
-    expect(page).to have_content('Aspirin 75mg tablets')
-    expect(page).to have_content('VMP')
+    expect(page).to have_text('Search Results')
+    expect(page).to have_text('Aspirin 300mg tablets')
+    expect(page).to have_text('Aspirin 75mg tablets')
+    expect(page).to have_text('VMP')
   end
 
   it 'Search returns no results' do
@@ -81,8 +81,8 @@ RSpec.describe 'Medication Lookup', type: :system do
     fill_in 'medication-search-input', with: 'NonExistentMedication12345'
     click_button 'Search'
 
-    expect(page).to have_content('No medications found')
-    expect(page).to have_content('Try searching with different terms')
+    expect(page).to have_text('No medications found')
+    expect(page).to have_text('Try searching with different terms')
   end
 
   it 'API unavailable shows error message' do
@@ -96,7 +96,7 @@ RSpec.describe 'Medication Lookup', type: :system do
     fill_in 'medication-search-input', with: 'Aspirin'
     click_button 'Search'
 
-    expect(page).to have_content('Search unavailable')
+    expect(page).to have_text('Search unavailable')
   end
 
   it 'allows selecting a search result and prefill a new inventory item' do
@@ -141,7 +141,7 @@ RSpec.describe 'Medication Lookup', type: :system do
       '[data-testid="search-results-header"]',
       text: 'Laxido Orange oral powder sachets (Galen Ltd)'
     )
-    expect(page).to have_content('Barcode match')
+    expect(page).to have_text('Barcode match')
 
     within('[data-testid="result-card"]', match: :first) do
       click_link 'Add Medication'
@@ -185,10 +185,10 @@ RSpec.describe 'Medication Lookup', type: :system do
     fill_in 'medication-search-input', with: '5000123456789'
     click_button 'Search'
 
-    expect(page).to have_content('Phenoxymethylpenicillin 125mg/5ml oral solution (Medreich Plc) 100 ml')
-    expect(page).to have_content('Barcode match')
-    expect(page).to have_no_content('Flucloxacillin 125mg/5ml oral solution (Medreich Plc)')
-    expect(page).to have_no_content('Phenoxymethylpenicillin 125mg/5ml oral solution (Sigma Pharmaceuticals Plc)')
+    expect(page).to have_text('Phenoxymethylpenicillin 125mg/5ml oral solution (Medreich Plc) 100 ml')
+    expect(page).to have_text('Barcode match')
+    expect(page).to have_no_text('Flucloxacillin 125mg/5ml oral solution (Medreich Plc)')
+    expect(page).to have_no_text('Phenoxymethylpenicillin 125mg/5ml oral solution (Sigma Pharmaceuticals Plc)')
   end
 
   it 'does not persist a non-GTIN numeric query as a barcode' do
@@ -219,8 +219,8 @@ RSpec.describe 'Medication Lookup', type: :system do
 
     click_button('View Interaction Details', match: :first)
 
-    expect(page).to have_content('Interaction Details')
-    expect(page).to have_content('Severity')
-    expect(page).to have_content('Description')
+    expect(page).to have_text('Interaction Details')
+    expect(page).to have_text('Severity')
+    expect(page).to have_text('Description')
   end
 end

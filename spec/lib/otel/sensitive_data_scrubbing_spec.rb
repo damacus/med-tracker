@@ -32,9 +32,7 @@ RSpec.describe 'OTEL-014: Sensitive data scrubbed from traces' do # rubocop:disa
   describe 'SpanSanitizer processor' do
     it 'is registered as a span processor' do
       processors = OpenTelemetry.tracer_provider.instance_variable_get(:@span_processors)
-      sanitizer_present = processors.any? do |p|
-        p.is_a?(Otel::SpanSanitizingProcessor)
-      end
+      sanitizer_present = processors.any?(Otel::SpanSanitizingProcessor)
 
       expect(sanitizer_present).to be(true),
                                    'SpanSanitizingProcessor should be registered as a span processor'

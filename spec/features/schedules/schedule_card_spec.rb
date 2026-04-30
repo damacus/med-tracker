@@ -20,13 +20,13 @@ RSpec.describe 'Schedule Card', type: :system do
     visit person_path(person)
 
     within("#schedule_#{schedule.id}") do
-      expect(page).to have_content(I18n.t('schedules.card.no_doses_today'))
+      expect(page).to have_text(I18n.t('schedules.card.no_doses_today'))
       click_button I18n.t('schedules.card.give')
     end
     confirm_record_dose
 
     within("#schedule_#{schedule.id}") do
-      expect(page).to have_no_content(I18n.t('schedules.card.no_doses_today'))
+      expect(page).to have_no_text(I18n.t('schedules.card.no_doses_today'))
     end
 
     expect(schedule.reload.medication_takes.count).to eq(1)
@@ -37,7 +37,7 @@ RSpec.describe 'Schedule Card', type: :system do
       find("a[href='#{edit_person_schedule_path(person, schedule)}']").click
     end
 
-    expect(page).to have_content(/edit schedule/i)
+    expect(page).to have_text(/edit schedule/i)
     expect(page).to have_css('div[data-state="open"]')
   end
 
@@ -46,12 +46,12 @@ RSpec.describe 'Schedule Card', type: :system do
       find("a[href='#{edit_person_schedule_path(person, schedule)}']").click
     end
 
-    expect(page).to have_content(/edit schedule/i)
+    expect(page).to have_text(/edit schedule/i)
     find('[data-testid="dosage-trigger"]').click
     find('[role="option"]', text: /300(?:\.0)? mg - Standard adult dose/).click
     click_button I18n.t('schedules.form.update_plan')
 
-    expect(page).to have_content(I18n.t('schedules.updated'))
+    expect(page).to have_text(I18n.t('schedules.updated'))
     expect(schedule.reload).to have_attributes(dose_amount: BigDecimal('300'), dose_unit: 'mg')
   end
 

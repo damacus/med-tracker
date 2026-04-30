@@ -25,24 +25,24 @@ RSpec.describe 'Medication Takes Authorization' do
         visit person_path(adult_schedule.person)
 
         # Should be able to see the schedule
-        expect(page).to have_content(adult_schedule.medication.name)
-        expect(page).to have_no_content('You are not authorized')
+        expect(page).to have_text(adult_schedule.medication.name)
+        expect(page).to have_no_text('You are not authorized')
       end
 
       it 'allows doctors to view any schedule' do
         sign_in(doctor)
         visit person_path(adult_schedule.person)
 
-        expect(page).to have_content(adult_schedule.medication.name)
-        expect(page).to have_no_content('You are not authorized')
+        expect(page).to have_text(adult_schedule.medication.name)
+        expect(page).to have_no_text('You are not authorized')
       end
 
       it 'allows nurses to view any schedule' do
         sign_in(nurse)
         visit person_path(adult_schedule.person)
 
-        expect(page).to have_content(adult_schedule.medication.name)
-        expect(page).to have_no_content('You are not authorized')
+        expect(page).to have_text(adult_schedule.medication.name)
+        expect(page).to have_no_text('You are not authorized')
       end
 
       it 'allows carers to view schedules for assigned patients' do
@@ -50,8 +50,8 @@ RSpec.describe 'Medication Takes Authorization' do
         # Carer is assigned to child_patient via carer_cares_for_patient fixture
         visit person_path(people(:child_patient))
 
-        expect(page).to have_content('Child Patient')
-        expect(page).to have_no_content('You are not authorized')
+        expect(page).to have_text('Child Patient')
+        expect(page).to have_no_text('You are not authorized')
       end
 
       it 'allows parents to view schedules for their minor children' do
@@ -59,16 +59,16 @@ RSpec.describe 'Medication Takes Authorization' do
         # Parent is assigned to child_user_person via parent_cares_for_child fixture
         visit person_path(people(:child_user_person))
 
-        expect(page).to have_content('Child User')
-        expect(page).to have_no_content('You are not authorized')
+        expect(page).to have_text('Child User')
+        expect(page).to have_no_text('You are not authorized')
       end
 
       it 'allows adult patients to view their own schedules' do
         sign_in(adult_patient)
         visit person_path(adult_patient.person)
 
-        expect(page).to have_content('Adult Patient')
-        expect(page).to have_no_content('You are not authorized')
+        expect(page).to have_text('Adult Patient')
+        expect(page).to have_no_text('You are not authorized')
       end
     end
 
@@ -78,21 +78,21 @@ RSpec.describe 'Medication Takes Authorization' do
         # Try to access an unrelated person
         visit person_path(people(:john))
         # Rails test environment renders the detailed exception page for RecordNotFound in system tests
-        expect(page).to have_content(/RecordNotFound|Couldn't find/i)
+        expect(page).to have_text(/RecordNotFound|Couldn't find/i)
       end
 
       it 'denies parents from viewing schedules for non-children' do
         sign_in(parent)
         # Try to access an adult patient
         visit person_path(people(:adult_patient_person))
-        expect(page).to have_content(/RecordNotFound|Couldn't find/i)
+        expect(page).to have_text(/RecordNotFound|Couldn't find/i)
       end
 
       it 'denies adult patients from viewing others schedules' do
         sign_in(adult_patient)
         # Try to access another person
         visit person_path(people(:child_user_person))
-        expect(page).to have_content(/RecordNotFound|Couldn't find/i)
+        expect(page).to have_text(/RecordNotFound|Couldn't find/i)
       end
     end
   end

@@ -29,16 +29,16 @@ RSpec.describe 'Offline medication takes', :js do
     login_as(user)
     visit offline_path
 
-    expect(page).to have_content('OFFLINE CARE')
-    expect(page).to have_content('Gabapentin')
+    expect(page).to have_text('OFFLINE CARE')
+    expect(page).to have_text('Gabapentin')
 
     within('[data-testid="offline-dose-card"]', text: 'Gabapentin') do
       click_button 'Take now'
-      expect(page).to have_content('QUEUED LOCALLY')
+      expect(page).to have_text('QUEUED LOCALLY')
       expect(page).to have_button('Out of stock', disabled: true)
     end
 
-    expect(page).to have_content('PENDING SYNC')
+    expect(page).to have_text('PENDING SYNC')
     expect(page).to have_css('[data-offline-shell-target="pendingCount"]', text: '1')
 
     page.execute_script('window.dispatchEvent(new Event("online"))')

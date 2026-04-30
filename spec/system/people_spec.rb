@@ -18,13 +18,13 @@ RSpec.describe 'People' do
       visit people_path
 
       within '[data-testid="people-list"]' do
-        expect(page).to have_content('People')
+        expect(page).to have_text('People')
 
         # Check that people are displayed
         people(:john).tap do |person|
           within "#person_#{person.id}" do
-            expect(page).to have_content(person.name)
-            expect(page).to have_content("Age: #{person.age}")
+            expect(page).to have_text(person.name)
+            expect(page).to have_text("Age: #{person.age}")
           end
         end
       end
@@ -38,9 +38,9 @@ RSpec.describe 'People' do
 
       within "#person_#{person.id}" do
         if active_count.positive?
-          expect(page).to have_content("#{active_count} active medication")
+          expect(page).to have_text("#{active_count} active medication")
         else
-          expect(page).to have_content('No active medications')
+          expect(page).to have_text('No active medications')
         end
       end
     end
@@ -51,7 +51,7 @@ RSpec.describe 'People' do
       visit people_path
 
       within "#person_#{person.id}" do
-        expect(page).to have_content('No active medications')
+        expect(page).to have_text('No active medications')
       end
     end
 
@@ -95,7 +95,7 @@ RSpec.describe 'People' do
 
       within "#person_#{patient_without_carer.id}" do
         expect(page).to have_css('[data-testid="needs-carer-badge"]')
-        expect(page).to have_content('Needs Carer')
+        expect(page).to have_text('Needs Carer')
       end
     end
 
@@ -114,7 +114,7 @@ RSpec.describe 'People' do
 
       within "#person_#{minor_without_carer.id}" do
         expect(page).to have_css('[data-testid="needs-carer-badge"]')
-        expect(page).to have_content('Needs Carer')
+        expect(page).to have_text('Needs Carer')
       end
     end
 
@@ -180,7 +180,7 @@ RSpec.describe 'People' do
       it 'hides Add Medication action on person show page' do
         visit person_path(people(:child_patient))
 
-        expect(page).to have_content('Care Actions')
+        expect(page).to have_text('Care Actions')
         expect(page).to have_no_link('Add Medication')
       end
 
@@ -197,7 +197,7 @@ RSpec.describe 'People' do
 
         visit people_path
 
-        expect(page).to have_content('People')
+        expect(page).to have_text('People')
         expect(page).to have_no_css("#person_#{patient_without_carer.id}")
       end
     end
@@ -237,7 +237,7 @@ RSpec.describe 'People' do
       fill_in 'Date of Birth', with: 7.years.ago.to_date.to_s
       click_button 'Create Person'
 
-      expect(page).to have_content('System Child One')
+      expect(page).to have_text('System Child One')
 
       visit people_path
       click_link 'New Person'
@@ -247,7 +247,7 @@ RSpec.describe 'People' do
       fill_in 'Date of Birth', with: 6.years.ago.to_date.to_s
       click_button 'Create Person'
 
-      expect(page).to have_content('System Child Two')
+      expect(page).to have_text('System Child Two')
     end
   end
 end

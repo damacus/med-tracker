@@ -20,8 +20,8 @@ RSpec.describe 'AdminManagesCarerRelationships' do
 
       visit admin_carer_relationships_path
 
-      expect(page).to have_content('Carer Relationships')
-      expect(page).to have_content(jane.name)
+      expect(page).to have_text('Carer Relationships')
+      expect(page).to have_text(jane.name)
     end
 
     it 'allows admin to create a new carer relationship' do
@@ -30,7 +30,7 @@ RSpec.describe 'AdminManagesCarerRelationships' do
       visit admin_carer_relationships_path
       click_link 'New Relationship'
 
-      expect(page).to have_content('New Carer Relationship')
+      expect(page).to have_text('New Carer Relationship')
 
       select jane.name, from: 'Carer'
       select people(:john).name, from: 'Patient'
@@ -38,7 +38,7 @@ RSpec.describe 'AdminManagesCarerRelationships' do
 
       click_button 'Create Relationship'
 
-      expect(page).to have_content('Carer relationship was successfully created')
+      expect(page).to have_text('Carer relationship was successfully created')
     end
 
     it 'allows admin to deactivate a carer relationship', :js do
@@ -56,7 +56,7 @@ RSpec.describe 'AdminManagesCarerRelationships' do
         click_button 'Deactivate'
       end
 
-      expect(page).to have_content('Carer relationship has been deactivated')
+      expect(page).to have_text('Carer relationship has been deactivated')
     end
 
     it 'allows admin to reactivate a deactivated carer relationship' do
@@ -66,14 +66,14 @@ RSpec.describe 'AdminManagesCarerRelationships' do
       visit admin_carer_relationships_path
 
       within "[data-relationship-id='#{relationship.id}']" do
-        expect(page).to have_content('Inactive')
+        expect(page).to have_text('Inactive')
         click_button 'Activate'
       end
 
-      expect(page).to have_content('Carer relationship has been activated')
+      expect(page).to have_text('Carer relationship has been activated')
 
       within "[data-relationship-id='#{relationship.id}']" do
-        expect(page).to have_content('Active')
+        expect(page).to have_text('Active')
       end
     end
 
@@ -86,7 +86,7 @@ RSpec.describe 'AdminManagesCarerRelationships' do
       login_as(carer_user)
       visit person_path(patient)
       # Rails test environment renders the detailed exception page for RecordNotFound in system tests
-      expect(page).to have_content(/RecordNotFound|Couldn't find/i)
+      expect(page).to have_text(/RecordNotFound|Couldn't find/i)
 
       # Admin reactivates the relationship
       rodauth_logout
@@ -97,13 +97,13 @@ RSpec.describe 'AdminManagesCarerRelationships' do
         click_button 'Activate'
       end
 
-      expect(page).to have_content('Carer relationship has been activated')
+      expect(page).to have_text('Carer relationship has been activated')
 
       # Now carer can access patient
       rodauth_logout
       login_as(carer_user)
       visit person_path(patient)
-      expect(page).to have_content(patient.name)
+      expect(page).to have_text(patient.name)
     end
   end
 

@@ -15,8 +15,8 @@ RSpec.describe 'PASSKEY-002: Passkey registration', type: :system do
     scenario 'User with no passkeys sees empty state' do
       visit profile_path
 
-      expect(page).to have_content('Passkeys')
-      expect(page).to have_content('No passkeys registered')
+      expect(page).to have_text('Passkeys')
+      expect(page).to have_text('No passkeys registered')
     end
 
     scenario 'User with passkeys sees list of registered passkeys' do
@@ -29,7 +29,7 @@ RSpec.describe 'PASSKEY-002: Passkey registration', type: :system do
 
       visit profile_path
 
-      expect(page).to have_content('My MacBook')
+      expect(page).to have_text('My MacBook')
     end
 
     scenario 'User can navigate to add passkey page' do

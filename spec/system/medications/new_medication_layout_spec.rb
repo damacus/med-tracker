@@ -14,7 +14,7 @@ RSpec.describe 'MedicationNewLayout' do
 
     visit new_medication_path
 
-    expect(page).to have_content('Add a New Medication')
+    expect(page).to have_text('Add a New Medication')
 
     within('[data-testid="medication-wizard-form"]') do
       fill_in 'Name', with: 'Ibuprofen'
@@ -22,7 +22,7 @@ RSpec.describe 'MedicationNewLayout' do
       click_button 'Continue'
 
       aggregate_failures 'dose schedule fields' do
-        expect(page).to have_content('Who will take this?')
+        expect(page).to have_text('Who will take this?')
         expect(page).to have_field('Amount')
         expect(page).to have_select('Unit', with_options: %w[mg sachet])
         expect(page).to have_button('Multiple daily')
@@ -44,15 +44,15 @@ RSpec.describe 'MedicationNewLayout' do
       fill_in 'Start date', with: Time.zone.today.to_s
       fill_in 'End date', with: 1.month.from_now.to_date.to_s
       click_button 'Continue'
-      expect(page).to have_content('Who will take this?')
+      expect(page).to have_text('Who will take this?')
       expect(page).to have_no_field('Starting Supply')
       click_button 'Review dose schedule'
-      expect(page).to have_content('200 mg, Twice daily')
+      expect(page).to have_text('200 mg, Twice daily')
       expect(page).to have_field('medication_schedule_review_complete', with: 'reviewed', visible: :all)
       fill_in 'Hours apart', with: 12
       expect(page).to have_field('medication_schedule_review_complete', with: '', visible: :all)
       click_button 'Continue'
-      expect(page).to have_content('Who will take this?')
+      expect(page).to have_text('Who will take this?')
       expect(page).to have_no_field('Starting Supply')
       click_button 'Review dose schedule'
       expect(page).to have_field('medication_schedule_review_complete', with: 'reviewed', visible: :all)
@@ -72,11 +72,11 @@ RSpec.describe 'MedicationNewLayout' do
     end
 
     aggregate_failures 'persistence' do
-      expect(page).to have_content('Ibuprofen created!')
+      expect(page).to have_text('Ibuprofen created!')
       expect(page).to have_link('Manage dose options')
       expect(page).to have_link('Done')
-      expect(page).to have_content('200.0 mg')
-      expect(page).to have_content('Twice daily')
+      expect(page).to have_text('200.0 mg')
+      expect(page).to have_text('Twice daily')
     end
   end
 
@@ -121,9 +121,9 @@ RSpec.describe 'MedicationNewLayout' do
       click_button 'Save Medication'
     end
 
-    expect(page).to have_content('Three Times Daily Medicine created!')
-    expect(page).to have_content('5.0 ml')
-    expect(page).to have_content('Three times daily')
+    expect(page).to have_text('Three Times Daily Medicine created!')
+    expect(page).to have_text('5.0 ml')
+    expect(page).to have_text('Three times daily')
   end
 
   it 'allows adding multiple selected dates without typing a comma-separated list' do
@@ -157,8 +157,8 @@ RSpec.describe 'MedicationNewLayout' do
       click_button 'Save Medication'
     end
 
-    expect(page).to have_content('Selected Dates Medicine created!')
-    expect(page).to have_content('1.0 tablet')
-    expect(page).to have_content('Specific dates')
+    expect(page).to have_text('Selected Dates Medicine created!')
+    expect(page).to have_text('1.0 tablet')
+    expect(page).to have_text('Specific dates')
   end
 end

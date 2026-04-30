@@ -36,6 +36,6 @@ RSpec.describe 'Schedules workflow' do
         schedule_type: 'prescribed'
       )
     )
-    expect(page).to have_content('Add schedule for John Doe')
+    expect(page).to have_text('Add schedule for John Doe')
   end
 end

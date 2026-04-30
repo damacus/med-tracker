@@ -15,13 +15,13 @@ RSpec.describe 'Refill medication inventory' do
 
   it 'shows refill actions on inventory pages' do
     visit medications_path
-    expect(page).to have_content('Restock')
+    expect(page).to have_text('Restock')
 
     visit location_path(medication.location)
-    expect(page).to have_content('Restock')
+    expect(page).to have_text('Restock')
 
     visit medication_path(medication)
-    expect(page).to have_content('Restock')
+    expect(page).to have_text('Restock')
   end
 
   it 'links medication cards on location pages to medication details' do
@@ -44,7 +44,7 @@ RSpec.describe 'Refill medication inventory' do
     fill_in 'refill_restock_date', with: Date.current.to_s
     click_on 'Refill'
 
-    expect(page).to have_content('Inventory refilled successfully.')
+    expect(page).to have_text('Inventory refilled successfully.')
     expect(page).to have_no_css('div[data-state="open"]')
 
     medication.reload

@@ -12,7 +12,7 @@ RSpec.describe 'Two-Factor Soft Enforcement' do
     login_as(user)
     visit profile_path
 
-    expect(page).to have_content('For enhanced security, please set up two-factor authentication')
+    expect(page).to have_text('For enhanced security, please set up two-factor authentication')
     expect(page).to have_current_path(profile_path)
   end
 end

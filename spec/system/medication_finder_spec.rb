@@ -17,11 +17,11 @@ RSpec.describe 'MedicationFinder' do
 
     within '[data-testid="medication-finder"]' do
       aggregate_failures 'medication finder content' do
-        expect(page).to have_content('Medication Finder')
+        expect(page).to have_text('Medication Finder')
         expect(page).to have_field('medication-search-input')
         expect(page).to have_button('Search')
         expected_text = 'Search the NHS Dictionary of Medications and Devices (dm+d) by name or active ingredient.'
-        expect(page).to have_content(expected_text)
+        expect(page).to have_text(expected_text)
         expect(page).to have_css('[data-testid="barcode-scanner"]')
       end
     end

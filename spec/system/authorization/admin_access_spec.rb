@@ -17,16 +17,16 @@ RSpec.describe 'Admin Access Authorization' do
       login_as(admin)
       visit admin_users_path
 
-      expect(page).to have_content('User Management')
-      expect(page).to have_content(admin.email_address)
+      expect(page).to have_text('User Management')
+      expect(page).to have_text(admin.email_address)
     end
 
     it 'denies non-administrators access to user management' do
       login_as(carer)
       visit admin_users_path
 
-      expect(page).to have_content('You are not authorized to perform this action')
-      expect(page).to have_no_content('User Management')
+      expect(page).to have_text('You are not authorized to perform this action')
+      expect(page).to have_no_text('User Management')
     end
   end
 
@@ -35,7 +35,7 @@ RSpec.describe 'Admin Access Authorization' do
       login_as(admin)
       visit people_path
 
-      expect(page).to have_content('People')
+      expect(page).to have_text('People')
       expect(Person.count).to be > 0
     end
 
@@ -44,8 +44,8 @@ RSpec.describe 'Admin Access Authorization' do
       visit people_path
 
       # Carer should only see themselves and their patients
-      expect(page).to have_content(carer.person.name)
-      expect(page).to have_content('Child Patient')
+      expect(page).to have_text(carer.person.name)
+      expect(page).to have_text('Child Patient')
     end
   end
 end

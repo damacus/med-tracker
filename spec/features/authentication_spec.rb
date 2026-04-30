@@ -60,7 +60,7 @@ RSpec.describe 'Authentication Features', type: :system do
       fill_in 'Email address', with: 'resetme@example.com'
       click_on 'Request Password Reset'
 
-      expect(page).to have_content(/email|sent|reset/i)
+      expect(page).to have_text(/email|sent|reset/i)
     end
 
     it 'shows error for non-existent email' do
@@ -174,7 +174,7 @@ RSpec.describe 'Authentication Features', type: :system do
 
       # Should show error and not redirect to dashboard
       expect(page).to have_no_current_path('/dashboard')
-      expect(page).to have_content(/closed|invalid|error/i)
+      expect(page).to have_text(/closed|invalid|error/i)
     end
   end
 
@@ -189,7 +189,7 @@ RSpec.describe 'Authentication Features', type: :system do
 
     it 'shows resend verification link on login page' do
       visit login_path
-      expect(page).to have_content('Resend verification email')
+      expect(page).to have_text('Resend verification email')
     end
 
     it 'allows requesting verification email resend' do
@@ -197,7 +197,7 @@ RSpec.describe 'Authentication Features', type: :system do
       fill_in 'Email address', with: 'resend@example.com'
       click_on 'Resend Verify Account Information'
 
-      expect(page).to have_content(/sent|email|verification/i)
+      expect(page).to have_text(/sent|email|verification/i)
     end
   end
 
@@ -214,7 +214,7 @@ RSpec.describe 'Authentication Features', type: :system do
     it 'shows login page with OIDC section or other options' do
       visit login_path
       # Check for brand title which is always present
-      expect(page).to have_content('MedTracker')
+      expect(page).to have_text('MedTracker')
     end
   end
 

@@ -30,22 +30,22 @@ RSpec.describe 'Person medication workflow' do
     click_button 'Select a medication'
     find('label', text: 'Calpol').click
 
-    expect(page).to have_content('Choose the dose')
+    expect(page).to have_text('Choose the dose')
     expect(page).to have_button('Cancel')
     expect(page).to have_button('Back')
     expect(page).to have_button('Next', disabled: false)
     expect(page).to have_css('div.max-w-md')
-    expect(page).to have_content('Medication')
-    expect(page).to have_content('Calpol')
+    expect(page).to have_text('Medication')
+    expect(page).to have_text('Calpol')
 
-    expect(page).to have_no_content('Standard child dose')
+    expect(page).to have_no_text('Standard child dose')
     expect(page).to have_select('Dose', with_options: ['2.5 ml'])
     select '2.5 ml', from: 'Dose'
     click_button 'Next'
 
-    expect(page).to have_content('Add optional guidance')
-    expect(page).to have_content('Dose')
-    expect(page).to have_content('2.5 ml')
+    expect(page).to have_text('Add optional guidance')
+    expect(page).to have_text('Dose')
+    expect(page).to have_text('2.5 ml')
     expect(page).to have_no_button('Next')
     expect(page).to have_button('Back')
     expect(page).to have_button('Cancel')
@@ -56,8 +56,8 @@ RSpec.describe 'Person medication workflow' do
 
     click_button 'Add Medication'
 
-    expect(page).to have_content('Medication added successfully')
-    expect(page).to have_content('Workflow test')
+    expect(page).to have_text('Medication added successfully')
+    expect(page).to have_text('Workflow test')
 
     created_person_medication = person.person_medications.order(:id).last
 
@@ -67,13 +67,13 @@ RSpec.describe 'Person medication workflow' do
     end
     confirm_record_dose(created_person_medication)
 
-    expect(page).to have_content('Medication taken successfully')
+    expect(page).to have_text('Medication taken successfully')
 
     within("#person_medication_#{created_person_medication.id}") do
       expect(page).to have_text(/today's doses/i)
       expect(page).to have_text(/2\.5 ml/i)
       expect(page).to have_button('💊 Give', disabled: false)
-      expect(page).to have_content('1/1')
+      expect(page).to have_text('1/1')
     end
   end
 

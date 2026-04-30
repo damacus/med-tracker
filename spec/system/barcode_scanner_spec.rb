@@ -91,7 +91,7 @@ RSpec.describe 'BarcodeScanner' do
         aggregate_failures 'scanner component elements' do
           expect(page).to have_button('Start Scanner')
           expect(page).to have_button('Stop Scanner', visible: :hidden)
-          expect(page).to have_content('Or enter barcode manually')
+          expect(page).to have_text('Or enter barcode manually')
           expect(page).to have_field('manual-barcode')
           expect(page).to have_button('Submit')
         end

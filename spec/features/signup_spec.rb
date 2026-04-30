@@ -51,7 +51,7 @@ RSpec.describe 'User Signup', type: :system do
         click_button 'Create Account'
       end.not_to change(Account, :count)
 
-      expect(page).to have_content('Name')
+      expect(page).to have_text('Name')
     end
 
     it 'shows validation errors when date of birth is missing' do
@@ -66,7 +66,7 @@ RSpec.describe 'User Signup', type: :system do
         click_button 'Create Account'
       end.not_to change(Account, :count)
 
-      expect(page).to have_content('Date of birth')
+      expect(page).to have_text('Date of birth')
     end
 
     it 'shows validation errors when passwords do not match' do
@@ -82,7 +82,7 @@ RSpec.describe 'User Signup', type: :system do
         click_button 'Create Account'
       end.not_to change(Account, :count)
 
-      expect(page).to have_content(/password/i)
+      expect(page).to have_text(/password/i)
     end
 
     it 'shows validation errors when email is already taken' do
@@ -105,7 +105,7 @@ RSpec.describe 'User Signup', type: :system do
         click_button 'Create Account'
       end.not_to change(Account, :count)
 
-      expect(page).to have_content(/already.*taken|already.*account/i)
+      expect(page).to have_text(/already.*taken|already.*account/i)
     end
 
     it 'sets person_type based on age (adult for 18+)' do
@@ -137,7 +137,7 @@ RSpec.describe 'User Signup', type: :system do
         click_button 'Create Account'
       end.not_to change(Account, :count)
 
-      expect(page).to have_content('Children must be added by a parent or carer.')
+      expect(page).to have_text('Children must be added by a parent or carer.')
     end
   end
 end

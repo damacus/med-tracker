@@ -13,15 +13,15 @@ RSpec.describe 'Admin Audit Logs', type: :system do
       sign_in(admin)
       visit admin_audit_logs_path
 
-      expect(page).to have_content('Audit Trail')
-      expect(page).to have_content('Complete history of all changes')
+      expect(page).to have_text('Audit Trail')
+      expect(page).to have_text('Complete history of all changes')
     end
 
     it 'denies access to non-administrators' do
       sign_in(regular_user)
       visit admin_audit_logs_path
 
-      expect(page).to have_content('not authorized')
+      expect(page).to have_text('not authorized')
     end
 
     it 'redirects unauthenticated users to login' do
@@ -50,8 +50,8 @@ RSpec.describe 'Admin Audit Logs', type: :system do
     it 'displays the audit log page with headers' do
       visit admin_audit_logs_path
 
-      expect(page).to have_content('Audit Trail')
-      expect(page).to have_content('Complete history of all changes')
+      expect(page).to have_text('Audit Trail')
+      expect(page).to have_text('Complete history of all changes')
       expect(page).to have_select('item_type')
       expect(page).to have_select('event')
     end
@@ -117,8 +117,8 @@ RSpec.describe 'Admin Audit Logs', type: :system do
       # Click on first View link
       first('a', text: 'View').click
 
-      expect(page).to have_content('Audit Log Details')
-      expect(page).to have_content('Event Information')
+      expect(page).to have_text('Audit Log Details')
+      expect(page).to have_text('Event Information')
       expect(page).to have_link('Back to Audit Logs')
     end
   end
@@ -141,10 +141,10 @@ RSpec.describe 'Admin Audit Logs', type: :system do
 
       # Verify columns: time, record type, event, user
       within('thead') do
-        expect(page).to have_content('Time')
-        expect(page).to have_content('Record Type')
-        expect(page).to have_content('Event')
-        expect(page).to have_content('User')
+        expect(page).to have_text('Time')
+        expect(page).to have_text('Record Type')
+        expect(page).to have_text('Event')
+        expect(page).to have_text('User')
       end
     end
 
@@ -159,14 +159,14 @@ RSpec.describe 'Admin Audit Logs', type: :system do
       first('a', text: 'View').click
 
       # Verify detailed view
-      expect(page).to have_content('Audit Log Details')
-      expect(page).to have_content('Event Information')
+      expect(page).to have_text('Audit Log Details')
+      expect(page).to have_text('Event Information')
 
       # Verify previous state is displayed
-      expect(page).to have_content('Previous State')
+      expect(page).to have_text('Previous State')
 
       # Verify new state is displayed
-      expect(page).to have_content('New State')
+      expect(page).to have_text('New State')
     end
 
     it 'allows navigation back to list' do
@@ -199,8 +199,8 @@ RSpec.describe 'Admin Audit Logs', type: :system do
 
       # Verify only User entries shown
       within('tbody') do
-        expect(page).to have_content('User')
-        expect(page).to have_no_content('Person')
+        expect(page).to have_text('User')
+        expect(page).to have_no_text('Person')
       end
     end
 
@@ -218,7 +218,7 @@ RSpec.describe 'Admin Audit Logs', type: :system do
 
       # Verify only update events shown
       within('tbody') do
-        expect(page).to have_content('Update')
+        expect(page).to have_text('Update')
       end
     end
 
@@ -265,19 +265,19 @@ RSpec.describe 'Admin Audit Logs', type: :system do
 
       # Verify create event is logged
       within('tbody') do
-        expect(page).to have_content('Medication Take')
-        expect(page).to have_content('Create')
+        expect(page).to have_text('Medication Take')
+        expect(page).to have_text('Create')
       end
 
       # View details
       click_link 'View', match: :first
 
       # Verify whodunnit shows carer user
-      expect(page).to have_content(carer.name)
+      expect(page).to have_text(carer.name)
 
       # Verify new state contains schedule_id
-      expect(page).to have_content('New State')
-      expect(page).to have_content('schedule_id')
+      expect(page).to have_text('New State')
+      expect(page).to have_text('schedule_id')
     end
 
     it 'records IP address for medication takes' do
@@ -297,7 +297,7 @@ RSpec.describe 'Admin Audit Logs', type: :system do
 
       # Verify IP address is displayed
       within('tbody') do
-        expect(page).to have_content('192.168.1.100')
+        expect(page).to have_text('192.168.1.100')
       end
     end
   end
@@ -317,15 +317,15 @@ RSpec.describe 'Admin Audit Logs', type: :system do
       visit admin_audit_logs_path(item_type: 'Medication')
 
       within('tbody') do
-        expect(page).to have_content('Medication')
-        expect(page).to have_content('Restock')
+        expect(page).to have_text('Medication')
+        expect(page).to have_text('Restock')
       end
 
       click_link 'View', match: :first
 
-      expect(page).to have_content('New State')
-      expect(page).to have_content('current_supply')
-      expect(page).to have_content('stock')
+      expect(page).to have_text('New State')
+      expect(page).to have_text('current_supply')
+      expect(page).to have_text('stock')
     end
   end
 

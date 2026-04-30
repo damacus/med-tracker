@@ -53,11 +53,11 @@ RSpec.describe 'MedicationsVisibility' do
     click_button 'Save Medication'
 
     # Step 5: Dosage wizard — finish setup to reach the medication detail page
-    expect(page).to have_content('Test Medication E2E created!')
+    expect(page).to have_text('Test Medication E2E created!')
     click_link 'Done'
 
-    expect(page).to have_content('Test Medication E2E')
-    expect(page).to have_content('Home')
+    expect(page).to have_text('Test Medication E2E')
+    expect(page).to have_text('Home')
 
     rodauth_logout
 
@@ -66,6 +66,6 @@ RSpec.describe 'MedicationsVisibility' do
 
     visit medications_path
 
-    expect(page).to have_content('Test Medication E2E')
+    expect(page).to have_text('Test Medication E2E')
   end
 end

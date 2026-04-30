@@ -22,7 +22,7 @@ RSpec.describe 'Historical dose recording' do
       visit person_path(person)
       find("[data-testid='take-schedule-#{schedule.id}']").click
 
-      expect(page).to have_content('Record dose')
+      expect(page).to have_text('Record dose')
 
       field = find("input[name='medication_take[taken_at]']", visible: :all)
       expect(field[:type]).to eq('datetime-local')
@@ -34,7 +34,7 @@ RSpec.describe 'Historical dose recording' do
           fill_in 'Taken at', with: submitted_time.strftime('%Y-%m-%dT%H:%M')
           click_button I18n.t('schedules.card.give')
         end
-        expect(page).to have_content(I18n.t('schedules.medication_taken'), wait: 10)
+        expect(page).to have_text(I18n.t('schedules.medication_taken'), wait: 10)
       end.to change(MedicationTake, :count).by(1)
 
       expect(MedicationTake.order(:id).last.taken_at).to be_within(1.second).of(submitted_time)

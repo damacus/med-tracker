@@ -9,8 +9,8 @@ module Medications
     end
 
     def to_h
-      medications.each_with_object({}) do |medication, dose_options|
-        dose_options[medication.id.to_s] = medication.dose_options_payload
+      medications.to_h do |medication|
+        [medication.id.to_s, medication.dose_options_payload]
       end
     end
   end

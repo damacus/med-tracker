@@ -23,7 +23,7 @@ RSpec.describe 'Admin invites users' do
 
     click_button 'Send invitation'
 
-    expect(page).to have_content('Invitation sent')
+    expect(page).to have_text('Invitation sent')
     expect(ActionMailer::Base.deliveries.count).to eq(1)
 
     email = ActionMailer::Base.deliveries.last
@@ -50,7 +50,7 @@ RSpec.describe 'Admin invites users' do
 
     click_button 'Send invitation'
 
-    expect(page).to have_content('Invitation sent')
+    expect(page).to have_text('Invitation sent')
 
     email = ActionMailer::Base.deliveries.last
     expect(email).to be_present
@@ -70,8 +70,8 @@ RSpec.describe 'Admin invites users' do
 
     # Verify sidebar shows new user info
     within 'aside' do
-      expect(page).to have_content('Invited Parent')
-      expect(page).to have_content('Parent')
+      expect(page).to have_text('Invited Parent')
+      expect(page).to have_text('Parent')
     end
   end
 
@@ -98,7 +98,7 @@ RSpec.describe 'Admin invites users' do
       click_button 'Create Account'
     end.not_to change(Account, :count)
 
-    expect(page).to have_content('Children must be added by a parent or carer.')
+    expect(page).to have_text('Children must be added by a parent or carer.')
   end
 
   it 'allows an admin to resend an invitation and invalidates the old token' do
@@ -109,13 +109,13 @@ RSpec.describe 'Admin invites users' do
     visit admin_invitations_path
 
     within '#admin_invitations' do
-      expect(page).to have_content('resend.me@example.com')
-      expect(page).to have_content('Expired')
-      expect(page).to have_content('Expired 1 day ago')
+      expect(page).to have_text('resend.me@example.com')
+      expect(page).to have_text('Expired')
+      expect(page).to have_text('Expired 1 day ago')
       click_button 'Resend', match: :first
     end
 
-    expect(page).to have_content('Invitation resent')
+    expect(page).to have_text('Invitation resent')
     expect(ActionMailer::Base.deliveries.count).to eq(1)
 
     email = ActionMailer::Base.deliveries.last
@@ -126,9 +126,9 @@ RSpec.describe 'Admin invites users' do
     expect(invitation.token_digest).not_to eq(Invitation.digest(original_token))
 
     visit accept_invitation_path(token: original_token)
-    expect(page).to have_content('This invitation link is invalid or has expired.')
+    expect(page).to have_text('This invitation link is invalid or has expired.')
 
     visit accept_invitation_path(token: new_token)
-    expect(page).to have_content("You've been invited as a Parent.")
+    expect(page).to have_text("You've been invited as a Parent.")
   end
 end

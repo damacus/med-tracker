@@ -15,11 +15,11 @@ RSpec.describe 'Dashboard Authorization', type: :system do
         visit dashboard_path
 
         # Should see multiple people
-        expect(page).to have_content('John Doe')
-        expect(page).to have_content('Jane Doe')
-        expect(page).to have_content('Bob Smith')
-        expect(page).to have_content('Adult Patient')
-        expect(page).to have_content('Child Patient')
+        expect(page).to have_text('John Doe')
+        expect(page).to have_text('Jane Doe')
+        expect(page).to have_text('Bob Smith')
+        expect(page).to have_text('Adult Patient')
+        expect(page).to have_text('Child Patient')
       end
     end
 
@@ -32,10 +32,10 @@ RSpec.describe 'Dashboard Authorization', type: :system do
         visit dashboard_path
 
         # Should see multiple people
-        expect(page).to have_content('John Doe')
-        expect(page).to have_content('Jane Doe')
-        expect(page).to have_content('Bob Smith')
-        expect(page).to have_content('Adult Patient')
+        expect(page).to have_text('John Doe')
+        expect(page).to have_text('Jane Doe')
+        expect(page).to have_text('Bob Smith')
+        expect(page).to have_text('Adult Patient')
       end
     end
 
@@ -48,9 +48,9 @@ RSpec.describe 'Dashboard Authorization', type: :system do
         visit dashboard_path
 
         # Should see multiple people
-        expect(page).to have_content('John Doe')
-        expect(page).to have_content('Jane Doe')
-        expect(page).to have_content('Bob Smith')
+        expect(page).to have_text('John Doe')
+        expect(page).to have_text('Jane Doe')
+        expect(page).to have_text('Bob Smith')
       end
     end
 
@@ -63,13 +63,13 @@ RSpec.describe 'Dashboard Authorization', type: :system do
         visit dashboard_path
 
         # Should see assigned patients
-        expect(page).to have_content('Child Patient')
-        expect(page).to have_content('Child User')
+        expect(page).to have_text('Child Patient')
+        expect(page).to have_text('Child User')
 
         # Should NOT see unassigned patients
-        expect(page).to have_no_content('Bob Smith')
-        expect(page).to have_no_content('John Doe')
-        expect(page).to have_no_content('Jane Doe')
+        expect(page).to have_no_text('Bob Smith')
+        expect(page).to have_no_text('John Doe')
+        expect(page).to have_no_text('Jane Doe')
       end
 
       it 'sees only schedules for assigned patients' do
@@ -79,10 +79,10 @@ RSpec.describe 'Dashboard Authorization', type: :system do
 
         # Should see schedules for assigned patients
         # child_patient has ibuprofen schedule
-        expect(page).to have_content('Ibuprofen')
+        expect(page).to have_text('Ibuprofen')
 
         # Should NOT see Bob's aspirin schedule
-        expect(page).to have_no_content('Aspirin')
+        expect(page).to have_no_text('Aspirin')
       end
     end
 
@@ -95,13 +95,13 @@ RSpec.describe 'Dashboard Authorization', type: :system do
         visit dashboard_path
 
         # Should see their child
-        expect(page).to have_content('Child User')
+        expect(page).to have_text('Child User')
 
         # Should NOT see other people
-        expect(page).to have_no_content('Bob Smith')
-        expect(page).to have_no_content('John Doe')
-        expect(page).to have_no_content('Jane Doe')
-        expect(page).to have_no_content('Adult Patient')
+        expect(page).to have_no_text('Bob Smith')
+        expect(page).to have_no_text('John Doe')
+        expect(page).to have_no_text('Jane Doe')
+        expect(page).to have_no_text('Adult Patient')
       end
 
       it 'sees only schedules for their children' do
@@ -110,10 +110,10 @@ RSpec.describe 'Dashboard Authorization', type: :system do
         visit dashboard_path
 
         # Should see child's schedule
-        expect(page).to have_content('Paracetamol')
+        expect(page).to have_text('Paracetamol')
 
         # Should NOT see other schedules
-        expect(page).to have_no_content('Aspirin')
+        expect(page).to have_no_text('Aspirin')
       end
     end
 
@@ -126,13 +126,13 @@ RSpec.describe 'Dashboard Authorization', type: :system do
         visit dashboard_path
 
         # Should see themselves
-        expect(page).to have_content('Adult Patient')
+        expect(page).to have_text('Adult Patient')
 
         # Should NOT see other people
-        expect(page).to have_no_content('Bob Smith')
-        expect(page).to have_no_content('John Doe')
-        expect(page).to have_no_content('Jane Doe')
-        expect(page).to have_no_content('Child Patient')
+        expect(page).to have_no_text('Bob Smith')
+        expect(page).to have_no_text('John Doe')
+        expect(page).to have_no_text('Jane Doe')
+        expect(page).to have_no_text('Child Patient')
       end
 
       it 'sees only their own schedules' do
@@ -141,11 +141,11 @@ RSpec.describe 'Dashboard Authorization', type: :system do
         visit dashboard_path
 
         # Should see their own schedule (paracetamol)
-        expect(page).to have_content('Paracetamol')
+        expect(page).to have_text('Paracetamol')
 
         # Should NOT see other schedules
-        expect(page).to have_no_content('Aspirin')
-        expect(page).to have_no_content('Ibuprofen')
+        expect(page).to have_no_text('Aspirin')
+        expect(page).to have_no_text('Ibuprofen')
       end
     end
   end

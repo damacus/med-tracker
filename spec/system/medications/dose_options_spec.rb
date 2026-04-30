@@ -34,7 +34,7 @@ RSpec.describe 'Medication dose options editor' do
 
       click_button 'Remove dose option'
 
-      expect(page).to have_content('Dose option removed')
+      expect(page).to have_text('Dose option removed')
       expect(page).to have_button('Undo')
 
       click_button 'Undo'

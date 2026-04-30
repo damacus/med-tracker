@@ -21,17 +21,17 @@ RSpec.describe 'Schedule dosage selection' do
     end
     click_on 'Prescribed / Scheduled'
 
-    expect(page).to have_content('Choose a medication')
+    expect(page).to have_text('Choose a medication')
 
     find_by_id('medication_trigger').click
     # Portaled content is in body
     find('label', text: 'Ibuprofen', visible: :all, wait: 10).click
 
-    expect(page).to have_content('Change')
+    expect(page).to have_text('Change')
     sleep 1.0 # Wait for dosage cards to render after medication selection
 
     expect(page).to have_no_css('[name="schedule[dose_option_key]"]:checked', visible: :hidden)
-    expect(page).to have_content('Add Plan') # Button might be disabled, have_content is safer
+    expect(page).to have_text('Add Plan') # Button might be disabled, have_content is safer
     find('label', text: '400.0 mg', visible: :all, wait: 10).click
 
     fill_in 'Frequency', with: 'Once daily'
@@ -40,7 +40,7 @@ RSpec.describe 'Schedule dosage selection' do
 
     click_on 'Add Plan'
 
-    expect(page).to have_content('Schedule was successfully created.')
+    expect(page).to have_text('Schedule was successfully created.')
   end
 
   it 'shows a blocked dose step when the medication has no dosage choices' do
@@ -61,6 +61,6 @@ RSpec.describe 'Schedule dosage selection' do
     find_by_id('medication_trigger').click
     find('label', text: 'Dose-less medication', visible: :all, wait: 10).click
 
-    expect(page).to have_content('No dose options are available for this medication.')
+    expect(page).to have_text('No dose options are available for this medication.')
   end
 end

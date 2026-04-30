@@ -30,7 +30,7 @@ RSpec.describe 'User Sessions', :js do
       using_wait_time(3) do
         within '#login-flash' do
           aggregate_failures 'flash messages' do
-            expect(page).to have_content('error logging in')
+            expect(page).to have_text('error logging in')
           end
         end
       end
@@ -42,7 +42,7 @@ RSpec.describe 'User Sessions', :js do
       using_wait_time(3) do
         within '#flash' do
           aggregate_failures 'flash messages' do
-            expect(page).to have_content('You have been logged in')
+            expect(page).to have_text('You have been logged in')
           end
         end
       end
@@ -55,7 +55,7 @@ RSpec.describe 'User Sessions', :js do
 
       using_wait_time(5) do
         expect(page).to have_current_path('/dashboard')
-        expect(page).to have_content('You have been logged in')
+        expect(page).to have_text('You have been logged in')
       end
 
       click_button 'Sign Out'
