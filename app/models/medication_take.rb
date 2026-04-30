@@ -18,6 +18,7 @@ class MedicationTake < ApplicationRecord
 
   validates :taken_at, presence: true
   validates :amount_ml, presence: true, numericality: { greater_than: 0 }
+  validates :client_uuid, uniqueness: true, allow_blank: true
   validate :exactly_one_source
   validate :taken_from_medication_matches_source
   validate :taken_from_medication_matches_selected_dose

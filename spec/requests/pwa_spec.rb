@@ -40,8 +40,9 @@ RSpec.describe 'PWA' do
       expect(response.body).to include("const CACHE_VERSION = 'v3'")
       expect(response.body).to include('self.skipWaiting()')
       expect(response.body).to include('self.clients.claim()')
-      expect(response.body).not_to include("self.addEventListener('fetch'")
-      expect(response.body).not_to include('cache.put(')
+      expect(response.body).to include("self.addEventListener('fetch'")
+      expect(response.body).to include("'/offline'")
+      expect(response.body).to include('cache.put(')
     end
   end
 

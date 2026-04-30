@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_29_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_30_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -227,6 +227,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_29_120000) do
 
   create_table "medication_takes", force: :cascade do |t|
     t.decimal "amount_ml"
+    t.string "client_uuid"
     t.datetime "created_at", null: false
     t.bigint "person_medication_id"
     t.bigint "schedule_id"
@@ -234,6 +235,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_29_120000) do
     t.bigint "taken_from_location_id"
     t.bigint "taken_from_medication_id"
     t.datetime "updated_at", null: false
+    t.index ["client_uuid"], name: "index_medication_takes_on_client_uuid", unique: true, where: "(client_uuid IS NOT NULL)"
     t.index ["person_medication_id"], name: "index_medication_takes_on_person_medication_id"
     t.index ["schedule_id"], name: "index_medication_takes_on_schedule_id"
     t.index ["taken_at"], name: "index_medication_takes_on_taken_at"

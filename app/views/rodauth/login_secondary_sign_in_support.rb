@@ -7,7 +7,7 @@ module Views
 
       def render_secondary_sign_in_options
         div(**secondary_sign_in_options_attributes) do
-          render_oauth_divider
+          render_oauth_divider unless invite_only?
           p(class: 'text-sm font-semibold text-on-surface-variant') { t('sessions.login.other_sign_in_options') }
           div(class: 'space-y-3') do
             render_passkey_section

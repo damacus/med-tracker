@@ -61,6 +61,10 @@ Rails.application.routes.draw do
   # Reports
   resources :reports, only: %i[index]
 
+  get 'offline', to: 'offline#show'
+  get 'offline/snapshot', to: 'offline#snapshot'
+  post 'offline/medication_takes', to: 'offline#medication_takes'
+
   # Location management
   resources :locations do
     resources :location_memberships, only: %i[create destroy]

@@ -24,6 +24,16 @@ RSpec.describe MedicationTake do
     it { is_expected.to validate_presence_of(:taken_at) }
     it { is_expected.to validate_presence_of(:amount_ml) }
     it { is_expected.to validate_numericality_of(:amount_ml).is_greater_than(0) }
+
+    it 'allows blank client UUIDs but rejects duplicates when present' do
+      uuid = SecureRandom.uuid
+      described_class.create!(schedule: schedule, taken_at: 1.hour.ago, amount_ml: 10.0, client_uuid: uuid)
+
+      duplicate = described_class.new(schedule: schedule, taken_at: Time.current, amount_ml: 10.0, client_uuid: uuid)
+
+      expect(duplicate).not_to be_valid
+      expect(duplicate.errors[:client_uuid]).to include('has already been taken')
+    end
   end
 
   describe 'associations' do
