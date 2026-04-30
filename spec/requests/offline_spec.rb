@@ -98,12 +98,13 @@ RSpec.describe 'Offline mode' do
       expect(response.parsed_body.dig('error', 'message')).to include('future')
     end
 
-    it 'rejects unauthorized sources' do
+    it 'returns JSON failures for unavailable queued sources' do
       post '/offline/medication_takes',
            params: payload.merge(source_id: 999_999),
            as: :json
 
-      expect(response).to have_http_status(:not_found)
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.parsed_body.dig('error', 'message')).to include('no longer available')
     end
   end
 end

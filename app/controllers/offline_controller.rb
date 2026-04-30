@@ -45,6 +45,8 @@ class OfflineController < ApplicationController
     return render_take_failure(result.error) unless result.success
 
     render_synced_take(result.take, status: :created)
+  rescue ActiveRecord::RecordNotFound, Pundit::NotAuthorizedError
+    render_unprocessable(t('.source_unavailable', default: 'Queued dose source is no longer available.'))
   end
 
   private

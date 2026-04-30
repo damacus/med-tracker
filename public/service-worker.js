@@ -30,16 +30,10 @@ self.addEventListener('fetch', function(event) {
   const url = new URL(request.url)
   if (url.origin !== self.location.origin) return
 
-  if (request.mode === 'navigate') {
+  if (request.mode === 'navigate' || url.pathname === OFFLINE_PATH) {
     event.respondWith(
       fetch(request)
-        .then((response) => {
-          if (url.pathname === OFFLINE_PATH && response.ok) {
-            const copy = response.clone()
-            caches.open(STATIC_CACHE).then((cache) => cache.put(OFFLINE_PATH, copy))
-          }
-          return response
-        })
+        .then((response) => cacheOfflineShell(url, response))
         .catch(() => caches.match(OFFLINE_PATH).then((response) => response || fallbackOfflineResponse()))
     )
     return
@@ -61,6 +55,15 @@ self.addEventListener('fetch', function(event) {
     )
   }
 })
+
+function cacheOfflineShell(url, response) {
+  if (url.pathname === OFFLINE_PATH && response.ok) {
+    const copy = response.clone()
+    caches.open(STATIC_CACHE).then((cache) => cache.put(OFFLINE_PATH, copy))
+  }
+
+  return response
+}
 
 function cacheableAsset(url) {
   return [

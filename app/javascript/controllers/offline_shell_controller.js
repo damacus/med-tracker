@@ -96,7 +96,7 @@ export default class extends Controller {
     this.pendingCountTarget.textContent = String(queued.length)
     this.failedCountTarget.textContent = String(failed.length)
     this.renderToday(data, queued)
-    this.renderPeople(data)
+    this.renderPeople(data, queued)
     this.renderFailures(failed)
   }
 
@@ -121,7 +121,9 @@ export default class extends Controller {
       const person = this.byId(data.people, source.person_id)
       const medication = this.byId(data.medications, source.medication_id)
       const pending = queued.filter((take) => take.source_type === sourceType && Number(take.source_id) === source.id)
-      const disabled = !medication || medication.out_of_stock
+      const inventory = medication ? this.inventoryFor(data, medication, queued) : null
+      const stockMedication = inventory || medication
+      const disabled = !medication || this.locallyOutOfStock(stockMedication, queued)
       const label = pending.length > 0 ? `${pending.length} pending` : "Take now"
 
       return `
@@ -147,7 +149,7 @@ export default class extends Controller {
     }).join("")
   }
 
-  renderPeople(data) {
+  renderPeople(data, queued) {
     const people = data.people || []
     const medications = data.medications || []
 
@@ -161,7 +163,7 @@ export default class extends Controller {
         <div class="mt-3 space-y-2">${medications.map((medication) => `
           <div class="flex justify-between gap-3 text-sm">
             <span class="font-semibold">${this.escape(medication.name)}</span>
-            <span class="text-on-surface-variant">${this.escape(medication.current_supply ?? "Untracked")}</span>
+            <span class="text-on-surface-variant">${this.escape(this.localSupplyLabel(medication, queued))}</span>
           </div>
         `).join("") || this.empty("No inventory cached.")}</div>
       </div>
@@ -193,13 +195,32 @@ export default class extends Controller {
     return source ? this.byId(data.medications, source.medication_id) : null
   }
 
-  inventoryFor(data, medication) {
+  inventoryFor(data, medication, queued = []) {
     return (data.medications || []).find((candidate) =>
       candidate.name === medication.name &&
       String(candidate.dosage_amount) === String(medication.dosage_amount) &&
       candidate.dosage_unit === medication.dosage_unit &&
-      !candidate.out_of_stock
+      !this.locallyOutOfStock(candidate, queued)
     )
+  }
+
+  locallyOutOfStock(medication, queued) {
+    if (!medication) return true
+
+    const supply = this.localSupply(medication, queued)
+    return supply === null ? medication.out_of_stock : supply <= 0
+  }
+
+  localSupplyLabel(medication, queued) {
+    const supply = this.localSupply(medication, queued)
+    return supply === null ? "Untracked" : supply
+  }
+
+  localSupply(medication, queued) {
+    if (medication.current_supply === null || medication.current_supply === undefined) return null
+
+    const pending = queued.filter((take) => Number(take.taken_from_medication_id) === Number(medication.id)).length
+    return Math.max(Number(medication.current_supply) - pending, 0)
   }
 
   byId(collection, id) {

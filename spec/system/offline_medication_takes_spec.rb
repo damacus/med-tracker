@@ -24,6 +24,8 @@ RSpec.describe 'Offline medication takes', :js do
   end
 
   it 'queues a take in the offline shell and syncs it when online fires' do
+    medication.update!(current_supply: 1)
+
     login_as(user)
     visit offline_path
 
@@ -33,6 +35,7 @@ RSpec.describe 'Offline medication takes', :js do
     within('[data-testid="offline-dose-card"]', text: 'Gabapentin') do
       click_button 'Take now'
       expect(page).to have_content('QUEUED LOCALLY')
+      expect(page).to have_button('Out of stock', disabled: true)
     end
 
     expect(page).to have_content('PENDING SYNC')

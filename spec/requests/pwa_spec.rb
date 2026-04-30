@@ -43,6 +43,18 @@ RSpec.describe 'PWA' do
       expect(response.body).to include("self.addEventListener('fetch'")
       expect(response.body).to include("'/offline'")
       expect(response.body).to include('cache.put(')
+      expect(response.body).to include('cacheOfflineShell')
+      expect(response.body).to include('request.mode === \'navigate\' || url.pathname === OFFLINE_PATH')
+    end
+  end
+
+  describe 'offline bootstrap javascript' do
+    it 'refreshes cached snapshots and retries queued takes from normal app pages' do
+      source = Rails.root.join('app/javascript/application.js').read
+
+      expect(source).to include('refreshSnapshot')
+      expect(source).to include('syncQueuedTakes')
+      expect(source).to include('window.addEventListener(\'online\', runOfflineSync)')
     end
   end
 
