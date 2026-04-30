@@ -63,11 +63,7 @@ module Views
       end
 
       def oauth_enabled?
-        oidc_configured? && !invite_only?
-      end
-
-      def invite_only_oidc_available?
-        oidc_configured? && invite_only?
+        oidc_configured?
       end
 
       def oidc_configured?
