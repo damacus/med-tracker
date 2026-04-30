@@ -22,6 +22,7 @@ module Api
       def source_data
         {
           id: medication_take.id,
+          client_uuid: medication_take.client_uuid,
           schedule_id: medication_take.schedule_id,
           person_medication_id: medication_take.person_medication_id,
           taken_from_medication_id: medication_take.taken_from_medication_id,

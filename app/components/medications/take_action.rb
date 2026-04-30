@@ -72,7 +72,10 @@ module Components
               data: {
                 controller: 'optimistic-take',
                 action: 'submit->optimistic-take#submit',
-                optimistic_take_loading_label_value: t('medications.take_action.loading')
+                optimistic_take_loading_label_value: t('medications.take_action.loading'),
+                optimistic_take_queued_label_value: t('medications.take_action.queued', default: 'Queued'),
+                offline_source_type: offline_source_type,
+                offline_source_id: source.id
               }
             ) do
               DialogMiddle do
@@ -205,6 +208,10 @@ module Components
         else
           take_medication_person_person_medication_path(person, source)
         end
+      end
+
+      def offline_source_type
+        source.is_a?(::Schedule) ? 'schedule' : 'person_medication'
       end
 
       def available_medications

@@ -2,6 +2,7 @@
 
 const CACHE_VERSION = 'v3'
 const STATIC_CACHE = `medtracker-static-${CACHE_VERSION}`
+const OFFLINE_PATH = '/offline'
 
 // The install event is fired when the service worker is first installed
 self.addEventListener('install', function(event) {
@@ -21,6 +22,65 @@ self.addEventListener('activate', function(event) {
   )
   console.log('Service Worker activated');
 });
+
+self.addEventListener('fetch', function(event) {
+  const request = event.request
+  if (request.method !== 'GET') return
+
+  const url = new URL(request.url)
+  if (url.origin !== self.location.origin) return
+
+  if (request.mode === 'navigate' || url.pathname === OFFLINE_PATH) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => cacheOfflineShell(url, response))
+        .catch(() => caches.match(OFFLINE_PATH).then((response) => response || fallbackOfflineResponse()))
+    )
+    return
+  }
+
+  if (cacheableAsset(url)) {
+    event.respondWith(
+      caches.match(request).then((cached) => {
+        if (cached) return cached
+
+        return fetch(request).then((response) => {
+          if (response.ok) {
+            const copy = response.clone()
+            caches.open(STATIC_CACHE).then((cache) => cache.put(request, copy))
+          }
+          return response
+        })
+      })
+    )
+  }
+})
+
+function cacheOfflineShell(url, response) {
+  if (url.pathname === OFFLINE_PATH && response.ok) {
+    const copy = response.clone()
+    caches.open(STATIC_CACHE).then((cache) => cache.put(OFFLINE_PATH, copy))
+  }
+
+  return response
+}
+
+function cacheableAsset(url) {
+  return [
+    '/assets/',
+    '/icons/',
+    '/fonts/',
+    '/favicon.svg',
+    '/manifest.webmanifest'
+  ].some((prefix) => url.pathname.startsWith(prefix))
+}
+
+function fallbackOfflineResponse() {
+  return new Response('<!doctype html><title>Offline</title><body><h1>Offline</h1><p>Open MedTracker while online to cache offline care.</p></body>', {
+    headers: { 'Content-Type': 'text/html' },
+    status: 503
+  })
+}
 
 // The push event is fired when a push notification is received
 self.addEventListener("push", async (event) => {

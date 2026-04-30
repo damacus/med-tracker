@@ -19,18 +19,19 @@
 #                   #    :selection_required | :invalid_source | :create_failed
 class TakeMedicationService
   Result = Data.define(:success, :take, :error)
+  PreparedTake = Data.define(:source, :amount, :medication, :taken_at, :client_uuid, :error)
 
-  def call(source:, amount_override:, taken_from_medication_id:, user:, taken_at: Time.current)
-    resolver = MedicationStockSourceResolver.new(user: user, source: source, taken_at: taken_at)
-    return failure(resolver.blocked_reason) if resolver.blocked_reason
+  def call(source:, amount_override:, taken_from_medication_id:, user:, **options)
+    prepared_take = prepare_take(
+      source: source,
+      amount_override: amount_override,
+      taken_from_medication_id: taken_from_medication_id,
+      user: user,
+      options: options
+    )
+    return failure(prepared_take.error) if prepared_take.error
 
-    amount = normalize_amount(amount_override.presence || default_dose_amount_for(source, taken_at))
-    return failure(:invalid_amount) if invalid_amount?(amount)
-
-    error, medication = resolve_stock_source(resolver, taken_from_medication_id)
-    return failure(error) if error
-
-    take = record_take(source: source, amount: amount, medication: medication, taken_at: taken_at)
+    take = record_take(**prepared_take.to_h.except(:error))
     return failure(:create_failed) unless take.persisted?
 
     success(take)
@@ -47,6 +48,24 @@ class TakeMedicationService
     Result.new(success: true, take: take, error: nil)
   end
 
+  def prepare_take(source:, amount_override:, taken_from_medication_id:, user:, options:)
+    taken_at = options.fetch(:taken_at, Time.current)
+    resolver = MedicationStockSourceResolver.new(user: user, source: source, taken_at: taken_at)
+    return prepared_error(resolver.blocked_reason) if resolver.blocked_reason
+
+    amount = normalize_amount(amount_override.presence || default_dose_amount_for(source, taken_at))
+    return prepared_error(:invalid_amount) if invalid_amount?(amount)
+
+    error, medication = resolve_stock_source(resolver, taken_from_medication_id)
+    return prepared_error(error) if error
+
+    PreparedTake.new(source:, amount:, medication:, taken_at:, client_uuid: options[:client_uuid], error: nil)
+  end
+
+  def prepared_error(error)
+    PreparedTake.new(source: nil, amount: nil, medication: nil, taken_at: nil, client_uuid: nil, error: error)
+  end
+
   def resolve_stock_source(resolver, taken_from_medication_id)
     return [:selection_required, nil] if resolver.selection_required?(taken_from_medication_id)
 
@@ -56,10 +75,11 @@ class TakeMedicationService
     [nil, medication]
   end
 
-  def record_take(source:, amount:, medication:, taken_at:)
+  def record_take(source:, amount:, medication:, taken_at:, client_uuid:)
     source.medication_takes.create(
       taken_at: taken_at,
       amount_ml: amount,
+      client_uuid: client_uuid,
       taken_from_medication: medication,
       taken_from_location: medication.location
     )
