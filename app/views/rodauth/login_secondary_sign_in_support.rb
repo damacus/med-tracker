@@ -12,7 +12,6 @@ module Views
           div(class: 'space-y-3') do
             render_passkey_section
             render_oauth_button if oauth_enabled?
-            render_invite_only_oidc_notice if invite_only_oidc_available?
           end
         end
       end
@@ -24,13 +23,7 @@ module Views
       end
 
       def secondary_sign_in_visible?
-        oauth_enabled? || invite_only_oidc_available?
-      end
-
-      def render_invite_only_oidc_notice
-        div(class: 'rounded-lg border border-outline-variant bg-surface-container px-4 py-3 text-sm font-medium text-on-surface-variant') do
-          t('sessions.login.invite_only_oidc_notice')
-        end
+        oauth_enabled?
       end
 
       def render_oauth_divider
