@@ -19,7 +19,7 @@ RSpec.describe 'Person Medications', type: :system do
     it 'allows adding an as-needed medication without a schedule', :js do
       visit person_path(person)
 
-      expect(page).to have_content('Medications')
+      expect(page).to have_text('Medications')
 
       within '[data-testid="quick-actions"]' do
         click_link 'Add Medication'
@@ -29,21 +29,21 @@ RSpec.describe 'Person Medications', type: :system do
       click_button 'Select a medication'
       find('label', text: new_medication.name).click
 
-      expect(page).to have_content('Choose the dose')
+      expect(page).to have_text('Choose the dose')
       # Wait for the async fetch to populate the select options
       expect(page).to have_css('#person_medication_dose_option option', text: '500 mg', visible: :all)
       select '500 mg', from: 'Dose'
       click_button 'Next'
 
-      expect(page).to have_content('Add optional guidance')
+      expect(page).to have_text('Add optional guidance')
       fill_in 'person_medication_notes', with: 'Take with breakfast'
       fill_in 'person_medication_max_daily_doses', with: '1'
 
       click_button 'Add Medication'
 
-      expect(page).to have_content('Medication added successfully')
-      expect(page).to have_content(new_medication.name)
-      expect(page).to have_content('Take with breakfast')
+      expect(page).to have_text('Medication added successfully')
+      expect(page).to have_text(new_medication.name)
+      expect(page).to have_text('Take with breakfast')
     end
   end
 
@@ -61,7 +61,7 @@ RSpec.describe 'Person Medications', type: :system do
       end
       confirm_record_dose(person_medication)
 
-      expect(page).to have_content('Medication taken successfully')
+      expect(page).to have_text('Medication taken successfully')
     end
 
     it 'rejects the default dose time when max daily doses reached', :js do
@@ -83,7 +83,7 @@ RSpec.describe 'Person Medications', type: :system do
       end
       expect do
         confirm_record_dose(person_medication)
-        expect(page).to have_content('Cannot take medication')
+        expect(page).to have_text('Cannot take medication')
       end.not_to change(MedicationTake, :count)
     end
 
@@ -104,7 +104,7 @@ RSpec.describe 'Person Medications', type: :system do
       end
       expect do
         confirm_record_dose(person_medication)
-        expect(page).to have_content('Cannot take medication')
+        expect(page).to have_text('Cannot take medication')
       end.not_to change(MedicationTake, :count)
     end
   end
@@ -125,8 +125,8 @@ RSpec.describe 'Person Medications', type: :system do
 
       within("#person_medication_#{person_medication.id}") do
         expect(page).to have_text(/today's doses/i)
-        expect(page).to have_content(take.taken_at.strftime('%l:%M %p').strip)
-        expect(page).to have_content('5 IU')
+        expect(page).to have_text(take.taken_at.strftime('%l:%M %p').strip)
+        expect(page).to have_text('5 IU')
       end
     end
   end

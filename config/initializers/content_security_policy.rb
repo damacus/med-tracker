@@ -16,11 +16,18 @@ Rails.application.configure do
     policy.style_src   :self
     policy.frame_ancestors :self
     policy.base_uri    :self
-    policy.form_action :self
-    policy.worker_src  :self
 
-    # Allow connections to self and websockets for Turbo/ActionCable
-    policy.connect_src :self, :wss
+    oidc_issuer = Rails.application.credentials.dig(:oidc, :issuer_url) || ENV.fetch('OIDC_ISSUER_URL', nil)
+
+    if oidc_issuer.present?
+      policy.form_action :self, oidc_issuer
+      policy.connect_src :self, :wss, oidc_issuer
+    else
+      policy.form_action :self
+      policy.connect_src :self, :wss
+    end
+
+    policy.worker_src  :self
   end
 
   # Generate session nonces for permitted importmap and inline scripts.

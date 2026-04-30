@@ -39,9 +39,9 @@ RSpec.describe 'AdminManagesUsers' do
       visit admin_users_path
 
       within '[data-testid="admin-users"]' do
-        expect(page).to have_content('User Management')
-        expect(page).to have_content(admin.email_address)
-        expect(page).to have_content(carer.email_address)
+        expect(page).to have_text('User Management')
+        expect(page).to have_text(admin.email_address)
+        expect(page).to have_text(carer.email_address)
       end
     end
 
@@ -51,7 +51,7 @@ RSpec.describe 'AdminManagesUsers' do
       visit admin_users_path
       click_on 'New User'
 
-      expect(page).to have_content('Create New User')
+      expect(page).to have_text('Create New User')
 
       fill_in 'Name', with: 'New Test User'
       fill_in 'Date of birth', with: '1985-05-15'
@@ -65,9 +65,9 @@ RSpec.describe 'AdminManagesUsers' do
 
       click_on 'Create User'
 
-      expect(page).to have_content('User was successfully created')
-      expect(page).to have_content('newuser@example.com')
-      expect(page).to have_content('Doctor')
+      expect(page).to have_text('User was successfully created')
+      expect(page).to have_text('newuser@example.com')
+      expect(page).to have_text('Doctor')
     end
 
     it 'shows validation errors when creating user with invalid data', :js do
@@ -91,7 +91,7 @@ RSpec.describe 'AdminManagesUsers' do
       page.execute_script("document.getElementById('user_email_address').removeAttribute('required')")
       click_on 'Create User'
 
-      expect(page).to have_content("Email address can't be blank")
+      expect(page).to have_text("Email address can't be blank")
     end
 
     it 'shows error when creating user with duplicate email', :js do
@@ -110,7 +110,7 @@ RSpec.describe 'AdminManagesUsers' do
 
       click_on 'Create User'
 
-      expect(page).to have_content('has already been taken')
+      expect(page).to have_text('has already been taken')
     end
 
     it 'creates user that can immediately log in', :js do
@@ -129,11 +129,11 @@ RSpec.describe 'AdminManagesUsers' do
 
       click_on 'Create User'
 
-      expect(page).to have_content('User was successfully created')
+      expect(page).to have_text('User was successfully created')
 
       # Wait for flash message to dismiss before clicking
       using_wait_time(5) do
-        expect(page).to have_no_content('User was successfully created')
+        expect(page).to have_no_text('User was successfully created')
       end
 
       # Log out admin
@@ -145,7 +145,7 @@ RSpec.describe 'AdminManagesUsers' do
       fill_in 'password', with: 'SecureP@ssword123!'
       click_on 'Sign In'
 
-      expect(page).to have_content('Loginable User')
+      expect(page).to have_text('Loginable User')
     end
 
     it 'allows admin to edit an existing user', :js do
@@ -156,7 +156,7 @@ RSpec.describe 'AdminManagesUsers' do
         click_on 'Edit'
       end
 
-      expect(page).to have_content('Edit User')
+      expect(page).to have_text('Edit User')
       expect(page).to have_field('Email address', with: carer.email_address)
 
       fill_in 'Email address', with: 'updated_carer@example.com'
@@ -166,9 +166,9 @@ RSpec.describe 'AdminManagesUsers' do
 
       click_on 'Update User'
 
-      expect(page).to have_content('User was successfully updated')
-      expect(page).to have_content('updated_carer@example.com')
-      expect(page).to have_content('Nurse')
+      expect(page).to have_text('User was successfully updated')
+      expect(page).to have_text('updated_carer@example.com')
+      expect(page).to have_text('Nurse')
     end
 
     it 'shows validation errors when updating user with invalid data', :js do
@@ -182,7 +182,7 @@ RSpec.describe 'AdminManagesUsers' do
       page.execute_script("document.getElementById('user_email_address').removeAttribute('required')")
       click_button 'Update User'
 
-      expect(page).to have_content("Email address can't be blank")
+      expect(page).to have_text("Email address can't be blank")
     end
 
     it 'allows admin to deactivate a user', :js do
@@ -191,7 +191,7 @@ RSpec.describe 'AdminManagesUsers' do
       visit admin_users_path
 
       within "[data-user-id='#{carer.id}']" do
-        expect(page).to have_content('Active')
+        expect(page).to have_text('Active')
         click_button 'Deactivate'
       end
 
@@ -200,9 +200,9 @@ RSpec.describe 'AdminManagesUsers' do
         click_button 'Deactivate'
       end
 
-      expect(page).to have_content('User account has been deactivated')
+      expect(page).to have_text('User account has been deactivated')
       within "[data-user-id='#{carer.id}']" do
-        expect(page).to have_content('Inactive')
+        expect(page).to have_text('Inactive')
       end
     end
 
@@ -213,13 +213,13 @@ RSpec.describe 'AdminManagesUsers' do
       visit admin_users_path
 
       within "[data-user-id='#{carer.id}']" do
-        expect(page).to have_content('Inactive')
+        expect(page).to have_text('Inactive')
         click_button 'Activate'
       end
 
-      expect(page).to have_content('User account has been activated')
+      expect(page).to have_text('User account has been activated')
       within "[data-user-id='#{carer.id}']" do
-        expect(page).to have_content('Active')
+        expect(page).to have_text('Active')
       end
     end
 
@@ -282,8 +282,8 @@ RSpec.describe 'AdminManagesUsers' do
       click_button 'Search'
 
       within '[data-testid="admin-users"]' do
-        expect(page).to have_content('Carer User')
-        expect(page).to have_no_content(admin.name)
+        expect(page).to have_text('Carer User')
+        expect(page).to have_no_text(admin.name)
       end
     end
 
@@ -295,8 +295,8 @@ RSpec.describe 'AdminManagesUsers' do
       fill_in 'Search', with: 'carer@example.com'
       click_button 'Search'
 
-      expect(page).to have_content('carer@example.com')
-      expect(page).to have_no_content(admin.email_address)
+      expect(page).to have_text('carer@example.com')
+      expect(page).to have_no_text(admin.email_address)
     end
 
     it 'allows admin to filter users by role', :js do
@@ -307,8 +307,8 @@ RSpec.describe 'AdminManagesUsers' do
       find_by_id('role_trigger').click
       all('label', text: 'Carer', visible: :all).last.click
 
-      expect(page).to have_content('test_carer@example.com')
-      expect(page).to have_no_content(admin.email_address)
+      expect(page).to have_text('test_carer@example.com')
+      expect(page).to have_no_text(admin.email_address)
     end
 
     it 'allows admin to filter users by status', :js do
@@ -320,8 +320,8 @@ RSpec.describe 'AdminManagesUsers' do
       click_on 'All'
       all('label', text: 'Inactive', visible: :all).last.click
 
-      expect(page).to have_content(carer.email_address)
-      expect(page).to have_no_content(admin.email_address)
+      expect(page).to have_text(carer.email_address)
+      expect(page).to have_no_text(admin.email_address)
     end
 
     it 'allows admin to filter active users only', :js do
@@ -333,8 +333,8 @@ RSpec.describe 'AdminManagesUsers' do
       click_on 'All'
       all('label', text: 'Active', visible: :all).last.click
 
-      expect(page).to have_no_content(carer.email_address)
-      expect(page).to have_content(admin.email_address)
+      expect(page).to have_no_text(carer.email_address)
+      expect(page).to have_text(admin.email_address)
     end
 
     it 'shows pagination info' do
@@ -355,7 +355,7 @@ RSpec.describe 'AdminManagesUsers' do
 
       # Wait for potential auto-submit from search field and DOM to be stable
       using_wait_time(5) do
-        expect(page).to have_content('Carer User')
+        expect(page).to have_text('Carer User')
       end
       sleep 0.5 # Small delay to ensure any frame replacement has finished
 
@@ -363,8 +363,8 @@ RSpec.describe 'AdminManagesUsers' do
       all('label', text: 'Carer', visible: :all).last.click
 
       within '[data-testid="admin-users"]' do
-        expect(page).to have_content('Carer User')
-        expect(page).to have_no_content(admin.name)
+        expect(page).to have_text('Carer User')
+        expect(page).to have_no_text(admin.name)
       end
     end
 
@@ -378,8 +378,8 @@ RSpec.describe 'AdminManagesUsers' do
 
       click_link 'Clear'
 
-      expect(page).to have_content('Carer User')
-      expect(page).to have_content(admin.name)
+      expect(page).to have_text('Carer User')
+      expect(page).to have_text(admin.name)
     end
   end
 

@@ -37,7 +37,7 @@ module BarcodeCatalog
     Product = Data.define(
       :gtin,
       :code,
-      :display,
+      :display_name,
       :system,
       :concept_class,
       :category,
@@ -49,7 +49,7 @@ module BarcodeCatalog
         {
           barcode: gtin,
           code: code,
-          display: display,
+          display: display_name,
           system: system,
           concept_class: concept_class,
           source: 'curated'
@@ -83,7 +83,7 @@ module BarcodeCatalog
         products.find do |product|
           (normalized_barcode.present? && product.gtin == normalized_barcode) ||
             (code.present? && product.code == code) ||
-            (name.present? && product.display == name)
+            (name.present? && product.display_name == name)
         end
       end
 
@@ -100,7 +100,7 @@ module BarcodeCatalog
         Product.new(
           gtin: entry['gtin'],
           code: entry['code'],
-          display: entry.fetch('display'),
+          display_name: entry.fetch('display'),
           system: entry['system'],
           concept_class: entry['concept_class'],
           category: entry['category'],

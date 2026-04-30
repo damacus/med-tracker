@@ -17,7 +17,7 @@ RSpec.describe 'Clinician Access Authorization' do
       login_as(doctor)
       visit people_path
 
-      expect(page).to have_content('People')
+      expect(page).to have_text('People')
       expect(Person.count).to be > 0
     end
 
@@ -25,7 +25,7 @@ RSpec.describe 'Clinician Access Authorization' do
       login_as(nurse)
       visit people_path
 
-      expect(page).to have_content('People')
+      expect(page).to have_text('People')
       expect(Person.count).to be > 0
     end
 
@@ -34,7 +34,7 @@ RSpec.describe 'Clinician Access Authorization' do
       person = people(:john)
       visit person_path(person)
 
-      expect(page).to have_content(person.name)
+      expect(page).to have_text(person.name)
     end
   end
 
@@ -52,7 +52,7 @@ RSpec.describe 'Clinician Access Authorization' do
       person = people(:john)
       visit person_path(person)
 
-      expect(page).to have_content(person.name)
+      expect(page).to have_text(person.name)
       expect(page).to have_no_link('Edit')
     end
 
@@ -61,7 +61,7 @@ RSpec.describe 'Clinician Access Authorization' do
       person = people(:john)
       visit person_path(person)
 
-      expect(page).to have_content(person.name)
+      expect(page).to have_text(person.name)
       expect(page).to have_no_button('Delete')
     end
   end
@@ -71,14 +71,14 @@ RSpec.describe 'Clinician Access Authorization' do
       login_as(doctor)
       visit admin_users_path
 
-      expect(page).to have_content('You are not authorized to perform this action')
+      expect(page).to have_text('You are not authorized to perform this action')
     end
 
     it 'denies nurses access to user management' do
       login_as(nurse)
       visit admin_users_path
 
-      expect(page).to have_content('You are not authorized to perform this action')
+      expect(page).to have_text('You are not authorized to perform this action')
     end
   end
 

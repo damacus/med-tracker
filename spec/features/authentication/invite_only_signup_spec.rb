@@ -10,13 +10,13 @@ RSpec.describe 'Invite-only sign-up', type: :system do
       visit create_account_path
 
       expect(page).to have_current_path(login_path)
-      expect(page).to have_content(/invitation|invite/i)
+      expect(page).to have_text(/invitation|invite/i)
     end
 
     it 'does not show the Create Account link on the login page' do
       visit login_path
 
-      expect(page).to have_content('Welcome back')
+      expect(page).to have_text('Welcome back')
       expect(page).to have_no_link('Create a New Account')
     end
 

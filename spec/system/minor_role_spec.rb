@@ -17,7 +17,7 @@ RSpec.describe 'Minor role in user form' do
     visit new_admin_user_path
 
     find_by_id('role_trigger').click
-    expect(page).to have_content('Minor')
+    expect(page).to have_text('Minor')
   end
 
   it 'allows creating a user with minor role' do
@@ -36,8 +36,8 @@ RSpec.describe 'Minor role in user form' do
 
     click_on 'Create User'
 
-    expect(page).to have_content('User was successfully created')
-    expect(page).to have_content('minor@example.com')
-    expect(page).to have_content('Minor')
+    expect(page).to have_text('User was successfully created')
+    expect(page).to have_text('minor@example.com')
+    expect(page).to have_text('Minor')
   end
 end

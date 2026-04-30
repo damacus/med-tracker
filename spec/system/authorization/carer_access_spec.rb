@@ -18,21 +18,21 @@ RSpec.describe 'Carer Access Authorization' do
       login_as(carer)
       visit person_path(carer.person)
 
-      expect(page).to have_content(carer.person.name)
+      expect(page).to have_text(carer.person.name)
     end
 
     it 'allows carers to view assigned patients' do
       login_as(carer)
       visit person_path(assigned_patient)
 
-      expect(page).to have_content(assigned_patient.name)
+      expect(page).to have_text(assigned_patient.name)
     end
 
     it 'denies carers access to unrelated people' do
       login_as(carer)
       visit person_path(unrelated_person)
       # Rails test environment renders the detailed exception page for RecordNotFound in system tests
-      expect(page).to have_content(/RecordNotFound|Couldn't find/i)
+      expect(page).to have_text(/RecordNotFound|Couldn't find/i)
     end
   end
 
@@ -49,7 +49,7 @@ RSpec.describe 'Carer Access Authorization' do
       login_as(carer)
       visit person_path(carer.person)
 
-      expect(page).to have_content(carer.person.name)
+      expect(page).to have_text(carer.person.name)
       expect(page).to have_no_link('Edit')
     end
 
@@ -57,7 +57,7 @@ RSpec.describe 'Carer Access Authorization' do
       login_as(carer)
       visit person_path(carer.person)
 
-      expect(page).to have_content(carer.person.name)
+      expect(page).to have_text(carer.person.name)
       expect(page).to have_no_button('Delete')
     end
   end
@@ -67,9 +67,9 @@ RSpec.describe 'Carer Access Authorization' do
       login_as(carer)
       visit people_path
 
-      expect(page).to have_content(carer.person.name)
-      expect(page).to have_content(assigned_patient.name)
-      expect(page).to have_no_content(unrelated_person.name)
+      expect(page).to have_text(carer.person.name)
+      expect(page).to have_text(assigned_patient.name)
+      expect(page).to have_no_text(unrelated_person.name)
     end
   end
 end

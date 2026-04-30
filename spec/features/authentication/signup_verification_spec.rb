@@ -51,7 +51,7 @@ RSpec.describe 'Signup verification email', type: :system do
       uri = URI.parse(verify_url)
       visit [uri.path, uri.query].compact.join('?')
 
-      expect(page).to have_content(/verified|dashboard/i)
+      expect(page).to have_text(/verified|dashboard/i)
     end
   end
 end

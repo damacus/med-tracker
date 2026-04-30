@@ -12,7 +12,7 @@ RSpec.describe 'Admin Dashboard' do
       visit admin_root_path
 
       within '[data-testid="admin-dashboard"]' do
-        expect(page).to have_content('Admin Dashboard')
+        expect(page).to have_text('Admin Dashboard')
 
         # Check for metric cards
         expect(page).to have_css('[data-testid="metric-total-users"]')
@@ -28,7 +28,7 @@ RSpec.describe 'Admin Dashboard' do
       visit admin_root_path
 
       within '[data-testid="metric-total-users"]' do
-        expect(page).to have_content('TOTAL USERS')
+        expect(page).to have_text('TOTAL USERS')
         expect(page).to have_css('[data-metric-value]')
       end
     end
@@ -49,7 +49,7 @@ RSpec.describe 'Admin Dashboard' do
 
       visit admin_root_path
 
-      expect(page).to have_content('You are not authorized')
+      expect(page).to have_text('You are not authorized')
       expect(page).to have_current_path(root_path)
     end
   end

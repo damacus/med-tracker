@@ -30,7 +30,7 @@ RSpec.describe 'Medications Authorization' do
 
     visit medications_path
 
-    expect(page).to have_content('Medications')
+    expect(page).to have_text('Medications')
     expect(page).to have_no_link('Add Medication', href: new_medication_path)
   end
 
@@ -39,7 +39,7 @@ RSpec.describe 'Medications Authorization' do
 
     visit medications_path
 
-    expect(page).to have_content('Medications')
+    expect(page).to have_text('Medications')
     expect(page).to have_no_link('Add Medication', href: new_medication_path)
   end
 end

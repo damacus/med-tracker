@@ -17,8 +17,8 @@ RSpec.describe 'Medication reorder workflow' do
   it 'allows marking a medication as ordered and then received' do
     visit medication_path(medication)
 
-    expect(page).to have_content('Low Stock Alert')
-    expect(page).to have_content('Order')
+    expect(page).to have_text('Low Stock Alert')
+    expect(page).to have_text('Order')
 
     click_on 'Order'
 
@@ -29,24 +29,24 @@ RSpec.describe 'Medication reorder workflow' do
 
     click_on 'Received'
 
-    expect(page).to have_content('Refill marked as received')
-    expect(page).to have_content('Received')
+    expect(page).to have_text('Refill marked as received')
+    expect(page).to have_text('Received')
     expect(medication.reload.reordered_at).to be_present
 
     # Check for Restock button within content area
     within "[data-testid='medication-content']" do
-      expect(page).to have_content('Restock')
+      expect(page).to have_text('Restock')
     end
 
     click_on 'Restock'
 
     # The dialog content is moved to the end of the body by the Stimulus controller
     # We can search by the unique header or just the fields
-    expect(page).to have_content("Restock #{medication.name}")
+    expect(page).to have_text("Restock #{medication.name}")
     fill_in 'Quantity', with: 50
     click_on 'Refill'
 
-    expect(page).to have_content('Inventory refilled successfully')
+    expect(page).to have_text('Inventory refilled successfully')
     expect(medication.reload.current_supply).to eq(55)
     expect(medication.reorder_status).to be_nil # Should be cleared after refill
   end

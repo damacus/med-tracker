@@ -20,8 +20,8 @@ RSpec.describe 'Add schedule modal flow' do
       click_on 'Add Medication'
     end
     click_on 'Prescribed / Scheduled'
-    expect(page).to have_content("New Schedule for #{person.name}")
-    expect(page).to have_content('Choose a medication')
+    expect(page).to have_text("New Schedule for #{person.name}")
+    expect(page).to have_text('Choose a medication')
 
     find_by_id('medication_trigger').click
     find('label', text: 'Ibuprofen', visible: :all, wait: 10).click
@@ -36,9 +36,9 @@ RSpec.describe 'Add schedule modal flow' do
 
     click_on 'Add Plan'
 
-    expect(page).to have_content('Schedule was successfully created.')
-    expect(page).to have_no_content("New Schedule for #{person.name}")
-    expect(page).to have_content('Ibuprofen')
+    expect(page).to have_text('Schedule was successfully created.')
+    expect(page).to have_no_text("New Schedule for #{person.name}")
+    expect(page).to have_text('Ibuprofen')
   end
 
   it 'closes the add schedule modal cleanly when cancelled from the details step' do
@@ -53,13 +53,13 @@ RSpec.describe 'Add schedule modal flow' do
     find_by_id('medication_trigger').click
     find('label', text: 'Ibuprofen', visible: :all, wait: 10).click
 
-    expect(page).to have_content("New Schedule for #{person.name}")
-    expect(page).to have_content('Schedule details')
+    expect(page).to have_text("New Schedule for #{person.name}")
+    expect(page).to have_text('Schedule details')
 
     click_on 'Cancel', match: :prefer_exact
 
     expect(page).to have_current_path(person_path(person))
-    expect(page).to have_no_content("New Schedule for #{person.name}")
-    expect(page).to have_content(person.name)
+    expect(page).to have_no_text("New Schedule for #{person.name}")
+    expect(page).to have_text(person.name)
   end
 end
