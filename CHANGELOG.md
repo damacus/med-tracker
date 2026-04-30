@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.47](https://github.com/damacus/med-tracker/compare/v0.3.46...v0.3.47) (2026-04-30)
+
+
+### Bug Fixes
+
+* trigger release ([26454f2](https://github.com/damacus/med-tracker/commit/26454f21a5377a69dab553337373e1bcf4ed522e))
+
 ## [0.3.46](https://github.com/damacus/med-tracker/compare/v0.3.45...v0.3.46) (2026-04-30)
 
 
