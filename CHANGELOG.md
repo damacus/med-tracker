@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.46](https://github.com/damacus/med-tracker/compare/v0.3.45...v0.3.46) (2026-04-30)
+
+
+### Features
+
+* Add offline-first medication sync ([#1150](https://github.com/damacus/med-tracker/issues/1150)) ([cbebb74](https://github.com/damacus/med-tracker/commit/cbebb7433486e7a1725bb949f9f3f82fc9199b8a))
+
 ## [0.3.45](https://github.com/damacus/med-tracker/compare/v0.3.44...v0.3.45) (2026-04-30)
 
 
