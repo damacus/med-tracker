@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.45](https://github.com/damacus/med-tracker/compare/v0.3.44...v0.3.45) (2026-04-30)
+
+
+### Bug Fixes
+
+* show zitadel sso in invite-only login ([b7a6bf0](https://github.com/damacus/med-tracker/commit/b7a6bf0d36f579353543f7cdcb2a699dd6fb3333))
+
 ## [0.3.44](https://github.com/damacus/med-tracker/compare/v0.3.43...v0.3.44) (2026-04-29)
 
 
