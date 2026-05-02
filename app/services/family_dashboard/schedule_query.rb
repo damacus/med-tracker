@@ -93,22 +93,33 @@ module FamilyDashboard
     end
 
     def aggregate_family_doses
+      sources = all_sources
+      all_medications_by_key = MedicationStockSourceResolver.bulk_fetch(current_user, sources)
+
       @people.each_with_object([]) do |member, doses|
         (@all_schedules[member.id] || []).each do |schedule|
-          doses.concat(generate_doses_for(schedule, member))
+          matching = all_medications_by_key[medication_key(schedule.medication)]
+          doses.concat(generate_doses_for(schedule, member, matching_medications: matching))
         end
 
         (@all_person_medications[member.id] || []).each do |pm|
-          doses.concat(generate_doses_for(pm, member))
+          matching = all_medications_by_key[medication_key(pm.medication)]
+          doses.concat(generate_doses_for(pm, member, matching_medications: matching))
         end
       end
+    end
+
+    def medication_key(medication)
+      return [] if medication.blank?
+
+      [medication.name, medication.dosage_amount, medication.dosage_unit]
     end
 
     def generate_member_doses(member)
       self.class.new(member).call
     end
 
-    def generate_doses_for(source, person)
+    def generate_doses_for(source, person, matching_medications: nil)
       now = Time.current
       # 1. Get doses already taken today from our preloaded association
       # This uses the association preloaded in aggregate_family_doses to avoid N+1 queries
@@ -119,7 +130,12 @@ module FamilyDashboard
       # We show the "next available" dose if it falls within today
       next_time = source.next_available_time
       if next_time && next_time <= now + 24.hours
-        status = MedicationStockSourceResolver.new(user: current_user, source: source).blocked_reason || :upcoming
+        resolver = MedicationStockSourceResolver.new(
+          user: current_user,
+          source: source,
+          matching_medications: matching_medications
+        )
+        status = resolver.blocked_reason || :upcoming
         doses << {
           person: person,
           source: source,
