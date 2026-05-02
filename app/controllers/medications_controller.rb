@@ -164,12 +164,11 @@ class MedicationsController < ApplicationController # rubocop:disable Metrics/Cl
     return render json: { results: [] } if query.blank?
 
     result = search_results_for(query)
-    return render_medication_search_unavailable unless result
 
-    if result.success?
+    if result&.success?
       render json: { results: result.results.map(&:to_h) }
     else
-      render_medication_search_unavailable
+      render json: { results: [], error: 'Medication search is temporarily unavailable.' }, status: :service_unavailable
     end
   end
 
@@ -261,7 +260,4 @@ class MedicationsController < ApplicationController # rubocop:disable Metrics/Cl
     nil
   end
 
-  def render_medication_search_unavailable
-    render json: { results: [], error: 'Medication search is temporarily unavailable.' }, status: :service_unavailable
-  end
 end
