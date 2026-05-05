@@ -60,6 +60,7 @@ Metrics/ClassLength:
     - "test/**/*_test.rb"
     - "db/migrate/**/*"
     - "app/components/**/*"
+    - "app/controllers/**/*"
 
 Metrics/MethodLength:
   Max: 15

@@ -5,7 +5,6 @@ class MedicationsController < ApplicationController
   include MedicationAiSuggestionConfirmation
   include MedicationAdministrationOptions
   include MedicationFormContext
-  include MedicationRefillable
   include MedicationWizardSupport
 
   before_action :set_medication,
@@ -213,6 +212,45 @@ class MedicationsController < ApplicationController
       medication: @medication,
       quantity: params.dig(:refill, :quantity),
       restock_date: params.dig(:refill, :restock_date)
+    )
+  end
+
+  def render_refill_error(message)
+    respond_to do |format|
+      format.html do
+        render Components::Medications::ShowView.new(medication: @medication, notice: message), status: :unprocessable_content
+      end
+      format.turbo_stream do
+        flash.now[:alert] = message
+        render turbo_stream: medication_streams, status: :unprocessable_content
+      end
+    end
+  end
+
+  def render_refill_success
+    respond_to do |format|
+      format.html { redirect_back_or_to @medication, notice: t('medications.refilled') }
+      format.turbo_stream do
+        flash.now[:notice] = t('medications.refilled')
+        render turbo_stream: medication_streams
+      end
+    end
+  end
+
+  def medication_streams
+    medication = @medication.reload
+    [
+      turbo_stream.replace("medication_show_#{medication.id}", Components::Medications::ShowView.new(medication: medication)),
+      turbo_stream.replace("medication_#{medication.id}", medication_list_item(medication)),
+      turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
+    ]
+  end
+
+  def medication_list_item(medication)
+    Components::Medications::ListItemComponent.new(
+      medication: medication,
+      inventory_query_params: {},
+      can_manage: policy(medication).update?
     )
   end
 
