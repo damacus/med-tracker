@@ -3,19 +3,16 @@
 require 'rails_helper'
 
 RSpec.describe Views::Rodauth::UnlockAccount, type: :component do
-  # rubocop:disable RSpec/VerifiedDoubles
   let(:rodauth) do
-    double(
-      'Rodauth',
-      unlock_account_path: '/unlock-account',
-      unlock_account_button: 'Unlock Account',
-      unlock_account_explanatory_text: '<p>You can unlock the account.</p>',
-      unlock_account_additional_form_tags: '',
-      unlock_account_requires_password?: false,
-      unlock_account_key_param: 'key'
-    )
+    Class.new do
+      def unlock_account_path = '/unlock-account'
+      def unlock_account_button = 'Unlock Account'
+      def unlock_account_explanatory_text = '<p>You can unlock the account.</p>'
+      def unlock_account_additional_form_tags = ''
+      def unlock_account_requires_password? = false
+      def unlock_account_key_param = 'key'
+    end.new
   end
-  # rubocop:enable RSpec/VerifiedDoubles
 
   before do
     allow(controller).to receive_messages(
