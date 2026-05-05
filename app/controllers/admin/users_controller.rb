@@ -17,13 +17,13 @@ module Admin
       @user = User.new
       @user.build_person
       authorize @user
-      render Components::Admin::Users::FormView.new(user: @user)
+      render Components::Admin::Users::FormView.new(user: @user, locations: load_locations)
     end
 
     def edit
       @user = policy_scope(User).find(params[:id])
       authorize @user
-      render Components::Admin::Users::FormView.new(user: @user)
+      render Components::Admin::Users::FormView.new(user: @user, locations: load_locations)
     end
 
     def create
@@ -61,10 +61,10 @@ module Admin
           format.turbo_stream { redirect_to admin_users_path, notice: t('users.updated') }
         else
           format.html do
-            render Components::Admin::Users::FormView.new(user: @user), status: :unprocessable_content
+            render Components::Admin::Users::FormView.new(user: @user, locations: load_locations), status: :unprocessable_content
           end
           format.turbo_stream do
-            render Components::Admin::Users::FormView.new(user: @user), status: :unprocessable_content
+            render Components::Admin::Users::FormView.new(user: @user, locations: load_locations), status: :unprocessable_content
           end
         end
       end
@@ -140,6 +140,10 @@ module Admin
 
     private
 
+    def load_locations
+      @load_locations ||= Location.all.to_a
+    end
+
     def account_already_exists?
       return false unless Account.exists?(email: @user.email_address)
 
@@ -169,7 +173,7 @@ module Admin
     end
 
     def render_user_form_with_errors
-      render Components::Admin::Users::FormView.new(user: @user), status: :unprocessable_content
+      render Components::Admin::Users::FormView.new(user: @user, locations: load_locations), status: :unprocessable_content
     end
 
     def search_params

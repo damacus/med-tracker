@@ -7,10 +7,11 @@ module Components
         include Phlex::Rails::Helpers::FormWith
         include Phlex::Rails::Helpers::Pluralize
 
-        attr_reader :user
+        attr_reader :user, :locations
 
-        def initialize(user:)
+        def initialize(user:, locations: Location.none)
           @user = user
+          @locations = locations
           super()
         end
 
@@ -157,7 +158,7 @@ module Components
               class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
             ) { t('admin.users.form.locations') }
             div(class: 'grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2') do
-              Location.find_each do |location|
+              locations.each do |location|
                 label(
                   class: 'flex items-center gap-3 p-4 rounded-xl border border-outline-variant ' \
                          'bg-surface-container-low ' \
