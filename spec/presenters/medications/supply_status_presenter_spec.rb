@@ -43,7 +43,7 @@ RSpec.describe Medications::SupplyStatusPresenter do
       presenter = described_class.new(medication:)
 
       expect(presenter.status_variant).to eq(:destructive)
-      expect(presenter.status_label).to eq('Out of stock')
+      expect(presenter.status_label).to eq('Out of Stock')
     end
 
     it 'returns success for in stock medications' do
@@ -223,16 +223,24 @@ RSpec.describe Medications::SupplyStatusPresenter do
 
   describe '#reorder_status_timestamp' do
     it 'returns reordered_at for received status' do
-      timestamp = Time.zone.now
-      medication = create(:medication, current_supply: 5, reorder_threshold: 10, reorder_status: :received, reordered_at: timestamp)
+      timestamp = Time.zone.parse('2024-01-01 12:00:00')
+      medication = create(:medication,
+                          current_supply: 5,
+                          reorder_threshold: 10,
+                          reorder_status: :received,
+                          reordered_at: timestamp)
       presenter = described_class.new(medication:)
 
       expect(presenter.reorder_status_timestamp).to eq(timestamp)
     end
 
     it 'returns ordered_at for ordered status' do
-      timestamp = Time.zone.now
-      medication = create(:medication, current_supply: 5, reorder_threshold: 10, reorder_status: :ordered, ordered_at: timestamp)
+      timestamp = Time.zone.parse('2024-01-01 12:00:00')
+      medication = create(:medication,
+                          current_supply: 5,
+                          reorder_threshold: 10,
+                          reorder_status: :ordered,
+                          ordered_at: timestamp)
       presenter = described_class.new(medication:)
 
       expect(presenter.reorder_status_timestamp).to eq(timestamp)
