@@ -19,7 +19,8 @@ module Components
         return if locations.empty? && categories.empty?
 
         div(class: 'mb-12 grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl') do
-          form_with(url: medications_path, method: :get, class: 'contents', data: { controller: 'form-submit' }) do
+          form_with(url: medications_path, method: :get, class: 'contents',
+                    data: { controller: 'form-submit', turbo_frame: 'medications_inventory' }) do
             render_filter(location_filter_config) if locations.any?
             render_filter(category_filter_config) if categories.any?
           end

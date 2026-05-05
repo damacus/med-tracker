@@ -8,9 +8,21 @@ class LocationMembershipsController < ApplicationController
     @person = policy_scope(Person).find(params[:location_membership][:person_id])
 
     if LocationMembership.create(location: @location, person: @person)
-      redirect_to @location, notice: t('.success', name: @person.name, location: @location.name)
+      respond_to do |format|
+        format.html { redirect_to @location, notice: t('.success', name: @person.name, location: @location.name) }
+        format.turbo_stream do
+          flash.now[:notice] = t('.success', name: @person.name, location: @location.name)
+          render turbo_stream: location_show_streams
+        end
+      end
     else
-      redirect_to @location, alert: t('.failure')
+      respond_to do |format|
+        format.html { redirect_to @location, alert: t('.failure') }
+        format.turbo_stream do
+          flash.now[:alert] = t('.failure')
+          render turbo_stream: location_show_streams, status: :unprocessable_content
+        end
+      end
     end
   end
 
@@ -20,9 +32,21 @@ class LocationMembershipsController < ApplicationController
     @person = @membership.person
 
     if @membership.destroy
-      redirect_to @location, notice: t('.success', name: @person.name, location: @location.name)
+      respond_to do |format|
+        format.html { redirect_to @location, notice: t('.success', name: @person.name, location: @location.name) }
+        format.turbo_stream do
+          flash.now[:notice] = t('.success', name: @person.name, location: @location.name)
+          render turbo_stream: location_show_streams
+        end
+      end
     else
-      redirect_to @location, alert: t('.failure')
+      respond_to do |format|
+        format.html { redirect_to @location, alert: t('.failure') }
+        format.turbo_stream do
+          flash.now[:alert] = t('.failure')
+          render turbo_stream: location_show_streams, status: :unprocessable_content
+        end
+      end
     end
   end
 
@@ -30,5 +54,12 @@ class LocationMembershipsController < ApplicationController
 
   def set_location
     @location = policy_scope(Location).find(params[:location_id])
+  end
+
+  def location_show_streams
+    [
+      turbo_stream.replace("location_show_#{@location.id}", Components::Locations::ShowView.new(location: @location.reload)),
+      turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
+    ]
   end
 end

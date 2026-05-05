@@ -73,4 +73,15 @@ RSpec.describe 'Profiles' do
       expect(response.body).to include('Remove')
     end
   end
+
+  describe 'PATCH /profile' do
+    it 'returns turbo_stream and updates flash when no changes are submitted' do
+      patch profile_path, headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.media_type).to eq('text/vnd.turbo-stream.html')
+      expect(response.body).to include('target="flash"')
+      expect(response.body).to include(I18n.t('profiles.no_changes'))
+    end
+  end
 end

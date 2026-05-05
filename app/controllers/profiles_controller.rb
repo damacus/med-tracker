@@ -65,7 +65,13 @@ class ProfilesController < ApplicationController
         end
       end
     else
-      redirect_to profile_path, alert: t('profiles.no_changes')
+      respond_to do |format|
+        format.html { redirect_to profile_path, alert: t('profiles.no_changes') }
+        format.turbo_stream do
+          flash.now[:alert] = t('profiles.no_changes')
+          render turbo_stream: turbo_stream.update('flash', Components::Layouts::Flash.new(alert: flash[:alert]))
+        end
+      end
     end
   end
 

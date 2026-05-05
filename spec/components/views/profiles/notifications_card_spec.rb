@@ -8,6 +8,8 @@ RSpec.describe Views::Profiles::NotificationsCard, type: :component do
   it 'renders a hidden test notification button wired to the push notification controller' do
     rendered = render_inline(described_class.new(person: people(:one)))
 
+    expect(rendered.at_css('#notifications-card')).to be_present
+
     test_button = rendered.at_css('button[data-push-notification-target="testButton"]')
 
     expect(test_button).to be_present

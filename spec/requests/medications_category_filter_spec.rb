@@ -22,9 +22,22 @@ RSpec.describe 'Medications category filter' do
     get medications_path
 
     expect(response).to have_http_status(:ok)
+    expect(response.body).to include('id="medications_inventory"')
+    expect(response.body).to include('data-turbo-frame="medications_inventory"')
     expect(response.body).to include('data-controller="ruby-ui--combobox"')
     expect(response.body).to include('name="category"')
     expect(response.body).to include(I18n.t('medications.index.all'))
+  end
+
+  it 'returns only the inventory frame when filtering from the Turbo frame' do
+    get medications_path(category: 'Vitamin'), headers: { 'Turbo-Frame' => 'medications_inventory' }
+
+    expect(response).to have_http_status(:ok)
+    expect(response.body).to include('id="medications_inventory"')
+    expect(response.body).to include('Vitamin D')
+    expect(response.body).to include('Vitamin C')
+    expect(response.body).not_to include('data-testid="medications-list"')
+    expect(response.body).not_to include('Paracetamol')
   end
 
   it 'filters medications by category and keeps selected value' do

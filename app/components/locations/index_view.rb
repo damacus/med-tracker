@@ -14,7 +14,8 @@ module Components
       end
 
       def view_template
-        div(class: 'container mx-auto px-4 py-12 max-w-6xl', data: { testid: 'locations-list' }) do
+        div(id: 'locations_index', class: 'container mx-auto px-4 py-12 max-w-6xl',
+            data: { testid: 'locations-list' }) do
           render_header
           render_locations_grid
         end

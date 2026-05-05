@@ -23,14 +23,7 @@ class MedicationsController < ApplicationController
       location_id: @current_location_id
     )
 
-    render Components::Medications::IndexView.new(
-      medications: medication_query.call,
-      current_category: @current_category,
-      categories: medication_query.categories,
-      locations: locations,
-      current_location_id: @current_location_id,
-      wizard_variant: current_user.wizard_variant
-    )
+    render_medications_index(medication_query:, locations:)
   end
 
   def show
@@ -132,8 +125,19 @@ class MedicationsController < ApplicationController
 
   def destroy
     authorize @medication
+    medication_id = @medication.id
     @medication.destroy
-    redirect_to medications_url, notice: t('medications.deleted')
+    respond_to do |format|
+      format.html { redirect_to medications_url, notice: t('medications.deleted') }
+      format.turbo_stream do
+        flash.now[:notice] = t('medications.deleted')
+        render turbo_stream: [
+          turbo_stream.remove("medication_#{medication_id}"),
+          turbo_stream.remove("medication_show_#{medication_id}"),
+          turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
+        ]
+      end
+    end
   end
 
   def mark_as_ordered

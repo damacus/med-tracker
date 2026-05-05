@@ -28,9 +28,19 @@ module MedicationRefillable
   end
 
   def medication_streams
+    medication = @medication.reload
     [
-      turbo_stream.replace("medication_show_#{@medication.id}", Components::Medications::ShowView.new(medication: @medication.reload)),
+      turbo_stream.replace("medication_show_#{medication.id}", Components::Medications::ShowView.new(medication: medication)),
+      turbo_stream.replace("medication_#{medication.id}", medication_list_item(medication)),
       turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
     ]
+  end
+
+  def medication_list_item(medication)
+    Components::Medications::ListItemComponent.new(
+      medication: medication,
+      inventory_query_params: {},
+      can_manage: policy(medication).update?
+    )
   end
 end
