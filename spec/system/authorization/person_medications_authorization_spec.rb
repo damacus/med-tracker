@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'Person Medications Authorization' do
-  fixtures :accounts, :people, :users, :locations, :medications, :carer_relationships
+  fixtures :accounts, :people, :users, :locations, :location_memberships, :medications, :carer_relationships
 
   before do |example|
     driven_by(example.metadata[:js] ? :playwright : :rack_test)
@@ -131,8 +131,8 @@ RSpec.describe 'Person Medications Authorization' do
       visit person_path(assigned_patient)
 
       within("#person_medication_#{person_medication.id}") do
-        expect(page).to have_button('💊 Give')
-        click_button '💊 Give'
+        expect(page).to have_button('Give')
+        click_button 'Give'
       end
       confirm_record_dose(person_medication)
 
@@ -144,7 +144,7 @@ RSpec.describe 'Person Medications Authorization' do
       visit person_path(assigned_patient)
 
       within("#person_medication_#{person_medication.id}") do
-        expect(page).to have_no_button('💊 Give')
+        expect(page).to have_no_button('Give')
       end
     end
 
@@ -153,7 +153,7 @@ RSpec.describe 'Person Medications Authorization' do
       visit person_path(assigned_patient)
 
       within("#person_medication_#{person_medication.id}") do
-        expect(page).to have_no_button('💊 Give')
+        expect(page).to have_no_button('Give')
       end
     end
 
@@ -203,7 +203,7 @@ RSpec.describe 'Person Medications Authorization' do
       visit person_path(assigned_patient)
 
       within("#person_medication_#{person_medication.id}") do
-        expect(page).to have_no_css('button svg')
+        expect(page).to have_no_css("[data-testid='delete-person-medication-#{person_medication.id}']")
       end
     end
 
@@ -212,7 +212,7 @@ RSpec.describe 'Person Medications Authorization' do
       visit person_path(assigned_patient)
 
       within("#person_medication_#{person_medication.id}") do
-        expect(page).to have_no_css('button svg')
+        expect(page).to have_no_css("[data-testid='delete-person-medication-#{person_medication.id}']")
       end
     end
 
@@ -221,7 +221,7 @@ RSpec.describe 'Person Medications Authorization' do
       visit person_path(assigned_patient)
 
       within("#person_medication_#{person_medication.id}") do
-        expect(page).to have_no_css('button svg')
+        expect(page).to have_no_css("[data-testid='delete-person-medication-#{person_medication.id}']")
       end
     end
   end
@@ -408,7 +408,7 @@ RSpec.describe 'Person Medications Authorization' do
     path = take_medication_person_person_medication_path(assigned_patient, person_medication)
 
     within("form[action='#{path}']") do
-      click_button '💊 Give'
+      click_button 'Give'
     end
   end
 end

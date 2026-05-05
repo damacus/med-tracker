@@ -6,7 +6,8 @@ module Components
       include Phlex::Rails::Helpers::FormWith
 
       attr_reader :source, :person, :current_user, :amount, :button_label, :button_variant, :button_size,
-                  :button_class, :disabled, :disabled_label, :testid, :disabled_testid, :form_class
+                  :button_class, :button_icon, :disabled, :disabled_label, :disabled_icon, :testid,
+                  :disabled_testid, :form_class
 
       def initialize(source:, context:, amount:, button:, state: {})
         @source = source
@@ -17,8 +18,10 @@ module Components
         @button_variant = button.fetch(:variant)
         @button_size = button.fetch(:size, :lg)
         @button_class = button.fetch(:class, '')
+        @button_icon = button[:icon]
         @disabled = state.fetch(:disabled, false)
         @disabled_label = state[:label]
+        @disabled_icon = state.fetch(:icon, button_icon)
         @testid = button.fetch(:testid)
         @disabled_testid = button.fetch(:disabled_testid, "#{testid}-disabled")
         @form_class = button.fetch(:form_class, 'flex-1')
@@ -42,7 +45,9 @@ module Components
           disabled: true,
           class: "#{button_class} grayscale",
           data: { testid: disabled_testid, test_id: disabled_testid }
-        ) { disabled_label }
+        ) do
+          render_button_content(disabled_label, disabled_icon)
+        end
       end
 
       def render_take_dialog
@@ -53,7 +58,9 @@ module Components
               size: button_size,
               class: button_class,
               data: { testid: testid, test_id: testid }
-            ) { button_label }
+            ) do
+              render_button_content(button_label, button_icon)
+            end
           end
 
           DialogContent(size: :md) do
@@ -93,10 +100,25 @@ module Components
                   variant: :filled,
                   class: 'w-full rounded-xl sm:w-auto',
                   data: { optimistic_take_target: 'button' }
-                ) { button_label }
+                ) do
+                  render_button_content(button_label, button_icon)
+                end
               end
             end
           end
+        end
+      end
+
+      def render_button_content(label, icon)
+        render icon.new(size: button_icon_size, aria_hidden: 'true', class: 'mr-2 shrink-0') if icon
+        plain label
+      end
+
+      def button_icon_size
+        case button_size
+        when :sm then 16
+        when :xl then 20
+        else 18
         end
       end
 

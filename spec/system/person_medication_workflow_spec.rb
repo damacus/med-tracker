@@ -3,7 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe 'Person medication workflow' do
-  fixtures :accounts, :people, :locations, :medications, :users, :person_medications
+  fixtures :accounts, :people, :locations, :location_memberships, :medications, :users, :carer_relationships,
+           :person_medications
 
   let(:person) { people(:child_user_person) }
   let(:parent) { users(:parent) }
@@ -62,8 +63,8 @@ RSpec.describe 'Person medication workflow' do
     created_person_medication = person.person_medications.order(:id).last
 
     within("#person_medication_#{created_person_medication.id}") do
-      expect(page).to have_button('💊 Give')
-      click_button '💊 Give'
+      expect(page).to have_button('Give')
+      click_button 'Give'
     end
     confirm_record_dose(created_person_medication)
 
@@ -72,7 +73,7 @@ RSpec.describe 'Person medication workflow' do
     within("#person_medication_#{created_person_medication.id}") do
       expect(page).to have_text(/today's doses/i)
       expect(page).to have_text(/2\.5 ml/i)
-      expect(page).to have_button('💊 Give', disabled: false)
+      expect(page).to have_button('Give', disabled: false)
       expect(page).to have_text('1/1')
     end
   end
@@ -81,7 +82,7 @@ RSpec.describe 'Person medication workflow' do
     path = take_medication_person_person_medication_path(person, person_medication)
 
     within("form[action='#{path}']") do
-      click_button '💊 Give'
+      click_button 'Give'
     end
   end
 end

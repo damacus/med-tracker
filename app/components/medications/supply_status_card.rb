@@ -42,8 +42,9 @@ module Components
 
             if presenter.supply_level.low_stock?
               div(class: 'pt-2 space-y-2') do
-                m3_badge(variant: :destructive, class: 'w-full py-2 justify-center text-xs tracking-wide') do
-                  t('medications.show.low_stock_alert')
+                m3_badge(variant: :destructive, class: 'w-full gap-1.5 py-2 justify-center text-xs tracking-wide') do
+                  render Icons::AlertCircle.new(size: 14, aria_hidden: 'true', class: 'shrink-0')
+                  plain t('medications.show.low_stock_alert')
                 end
 
                 render_reorder_status_badge if presenter.reorder_status_badge?

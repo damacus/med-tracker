@@ -40,6 +40,9 @@ RSpec.describe Components::PersonMedications::Card, type: :component do
 
       expect(countdown_div).to be_present, 'countdown notice should use warning-container background'
       expect(notes_div).to be_present, 'notes should use primary-container background'
+      expect(countdown_div.text).not_to match(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/)
+      expect(notes_div.text).not_to match(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/)
+      expect(notes_div.css('svg.lucide-file-text')).to be_present
     end
 
     it 'memoizes blocked reason resolution when the action button is visible' do

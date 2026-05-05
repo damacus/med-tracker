@@ -34,7 +34,7 @@ RSpec.describe Medications::SupplyStatusPresenter do
       presenter = described_class.new(medication:)
 
       expect(presenter.status_variant).to eq(:warning)
-      expect(presenter.status_label).to eq('⚠️ Low Stock Alert')
+      expect(presenter.status_label).to eq('Low Stock Alert')
     end
 
     it 'returns destructive for out of stock medications' do
