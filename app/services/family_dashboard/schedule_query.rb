@@ -30,25 +30,22 @@ module FamilyDashboard
     private
 
     def fetch_active_schedules
-      @people.each_with_object({}) do |person, hash|
-        schedules = if person.schedules.loaded?
-                      person.schedules.select(&:active?)
-                    else
-                      person.schedules.active.includes(:medication).to_a
-                    end
-        hash[person.id] = schedules
-      end
+      schedules_by_person_id = Schedule.active
+                                       .where(person_id: @person_ids)
+                                       .includes(:medication)
+                                       .to_a
+                                       .group_by(&:person_id)
+
+      @people.to_h { |person| [person.id, schedules_by_person_id.fetch(person.id, [])] }
     end
 
     def fetch_person_medications
-      @people.each_with_object({}) do |person, hash|
-        pms = if person.person_medications.loaded?
-                person.person_medications.to_a
-              else
-                person.person_medications.includes(:medication).to_a
-              end
-        hash[person.id] = pms
-      end
+      person_medications_by_person_id = PersonMedication.where(person_id: @person_ids)
+                                                        .includes(:medication)
+                                                        .to_a
+                                                        .group_by(&:person_id)
+
+      @people.to_h { |person| [person.id, person_medications_by_person_id.fetch(person.id, [])] }
     end
 
     def preload_takes

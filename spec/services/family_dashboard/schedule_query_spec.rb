@@ -11,6 +11,29 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
   let(:query) { described_class.new([jane, child]) }
 
   describe '#call' do
+    def count_source_queries(&)
+      counts = Hash.new(0)
+
+      subscriber = lambda do |_name, _start, _finish, _id, payload|
+        sql = payload[:sql]
+        next if payload[:cached] || payload[:name] == 'SCHEMA'
+
+        counts[:schedules] += 1 if sql.include?('FROM "schedules"') && sql.include?('"schedules"."person_id"')
+        counts[:person_medications] += 1 if sql.include?('FROM "person_medications"') &&
+                                            sql.include?('"person_medications"."person_id"')
+      end
+
+      ActiveSupport::Notifications.subscribed(subscriber, 'sql.active_record', &)
+      counts
+    end
+
+    it 'bulk loads dose sources for the dashboard family' do
+      counts = count_source_queries { query.call }
+
+      expect(counts[:schedules]).to eq(1)
+      expect(counts[:person_medications]).to eq(1)
+    end
+
     it 'returns an aggregated list of doses for the person and their dependents' do
       results = query.call
       expect(results).to be_an(Array)
