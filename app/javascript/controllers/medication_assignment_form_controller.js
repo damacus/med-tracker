@@ -254,11 +254,11 @@ export default class extends Controller {
   }
 
   #syncReview(medication, dose) {
-    this.#setReviewText("reviewFrequency", dose?.frequency || this.t("notSet"))
-    this.#setReviewText("reviewMaxDoses", dose?.default_max_daily_doses || this.t("notSet"))
-    this.#setReviewText("reviewMinHours", dose?.default_min_hours_between_doses || this.t("notSet"))
-    this.#setReviewText("reviewDoseCycle", dose?.default_dose_cycle || this.t("notSet"))
-    this.#setReviewText("reviewScheduleType", medication?.schedule_type_label || this.t("notSet"))
+    this.#setReviewText("reviewFrequency", dose?.frequency ?? this.t("notSet"))
+    this.#setReviewText("reviewMaxDoses", dose?.default_max_daily_doses ?? this.t("notSet"))
+    this.#setReviewText("reviewMinHours", dose?.default_min_hours_between_doses ?? this.t("notSet"))
+    this.#setReviewText("reviewDoseCycle", dose?.default_dose_cycle ?? this.t("notSet"))
+    this.#setReviewText("reviewScheduleType", medication?.schedule_type_label ?? this.t("notSet"))
     this.#setReviewText("reviewActiveDates", `${this.startDateValue} to ${this.endDateValue}`)
   }
 

@@ -79,4 +79,32 @@ RSpec.describe 'Person medication workflow' do
     expect(page).to have_no_text("Add Medication for #{person.name}")
     expect(page).to have_text(person.name)
   end
+
+  it 'shows zero minimum hours as a selected dose default' do
+    medication = medications(:ibuprofen)
+
+    visit person_path(person)
+
+    within '[data-testid="quick-actions"]' do
+      click_link 'Add Medication'
+    end
+
+    click_button 'Select a medication'
+    find('label', text: medication.name).click
+
+    page.execute_script(<<~JS, medication.id)
+      const form = document.querySelector("[data-controller~='medication-assignment-form']")
+      const controller = window.Stimulus.getControllerForElementAndIdentifier(form, "medication-assignment-form")
+      const options = controller.optionsValue
+      options[String(arguments[0])].dose_options[0].default_min_hours_between_doses = 0
+      controller.optionsValue = options
+      controller.updateMedication()
+    JS
+
+    select '200 mg - Light adult dose', from: 'Dose'
+    click_button 'Next'
+
+    expect(page).to have_css('[data-medication-assignment-form-target="reviewMinHours"]', text: /\A0\z/)
+    expect(page).to have_no_css('[data-medication-assignment-form-target="reviewMinHours"]', text: 'Not set')
+  end
 end

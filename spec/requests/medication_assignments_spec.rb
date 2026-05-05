@@ -88,6 +88,31 @@ RSpec.describe 'Medication assignments' do
       )
     end
 
+    it 'creates a schedule from a matching legacy dose fallback' do
+      medication = medications(:vitamin_c)
+
+      expect do
+        post person_medication_assignments_path(person),
+             params: {
+               medication_assignment: {
+                 medication_id: medication.id,
+                 dose_amount: '500.0',
+                 dose_unit: 'mg'
+               }
+             }
+      end.to change(Schedule, :count).by(1)
+
+      schedule = Schedule.order(:id).last
+
+      expect(schedule).to have_attributes(
+        medication: medication,
+        source_dosage_option: nil,
+        dose_amount: BigDecimal('500.0'),
+        dose_unit: 'mg',
+        frequency: 'As directed'
+      )
+    end
+
     it 'ignores submitted timing overrides and uses the selected dose defaults' do
       medication = medications(:ibuprofen)
       dosage = dosages(:ibuprofen_child)

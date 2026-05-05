@@ -83,7 +83,7 @@ class MedicationAssignmentCreator
   end
 
   def submitted_legacy_dose_matches?
-    medication.dosage_amount.to_s == assignment.dose_amount.to_s &&
+    BigDecimal(medication.dosage_amount.to_s) == assignment.dose_amount &&
       medication.dosage_unit == assignment.dose_unit
   end
 
