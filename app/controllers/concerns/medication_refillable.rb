@@ -27,6 +27,16 @@ module MedicationRefillable
     end
   end
 
+  def render_refill_success
+    respond_to do |format|
+      format.html { redirect_back_or_to @medication, notice: t('medications.refilled') }
+      format.turbo_stream do
+        flash.now[:notice] = t('medications.refilled')
+        render turbo_stream: medication_streams
+      end
+    end
+  end
+
   def medication_streams
     medication = @medication.reload
     [

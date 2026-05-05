@@ -35,13 +35,6 @@ class PersonMedication < ApplicationRecord
     dose_amount
   end
 
-  def reorder(direction)
-    adjacent = adjacent_record(direction)
-    return false unless adjacent
-
-    swap_positions_with(adjacent)
-  end
-
   def cycle_period
     DoseCycle.new(dose_cycle).period
   end
@@ -75,24 +68,6 @@ class PersonMedication < ApplicationRecord
     return if position.present?
 
     self.position = person.person_medications.maximum(:position).to_i + 1
-  end
-
-  def adjacent_record(direction)
-    case direction
-    when 'up'
-      person.person_medications.where(position: ...position).order(position: :desc, id: :desc).first
-    when 'down'
-      person.person_medications.where(position: (position + 1)..).order(position: :asc, id: :asc).first
-    end
-  end
-
-  def swap_positions_with(other)
-    self_position = position
-
-    transaction do
-      update!(position: other.position)
-      other.update!(position: self_position)
-    end
   end
 
   def legacy_record_without_resolvable_dose?

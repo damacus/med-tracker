@@ -12,18 +12,7 @@ class MedicationsController < ApplicationController
                 only: %i[show nhs_guidance administration edit update destroy refill mark_as_ordered mark_as_received]
 
   def index
-    @current_category = params[:category]
-    base_scope = policy_scope(Medication)
-    locations = accessible_inventory_locations(base_scope)
-    @current_location_id = resolved_inventory_location_id(locations)
-
-    medication_query = MedicationQuery.new(
-      scope: base_scope,
-      category: @current_category,
-      location_id: @current_location_id
-    )
-
-    render_medications_index(medication_query:, locations:)
+    render_medications_index_for_request
   end
 
   def show
@@ -81,7 +70,7 @@ class MedicationsController < ApplicationController
   end
 
   def create
-    @medication = Medication.new(onboarding_builder.merge_create_attributes(medication_params.to_h.deep_symbolize_keys))
+    @medication = build_medication_from_request
     @medication.location_id ||= primary_location&.id
     authorize @medication
 
@@ -89,109 +78,43 @@ class MedicationsController < ApplicationController
 
     result = create_medication_from_request
 
-    if result.success
-      create_success
-    elsif params[:wizard] == 'true'
-      render wizard_wrapper_class.new(
-        medication: @medication,
-        locations: available_locations,
-        people: available_people,
-        current_user: current_user
-      ), status: :unprocessable_content
-    else
-      render Components::Medications::FormView.new(
-        medication: @medication,
-        locations: available_locations,
-        title: t('medications.form.new_title'),
-        subtitle: t('medications.form.new_subtitle')
-      ), status: :unprocessable_content
-    end
+    return create_success if result.success
+
+    render_create_failure
   end
 
   def update
     authorize @medication
     if @medication.update(medication_params)
-      redirect_to safe_redirect_path(params[:return_to]) || @medication, notice: t('medications.updated')
+      redirect_update_success
     else
-      render Components::Medications::FormView.new(
-        medication: @medication,
-        locations: available_locations,
-        title: t('medications.form.edit_title'),
-        subtitle: t('medications.form.edit_subtitle', name: @medication.name),
-        return_to: url_from(params[:return_to])
-      ), status: :unprocessable_content
+      render_update_failure
     end
   end
 
   def destroy
     authorize @medication
-    medication_id = @medication.id
-    @medication.destroy
-    respond_to do |format|
-      format.html { redirect_to medications_url, notice: t('medications.deleted') }
-      format.turbo_stream do
-        flash.now[:notice] = t('medications.deleted')
-        render turbo_stream: [
-          turbo_stream.remove("medication_#{medication_id}"),
-          turbo_stream.remove("medication_show_#{medication_id}"),
-          turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
-        ]
-      end
-    end
+    destroy_medication
   end
 
   def mark_as_ordered
     authorize @medication
-    @medication.update!(reorder_status: :ordered, ordered_at: Time.current)
-    respond_to do |format|
-      format.html { redirect_back_or_to @medication, notice: t('medications.ordered') }
-      format.turbo_stream do
-        flash.now[:notice] = t('medications.ordered')
-        render turbo_stream: medication_streams
-      end
-    end
+    update_reorder_status(:ordered, notice: t('medications.ordered'))
   end
 
   def mark_as_received
     authorize @medication
-    @medication.update!(reorder_status: :received, reordered_at: Time.current)
-    respond_to do |format|
-      format.html { redirect_back_or_to @medication, notice: t('medications.received') }
-      format.turbo_stream do
-        flash.now[:notice] = t('medications.received')
-        render turbo_stream: medication_streams
-      end
-    end
+    update_reorder_status(:received, notice: t('medications.received'))
   end
 
   def refill
     authorize @medication, :update?
 
-    quantity = refill_quantity
-    restock_date = parse_restock_date
+    result = restock_medication
 
-    if quantity <= 0
-      render_refill_error('Quantity must be greater than 0')
-      return
-    end
+    return render_refill_error(result.error) unless result.success?
 
-    unless restock_date
-      render_refill_error('Restock date is invalid')
-      return
-    end
-
-    @medication.paper_trail_event = "restock (qty: #{quantity}, date: #{restock_date.iso8601})"
-    @medication.restock!(quantity: quantity)
-
-    respond_to do |format|
-      format.html { redirect_back_or_to @medication, notice: t('medications.refilled') }
-      format.turbo_stream do
-        flash.now[:notice] = t('medications.refilled')
-        render turbo_stream: medication_streams
-      end
-    end
-  rescue ActiveRecord::RecordInvalid => e
-    render_refill_error(e.record.errors.full_messages.to_sentence)
+    render_refill_success
   end
 
   def finder
@@ -212,23 +135,98 @@ class MedicationsController < ApplicationController
     @medication = policy_scope(Medication).find(params[:id])
   end
 
-  def create_medication_from_request
-    unless onboarding_schedule?
-      return MedicationOnboardingCreateService::Result.new(
-        success: @medication.save,
-        medication: @medication,
-        schedule: nil
-      )
-    end
+  def render_medications_index_for_request
+    @current_category = params[:category]
+    base_scope = policy_scope(Medication)
+    locations = accessible_inventory_locations(base_scope)
+    @current_location_id = resolved_inventory_location_id(locations)
 
+    render_medications_index(
+      medication_query: medication_query(base_scope),
+      locations: locations
+    )
+  end
+
+  def medication_query(base_scope)
+    MedicationQuery.new(
+      scope: base_scope,
+      category: @current_category,
+      location_id: @current_location_id
+    )
+  end
+
+  def destroy_medication
+    medication_id = @medication.id
+    @medication.destroy
+    render_destroy_success(medication_id)
+  end
+
+  def render_destroy_success(medication_id)
+    respond_to do |format|
+      format.html { redirect_to medications_url, notice: t('medications.deleted') }
+      format.turbo_stream do
+        flash.now[:notice] = t('medications.deleted')
+        render turbo_stream: destroy_medication_streams(medication_id)
+      end
+    end
+  end
+
+  def destroy_medication_streams(medication_id)
+    [
+      turbo_stream.remove("medication_#{medication_id}"),
+      turbo_stream.remove("medication_show_#{medication_id}"),
+      turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
+    ]
+  end
+
+  def build_medication_from_request
+    Medication.new(onboarding_builder.merge_create_attributes(medication_params.to_h.deep_symbolize_keys))
+  end
+
+  def redirect_update_success
+    redirect_to safe_redirect_path(params[:return_to]) || @medication, notice: t('medications.updated')
+  end
+
+  def render_update_failure
+    render Components::Medications::FormView.new(
+      medication: @medication,
+      locations: available_locations,
+      title: t('medications.form.edit_title'),
+      subtitle: t('medications.form.edit_subtitle', name: @medication.name),
+      return_to: url_from(params[:return_to])
+    ), status: :unprocessable_content
+  end
+
+  def update_reorder_status(status, notice:)
+    MedicationReorderStatusService.new.call(medication: @medication, status: status)
+    respond_to do |format|
+      format.html { redirect_back_or_to @medication, notice: notice }
+      format.turbo_stream do
+        flash.now[:notice] = notice
+        render turbo_stream: medication_streams
+      end
+    end
+  end
+
+  def restock_medication
+    RestockMedicationService.new.call(
+      medication: @medication,
+      quantity: params.dig(:refill, :quantity),
+      restock_date: params.dig(:refill, :restock_date)
+    )
+  end
+
+  def create_medication_from_request
     MedicationOnboardingCreateService.new(
       medication: @medication,
-      schedule_attributes: onboarding_schedule_params.to_h.deep_symbolize_keys,
+      schedule_attributes: onboarding_schedule_params_for_create,
       people_scope: policy_scope(Person)
     ).call
   end
 
-  def onboarding_schedule?
-    params[:wizard] == 'true' && params[:onboarding_schedule].present?
+  def onboarding_schedule_params_for_create
+    return nil unless params[:wizard] == 'true' && params[:onboarding_schedule].present?
+
+    onboarding_schedule_params.to_h.deep_symbolize_keys
   end
 end

@@ -5,13 +5,25 @@ class MedicationOnboardingCreateService
 
   attr_reader :medication, :schedule_attributes, :people_scope
 
-  def initialize(medication:, schedule_attributes:, people_scope:)
+  def initialize(medication:, schedule_attributes: nil, people_scope: nil)
     @medication = medication
     @schedule_attributes = schedule_attributes
     @people_scope = people_scope
   end
 
   def call
+    return save_medication unless schedule_requested?
+
+    save_medication_with_schedule
+  end
+
+  private
+
+  def save_medication
+    Result.new(success: medication.save, medication: medication, schedule: nil)
+  end
+
+  def save_medication_with_schedule
     schedule = nil
     success = false
 
@@ -32,7 +44,9 @@ class MedicationOnboardingCreateService
     Result.new(success: success, medication: medication, schedule: schedule)
   end
 
-  private
+  def schedule_requested?
+    schedule_attributes.present? && people_scope.present?
+  end
 
   def build_schedule
     schedule_person.schedules.build(schedule_attributes_for(primary_dosage_option))
