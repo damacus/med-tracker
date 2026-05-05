@@ -83,7 +83,7 @@ RSpec.describe 'Admin create and update turbo flows' do
   end
 
   describe 'POST /admin/users' do
-    it 'follows turbo redirect to index on success' do
+    it 'returns turbo_stream and replaces users index and flash on success' do
       post admin_users_path,
            params: {
              user: {
@@ -100,8 +100,12 @@ RSpec.describe 'Admin create and update turbo flows' do
            },
            headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
 
-      expect(response).to have_http_status(:redirect)
-      expect(response).to redirect_to(admin_users_path)
+      expect(response).to have_http_status(:ok)
+      expect(response.media_type).to eq('text/vnd.turbo-stream.html')
+      expect(response.body).to include('target="main-content"')
+      expect(response.body).to include('id="admin-users-frame"')
+      expect(response.body).to include('target="flash"')
+      expect(response.body).to include('Turbo New User')
     end
 
     it 'returns unprocessable content on validation failure' do
@@ -130,7 +134,7 @@ RSpec.describe 'Admin create and update turbo flows' do
   end
 
   describe 'PATCH /admin/users/:id' do
-    it 'follows turbo redirect to index on success' do
+    it 'returns turbo_stream and replaces users index and flash on success' do
       patch admin_user_path(users(:jane)),
             params: {
               user: {
@@ -146,8 +150,12 @@ RSpec.describe 'Admin create and update turbo flows' do
             },
             headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
 
-      expect(response).to have_http_status(:redirect)
-      expect(response).to redirect_to(admin_users_path)
+      expect(response).to have_http_status(:ok)
+      expect(response.media_type).to eq('text/vnd.turbo-stream.html')
+      expect(response.body).to include('target="main-content"')
+      expect(response.body).to include('id="admin-users-frame"')
+      expect(response.body).to include('target="flash"')
+      expect(response.body).to include('Jane Turbo Update')
       expect(users(:jane).person.reload.name).to eq('Jane Turbo Update')
     end
   end

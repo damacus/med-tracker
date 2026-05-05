@@ -47,6 +47,7 @@ RSpec.describe 'Medications refill' do
       expect(response).to have_http_status(:ok)
       expect(response.media_type).to eq('text/vnd.turbo-stream.html')
       expect(response.body).to include("target=\"medication_show_#{medication.id}\"")
+      expect(response.body).to include("target=\"medication_#{medication.id}\"")
       expect(response.body).to include('target="flash"')
     end
 
@@ -58,6 +59,7 @@ RSpec.describe 'Medications refill' do
       expect(response).to have_http_status(:unprocessable_content)
       expect(response.media_type).to eq('text/vnd.turbo-stream.html')
       expect(response.body).to include("target=\"medication_show_#{medication.id}\"")
+      expect(response.body).to include("target=\"medication_#{medication.id}\"")
       expect(response.body).to include('target="flash"')
     end
   end

@@ -5,31 +5,41 @@ module Components
     class IndexView < Components::Base
       include Phlex::Rails::Helpers::TurboFrameTag
 
-      attr_reader :medications, :current_category, :categories, :locations, :current_location_id, :wizard_variant
+      attr_reader :medications, :current_category, :categories, :locations, :current_location_id, :wizard_variant,
+                  :frame_only
 
       def initialize(medications:, current_category: nil, categories: [], locations: [], # rubocop:disable Metrics/ParameterLists
-                     current_location_id: nil, wizard_variant: 'fullpage')
+                     current_location_id: nil, wizard_variant: 'fullpage', frame_only: false)
         @medications = medications
         @current_category = current_category
         @categories = categories
         @locations = locations
         @current_location_id = current_location_id
         @wizard_variant = wizard_variant
+        @frame_only = frame_only
         super()
       end
 
       def view_template
+        return render_inventory_frame if frame_only
+
         div(class: 'container mx-auto px-4 py-12 max-w-6xl', data: { testid: 'medications-list' }) do
           render_header
-          div(class: header_content_offset_class, data: { testid: 'medications-content' }) do
-            render_filters_section
-            render_medications_grid
-          end
+          render_inventory_frame
           turbo_frame_tag 'modal'
         end
       end
 
       private
+
+      def render_inventory_frame
+        turbo_frame_tag 'medications_inventory',
+                        class: header_content_offset_class,
+                        data: { testid: 'medications-content' } do
+          render_filters_section
+          render_medications_grid
+        end
+      end
 
       def render_header
         div(class: 'flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-border mb-12') do

@@ -4,8 +4,7 @@ class LocationsController < ApplicationController
   before_action :set_location, only: %i[show edit update destroy]
 
   def index
-    locations = locations_query.index
-    render Components::Locations::IndexView.new(locations: locations)
+    render locations_index_view
   end
 
   def show
@@ -39,34 +38,60 @@ class LocationsController < ApplicationController
     authorize @location
 
     if @location.save
-      redirect_to @location, notice: t('locations.created')
+      respond_to do |format|
+        format.html { redirect_to @location, notice: t('locations.created') }
+        format.turbo_stream do
+          flash.now[:notice] = t('locations.created')
+          render turbo_stream: location_main_content_streams(@location.reload)
+        end
+      end
     else
-      render Components::Locations::FormView.new(
-        location: @location,
-        title: 'New Location',
-        subtitle: 'Add a new medication storage location'
-      ), status: :unprocessable_content
+      respond_to do |format|
+        format.html { render new_location_form, status: :unprocessable_content }
+        format.turbo_stream do
+          render turbo_stream: turbo_stream.replace('main-content', new_location_form),
+                 status: :unprocessable_content
+        end
+      end
     end
   end
 
   def update
     authorize @location
     if @location.update(location_params)
-      redirect_to safe_redirect_path(params[:return_to]) || @location, notice: t('locations.updated')
+      respond_to do |format|
+        format.html { redirect_to safe_redirect_path(params[:return_to]) || @location, notice: t('locations.updated') }
+        format.turbo_stream do
+          flash.now[:notice] = t('locations.updated')
+          render turbo_stream: location_main_content_streams(@location.reload)
+        end
+      end
     else
-      render Components::Locations::FormView.new(
-        location: @location,
-        title: 'Edit Location',
-        subtitle: @location.name,
-        return_to: url_from(params[:return_to])
-      ), status: :unprocessable_content
+      respond_to do |format|
+        format.html { render edit_location_form, status: :unprocessable_content }
+        format.turbo_stream do
+          render turbo_stream: turbo_stream.replace('main-content', edit_location_form),
+                 status: :unprocessable_content
+        end
+      end
     end
   end
 
   def destroy
     authorize @location
+    location_id = @location.id
     @location.destroy
-    redirect_to locations_url, notice: t('locations.deleted')
+    respond_to do |format|
+      format.html { redirect_to locations_url, notice: t('locations.deleted') }
+      format.turbo_stream do
+        flash.now[:notice] = t('locations.deleted')
+        render turbo_stream: [
+          turbo_stream.remove("location_#{location_id}"),
+          turbo_stream.remove("location_show_#{location_id}"),
+          turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
+        ]
+      end
+    end
   end
 
   private
@@ -81,5 +106,33 @@ class LocationsController < ApplicationController
 
   def locations_query
     LocationsQuery.new(scope: policy_scope(Location))
+  end
+
+  def locations_index_view
+    Components::Locations::IndexView.new(locations: locations_query.index)
+  end
+
+  def new_location_form
+    Components::Locations::FormView.new(
+      location: @location,
+      title: 'New Location',
+      subtitle: 'Add a new medication storage location'
+    )
+  end
+
+  def edit_location_form
+    Components::Locations::FormView.new(
+      location: @location,
+      title: 'Edit Location',
+      subtitle: @location.name,
+      return_to: url_from(params[:return_to])
+    )
+  end
+
+  def location_main_content_streams(location)
+    [
+      turbo_stream.replace('main-content', Components::Locations::ShowView.new(location: location)),
+      turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
+    ]
   end
 end

@@ -21,7 +21,7 @@ module Views
       end
 
       def view_template
-        Card do
+        Card(id: 'notifications-card') do
           render CardHeader.new do
             render(CardTitle.new { t('profiles.notifications.title') })
             render(CardDescription.new { t('profiles.notifications.description') })

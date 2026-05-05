@@ -21,6 +21,7 @@ RSpec.describe 'Locations' do
       it 'returns HTTP success' do
         get locations_path
         expect(response).to have_http_status(:success)
+        expect(response.body).to include('id="locations_index"')
       end
     end
 
@@ -57,6 +58,7 @@ RSpec.describe 'Locations' do
       it 'returns HTTP success' do
         get location_path(location)
         expect(response).to have_http_status(:success)
+        expect(response.body).to include("id=\"location_show_#{location.id}\"")
       end
     end
 
@@ -131,6 +133,20 @@ RSpec.describe 'Locations' do
         expect(response).to redirect_to(location_path(Location.last))
       end
 
+      it 'returns turbo_stream and replaces main content and flash on success' do
+        expect do
+          post locations_path,
+               params: { location: { name: 'Turbo Office', description: 'Work office' } },
+               headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+        end.to change(Location, :count).by(1)
+
+        expect(response).to have_http_status(:ok)
+        expect(response.media_type).to eq('text/vnd.turbo-stream.html')
+        expect(response.body).to include('target="main-content"')
+        expect(response.body).to include("id=\"location_show_#{Location.last.id}\"")
+        expect(response.body).to include('target="flash"')
+      end
+
       it 'renders form with invalid params' do
         post locations_path, params: { location: { name: '' } }
         expect(response).to have_http_status(:unprocessable_content)
@@ -148,6 +164,19 @@ RSpec.describe 'Locations' do
         patch location_path(location), params: { location: { name: 'Updated Home' } }
         expect(response).to redirect_to(location_path(location))
         expect(location.reload.name).to eq('Updated Home')
+      end
+
+      it 'returns turbo_stream and replaces main content and flash on success' do
+        patch location_path(location),
+              params: { location: { name: 'Turbo Updated Home' } },
+              headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+        expect(response).to have_http_status(:ok)
+        expect(response.media_type).to eq('text/vnd.turbo-stream.html')
+        expect(response.body).to include('target="main-content"')
+        expect(response.body).to include("id=\"location_show_#{location.id}\"")
+        expect(response.body).to include('Turbo Updated Home')
+        expect(response.body).to include('target="flash"')
       end
 
       it 'renders form with invalid params' do
@@ -169,6 +198,18 @@ RSpec.describe 'Locations' do
         end.to change(Location, :count).by(-1)
 
         expect(response).to redirect_to(locations_path)
+      end
+
+      it 'returns turbo_stream and removes location targets and updates flash' do
+        expect do
+          delete location_path(location), headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+        end.to change(Location, :count).by(-1)
+
+        expect(response).to have_http_status(:ok)
+        expect(response.media_type).to eq('text/vnd.turbo-stream.html')
+        expect(response.body).to include("target=\"location_#{location.id}\"")
+        expect(response.body).to include("target=\"location_show_#{location.id}\"")
+        expect(response.body).to include('target="flash"')
       end
     end
 

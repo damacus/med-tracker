@@ -34,4 +34,17 @@ module InventoryLocationFilterable
       nil
     end
   end
+
+  def render_medications_index(medication_query:, locations:)
+    frame_only = request.headers['Turbo-Frame'] == 'medications_inventory'
+    render Components::Medications::IndexView.new(
+      medications: medication_query.call,
+      current_category: @current_category,
+      categories: medication_query.categories,
+      locations: locations,
+      current_location_id: @current_location_id,
+      wizard_variant: current_user.wizard_variant,
+      frame_only: frame_only
+    ), layout: !frame_only
+  end
 end

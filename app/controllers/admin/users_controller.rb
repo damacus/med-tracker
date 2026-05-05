@@ -41,7 +41,7 @@ module Admin
       create_user_with_account!
       respond_to do |format|
         format.html { redirect_to admin_users_path, notice: t('users.created') }
-        format.turbo_stream { redirect_to admin_users_path, notice: t('users.created') }
+        format.turbo_stream { render_users_index_turbo(t('users.created')) }
       end
     rescue ActiveRecord::RecordInvalid => e
       handle_record_invalid_error(e)
@@ -58,7 +58,7 @@ module Admin
       respond_to do |format|
         if @user.update(user_params)
           format.html { redirect_to admin_users_path, notice: t('users.updated') }
-          format.turbo_stream { redirect_to admin_users_path, notice: t('users.updated') }
+          format.turbo_stream { render_users_index_turbo(t('users.updated')) }
         else
           format.html do
             render Components::Admin::Users::FormView.new(user: @user, locations: load_locations), status: :unprocessable_content
@@ -174,6 +174,23 @@ module Admin
 
     def render_user_form_with_errors
       render Components::Admin::Users::FormView.new(user: @user, locations: load_locations), status: :unprocessable_content
+    end
+
+    def render_users_index_turbo(message)
+      flash.now[:notice] = message
+      render turbo_stream: [
+        turbo_stream.replace('main-content', admin_users_index_view),
+        turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
+      ]
+    end
+
+    def admin_users_index_view
+      users = Admin::UsersIndexQuery.new(
+        scope: policy_scope(User),
+        filters: search_params.to_h.symbolize_keys
+      ).call
+      @pagy, users = pagy(:offset, users)
+      Components::Admin::Users::IndexView.new(users: users, search_params: search_params, current_user: current_user, pagy: @pagy)
     end
 
     def search_params
