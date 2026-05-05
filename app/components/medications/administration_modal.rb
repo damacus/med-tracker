@@ -67,6 +67,7 @@ module Components
                 label: t('medications.show.log_administration'),
                 variant: :filled,
                 size: :lg,
+                icon: Icons::Pill,
                 class: 'w-full rounded-full lg:w-auto',
                 testid: "log-administration-#{option.class.name.underscore}-#{option.id}",
                 form_class: 'w-full lg:w-auto'

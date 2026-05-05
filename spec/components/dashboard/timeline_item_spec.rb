@@ -124,5 +124,11 @@ RSpec.describe Components::Dashboard::TimelineItem, type: :component do
 
       expect(rendered.css('button[type="submit"]')).not_to be_empty
     end
+
+    it 'renders the action button with a pill icon' do
+      rendered = render_inline(described_class.new(dose: dose))
+
+      expect(rendered.css("button[data-testid='take-dose-schedule_#{source.id}'] svg.lucide-pill")).to be_present
+    end
   end
 end
