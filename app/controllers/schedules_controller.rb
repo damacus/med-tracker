@@ -4,6 +4,9 @@ class SchedulesController < ApplicationController
   include TimelineRefreshable
   include PersonViewable
   include ScheduleModalRenderable
+  include ScheduleMutationRenderable
+  include ScheduleTakeRenderable
+  include ScheduleWorkflowRenderable
   include TakeMedicationGuardable
   include ScheduleIndexPersonResolvable
   include ScheduleResourceResolvable
@@ -20,64 +23,25 @@ class SchedulesController < ApplicationController
 
   def workflow
     authorize Schedule.new(person: current_user&.person || Person.new), :create?
-    workflow_options = schedule_workflow_query.options
-    @people = workflow_options.people
-    @medications = workflow_options.medications
-    @selected_person_id = params[:person_id]
-    @selected_medication_id = params[:medication_id]
-    @schedule_type = params[:schedule_type]
-    @frequency = params[:frequency]
-
-    render Components::Schedules::WorkflowView.new(
-      people: @people,
-      medications: @medications,
-      selected_person_id: @selected_person_id,
-      selected_medication_id: @selected_medication_id,
-      schedule_type: @schedule_type,
-      frequency: @frequency
-    )
+    render_schedule_workflow
   end
 
   def start_workflow
     authorize Schedule.new(person: current_user&.person || Person.new), :create?
-    selection = schedule_workflow_query.selection(
-      person_id: params.require(:person_id),
-      medication_id: params.require(:medication_id)
-    )
-    frequency = params[:frequency].to_s
-    schedule_type = params[:schedule_type].to_s
-
-    redirect_to new_person_schedule_path(
-      selection.person,
-      medication_id: selection.medication.id,
-      frequency: frequency,
-      schedule_type: schedule_type
-    )
+    redirect_to selected_schedule_workflow_path
   end
 
   def new
-    @schedule = @person.schedules.build
-    @schedule.medication_id = params[:medication_id] if params[:medication_id].present?
-    @schedule.frequency = params[:frequency] if params[:frequency].present?
+    prepare_new_schedule
     authorize @schedule
     @medications = medication_options_query.call
-    render_schedule_form(
-      schedule: @schedule,
-      medications: @medications,
-      title: t('schedules.modal.new_title', person: @person.name),
-      back_path: modal_back_path(@person)
-    )
+    render_new_schedule_form
   end
 
   def edit
     authorize @schedule
     @medications = medication_options_query.call
-    render_schedule_form(
-      schedule: @schedule,
-      medications: @medications,
-      title: t('schedules.modal.edit_title', person: @person.name),
-      editing: true
-    )
+    render_edit_schedule_form
   end
 
   def create
@@ -86,68 +50,25 @@ class SchedulesController < ApplicationController
     @medications = medication_options_query.call
 
     if @schedule.save
-      respond_to do |format|
-        format.html { redirect_to person_path(@person), notice: t('schedules.created') }
-        format.turbo_stream do
-          flash.now[:notice] = t('schedules.created')
-          render turbo_stream: [
-            turbo_stream.update('modal', ''),
-            turbo_stream.replace("person_#{@person.id}", Components::People::PersonCard.new(person: @person.reload)),
-            turbo_stream.replace("person_show_#{@person.id}", person_show_view(@person.reload)),
-            turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
-          ]
-        end
-      end
+      render_schedule_create_success
     else
-      @medications = medication_options_query.call
-      render_schedule_form(
-        schedule: @schedule,
-        medications: @medications,
-        title: t('schedules.modal.new_title', person: @person.name),
-        status: :unprocessable_content
-      )
+      render_schedule_create_failure
     end
   end
 
   def update
     authorize @schedule
     if @schedule.update(schedule_params)
-      respond_to do |format|
-        format.html { redirect_to person_path(@person), notice: t('schedules.updated') }
-        format.turbo_stream do
-          flash.now[:notice] = t('schedules.updated')
-          render turbo_stream: [
-            turbo_stream.update('modal', ''),
-            turbo_stream.replace("person_show_#{@person.id}", person_show_view(@person.reload)),
-            turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
-          ]
-        end
-      end
+      render_schedule_update_success
     else
-      @medications = medication_options_query.call
-      render_schedule_form(
-        schedule: @schedule,
-        medications: @medications,
-        title: t('schedules.modal.edit_title', person: @person.name),
-        editing: true,
-        status: :unprocessable_content
-      )
+      render_schedule_update_failure
     end
   end
 
   def destroy
     authorize @schedule
     @schedule.destroy
-    respond_to do |format|
-      format.html { redirect_back_or_to person_path(@person), notice: t('schedules.deleted') }
-      format.turbo_stream do
-        flash.now[:notice] = t('schedules.deleted')
-        render turbo_stream: [
-          turbo_stream.replace("person_show_#{@person.id}", person_show_view(@person.reload)),
-          turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
-        ]
-      end
-    end
+    render_schedule_destroy_success
   end
 
   def take_medication
@@ -155,32 +76,10 @@ class SchedulesController < ApplicationController
     taken_at = medication_taken_at_or_respond(scope: 'schedules')
     return unless taken_at
 
-    result = TakeMedicationService.new.call(
-      source: @schedule,
-      amount_override: params[:amount_ml],
-      taken_from_medication_id: requested_taken_from_medication_id,
-      user: current_user,
-      taken_at: taken_at
-    )
+    result = take_schedule(taken_at)
+    return handle_schedule_take_failure(result) unless result.success
 
-    if result.error == :invalid_amount
-      log_invalid_take_attempt(source: 'schedule', amount: nil,
-                               metadata: { schedule_id: @schedule.id,
-                                           medication_id: @schedule.medication_id })
-    end
-
-    return handle_take_medication_failure(result.error, scope: 'schedules') unless result.success
-
-    @take = result.take
-    respond_to do |format|
-      format.html { redirect_back_or_to person_path(@person), notice: t('schedules.medication_taken') }
-      format.turbo_stream do
-        flash.now[:notice] = t('schedules.medication_taken')
-        streams = build_timeline_streams_for(@schedule.reload, @take)
-        streams << turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice]))
-        render turbo_stream: streams
-      end
-    end
+    render_schedule_take_success(result.take)
   end
 
   private
