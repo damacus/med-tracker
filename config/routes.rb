@@ -111,6 +111,7 @@ Rails.application.routes.draw do
         post :take_medication
       end
     end
+    resources :medication_assignments, only: %i[new create]
   end
 
   resource :push_subscription, only: %i[create destroy] do

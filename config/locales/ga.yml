@@ -707,6 +707,17 @@ ga:
       add_medication_button: "Cuir Leigheas Leis"
       save_changes_button: "Sábháil Athruithe"
 
+  medication_assignments:
+    modal:
+      subtitle: "Cuir sonraí leighis leis ó na réamhshocruithe sábháilte"
+    form:
+      review_title: "Athbhreithniú"
+      review_description: "Seiceáil an dáileog roghnaithe agus na réamhshocruithe sceidil sábháilte."
+      frequency: "Minicíocht"
+      schedule_type: "Cineál sceidil"
+      active_dates: "Dátaí gníomhacha"
+      not_set: "Gan socrú"
+
   schedules:
     created: "Cruthaíodh an t-oideas leigheasanna go rathúil."
     updated: "Nuashonraíodh an t-oideas leigheasanna go rathúil."

@@ -737,6 +737,17 @@ en:
       add_medication_button: "Add Medication"
       save_changes_button: "Save Changes"
 
+  medication_assignments:
+    modal:
+      subtitle: "Add medication details from saved defaults"
+    form:
+      review_title: "Review"
+      review_description: "Check the selected dose and saved schedule defaults."
+      frequency: "Frequency"
+      schedule_type: "Schedule type"
+      active_dates: "Active dates"
+      not_set: "Not set"
+
   dosages:
     created: "Dosage was successfully added."
     updated: "Dosage was successfully updated."

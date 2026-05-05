@@ -14,13 +14,9 @@ RSpec.describe 'Add schedule modal flow' do
 
   it 'opens add schedule modal from person page and creates a schedule via turbo' do
     login_as(admin)
-    visit person_path(person)
+    visit new_person_schedule_path(person)
 
-    within '[data-testid="quick-actions"]' do
-      click_on 'Add Medication'
-    end
-    click_on 'Prescribed / Scheduled'
-    expect(page).to have_text("New Schedule for #{person.name}")
+    expect(page).to have_text("Add schedule for #{person.name}")
     expect(page).to have_text('Choose a medication')
 
     find_by_id('medication_trigger').click
@@ -41,25 +37,20 @@ RSpec.describe 'Add schedule modal flow' do
     expect(page).to have_text('Ibuprofen')
   end
 
-  it 'closes the add schedule modal cleanly when cancelled from the details step' do
+  it 'closes the add medication assignment cleanly when cancelled' do
     login_as(admin)
     visit person_path(person)
 
     within '[data-testid="quick-actions"]' do
       click_on 'Add Medication'
     end
-    click_on 'Prescribed / Scheduled'
 
-    find_by_id('medication_trigger').click
-    find('label', text: 'Ibuprofen', visible: :all, wait: 10).click
+    expect(page).to have_text("Add Medication for #{person.name}")
 
-    expect(page).to have_text("New Schedule for #{person.name}")
-    expect(page).to have_text('Schedule details')
-
-    click_on 'Cancel', match: :prefer_exact
+    click_on 'Cancel'
 
     expect(page).to have_current_path(person_path(person))
-    expect(page).to have_no_text("New Schedule for #{person.name}")
+    expect(page).to have_no_text("Add Medication for #{person.name}")
     expect(page).to have_text(person.name)
   end
 end

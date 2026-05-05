@@ -5,6 +5,7 @@ paracetamol:
   category: Analgesic
   dosage_amount: 500
   dosage_unit: "mg"
+  default_schedule_type: 4
   current_supply: 80
   supply_at_last_restock: 80
   expiry_date: <%= 2.years.from_now.to_date %>

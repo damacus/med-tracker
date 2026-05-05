@@ -28,6 +28,7 @@ class MedicationOnboardingCreateService
     success = false
 
     ActiveRecord::Base.transaction do
+      assign_medication_schedule_defaults
       raise ActiveRecord::Rollback unless medication.save
 
       schedule = build_schedule
@@ -50,6 +51,11 @@ class MedicationOnboardingCreateService
 
   def build_schedule
     schedule_person.schedules.build(schedule_attributes_for(primary_dosage_option))
+  end
+
+  def assign_medication_schedule_defaults
+    medication.default_schedule_type = schedule_attributes[:schedule_type].presence || 'multiple_daily'
+    medication.default_schedule_config = normalized_schedule_config
   end
 
   def primary_dosage_option

@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'Person Medications', type: :system do
-  fixtures :accounts, :people, :locations, :medications, :users, :person_medications
+  fixtures :accounts, :people, :locations, :location_memberships, :medications, :users, :person_medications
 
   let(:person) { people(:john) }
   let(:user) { users(:john) }
@@ -13,10 +13,10 @@ RSpec.describe 'Person Medications', type: :system do
     login_as(user)
   end
 
-  describe 'adding a non-schedule medication' do
+  describe 'adding a medication assignment' do
     let(:new_medication) { medications(:vitamin_c) }
 
-    it 'allows adding an as-needed medication without a schedule', :js do
+    it 'allows adding a medication from predefined defaults', :js do
       visit person_path(person)
 
       expect(page).to have_text('Medications')
@@ -24,26 +24,21 @@ RSpec.describe 'Person Medications', type: :system do
       within '[data-testid="quick-actions"]' do
         click_link 'Add Medication'
       end
-      click_link 'As needed'
 
       click_button 'Select a medication'
       find('label', text: new_medication.name).click
 
       expect(page).to have_text('Choose the dose')
-      # Wait for the async fetch to populate the select options
-      expect(page).to have_css('#person_medication_dose_option option', text: '500 mg', visible: :all)
+      expect(page).to have_css('#medication_assignment_dose_option option', text: '500 mg', visible: :all)
       select '500 mg', from: 'Dose'
       click_button 'Next'
 
-      expect(page).to have_text('Add optional guidance')
-      fill_in 'person_medication_notes', with: 'Take with breakfast'
-      fill_in 'person_medication_max_daily_doses', with: '1'
+      expect(page).to have_text('Review')
 
       click_button 'Add Medication'
 
-      expect(page).to have_text('Medication added successfully')
+      expect(page).to have_text('Schedule was successfully created.')
       expect(page).to have_text(new_medication.name)
-      expect(page).to have_text('Take with breakfast')
     end
   end
 

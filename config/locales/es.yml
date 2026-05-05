@@ -707,6 +707,17 @@ es:
         add_guidance_title: "Añade orientación opcional"
         add_guidance_description: "Añade notas o límites de dosis que quieras seguir con este medicamento."
 
+  medication_assignments:
+    modal:
+      subtitle: "Añade detalles del medicamento desde los valores guardados"
+    form:
+      review_title: "Revisar"
+      review_description: "Comprueba la dosis seleccionada y los valores de programación guardados."
+      frequency: "Frecuencia"
+      schedule_type: "Tipo de programación"
+      active_dates: "Fechas activas"
+      not_set: "Sin definir"
+
   schedules:
     created: "Receta creada correctamente."
     updated: "Receta actualizada correctamente."

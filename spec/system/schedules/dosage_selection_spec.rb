@@ -14,12 +14,7 @@ RSpec.describe 'Schedule dosage selection' do
 
   it 'auto-advances to schedule details after medication selection' do
     login_as(admin)
-    visit person_path(person)
-
-    within '[data-testid="quick-actions"]' do
-      click_on 'Add Medication'
-    end
-    click_on 'Prescribed / Scheduled'
+    visit new_person_schedule_path(person)
 
     expect(page).to have_text('Choose a medication')
 
@@ -51,12 +46,7 @@ RSpec.describe 'Schedule dosage selection' do
     )
 
     login_as(admin)
-    visit person_path(person)
-
-    within '[data-testid="quick-actions"]' do
-      click_on 'Add Medication'
-    end
-    click_on 'Prescribed / Scheduled'
+    visit new_person_schedule_path(person)
 
     find_by_id('medication_trigger').click
     find('label', text: 'Dose-less medication', visible: :all, wait: 10).click

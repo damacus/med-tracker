@@ -64,6 +64,12 @@ RSpec.describe 'Medication wizard dose option follow-up' do
     expect(body).not_to include('target="dosage-list"')
     expect(medication.current_supply).to eq(10)
     expect(medication.reorder_threshold).to eq(1)
+    expect(medication.default_schedule_type).to eq('multiple_daily')
+    expect(medication.default_schedule_config).to include(
+      'schedule_type' => 'multiple_daily',
+      'frequency' => 'Twice daily',
+      'times' => %w[08:00 20:00]
+    )
     expect(medication.dosage_records.count).to eq(1)
     expect(dosage).to have_attributes(
       amount: BigDecimal('2.5'),
