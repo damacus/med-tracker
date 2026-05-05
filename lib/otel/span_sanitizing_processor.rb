@@ -21,11 +21,11 @@ module Otel
 
     def on_finish(_span); end
 
-    def force_flush(timeout: nil) # rubocop:disable Lint/UnusedMethodArgument
+    def force_flush(**_)
       OpenTelemetry::SDK::Trace::Export::SUCCESS
     end
 
-    def shutdown(timeout: nil) # rubocop:disable Lint/UnusedMethodArgument
+    def shutdown(**_)
       OpenTelemetry::SDK::Trace::Export::SUCCESS
     end
   end
