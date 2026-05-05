@@ -16,6 +16,18 @@ RSpec.describe Medications::SupplyStatusPresenter do
       expect(presenter.status_label).to eq('Ordered')
     end
 
+    it 'prioritizes reorder received status over stock state' do
+      medication = create(:medication,
+                          current_supply: 5,
+                          reorder_threshold: 10,
+                          reorder_status: :received)
+
+      presenter = described_class.new(medication:)
+
+      expect(presenter.status_variant).to eq(:success)
+      expect(presenter.status_label).to eq('Received')
+    end
+
     it 'returns warning for low stock medications' do
       medication = create(:medication, current_supply: 5, reorder_threshold: 10)
 
@@ -25,6 +37,15 @@ RSpec.describe Medications::SupplyStatusPresenter do
       expect(presenter.status_label).to eq('⚠️ Low Stock Alert')
     end
 
+    it 'returns destructive for out of stock medications' do
+      medication = create(:medication, current_supply: 0, reorder_threshold: 10)
+
+      presenter = described_class.new(medication:)
+
+      expect(presenter.status_variant).to eq(:destructive)
+      expect(presenter.status_label).to eq('Out of Stock')
+    end
+
     it 'returns success for in stock medications' do
       medication = create(:medication, current_supply: 50, reorder_threshold: 10)
 
@@ -32,6 +53,93 @@ RSpec.describe Medications::SupplyStatusPresenter do
 
       expect(presenter.status_variant).to eq(:success)
       expect(presenter.status_label).to eq('In Stock')
+    end
+  end
+
+  describe '#stock_count_class' do
+    it 'returns error class when stock is low' do
+      medication = create(:medication, current_supply: 5, reorder_threshold: 10)
+      presenter = described_class.new(medication:)
+
+      expect(presenter.stock_count_class).to eq('text-5xl font-black text-on-error-container')
+    end
+
+    it 'returns primary class when stock is normal' do
+      medication = create(:medication, current_supply: 50, reorder_threshold: 10)
+      presenter = described_class.new(medication:)
+
+      expect(presenter.stock_count_class).to eq('text-5xl font-black text-primary')
+    end
+  end
+
+  describe '#supply_bar_class' do
+    it 'returns error class when stock is low' do
+      medication = create(:medication, current_supply: 5, reorder_threshold: 10)
+      presenter = described_class.new(medication:)
+
+      expect(presenter.supply_bar_class).to eq('bg-error')
+    end
+
+    it 'returns primary class when stock is normal' do
+      medication = create(:medication, current_supply: 50, reorder_threshold: 10)
+      presenter = described_class.new(medication:)
+
+      expect(presenter.supply_bar_class).to eq('bg-primary')
+    end
+  end
+
+  describe '#list_supply_bar_class' do
+    it 'returns destructive class when stock is low' do
+      medication = create(:medication, current_supply: 5, reorder_threshold: 10)
+      presenter = described_class.new(medication:)
+
+      expect(presenter.list_supply_bar_class).to eq('bg-destructive')
+    end
+
+    it 'returns primary class when stock is normal' do
+      medication = create(:medication, current_supply: 50, reorder_threshold: 10)
+      presenter = described_class.new(medication:)
+
+      expect(presenter.list_supply_bar_class).to eq('bg-primary')
+    end
+  end
+
+  describe '#remaining_units_label' do
+    it 'returns singular label for 1 unit' do
+      medication = create(:medication, current_supply: 1, reorder_threshold: 10)
+      presenter = described_class.new(medication:)
+
+      expect(presenter.remaining_units_label).to eq('unit remaining')
+    end
+
+    it 'returns plural label for multiple units' do
+      medication = create(:medication, current_supply: 5, reorder_threshold: 10)
+      presenter = described_class.new(medication:)
+
+      expect(presenter.remaining_units_label).to eq('units remaining')
+    end
+
+    it 'returns plural label for 0 units' do
+      medication = create(:medication, current_supply: 0, reorder_threshold: 10)
+      presenter = described_class.new(medication:)
+
+      expect(presenter.remaining_units_label).to eq('units remaining')
+    end
+  end
+
+  describe '#inventory_units_label' do
+    it 'returns singular label for 1 unit' do
+      medication = create(:medication, current_supply: 1, reorder_threshold: 10)
+      presenter = described_class.new(medication:)
+
+      expect(presenter.inventory_units_label).to eq('1 unit')
+    end
+
+    it 'returns plural label for multiple units' do
+      medication = create(:medication, current_supply: 5, reorder_threshold: 10)
+      presenter = described_class.new(medication:)
+
+      expect(presenter.inventory_units_label).to eq('5 units')
     end
   end
 
@@ -71,6 +179,78 @@ RSpec.describe Medications::SupplyStatusPresenter do
 
       expect(described_class.new(medication: low_stock).reorder_status_badge?).to be(true)
       expect(described_class.new(medication: in_stock).reorder_status_badge?).to be(false)
+    end
+  end
+
+  describe '#reorder_status_variant' do
+    it 'returns default for ordered status' do
+      medication = create(:medication, current_supply: 5, reorder_threshold: 10, reorder_status: :ordered)
+      presenter = described_class.new(medication:)
+
+      expect(presenter.reorder_status_variant).to eq(:default)
+    end
+
+    it 'returns success for received status' do
+      medication = create(:medication, current_supply: 5, reorder_threshold: 10, reorder_status: :received)
+      presenter = described_class.new(medication:)
+
+      expect(presenter.reorder_status_variant).to eq(:success)
+    end
+
+    it 'returns outline when there is no status' do
+      medication = create(:medication, current_supply: 5, reorder_threshold: 10, reorder_status: nil)
+      presenter = described_class.new(medication:)
+
+      expect(presenter.reorder_status_variant).to eq(:outline)
+    end
+  end
+
+  describe '#reorder_status_label' do
+    it 'returns label for ordered status' do
+      medication = create(:medication, current_supply: 5, reorder_threshold: 10, reorder_status: :ordered)
+      presenter = described_class.new(medication:)
+
+      expect(presenter.reorder_status_label).to eq('Ordered')
+    end
+
+    it 'returns label for received status' do
+      medication = create(:medication, current_supply: 5, reorder_threshold: 10, reorder_status: :received)
+      presenter = described_class.new(medication:)
+
+      expect(presenter.reorder_status_label).to eq('Received')
+    end
+  end
+
+  describe '#reorder_status_timestamp' do
+    it 'returns reordered_at for received status' do
+      timestamp = Time.zone.parse('2024-01-01 12:00:00')
+      medication = create(:medication,
+                          current_supply: 5,
+                          reorder_threshold: 10,
+                          reorder_status: :received,
+                          reordered_at: timestamp)
+      presenter = described_class.new(medication:)
+
+      expect(presenter.reorder_status_timestamp).to eq(timestamp)
+    end
+
+    it 'returns ordered_at for ordered status' do
+      timestamp = Time.zone.parse('2024-01-01 12:00:00')
+      medication = create(:medication,
+                          current_supply: 5,
+                          reorder_threshold: 10,
+                          reorder_status: :ordered,
+                          ordered_at: timestamp)
+      presenter = described_class.new(medication:)
+
+      expect(presenter.reorder_status_timestamp).to eq(timestamp)
+    end
+
+    it 'returns nil when no status' do
+      medication = create(:medication, current_supply: 5, reorder_threshold: 10, reorder_status: nil)
+      presenter = described_class.new(medication:)
+
+      expect(presenter.reorder_status_timestamp).to be_nil
     end
   end
 end
