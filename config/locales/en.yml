@@ -896,6 +896,7 @@ en:
       passkey_helper: "Use Face ID, Touch ID, Windows Hello, or a security key."
       passkey_cta: "Continue with Passkey"
       passkey_not_supported: "Passkeys are not supported in this browser."
+      passkey_cancelled: "Passkey sign-in was cancelled. Try again or use your password."
       passkey_error: "We could not sign you in with that passkey. Try again or use your password."
       oauth_continue: "Continue with %{provider}"
       oauth_sso: "Login with %{provider} (SSO)"

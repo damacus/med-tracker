@@ -839,6 +839,7 @@ es:
       passkey_helper: "Usa Face ID, Touch ID, Windows Hello o una llave de seguridad."
       passkey_cta: "Continuar con Passkey"
       passkey_not_supported: "Las passkeys no son compatibles con este navegador."
+      passkey_cancelled: "Se canceló el inicio de sesión con passkey. Inténtelo de nuevo o use su contraseña."
       passkey_error: "No pudimos iniciar sesión con esa passkey. Inténtelo de nuevo o use su contraseña."
       oauth_continue: "Continuar con %{provider}"
       oauth_sso: "Iniciar sesión con %{provider} (SSO)"

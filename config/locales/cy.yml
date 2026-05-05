@@ -870,6 +870,7 @@ cy:
       passkey_helper: "Defnyddiwch Face ID, Touch ID, Windows Hello, neu allwedd ddiogelwch."
       passkey_cta: "Parhau gyda Phasskey"
       passkey_not_supported: "Nid yw passkeys yn cael eu cefnogi yn y porwr hwn."
+      passkey_cancelled: "Cafodd mewngofnodi gyda phasskey ei ganslo. Ceisiwch eto neu defnyddiwch eich cyfrinair."
       passkey_error: "Nid oedd modd eich mewngofnodi gyda'r passkey hwn. Ceisiwch eto neu defnyddiwch eich cyfrinair."
       oauth_continue: "Parhau gyda %{provider}"
       oauth_sso: "Mewngofnodi gyda %{provider} (SSO)"
