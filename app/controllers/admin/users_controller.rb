@@ -139,10 +139,10 @@ module Admin
     end
 
     private
-    def load_locations
-      @locations ||= Location.all.to_a
-    end
 
+    def load_locations
+      @load_locations ||= Location.all.to_a
+    end
 
     def account_already_exists?
       return false unless Account.exists?(email: @user.email_address)
