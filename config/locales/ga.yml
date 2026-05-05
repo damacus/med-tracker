@@ -773,6 +773,7 @@ ga:
       passkey_helper: "Bain úsáid as Face ID, Touch ID, Windows Hello, nó eochair slándála."
       passkey_cta: "Lean ar aghaidh le Passkey"
       passkey_not_supported: "Ní thacaítear le passkeys sa bhrabhsálaí seo."
+      passkey_cancelled: "Cealaíodh síniú isteach le passkey. Bain triail eile as nó úsáid do phasfhocal."
       passkey_error: "Níorbh fhéidir linn tú a shíniú isteach leis an passkey sin. Bain triail eile as nó úsáid do phasfhocal."
       oauth_continue: "Lean ar aghaidh le %{provider}"
       oauth_sso: "Logáil isteach le %{provider} (SSO)"

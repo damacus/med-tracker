@@ -70,6 +70,7 @@ module Views
                  'hover:border-teal-500/60 hover:bg-surface-container-low focus-visible:outline-none ' \
                  'focus-visible:ring-2 focus-visible:ring-teal-500/25 disabled:cursor-not-allowed disabled:opacity-38',
           data_error_unsupported: t('sessions.login.passkey_not_supported'),
+          data_error_cancelled: t('sessions.login.passkey_cancelled'),
           data_error_failed: t('sessions.login.passkey_error')
         }
       end

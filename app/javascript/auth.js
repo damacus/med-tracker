@@ -170,9 +170,11 @@ const initPasskeyLogin = () => {
     try {
       await requestCredential();
     } catch (error) {
-      if (!noopError(error)) {
-        setError(trigger.dataset.errorFailed || trigger.dataset.errorUnsupported);
-      }
+      setError(
+        noopError(error)
+          ? trigger.dataset.errorCancelled || trigger.dataset.errorFailed
+          : trigger.dataset.errorFailed || trigger.dataset.errorUnsupported,
+      );
     }
   });
 

@@ -183,7 +183,16 @@ class RodauthMain < Rodauth::Rails::Auth
 
     webauthn_origin { ENV.fetch('APP_URL', request.base_url) }
     webauthn_user_verification 'required'
+    webauthn_authenticator_selection do
+      {
+        'residentKey' => 'required',
+        'requireResidentKey' => true,
+        'userVerification' => webauthn_user_verification
+      }
+    end
     webauthn_login_user_verification_additional_factor? true
+    webauthn_login_error_flash { I18n.t('sessions.login.passkey_error') }
+    webauthn_invalid_webauthn_id_message { I18n.t('sessions.login.passkey_error') }
 
     # Configure WebAuthn table column mappings for Rails conventions
     webauthn_user_ids_account_id_column :account_id

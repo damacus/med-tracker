@@ -53,4 +53,14 @@ RSpec.describe 'PASSKEY-001: WebAuthn/Passkey configuration' do
     expect(auth.send(:webauthn_login_user_verification_additional_factor?)).to be(true)
     expect(auth.webauthn_user_verification).to eq('required')
   end
+
+  scenario 'passkey registration requires discoverable credentials' do
+    auth = RodauthApp.rodauth.allocate
+
+    expect(auth.webauthn_authenticator_selection).to include(
+      'residentKey' => 'required',
+      'requireResidentKey' => true,
+      'userVerification' => 'required'
+    )
+  end
 end
