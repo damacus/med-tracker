@@ -28,7 +28,8 @@ RSpec.describe 'GET /medication-finder/search' do
             code: '39720311000001101',
             display: 'Aspirin 300mg tablets',
             system: 'https://dmd.nhs.uk',
-            concept_class: 'VMP'
+            concept_class: 'VMP',
+            pil_url: 'https://www.medicines.org.uk/emc/product/13866/pil'
           )
         ]
       end
@@ -54,6 +55,7 @@ RSpec.describe 'GET /medication-finder/search' do
         expect(json['results'].first['display']).to eq('Aspirin 300mg tablets')
         expect(json['results'].first['code']).to eq('39720311000001101')
         expect(json['results'].first['concept_class']).to eq('VMP')
+        expect(json['results'].first['pil_url']).to eq('https://www.medicines.org.uk/emc/product/13866/pil')
       end
 
       it 'includes existing medication metadata when the result matches accessible stock' do

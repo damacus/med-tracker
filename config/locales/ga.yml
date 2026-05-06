@@ -611,6 +611,7 @@ ga:
       source: Foinse
       barcode: Barrachód
       dmd_code: cód dm+d
+      pil_link: Bileog eolais don othar
       result_count:
         one: '%{count} toradh do "%{query}"'
         other: '%{count} torthaí do "%{query}"'

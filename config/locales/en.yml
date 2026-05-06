@@ -606,6 +606,7 @@ en:
       source: Source
       barcode: Barcode
       dmd_code: dm+d code
+      pil_link: Patient information leaflet
       result_count:
         one: '%{count} result for "%{query}"'
         other: '%{count} results for "%{query}"'

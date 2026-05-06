@@ -1,9 +1,11 @@
 # frozen_string_literal: true
 
+require 'uri'
+
 module NhsDmd
   class SearchResult
     attr_reader :barcode, :code, :display, :system, :concept_class, :match_reason, :name, :category, :package_size,
-                :package_quantity, :package_unit, :description, :directions, :warnings
+                :package_quantity, :package_unit, :description, :directions, :warnings, :pil_url
 
     def initialize(code:, display:, system:, **attributes)
       @code = code
@@ -13,20 +15,35 @@ module NhsDmd
     end
 
     def assign_optional_attributes(attributes)
+      assign_source_attributes(attributes)
+      assign_package_attributes(attributes)
+      assign_guidance_attributes(attributes)
+    end
+
+    private :assign_optional_attributes
+
+    def assign_source_attributes(attributes)
       @barcode = attributes[:barcode]
       @concept_class = attributes[:concept_class]
       @match_reason = attributes[:match_reason]
       @name = attributes[:name]
       @category = attributes[:category]
+    end
+
+    def assign_package_attributes(attributes)
       @package_size = attributes[:package_size]
       @package_quantity = attributes[:package_quantity]
       @package_unit = attributes[:package_unit]
+    end
+
+    def assign_guidance_attributes(attributes)
       @description = attributes[:description]
       @directions = attributes[:directions]
       @warnings = attributes[:warnings]
+      @pil_url = safe_https_url(attributes[:pil_url])
     end
 
-    private :assign_optional_attributes
+    private :assign_source_attributes, :assign_package_attributes, :assign_guidance_attributes
 
     def concept_class_label
       case concept_class
@@ -59,6 +76,10 @@ module NhsDmd
     private
 
     def core_attributes
+      identity_attributes.merge(package_attributes, guidance_attributes)
+    end
+
+    def identity_attributes
       {
         barcode: barcode,
         code: code,
@@ -67,12 +88,23 @@ module NhsDmd
         display: display,
         system: system,
         concept_class: concept_class,
-        category: category,
+        category: category
+      }
+    end
+
+    def package_attributes
+      {
         package_size: package_size,
         package_quantity: package_quantity,
-        package_unit: package_unit,
+        package_unit: package_unit
+      }
+    end
+
+    def guidance_attributes
+      {
         directions: directions,
-        warnings: warnings
+        warnings: warnings,
+        pil_url: pil_url
       }
     end
 
@@ -83,6 +115,18 @@ module NhsDmd
         match_reason: match_reason,
         match_reason_label: match_reason_label
       }
+    end
+
+    def safe_https_url(url)
+      normalized_url = url.to_s.strip
+      return if normalized_url.blank?
+
+      uri = URI.parse(normalized_url)
+      return unless uri.is_a?(URI::HTTPS) && uri.host.present?
+
+      uri.to_s
+    rescue URI::InvalidURIError
+      nil
     end
   end
 end

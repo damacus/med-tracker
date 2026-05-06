@@ -13,7 +13,8 @@ RSpec.describe 'Medication Lookup', type: :system do
         code: '39720311000001101',
         display: 'Aspirin 300mg tablets',
         system: 'https://dmd.nhs.uk',
-        concept_class: 'VMP'
+        concept_class: 'VMP',
+        pil_url: 'https://www.medicines.org.uk/emc/product/13866/pil'
       },
       {
         code: '39720411000001102',
@@ -70,6 +71,12 @@ RSpec.describe 'Medication Lookup', type: :system do
     expect(page).to have_text('Aspirin 300mg tablets')
     expect(page).to have_text('Aspirin 75mg tablets')
     expect(page).to have_text('VMP')
+    expect(page).to have_link('Patient information leaflet', href: 'https://www.medicines.org.uk/emc/product/13866/pil')
+
+    pil_link = find_link('Patient information leaflet')
+    expect(pil_link[:target]).to eq('_blank')
+    expect(pil_link[:rel]).to include('noopener')
+    expect(pil_link[:rel]).to include('noreferrer')
   end
 
   it 'Search returns no results' do

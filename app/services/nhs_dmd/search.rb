@@ -135,6 +135,7 @@ module NhsDmd
         package_unit: item[:package_unit],
         directions: item[:directions],
         warnings: item[:warnings],
+        pil_url: item[:pil_url],
         match_reason: item[:match_reason]
       }
     end

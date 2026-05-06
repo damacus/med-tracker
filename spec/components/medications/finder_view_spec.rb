@@ -15,7 +15,8 @@ RSpec.describe Components::Medications::FinderView, type: :component do
       'loading' => I18n.t('medications.finder.loading'),
       'resultsTitle' => I18n.t('medications.finder.results_title'),
       'dmdCode' => I18n.t('medications.finder.dmd_code'),
-      'updateStock' => 'Update stock'
+      'updateStock' => 'Update stock',
+      'pilLink' => I18n.t('medications.finder.pil_link')
     )
     expect(payload.fetch('resultCount')).to include(
       'one' => I18n.t('medications.finder.result_count.one'),

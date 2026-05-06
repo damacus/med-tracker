@@ -616,6 +616,7 @@ es:
       source: Fuente
       barcode: Código de barras
       dmd_code: código dm+d
+      pil_link: Prospecto para el paciente
       result_count:
         one: '%{count} resultado para "%{query}"'
         other: '%{count} resultados para "%{query}"'

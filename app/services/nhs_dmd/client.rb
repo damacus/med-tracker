@@ -16,6 +16,17 @@ module NhsDmd
     SEARCH_CACHE_TTL = 12.hours
     TOKEN_CACHE_TTL = 50.minutes
     TIMEOUT_SECONDS = 10
+    PIL_URL_KEYS = %w[
+      pil_url
+      pilUrl
+      patient_information_leaflet
+      patientInformationLeaflet
+      patient_information_leaflet_url
+      patientInformationLeafletUrl
+    ].freeze
+    PIL_VALUE_KEYS = %w[valueUrl valueUri valueString valueCanonical].freeze
+    PIL_EXTENSION_MATCHER = /(?:\bpil\b|patient[-_\s]?information[-_\s]?leaflet)/i
+    PIL_URL_VALUE_MATCHER = %r{(?:/pil(?:[/?#]|$)|patient[-_\s]?information[-_\s]?leaflet)}i
 
     VMP_VALUE_SET = 'https://dmd.nhs.uk/ValueSet/VMP'
     AMP_VALUE_SET = 'https://dmd.nhs.uk/ValueSet/AMP'
@@ -95,7 +106,8 @@ module NhsDmd
         code: item['code'],
         display: item['display'],
         system: item['system'],
-        concept_class: extract_concept_class(item)
+        concept_class: extract_concept_class(item),
+        pil_url: extract_pil_url(item)
       }
     end
 
@@ -105,6 +117,40 @@ module NhsDmd
         ext['url'] == 'http://hl7.org/fhir/StructureDefinition/valueset-concept-comments'
       end
       comment_ext&.dig('valueString')
+    end
+
+    def extract_pil_url(item)
+      direct_pil_url(item) || extension_pil_url(item)
+    end
+
+    def direct_pil_url(item)
+      PIL_URL_KEYS.filter_map { |key| item[key].presence }.first
+    end
+
+    def extension_pil_url(item)
+      extension_pil_urls(Array(item['extension'])).first
+    end
+
+    def extension_pil_urls(extensions)
+      extensions.flat_map do |extension|
+        values = []
+        value = extension_url_value(extension)
+        values << value if pil_extension?(extension) || pil_url_value?(value)
+        values.concat(extension_pil_urls(Array(extension['extension'])))
+        values
+      end.compact
+    end
+
+    def extension_url_value(extension)
+      PIL_VALUE_KEYS.filter_map { |key| extension[key].presence }.first
+    end
+
+    def pil_extension?(extension)
+      extension['url'].to_s.match?(PIL_EXTENSION_MATCHER)
+    end
+
+    def pil_url_value?(value)
+      value.to_s.match?(PIL_URL_VALUE_MATCHER)
     end
 
     def authenticated?

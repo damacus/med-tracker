@@ -21,6 +21,7 @@ module Components
               source: t('medications.finder.source'),
               barcode: t('medications.finder.barcode'),
               dmdCode: t('medications.finder.dmd_code'),
+              pilLink: t('medications.finder.pil_link'),
               addMedication: t('medications.index.add_medication'),
               updateStock: t('medications.finder.update_stock', default: 'Update stock'),
               resultCount: {

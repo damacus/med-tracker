@@ -47,14 +47,27 @@ module NhsDmdStubs
         code: r[:code],
         display: r[:display],
         system: r[:system],
-        extension: [
-          {
-            url: 'http://hl7.org/fhir/StructureDefinition/valueset-concept-comments',
-            valueString: r[:concept_class]
-          }
-        ]
+        extension: fhir_extensions_for(r)
       }
     end
+  end
+
+  def fhir_extensions_for(result)
+    extension = [
+      {
+        url: 'http://hl7.org/fhir/StructureDefinition/valueset-concept-comments',
+        valueString: result[:concept_class]
+      }
+    ]
+
+    if result[:pil_url].present?
+      extension << {
+        url: 'https://medtracker.test/fhir/StructureDefinition/patient-information-leaflet',
+        valueUrl: result[:pil_url]
+      }
+    end
+
+    extension
   end
 end
 
