@@ -132,12 +132,9 @@ class PeopleController < ApplicationController
 
   def add_medication
     authorize @person, :show?
-    back = params[:source] == 'workflow' ? add_medication_path : nil
-    render Components::People::AddMedicationLanding.new(
-      person: @person,
-      can_schedule: policy(Schedule.new(person: @person)).create?,
-      can_person_medication: policy(PersonMedication.new(person: @person)).create?,
-      back_path: back,
+    redirect_to new_person_medication_assignment_path(
+      @person,
+      source: params[:source],
       medication_id: params[:medication_id]
     )
   end

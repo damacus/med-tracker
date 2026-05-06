@@ -3,8 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe 'Person medication workflow' do
-  fixtures :accounts, :people, :locations, :location_memberships, :medications, :users, :carer_relationships,
-           :person_medications
+  fixtures :accounts, :people, :locations, :location_memberships, :medications, :dosages, :users,
+           :person_medications, :carer_relationships
 
   let(:person) { people(:child_user_person) }
   let(:parent) { users(:parent) }
@@ -14,75 +14,97 @@ RSpec.describe 'Person medication workflow' do
     login_as(parent)
   end
 
-  it 'lets a parent create and administer an as-needed medication for a linked child until the daily limit is hit' do
+  it 'lets a parent add a medication from predefined doses without choosing a medication type' do
     visit person_path(person)
 
     within '[data-testid="quick-actions"]' do
       click_link 'Add Medication'
     end
-    click_link 'As needed'
 
-    expect(page).to have_button('Cancel')
+    expect(page).to have_no_text('Prescribed / Scheduled')
+    expect(page).to have_no_text('How is this medication taken?')
+    expect(page).to have_link('Cancel')
     expect(page).to have_button('Next', disabled: true)
     expect(page).to have_no_button('Back')
     expect(page).to have_no_button('Add Medication')
-    expect(page).to have_button('Next', disabled: true)
 
     click_button 'Select a medication'
-    find('label', text: 'Calpol').click
+    find('label', text: 'Paracetamol').click
 
     expect(page).to have_text('Choose the dose')
-    expect(page).to have_button('Cancel')
+    expect(page).to have_link('Cancel')
     expect(page).to have_button('Back')
-    expect(page).to have_button('Next', disabled: false)
+    expect(page).to have_button('Next', disabled: true)
     expect(page).to have_css('div.max-w-md')
     expect(page).to have_text('Medication')
-    expect(page).to have_text('Calpol')
+    expect(page).to have_text('Paracetamol')
 
-    expect(page).to have_no_text('Standard child dose')
-    expect(page).to have_select('Dose', with_options: ['2.5 ml'])
-    select '2.5 ml', from: 'Dose'
+    expect(page).to have_select('Dose', with_options: ['250 mg - Standard child dose (6-12 years)'])
+    select '250 mg - Standard child dose (6-12 years)', from: 'Dose'
     click_button 'Next'
 
-    expect(page).to have_text('Add optional guidance')
-    expect(page).to have_text('Dose')
-    expect(page).to have_text('2.5 ml')
+    expect(page).to have_text('Review')
+    expect(page).to have_text(/dose/i)
+    expect(page).to have_text('250 mg')
+    expect(page).to have_text('Every 4-6 hours')
+    expect(page).to have_text('As needed')
     expect(page).to have_no_button('Next')
     expect(page).to have_button('Back')
-    expect(page).to have_button('Cancel')
+    expect(page).to have_link('Cancel')
     expect(page).to have_button('Add Medication')
-
-    fill_in 'person_medication_notes', with: 'Workflow test'
-    fill_in 'person_medication_max_daily_doses', with: '1'
 
     click_button 'Add Medication'
 
-    expect(page).to have_text('Medication added successfully')
-    expect(page).to have_text('Workflow test')
+    expect(page).to have_text('Schedule was successfully created.')
+    expect(page).to have_no_text("Add Medication for #{person.name}")
+    expect(page).to have_text(person.name)
+    expect(page).to have_text('Paracetamol')
 
-    created_person_medication = person.person_medications.order(:id).last
-
-    within("#person_medication_#{created_person_medication.id}") do
-      expect(page).to have_button('Give')
-      click_button 'Give'
-    end
-    confirm_record_dose(created_person_medication)
-
-    expect(page).to have_text('Medication taken successfully')
-
-    within("#person_medication_#{created_person_medication.id}") do
-      expect(page).to have_text(/today's doses/i)
-      expect(page).to have_text(/2\.5 ml/i)
-      expect(page).to have_button('Give', disabled: false)
-      expect(page).to have_text('1/1')
-    end
+    created_schedule = person.schedules.order(:id).last
+    expect(created_schedule.schedule_type).to eq('prn')
+    expect(created_schedule.source_dosage_option).to eq(dosages(:paracetamol_child))
   end
 
-  def confirm_record_dose(person_medication)
-    path = take_medication_person_person_medication_path(person, person_medication)
+  it 'does not leave a blank page when cancelled' do
+    visit person_path(person)
 
-    within("form[action='#{path}']") do
-      click_button 'Give'
+    within '[data-testid="quick-actions"]' do
+      click_link 'Add Medication'
     end
+
+    expect(page).to have_text("Add Medication for #{person.name}")
+    click_on 'Cancel'
+
+    expect(page).to have_current_path(person_path(person))
+    expect(page).to have_no_text("Add Medication for #{person.name}")
+    expect(page).to have_text(person.name)
+  end
+
+  it 'shows zero minimum hours as a selected dose default' do
+    medication = medications(:ibuprofen)
+
+    visit person_path(person)
+
+    within '[data-testid="quick-actions"]' do
+      click_link 'Add Medication'
+    end
+
+    click_button 'Select a medication'
+    find('label', text: medication.name).click
+
+    page.execute_script(<<~JS, medication.id)
+      const form = document.querySelector("[data-controller~='medication-assignment-form']")
+      const controller = window.Stimulus.getControllerForElementAndIdentifier(form, "medication-assignment-form")
+      const options = controller.optionsValue
+      options[String(arguments[0])].dose_options[0].default_min_hours_between_doses = 0
+      controller.optionsValue = options
+      controller.updateMedication()
+    JS
+
+    select '200 mg - Light adult dose', from: 'Dose'
+    click_button 'Next'
+
+    expect(page).to have_css('[data-medication-assignment-form-target="reviewMinHours"]', text: /\A0\z/)
+    expect(page).to have_no_css('[data-medication-assignment-form-target="reviewMinHours"]', text: 'Not set')
   end
 end

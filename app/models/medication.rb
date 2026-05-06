@@ -54,6 +54,8 @@ class Medication < ApplicationRecord # :nodoc:
 
   accepts_nested_attributes_for :dosage_records, allow_destroy: true, reject_if: :blank_dosage_record_attributes?
 
+  enum :default_schedule_type, Schedule.schedule_types, prefix: :default_schedule_type
+
   validate :single_dose_switch_requires_no_schedules
   validate :nested_dosage_records_are_valid
   after_commit :sync_dosages, on: :update

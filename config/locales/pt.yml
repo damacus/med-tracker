@@ -707,6 +707,17 @@ pt:
       add_medication_button: "Adicionar Medicamento"
       save_changes_button: "Guardar Alterações"
 
+  medication_assignments:
+    modal:
+      subtitle: "Adicione detalhes do medicamento a partir das predefinições guardadas"
+    form:
+      review_title: "Rever"
+      review_description: "Confirme a dose selecionada e as predefinições da agenda guardadas."
+      frequency: "Frequência"
+      schedule_type: "Tipo de agenda"
+      active_dates: "Datas ativas"
+      not_set: "Não definido"
+
   schedules:
     created: "Receita criada com sucesso."
     updated: "Receita atualizada com sucesso."

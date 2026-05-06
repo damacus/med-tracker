@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'Person Medications Authorization' do
-  fixtures :accounts, :people, :users, :locations, :location_memberships, :medications, :carer_relationships
+  fixtures :accounts, :people, :users, :locations, :location_memberships, :medications, :dosages, :carer_relationships
 
   before do |example|
     driven_by(example.metadata[:js] ? :playwright : :rack_test)
@@ -30,21 +30,19 @@ RSpec.describe 'Person Medications Authorization' do
         expect(page).to have_link('Add Medication')
         click_link 'Add Medication'
       end
-      click_link 'As needed'
       click_button 'Select a medication'
       find('label', text: medication.name).click
       expect(page).to have_text('Choose the dose')
       expect(page).to have_select('Dose', with_options: ['1000 IU - Daily Vitamin D supplement'])
       select '1000 IU - Daily Vitamin D supplement', from: 'Dose'
       click_button 'Next'
-      expect(page).to have_text('Add optional guidance')
-      fill_in 'person_medication_notes', with: 'Test notes'
+      expect(page).to have_text('Review')
       click_button 'Add Medication'
 
-      expect(page).to have_text('Medication added successfully')
+      expect(page).to have_text('Schedule was successfully created.')
     end
 
-    it 'allows doctors to add scheduled medications but not as-needed medications', :js do
+    it 'allows doctors to open the unified medication assignment flow', :js do
       login_as(doctor)
       visit person_path(assigned_patient)
 
@@ -54,8 +52,9 @@ RSpec.describe 'Person Medications Authorization' do
         click_link 'Add Medication'
       end
 
-      expect(page).to have_text('Prescribed / Scheduled')
-      expect(page).to have_no_text('As needed')
+      expect(page).to have_text('Choose a medication')
+      expect(page).to have_no_text('Prescribed / Scheduled')
+      expect(page).to have_no_text('How is this medication taken?')
     end
 
     it 'denies nurses ability to add medications' do
@@ -93,18 +92,16 @@ RSpec.describe 'Person Medications Authorization' do
         expect(page).to have_link('Add Medication')
         click_link 'Add Medication'
       end
-      click_link 'As needed'
       click_button 'Select a medication'
       find('label', text: medication.name).click
       expect(page).to have_text('Choose the dose')
       expect(page).to have_select('Dose', with_options: ['1000 IU - Daily Vitamin D supplement'])
       select '1000 IU - Daily Vitamin D supplement', from: 'Dose'
       click_button 'Next'
-      expect(page).to have_text('Add optional guidance')
-      fill_in 'person_medication_notes', with: 'Parent-added medication'
+      expect(page).to have_text('Review')
       click_button 'Add Medication'
 
-      expect(page).to have_text('Medication added successfully')
+      expect(page).to have_text('Schedule was successfully created.')
       expect(page).to have_text(medication.name)
     end
 

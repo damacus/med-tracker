@@ -41,7 +41,7 @@ module Components
         div(class: 'grid grid-cols-1 gap-3 py-2') do
           people.each do |person|
             a(
-              href: add_medication_person_path(person, source: :workflow, medication_id: medication_id),
+              href: new_person_medication_assignment_path(person, source: :workflow, medication_id: medication_id),
               data: { turbo_frame: 'modal' },
               class: 'flex items-center gap-4 w-full rounded-2xl border-2 border-outline p-4 ' \
                      'hover:border-primary hover:bg-primary/5 active:bg-primary/10 ' \
@@ -81,7 +81,11 @@ module Components
                       data: {
                         text: person.name,
                         action: 'change->medication-workflow#navigateToType',
-                        url: add_medication_person_path(person, source: :workflow, medication_id: medication_id)
+                        url: new_person_medication_assignment_path(
+                          person,
+                          source: :workflow,
+                          medication_id: medication_id
+                        )
                       }
                     )
                     span { person.name }

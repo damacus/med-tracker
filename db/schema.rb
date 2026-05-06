@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_30_090000) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_05_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -249,6 +249,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_30_090000) do
     t.datetime "created_at", null: false
     t.integer "current_supply"
     t.text "description"
+    t.jsonb "default_schedule_config", default: {}, null: false
+    t.integer "default_schedule_type", default: 1, null: false
     t.string "dmd_code"
     t.string "dmd_concept_class"
     t.string "dmd_system"
@@ -265,6 +267,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_30_090000) do
     t.datetime "updated_at", null: false
     t.text "warnings"
     t.index ["barcode"], name: "index_medications_on_barcode", unique: true, where: "((barcode IS NOT NULL) AND ((barcode)::text <> ''::text))"
+    t.index ["default_schedule_type"], name: "index_medications_on_default_schedule_type"
     t.index ["dmd_code"], name: "index_medications_on_dmd_code"
     t.index ["location_id"], name: "index_medications_on_location_id"
   end
