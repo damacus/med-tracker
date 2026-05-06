@@ -50,7 +50,8 @@ RSpec.describe 'Global search command palette' do
     find_by_id('global_search_query').send_keys(:enter)
     expect(page).to have_current_path(medication_path(medications(:vitamin_d)))
 
-    find('body').send_keys([:control, 'k'])
+    expect(page).to have_css('button[aria-label="Open global search"]')
+    find('button[aria-label="Open global search"]').send_keys([:control, 'k'])
     expect(page).to have_css('dialog[open][aria-label="Global search"]')
 
     find_by_id('global_search_query').send_keys(:escape)
