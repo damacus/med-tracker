@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.3.48](https://github.com/damacus/med-tracker/compare/v0.3.47...v0.3.48) (2026-05-06)
+
+
+### Features
+
+* add medication assignment flow ([#1174](https://github.com/damacus/med-tracker/issues/1174)) ([15a5514](https://github.com/damacus/med-tracker/commit/15a55148ee935e02c45e6d9965fb1af990d81d62))
+* add turbo streams for CRUD flows ([#1171](https://github.com/damacus/med-tracker/issues/1171)) ([09be6e9](https://github.com/damacus/med-tracker/commit/09be6e9547e94c34dd802b901261ed001e991127)), closes [#694](https://github.com/damacus/med-tracker/issues/694)
+* add username-less passkey login ([#1170](https://github.com/damacus/med-tracker/issues/1170)) ([ad40cbf](https://github.com/damacus/med-tracker/commit/ad40cbfed3557e27f449225e34699d59587eaf67))
+
+
+### Bug Fixes
+
+* standardize UI iconography ([#1175](https://github.com/damacus/med-tracker/issues/1175)) ([d6b4458](https://github.com/damacus/med-tracker/commit/d6b4458648e67f23b981ee3a13c931a85116e9b3))
+
+
+### Performance Improvements
+
+* ⚡ Bolt: Resolve N+1 Query in Form View ([#1165](https://github.com/damacus/med-tracker/issues/1165)) ([ed53634](https://github.com/damacus/med-tracker/commit/ed53634055e0fe134be569239a23b99d47c8479b))
+* bulk load family dashboard dose sources ([#1169](https://github.com/damacus/med-tracker/issues/1169)) ([4ef4cef](https://github.com/damacus/med-tracker/commit/4ef4cef3ead45af852f8798dafa1d7e6e9c84b03))
+
 ## [0.3.47](https://github.com/damacus/med-tracker/compare/v0.3.46...v0.3.47) (2026-04-30)
 
 
