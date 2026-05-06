@@ -35,6 +35,60 @@ cy:
 
   app:
     name: "MedTracker"
+  global_search:
+    dialog_label: "Chwilio byd-eang"
+    open: "Agor chwilio byd-eang"
+    open_short: "Chwilio"
+    shortcut_hint: "Ctrl K"
+    input_label: "Chwilio MedTracker"
+    placeholder: "Chwilio pobl, meddyginiaethau, lleoliadau..."
+    close: "Cau chwilio"
+    loading: "Yn chwilio..."
+    no_results: "Dim canlyniadau"
+    page_title: "Chwilio"
+    page_subtitle: "Dod o hyd i gofnodion a llwybrau byr MedTracker."
+    page_submit: "Chwilio"
+    results:
+      one: "1 canlyniad"
+      other: "%{count} canlyniad"
+    types:
+      command: "Gorchmynion"
+      person: "Pobl"
+      medication: "Meddyginiaethau"
+      person_medication: "Meddyginiaethau person"
+      schedule: "Amserlenni"
+      location: "Lleoliadau"
+    result_titles:
+      schedule: "Amserlen %{medication}"
+    subtitles:
+      schedule: "%{person} · %{frequency}"
+      person_medication: "%{person} · meddyginiaeth heb amserlen"
+      no_frequency: "Dim amlder"
+    commands:
+      add_medication:
+        title: "Ychwanegu meddyginiaeth"
+        subtitle: "Dechrau'r llif meddyginiaeth"
+      medication_finder:
+        title: "Darganfyddwr Meddyginiaeth"
+        subtitle: "Chwilio NHS dm+d a ffynonellau cod bar"
+      inventory:
+        title: "Rhestr"
+        subtitle: "Agor rhestr meddyginiaethau"
+      people:
+        title: "Pobl"
+        subtitle: "Agor pobl"
+      locations:
+        title: "Lleoliadau"
+        subtitle: "Agor lleoliadau"
+      reports:
+        title: "Adroddiadau"
+        subtitle: "Agor adroddiadau"
+      add_person:
+        title: "Ychwanegu person"
+        subtitle: "Creu person dibynnol"
+      schedule_workflow:
+        title: "Llif amserlen"
+        subtitle: "Creu amserlen meddyginiaeth"
   rodauth:
     verify_account:
       subject: "Dilyswch eich cyfrif MedTracker"

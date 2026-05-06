@@ -23,6 +23,8 @@ Rails.application.routes.draw do
   # Defines the root path route ("/")
   root 'dashboard#index'
 
+  get 'search', to: 'searches#show'
+
   namespace :admin do
     root to: 'dashboard#index'
     resource :nhs_dmd_import, only: %i[new create]

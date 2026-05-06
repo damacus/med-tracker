@@ -54,6 +54,19 @@ module Components
       end
 
       def render_auth_actions
+        if authenticated?
+          button(
+            type: 'button',
+            class: 'flex h-11 w-11 items-center justify-center rounded-full text-on-surface-variant ' \
+                   'hover:bg-surface-container-high focus-visible:outline-none focus-visible:ring-2 ' \
+                   'focus-visible:ring-primary',
+            aria: { label: t('global_search.open') },
+            data: { action: 'global-search#open' }
+          ) do
+            render Icons::Search.new(size: 22)
+          end
+        end
+
         div(class: 'nav__user-menu hidden md:block') do
           if authenticated?
             render Components::Layouts::ProfileMenu.new(current_user: current_user)

@@ -34,6 +34,60 @@ ga:
               taken: "ceangailte cheana le cógas eile sa stórliosta"
   app:
     name: "MedTracker"
+  global_search:
+    dialog_label: "Cuardach domhanda"
+    open: "Oscail cuardach domhanda"
+    open_short: "Cuardaigh"
+    shortcut_hint: "Ctrl K"
+    input_label: "Cuardaigh MedTracker"
+    placeholder: "Cuardaigh daoine, cógais, suíomhanna..."
+    close: "Dún cuardach"
+    loading: "Ag cuardach..."
+    no_results: "Gan torthaí"
+    page_title: "Cuardaigh"
+    page_subtitle: "Aimsigh taifid agus aicearraí MedTracker."
+    page_submit: "Cuardaigh"
+    results:
+      one: "1 toradh"
+      other: "%{count} toradh"
+    types:
+      command: "Orduithe"
+      person: "Daoine"
+      medication: "Cógais"
+      person_medication: "Cógais duine"
+      schedule: "Sceidil"
+      location: "Suíomhanna"
+    result_titles:
+      schedule: "Sceideal %{medication}"
+    subtitles:
+      schedule: "%{person} · %{frequency}"
+      person_medication: "%{person} · cógas gan sceideal"
+      no_frequency: "Gan minicíocht"
+    commands:
+      add_medication:
+        title: "Cuir cógas leis"
+        subtitle: "Tosaigh sreabhadh an chógais"
+      medication_finder:
+        title: "Aimsitheoir Cógais"
+        subtitle: "Cuardaigh NHS dm+d agus foinsí barrachóid"
+      inventory:
+        title: "Stórliosta"
+        subtitle: "Oscail stórliosta cógas"
+      people:
+        title: "Daoine"
+        subtitle: "Oscail daoine"
+      locations:
+        title: "Suíomhanna"
+        subtitle: "Oscail suíomhanna"
+      reports:
+        title: "Tuarascálacha"
+        subtitle: "Oscail tuarascálacha"
+      add_person:
+        title: "Cuir duine leis"
+        subtitle: "Cruthaigh duine spleách"
+      schedule_workflow:
+        title: "Sreabhadh sceidil"
+        subtitle: "Cruthaigh sceideal cógais"
 
   admin:
     invitations:

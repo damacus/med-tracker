@@ -17,6 +17,7 @@ module Components
                  'sm:flex flex-col items-center md:items-start py-8 px-4 z-50 transition-all duration-500'
         ) do
           render_brand
+          render_search_trigger
           render_navigation
           render_user_profile
         end
@@ -55,6 +56,24 @@ module Components
           if user_is_admin?
             render_nav_link(admin_root_path, Icons::Settings,
                             t('layouts.sidebar.administration'))
+          end
+        end
+      end
+
+      def render_search_trigger
+        button(
+          type: 'button',
+          class: 'mb-6 flex w-full items-center justify-center gap-3 rounded-md border border-outline-variant ' \
+                 'bg-surface-container px-3 py-3 text-on-surface-variant transition-colors ' \
+                 'hover:border-primary hover:text-on-surface focus-visible:outline-none focus-visible:ring-2 ' \
+                 'focus-visible:ring-primary md:justify-start',
+          aria: { label: t('global_search.open') },
+          data: { action: 'global-search#open' }
+        ) do
+          render Icons::Search.new(size: 20)
+          span(class: 'hidden flex-1 text-left text-sm font-bold md:block') { t('global_search.open_short') }
+          kbd(class: 'hidden rounded border border-outline-variant px-1.5 py-0.5 text-[10px] font-bold md:block') do
+            t('global_search.shortcut_hint')
           end
         end
       end

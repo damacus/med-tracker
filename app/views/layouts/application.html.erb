@@ -35,7 +35,7 @@
     <% end %>
   </head>
 
-  <body class="bg-background text-foreground transition-colors duration-300">
+  <body class="bg-background text-foreground transition-colors duration-300"<% if current_user %> data-controller="global-search"<% end %>>
     <% hide_signed_out_chrome = !current_user && request.path == "/login" %>
     <% main_classes = ["transition-all duration-500"] %>
     <% main_classes << "sm:ml-20 md:ml-64 pb-24 md:pb-0" if current_user %>
@@ -56,6 +56,7 @@
         <%= yield %>
       </div>
     </main>
+    <%= render Components::GlobalSearch::Palette.new if current_user %>
     <turbo-frame id="modal"></turbo-frame>
   </body>
 </html>

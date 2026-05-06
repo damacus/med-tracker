@@ -10,10 +10,11 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_06_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_06_123000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
+  enable_extension "pg_trgm"
 
   create_table "account_active_session_keys", id: false, force: :cascade do |t|
     t.bigint "account_id", null: false
@@ -223,6 +224,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_06_120000) do
     t.string "name", null: false
     t.datetime "updated_at", null: false
     t.index ["name"], name: "index_locations_on_name", unique: true
+    t.index ["name"], name: "index_locations_on_name_trigram", opclass: :gin_trgm_ops, using: :gin
   end
 
   create_table "medication_takes", force: :cascade do |t|
@@ -269,8 +271,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_06_120000) do
     t.text "warnings"
     t.index ["barcode"], name: "index_medications_on_barcode", unique: true, where: "((barcode IS NOT NULL) AND ((barcode)::text <> ''::text))"
     t.index ["default_schedule_type"], name: "index_medications_on_default_schedule_type"
+    t.index ["barcode"], name: "index_medications_on_barcode_trigram", opclass: :gin_trgm_ops, using: :gin
+    t.index ["category"], name: "index_medications_on_category_trigram", opclass: :gin_trgm_ops, using: :gin
     t.index ["dmd_code"], name: "index_medications_on_dmd_code"
+    t.index ["dmd_code"], name: "index_medications_on_dmd_code_trigram", opclass: :gin_trgm_ops, using: :gin
     t.index ["location_id"], name: "index_medications_on_location_id"
+    t.index ["name"], name: "index_medications_on_name_trigram", opclass: :gin_trgm_ops, using: :gin
   end
 
   create_table "native_device_tokens", force: :cascade do |t|
@@ -342,6 +348,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_06_120000) do
     t.datetime "updated_at", null: false
     t.index ["account_id"], name: "index_people_on_account_id"
     t.index ["email"], name: "index_people_on_email_present_unique", unique: true, where: "((email IS NOT NULL) AND (btrim((email)::text) <> ''::text))"
+    t.index ["name"], name: "index_people_on_name_trigram", opclass: :gin_trgm_ops, using: :gin
     t.index ["person_type"], name: "index_people_on_person_type"
   end
 

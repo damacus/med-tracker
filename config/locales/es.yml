@@ -35,6 +35,60 @@ es:
 
   app:
     name: "MedTracker"
+  global_search:
+    dialog_label: "Búsqueda global"
+    open: "Abrir búsqueda global"
+    open_short: "Buscar"
+    shortcut_hint: "Ctrl K"
+    input_label: "Buscar en MedTracker"
+    placeholder: "Buscar personas, medicamentos, ubicaciones..."
+    close: "Cerrar búsqueda"
+    loading: "Buscando..."
+    no_results: "Sin resultados"
+    page_title: "Buscar"
+    page_subtitle: "Encuentra registros y accesos directos de MedTracker."
+    page_submit: "Buscar"
+    results:
+      one: "1 resultado"
+      other: "%{count} resultados"
+    types:
+      command: "Comandos"
+      person: "Personas"
+      medication: "Medicamentos"
+      person_medication: "Medicamentos por persona"
+      schedule: "Horarios"
+      location: "Ubicaciones"
+    result_titles:
+      schedule: "Horario de %{medication}"
+    subtitles:
+      schedule: "%{person} · %{frequency}"
+      person_medication: "%{person} · medicamento sin horario"
+      no_frequency: "Sin frecuencia"
+    commands:
+      add_medication:
+        title: "Añadir medicamento"
+        subtitle: "Iniciar el flujo de medicamento"
+      medication_finder:
+        title: "Buscador de medicamentos"
+        subtitle: "Buscar NHS dm+d y fuentes de códigos de barras"
+      inventory:
+        title: "Inventario"
+        subtitle: "Abrir inventario de medicamentos"
+      people:
+        title: "Personas"
+        subtitle: "Abrir personas"
+      locations:
+        title: "Ubicaciones"
+        subtitle: "Abrir ubicaciones"
+      reports:
+        title: "Informes"
+        subtitle: "Abrir informes"
+      add_person:
+        title: "Añadir persona"
+        subtitle: "Crear una persona dependiente"
+      schedule_workflow:
+        title: "Flujo de horario"
+        subtitle: "Crear un horario de medicación"
   rodauth:
     verify_account:
       subject: "Verifica tu cuenta de MedTracker"
