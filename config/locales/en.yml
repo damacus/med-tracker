@@ -3,6 +3,60 @@ en:
   hello: "Hello world"
   app:
     name: "MedTracker"
+  global_search:
+    dialog_label: "Global search"
+    open: "Open global search"
+    open_short: "Search"
+    shortcut_hint: "Ctrl K"
+    input_label: "Search MedTracker"
+    placeholder: "Search people, medications, locations..."
+    close: "Close search"
+    loading: "Searching..."
+    no_results: "No results"
+    page_title: "Search"
+    page_subtitle: "Find MedTracker records and shortcuts."
+    page_submit: "Search"
+    results:
+      one: "1 result"
+      other: "%{count} results"
+    types:
+      command: "Commands"
+      person: "People"
+      medication: "Medications"
+      person_medication: "Person medications"
+      schedule: "Schedules"
+      location: "Locations"
+    result_titles:
+      schedule: "%{medication} schedule"
+    subtitles:
+      schedule: "%{person} · %{frequency}"
+      person_medication: "%{person} · non-scheduled medication"
+      no_frequency: "No frequency"
+    commands:
+      add_medication:
+        title: "Add medication"
+        subtitle: "Start the medication workflow"
+      medication_finder:
+        title: "Medication Finder"
+        subtitle: "Search NHS dm+d and barcode sources"
+      inventory:
+        title: "Inventory"
+        subtitle: "Open medication inventory"
+      people:
+        title: "People"
+        subtitle: "Open people"
+      locations:
+        title: "Locations"
+        subtitle: "Open locations"
+      reports:
+        title: "Reports"
+        subtitle: "Open reports"
+      add_person:
+        title: "Add person"
+        subtitle: "Create a dependent person"
+      schedule_workflow:
+        title: "Schedule workflow"
+        subtitle: "Create a medication schedule"
   ruby_ui:
     common:
       close: "Close"
