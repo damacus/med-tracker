@@ -257,9 +257,11 @@ module Components
       end
 
       def stock_label_for(medication)
-        return "#{MedicationStockConsumption.format(medication.current_supply)} ml" if medication.dosage_unit == 'ml'
+        if medication.dosage_unit == 'ml'
+          return "#{MedicationStockQuantityFormatter.format(medication.current_supply)} ml"
+        end
 
-        supply = MedicationStockConsumption.format(medication.current_supply)
+        supply = MedicationStockQuantityFormatter.format(medication.current_supply)
         supply == '1' ? '1 unit' : "#{supply} units"
       end
 

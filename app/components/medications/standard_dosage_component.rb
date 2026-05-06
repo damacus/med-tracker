@@ -49,7 +49,7 @@ module Components
       end
 
       def reorder_threshold_label
-        threshold = MedicationStockConsumption.format(medication.reorder_threshold)
+        threshold = MedicationStockQuantityFormatter.format(medication.reorder_threshold)
         return "#{threshold} ml" if medication.dosage_unit == 'ml'
 
         threshold == '1' ? '1 unit' : "#{threshold} units"

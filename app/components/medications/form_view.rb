@@ -782,7 +782,7 @@ module Components
       def inventory_field_value(value)
         return if value.blank?
 
-        MedicationStockConsumption.format(value)
+        MedicationStockQuantityFormatter.format(value)
       end
     end
   end

@@ -101,7 +101,7 @@ module Components
       def quantity_value
         return if quantity.blank?
 
-        MedicationStockConsumption.format(quantity)
+        MedicationStockQuantityFormatter.format(quantity)
       end
     end
   end

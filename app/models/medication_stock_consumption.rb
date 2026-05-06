@@ -19,11 +19,4 @@ class MedicationStockConsumption
   def self.volume_unit?(unit)
     VOLUME_UNITS.include?(unit.to_s)
   end
-
-  def self.format(quantity)
-    decimal = BigDecimal(quantity.to_s)
-    value = decimal.frac.zero? ? decimal.to_i.to_s : decimal.to_s('F')
-
-    value.include?('.') ? value.sub(/\.?0+\z/, '') : value
-  end
 end

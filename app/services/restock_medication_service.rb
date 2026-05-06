@@ -16,7 +16,7 @@ class RestockMedicationService
     end
     return failure(medication, 'Restock date is invalid') unless normalized_date
 
-    medication.paper_trail_event = "restock (qty: #{MedicationStockConsumption.format(normalized_quantity)}, " \
+    medication.paper_trail_event = "restock (qty: #{MedicationStockQuantityFormatter.format(normalized_quantity)}, " \
                                    "date: #{normalized_date.iso8601})"
     medication.restock!(quantity: normalized_quantity)
 

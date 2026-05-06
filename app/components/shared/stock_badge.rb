@@ -42,7 +42,7 @@ module Components
       end
 
       def formatted_supply
-        value = MedicationStockConsumption.format(medication.current_supply)
+        value = MedicationStockQuantityFormatter.format(medication.current_supply)
         return "#{value} ml" if medication.dosage_unit == 'ml'
 
         value

@@ -19,7 +19,24 @@
 #                   #    :selection_required | :invalid_source | :create_failed
 class TakeMedicationService
   Result = Data.define(:success, :take, :error)
-  PreparedTake = Data.define(:source, :amount, :unit, :medication, :taken_at, :client_uuid, :error)
+  PreparedTake = Data.define(:source, :amount, :unit, :medication, :taken_at, :client_uuid, :error) do
+    def record
+      source.medication_takes.create(medication_take_attributes)
+    end
+
+    private
+
+    def medication_take_attributes
+      {
+        taken_at: taken_at,
+        dose_amount: amount,
+        dose_unit: unit,
+        client_uuid: client_uuid,
+        taken_from_medication: medication,
+        taken_from_location: medication.location
+      }
+    end
+  end
 
   def call(source:, amount_override:, taken_from_medication_id:, user:, **options)
     prepared_take = prepare_take(
@@ -31,7 +48,7 @@ class TakeMedicationService
     )
     return failure(prepared_take.error) if prepared_take.error
 
-    take = record_take(prepared_take)
+    take = prepared_take.record
     return failure(:create_failed) unless take.persisted?
 
     success(take)
@@ -88,17 +105,6 @@ class TakeMedicationService
     return [:invalid_source, nil] if medication.blank?
 
     [nil, medication]
-  end
-
-  def record_take(prepared_take)
-    prepared_take.source.medication_takes.create(
-      taken_at: prepared_take.taken_at,
-      dose_amount: prepared_take.amount,
-      dose_unit: prepared_take.unit,
-      client_uuid: prepared_take.client_uuid,
-      taken_from_medication: prepared_take.medication,
-      taken_from_location: prepared_take.medication.location
-    )
   end
 
   def normalize_amount(raw)

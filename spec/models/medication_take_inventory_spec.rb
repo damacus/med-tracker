@@ -53,11 +53,9 @@ RSpec.describe MedicationTake do
 
     take = build_taken_from_schedule(schedule: schedule, taken_from_medication: alternate_medication)
 
-    MedicationTakeStockMutation.new(take).send(
-      :decrement_dosage_option_stock,
-      alternate_medication,
-      inventory_options[:evening]
-    )
+    stock_source = MedicationTakeStockSource.new(take: take, inventory: alternate_medication)
+    allow(stock_source).to receive(:dosage_option).and_return(inventory_options[:evening])
+    MedicationTakeStockDecrement.new(take).call(stock_source)
 
     expect(lock_order).to eq(%i[dosage inventory])
   end

@@ -17,7 +17,7 @@ RSpec.describe Components::Dashboard::ScheduleRow, type: :component do
 
   it 'renders the medication quantity' do
     rendered = render_inline(row)
-    expect(rendered.text).to include(MedicationStockConsumption.format(schedule.medication.current_supply))
+    expect(rendered.text).to include(MedicationStockQuantityFormatter.format(schedule.medication.current_supply))
   end
 
   it 'renders the person avatar with an SVG icon instead of emoji' do

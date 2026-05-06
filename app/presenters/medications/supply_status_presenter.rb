@@ -61,7 +61,7 @@ module Medications
     end
 
     def formatted_supply_current
-      MedicationStockConsumption.format(supply_level.current)
+      MedicationStockQuantityFormatter.format(supply_level.current)
     end
 
     def forecast_items
