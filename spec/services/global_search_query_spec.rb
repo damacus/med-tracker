@@ -60,6 +60,12 @@ RSpec.describe GlobalSearchQuery do
     expect(limited_results.size).to eq(2)
   end
 
+  it 'respects the requested result limit for blank command shortcuts' do
+    limited_results = described_class.new(user: users(:jane), query: '', limit: 2).call
+
+    expect(limited_results.size).to eq(2)
+  end
+
   it 'does not search records for one-character queries' do
     short_query_results = described_class.new(user: users(:jane), query: 'v', limit: 10).call
 
