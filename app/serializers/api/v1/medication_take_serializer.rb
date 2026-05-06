@@ -32,7 +32,8 @@ module Api
 
       def event_data
         {
-          amount_ml: medication_take.amount_ml&.to_f,
+          dose_amount: medication_take.dose_amount&.to_f,
+          dose_unit: medication_take.dose_unit,
           taken_at: medication_take.taken_at&.iso8601,
           updated_at: medication_take.updated_at.iso8601
         }

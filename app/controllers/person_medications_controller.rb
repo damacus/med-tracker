@@ -218,7 +218,7 @@ class PersonMedicationsController < ApplicationController
   def take_person_medication(taken_at)
     result = TakeMedicationService.new.call(
       source: @person_medication,
-      amount_override: params[:amount_ml],
+      amount_override: params[:dose_amount],
       taken_from_medication_id: requested_taken_from_medication_id,
       user: current_user,
       taken_at: taken_at

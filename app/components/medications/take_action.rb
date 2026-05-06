@@ -87,7 +87,8 @@ module Components
             ) do
               DialogMiddle do
                 div(class: 'space-y-5') do
-                  input(type: :hidden, name: 'amount_ml', value: formatted_amount)
+                  input(type: :hidden, name: 'dose_amount', value: formatted_amount)
+                  input(type: :hidden, name: 'dose_unit', value: source_dose_unit)
                   render_context
                   render_taken_at_field
                   render_stock_source_selection
@@ -252,7 +253,16 @@ module Components
           return t('medications.take_action.untracked_inventory', default: 'Untracked')
         end
 
-        pluralize(medication.current_supply, 'unit')
+        stock_label_for(medication)
+      end
+
+      def stock_label_for(medication)
+        if medication.dosage_unit == 'ml'
+          return "#{MedicationStockQuantityFormatter.format(medication.current_supply)} ml"
+        end
+
+        supply = MedicationStockQuantityFormatter.format(medication.current_supply)
+        supply == '1' ? '1 unit' : "#{supply} units"
       end
 
       def formatted_amount

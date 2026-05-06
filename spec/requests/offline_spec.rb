@@ -59,7 +59,7 @@ RSpec.describe 'Offline mode' do
         source_type: 'schedule',
         source_id: schedule.id,
         taken_at: taken_at.iso8601,
-        amount_ml: '300',
+        dose_amount: '300',
         taken_from_medication_id: medication.id
       }
     end

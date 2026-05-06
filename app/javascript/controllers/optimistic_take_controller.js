@@ -25,7 +25,8 @@ export default class extends Controller {
         const take = await queueTake({
             source_type: this.element.dataset.offlineSourceType,
             source_id: this.element.dataset.offlineSourceId,
-            amount_ml: formData.get("amount_ml"),
+            dose_amount: formData.get("dose_amount"),
+            dose_unit: formData.get("dose_unit"),
             taken_at: this.takenAtValue(formData),
             taken_from_medication_id: formData.get("medication_take[taken_from_medication_id]")
         });

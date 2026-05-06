@@ -18,7 +18,7 @@ class OfflineController < ApplicationController
     source_type = attributes[:source_type]
     source_id = attributes[:source_id]
     taken_at = attributes[:taken_at]
-    amount_ml = attributes[:amount_ml]
+    dose_amount = attributes[:dose_amount]
     taken_from_medication_id = attributes[:taken_from_medication_id]
 
     if client_uuid.present?
@@ -35,7 +35,7 @@ class OfflineController < ApplicationController
 
     result = TakeMedicationService.new.call(
       source: source,
-      amount_override: amount_ml,
+      amount_override: dose_amount,
       taken_from_medication_id: taken_from_medication_id,
       user: current_user,
       taken_at: parsed_taken_at,
@@ -78,7 +78,8 @@ class OfflineController < ApplicationController
   end
 
   def queued_take_params
-    params.permit(:client_uuid, :source_type, :source_id, :taken_at, :amount_ml, :taken_from_medication_id)
+    params.permit(:client_uuid, :source_type, :source_id, :taken_at, :dose_amount, :dose_unit,
+                  :taken_from_medication_id)
   end
 
   def offline_take_source(source_type, source_id)

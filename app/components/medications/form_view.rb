@@ -615,8 +615,9 @@ module Components
             type: :number,
             name: dosage_field_name(index, field),
             id: "medication_dosage_records_attributes_#{index}_#{field}",
-            value: dosage.public_send(field),
-            min: '0'
+            value: inventory_field_value(dosage.public_send(field)),
+            min: '0',
+            step: '0.01'
           )
         end
       end
@@ -728,8 +729,9 @@ module Components
             type: :number,
             name: 'medication[current_supply]',
             id: 'medication_current_supply',
-            value: medication.current_supply,
+            value: inventory_field_value(medication.current_supply),
             min: '0',
+            step: '0.01',
             placeholder: t('forms.medications.current_supply_placeholder', default: 'e.g., 30'),
             class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 ' \
                    'focus:ring-2 focus:ring-primary/10 ' \
@@ -748,8 +750,9 @@ module Components
             type: :number,
             name: 'medication[reorder_threshold]',
             id: 'medication_reorder_threshold',
-            value: medication.reorder_threshold,
+            value: inventory_field_value(medication.reorder_threshold),
             min: '0',
+            step: '0.01',
             placeholder: t('forms.medications.reorder_threshold_placeholder', default: 'e.g., 5'),
             class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 ' \
                    'focus:ring-2 focus:ring-primary/10 ' \
@@ -774,6 +777,12 @@ module Components
                    'placeholder:text-on-error-container/50 font-medium'
           ) { medication.warnings }
         end
+      end
+
+      def inventory_field_value(value)
+        return if value.blank?
+
+        MedicationStockQuantityFormatter.format(value)
       end
     end
   end

@@ -49,11 +49,19 @@ module Medications
     end
 
     def remaining_units_label
+      return 'ml remaining' if volume_stock?
+
       supply_level.current == 1 ? 'unit remaining' : 'units remaining'
     end
 
     def inventory_units_label
-      ActionController::Base.helpers.pluralize(supply_level.current, 'unit')
+      return "#{formatted_supply_current} ml" if volume_stock?
+
+      formatted_supply_current == '1' ? '1 unit' : "#{formatted_supply_current} units"
+    end
+
+    def formatted_supply_current
+      MedicationStockQuantityFormatter.format(supply_level.current)
     end
 
     def forecast_items
@@ -86,6 +94,10 @@ module Medications
     end
 
     private
+
+    def volume_stock?
+      MedicationStockConsumption.volume_unit?(medication.dosage_unit)
+    end
 
     def low_stock_forecast
       return unless medication.days_until_low_stock&.positive?

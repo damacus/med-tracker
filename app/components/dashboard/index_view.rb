@@ -199,7 +199,7 @@ module Components
       end
 
       def render_supply_item(medication)
-        current = medication.current_supply || 0
+        current = ::Medications::SupplyStatusPresenter.new(medication: medication).inventory_units_label
         percentage = medication.supply_percentage
 
         div(class: 'space-y-3') do

@@ -21,8 +21,8 @@ class MedicationDosageOption < ApplicationRecord
   validates :default_max_daily_doses, presence: true, numericality: { greater_than: 0 }
   validates :default_min_hours_between_doses, presence: true, numericality: { greater_than_or_equal_to: 0 }
   validates :default_dose_cycle, presence: true
-  validates :current_supply, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
-  validates :reorder_threshold, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
+  validates :current_supply, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
+  validates :reorder_threshold, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
 
   delegate :selection_key, to: :to_value
 

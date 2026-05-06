@@ -32,6 +32,20 @@ RSpec.describe RestockMedicationService do
       )
     end
 
+    it 'restocks with a decimal quantity' do
+      medication.update!(dosage_unit: 'ml', current_supply: 100, supply_at_last_restock: 100)
+      restock_date = Date.current
+
+      result = described_class.new.call(medication: medication, quantity: '12.5', restock_date: restock_date)
+
+      expect(result).to be_success
+      expect(medication.reload).to have_attributes(
+        current_supply: BigDecimal('112.5'),
+        supply_at_last_restock: BigDecimal('112.5'),
+        paper_trail_event: "restock (qty: 12.5, date: #{restock_date.iso8601})"
+      )
+    end
+
     it 'returns an error for a non-positive quantity' do
       result = described_class.new.call(medication: medication, quantity: '0', restock_date: Date.current)
 

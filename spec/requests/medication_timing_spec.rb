@@ -86,7 +86,7 @@ RSpec.describe 'Medication Timing Restrictions' do
           MedicationTake.create!(
             schedule: schedule,
             taken_at: Time.current,
-            amount_ml: 10
+            dose_amount: 10
           )
         end
       end
@@ -106,7 +106,7 @@ RSpec.describe 'Medication Timing Restrictions' do
         MedicationTake.create!(
           schedule: schedule,
           taken_at: 1.hour.ago,
-          amount_ml: 10
+          dose_amount: 10
         )
       end
 
@@ -123,7 +123,7 @@ RSpec.describe 'Medication Timing Restrictions' do
     context 'when schedule dose is invalid' do
       it 'does not create a medication take and shows a friendly alert' do
         expect do
-          post take_medication_person_schedule_path(person, schedule), params: { amount_ml: 0 }
+          post take_medication_person_schedule_path(person, schedule), params: { dose_amount: 0 }
         end.not_to change(MedicationTake, :count)
 
         expect(response).to redirect_to(person_path(person))
@@ -198,7 +198,7 @@ RSpec.describe 'Medication Timing Restrictions' do
           MedicationTake.create!(
             person_medication: person_medication,
             taken_at: Time.current,
-            amount_ml: 10
+            dose_amount: 10
           )
         end
       end
@@ -218,7 +218,7 @@ RSpec.describe 'Medication Timing Restrictions' do
         MedicationTake.create!(
           person_medication: person_medication,
           taken_at: 1.hour.ago,
-          amount_ml: 10
+          dose_amount: 10
         )
       end
 
@@ -235,7 +235,7 @@ RSpec.describe 'Medication Timing Restrictions' do
     context 'when medication dose is invalid' do
       it 'does not create a medication take and shows a friendly alert' do
         expect do
-          post take_medication_person_person_medication_path(person, person_medication), params: { amount_ml: 0 }
+          post take_medication_person_person_medication_path(person, person_medication), params: { dose_amount: 0 }
         end.not_to change(MedicationTake, :count)
 
         expect(response).to redirect_to(person_path(person))

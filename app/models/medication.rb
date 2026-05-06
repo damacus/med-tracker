@@ -69,9 +69,9 @@ class Medication < ApplicationRecord # :nodoc:
   validates :category, inclusion: { in: CATEGORIES }, allow_blank: true
   validates :dosage_amount, numericality: { greater_than: 0 }, allow_nil: true
   validates :dosage_unit, inclusion: { in: DOSAGE_UNITS }, allow_blank: true
-  validates :current_supply, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
-  validates :supply_at_last_restock, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
-  validates :reorder_threshold, presence: true, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
+  validates :current_supply, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
+  validates :supply_at_last_restock, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
+  validates :reorder_threshold, presence: true, numericality: { greater_than_or_equal_to: 0 }
 
   delegate :low_stock?, :out_of_stock?, to: :supply_level
 
@@ -107,11 +107,11 @@ class Medication < ApplicationRecord # :nodoc:
   end
 
   def restock!(quantity:) # rubocop:disable Naming/PredicateMethod
-    increment = quantity.to_i
+    increment = BigDecimal(quantity.to_s)
     return false if increment <= 0
 
     with_lock do
-      new_supply = current_supply.to_i + increment
+      new_supply = current_supply.to_d + increment
       update!(
         current_supply: new_supply,
         supply_at_last_restock: new_supply,
@@ -134,19 +134,7 @@ class Medication < ApplicationRecord # :nodoc:
     # ⚡ Bolt Optimization: Use Enumerable#select instead of ActiveRecord#active
     # to filter schedules in-memory. This prevents N+1 queries when calculating
     # daily consumption for a collection of eager-loaded medications.
-    schedule_rate = schedules.select(&:active?).sum do |schedule|
-      next 0.0 if schedule.max_daily_doses.blank?
-
-      schedule.max_daily_doses.to_f / (schedule.cycle_period / 1.day)
-    end
-
-    pm_rate = person_medications.sum do |pm|
-      next 0.0 if pm.max_daily_doses.blank?
-
-      pm.max_daily_doses.to_f
-    end
-
-    @estimated_daily_consumption = schedule_rate + pm_rate
+    @estimated_daily_consumption = MedicationDailyConsumption.new(self).call
   end
 
   def forecast_available?

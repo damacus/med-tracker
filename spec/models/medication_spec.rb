@@ -98,14 +98,10 @@ RSpec.describe Medication do
     it { is_expected.to allow_value('pad').for(:dosage_unit) }
     it { is_expected.to validate_numericality_of(:dosage_amount).is_greater_than(0).allow_nil }
 
-    it do
-      expect(medication).to validate_numericality_of(:current_supply)
-        .only_integer
-        .is_greater_than_or_equal_to(0)
-        .allow_nil
-    end
-
-    it { is_expected.to validate_numericality_of(:reorder_threshold).only_integer.is_greater_than_or_equal_to(0) }
+    it { is_expected.to allow_value(97.5).for(:current_supply) }
+    it { is_expected.to allow_value(2.5).for(:reorder_threshold) }
+    it { is_expected.to validate_numericality_of(:current_supply).is_greater_than_or_equal_to(0).allow_nil }
+    it { is_expected.to validate_numericality_of(:reorder_threshold).is_greater_than_or_equal_to(0) }
 
     it { is_expected.to allow_value('Analgesic').for(:category) }
     it { is_expected.to allow_value('Osmotic Laxative').for(:category) }
@@ -190,6 +186,22 @@ RSpec.describe Medication do
 
     it 'increments current_supply by the given quantity' do
       expect { medication.restock!(quantity: 20) }.to change { medication.reload.current_supply }.from(10).to(30)
+    end
+
+    it 'increments current_supply by a decimal quantity' do
+      medication.update!(dosage_unit: 'ml', current_supply: 100, supply_at_last_restock: 100, reorder_threshold: 10)
+
+      expect do
+        medication.restock!(quantity: BigDecimal('12.5'))
+      end.to change { medication.reload.current_supply }.from(100).to(BigDecimal('112.5'))
+    end
+
+    it 'treats a nil current_supply as zero' do
+      medication.update!(current_supply: nil, supply_at_last_restock: nil)
+
+      expect do
+        medication.restock!(quantity: BigDecimal('12.5'))
+      end.to change { medication.reload.current_supply }.from(nil).to(BigDecimal('12.5'))
     end
 
     it 'sets supply_at_last_restock to the new current_supply' do

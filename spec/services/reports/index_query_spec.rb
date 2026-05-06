@@ -3,7 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe Reports::IndexQuery do
-  fixtures :accounts, :people, :users, :locations, :location_memberships, :medications, :schedules, :medication_takes
+  fixtures :accounts, :people, :users, :locations, :location_memberships, :medications, :schedules,
+           :person_medications, :medication_takes
 
   let(:people_scope) { Person.where(id: [people(:john).id, people(:jane).id]) }
   let(:start_date) { Time.zone.today - 1.day }
@@ -151,5 +152,50 @@ RSpec.describe Reports::IndexQuery do
 
       expect(result.inventory_alerts.pluck(:medication_name)).to contain_exactly('Daily low stock')
     end
+
+    it 'uses ml dose amounts for inventory alerts' do
+      report_date = Time.zone.today
+      person = create(:person)
+      medication = create_ml_report_schedule(person, report_date)
+
+      result = described_class.new(
+        people: Person.where(id: person.id),
+        start_date: report_date,
+        end_date: report_date
+      ).call
+
+      expect(result.inventory_alerts).to contain_exactly(
+        include(medication_name: medication.name, days_left: 2, doses_left: BigDecimal('10.0'))
+      )
+    end
+  end
+
+  def create_ml_report_schedule(person, report_date)
+    medication = create_ml_report_medication
+    dosage = create(:dosage, medication: medication, amount: 2.5, unit: 'ml')
+    create(
+      :schedule,
+      person: person,
+      medication: medication,
+      dosage: dosage,
+      dose_amount: 2.5,
+      dose_unit: 'ml',
+      max_daily_doses: 2,
+      start_date: report_date,
+      end_date: report_date
+    )
+    medication
+  end
+
+  def create_ml_report_medication
+    create(
+      :medication,
+      name: 'Calpol',
+      dosage_amount: 2.5,
+      dosage_unit: 'ml',
+      current_supply: 10,
+      supply_at_last_restock: 10,
+      reorder_threshold: 2
+    )
   end
 end

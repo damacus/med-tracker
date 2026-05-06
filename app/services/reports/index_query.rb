@@ -98,7 +98,16 @@ module Reports
       dates = inventory_projection_dates_for(schedule)
       return 0 if dates.empty?
 
-      dates.sum { |date| schedule.expected_doses_on(date) }.to_f / dates.size
+      dates.sum do |date|
+        schedule.expected_doses_on(date) * stock_consumption_for(schedule, date).to_f
+      end.to_f / dates.size
+    end
+
+    def stock_consumption_for(schedule, date)
+      MedicationStockConsumption.quantity_for(
+        dose_amount: schedule.effective_dose_amount(date),
+        dose_unit: schedule.effective_dose_unit(date)
+      )
     end
 
     def inventory_projection_dates_for(schedule)

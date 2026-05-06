@@ -65,8 +65,9 @@ module Components
               type: 'number',
               name: 'refill[quantity]',
               required: true,
-              value: quantity,
-              min: '1',
+              value: quantity_value,
+              min: '0.01',
+              step: '0.01',
               class: 'w-full rounded-shape-sm border border-outline bg-background px-3 py-2 text-sm ' \
                      'focus:ring-2 focus:ring-primary/20 transition-all'
             )
@@ -95,6 +96,12 @@ module Components
 
       def restock_date_value
         restock_date.presence || Date.current.to_s
+      end
+
+      def quantity_value
+        return if quantity.blank?
+
+        MedicationStockQuantityFormatter.format(quantity)
       end
     end
   end

@@ -2,34 +2,41 @@
 john_morning_paracetamol:
   schedule: john_paracetamol
   taken_at: <%= Time.current.beginning_of_day + 8.hours %>
-  amount_ml: 1000.0
+  dose_amount: 1000.0
+  dose_unit: mg
 
 john_afternoon_paracetamol:
   schedule: john_paracetamol
   taken_at: <%= Time.current.beginning_of_day + 14.hours %>
-  amount_ml: 1000.0
+  dose_amount: 1000.0
+  dose_unit: mg
 
 jane_morning_ibuprofen:
   schedule: jane_ibuprofen
   taken_at: <%= Time.current.beginning_of_day + 8.hours %>
-  amount_ml: 400.0
+  dose_amount: 400.0
+  dose_unit: mg
 
 jane_evening_ibuprofen:
   schedule: jane_ibuprofen
   taken_at: <%= Time.current.beginning_of_day + 20.hours %>
-  amount_ml: 400.0
+  dose_amount: 400.0
+  dose_unit: mg
 
 bob_morning_aspirin:
   schedule: bob_aspirin
   taken_at: <%= Time.current.beginning_of_day + 7.hours %>
-  amount_ml: 75.0
+  dose_amount: 75.0
+  dose_unit: mg
 
 john_vitamin_d_today:
   person_medication: john_vitamin_d
   taken_at: <%= Time.current.beginning_of_day + 8.hours %>
-  amount_ml: 1000.0
+  dose_amount: 1000.0
+  dose_unit: mg
 
 bob_vitamin_c_recent:
   person_medication: bob_vitamin_c
   taken_at: <%= 2.hours.ago %>
-  amount_ml: 500.0
+  dose_amount: 500.0
+  dose_unit: mg

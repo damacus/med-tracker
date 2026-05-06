@@ -66,7 +66,8 @@ export default class extends Controller {
     const button = event.currentTarget
     const sourceType = button.dataset.sourceType
     const sourceId = Number(button.dataset.sourceId)
-    const amountMl = button.dataset.amountMl
+    const doseAmount = button.dataset.doseAmount
+    const doseUnit = button.dataset.doseUnit
     const snapshot = await getSnapshot()
     const data = snapshot?.payload?.data || {}
     const source = this.sourceFor(data, sourceType, sourceId)
@@ -74,11 +75,12 @@ export default class extends Controller {
 
     if (!source || !medication) return
 
-    const inventory = this.inventoryFor(data, medication)
+    const inventory = this.inventoryFor(data, medication, [], source)
     const take = await queueTake({
       source_type: sourceType,
       source_id: sourceId,
-      amount_ml: amountMl,
+      dose_amount: doseAmount,
+      dose_unit: doseUnit,
       taken_at: new Date().toISOString(),
       taken_from_medication_id: inventory?.id || medication.id
     })
@@ -121,9 +123,9 @@ export default class extends Controller {
       const person = this.byId(data.people, source.person_id)
       const medication = this.byId(data.medications, source.medication_id)
       const pending = queued.filter((take) => take.source_type === sourceType && Number(take.source_id) === source.id)
-      const inventory = medication ? this.inventoryFor(data, medication, queued) : null
+      const inventory = medication ? this.inventoryFor(data, medication, queued, source) : null
       const stockMedication = inventory || medication
-      const disabled = !medication || this.locallyOutOfStock(stockMedication, queued)
+      const disabled = !medication || this.locallyOutOfStock(stockMedication, queued, source)
       const label = pending.length > 0 ? `${pending.length} pending` : "Take now"
 
       return `
@@ -140,7 +142,8 @@ export default class extends Controller {
               data-action="offline-shell#queue"
               data-source-type="${this.escape(sourceType)}"
               data-source-id="${source.id}"
-              data-amount-ml="${this.escape(source.dose_amount || medication?.dosage_amount || "")}"
+              data-dose-amount="${this.escape(source.dose_amount || medication?.dosage_amount || "")}"
+              data-dose-unit="${this.escape(source.dose_unit || medication?.dosage_unit || "")}"
               ${disabled ? "disabled" : ""}
             >${this.escape(disabled ? "Out of stock" : label)}</button>
           </div>
@@ -195,32 +198,49 @@ export default class extends Controller {
     return source ? this.byId(data.medications, source.medication_id) : null
   }
 
-  inventoryFor(data, medication, queued = []) {
+  inventoryFor(data, medication, queued = [], source = null) {
     return (data.medications || []).find((candidate) =>
       candidate.name === medication.name &&
       String(candidate.dosage_amount) === String(medication.dosage_amount) &&
       candidate.dosage_unit === medication.dosage_unit &&
-      !this.locallyOutOfStock(candidate, queued)
+      !this.locallyOutOfStock(candidate, queued, source)
     )
   }
 
-  locallyOutOfStock(medication, queued) {
+  locallyOutOfStock(medication, queued, source = null) {
     if (!medication) return true
 
     const supply = this.localSupply(medication, queued)
-    return supply === null ? medication.out_of_stock : supply <= 0
+    const consumption = this.stockConsumptionFor({
+      dose_amount: source?.dose_amount || medication.dosage_amount,
+      dose_unit: source?.dose_unit || medication.dosage_unit
+    })
+
+    return supply === null ? medication.out_of_stock : supply < consumption
   }
 
   localSupplyLabel(medication, queued) {
     const supply = this.localSupply(medication, queued)
-    return supply === null ? "Untracked" : supply
+    if (supply === null) return "Untracked"
+
+    return medication.dosage_unit === "ml" ? `${this.formatQuantity(supply)} ml` : this.formatQuantity(supply)
   }
 
   localSupply(medication, queued) {
     if (medication.current_supply === null || medication.current_supply === undefined) return null
 
-    const pending = queued.filter((take) => Number(take.taken_from_medication_id) === Number(medication.id)).length
+    const pending = queued
+      .filter((take) => Number(take.taken_from_medication_id) === Number(medication.id))
+      .reduce((total, take) => total + this.stockConsumptionFor(take), 0)
     return Math.max(Number(medication.current_supply) - pending, 0)
+  }
+
+  stockConsumptionFor(take) {
+    return take.dose_unit === "ml" ? Number(take.dose_amount || 0) : 1
+  }
+
+  formatQuantity(quantity) {
+    return Number(quantity).toLocaleString(undefined, { maximumFractionDigits: 2 })
   }
 
   byId(collection, id) {

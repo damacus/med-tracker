@@ -16,7 +16,7 @@ module Components
         remaining_supply = schedule.medication&.current_supply
         return '—' if remaining_supply.nil?
 
-        remaining_supply.to_s
+        MedicationStockQuantityFormatter.format(remaining_supply)
       end
 
       def format_end_date

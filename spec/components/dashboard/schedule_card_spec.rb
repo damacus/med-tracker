@@ -30,7 +30,7 @@ RSpec.describe Components::Dashboard::ScheduleCard, type: :component do
     it 'renders the medication quantity' do
       rendered = render_inline(described_class.new(person: person, schedule: schedule))
 
-      expect(rendered.text).to include(schedule.medication.current_supply.to_s)
+      expect(rendered.text).to include(MedicationStockQuantityFormatter.format(schedule.medication.current_supply))
     end
 
     it 'renders the take action with a pill icon' do

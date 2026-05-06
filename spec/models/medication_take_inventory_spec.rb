@@ -51,11 +51,11 @@ RSpec.describe MedicationTake do
     )
     lock_order = record_lock_order(inventory: alternate_medication, dosage_option: inventory_options[:evening])
 
-    build_taken_from_schedule(schedule: schedule, taken_from_medication: alternate_medication).send(
-      :decrement_dosage_option_stock,
-      alternate_medication,
-      inventory_options[:evening]
-    )
+    take = build_taken_from_schedule(schedule: schedule, taken_from_medication: alternate_medication)
+
+    stock_source = MedicationTakeStockSource.new(take: take, inventory: alternate_medication)
+    allow(stock_source).to receive(:dosage_option).and_return(inventory_options[:evening])
+    MedicationTakeStockDecrement.new(take).call(stock_source)
 
     expect(lock_order).to eq(%i[dosage inventory])
   end
@@ -185,7 +185,7 @@ RSpec.describe MedicationTake do
     described_class.create!(
       schedule: schedule,
       taken_at: Time.current,
-      amount_ml: 10.0,
+      dose_amount: 10.0,
       taken_from_medication: taken_from_medication,
       taken_from_location: taken_from_medication.location
     )
@@ -195,7 +195,7 @@ RSpec.describe MedicationTake do
     described_class.new(
       schedule: schedule,
       taken_at: Time.current,
-      amount_ml: 10.0,
+      dose_amount: 10.0,
       taken_from_medication: taken_from_medication,
       taken_from_location: taken_from_medication.location
     )

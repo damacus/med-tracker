@@ -131,7 +131,7 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
       end
 
       before do
-        MedicationTake.create!(schedule: schedule, taken_at: 1.hour.ago, amount_ml: 400)
+        MedicationTake.create!(schedule: schedule, taken_at: 1.hour.ago, dose_amount: 400)
       end
 
       it 'emits a row with :cooldown status' do
@@ -162,7 +162,7 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
       end
 
       before do
-        2.times { MedicationTake.create!(schedule: schedule, taken_at: Time.current, amount_ml: 500) }
+        2.times { MedicationTake.create!(schedule: schedule, taken_at: Time.current, dose_amount: 500) }
       end
 
       it 'does not emit an :upcoming row when daily max is reached' do

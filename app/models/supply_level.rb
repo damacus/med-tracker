@@ -5,12 +5,12 @@ class SupplyLevel
 
   def initialize(current:, reorder_threshold:, last_restock:)
     @raw_current = current
-    @reorder_threshold = reorder_threshold.to_i
+    @reorder_threshold = BigDecimal((reorder_threshold || 0).to_s)
     @last_restock = last_restock
   end
 
   def current
-    raw_current || 0
+    raw_current || BigDecimal('0')
   end
 
   def tracked?
@@ -34,7 +34,7 @@ class SupplyLevel
     return false unless tracked?
     return false if previous_current.nil?
 
-    previous_current.to_i > reorder_threshold && current <= reorder_threshold
+    BigDecimal(previous_current.to_s) > reorder_threshold && current <= reorder_threshold
   end
 
   def out_of_stock?

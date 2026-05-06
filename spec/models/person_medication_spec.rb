@@ -234,7 +234,7 @@ RSpec.describe PersonMedication do
     end
 
     context 'when both on cooldown and out of stock' do
-      let(:medication) { create(:medication, current_supply: 0) }
+      let(:medication) { create(:medication, current_supply: 1) }
       let(:person_medication) { create(:person_medication, medication: medication, min_hours_between_doses: 4) }
 
       it 'returns false' do
@@ -281,7 +281,7 @@ RSpec.describe PersonMedication do
     end
 
     context 'when both on cooldown and out of stock' do
-      let(:medication) { create(:medication, current_supply: 0) }
+      let(:medication) { create(:medication, current_supply: 1) }
       let(:person_medication) { create(:person_medication, medication: medication, min_hours_between_doses: 4) }
 
       it 'returns :out_of_stock (stock takes priority)' do

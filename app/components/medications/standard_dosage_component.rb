@@ -36,7 +36,7 @@ module Components
           div(class: 'pt-4 border-t border-border') do
             render_overview_item(
               t('medications.show.reorder_at_label'),
-              pluralize(medication.reorder_threshold, 'unit')
+              reorder_threshold_label
             )
           end
         end
@@ -46,6 +46,13 @@ module Components
 
       def dosage_specified?
         medication.dosage_amount.present? && medication.dosage_unit.present?
+      end
+
+      def reorder_threshold_label
+        threshold = MedicationStockQuantityFormatter.format(medication.reorder_threshold)
+        return "#{threshold} ml" if medication.dosage_unit == 'ml'
+
+        threshold == '1' ? '1 unit' : "#{threshold} units"
       end
 
       def render_overview_item(label, value)

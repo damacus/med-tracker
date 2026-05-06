@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe MedicationTake do
-  subject(:medication_take) { described_class.new(schedule: schedule, taken_at: Time.current, amount_ml: 10.0) }
+  subject(:medication_take) { described_class.new(schedule: schedule, taken_at: Time.current, dose_amount: 10.0) }
 
   let(:medication) do
     Medication.create!(
@@ -22,14 +22,31 @@ RSpec.describe MedicationTake do
 
   describe 'validations' do
     it { is_expected.to validate_presence_of(:taken_at) }
-    it { is_expected.to validate_presence_of(:amount_ml) }
-    it { is_expected.to validate_numericality_of(:amount_ml).is_greater_than(0) }
+    it { is_expected.to validate_numericality_of(:dose_amount).is_greater_than(0) }
+
+    it 'requires a dose amount snapshot' do
+      take = described_class.new(taken_at: Time.current, dose_unit: 'mg')
+
+      take.valid?
+
+      expect(take.errors[:dose_amount]).to include("can't be blank")
+    end
+
+    it 'requires a dose unit snapshot' do
+      take = described_class.new(taken_at: Time.current, dose_amount: 10)
+
+      take.valid?
+
+      expect(take.errors[:dose_unit]).to include("can't be blank")
+    end
 
     it 'allows blank client UUIDs but rejects duplicates when present' do
       uuid = SecureRandom.uuid
-      described_class.create!(schedule: schedule, taken_at: 1.hour.ago, amount_ml: 10.0, client_uuid: uuid)
+      described_class.create!(schedule: schedule, taken_at: 1.hour.ago, dose_amount: 10.0, dose_unit: 'mg',
+                              client_uuid: uuid)
 
-      duplicate = described_class.new(schedule: schedule, taken_at: Time.current, amount_ml: 10.0, client_uuid: uuid)
+      duplicate = described_class.new(schedule: schedule, taken_at: Time.current, dose_amount: 10.0, dose_unit: 'mg',
+                                      client_uuid: uuid)
 
       expect(duplicate).not_to be_valid
       expect(duplicate.errors[:client_uuid]).to include('has already been taken')
@@ -65,7 +82,7 @@ RSpec.describe MedicationTake do
 
   describe 'source validation' do
     context 'when neither schedule nor person_medication is set' do
-      subject(:medication_take) { described_class.new(taken_at: Time.current, amount_ml: 10.0) }
+      subject(:medication_take) { described_class.new(taken_at: Time.current, dose_amount: 10.0, dose_unit: 'mg') }
 
       it 'is invalid' do
         expect(medication_take).not_to be_valid
@@ -81,7 +98,8 @@ RSpec.describe MedicationTake do
           schedule: schedule,
           person_medication: person_medication,
           taken_at: Time.current,
-          amount_ml: 10.0
+          dose_amount: 10.0,
+          dose_unit: 'mg'
         )
       end
 
@@ -98,7 +116,8 @@ RSpec.describe MedicationTake do
         described_class.new(
           schedule: schedule,
           taken_at: Time.current,
-          amount_ml: 10.0
+          dose_amount: 10.0,
+          dose_unit: 'mg'
         )
       end
 
@@ -112,7 +131,8 @@ RSpec.describe MedicationTake do
         described_class.new(
           person_medication: person_medication,
           taken_at: Time.current,
-          amount_ml: 10.0
+          dose_amount: 10.0,
+          dose_unit: 'mg'
         )
       end
 
@@ -142,9 +162,40 @@ RSpec.describe MedicationTake do
           described_class.create!(
             schedule: schedule,
             taken_at: Time.current,
-            amount_ml: 10.0
+            dose_amount: 10.0,
+            dose_unit: 'mg'
           )
         end.to change { medication.reload.current_supply }.from(100).to(99)
+      end
+
+      it 'deducts the dose amount from ml stock' do
+        medication.update!(dosage_amount: 2.5, dosage_unit: 'ml', current_supply: 100, reorder_threshold: 10)
+        liquid_schedule = create_schedule_for(person: person, medication: medication,
+                                              dosage: default_dosage_for(medication))
+
+        expect do
+          described_class.create!(
+            schedule: liquid_schedule,
+            taken_at: Time.current,
+            dose_amount: 2.5,
+            dose_unit: 'ml'
+          )
+        end.to change { medication.reload.current_supply }.from(100).to(BigDecimal('97.5'))
+      end
+
+      it 'rejects a volume dose when stock is below the dose amount' do
+        medication.update!(dosage_amount: 2.5, dosage_unit: 'ml', current_supply: 2, reorder_threshold: 10)
+        liquid_schedule = create_schedule_for(person: person, medication: medication,
+                                              dosage: default_dosage_for(medication))
+        take = described_class.new(
+          schedule: liquid_schedule,
+          taken_at: Time.current,
+          dose_amount: 2.5,
+          dose_unit: 'ml'
+        )
+
+        expect(take).not_to be_valid
+        expect(take.errors[:taken_from_medication]).to include('must be in stock')
       end
     end
 
@@ -154,7 +205,8 @@ RSpec.describe MedicationTake do
           described_class.create!(
             person_medication: person_medication,
             taken_at: Time.current,
-            amount_ml: 10.0
+            dose_amount: 10.0,
+            dose_unit: 'mg'
           )
         end.to change { medication.reload.current_supply }.from(100).to(99)
       end
@@ -296,7 +348,7 @@ RSpec.describe MedicationTake do
         described_class.create!(
           schedule: schedule,
           taken_at: Time.current,
-          amount_ml: 10.0
+          dose_amount: 10.0
         )
       end
 
@@ -310,7 +362,7 @@ RSpec.describe MedicationTake do
         described_class.create!(
           schedule: schedule,
           taken_at: Time.current,
-          amount_ml: 10.0
+          dose_amount: 10.0
         )
       end
 
@@ -324,7 +376,7 @@ RSpec.describe MedicationTake do
         described_class.create!(
           schedule: schedule,
           taken_at: Time.current,
-          amount_ml: 10.0
+          dose_amount: 10.0
         )
       end
 
@@ -411,7 +463,7 @@ RSpec.describe MedicationTake do
         described_class.create!(
           schedule: schedule,
           taken_at: Time.current,
-          amount_ml: 5.0
+          dose_amount: 5.0
         )
       end.to change(PaperTrail::Version.where(item_type: 'MedicationTake'), :count).by(1)
 
@@ -424,11 +476,11 @@ RSpec.describe MedicationTake do
       take = described_class.create!(
         schedule: schedule,
         taken_at: Time.current,
-        amount_ml: 5.0
+        dose_amount: 5.0
       )
 
       expect do
-        take.update!(amount_ml: 10.0)
+        take.update!(dose_amount: 10.0)
       end.to change(PaperTrail::Version, :count).by(1)
 
       version = take.versions.last
@@ -441,7 +493,7 @@ RSpec.describe MedicationTake do
       take = described_class.create!(
         schedule: schedule,
         taken_at: original_time,
-        amount_ml: 5.0
+        dose_amount: 5.0
       )
 
       new_time = 1.hour.ago
@@ -456,7 +508,7 @@ RSpec.describe MedicationTake do
       take = described_class.create!(
         schedule: schedule,
         taken_at: Time.current,
-        amount_ml: 5.0
+        dose_amount: 5.0
       )
       expect(take.versions.last.whodunnit).to eq(admin.id.to_s)
     end
@@ -467,7 +519,7 @@ RSpec.describe MedicationTake do
       take = described_class.create!(
         schedule: schedule,
         taken_at: Time.current,
-        amount_ml: 5.0
+        dose_amount: 5.0
       )
 
       expect(take.versions.last.ip).to eq('192.168.1.100')
@@ -491,8 +543,8 @@ RSpec.describe MedicationTake do
   def default_dosage_for(medication)
     Dosage.create!(
       medication: medication,
-      amount: 10,
-      unit: 'mg',
+      amount: medication.dosage_amount || 10,
+      unit: medication.dosage_unit || 'mg',
       frequency: 'daily',
       default_max_daily_doses: 1,
       default_min_hours_between_doses: 24,
@@ -602,7 +654,7 @@ RSpec.describe MedicationTake do
     described_class.create!(
       schedule: schedule,
       taken_at: Time.current,
-      amount_ml: 10.0,
+      dose_amount: 10.0,
       taken_from_medication: taken_from_medication,
       taken_from_location: taken_from_location
     )
@@ -612,7 +664,7 @@ RSpec.describe MedicationTake do
     described_class.new(
       schedule: schedule,
       taken_at: Time.current,
-      amount_ml: 10.0,
+      dose_amount: 10.0,
       taken_from_medication: taken_from_medication,
       taken_from_location: taken_from_location
     )
