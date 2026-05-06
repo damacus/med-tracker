@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.49](https://github.com/damacus/med-tracker/compare/v0.3.48...v0.3.49) (2026-05-06)
+
+
+### Features
+
+* add global search command palette ([#1177](https://github.com/damacus/med-tracker/issues/1177)) ([15ab7d0](https://github.com/damacus/med-tracker/commit/15ab7d061b218bf592e8a652fd918fa86a7525ec))
+
+
+### Bug Fixes
+
+* support decimal dose inventory ([#1176](https://github.com/damacus/med-tracker/issues/1176)) ([1240041](https://github.com/damacus/med-tracker/commit/1240041d9b489e14a0a8ac34528495b4e2f73a32))
+
 ## [0.3.48](https://github.com/damacus/med-tracker/compare/v0.3.47...v0.3.48) (2026-05-06)
 
 
