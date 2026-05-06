@@ -87,7 +87,7 @@ module Components
       def render_notes
         div(class: 'p-4 bg-primary-container border border-primary/20 rounded-shape-xl') do
           div(class: 'flex items-center gap-2 mb-1') do
-            render Icons::AlertCircle.new(size: 14, class: 'text-on-primary-container')
+            render Icons::FileText.new(size: 14, class: 'text-on-primary-container')
             m3_text(size: '1', weight: 'bold',
                     class: 'font-black uppercase tracking-widest text-on-primary-container') do
               t('person_medications.card.notes')
@@ -100,7 +100,7 @@ module Components
       def render_timing_restrictions
         div(class: 'p-4 bg-secondary-container border border-border rounded-shape-xl') do
           div(class: 'flex items-center gap-2 mb-2') do
-            render Icons::Settings.new(size: 14, class: 'text-on-surface-variant')
+            render Icons::Clock.new(size: 14, class: 'text-on-surface-variant')
             m3_text(size: '1', weight: 'bold', class: 'font-black uppercase tracking-widest text-on-surface-variant') do
               t('person_medications.card.timing_restrictions')
             end
@@ -129,7 +129,7 @@ module Components
       def render_countdown_notice
         div(class: 'p-4 bg-warning-container border border-warning/20 rounded-shape-xl') do
           div(class: 'flex items-center gap-2 mb-1') do
-            render Icons::AlertCircle.new(size: 14, class: 'text-on-warning-container')
+            render Icons::Clock.new(size: 14, class: 'text-on-warning-container')
             m3_text(size: '1', weight: 'bold',
                     class: 'font-black uppercase tracking-widest text-on-warning-container') do
               t('person_medications.card.next_dose_available')
@@ -230,6 +230,7 @@ module Components
             label: take_label,
             variant: :filled,
             size: :lg,
+            icon: Icons::Pill,
             class: 'w-full rounded-xl py-6 font-bold shadow-lg shadow-primary/20 hover:shadow-xl ' \
                    'hover:shadow-primary/30',
             testid: "take-person-medication-#{person_medication.id}",
@@ -237,7 +238,8 @@ module Components
           },
           state: {
             disabled: invalid_dose_configured? || blocked_reason == :out_of_stock,
-            label: label
+            label: label,
+            icon: Icons::AlertCircle
           }
         )
       end

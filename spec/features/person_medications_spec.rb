@@ -57,7 +57,7 @@ RSpec.describe 'Person Medications', type: :system do
       visit person_path(person)
 
       within("#person_medication_#{person_medication.id}") do
-        click_button '💊 Take'
+        click_button 'Take'
       end
       confirm_record_dose(person_medication)
 
@@ -78,8 +78,8 @@ RSpec.describe 'Person Medications', type: :system do
       visit person_path(person)
 
       within("#person_medication_#{person_medication.id}") do
-        expect(page).to have_button('💊 Take', disabled: false)
-        click_button '💊 Take'
+        expect(page).to have_button('Take', disabled: false)
+        click_button 'Take'
       end
       expect do
         confirm_record_dose(person_medication)
@@ -99,8 +99,8 @@ RSpec.describe 'Person Medications', type: :system do
       visit person_path(person)
 
       within("#person_medication_#{person_medication.id}") do
-        expect(page).to have_button('💊 Take', disabled: false)
-        click_button '💊 Take'
+        expect(page).to have_button('Take', disabled: false)
+        click_button 'Take'
       end
       expect do
         confirm_record_dose(person_medication)
@@ -135,7 +135,7 @@ RSpec.describe 'Person Medications', type: :system do
     path = take_medication_person_person_medication_path(person, person_medication)
 
     within("form[action='#{path}']") do
-      click_button '💊 Take'
+      click_button 'Take'
     end
   end
 end

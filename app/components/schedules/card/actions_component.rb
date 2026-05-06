@@ -34,6 +34,7 @@ module Components
               label: presenter.take_label,
               variant: :filled,
               size: :lg,
+              icon: Icons::Pill,
               class: 'w-full rounded-xl py-6 font-bold shadow-lg shadow-primary/20 hover:shadow-xl ' \
                      'hover:shadow-primary/30 transition-all',
               testid: "take-schedule-#{schedule.id}",
@@ -41,7 +42,8 @@ module Components
             },
             state: {
               disabled: presenter.take_disabled?,
-              label: presenter.take_state_label
+              label: presenter.take_state_label,
+              icon: Icons::AlertCircle
             }
           )
         end

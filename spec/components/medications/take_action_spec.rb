@@ -34,7 +34,27 @@ RSpec.describe Components::Medications::TakeAction, type: :component do
     end
   end
 
-  def render_take_action
+  it 'renders decorative SVG icons on enabled and confirmation buttons' do
+    rendered = render_take_action(button: { icon: Components::Icons::Pill })
+
+    icons = rendered.css('button svg.lucide-pill')
+    expect(icons.count).to eq(2)
+    expect(icons.all? { |icon| icon['aria-hidden'] == 'true' }).to be(true)
+  end
+
+  it 'renders a decorative SVG icon on disabled buttons' do
+    rendered = render_take_action(
+      button: { icon: Components::Icons::Pill },
+      state: { disabled: true, label: 'Out of Stock', icon: Components::Icons::AlertCircle }
+    )
+
+    icon = rendered.at_css("button[data-testid='take-schedule-#{source.id}-disabled'] svg.lucide-alert-circle")
+    expect(icon).to be_present
+    expect(icon['aria-hidden']).to eq('true')
+    expect(rendered.text).to include('Out of Stock')
+  end
+
+  def render_take_action(button: {}, state: {})
     html = view_context.render(
       described_class.new(
         source: source,
@@ -44,7 +64,8 @@ RSpec.describe Components::Medications::TakeAction, type: :component do
           label: 'Give dose',
           variant: :filled,
           testid: "take-schedule-#{source.id}"
-        }
+        }.merge(button),
+        state: state
       )
     )
     Nokogiri::HTML::DocumentFragment.parse(html)

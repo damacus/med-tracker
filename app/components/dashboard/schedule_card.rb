@@ -116,13 +116,15 @@ module Components
             label: t('dashboard.person_schedule.take_now'),
             variant: :tonal,
             size: :md,
+            icon: Icons::Pill,
             class: 'inline-flex rounded-xl font-bold shadow-sm',
             testid: "take-medication-#{schedule.id}",
             form_class: 'inline-block'
           },
           state: {
             disabled: blocked_reason.present?,
-            label: label
+            label: label,
+            icon: Icons::AlertCircle
           }
         )
       end

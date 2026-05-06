@@ -32,6 +32,12 @@ RSpec.describe Components::Dashboard::ScheduleCard, type: :component do
 
       expect(rendered.text).to include(schedule.medication.current_supply.to_s)
     end
+
+    it 'renders the take action with a pill icon' do
+      rendered = render_inline(described_class.new(person: person, schedule: schedule))
+
+      expect(rendered.css("button[data-testid='take-medication-#{schedule.id}'] svg.lucide-pill")).to be_present
+    end
   end
 
   describe 'card structure' do

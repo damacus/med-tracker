@@ -8,6 +8,7 @@
 
 ## Interaction Principles
 - **Mobile-First & One-Handed:** Design for the real world. Interfaces should be optimized for quick, one-handed use, acknowledging that parents are often multitasking while recording or checking doses.
+- **SVG Iconography:** App UI uses SVG icon components for visual cues instead of emoji in i18n strings; decorative icons must stay paired with accessible text.
 
 ## Notification Strategy
 - **Gentle Reminders:** Notifications should be supportive and friendly. We remind users of upcoming doses in a way that feels helpful rather than intrusive, maintaining a calm and helpful presence.

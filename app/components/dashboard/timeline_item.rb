@@ -99,6 +99,7 @@ module Components
             label: take_label,
             variant: :outlined,
             size: :md,
+            icon: Icons::Pill,
             testid: "take-dose-#{dose_id}",
             form_class: nil
           }

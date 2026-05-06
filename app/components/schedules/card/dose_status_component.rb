@@ -27,32 +27,42 @@ module Components
 
         def render_date_details
           div(class: 'flex items-center gap-6') do
-            div do
-              m3_text(variant: :label_small, class: 'uppercase tracking-widest text-on-surface-variant font-black') do
-                t('schedules.card.started')
-              end
-              m3_text(variant: :body_medium, class: 'text-on-surface-variant font-bold') do
-                schedule.start_date.strftime('%b %d, %Y')
+            div(class: 'flex items-start gap-2') do
+              render Icons::Calendar.new(size: 14, class: 'mt-0.5 text-on-surface-variant')
+              div do
+                m3_text(variant: :label_small, class: date_label_class) do
+                  t('schedules.card.started')
+                end
+                m3_text(variant: :body_medium, class: 'text-on-surface-variant font-bold') do
+                  schedule.start_date.strftime('%b %d, %Y')
+                end
               end
             end
 
             if schedule.end_date
-              div do
-                m3_text(variant: :label_small, class: 'uppercase tracking-widest text-on-surface-variant font-black') do
-                  t('schedules.card.ends')
-                end
-                m3_text(variant: :body_medium, class: 'text-on-surface-variant font-bold') do
-                  schedule.end_date.strftime('%b %d, %Y')
+              div(class: 'flex items-start gap-2') do
+                render Icons::Calendar.new(size: 14, class: 'mt-0.5 text-on-surface-variant')
+                div do
+                  m3_text(variant: :label_small, class: date_label_class) do
+                    t('schedules.card.ends')
+                  end
+                  m3_text(variant: :body_medium, class: 'text-on-surface-variant font-bold') do
+                    schedule.end_date.strftime('%b %d, %Y')
+                  end
                 end
               end
             end
           end
         end
 
+        def date_label_class
+          'uppercase tracking-widest text-on-surface-variant font-black'
+        end
+
         def render_notes
           div(class: 'p-4 bg-primary-container/40 border border-primary/20 rounded-2xl') do
             div(class: 'flex items-center gap-2 mb-1') do
-              render Icons::AlertCircle.new(size: 14, class: 'text-on-primary-container')
+              render Icons::FileText.new(size: 14, class: 'text-on-primary-container')
               m3_text(variant: :label_small, class: 'uppercase tracking-widest text-on-primary-container font-black') do
                 t('schedules.card.notes')
               end
@@ -66,7 +76,7 @@ module Components
         def render_countdown_notice
           div(class: 'p-4 bg-error-container/20 border border-error/20 rounded-2xl') do
             div(class: 'flex items-center gap-2 mb-1') do
-              render Icons::AlertCircle.new(size: 14, class: 'text-on-error-container')
+              render Icons::Clock.new(size: 14, class: 'text-on-error-container')
               m3_text(variant: :label_small, class: 'uppercase tracking-widest text-on-error-container font-black') do
                 t('schedules.card.next_dose_available')
               end
