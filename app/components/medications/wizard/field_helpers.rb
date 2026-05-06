@@ -280,8 +280,9 @@ module Components
               type: :number,
               name: 'medication[current_supply]',
               id: 'medication_current_supply',
-              value: medication.current_supply,
+              value: inventory_field_value(medication.current_supply),
               min: '0',
+              step: '0.01',
               title: 'Starting supply for a new medication',
               placeholder: t('forms.medications.current_supply_placeholder', default: 'e.g., 30'),
               class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 ' \
@@ -301,8 +302,9 @@ module Components
               type: :number,
               name: 'medication[reorder_threshold]',
               id: 'medication_reorder_threshold',
-              value: medication.reorder_threshold,
+              value: inventory_field_value(medication.reorder_threshold),
               min: '0',
+              step: '0.01',
               title: 'Reorder when supply falls below this level',
               placeholder: t('forms.medications.reorder_threshold_placeholder', default: 'e.g., 5'),
               class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 ' \
@@ -333,6 +335,12 @@ module Components
 
         def dosage_units
           Medication::DOSAGE_UNITS
+        end
+
+        def inventory_field_value(value)
+          return if value.blank?
+
+          MedicationStockConsumption.format(value)
         end
 
         def render_suggested_dosage_records_section

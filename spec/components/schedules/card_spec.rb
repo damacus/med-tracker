@@ -19,7 +19,7 @@ RSpec.describe Components::Schedules::Card, type: :component do
   end
 
   it 'displays dosage unit from schedule, not hardcoded ml' do
-    MedicationTake.create!(schedule: schedule, taken_at: Time.current, amount_ml: 400)
+    MedicationTake.create!(schedule: schedule, taken_at: Time.current, dose_amount: 400)
     vc = view_context
     vc.singleton_class.define_method(:current_user) { nil }
 
@@ -27,7 +27,7 @@ RSpec.describe Components::Schedules::Card, type: :component do
     rendered = Nokogiri::HTML::DocumentFragment.parse(html)
 
     take_text = rendered.text
-    expect(take_text).to include('400mg')
+    expect(take_text).to include('400 mg')
     expect(take_text).not_to match(/400\s*ml/i)
   end
 
@@ -78,7 +78,7 @@ RSpec.describe Components::Schedules::Card, type: :component do
     MedicationTake.create!(
       schedule: schedule,
       taken_at: Time.current,
-      amount_ml: 400,
+      dose_amount: 400,
       taken_from_medication: alternate_medication,
       taken_from_location: alternate_location
     )

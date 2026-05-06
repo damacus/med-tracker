@@ -8,13 +8,16 @@ class RestockMedicationService
   end
 
   def call(medication:, quantity:, restock_date:)
-    normalized_quantity = quantity.to_i
+    normalized_quantity = normalize_quantity(quantity)
     normalized_date = normalize_date(restock_date)
 
-    return failure(medication, 'Quantity must be greater than 0') if normalized_quantity <= 0
+    if normalized_quantity.blank? || normalized_quantity <= 0
+      return failure(medication, 'Quantity must be greater than 0')
+    end
     return failure(medication, 'Restock date is invalid') unless normalized_date
 
-    medication.paper_trail_event = "restock (qty: #{normalized_quantity}, date: #{normalized_date.iso8601})"
+    medication.paper_trail_event = "restock (qty: #{MedicationStockConsumption.format(normalized_quantity)}, " \
+                                   "date: #{normalized_date.iso8601})"
     medication.restock!(quantity: normalized_quantity)
 
     Result.new(success: true, medication: medication, error: nil)
@@ -23,6 +26,12 @@ class RestockMedicationService
   end
 
   private
+
+  def normalize_quantity(quantity)
+    BigDecimal(quantity.to_s)
+  rescue ArgumentError
+    nil
+  end
 
   def normalize_date(restock_date)
     return restock_date if restock_date.respond_to?(:iso8601)

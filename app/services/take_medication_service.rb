@@ -8,7 +8,7 @@
 # @example
 #   result = TakeMedicationService.new.call(
 #     source: @schedule,
-#     amount_override: params[:amount_ml],
+#     amount_override: params[:dose_amount],
 #     taken_from_medication_id: params[:taken_from_medication_id],
 #     user: current_user,
 #     taken_at: params[:taken_at] || Time.current   # optional, defaults to now
@@ -19,7 +19,7 @@
 #                   #    :selection_required | :invalid_source | :create_failed
 class TakeMedicationService
   Result = Data.define(:success, :take, :error)
-  PreparedTake = Data.define(:source, :amount, :medication, :taken_at, :client_uuid, :error)
+  PreparedTake = Data.define(:source, :amount, :unit, :medication, :taken_at, :client_uuid, :error)
 
   def call(source:, amount_override:, taken_from_medication_id:, user:, **options)
     prepared_take = prepare_take(
@@ -31,7 +31,7 @@ class TakeMedicationService
     )
     return failure(prepared_take.error) if prepared_take.error
 
-    take = record_take(**prepared_take.to_h.except(:error))
+    take = record_take(prepared_take)
     return failure(:create_failed) unless take.persisted?
 
     success(take)
@@ -59,11 +59,26 @@ class TakeMedicationService
     error, medication = resolve_stock_source(resolver, taken_from_medication_id)
     return prepared_error(error) if error
 
-    PreparedTake.new(source:, amount:, medication:, taken_at:, client_uuid: options[:client_uuid], error: nil)
+    prepared_success(source:, amount:, medication:, taken_at:, options:)
   end
 
   def prepared_error(error)
-    PreparedTake.new(source: nil, amount: nil, medication: nil, taken_at: nil, client_uuid: nil, error: error)
+    PreparedTake.new(
+      source: nil, amount: nil, unit: nil, medication: nil,
+      taken_at: nil, client_uuid: nil, error: error
+    )
+  end
+
+  def prepared_success(source:, amount:, medication:, taken_at:, options:)
+    PreparedTake.new(
+      source: source,
+      amount: amount,
+      unit: default_dose_unit_for(source, taken_at),
+      medication: medication,
+      taken_at: taken_at,
+      client_uuid: options[:client_uuid],
+      error: nil
+    )
   end
 
   def resolve_stock_source(resolver, taken_from_medication_id)
@@ -75,13 +90,14 @@ class TakeMedicationService
     [nil, medication]
   end
 
-  def record_take(source:, amount:, medication:, taken_at:, client_uuid:)
-    source.medication_takes.create(
-      taken_at: taken_at,
-      amount_ml: amount,
-      client_uuid: client_uuid,
-      taken_from_medication: medication,
-      taken_from_location: medication.location
+  def record_take(prepared_take)
+    prepared_take.source.medication_takes.create(
+      taken_at: prepared_take.taken_at,
+      dose_amount: prepared_take.amount,
+      dose_unit: prepared_take.unit,
+      client_uuid: prepared_take.client_uuid,
+      taken_from_medication: prepared_take.medication,
+      taken_from_location: prepared_take.medication.location
     )
   end
 
@@ -97,6 +113,12 @@ class TakeMedicationService
     return source.effective_dose_amount(effective_date(taken_at)) if source.respond_to?(:effective_dose_amount)
 
     source.default_dose_amount
+  end
+
+  def default_dose_unit_for(source, taken_at)
+    return source.effective_dose_unit(effective_date(taken_at)) if source.respond_to?(:effective_dose_unit)
+
+    source.dose_unit
   end
 
   def effective_date(taken_at)
@@ -122,7 +144,8 @@ class TakeMedicationService
       medication_id: take.medication&.id,
       inventory_medication_id: take.inventory_medication&.id,
       inventory_location_id: take.inventory_location&.id,
-      amount_ml: take.amount_ml&.to_f,
+      dose_amount: take.dose_amount&.to_f,
+      dose_unit: take.dose_unit,
       taken_at: take.taken_at
     }
   end

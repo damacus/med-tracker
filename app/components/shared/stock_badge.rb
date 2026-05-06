@@ -32,13 +32,20 @@ module Components
       end
 
       def badge_text
-        count = medication.current_supply.to_i
+        count = formatted_supply
 
         case stock_status
         when :out_of_stock then "Out of Stock (#{count})"
         when :low_stock then "Low Stock (#{count})"
         else "#{count} left"
         end
+      end
+
+      def formatted_supply
+        value = MedicationStockConsumption.format(medication.current_supply)
+        return "#{value} ml" if medication.dosage_unit == 'ml'
+
+        value
       end
 
       def stock_status

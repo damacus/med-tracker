@@ -61,7 +61,7 @@ RSpec.describe Components::PersonMedications::Card, type: :component do
     MedicationTake.create!(
       person_medication: person_medication,
       taken_at: Time.current,
-      amount_ml: 1,
+      dose_amount: 1,
       taken_from_medication: alternate_medication,
       taken_from_location: alternate_location
     )

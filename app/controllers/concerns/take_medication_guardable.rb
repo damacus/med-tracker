@@ -74,7 +74,7 @@ module TakeMedicationGuardable
         controller: self.class.name,
         source: source,
         person_id: @person.id,
-        attempted_amount_ml: amount&.to_s
+        attempted_dose_amount: amount&.to_s
       }.merge(metadata).to_json
     )
   end

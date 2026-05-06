@@ -139,7 +139,7 @@ module Components
               end
             end
             m3_text(variant: :label_small, class: 'text-on-surface-variant font-black uppercase tracking-widest') do
-              "#{take.amount_ml.to_i}#{schedule.dose_unit}"
+              DoseAmount.new(take.dose_amount, take.dose_unit || schedule.dose_unit).to_s
             end
           end
         end

@@ -52,7 +52,7 @@ RSpec.describe 'Toast notifications for async actions' do
 
       it 'returns turbo_stream response with flash update when dose is invalid' do
         post take_medication_person_schedule_path(person, schedule),
-             params: { amount_ml: 0 },
+             params: { dose_amount: 0 },
              headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
 
         expect(response).to have_http_status(:ok)
@@ -95,7 +95,7 @@ RSpec.describe 'Toast notifications for async actions' do
 
       it 'returns turbo_stream response with flash update when dose is invalid' do
         post take_medication_person_person_medication_path(person, person_medication),
-             params: { amount_ml: 0 },
+             params: { dose_amount: 0 },
              headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
 
         expect(response).to have_http_status(:ok)

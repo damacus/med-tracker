@@ -3,7 +3,8 @@
 FactoryBot.define do
   factory :medication_take do
     taken_at { Time.current }
-    amount_ml { 1.0 }
+    dose_amount { schedule&.dose_amount || person_medication&.dose_amount || 1.0 }
+    dose_unit { schedule&.dose_unit || person_medication&.dose_unit || 'mg' }
 
     trait :for_person_medication do
       person_medication

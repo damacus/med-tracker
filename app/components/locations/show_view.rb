@@ -118,7 +118,7 @@ module Components
               Badge(variant: :destructive, class: 'shrink-0 whitespace-nowrap justify-center') { 'Low Stock' }
             else
               Badge(variant: :success, class: 'shrink-0 whitespace-nowrap justify-center') do
-                pluralize(medication.current_supply, 'unit')
+                ::Medications::SupplyStatusPresenter.new(medication: medication).inventory_units_label
               end
             end
           end

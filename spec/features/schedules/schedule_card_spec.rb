@@ -12,11 +12,10 @@ RSpec.describe 'Schedule Card', type: :system do
 
   before do
     login_as(admin_user)
-    visit person_path(person)
   end
 
   it 'allows taking a dose from the card and updates the card state' do
-    schedule.medication_takes.destroy_all
+    schedule.medication_takes.delete_all
     visit person_path(person)
 
     within("#schedule_#{schedule.id}") do
@@ -33,6 +32,8 @@ RSpec.describe 'Schedule Card', type: :system do
   end
 
   it 'opens the edit modal from the schedule card' do
+    visit person_path(person)
+
     within("#schedule_#{schedule.id}") do
       find("a[href='#{edit_person_schedule_path(person, schedule)}']").click
     end
@@ -42,6 +43,8 @@ RSpec.describe 'Schedule Card', type: :system do
   end
 
   it 'updates the persisted dose when changing the selected dose in the edit modal' do
+    visit person_path(person)
+
     within("#schedule_#{schedule.id}") do
       find("a[href='#{edit_person_schedule_path(person, schedule)}']").click
     end

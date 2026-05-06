@@ -31,7 +31,7 @@ RSpec.describe TakeMedicationService do
     end
 
     it 'records the correct amount' do
-      expect(result.take.amount_ml).to eq(BigDecimal(expected_amount.to_s))
+      expect(result.take.dose_amount).to eq(BigDecimal(expected_amount.to_s))
     end
 
     it 'records no error' do
@@ -98,7 +98,7 @@ RSpec.describe TakeMedicationService do
         # Create a recent take to trigger the cooldown
         schedule.medication_takes.create!(
           taken_at: 1.minute.ago,
-          amount_ml: schedule.default_dose_amount,
+          dose_amount: schedule.default_dose_amount,
           taken_from_medication: schedule.medication,
           taken_from_location: schedule.medication.location
         )
@@ -378,7 +378,7 @@ RSpec.describe TakeMedicationService do
       )
       result = take_schedule_at(schedule: schedule, travel_date: tablet_date, taken_at: capsule_date.noon)
 
-      expect(result.take.amount_ml).to eq(BigDecimal('1'))
+      expect(result.take.dose_amount).to eq(BigDecimal('1'))
       expect_inventory_supply(tablet: 56, capsule: 27, medication: 83)
     end
   end
@@ -411,7 +411,7 @@ RSpec.describe TakeMedicationService do
       payloads
     end
 
-    def expect_dose_taken_payload(payloads, result:, source:, amount_ml:, source_type:)
+    def expect_dose_taken_payload(payloads, result:, source:, dose_amount:, source_type:)
       expect(payloads).to contain_exactly(
         include(
           take_id: result.take.id,
@@ -421,7 +421,8 @@ RSpec.describe TakeMedicationService do
           medication_id: source.medication_id,
           inventory_medication_id: source.medication_id,
           inventory_location_id: source.medication.location_id,
-          amount_ml: amount_ml,
+          dose_amount: dose_amount,
+          dose_unit: source.dose_unit,
           taken_at: result.take.taken_at
         )
       )
@@ -440,7 +441,7 @@ RSpec.describe TakeMedicationService do
           payloads,
           result: result,
           source: schedule,
-          amount_ml: 750.0,
+          dose_amount: 750.0,
           source_type: 'schedule'
         )
       end
@@ -458,7 +459,7 @@ RSpec.describe TakeMedicationService do
         payloads,
         result: result,
         source: person_medication,
-        amount_ml: 1000.0,
+        dose_amount: 1000.0,
         source_type: 'person_medication'
       )
     end
@@ -480,7 +481,7 @@ RSpec.describe TakeMedicationService do
       travel_to Time.current.end_of_day - 1.minute do
         schedule.medication_takes.create!(
           taken_at: 1.minute.ago,
-          amount_ml: schedule.default_dose_amount,
+          dose_amount: schedule.default_dose_amount,
           taken_from_medication: schedule.medication,
           taken_from_location: schedule.medication.location
         )

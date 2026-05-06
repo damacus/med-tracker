@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_05_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_06_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -179,7 +179,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_05_120000) do
   create_table "dosages", force: :cascade do |t|
     t.decimal "amount"
     t.datetime "created_at", null: false
-    t.integer "current_supply"
+    t.decimal "current_supply", precision: 10, scale: 2
     t.integer "default_dose_cycle"
     t.boolean "default_for_adults", default: false, null: false
     t.boolean "default_for_children", default: false, null: false
@@ -188,7 +188,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_05_120000) do
     t.string "description"
     t.string "frequency"
     t.bigint "medication_id", null: false
-    t.integer "reorder_threshold"
+    t.decimal "reorder_threshold", precision: 10, scale: 2
     t.string "unit"
     t.datetime "updated_at", null: false
     t.index ["medication_id"], name: "index_dosages_on_medication_id"
@@ -226,7 +226,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_05_120000) do
   end
 
   create_table "medication_takes", force: :cascade do |t|
-    t.decimal "amount_ml"
+    t.decimal "dose_amount", precision: 10, scale: 2
+    t.string "dose_unit"
     t.string "client_uuid"
     t.datetime "created_at", null: false
     t.bigint "person_medication_id"
@@ -247,7 +248,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_05_120000) do
     t.string "barcode"
     t.string "category"
     t.datetime "created_at", null: false
-    t.integer "current_supply"
+    t.decimal "current_supply", precision: 10, scale: 2
     t.text "description"
     t.jsonb "default_schedule_config", default: {}, null: false
     t.integer "default_schedule_type", default: 1, null: false
@@ -261,9 +262,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_05_120000) do
     t.string "name"
     t.datetime "ordered_at"
     t.integer "reorder_status"
-    t.integer "reorder_threshold", default: 10, null: false
+    t.decimal "reorder_threshold", precision: 10, scale: 2, default: "10.0", null: false
     t.datetime "reordered_at"
-    t.integer "supply_at_last_restock"
+    t.decimal "supply_at_last_restock", precision: 10, scale: 2
     t.datetime "updated_at", null: false
     t.text "warnings"
     t.index ["barcode"], name: "index_medications_on_barcode", unique: true, where: "((barcode IS NOT NULL) AND ((barcode)::text <> ''::text))"

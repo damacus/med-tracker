@@ -19,7 +19,7 @@ RSpec.describe Components::Schedules::Card::DoseStatusComponent, type: :componen
     )
   end
   let(:presenter) { Schedules::CardPresenter.new(schedule: schedule, todays_takes: [take], current_user: nil, person: person) }
-  let(:take) { create(:medication_take, :for_schedule, schedule: schedule, taken_at: Time.current, amount_ml: 400) }
+  let(:take) { create(:medication_take, :for_schedule, schedule: schedule, taken_at: Time.current, dose_amount: 400) }
 
   it 'renders dates, notes, dose count, and today take history', :aggregate_failures do
     rendered = render_inline(described_class.new(schedule: schedule, presenter: presenter))
@@ -27,7 +27,7 @@ RSpec.describe Components::Schedules::Card::DoseStatusComponent, type: :componen
     expect(rendered.text).to include('Take with food')
     expect(rendered.text).to include("Today's Doses")
     expect(rendered.text).to include('1/4')
-    expect(rendered.text).to include('400mg')
+    expect(rendered.text).to include('400 mg')
     expect(rendered.text).not_to match(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/)
     expect(rendered.css('svg.lucide-calendar')).to be_present
     expect(rendered.css('svg.lucide-file-text')).to be_present

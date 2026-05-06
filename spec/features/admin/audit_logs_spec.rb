@@ -256,7 +256,7 @@ RSpec.describe 'Admin Audit Logs', type: :system do
         MedicationTake.create!(
           schedule: schedule,
           taken_at: Time.current,
-          amount_ml: 10.0
+          dose_amount: 10.0
         )
       end
 
@@ -289,7 +289,7 @@ RSpec.describe 'Admin Audit Logs', type: :system do
         MedicationTake.create!(
           schedule: schedule,
           taken_at: Time.current,
-          amount_ml: 10.0
+          dose_amount: 10.0
         )
       end
 

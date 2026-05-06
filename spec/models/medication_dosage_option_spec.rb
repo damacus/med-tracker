@@ -37,6 +37,12 @@ RSpec.describe MedicationDosageOption do
       expect(dosage_option).to be_valid
     end
 
+    it 'allows decimal inventory values' do
+      dosage_option = build(:dosage, current_supply: 97.5, reorder_threshold: 12.5)
+
+      expect(dosage_option).to be_valid
+    end
+
     it 'validates non-negative tracked inventory values' do
       dosage_option = build(:dosage, current_supply: -1, reorder_threshold: -1)
 

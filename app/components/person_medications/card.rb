@@ -205,10 +205,10 @@ module Components
               end
             end
           end
-          if take.amount_ml.present?
+          if take.dose_amount.present?
             m3_text(size: '1', weight: 'bold',
                     class: 'font-black text-on-surface-variant uppercase tracking-tighter') do
-              DoseAmount.new(take.amount_ml, person_medication.dose_unit).to_s
+              DoseAmount.new(take.dose_amount, take.dose_unit || person_medication.dose_unit).to_s
             end
           end
         end

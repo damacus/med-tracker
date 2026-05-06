@@ -19,7 +19,7 @@ module Components
           div(class: 'space-y-4') do
             div(class: 'flex items-baseline gap-2') do
               span(class: "#{presenter.stock_count_class} text-3xl font-black tracking-tight") do
-                presenter.supply_level.current.to_s
+                presenter.formatted_supply_current
               end
               m3_text(variant: :label_large, class: 'text-on-surface-variant font-bold') do
                 presenter.remaining_units_label

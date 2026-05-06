@@ -42,11 +42,11 @@ RSpec.describe Components::Schedules::Card, type: :component do
   end
 
   describe 'pre-loaded todays_takes' do
-    let(:take) { MedicationTake.create!(schedule: schedule, taken_at: Time.current, amount_ml: 400) }
+    let(:take) { MedicationTake.create!(schedule: schedule, taken_at: Time.current, dose_amount: 400) }
 
     it 'displays takes from pre-loaded collection' do
       rendered = render_card(todays_takes: [take])
-      expect(rendered.text).to include('400mg')
+      expect(rendered.text).to include('400 mg')
     end
 
     it 'shows no doses message when pre-loaded takes is empty' do
@@ -57,7 +57,7 @@ RSpec.describe Components::Schedules::Card, type: :component do
     it 'falls back to querying when todays_takes is not provided' do
       take
       rendered = render_card
-      expect(rendered.text).to include('400mg')
+      expect(rendered.text).to include('400 mg')
     end
 
     it 'reuses one medication_takes load for the dose badge and list' do

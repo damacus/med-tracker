@@ -66,7 +66,7 @@ RSpec.describe 'Person Medications', type: :system do
         MedicationTake.create!(
           person_medication: person_medication,
           taken_at: Time.current,
-          amount_ml: 5
+          dose_amount: 5
         )
       end
 
@@ -88,7 +88,7 @@ RSpec.describe 'Person Medications', type: :system do
       MedicationTake.create!(
         person_medication: person_medication,
         taken_at: 2.hours.ago,
-        amount_ml: 5
+        dose_amount: 5
       )
 
       visit person_path(person)
@@ -111,7 +111,7 @@ RSpec.describe 'Person Medications', type: :system do
       MedicationTake.create!(
         person_medication: person_medication,
         taken_at: Time.current,
-        amount_ml: 5
+        dose_amount: 5
       )
     end
 
