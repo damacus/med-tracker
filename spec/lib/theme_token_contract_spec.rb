@@ -30,6 +30,13 @@ RSpec.describe ThemeTokenContract do
     expect(palette_definitions).to all(include('oklch('))
   end
 
+  it 'keeps dark signed-in on-container tokens above earlier signed-in overrides' do
+    block = css_block('.dark:root[data-allow-palette="true"]')
+
+    expect(block).to include('--on-primary-container: var(--foreground) !important')
+    expect(block.scan('--on-secondary-container: var(--foreground) !important').count).to eq(2)
+  end
+
   it 'keeps derived theme overrides inside perceptual color spaces' do
     [
       ':root[data-allow-palette="true"][class*="theme-"]',
