@@ -48,6 +48,7 @@ class MedicationTakeStockDecrement
   end
 
   def decremented_supply(current_supply, dose_unit)
+    # Row locks reload stale records before decrement; the clamp keeps validation-bypass races at zero.
     [current_supply.to_d - stock_decrement_for(dose_unit: dose_unit), BigDecimal('0')].max
   end
 
