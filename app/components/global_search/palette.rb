@@ -4,19 +4,21 @@ module Components
   module GlobalSearch
     class Palette < Components::Base
       def view_template
-        dialog(
-          id: 'global_search_dialog',
-          class: 'w-[min(720px,calc(100vw-2rem))] max-h-[min(680px,calc(100vh-2rem))] p-0 ' \
-                 'overflow-hidden rounded-lg border border-outline-variant bg-surface text-on-surface ' \
-                 'shadow-elevation-4 backdrop:bg-black/40',
-          aria: { label: t('global_search.dialog_label') },
-          data: dialog_data
+        div(
+          id: 'global_search_panel',
+          role: 'search',
+          hidden: true,
+          class: 'global-search-panel fixed z-[70] max-h-[min(560px,calc(100vh-1rem))] origin-top overflow-hidden ' \
+                 'rounded-xl border border-outline-variant/80 bg-surface/95 text-on-surface shadow-elevation-4 ' \
+                 'backdrop-blur-md',
+          aria: { label: t('global_search.dialog_label'), hidden: 'true' },
+          data: panel_data
         ) do
           render_search_form
           render_status
           div(
             id: 'global_search_results',
-            class: 'max-h-[520px] overflow-y-auto p-3',
+            class: 'max-h-[420px] overflow-y-auto p-2',
             data: { global_search_target: 'results' }
           )
         end
@@ -24,20 +26,20 @@ module Components
 
       private
 
-      def dialog_data
+      def panel_data
         {
-          global_search_target: 'dialog',
-          action: 'cancel->global-search#cancel close->global-search#closed',
+          global_search_target: 'panel',
           search_url: search_path(format: :json),
-          translations: translations.to_json
+          translations: translations.to_json,
+          open: 'false'
         }
       end
 
       def render_search_form
-        form(action: search_path, method: :get, class: 'border-b border-outline-variant p-3',
+        form(action: search_path, method: :get, class: 'border-b border-outline-variant p-2',
              data: { action: 'submit->global-search#submit' }) do
           label(class: 'sr-only', for: 'global_search_query') { t('global_search.input_label') }
-          div(class: 'flex items-center gap-3 rounded-md bg-surface-container-low px-3 py-2') do
+          div(class: 'flex items-center gap-3 rounded-lg bg-surface-container-low px-3 py-2') do
             render Icons::Search.new(size: 20, class: 'text-on-surface-variant')
             input(
               id: 'global_search_query',

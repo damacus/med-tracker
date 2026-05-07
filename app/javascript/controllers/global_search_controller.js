@@ -1,18 +1,24 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["dialog", "input", "results", "status", "result"]
+  static targets = ["panel", "input", "results", "status", "result", "trigger"]
 
   connect() {
     this.shortcutHandler = this.shortcut.bind(this)
+    this.pointerDownHandler = this.closeFromOutside.bind(this)
     window.addEventListener("keydown", this.shortcutHandler)
+    document.addEventListener("pointerdown", this.pointerDownHandler)
     this.activeIndex = -1
-    this.translations = JSON.parse(this.dialogTarget.dataset.translations || "{}")
+    this.isOpen = false
+    this.panelAnimation = null
+    this.translations = JSON.parse(this.panelTarget.dataset.translations || "{}")
   }
 
   disconnect() {
     window.removeEventListener("keydown", this.shortcutHandler)
+    document.removeEventListener("pointerdown", this.pointerDownHandler)
     this.abortCurrentSearch()
+    this.cancelPanelAnimation()
     clearTimeout(this.searchTimer)
   }
 
@@ -24,34 +30,38 @@ export default class extends Controller {
   }
 
   open(event) {
-    const opener = event?.currentTarget
-    this.previouslyFocused = opener instanceof Element ? opener : document.activeElement
-
-    if (!this.dialogTarget.open) {
-      this.dialogTarget.showModal()
-    }
+    if (event) event.preventDefault()
+    const opener = event?.currentTarget instanceof Element ? event.currentTarget : this.visibleTrigger
+    this.previouslyFocused = event?.currentTarget instanceof Element ? opener : document.activeElement
+    this.isOpen = true
+    this.panelTarget.hidden = false
+    this.panelTarget.dataset.open = "true"
+    this.panelTarget.setAttribute("aria-hidden", "false")
+    this.updateTriggerState(true)
 
     this.inputTarget.value = ""
     this.resultsTarget.innerHTML = ""
     this.setStatus("")
     this.fetchResults("")
-    requestAnimationFrame(() => this.inputTarget.focus())
+    this.animatePanelOpen()
+    requestAnimationFrame(() => this.inputTarget.focus({ preventScroll: true }))
   }
 
   close(event) {
     if (event) event.preventDefault()
-    if (this.dialogTarget.open) this.dialogTarget.close()
+    if (!this.isOpen) return
+
+    this.isOpen = false
+    this.abortCurrentSearch()
+    clearTimeout(this.searchTimer)
+    this.updateTriggerState(false)
+    this.animatePanelClosed()
+    this.previouslyFocused?.focus?.({ preventScroll: true })
   }
 
   cancel(event) {
     event.preventDefault()
     this.close()
-  }
-
-  closed() {
-    this.abortCurrentSearch()
-    clearTimeout(this.searchTimer)
-    this.previouslyFocused?.focus?.()
   }
 
   search() {
@@ -91,7 +101,7 @@ export default class extends Controller {
     this.showLoading()
 
     this.abortController = new AbortController()
-    const url = new URL(this.dialogTarget.dataset.searchUrl, window.location.origin)
+    const url = new URL(this.panelTarget.dataset.searchUrl, window.location.origin)
     url.searchParams.set("q", query)
 
     try {
@@ -137,6 +147,7 @@ export default class extends Controller {
     }
 
     this.resultsTarget.innerHTML = this.groupedResultsHtml(results)
+    this.animateResultRows()
     this.setStatus(this.resultCountText(results.length))
   }
 
@@ -201,6 +212,98 @@ export default class extends Controller {
 
   setStatus(text) {
     this.statusTarget.textContent = text
+  }
+
+  closeFromOutside(event) {
+    if (!this.isOpen) return
+    if (this.panelTarget.contains(event.target)) return
+    if (this.triggerTargets.some((trigger) => trigger.contains(event.target))) return
+
+    this.close()
+  }
+
+  animatePanelOpen() {
+    this.cancelPanelAnimation()
+
+    if (this.prefersReducedMotion) return
+
+    const animation = this.panelTarget.animate(
+      [
+        { opacity: 0, transform: "translateY(-10px) scaleY(0.96)" },
+        { opacity: 1, transform: "translateY(0) scaleY(1.01)", offset: 0.72 },
+        { opacity: 1, transform: "translateY(0) scaleY(1)" }
+      ],
+      { duration: 240, easing: "cubic-bezier(0.22, 1, 0.36, 1)" }
+    )
+    this.panelAnimation = animation
+    animation.finished.then(() => {
+      if (this.panelAnimation === animation) this.panelAnimation = null
+    }).catch(() => {})
+  }
+
+  animatePanelClosed() {
+    const hide = () => {
+      this.panelTarget.hidden = true
+      this.panelTarget.dataset.open = "false"
+      this.panelTarget.setAttribute("aria-hidden", "true")
+    }
+
+    this.cancelPanelAnimation()
+
+    if (this.prefersReducedMotion) {
+      hide()
+      return
+    }
+
+    const animation = this.panelTarget.animate(
+      [
+        { opacity: 1, transform: "translateY(0) scaleY(1)" },
+        { opacity: 0, transform: "translateY(-6px) scaleY(0.98)" }
+      ],
+      { duration: 120, easing: "ease-out" }
+    )
+    this.panelAnimation = animation
+    animation.finished.then(() => {
+      if (this.panelAnimation !== animation) return
+
+      this.panelAnimation = null
+      if (!this.isOpen) hide()
+    }).catch(() => {})
+  }
+
+  animateResultRows() {
+    if (this.prefersReducedMotion) return
+
+    this.resultTargets.forEach((result, index) => {
+      result.animate(
+        [
+          { opacity: 0, transform: "translateY(-6px)" },
+          { opacity: 1, transform: "translateY(0)" }
+        ],
+        { duration: 190, delay: index * 22, easing: "cubic-bezier(0.22, 1, 0.36, 1)" }
+      )
+    })
+  }
+
+  cancelPanelAnimation() {
+    if (!this.panelAnimation) return
+
+    this.panelAnimation.cancel()
+    this.panelAnimation = null
+  }
+
+  updateTriggerState(expanded) {
+    this.triggerTargets.forEach((trigger) => {
+      trigger.setAttribute("aria-expanded", expanded ? "true" : "false")
+    })
+  }
+
+  get visibleTrigger() {
+    return this.triggerTargets.find((trigger) => trigger.offsetParent !== null) || this.triggerTargets[0]
+  }
+
+  get prefersReducedMotion() {
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches
   }
 
   typeLabel(type) {

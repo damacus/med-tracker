@@ -1,5 +1,18 @@
 @import "tailwindcss";
 
+.global-search-panel {
+  left: 1rem;
+  top: 62px;
+  width: calc(100vw - 2rem);
+}
+
+@media (min-width: 640px) {
+  .global-search-panel {
+    top: 175px;
+    width: 20rem;
+  }
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @font-face {
