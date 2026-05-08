@@ -137,14 +137,6 @@ RSpec.describe NhsDmd::Search do
           concept_class: 'AMPP'
         }
       end
-      let(:vmp_result) do
-        {
-          code: '39720311000001102',
-          display: 'Ibuprofen 400mg tablets',
-          system: 'https://dmd.nhs.uk',
-          concept_class: 'VMP'
-        }
-      end
 
       before do
         allow(client).to receive(:configured?).and_return(true)
@@ -154,7 +146,11 @@ RSpec.describe NhsDmd::Search do
           .and_return([ampp_barcode_result])
         allow(client).to receive(:search)
           .with('Ibuprofen 400mg tablets')
-          .and_return([vmp_result, ampp_barcode_result])
+          .and_return([
+                        { code: '39720311000001102', display: 'Ibuprofen 400mg tablets',
+                          system: 'https://dmd.nhs.uk', concept_class: 'VMP' },
+                        ampp_barcode_result
+                      ])
       end
 
       it 'returns the VMP (generic) result instead of the branded AMPP' do
