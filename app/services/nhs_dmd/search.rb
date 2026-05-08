@@ -230,8 +230,9 @@ module NhsDmd
     end
 
     def barcode_match_item(translated_query, barcode_match)
+      vmp = VmpResolver.new(@client).resolve(translated_query, barcode_match)
       exact = exact_nhs_match(translated_query, barcode_match)
-      annotate_barcode_match(exact || barcode_match)
+      annotate_barcode_match(vmp || exact || barcode_match)
     end
 
     def exact_nhs_match(translated_query, barcode_match)

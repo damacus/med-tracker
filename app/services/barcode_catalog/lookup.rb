@@ -42,7 +42,7 @@ module BarcodeCatalog
 
       {
         code: record.code,
-        display: record.display,
+        display: record.vmp_name.presence || record.display,
         system: record.system,
         concept_class: record.concept_class,
         source: 'nhs_dmd'

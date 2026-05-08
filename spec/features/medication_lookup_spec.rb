@@ -125,6 +125,11 @@ RSpec.describe 'Medication Lookup', type: :system do
       concept_class: 'AMPP'
     )
     stub_nhs_dmd_search(query: 'Laxido Orange oral powder sachets (Galen Ltd)', results: barcode_results)
+    stub_nhs_dmd_search(
+      query: 'Laxido Orange oral powder sachets',
+      results: [{ code: '13629311000001101', display: 'Laxido Orange oral powder sachets',
+                  system: 'https://dmd.nhs.uk', concept_class: 'VMP' }]
+    )
 
     sign_in(doctor)
     visit medication_finder_path
@@ -148,7 +153,7 @@ RSpec.describe 'Medication Lookup', type: :system do
     end
 
     expect(page).to have_current_path(%r{/medications/new})
-    expect(page).to have_field('medication_name', with: 'Laxido Orange oral powder sachets (Galen Ltd)')
+    expect(page).to have_field('medication_name', with: 'Laxido Orange oral powder sachets')
     expect(page).to have_field('medication[barcode]', with: '5016298210989', type: :hidden)
   end
 
