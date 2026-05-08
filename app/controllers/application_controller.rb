@@ -21,7 +21,7 @@ class ApplicationController < ActionController::Base
   end
 
   def info_for_paper_trail
-    { ip: request.remote_ip }
+    { ip: request.remote_ip, request_id: request.request_id }
   end
 
   def safe_redirect_path(path)

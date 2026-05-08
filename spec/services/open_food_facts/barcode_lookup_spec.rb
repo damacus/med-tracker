@@ -3,9 +3,10 @@
 require 'rails_helper'
 
 RSpec.describe OpenFoodFacts::BarcodeLookup do
-  subject(:lookup) { described_class.new(client: client) }
+  subject(:lookup) { described_class.new(client: client, audit_logger: audit_logger) }
 
   let(:client) { instance_double(OpenFoodFacts::Client) }
+  let(:audit_logger) { instance_double(ExternalLookup::AuditLogger, record: nil) }
 
   def expect_wellman_result(result)
     expect(result).to include(

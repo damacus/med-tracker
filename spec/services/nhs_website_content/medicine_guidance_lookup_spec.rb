@@ -3,9 +3,10 @@
 require 'rails_helper'
 
 RSpec.describe NhsWebsiteContent::MedicineGuidanceLookup do
-  subject(:lookup) { described_class.new(client: client) }
+  subject(:lookup) { described_class.new(client: client, audit_logger: audit_logger) }
 
   let(:client) { instance_double(NhsWebsiteContent::Client) }
+  let(:audit_logger) { instance_double(ExternalLookup::AuditLogger, record: nil) }
   let(:index_response) do
     {
       'significantLink' => [
