@@ -57,7 +57,14 @@ Rails.application.config.after_initialize do
   next unless OidcSecurity.configured?
 
   issuer_url = Rails.application.credentials.dig(:oidc, :issuer_url) || ENV.fetch('OIDC_ISSUER_URL', nil)
-  redirect_uri = ENV.fetch('OIDC_REDIRECT_URI', nil)
+
+  # Compute the effective redirect URI — same logic as rodauth_main.rb — so that
+  # the auto-generated fallback (from APP_URL) is validated, not just the explicit
+  # OIDC_REDIRECT_URI env var.  A missing or HTTP-only APP_URL would otherwise
+  # produce a redirect_uri mismatch at Zitadel with no warning in the logs.
+  explicit_redirect_uri = ENV.fetch('OIDC_REDIRECT_URI', nil).presence
+  effective_redirect_uri = explicit_redirect_uri ||
+                           "#{ENV.fetch('APP_URL', 'http://localhost:3000').delete_suffix('/')}/auth/oidc/callback"
 
   begin
     OidcSecurity.validate_issuer_url!(issuer_url)
@@ -66,7 +73,7 @@ Rails.application.config.after_initialize do
   end
 
   begin
-    OidcSecurity.validate_redirect_uri!(redirect_uri) if redirect_uri
+    OidcSecurity.validate_redirect_uri!(effective_redirect_uri)
   rescue OidcSecurity::ConfigurationError => e
     Rails.logger.warn("[OIDC] Configuration warning: #{e.message}")
   end

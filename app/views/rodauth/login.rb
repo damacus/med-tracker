@@ -75,7 +75,7 @@ module Views
       end
 
       def invite_only?
-        User.administrator.exists?
+        AppSettings.invite_only?
       end
 
       def flash_section

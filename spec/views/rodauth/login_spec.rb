@@ -64,7 +64,7 @@ RSpec.describe Views::Rodauth::Login do
   def stub_invite_only(invite_only)
     return if invite_only.nil?
 
-    allow(User).to receive(:administrator).and_return(instance_double(ActiveRecord::Relation, exists?: invite_only))
+    allow(AppSettings).to receive(:invite_only?).and_return(invite_only)
   end
 
   it 'renders the login heading and brand' do

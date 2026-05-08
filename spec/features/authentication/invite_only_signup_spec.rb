@@ -6,6 +6,8 @@ RSpec.describe 'Invite-only sign-up', type: :system do
   fixtures :accounts, :people, :users
 
   describe 'when an administrator exists' do
+    before { AppSettings.instance.update!(invite_only: true) }
+
     it 'redirects to login when visiting create-account without an invitation token' do
       visit create_account_path
 
@@ -30,7 +32,10 @@ RSpec.describe 'Invite-only sign-up', type: :system do
   end
 
   describe 'when no administrator exists' do
-    before { User.administrator.delete_all }
+    before do
+      AppSettings.instance.update!(invite_only: false)
+      User.administrator.delete_all
+    end
 
     it 'allows visiting create-account without an invitation token' do
       visit create_account_path

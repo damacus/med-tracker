@@ -45,6 +45,7 @@ Rails.application.routes.draw do
       end
     end
     resources :audit_logs, only: %i[index show]
+    resource :settings, only: %i[show update]
   end
 
   get 'invitations/accept', to: 'invitations#accept', as: :accept_invitation
