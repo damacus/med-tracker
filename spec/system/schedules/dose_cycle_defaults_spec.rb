@@ -36,7 +36,7 @@ RSpec.describe 'Schedule dose cycle defaults' do
     find('label', text: medication.name, visible: :all, wait: 10).click
 
     expect(page).to have_text('Add Plan')
-    find('label', text: '1.0 capsule', visible: :all, wait: 10).click
+    find('label', text: '1 capsule', visible: :all, wait: 10).click
 
     expect(page).to have_css('input[name="schedule[dose_cycle]"][value="weekly"]:checked', visible: :hidden)
 

@@ -94,9 +94,7 @@ module Components
       end
 
       def format_dosage(schedule)
-        amount = schedule.dose_amount
-        unit = schedule.dose_unit
-        [amount, unit].compact.join(' ')
+        DoseAmount.new(schedule.dose_amount, schedule.dose_unit).to_s
       end
 
       def format_end_date(schedule)

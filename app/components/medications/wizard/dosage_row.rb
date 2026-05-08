@@ -25,7 +25,7 @@ module Components
               end
               div do
                 span(class: 'font-bold text-sm text-foreground') do
-                  "#{dosage.amount.to_f} #{dosage.unit}"
+                  DoseAmount.new(dosage.amount, dosage.unit).to_s
                 end
                 span(class: 'text-xs text-on-surface-variant ml-2') { dosage.frequency } if dosage.frequency.present?
                 render_default_badges

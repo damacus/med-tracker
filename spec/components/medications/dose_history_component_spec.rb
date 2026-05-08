@@ -12,7 +12,7 @@ RSpec.describe Components::Medications::DoseHistoryComponent, type: :component d
     rendered = render_inline(described_class.new(medication: medication))
 
     expect(rendered.text).to include('Dosages')
-    expect(rendered.text.index('5.0 ml')).to be < rendered.text.index('10.0 ml')
+    expect(rendered.text.index('5 ml')).to be < rendered.text.index('10 ml')
     expect(rendered.text).to include('Once daily')
     expect(rendered.text).to include('Twice daily')
   end

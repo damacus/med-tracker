@@ -252,7 +252,7 @@ module Components
                       default_dose_cycle: dosage.default_dose_cycle
                     }
                   )
-                  div(class: 'font-bold text-foreground') { "#{dosage.amount.to_f} #{dosage.unit}" }
+                  div(class: 'font-bold text-foreground') { DoseAmount.new(dosage.amount, dosage.unit).to_s }
                   div(class: 'text-sm text-on-surface-variant font-medium') { dosage.description }
                 end
               end

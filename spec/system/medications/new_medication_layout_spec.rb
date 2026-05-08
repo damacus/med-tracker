@@ -75,7 +75,7 @@ RSpec.describe 'MedicationNewLayout' do
       expect(page).to have_text('Ibuprofen created!')
       expect(page).to have_link('Manage dose options')
       expect(page).to have_link('Done')
-      expect(page).to have_text('200.0 mg')
+      expect(page).to have_text('200 mg')
       expect(page).to have_text('Twice daily')
     end
   end
@@ -122,7 +122,7 @@ RSpec.describe 'MedicationNewLayout' do
     end
 
     expect(page).to have_text('Three Times Daily Medicine created!')
-    expect(page).to have_text('5.0 ml')
+    expect(page).to have_text('5 ml')
     expect(page).to have_text('Three times daily')
   end
 
@@ -158,7 +158,7 @@ RSpec.describe 'MedicationNewLayout' do
     end
 
     expect(page).to have_text('Selected Dates Medicine created!')
-    expect(page).to have_text('1.0 tablet')
+    expect(page).to have_text('1 tablet')
     expect(page).to have_text('Specific dates')
   end
 end
