@@ -8,7 +8,8 @@ class MedicationsController < ApplicationController
   include MedicationWizardSupport
 
   before_action :set_medication,
-                only: %i[show nhs_guidance administration edit update destroy refill mark_as_ordered mark_as_received]
+                only: %i[show nhs_guidance administration edit update destroy refill adjust_inventory
+                         mark_as_ordered mark_as_received]
 
   def index
     render_medications_index_for_request
@@ -115,6 +116,20 @@ class MedicationsController < ApplicationController
     return render_refill_error(result.error) unless result.success?
 
     render_refill_success
+  end
+
+  def adjust_inventory
+    authorize @medication, :update?
+
+    result = AdjustMedicationInventoryService.new.call(
+      medication: @medication,
+      new_quantity: params.dig(:adjustment, :new_quantity),
+      reason: params.dig(:adjustment, :reason)
+    )
+
+    return render_adjust_error(result.error) unless result.success?
+
+    render_adjust_success
   end
 
   def finder
@@ -233,6 +248,29 @@ class MedicationsController < ApplicationController
       format.html { redirect_back_or_to @medication, notice: t('medications.refilled') }
       format.turbo_stream do
         flash.now[:notice] = t('medications.refilled')
+        render turbo_stream: medication_streams
+      end
+    end
+  end
+
+  def render_adjust_error(message)
+    respond_to do |format|
+      format.html do
+        render Components::Medications::ShowView.new(medication: @medication, notice: message),
+               status: :unprocessable_content
+      end
+      format.turbo_stream do
+        flash.now[:alert] = message
+        render turbo_stream: medication_streams, status: :unprocessable_content
+      end
+    end
+  end
+
+  def render_adjust_success
+    respond_to do |format|
+      format.html { redirect_back_or_to @medication, notice: t('medications.inventory_adjusted') }
+      format.turbo_stream do
+        flash.now[:notice] = t('medications.inventory_adjusted')
         render turbo_stream: medication_streams
       end
     end

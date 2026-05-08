@@ -79,6 +79,7 @@ Rails.application.routes.draw do
       get :administration
       get :nhs_guidance
       patch :refill
+      patch :adjust_inventory
       patch :mark_as_ordered
       patch :mark_as_received
     end

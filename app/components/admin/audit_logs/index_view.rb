@@ -9,7 +9,7 @@ module Components
         # Models that have audit trail enabled
         AUDITED_MODELS = %w[User Person CarerRelationship MedicationTake Medication].freeze
         # Available event types for filtering
-        EVENT_TYPES = %w[create update destroy].freeze
+        EVENT_TYPES = ['create', 'update', 'destroy', 'restock', 'adjust inventory'].freeze
 
         attr_reader :versions, :filter_params, :current_page, :total_count, :per_page
 

@@ -27,7 +27,7 @@ module Admin
     def filtered_scope
       relation = scope.order(created_at: :desc)
       relation = relation.where(item_type: item_type) if item_type.present?
-      relation = relation.where(event: event) if event.present?
+      relation = relation.where('event LIKE ?', "#{ActiveRecord::Base.sanitize_sql_like(event)}%") if event.present?
       relation = relation.where(whodunnit: whodunnit) if whodunnit.present?
       relation
     end

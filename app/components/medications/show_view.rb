@@ -145,6 +145,7 @@ module Components
 
           render_reorder_actions
           render_refill_modal
+          render_adjust_inventory_modal
         end
       end
 
@@ -179,6 +180,16 @@ module Components
           button_class: 'w-full justify-center',
           button_label: t('medications.show.refill_inventory'),
           icon: Icons::RefreshCw
+        )
+      end
+
+      def render_adjust_inventory_modal
+        render Components::Medications::AdjustInventoryModal.new(
+          medication: medication,
+          button_variant: :filled,
+          button_size: :lg,
+          button_class: 'w-full justify-center col-span-2',
+          button_label: t('medications.show.adjust_inventory')
         )
       end
 
