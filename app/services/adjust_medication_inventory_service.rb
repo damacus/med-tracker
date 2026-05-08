@@ -29,7 +29,7 @@ class AdjustMedicationInventoryService
   def build_event_string(quantity, reason)
     event = "adjust inventory (qty: #{MedicationStockQuantityFormatter.format(quantity)}"
     event += ", reason: #{reason}" if reason.present?
-    event + ")"
+    "#{event})"
   end
 
   def normalize_quantity(quantity)
