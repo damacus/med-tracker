@@ -76,8 +76,9 @@ class MedicationsController < ApplicationController
     return if reject_unconfirmed_ai_medication_suggestion?
 
     result = create_medication_from_request
+    @medication = result.medication
 
-    return create_success if result.success
+    return create_success(notice: create_success_notice(result)) if result.success
 
     render_create_failure
   end
@@ -258,8 +259,13 @@ class MedicationsController < ApplicationController
     MedicationOnboardingCreateService.new(
       medication: @medication,
       schedule_attributes: onboarding_schedule_params_for_create,
-      people_scope: policy_scope(Person)
+      people_scope: policy_scope(Person),
+      medication_scope: policy_scope(Medication)
     ).call
+  end
+
+  def create_success_notice(result)
+    result.restocked? ? t('medications.refilled') : t('medications.created')
   end
 
   def onboarding_schedule_params_for_create

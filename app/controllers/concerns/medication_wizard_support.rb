@@ -5,8 +5,8 @@ module MedicationWizardSupport
 
   private
 
-  def create_success
-    return redirect_to(@medication, notice: t('medications.created')) unless params[:wizard] == 'true'
+  def create_success(notice: t('medications.created'))
+    return redirect_to(@medication, notice: notice) unless params[:wizard] == 'true'
 
     respond_to do |format|
       format.turbo_stream do
@@ -15,7 +15,7 @@ module MedicationWizardSupport
           Components::Medications::Wizard::StepDosages.new(medication: @medication)
         )
       end
-      format.html { redirect_to @medication, notice: t('medications.created') }
+      format.html { redirect_to @medication, notice: notice }
     end
   end
 
