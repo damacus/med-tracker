@@ -45,7 +45,6 @@ Rails.application.routes.draw do
       end
     end
     resources :audit_logs, only: %i[index show]
-    resources :external_lookup_audit_events, only: %i[index]
     resource :settings, only: %i[show update]
   end
 

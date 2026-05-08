@@ -18,56 +18,48 @@ RSpec.describe ExternalLookup::AuditLogger do
   end
 
   describe '#record' do
-    it 'creates an ExternalLookupAuditEvent' do
+    it 'creates a PaperTrail::Version with item_type ExternalLookup' do
       expect do
         audit_logger.record(source: 'nhs_dmd', event: 'search', query: 'Aspirin',
                             result_status: 'success', result_count: 3)
-      end.to change(ExternalLookupAuditEvent, :count).by(1)
+      end.to change { PaperTrail::Version.where(item_type: 'ExternalMedicineLookup').count }.by(1)
     end
 
-    it 'persists the correct source, event, and status' do
+    it 'persists the event name as source/event and the request context' do
       audit_logger.record(source: 'nhs_dmd', event: 'search', query: 'Aspirin',
                           result_status: 'success', result_count: 3)
-      event = ExternalLookupAuditEvent.last
-      expect(event.source).to eq('nhs_dmd')
-      expect(event.event).to eq('search')
-      expect(event.result_status).to eq('success')
-      expect(event.result_count).to eq(3)
+      version = PaperTrail::Version.where(item_type: 'ExternalMedicineLookup').last
+      expect(version.event).to eq('nhs_dmd/search')
+      expect(version.whodunnit).to eq(user_id.to_s)
+      expect(version.ip).to eq('10.0.0.1')
     end
 
-    it 'persists the request context from PaperTrail' do
-      audit_logger.record(source: 'nhs_dmd', event: 'search', query: 'Aspirin', result_status: 'success')
-      event = ExternalLookupAuditEvent.last
-      expect(event.whodunnit).to eq(user_id.to_s)
-      expect(event.ip).to eq('10.0.0.1')
-      expect(event.request_id).to eq('req-abc-123')
-    end
-
-    it 'stores a SHA256 hash of the query, not the raw query' do
-      audit_logger.record(source: 'nhs_dmd', event: 'search', query: 'Aspirin 300mg', result_status: 'success')
-
-      event = ExternalLookupAuditEvent.last
-      expected_hash = Digest::SHA256.hexdigest('aspirin 300mg')
-      expect(event.query_hash).to eq(expected_hash)
-      expect(event.query_hash).not_to include('Aspirin')
+    it 'stores a SHA256 hash of the query and metadata in object JSON' do
+      audit_logger.record(source: 'nhs_dmd', event: 'search', query: 'Aspirin 300mg',
+                          result_status: 'success', result_count: 3)
+      version = PaperTrail::Version.where(item_type: 'ExternalMedicineLookup').last
+      data = JSON.parse(version.object)
+      expect(data['query_hash']).to eq(Digest::SHA256.hexdigest('aspirin 300mg'))
+      expect(data['result_status']).to eq('success')
+      expect(data['result_count']).to eq(3)
+      expect(version.object).not_to include('Aspirin')
     end
 
     it 'normalises the query before hashing (lowercase, stripped)' do
       audit_logger.record(source: 'nhs_dmd', event: 'search', query: '  Aspirin  ', result_status: 'success')
-      event1 = ExternalLookupAuditEvent.last
+      v1 = PaperTrail::Version.where(item_type: 'ExternalMedicineLookup').last
 
       audit_logger.record(source: 'nhs_dmd', event: 'search', query: 'aspirin', result_status: 'success')
-      event2 = ExternalLookupAuditEvent.last
+      v2 = PaperTrail::Version.where(item_type: 'ExternalMedicineLookup').last
 
-      expect(event1.query_hash).to eq(event2.query_hash)
+      expect(JSON.parse(v1.object)['query_hash']).to eq(JSON.parse(v2.object)['query_hash'])
     end
 
     it 'defaults result_count to 0' do
-      audit_logger.record(
-        source: 'open_food_facts', event: 'barcode_lookup', query: '12345', result_status: 'not_found'
-      )
-
-      expect(ExternalLookupAuditEvent.last.result_count).to eq(0)
+      audit_logger.record(source: 'open_food_facts', event: 'barcode_lookup',
+                          query: '12345', result_status: 'not_found')
+      version = PaperTrail::Version.where(item_type: 'ExternalMedicineLookup').last
+      expect(JSON.parse(version.object)['result_count']).to eq(0)
     end
 
     it 'does not raise if PaperTrail request context is not set' do
@@ -79,8 +71,8 @@ RSpec.describe ExternalLookup::AuditLogger do
       end.not_to raise_error
     end
 
-    it 'silently rescues validation errors and logs them' do
-      allow(ExternalLookupAuditEvent).to receive(:create!).and_raise(ActiveRecord::RecordInvalid)
+    it 'silently rescues errors and logs them' do
+      allow(PaperTrail::Version).to receive(:insert).and_raise(ActiveRecord::StatementInvalid)
       allow(Rails.logger).to receive(:error)
 
       expect do
