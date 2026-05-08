@@ -7,7 +7,7 @@ module Components
         include Phlex::Rails::Helpers::FormWith
 
         # Models that have audit trail enabled
-        AUDITED_MODELS = %w[User Person CarerRelationship MedicationTake Medication].freeze
+        AUDITED_MODELS = %w[User Person CarerRelationship MedicationTake Medication ExternalMedicineLookup].freeze
         # Available event types for filtering
         EVENT_TYPES = ['create', 'update', 'destroy', 'restock', 'adjust inventory'].freeze
 
@@ -40,9 +40,6 @@ module Components
             div(class: 'space-y-2') do
               m3_heading(level: 1) { t('admin.audit_logs.index.title') }
               m3_text(weight: 'muted') { t('admin.audit_logs.index.subtitle') }
-            end
-            Link(href: '/admin/external_lookup_audit_events', variant: :outlined) do
-              t('admin.audit_logs.index.external_lookups_link')
             end
           end
         end
