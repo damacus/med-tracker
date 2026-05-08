@@ -34,6 +34,7 @@ export default class extends Controller {
     const opener = event?.currentTarget instanceof Element ? event.currentTarget : this.visibleTrigger
     this.previouslyFocused = event?.currentTarget instanceof Element ? opener : document.activeElement
     this.isOpen = true
+    this.positionPanel(opener)
     this.panelTarget.hidden = false
     this.panelTarget.dataset.open = "true"
     this.panelTarget.setAttribute("aria-hidden", "false")
@@ -296,6 +297,26 @@ export default class extends Controller {
     this.triggerTargets.forEach((trigger) => {
       trigger.setAttribute("aria-expanded", expanded ? "true" : "false")
     })
+  }
+
+  positionPanel(trigger) {
+    const margin = 16
+
+    if (!trigger || window.innerWidth < 640) {
+      this.panelTarget.style.left = `${margin}px`
+      this.panelTarget.style.top = "62px"
+      this.panelTarget.style.width = `${window.innerWidth - margin * 2}px`
+      return
+    }
+
+    const rect = trigger.getBoundingClientRect()
+    const left = Math.max(margin, rect.left)
+    const availableWidth = window.innerWidth - left - margin
+    const width = Math.min(Math.max(rect.width, 320), availableWidth)
+
+    this.panelTarget.style.left = `${left}px`
+    this.panelTarget.style.top = `${rect.bottom + 12}px`
+    this.panelTarget.style.width = `${width}px`
   }
 
   get visibleTrigger() {

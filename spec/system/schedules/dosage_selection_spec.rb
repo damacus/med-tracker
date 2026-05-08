@@ -27,7 +27,7 @@ RSpec.describe 'Schedule dosage selection' do
 
     expect(page).to have_no_css('[name="schedule[dose_option_key]"]:checked', visible: :hidden)
     expect(page).to have_text('Add Plan') # Button might be disabled, have_content is safer
-    find('label', text: '400.0 mg', visible: :all, wait: 10).click
+    find('label', text: '400 mg', visible: :all, wait: 10).click
 
     fill_in 'Frequency', with: 'Once daily'
     fill_in 'Start date', with: Date.current.strftime('%Y-%m-%d')

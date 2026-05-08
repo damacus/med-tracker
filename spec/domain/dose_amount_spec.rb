@@ -31,5 +31,17 @@ RSpec.describe DoseAmount do
     it 'formats string amounts by coercing to float' do
       expect(described_class.new('10', 'mg').to_s).to eq('10 mg')
     end
+
+    it 'keeps countable units singular for one dose' do
+      expect(described_class.new(1, 'tablet').to_s).to eq('1 tablet')
+    end
+
+    it 'pluralizes countable units for multiple doses' do
+      expect(described_class.new(2, 'tablet').to_s).to eq('2 tablets')
+    end
+
+    it 'does not pluralize measurement abbreviations' do
+      expect(described_class.new(2, 'mg').to_s).to eq('2 mg')
+    end
   end
 end
