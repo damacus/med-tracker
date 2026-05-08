@@ -715,9 +715,9 @@
 	--primary: oklch(from #79a4ff l c h) !important;
 	--primary-foreground: oklch(from #102447 l c h) !important;
 	--secondary: oklch(from #1b2a45 l c h) !important;
-	--secondary-foreground: var(--foreground);
+	--secondary-foreground: var(--foreground) !important;
 	--secondary-container: color-mix(in oklab, var(--palette-color) 18%, oklch(from #13223c l c h)) !important;
-	--on-secondary-container: var(--foreground);
+	--on-secondary-container: var(--foreground) !important;
 	--tertiary: oklch(from #21365d l c h) !important;
 	--tertiary-foreground: oklch(from #dce7ff l c h) !important;
 	--tertiary-container: oklch(from #21365d l c h) !important;
@@ -730,13 +730,13 @@
 	--sidebar-primary: var(--primary);
 	--sidebar-primary-foreground: var(--primary-foreground);
 	--sidebar-accent: oklch(from #20314e l c h) !important;
-	--sidebar-accent-foreground: var(--foreground);
+	--sidebar-accent-foreground: var(--foreground) !important;
 	--sidebar-border: oklch(from #2d3d5a l c h) !important;
 	--sidebar-ring: var(--ring);
 	--primary-container: color-mix(in oklab, var(--palette-color) 32%, oklch(from #102447 l c h)) !important;
-	--on-primary-container: var(--foreground);
+	--on-primary-container: var(--foreground) !important;
 	--secondary-container: color-mix(in oklab, var(--palette-color) 18%, oklch(from #13223c l c h)) !important;
-	--on-secondary-container: var(--foreground);
+	--on-secondary-container: var(--foreground) !important;
 	--surface: var(--background);
 	--on-surface: var(--foreground);
 	--on-surface-variant: oklch(from #b0bdd0 l c h) !important;

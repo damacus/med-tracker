@@ -53,6 +53,24 @@ RSpec.describe Components::Layouts::MobileMenu, type: :component do
       expect(button).to be_present
     end
 
+    it 'renders hamburger button with dark-mode-safe contrast and affordance classes' do
+      rendered = render_inline(described_class.new)
+
+      button = rendered.css('button[aria-label="Open menu"]').first
+      classes = button['class']
+
+      expect(classes).to include('text-on-surface')
+      expect(classes).to include('hover:bg-surface-container-high')
+      expect(classes).to include('focus-visible:ring-2')
+    end
+
+    it 'uses current color for hamburger lines instead of hard-coded black' do
+      css = Rails.root.join('app/assets/stylesheets/hamburgers.css').read
+
+      expect(css).to include('background-color: currentColor')
+      expect(css).not_to include('background-color: #000')
+    end
+
     it 'renders close button with aria-label' do
       rendered = render_inline(described_class.new)
 

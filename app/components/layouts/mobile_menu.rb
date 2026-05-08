@@ -14,7 +14,9 @@ module Components
             render RubyUI::SheetTrigger.new do
               button(
                 type: 'button',
-                class: 'hamburger hamburger--spring',
+                class: 'hamburger hamburger--spring rounded-full text-on-surface transition-colors ' \
+                       'hover:bg-surface-container-high hover:text-foreground ' \
+                       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                 aria: { label: t('layouts.mobile_menu.open_menu'), expanded: 'false' }
               ) do
                 span(class: 'hamburger-box') do
