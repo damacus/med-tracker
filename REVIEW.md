@@ -1,36 +1,38 @@
-# Code Review - codex/global-search-command-palette
+# Code Review - codex/medication-scan-stock-merge
 
 **Base Branch**: origin/main
-**Changed Files**: 21
-**Changed Ruby Files**: 14
-**Review Date**: 2026-05-06
-**Review Skills**: review-ruby-code, sandi-metz-reviewer, rubycritic availability check, simplecov availability check
+**Changed Files**: 5
+**Changed Ruby Files**: 5
+**Review Date**: 2026-05-08
+**Review Skills**: review-ruby-code, RubyCritic availability check, SimpleCov availability check
 
 ---
 
 ## Summary
 
-This branch adds a keyboard-first global search command palette backed by a Pundit-scoped Rails service, authenticated `/search` endpoint, PostgreSQL trigram indexes, authenticated chrome triggers, Stimulus keyboard behavior, and request/service/system coverage.
+This branch updates medication creation so scanned stock can merge into an existing inventory item instead of creating a duplicate, while preserving separate inventory rows for different strengths such as 200mg and 400mg ibuprofen.
 
-The implementation is generally sound: model search goes through policy scopes, wildcard search terms are escaped with `sanitize_sql_like`, query-like params are filtered from logs, and the system specs cover the high-risk keyboard path. I did not find a critical security or authorization issue in the reviewed changes.
+The authorization boundary is sound: matching is scoped through `policy_scope(Medication)`, and the new request specs cover the primary same-strength merge and different-strength split. I found one behavioral bug in the failure path for merged wizard submissions, plus design and coverage risks around the new matching service.
 
 ## Critical Issues
 
-No critical issues found.
+High: [MedicationOnboardingCreateService#restock_existing_medication returns the existing medication even when schedule creation fails](file:///Users/damacus/.codex/worktrees/8c9c/med-tracker/app/services/medication_onboarding_create_service.rb#L144), while [schedule errors are copied onto the unsaved candidate medication](file:///Users/damacus/.codex/worktrees/8c9c/med-tracker/app/services/medication_onboarding_create_service.rb#L193). The controller then [replaces `@medication` with `result.medication`](file:///Users/damacus/.codex/worktrees/8c9c/med-tracker/app/controllers/medications_controller.rb#L79) before rendering failure, so a failed merged wizard submission can render the existing persisted medication without the validation errors that explain why the schedule failed. Keep the errored candidate as the failure result, copy errors to the returned object, or make `Result` carry a separate `form_record`.
 
 ## Design & Architecture
 
-### OOP / Sandi Metz Findings
+### OOP Violations
 
-Warning: [GlobalSearchQuery is 228 lines and owns search orchestration, five record-specific query builders, result shaping, command matching, scoring, sorting, normalization, and route generation](file:///Users/damacus/.codex/worktrees/8e6c/med-tracker/app/services/global_search_query.rb#L3). This exceeds the Sandi Metz 100-line class rule and is much larger than most existing query objects in this app. The current version is acceptable as an MVP, but the next search expansion should extract per-type searchers or a small registry before adding more result types.
+Warning: [MedicationInventoryMatcher is 167 lines and owns barcode matching, dm+d matching, name normalization, strength parsing, form parsing, and decimal normalization](file:///Users/damacus/.codex/worktrees/8c9c/med-tracker/app/services/medication_inventory_matcher.rb#L3). This exceeds the Sandi Metz 100-line class rule. The class is cohesive enough for the first version, but adding more medicine-name heuristics should be done by extracting small collaborators such as a `MedicationNameFingerprint` or `MedicationStrengthParser`.
 
-Warning: [GlobalSearchQuery#call returns blank-query command results directly](file:///Users/damacus/.codex/worktrees/8e6c/med-tracker/app/services/global_search_query.rb#L37), bypassing the service-level `limit` contract applied by `sort_results`. Today the default command set is small, so the UI is not broken, but `GlobalSearchQuery.new(..., query: '', limit: 2).call` can return more than two results. Add a blank-query limit spec and apply `.first(limit)` or route blank commands through the same sorter.
+Warning: [MedicationOnboardingCreateService now handles normal creation, schedule creation, matching, aggregate restock, per-dose restock, and merge failure behavior](file:///Users/damacus/.codex/worktrees/8c9c/med-tracker/app/services/medication_onboarding_create_service.rb#L19). It was already a workflow service, but the new merge branch has pushed it toward multiple reasons to change. Consider extracting the merge operation if more scan/import behavior is added.
 
 ### Rails Patterns
 
-No N+1 issue found in the added record searches. [Medication results preload location](file:///Users/damacus/.codex/worktrees/8e6c/med-tracker/app/services/global_search_query.rb#L67), and [schedule/person-medication results join and include their display associations](file:///Users/damacus/.codex/worktrees/8e6c/med-tracker/app/services/global_search_query.rb#L97).
+No N+1 query found in the reviewed change. [MedicationInventoryMatcher preloads dosage records before scanning authorized medications in memory](file:///Users/damacus/.codex/worktrees/8c9c/med-tracker/app/services/medication_inventory_matcher.rb#L72).
 
-The service-object shape matches the repo's existing `*Query` naming, but the branch introduces a larger orchestration query than the surrounding patterns. Existing query objects are mostly narrow, so future work should prefer small collaborators such as `GlobalSearch::PeopleSearch` and `GlobalSearch::MedicationsSearch` over continuing to grow this class.
+Performance note: the matcher uses Ruby-side `detect` across the full authorized medication scope for fallback name matching. That is acceptable for household inventory sizes, but it will not scale well if clinicians/admins scan against a large shared inventory. If that becomes a real path, prefilter by normalized terms or add a persisted/searchable fingerprint.
+
+The controller integration follows existing patterns: [MedicationsController passes policy-scoped medications into the service](file:///Users/damacus/.codex/worktrees/8c9c/med-tracker/app/controllers/medications_controller.rb#L258), and [MedicationWizardSupport accepts a caller-supplied success notice without changing the response shape](file:///Users/damacus/.codex/worktrees/8c9c/med-tracker/app/controllers/concerns/medication_wizard_support.rb#L8).
 
 ## Security Concerns
 
@@ -38,32 +40,26 @@ No new security issue found.
 
 Positive observations:
 
-- [All record searches route through `Pundit.policy_scope!`](file:///Users/damacus/.codex/worktrees/8e6c/med-tracker/app/services/global_search_query.rb#L196).
-- [Search terms are escaped with `ActiveRecord::Base.sanitize_sql_like`](file:///Users/damacus/.codex/worktrees/8e6c/med-tracker/app/services/global_search_query.rb#L225).
-- [The request spec covers unauthenticated JSON access](file:///Users/damacus/.codex/worktrees/8e6c/med-tracker/spec/requests/global_search_spec.rb#L10), scoped user results, admin visibility, carer visibility, and wildcard escaping.
-- [Filtered parameters now include `q`, `query`, and `search`](file:///Users/damacus/.codex/worktrees/8e6c/med-tracker/config/initializers/filter_parameter_logging.rb#L8).
+- [Matching is bounded by `policy_scope(Medication)`](file:///Users/damacus/.codex/worktrees/8c9c/med-tracker/app/controllers/medications_controller.rb#L263), so inaccessible inventory is not silently merged.
+- The new matcher does not build SQL from user-controlled input in the fallback path; normalization and matching are Ruby-side.
+- Existing duplicate-barcode validation remains in place for inaccessible inventory collisions.
 
 ## Test Coverage
 
-Focused search tests passed after resetting the stale test stack:
+The new request coverage is valuable and behavior-oriented:
 
-- `env COVERAGE=true task test TEST_FILE='spec/services/global_search_query_spec.rb spec/requests/global_search_spec.rb spec/system/global_search_spec.rb'`
-- 16 examples, 0 failures
+- [Same-strength scan restocks the existing ibuprofen item without increasing `Medication.count`](file:///Users/damacus/.codex/worktrees/8c9c/med-tracker/spec/requests/medications_create_scope_spec.rb#L264).
+- [Different-strength scan creates a separate ibuprofen inventory item](file:///Users/damacus/.codex/worktrees/8c9c/med-tracker/spec/requests/medications_create_scope_spec.rb#L294).
 
-Full suite passed after rebuilding the test environment:
+Coverage gaps:
 
-- `task test:rebuild`
-- `task test`
-- 2103 examples, 0 failures, 2 pending
+- Add a request or service spec for the merged wizard failure path described in Critical Issues.
+- Add focused `MedicationInventoryMatcher` specs for name/strength parsing edge cases: `micrograms`, `250mg/5ml`, pack counts in names, form mismatch, and same dm+d code precedence. Request specs cover the main user outcome, but the matcher now contains enough parsing logic to deserve unit-level examples.
 
-RuboCop passed:
+Focused verification run during this review:
 
-- `task rubocop`
-- 900 files inspected, no offenses detected
-
-Coverage gap:
-
-- [The limit spec covers a nonblank query](file:///Users/damacus/.codex/worktrees/8e6c/med-tracker/spec/services/global_search_query_spec.rb#L57), but not the blank-query command-shortcut path where the current service bypasses `sort_results`.
+- `env COVERAGE=true task test TEST_FILE=spec/requests/medications_create_scope_spec.rb`
+- 21 examples, 0 failures
 
 ## Tool Reports
 
@@ -71,25 +67,26 @@ Coverage gap:
 
 RubyCritic metrics are unavailable in this worktree:
 
-- `rubycritic --version` failed because `rubycritic` is not installed on PATH.
-- The local RubyCritic helper, `scripts/check_quality.sh`, auto-installs RubyCritic and may modify the Gemfile, so I did not run it during a review-only pass.
+- `rubycritic --format json --no-browser ...` failed because `rubycritic` is not installed on `PATH`.
+- `task -l` does not expose a RubyCritic task.
 
 ### SimpleCov Summary
 
 SimpleCov metrics are unavailable:
 
-- Running focused specs with `COVERAGE=true` produced no `coverage/` directory.
-- No SimpleCov configuration or gem entry was found in the app paths checked during this review.
+- No SimpleCov configuration or gem entry was found in `Gemfile`, `Gemfile.lock`, `spec`, or `config`.
+- Running the focused request spec with `COVERAGE=true` produced no `coverage/` directory.
 
 ## Recommendations
 
-1. Fix the blank-query `limit` path in `GlobalSearchQuery#call` and add a service spec for `query: ''`.
-2. Before expanding v2 search, split `GlobalSearchQuery` into small per-type query objects or a result-source registry. That keeps the MVP class from becoming the place every search concern accumulates.
-3. If RubyCritic/SimpleCov reports are required for reviews, add repo-native `task` wrappers that do not auto-edit the Gemfile during analysis.
+1. Fix the merged wizard failure path so validation errors are rendered on the object returned to the controller.
+2. Add unit specs for `MedicationInventoryMatcher` before extending matching heuristics.
+3. Extract name/strength parsing from `MedicationInventoryMatcher` if another medication-form or strength rule is added.
+4. If RubyCritic/SimpleCov reports are required for review workflows, add repo-native `task` wrappers so analysis can run consistently in the project container.
 
 ## Positive Observations
 
-- The branch keeps v1 internal search simple: Rails, PostgreSQL, Pundit, and Stimulus only.
-- The keyboard behavior is covered end to end, including Ctrl+K/Cmd+K, focus, arrow navigation, Enter navigation, Escape, and the mobile trigger.
-- The SQL uses static fragments plus bind parameters; I did not find user-controlled SQL interpolation.
-- The implementation avoids searching medication takes, audit logs, notes, and user records in v1.
+- The change preserves the safety requirement that different strengths remain separate.
+- Matching is kept out of the controller and follows the repo's service-object style.
+- The request specs cover both sides of the highest-risk behavioral boundary.
+- The branch kept quality gates green before review: RuboCop and the full suite passed post-rebase.
