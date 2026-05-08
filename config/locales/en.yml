@@ -113,6 +113,20 @@ en:
           accepted: "Accepted %{time} ago"
           expired: "Expired %{time} ago"
           expires: "Expires %{time} from now"
+    settings:
+      updated: "Settings saved"
+      title: "Settings"
+      subtitle: "Configure application-wide settings."
+      save: "Save settings"
+      access:
+        title: "Registration & Access"
+        subtitle: "Control who can create a new account."
+        invite_only:
+          label: "Invite only"
+          hint: "When enabled, new accounts can only be created via invitation. Existing users can always log in, including via single sign-on."
+      env_override:
+        title: "Controlled by environment variable"
+        body: "The %{var} environment variable is set to \"%{value}\". Remove it to manage this setting here."
     carer_relationships:
       created: "Carer relationship was successfully created."
       deactivated: "Carer relationship has been deactivated."

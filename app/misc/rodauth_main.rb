@@ -112,7 +112,7 @@ class RodauthMain < Rodauth::Rails::Auth
       end
 
       def invite_only_registration_required?
-        User.administrator.exists?
+        AppSettings.invite_only?
       end
 
       def invite_only_registration_message
