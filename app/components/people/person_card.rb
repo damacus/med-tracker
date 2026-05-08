@@ -22,12 +22,12 @@ module Components
       private
 
       def render_card_header
-        m3_card_header(class: 'pb-4') do
+        m3_card_header(class: 'pb-4 pt-8 px-8') do
           div(class: 'flex items-start justify-between') do
             render_person_icon
             render_needs_carer_badge if person.needs_carer?
           end
-          div(class: 'space-y-1 mt-4') do
+          div(class: 'space-y-1 mt-6') do
             m3_link(
               href: person_path(person),
               variant: :text,
@@ -52,8 +52,8 @@ module Components
       end
 
       def render_card_content
-        m3_card_content(class: 'flex-grow space-y-2') do
-          div(class: 'space-y-1.5 text-sm text-on-surface-variant font-medium') do
+        m3_card_content(class: 'flex-grow space-y-4 px-8') do
+          div(class: 'space-y-3 text-sm text-on-surface-variant font-medium') do
             p do
               strong(class: 'font-black uppercase tracking-widest text-[10px] opacity-60 mr-2') do
                 "#{t('people.card.born')} "
@@ -114,7 +114,7 @@ module Components
       end
 
       def render_card_footer
-        m3_card_footer(class: 'flex flex-col gap-3 mt-auto pt-6') do
+        m3_card_footer(class: 'flex flex-col gap-3 mt-auto pt-6 px-8') do
           render_add_medication_link if can_add_medication?
 
           div(class: 'flex gap-2 w-full') do

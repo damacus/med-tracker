@@ -14,7 +14,7 @@ module Components
       end
 
       def view_template
-        div(class: 'container mx-auto px-4 py-8', data: { testid: 'people-list' }) do
+        div(class: 'container mx-auto px-4 py-12 max-w-6xl', data: { testid: 'people-list' }) do
           render_header
           render_people_grid
         end
@@ -23,7 +23,7 @@ module Components
       private
 
       def render_header
-        div(class: 'flex justify-between items-center mb-8') do
+        div(class: 'flex justify-between items-center mb-10') do
           m3_heading(level: 1) { 'People' }
           if view_context.policy(Person.new).new?
             Link(href: new_person_path, variant: :primary, data: { turbo_frame: 'modal' }) { 'New Person' }
