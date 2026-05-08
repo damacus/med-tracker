@@ -67,8 +67,8 @@ module Components
                  'bg-surface-container px-3 py-3 text-on-surface-variant transition-colors ' \
                  'hover:border-primary hover:text-on-surface focus-visible:outline-none focus-visible:ring-2 ' \
                  'focus-visible:ring-primary md:justify-start',
-          aria: { label: t('global_search.open') },
-          data: { action: 'global-search#open' }
+          aria: { label: t('global_search.open'), expanded: 'false', controls: 'global_search_panel' },
+          data: { action: 'global-search#open', global_search_target: 'trigger' }
         ) do
           render Icons::Search.new(size: 20)
           span(class: 'hidden flex-1 text-left text-sm font-bold md:block') { t('global_search.open_short') }

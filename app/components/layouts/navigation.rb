@@ -60,8 +60,8 @@ module Components
             class: 'flex h-11 w-11 items-center justify-center rounded-full text-on-surface-variant ' \
                    'hover:bg-surface-container-high focus-visible:outline-none focus-visible:ring-2 ' \
                    'focus-visible:ring-primary',
-            aria: { label: t('global_search.open') },
-            data: { action: 'global-search#open' }
+            aria: { label: t('global_search.open'), expanded: 'false', controls: 'global_search_panel' },
+            data: { action: 'global-search#open', global_search_target: 'trigger' }
           ) do
             render Icons::Search.new(size: 22)
           end
