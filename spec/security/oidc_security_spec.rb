@@ -109,7 +109,8 @@ RSpec.describe 'OIDC Security' do # rubocop:disable RSpec/DescribeClass
   end
 
   describe 'OIDC-SEC-011: Account hijacking prevention via email verification' do
-    it 'auto-verifies unverified accounts whose email matches the OIDC identity via rodauth-omniauth omniauth_verify_account?' do
+    it 'auto-verifies unverified accounts whose email matches the OIDC identity ' \
+       'via rodauth-omniauth omniauth_verify_account?' do
       # verify_account_login_status is NOT a rodauth-omniauth option and is silently
       # ignored by the openid_connect strategy.  Hijacking prevention is handled by
       # rodauth-omniauth's built-in omniauth_verify_account? which verifies the account

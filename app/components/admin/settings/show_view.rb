@@ -56,7 +56,12 @@ module Components
         end
 
         def render_env_notice
-          div(class: 'flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 px-5 py-4') do
+          classes = [
+            'flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50',
+            'dark:border-amber-800 dark:bg-amber-950/30 px-5 py-4'
+          ].join(' ')
+
+          div(class: classes) do
             span(class: 'mt-0.5 text-amber-600 dark:text-amber-400 shrink-0') do
               # info icon
               svg(xmlns: 'http://www.w3.org/2000/svg', width: '16', height: '16', viewbox: '0 0 24 24',
@@ -86,7 +91,12 @@ module Components
         end
 
         def render_invite_only_toggle
-          div(class: "flex items-start justify-between gap-6 rounded-2xl border border-border p-6 #{@env_controlled ? 'opacity-60' : ''}") do
+          classes = [
+            'flex items-start justify-between gap-6 rounded-2xl border border-border p-6',
+            ('opacity-60' if @env_controlled)
+          ].compact.join(' ')
+
+          div(class: classes) do
             div(class: 'space-y-1') do
               label(for: 'app_settings_invite_only', class: 'font-semibold text-foreground cursor-pointer') do
                 t('admin.settings.access.invite_only.label')
