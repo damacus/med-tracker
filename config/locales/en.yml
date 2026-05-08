@@ -212,6 +212,7 @@ en:
       index:
         title: "Audit Trail"
         subtitle: "Complete history of all changes made in MedTracker."
+        external_lookups_link: "External Lookup Events →"
         filter:
           record_type: "Record Type"
           all_types: "All Types"
@@ -264,6 +265,38 @@ en:
         snapshot: "Object Snapshot"
         snapshot_description: "The full state of the record at this point in time"
         no_data: "No data recorded for this version"
+    external_lookup_audit_events:
+      index:
+        title: "External Lookup Audit Trail"
+        subtitle: "Audit log of external medicine lookup operations (NHS DMD, Open Food Facts, NHS Website)."
+        back: "← Back to Audit Logs"
+        system: "System"
+        filter:
+          source: "Source"
+          all_sources: "All Sources"
+          result_status: "Result Status"
+          all_statuses: "All Statuses"
+          filter_button: "Filter"
+          clear_filters: "Clear filters"
+        table:
+          timestamp: "Time"
+          source: "Source"
+          event: "Event"
+          query_hash: "Query Hash"
+          result_status: "Status"
+          result_count: "Results"
+          user: "User"
+          ip_address: "IP Address"
+        empty:
+          no_events: "No external lookup events found"
+          adjust_filters: "Try adjusting your filters"
+        pagination:
+          showing: "Showing"
+          to: "to"
+          of: "of"
+          results: "results"
+          previous: "Previous"
+          next: "Next"
     dashboard:
       title: "Admin Dashboard"
       metrics:

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module NhsDmd
-  class Search
+  class Search # rubocop:disable Metrics/ClassLength
     Result = Struct.new(:results, :error, :resolved_query, :barcode, keyword_init: true) do
       def success?
         error.nil?
@@ -10,17 +10,21 @@ module NhsDmd
 
     def initialize(client: Client.new, barcode_lookup: BarcodeCatalog::Lookup.new,
                    open_food_facts_lookup: OpenFoodFacts::BarcodeLookup.new,
-                   open_food_facts_search: OpenFoodFacts::Search.new)
+                   open_food_facts_search: OpenFoodFacts::Search.new,
+                   audit_logger: ExternalLookup::AuditLogger.new)
       @client = client
       @barcode_lookup = barcode_lookup
       @open_food_facts_lookup = open_food_facts_lookup
       @open_food_facts_search = open_food_facts_search
+      @audit_logger = audit_logger
     end
 
     def call(query)
       return empty_result if query.blank?
 
-      local_barcode_result(query) || remote_result(query)
+      result = local_barcode_result(query) || remote_result(query)
+      audit_search(query, result)
+      result
     rescue Client::ApiError => e
       failed_result(e.message)
     rescue StandardError => e
@@ -79,6 +83,23 @@ module NhsDmd
     def failed_result(message, exception = nil)
       log_failure(message, exception)
       Result.new(results: [], error: message)
+    end
+
+    def audit_search(query, result)
+      @audit_logger.record(
+        source: 'nhs_dmd',
+        event: 'search',
+        query: query,
+        result_status: search_result_status(result),
+        result_count: result.results.size
+      )
+    end
+
+    def search_result_status(result)
+      return result.error == 'not_configured' ? 'not_configured' : 'error' unless result.success?
+      return 'not_found' if result.results.empty?
+
+      'success'
     end
 
     def log_failure(message, exception)

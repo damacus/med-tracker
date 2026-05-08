@@ -8,7 +8,8 @@ RSpec.describe NhsDmd::Search do
       client: client,
       barcode_lookup: barcode_lookup,
       open_food_facts_lookup: open_food_facts_lookup,
-      open_food_facts_search: open_food_facts_search
+      open_food_facts_search: open_food_facts_search,
+      audit_logger: instance_double(ExternalLookup::AuditLogger, record: nil)
     )
   end
 
