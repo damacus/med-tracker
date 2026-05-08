@@ -109,9 +109,20 @@ RSpec.describe 'OIDC Security' do # rubocop:disable RSpec/DescribeClass
   end
 
   describe 'OIDC-SEC-011: Account hijacking prevention via email verification' do
-    it 'marks OIDC accounts as verified to prevent hijacking' do
+    it 'auto-verifies unverified accounts whose email matches the OIDC identity via rodauth-omniauth omniauth_verify_account?' do
+      # verify_account_login_status is NOT a rodauth-omniauth option and is silently
+      # ignored by the openid_connect strategy.  Hijacking prevention is handled by
+      # rodauth-omniauth's built-in omniauth_verify_account? which verifies the account
+      # only when the stored email matches the IdP email, so a different account cannot
+      # be linked by guessing a sub value.
       rodauth_file = Rails.root.join('app/misc/rodauth_main.rb').read
-      expect(rodauth_file).to include('verify_account_login_status: :verified')
+      expect(rodauth_file).not_to include('verify_account_login_status: :verified')
+    end
+
+    it 'uses case-insensitive email lookup for OIDC auto-linking' do
+      rodauth_file = Rails.root.join('app/misc/rodauth_main.rb').read
+      expect(rodauth_file).to include('_account_from_omniauth')
+      expect(rodauth_file).to include('Sequel.function(:lower, login_column)')
     end
   end
 

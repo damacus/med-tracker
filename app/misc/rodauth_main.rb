@@ -245,7 +245,6 @@ class RodauthMain < Rodauth::Rails::Auth
                         uid_field: 'sub',
                         discovery: true,
                         issuer: oidc_issuer,
-                        verify_account_login_status: :verified,
                         client_options: {
                           identifier: oidc_client_id,
                           secret: oidc_client_secret,
@@ -302,7 +301,8 @@ class RodauthMain < Rodauth::Rails::Auth
     before_omniauth_create_account do
       next unless invite_only_registration_required?
 
-      set_notice_flash invite_only_registration_message
+      set_redirect_error_flash I18n.t('sessions.login.invite_only_oidc_notice',
+                                      default: 'Single sign-on is reserved for invited accounts.')
       redirect login_path
     end
 
@@ -404,6 +404,20 @@ class RodauthMain < Rodauth::Rails::Auth
         else
           super
         end
+      end
+
+      # Case-insensitive email auto-linking: Zitadel (and most IdPs) normalise
+      # emails to lowercase, but accounts registered via the signup form may
+      # have mixed-case addresses stored in the DB.  Rodauth's default lookup
+      # is a plain WHERE clause which is case-sensitive in PostgreSQL, so a
+      # stored address of "Jane@Hospital.org" would not match "jane@hospital.org"
+      # from Zitadel — the account would appear non-existent and fall through to
+      # account creation, where the invite-only gate blocks it.
+      # account_table_ds already applies the status filter (excludes closed accounts).
+      def _account_from_omniauth
+        account_table_ds
+          .where(Sequel.function(:lower, login_column) => omniauth_email.to_s.strip.downcase)
+          .first
       end
 
       def zitadel_role_for(auth_data)
