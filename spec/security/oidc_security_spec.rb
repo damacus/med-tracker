@@ -70,6 +70,22 @@ RSpec.describe 'OIDC Security' do # rubocop:disable RSpec/DescribeClass
       rodauth_file = Rails.root.join('app/misc/rodauth_main.rb').read
       expect(rodauth_file).to include("ENV.fetch('OIDC_REDIRECT_URI', nil).presence ||")
     end
+
+    it 'strips trailing slash from APP_URL to avoid double-slash redirect URI' do
+      rodauth_file = Rails.root.join('app/misc/rodauth_main.rb').read
+      expect(rodauth_file).to include("ENV.fetch('APP_URL', 'http://localhost:3000').delete_suffix('/')")
+    end
+
+    it 'validates the effective redirect URI (auto-generated or explicit) at startup' do
+      initializer_file = Rails.root.join('config/initializers/oidc_security.rb').read
+      expect(initializer_file).to include('effective_redirect_uri')
+      expect(initializer_file).to include('validate_redirect_uri!(effective_redirect_uri)')
+    end
+
+    it 'mirrors APP_URL trailing-slash strip in the security initializer' do
+      initializer_file = Rails.root.join('config/initializers/oidc_security.rb').read
+      expect(initializer_file).to include("ENV.fetch('APP_URL', 'http://localhost:3000').delete_suffix('/')")
+    end
   end
 
   describe 'OIDC-SEC-007: Access token not stored long-term' do

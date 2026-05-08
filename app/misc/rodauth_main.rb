@@ -250,7 +250,7 @@ class RodauthMain < Rodauth::Rails::Auth
                           identifier: oidc_client_id,
                           secret: oidc_client_secret,
                           redirect_uri: ENV.fetch('OIDC_REDIRECT_URI', nil).presence ||
-                                        "#{ENV.fetch('APP_URL', 'http://localhost:3000')}/auth/oidc/callback"
+                                        "#{ENV.fetch('APP_URL', 'http://localhost:3000').delete_suffix('/')}/auth/oidc/callback"
                         }
     end
 
