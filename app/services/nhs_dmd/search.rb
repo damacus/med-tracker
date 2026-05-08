@@ -230,8 +230,31 @@ module NhsDmd
     end
 
     def barcode_match_item(translated_query, barcode_match)
+      vmp = resolve_vmp(translated_query, barcode_match)
       exact = exact_nhs_match(translated_query, barcode_match)
-      annotate_barcode_match(exact || barcode_match)
+      annotate_barcode_match(vmp || exact || barcode_match)
+    end
+
+    def resolve_vmp(translated_query, barcode_match)
+      return nil unless @client.configured?
+      return nil unless amp_or_ampp?(barcode_match)
+
+      de_branded = de_brand(translated_query)
+      return nil if de_branded == translated_query
+
+      vmp_results = @client.search(de_branded)
+      vmp_results.find { |item| item[:concept_class] == 'VMP' }
+    rescue Client::ApiError, StandardError => e
+      log_failure('vmp_resolution_failed', e)
+      nil
+    end
+
+    def de_brand(name)
+      name.to_s.sub(/\s*\([^)]*\)\z/, '').strip
+    end
+
+    def amp_or_ampp?(item)
+      item[:concept_class].in?(%w[AMP AMPP])
     end
 
     def exact_nhs_match(translated_query, barcode_match)

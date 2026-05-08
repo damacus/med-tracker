@@ -125,10 +125,12 @@ module NhsDmd
       return increment(counts, :skipped_expired) if expired?(gtin_data, today)
       return increment(counts, :skipped_missing_name) if display.blank?
 
+      stripped = display.sub(/\s*\([^)]*\)\z/, '').strip
       outcome = persist(
         gtin: NhsDmdBarcode.normalize_gtin(gtin),
         code: amppid,
         display: display,
+        vmp_name: stripped == display ? nil : stripped,
         system: 'https://dmd.nhs.uk',
         concept_class: 'AMPP'
       )

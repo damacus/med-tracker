@@ -99,7 +99,7 @@ RSpec.describe NhsDmd::ReleaseImport do
   end
 
   it 'imports active GTINs matched to AMPP names' do
-    write_ampp_xml([{ appid: '111', nm: 'Paracetamol 500mg tablets (Acme Ltd) 16 tablet' }])
+    write_ampp_xml([{ appid: '111', nm: 'Paracetamol 500mg tablets (Acme Ltd)' }])
     write_single_gtin_xml(amppid: '111', gtin: '5016298210989', startdt: '2020-01-01')
 
     result = importer.import(release_dir)
@@ -108,9 +108,22 @@ RSpec.describe NhsDmd::ReleaseImport do
     expect(result.skipped_count).to eq(0)
     expect(barcode_record('5016298210989')).to have_attributes(
       code: '111',
-      display: 'Paracetamol 500mg tablets (Acme Ltd) 16 tablet',
+      display: 'Paracetamol 500mg tablets (Acme Ltd)',
+      vmp_name: 'Paracetamol 500mg tablets',
       system: 'https://dmd.nhs.uk',
       concept_class: 'AMPP'
+    )
+  end
+
+  it 'stores nil vmp_name when the AMPP name has no manufacturer suffix' do
+    write_ampp_xml([{ appid: '222', nm: 'Paracetamol 500mg tablets' }])
+    write_single_gtin_xml(amppid: '222', gtin: '5016298210000', startdt: '2020-01-01')
+
+    importer.import(release_dir)
+
+    expect(barcode_record('5016298210000')).to have_attributes(
+      display: 'Paracetamol 500mg tablets',
+      vmp_name: nil
     )
   end
 

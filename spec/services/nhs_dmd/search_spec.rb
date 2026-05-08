@@ -106,6 +106,9 @@ RSpec.describe NhsDmd::Search do
         allow(client).to receive(:search)
           .with('Laxido Orange oral powder sachets (Galen Ltd)')
           .and_return(translated_results)
+        allow(client).to receive(:search)
+          .with('Laxido Orange oral powder sachets')
+          .and_return([])
       end
 
       it 'translates the barcode into a searchable dm+d query while preserving the scanned barcode' do
@@ -122,6 +125,112 @@ RSpec.describe NhsDmd::Search do
           )
         )
         expect(client).to have_received(:search).with('Laxido Orange oral powder sachets (Galen Ltd)')
+      end
+    end
+
+    context 'when an AMPP barcode resolves to a product with a VMP equivalent' do
+      let(:ampp_barcode_result) do
+        {
+          code: '112233445566',
+          display: 'Ibuprofen 400mg tablets (Tesco Stores Ltd)',
+          system: 'https://dmd.nhs.uk',
+          concept_class: 'AMPP'
+        }
+      end
+      let(:vmp_result) do
+        {
+          code: '39720311000001102',
+          display: 'Ibuprofen 400mg tablets',
+          system: 'https://dmd.nhs.uk',
+          concept_class: 'VMP'
+        }
+      end
+
+      before do
+        allow(client).to receive(:configured?).and_return(true)
+        allow(barcode_lookup).to receive(:lookup).with('5000167104065').and_return(ampp_barcode_result)
+        allow(client).to receive(:search)
+          .with('Ibuprofen 400mg tablets (Tesco Stores Ltd)')
+          .and_return([ampp_barcode_result])
+        allow(client).to receive(:search)
+          .with('Ibuprofen 400mg tablets')
+          .and_return([vmp_result, ampp_barcode_result])
+      end
+
+      it 'returns the VMP (generic) result instead of the branded AMPP' do
+        result = search.call('5000167104065')
+
+        expect(result).to be_success
+        expect(result.barcode).to eq('5000167104065')
+        expect(result.results.map(&:to_h)).to contain_exactly(
+          a_hash_including(
+            code: '39720311000001102',
+            display: 'Ibuprofen 400mg tablets',
+            concept_class: 'VMP',
+            match_reason: 'barcode_match'
+          )
+        )
+      end
+    end
+
+    context 'when an AMPP barcode resolves but no VMP is found in the de-branded search' do
+      let(:ampp_barcode_result) do
+        {
+          code: '112233445566',
+          display: 'Ibuprofen 400mg tablets (Tesco Stores Ltd)',
+          system: 'https://dmd.nhs.uk',
+          concept_class: 'AMPP'
+        }
+      end
+
+      before do
+        allow(client).to receive(:configured?).and_return(true)
+        allow(barcode_lookup).to receive(:lookup).with('5000167104065').and_return(ampp_barcode_result)
+        allow(client).to receive(:search)
+          .with('Ibuprofen 400mg tablets (Tesco Stores Ltd)')
+          .and_return([ampp_barcode_result])
+        allow(client).to receive(:search)
+          .with('Ibuprofen 400mg tablets')
+          .and_return([])
+      end
+
+      it 'falls back to the AMPP result when no VMP is available' do
+        result = search.call('5000167104065')
+
+        expect(result).to be_success
+        expect(result.results.map(&:to_h)).to contain_exactly(
+          a_hash_including(
+            code: '112233445566',
+            display: 'Ibuprofen 400mg tablets (Tesco Stores Ltd)',
+            concept_class: 'AMPP'
+          )
+        )
+      end
+    end
+
+    context 'when an AMPP barcode display has no parenthetical brand suffix' do
+      let(:ampp_barcode_result) do
+        {
+          code: '998877',
+          display: 'Ibuprofen 400mg tablets',
+          system: 'https://dmd.nhs.uk',
+          concept_class: 'AMPP'
+        }
+      end
+
+      before do
+        allow(client).to receive(:configured?).and_return(true)
+        allow(barcode_lookup).to receive(:lookup).with('5000167104065').and_return(ampp_barcode_result)
+        allow(client).to receive(:search)
+          .with('Ibuprofen 400mg tablets')
+          .and_return([ampp_barcode_result])
+      end
+
+      it 'skips VMP resolution and returns the AMPP result directly' do
+        result = search.call('5000167104065')
+
+        expect(result).to be_success
+        expect(client).to have_received(:search).once
       end
     end
 

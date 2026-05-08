@@ -84,5 +84,33 @@ RSpec.describe BarcodeCatalog::Lookup do
         source: 'nhs_dmd'
       )
     end
+
+    it 'returns vmp_name as display when the local record has a pre-stripped generic name' do
+      NhsDmdBarcode.create!(
+        gtin: gtin,
+        code: '4585411000001109',
+        display: 'Ibuprofen 400mg tablets (Tesco Stores Ltd)',
+        vmp_name: 'Ibuprofen 400mg tablets',
+        system: 'https://dmd.nhs.uk',
+        concept_class: 'AMPP'
+      )
+
+      expect(lookup.lookup(gtin)).to include(
+        display: 'Ibuprofen 400mg tablets',
+        code: '4585411000001109',
+        source: 'nhs_dmd'
+      )
+    end
+
+    it 'falls back to branded display when vmp_name is absent' do
+      create_local_entry(
+        code: '4585411000001109',
+        display: 'Ibuprofen 400mg tablets (Tesco Stores Ltd)'
+      )
+
+      expect(lookup.lookup(gtin)).to include(
+        display: 'Ibuprofen 400mg tablets (Tesco Stores Ltd)'
+      )
+    end
   end
 end
