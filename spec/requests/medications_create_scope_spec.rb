@@ -261,6 +261,63 @@ RSpec.describe 'Medication creation scope' do
       expect(Medication.last.dmd_concept_class).to eq('AMPP')
     end
 
+    it 'adds scanned stock to an existing matching medication instead of creating a duplicate' do
+      existing_medication = medications(:ibuprofen)
+      existing_medication.update!(current_supply: 20, supply_at_last_restock: 20)
+
+      expect do
+        post medications_path, params: {
+          medication: {
+            name: 'Ibuprofen 200mg tablets 16 tablets',
+            barcode: '5012345678901',
+            dmd_code: '11111111000001101',
+            dmd_system: 'https://dmd.nhs.uk',
+            dmd_concept_class: 'AMPP',
+            category: 'Analgesic',
+            dosage_amount: 1,
+            dosage_unit: 'tablet',
+            current_supply: 16,
+            reorder_threshold: 4,
+            location_id: locations(:home).id
+          }
+        }
+      end.not_to change(Medication, :count)
+
+      expect(response).to redirect_to(medication_path(existing_medication))
+      expect(existing_medication.reload).to have_attributes(
+        current_supply: 36,
+        supply_at_last_restock: 36
+      )
+      expect(Medication.where('LOWER(name) LIKE ?', '%ibuprofen%').count).to eq(1)
+    end
+
+    it 'creates a separate item when a scanned medication has a different strength' do
+      existing_medication = medications(:ibuprofen)
+      existing_medication.update!(current_supply: 20, supply_at_last_restock: 20)
+
+      expect do
+        post medications_path, params: {
+          medication: {
+            name: 'Ibuprofen 400mg tablets 16 tablets',
+            barcode: '5012345678902',
+            dmd_code: '22222222000001102',
+            dmd_system: 'https://dmd.nhs.uk',
+            dmd_concept_class: 'AMPP',
+            category: 'Analgesic',
+            dosage_amount: 1,
+            dosage_unit: 'tablet',
+            current_supply: 16,
+            reorder_threshold: 4,
+            location_id: locations(:home).id
+          }
+        }
+      end.to change(Medication, :count).by(1)
+
+      expect(response).to redirect_to(medication_path(Medication.last))
+      expect(existing_medication.reload.current_supply).to eq(20)
+      expect(Medication.where('LOWER(name) LIKE ?', '%ibuprofen%').count).to eq(2)
+    end
+
     it 'fills missing onboarding fields and suggested doses from curated dm+d metadata' do
       expect do
         post medications_path, params: {
