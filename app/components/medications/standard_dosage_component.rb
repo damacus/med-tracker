@@ -24,7 +24,7 @@ module Components
               end
               div do
                 span(class: 'text-3xl font-black text-foreground tracking-tight') { medication.dosage_amount.to_s }
-                span(class: 'text-lg font-bold text-on-surface-variant ml-1') { medication.dosage_unit }
+                span(class: 'text-lg font-bold text-on-surface-variant ml-1') { pluralized_dosage_unit }
               end
             end
           else
@@ -46,6 +46,10 @@ module Components
 
       def dosage_specified?
         medication.dosage_amount.present? && medication.dosage_unit.present?
+      end
+
+      def pluralized_dosage_unit
+        DoseAmount.pluralize_unit(medication.dosage_amount, medication.dosage_unit)
       end
 
       def reorder_threshold_label
