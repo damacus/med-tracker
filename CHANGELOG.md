@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.3.50](https://github.com/damacus/med-tracker/compare/v0.3.49...v0.3.50) (2026-05-09)
+
+
+### Features
+
+* add audit logging for external medicine lookups ([#1191](https://github.com/damacus/med-tracker/issues/1191)) ([84de049](https://github.com/damacus/med-tracker/commit/84de0496dc5ce14f79f076a65d8775a3735b11f2))
+* Add inventory adjustment feature for medications ([#1186](https://github.com/damacus/med-tracker/issues/1186)) ([790116b](https://github.com/damacus/med-tracker/commit/790116b65d13af96a064802d118501a5557adc85))
+* anchor global search under sidebar ([#1182](https://github.com/damacus/med-tracker/issues/1182)) ([a3b0586](https://github.com/damacus/med-tracker/commit/a3b0586dccc596d364d3c1b6bf1fa6cb1b2371e9))
+* Map branded AMPP barcodes to generic VMP medications ([#1188](https://github.com/damacus/med-tracker/issues/1188)) ([a5b7e50](https://github.com/damacus/med-tracker/commit/a5b7e50c65b513e801ca28f4947d41e9fb3a37b9))
+* pluralise countable dose units (tablet, capsule, etc.) ([#1184](https://github.com/damacus/med-tracker/issues/1184)) ([baac88e](https://github.com/damacus/med-tracker/commit/baac88ecfd5270dd88e6421c058b8533e2d1364e))
+
+
+### Bug Fixes
+
+* harden medication wizard against premature & duplicate submits ([#1190](https://github.com/damacus/med-tracker/issues/1190)) ([385916f](https://github.com/damacus/med-tracker/commit/385916f55a5d12681624c05fd9896ce6856e003a))
+* improve dark mode icon contrast ([#1181](https://github.com/damacus/med-tracker/issues/1181)) ([c16bc79](https://github.com/damacus/med-tracker/commit/c16bc795073cb31eb1d774314604bbfdc0207401))
+* validate effective OIDC redirect URI and strip APP_URL trailing slash ([#1185](https://github.com/damacus/med-tracker/issues/1185)) ([f372970](https://github.com/damacus/med-tracker/commit/f372970d4dc818b27b1fcc94df72649f1b9e04bc))
+
 ## [0.3.49](https://github.com/damacus/med-tracker/compare/v0.3.48...v0.3.49) (2026-05-06)
 
 
