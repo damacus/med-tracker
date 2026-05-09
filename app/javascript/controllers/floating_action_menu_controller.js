@@ -61,10 +61,10 @@ export default class extends Controller {
   }
 
   openLabel() {
-    return this.toggleTarget.dataset.floatingActionMenuOpenLabel || "Open quick actions"
+    return this.toggleTarget.dataset.floatingActionMenuOpenLabel
   }
 
   closeLabel() {
-    return this.toggleTarget.dataset.floatingActionMenuCloseLabel || "Close quick actions"
+    return this.toggleTarget.dataset.floatingActionMenuCloseLabel
   }
 }
