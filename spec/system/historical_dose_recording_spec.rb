@@ -13,26 +13,26 @@ RSpec.describe 'Historical dose recording' do
     sign_in(admin)
   end
 
-  it 'records a historical dose from the take medication dialog' do
+  it 'records a historical dose via the overflow menu prior-day dialog' do
     travel_to(Time.zone.local(2026, 4, 28, 14, 45)) do
       schedule = build_schedule
       build_alternate_medication
       submitted_time = Time.zone.local(2026, 4, 27, 8, 30)
 
       visit person_path(person)
-      find("[data-testid='take-schedule-#{schedule.id}']").click
+      find("[data-testid='more-actions-schedule-#{schedule.id}']").click
+      find("[data-testid='log-past-dose-schedule-#{schedule.id}']").click
 
-      expect(page).to have_text('Record dose')
+      expect(page).to have_text('Record a dose from a previous day')
 
-      field = find("input[name='medication_take[taken_at]']", visible: :all)
-      expect(field[:type]).to eq('datetime-local')
+      field = find("input[name='medication_take[taken_at]'][type='datetime-local']", visible: :all)
       expect(field[:value]).to eq('2026-04-28T14:45')
       expect(field[:max]).to eq('2026-04-28T14:45')
 
       expect do
         within("form[action='#{take_path(schedule)}']") do
-          fill_in 'Taken at', with: submitted_time.strftime('%Y-%m-%dT%H:%M')
-          click_button I18n.t('schedules.card.give')
+          fill_in 'Date and time taken', with: submitted_time.strftime('%Y-%m-%dT%H:%M')
+          click_button I18n.t('medications.prior_day_take_action.submit')
         end
         expect(page).to have_text(I18n.t('schedules.medication_taken'), wait: 10)
       end.to change(MedicationTake, :count).by(1)

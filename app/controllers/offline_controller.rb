@@ -31,7 +31,9 @@ class OfflineController < ApplicationController
 
     parsed_taken_at = parse_taken_at(taken_at)
     return render_unprocessable(t('take_medications.invalid_taken_at')) if parsed_taken_at.blank?
-    return render_unprocessable(t('take_medications.future_taken_at')) if parsed_taken_at.future?
+    if parsed_taken_at > Time.current + TakeMedicationGuardable::FUTURE_TOLERANCE
+      return render_unprocessable(t('take_medications.future_taken_at'))
+    end
 
     result = TakeMedicationService.new.call(
       source: source,

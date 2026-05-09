@@ -91,7 +91,7 @@ RSpec.describe 'Offline mode' do
 
     it 'returns validation errors without discarding the queued take' do
       post '/offline/medication_takes',
-           params: payload.merge(taken_at: 1.minute.from_now.iso8601),
+           params: payload.merge(taken_at: 61.minutes.from_now.iso8601),
            as: :json
 
       expect(response).to have_http_status(:unprocessable_content)

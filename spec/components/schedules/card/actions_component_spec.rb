@@ -42,7 +42,7 @@ RSpec.describe Components::Schedules::Card::ActionsComponent, type: :component d
   context 'when the schedule is on cooldown' do
     it 'renders a disabled waiting action' do
       allow(MedicationStockSourceResolver).to receive(:new).and_return(
-        instance_double(MedicationStockSourceResolver, blocked_reason: :cooldown)
+        instance_double(MedicationStockSourceResolver, blocked_reason: :cooldown, available_medications: [])
       )
 
       rendered = render_inline(

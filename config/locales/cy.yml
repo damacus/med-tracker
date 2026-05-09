@@ -532,6 +532,14 @@ cy:
       choose_location: "Dewis lleoliad"
       choose_location_description: "Dewiswch pa leoliad i ddidynnu'r dos hwn ohono."
       untracked_inventory: "Heb ei olrhain"
+    prior_day_take_action:
+      menu_item: "Cofnodi dos blaenorol"
+      title: "Cofnodi dos o ddiwrnod blaenorol"
+      description: "Cofnodi dos a gymerwyd cyn heddiw."
+      taken_at: "Dyddiad ac amser"
+      submit: "Cofnodi dos hanesyddol"
+    card:
+      more_actions: "Rhagor o weithredoedd"
     reorder_statuses:
       ordered: "Wedi archebu"
       received: "Wedi derbyn"
@@ -951,7 +959,7 @@ cy:
     failure: "Methwyd â chofnodi cymryd y feddyginiaeth."
     json_success: "Cofnodwyd cymryd y feddyginiaeth yn llwyddiannus."
     invalid_taken_at: "Dewiswch amser dos dilys."
-    future_taken_at: "Ni all amser y dos fod yn y dyfodol."
+    future_taken_at: "Ni all amser y dos fod fwy nag awr yn y dyfodol."
 
   profiles:
     updated: "Diweddarwyd y proffil yn llwyddiannus."

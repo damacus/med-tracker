@@ -20,11 +20,7 @@ RSpec.describe Components::Schedules::Card, type: :component do
 
   it 'displays dosage unit from schedule, not hardcoded ml' do
     MedicationTake.create!(schedule: schedule, taken_at: Time.current, dose_amount: 400)
-    vc = view_context
-    vc.singleton_class.define_method(:current_user) { nil }
-
-    html = vc.render(described_class.new(schedule: schedule, person: person))
-    rendered = Nokogiri::HTML::DocumentFragment.parse(html)
+    rendered = render_schedule_card
 
     take_text = rendered.text
     expect(take_text).to include('400 mg')
@@ -33,11 +29,7 @@ RSpec.describe Components::Schedules::Card, type: :component do
 
   it 'disables the take button when schedule dose is invalid' do
     schedule.dose_amount = 0
-    vc = view_context
-    vc.singleton_class.define_method(:current_user) { nil }
-
-    html = vc.render(described_class.new(schedule: schedule, person: person))
-    rendered = Nokogiri::HTML::DocumentFragment.parse(html)
+    rendered = render_schedule_card
 
     button = rendered.at_css("button[data-testid='take-schedule-#{schedule.id}-disabled'][disabled]")
     expect(button).not_to be_nil
@@ -57,6 +49,17 @@ RSpec.describe Components::Schedules::Card, type: :component do
     heading = rendered.at_css('h3')
     expect(heading.text).to include(medication.name)
     expect(heading['class']).to include('break-words')
+  end
+
+  it 'renders an overflow menu with a Log a past dose item' do
+    rendered = render_schedule_card
+
+    trigger = rendered.at_css("button[data-testid='more-actions-schedule-#{schedule.id}']")
+    item = rendered.at_css("[role='menuitem'][data-testid='log-past-dose-schedule-#{schedule.id}']")
+
+    expect(trigger).not_to be_nil
+    expect(item).not_to be_nil
+    expect(item.text).to include('Log a past dose')
   end
 
   def render_schedule_card
