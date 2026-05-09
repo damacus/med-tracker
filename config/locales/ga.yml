@@ -1056,6 +1056,7 @@ ga:
       warnings: "Rabhaidh"
       warnings_placeholder: "Aon fo-iarsmaí nó rabhaidh úsáide?"
       save_medication: "Sábháil Leigheas"
+      saving: "Á shábháil..."
       back_to_medications: "Ar Ais go Leigheasanna"
       back: "Ar Ais"
       select_location: "Roghnaigh suíomh..."

@@ -118,7 +118,10 @@ module Components
         end
 
         def render_navigation
-          div(class: 'flex items-center justify-between pt-6 border-t border-outline-variant/30') do
+          div(
+            class: 'flex flex-col-reverse gap-3 pt-6 border-t border-outline-variant/30 ' \
+                   'sm:flex-row sm:items-center sm:justify-between sm:gap-4'
+          ) do
             div(class: 'flex items-center gap-3') do
               m3_button(
                 type: :button,
@@ -144,12 +147,12 @@ module Components
               end
             end
 
-            div(class: 'flex gap-3') do
+            div(class: 'flex flex-col gap-3 sm:flex-row sm:gap-3') do
               m3_button(
                 type: :button,
                 variant: :filled,
                 size: :lg,
-                class: 'px-8 rounded-shape-xl shadow-lg shadow-primary/20',
+                class: 'w-full sm:w-auto sm:px-8 rounded-shape-xl shadow-lg shadow-primary/20',
                 data: {
                   wizard_target: 'nextButton',
                   action: 'click->wizard#next'
@@ -162,8 +165,11 @@ module Components
                 type: :submit,
                 variant: :filled,
                 size: :lg,
-                class: 'px-8 rounded-shape-xl shadow-lg shadow-primary/20 hidden',
-                data: { wizard_target: 'submitButton' }
+                class: 'w-full sm:w-auto sm:px-8 rounded-shape-xl shadow-lg shadow-primary/20 hidden',
+                data: {
+                  wizard_target: 'submitButton',
+                  turbo_submits_with: t('forms.medications.saving')
+                }
               ) do
                 plain t('forms.medications.save_medication')
               end

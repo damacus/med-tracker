@@ -6,6 +6,24 @@ export default class extends Controller {
 
   connect() {
     this.showStep()
+    this.formElement = this.element.querySelector("form")
+    if (this.formElement) {
+      this.boundHandleSubmit = this.handleSubmit.bind(this)
+      this.formElement.addEventListener("submit", this.boundHandleSubmit)
+    }
+  }
+
+  disconnect() {
+    if (this.formElement && this.boundHandleSubmit) {
+      this.formElement.removeEventListener("submit", this.boundHandleSubmit)
+    }
+  }
+
+  handleSubmit(event) {
+    if (this.currentValue < this.stepTargets.length - 1) {
+      event.preventDefault()
+      this.next()
+    }
   }
 
   next() {
@@ -88,12 +106,20 @@ export default class extends Controller {
     const currentStepEl = this.stepTargets[this.currentValue]
     if (!currentStepEl) return true
 
+    // Let step-level controllers run their own validators and cancel progress
+    const validateEvent = new CustomEvent("wizard:validate", { bubbles: true, cancelable: true })
+    currentStepEl.dispatchEvent(validateEvent)
+    if (validateEvent.defaultPrevented) return false
+
     let valid = true
 
-    // Validate visible text/number/etc inputs (not radios — they live inside combobox popovers)
+    // Validate visible text/number/etc inputs (not radios — they live inside combobox popovers).
+    // Skip elements that aren't currently rendered: reportValidity() on a clipped/hidden
+    // element can't position its popup, so the user sees nothing happen.
     currentStepEl.querySelectorAll(
       "input[required]:not([type=radio]):not([type=hidden]), select[required], textarea[required]"
     ).forEach((input) => {
+      if (input.offsetParent === null) return
       if (!input.checkValidity()) {
         input.reportValidity()
         valid = false

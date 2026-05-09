@@ -21,6 +21,7 @@ module Components
             class: 'space-y-8',
             data: {
               controller: 'medication-schedule-wizard',
+              action: 'wizard:validate@window->medication-schedule-wizard#validateReviewed',
               'medication-schedule-wizard-schedule-type-value': default_schedule_type
             }
           ) do
@@ -445,13 +446,13 @@ module Components
         def render_review_panel
           section(class: 'space-y-3 rounded-3xl bg-primary/5 border border-primary/20 p-5') do
             div(class: 'flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between') do
-              div(class: 'space-y-1') do
+              div(class: 'space-y-1 min-w-0') do
                 m3_heading(level: 4, size: '4', class: 'font-bold tracking-tight text-foreground') do
                   t('forms.medications.wizard.dose.review_title')
                 end
                 m3_text(
                   size: '2',
-                  class: 'text-on-surface-variant',
+                  class: 'text-on-surface-variant break-words',
                   data: { 'medication-schedule-wizard-target': 'reviewText' }
                 ) do
                   t('forms.medications.wizard.dose.review_placeholder')
@@ -466,16 +467,22 @@ module Components
                 t('forms.medications.wizard.dose.review_button')
               end
             end
+            div(
+              class: 'hidden rounded-2xl border border-error/40 bg-error-container/50 px-4 py-3 ' \
+                     'text-sm font-semibold text-on-error-container',
+              data: { 'medication-schedule-wizard-target': 'reviewWarning' },
+              role: 'alert'
+            ) do
+              t('forms.medications.wizard.dose.review_required')
+            end
             input(
               type: 'text',
               id: 'medication_schedule_review_complete',
               name: 'medication_schedule_review_complete',
-              required: true,
               tabindex: '-1',
               aria_hidden: 'true',
               class: 'sr-only',
-              data: { 'medication-schedule-wizard-target': 'reviewCompleteInput' },
-              title: t('forms.medications.wizard.dose.review_required')
+              data: { 'medication-schedule-wizard-target': 'reviewCompleteInput' }
             )
           end
         end

@@ -1119,6 +1119,7 @@ cy:
       warnings: "Rhybuddion"
       warnings_placeholder: "Unrhyw sgîl-effeithiau neu rybuddion defnyddio?"
       save_medication: "Cadw Meddyginiaeth"
+      saving: "Yn cadw..."
       back_to_medications: "Yn ôl i Feddyginiaethau"
       back: "Yn ôl"
       select_location: "Dewiswch leoliad..."

@@ -1089,6 +1089,7 @@ es:
       warnings: "Advertencias"
       warnings_placeholder: "¿Algún efecto secundario o advertencia de uso?"
       save_medication: "Guardar Medicamento"
+      saving: "Guardando..."
       back_to_medications: "Volver a Medicamentos"
       back: "Volver"
       select_location: "Seleccione una ubicación..."

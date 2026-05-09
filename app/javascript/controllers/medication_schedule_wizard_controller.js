@@ -41,7 +41,8 @@ export default class extends Controller {
     "doseCycleField",
     "scheduleConfigField",
     "reviewText",
-    "reviewCompleteInput"
+    "reviewCompleteInput",
+    "reviewWarning"
   ]
 
   static values = { scheduleType: { type: String, default: "multiple_daily" } }
@@ -107,6 +108,25 @@ export default class extends Controller {
     this.updateHiddenFields()
     this.reviewTextTarget.textContent = this.reviewSentence()
     this.reviewCompleteInputTarget.value = "reviewed"
+    this.hideReviewWarning()
+  }
+
+  validateReviewed(event) {
+    // Only enforce when this step is the visible one — multiple wizard steps stay
+    // in the DOM concurrently, just hidden via class.
+    if (this.element.offsetParent === null) return
+    if (this.reviewCompleteInputTarget.value === "reviewed") return
+
+    event.preventDefault()
+    this.showReviewWarning()
+  }
+
+  showReviewWarning() {
+    if (this.hasReviewWarningTarget) this.reviewWarningTarget.classList.remove("hidden")
+  }
+
+  hideReviewWarning() {
+    if (this.hasReviewWarningTarget) this.reviewWarningTarget.classList.add("hidden")
   }
 
   updateHiddenFields() {
@@ -150,6 +170,7 @@ export default class extends Controller {
 
   clearReview() {
     if (this.hasReviewCompleteInputTarget) this.reviewCompleteInputTarget.value = ""
+    this.hideReviewWarning()
   }
 
   timingDefaults() {

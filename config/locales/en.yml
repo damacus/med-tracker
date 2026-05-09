@@ -1268,6 +1268,7 @@ en:
       warnings: "Warnings"
       warnings_placeholder: "Any side effects or usage warnings?"
       save_medication: "Save Medication"
+      saving: "Saving..."
       back_to_medications: "Back to Medications"
       back: "Back"
       select_location: "Select a location..."
@@ -1339,7 +1340,7 @@ en:
           review_title: "Plain-English review"
           review_placeholder: "Review the dose schedule before continuing."
           review_button: "Review dose schedule"
-          review_required: "Review the dose schedule before continuing."
+          review_required: "Tap \"Review dose schedule\" before continuing."
         supply:
           title: "Supply setup"
           description: "Track how much you have in the pack and when to reorder."
