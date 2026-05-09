@@ -151,6 +151,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_09_000000) do
     t.index ["revoked_at"], name: "index_api_sessions_on_revoked_at"
   end
 
+  create_table "app_settings", force: :cascade do |t|
+    t.boolean "invite_only", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
   create_table "barcode_catalog_entries", force: :cascade do |t|
     t.string "code"
     t.string "concept_class"
@@ -299,6 +305,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_09_000000) do
     t.string "gtin", null: false
     t.string "system", default: "https://dmd.nhs.uk", null: false
     t.datetime "updated_at", null: false
+    t.string "vmp_name"
     t.index ["code"], name: "index_nhs_dmd_barcodes_on_code"
     t.index ["gtin"], name: "index_nhs_dmd_barcodes_on_gtin", unique: true
   end
