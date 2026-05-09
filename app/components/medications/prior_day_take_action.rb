@@ -61,18 +61,11 @@ module Components
       private
 
       def render_menu_item_trigger
-        div(
-          role: 'menuitem',
-          tabindex: '-1',
-          class: 'relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 ' \
-                 'text-sm outline-none transition-colors hover:bg-tertiary-container ' \
-                 'hover:text-on-tertiary-container focus:bg-tertiary-container ' \
-                 'focus:text-on-tertiary-container',
-          data: {
-            action: 'click->ruby-ui--dropdown-menu#close',
-            testid: testid,
-            test_id: testid
-          }
+        render RubyUI::DropdownMenuItem.new(
+          href: '#',
+          data_action: 'click->ruby-ui--dialog#open:prevent',
+          data_testid: testid,
+          data_test_id: testid
         ) do
           render Icons::Calendar.new(size: 16, aria_hidden: 'true', class: 'mr-2 shrink-0')
           plain t('medications.prior_day_take_action.menu_item', default: 'Log a past dose')
