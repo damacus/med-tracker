@@ -19,9 +19,9 @@ RSpec.describe MedicationReorderStatusService do
     end
 
     it 'creates a PaperTrail version with event mark_as_ordered' do
-      expect {
+      expect do
         described_class.new.call(medication: medication, status: :ordered)
-      }.to change { PaperTrail::Version.where(item_type: 'Medication', item_id: medication.id).count }.by(1)
+      end.to change { PaperTrail::Version.where(item_type: 'Medication', item_id: medication.id).count }.by(1)
 
       expect(PaperTrail::Version.where(item_type: 'Medication', item_id: medication.id).last.event)
         .to eq('mark_as_ordered')
@@ -40,9 +40,9 @@ RSpec.describe MedicationReorderStatusService do
     end
 
     it 'creates a PaperTrail version with event mark_as_received' do
-      expect {
+      expect do
         described_class.new.call(medication: medication, status: :received)
-      }.to change { PaperTrail::Version.where(item_type: 'Medication', item_id: medication.id).count }.by(1)
+      end.to change { PaperTrail::Version.where(item_type: 'Medication', item_id: medication.id).count }.by(1)
 
       expect(PaperTrail::Version.where(item_type: 'Medication', item_id: medication.id).last.event)
         .to eq('mark_as_received')

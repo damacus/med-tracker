@@ -37,22 +37,24 @@ class MedicationOnboardingCreateService
     success = false
 
     ActiveRecord::Base.transaction do
-      assign_medication_schedule_defaults
-      medication.paper_trail_event = 'create'
-      raise ActiveRecord::Rollback unless medication.save
-
-      schedule = build_schedule(medication)
-      if schedule.save
-        success = true
-      else
-        copy_schedule_errors(schedule)
-        raise ActiveRecord::Rollback
-      end
+      schedule, success = persist_medication_with_schedule
     end
 
     reset_rolled_back_records unless success
 
     Result.new(success: success, medication: medication, schedule: schedule, restocked: false)
+  end
+
+  def persist_medication_with_schedule
+    assign_medication_schedule_defaults
+    medication.paper_trail_event = 'create'
+    raise ActiveRecord::Rollback unless medication.save
+
+    schedule = build_schedule(medication)
+    return [schedule, true] if schedule.save
+
+    copy_schedule_errors(schedule)
+    raise ActiveRecord::Rollback
   end
 
   def schedule_requested?

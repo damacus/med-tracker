@@ -7,49 +7,53 @@ RSpec.describe 'Medication wizard dose option follow-up' do
 
   it 'creates the medication, primary dose option, and first schedule from the wizard' do
     sign_in(users(:admin))
+    schedule_version_count = PaperTrail::Version.where(item_type: 'Schedule', event: 'create').count
 
-    post medications_path,
-         params: {
-           wizard: 'true',
-           onboarding_schedule: {
-             person_id: people(:john).id,
-             schedule_type: 'multiple_daily',
-             frequency: 'Twice daily',
-             start_date: Time.zone.today.to_s,
-             end_date: 1.month.from_now.to_date.to_s,
-             max_daily_doses: '2',
-             min_hours_between_doses: '12',
-             dose_cycle: 'daily',
-             schedule_config: JSON.generate(
+    expect do
+      post medications_path,
+           params: {
+             wizard: 'true',
+             onboarding_schedule: {
+               person_id: people(:john).id,
                schedule_type: 'multiple_daily',
                frequency: 'Twice daily',
-               times: %w[08:00 20:00]
-             )
-           },
-           medication: {
-             name: 'Wizard Medication',
-             category: 'Vitamin',
-             current_supply: '10',
-             reorder_threshold: '1',
-             location_id: locations(:home).id,
-             dosage_records_attributes: {
-               '0' => {
-                 amount: '2.5',
-                 unit: 'ml',
+               start_date: Time.zone.today.to_s,
+               end_date: 1.month.from_now.to_date.to_s,
+               max_daily_doses: '2',
+               min_hours_between_doses: '12',
+               dose_cycle: 'daily',
+               schedule_config: JSON.generate(
+                 schedule_type: 'multiple_daily',
                  frequency: 'Twice daily',
-                 default_for_adults: '0',
-                 default_for_children: '1',
-                 default_max_daily_doses: '2',
-                 default_min_hours_between_doses: '12',
-                 default_dose_cycle: 'daily'
+                 times: %w[08:00 20:00]
+               )
+             },
+             medication: {
+               name: 'Wizard Medication',
+               category: 'Vitamin',
+               current_supply: '10',
+               reorder_threshold: '1',
+               location_id: locations(:home).id,
+               dosage_records_attributes: {
+                 '0' => {
+                   amount: '2.5',
+                   unit: 'ml',
+                   frequency: 'Twice daily',
+                   default_for_adults: '0',
+                   default_for_children: '1',
+                   default_max_daily_doses: '2',
+                   default_min_hours_between_doses: '12',
+                   default_dose_cycle: 'daily'
+                 }
                }
              }
-           }
-         },
-         headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+           },
+           headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+    end.to change(PaperTrail::Version.where(item_type: 'Medication', event: 'create'), :count).by(1)
 
     expect(response).to have_http_status(:ok)
     expect(response.content_type).to include('text/vnd.turbo-stream.html')
+    expect(PaperTrail::Version.where(item_type: 'Schedule', event: 'create').count).to eq(schedule_version_count + 1)
 
     medication = Medication.order(:id).last
     dosage = medication.dosage_records.order(:id).last

@@ -51,6 +51,33 @@ RSpec.describe AiMedication::SuggestionService do
     )
   end
 
+  it 'returns the validated suggestion when audit logging fails' do
+    audit_logger = instance_double(AiMedication::AuditLogger)
+    assistant = instance_double(AiMedication::RubyLlmAssistant, call: valid_suggestion)
+    allow(audit_logger).to receive(:record).and_raise(StandardError, 'audit unavailable')
+
+    suggestion = described_class.new(assistant: assistant, audit_logger: audit_logger).call(
+      medication_identity: { name: 'Calpol Six Plus' },
+      user: users(:admin)
+    )
+
+    expect(suggestion.doses.first).to include('amount' => 5, 'unit' => 'ml')
+  end
+
+  it 'returns the fallback suggestion when error audit logging fails' do
+    audit_logger = instance_double(AiMedication::AuditLogger)
+    assistant = instance_double(AiMedication::RubyLlmAssistant)
+    allow(assistant).to receive(:call).and_raise(StandardError, 'LLM unavailable')
+    allow(audit_logger).to receive(:record).and_raise(StandardError, 'audit unavailable')
+
+    suggestion = described_class.new(assistant: assistant, audit_logger: audit_logger).call(
+      medication_identity: { name: 'Calpol Six Plus' },
+      user: users(:admin)
+    )
+
+    expect(suggestion.errors).to eq(['suggestion_unavailable'])
+  end
+
   def call_service(raw_suggestion)
     assistant = instance_double(AiMedication::RubyLlmAssistant, call: raw_suggestion)
     audit_logger = instance_double(AiMedication::AuditLogger, record: true)

@@ -12,7 +12,7 @@ RSpec.describe AiMedication::AuditLogger do
   let(:found_suggestion) do
     AiMedication::Suggestion.new(
       sources: [{ url: 'https://example.com', title: 'Example' }],
-      doses:   [{ amount: 5, unit: 'ml' }]
+      doses: [{ amount: 5, unit: 'ml' }]
     )
   end
   let(:error_suggestion) { AiMedication::Suggestion.new(errors: ['suggestion_unavailable']) }
@@ -27,9 +27,9 @@ RSpec.describe AiMedication::AuditLogger do
 
   describe '#record' do
     it 'creates a PaperTrail::Version with item_type AiMedicationSuggestion' do
-      expect {
+      expect do
         audit_logger.record(user: user, medication_identity: medication_identity, suggestion: found_suggestion)
-      }.to change { PaperTrail::Version.where(item_type: 'AiMedicationSuggestion').count }.by(1)
+      end.to change { PaperTrail::Version.where(item_type: 'AiMedicationSuggestion').count }.by(1)
     end
 
     it 'persists the correct event, whodunnit, ip, and request_id' do
@@ -64,18 +64,18 @@ RSpec.describe AiMedication::AuditLogger do
     it 'does not raise when called without controller context' do
       PaperTrail.request.controller_info = {}
 
-      expect {
+      expect do
         audit_logger.record(user: nil, medication_identity: medication_identity, suggestion: found_suggestion)
-      }.not_to raise_error
+      end.not_to raise_error
     end
 
     it 'silently rescues errors and logs them' do
       allow(PaperTrail::Version).to receive(:insert).and_raise(ActiveRecord::StatementInvalid)
       allow(Rails.logger).to receive(:error)
 
-      expect {
+      expect do
         audit_logger.record(user: user, medication_identity: medication_identity, suggestion: found_suggestion)
-      }.not_to raise_error
+      end.not_to raise_error
 
       expect(Rails.logger).to have_received(:error).with(/AiMedication::AuditLogger failed/)
     end
