@@ -57,11 +57,14 @@ module Components
         end
 
         def render_actions
-          div(class: 'flex items-center justify-between pt-6 border-t border-border') do
+          div(
+            class: 'flex flex-col-reverse gap-3 pt-6 border-t border-border ' \
+                   'sm:flex-row sm:items-center sm:justify-between sm:gap-4'
+          ) do
             Link(
               href: edit_medication_path(medication, return_to: medication_path(medication)),
               variant: :outlined,
-              class: 'font-bold',
+              class: 'w-full sm:w-auto justify-center font-bold',
               data: { turbo_frame: '_top' }
             ) { 'Manage dose options' }
 
@@ -69,7 +72,7 @@ module Components
               href: medication_path(medication),
               variant: :filled,
               size: :lg,
-              class: 'px-8 rounded-shape-xl shadow-lg shadow-primary/20',
+              class: 'w-full sm:w-auto justify-center sm:px-8 rounded-shape-xl shadow-lg shadow-primary/20',
               data: { turbo_frame: '_top' }
             ) { 'Done' }
           end

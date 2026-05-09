@@ -1225,6 +1225,7 @@ pt:
       warnings: "Avisos"
       warnings_placeholder: "Algum efeito secundário ou aviso de utilização?"
       save_medication: "Guardar Medicamento"
+      saving: "A guardar..."
       back_to_medications: "Voltar aos Medicamentos"
       back: "Voltar"
       select_location: "Selecione uma localização..."
