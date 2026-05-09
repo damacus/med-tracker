@@ -79,4 +79,19 @@ RSpec.describe MedicationDosageOption do
       expect(dosage_option.send(:tracked_inventory_change?)).to be(true)
     end
   end
+
+  describe 'versioning' do
+    it 'creates a version when dose option instructions change' do
+      dosage_option = create(:dosage)
+
+      expect do
+        dosage_option.update!(frequency: 'Twice daily')
+      end.to change {
+        PaperTrail::Version.where(item_type: 'MedicationDosageOption', item_id: dosage_option.id).count
+      }.by(1)
+
+      expect(PaperTrail::Version.where(item_type: 'MedicationDosageOption', item_id: dosage_option.id).last.event)
+        .to eq('update')
+    end
+  end
 end

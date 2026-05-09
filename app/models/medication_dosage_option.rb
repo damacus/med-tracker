@@ -3,6 +3,8 @@
 class MedicationDosageOption < ApplicationRecord
   self.table_name = 'dosages'
 
+  has_paper_trail
+
   belongs_to :medication
 
   after_create :sync_medication_dosage

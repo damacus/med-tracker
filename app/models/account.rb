@@ -3,6 +3,8 @@
 class Account < ApplicationRecord
   include Rodauth::Rails.model
 
+  has_paper_trail skip: %i[password_hash]
+
   enum :status, { unverified: 1, verified: 2, closed: 3 }
   enum :subscription_plan, { free: 'free', family_plus: 'family_plus' }, validate: true
 

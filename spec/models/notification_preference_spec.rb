@@ -48,4 +48,19 @@ RSpec.describe NotificationPreference do
       end
     end
   end
+
+  describe 'versioning' do
+    it 'creates a version when notification preferences change' do
+      preference = create(:notification_preference)
+
+      expect do
+        preference.update!(enabled: false)
+      end.to change {
+        PaperTrail::Version.where(item_type: 'NotificationPreference', item_id: preference.id).count
+      }.by(1)
+
+      expect(PaperTrail::Version.where(item_type: 'NotificationPreference', item_id: preference.id).last.event)
+        .to eq('update')
+    end
+  end
 end
