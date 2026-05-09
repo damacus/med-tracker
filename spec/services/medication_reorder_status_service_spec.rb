@@ -18,6 +18,15 @@ RSpec.describe MedicationReorderStatusService do
       )
     end
 
+    it 'creates a PaperTrail version with event mark_as_ordered' do
+      expect {
+        described_class.new.call(medication: medication, status: :ordered)
+      }.to change { PaperTrail::Version.where(item_type: 'Medication', item_id: medication.id).count }.by(1)
+
+      expect(PaperTrail::Version.where(item_type: 'Medication', item_id: medication.id).last.event)
+        .to eq('mark_as_ordered')
+    end
+
     it 'marks a medication as received' do
       timestamp = Time.zone.local(2026, 5, 5, 10, 30)
 
@@ -28,6 +37,15 @@ RSpec.describe MedicationReorderStatusService do
         reorder_status: 'received',
         reordered_at: timestamp
       )
+    end
+
+    it 'creates a PaperTrail version with event mark_as_received' do
+      expect {
+        described_class.new.call(medication: medication, status: :received)
+      }.to change { PaperTrail::Version.where(item_type: 'Medication', item_id: medication.id).count }.by(1)
+
+      expect(PaperTrail::Version.where(item_type: 'Medication', item_id: medication.id).last.event)
+        .to eq('mark_as_received')
     end
 
     it 'returns false for unsupported statuses' do

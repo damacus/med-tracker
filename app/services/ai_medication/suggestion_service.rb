@@ -15,7 +15,9 @@ module AiMedication
       suggestion
     rescue StandardError => e
       Rails.logger.warn("AI medication suggestion failed: #{e.class}: #{e.message}")
-      Suggestion.new(errors: ['suggestion_unavailable'])
+      error_suggestion = Suggestion.new(errors: ['suggestion_unavailable'])
+      @audit_logger.record(user: user, medication_identity: medication_identity, suggestion: error_suggestion)
+      error_suggestion
     end
   end
 end

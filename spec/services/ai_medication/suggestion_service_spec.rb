@@ -18,6 +18,39 @@ RSpec.describe AiMedication::SuggestionService do
     expect(suggestion.doses).to be_empty
   end
 
+  it 'records an audit entry on success' do
+    audit_logger = instance_double(AiMedication::AuditLogger, record: true)
+    assistant = instance_double(AiMedication::RubyLlmAssistant, call: valid_suggestion)
+
+    described_class.new(assistant: assistant, audit_logger: audit_logger).call(
+      medication_identity: { name: 'Calpol Six Plus' },
+      user: users(:admin)
+    )
+
+    expect(audit_logger).to have_received(:record).with(
+      user: users(:admin),
+      medication_identity: { name: 'Calpol Six Plus' },
+      suggestion: instance_of(AiMedication::Suggestion)
+    )
+  end
+
+  it 'records an audit entry when the assistant raises' do
+    audit_logger = instance_double(AiMedication::AuditLogger, record: true)
+    assistant = instance_double(AiMedication::RubyLlmAssistant)
+    allow(assistant).to receive(:call).and_raise(StandardError, 'LLM unavailable')
+
+    described_class.new(assistant: assistant, audit_logger: audit_logger).call(
+      medication_identity: { name: 'Calpol Six Plus' },
+      user: users(:admin)
+    )
+
+    expect(audit_logger).to have_received(:record).with(
+      user: users(:admin),
+      medication_identity: { name: 'Calpol Six Plus' },
+      suggestion: have_attributes(errors: ['suggestion_unavailable'])
+    )
+  end
+
   def call_service(raw_suggestion)
     assistant = instance_double(AiMedication::RubyLlmAssistant, call: raw_suggestion)
     audit_logger = instance_double(AiMedication::AuditLogger, record: true)

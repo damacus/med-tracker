@@ -86,6 +86,7 @@ class MedicationsController < ApplicationController
 
   def update
     authorize @medication
+    @medication.paper_trail_event = 'update'
     if @medication.update(medication_params)
       redirect_update_success
     else

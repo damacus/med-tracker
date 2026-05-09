@@ -9,6 +9,8 @@ class Schedule < ApplicationRecord
     indexes[name.downcase.first(3)] = index
   end.freeze
 
+  has_paper_trail
+
   attr_accessor :dosage
 
   belongs_to :person

@@ -7,9 +7,12 @@ module Components
         include Phlex::Rails::Helpers::FormWith
 
         # Models that have audit trail enabled
-        AUDITED_MODELS = %w[User Person CarerRelationship MedicationTake Medication ExternalMedicineLookup].freeze
+        AUDITED_MODELS = %w[User Person CarerRelationship MedicationTake Medication Schedule
+                            ExternalMedicineLookup AiMedicationSuggestion].freeze
         # Available event types for filtering
-        EVENT_TYPES = ['create', 'update', 'destroy', 'restock', 'adjust inventory'].freeze
+        EVENT_TYPES = ['create', 'update', 'destroy', 'restock', 'adjust inventory',
+                       'dose_decrement', 'mark_as_ordered', 'mark_as_received',
+                       'ai_medication/suggestion'].freeze
 
         attr_reader :versions, :filter_params, :current_page, :total_count, :per_page
 

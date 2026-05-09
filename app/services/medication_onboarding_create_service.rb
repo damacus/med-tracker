@@ -28,6 +28,7 @@ class MedicationOnboardingCreateService
   private
 
   def save_medication
+    medication.paper_trail_event = 'create'
     Result.new(success: medication.save, medication: medication, schedule: nil, restocked: false)
   end
 
@@ -37,6 +38,7 @@ class MedicationOnboardingCreateService
 
     ActiveRecord::Base.transaction do
       assign_medication_schedule_defaults
+      medication.paper_trail_event = 'create'
       raise ActiveRecord::Rollback unless medication.save
 
       schedule = build_schedule(medication)
