@@ -127,7 +127,7 @@ module Components
             end
           end
 
-          form(action: '/logout', method: 'post', class: 'w-full') do
+          form(action: '/logout', method: 'post', class: 'w-full', data_turbo: 'false') do
             input(type: 'hidden', name: 'authenticity_token', value: view_context.form_authenticity_token)
             button(
               type: 'submit',
