@@ -92,15 +92,17 @@ module Components
       end
 
       def floating_action_items
-        items = [
-          {
+        items = []
+
+        if view_context.policy(Person).index?
+          items << {
             label: t('dashboard.quick_actions.add_medication'),
             path: add_medication_path,
             icon: Icons::Pill,
             icon_classes: 'bg-primary text-on-primary',
             data: { turbo_frame: 'modal' }
           }
-        ]
+        end
 
         if view_context.policy(Person.new).new?
           items << {

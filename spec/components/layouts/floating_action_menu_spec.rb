@@ -23,6 +23,10 @@ RSpec.describe Components::Layouts::FloatingActionMenu, type: :component do
     case record
     when Person then PersonPolicy.new(user, record)
     when Location then LocationPolicy.new(user, record)
+    when Class
+      return PersonPolicy.new(user, Person.new) if record == Person
+
+      raise "Unexpected policy lookup for #{record}"
     else
       raise "Unexpected policy lookup for #{record.class}"
     end
