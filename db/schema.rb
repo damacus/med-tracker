@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_06_123000) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_09_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -431,10 +431,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_06_123000) do
     t.bigint "item_id", null: false
     t.string "item_type", null: false
     t.text "object"
+    t.string "request_id"
     t.string "whodunnit"
     t.index ["created_at"], name: "index_versions_on_created_at"
     t.index ["event"], name: "index_versions_on_event"
     t.index ["item_type", "item_id"], name: "index_versions_on_item_type_and_item_id"
+    t.index ["request_id"], name: "index_versions_on_request_id"
     t.index ["whodunnit"], name: "index_versions_on_whodunnit"
   end
 

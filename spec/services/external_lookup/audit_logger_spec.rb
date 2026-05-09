@@ -32,6 +32,7 @@ RSpec.describe ExternalLookup::AuditLogger do
       expect(version.event).to eq('nhs_dmd/search')
       expect(version.whodunnit).to eq(user_id.to_s)
       expect(version.ip).to eq('10.0.0.1')
+      expect(version.request_id).to eq('req-abc-123')
     end
 
     it 'stores a SHA256 hash of the query and metadata in object JSON' do

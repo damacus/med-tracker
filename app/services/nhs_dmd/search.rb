@@ -26,9 +26,13 @@ module NhsDmd
       audit_search(query, result)
       result
     rescue Client::ApiError => e
-      failed_result(e.message)
+      result = failed_result(e.message)
+      audit_search(query, result)
+      result
     rescue StandardError => e
-      failed_result('unexpected_error', e)
+      result = failed_result('unexpected_error', e)
+      audit_search(query, result)
+      result
     end
 
     private

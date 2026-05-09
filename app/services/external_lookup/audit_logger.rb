@@ -27,6 +27,7 @@ module ExternalLookup
                   result_count: result_count }.to_json,
         whodunnit: PaperTrail.request.whodunnit,
         ip: PaperTrail.request.controller_info&.dig(:ip),
+        request_id: PaperTrail.request.controller_info&.dig(:request_id),
         created_at: Time.current
       }
     end

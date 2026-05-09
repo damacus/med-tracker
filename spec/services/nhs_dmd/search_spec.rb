@@ -514,6 +514,18 @@ RSpec.describe NhsDmd::Search do
     end
 
     context 'when the client raises an ApiError' do
+      subject(:search) do
+        described_class.new(
+          client: client,
+          barcode_lookup: barcode_lookup,
+          open_food_facts_lookup: open_food_facts_lookup,
+          open_food_facts_search: open_food_facts_search,
+          audit_logger: audit_logger
+        )
+      end
+
+      let(:audit_logger) { instance_double(ExternalLookup::AuditLogger, record: nil) }
+
       before do
         allow(client).to receive(:configured?).and_return(true)
         allow(client).to receive(:search).and_raise(NhsDmd::Client::ApiError, 'Service unavailable')
@@ -531,9 +543,29 @@ RSpec.describe NhsDmd::Search do
 
         expect(result.results).to eq([])
       end
+
+      it 'audits the failed search' do
+        search.call('aspirin')
+
+        expect(audit_logger).to have_received(:record).with(
+          hash_including(source: 'nhs_dmd', event: 'search', result_status: 'error')
+        )
+      end
     end
 
     context 'when the client raises an unexpected error' do
+      subject(:search) do
+        described_class.new(
+          client: client,
+          barcode_lookup: barcode_lookup,
+          open_food_facts_lookup: open_food_facts_lookup,
+          open_food_facts_search: open_food_facts_search,
+          audit_logger: audit_logger
+        )
+      end
+
+      let(:audit_logger) { instance_double(ExternalLookup::AuditLogger, record: nil) }
+
       before do
         allow(client).to receive(:configured?).and_return(true)
         allow(client).to receive(:search).and_raise(SocketError, 'lookup failed')
@@ -547,6 +579,14 @@ RSpec.describe NhsDmd::Search do
         expect(result.error).to eq('unexpected_error')
         expect(result.results).to eq([])
         expect(Rails.logger).to have_received(:error).with(/NhsDmd::Search crashed/)
+      end
+
+      it 'audits the failed search' do
+        search.call('aspirin')
+
+        expect(audit_logger).to have_received(:record).with(
+          hash_including(source: 'nhs_dmd', event: 'search', result_status: 'error')
+        )
       end
     end
   end
