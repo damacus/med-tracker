@@ -3,9 +3,10 @@
 require 'rails_helper'
 
 RSpec.describe OpenFoodFacts::Search do
-  subject(:search) { described_class.new(client: client) }
+  subject(:search) { described_class.new(client: client, audit_logger: audit_logger) }
 
   let(:client) { instance_double(OpenFoodFacts::Client) }
+  let(:audit_logger) { instance_double(ExternalLookup::AuditLogger, record: nil) }
 
   def wellman_result_matcher
     a_hash_including(

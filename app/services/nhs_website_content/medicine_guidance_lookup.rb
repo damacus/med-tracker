@@ -3,7 +3,7 @@
 require 'uri'
 
 module NhsWebsiteContent
-  class MedicineGuidanceLookup
+  class MedicineGuidanceLookup # rubocop:disable Metrics/ClassLength
     Section = Data.define(:title, :text)
     Result = Data.define(:title, :description, :webpage, :last_reviewed_on, :sections, :author_name, :author_url,
                          :author_logo)
@@ -30,27 +30,44 @@ module NhsWebsiteContent
       'SuitabilityHealthAspect' => 5
     }.freeze
 
-    def initialize(client: Client.new)
+    def initialize(client: Client.new, audit_logger: ExternalLookup::AuditLogger.new)
       @client = client
+      @audit_logger = audit_logger
     end
 
     def call(name)
       return nil if name.blank?
-      return nil unless @client.configured?
+      return audit_and_nil(name, 'not_configured') unless @client.configured?
 
       page = resolve_page(name)
-      return nil unless page
+      return audit_and_nil(name, 'not_found') unless page
 
-      build_result(@client.get_medicine(slug: slug_from(page['url']), modules: true))
+      fetch_guidance_with_audit(name, page)
     rescue Client::ApiError => e
       Rails.logger.error("NhsWebsiteContent::MedicineGuidanceLookup failed: #{e.message}")
-      nil
+      audit_and_nil(name, 'error')
     rescue StandardError => e
       Rails.logger.error("NhsWebsiteContent::MedicineGuidanceLookup crashed: #{e.class}: #{e.message}")
-      nil
+      audit_and_nil(name, 'error')
     end
 
     private
+
+    def fetch_guidance_with_audit(name, page)
+      result = build_result(@client.get_medicine(slug: slug_from(page['url']), modules: true))
+      audit(name, 'success', 1)
+      result
+    end
+
+    def audit(name, status, count = 0)
+      @audit_logger.record(source: 'nhs_website_content', event: 'medicine_guidance_lookup',
+                           query: name, result_status: status, result_count: count)
+    end
+
+    def audit_and_nil(name, status)
+      audit(name, status)
+      nil
+    end
 
     def resolve_page(name)
       ranked = ranked_matches(name)

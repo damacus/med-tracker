@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_06_123000) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_09_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -149,6 +149,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_06_123000) do
     t.index ["account_id"], name: "index_api_sessions_on_account_id"
     t.index ["refresh_token_digest"], name: "index_api_sessions_on_refresh_token_digest", unique: true
     t.index ["revoked_at"], name: "index_api_sessions_on_revoked_at"
+  end
+
+  create_table "app_settings", force: :cascade do |t|
+    t.boolean "invite_only", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
   end
 
   create_table "barcode_catalog_entries", force: :cascade do |t|
@@ -299,6 +305,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_06_123000) do
     t.string "gtin", null: false
     t.string "system", default: "https://dmd.nhs.uk", null: false
     t.datetime "updated_at", null: false
+    t.string "vmp_name"
     t.index ["code"], name: "index_nhs_dmd_barcodes_on_code"
     t.index ["gtin"], name: "index_nhs_dmd_barcodes_on_gtin", unique: true
   end
@@ -431,10 +438,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_06_123000) do
     t.bigint "item_id", null: false
     t.string "item_type", null: false
     t.text "object"
+    t.string "request_id"
     t.string "whodunnit"
     t.index ["created_at"], name: "index_versions_on_created_at"
     t.index ["event"], name: "index_versions_on_event"
     t.index ["item_type", "item_id"], name: "index_versions_on_item_type_and_item_id"
+    t.index ["request_id"], name: "index_versions_on_request_id"
     t.index ["whodunnit"], name: "index_versions_on_whodunnit"
   end
 
