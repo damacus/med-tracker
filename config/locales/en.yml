@@ -1191,11 +1191,16 @@ en:
       profile: "Profile"
       administration: "Administration"
       logout: "Logout"
+    mobile_rail:
+      primary_navigation: "Primary navigation"
+    floating_action_menu:
+      open: "Open quick actions"
+      close: "Close quick actions"
     sidebar:
       dashboard: "Dashboard"
       inventory: "Inventory"
       locations: "Locations"
-      finder: "Finder"
+      finder: "Medication Finder"
       people: "People"
       reports: "Reports"
       administration: "Administration"

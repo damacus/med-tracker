@@ -5,6 +5,7 @@ module Components
     # Mobile hamburger menu using RubyUI::Sheet
     class MobileMenu < Components::Base
       include Components::Layouts::CurrentUserContext
+      include Components::Layouts::NavigationItems
       include Phlex::Rails::Helpers::LinkTo
       include Phlex::Rails::Helpers::CurrentPage
 
@@ -66,32 +67,32 @@ module Components
 
       def render_navigation_links
         div(class: 'flex flex-col gap-1') do
-          nav_link(root_path, Icons::Home, t('layouts.sidebar.dashboard'))
-          nav_link(medications_path, Icons::Pill, t('layouts.sidebar.inventory'))
-          nav_link(locations_path, Icons::Home, t('layouts.sidebar.locations'))
-          nav_link(people_path, Icons::Users, t('layouts.mobile_menu.people'))
-          nav_link(medication_finder_path, Icons::Search, t('layouts.mobile_menu.medication_finder'))
+          primary_navigation_items.each do |item|
+            nav_link(item)
+          end
         end
       end
 
-      def nav_link(path, icon_class, label)
-        is_active = current_page?(path)
+      def nav_link(item)
+        is_active = active_navigation_path?(item[:path])
         m3_link(
-          href: path,
+          href: item[:path],
           variant: is_active ? :tonal : :text,
           size: :lg,
           class: 'justify-start gap-4 px-4 py-4 rounded-full font-bold ' \
-                 "#{is_active ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface-variant'}"
+                  "#{is_active ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface-variant'}"
         ) do
-          render icon_class.new(size: 24)
-          plain label
+          render item[:icon].new(size: 24)
+          plain item[:label]
         end
       end
 
       def render_auth_actions
         div(class: 'flex flex-col gap-1 w-full') do
-          nav_link(profile_path, Icons::User, t('layouts.mobile_menu.profile'))
-          nav_link(admin_root_path, Icons::Settings, t('layouts.mobile_menu.administration')) if user_is_admin?
+          admin_navigation_items.each do |item|
+            nav_link(item)
+          end
+          nav_link(profile_navigation_item)
           render_logout_button
         end
       end

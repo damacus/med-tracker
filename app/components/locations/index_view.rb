@@ -31,13 +31,15 @@ module Components
             end
             m3_heading(level: 1, size: '8', class: 'font-extrabold tracking-tight') { t('locations.index.title') }
           end
-          Link(
-            href: new_location_path,
-            variant: :filled,
-            size: :lg,
-            class: 'rounded-2xl font-bold text-sm shadow-lg shadow-primary/20'
-          ) do
-            span { t('locations.index.add_location') }
+          div(class: 'hidden md:block') do
+            Link(
+              href: new_location_path,
+              variant: :filled,
+              size: :lg,
+              class: 'rounded-2xl font-bold text-sm shadow-lg shadow-primary/20'
+            ) do
+              span { t('locations.index.add_location') }
+            end
           end
         end
       end

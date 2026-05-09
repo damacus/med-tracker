@@ -12,7 +12,7 @@ module Components
       end
 
       def view_template
-        div(class: 'container mx-auto px-4 py-8 pb-24 md:pb-8 max-w-6xl', data: { testid: 'dashboard' }) do
+        div(class: 'container mx-auto max-w-6xl px-4 py-8', data: { testid: 'dashboard' }) do
           render_header
           render_stats_section
 
@@ -55,7 +55,7 @@ module Components
               end
             end
           end
-          div(class: 'flex gap-3') do
+          div(class: 'hidden gap-3 md:flex') do
             if can_create_person?
               m3_link(
                 href: new_person_path,

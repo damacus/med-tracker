@@ -16,12 +16,12 @@ RSpec.describe 'Mobile Navigation' do
     visit root_path
 
     expect(page).to have_css('button[aria-label="Open menu"]')
-    expect(page).to have_css('nav.mobile-nav')
-    expect(page).to have_link('Home', href: root_path)
-    expect(page).to have_link('Inventory', href: medications_path)
-    expect(page).to have_link('Reports', href: reports_path)
-    expect(page).to have_link('Profile', href: profile_path)
-    expect(page).to have_no_css('aside')
+    expect(page).to have_css('aside[data-testid="mobile-rail"]')
+    expect(page).to have_css(%(a[aria-label="Dashboard"][aria-current="page"]))
+    expect(page).to have_css(%(a[aria-label="Inventory"][href="#{medications_path}"]))
+    expect(page).to have_css(%(a[aria-label="Reports"][href="#{reports_path}"]))
+    expect(page).to have_css(%(a[aria-label="Profile"][href="#{profile_path}"]))
+    expect(page).to have_no_css('nav.mobile-nav')
   end
 
   scenario 'opens a left-side drawer with navigation and accessible sizing' do
@@ -32,8 +32,10 @@ RSpec.describe 'Mobile Navigation' do
 
     within('[role="dialog"]') do
       expect(page).to have_link('Inventory', href: medications_path)
+      expect(page).to have_link('Locations', href: locations_path)
       expect(page).to have_link('People', href: people_path)
       expect(page).to have_link('Medication Finder', href: medication_finder_path)
+      expect(page).to have_link('Reports', href: reports_path)
       expect(page).to have_link('Profile', href: profile_path)
       expect(page).to have_button('Logout')
     end
@@ -79,5 +81,31 @@ RSpec.describe 'Mobile Navigation' do
 
     find('button[aria-label="Open menu"]').click
     expect(page).to have_css('[role="dialog"]')
+  end
+
+  scenario 'opens and closes the floating action menu and launches the medication workflow' do
+    page.current_window.resize_to(375, 667)
+    visit root_path
+
+    expect(page).to have_button('Open quick actions')
+
+    click_button 'Open quick actions'
+    expect(page).to have_button('Close quick actions')
+    expect(page).to have_css('[data-testid="floating-action-menu-items"]', visible: true)
+    expect(page).to have_link('Add Medication', href: add_medication_path)
+
+    find('body').send_keys(:escape)
+    expect(page).to have_button('Open quick actions')
+    expect(page).to have_no_css('[data-testid="floating-action-menu-items"]', visible: true)
+
+    click_button 'Open quick actions'
+    find('[data-testid="floating-action-backdrop"]').click
+    expect(page).to have_button('Open quick actions')
+
+    click_button 'Open quick actions'
+    click_link 'Add Medication'
+
+    expect(page).to have_button('Open quick actions', wait: 10)
+    expect(page).to have_text('Who is this medication for?', wait: 10)
   end
 end

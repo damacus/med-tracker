@@ -21,7 +21,7 @@ RSpec.describe Components::Layouts::MobileMenu, type: :component do
     it 'renders the primary navigation links' do
       rendered = render_inline(described_class.new)
 
-      expect(rendered.text).to include('Inventory', 'People', 'Medication Finder')
+      expect(rendered.text).to include('Dashboard', 'Inventory', 'Locations', 'People', 'Medication Finder', 'Reports')
     end
   end
 
