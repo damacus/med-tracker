@@ -25,10 +25,6 @@ export default class extends Controller {
   }
 
   close(event) {
-    if (event && typeof event.preventDefault === "function") {
-      event.preventDefault()
-    }
-
     this.open = false
     this.element.dataset.open = "false"
     this.menuTarget.hidden = true

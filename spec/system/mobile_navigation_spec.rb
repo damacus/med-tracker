@@ -19,6 +19,7 @@ RSpec.describe 'Mobile Navigation' do
     expect(page).to have_css('aside[data-testid="mobile-rail"]')
     expect(page).to have_css(%(a[aria-label="Dashboard"][aria-current="page"]))
     expect(page).to have_css(%(a[aria-label="Inventory"][href="#{medications_path}"]))
+    expect(page).to have_css(%(a[aria-label="Locations"][href="#{locations_path}"]))
     expect(page).to have_css(%(a[aria-label="Reports"][href="#{reports_path}"]))
     expect(page).to have_css(%(a[aria-label="Profile"][href="#{profile_path}"]))
     expect(page).to have_no_css('nav.mobile-nav')
