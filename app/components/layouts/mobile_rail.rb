@@ -16,13 +16,19 @@ module Components
           aria: { label: t('layouts.mobile_rail.primary_navigation') },
           data: { testid: 'mobile-rail' }
         ) do
-          nav(class: 'flex w-full flex-1 flex-col items-center gap-2 px-2', aria: { label: t('layouts.mobile_rail.primary_navigation') }) do
+          nav(
+            class: 'flex w-full flex-1 flex-col items-center gap-2 px-2',
+            aria: { label: t('layouts.mobile_rail.primary_navigation') }
+          ) do
             primary_navigation_items.each do |item|
               render_nav_item(item)
             end
           end
 
-          div(class: 'mt-auto flex w-full items-center justify-center px-2 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4') do
+          div(
+            class: 'mt-auto flex w-full items-center justify-center px-2 ' \
+                   'pb-[max(1rem,env(safe-area-inset-bottom))] pt-4'
+          ) do
             render_nav_item(profile_navigation_item)
           end
         end
@@ -44,10 +50,10 @@ module Components
           div(
             class: 'flex h-12 w-12 items-center justify-center rounded-2xl transition-all state-layer ' \
                    "#{if is_active
-                       'bg-secondary-container text-on-secondary-container shadow-sm'
-                     else
-                       'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
-                     end}"
+                        'bg-secondary-container text-on-secondary-container shadow-sm'
+                      else
+                        'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
+                      end}"
           ) do
             render item[:icon].new(size: 24)
           end

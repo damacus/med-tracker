@@ -20,18 +20,21 @@ export default class extends Controller {
     this.menuTarget.hidden = false
     this.menuTarget.setAttribute("aria-hidden", "false")
     this.toggleTarget.setAttribute("aria-expanded", "true")
-    this.toggleTarget.setAttribute("aria-label", "Close quick actions")
+    this.toggleTarget.setAttribute("aria-label", this.closeLabel())
     document.addEventListener("keydown", this.handleKeydown)
   }
 
   close(event) {
-    event?.preventDefault?.()
+    if (event && typeof event.preventDefault === "function") {
+      event.preventDefault()
+    }
+
     this.open = false
     this.element.dataset.open = "false"
     this.menuTarget.hidden = true
     this.menuTarget.setAttribute("aria-hidden", "true")
     this.toggleTarget.setAttribute("aria-expanded", "false")
-    this.toggleTarget.setAttribute("aria-label", "Open quick actions")
+    this.toggleTarget.setAttribute("aria-label", this.openLabel())
     document.removeEventListener("keydown", this.handleKeydown)
   }
 
@@ -40,8 +43,9 @@ export default class extends Controller {
   }
 
   closeOnOutsideClick(event) {
-    return unless this.open
-    return if this.element.contains(event.target)
+    if (!this.open || this.element.contains(event.target)) {
+      return
+    }
 
     this.close()
   }
@@ -51,6 +55,16 @@ export default class extends Controller {
   }
 
   handleKeydown(event) {
-    this.close(event) if event.key === "Escape"
+    if (event.key === "Escape") {
+      this.close(event)
+    }
+  }
+
+  openLabel() {
+    return this.toggleTarget.dataset.floatingActionMenuOpenLabel || "Open quick actions"
+  }
+
+  closeLabel() {
+    return this.toggleTarget.dataset.floatingActionMenuCloseLabel || "Close quick actions"
   }
 }

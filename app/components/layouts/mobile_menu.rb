@@ -80,7 +80,7 @@ module Components
           variant: is_active ? :tonal : :text,
           size: :lg,
           class: 'justify-start gap-4 px-4 py-4 rounded-full font-bold ' \
-                  "#{is_active ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface-variant'}"
+                 "#{is_active ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface-variant'}"
         ) do
           render item[:icon].new(size: 24)
           plain item[:label]

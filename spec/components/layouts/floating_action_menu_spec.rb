@@ -10,11 +10,22 @@ RSpec.describe Components::Layouts::FloatingActionMenu, type: :component do
 
   def render_menu(user:, path:)
     vc = view_context
+    resolver = method(:policy_for)
     vc.singleton_class.define_method(:current_user) { user }
+    vc.singleton_class.define_method(:policy) { |record| resolver.call(user, record) }
     allow(vc.request).to receive(:path).and_return(path)
 
     html = vc.render(described_class.new(current_user: user))
     Nokogiri::HTML::DocumentFragment.parse(html)
+  end
+
+  def policy_for(user, record)
+    case record
+    when Person then PersonPolicy.new(user, record)
+    when Location then LocationPolicy.new(user, record)
+    else
+      raise "Unexpected policy lookup for #{record.class}"
+    end
   end
 
   it 'renders quick actions on allowed pages' do

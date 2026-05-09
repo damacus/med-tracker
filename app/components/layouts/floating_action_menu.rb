@@ -14,7 +14,7 @@ module Components
           data: {
             controller: 'floating-action-menu',
             open: 'false',
-            action: 'click@window->floating-action-menu#closeOnOutsideClick turbo:before-visit@window->floating-action-menu#close'
+            action: floating_action_menu_actions
           }
         ) do
           div(
@@ -26,7 +26,8 @@ module Components
           )
 
           div(
-            class: 'fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] right-[calc(1rem+env(safe-area-inset-right))] ' \
+            class: 'fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] ' \
+                   'right-[calc(1rem+env(safe-area-inset-right))] ' \
                    'z-50 flex flex-col items-end gap-3'
           ) do
             div(
@@ -53,6 +54,8 @@ module Components
               },
               data: {
                 action: 'floating-action-menu#toggle',
+                floating_action_menu_close_label: t('layouts.floating_action_menu.close'),
+                floating_action_menu_open_label: t('layouts.floating_action_menu.open'),
                 floating_action_menu_target: 'toggle',
                 testid: 'floating-action-menu-toggle'
               }
@@ -70,17 +73,22 @@ module Components
 
       private
 
+      def floating_action_menu_actions
+        'click@window->floating-action-menu#closeOnOutsideClick ' \
+          'turbo:before-visit@window->floating-action-menu#close'
+      end
+
       def visible?
         request_path = view_context.request.path
 
-        request_path.in?([
+        [
           root_path,
           dashboard_path,
           people_path,
           medications_path,
           locations_path,
           schedules_path
-        ])
+        ].include?(request_path)
       end
 
       def floating_action_items

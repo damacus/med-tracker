@@ -87,25 +87,25 @@ RSpec.describe 'Mobile Navigation' do
     page.current_window.resize_to(375, 667)
     visit root_path
 
-    expect(page).to have_button('Open quick actions')
+    expect(page).to have_css('button[aria-label="Open quick actions"]')
 
-    click_button 'Open quick actions'
-    expect(page).to have_button('Close quick actions')
-    expect(page).to have_css('[data-testid="floating-action-menu-items"]', visible: true)
+    find('button[aria-label="Open quick actions"]').click
+    expect(page).to have_css('button[aria-label="Close quick actions"]')
+    expect(page).to have_css('[data-testid="floating-action-menu-items"]', visible: :visible)
     expect(page).to have_link('Add Medication', href: add_medication_path)
 
     find('body').send_keys(:escape)
-    expect(page).to have_button('Open quick actions')
-    expect(page).to have_no_css('[data-testid="floating-action-menu-items"]', visible: true)
+    expect(page).to have_css('button[aria-label="Open quick actions"]')
+    expect(page).to have_no_css('[data-testid="floating-action-menu-items"]', visible: :visible)
 
-    click_button 'Open quick actions'
+    find('button[aria-label="Open quick actions"]').click
     find('[data-testid="floating-action-backdrop"]').click
-    expect(page).to have_button('Open quick actions')
+    expect(page).to have_css('button[aria-label="Open quick actions"]')
 
-    click_button 'Open quick actions'
+    find('button[aria-label="Open quick actions"]').click
     click_link 'Add Medication'
 
-    expect(page).to have_button('Open quick actions', wait: 10)
+    expect(page).to have_css('button[aria-label="Open quick actions"]', wait: 10)
     expect(page).to have_text('Who is this medication for?', wait: 10)
   end
 end
