@@ -30,6 +30,7 @@ module Components
         current_path = view_context.request.path
 
         return true if current_path == path
+        return true if path == root_path && current_path == dashboard_path
         return true if path != root_path && current_path.start_with?(path)
 
         false

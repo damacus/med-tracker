@@ -32,4 +32,11 @@ RSpec.describe Components::Layouts::MobileRail, type: :component do
 
     expect(inventory_link['aria-current']).to eq('page')
   end
+
+  it 'marks Dashboard active on the dashboard alias route' do
+    rendered = render_rail(user: admin_user, path: Rails.application.routes.url_helpers.dashboard_path)
+    dashboard_link = rendered.at_css(%(a[aria-label="Dashboard"]))
+
+    expect(dashboard_link['aria-current']).to eq('page')
+  end
 end

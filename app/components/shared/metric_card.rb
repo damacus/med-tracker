@@ -45,10 +45,10 @@ module Components
           data: testid.present? && !as_link ? { testid: testid } : nil
         ) do
           m3_card_content(class: "#{content_padding_class} #{content_height_class} flex flex-col z-10") do
-            div(class: "flex items-center justify-between gap-2 #{header_margin_class} min-w-0") do
-              m3_text(
-                variant: :label_small,
-                class: "uppercase font-black tracking-widest truncate #{title_class} text-on-surface-variant"
+            div(class: "flex items-center justify-between gap-1 sm:gap-2 #{header_margin_class} min-w-0") do
+              p(
+                class: 'truncate text-[11px] font-black uppercase tracking-normal ' \
+                       "#{title_class} text-on-surface-variant"
               ) do
                 title
               end
@@ -114,7 +114,7 @@ module Components
       end
 
       def content_padding_class
-        compact? ? 'p-4' : 'p-6'
+        compact? ? 'p-4' : 'p-3 sm:p-6'
       end
 
       def header_margin_class
@@ -122,11 +122,11 @@ module Components
       end
 
       def title_class
-        compact? ? 'text-[0.7rem]' : 'group-hover:text-primary transition-colors'
+        compact? ? '' : 'group-hover:text-primary transition-colors'
       end
 
       def icon_padding_class
-        compact? ? 'p-1.5' : 'p-2.5'
+        compact? ? 'p-1.5' : 'p-1.5 sm:p-2.5'
       end
 
       def icon_size
@@ -134,7 +134,7 @@ module Components
       end
 
       def value_size_class
-        compact? ? 'text-2xl' : 'text-4xl'
+        compact? ? 'text-2xl' : 'text-3xl sm:text-4xl'
       end
 
       def border_class
