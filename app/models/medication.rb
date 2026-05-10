@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Medication < ApplicationRecord # :nodoc:
-  DOSAGE_UNITS = %w[tablet capsule mg ml g mcg IU spray drop sachet pad].freeze
+  DOSAGE_UNITS = %w[tablet capsule gummy mg ml g mcg IU spray drop sachet pad].freeze
   CATEGORIES = [
     'Analgesic',
     'Antibiotic',

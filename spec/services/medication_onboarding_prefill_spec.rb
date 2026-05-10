@@ -106,6 +106,53 @@ RSpec.describe MedicationOnboardingPrefill do
       )
     end
 
+    it 'returns curated medication attributes for Tesco children multivitamins' do
+      result = described_class.new.call(
+        barcode: '5057753926137',
+        name: 'Tesco Health 60 Childrens Multivitamins Strawberry Gummies'
+      )
+
+      expect(result.medication_attributes).to include(
+        category: 'Vitamin',
+        description: a_string_including('children aged 3+ years'),
+        warnings: a_string_including('Contains vitamin A'),
+        dosage_amount: 2,
+        dosage_unit: 'gummy',
+        current_supply: 60,
+        reorder_threshold: 14
+      )
+    end
+
+    it 'returns curated dose records for Tesco children multivitamins' do
+      expected_dose = {
+        amount: 2, unit: 'gummy', frequency: 'Daily',
+        description: 'Children 3+ years', default_for_children: true,
+        default_max_daily_doses: 1, default_min_hours_between_doses: 24,
+        default_dose_cycle: 'daily', current_supply: 60, reorder_threshold: 14
+      }
+      result = described_class.new.call(
+        barcode: '5057753926137',
+        name: 'Tesco Health 60 Childrens Multivitamins Strawberry Gummies'
+      )
+
+      expect(result.dosage_records_attributes).to contain_exactly(a_hash_including(expected_dose))
+    end
+
+    it 'derives gummy defaults from explicit pack metadata' do
+      result = described_class.new.call(
+        name: 'Kids Multivitamin Gummies',
+        package_quantity: '60',
+        package_unit: 'gummies'
+      )
+
+      expect(result.medication_attributes).to include(
+        dosage_amount: 1,
+        dosage_unit: 'gummy',
+        current_supply: 60,
+        reorder_threshold: 15
+      )
+    end
+
     it 'returns curated onboarding defaults for Calpol Six Plus oral suspension' do
       result = described_class.new.call(
         code: '316811000001106',

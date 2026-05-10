@@ -69,6 +69,15 @@ RSpec.describe BarcodeCatalog::Lookup do
       )
     end
 
+    it 'returns curated non-dm+d mappings for known children multivitamin gummies' do
+      expect(lookup.lookup('5057753926137')).to include(
+        display: 'Tesco Health 60 Childrens Multivitamins Strawberry Gummies',
+        code: nil,
+        barcode: '5057753926137',
+        source: 'curated'
+      )
+    end
+
     it 'prefers imported dm+d data over curated barcode overrides' do
       NhsDmdBarcode.create!(
         gtin: '5021265232062',

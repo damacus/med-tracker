@@ -37,6 +37,37 @@ products:
         default_dose_cycle: "daily"
         current_supply: 3
         reorder_threshold: 0
+  - gtin: "5057753926137"
+    display: "Tesco Health 60 Childrens Multivitamins Strawberry Gummies"
+    system: "Curated product catalog"
+    concept_class: "Food supplement"
+    category: "Vitamin"
+    description: >-
+      Sugar-free children's multivitamin and mineral strawberry flavour food
+      supplement with sweetener for children aged 3+ years. Two gummies provide
+      vitamin A 450 mcg RE, vitamin D 20 mcg, vitamin E 12 mg alpha-TE,
+      vitamin B6 1.8 mg, biotin 16 mcg, vitamin C 30 mg, iodine 42 mcg,
+      and zinc 2.8 mg.
+    warnings: >-
+      Food supplements should not be used as a substitute for a varied,
+      balanced diet and healthy lifestyle. Contains vitamin A: do not take if
+      pregnant, planning to become pregnant, likely to become pregnant, or
+      breast-feeding except on medical advice. Keep out of reach and sight of
+      young children. Seek healthcare advice before use if under medical
+      supervision. Do not exceed the recommended daily dose. Excessive
+      consumption may produce laxative effects. Do not use if the inner seal is
+      broken.
+    suggested_doses:
+      - amount: 2
+        unit: "gummy"
+        frequency: "Daily"
+        description: "Children 3+ years"
+        default_for_children: true
+        default_max_daily_doses: 1
+        default_min_hours_between_doses: 24
+        default_dose_cycle: "daily"
+        current_supply: 60
+        reorder_threshold: 14
   - code: "316811000001106"
     display: "Calpol Six Plus 250mg/5ml oral suspension (McNeil Products Ltd)"
     system: "https://dmd.nhs.uk"

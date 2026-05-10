@@ -14,6 +14,8 @@ class MedicationOnboardingPrefill
     'sprays' => 'spray',
     'drop' => 'drop',
     'drops' => 'drop',
+    'gummy' => 'gummy',
+    'gummies' => 'gummy',
     'pad' => 'pad',
     'pads' => 'pad'
   }.freeze
@@ -25,7 +27,7 @@ class MedicationOnboardingPrefill
     default_min_hours_between_doses: 24,
     default_dose_cycle: 'daily'
   }.freeze
-  DISCRETE_PACKAGE_UNITS = %w[tablet capsule sachet spray drop pad].freeze
+  DISCRETE_PACKAGE_UNITS = %w[tablet capsule gummy sachet spray drop pad].freeze
 
   def initialize(open_food_facts_lookup: OpenFoodFacts::BarcodeLookup.new)
     @open_food_facts_lookup = open_food_facts_lookup
@@ -154,7 +156,7 @@ class MedicationOnboardingPrefill
   end
 
   def parse_pack_counts(name)
-    pattern = /(\d+)\s+(tablets?|capsules?|sachets?|sprays?|drops?|pads?)\b/i
+    pattern = /(\d+)\s+(tablets?|capsules?|gummies?|sachets?|sprays?|drops?|pads?)\b/i
 
     name.to_s.scan(pattern).each_with_object({}) do |(count, raw_unit), counts|
       unit = DISPLAY_UNIT_MAP.fetch(raw_unit.downcase, nil)
@@ -165,7 +167,7 @@ class MedicationOnboardingPrefill
   end
 
   def parse_units(name)
-    name.to_s.scan(/\b(tablets?|capsules?|sachets?|sprays?|drops?|pads?)\b/i)
+    name.to_s.scan(/\b(tablets?|capsules?|gummies?|sachets?|sprays?|drops?|pads?)\b/i)
         .flatten
         .map { |raw_unit| DISPLAY_UNIT_MAP.fetch(raw_unit.downcase, nil) }
         .compact
