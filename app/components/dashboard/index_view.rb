@@ -4,49 +4,33 @@ module Components
   module Dashboard
     # Dashboard index view component that renders the main dashboard page
     class IndexView < Components::Base
-      attr_reader :presenter
+      FILTERS = %w[all needs_action upcoming taken].freeze
 
-      def initialize(presenter:)
+      attr_reader :presenter, :filter
+
+      def initialize(presenter:, filter: 'all')
         @presenter = presenter
+        @filter = FILTERS.include?(filter.to_s) ? filter.to_s : 'all'
         super()
       end
 
       def view_template
-        div(class: 'container mx-auto max-w-6xl px-4 py-8', data: { testid: 'dashboard' }) do
+        div(class: 'container mx-auto max-w-3xl px-4 pb-24 pt-4 md:py-8', data: { testid: 'dashboard' }) do
           render_header
-          render_stats_section
-
-          div(class: 'grid grid-cols-1 lg:grid-cols-3 gap-8 items-start') do
-            div(class: 'lg:col-span-2') do
-              render_timeline_section
-            end
-            div(class: 'space-y-8') do
-              render_supply_levels
-            end
-            div(class: 'lg:col-span-2') do
-              render_health_insights
-            end
-          end
+          render_mobile_title
+          render_daily_summary
+          render_filter_strip
+          render_timeline_section
           render_version_footer
         end
       end
 
       private
 
-      delegate :people, :active_schedules, :upcoming_schedules,
-               :current_user, :doses, :next_dose_time, :routine_tasks_due?,
-               :routine_tasks_by_person, :as_needed_by_person, :compliance_percentage, to: :presenter
-
-      def next_dose_value
-        time = next_dose_time
-        return time.strftime('%H:%M') if time
-        return t('dashboard.stats.due_today') if routine_tasks_due?
-
-        t('dashboard.stats.no_upcoming_doses')
-      end
+      delegate :current_user, :doses, :next_dose_time, :as_needed_by_person, to: :presenter
 
       def render_header
-        div(class: 'flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12') do
+        div(class: 'mb-8 hidden flex-col justify-between gap-6 md:flex md:flex-row md:items-end') do
           div do
             m3_text(variant: :label_large, class: 'uppercase tracking-[0.2em] mb-1 block font-black opacity-40') do
               Time.current.strftime('%A, %b %d')
@@ -84,157 +68,244 @@ module Components
         end
       end
 
-      def render_stats_section
-        div(class: 'grid grid-cols-2 lg:grid-cols-4 auto-rows-fr gap-4 mb-12') do
-          render Components::Shared::MetricCard.new(
-            title: t('dashboard.stats.people'),
-            value: people.size,
-            icon_type: 'users',
-            href: people_path
-          )
-          render Components::Shared::MetricCard.new(
-            title: t('dashboard.stats.active_schedules'),
-            value: active_schedules.size,
-            icon_type: 'active_schedules',
-            href: schedules_path
-          )
-          render Components::Shared::MetricCard.new(
-            title: t('dashboard.stats.compliance'),
-            value: "#{compliance_percentage}%",
-            icon_type: 'compliance',
-            href: reports_path
-          )
-          render Components::Shared::MetricCard.new(
-            title: t('dashboard.stats.next_dose'),
-            value: next_dose_value,
-            icon_type: 'clock'
-          )
+      def render_mobile_title
+        div(class: 'mb-4 flex items-end justify-between gap-4 md:hidden') do
+          div(class: 'min-w-0') do
+            m3_heading(
+              variant: :headline_medium,
+              level: 1,
+              class: 'text-3xl font-black leading-tight tracking-tight text-foreground'
+            ) do
+              t('dashboard.todays_medicines')
+            end
+            m3_text(variant: :body_medium, class: 'mt-2 font-medium text-on-surface-variant') do
+              Time.current.strftime('%A, %d %B')
+            end
+          end
+          div(
+            class: 'flex h-11 w-11 shrink-0 items-center justify-center rounded-shape-xl border ' \
+                   'border-primary/20 bg-primary-container/40 text-primary shadow-elevation-1'
+          ) do
+            render Icons::Calendar.new(size: 20)
+          end
         end
       end
 
+      def render_daily_summary
+        m3_card(
+          variant: :filled,
+          class: 'mb-4 overflow-hidden rounded-shape-xl border border-primary/15 bg-gradient-to-br ' \
+                 'from-emerald-50 via-white to-sky-50 shadow-elevation-2 ' \
+                 'dark:from-emerald-950/30 dark:via-surface-container-low dark:to-sky-950/20',
+          data: { testid: 'dashboard-daily-summary' }
+        ) do
+          div(class: 'p-5') do
+            div(class: 'flex items-start justify-between gap-5') do
+              div(class: 'min-w-0 flex-1') do
+                m3_text(variant: :title_medium, class: 'font-black tracking-tight text-foreground') do
+                  t('dashboard.summary.today_progress', completed: completed_dose_count, total: total_dose_count)
+                end
+                m3_text(variant: :body_small, class: 'mt-1 text-on-surface-variant') do
+                  summary_support_text
+                end
+              end
+
+              div(class: 'shrink-0 text-right') do
+                div(class: 'text-2xl font-black leading-none text-primary') { "#{completion_percentage}%" }
+                m3_text(variant: :label_small, class: 'text-on-surface-variant') { t('dashboard.summary.completed') }
+              end
+            end
+
+            div(class: 'mt-4 flex gap-1.5', aria: { hidden: 'true' }) do
+              progress_segments.times do |index|
+                div(class: progress_segment_class(index))
+              end
+            end
+
+            div(class: 'mt-4 flex flex-wrap items-center gap-2') do
+              div(
+                class: 'inline-flex items-center gap-2 rounded-shape-full bg-white/80 px-3 py-2 ' \
+                       'text-primary shadow-elevation-1 dark:bg-surface-container'
+              ) do
+                render Icons::Clock.new(size: 17)
+                m3_text(variant: :label_large, class: 'font-black') do
+                  t('dashboard.summary.next_due', time: next_due_value)
+                end
+              end
+              div(
+                class: 'inline-flex items-center gap-2 rounded-shape-full bg-teal-100/80 px-3 py-2 ' \
+                       'text-teal-700 dark:bg-teal-900/30 dark:text-teal-200'
+              ) do
+                render Icons::CheckCircle.new(size: 17)
+                m3_text(variant: :label_large, class: 'font-black') do
+                  t('dashboard.summary.remaining', count: remaining_dose_count)
+                end
+              end
+            end
+          end
+        end
+      end
+
+      def render_filter_strip
+        nav(
+          class: 'no-scrollbar mb-5 overflow-x-auto pb-1',
+          aria: { label: t('dashboard.filters.label') },
+          data: { testid: 'dashboard-filter-strip' }
+        ) do
+          div(class: 'flex min-w-max gap-2') do
+            filter_options.each do |option|
+              a(
+                href: dashboard_path(filter: option[:value]),
+                class: filter_chip_class(option[:value]),
+                aria: { current: option[:value] == filter ? 'page' : nil }
+              ) do
+                render option[:icon].new(size: 17, class: 'shrink-0')
+                span { option[:label] }
+                span(class: filter_count_class(option[:value])) { option[:count].to_s }
+              end
+            end
+          end
+        end
+      end
+
+      def filter_options
+        [
+          {
+            value: 'all',
+            label: t('dashboard.filters.all'),
+            count: medicine_rows.size,
+            icon: Icons::Home
+          },
+          {
+            value: 'needs_action',
+            label: t('dashboard.filters.needs_action'),
+            count: medicine_rows.count { |dose| action_needed?(dose) },
+            icon: Icons::CheckCircle
+          },
+          {
+            value: 'upcoming',
+            label: t('dashboard.filters.upcoming'),
+            count: medicine_rows.count { |dose| upcoming_or_blocked?(dose) },
+            icon: Icons::Clock
+          },
+          {
+            value: 'taken',
+            label: t('dashboard.filters.taken'),
+            count: medicine_rows.count { |dose| dose[:status] == :taken },
+            icon: Icons::Check
+          }
+        ]
+      end
+
       def render_timeline_section
-        div(class: 'space-y-6') do
-          div(class: 'flex items-center justify-between mb-2 px-1') do
-            m3_heading(variant: :title_large, level: 2, class: 'font-bold tracking-tight') do
-              t('dashboard.todays_schedule')
+        div(class: 'space-y-4') do
+          div(class: 'flex items-center justify-between px-1') do
+            m3_heading(variant: :title_large, level: 2, class: 'font-black tracking-tight') do
+              t('dashboard.todays_medicines')
+            end
+            m3_text(variant: :label_large, class: 'font-black text-on-surface-variant') do
+              t('dashboard.filtered_count', count: filtered_doses.size)
             end
           end
 
-          task_people = people_with_dashboard_items
-          if task_people.any?
-            div(class: 'space-y-4') do
-              task_people.each do |person|
-                render Components::Dashboard::PersonTaskCard.new(
-                  person: person,
-                  routine_tasks: routine_tasks_by_person.fetch(person, []),
-                  as_needed_items: as_needed_by_person.fetch(person, []),
-                  current_user: current_user
-                )
+          if filtered_doses.any?
+            div(class: 'space-y-3', data: { testid: 'dashboard-medicine-list' }) do
+              filtered_doses.each do |dose|
+                render Components::Dashboard::TimelineItem.new(dose: dose, current_user: current_user)
               end
             end
           else
             m3_card(variant: :filled,
-                    class: 'p-16 text-center rounded-[2.5rem] border-dashed border-2 ' \
-                           'border-outline-variant/50 bg-surface-container-low') do
-              m3_text(variant: :body_large, class: 'text-on-surface-variant font-medium italic') do
-                t('dashboard.empty_state')
+                    class: 'rounded-shape-xl border-2 border-dashed border-outline-variant/50 ' \
+                           'bg-surface-container-low p-8 text-center',
+                    data: { testid: 'dashboard-medicine-list' }) do
+              m3_text(variant: :body_large, class: 'text-on-surface-variant font-medium') do
+                t(filtered_empty_key)
               end
             end
           end
         end
       end
 
-      def people_with_dashboard_items
-        people.select do |person|
-          routine_tasks_by_person.fetch(person, []).any? || as_needed_by_person.fetch(person, []).any?
+      def filtered_empty_key
+        filter == 'all' ? 'dashboard.empty_state' : 'dashboard.empty_filtered_state'
+      end
+
+      def filtered_doses
+        @filtered_doses ||= begin
+          predicate = filtered_dose_predicate
+          predicate ? medicine_rows.select { |dose| send(predicate, dose) } : medicine_rows
         end
       end
 
-      def render_health_insights
-        div(class: 'space-y-4 pt-4') do
-          m3_heading(variant: :title_large, level: 2, class: 'font-bold tracking-tight') do
-            t('dashboard.insights.title')
-          end
-          m3_card(
-            variant: :filled,
-            class: 'bg-primary rounded-[2.5rem] p-10 text-on-primary relative overflow-hidden border-none ' \
-                   'transition-all duration-300 hover:shadow-xl hover:shadow-primary/30 ' \
-                   'group cursor-default'
-          ) do
-            div(class: 'absolute -right-12 -top-12 w-48 h-48 bg-white/10 rounded-full blur-3xl ' \
-                       'group-hover:bg-white/20 transition-all')
-            div(class: 'relative z-10') do
-              div(class: 'w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center mb-6 ' \
-                         'group-hover:scale-110 transition-transform shadow-inner') do
-                render Icons::AlertCircle.new(size: 24)
-              end
-              m3_heading(variant: :headline_small, level: 3, class: 'font-black mb-2 tracking-tight') do
-                t('dashboard.insights.pattern_detected')
-              end
-              m3_text(variant: :body_large, class: 'text-on-primary/90 leading-relaxed mb-8 font-medium') do
-                t('dashboard.insights.message')
-              end
-              m3_button(
-                variant: :text,
-                class: 'p-0 h-auto font-black uppercase tracking-widest text-on-primary ' \
-                       'border-b-2 border-on-primary/30 ' \
-                       'rounded-none hover:border-on-primary hover:bg-transparent transition-all'
-              ) do
-                t('dashboard.insights.view_report')
-              end
-            end
-          end
+      def medicine_rows
+        @medicine_rows ||= (doses + as_needed_rows).sort_by do |dose|
+          [dose[:scheduled_at] || Time.current.end_of_day, dose[:source].id]
         end
       end
 
-      def render_supply_levels
-        div(class: 'space-y-6') do
-          m3_heading(variant: :title_large, level: 2, class: 'font-bold tracking-tight') do
-            t('dashboard.inventory.title')
-          end
-          m3_card(
-            variant: :elevated,
-            class: 'bg-surface-container-low p-8 rounded-[2.5rem] border-none shadow-elevation-1 transition-all ' \
-                   'duration-300 hover:shadow-elevation-2 cursor-default'
-          ) do
-            div(class: 'space-y-8') do
-              active_schedules.take(3).each do |p|
-                render_supply_item(p.medication)
-              end
-              m3_link(
-                href: medications_path,
-                variant: :tonal,
-                size: :lg,
-                class: 'w-full py-6 rounded-xl font-black uppercase tracking-widest transition-all'
-              ) do
-                t('dashboard.inventory.order_refills')
-              end
-            end
-          end
+      def as_needed_rows
+        as_needed_by_person.values.flatten
+      end
+
+      def filtered_dose_predicate
+        {
+          'needs_action' => :action_needed?,
+          'upcoming' => :upcoming_or_blocked?,
+          'taken' => :taken?
+        }[filter]
+      end
+
+      def action_needed?(dose)
+        %i[upcoming available].include?(dose[:status])
+      end
+
+      def upcoming_or_blocked?(dose)
+        %i[upcoming cooldown max_reached out_of_stock].include?(dose[:status])
+      end
+
+      def taken?(dose)
+        dose[:status] == :taken
+      end
+
+      def filter_chip_class(value)
+        base = 'inline-flex h-12 items-center gap-2 rounded-shape-full border px-4 text-sm font-black ' \
+               'transition-all whitespace-nowrap'
+        if value == filter
+          "#{base} border-primary bg-primary text-on-primary shadow-elevation-2"
+        else
+          "#{base} border-outline-variant bg-surface-container-low text-on-surface-variant shadow-elevation-1 " \
+            'hover:border-primary/60 hover:text-primary'
         end
       end
 
-      def render_supply_item(medication)
-        current = ::Medications::SupplyStatusPresenter.new(medication: medication).inventory_units_label
-        percentage = medication.supply_percentage
-
-        div(class: 'space-y-3') do
-          div(class: 'flex justify-between items-center') do
-            m3_text(variant: :label_large, class: 'font-black text-foreground uppercase tracking-tight') do
-              medication.name
-            end
-            m3_text(variant: :label_medium, class: 'text-on-surface-variant font-black') do
-              t('dashboard.inventory.left', count: current)
-            end
-          end
-          div(class: 'h-3 w-full bg-surface-container rounded-full overflow-hidden shadow-inner') do
-            div(
-              class: "h-full #{medication.low_stock? ? 'bg-error' : 'bg-primary'} " \
-                     'rounded-full transition-all duration-1000',
-              style: "width: #{percentage}%"
-            )
-          end
+      def filter_count_class(value)
+        if value == filter
+          'ml-1 rounded-shape-full bg-white/20 px-2 py-0.5 text-xs text-on-primary'
+        else
+          'ml-1 rounded-shape-full bg-surface-container-high px-2 py-0.5 text-xs text-on-surface-variant'
         end
+      end
+
+      def progress_segments
+        total_dose_count.clamp(1, 8)
+      end
+
+      def progress_segment_class(index)
+        base = 'h-2 flex-1 rounded-shape-full transition-colors'
+        return "#{base} bg-primary shadow-sm shadow-primary/30" if index < completed_progress_segments
+
+        "#{base} bg-white/70 dark:bg-surface-container-high"
+      end
+
+      def completed_progress_segments
+        return 0 if total_dose_count.zero?
+
+        ((completed_dose_count.to_f / total_dose_count) * progress_segments).round
+      end
+
+      def remaining_dose_count
+        [total_dose_count - completed_dose_count, 0].max
       end
 
       def greeting_key
@@ -251,8 +322,33 @@ module Components
         view_context.policy(Person.new).new?
       end
 
+      def completed_dose_count
+        @completed_dose_count ||= doses.count { |dose| dose[:status] == :taken }
+      end
+
+      def total_dose_count
+        @total_dose_count ||= doses.size
+      end
+
+      def completion_percentage
+        return 0 if total_dose_count.zero?
+
+        ((completed_dose_count.to_f / total_dose_count) * 100).round.clamp(0, 100)
+      end
+
+      def next_due_value
+        time = next_dose_time
+        time ? time.strftime('%l:%M %p').strip : t('dashboard.summary.no_next_due')
+      end
+
+      def summary_support_text
+        return t('dashboard.summary.all_done') if total_dose_count.positive? && completed_dose_count == total_dose_count
+
+        t('dashboard.summary.keep_it_up')
+      end
+
       def render_version_footer
-        div(class: 'mt-16 pt-6 border-t border-outline-variant/30 text-center') do
+        div(class: 'mt-10 border-t border-outline-variant/30 pt-6 text-center') do
           span(class: 'text-[10px] text-on-surface-variant/50 font-mono font-bold uppercase tracking-widest') do
             "v#{app_version}"
           end

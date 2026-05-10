@@ -1106,6 +1106,7 @@ pt:
       skip_to_content: "Saltar para o conteúdo"
       brand: "MedTracker"
       login: "Iniciar sessão"
+      notifications: "Notificações"
     desktop_nav:
       medications: "Medicamentos"
       people: "Pessoas"
@@ -1328,6 +1329,26 @@ pt:
     greeting_evening: "Boa noite, %{name}"
     subtitle: "O horário de medicamentos da sua família para hoje."
     todays_schedule: "Horário de Hoje"
+    todays_medicines: "Medicamentos de hoje"
+    summary:
+      today_progress: "Hoje: %{completed} de %{total} concluídos"
+      next_due: "Próxima às %{time}"
+      no_next_due: "nenhuma hoje"
+      keep_it_up: "Continue assim."
+      all_done: "Tudo concluído por hoje."
+      completed: "Concluído"
+      remaining:
+        one: "1 restante"
+        other: "%{count} restantes"
+    filters:
+      label: "Filtros de medicamentos do painel"
+      all: "Todos"
+      needs_action: "Precisa de ação"
+      upcoming: "Próximos"
+      taken: "Tomados"
+    filtered_count:
+      one: "1 dose"
+      other: "%{count} doses"
     as_needed:
       title: "Tomar conforme necessário"
     overdue_alert: "Atrasado: %{medication} para %{person} (agendado às %{time})"
@@ -1345,6 +1366,7 @@ pt:
       left_today:
         one: "1 tarefa de rotina pendente hoje"
         other: "%{count} tarefas de rotina pendentes hoje"
+    empty_filtered_state: "Nenhum medicamento corresponde a este filtro."
     insights:
       title: "Informações inteligentes"
       pattern_detected: "Padrão detetado"

@@ -21,35 +21,15 @@ RSpec.describe 'Mobile Navigation' do
             bounds.height > 0
         }
 
-        const rail = document.querySelector('[data-testid="mobile-rail"]')
-        const sidebar = Array.from(document.querySelectorAll('aside')).find((element) => element !== rail)
+        const bottomNav = document.querySelector('[data-testid="mobile-bottom-nav"]')
+        const sidebar = document.querySelector('aside')
 
         return {
-          rail: visible(rail),
+          bottom_nav: visible(bottomNav),
           sidebar: visible(sidebar),
           header: visible(document.querySelector('header')),
           fab: visible(document.querySelector('[data-testid="floating-action-menu-toggle"]'))
         }
-      })()
-    JS
-  end
-  let(:mobile_metric_label_overflow_script) do
-    <<~JS
-      (() => {
-        const expectedLabels = ['People', 'Compliance', 'Next Dose']
-        const labels = Array.from(document.querySelectorAll('#main-content p'))
-
-        return expectedLabels.map((text) => {
-          const label = labels.find((element) => element.textContent.trim() === text)
-
-          return {
-            text,
-            found: Boolean(label),
-            clientWidth: label ? label.clientWidth : 0,
-            scrollWidth: label ? label.scrollWidth : 0,
-            overflows: !label || label.scrollWidth > label.clientWidth + 1
-          }
-        })
       })()
     JS
   end
@@ -63,12 +43,12 @@ RSpec.describe 'Mobile Navigation' do
     visit root_path
 
     expect(page).to have_css('button[aria-label="Open menu"]')
-    expect(page).to have_css('aside[data-testid="mobile-rail"]')
+    expect(page).to have_css('nav[data-testid="mobile-bottom-nav"]')
     expect(page).to have_css(%(a[aria-label="Dashboard"][aria-current="page"]))
     expect(page).to have_css(%(a[aria-label="Inventory"][href="#{medications_path}"]))
-    expect(page).to have_css(%(a[aria-label="Locations"][href="#{locations_path}"]))
     expect(page).to have_css(%(a[aria-label="Reports"][href="#{reports_path}"]))
     expect(page).to have_css(%(a[aria-label="Profile"][href="#{profile_path}"]))
+    expect(page).to have_no_css(%(a[aria-label="Locations"][href="#{locations_path}"]))
     expect(page).to have_no_css('nav.mobile-nav')
   end
 
@@ -84,29 +64,44 @@ RSpec.describe 'Mobile Navigation' do
     visit root_path
 
     expect(navigation_visibility).to include(
-      'rail' => true,
+      'bottom_nav' => true,
       'sidebar' => false,
       'header' => true,
-      'fab' => true
+      'fab' => false
     )
 
     page.current_window.resize_to(768, 844)
 
     expect(navigation_visibility).to include(
-      'rail' => false,
+      'bottom_nav' => false,
       'sidebar' => true,
       'header' => false,
       'fab' => false
     )
   end
 
-  scenario 'keeps core mobile dashboard metric labels readable beside the rail' do
+  scenario 'keeps the medicine-first dashboard readable above the bottom navigation' do
     page.current_window.resize_to(390, 844)
     visit dashboard_path
 
-    overflowing_labels = mobile_metric_label_overflow.select { |label| label['overflows'] }
+    expect(page).to have_css('[data-testid="dashboard-daily-summary"]')
+    expect(page).to have_css('[data-testid="dashboard-medicine-list"]')
+    expect(page).to have_text('Today:')
+    expect(page).to have_text('Today’s medicines')
+    expect(page).to have_no_text('Compliance')
+    expect(page).to have_no_text('Next Dose')
+    expect(page).to have_no_css('button[aria-label="Open quick actions"]')
 
-    expect(overflowing_labels).to be_empty
+    main_left = page.evaluate_script('document.querySelector("main").getBoundingClientRect().left')
+    expect(main_left).to eq(0)
+
+    nav_top = page.evaluate_script(
+      'document.querySelector("[data-testid=\"mobile-bottom-nav\"]").getBoundingClientRect().top'
+    )
+    summary_bottom = page.evaluate_script(
+      'document.querySelector("[data-testid=\"dashboard-daily-summary\"]").getBoundingClientRect().bottom'
+    )
+    expect(summary_bottom).to be < nav_top
   end
 
   scenario 'opens a left-side drawer with navigation and accessible sizing' do
@@ -170,7 +165,7 @@ RSpec.describe 'Mobile Navigation' do
 
   scenario 'opens and closes the floating action menu and launches the medication workflow' do
     page.current_window.resize_to(375, 667)
-    visit root_path
+    visit medications_path
 
     expect(page).to have_css('button[aria-label="Open quick actions"]')
 
@@ -196,9 +191,5 @@ RSpec.describe 'Mobile Navigation' do
 
   def navigation_visibility
     page.evaluate_script(navigation_visibility_script)
-  end
-
-  def mobile_metric_label_overflow
-    page.evaluate_script(mobile_metric_label_overflow_script)
   end
 end

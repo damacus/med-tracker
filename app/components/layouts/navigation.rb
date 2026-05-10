@@ -55,15 +55,15 @@ module Components
 
       def render_auth_actions
         if authenticated?
-          button(
-            type: 'button',
+          link_to(
+            profile_path(anchor: 'notifications-card'),
             class: 'flex h-11 w-11 items-center justify-center rounded-full text-on-surface-variant ' \
                    'hover:bg-surface-container-high focus-visible:outline-none focus-visible:ring-2 ' \
                    'focus-visible:ring-primary',
-            aria: { label: t('global_search.open'), expanded: 'false', controls: 'global_search_panel' },
-            data: { action: 'global-search#open', global_search_target: 'trigger' }
+            aria: { label: t('layouts.navigation.notifications') }
           ) do
-            render Icons::Search.new(size: 22)
+            render Icons::Bell.new(size: 22)
+            span(class: 'sr-only') { t('layouts.navigation.notifications') }
           end
         end
 

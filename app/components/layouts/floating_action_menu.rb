@@ -26,9 +26,7 @@ module Components
           )
 
           div(
-            class: 'fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] ' \
-                   'right-[calc(1rem+env(safe-area-inset-right))] ' \
-                   'z-50 flex flex-col items-end gap-3'
+            class: 'mobile-fab-stack fixed z-50 flex flex-col items-end gap-3'
           ) do
             div(
               id: 'floating-action-menu-items',
@@ -82,8 +80,6 @@ module Components
         request_path = view_context.request.path
 
         [
-          root_path,
-          dashboard_path,
           people_path,
           medications_path,
           locations_path,

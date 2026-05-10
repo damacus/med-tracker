@@ -1053,6 +1053,7 @@ es:
       skip_to_content: "Saltar al contenido"
       brand: "MedTracker"
       login: "Iniciar sesión"
+      notifications: "Notificaciones"
     desktop_nav:
       medications: "Medicamentos"
       people: "Personas"
@@ -1194,6 +1195,26 @@ es:
     as_needed:
       title: "Tomar según sea necesario"
     todays_schedule: "Horario de Hoy"
+    todays_medicines: "Medicamentos de hoy"
+    summary:
+      today_progress: "Hoy: %{completed} de %{total} completados"
+      next_due: "Próxima a las %{time}"
+      no_next_due: "ninguna hoy"
+      keep_it_up: "Sigue así."
+      all_done: "Todo listo por hoy."
+      completed: "Completado"
+      remaining:
+        one: "1 restante"
+        other: "%{count} restantes"
+    filters:
+      label: "Filtros de medicamentos del panel"
+      all: "Todos"
+      needs_action: "Necesita acción"
+      upcoming: "Próximos"
+      taken: "Tomados"
+    filtered_count:
+      one: "1 dosis"
+      other: "%{count} dosis"
     medication_schedule: "Horario de Medicamentos"
     no_active_schedules: "No se encontraron prescripciones activas"
     add_schedules_hint: "Agregue prescripciones para verlas aquí"
@@ -1209,6 +1230,7 @@ es:
       left_today:
         one: "1 tarea rutinaria pendiente hoy"
         other: "%{count} tareas rutinarias pendientes hoy"
+    empty_filtered_state: "Ningún medicamento coincide con este filtro."
     insights:
       title: "Información inteligente"
       pattern_detected: "Patrón detectado"

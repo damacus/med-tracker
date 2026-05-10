@@ -28,6 +28,7 @@
     <%= javascript_include_tag "appearance_boot", "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "hamburgers", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "dashboard", "data-turbo-track": "reload" %>
     <% if current_user %>
       <%= javascript_importmap_tags %>
     <% else %>
@@ -38,7 +39,7 @@
     <body class="bg-background text-foreground transition-colors duration-300"<% if current_user %> data-controller="global-search"<% end %>>
     <% hide_signed_out_chrome = !current_user && request.path == "/login" %>
     <% main_classes = ["transition-all duration-500"] %>
-    <% main_classes << "ml-16 pb-28 md:ml-64 md:pb-0" if current_user %>
+    <% main_classes << "pb-28 md:ml-64 md:pb-0" if current_user %>
     <%= render Components::Layouts::Sidebar.new(current_user: current_user) %>
     <%= render Components::Layouts::Navigation.new(current_user: current_user) unless hide_signed_out_chrome %>
 

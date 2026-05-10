@@ -16,13 +16,16 @@ RSpec.describe Components::Layouts::MobileRail, type: :component do
     Nokogiri::HTML::DocumentFragment.parse(html)
   end
 
-  it 'renders icon-only navigation with aria labels and no logout action' do
+  it 'renders a quiet bottom navigation with aria labels and no logout action' do
     rendered = render_rail(user: admin_user)
 
-    expect(rendered.css('aside[data-testid="mobile-rail"]')).to be_present
-    expect(rendered.css('a[aria-label="Dashboard"]')).to be_present
-    expect(rendered.css('a[aria-label="Inventory"]')).to be_present
-    expect(rendered.css('a[aria-label="Profile"]')).to be_present
+    expect(rendered.css('nav[data-testid="mobile-bottom-nav"]')).to be_present
+    expect(rendered.css('a[aria-label]').pluck('aria-label')).to contain_exactly(
+      'Dashboard',
+      'Inventory',
+      'Reports',
+      'Profile'
+    )
     expect(rendered.css('button[aria-label="Sign Out"]')).to be_empty
   end
 

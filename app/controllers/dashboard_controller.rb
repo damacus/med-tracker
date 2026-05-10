@@ -8,6 +8,6 @@ class DashboardController < ApplicationController
       current_user: current_user
     )
 
-    render Components::Dashboard::IndexView.new(presenter: presenter)
+    render Components::Dashboard::IndexView.new(presenter: presenter, filter: params[:filter])
   end
 end

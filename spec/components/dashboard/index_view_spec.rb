@@ -10,29 +10,6 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
     described_class.new(presenter: presenter)
   end
 
-  let(:active_schedules_icon_path) do
-    [
-      'M200-640h560v-80H200v80Zm0 0v-80 80Zm0 560q-33 0-56.5-23.5T120-160v-560q0-33 ',
-      '23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v227q-19-9-39-15t-41-9v-43H200v400h252q7 ',
-      '22 16.5 42T491-80H200Zm378.5-18.5Q520-157 520-240t58.5-141.5Q637-440 ',
-      '720-440t141.5 58.5Q920-323 920-240T861.5-98.5Q803-40 ',
-      '720-40T578.5-98.5ZM787-145l28-28-75-75v-112h-40v128l87 87Z'
-    ].join
-  end
-
-  let(:compliance_icon_path) do
-    [
-      'M480-80q-139-35-229.5-159.5T160-516v-244l320-120 320 120v200h-80v-145l-240-90-240 ',
-      '90v189q0 121 68 220t172 132q26-8 49.5-20.5T576-214l56 56q-33 27-71.5 47T480-80Zm331.5-11.5Q800-103 ',
-      '800-120t11.5-28.5Q823-160 840-160t28.5 11.5Q880-137 880-120t-11.5 28.5Q857-80 ',
-      '840-80t-28.5-11.5ZM800-240v-240h80v240h-80ZM480-480Zm56.5 ',
-      '56.5Q560-447 560-480t-23.5-56.5Q513-560 480-560t-56.5 23.5Q400-513 400-480t23.5 ',
-      '56.5Q447-400 480-400t56.5-23.5ZM480-320q-66 ',
-      '0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 22-5.5 42.5T618-398l119 ',
-      '118-57 57-120-119q-18 11-38.5 16.5T480-320Z'
-    ].join
-  end
-
   let(:admin_user) { users(:admin) }
   let(:presenter) { DashboardPresenter.new(current_user: admin_user) }
 
@@ -59,62 +36,46 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
     end
   end
 
-  it 'renders the schedule heading' do
+  it 'renders the medicine list heading' do
     rendered = render_inline(dashboard_view)
-    expect(rendered.text).to include("Today's Schedule")
+    expect(rendered.text).to include('Today’s medicines')
   end
 
-  describe 'stats display' do
-    it 'renders people count' do
-      rendered = render_inline(dashboard_view)
-      expect(rendered.text).to include(presenter.people.count.to_s)
-    end
-
-    it 'renders active schedules count' do
-      rendered = render_inline(dashboard_view)
-      expect(rendered.text).to include(presenter.active_schedules.count.to_s)
-    end
-
-    it 'renders parent-scoped people count including self' do
-      parent_presenter = DashboardPresenter.new(current_user: users(:parent))
-      parent_view = described_class.new(presenter: parent_presenter)
-      expected_count = users(:parent).person.patients.where(person_type: :minor).count + 1
-
-      rendered = render_inline(parent_view)
-
-      expect(rendered.text).to include(expected_count.to_s)
-    end
-
-    it 'links People stat card to people page' do
+  describe 'daily summary' do
+    it 'renders one compact daily summary with progress and next dose copy' do
       rendered = render_inline(dashboard_view)
 
-      expect(rendered.css("a[href='/people']")).to be_present
+      summary = rendered.at_css('[data-testid="dashboard-daily-summary"]')
+
+      expect(summary).to be_present
+      expect(rendered.css('[data-testid="dashboard-daily-summary"]').size).to eq(1)
+      expect(summary.text).to include('Today:')
+      expect(summary.text).to include('complete')
+      expect(summary.text).to include('Next due')
     end
 
-    it 'links Active Schedules stat card to schedules page' do
+    it 'renders the daily summary above the medicine list' do
       rendered = render_inline(dashboard_view)
+      summary = rendered.at_css('[data-testid="dashboard-daily-summary"]')
+      medicine_list = rendered.at_css('[data-testid="dashboard-medicine-list"]')
 
-      expect(rendered.css("a[href='/schedules']")).to be_present
+      expect(rendered.to_html.index(summary.to_html)).to be < rendered.to_html.index(medicine_list.to_html)
     end
 
-    it 'links Compliance stat card to reports page' do
+    it 'does not render the old multi-card analytics grid' do
       rendered = render_inline(dashboard_view)
 
-      expect(rendered.css("a[href='/reports']")).to be_present
+      expect(rendered.text).not_to include('Active Schedules')
+      expect(rendered.text).not_to include('Compliance')
+      expect(rendered.text).not_to include('People')
+      expect(rendered.css('[data-testid="dashboard-stat-grid"]')).to be_empty
     end
 
-    it 'renders the active schedules icon on the active schedules stat card' do
+    it 'does not render inventory or insight panels above the medicine list' do
       rendered = render_inline(dashboard_view)
-      card = rendered.at_css("a[href='/schedules']")
 
-      expect(card.at_css("path[d='#{active_schedules_icon_path}']")).to be_present
-    end
-
-    it 'renders the compliance icon on the compliance stat card' do
-      rendered = render_inline(dashboard_view)
-      card = rendered.at_css("a[href='/reports']")
-
-      expect(card.at_css("path[d='#{compliance_icon_path}']")).to be_present
+      expect(rendered.text).not_to include('Smart Insights')
+      expect(rendered.text).not_to include('Stock Inventory')
     end
   end
 
@@ -130,61 +91,72 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
     end
   end
 
-  describe 'high-fidelity sections' do
-    it 'renders Smart Insights' do
+  describe 'medicine card stack' do
+    it 'renders dashboard filters with counts' do
       rendered = render_inline(dashboard_view)
-      expect(rendered.text).to include('Smart Insights')
+      filter_strip = rendered.at_css('[data-testid="dashboard-filter-strip"]')
+
+      expect(filter_strip).to be_present
+      expect(filter_strip.text).to include('All', 'Needs action', 'Upcoming', 'Taken')
+      expect(filter_strip.at_css('[aria-current="page"]').text).to include('All')
     end
 
-    it 'renders Stock Inventory' do
-      rendered = render_inline(dashboard_view)
-      expect(rendered.text).to include('Stock Inventory')
+    it 'filters the medicine stack to action-needed doses' do
+      filtered_view = described_class.new(presenter: presenter, filter: 'needs_action')
+      rendered = render_inline(filtered_view)
+      cards = rendered.css('[data-testid^="dashboard-medicine-card-"]')
+      medicine_rows = presenter.doses + presenter.as_needed_by_person.values.flatten
+      action_needed_count = medicine_rows.count { |dose| %i[upcoming available].include?(dose[:status]) }
+      active_filter = rendered.at_css('[data-testid="dashboard-filter-strip"] [aria-current="page"]')
+
+      expect(cards.size).to eq(action_needed_count)
+      expect(active_filter.text).to include('Needs action')
     end
 
-    it 'does not render a duplicate Next Dose card in the right rail' do
+    it 'renders medicine cards with compact metadata' do
       rendered = render_inline(dashboard_view)
+      cards = rendered.css('[data-testid^="dashboard-medicine-card-"]')
 
-      expect(rendered.at_css('[data-testid="dashboard-right-rail-next-dose"]')).not_to be_present
+      expect(cards).not_to be_empty
+      expect(cards.first.text).to match(/.+ · .+ · Home/)
     end
 
-    it 'does not render a duplicate Medication Schedule section in the right rail' do
-      rendered = render_inline(dashboard_view)
-
-      expect(rendered.css('h2').map(&:text)).not_to include('Medication Schedule')
-    end
-
-    it 'renders the mobile content flow with inventory before insights' do
+    it 'renders the mobile flow as summary before medicines' do
       rendered = render_inline(dashboard_view)
       html = rendered.to_html
 
-      expect(html.index('Stock Inventory')).to be < html.index('Smart Insights')
+      expect(html.index('dashboard-daily-summary')).to be < html.index('dashboard-medicine-list')
     end
   end
 
-  describe 'person task cards' do
-    it 'renders a routine task card with a collapsed as-needed disclosure' do
+  describe 'as-needed medicine rows' do
+    it 'renders routine and as-needed medicines as redesigned cards' do
       rendered = render_inline(described_class.new(presenter: person_task_presenter))
-      details = rendered.at_css('details[data-testid="dashboard-as-needed-person"]')
 
       expect(rendered.text).to include('Vitamin D')
-      expect(details).to be_present
-      expect(details['open']).to be_nil
+      expect(rendered.text).to include('Paracetamol')
+      expect(rendered.css('[data-testid^="dashboard-medicine-card-"]').size).to eq(2)
+      expect(rendered.at_css('[data-status="available"]')).to be_present
     end
 
-    it 'renders as-needed availability inside the disclosure' do
+    it 'renders as-needed availability as an actionable card' do
       rendered = render_inline(described_class.new(presenter: person_task_presenter))
-      details = rendered.at_css('details[data-testid="dashboard-as-needed-person"]')
+      available_card = rendered.at_css('[data-status="available"]')
 
-      expect(details.text).to include('As needed')
-      expect(details.text).to include('Paracetamol')
-      expect(details.text).to include('Available now')
+      expect(available_card.text).to include('Paracetamol')
+      expect(available_card.text).to include('Available now')
+      expect(available_card.text).to include('Give')
     end
 
-    it 'counts blocked routine rows as remaining tasks' do
+    it 'renders blocked routine rows without an action button' do
       rendered = render_inline(described_class.new(presenter: person_task_presenter(routine_status: :out_of_stock)))
+      blocked_card = rendered.css('[data-testid^="dashboard-medicine-card-"]').find do |card|
+        card.text.include?('Vitamin D')
+      end
 
-      expect(rendered.text).to include('1 routine task left today')
-      expect(rendered.text).not_to include('Routine tasks done today')
+      expect(blocked_card.text).to include('Vitamin D')
+      expect(blocked_card.text).to include('Out of Stock')
+      expect(blocked_card.text).not_to include('Give')
     end
   end
 
@@ -205,13 +177,9 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
     person = people(:john)
     instance_double(
       DashboardPresenter,
-      people: [person],
-      active_schedules: [],
       current_user: admin_user,
-      compliance_percentage: 85,
+      doses: [routine_dashboard_row(person, status: routine_status)],
       next_dose_time: nil,
-      routine_tasks_due?: true,
-      routine_tasks_by_person: { person => [routine_dashboard_row(person, status: routine_status)] },
       as_needed_by_person: { person => [as_needed_dashboard_row(person)] }
     )
   end

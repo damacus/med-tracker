@@ -1187,6 +1187,7 @@ en:
       skip_to_content: "Skip to content"
       brand: "MedTracker"
       login: "Login"
+      notifications: "Notifications"
     desktop_nav:
       medications: "Medications"
       people: "People"
@@ -1376,6 +1377,26 @@ en:
     greeting_evening: "Good evening, %{name}"
     subtitle: "Your family's medication schedule for today."
     todays_schedule: "Today's Schedule"
+    todays_medicines: "Today’s medicines"
+    summary:
+      today_progress: "Today: %{completed} of %{total} complete"
+      next_due: "Next due %{time}"
+      no_next_due: "none today"
+      keep_it_up: "Keep it up."
+      all_done: "All done for today."
+      completed: "Completed"
+      remaining:
+        one: "1 left"
+        other: "%{count} left"
+    filters:
+      label: "Dashboard medicine filters"
+      all: "All"
+      needs_action: "Needs action"
+      upcoming: "Upcoming"
+      taken: "Taken"
+    filtered_count:
+      one: "1 dose"
+      other: "%{count} doses"
     as_needed:
       title: "As needed"
     overdue_alert: "Overdue: %{medication} for %{person} (scheduled at %{time})"
@@ -1392,6 +1413,7 @@ en:
       left_today:
         one: "1 routine task left today"
         other: "%{count} routine tasks left today"
+    empty_filtered_state: "No medicines match this filter."
     insights:
       title: "Smart Insights"
       pattern_detected: "Pattern detected"

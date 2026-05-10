@@ -14,12 +14,12 @@ RSpec.describe 'Dashboard' do
       visit dashboard_path
 
       expect(page).to have_text('Good morning')
-      expect(page).to have_text("Today's Schedule")
+      expect(page).to have_text('Today’s medicines')
       expect(page).to have_text('Ibuprofen')
       expect(page).to have_text('Jane Doe')
       expect(page).to have_text('Child Patient')
 
-      button = first('[data-testid^="take-dose-"]')
+      button = first('[data-testid^="take-dose-"]', text: I18n.t('person_medications.card.take'))
 
       expect do
         button.click

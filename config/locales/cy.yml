@@ -1083,6 +1083,7 @@ cy:
       skip_to_content: "Neidio i'r cynnwys"
       brand: "MedTracker"
       login: "Mewngofnodi"
+      notifications: "Hysbysiadau"
     desktop_nav:
       medications: "Meddyginiaethau"
       people: "Pobl"
@@ -1222,6 +1223,26 @@ cy:
     greeting_evening: "Noswaith dda, %{name}"
     subtitle: "Amserlen meddyginiaeth eich teulu am heddiw."
     todays_schedule: "Amserlen Heddiw"
+    todays_medicines: "Meddyginiaethau heddiw"
+    summary:
+      today_progress: "Heddiw: %{completed} o %{total} wedi'u cwblhau"
+      next_due: "Nesaf erbyn %{time}"
+      no_next_due: "dim heddiw"
+      keep_it_up: "Daliwch ati."
+      all_done: "Popeth wedi'i wneud am heddiw."
+      completed: "Wedi cwblhau"
+      remaining:
+        one: "1 ar ôl"
+        other: "%{count} ar ôl"
+    filters:
+      label: "Hidlyddion meddyginiaeth y dangosfwrdd"
+      all: "Pawb"
+      needs_action: "Angen gweithredu"
+      upcoming: "Ar ddod"
+      taken: "Wedi cymryd"
+    filtered_count:
+      one: "1 dos"
+      other: "%{count} dos"
     as_needed:
       title: "Yn ôl yr angen"
     overdue_alert: "Hwyr: %{medication} ar gyfer %{person} (wedi'i drefnu am %{time})"
@@ -1248,6 +1269,7 @@ cy:
       left_today:
         one: "1 dasg reolaidd ar ôl heddiw"
         other: "%{count} tasg reolaidd ar ôl heddiw"
+    empty_filtered_state: "Dim meddyginiaethau yn cyfateb i'r hidlydd hwn."
     stats:
       people: "Pobl"
       active_schedules: "Presgripsiynau Gweithredol"

@@ -1,0 +1,147 @@
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.dashboard-dose-card {
+  border-width: 1px !important;
+  box-shadow: 0 14px 34px -26px rgb(15 23 42 / 45%) !important;
+}
+
+.dashboard-dose-card--green {
+  border-color: rgb(167 243 208) !important;
+  background: linear-gradient(135deg, rgb(236 253 245 / 92%), rgb(255 255 255 / 96%)) !important;
+}
+
+.dashboard-dose-card--blue {
+  border-color: rgb(191 219 254) !important;
+  background: linear-gradient(135deg, rgb(239 246 255 / 95%), rgb(255 255 255 / 96%)) !important;
+}
+
+.dashboard-dose-card--violet {
+  border-color: rgb(221 214 254) !important;
+  background: linear-gradient(135deg, rgb(245 243 255 / 95%), rgb(255 255 255 / 96%)) !important;
+}
+
+.dashboard-dose-card--amber {
+  border-color: rgb(254 215 170) !important;
+  background: linear-gradient(135deg, rgb(255 247 237 / 95%), rgb(255 255 255 / 96%)) !important;
+}
+
+.dashboard-dose-card--rose {
+  border-color: rgb(254 205 211) !important;
+  background: linear-gradient(135deg, rgb(255 241 242 / 95%), rgb(255 255 255 / 96%)) !important;
+}
+
+.dashboard-dose-card--teal {
+  border-color: rgb(153 246 228) !important;
+  background: linear-gradient(135deg, rgb(240 253 250 / 95%), rgb(255 255 255 / 96%)) !important;
+}
+
+.dashboard-dose-icon {
+  box-shadow: 0 0 0 8px rgb(255 255 255 / 68%);
+}
+
+.dashboard-dose-icon--green {
+  color: rgb(4 120 87);
+  background: rgb(209 250 229);
+}
+
+.dashboard-dose-icon--blue {
+  color: rgb(29 78 216);
+  background: rgb(219 234 254);
+}
+
+.dashboard-dose-icon--violet {
+  color: rgb(109 40 217);
+  background: rgb(237 233 254);
+}
+
+.dashboard-dose-icon--amber {
+  color: rgb(194 65 12);
+  background: rgb(255 237 213);
+}
+
+.dashboard-dose-icon--rose {
+  color: rgb(225 29 72);
+  background: rgb(255 228 230);
+}
+
+.dashboard-dose-icon--teal {
+  color: rgb(15 118 110);
+  background: rgb(204 251 241);
+}
+
+.dashboard-dose-status {
+  background: rgb(239 246 255) !important;
+  color: rgb(30 64 175) !important;
+}
+
+.dashboard-dose-status--green {
+  background: rgb(209 250 229) !important;
+  color: rgb(4 120 87) !important;
+}
+
+.dashboard-dose-status--violet {
+  background: rgb(237 233 254) !important;
+  color: rgb(109 40 217) !important;
+}
+
+.dashboard-dose-status--amber {
+  background: rgb(255 237 213) !important;
+  color: rgb(194 65 12) !important;
+}
+
+.dashboard-dose-status--rose {
+  background: rgb(255 228 230) !important;
+  color: rgb(225 29 72) !important;
+}
+
+.dashboard-dose-status--teal {
+  background: rgb(204 251 241) !important;
+  color: rgb(15 118 110) !important;
+}
+
+.dashboard-dose-action {
+  color: white !important;
+  border: 0 !important;
+}
+
+.dashboard-dose-action--blue {
+  background: rgb(37 99 235) !important;
+  box-shadow: 0 14px 28px -16px rgb(37 99 235 / 70%) !important;
+}
+
+.dashboard-dose-action--violet {
+  background: rgb(124 58 237) !important;
+  box-shadow: 0 14px 28px -16px rgb(124 58 237 / 70%) !important;
+}
+
+.dashboard-dose-action--amber {
+  background: rgb(249 115 22) !important;
+  box-shadow: 0 14px 28px -16px rgb(249 115 22 / 70%) !important;
+}
+
+.dashboard-dose-action--teal {
+  background: rgb(13 148 136) !important;
+  box-shadow: 0 14px 28px -16px rgb(13 148 136 / 70%) !important;
+}
+
+.mobile-fab-stack {
+  right: calc(1rem + env(safe-area-inset-right)) !important;
+  bottom: calc(7rem + env(safe-area-inset-bottom)) !important;
+}
+
+.mobile-bottom-nav {
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  border-bottom-right-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+  padding-bottom: calc(0.5rem + env(safe-area-inset-bottom)) !important;
+}

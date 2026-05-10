@@ -40,7 +40,7 @@ RSpec.describe Components::Dashboard::TimelineItem, type: :component do
     rendered = render_inline(component)
 
     expect(rendered.to_html).to include('Taken')
-    expect(rendered.to_html).to include('Taken at')
+    expect(rendered.text).to include("Jane Doe · #{Time.current.strftime('%l:%M %p').strip} · Home")
   end
 
   it 'shows only the person name for upcoming doses' do
@@ -49,6 +49,23 @@ RSpec.describe Components::Dashboard::TimelineItem, type: :component do
 
     expect(rendered.to_html).to include('Jane Doe')
     expect(rendered.to_html).not_to include('Jane Doe • Taken at')
+  end
+
+  it 'renders compact person, time, and location metadata' do
+    component = described_class.new(dose: dose)
+    rendered = render_inline(component)
+
+    expect(rendered.text).to include("Jane Doe · #{Time.current.strftime('%l:%M %p').strip} · Home")
+  end
+
+  it 'renders a coloured medicine icon well for visual scanning' do
+    rendered = render_inline(described_class.new(dose: dose))
+
+    icon_well = rendered.at_css('[data-testid="dashboard-medicine-icon"]')
+
+    expect(icon_well).to be_present
+    expect(icon_well['data-palette']).to be_present
+    expect(rendered.at_css('[data-status="upcoming"]')).to be_present
   end
 
   describe 'cooldown badge' do

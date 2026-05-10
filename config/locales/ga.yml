@@ -987,6 +987,7 @@ ga:
       skip_to_content: "Léim go dtí an t-ábhar"
       brand: "MedTracker"
       login: "Logáil isteach"
+      notifications: "Fógraí"
     desktop_nav:
       medications: "Leigheasanna"
       people: "Daoine"
@@ -1159,6 +1160,26 @@ ga:
     greeting_evening: "Oíche mhaith, %{name}"
     subtitle: "Sceideal leigheasanna do theaghlaigh inniu."
     todays_schedule: "Sceideal an Lae Innuit"
+    todays_medicines: "Leigheasanna an lae inniu"
+    summary:
+      today_progress: "Inniu: %{completed} as %{total} críochnaithe"
+      next_due: "An chéad cheann eile %{time}"
+      no_next_due: "níl ceann ar bith inniu"
+      keep_it_up: "Lean ort."
+      all_done: "Gach rud déanta don lá inniu."
+      completed: "Críochnaithe"
+      remaining:
+        one: "1 fágtha"
+        other: "%{count} fágtha"
+    filters:
+      label: "Scagairí leigheasanna an deais"
+      all: "Uile"
+      needs_action: "Gníomh de dhíth"
+      upcoming: "Ag teacht"
+      taken: "Tógtha"
+    filtered_count:
+      one: "1 dáileog"
+      other: "%{count} dáileog"
     medication_schedule: "Sceideal Leigheasanna"
     as_needed:
       title: "Glac de réir mar is gá"
@@ -1176,6 +1197,7 @@ ga:
       left_today:
         one: "1 tasc rialta fágtha inniu"
         other: "%{count} tasc rialta fágtha inniu"
+    empty_filtered_state: "Níl aon leigheas ag teacht leis an scagaire seo."
     insights:
       title: "Léarchéal Cliste"
       pattern_detected: "Patrún aimsithe"

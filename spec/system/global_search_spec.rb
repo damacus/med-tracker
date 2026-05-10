@@ -64,18 +64,21 @@ RSpec.describe 'Global search command palette' do
     expect(page).to have_current_path(medication_path(medications(:vitamin_d)))
 
     expect(page).to have_css('button[aria-label="Open global search"]')
-    find('button[aria-label="Open global search"]').send_keys([:control, 'k'])
+    find('body').send_keys([:control, 'k'])
     expect(page).to have_css('#global_search_panel[aria-hidden="false"]')
 
     find_by_id('global_search_query').send_keys(:escape)
     expect(page).to have_css('#global_search_panel[hidden]', visible: :all)
   end
 
-  scenario 'opens from the mobile trigger' do
+  scenario 'opens from the mobile keyboard shortcut without a top-bar trigger' do
     page.current_window.resize_to(375, 667)
     visit root_path
 
-    find('button[aria-label="Open global search"]').click
+    expect(page).to have_css('button[aria-label="Open menu"]')
+    expect(page).to have_no_css('header button[aria-label="Open global search"]')
+
+    find('body').send_keys([:control, 'k'])
 
     expect(page).to have_css('#global_search_panel[aria-hidden="false"]')
     expect(page.evaluate_script('document.activeElement.id')).to eq('global_search_query')

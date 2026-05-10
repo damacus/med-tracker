@@ -33,7 +33,7 @@ RSpec.describe Components::Layouts::FloatingActionMenu, type: :component do
   end
 
   it 'renders quick actions on allowed pages' do
-    rendered = render_menu(user: carer_user, path: Rails.application.routes.url_helpers.root_path)
+    rendered = render_menu(user: carer_user, path: Rails.application.routes.url_helpers.medications_path)
 
     expect(rendered.css('button[aria-label="Open quick actions"]')).to be_present
     expect(rendered.text).to include('Add Medication', 'Add Person')
@@ -41,8 +41,6 @@ RSpec.describe Components::Layouts::FloatingActionMenu, type: :component do
 
   it 'renders on each allowed index page' do
     allowed_paths = [
-      Rails.application.routes.url_helpers.root_path,
-      Rails.application.routes.url_helpers.dashboard_path,
       Rails.application.routes.url_helpers.people_path,
       Rails.application.routes.url_helpers.medications_path,
       Rails.application.routes.url_helpers.locations_path,
@@ -64,6 +62,8 @@ RSpec.describe Components::Layouts::FloatingActionMenu, type: :component do
 
   it 'hides the menu on forms, workflow, profile, and admin pages' do
     hidden_paths = [
+      Rails.application.routes.url_helpers.root_path,
+      Rails.application.routes.url_helpers.dashboard_path,
       Rails.application.routes.url_helpers.profile_path,
       Rails.application.routes.url_helpers.admin_root_path,
       Rails.application.routes.url_helpers.new_person_path,
@@ -79,8 +79,8 @@ RSpec.describe Components::Layouts::FloatingActionMenu, type: :component do
   end
 
   it 'renders policy-permitted quick actions only' do
-    carer_rendered = render_menu(user: carer_user, path: Rails.application.routes.url_helpers.root_path)
-    admin_rendered = render_menu(user: admin_user, path: Rails.application.routes.url_helpers.root_path)
+    carer_rendered = render_menu(user: carer_user, path: Rails.application.routes.url_helpers.medications_path)
+    admin_rendered = render_menu(user: admin_user, path: Rails.application.routes.url_helpers.medications_path)
 
     expect(carer_rendered.text).to include('Add Medication', 'Add Person')
     expect(carer_rendered.text).not_to include('Add Location')
