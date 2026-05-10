@@ -185,7 +185,7 @@ RSpec.describe MedicationTake do
     described_class.create!(
       schedule: schedule,
       taken_at: Time.current,
-      dose_amount: 10.0,
+      dose_amount: 1.0,
       taken_from_medication: taken_from_medication,
       taken_from_location: taken_from_medication.location
     )
@@ -195,7 +195,7 @@ RSpec.describe MedicationTake do
     described_class.new(
       schedule: schedule,
       taken_at: Time.current,
-      dose_amount: 10.0,
+      dose_amount: 1.0,
       taken_from_medication: taken_from_medication,
       taken_from_location: taken_from_medication.location
     )
