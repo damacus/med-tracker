@@ -532,6 +532,14 @@ ga:
       choose_location: "Roghnaigh suíomh"
       choose_location_description: "Roghnaigh cén suíomh as a dtabharfar an dáileog seo."
       untracked_inventory: "Neamhrianaithe"
+    prior_day_take_action:
+      menu_item: "Logáil dáileog roimhe seo"
+      title: "Cláraigh dáileog ó lá roimhe seo"
+      description: "Cláraigh dáileog a tógadh roimh inniu."
+      taken_at: "Dáta agus am"
+      submit: "Cláraigh dáileog stairiúil"
+    card:
+      more_actions: "Tuilleadh gníomhartha"
     reorder_statuses:
       ordered: "Ordaithe"
       received: "Faighte"
@@ -854,7 +862,7 @@ ga:
     failure: "Theip ar chlárú an leighis tógtha."
     json_success: "Cláraíodh an leigheas tógtha go rathúil."
     invalid_taken_at: "Roghnaigh am dáileoige bailí."
-    future_taken_at: "Ní féidir am na dáileoige a bheith sa todhchaí."
+    future_taken_at: "Ní féidir am na dáileoige a bheith níos mó ná uair an chloig sa todhchaí."
 
   profiles:
     updated: "Nuashonraíodh an phróifíl go rathúil."

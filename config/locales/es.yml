@@ -532,6 +532,14 @@ es:
       choose_location: "Elegir ubicación"
       choose_location_description: "Selecciona de qué ubicación deducir esta dosis."
       untracked_inventory: "Sin seguimiento"
+    prior_day_take_action:
+      menu_item: "Registrar dosis anterior"
+      title: "Registrar una dosis de un día anterior"
+      description: "Retroceda una dosis tomada antes de hoy."
+      taken_at: "Fecha y hora"
+      submit: "Registrar dosis histórica"
+    card:
+      more_actions: "Más acciones"
     reorder_statuses:
       ordered: "Pedido"
       received: "Recibido"
@@ -920,7 +928,7 @@ es:
     failure: "Error al registrar la toma de medicamento."
     json_success: "Toma de medicamento registrada correctamente."
     invalid_taken_at: "Elige una hora de dosis válida."
-    future_taken_at: "La hora de la dosis no puede estar en el futuro."
+    future_taken_at: "La hora de la dosis no puede ser más de una hora en el futuro."
 
   profiles:
     updated: "Perfil actualizado correctamente."

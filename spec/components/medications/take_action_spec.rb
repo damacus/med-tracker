@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe Components::Medications::TakeAction, type: :component do
-  fixtures :locations, :medications, :people, :users
+  fixtures :accounts, :locations, :medications, :people, :users
 
   let(:person) { people(:jane) }
   let(:user) { users(:admin) }
@@ -19,18 +19,30 @@ RSpec.describe Components::Medications::TakeAction, type: :component do
     )
   end
 
-  it 'renders a RubyUI location modal with a bounded historical dose timestamp field' do
+  it 'renders a RubyUI location modal with a time field defaulting to now and capped 60 minutes ahead' do
     travel_to(Time.zone.local(2026, 4, 28, 14, 45)) do
       build_alternate_medication
 
       rendered = render_take_action
-      timestamp_field = rendered.at_css("input[type='datetime-local'][name='medication_take[taken_at]']")
+      timestamp_field = rendered.at_css("input[type='time'][name='medication_take[taken_at]']")
 
       expect(rendered.text).to include('Record dose')
       expect(rendered.at_css("form[action='#{take_path}']")).not_to be_nil
       expect(timestamp_field).not_to be_nil
-      expect(timestamp_field['value']).to eq('2026-04-28T14:45')
-      expect(timestamp_field['max']).to eq('2026-04-28T14:45')
+      expect(timestamp_field['value']).to eq('14:45')
+      expect(timestamp_field['max']).to eq('15:45')
+    end
+  end
+
+  it 'clamps the time field max at 23:59 when the 60-minute window crosses midnight' do
+    travel_to(Time.zone.local(2026, 4, 28, 23, 30)) do
+      build_alternate_medication
+
+      rendered = render_take_action
+      timestamp_field = rendered.at_css("input[type='time'][name='medication_take[taken_at]']")
+
+      expect(timestamp_field['value']).to eq('23:30')
+      expect(timestamp_field['max']).to eq('23:59')
     end
   end
 

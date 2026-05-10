@@ -66,17 +66,42 @@ RSpec.describe 'Medication Timing Restrictions' do
       end
     end
 
-    context 'when submitted taken_at is in the future' do
+    context 'when submitted taken_at is more than an hour in the future' do
       it 'does not create a medication take' do
         travel_to(Time.zone.local(2026, 4, 28, 12, 0)) do
           expect do
             post take_medication_person_schedule_path(person, schedule),
-                 params: { medication_take: { taken_at: 1.minute.from_now.strftime('%Y-%m-%dT%H:%M') } }
+                 params: { medication_take: { taken_at: 61.minutes.from_now.strftime('%Y-%m-%dT%H:%M') } }
           end.not_to change(MedicationTake, :count)
         end
 
         expect(response).to redirect_to(person_path(person))
         expect(flash[:alert]).to include('future')
+      end
+    end
+
+    context 'when submitted taken_at is within the 60 minute future tolerance' do
+      it 'creates a medication take' do
+        travel_to(Time.zone.local(2026, 4, 28, 12, 0)) do
+          expect do
+            post take_medication_person_schedule_path(person, schedule),
+                 params: { medication_take: { taken_at: 30.minutes.from_now.strftime('%Y-%m-%dT%H:%M') } }
+          end.to change(MedicationTake, :count).by(1)
+        end
+      end
+    end
+
+    context 'when submitted taken_at is a HH:MM time-only payload' do
+      it 'records the dose against today at the submitted time' do
+        travel_to(Time.zone.local(2026, 4, 28, 14, 0)) do
+          expect do
+            post take_medication_person_schedule_path(person, schedule),
+                 params: { medication_take: { taken_at: '08:30' } }
+          end.to change(MedicationTake, :count).by(1)
+
+          expect(MedicationTake.order(:id).last.taken_at)
+            .to be_within(1.second).of(Time.zone.local(2026, 4, 28, 8, 30))
+        end
       end
     end
 
@@ -178,17 +203,28 @@ RSpec.describe 'Medication Timing Restrictions' do
       end
     end
 
-    context 'when submitted taken_at is in the future' do
+    context 'when submitted taken_at is more than an hour in the future' do
       it 'does not create a medication take' do
         travel_to(Time.zone.local(2026, 4, 28, 12, 0)) do
           expect do
             post take_medication_person_person_medication_path(person, person_medication),
-                 params: { medication_take: { taken_at: 1.minute.from_now.strftime('%Y-%m-%dT%H:%M') } }
+                 params: { medication_take: { taken_at: 61.minutes.from_now.strftime('%Y-%m-%dT%H:%M') } }
           end.not_to change(MedicationTake, :count)
         end
 
         expect(response).to redirect_to(person_path(person))
         expect(flash[:alert]).to include('future')
+      end
+    end
+
+    context 'when submitted taken_at is within the 60 minute future tolerance' do
+      it 'creates a medication take' do
+        travel_to(Time.zone.local(2026, 4, 28, 12, 0)) do
+          expect do
+            post take_medication_person_person_medication_path(person, person_medication),
+                 params: { medication_take: { taken_at: 30.minutes.from_now.strftime('%Y-%m-%dT%H:%M') } }
+          end.to change(MedicationTake, :count).by(1)
+        end
       end
     end
 

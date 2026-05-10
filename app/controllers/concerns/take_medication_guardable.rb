@@ -3,6 +3,8 @@
 module TakeMedicationGuardable
   extend ActiveSupport::Concern
 
+  FUTURE_TOLERANCE = 60.minutes
+
   private
 
   # Maps a TakeMedicationService error symbol to the appropriate HTTP response.
@@ -57,7 +59,7 @@ module TakeMedicationGuardable
       return
     end
 
-    if taken_at.future?
+    if taken_at > Time.current + FUTURE_TOLERANCE
       respond_take_medication_error(
         message: t("#{scope}.future_taken_at", default: t('take_medications.future_taken_at'))
       )
@@ -87,12 +89,23 @@ module TakeMedicationGuardable
     raw_taken_at = params.dig(:medication_take, :taken_at).presence
     return Time.current if raw_taken_at.blank?
 
+    return parse_time_only_taken_at(raw_taken_at) if raw_taken_at.match?(/\A\d{2}:\d{2}(:\d{2})?\z/)
+
     medication_taken_at_formats.each do |format|
       return Time.zone.strptime(raw_taken_at, format)
     rescue ArgumentError, TypeError
       next
     end
 
+    nil
+  end
+
+  def parse_time_only_taken_at(raw)
+    format = raw.length == 5 ? '%H:%M' : '%H:%M:%S'
+    parsed = Time.zone.strptime(raw, format)
+    today = Date.current
+    Time.zone.local(today.year, today.month, today.day, parsed.hour, parsed.min, parsed.sec)
+  rescue ArgumentError, TypeError
     nil
   end
 

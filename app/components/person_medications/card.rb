@@ -277,7 +277,32 @@ module Components
 
           render_take_medication_button if view_context.policy(person_medication).take_medication?
 
+          render_overflow_menu if view_context.policy(person_medication).take_medication?
+
           render_delete_dialog if view_context.policy(person_medication).destroy?
+        end
+      end
+
+      def render_overflow_menu
+        render RubyUI::DropdownMenu.new do
+          render RubyUI::DropdownMenuTrigger.new do
+            m3_button(
+              variant: :text,
+              class: 'w-10 h-10 p-0 rounded-xl text-on-surface-variant hover:text-foreground',
+              data: { testid: "more-actions-person-medication-#{person_medication.id}" },
+              aria_label: t('medications.card.more_actions', default: 'More actions')
+            ) do
+              render Icons::MoreHorizontal.new(size: 18)
+            end
+          end
+          render RubyUI::DropdownMenuContent.new(class: 'w-56') do
+            render Components::Medications::PriorDayTakeAction.new(
+              source: person_medication,
+              context: { person: person, current_user: current_user },
+              amount: person_medication.dose_amount,
+              testid: "log-past-dose-person-medication-#{person_medication.id}"
+            )
+          end
         end
       end
 

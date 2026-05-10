@@ -18,12 +18,36 @@ module Components
           CardFooter(class: 'px-8 pb-8 pt-2') do
             div(class: 'flex items-center gap-2 w-full') do
               render_take_medication_button
+              render_overflow_menu
               render_admin_actions if administrator?
             end
           end
         end
 
         private
+
+        def render_overflow_menu
+          render RubyUI::DropdownMenu.new do
+            render RubyUI::DropdownMenuTrigger.new do
+              m3_button(
+                variant: :text,
+                class: 'w-12 h-12 p-0 rounded-xl text-on-surface-variant hover:text-foreground transition-all',
+                data: { testid: "more-actions-schedule-#{schedule.id}" },
+                aria_label: t('medications.card.more_actions', default: 'More actions')
+              ) do
+                render Icons::MoreHorizontal.new(size: 20)
+              end
+            end
+            render RubyUI::DropdownMenuContent.new(class: 'w-56') do
+              render Components::Medications::PriorDayTakeAction.new(
+                source: schedule,
+                context: { person: person, current_user: current_user },
+                amount: schedule.dose_amount,
+                testid: "log-past-dose-schedule-#{schedule.id}"
+              )
+            end
+          end
+        end
 
         def render_take_medication_button
           render Components::Medications::TakeAction.new(

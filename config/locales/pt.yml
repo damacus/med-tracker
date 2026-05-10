@@ -532,6 +532,14 @@ pt:
       choose_location: "Escolha a localização"
       choose_location_description: "Selecione de que localização quer deduzir esta dose."
       untracked_inventory: "Não rastreado"
+    prior_day_take_action:
+      menu_item: "Registar dose anterior"
+      title: "Registar uma dose de um dia anterior"
+      description: "Retroceda uma dose tomada antes de hoje."
+      taken_at: "Data e hora"
+      submit: "Registar dose histórica"
+    card:
+      more_actions: "Mais ações"
     reorder_statuses:
       ordered: "Encomendado"
       received: "Recebido"
@@ -919,7 +927,7 @@ pt:
     failure: "Falha ao registar toma de medicamento."
     json_success: "Toma de medicamento registada com sucesso."
     invalid_taken_at: "Escolha uma hora de dose válida."
-    future_taken_at: "A hora da dose não pode ser no futuro."
+    future_taken_at: "A hora da dose não pode ser mais de uma hora no futuro."
 
   barcode_scanner:
     title: "Ler Código de Barras"

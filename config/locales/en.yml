@@ -582,6 +582,14 @@ en:
       choose_location: "Choose location"
       choose_location_description: "Select which location to deduct this dose from."
       untracked_inventory: "Untracked"
+    prior_day_take_action:
+      menu_item: "Log a past dose"
+      title: "Record a dose from a previous day"
+      description: "Backdate a dose taken before today."
+      taken_at: "Date and time taken"
+      submit: "Record historical dose"
+    card:
+      more_actions: "More actions"
     reorder_statuses:
       ordered: "Ordered"
       received: "Received"
@@ -1003,7 +1011,7 @@ en:
     failure: "Failed to record medication taken."
     json_success: "Medication taken successfully."
     invalid_taken_at: "Choose a valid dose time."
-    future_taken_at: "Dose time cannot be in the future."
+    future_taken_at: "Dose time cannot be more than an hour in the future."
 
   barcode_scanner:
     title: "Scan Barcode"

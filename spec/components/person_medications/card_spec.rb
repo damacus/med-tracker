@@ -40,6 +40,17 @@ RSpec.describe Components::PersonMedications::Card, type: :component do
     expect(title['class']).to include('break-words')
   end
 
+  it 'renders an overflow menu with a Log a past dose item when the user can take medication' do
+    rendered = render_person_medication_card
+
+    trigger = rendered.at_css("button[data-testid='more-actions-person-medication-#{person_medication.id}']")
+    item = rendered.at_css("[role='menuitem'][data-testid='log-past-dose-person-medication-#{person_medication.id}']")
+
+    expect(trigger).not_to be_nil
+    expect(item).not_to be_nil
+    expect(item.text).to include('Log a past dose')
+  end
+
   def render_person_medication_card
     vc = view_context
     vc.singleton_class.define_method(:current_user) { nil }
