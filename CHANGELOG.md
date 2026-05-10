@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.51](https://github.com/damacus/med-tracker/compare/v0.3.50...v0.3.51) (2026-05-10)
+
+
+### Features
+
+* add gummy dosage unit and grocery vitamin search tooling ([#1197](https://github.com/damacus/med-tracker/issues/1197)) ([7dfcf06](https://github.com/damacus/med-tracker/commit/7dfcf06fbd55def9358446ad02b1635bd405928a))
+* **audit:** extend audit trail to medication lifecycle and AI suggestions ([#1192](https://github.com/damacus/med-tracker/issues/1192)) ([93c2a64](https://github.com/damacus/med-tracker/commit/93c2a64342f4fa401b8e5838b70ddd8cad5f89cf))
+* time-only dose entry with separate prior-day form ([#1194](https://github.com/damacus/med-tracker/issues/1194)) ([9033095](https://github.com/damacus/med-tracker/commit/9033095e0b98ff5be32bc6378a3b633285e411b9))
+
 ## [0.3.50](https://github.com/damacus/med-tracker/compare/v0.3.49...v0.3.50) (2026-05-09)
 
 
