@@ -692,11 +692,13 @@ RSpec.describe Person do
     end
 
     it 'creates version on person creation' do
-      expect do
-        described_class.create!(name: 'New Person', date_of_birth: 25.years.ago)
-      end.to change(PaperTrail::Version, :count).by(1)
+      person = nil
 
-      version = PaperTrail::Version.last
+      expect do
+        person = described_class.create!(name: 'New Person', date_of_birth: 25.years.ago)
+      end.to change { PaperTrail::Version.where(item_type: 'Person').count }.by(1)
+
+      version = PaperTrail::Version.where(item_type: 'Person', item_id: person.id).last
       expect(version.event).to eq('create')
       expect(version.item_type).to eq('Person')
     end

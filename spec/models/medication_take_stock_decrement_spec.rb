@@ -17,6 +17,17 @@ RSpec.describe MedicationTakeStockDecrement do
       expect(medication.reload.current_supply).to eq(BigDecimal('0'))
     end
 
+    it 'creates a dose_decrement PaperTrail version on the medication' do
+      medication = create(:medication, current_supply: 10, reorder_threshold: 0)
+
+      expect do
+        decrementer.call(stock_source_for(inventory: stale_medication(medication)))
+      end.to change { PaperTrail::Version.where(item_type: 'Medication', item_id: medication.id).count }.by(1)
+
+      expect(PaperTrail::Version.where(item_type: 'Medication', item_id: medication.id).last.event)
+        .to eq('dose_decrement')
+    end
+
     it 'does not allow stale aggregate inventory decrements to push supply below zero' do
       medication = create(:medication, current_supply: 1, reorder_threshold: 0)
 

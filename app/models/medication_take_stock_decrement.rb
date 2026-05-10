@@ -20,6 +20,7 @@ class MedicationTakeStockDecrement
     inventory.with_lock do
       previous_current_supply = inventory.current_supply
       current_supply = decremented_supply(previous_current_supply, dose_unit)
+      inventory.paper_trail_event = 'dose_decrement'
       inventory.update!(current_supply: current_supply)
       stock_row(inventory, previous_current_supply)
     end
@@ -41,6 +42,7 @@ class MedicationTakeStockDecrement
   def sync_inventory(inventory)
     inventory.with_lock do
       previous_current_supply = inventory.current_supply
+      inventory.paper_trail_event = 'dose_decrement'
       inventory.sync_inventory_from_dosage_records!
       inventory.reload
       stock_row(inventory, previous_current_supply)

@@ -61,8 +61,8 @@ RSpec.describe 'User Sessions', :js do
       click_button 'Sign Out'
 
       using_wait_time(5) do
-        expect(page).to have_current_path('/login')
         expect(page).to have_button('Sign In to Dashboard')
+        expect(page).to have_no_button('Sign Out')
       end
     end
   end

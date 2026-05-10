@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class AppSettings < ApplicationRecord
+  has_paper_trail
+
   # Always a single row. Access via AppSettings.instance, never instantiate directly.
   def self.instance
     first_or_create!(invite_only: false)

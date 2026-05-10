@@ -11,6 +11,7 @@ class MedicationReorderStatusService
     attributes = attributes_for(status, at)
     return Result.new(success: false, medication: medication) unless attributes
 
+    medication.paper_trail_event = "mark_as_#{status}"
     medication.update!(attributes)
     Result.new(success: true, medication: medication)
   end

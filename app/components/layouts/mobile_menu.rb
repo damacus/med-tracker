@@ -97,7 +97,7 @@ module Components
       end
 
       def render_logout_button
-        form(action: '/logout', method: 'post', class: 'w-full') do
+        form(action: '/logout', method: 'post', class: 'w-full', data_turbo: 'false') do
           input(type: 'hidden', name: 'authenticity_token', value: view_context.form_authenticity_token)
           m3_button(
             type: :submit,

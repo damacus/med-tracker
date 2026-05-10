@@ -31,6 +31,17 @@ RSpec.describe Components::Admin::AuditLogs::IndexView, type: :component do
 
       expect(view.filter_params).to eq({})
     end
+
+    it 'offers filters for all audited domain record types' do
+      expect(described_class::AUDITED_MODELS).to include(
+        'Account',
+        'AppSettings',
+        'Location',
+        'LocationMembership',
+        'MedicationDosageOption',
+        'NotificationPreference'
+      )
+    end
   end
 
   describe '#filters_active?' do

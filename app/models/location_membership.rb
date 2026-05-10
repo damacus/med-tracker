@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class LocationMembership < ApplicationRecord
+  has_paper_trail
+
   belongs_to :location
   belongs_to :person
 
