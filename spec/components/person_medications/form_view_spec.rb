@@ -31,6 +31,24 @@ RSpec.describe Components::PersonMedications::FormView, type: :component do
     end
   end
 
+  it 'renders an administration kind choice' do
+    person_medication = PersonMedication.new
+    person = instance_double(Person, name: 'John Doe', person_type: 'adult')
+
+    rendered = render_inline(
+      described_class.new(
+        person_medication: person_medication,
+        person: person,
+        medications: []
+      )
+    )
+
+    expect(rendered.text).to include('Routine')
+    expect(rendered.text).to include('As needed')
+    expect(rendered.css("input[name='person_medication[administration_kind]'][value='routine']")).to be_present
+    expect(rendered.css("input[name='person_medication[administration_kind]'][value='as_needed']")).to be_present
+  end
+
   it 'renders medication dose options for the Stimulus controller' do
     person_medication = PersonMedication.new
     person = instance_double(Person, name: 'John Doe', person_type: 'adult')

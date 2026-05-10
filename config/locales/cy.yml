@@ -711,7 +711,7 @@ cy:
     modal:
       new_title: "Ychwanegu Meddyginiaeth ar gyfer %{person}"
       edit_title: "Golygu Meddyginiaeth ar gyfer %{person}"
-      subtitle: "Ychwanegu meddyginiaeth yn ôl yr angen"
+      subtitle: "Ychwanegu meddyginiaeth reolaidd neu yn ôl yr angen"
     card:
       notes: "Nodiadau:"
       timing_restrictions: "Cyfyngiadau Amseru:"
@@ -750,7 +750,7 @@ cy:
       dose: "Dos"
       select_dose: "Dewis dos"
       no_doses_available: "Dim dosau ar gael"
-      dose_hint: "Mae angen dos ar bob meddyginiaeth yn ôl yr angen"
+      dose_hint: "Mae angen dos ar bob meddyginiaeth"
       notes: "Nodiadau"
       notes_placeholder: "Ychwanegwch unrhyw gyfarwyddiadau neu nodiadau arbennig"
       notes_hint: "Ychwanegwch unrhyw gyfarwyddiadau neu nodiadau arbennig"
@@ -761,6 +761,15 @@ cy:
       dose_cycle: "Cylch dos"
       default_dose_cycle: "Dyddiol"
       dose_cycle_hint: "Cyfnod ailosod cylch"
+      administration_kind: "Math o feddyginiaeth"
+      administration_kind_hint: "Mae tasgau rheolaidd yn cyfrif ar gyfer heddiw; dim ond pan ellir ei rhoi y dangosir meddyginiaeth yn ôl yr angen."
+      administration_kinds:
+        routine:
+          label: "Rheolaidd"
+          description: "Tasg ddyddiol i'w chwblhau pan fydd y cylch yn ailosod"
+        as_needed:
+          label: "Yn ôl yr angen"
+          description: "Dim ond pan fydd symptomau neu gyfarwyddyd yn galw amdani y caiff ei defnyddio"
       no_options: "Dim opsiynau."
       optional: "Dewisol"
       next: "Nesaf"
@@ -769,7 +778,7 @@ cy:
         choose_medication_title: "Dewiswch feddyginiaeth"
         choose_medication_description: "Dechreuwch trwy ddewis y feddyginiaeth rydych am ei hychwanegu."
         choose_dose_title: "Dewiswch y dos"
-        choose_dose_description: "Mae angen dos ar bob meddyginiaeth yn ôl yr angen cyn i chi barhau."
+        choose_dose_description: "Dewiswch y dos cyn i chi barhau."
         add_guidance_title: "Ychwanegu arweiniad dewisol"
         add_guidance_description: "Ychwanegwch unrhyw nodiadau neu derfynau dos yr hoffech eu holrhain gyda'r feddyginiaeth hon."
 
@@ -1231,17 +1240,29 @@ cy:
     add_schedules_hint: "Ychwanegwch bresgripsiynau i'w gweld yma"
     dose_taken_at: "%{person} • Cymerwyd am %{time}"
     empty_state: "Dim meddyginiaethau wedi'u trefnu ar gyfer heddiw."
+    routine:
+      anytime: "Unrhyw bryd"
+      done_short: "Wedi gorffen"
+      done_today: "Tasgau rheolaidd wedi'u cwblhau heddiw"
+      empty: "Dim tasgau rheolaidd i'w gwneud heddiw"
+      left_today:
+        one: "1 dasg reolaidd ar ôl heddiw"
+        other: "%{count} tasg reolaidd ar ôl heddiw"
     stats:
       people: "Pobl"
       active_schedules: "Presgripsiynau Gweithredol"
       compliance: "Cydymffurfiaeth"
       next_dose: "Dos nesaf"
+      due_today: "Heddiw"
       no_upcoming_doses: "Dim un heddiw"
     statuses:
       taken: "Wedi cymryd"
       upcoming: "Ar ddod"
+      available_now: "Ar gael nawr"
+      available_at: "Ar gael am %{time}"
       cooldown: "Aros"
       missed: "Wedi colli"
+      max_reached: "Uchafswm dyddiol wedi'i gyrraedd"
       out_of_stock: "Allan o Stoc"
     table:
       person: "Person"

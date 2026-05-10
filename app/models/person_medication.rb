@@ -12,6 +12,7 @@ class PersonMedication < ApplicationRecord
   has_many :medication_takes, dependent: :destroy
 
   enum :dose_cycle, { daily: 0, weekly: 1, monthly: 2 }, prefix: :dose
+  enum :administration_kind, { routine: 0, as_needed: 1 }
 
   # CRITICAL: Audit trail for person-medication links
   # Tracks: which medications are assigned to which people, and their non-scheduled dosing rules
@@ -21,6 +22,7 @@ class PersonMedication < ApplicationRecord
   scope :ordered, -> { order(:position, :id) }
 
   before_validation :assign_default_dose
+  before_validation :clear_routine_default_interval
   before_validation :assign_position, on: :create
 
   validates :person_id, uniqueness: { scope: :medication_id }
@@ -98,6 +100,13 @@ class PersonMedication < ApplicationRecord
 
   def child_person_type?
     %w[minor dependent_adult].include?(person&.person_type.to_s)
+  end
+
+  def clear_routine_default_interval
+    return unless routine?
+    return unless max_daily_doses.to_i == 1 && min_hours_between_doses.to_i == 24
+
+    self.min_hours_between_doses = nil
   end
 
   def source_dosage_option_matches_medication

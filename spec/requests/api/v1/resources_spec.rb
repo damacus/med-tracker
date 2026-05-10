@@ -74,4 +74,18 @@ RSpec.describe 'API v1 resources' do
     )
     expect(schedule).not_to have_key('dosage_id')
   end
+
+  it 'serializes person medication administration kind' do
+    login_data = api_login(user)
+
+    get api_v1_person_medications_path,
+        headers: api_auth_headers(login_data.fetch('access_token')),
+        as: :json
+
+    person_medication = response.parsed_body.fetch('data').find do |row|
+      row.fetch('id') == person_medications(:john_vitamin_d).id
+    end
+
+    expect(person_medication).to include('administration_kind' => 'routine')
+  end
 end

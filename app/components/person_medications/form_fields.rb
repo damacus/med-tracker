@@ -22,6 +22,7 @@ module Components
           div(class: 'space-y-4') do
             render_medication_field
             render_dose_field
+            render_administration_kind_field
             render_notes_field
             render_timing_fields
           end
@@ -62,6 +63,7 @@ module Components
             description: t('person_medications.form.workflow.add_guidance_description')
           ) do
             render_selection_summary(show_dose: true)
+            render_administration_kind_field
             render_notes_field
             render_timing_fields
           end
@@ -208,6 +210,45 @@ module Components
         end
       end
 
+      def render_administration_kind_field
+        fieldset(class: 'space-y-3') do
+          legend(class: 'text-sm font-semibold text-foreground') do
+            t('person_medications.form.administration_kind')
+          end
+          div(class: 'grid grid-cols-1 gap-3 md:grid-cols-2') do
+            PersonMedication.administration_kinds.each_key do |kind|
+              render_administration_kind_option(kind)
+            end
+          end
+          m3_text(size: '1', class: 'text-on-surface-variant') do
+            t('person_medications.form.administration_kind_hint')
+          end
+        end
+      end
+
+      def render_administration_kind_option(kind)
+        label(
+          for: "person_medication_administration_kind_#{kind}",
+          class: administration_kind_option_classes(kind)
+        ) do
+          input(
+            type: :radio,
+            name: 'person_medication[administration_kind]',
+            id: "person_medication_administration_kind_#{kind}",
+            value: kind,
+            checked: administration_kind_value == kind,
+            data: {
+              person_medication_form_target: 'administrationKindInput',
+              action: 'change->person-medication-form#administrationKindChanged'
+            }
+          )
+          span(class: 'font-semibold') { t("person_medications.form.administration_kinds.#{kind}.label") }
+          span(class: 'text-sm text-on-surface-variant') do
+            t("person_medications.form.administration_kinds.#{kind}.description")
+          end
+        end
+      end
+
       def render_timing_fields
         div(class: 'grid grid-cols-1 md:grid-cols-3 gap-4') do
           render_max_daily_doses_field
@@ -308,6 +349,19 @@ module Components
 
       def workflow_error_attributes
         person_medication.errors.attribute_names.map(&:to_sym).uniq
+      end
+
+      def administration_kind_value
+        person_medication.administration_kind.presence || 'as_needed'
+      end
+
+      def administration_kind_option_classes(kind)
+        classes = [
+          'flex flex-col gap-1 rounded-shape-xl border bg-surface-container-low p-4',
+          'has-[:checked]:border-primary has-[:checked]:bg-primary-container/40'
+        ]
+        classes << (administration_kind_value == kind ? 'border-primary' : 'border-border')
+        classes.join(' ')
       end
 
       def render_dose_cycle_field

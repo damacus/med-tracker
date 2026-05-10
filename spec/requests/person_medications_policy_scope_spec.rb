@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'PersonMedicationsController medication options' do
-  fixtures :accounts, :people, :locations, :medications, :users, :carer_relationships
+  fixtures :accounts, :people, :locations, :location_memberships, :medications, :users, :carer_relationships
 
   let(:adult_patient_user) { users(:adult_patient) }
   let(:adult_patient_person) { people(:adult_patient_person) }
@@ -101,6 +101,24 @@ RSpec.describe 'PersonMedicationsController medication options' do
         end.not_to change(PersonMedication, :count)
 
         expect(response).to redirect_to(root_path)
+      end
+
+      it 'permits routine administration kind when creating medication' do
+        expect do
+          post person_person_medications_path(adult_patient_person),
+               params: {
+                 person_medication: {
+                   medication_id: medications(:vitamin_d).id,
+                   dose_amount: 1000,
+                   dose_unit: 'IU',
+                   administration_kind: 'routine',
+                   max_daily_doses: 1,
+                   min_hours_between_doses: ''
+                 }
+               }
+        end.to change(PersonMedication, :count).by(1)
+
+        expect(PersonMedication.order(:created_at).last.administration_kind).to eq('routine')
       end
     end
   end

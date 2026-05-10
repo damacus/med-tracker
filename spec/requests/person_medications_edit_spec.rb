@@ -62,6 +62,14 @@ RSpec.describe 'Person medication edit and update' do
         expect(person_medication.max_daily_doses).to eq(5)
       end
 
+      it 'updates the administration kind' do
+        patch person_person_medication_path(person, person_medication),
+              params: { person_medication: { administration_kind: 'routine' } }
+
+        expect(response).to redirect_to(person_path(person))
+        expect(person_medication.reload.administration_kind).to eq('routine')
+      end
+
       it 'updates via Turbo Stream' do
         patch person_person_medication_path(person, person_medication),
               params: { person_medication: { notes: 'Turbo update' } },

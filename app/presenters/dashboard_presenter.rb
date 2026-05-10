@@ -2,6 +2,8 @@
 
 # Presenter for the dashboard view that encapsulates data preparation logic
 class DashboardPresenter
+  delegate :routine_tasks_by_person, :as_needed_by_person, to: :dashboard_schedule
+
   attr_reader :current_user
 
   def initialize(current_user:)
@@ -24,12 +26,16 @@ class DashboardPresenter
   end
 
   def doses
-    @doses ||= FamilyDashboard::ScheduleQuery.new(people, current_user: current_user).call
+    dashboard_schedule.routine_tasks
+  end
+
+  def routine_tasks_due?
+    doses.any? { |d| d[:status] == :upcoming }
   end
 
   def next_dose_time
     upcoming = doses.select { |d| d[:status] == :upcoming }
-    upcoming.min_by { |d| d[:scheduled_at] }&.dig(:scheduled_at)
+    upcoming.filter_map { |d| d[:scheduled_at] }.min
   end
 
   def compliance_percentage
@@ -84,5 +90,9 @@ class DashboardPresenter
 
   def full_access?
     current_user.administrator? || current_user.doctor? || current_user.nurse?
+  end
+
+  def dashboard_schedule
+    @dashboard_schedule ||= FamilyDashboard::ScheduleQuery.new(people, current_user: current_user).tap(&:call)
   end
 end

@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe Components::Dashboard::IndexView, type: :component do
-  fixtures :accounts, :people, :users, :locations, :medications, :dosages, :schedules,
+  fixtures :accounts, :account_otp_keys, :people, :users, :locations, :medications, :dosages, :schedules,
            :person_medications, :medication_takes
 
   subject(:dashboard_view) do
@@ -161,6 +161,33 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
     end
   end
 
+  describe 'person task cards' do
+    it 'renders a routine task card with a collapsed as-needed disclosure' do
+      rendered = render_inline(described_class.new(presenter: person_task_presenter))
+      details = rendered.at_css('details[data-testid="dashboard-as-needed-person"]')
+
+      expect(rendered.text).to include('Vitamin D')
+      expect(details).to be_present
+      expect(details['open']).to be_nil
+    end
+
+    it 'renders as-needed availability inside the disclosure' do
+      rendered = render_inline(described_class.new(presenter: person_task_presenter))
+      details = rendered.at_css('details[data-testid="dashboard-as-needed-person"]')
+
+      expect(details.text).to include('As needed')
+      expect(details.text).to include('Paracetamol')
+      expect(details.text).to include('Available now')
+    end
+
+    it 'counts blocked routine rows as remaining tasks' do
+      rendered = render_inline(described_class.new(presenter: person_task_presenter(routine_status: :out_of_stock)))
+
+      expect(rendered.text).to include('1 routine task left today')
+      expect(rendered.text).not_to include('Routine tasks done today')
+    end
+  end
+
   context 'when there are no active schedules or person medications' do
     before do
       MedicationTake.delete_all
@@ -172,5 +199,40 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       rendered = render_inline(dashboard_view)
       expect(rendered.text).to include('No medications scheduled for today')
     end
+  end
+
+  def person_task_presenter(routine_status: :upcoming)
+    person = people(:john)
+    instance_double(
+      DashboardPresenter,
+      people: [person],
+      active_schedules: [],
+      current_user: admin_user,
+      compliance_percentage: 85,
+      next_dose_time: nil,
+      routine_tasks_due?: true,
+      routine_tasks_by_person: { person => [routine_dashboard_row(person, status: routine_status)] },
+      as_needed_by_person: { person => [as_needed_dashboard_row(person)] }
+    )
+  end
+
+  def routine_dashboard_row(person, status: :upcoming)
+    {
+      person: person,
+      source: person_medications(:john_vitamin_d),
+      scheduled_at: nil,
+      taken_at: nil,
+      status: status
+    }
+  end
+
+  def as_needed_dashboard_row(person)
+    {
+      person: person,
+      source: schedules(:john_paracetamol),
+      scheduled_at: Time.current,
+      taken_at: nil,
+      status: :available
+    }
   end
 end

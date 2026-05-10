@@ -24,8 +24,17 @@ FactoryBot.define do
     dose_amount { dosage&.amount || medication.dosage_amount }
     dose_unit { dosage&.unit || medication.dosage_unit }
     notes { nil }
+    administration_kind { :as_needed }
     max_daily_doses { nil }
     min_hours_between_doses { nil }
+
+    trait :routine do
+      administration_kind { :routine }
+    end
+
+    trait :as_needed do
+      administration_kind { :as_needed }
+    end
 
     trait :with_max_doses do
       max_daily_doses { 3 }

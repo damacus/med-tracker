@@ -6,6 +6,7 @@ john_vitamin_d:
   dose_unit: IU
   position: 0
   notes: Take with breakfast
+  administration_kind: routine
   max_daily_doses: 1
 
 jane_vitamin_d:
@@ -14,6 +15,7 @@ jane_vitamin_d:
   dose_amount: 1000
   dose_unit: IU
   position: 0
+  administration_kind: routine
   max_daily_doses: 2
   min_hours_between_doses: 12
 
@@ -23,5 +25,6 @@ bob_vitamin_c:
   dose_amount: 500
   dose_unit: mg
   position: 0
+  administration_kind: as_needed
   max_daily_doses: 3
   min_hours_between_doses: 4

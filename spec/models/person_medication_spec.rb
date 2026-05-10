@@ -34,6 +34,16 @@ RSpec.describe PersonMedication do
     end
   end
 
+  describe '#administration_kind' do
+    it 'distinguishes routine medication from as-needed medication' do
+      routine = build(:person_medication, administration_kind: :routine)
+      as_needed = build(:person_medication, administration_kind: :as_needed)
+
+      expect(routine).to be_routine
+      expect(as_needed).to be_as_needed
+    end
+  end
+
   describe 'dose validations' do
     it 'does not assign a mismatched default dosage option for an explicit custom dose' do
       medication = create(:medication, dosage_amount: nil, dosage_unit: nil)

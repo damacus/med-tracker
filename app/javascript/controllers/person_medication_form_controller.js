@@ -4,7 +4,7 @@ export default class extends Controller {
   static values = { currentStep: Number, translations: Object, doseOptions: Object }
   static targets = [
     "medicationSelect", "doseOptionInput", "doseAmountInput", "doseUnitInput",
-    "sourceDosageOptionIdInput",
+    "sourceDosageOptionIdInput", "administrationKindInput",
     "maxDosesInput", "minHoursInput", "doseCycleInput", "stepPanel",
     "stepIndicator", "prevButton", "nextButton", "submitButton",
     "selectedMedicationName", "selectedDoseName"
@@ -76,9 +76,10 @@ export default class extends Controller {
         if (this.hasMaxDosesInputTarget && !this.maxDosesInputTarget.value) {
           this.maxDosesInputTarget.value = defaultDosage.default_max_daily_doses || ''
         }
-        if (this.hasMinHoursInputTarget && !this.minHoursInputTarget.value) {
+        if (this.hasMinHoursInputTarget && !this.minHoursInputTarget.value && !this.#routineSelected()) {
           this.minHoursInputTarget.value = defaultDosage.default_min_hours_between_doses || ''
         }
+        this.#clearRoutineDefaultInterval()
         if (this.hasDoseCycleInputTarget && !this.doseCycleInputTarget.value && defaultDosage.default_dose_cycle !== null) {
           const cycleMap = { 0: 'daily', 1: 'weekly', 2: 'monthly' }
           const cycleValue = typeof defaultDosage.default_dose_cycle === 'number'
@@ -92,6 +93,10 @@ export default class extends Controller {
     } catch (error) {
       console.error('Error loading dose options:', error)
     }
+  }
+
+  administrationKindChanged() {
+    this.#clearRoutineDefaultInterval()
   }
 
   selectDose() {
@@ -270,6 +275,20 @@ export default class extends Controller {
     }
 
     return true
+  }
+
+  #routineSelected() {
+    if (!this.hasAdministrationKindInputTarget) return false
+
+    return this.administrationKindInputTargets.some((target) => target.checked && target.value === 'routine')
+  }
+
+  #clearRoutineDefaultInterval() {
+    if (!this.#routineSelected() || !this.hasMaxDosesInputTarget || !this.hasMinHoursInputTarget) return
+
+    if (this.maxDosesInputTarget.value === '1' && this.minHoursInputTarget.value === '24') {
+      this.minHoursInputTarget.value = ''
+    }
   }
 
   #syncMedicationSummary() {
