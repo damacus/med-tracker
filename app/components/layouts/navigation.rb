@@ -21,7 +21,7 @@ module Components
           end
         end
 
-        render Components::Layouts::BottomNav.new if authenticated?
+        render Components::Layouts::MobileRail.new(current_user: current_user) if authenticated?
       end
 
       private

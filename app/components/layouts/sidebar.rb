@@ -4,6 +4,7 @@ module Components
   module Layouts
     class Sidebar < Components::Base
       include Components::Layouts::CurrentUserContext
+      include Components::Layouts::NavigationItems
       include Phlex::Rails::Helpers::LinkTo
       include Phlex::Rails::Helpers::Routes
 
@@ -11,10 +12,8 @@ module Components
         return unless authenticated?
 
         aside(
-          class: 'fixed left-0 top-0 hidden h-full w-20 border-r border-outline-variant bg-surface-container-low ' \
-                 'text-on-surface-variant ' \
-                 'md:w-64 ' \
-                 'sm:flex flex-col items-center md:items-start py-8 px-4 z-50 transition-all duration-500'
+          class: 'fixed left-0 top-0 z-50 hidden h-full w-64 flex-col border-r border-outline-variant ' \
+                 'bg-surface-container-low px-4 py-8 text-on-surface-variant transition-all duration-500 md:flex'
         ) do
           render_brand
           render_search_trigger
@@ -26,7 +25,7 @@ module Components
       private
 
       def render_brand
-        div(class: 'mb-12 px-4 w-full flex justify-center md:justify-start') do
+        div(class: 'mb-12 flex w-full px-4 justify-center md:justify-start') do
           link_to root_path, class: 'group flex items-center gap-3 no-underline outline-none' do
             div(
               class: 'w-10 h-10 rounded-shape-lg bg-primary flex items-center justify-center ' \
@@ -47,15 +46,12 @@ module Components
 
       def render_navigation
         nav(class: 'flex-1 space-y-1 w-full') do
-          render_nav_link(root_path, Icons::Home, t('layouts.sidebar.dashboard'))
-          render_nav_link(medications_path, Icons::Pill, t('layouts.sidebar.inventory'))
-          render_nav_link(locations_path, Icons::Home, t('layouts.sidebar.locations'))
-          render_nav_link(medication_finder_path, Icons::Search, t('layouts.sidebar.finder'))
-          render_nav_link(people_path, Icons::Users, t('layouts.sidebar.people'))
-          render_nav_link(reports_path, Icons::AlertCircle, t('layouts.sidebar.reports'))
-          if user_is_admin?
-            render_nav_link(admin_root_path, Icons::Settings,
-                            t('layouts.sidebar.administration'))
+          primary_navigation_items.each do |item|
+            render_nav_link(item)
+          end
+
+          admin_navigation_items.each do |item|
+            render_nav_link(item)
           end
         end
       end
@@ -78,10 +74,10 @@ module Components
         end
       end
 
-      def render_nav_link(path, icon_class, label)
-        is_active = current_page?(path)
+      def render_nav_link(item)
+        is_active = active_navigation_path?(item[:path])
 
-        link_to path,
+        link_to item[:path],
                 class: 'flex items-center gap-4 px-4 py-3 rounded-full transition-all ' \
                        'group no-underline relative state-layer ' \
                        "#{if is_active
@@ -93,21 +89,21 @@ module Components
             class: 'flex items-center justify-center z-10 ' \
                    "#{is_active ? 'text-on-secondary-container' : 'group-hover:scale-110 transition-transform'}"
           ) do
-            render icon_class.new(size: 24)
+            render item[:icon].new(size: 24)
           end
           m3_text(
             variant: :label_large,
             class: 'hidden md:block z-10 ' \
                    "#{is_active ? 'text-on-secondary-container font-bold' : 'font-semibold'}"
           ) do
-            label
+            item[:label]
           end
         end
       end
 
       def render_user_profile
         div(class: 'mt-auto w-full space-y-2 px-2') do
-          link_to profile_path,
+          link_to profile_navigation_item[:path],
                   class: 'flex items-center gap-3 rounded-full p-2 ' \
                          'transition-all no-underline group relative state-layer ' \
                          'bg-surface-container-high text-on-surface' do
@@ -142,13 +138,6 @@ module Components
             end
           end
         end
-      end
-
-      def current_page?(path)
-        return true if view_context.request.path == path
-        return true if path != root_path && view_context.request.path.start_with?(path)
-
-        false
       end
     end
   end

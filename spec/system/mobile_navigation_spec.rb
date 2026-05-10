@@ -6,6 +6,53 @@ RSpec.describe 'Mobile Navigation' do
   fixtures :accounts, :people, :users
 
   let(:user) { users(:bob) }
+  let(:navigation_visibility_script) do
+    <<~JS
+      (() => {
+        const visible = (element) => {
+          if (!element) return false
+
+          const styles = window.getComputedStyle(element)
+          const bounds = element.getBoundingClientRect()
+
+          return styles.display !== 'none' &&
+            styles.visibility !== 'hidden' &&
+            bounds.width > 0 &&
+            bounds.height > 0
+        }
+
+        const rail = document.querySelector('[data-testid="mobile-rail"]')
+        const sidebar = Array.from(document.querySelectorAll('aside')).find((element) => element !== rail)
+
+        return {
+          rail: visible(rail),
+          sidebar: visible(sidebar),
+          header: visible(document.querySelector('header')),
+          fab: visible(document.querySelector('[data-testid="floating-action-menu-toggle"]'))
+        }
+      })()
+    JS
+  end
+  let(:mobile_metric_label_overflow_script) do
+    <<~JS
+      (() => {
+        const expectedLabels = ['People', 'Compliance', 'Next Dose']
+        const labels = Array.from(document.querySelectorAll('#main-content p'))
+
+        return expectedLabels.map((text) => {
+          const label = labels.find((element) => element.textContent.trim() === text)
+
+          return {
+            text,
+            found: Boolean(label),
+            clientWidth: label ? label.clientWidth : 0,
+            scrollWidth: label ? label.scrollWidth : 0,
+            overflows: !label || label.scrollWidth > label.clientWidth + 1
+          }
+        })
+      })()
+    JS
+  end
 
   before do
     login_as(user)
@@ -16,12 +63,50 @@ RSpec.describe 'Mobile Navigation' do
     visit root_path
 
     expect(page).to have_css('button[aria-label="Open menu"]')
-    expect(page).to have_css('nav.mobile-nav')
-    expect(page).to have_link('Home', href: root_path)
-    expect(page).to have_link('Inventory', href: medications_path)
-    expect(page).to have_link('Reports', href: reports_path)
-    expect(page).to have_link('Profile', href: profile_path)
-    expect(page).to have_no_css('aside')
+    expect(page).to have_css('aside[data-testid="mobile-rail"]')
+    expect(page).to have_css(%(a[aria-label="Dashboard"][aria-current="page"]))
+    expect(page).to have_css(%(a[aria-label="Inventory"][href="#{medications_path}"]))
+    expect(page).to have_css(%(a[aria-label="Locations"][href="#{locations_path}"]))
+    expect(page).to have_css(%(a[aria-label="Reports"][href="#{reports_path}"]))
+    expect(page).to have_css(%(a[aria-label="Profile"][href="#{profile_path}"]))
+    expect(page).to have_no_css('nav.mobile-nav')
+  end
+
+  scenario 'marks Dashboard active on the dashboard route' do
+    page.current_window.resize_to(375, 667)
+    visit dashboard_path
+
+    expect(page).to have_css(%(a[aria-label="Dashboard"][aria-current="page"]))
+  end
+
+  scenario 'uses one navigation system at the md breakpoint' do
+    page.current_window.resize_to(767, 844)
+    visit root_path
+
+    expect(navigation_visibility).to include(
+      'rail' => true,
+      'sidebar' => false,
+      'header' => true,
+      'fab' => true
+    )
+
+    page.current_window.resize_to(768, 844)
+
+    expect(navigation_visibility).to include(
+      'rail' => false,
+      'sidebar' => true,
+      'header' => false,
+      'fab' => false
+    )
+  end
+
+  scenario 'keeps core mobile dashboard metric labels readable beside the rail' do
+    page.current_window.resize_to(390, 844)
+    visit dashboard_path
+
+    overflowing_labels = mobile_metric_label_overflow.select { |label| label['overflows'] }
+
+    expect(overflowing_labels).to be_empty
   end
 
   scenario 'opens a left-side drawer with navigation and accessible sizing' do
@@ -32,8 +117,10 @@ RSpec.describe 'Mobile Navigation' do
 
     within('[role="dialog"]') do
       expect(page).to have_link('Inventory', href: medications_path)
+      expect(page).to have_link('Locations', href: locations_path)
       expect(page).to have_link('People', href: people_path)
       expect(page).to have_link('Medication Finder', href: medication_finder_path)
+      expect(page).to have_link('Reports', href: reports_path)
       expect(page).to have_link('Profile', href: profile_path)
       expect(page).to have_button('Logout')
     end
@@ -79,5 +166,39 @@ RSpec.describe 'Mobile Navigation' do
 
     find('button[aria-label="Open menu"]').click
     expect(page).to have_css('[role="dialog"]')
+  end
+
+  scenario 'opens and closes the floating action menu and launches the medication workflow' do
+    page.current_window.resize_to(375, 667)
+    visit root_path
+
+    expect(page).to have_css('button[aria-label="Open quick actions"]')
+
+    find('button[aria-label="Open quick actions"]').click
+    expect(page).to have_css('button[aria-label="Close quick actions"]')
+    expect(page).to have_css('[data-testid="floating-action-menu-items"]', visible: :visible)
+    expect(page).to have_link('Add Medication', href: add_medication_path)
+
+    find('body').send_keys(:escape)
+    expect(page).to have_css('button[aria-label="Open quick actions"]')
+    expect(page).to have_no_css('[data-testid="floating-action-menu-items"]', visible: :visible)
+
+    find('button[aria-label="Open quick actions"]').click
+    find('[data-testid="floating-action-backdrop"]').click
+    expect(page).to have_css('button[aria-label="Open quick actions"]')
+
+    find('button[aria-label="Open quick actions"]').click
+    click_link 'Add Medication'
+
+    expect(page).to have_css('button[aria-label="Open quick actions"]', wait: 10)
+    expect(page).to have_text('Who is this medication for?', wait: 10)
+  end
+
+  def navigation_visibility
+    page.evaluate_script(navigation_visibility_script)
+  end
+
+  def mobile_metric_label_overflow
+    page.evaluate_script(mobile_metric_label_overflow_script)
   end
 end

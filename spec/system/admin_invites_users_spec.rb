@@ -69,7 +69,7 @@ RSpec.describe 'Admin invites users' do
     expect(page).to have_current_path('/dashboard')
 
     # Verify sidebar shows new user info
-    within 'aside' do
+    within 'aside:not([data-testid="mobile-rail"])' do
       expect(page).to have_text('Invited Parent')
       expect(page).to have_text('Parent')
     end

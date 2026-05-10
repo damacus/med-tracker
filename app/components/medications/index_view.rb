@@ -60,7 +60,7 @@ module Components
           end
 
           if view_context.policy(Medication).create?
-            div(class: 'flex gap-3') do
+            div(class: 'hidden gap-3 md:flex') do
               Link(
                 href: add_medication_path,
                 variant: :outlined,
