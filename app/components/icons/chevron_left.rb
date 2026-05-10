@@ -5,7 +5,7 @@ module Components
     class ChevronLeft < Base
       def view_template
         svg(**attrs) do |s|
-          s.path(d: 'm15 18-6-6 6-6')
+          s.path(d: "m15 18-6-6 6-6")
         end
       end
     end

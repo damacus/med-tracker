@@ -29,7 +29,7 @@ class PersonShowQuery
 
   def takes_by(records, foreign_key)
     MedicationTake
-      .where(foreign_key => records.map(&:id), taken_at: today_range)
+      .where(foreign_key => records.map(&:id), :taken_at => today_range)
       .includes(:taken_from_location, :taken_from_medication)
       .order(taken_at: :desc)
       .group_by(&foreign_key)

@@ -29,7 +29,7 @@ module Admin
 
       success(create_admin!)
     rescue ArgumentError
-      failure('date_of_birth must be a valid date')
+      failure("date_of_birth must be a valid date")
     rescue ActiveRecord::RecordInvalid => e
       failure(e.record.errors.full_messages.to_sentence.presence || e.message)
     end
@@ -50,9 +50,9 @@ module Admin
     end
 
     def precondition_error
-      return "Missing required fields: #{missing_fields.join(', ')}" if missing_fields.any?
-      return 'An administrator already exists' if administrator_exists?
-      return 'Email is already taken' if email_already_exists?
+      return "Missing required fields: #{missing_fields.join(", ")}" if missing_fields.any?
+      return "An administrator already exists" if administrator_exists?
+      return "Email is already taken" if email_already_exists?
 
       nil
     end

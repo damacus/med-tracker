@@ -1,10 +1,19 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
 RSpec.describe Components::People::ShowView, type: :component do
-  fixtures :accounts, :people, :users, :locations, :medications, :dosages, :schedules,
-           :person_medications, :medication_takes
+  fixtures(
+    :accounts,
+    :people,
+    :users,
+    :locations,
+    :medications,
+    :dosages,
+    :schedules,
+    :person_medications,
+    :medication_takes
+  )
 
   let(:person) { people(:jane) }
   let(:schedules) { person.schedules }
@@ -14,11 +23,13 @@ RSpec.describe Components::People::ShowView, type: :component do
     view_context_helper = view_context
     stub_view_context_helpers(view_context_helper)
 
-    html = view_context_helper.render(described_class.new(
-                                        person: person,
-                                        schedules: schedules,
-                                        person_medications: person_medications
-                                      ))
+    html = view_context_helper.render(
+      described_class.new(
+        person: person,
+        schedules: schedules,
+        person_medications: person_medications
+      )
+    )
     Nokogiri::HTML::DocumentFragment.parse(html)
   end
 
@@ -32,26 +43,26 @@ RSpec.describe Components::People::ShowView, type: :component do
     view_context_helper.singleton_class.define_method(:pundit_user) { admin }
   end
 
-  it 'renders the person name and type' do
+  it "renders the person name and type" do
     rendered = render_view
-    expect(rendered.text).to include(person.name)
-    expect(rendered.text).to include('Adult')
+    expect(rendered.text).to(include(person.name))
+    expect(rendered.text).to(include("Adult"))
   end
 
-  it 'renders the Profile Overview card' do
+  it "renders the Profile Overview card" do
     rendered = render_view
-    expect(rendered.text).to include('Profile Overview')
-    expect(rendered.text).to include('Date of Birth')
+    expect(rendered.text).to(include("Profile Overview"))
+    expect(rendered.text).to(include("Date of Birth"))
   end
 
-  it 'renders the Care Actions card' do
+  it "renders the Care Actions card" do
     rendered = render_view
-    expect(rendered.text).to include('Care Actions')
-    expect(rendered.text).to include('Add Medication')
+    expect(rendered.text).to(include("Care Actions"))
+    expect(rendered.text).to(include("Add Medication"))
   end
 
-  it 'renders the unified medications section' do
+  it "renders the unified medications section" do
     rendered = render_view
-    expect(rendered.text).to include('Medications')
+    expect(rendered.text).to(include("Medications"))
   end
 end

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
 RSpec.describe I18n do
   let(:targeted_key_paths) do
@@ -21,23 +21,26 @@ RSpec.describe I18n do
       %w[schedules card out_of_stock]
     ]
   end
+
   let(:emoji_pattern) { /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/ }
 
-  it 'keeps targeted app UI labels free of emoji in every locale' do
+  it "keeps targeted app UI labels free of emoji in every locale" do
     locale_files.each do |locale_file|
-      locale_tree = YAML.safe_load(locale_file.read).fetch(locale_file.basename('.yml').to_s)
+      locale_tree = YAML.safe_load(locale_file.read).fetch(locale_file.basename(".yml").to_s)
 
       targeted_key_paths.each do |key_path|
         value = locale_tree.dig(*key_path)
 
-        expect(value).to be_present
-        expect(value).not_to match(emoji_pattern),
-                             "#{locale_file} #{key_path.join('.')} should use SVG icons, not emoji"
+        expect(value).to(be_present)
+        expect(value).not_to(
+          match(emoji_pattern),
+          "#{locale_file} #{key_path.join(".")} should use SVG icons, not emoji"
+        )
       end
     end
   end
 
   def locale_files
-    Rails.root.glob('config/locales/*.yml')
+    Rails.root.glob("config/locales/*.yml")
   end
 end

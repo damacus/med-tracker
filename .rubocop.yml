@@ -5,6 +5,7 @@ plugins:
   - rubocop-capybara
   - rubocop-rspec_rails
   - rubocop-factory_bot
+  - rubocop-rubyfmt
 
 AllCops:
   NewCops: enable
@@ -89,8 +90,10 @@ Metrics/CyclomaticComplexity:
 Style/Documentation:
   Enabled: false
 
-# Allow long lines in certain contexts
+# rubocop-rubyfmt disables all Layout cops; re-enable LineLength since rubyfmt
+# does not wrap long lines.
 Layout/LineLength:
+  Enabled: true
   Max: 120
   Exclude:
     - "config/**/*"

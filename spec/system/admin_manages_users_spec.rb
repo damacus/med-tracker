@@ -1,403 +1,422 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
-RSpec.describe 'AdminManagesUsers' do
-  fixtures :accounts, :people, :users, :locations, :location_memberships
+RSpec.describe "AdminManagesUsers" do
+  fixtures(:accounts, :people, :users, :locations, :location_memberships)
 
   # Use the admin fixture instead of creating a duplicate user
   let(:admin) { users(:admin) }
   # Use a unique email for the carer user to avoid conflicts
   let!(:carer) do
-    account = Account.create!(email: 'test_carer@example.com',
-                              password_hash: RodauthApp.rodauth.allocate.password_hash('password'),
-                              status: 'verified')
-    person = Person.create!(name: 'Carer User', date_of_birth: '1990-01-01', account: account)
-    User.create!(person: person, email_address: 'test_carer@example.com',
-                 password: 'password', password_confirmation: 'password', role: :carer)
+    account = Account.create!(
+      email: "test_carer@example.com",
+      password_hash: RodauthApp.rodauth.allocate.password_hash("password"),
+      status: "verified"
+    )
+    person = Person.create!(name: "Carer User", date_of_birth: "1990-01-01", account: account)
+    User.create!(
+      person: person,
+      email_address: "test_carer@example.com",
+      password: "password",
+      password_confirmation: "password",
+      role: :carer
+    )
   end
+
   let(:unverified_user) do
-    account = Account.create!(email: 'unverified_user@example.com',
-                              password_hash: RodauthApp.rodauth.allocate.password_hash('password'),
-                              status: :unverified)
+    account = Account.create!(
+      email: "unverified_user@example.com",
+      password_hash: RodauthApp.rodauth.allocate.password_hash("password"),
+      status: :unverified
+    )
     ActiveRecord::Base.connection.execute(
       "INSERT INTO account_verification_keys (account_id, key) VALUES (#{account.id}, 'manual-verify-key')"
     )
-    person = Person.create!(name: 'Unverified User', date_of_birth: '1992-02-02', account: account)
-    User.create!(person: person, email_address: 'unverified_user@example.com',
-                 password: 'password', password_confirmation: 'password', role: :parent)
+    person = Person.create!(name: "Unverified User", date_of_birth: "1992-02-02", account: account)
+    User.create!(
+      person: person,
+      email_address: "unverified_user@example.com",
+      password: "password",
+      password_confirmation: "password",
+      role: :parent
+    )
   end
 
   before do |example|
     driven_by(example.metadata[:js] ? :playwright : :rack_test)
   end
 
-  context 'when user is logged in as an admin' do
-    it 'allows admin to see the list of users' do
+  context("when user is logged in as an admin") do
+    it "allows admin to see the list of users" do
       login_as(admin)
 
-      visit admin_users_path
+      visit(admin_users_path)
 
-      within '[data-testid="admin-users"]' do
-        expect(page).to have_text('User Management')
-        expect(page).to have_text(admin.email_address)
-        expect(page).to have_text(carer.email_address)
+      within("[data-testid=\"admin-users\"]") do
+        expect(page).to(have_text("User Management"))
+        expect(page).to(have_text(admin.email_address))
+        expect(page).to(have_text(carer.email_address))
       end
     end
 
-    it 'allows admin to create a new user', :js do
+    it "allows admin to create a new user", :js do
       login_as(admin)
 
-      visit admin_users_path
-      click_on 'New User'
+      visit(admin_users_path)
+      click_on("New User")
 
-      expect(page).to have_text('Create New User')
+      expect(page).to(have_text("Create New User"))
 
-      fill_in 'Name', with: 'New Test User'
-      fill_in 'Date of birth', with: '1985-05-15'
-      fill_in 'Email address', with: 'newuser@example.com'
-      fill_in 'user_password', with: 'password123'
-      fill_in 'user_password_confirmation', with: 'password123'
+      fill_in("Name", with: "New Test User")
+      fill_in("Date of birth", with: "1985-05-15")
+      fill_in("Email address", with: "newuser@example.com")
+      fill_in("user_password", with: "password123")
+      fill_in("user_password_confirmation", with: "password123")
 
       # Interact with Combobox for Role
-      find_by_id('role_trigger').click
-      all('label', text: 'Doctor', visible: :all).last.click
+      find_by_id("role_trigger").click
+      all("label", text: "Doctor", visible: :all).last.click
 
-      click_on 'Create User'
+      click_on("Create User")
 
-      expect(page).to have_text('User was successfully created')
-      expect(page).to have_text('newuser@example.com')
-      expect(page).to have_text('Doctor')
+      expect(page).to(have_text("User was successfully created"))
+      expect(page).to(have_text("newuser@example.com"))
+      expect(page).to(have_text("Doctor"))
     end
 
-    it 'shows validation errors when creating user with invalid data', :js do
+    it "shows validation errors when creating user with invalid data", :js do
       login_as(admin)
 
-      visit new_admin_user_path
+      visit(new_admin_user_path)
 
       # Fill in required fields except email to bypass HTML5 validation
-      fill_in 'Name', with: 'Test User'
-      fill_in 'Date of birth', with: '1990-01-01'
-      fill_in 'user_password', with: 'password123'
-      fill_in 'user_password_confirmation', with: 'password123'
+      fill_in("Name", with: "Test User")
+      fill_in("Date of birth", with: "1990-01-01")
+      fill_in("user_password", with: "password123")
+      fill_in("user_password_confirmation", with: "password123")
 
-      find_by_id('role_trigger').click
-      all('label', text: 'Doctor', visible: :all).last.click
+      find_by_id("role_trigger").click
+      all("label", text: "Doctor", visible: :all).last.click
 
       # Clear email field and submit
-      fill_in 'Email address', with: ''
+      fill_in("Email address", with: "")
 
       # Use JavaScript to remove required attribute and submit
       page.execute_script("document.getElementById('user_email_address').removeAttribute('required')")
-      click_on 'Create User'
+      click_on("Create User")
 
-      expect(page).to have_text("Email address can't be blank")
+      expect(page).to(have_text("Email address can't be blank"))
     end
 
-    it 'shows error when creating user with duplicate email', :js do
+    it "shows error when creating user with duplicate email", :js do
       login_as(admin)
 
-      visit new_admin_user_path
+      visit(new_admin_user_path)
 
-      fill_in 'Name', with: 'Duplicate User'
-      fill_in 'Date of birth', with: '1985-05-15'
-      fill_in 'Email address', with: admin.email_address
-      fill_in 'user_password', with: 'password123'
-      fill_in 'user_password_confirmation', with: 'password123'
+      fill_in("Name", with: "Duplicate User")
+      fill_in("Date of birth", with: "1985-05-15")
+      fill_in("Email address", with: admin.email_address)
+      fill_in("user_password", with: "password123")
+      fill_in("user_password_confirmation", with: "password123")
 
-      find_by_id('role_trigger').click
-      all('label', text: 'Doctor', visible: :all).last.click
+      find_by_id("role_trigger").click
+      all("label", text: "Doctor", visible: :all).last.click
 
-      click_on 'Create User'
+      click_on("Create User")
 
-      expect(page).to have_text('has already been taken')
+      expect(page).to(have_text("has already been taken"))
     end
 
-    it 'creates user that can immediately log in', :js do
+    it "creates user that can immediately log in", :js do
       login_as(admin)
 
-      visit new_admin_user_path
+      visit(new_admin_user_path)
 
-      fill_in 'Name', with: 'Loginable User'
-      fill_in 'Date of birth', with: '1985-05-15'
-      fill_in 'Email address', with: 'loginable@example.com'
-      fill_in 'user_password', with: 'SecureP@ssword123!'
-      fill_in 'user_password_confirmation', with: 'SecureP@ssword123!'
+      fill_in("Name", with: "Loginable User")
+      fill_in("Date of birth", with: "1985-05-15")
+      fill_in("Email address", with: "loginable@example.com")
+      fill_in("user_password", with: "SecureP@ssword123!")
+      fill_in("user_password_confirmation", with: "SecureP@ssword123!")
 
-      find_by_id('role_trigger').click
-      all('label', text: 'Carer', visible: :all).last.click
+      find_by_id("role_trigger").click
+      all("label", text: "Carer", visible: :all).last.click
 
-      click_on 'Create User'
+      click_on("Create User")
 
-      expect(page).to have_text('User was successfully created')
+      expect(page).to(have_text("User was successfully created"))
 
       # Wait for flash message to dismiss before clicking
       using_wait_time(5) do
-        expect(page).to have_no_text('User was successfully created')
+        expect(page).to(have_no_text("User was successfully created"))
       end
 
       # Log out admin
-      click_on 'Sign Out'
+      click_on("Sign Out")
 
       # Log in as newly created user
-      visit login_path
-      fill_in 'email', with: 'loginable@example.com'
-      fill_in 'password', with: 'SecureP@ssword123!'
-      click_on 'Sign In'
+      visit(login_path)
+      fill_in("email", with: "loginable@example.com")
+      fill_in("password", with: "SecureP@ssword123!")
+      click_on("Sign In")
 
-      expect(page).to have_text('Loginable User')
+      expect(page).to(have_text("Loginable User"))
     end
 
-    it 'allows admin to edit an existing user', :js do
+    it "allows admin to edit an existing user", :js do
       login_as(admin)
 
-      visit admin_users_path
-      within "[data-user-id='#{carer.id}']" do
-        click_on 'Edit'
+      visit(admin_users_path)
+      within("[data-user-id='#{carer.id}']") do
+        click_on("Edit")
       end
 
-      expect(page).to have_text('Edit User')
-      expect(page).to have_field('Email address', with: carer.email_address)
+      expect(page).to(have_text("Edit User"))
+      expect(page).to(have_field("Email address", with: carer.email_address))
 
-      fill_in 'Email address', with: 'updated_carer@example.com'
+      fill_in("Email address", with: "updated_carer@example.com")
 
-      click_on 'Carer'
-      all('label', text: 'Nurse', visible: :all).last.click
+      click_on("Carer")
+      all("label", text: "Nurse", visible: :all).last.click
 
-      click_on 'Update User'
+      click_on("Update User")
 
-      expect(page).to have_text('User was successfully updated')
-      expect(page).to have_text('updated_carer@example.com')
-      expect(page).to have_text('Nurse')
+      expect(page).to(have_text("User was successfully updated"))
+      expect(page).to(have_text("updated_carer@example.com"))
+      expect(page).to(have_text("Nurse"))
     end
 
-    it 'shows validation errors when updating user with invalid data', :js do
+    it "shows validation errors when updating user with invalid data", :js do
       login_as(admin)
 
-      visit edit_admin_user_path(carer)
+      visit(edit_admin_user_path(carer))
 
-      fill_in 'Email address', with: ''
+      fill_in("Email address", with: "")
 
       # Use JavaScript to remove required attribute and submit
       page.execute_script("document.getElementById('user_email_address').removeAttribute('required')")
-      click_button 'Update User'
+      click_button("Update User")
 
-      expect(page).to have_text("Email address can't be blank")
+      expect(page).to(have_text("Email address can't be blank"))
     end
 
-    it 'allows admin to deactivate a user', :js do
+    it "allows admin to deactivate a user", :js do
       login_as(admin)
 
-      visit admin_users_path
+      visit(admin_users_path)
 
-      within "[data-user-id='#{carer.id}']" do
-        expect(page).to have_text('Active')
-        click_button 'Deactivate'
+      within("[data-user-id='#{carer.id}']") do
+        expect(page).to(have_text("Active"))
+        click_button("Deactivate")
       end
 
       # Confirm in the AlertDialog
-      within('[role="alertdialog"]') do
-        click_button 'Deactivate'
+      within("[role=\"alertdialog\"]") do
+        click_button("Deactivate")
       end
 
-      expect(page).to have_text('User account has been deactivated')
-      within "[data-user-id='#{carer.id}']" do
-        expect(page).to have_text('Inactive')
+      expect(page).to(have_text("User account has been deactivated"))
+      within("[data-user-id='#{carer.id}']") do
+        expect(page).to(have_text("Inactive"))
       end
     end
 
-    it 'allows admin to reactivate a deactivated user' do
+    it "allows admin to reactivate a deactivated user" do
       carer.deactivate!
       login_as(admin)
 
-      visit admin_users_path
+      visit(admin_users_path)
 
-      within "[data-user-id='#{carer.id}']" do
-        expect(page).to have_text('Inactive')
-        click_button 'Activate'
+      within("[data-user-id='#{carer.id}']") do
+        expect(page).to(have_text("Inactive"))
+        click_button("Activate")
       end
 
-      expect(page).to have_text('User account has been activated')
-      within "[data-user-id='#{carer.id}']" do
-        expect(page).to have_text('Active')
+      expect(page).to(have_text("User account has been activated"))
+      within("[data-user-id='#{carer.id}']") do
+        expect(page).to(have_text("Active"))
       end
     end
 
-    it 'shows separate activation and verification status columns' do
+    it "shows separate activation and verification status columns" do
       login_as(admin)
 
-      visit admin_users_path
+      visit(admin_users_path)
 
-      expect(page).to have_css('th', text: 'Activation')
-      expect(page).to have_css('th', text: 'Verification')
+      expect(page).to(have_css("th", text: "Activation"))
+      expect(page).to(have_css("th", text: "Verification"))
     end
 
-    it 'allows admin to manually verify an unverified user and removes verification keys' do
+    it "allows admin to manually verify an unverified user and removes verification keys" do
       login_as(admin)
       unverified_user
 
-      visit admin_users_path
+      visit(admin_users_path)
 
-      within "[data-user-id='#{unverified_user.id}']" do
-        click_button 'Verify'
+      within("[data-user-id='#{unverified_user.id}']") do
+        click_button("Verify")
       end
 
-      expect(unverified_user.person.account.reload).to be_verified
-      key_count = ActiveRecord::Base.connection.select_value(
-        "SELECT COUNT(*) FROM account_verification_keys WHERE account_id = #{unverified_user.person.account.id}"
-      ).to_i
-      expect(key_count).to eq(0)
+      expect(unverified_user.person.account.reload).to(be_verified)
+      key_count = ActiveRecord::Base
+        .connection
+        .select_value(
+          "SELECT COUNT(*) FROM account_verification_keys WHERE account_id = #{unverified_user.person.account.id}"
+        )
+        .to_i
+      expect(key_count).to(eq(0))
 
-      within "[data-user-id='#{unverified_user.id}']" do
-        expect(page).to have_button('Verified', disabled: true)
-      end
-    end
-
-    it 'shows Verified state for users with verified accounts' do
-      login_as(admin)
-
-      visit admin_users_path
-
-      within "[data-user-id='#{carer.id}']" do
-        expect(page).to have_button('Verified', disabled: true)
+      within("[data-user-id='#{unverified_user.id}']") do
+        expect(page).to(have_button("Verified", disabled: true))
       end
     end
 
-    it 'prevents admin from deactivating themselves' do
+    it "shows Verified state for users with verified accounts" do
       login_as(admin)
 
-      visit admin_users_path
+      visit(admin_users_path)
 
-      within "[data-user-id='#{admin.id}']" do
-        expect(page).to have_no_button('Deactivate')
+      within("[data-user-id='#{carer.id}']") do
+        expect(page).to(have_button("Verified", disabled: true))
       end
     end
 
-    it 'allows admin to search users by name' do
+    it "prevents admin from deactivating themselves" do
       login_as(admin)
 
-      visit admin_users_path
+      visit(admin_users_path)
 
-      fill_in 'Search', with: 'Carer'
-      click_button 'Search'
-
-      within '[data-testid="admin-users"]' do
-        expect(page).to have_text('Carer User')
-        expect(page).to have_no_text(admin.name)
+      within("[data-user-id='#{admin.id}']") do
+        expect(page).to(have_no_button("Deactivate"))
       end
     end
 
-    it 'allows admin to search users by email' do
+    it "allows admin to search users by name" do
       login_as(admin)
 
-      visit admin_users_path
+      visit(admin_users_path)
 
-      fill_in 'Search', with: 'carer@example.com'
-      click_button 'Search'
+      fill_in("Search", with: "Carer")
+      click_button("Search")
 
-      expect(page).to have_text('carer@example.com')
-      expect(page).to have_no_text(admin.email_address)
+      within("[data-testid=\"admin-users\"]") do
+        expect(page).to(have_text("Carer User"))
+        expect(page).to(have_no_text(admin.name))
+      end
     end
 
-    it 'allows admin to filter users by role', :js do
+    it "allows admin to search users by email" do
       login_as(admin)
 
-      visit admin_users_path
+      visit(admin_users_path)
 
-      find_by_id('role_trigger').click
-      all('label', text: 'Carer', visible: :all).last.click
+      fill_in("Search", with: "carer@example.com")
+      click_button("Search")
 
-      expect(page).to have_text('test_carer@example.com')
-      expect(page).to have_no_text(admin.email_address)
+      expect(page).to(have_text("carer@example.com"))
+      expect(page).to(have_no_text(admin.email_address))
     end
 
-    it 'allows admin to filter users by status', :js do
+    it "allows admin to filter users by role", :js do
+      login_as(admin)
+
+      visit(admin_users_path)
+
+      find_by_id("role_trigger").click
+      all("label", text: "Carer", visible: :all).last.click
+
+      expect(page).to(have_text("test_carer@example.com"))
+      expect(page).to(have_no_text(admin.email_address))
+    end
+
+    it "allows admin to filter users by status", :js do
       carer.deactivate!
       login_as(admin)
 
-      visit admin_users_path
+      visit(admin_users_path)
 
-      click_on 'All'
-      all('label', text: 'Inactive', visible: :all).last.click
+      click_on("All")
+      all("label", text: "Inactive", visible: :all).last.click
 
-      expect(page).to have_text(carer.email_address)
-      expect(page).to have_no_text(admin.email_address)
+      expect(page).to(have_text(carer.email_address))
+      expect(page).to(have_no_text(admin.email_address))
     end
 
-    it 'allows admin to filter active users only', :js do
+    it "allows admin to filter active users only", :js do
       carer.deactivate!
       login_as(admin)
 
-      visit admin_users_path
+      visit(admin_users_path)
 
-      click_on 'All'
-      all('label', text: 'Active', visible: :all).last.click
+      click_on("All")
+      all("label", text: "Active", visible: :all).last.click
 
-      expect(page).to have_no_text(carer.email_address)
-      expect(page).to have_text(admin.email_address)
+      expect(page).to(have_no_text(carer.email_address))
+      expect(page).to(have_text(admin.email_address))
     end
 
-    it 'shows pagination info' do
+    it "shows pagination info" do
       login_as(admin)
 
-      visit admin_users_path
+      visit(admin_users_path)
 
       # Pagination info is hidden on mobile, check for visible on desktop
-      expect(page).to have_css('[data-testid="pagination-info"]', visible: :all)
+      expect(page).to(have_css("[data-testid=\"pagination-info\"]", visible: :all))
     end
 
-    it 'allows admin to combine search and filter', :js do
+    it "allows admin to combine search and filter", :js do
       login_as(admin)
 
-      visit admin_users_path
+      visit(admin_users_path)
 
-      fill_in 'Search', with: 'Carer'
+      fill_in("Search", with: "Carer")
 
       # Wait for potential auto-submit from search field and DOM to be stable
       using_wait_time(5) do
-        expect(page).to have_text('Carer User')
+        expect(page).to(have_text("Carer User"))
       end
-      sleep 0.5 # Small delay to ensure any frame replacement has finished
+      # Small delay to ensure any frame replacement has finished
+      sleep(0.5)
 
-      find_by_id('role_trigger').click
-      all('label', text: 'Carer', visible: :all).last.click
+      find_by_id("role_trigger").click
+      all("label", text: "Carer", visible: :all).last.click
 
-      within '[data-testid="admin-users"]' do
-        expect(page).to have_text('Carer User')
-        expect(page).to have_no_text(admin.name)
+      within("[data-testid=\"admin-users\"]") do
+        expect(page).to(have_text("Carer User"))
+        expect(page).to(have_no_text(admin.name))
       end
     end
 
-    it 'shows all users when search is cleared' do
+    it "shows all users when search is cleared" do
       login_as(admin)
 
-      visit admin_users_path
+      visit(admin_users_path)
 
-      fill_in 'Search', with: 'Carer'
-      click_button 'Search'
+      fill_in("Search", with: "Carer")
+      click_button("Search")
 
-      click_link 'Clear'
+      click_link("Clear")
 
-      expect(page).to have_text('Carer User')
-      expect(page).to have_text(admin.name)
+      expect(page).to(have_text("Carer User"))
+      expect(page).to(have_text(admin.name))
     end
   end
 
-  context 'when user is logged in as a non-admin' do
-    it 'denies access to the user list' do
+  context("when user is logged in as a non-admin") do
+    it "denies access to the user list" do
       login_as(carer)
 
-      visit admin_users_path
+      visit(admin_users_path)
 
-      expect(page).to have_css('#flash', text: 'You are not authorized to perform this action.')
+      expect(page).to(have_css("#flash", text: "You are not authorized to perform this action."))
     end
 
-    it 'denies access to create new users' do
+    it "denies access to create new users" do
       login_as(carer)
 
-      visit new_admin_user_path
+      visit(new_admin_user_path)
 
-      expect(page).to have_css('#flash', text: 'You are not authorized to perform this action.')
+      expect(page).to(have_css("#flash", text: "You are not authorized to perform this action."))
     end
   end
 end

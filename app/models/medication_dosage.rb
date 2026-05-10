@@ -24,7 +24,7 @@ MedicationDosage = Data.define(
   end
 
   def selection_key
-    [normalized_amount, unit].join('|')
+    [normalized_amount, unit].join("|")
   end
 
   def to_option_payload
@@ -42,13 +42,13 @@ MedicationDosage = Data.define(
     }
   end
 
-  delegate :to_s, to: :dose_display
+  delegate(:to_s, to: :dose_display)
 
   private
 
   def normalized_amount
     return amount.to_i.to_s if amount.is_a?(BigDecimal) && amount.frac.zero?
-    return amount.to_s('F') if amount.is_a?(BigDecimal)
+    return amount.to_s("F") if amount.is_a?(BigDecimal)
 
     amount.to_s
   end

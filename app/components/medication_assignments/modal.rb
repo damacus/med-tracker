@@ -17,21 +17,24 @@ module Components
       end
 
       def view_template
-        turbo_frame_tag 'modal' do
+        turbo_frame_tag("modal") do
           Dialog(open: true) do
             DialogContent(size: :md) do
               DialogHeader do
                 render_back_link if back_path
-                DialogTitle { t('person_medications.form.add_medication_for', person: person.name) }
-                DialogDescription { t('medication_assignments.modal.subtitle') }
+                DialogTitle { t("person_medications.form.add_medication_for", person: person.name) }
+                DialogDescription { t("medication_assignments.modal.subtitle") }
               end
+
               DialogMiddle do
-                render Form.new(
-                  assignment: assignment,
-                  person: person,
-                  medications: medications,
-                  modal: true,
-                  back_path: back_path
+                render(
+                  Form.new(
+                    assignment: assignment,
+                    person: person,
+                    medications: medications,
+                    modal: true,
+                    back_path: back_path
+                  )
                 )
               end
             end
@@ -44,11 +47,11 @@ module Components
       def render_back_link
         a(
           href: back_path,
-          data: { turbo_frame: 'modal' },
-          class: 'inline-flex items-center text-sm text-on-surface-variant hover:text-foreground ' \
-                 'transition-colors mb-2 no-underline'
+          data: {turbo_frame: "modal"},
+          class: "inline-flex items-center text-sm text-on-surface-variant hover:text-foreground " \
+            "transition-colors mb-2 no-underline"
         ) do
-          plain t('medication_workflow.back')
+          plain(t("medication_workflow.back"))
         end
       end
     end

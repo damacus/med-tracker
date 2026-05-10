@@ -1,24 +1,28 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
 RSpec.describe PersonShowQuery do
-  describe '#call' do
-    it 'returns the person show read model for one person with only today takes grouped by source' do
+  describe "#call" do
+    it "returns the person show read model for one person with only today takes grouped by source" do
       person = create(:person)
       other_person = create(:person)
       show_data = create_show_data_for(person: person, other_person: other_person)
 
       result = described_class.new(person: person).call
 
-      expect(result.person).to eq(person)
-      expect(result.schedules).to contain_exactly(show_data[:schedule])
-      expect(result.person_medications).to contain_exactly(show_data[:person_medication])
-      expect(result.preloaded_takes[:schedules]).to eq(
-        show_data[:schedule].id => [show_data[:todays_schedule_take]]
+      expect(result.person).to(eq(person))
+      expect(result.schedules).to(contain_exactly(show_data[:schedule]))
+      expect(result.person_medications).to(contain_exactly(show_data[:person_medication]))
+      expect(result.preloaded_takes[:schedules]).to(
+        eq(
+          show_data[:schedule].id => [show_data[:todays_schedule_take]]
+        )
       )
-      expect(result.preloaded_takes[:person_medications]).to eq(
-        show_data[:person_medication].id => [show_data[:todays_person_medication_take]]
+      expect(result.preloaded_takes[:person_medications]).to(
+        eq(
+          show_data[:person_medication].id => [show_data[:todays_person_medication_take]]
+        )
       )
     end
   end

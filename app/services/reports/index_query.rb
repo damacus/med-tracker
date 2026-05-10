@@ -26,34 +26,39 @@ module Reports
     end
 
     def inventory_alerts
-      alerts = Schedule.active.where(person_id: person_ids)
-                       .includes(:medication)
-                       .map { |schedule| inventory_alert_for(schedule) }
-                       .compact
+      alerts = Schedule
+        .active
+        .where(person_id: person_ids)
+        .includes(:medication)
+        .map { |schedule| inventory_alert_for(schedule) }
+        .compact
 
-      alerts.select { |alert| alert[:days_left] < 14 }
-            .sort_by { |alert| alert[:days_left] }
-            .take(2)
+      alerts
+        .select { |alert| alert[:days_left] < 14 }
+        .sort_by { |alert| alert[:days_left] }
+        .take(2)
     end
 
     def schedules
-      @schedules ||= Schedule.where(person_id: person_ids)
-                             .where('start_date <= ? AND (end_date IS NULL OR end_date >= ?)', end_date, start_date)
-                             .to_a
+      @schedules ||= Schedule
+        .where(person_id: person_ids)
+        .where("start_date <= ? AND (end_date IS NULL OR end_date >= ?)", end_date, start_date)
+        .to_a
     end
 
     def takes_by_date
-      @takes_by_date ||= MedicationTake.where(schedule_id: schedules.map(&:id))
-                                       .where(taken_at: start_date.beginning_of_day..end_date.end_of_day)
-                                       .group_by { |take| take.taken_at.to_date }
+      @takes_by_date ||= MedicationTake
+        .where(schedule_id: schedules.map(&:id))
+        .where(taken_at: start_date.beginning_of_day..end_date.end_of_day)
+        .group_by { |take| take.taken_at.to_date }
     end
 
     def person_ids
       @person_ids ||= if people.respond_to?(:pluck)
-                        people.pluck(:id)
-                      else
-                        Array(people).map(&:id)
-                      end
+        people.pluck(:id)
+      else
+        Array(people).map(&:id)
+      end
     end
 
     def daily_row_for(date)
@@ -62,7 +67,7 @@ module Reports
 
       {
         date: date,
-        day_name: date.strftime('%a'),
+        day_name: date.strftime("%a"),
         percentage: compliance_percentage(expected_doses:, actual_doses:),
         expected: expected_doses,
         actual: actual_doses
@@ -98,9 +103,12 @@ module Reports
       dates = inventory_projection_dates_for(schedule)
       return 0 if dates.empty?
 
-      dates.sum do |date|
-        schedule.expected_doses_on(date) * stock_consumption_for(schedule, date).to_f
-      end.to_f / dates.size
+      dates
+        .sum do |date|
+          schedule.expected_doses_on(date) * stock_consumption_for(schedule, date).to_f
+        end
+        .to_f /
+        dates.size
     end
 
     def stock_consumption_for(schedule, date)

@@ -1,16 +1,17 @@
 # frozen_string_literal: true
 
-require 'json'
-require 'net/http'
-require 'uri'
+require "json"
+require "net/http"
+require "uri"
 
 module NhsWebsiteContent
   class Client
-    class ApiError < StandardError; end
+    class ApiError < StandardError
+    end
 
-    SANDBOX_BASE_URL = 'https://sandbox.api.service.nhs.uk/nhs-website-content'
-    PRODUCTION_BASE_URL = 'https://api.service.nhs.uk/nhs-website-content'
-    CACHE_PREFIX = 'nhs_website_content'
+    SANDBOX_BASE_URL = "https://sandbox.api.service.nhs.uk/nhs-website-content"
+    PRODUCTION_BASE_URL = "https://api.service.nhs.uk/nhs-website-content"
+    CACHE_PREFIX = "nhs_website_content"
     TIMEOUT_SECONDS = 5
     NETWORK_ERRORS = [
       Net::OpenTimeout,
@@ -26,11 +27,11 @@ module NhsWebsiteContent
       sandbox? || api_key.present?
     end
 
-    def list_medicines(category:, page: '1')
+    def list_medicines(category:, page: "1")
       fetch_json(
         cache_key: "#{CACHE_PREFIX}/medicines/index/#{base_url}/#{category}/#{page}",
-        path: '/medicines',
-        params: { 'category' => category, 'page' => page }
+        path: "/medicines",
+        params: {"category" => category, "page" => page}
       )
     end
 
@@ -38,7 +39,7 @@ module NhsWebsiteContent
       fetch_json(
         cache_key: "#{CACHE_PREFIX}/medicines/page/#{base_url}/#{slug}/#{modules}",
         path: "/medicines/#{slug}/",
-        params: { 'modules' => modules.to_s }
+        params: {"modules" => modules.to_s}
       )
     end
 
@@ -68,7 +69,7 @@ module NhsWebsiteContent
     end
 
     def sandbox?
-      ENV.fetch('NHS_WEBSITE_CONTENT_USE_SANDBOX', 'false') == 'true'
+      ENV.fetch("NHS_WEBSITE_CONTENT_USE_SANDBOX", "false") == "true"
     end
 
     def base_url
@@ -76,7 +77,7 @@ module NhsWebsiteContent
     end
 
     def api_key
-      ENV.fetch('NHS_WEBSITE_CONTENT_API_KEY', nil)
+      ENV.fetch("NHS_WEBSITE_CONTENT_API_KEY", nil)
     end
 
     def build_http_client(uri)
@@ -89,8 +90,8 @@ module NhsWebsiteContent
 
     def build_request(uri)
       Net::HTTP::Get.new(uri).tap do |request|
-        request['Accept'] = 'application/json'
-        request['apikey'] = api_key if api_key.present?
+        request["Accept"] = "application/json"
+        request["apikey"] = api_key if api_key.present?
       end
     end
   end

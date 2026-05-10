@@ -12,16 +12,16 @@ module Components
       end
 
       def view_template
-        div(id: "location_show_#{location.id}", class: 'container mx-auto px-4 py-12 max-w-6xl space-y-12') do
+        div(id: "location_show_#{location.id}", class: "container mx-auto px-4 py-12 max-w-6xl space-y-12") do
           render_notice if notice.present?
           render_header
 
-          div(class: 'grid grid-cols-1 lg:grid-cols-3 gap-12') do
-            div(class: 'lg:col-span-2 space-y-8') do
+          div(class: "grid grid-cols-1 lg:grid-cols-3 gap-12") do
+            div(class: "lg:col-span-2 space-y-8") do
               render_medications_section
             end
 
-            div(class: 'space-y-8') do
+            div(class: "space-y-8") do
               render_members_card
               render_details_card
             end
@@ -32,103 +32,122 @@ module Components
       private
 
       def render_notice
-        render RubyUI::Alert.new(variant: :success, class: 'mb-8 rounded-2xl border-none shadow-sm') do
+        render(RubyUI::Alert.new(variant: :success, class: "mb-8 rounded-2xl border-none shadow-sm")) do
           plain(notice)
         end
       end
 
       def render_header
-        div(class: 'flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-border') do
-          div(class: 'flex items-center gap-6') do
+        div(class: "flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-border") do
+          div(class: "flex items-center gap-6") do
             div(
-              class: 'w-20 h-20 rounded-[2rem] bg-primary/10 flex items-center justify-center text-primary shadow-inner'
+              class: "w-20 h-20 rounded-[2rem] bg-primary/10 flex items-center justify-center text-primary shadow-inner"
             ) do
-              render Icons::Home.new(size: 32)
+              render(Icons::Home.new(size: 32))
             end
-            div(class: 'space-y-1') do
-              m3_text(size: '2', weight: 'bold',
-                      class: 'uppercase tracking-[0.2em] font-black opacity-40 block mb-1') do
-                t('locations.show.location')
+
+            div(class: "space-y-1") do
+              m3_text(
+                size: "2",
+                weight: "bold",
+                class: "uppercase tracking-[0.2em] font-black opacity-40 block mb-1"
+              ) do
+                t("locations.show.location")
               end
-              m3_heading(level: 1, size: '8', class: 'font-black tracking-tight') { location.name }
+
+              m3_heading(level: 1, size: "8", class: "font-black tracking-tight") { location.name }
             end
           end
 
-          div(class: 'flex gap-3') do
-            Link(href: edit_location_path(location, return_to: location_path(location)), variant: :outlined, size: :lg,
-                 class: 'rounded-2xl font-bold text-sm bg-card') do
-              t('locations.show.edit_location')
+          div(class: "flex gap-3") do
+            Link(
+              href: edit_location_path(location, return_to: location_path(location)),
+              variant: :outlined,
+              size: :lg,
+              class: "rounded-2xl font-bold text-sm bg-card"
+            ) do
+              t("locations.show.edit_location")
             end
-            Link(href: locations_path, variant: :text, size: :lg,
-                 class: 'rounded-2xl font-bold text-sm text-on-surface-variant hover:text-foreground') do
-              t('locations.show.all_locations')
+
+            Link(
+              href: locations_path,
+              variant: :text,
+              size: :lg,
+              class: "rounded-2xl font-bold text-sm text-on-surface-variant hover:text-foreground"
+            ) do
+              t("locations.show.all_locations")
             end
           end
         end
       end
 
       def render_medications_section
-        div(class: 'space-y-4') do
-          div(class: 'flex items-center justify-between') do
-            m3_heading(level: 2, size: '5', class: 'font-bold tracking-tight') do
-              t('locations.show.medications_heading')
+        div(class: "space-y-4") do
+          div(class: "flex items-center justify-between") do
+            m3_heading(level: 2, size: "5", class: "font-bold tracking-tight") do
+              t("locations.show.medications_heading")
             end
           end
 
           if location.medications.present?
-            div(class: 'grid grid-cols-1 md:grid-cols-2 gap-4') do
+            div(class: "grid grid-cols-1 md:grid-cols-2 gap-4") do
               location.medications.each do |medication|
                 render_medication_card(medication)
               end
             end
           else
-            m3_card(class: 'p-8 text-center') do
-              m3_text(size: '3', class: 'text-on-surface-variant') { t('locations.show.no_medications') }
+            m3_card(class: "p-8 text-center") do
+              m3_text(size: "3", class: "text-on-surface-variant") { t("locations.show.no_medications") }
             end
           end
         end
       end
 
       def render_medication_card(medication)
-        m3_card(class: 'p-6 hover:shadow-md transition-shadow overflow-hidden') do
-          div(class: 'flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between') do
-            div(class: 'flex items-start gap-4 min-w-0 flex-1') do
+        m3_card(class: "p-6 hover:shadow-md transition-shadow overflow-hidden") do
+          div(class: "flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between") do
+            div(class: "flex items-start gap-4 min-w-0 flex-1") do
               div(
-                class: 'w-10 h-10 rounded-xl bg-secondary-container flex items-center ' \
-                       'justify-center text-on-surface-variant flex-shrink-0'
+                class: "w-10 h-10 rounded-xl bg-secondary-container flex items-center " \
+                  "justify-center text-on-surface-variant flex-shrink-0"
               ) do
-                render Icons::Pill.new(size: 20)
+                render(Icons::Pill.new(size: 20))
               end
-              div(class: 'min-w-0 flex-1') do
+
+              div(class: "min-w-0 flex-1") do
                 Link(
                   href: medication_path(medication),
                   variant: :link,
-                  class: 'font-semibold text-base no-underline whitespace-normal break-words text-left leading-snug'
+                  class: "font-semibold text-base no-underline whitespace-normal break-words text-left leading-snug"
                 ) do
                   medication.name
                 end
+
                 if medication.dosage_amount.present? && medication.dosage_unit.present?
-                  m3_text(size: '1', class: 'text-on-surface-variant') do
+                  m3_text(size: "1", class: "text-on-surface-variant") do
                     "#{medication.dosage_amount} #{medication.dosage_unit}"
                   end
                 end
               end
             end
+
             if medication.low_stock?
-              Badge(variant: :destructive, class: 'shrink-0 whitespace-nowrap justify-center') { 'Low Stock' }
+              Badge(variant: :destructive, class: "shrink-0 whitespace-nowrap justify-center") { "Low Stock" }
             else
-              Badge(variant: :success, class: 'shrink-0 whitespace-nowrap justify-center') do
+              Badge(variant: :success, class: "shrink-0 whitespace-nowrap justify-center") do
                 ::Medications::SupplyStatusPresenter.new(medication: medication).inventory_units_label
               end
             end
           end
 
           if view_context.policy(medication).update?
-            div(class: 'pt-4') do
-              render Components::Medications::RefillModal.new(
-                medication: medication,
-                button_variant: :outlined,
-                button_class: 'w-full'
+            div(class: "pt-4") do
+              render(
+                Components::Medications::RefillModal.new(
+                  medication: medication,
+                  button_variant: :outlined,
+                  button_class: "w-full"
+                )
               )
             end
           end
@@ -136,26 +155,27 @@ module Components
       end
 
       def render_members_card
-        m3_card(class: 'p-8 space-y-6') do
-          div(class: 'flex items-center justify-between') do
-            m3_heading(level: 3, size: '4', class: 'font-bold') { t('locations.show.members') }
+        m3_card(class: "p-8 space-y-6") do
+          div(class: "flex items-center justify-between") do
+            m3_heading(level: 3, size: "4", class: "font-bold") { t("locations.show.members") }
             render_add_member_dialog if view_context.policy(location).update?
           end
 
           if location.members.present?
-            div(class: 'space-y-3') do
+            div(class: "space-y-3") do
               # Bolt: Pre-index memberships by person_id to convert O(N^2) search to O(N) with O(1) hash lookups
               memberships_by_person_id = location.location_memberships.index_by(&:person_id)
               location.members.each do |member|
-                div(class: 'flex items-center justify-between group') do
-                  div(class: 'flex items-center gap-3') do
+                div(class: "flex items-center justify-between group") do
+                  div(class: "flex items-center gap-3") do
                     div(
-                      class: 'w-8 h-8 rounded-full bg-primary/10 flex items-center ' \
-                             'justify-center text-on-surface-variant'
+                      class: "w-8 h-8 rounded-full bg-primary/10 flex items-center " \
+                        "justify-center text-on-surface-variant"
                     ) do
-                      render Icons::User.new(size: 16)
+                      render(Icons::User.new(size: 16))
                     end
-                    m3_text(size: '2', weight: 'semibold', class: 'text-foreground') { member.name }
+
+                    m3_text(size: "2", weight: "semibold", class: "text-foreground") { member.name }
                   end
 
                   if view_context.policy(location).update?
@@ -166,7 +186,7 @@ module Components
               end
             end
           else
-            m3_text(size: '2', class: 'text-on-surface-variant italic') { t('locations.show.no_members') }
+            m3_text(size: "2", class: "text-on-surface-variant italic") { t("locations.show.no_members") }
           end
         end
       end
@@ -177,28 +197,31 @@ module Components
             m3_button(
               variant: :text,
               size: :sm,
-              class: 'opacity-0 group-hover:opacity-100 transition-opacity text-on-surface-variant ' \
-                     'hover:text-destructive h-8 w-8 p-0',
-              aria_label: t('locations.show.remove_member.aria_label', default: 'Remove member')
+              class: "opacity-0 group-hover:opacity-100 transition-opacity text-on-surface-variant " \
+                "hover:text-destructive h-8 w-8 p-0",
+              aria_label: t("locations.show.remove_member.aria_label", default: "Remove member")
             ) do
-              render Icons::X.new(size: 14)
+              render(Icons::X.new(size: 14))
             end
           end
 
-          AlertDialogContent(class: 'rounded-[2rem] border-none shadow-2xl') do
+          AlertDialogContent(class: "rounded-[2rem] border-none shadow-2xl") do
             AlertDialogHeader do
-              AlertDialogTitle { t('locations.show.remove_member.title') }
+              AlertDialogTitle { t("locations.show.remove_member.title") }
               AlertDialogDescription do
-                t('locations.show.remove_member.confirm', name: member.name, location: location.name)
+                t("locations.show.remove_member.confirm", name: member.name, location: location.name)
               end
             end
 
             AlertDialogFooter do
-              AlertDialogCancel(class: 'rounded-xl') { t('locations.show.remove_member.cancel') }
-              form_with(url: location_location_membership_path(location, membership), method: :delete,
-                        class: 'inline') do
-                m3_button(variant: :destructive, type: :submit, class: 'rounded-xl shadow-lg shadow-destructive/20') do
-                  t('locations.show.remove_member.submit')
+              AlertDialogCancel(class: "rounded-xl") { t("locations.show.remove_member.cancel") }
+              form_with(
+                url: location_location_membership_path(location, membership),
+                method: :delete,
+                class: "inline"
+              ) do
+                m3_button(variant: :destructive, type: :submit, class: "rounded-xl shadow-lg shadow-destructive/20") do
+                  t("locations.show.remove_member.submit")
                 end
               end
             end
@@ -207,26 +230,26 @@ module Components
       end
 
       def render_details_card
-        m3_card(class: 'p-8 space-y-4') do
-          div(class: 'flex items-center justify-between') do
-            m3_heading(level: 3, size: '4', class: 'font-bold') { t('locations.show.details') }
+        m3_card(class: "p-8 space-y-4") do
+          div(class: "flex items-center justify-between") do
+            m3_heading(level: 3, size: "4", class: "font-bold") { t("locations.show.details") }
             if view_context.policy(location).update?
               Link(
                 href: edit_location_path(location, return_to: location_path(location)),
                 variant: :text,
                 size: :sm,
-                class: 'text-on-surface-variant hover:text-primary h-8 w-8 p-0 flex items-center justify-center',
-                aria_label: t('locations.show.edit_details', default: 'Edit location details')
+                class: "text-on-surface-variant hover:text-primary h-8 w-8 p-0 flex items-center justify-center",
+                aria_label: t("locations.show.edit_details", default: "Edit location details")
               ) do
-                render Icons::Pencil.new(size: 16)
+                render(Icons::Pencil.new(size: 16))
               end
             end
           end
 
           if location.description.present?
-            m3_text(size: '2', class: 'text-on-surface-variant leading-relaxed') { location.description }
+            m3_text(size: "2", class: "text-on-surface-variant leading-relaxed") { location.description }
           else
-            m3_text(size: '2', class: 'text-on-surface-variant italic') { t('locations.show.no_details') }
+            m3_text(size: "2", class: "text-on-surface-variant italic") { t("locations.show.no_details") }
           end
         end
       end
@@ -239,54 +262,56 @@ module Components
             m3_button(
               variant: :text,
               size: :sm,
-              class: 'w-8 h-8 p-0 rounded-full bg-secondary-container text-on-surface-variant ' \
-                     'hover:text-primary hover:bg-primary/5',
-              aria_label: t('locations.show.add_member.aria_label', default: 'Add member')
+              class: "w-8 h-8 p-0 rounded-full bg-secondary-container text-on-surface-variant " \
+                "hover:text-primary hover:bg-primary/5",
+              aria_label: t("locations.show.add_member.aria_label", default: "Add member")
             ) do
-              render Icons::Plus.new(size: 16)
+              render(Icons::Plus.new(size: 16))
             end
           end
 
           DialogContent(size: :md) do
             DialogHeader do
-              DialogTitle { t('locations.show.add_member.title') }
-              DialogDescription { t('locations.show.add_member.description', name: location.name) }
+              DialogTitle { t("locations.show.add_member.title") }
+              DialogDescription { t("locations.show.add_member.description", name: location.name) }
             end
 
             DialogMiddle do
               if available_people.to_a.any?
-                form_with(url: location_location_memberships_path(location), method: :post, class: 'space-y-4') do
-                  div(class: 'space-y-2') do
-                    label(for: 'location_membership_person_id', class: 'text-sm font-medium') do
-                      t('locations.show.add_member.select_person')
+                form_with(url: location_location_memberships_path(location), method: :post, class: "space-y-4") do
+                  div(class: "space-y-2") do
+                    label(for: "location_membership_person_id", class: "text-sm font-medium") do
+                      t("locations.show.add_member.select_person")
                     end
+
                     select(
-                      name: 'location_membership[person_id]',
-                      id: 'location_membership_person_id',
+                      name: "location_membership[person_id]",
+                      id: "location_membership_person_id",
                       class: select_classes,
                       required: true
                     ) do
-                      option(value: '') { t('locations.show.add_member.placeholder') }
+                      option(value: "") { t("locations.show.add_member.placeholder") }
                       available_people.each do |person|
                         option(value: person.id) { person.name }
                       end
                     end
                   end
 
-                  div(class: 'flex justify-end gap-3 pt-2') do
-                    m3_button(type: :submit, variant: :filled) { t('locations.show.add_member.submit') }
+                  div(class: "flex justify-end gap-3 pt-2") do
+                    m3_button(type: :submit, variant: :filled) { t("locations.show.add_member.submit") }
                   end
                 end
               else
-                div(class: 'py-8 text-center space-y-2') do
+                div(class: "py-8 text-center space-y-2") do
                   div(
-                    class: 'w-12 h-12 rounded-full bg-secondary-container flex items-center justify-center ' \
-                           'text-on-surface-variant mx-auto'
+                    class: "w-12 h-12 rounded-full bg-secondary-container flex items-center justify-center " \
+                      "text-on-surface-variant mx-auto"
                   ) do
-                    render Icons::Users.new(size: 24)
+                    render(Icons::Users.new(size: 24))
                   end
-                  m3_text(size: '2', class: 'text-on-surface-variant font-medium') do
-                    t('locations.show.add_member.all_assigned')
+
+                  m3_text(size: "2", class: "text-on-surface-variant font-medium") do
+                    t("locations.show.add_member.all_assigned")
                   end
                 end
               end

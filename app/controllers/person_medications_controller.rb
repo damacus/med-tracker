@@ -10,26 +10,26 @@ class PersonMedicationsController < ApplicationController
   before_action :set_person_medication, only: %i[edit update destroy take_medication reorder]
 
   def new
-    authorize PersonMedication
+    authorize(PersonMedication)
     prepare_new_person_medication
     render_person_medication_form(
-      title: t('person_medications.modal.new_title', person: @person.name),
+      title: t("person_medications.modal.new_title", person: @person.name),
       back_path: modal_back_path(@person)
     )
   end
 
   def edit
-    authorize @person_medication
+    authorize(@person_medication)
     @medications = medication_options_query.call
     render_person_medication_form(
-      title: t('person_medications.modal.edit_title', person: @person.name),
+      title: t("person_medications.modal.edit_title", person: @person.name),
       editing: true
     )
   end
 
   def create
     @person_medication = @person.person_medications.build(person_medication_params)
-    authorize @person_medication
+    authorize(@person_medication)
     @medications = medication_options_query.call
 
     if save_person_medication?
@@ -40,7 +40,7 @@ class PersonMedicationsController < ApplicationController
   end
 
   def update
-    authorize @person_medication
+    authorize(@person_medication)
     @medications = medication_options_query.call
 
     if @person_medication.update(person_medication_update_params)
@@ -51,20 +51,20 @@ class PersonMedicationsController < ApplicationController
   end
 
   def destroy
-    authorize @person_medication
+    authorize(@person_medication)
     @person_medication.destroy
     render_person_medication_destroy_success
   end
 
   def reorder
-    authorize @person_medication, :update?
+    authorize(@person_medication, :update?)
     PersonMedicationReorderService.new.call(person_medication: @person_medication, direction: params[:direction])
     render_person_medication_reorder_success
   end
 
   def take_medication
-    authorize @person_medication, :take_medication?
-    taken_at = medication_taken_at_or_respond(scope: 'person_medications')
+    authorize(@person_medication, :take_medication?)
+    taken_at = medication_taken_at_or_respond(scope: "person_medications")
     return unless taken_at
 
     result = take_person_medication(taken_at)
@@ -77,7 +77,7 @@ class PersonMedicationsController < ApplicationController
 
   def set_person
     @person = policy_scope(Person).find(params[:person_id])
-    authorize @person, :show?
+    authorize(@person, :show?)
   end
 
   def set_person_medication
@@ -89,28 +89,36 @@ class PersonMedicationsController < ApplicationController
     if medication_options_query.include?(params[:medication_id])
       @person_medication.medication_id = params[:medication_id]
     end
+
     @medications = medication_options_query.call
   end
 
   def render_person_medication_form(title:, editing: false, back_path: nil, status: :ok)
-    is_modal = request.headers['Turbo-Frame'] == 'modal'
+    is_modal = request.headers["Turbo-Frame"] == "modal"
 
     respond_to do |format|
       format.html { render_person_medication_html_form(title:, editing:, back_path:, status:, is_modal:) }
       format.turbo_stream do
-        render turbo_stream: turbo_stream.replace(
-          'modal',
-          person_medication_modal(title: title, editing: editing, back_path: back_path)
-        ), status: status
+        render(
+          turbo_stream: turbo_stream.replace(
+            "modal",
+            person_medication_modal(title: title, editing: editing, back_path: back_path)
+          ),
+          status: status
+        )
       end
     end
   end
 
   def render_person_medication_html_form(title:, editing:, back_path:, status:, is_modal:)
     if is_modal
-      render person_medication_modal(title: title, editing: editing, back_path: back_path), layout: false, status: status
+      render(
+        person_medication_modal(title: title, editing: editing, back_path: back_path),
+        layout: false,
+        status: status
+      )
     else
-      render person_medication_form_view(editing: editing), status: status
+      render(person_medication_form_view(editing: editing), status: status)
     end
   end
 
@@ -143,14 +151,14 @@ class PersonMedicationsController < ApplicationController
 
   def render_person_medication_create_failure
     render_person_medication_form(
-      title: t('person_medications.modal.new_title', person: @person.name),
+      title: t("person_medications.modal.new_title", person: @person.name),
       status: :unprocessable_content
     )
   end
 
   def render_person_medication_update_failure
     render_person_medication_form(
-      title: t('person_medications.modal.edit_title', person: @person.name),
+      title: t("person_medications.modal.edit_title", person: @person.name),
       editing: true,
       status: :unprocessable_content
     )
@@ -158,59 +166,61 @@ class PersonMedicationsController < ApplicationController
 
   def render_person_medication_create_success
     respond_to do |format|
-      format.html { redirect_to person_path(@person), notice: t('person_medications.created') }
+      format.html { redirect_to(person_path(@person), notice: t("person_medications.created")) }
       format.turbo_stream do
-        flash.now[:notice] = t('person_medications.created')
-        render turbo_stream: person_medication_create_streams
+        flash.now[:notice] = t("person_medications.created")
+        render(turbo_stream: person_medication_create_streams)
       end
     end
   end
 
   def person_medication_create_streams
     [
-      turbo_stream.update('modal', ''),
+      turbo_stream.update("modal", ""),
       turbo_stream.replace("person_#{@person.id}", Components::People::PersonCard.new(person: @person.reload)),
       turbo_stream.replace("person_show_#{@person.id}", person_show_view(@person.reload)),
-      turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
+      turbo_stream.update("flash", Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
     ]
   end
 
   def render_person_medication_update_success
     respond_to do |format|
-      format.html { redirect_to person_path(@person), notice: t('person_medications.updated') }
+      format.html { redirect_to(person_path(@person), notice: t("person_medications.updated")) }
       format.turbo_stream do
-        flash.now[:notice] = t('person_medications.updated')
-        render turbo_stream: person_medication_update_streams
+        flash.now[:notice] = t("person_medications.updated")
+        render(turbo_stream: person_medication_update_streams)
       end
     end
   end
 
   def person_medication_update_streams
     [
-      turbo_stream.update('modal', ''),
+      turbo_stream.update("modal", ""),
       turbo_stream.replace("person_show_#{@person.id}", person_show_view(@person.reload)),
-      turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
+      turbo_stream.update("flash", Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
     ]
   end
 
   def render_person_medication_destroy_success
     respond_to do |format|
-      format.html { redirect_back_or_to person_path(@person), notice: t('person_medications.deleted') }
+      format.html { redirect_back_or_to(person_path(@person), notice: t("person_medications.deleted")) }
       format.turbo_stream do
-        flash.now[:notice] = t('person_medications.deleted')
-        render turbo_stream: [
-          turbo_stream.replace("person_show_#{@person.id}", person_show_view(@person.reload)),
-          turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
-        ]
+        flash.now[:notice] = t("person_medications.deleted")
+        render(
+          turbo_stream: [
+            turbo_stream.replace("person_show_#{@person.id}", person_show_view(@person.reload)),
+            turbo_stream.update("flash", Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
+          ]
+        )
       end
     end
   end
 
   def render_person_medication_reorder_success
     respond_to do |format|
-      format.html { redirect_back_or_to person_path(@person) }
+      format.html { redirect_back_or_to(person_path(@person)) }
       format.turbo_stream do
-        render turbo_stream: turbo_stream.replace("person_show_#{@person.id}", person_show_view(@person.reload))
+        render(turbo_stream: turbo_stream.replace("person_show_#{@person.id}", person_show_view(@person.reload)))
       end
     end
   end
@@ -228,24 +238,29 @@ class PersonMedicationsController < ApplicationController
   end
 
   def log_person_medication_invalid_take_attempt
-    log_invalid_take_attempt(source: 'person_medication', amount: nil,
-                             metadata: { person_medication_id: @person_medication.id,
-                                         medication_id: @person_medication.medication_id })
+    log_invalid_take_attempt(
+      source: "person_medication",
+      amount: nil,
+      metadata: {
+        person_medication_id: @person_medication.id,
+        medication_id: @person_medication.medication_id
+      }
+    )
   end
 
   def handle_person_medication_take_failure(result)
-    handle_take_medication_failure(result.error, scope: 'person_medications')
+    handle_take_medication_failure(result.error, scope: "person_medications")
   end
 
   def render_person_medication_take_success(take)
     @take = take
     respond_to do |format|
-      format.html { redirect_back_or_to person_path(@person), notice: t('person_medications.medication_taken') }
+      format.html { redirect_back_or_to(person_path(@person), notice: t("person_medications.medication_taken")) }
       format.turbo_stream do
-        flash.now[:notice] = t('person_medications.medication_taken')
+        flash.now[:notice] = t("person_medications.medication_taken")
         streams = build_timeline_streams_for(@person_medication.reload, @take)
-        streams << turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice]))
-        render turbo_stream: streams
+        streams << turbo_stream.update("flash", Components::Layouts::Flash.new(notice: flash[:notice]))
+        render(turbo_stream: streams)
       end
     end
   end

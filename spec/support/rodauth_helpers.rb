@@ -3,27 +3,27 @@
 module RodauthHelpers
   # Rodauth path helpers for tests
   def login_path
-    '/login'
+    "/login"
   end
 
   def logout_path
-    '/logout'
+    "/logout"
   end
 
   def create_account_path
-    '/create-account'
+    "/create-account"
   end
 
   def verify_account_path
-    '/verify-account'
+    "/verify-account"
   end
 
   def reset_password_path
-    '/reset-password'
+    "/reset-password"
   end
 end
 
 RSpec.configure do |config|
-  config.include RodauthHelpers, type: :system
-  config.include RodauthHelpers, type: :request
+  config.include(RodauthHelpers, type: :system)
+  config.include(RodauthHelpers, type: :request)
 end

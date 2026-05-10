@@ -15,12 +15,13 @@ module TimingRestrictions
   def timing_policy
     return @timing_policy if defined?(@timing_policy)
 
-    cycle = respond_to?(:dose_cycle) ? dose_cycle : 'daily'
+    cycle = respond_to?(:dose_cycle) ? dose_cycle : "daily"
     takes = if medication_takes.loaded?
-              medication_takes.to_a
-            else
-              medication_takes.where(taken_at: 31.days.ago.beginning_of_day..Time.current.end_of_day).to_a
-            end
+      medication_takes.to_a
+    else
+      medication_takes.where(taken_at: 31.days.ago.beginning_of_day..Time.current.end_of_day).to_a
+    end
+
     @timing_policy = DoseTimingPolicy.new(
       takes: takes,
       dose_constraints: dose_constraints,
@@ -47,6 +48,7 @@ module TimingRestrictions
   def can_take_now?
     can_take_at?
   end
+
   delegate :next_available_time, :time_until_next_dose, :countdown_display, to: :timing_policy
 
   def can_administer?

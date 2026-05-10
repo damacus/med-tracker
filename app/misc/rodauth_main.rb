@@ -1,18 +1,33 @@
 # frozen_string_literal: true
 
-require 'sequel/core'
+require "sequel/core"
 
 # rubocop:disable Metrics/ClassLength
 class RodauthMain < Rodauth::Rails::Auth
   # rubocop:disable Metrics/BlockLength -- Rodauth configuration DSL requires a single configure block
   configure do
     # List of authentication features that are loaded.
-    enable :create_account, :verify_account, :verify_account_grace_period,
-           :login, :logout, :remember, :lockout, :active_sessions,
-           :reset_password, :change_password, :change_login, :verify_login_change,
-           :close_account, :omniauth,
-           :otp, :recovery_codes,
-           :webauthn, :webauthn_login, :webauthn_autofill
+    enable(
+      :create_account,
+      :verify_account,
+      :verify_account_grace_period,
+      :login,
+      :logout,
+      :remember,
+      :lockout,
+      :active_sessions,
+      :reset_password,
+      :change_password,
+      :change_login,
+      :verify_login_change,
+      :close_account,
+      :omniauth,
+      :otp,
+      :recovery_codes,
+      :webauthn,
+      :webauthn_login,
+      :webauthn_autofill
+    )
 
     # See the Rodauth documentation for the list of available config options:
     # http://rodauth.jeremyevans.net/documentation.html
@@ -21,13 +36,13 @@ class RodauthMain < Rodauth::Rails::Auth
     # Initialize Sequel and have it reuse Active Record's database connection.
     # Use appropriate adapter based on Rails database configuration
     db_adapter = ActiveRecord::Base.connection.adapter_name.downcase
-    if db_adapter == 'postgresql'
+    if db_adapter == "postgresql"
       db Sequel.postgres(extensions: :activerecord_connection, keep_reference: false)
     else
       db Sequel.sqlite(extensions: :activerecord_connection, keep_reference: false)
     end
     # Avoid DB query that checks accounts table schema at boot time.
-    convert_token_id_to_integer? { Account.columns_hash['id'].type == :integer }
+    convert_token_id_to_integer? { Account.columns_hash["id"].type == :integer }
 
     # Specify the controller used for view rendering, CSRF, and callbacks.
     rails_controller { RodauthController }
@@ -56,8 +71,8 @@ class RodauthMain < Rodauth::Rails::Auth
     end
 
     # Change some default param keys.
-    login_param 'email'
-    login_confirm_param 'email-confirm'
+    login_param "email"
+    login_confirm_param "email-confirm"
     send_email do |email|
       # queue email delivery on the mailer after the transaction commits
       db.after_commit { email.deliver_later }
@@ -65,47 +80,50 @@ class RodauthMain < Rodauth::Rails::Auth
 
     email_from do
       Rails.application.credentials.dig(:mailer, :from) ||
-        ENV.fetch('MAILER_FROM', 'MedTracker <noreply@medtracker.app>')
+        ENV.fetch("MAILER_FROM", "MedTracker <noreply@medtracker.app>")
     end
-    verify_account_email_subject { I18n.t('rodauth.verify_account.subject') }
+
+    verify_account_email_subject { I18n.t("rodauth.verify_account.subject") }
 
     create_verify_account_email do
       RodauthMailer.verify_account(self.class.configuration_name, account_id, verify_account_key_value)
     end
 
-    reset_password_email_subject { I18n.t('rodauth.reset_password.subject') }
+    reset_password_email_subject { I18n.t("rodauth.reset_password.subject") }
     create_reset_password_email do
       RodauthMailer.reset_password(self.class.configuration_name, account_id, reset_password_key_value)
     end
 
-    verify_login_change_email_subject { I18n.t('rodauth.verify_login_change.subject') }
+    verify_login_change_email_subject { I18n.t("rodauth.verify_login_change.subject") }
     create_verify_login_change_email do |_login|
       RodauthMailer.verify_login_change(self.class.configuration_name, account_id, verify_login_change_key_value)
     end
 
-    unlock_account_email_subject { I18n.t('rodauth.unlock_account.subject') }
+    unlock_account_email_subject { I18n.t("rodauth.unlock_account.subject") }
     create_unlock_account_email do
       RodauthMailer.unlock_account(self.class.configuration_name, account_id, account_lockouts_key_value)
     end
 
     password_minimum_length 12
     # bcrypt has a maximum input length of 72 bytes, truncating any extra bytes.
-    password_maximum_bytes 72 # add custom password complexity rules
+    # add custom password complexity rules
+    password_maximum_bytes 72
     # Custom password complexity requirements (alternative to password_complexity feature).
     password_meets_requirements? do |password|
       super(password) && password_complex_enough?(password)
     end
+
     auth_class_eval do
       def password_complex_enough?(password)
         return true if password.match?(/\d/) && password.match?(/[^a-zA-Z\d]/)
 
-        set_password_requirement_error_message(:password_simple, 'requires one number and one special character')
+        set_password_requirement_error_message(:password_simple, "requires one number and one special character")
         false
       end
 
       def webauthn_user_verification
         if current_route == :webauthn_login || @webauthn_login
-          'required'
+          "required"
         else
           super
         end
@@ -116,29 +134,31 @@ class RodauthMain < Rodauth::Rails::Auth
       end
 
       def invite_only_registration_message
-        I18n.t('authentication.invite_only',
-               default: 'Registration is by invitation only. Please contact an administrator.')
+        I18n.t(
+          "authentication.invite_only",
+          default: "Registration is by invitation only. Please contact an administrator."
+        )
       end
     end
 
     after_login do
-      remember_login if param_or_nil('remember')
+      remember_login if param_or_nil("remember")
 
-      id_token = omniauth_auth&.dig('credentials', 'id_token')
+      id_token = omniauth_auth&.dig("credentials", "id_token")
       next unless id_token
 
       session[:oidc_id_token] = id_token
 
       # Flag whether Zitadel satisfied MFA this session (amr claim, RFC 8176).
       # Only skip local 2FA enforcement when the IdP actually performed MFA.
-      amr = Array(omniauth_auth.dig('extra', 'raw_info', 'amr'))
+      amr = Array(omniauth_auth.dig("extra", "raw_info", "amr"))
       session[:oidc_mfa_verified] = amr.intersect?(%w[mfa otp u2f hwk swk])
 
       user = Account.find_by(id: account_id)&.person&.user
       if user
         new_role = zitadel_role_for(omniauth_auth)
         if new_role && user.role.to_sym != new_role && !user.update(role: new_role)
-          Rails.logger.warn("[OIDC] Role sync failed for #{account_id}: #{user.errors.full_messages.join(', ')}")
+          Rails.logger.warn("[OIDC] Role sync failed for #{account_id}: #{user.errors.full_messages.join(", ")}")
         end
       end
     end
@@ -169,30 +189,31 @@ class RodauthMain < Rodauth::Rails::Auth
 
     # ==> Two-Factor Authentication (OTP) Configuration
     # TOTP issuer name shown in authenticator apps
-    otp_issuer 'MedTracker'
+    otp_issuer "MedTracker"
 
     # ==> WebAuthn (Passkey) Configuration
-    webauthn_rp_name 'MedTracker'
+    webauthn_rp_name "MedTracker"
     webauthn_rp_id do
-      if ENV['APP_URL'].present?
-        URI.parse(ENV.fetch('APP_URL')).host
+      if ENV["APP_URL"].present?
+        URI.parse(ENV.fetch("APP_URL")).host
       else
         request.host
       end
     end
 
-    webauthn_origin { ENV.fetch('APP_URL', request.base_url) }
-    webauthn_user_verification 'required'
+    webauthn_origin { ENV.fetch("APP_URL", request.base_url) }
+    webauthn_user_verification "required"
     webauthn_authenticator_selection do
       {
-        'residentKey' => 'required',
-        'requireResidentKey' => true,
-        'userVerification' => webauthn_user_verification
+        "residentKey" => "required",
+        "requireResidentKey" => true,
+        "userVerification" => webauthn_user_verification
       }
     end
+
     webauthn_login_user_verification_additional_factor? true
-    webauthn_login_error_flash { I18n.t('sessions.login.passkey_error') }
-    webauthn_invalid_webauthn_id_message { I18n.t('sessions.login.passkey_error') }
+    webauthn_login_error_flash { I18n.t("sessions.login.passkey_error") }
+    webauthn_invalid_webauthn_id_message { I18n.t("sessions.login.passkey_error") }
 
     # Configure WebAuthn table column mappings for Rails conventions
     webauthn_user_ids_account_id_column :account_id
@@ -212,17 +233,19 @@ class RodauthMain < Rodauth::Rails::Auth
 
       require_two_factor_authenticated
     end
+
     before_webauthn_setup_route do
       # Allow WebAuthn setup if user has no 2FA methods configured yet
       next unless two_factor_authentication_setup?
 
       require_two_factor_authenticated
     end
+
     before_recovery_codes_route do
       # Recovery codes require at least one 2FA method to be set up first
       # If no 2FA is set up, redirect to OTP setup with a message
       unless two_factor_authentication_setup?
-        set_redirect_error_flash 'You need to set up an authenticator app or passkey before generating recovery codes'
+        set_redirect_error_flash "You need to set up an authenticator app or passkey before generating recovery codes"
         redirect otp_setup_path
       end
       # If 2FA is set up but not authenticated in this session, require auth
@@ -232,25 +255,30 @@ class RodauthMain < Rodauth::Rails::Auth
     # ==> OmniAuth (Generic OIDC)
     # Configure OpenID Connect provider
     # Credentials from Rails credentials or environment variables
-    oidc_issuer = Rails.application.credentials.dig(:oidc, :issuer_url) || ENV.fetch('OIDC_ISSUER_URL', nil)
-    oidc_client_id = Rails.application.credentials.dig(:oidc, :client_id) || ENV.fetch('OIDC_CLIENT_ID', nil)
-    oidc_client_secret = Rails.application.credentials.dig(:oidc,
-                                                           :client_secret) || ENV.fetch('OIDC_CLIENT_SECRET', nil)
+    oidc_issuer = Rails.application.credentials.dig(:oidc, :issuer_url) || ENV.fetch("OIDC_ISSUER_URL", nil)
+    oidc_client_id = Rails.application.credentials.dig(:oidc, :client_id) || ENV.fetch("OIDC_CLIENT_ID", nil)
+    oidc_client_secret = Rails.application.credentials.dig(
+      :oidc,
+      :client_secret
+    ) ||
+      ENV.fetch("OIDC_CLIENT_SECRET", nil)
 
     if oidc_client_id.present? && oidc_issuer.present?
-      omniauth_provider :openid_connect,
-                        name: :oidc,
-                        scope: %i[openid email profile],
-                        response_type: :code,
-                        uid_field: 'sub',
-                        discovery: true,
-                        issuer: oidc_issuer,
-                        client_options: {
-                          identifier: oidc_client_id,
-                          secret: oidc_client_secret,
-                          redirect_uri: ENV.fetch('OIDC_REDIRECT_URI', nil).presence ||
-                                        "#{ENV.fetch('APP_URL', 'http://localhost:3000').delete_suffix('/')}/auth/oidc/callback"
-                        }
+      omniauth_provider(
+        :openid_connect,
+        name: :oidc,
+        scope: %i[openid email profile],
+        response_type: :code,
+        uid_field: "sub",
+        discovery: true,
+        issuer: oidc_issuer,
+        client_options: {
+          identifier: oidc_client_id,
+          secret: oidc_client_secret,
+          redirect_uri: ENV.fetch("OIDC_REDIRECT_URI", nil).presence ||
+            "#{ENV.fetch("APP_URL", "http://localhost:3000").delete_suffix("/")}/auth/oidc/callback"
+        }
+      )
     end
 
     # ==> Hooks
@@ -258,7 +286,7 @@ class RodauthMain < Rodauth::Rails::Auth
     # valid invitation token is present. This prevents unauthenticated users from
     # even seeing the registration form in invite-only mode.
     before_create_account_route do
-      next if param_or_nil('invitation_token').present?
+      next if param_or_nil("invitation_token").present?
       next unless invite_only_registration_required?
 
       set_notice_flash invite_only_registration_message
@@ -268,47 +296,51 @@ class RodauthMain < Rodauth::Rails::Auth
     # Validate custom fields in the create account form.
     before_create_account do
       # Validate name
-      name = param_or_nil('name')
-      throw_error_status(422, 'name', 'must be present') if name.blank?
+      name = param_or_nil("name")
+      throw_error_status(422, "name", "must be present") if name.blank?
 
       # Validate date of birth
-      date_of_birth_str = param_or_nil('date_of_birth')
-      throw_error_status(422, 'date_of_birth', 'must be present') if date_of_birth_str.blank?
+      date_of_birth_str = param_or_nil("date_of_birth")
+      throw_error_status(422, "date_of_birth", "must be present") if date_of_birth_str.blank?
 
       begin
         date_of_birth = Date.parse(date_of_birth_str)
       rescue ArgumentError, TypeError
-        throw_error_status(422, 'date_of_birth', 'must be a valid date')
+        throw_error_status(422, "date_of_birth", "must be a valid date")
       end
 
       if Person.new(date_of_birth: date_of_birth).age < 18
-        throw_error_status(422, 'date_of_birth', 'Children must be added by a parent or carer.')
+        throw_error_status(422, "date_of_birth", "Children must be added by a parent or carer.")
       end
 
       # Validate invitation token if present and lock down email
-      if (token = param_or_nil('invitation_token'))
+      if (token = param_or_nil("invitation_token"))
         digest = Invitation.digest(token)
         @invitation = Invitation.pending.where.not(role: Invitation.roles[:minor]).find_by(token_digest: digest)
-        throw_error_status(422, 'invitation_token', 'is invalid or expired') unless @invitation
+        throw_error_status(422, "invitation_token", "is invalid or expired") unless @invitation
         request.params[login_param] = @invitation.email
       end
 
       if @invitation.nil? && invite_only_registration_required?
-        throw_error_status(422, 'invitation_token', 'is required when registration is invitation-only')
+        throw_error_status(422, "invitation_token", "is required when registration is invitation-only")
       end
     end
 
     before_omniauth_create_account do
       next unless invite_only_registration_required?
 
-      set_redirect_error_flash I18n.t('sessions.login.invite_only_oidc_notice',
-                                      default: 'Single sign-on is reserved for invited accounts.')
+      set_redirect_error_flash(
+        I18n.t(
+          "sessions.login.invite_only_oidc_notice",
+          default: "Single sign-on is reserved for invited accounts."
+        )
+      )
       redirect login_path
     end
 
     # Perform additional actions after the account is created.
     after_create_account do
-      date_of_birth = Date.parse(param('date_of_birth'))
+      date_of_birth = Date.parse(param("date_of_birth"))
 
       # Determine person_type and role based on age
       # Use Person's age calculation to avoid duplication
@@ -330,7 +362,7 @@ class RodauthMain < Rodauth::Rails::Auth
       ActiveRecord::Base.transaction do
         person = Person.create!(
           account_id: account_id,
-          name: param('name'),
+          name: param("name"),
           date_of_birth: date_of_birth,
           email: account[:email],
           person_type: person_type
@@ -351,8 +383,8 @@ class RodauthMain < Rodauth::Rails::Auth
     after_omniauth_create_account do
       # Get user info from OAuth provider
       auth_info = omniauth_info
-      name = auth_info['name'] || auth_info['email'].split('@').first
-      email = auth_info['email']
+      name = auth_info["name"] || auth_info["email"].split("@").first
+      email = auth_info["email"]
 
       # OAuth users are assumed to be adults (we don't have DOB from OAuth)
       # Use a sentinel DOB (100 years ago) to indicate missing data
@@ -363,7 +395,8 @@ class RodauthMain < Rodauth::Rails::Auth
           name: name,
           email: email,
           person_type: :adult,
-          date_of_birth: 100.years.ago.to_date # Sentinel value - DOB unknown for OAuth users
+          # Sentinel value - DOB unknown for OAuth users
+          date_of_birth: 100.years.ago.to_date
         )
 
         User.create!(
@@ -384,22 +417,23 @@ class RodauthMain < Rodauth::Rails::Auth
 
     # ==> Flash overrides
     # Login redirect is routine, not an error — use notice instead of alert
-    require_login_error_flash { I18n.t('authentication.login_required', default: 'Please login to continue') }
+    require_login_error_flash { I18n.t("authentication.login_required", default: "Please login to continue") }
 
     # ==> Views
     # Render Phlex components directly for speed (no ERB indirection)
     auth_class_eval do
-      def set_redirect_error_flash(message) # rubocop:disable Naming/AccessorMethodName
+      # rubocop:disable Naming/AccessorMethodName
+      def set_redirect_error_flash(message)
         return if message == require_login_error_flash
 
         super
       end
 
       def view(page, title)
-        phlex_class = "Views::Rodauth::#{page.to_s.tr('-', '_').camelize}".safe_constantize
+        phlex_class = "Views::Rodauth::#{page.to_s.tr("-", "_").camelize}".safe_constantize
         if phlex_class
           set_title(title)
-          is_modal = rails_controller_instance.request.headers['Turbo-Frame'] == 'modal'
+          is_modal = rails_controller_instance.request.headers["Turbo-Frame"] == "modal"
           rails_controller_instance.render_to_string(phlex_class.new, layout: !is_modal)
         else
           super
@@ -421,10 +455,10 @@ class RodauthMain < Rodauth::Rails::Auth
       end
 
       def zitadel_role_for(auth_data)
-        raw_info = auth_data.dig('extra', 'raw_info') || {}
-        return nil unless raw_info.key?('urn:zitadel:iam:org:project:roles')
+        raw_info = auth_data.dig("extra", "raw_info") || {}
+        return nil unless raw_info.key?("urn:zitadel:iam:org:project:roles")
 
-        zitadel_roles = raw_info['urn:zitadel:iam:org:project:roles'].keys
+        zitadel_roles = raw_info["urn:zitadel:iam:org:project:roles"].keys
         valid_roles = User.roles.keys & zitadel_roles
         valid_roles.first&.to_sym
       end
@@ -434,7 +468,7 @@ class RodauthMain < Rodauth::Rails::Auth
     # Current.user is set in ApplicationController before_action instead of here
 
     # Redirect to dashboard after successful login
-    login_redirect '/dashboard'
+    login_redirect "/dashboard"
 
     # Redirect to dashboard after account creation (since autologin is enabled)
     create_account_redirect { login_redirect }
@@ -448,18 +482,20 @@ class RodauthMain < Rodauth::Rails::Auth
     after_logout do
       next unless @oidc_id_token_for_logout
 
-      issuer = Rails.application.credentials.dig(:oidc, :issuer_url) || ENV.fetch('OIDC_ISSUER_URL', nil)
+      issuer = Rails.application.credentials.dig(:oidc, :issuer_url) || ENV.fetch("OIDC_ISSUER_URL", nil)
       next if issuer.blank?
 
       end_session_url = "#{issuer}/oidc/v1/end_session"
-      app_url = ENV.fetch('APP_URL', request.base_url)
-      redirect "#{end_session_url}?" \
-               "id_token_hint=#{CGI.escape(@oidc_id_token_for_logout)}&" \
-               "post_logout_redirect_uri=#{CGI.escape(app_url)}"
+      app_url = ENV.fetch("APP_URL", request.base_url)
+      redirect(
+        "#{end_session_url}?" \
+          "id_token_hint=#{CGI.escape(@oidc_id_token_for_logout)}&" \
+          "post_logout_redirect_uri=#{CGI.escape(app_url)}"
+      )
     end
 
     # Redirect to home page after logout.
-    logout_redirect '/'
+    logout_redirect "/"
 
     # Redirect to wherever login redirects to after account verification.
     verify_account_redirect { login_redirect }

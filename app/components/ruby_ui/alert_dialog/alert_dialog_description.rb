@@ -10,7 +10,7 @@ module RubyUI
 
     def default_attrs
       {
-        class: 'text-base leading-relaxed text-on-surface-variant'
+        class: "text-base leading-relaxed text-on-surface-variant"
       }
     end
   end

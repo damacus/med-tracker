@@ -9,7 +9,7 @@ class MedicationFinderSearchResponder
 
   def call(query:)
     normalized_query = query.to_s.strip
-    return Result.new(body: { results: [] }, status: :ok) if normalized_query.blank?
+    return Result.new(body: {results: []}, status: :ok) if normalized_query.blank?
 
     result = @search.call(normalized_query)
     return unavailable_response unless result&.success?
@@ -35,7 +35,7 @@ class MedicationFinderSearchResponder
 
   def unavailable_response
     Result.new(
-      body: { results: [], error: 'Medication search is temporarily unavailable.' },
+      body: {results: [], error: "Medication search is temporarily unavailable."},
       status: :service_unavailable
     )
   end

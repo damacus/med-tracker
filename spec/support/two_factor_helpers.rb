@@ -15,5 +15,5 @@ module TwoFactorHelpers
 end
 
 RSpec.configure do |config|
-  config.include TwoFactorHelpers
+  config.include(TwoFactorHelpers)
 end

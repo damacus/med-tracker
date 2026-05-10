@@ -18,13 +18,20 @@ module Components
 
       def class_names
         case @m3_variant
-        when :body_large then 'text-base leading-relaxed'
-        when :body_medium then 'text-sm leading-normal'
-        when :body_small then 'text-xs leading-tight'
-        when :label_large then 'text-sm font-medium tracking-wide'
-        when :label_medium then 'text-xs font-medium tracking-normal'
-        when :label_small then 'text-[11px] font-medium tracking-tight'
-        else 'text-sm'
+        when :body_large
+          "text-base leading-relaxed"
+        when :body_medium
+          "text-sm leading-normal"
+        when :body_small
+          "text-xs leading-tight"
+        when :label_large
+          "text-sm font-medium tracking-wide"
+        when :label_medium
+          "text-xs font-medium tracking-normal"
+        when :label_small
+          "text-[11px] font-medium tracking-tight"
+        else
+          "text-sm"
         end
       end
     end

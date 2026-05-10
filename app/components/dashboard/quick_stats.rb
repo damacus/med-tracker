@@ -13,12 +13,12 @@ module Components
       end
 
       def view_template
-        section(class: 'dashboard__section dashboard__section--stats') do
-          Table(class: 'dashboard__stats-table') do
-            caption(class: 'dashboard__section-title text-left') { t('dashboard.quick_stats.title') }
+        section(class: "dashboard__section dashboard__section--stats") do
+          Table(class: "dashboard__stats-table") do
+            caption(class: "dashboard__section-title text-left") { t("dashboard.quick_stats.title") }
             TableBody do
-              render_stat_row(t('dashboard.quick_stats.people'), people.size)
-              render_stat_row(t('dashboard.quick_stats.active_schedules'), active_schedules.size)
+              render_stat_row(t("dashboard.quick_stats.people"), people.size)
+              render_stat_row(t("dashboard.quick_stats.active_schedules"), active_schedules.size)
             end
           end
         end
@@ -28,8 +28,8 @@ module Components
 
       def render_stat_row(label, value)
         TableRow do
-          th(scope: 'row', class: 'dashboard__stats-label') { "#{label}:" }
-          TableCell(class: 'dashboard__stats-value') { value }
+          th(scope: "row", class: "dashboard__stats-label") { "#{label}:" }
+          TableCell(class: "dashboard__stats-value") { value }
         end
       end
     end

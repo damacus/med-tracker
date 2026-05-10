@@ -21,7 +21,7 @@ module Api
       attr_reader :user
 
       def person_data
-        { person: PersonSerializer.new(user.person).as_json }
+        {person: PersonSerializer.new(user.person).as_json}
       end
 
       def account_data

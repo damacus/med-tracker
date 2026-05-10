@@ -14,8 +14,8 @@ module Components
       end
 
       def view_template
-        div(class: 'space-y-6') do
-          m3_heading(level: 2) { 'Medication Schedule' }
+        div(class: "space-y-6") do
+          m3_heading(level: 2) { "Medication Schedule" }
           render_schedule_section
         end
       end
@@ -25,14 +25,15 @@ module Components
       def render_schedule_section
         if people.empty?
           return render_empty_state(
-            'No people found',
-            'Add people to start tracking their medications'
+            "No people found",
+            "Add people to start tracking their medications"
           )
         end
+
         if upcoming_schedules.empty?
           return render_empty_state(
-            'No active schedules found',
-            'Add schedules to see them here'
+            "No active schedules found",
+            "Add schedules to see them here"
           )
         end
 
@@ -40,7 +41,7 @@ module Components
       end
 
       def render_schedule_content
-        div(class: 'space-y-6') do
+        div(class: "space-y-6") do
           upcoming_schedules.each do |person, schedules|
             render_schedule_for(person, schedules)
           end
@@ -48,18 +49,20 @@ module Components
       end
 
       def render_schedule_for(person, schedules)
-        render Components::Dashboard::PersonSchedule.new(
-          person: person,
-          schedules: schedules,
-          current_user: current_user
+        render(
+          Components::Dashboard::PersonSchedule.new(
+            person: person,
+            schedules: schedules,
+            current_user: current_user
+          )
         )
       end
 
       def render_empty_state(message, help_text)
-        m3_card(class: 'text-center py-12') do
+        m3_card(class: "text-center py-12") do
           CardContent do
-            m3_text(size: '5', weight: 'semibold', class: 'text-foreground mb-2') { message }
-            m3_text(class: 'text-on-surface-variant') { help_text }
+            m3_text(size: "5", weight: "semibold", class: "text-foreground mb-2") { message }
+            m3_text(class: "text-on-surface-variant") { help_text }
           end
         end
       end

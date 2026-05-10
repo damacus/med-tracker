@@ -11,14 +11,14 @@ module RubyUI
     def default_attrs
       {
         class: [
-          'relative flex flex-row w-full text-wrap [&>span,&>div]:truncate gap-2 items-center rounded-sm py-1.5 px-2 text-sm outline-none cursor-pointer',
-          'select-none has-[:checked]:bg-tertiary-container has-[:checked]:text-on-tertiary-container hover:bg-tertiary-container',
-          '[&>svg]:pointer-events-none [&>svg]:size-4 [&>svg]:shrink-0 aria-[current=true]:bg-tertiary-container aria-[current=true]:ring aria-[current=true]:ring-offset-2',
-          'has-[:disabled]:opacity-50 has-[:disabled]:cursor-not-allowed'
+          "relative flex flex-row w-full text-wrap [&>span,&>div]:truncate gap-2 items-center rounded-sm py-1.5 px-2 text-sm outline-none cursor-pointer",
+          "select-none has-[:checked]:bg-tertiary-container has-[:checked]:text-on-tertiary-container hover:bg-tertiary-container",
+          "[&>svg]:pointer-events-none [&>svg]:size-4 [&>svg]:shrink-0 aria-[current=true]:bg-tertiary-container aria-[current=true]:ring aria-[current=true]:ring-offset-2",
+          "has-[:disabled]:opacity-50 has-[:disabled]:cursor-not-allowed"
         ],
-        role: 'option',
+        role: "option",
         data: {
-          ruby_ui__combobox_target: 'item'
+          ruby_ui__combobox_target: "item"
         }
       }
     end

@@ -1,54 +1,54 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
-RSpec.describe 'PASSKEY-002: Passkey registration', type: :system do
-  fixtures :all
+RSpec.describe "PASSKEY-002: Passkey registration", type: :system do
+  fixtures(:all)
 
   let(:account) { accounts(:damacus) }
 
-  describe 'Passkey management section on profile page' do
+  describe "Passkey management section on profile page" do
     before do
       login_as(account)
     end
 
-    scenario 'User with no passkeys sees empty state' do
-      visit profile_path
+    scenario("User with no passkeys sees empty state") do
+      visit(profile_path)
 
-      expect(page).to have_text('Passkeys')
-      expect(page).to have_text('No passkeys registered')
+      expect(page).to(have_text("Passkeys"))
+      expect(page).to(have_text("No passkeys registered"))
     end
 
-    scenario 'User with passkeys sees list of registered passkeys' do
+    scenario("User with passkeys sees list of registered passkeys") do
       account.account_webauthn_keys.create!(
-        webauthn_id: 'test-credential-id',
-        public_key: 'test-public-key',
+        webauthn_id: "test-credential-id",
+        public_key: "test-public-key",
         sign_count: 0,
-        nickname: 'My MacBook'
+        nickname: "My MacBook"
       )
 
-      visit profile_path
+      visit(profile_path)
 
-      expect(page).to have_text('My MacBook')
+      expect(page).to(have_text("My MacBook"))
     end
 
-    scenario 'User can navigate to add passkey page' do
-      visit profile_path
+    scenario("User can navigate to add passkey page") do
+      visit(profile_path)
 
-      expect(page).to have_link('Add a passkey', href: '/webauthn-setup')
+      expect(page).to(have_link("Add a passkey", href: "/webauthn-setup"))
     end
 
-    scenario 'User sees remove button for registered passkeys' do
+    scenario("User sees remove button for registered passkeys") do
       account.account_webauthn_keys.create!(
-        webauthn_id: 'test-credential-id',
-        public_key: 'test-public-key',
+        webauthn_id: "test-credential-id",
+        public_key: "test-public-key",
         sign_count: 0,
-        nickname: 'My MacBook'
+        nickname: "My MacBook"
       )
 
-      visit profile_path
+      visit(profile_path)
 
-      expect(page).to have_link('Remove')
+      expect(page).to(have_link("Remove"))
     end
   end
 end

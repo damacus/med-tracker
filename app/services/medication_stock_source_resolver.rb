@@ -49,7 +49,7 @@ class MedicationStockSourceResolver
           dosage_amount: medication.dosage_amount,
           dosage_unit: medication.dosage_unit
         )
-        .order('locations.name ASC, medications.id ASC')
+        .order("locations.name ASC, medications.id ASC")
         .to_a
     end
   end

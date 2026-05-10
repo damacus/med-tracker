@@ -18,7 +18,7 @@ module Components
         end
 
         def view_template
-          div(data: { testid: 'admin-audit-log-detail' }, class: 'space-y-8') do
+          div(data: {testid: "admin-audit-log-detail"}, class: "space-y-8") do
             render_header
             render_version_details
             render_changes_section
@@ -29,31 +29,35 @@ module Components
         private
 
         def render_header
-          header(class: 'flex items-center justify-between') do
-            div(class: 'space-y-2') do
-              m3_heading(level: 1) { t('admin.audit_logs.show.title') }
-              m3_text(weight: 'muted') { "#{version.item_type} ##{version.item_id} - #{version.event.titleize}" }
+          header(class: "flex items-center justify-between") do
+            div(class: "space-y-2") do
+              m3_heading(level: 1) { t("admin.audit_logs.show.title") }
+              m3_text(weight: "muted") { "#{version.item_type} ##{version.item_id} - #{version.event.titleize}" }
             end
-            Link(href: '/admin/audit_logs', variant: :outlined) { t('admin.audit_logs.show.back') }
+
+            Link(href: "/admin/audit_logs", variant: :outlined) { t("admin.audit_logs.show.back") }
           end
         end
 
         def render_version_details
           Card do
             CardHeader do
-              m3_heading(level: 2, size: '4', class: 'font-semibold leading-none tracking-tight') do
-                t('admin.audit_logs.show.event_information')
+              m3_heading(level: 2, size: "4", class: "font-semibold leading-none tracking-tight") do
+                t("admin.audit_logs.show.event_information")
               end
             end
+
             CardContent do
-              dl(class: 'grid grid-cols-1 gap-4 sm:grid-cols-2') do
-                render_detail_item(t('admin.audit_logs.show.timestamp'),
-                                   version.created_at.strftime('%Y-%m-%d %H:%M:%S %Z'))
-                render_detail_item(t('admin.audit_logs.show.record_type'), version.item_type.titleize)
-                render_detail_item(t('admin.audit_logs.show.record_id'), version.item_id.to_s)
-                render_detail_item(t('admin.audit_logs.show.event_type'), version.event.titleize)
-                render_detail_item(t('admin.audit_logs.show.user'), user_name)
-                render_detail_item(t('admin.audit_logs.show.ip_address'), version.ip || t('admin.audit_logs.show.na'))
+              dl(class: "grid grid-cols-1 gap-4 sm:grid-cols-2") do
+                render_detail_item(
+                  t("admin.audit_logs.show.timestamp"),
+                  version.created_at.strftime("%Y-%m-%d %H:%M:%S %Z")
+                )
+                render_detail_item(t("admin.audit_logs.show.record_type"), version.item_type.titleize)
+                render_detail_item(t("admin.audit_logs.show.record_id"), version.item_id.to_s)
+                render_detail_item(t("admin.audit_logs.show.event_type"), version.event.titleize)
+                render_detail_item(t("admin.audit_logs.show.user"), user_name)
+                render_detail_item(t("admin.audit_logs.show.ip_address"), version.ip || t("admin.audit_logs.show.na"))
               end
             end
           end
@@ -61,13 +65,13 @@ module Components
 
         def render_detail_item(label, value)
           div do
-            dt(class: 'text-sm font-medium text-on-surface-variant') { label }
-            dd(class: 'mt-1 text-sm text-foreground') { value }
+            dt(class: "text-sm font-medium text-on-surface-variant") { label }
+            dd(class: "mt-1 text-sm text-foreground") { value }
           end
         end
 
         def user_name
-          return I18n.t('admin.audit_logs.show.system') if version.whodunnit.blank?
+          return I18n.t("admin.audit_logs.show.system") if version.whodunnit.blank?
 
           user = User.find_by(id: version.whodunnit)
           user ? user.name : "User ##{version.whodunnit}"
@@ -78,13 +82,15 @@ module Components
 
           Card do
             CardHeader do
-              m3_heading(level: 2, size: '4', class: 'font-semibold leading-none tracking-tight') do
-                t('admin.audit_logs.show.previous_state')
+              m3_heading(level: 2, size: "4", class: "font-semibold leading-none tracking-tight") do
+                t("admin.audit_logs.show.previous_state")
               end
-              CardDescription { t('admin.audit_logs.show.previous_state_description') }
+
+              CardDescription { t("admin.audit_logs.show.previous_state_description") }
             end
+
             CardContent do
-              pre(class: 'bg-secondary-container p-4 rounded-lg overflow-x-auto text-xs font-mono') do
+              pre(class: "bg-secondary-container p-4 rounded-lg overflow-x-auto text-xs font-mono") do
                 code { format_object(version.object) }
               end
             end
@@ -92,20 +98,22 @@ module Components
         end
 
         def render_new_state_section
-          return if version.event == 'destroy'
+          return if version.event == "destroy"
 
           new_state = compute_new_state
           return if new_state.blank?
 
           Card do
             CardHeader do
-              m3_heading(level: 2, size: '4', class: 'font-semibold leading-none tracking-tight') do
-                t('admin.audit_logs.show.new_state')
+              m3_heading(level: 2, size: "4", class: "font-semibold leading-none tracking-tight") do
+                t("admin.audit_logs.show.new_state")
               end
+
               CardDescription { description_for_new_state }
             end
+
             CardContent do
-              pre(class: 'bg-secondary-container p-4 rounded-lg overflow-x-auto text-xs font-mono') do
+              pre(class: "bg-secondary-container p-4 rounded-lg overflow-x-auto text-xs font-mono") do
                 code { format_new_state(new_state) }
               end
             end
@@ -114,22 +122,22 @@ module Components
 
         def description_for_new_state
           case version.event
-          when 'create'
-            I18n.t('admin.audit_logs.show.new_state_create')
-          when 'update'
-            I18n.t('admin.audit_logs.show.new_state_update')
+          when "create"
+            I18n.t("admin.audit_logs.show.new_state_create")
+          when "update"
+            I18n.t("admin.audit_logs.show.new_state_update")
           else
-            I18n.t('admin.audit_logs.show.new_state_other')
+            I18n.t("admin.audit_logs.show.new_state_other")
           end
         end
 
         def compute_new_state
           # Try to get the next version's object (which represents state after this change)
           next_version = PaperTrail::Version
-                         .where(item_type: version.item_type, item_id: version.item_id)
-                         .where('id > ?', version.id)
-                         .order(:id)
-                         .first
+            .where(item_type: version.item_type, item_id: version.item_id)
+            .where("id > ?", version.id)
+            .order(:id)
+            .first
 
           if next_version&.object.present?
             # The next version's object is the state after this version's change

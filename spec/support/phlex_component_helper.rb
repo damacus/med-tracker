@@ -8,5 +8,5 @@ module PhlexComponentHelper
 end
 
 RSpec.configure do |config|
-  config.include PhlexComponentHelper, type: :component
+  config.include(PhlexComponentHelper, type: :component)
 end

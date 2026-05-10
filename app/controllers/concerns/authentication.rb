@@ -39,7 +39,7 @@ module Authentication
 
   def request_authentication
     session[:return_to_after_authenticating] = request.url
-    redirect_to rodauth.login_path
+    redirect_to(rodauth.login_path)
   end
 
   def after_authentication_url
@@ -50,9 +50,10 @@ module Authentication
   # Does NOT block access - just reminds them to set it up
   def check_two_factor_setup
     return unless should_setup_two_factor?
-    return if flash.any? # Don't overwrite existing flash messages
+    # Don't overwrite existing flash messages
+    return if flash.any?
 
-    flash.now[:warning] = I18n.t('authentication.two_factor_required')
+    flash.now[:warning] = I18n.t("authentication.two_factor_required")
   end
 
   # Check if current user should have 2FA set up

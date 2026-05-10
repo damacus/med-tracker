@@ -10,7 +10,7 @@ module RubyUI
 
     def default_attrs
       {
-        class: 'text-sm text-on-surface-variant'
+        class: "text-sm text-on-surface-variant"
       }
     end
   end

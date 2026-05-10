@@ -21,21 +21,26 @@ module Components
               variant: :destructive_outline,
               size: :sm,
               class: button_class,
-              data: { test_id: "delete-schedule-#{schedule.id}" }
-            ) { t('dashboard.delete_confirmation.delete') }
+              data: {test_id: "delete-schedule-#{schedule.id}"}
+            ) { t("dashboard.delete_confirmation.delete") }
           end
 
           AlertDialogContent do
             AlertDialogHeader do
-              AlertDialogTitle { t('dashboard.delete_confirmation.delete_schedule') }
+              AlertDialogTitle { t("dashboard.delete_confirmation.delete_schedule") }
               AlertDialogDescription do
-                plain t('dashboard.delete_confirmation.are_you_sure', medication: schedule.medication.name,
-                                                                      person: schedule.person.name)
+                plain(
+                  t(
+                    "dashboard.delete_confirmation.are_you_sure",
+                    medication: schedule.medication.name,
+                    person: schedule.person.name
+                  )
+                )
               end
             end
 
             AlertDialogFooter do
-              AlertDialogCancel { t('dashboard.delete_confirmation.cancel') }
+              AlertDialogCancel { t("dashboard.delete_confirmation.cancel") }
               render_delete_form
             end
           end
@@ -48,14 +53,14 @@ module Components
         form_with(
           url: person_schedule_path(schedule.person, schedule),
           method: :delete,
-          class: 'inline',
-          data: { turbo_frame: '_top' }
+          class: "inline",
+          data: {turbo_frame: "_top"}
         ) do
           m3_button(
             variant: :destructive,
             type: :submit,
-            data: { test_id: "confirm-delete-#{schedule.id}" }
-          ) { t('dashboard.delete_confirmation.delete') }
+            data: {test_id: "confirm-delete-#{schedule.id}"}
+          ) { t("dashboard.delete_confirmation.delete") }
         end
       end
     end

@@ -4,12 +4,12 @@ class GlobalSearchQuery
   Result = GlobalSearch::Result
 
   TYPE_ORDER = {
-    'command' => 0,
-    'person' => 1,
-    'medication' => 2,
-    'person_medication' => 3,
-    'schedule' => 4,
-    'location' => 5
+    "command" => 0,
+    "person" => 1,
+    "medication" => 2,
+    "person_medication" => 3,
+    "schedule" => 4,
+    "location" => 5
   }.freeze
 
   RECORD_QUERIES = [

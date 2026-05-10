@@ -8,6 +8,6 @@ class PushSubscription < ApplicationRecord
   validates :auth, presence: true
 
   def to_webpush_params
-    { endpoint: endpoint, p256dh: p256dh, auth: auth }
+    {endpoint: endpoint, p256dh: p256dh, auth: auth}
   end
 end

@@ -2,17 +2,17 @@
 
 class AiMedicationSuggestionsController < ApplicationController
   def create
-    head :not_found unless PaidFeature.enabled?(:ai_medication_help, user: current_user)
+    head(:not_found) unless PaidFeature.enabled?(:ai_medication_help, user: current_user)
     return if performed?
 
-    authorize Medication, :finder?
+    authorize(Medication, :finder?)
 
     suggestion = AiMedication::SuggestionService.new.call(
       medication_identity: medication_identity_params.to_h.deep_symbolize_keys,
       user: current_user
     )
 
-    render json: suggestion.as_json
+    render(json: suggestion.as_json)
   end
 
   private

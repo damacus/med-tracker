@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
-RSpec.describe 'Carer Access Authorization' do
-  fixtures :accounts, :people, :users, :carer_relationships
+RSpec.describe "Carer Access Authorization" do
+  fixtures(:accounts, :people, :users, :carer_relationships)
 
   before do
     driven_by(:playwright)
@@ -13,63 +13,63 @@ RSpec.describe 'Carer Access Authorization' do
   let(:assigned_patient) { people(:child_patient) }
   let(:unrelated_person) { people(:john) }
 
-  describe 'viewing people' do
-    it 'allows carers to view their own profile' do
+  describe "viewing people" do
+    it "allows carers to view their own profile" do
       login_as(carer)
-      visit person_path(carer.person)
+      visit(person_path(carer.person))
 
-      expect(page).to have_text(carer.person.name)
+      expect(page).to(have_text(carer.person.name))
     end
 
-    it 'allows carers to view assigned patients' do
+    it "allows carers to view assigned patients" do
       login_as(carer)
-      visit person_path(assigned_patient)
+      visit(person_path(assigned_patient))
 
-      expect(page).to have_text(assigned_patient.name)
+      expect(page).to(have_text(assigned_patient.name))
     end
 
-    it 'denies carers access to unrelated people' do
+    it "denies carers access to unrelated people" do
       login_as(carer)
-      visit person_path(unrelated_person)
+      visit(person_path(unrelated_person))
       # Rails test environment renders the detailed exception page for RecordNotFound in system tests
-      expect(page).to have_text(/RecordNotFound|Couldn't find/i)
+      expect(page).to(have_text(/RecordNotFound|Couldn't find/i))
     end
   end
 
-  describe 'managing people' do
-    it 'allows carers ability to create new dependents' do
+  describe "managing people" do
+    it "allows carers ability to create new dependents" do
       login_as(carer)
-      visit people_path
+      visit(people_path)
 
-      expect(page).to have_css('h1', text: 'People')
-      expect(page).to have_link('New Person', href: new_person_path)
+      expect(page).to(have_css("h1", text: "People"))
+      expect(page).to(have_link("New Person", href: new_person_path))
     end
 
-    it 'denies carers ability to edit people' do
+    it "denies carers ability to edit people" do
       login_as(carer)
-      visit person_path(carer.person)
+      visit(person_path(carer.person))
 
-      expect(page).to have_text(carer.person.name)
-      expect(page).to have_no_link('Edit')
+      expect(page).to(have_text(carer.person.name))
+      expect(page).to(have_no_link("Edit"))
     end
 
-    it 'denies carers ability to delete people' do
+    it "denies carers ability to delete people" do
       login_as(carer)
-      visit person_path(carer.person)
+      visit(person_path(carer.person))
 
-      expect(page).to have_text(carer.person.name)
-      expect(page).to have_no_button('Delete')
+      expect(page).to(have_text(carer.person.name))
+      expect(page).to(have_no_button("Delete"))
     end
   end
 
-  describe 'people index' do
-    it 'shows only accessible people to carers' do
+  describe "people index" do
+    it "shows only accessible people to carers" do
       login_as(carer)
-      visit people_path
+      visit(people_path)
 
-      expect(page).to have_text(carer.person.name)
-      expect(page).to have_text(assigned_patient.name)
-      expect(page).to have_no_text(unrelated_person.name)
+      expect(page).to(have_text(carer.person.name))
+      expect(page).to(have_text(assigned_patient.name))
+      expect(page).to(have_no_text(unrelated_person.name))
     end
   end
 end

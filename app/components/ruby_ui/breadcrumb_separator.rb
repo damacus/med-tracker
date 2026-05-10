@@ -4,12 +4,21 @@ module RubyUI
   class BreadcrumbSeparator < Base
     def view_template(&block)
       if block
-        li(role: 'presentation', aria_hidden: 'true',
-           class: '[&>svg]:w-3.5 [&>svg]:h-3.5', **attrs, &block)
+        li(
+          role: "presentation",
+          aria_hidden: "true",
+          class: "[&>svg]:w-3.5 [&>svg]:h-3.5",
+          **attrs,
+          &block
+        )
       else
-        li(role: 'presentation', aria_hidden: 'true',
-           class: '[&>svg]:w-3.5 [&>svg]:h-3.5', **attrs) do
-          render ::Components::Icons::ChevronRight.new(size: 14)
+        li(
+          role: "presentation",
+          aria_hidden: "true",
+          class: "[&>svg]:w-3.5 [&>svg]:h-3.5",
+          **attrs
+        ) do
+          render(::Components::Icons::ChevronRight.new(size: 14))
         end
       end
     end

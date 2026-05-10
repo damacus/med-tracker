@@ -7,11 +7,15 @@ module Components
         @m3_variant = variant.to_sym
 
         base_variant = case @m3_variant
-                       when :filled then :primary
-                       when :tonal then :secondary
-                       when :outlined then :outline
-                       else @m3_variant
-                       end
+        when :filled
+          :primary
+        when :tonal
+          :secondary
+        when :outlined
+          :outline
+        else
+          @m3_variant
+        end
 
         super(variant: base_variant, **attrs)
       end
@@ -30,7 +34,8 @@ module Components
             font-semibold
             bg-primary
             text-on-primary
-          ].join(' ')
+          ]
+            .join(" ")
         ]
       end
 
@@ -46,7 +51,8 @@ module Components
             font-semibold
             bg-secondary-container
             text-on-secondary-container
-          ].join(' ')
+          ]
+            .join(" ")
         ]
       end
 
@@ -63,7 +69,8 @@ module Components
             text-xs
             font-semibold
             text-primary
-          ].join(' ')
+          ]
+            .join(" ")
         ]
       end
 
@@ -79,12 +86,13 @@ module Components
             font-semibold
             bg-error
             text-on-error
-          ].join(' ')
+          ]
+            .join(" ")
         ]
       end
 
       def default_attrs
-        { class: m3_variant_classes.fetch(@m3_variant) { return super } }
+        {class: m3_variant_classes.fetch(@m3_variant) { return super }}
       end
 
       def m3_variant_classes

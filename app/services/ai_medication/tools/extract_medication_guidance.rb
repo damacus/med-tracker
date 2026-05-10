@@ -4,25 +4,28 @@ module AiMedication
   module Tools
     class ExtractMedicationGuidance < (defined?(RubyLLM::Tool) ? RubyLLM::Tool : Object)
       if respond_to?(:description)
-        description 'Accepts source-linked structured medication guidance extracted by the model'
+        description "Accepts source-linked structured medication guidance extracted by the model"
       end
 
       if respond_to?(:params)
         params do
-          object :suggestion, description: 'Source-linked medication suggestion payload'
+          object :suggestion, description: "Source-linked medication suggestion payload"
         end
       end
 
       def execute(suggestion:)
-        SuggestionValidator.new.call(
-          Suggestion.new(
-            medication: suggestion.fetch('medication', {}),
-            doses: suggestion.fetch('doses', []),
-            sources: suggestion.fetch('sources', [])
+        SuggestionValidator
+          .new
+          .call(
+            Suggestion.new(
+              medication: suggestion.fetch("medication", {}),
+              doses: suggestion.fetch("doses", []),
+              sources: suggestion.fetch("sources", [])
+            )
           )
-        ).as_json
+          .as_json
       rescue StandardError => e
-        { error: 'invalid_suggestion', message: e.message }
+        {error: "invalid_suggestion", message: e.message}
       end
     end
   end

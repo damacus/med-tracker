@@ -20,7 +20,7 @@ class MedicationTakeStockDecrement
     inventory.with_lock do
       previous_current_supply = inventory.current_supply
       current_supply = decremented_supply(previous_current_supply, dose_unit)
-      inventory.paper_trail_event = 'dose_decrement'
+      inventory.paper_trail_event = "dose_decrement"
       inventory.update!(current_supply: current_supply)
       stock_row(inventory, previous_current_supply)
     end
@@ -42,7 +42,7 @@ class MedicationTakeStockDecrement
   def sync_inventory(inventory)
     inventory.with_lock do
       previous_current_supply = inventory.current_supply
-      inventory.paper_trail_event = 'dose_decrement'
+      inventory.paper_trail_event = "dose_decrement"
       inventory.sync_inventory_from_dosage_records!
       inventory.reload
       stock_row(inventory, previous_current_supply)
@@ -51,14 +51,14 @@ class MedicationTakeStockDecrement
 
   def decremented_supply(current_supply, dose_unit)
     # Row locks reload stale records before decrement; the clamp keeps validation-bypass races at zero.
-    [current_supply.to_d - stock_decrement_for(dose_unit: dose_unit), BigDecimal('0')].max
+    [current_supply.to_d - stock_decrement_for(dose_unit: dose_unit), BigDecimal("0")].max
   end
 
   def stock_row(inventory, previous_current_supply)
     {
-      'previous_current_supply' => previous_current_supply,
-      'current_supply' => inventory.current_supply,
-      'reorder_threshold' => inventory.reorder_threshold
+      "previous_current_supply" => previous_current_supply,
+      "current_supply" => inventory.current_supply,
+      "reorder_threshold" => inventory.reorder_threshold
     }
   end
 

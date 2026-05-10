@@ -23,23 +23,25 @@ module Components
       end
 
       def view_template
-        turbo_frame_tag 'modal' do
+        turbo_frame_tag("modal") do
           Dialog(open: true) do
             DialogContent(size: dialog_size) do
               DialogHeader do
                 if back_path
                   a(
                     href: back_path,
-                    data: { turbo_frame: 'modal' },
-                    class: 'inline-flex items-center text-sm text-on-surface-variant hover:text-foreground ' \
-                           'transition-colors mb-2 no-underline'
+                    data: {turbo_frame: "modal"},
+                    class: "inline-flex items-center text-sm text-on-surface-variant hover:text-foreground " \
+                      "transition-colors mb-2 no-underline"
                   ) do
-                    plain t('medication_workflow.back')
+                    plain(t("medication_workflow.back"))
                   end
                 end
+
                 DialogTitle { title }
-                DialogDescription { t('person_medications.modal.subtitle') }
+                DialogDescription { t("person_medications.modal.subtitle") }
               end
+
               DialogMiddle do
                 render_form
               end
@@ -55,19 +57,22 @@ module Components
           model: person_medication,
           url: form_url,
           method: editing ? :patch : :post,
-          class: 'space-y-6',
+          class: "space-y-6",
           data: {
-            controller: 'person-medication-form',
+            controller: "person-medication-form",
             person_type: person.person_type,
-            person_medication_form_dose_options_value: ::Medications::DoseOptionsPayloadPresenter.new(
-              medications: medications
-            ).to_h.to_json,
+            person_medication_form_dose_options_value: ::Medications::DoseOptionsPayloadPresenter
+              .new(
+                medications: medications
+              )
+              .to_h
+              .to_json,
             person_medication_form_current_step_value: workflow_initial_step,
             person_medication_form_translations_value: {
-              chooseMedication: t('person_medications.form.workflow.choose_medication_title'),
-              chooseDose: t('person_medications.form.workflow.choose_dose_title'),
-              selectDose: t('person_medications.form.select_dose'),
-              noDosesAvailable: t('person_medications.form.no_doses_available')
+              chooseMedication: t("person_medications.form.workflow.choose_medication_title"),
+              chooseDose: t("person_medications.form.workflow.choose_dose_title"),
+              selectDose: t("person_medications.form.select_dose"),
+              noDosesAvailable: t("person_medications.form.no_doses_available")
             }.to_json
           }
         ) do
@@ -85,62 +90,65 @@ module Components
       end
 
       def render_form_fields
-        render FormFields.new(
-          person_medication: person_medication,
-          medications: medications,
-          editing: editing,
-          workflow: !editing
+        render(
+          FormFields.new(
+            person_medication: person_medication,
+            medications: medications,
+            editing: editing,
+            workflow: !editing
+          )
         )
       end
 
       def render_actions
-        div(class: 'pt-4') do
+        div(class: "pt-4") do
           if editing
-            div(class: 'flex items-center justify-end gap-6') do
+            div(class: "flex items-center justify-end gap-6") do
               m3_button(
                 variant: :text,
-                data: { action: 'click->ruby-ui--dialog#dismiss' }
-              ) { t('person_medications.form.cancel') }
-              m3_button(type: :submit, variant: :filled) { t('person_medications.form.save_changes_button') }
+                data: {action: "click->ruby-ui--dialog#dismiss"}
+              ) { t("person_medications.form.cancel") }
+              m3_button(type: :submit, variant: :filled) { t("person_medications.form.save_changes_button") }
             end
           else
-            div(class: 'flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-6') do
-              div(class: 'order-2 sm:order-1 sm:mr-auto') do
+            div(class: "flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-6") do
+              div(class: "order-2 sm:order-1 sm:mr-auto") do
                 m3_button(
                   variant: :text,
                   size: :xl,
-                  class: 'w-full justify-center sm:w-auto',
-                  data: { action: 'click->ruby-ui--dialog#dismiss' }
-                ) { t('person_medications.form.cancel') }
+                  class: "w-full justify-center sm:w-auto",
+                  data: {action: "click->ruby-ui--dialog#dismiss"}
+                ) { t("person_medications.form.cancel") }
               end
-              div(class: 'order-1 flex w-full items-center gap-3 sm:order-2 sm:w-auto') do
+
+              div(class: "order-1 flex w-full items-center gap-3 sm:order-2 sm:w-auto") do
                 m3_button(
                   type: :button,
                   variant: :outlined,
                   size: :xl,
-                  class: 'hidden min-w-0 flex-1 sm:min-w-28 sm:flex-none',
+                  class: "hidden min-w-0 flex-1 sm:min-w-28 sm:flex-none",
                   data: {
-                    action: 'click->person-medication-form#prevStep',
-                    person_medication_form_target: 'prevButton'
+                    action: "click->person-medication-form#prevStep",
+                    person_medication_form_target: "prevButton"
                   }
-                ) { t('person_medications.form.back') }
+                ) { t("person_medications.form.back") }
                 m3_button(
                   type: :button,
                   variant: :filled,
                   size: :xl,
-                  class: 'min-w-0 flex-1 sm:min-w-28 sm:flex-none',
+                  class: "min-w-0 flex-1 sm:min-w-28 sm:flex-none",
                   data: {
-                    action: 'click->person-medication-form#nextStep',
-                    person_medication_form_target: 'nextButton'
+                    action: "click->person-medication-form#nextStep",
+                    person_medication_form_target: "nextButton"
                   }
-                ) { t('person_medications.form.next') }
+                ) { t("person_medications.form.next") }
                 m3_button(
                   type: :submit,
                   variant: :filled,
                   size: :xl,
-                  class: 'hidden min-w-0 flex-1 sm:min-w-28 sm:flex-none',
-                  data: { person_medication_form_target: 'submitButton' }
-                ) { t('person_medications.form.add_medication_button') }
+                  class: "hidden min-w-0 flex-1 sm:min-w-28 sm:flex-none",
+                  data: {person_medication_form_target: "submitButton"}
+                ) { t("person_medications.form.add_medication_button") }
               end
             end
           end
@@ -153,9 +161,9 @@ module Components
 
       def default_title
         if editing
-          t('person_medications.modal.edit_title', person: person.name)
+          t("person_medications.modal.edit_title", person: person.name)
         else
-          t('person_medications.modal.new_title', person: person.name)
+          t("person_medications.modal.new_title", person: person.name)
         end
       end
 

@@ -5,15 +5,15 @@ module Components
     module Wizard
       class StepIndicator < Components::Base
         STEPS = [
-          { label_key: 'details', icon: '1' },
-          { label_key: 'dose', icon: '2' },
-          { label_key: 'supply', icon: '3' },
-          { label_key: 'warnings', icon: '4' }
+          {label_key: "details", icon: "1"},
+          {label_key: "dose", icon: "2"},
+          {label_key: "supply", icon: "3"},
+          {label_key: "warnings", icon: "4"}
         ].freeze
 
         def view_template
-          nav(class: 'mb-10', aria_label: t('forms.medications.wizard.progress_label')) do
-            ol(class: 'flex items-center justify-between max-w-xl mx-auto') do
+          nav(class: "mb-10", aria_label: t("forms.medications.wizard.progress_label")) do
+            ol(class: "flex items-center justify-between max-w-xl mx-auto") do
               STEPS.each_with_index do |step, index|
                 render_step_indicator(step, index)
               end
@@ -25,8 +25,8 @@ module Components
 
         def render_step_indicator(step, index)
           li(
-            class: 'flex-1 flex flex-col items-center relative',
-            data: { wizard_target: 'indicator' }
+            class: "flex-1 flex flex-col items-center relative",
+            data: {wizard_target: "indicator"}
           ) do
             render_connecting_line if index.positive?
             render_circle(step, index)
@@ -36,29 +36,29 @@ module Components
 
         def render_connecting_line
           div(
-            class: 'absolute top-4 -left-1/2 w-full h-0.5 bg-primary/15 ' \
-                   '-z-10 transition-colors duration-300',
-            data: { indicator_line: true }
+            class: "absolute top-4 -left-1/2 w-full h-0.5 bg-primary/15 " \
+              "-z-10 transition-colors duration-300",
+            data: {indicator_line: true}
           )
         end
 
         def render_circle(step, index)
-          base = 'w-8 h-8 rounded-shape-full flex items-center justify-center text-xs font-bold ' \
-                 'transition-all duration-300'
+          base = "w-8 h-8 rounded-shape-full flex items-center justify-center text-xs font-bold " \
+            "transition-all duration-300"
           active = if index.zero?
-                     'bg-primary text-on-primary shadow-elevation-2 scale-110'
-                   else
-                     'bg-surface-container-highest text-on-surface-variant'
-                   end
+            "bg-primary text-on-primary shadow-elevation-2 scale-110"
+          else
+            "bg-surface-container-highest text-on-surface-variant"
+          end
 
-          div(class: "#{base} #{active}", data: { indicator_circle: true }) { step[:icon] }
+          div(class: "#{base} #{active}", data: {indicator_circle: true}) { step[:icon] }
         end
 
         def render_label(step, index)
-          base = 'mt-2 text-[10px] font-bold uppercase tracking-widest transition-colors duration-300'
-          color = index.zero? ? 'text-primary' : 'text-on-surface-variant'
+          base = "mt-2 text-[10px] font-bold uppercase tracking-widest transition-colors duration-300"
+          color = index.zero? ? "text-primary" : "text-on-surface-variant"
 
-          m3_text(variant: :label_small, class: "#{base} #{color}", data: { indicator_label: true }) do
+          m3_text(variant: :label_small, class: "#{base} #{color}", data: {indicator_label: true}) do
             t("forms.medications.wizard.steps.#{step.fetch(:label_key)}")
           end
         end

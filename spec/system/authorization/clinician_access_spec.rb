@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
-RSpec.describe 'Clinician Access Authorization' do
-  fixtures :accounts, :people, :users
+RSpec.describe "Clinician Access Authorization" do
+  fixtures(:accounts, :people, :users)
 
   before do
     driven_by(:playwright)
@@ -12,77 +12,77 @@ RSpec.describe 'Clinician Access Authorization' do
   let(:doctor) { users(:doctor) }
   let(:nurse) { users(:nurse) }
 
-  describe 'viewing people' do
-    it 'allows doctors to view all people' do
+  describe "viewing people" do
+    it "allows doctors to view all people" do
       login_as(doctor)
-      visit people_path
+      visit(people_path)
 
-      expect(page).to have_text('People')
-      expect(Person.count).to be > 0
+      expect(page).to(have_text("People"))
+      expect(Person.count).to(be > 0)
     end
 
-    it 'allows nurses to view all people' do
+    it "allows nurses to view all people" do
       login_as(nurse)
-      visit people_path
+      visit(people_path)
 
-      expect(page).to have_text('People')
-      expect(Person.count).to be > 0
+      expect(page).to(have_text("People"))
+      expect(Person.count).to(be > 0)
     end
 
-    it 'allows doctors to view any person' do
+    it "allows doctors to view any person" do
       login_as(doctor)
       person = people(:john)
-      visit person_path(person)
+      visit(person_path(person))
 
-      expect(page).to have_text(person.name)
+      expect(page).to(have_text(person.name))
     end
   end
 
-  describe 'managing people' do
-    it 'denies doctors ability to create new people' do
+  describe "managing people" do
+    it "denies doctors ability to create new people" do
       login_as(doctor)
-      visit people_path
+      visit(people_path)
 
-      expect(page).to have_css('h1', text: 'People')
-      expect(page).to have_no_link('New Person')
+      expect(page).to(have_css("h1", text: "People"))
+      expect(page).to(have_no_link("New Person"))
     end
 
-    it 'denies nurses ability to edit people' do
+    it "denies nurses ability to edit people" do
       login_as(nurse)
       person = people(:john)
-      visit person_path(person)
+      visit(person_path(person))
 
-      expect(page).to have_text(person.name)
-      expect(page).to have_no_link('Edit')
+      expect(page).to(have_text(person.name))
+      expect(page).to(have_no_link("Edit"))
     end
 
-    it 'denies doctors ability to delete people' do
+    it "denies doctors ability to delete people" do
       login_as(doctor)
       person = people(:john)
-      visit person_path(person)
+      visit(person_path(person))
 
-      expect(page).to have_text(person.name)
-      expect(page).to have_no_button('Delete')
+      expect(page).to(have_text(person.name))
+      expect(page).to(have_no_button("Delete"))
     end
   end
 
-  describe 'user management' do
-    it 'denies doctors access to user management' do
+  describe "user management" do
+    it "denies doctors access to user management" do
       login_as(doctor)
-      visit admin_users_path
+      visit(admin_users_path)
 
-      expect(page).to have_text('You are not authorized to perform this action')
+      expect(page).to(have_text("You are not authorized to perform this action"))
     end
 
-    it 'denies nurses access to user management' do
+    it "denies nurses access to user management" do
       login_as(nurse)
-      visit admin_users_path
+      visit(admin_users_path)
 
-      expect(page).to have_text('You are not authorized to perform this action')
+      expect(page).to(have_text("You are not authorized to perform this action"))
     end
   end
 
-  def login_as(user, password: 'password')
+  def login_as(user, password: "password")
     clear_2fa_for_user(user)
     perform_login(user, password)
   end
@@ -93,10 +93,10 @@ RSpec.describe 'Clinician Access Authorization' do
   end
 
   def perform_login(user, password)
-    visit login_path
-    fill_in 'Email address', with: user.email_address
-    fill_in 'Password', with: password
-    click_button 'Sign In to Dashboard'
-    expect(page).to have_current_path(dashboard_path)
+    visit(login_path)
+    fill_in("Email address", with: user.email_address)
+    fill_in("Password", with: password)
+    click_button("Sign In to Dashboard")
+    expect(page).to(have_current_path(dashboard_path))
   end
 end

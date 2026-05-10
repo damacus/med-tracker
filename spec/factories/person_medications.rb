@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 FactoryBot.define do
-  factory :person_medication do
+  factory(:person_medication) do
     person
     medication
 
@@ -21,21 +21,22 @@ FactoryBot.define do
     source_dosage_option do
       dosage if dosage.is_a?(MedicationDosageOption)
     end
+
     dose_amount { dosage&.amount || medication.dosage_amount }
     dose_unit { dosage&.unit || medication.dosage_unit }
     notes { nil }
     max_daily_doses { nil }
     min_hours_between_doses { nil }
 
-    trait :with_max_doses do
+    trait(:with_max_doses) do
       max_daily_doses { 3 }
     end
 
-    trait :with_min_hours do
+    trait(:with_min_hours) do
       min_hours_between_doses { 4 }
     end
 
-    trait :with_both_restrictions do
+    trait(:with_both_restrictions) do
       max_daily_doses { 2 }
       min_hours_between_doses { 12 }
     end

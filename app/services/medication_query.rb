@@ -14,7 +14,7 @@ class MedicationQuery
   end
 
   def categories
-    location_filtered_scope.where.not(category: [nil, '']).distinct.order(:category).pluck(:category)
+    location_filtered_scope.where.not(category: [nil, ""]).distinct.order(:category).pluck(:category)
   end
 
   private

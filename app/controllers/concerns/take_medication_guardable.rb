@@ -12,10 +12,11 @@ module TakeMedicationGuardable
     case error
     when :out_of_stock, :cooldown
       default_message = if error == :out_of_stock
-                          'Cannot take medication: out of stock'
-                        else
-                          'Cannot take medication: timing restrictions not met'
-                        end
+        "Cannot take medication: out of stock"
+      else
+        "Cannot take medication: timing restrictions not met"
+      end
+
       respond_take_medication_error(message: t("#{scope}.cannot_take_medication", default: default_message))
     when :invalid_amount, :create_failed
       respond_take_medication_invalid_dose(scope:)
@@ -31,20 +32,21 @@ module TakeMedicationGuardable
 
   def respond_take_medication_stock_source_error(scope:, error:)
     message = if error == :selection_required
-                t("#{scope}.location_required", default: 'Choose a location to record this dose.')
-              else
-                t("#{scope}.invalid_location", default: 'Selected location is unavailable for this medication.')
-              end
+      t("#{scope}.location_required", default: "Choose a location to record this dose.")
+    else
+      t("#{scope}.invalid_location", default: "Selected location is unavailable for this medication.")
+    end
+
     respond_take_medication_error(message:)
   end
 
   def respond_take_medication_error(message:)
     respond_to do |format|
       format.html { redirect_back_or_to(respond_take_medication_redirect_path, alert: message) }
-      format.json { render json: { success: false, errors: [message] }, status: :unprocessable_content }
+      format.json { render(json: {success: false, errors: [message]}, status: :unprocessable_content) }
       format.turbo_stream do
         flash.now[:alert] = message
-        render turbo_stream: turbo_stream.update('flash', Components::Layouts::Flash.new(alert: flash[:alert]))
+        render(turbo_stream: turbo_stream.update("flash", Components::Layouts::Flash.new(alert: flash[:alert])))
       end
     end
   end
@@ -54,14 +56,14 @@ module TakeMedicationGuardable
 
     if taken_at.blank?
       respond_take_medication_error(
-        message: t("#{scope}.invalid_taken_at", default: t('take_medications.invalid_taken_at'))
+        message: t("#{scope}.invalid_taken_at", default: t("take_medications.invalid_taken_at"))
       )
       return
     end
 
     if taken_at > Time.current + FUTURE_TOLERANCE
       respond_take_medication_error(
-        message: t("#{scope}.future_taken_at", default: t('take_medications.future_taken_at'))
+        message: t("#{scope}.future_taken_at", default: t("take_medications.future_taken_at"))
       )
       return
     end
@@ -72,7 +74,7 @@ module TakeMedicationGuardable
   def log_invalid_take_attempt(source:, amount:, metadata: {})
     Rails.logger.warn(
       {
-        event: 'invalid_take_medication',
+        event: "invalid_take_medication",
         controller: self.class.name,
         source: source,
         person_id: @person.id,
@@ -101,7 +103,7 @@ module TakeMedicationGuardable
   end
 
   def parse_time_only_taken_at(raw)
-    format = raw.length == 5 ? '%H:%M' : '%H:%M:%S'
+    format = raw.length == 5 ? "%H:%M" : "%H:%M:%S"
     parsed = Time.zone.strptime(raw, format)
     today = Date.current
     Time.zone.local(today.year, today.month, today.day, parsed.hour, parsed.min, parsed.sec)
@@ -114,6 +116,6 @@ module TakeMedicationGuardable
   end
 
   def medication_taken_at_formats
-    ['%Y-%m-%dT%H:%M', '%Y-%m-%dT%H:%M:%S']
+    ["%Y-%m-%dT%H:%M", "%Y-%m-%dT%H:%M:%S"]
   end
 end

@@ -17,18 +17,19 @@ module Components
       end
 
       def view_template
-        turbo_frame_tag 'modal' do
+        turbo_frame_tag("modal") do
           Dialog(open: true) do
             DialogContent(size: :xl) do
               DialogHeader do
-                DialogTitle { t('medications.administration.title', medication: medication.name) }
-                DialogDescription { t('medications.administration.subtitle') }
+                DialogTitle { t("medications.administration.title", medication: medication.name) }
+                DialogDescription { t("medications.administration.subtitle") }
               end
+
               DialogMiddle do
                 if administration_options.empty?
                   render_empty_state
                 else
-                  div(class: 'grid gap-4') do
+                  div(class: "grid gap-4") do
                     administration_options.each do |option|
                       render_option(option)
                     end
@@ -49,52 +50,60 @@ module Components
       end
 
       def render_option(option)
-        div(class: 'rounded-shape-xl border border-border/70 bg-popover p-5 shadow-elevation-1') do
-          div(class: 'flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between') do
-            div(class: 'space-y-2') do
-              m3_text(variant: :label_small, class: 'uppercase tracking-[0.18em] text-on-surface-variant font-black') do
+        div(class: "rounded-shape-xl border border-border/70 bg-popover p-5 shadow-elevation-1") do
+          div(class: "flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between") do
+            div(class: "space-y-2") do
+              m3_text(variant: :label_small, class: "uppercase tracking-[0.18em] text-on-surface-variant font-black") do
                 option_label(option)
               end
-              m3_heading(variant: :title_medium, level: 2, class: 'font-semibold tracking-tight') { option.person.name }
-              m3_text(variant: :body_medium, class: 'text-on-surface-variant font-medium') { option_summary(option) }
+
+              m3_heading(variant: :title_medium, level: 2, class: "font-semibold tracking-tight") {
+                option.person.name
+              }
+              m3_text(variant: :body_medium, class: "text-on-surface-variant font-medium") { option_summary(option) }
             end
 
-            render Components::Medications::TakeAction.new(
-              source: option,
-              context: { person: option.person, current_user: current_user },
-              amount: option.default_dose_amount,
-              button: {
-                label: t('medications.show.log_administration'),
-                variant: :filled,
-                size: :lg,
-                icon: Icons::Pill,
-                class: 'w-full rounded-full lg:w-auto',
-                testid: "log-administration-#{option.class.name.underscore}-#{option.id}",
-                form_class: 'w-full lg:w-auto'
-              }
+            render(
+              Components::Medications::TakeAction.new(
+                source: option,
+                context: {person: option.person, current_user: current_user},
+                amount: option.default_dose_amount,
+                button: {
+                  label: t("medications.show.log_administration"),
+                  variant: :filled,
+                  size: :lg,
+                  icon: Icons::Pill,
+                  class: "w-full rounded-full lg:w-auto",
+                  testid: "log-administration-#{option.class.name.underscore}-#{option.id}",
+                  form_class: "w-full lg:w-auto"
+                }
+              )
             )
           end
         end
       end
 
       def option_label(option)
-        option.is_a?(Schedule) ? t('medications.administration.scheduled') : t('medications.administration.as_needed')
+        option.is_a?(Schedule) ? t("medications.administration.scheduled") : t("medications.administration.as_needed")
       end
 
       def option_summary(option)
         frequency = option.frequency.presence if option.respond_to?(:frequency)
 
-        [option.medication.name, option.dose_display, frequency].compact.join(' • ')
+        [option.medication.name, option.dose_display, frequency].compact.join(" • ")
       end
 
       def render_empty_state
-        m3_card(variant: :filled,
-                class: 'bg-secondary-container/35 px-6 py-10 text-center border-dashed border-border/70') do
-          m3_heading(variant: :title_medium, level: 2, class: 'font-semibold tracking-tight') do
-            t('medications.administration.empty_title')
+        m3_card(
+          variant: :filled,
+          class: "bg-secondary-container/35 px-6 py-10 text-center border-dashed border-border/70"
+        ) do
+          m3_heading(variant: :title_medium, level: 2, class: "font-semibold tracking-tight") do
+            t("medications.administration.empty_title")
           end
-          m3_text(variant: :body_medium, class: 'mt-2 text-on-surface-variant font-medium') do
-            t('medications.administration.empty_description')
+
+          m3_text(variant: :body_medium, class: "mt-2 text-on-surface-variant font-medium") do
+            t("medications.administration.empty_description")
           end
         end
       end

@@ -37,7 +37,7 @@ class ApplicationPolicy
   private
 
   def person_id_for_authorization
-    raise NotImplementedError, 'Subclass must implement #person_id_for_authorization'
+    raise NotImplementedError, "Subclass must implement #person_id_for_authorization"
   end
 
   def carer_with_patient?
@@ -52,7 +52,7 @@ class ApplicationPolicy
     active_patient_relationships
       .joins(:patient)
       .where(patient_id: person_id_for_authorization)
-      .exists?(people: { person_type: %i[minor dependent_adult], has_capacity: false })
+      .exists?(people: {person_type: %i[minor dependent_adult], has_capacity: false})
   end
 
   class Scope
@@ -83,11 +83,13 @@ class ApplicationPolicy
     end
 
     def parent_dependent_patient_ids
-      Person.where(
-        id: active_patient_relationships.select(:patient_id),
-        person_type: %i[minor dependent_adult],
-        has_capacity: false
-      ).pluck(:id)
+      Person
+        .where(
+          id: active_patient_relationships.select(:patient_id),
+          person_type: %i[minor dependent_adult],
+          has_capacity: false
+        )
+        .pluck(:id)
     end
 
     def accessible_person_ids

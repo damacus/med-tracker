@@ -1,65 +1,65 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
 RSpec.describe Components::Schedules::Card, type: :component do
   let(:person) { create(:person) }
-  let(:medication) { create(:medication, name: 'Ibuprofen') }
+  let(:medication) { create(:medication, name: "Ibuprofen") }
 
   let(:schedule) do
     Schedule.create!(
       person: person,
       medication: medication,
       dose_amount: 400.0,
-      dose_unit: 'mg',
-      frequency: 'Twice daily',
+      dose_unit: "mg",
+      frequency: "Twice daily",
       start_date: 1.month.ago,
       end_date: 1.month.from_now
     )
   end
 
-  it 'displays dosage unit from schedule, not hardcoded ml' do
+  it "displays dosage unit from schedule, not hardcoded ml" do
     MedicationTake.create!(schedule: schedule, taken_at: Time.current, dose_amount: 400)
     rendered = render_schedule_card
 
     take_text = rendered.text
-    expect(take_text).to include('400 mg')
-    expect(take_text).not_to match(/400\s*ml/i)
+    expect(take_text).to(include("400 mg"))
+    expect(take_text).not_to(match(/400\s*ml/i))
   end
 
-  it 'disables the take button when schedule dose is invalid' do
+  it "disables the take button when schedule dose is invalid" do
     schedule.dose_amount = 0
     rendered = render_schedule_card
 
     button = rendered.at_css("button[data-testid='take-schedule-#{schedule.id}-disabled'][disabled]")
-    expect(button).not_to be_nil
-    expect(button.text).to include('Invalid Dose Configured')
+    expect(button).not_to(be_nil)
+    expect(button.text).to(include("Invalid Dose Configured"))
   end
 
-  it 'shows the recorded location for today takes' do
-    add_schedule_take_for('Schedule Alt Location')
+  it "shows the recorded location for today takes" do
+    add_schedule_take_for("Schedule Alt Location")
     rendered = render_schedule_card
-    expect(rendered.text).to include('Schedule Alt Location')
+    expect(rendered.text).to(include("Schedule Alt Location"))
   end
 
-  it 'wraps full medication names inside the card header' do
-    medication.update!(name: 'Calpol Six Plus 250mg/5ml oral suspension (McNeil Products Ltd)')
+  it "wraps full medication names inside the card header" do
+    medication.update!(name: "Calpol Six Plus 250mg/5ml oral suspension (McNeil Products Ltd)")
     rendered = render_schedule_card
 
-    heading = rendered.at_css('h3')
-    expect(heading.text).to include(medication.name)
-    expect(heading['class']).to include('break-words')
+    heading = rendered.at_css("h3")
+    expect(heading.text).to(include(medication.name))
+    expect(heading["class"]).to(include("break-words"))
   end
 
-  it 'renders an overflow menu with a Log a past dose item' do
+  it "renders an overflow menu with a Log a past dose item" do
     rendered = render_schedule_card
 
     trigger = rendered.at_css("button[data-testid='more-actions-schedule-#{schedule.id}']")
     item = rendered.at_css("[role='menuitem'][data-testid='log-past-dose-schedule-#{schedule.id}']")
 
-    expect(trigger).not_to be_nil
-    expect(item).not_to be_nil
-    expect(item.text).to include('Log a past dose')
+    expect(trigger).not_to(be_nil)
+    expect(item).not_to(be_nil)
+    expect(item.text).to(include("Log a past dose"))
   end
 
   def render_schedule_card

@@ -2,7 +2,7 @@
 
 # Utility to load RSpec fixtures directly into the database outside the test framework helpers.
 class SpecFixtureLoader
-  FIXTURES_PATH = Rails.root.join('spec/fixtures')
+  FIXTURES_PATH = Rails.root.join("spec/fixtures")
 
   class << self
     def load(*fixture_names)

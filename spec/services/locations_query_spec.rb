@@ -1,46 +1,47 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
 RSpec.describe LocationsQuery do
-  fixtures :locations
+  fixtures(:locations)
 
-  describe '#index' do
-    it 'returns only locations from the passed scope with the existing preloads' do
+  describe "#index" do
+    it "returns only locations from the passed scope with the existing preloads" do
       result = described_class.new(scope: Location.where(id: [locations(:home).id])).index
 
-      expect(result).to contain_exactly(locations(:home))
-      expect(result.first.association(:medications)).to be_loaded
-      expect(result.first.association(:members)).to be_loaded
-      expect(result.first.association(:location_memberships)).to be_loaded
+      expect(result).to(contain_exactly(locations(:home)))
+      expect(result.first.association(:medications)).to(be_loaded)
+      expect(result.first.association(:members)).to(be_loaded)
+      expect(result.first.association(:location_memberships)).to(be_loaded)
     end
   end
 
-  describe '#find' do
-    it 'resolves records within the passed scope with the existing preloads' do
+  describe "#find" do
+    it "resolves records within the passed scope with the existing preloads" do
       result = described_class.new(scope: Location.where(id: [locations(:home).id])).find(id: locations(:home).id)
 
-      expect(result).to eq(locations(:home))
-      expect(result.association(:medications)).to be_loaded
-      expect(result.association(:members)).to be_loaded
-      expect(result.association(:location_memberships)).to be_loaded
+      expect(result).to(eq(locations(:home)))
+      expect(result.association(:medications)).to(be_loaded)
+      expect(result.association(:members)).to(be_loaded)
+      expect(result.association(:location_memberships)).to(be_loaded)
     end
 
-    it 'raises when the id is outside the passed scope' do
+    it "raises when the id is outside the passed scope" do
       query = described_class.new(scope: Location.where(id: [locations(:home).id]))
 
       expect do
         query.find(id: locations(:school).id)
-      end.to raise_error(ActiveRecord::RecordNotFound)
+      end
+        .to(raise_error(ActiveRecord::RecordNotFound))
     end
   end
 
-  describe '#options' do
-    it 'returns the passed scope in name order without index preloads' do
+  describe "#options" do
+    it "returns the passed scope in name order without index preloads" do
       result = described_class.new(scope: Location.where(id: [locations(:school).id, locations(:home).id])).options
 
-      expect(result.map(&:name)).to eq(%w[Home School])
-      expect(result.first.association(:medications)).not_to be_loaded
+      expect(result.map(&:name)).to(eq(%w[Home School]))
+      expect(result.first.association(:medications)).not_to(be_loaded)
     end
   end
 end

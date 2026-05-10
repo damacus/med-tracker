@@ -1,170 +1,173 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
-RSpec.describe 'GET /medication-finder/search' do
-  fixtures :accounts, :people, :users
+RSpec.describe "GET /medication-finder/search" do
+  fixtures(:accounts, :people, :users)
 
   let(:doctor) { users(:doctor) }
   let(:doctor_account) { accounts(:dr_jones) }
 
   def login_as_doctor
-    post '/login', params: { email: doctor_account.email, password: 'password' }
+    post("/login", params: {email: doctor_account.email, password: "password"})
   end
 
   def login_as_carer
-    post '/login', params: { email: accounts(:carer).email, password: 'password' }
+    post("/login", params: {email: accounts(:carer).email, password: "password"})
   end
 
-  describe 'GET /medication-finder/search.json' do
-    context 'with a valid query' do
+  describe "GET /medication-finder/search.json" do
+    context("with a valid query") do
       let(:search_results) do
         [
           NhsDmd::SearchResult.new(
-            code: '39720311000001101',
-            display: 'Aspirin 300mg tablets',
-            system: 'https://dmd.nhs.uk',
-            concept_class: 'VMP'
+            code: "39720311000001101",
+            display: "Aspirin 300mg tablets",
+            system: "https://dmd.nhs.uk",
+            concept_class: "VMP"
           )
         ]
       end
+
       let(:search_outcome) { NhsDmd::Search::Result.new(results: search_results, error: nil) }
 
       before do
         login_as_doctor
         search = instance_double(NhsDmd::Search, call: search_outcome)
-        allow(NhsDmd::Search).to receive(:new).and_return(search)
+        allow(NhsDmd::Search).to(receive(:new).and_return(search))
       end
 
-      it 'returns 200 OK' do
-        get medication_finder_search_path(format: :json), params: { q: 'aspirin' }
+      it "returns 200 OK" do
+        get(medication_finder_search_path(format: :json), params: {q: "aspirin"})
 
-        expect(response).to have_http_status(:ok)
+        expect(response).to(have_http_status(:ok))
       end
 
-      it 'returns JSON with results' do
-        get medication_finder_search_path(format: :json), params: { q: 'aspirin' }
+      it "returns JSON with results" do
+        get(medication_finder_search_path(format: :json), params: {q: "aspirin"})
 
         json = response.parsed_body
-        expect(json['results']).to be_an(Array)
-        expect(json['results'].first['display']).to eq('Aspirin 300mg tablets')
-        expect(json['results'].first['code']).to eq('39720311000001101')
-        expect(json['results'].first['concept_class']).to eq('VMP')
+        expect(json["results"]).to(be_an(Array))
+        expect(json["results"].first["display"]).to(eq("Aspirin 300mg tablets"))
+        expect(json["results"].first["code"]).to(eq("39720311000001101"))
+        expect(json["results"].first["concept_class"]).to(eq("VMP"))
       end
     end
 
-    context 'with a blank query' do
+    context("with a blank query") do
       before { login_as_doctor }
 
-      it 'returns 200 with empty results' do
-        get medication_finder_search_path(format: :json), params: { q: '' }
+      it "returns 200 with empty results" do
+        get(medication_finder_search_path(format: :json), params: {q: ""})
 
         json = response.parsed_body
-        expect(response).to have_http_status(:ok)
-        expect(json['results']).to eq([])
+        expect(response).to(have_http_status(:ok))
+        expect(json["results"]).to(eq([]))
       end
     end
 
-    context 'when the API is unavailable' do
-      let(:error_outcome) { NhsDmd::Search::Result.new(results: [], error: 'Service unavailable') }
+    context("when the API is unavailable") do
+      let(:error_outcome) { NhsDmd::Search::Result.new(results: [], error: "Service unavailable") }
 
       before do
         login_as_doctor
         search = instance_double(NhsDmd::Search, call: error_outcome)
-        allow(NhsDmd::Search).to receive(:new).and_return(search)
+        allow(NhsDmd::Search).to(receive(:new).and_return(search))
       end
 
-      it 'returns 503 with a generic error message' do
-        get medication_finder_search_path(format: :json), params: { q: 'aspirin' }
+      it "returns 503 with a generic error message" do
+        get(medication_finder_search_path(format: :json), params: {q: "aspirin"})
 
         json = response.parsed_body
-        expect(response).to have_http_status(:service_unavailable)
-        expect(json['error']).to eq('Medication search is temporarily unavailable.')
+        expect(response).to(have_http_status(:service_unavailable))
+        expect(json["error"]).to(eq("Medication search is temporarily unavailable."))
       end
     end
 
-    context 'when the search service crashes unexpectedly' do
+    context("when the search service crashes unexpectedly") do
       before do
         login_as_doctor
         search = instance_double(NhsDmd::Search)
-        allow(search).to receive(:call).and_raise(SocketError, 'lookup failed')
-        allow(NhsDmd::Search).to receive(:new).and_return(search)
-        allow(Rails.logger).to receive(:error)
+        allow(search).to(receive(:call).and_raise(SocketError, "lookup failed"))
+        allow(NhsDmd::Search).to(receive(:new).and_return(search))
+        allow(Rails.logger).to(receive(:error))
       end
 
-      it 'returns 503 instead of raising a server error' do
-        get medication_finder_search_path(format: :json), params: { q: 'aspirin' }
+      it "returns 503 instead of raising a server error" do
+        get(medication_finder_search_path(format: :json), params: {q: "aspirin"})
 
-        expect(response).to have_http_status(:service_unavailable)
-        expect(response.parsed_body['error']).to eq('Medication search is temporarily unavailable.')
-        expect(Rails.logger).to have_received(:error).with(/Medication finder search failed/)
+        expect(response).to(have_http_status(:service_unavailable))
+        expect(response.parsed_body["error"]).to(eq("Medication search is temporarily unavailable."))
+        expect(Rails.logger).to(have_received(:error).with(/Medication finder search failed/))
       end
     end
 
-    context 'when the NHS dm+d service is not configured (credentials absent)' do
-      let(:unconfigured_outcome) { NhsDmd::Search::Result.new(results: [], error: 'not_configured') }
+    context("when the NHS dm+d service is not configured (credentials absent)") do
+      let(:unconfigured_outcome) { NhsDmd::Search::Result.new(results: [], error: "not_configured") }
 
       before do
         login_as_doctor
         search = instance_double(NhsDmd::Search, call: unconfigured_outcome)
-        allow(NhsDmd::Search).to receive(:new).and_return(search)
+        allow(NhsDmd::Search).to(receive(:new).and_return(search))
       end
 
-      it 'returns 503 with a generic error message' do
-        get medication_finder_search_path(format: :json), params: { q: 'aspirin' }
+      it "returns 503 with a generic error message" do
+        get(medication_finder_search_path(format: :json), params: {q: "aspirin"})
 
         json = response.parsed_body
-        expect(response).to have_http_status(:service_unavailable)
-        expect(json['error']).to eq('Medication search is temporarily unavailable.')
+        expect(response).to(have_http_status(:service_unavailable))
+        expect(json["error"]).to(eq("Medication search is temporarily unavailable."))
       end
     end
 
-    context 'when the query is a locally imported barcode' do
+    context("when the query is a locally imported barcode") do
       before do
         login_as_doctor
         NhsDmdBarcode.create!(
-          gtin: '05016298210989',
-          code: '13629411000001105',
-          display: 'Laxido Orange oral powder sachets (Galen Ltd)',
-          system: 'https://dmd.nhs.uk',
-          concept_class: 'AMPP'
+          gtin: "05016298210989",
+          code: "13629411000001105",
+          display: "Laxido Orange oral powder sachets (Galen Ltd)",
+          system: "https://dmd.nhs.uk",
+          concept_class: "AMPP"
         )
-        allow(ENV).to receive(:fetch).and_call_original
-        allow(ENV).to receive(:fetch).with('NHS_DMD_CLIENT_ID', nil).and_return(nil)
-        allow(ENV).to receive(:fetch).with('NHS_DMD_CLIENT_SECRET', nil).and_return(nil)
+        allow(ENV).to(receive(:fetch).and_call_original)
+        allow(ENV).to(receive(:fetch).with("NHS_DMD_CLIENT_ID", nil).and_return(nil))
+        allow(ENV).to(receive(:fetch).with("NHS_DMD_CLIENT_SECRET", nil).and_return(nil))
       end
 
-      it 'returns the local barcode match without NHS API credentials' do
-        get medication_finder_search_path(format: :json), params: { q: '5016298210989' }
+      it "returns the local barcode match without NHS API credentials" do
+        get(medication_finder_search_path(format: :json), params: {q: "5016298210989"})
 
-        expect(response).to have_http_status(:ok)
-        expect(response.parsed_body['results']).to contain_exactly(
-          a_hash_including(
-            'code' => '13629411000001105',
-            'display' => 'Laxido Orange oral powder sachets (Galen Ltd)',
-            'concept_class' => 'AMPP'
+        expect(response).to(have_http_status(:ok))
+        expect(response.parsed_body["results"]).to(
+          contain_exactly(
+            a_hash_including(
+              "code" => "13629411000001105",
+              "display" => "Laxido Orange oral powder sachets (Galen Ltd)",
+              "concept_class" => "AMPP"
+            )
           )
         )
-        expect(response.parsed_body['query']).to eq('Laxido Orange oral powder sachets (Galen Ltd)')
-        expect(response.parsed_body['barcode']).to eq('5016298210989')
+        expect(response.parsed_body["query"]).to(eq("Laxido Orange oral powder sachets (Galen Ltd)"))
+        expect(response.parsed_body["barcode"]).to(eq("5016298210989"))
       end
     end
 
-    context 'when the user is not authenticated' do
-      it 'redirects to login' do
-        get medication_finder_search_path(format: :json), params: { q: 'aspirin' }
+    context("when the user is not authenticated") do
+      it "redirects to login" do
+        get(medication_finder_search_path(format: :json), params: {q: "aspirin"})
 
-        expect(response).to redirect_to('/login')
+        expect(response).to(redirect_to("/login"))
       end
     end
 
-    context 'when the user is a carer (not authorised)' do
+    context("when the user is a carer (not authorised)") do
       before { login_as_carer }
 
-      it 'redirects with not authorized' do
-        get medication_finder_search_path(format: :json), params: { q: 'aspirin' }
+      it "redirects with not authorized" do
+        get(medication_finder_search_path(format: :json), params: {q: "aspirin"})
 
-        expect(response).to redirect_to(root_path)
+        expect(response).to(redirect_to(root_path))
       end
     end
   end

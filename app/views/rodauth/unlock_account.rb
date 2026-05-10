@@ -10,7 +10,7 @@ module Views
         page_layout do
           render_auth_card(
             title: rodauth.unlock_account_button,
-            subtitle: t('rodauth.unlock_account.instruction')
+            subtitle: t("rodauth.unlock_account.instruction")
           ) do
             flash_section
             render_explanatory_text
@@ -24,7 +24,7 @@ module Views
       def flash_section
         return if flash_message.blank?
 
-        div(id: 'unlock-account-flash') do
+        div(id: "unlock-account-flash") do
           render_m3_alert(flash_message)
         end
       end
@@ -34,15 +34,19 @@ module Views
       end
 
       def render_explanatory_text
-        div(class: 'text-sm leading-6 text-on-surface-variant font-medium') do
+        div(class: "text-sm leading-6 text-on-surface-variant font-medium") do
           safe(rodauth.unlock_account_explanatory_text)
         end
       end
 
       def render_unlock_form
-        render RubyUI::Form.new(
-          action: rodauth.unlock_account_path, method: :post,
-          class: 'space-y-6', data_turbo: 'false'
+        render(
+          RubyUI::Form.new(
+            action: rodauth.unlock_account_path,
+            method: :post,
+            class: "space-y-6",
+            data_turbo: "false"
+          )
         ) do
           additional_tags = rodauth.unlock_account_additional_form_tags
           safe(additional_tags) if additional_tags.present?
@@ -55,19 +59,19 @@ module Views
 
       def key_field
         key = view_context.params[rodauth.unlock_account_key_param]
-        input(type: 'hidden', name: rodauth.unlock_account_key_param, value: key) if key.present?
+        input(type: "hidden", name: rodauth.unlock_account_key_param, value: key) if key.present?
       end
 
       def render_password_field
         render_m3_form_field(
-          label: t('sessions.login.password_label'),
+          label: t("sessions.login.password_label"),
           input_attrs: {
             type: :password,
             name: rodauth.password_param,
-            id: 'password',
+            id: "password",
             required: true,
-            autocomplete: 'current-password',
-            placeholder: t('sessions.login.password_placeholder')
+            autocomplete: "current-password",
+            placeholder: t("sessions.login.password_placeholder")
           }
         )
       end

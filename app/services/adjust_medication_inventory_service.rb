@@ -10,8 +10,8 @@ class AdjustMedicationInventoryService
   def call(medication:, new_quantity:, reason: nil)
     normalized_quantity = normalize_quantity(new_quantity)
 
-    return failure(medication, 'Quantity must be a valid number') if normalized_quantity.nil?
-    return failure(medication, 'Quantity cannot be negative') if normalized_quantity.negative?
+    return failure(medication, "Quantity must be a valid number") if normalized_quantity.nil?
+    return failure(medication, "Quantity cannot be negative") if normalized_quantity.negative?
 
     medication.paper_trail_event = build_event_string(normalized_quantity, reason)
 

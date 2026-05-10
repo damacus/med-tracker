@@ -6,5 +6,5 @@ class NativeDeviceToken < ApplicationRecord
   belongs_to :account
 
   validates :device_token, presence: true, uniqueness: true
-  validates :platform, inclusion: { in: PLATFORMS }
+  validates :platform, inclusion: {in: PLATFORMS}
 end

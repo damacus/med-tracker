@@ -12,37 +12,37 @@ class SchedulesController < ApplicationController
   before_action :set_schedule, only: %i[edit update destroy take_medication]
 
   def index
-    authorize Schedule.new(person: schedule_index_person), :index?
+    authorize(Schedule.new(person: schedule_index_person), :index?)
     schedules = SchedulesIndexQuery.new(scope: policy_scope(Schedule)).call
-    render Components::Schedules::IndexView.new(schedules: schedules)
+    render(Components::Schedules::IndexView.new(schedules: schedules))
   end
 
   def workflow
-    authorize Schedule.new(person: current_user&.person || Person.new), :create?
+    authorize(Schedule.new(person: current_user&.person || Person.new), :create?)
     render_schedule_workflow
   end
 
   def start_workflow
-    authorize Schedule.new(person: current_user&.person || Person.new), :create?
-    redirect_to selected_schedule_workflow_path
+    authorize(Schedule.new(person: current_user&.person || Person.new), :create?)
+    redirect_to(selected_schedule_workflow_path)
   end
 
   def new
     prepare_new_schedule
-    authorize @schedule
+    authorize(@schedule)
     @medications = medication_options_query.call
     render_new_schedule_form
   end
 
   def edit
-    authorize @schedule
+    authorize(@schedule)
     @medications = medication_options_query.call
     render_edit_schedule_form
   end
 
   def create
     @schedule = @person.schedules.build(schedule_params)
-    authorize @schedule
+    authorize(@schedule)
     @medications = medication_options_query.call
 
     if @schedule.save
@@ -53,7 +53,7 @@ class SchedulesController < ApplicationController
   end
 
   def update
-    authorize @schedule
+    authorize(@schedule)
     if @schedule.update(schedule_params)
       render_schedule_update_success
     else
@@ -62,14 +62,14 @@ class SchedulesController < ApplicationController
   end
 
   def destroy
-    authorize @schedule
+    authorize(@schedule)
     @schedule.destroy
     render_schedule_destroy_success
   end
 
   def take_medication
-    authorize @schedule, :take_medication?
-    taken_at = medication_taken_at_or_respond(scope: 'schedules')
+    authorize(@schedule, :take_medication?)
+    taken_at = medication_taken_at_or_respond(scope: "schedules")
     return unless taken_at
 
     result = take_schedule(taken_at)
@@ -82,7 +82,7 @@ class SchedulesController < ApplicationController
 
   def set_person
     @person = policy_scope(Person).find(params[:person_id])
-    authorize @person, :show?
+    authorize(@person, :show?)
   end
 
   def schedule_workflow_query
@@ -105,13 +105,15 @@ class SchedulesController < ApplicationController
     @schedule_type = params[:schedule_type]
     @frequency = params[:frequency]
 
-    render Components::Schedules::WorkflowView.new(
-      people: @people,
-      medications: @medications,
-      selected_person_id: @selected_person_id,
-      selected_medication_id: @selected_medication_id,
-      schedule_type: @schedule_type,
-      frequency: @frequency
+    render(
+      Components::Schedules::WorkflowView.new(
+        people: @people,
+        medications: @medications,
+        selected_person_id: @selected_person_id,
+        selected_medication_id: @selected_medication_id,
+        schedule_type: @schedule_type,
+        frequency: @frequency
+      )
     )
   end
 
@@ -139,7 +141,7 @@ class SchedulesController < ApplicationController
     render_schedule_form(
       schedule: @schedule,
       medications: @medications,
-      title: t('schedules.modal.new_title', person: @person.name),
+      title: t("schedules.modal.new_title", person: @person.name),
       back_path: modal_back_path(@person),
       status: status
     )
@@ -149,7 +151,7 @@ class SchedulesController < ApplicationController
     render_schedule_form(
       schedule: @schedule,
       medications: @medications,
-      title: t('schedules.modal.edit_title', person: @person.name),
+      title: t("schedules.modal.edit_title", person: @person.name),
       editing: true,
       status: status
     )
@@ -159,21 +161,29 @@ class SchedulesController < ApplicationController
     editing = options.fetch(:editing, false)
     back_path = options[:back_path]
     status = options.fetch(:status, :ok)
-    is_modal = request.headers['Turbo-Frame'] == 'modal'
+    is_modal = request.headers["Turbo-Frame"] == "modal"
 
     respond_to do |format|
       format.html do
         if is_modal
-          render schedule_modal_component(schedule:, medications:, title:, editing:, back_path:), layout: false, status: status
+          render(
+            schedule_modal_component(schedule:, medications:, title:, editing:, back_path:),
+            layout: false,
+            status: status
+          )
         else
-          render schedule_form_view(schedule:, medications:, editing:), status: status
+          render(schedule_form_view(schedule:, medications:, editing:), status: status)
         end
       end
+
       format.turbo_stream do
-        render turbo_stream: turbo_stream.replace(
-          'modal',
-          schedule_modal_component(schedule:, medications:, title:, editing:, back_path:)
-        ), status: status
+        render(
+          turbo_stream: turbo_stream.replace(
+            "modal",
+            schedule_modal_component(schedule:, medications:, title:, editing:, back_path:)
+          ),
+          status: status
+        )
       end
     end
   end
@@ -199,20 +209,20 @@ class SchedulesController < ApplicationController
 
   def render_schedule_create_success
     respond_to do |format|
-      format.html { redirect_to person_path(@person), notice: t('schedules.created') }
+      format.html { redirect_to(person_path(@person), notice: t("schedules.created")) }
       format.turbo_stream do
-        flash.now[:notice] = t('schedules.created')
-        render turbo_stream: schedule_create_streams
+        flash.now[:notice] = t("schedules.created")
+        render(turbo_stream: schedule_create_streams)
       end
     end
   end
 
   def schedule_create_streams
     [
-      turbo_stream.update('modal', ''),
+      turbo_stream.update("modal", ""),
       turbo_stream.replace("person_#{@person.id}", Components::People::PersonCard.new(person: @person.reload)),
       turbo_stream.replace("person_show_#{@person.id}", person_show_view(@person.reload)),
-      turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
+      turbo_stream.update("flash", Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
     ]
   end
 
@@ -223,19 +233,19 @@ class SchedulesController < ApplicationController
 
   def render_schedule_update_success
     respond_to do |format|
-      format.html { redirect_to person_path(@person), notice: t('schedules.updated') }
+      format.html { redirect_to(person_path(@person), notice: t("schedules.updated")) }
       format.turbo_stream do
-        flash.now[:notice] = t('schedules.updated')
-        render turbo_stream: schedule_update_streams
+        flash.now[:notice] = t("schedules.updated")
+        render(turbo_stream: schedule_update_streams)
       end
     end
   end
 
   def schedule_update_streams
     [
-      turbo_stream.update('modal', ''),
+      turbo_stream.update("modal", ""),
       turbo_stream.replace("person_show_#{@person.id}", person_show_view(@person.reload)),
-      turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
+      turbo_stream.update("flash", Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
     ]
   end
 
@@ -246,13 +256,15 @@ class SchedulesController < ApplicationController
 
   def render_schedule_destroy_success
     respond_to do |format|
-      format.html { redirect_back_or_to person_path(@person), notice: t('schedules.deleted') }
+      format.html { redirect_back_or_to(person_path(@person), notice: t("schedules.deleted")) }
       format.turbo_stream do
-        flash.now[:notice] = t('schedules.deleted')
-        render turbo_stream: [
-          turbo_stream.replace("person_show_#{@person.id}", person_show_view(@person.reload)),
-          turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
-        ]
+        flash.now[:notice] = t("schedules.deleted")
+        render(
+          turbo_stream: [
+            turbo_stream.replace("person_show_#{@person.id}", person_show_view(@person.reload)),
+            turbo_stream.update("flash", Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
+          ]
+        )
       end
     end
   end
@@ -270,24 +282,29 @@ class SchedulesController < ApplicationController
   end
 
   def log_schedule_invalid_take_attempt
-    log_invalid_take_attempt(source: 'schedule', amount: nil,
-                             metadata: { schedule_id: @schedule.id,
-                                         medication_id: @schedule.medication_id })
+    log_invalid_take_attempt(
+      source: "schedule",
+      amount: nil,
+      metadata: {
+        schedule_id: @schedule.id,
+        medication_id: @schedule.medication_id
+      }
+    )
   end
 
   def handle_schedule_take_failure(result)
-    handle_take_medication_failure(result.error, scope: 'schedules')
+    handle_take_medication_failure(result.error, scope: "schedules")
   end
 
   def render_schedule_take_success(take)
     @take = take
     respond_to do |format|
-      format.html { redirect_back_or_to person_path(@person), notice: t('schedules.medication_taken') }
+      format.html { redirect_back_or_to(person_path(@person), notice: t("schedules.medication_taken")) }
       format.turbo_stream do
-        flash.now[:notice] = t('schedules.medication_taken')
+        flash.now[:notice] = t("schedules.medication_taken")
         streams = build_timeline_streams_for(@schedule.reload, @take)
-        streams << turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice]))
-        render turbo_stream: streams
+        streams << turbo_stream.update("flash", Components::Layouts::Flash.new(notice: flash[:notice]))
+        render(turbo_stream: streams)
       end
     end
   end

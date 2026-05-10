@@ -1,81 +1,83 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
-RSpec.describe 'PWA' do
-  fixtures :accounts, :people, :users
+RSpec.describe "PWA" do
+  fixtures(:accounts, :people, :users)
 
-  describe 'GET /manifest.webmanifest' do
-    it 'returns the web manifest with app metadata' do
-      get '/manifest.webmanifest'
+  describe "GET /manifest.webmanifest" do
+    it "returns the web manifest with app metadata" do
+      get("/manifest.webmanifest")
 
-      expect(response).to have_http_status(:ok)
-      expect(response.media_type).to eq('application/manifest+json')
+      expect(response).to(have_http_status(:ok))
+      expect(response.media_type).to(eq("application/manifest+json"))
 
       manifest = JSON.parse(response.parsed_body)
-      expect(manifest['name']).to eq('MedTracker')
-      expect(manifest['short_name']).to eq('MedTracker')
-      expect(manifest['icons']).to contain_exactly(
-        include(
-          'src' => '/icons/icon-192.png',
-          'sizes' => '192x192',
-          'type' => 'image/png'
-        ),
-        include(
-          'src' => '/icons/icon-512.png',
-          'sizes' => '512x512',
-          'type' => 'image/png'
+      expect(manifest["name"]).to(eq("MedTracker"))
+      expect(manifest["short_name"]).to(eq("MedTracker"))
+      expect(manifest["icons"]).to(
+        contain_exactly(
+          include(
+            "src" => "/icons/icon-192.png",
+            "sizes" => "192x192",
+            "type" => "image/png"
+          ),
+          include(
+            "src" => "/icons/icon-512.png",
+            "sizes" => "512x512",
+            "type" => "image/png"
+          )
         )
       )
     end
   end
 
-  describe 'GET /service-worker.js' do
-    it 'returns the service worker javascript' do
-      get '/service-worker.js'
+  describe "GET /service-worker.js" do
+    it "returns the service worker javascript" do
+      get("/service-worker.js")
 
-      expect(response).to have_http_status(:ok)
-      expect(response.media_type).to eq('text/javascript')
-      expect(response.body).to include('self.addEventListener')
-      expect(response.body).to include("const CACHE_VERSION = 'v3'")
-      expect(response.body).to include('self.skipWaiting()')
-      expect(response.body).to include('self.clients.claim()')
-      expect(response.body).to include("self.addEventListener('fetch'")
-      expect(response.body).to include("'/offline'")
-      expect(response.body).to include('cache.put(')
-      expect(response.body).to include('cacheOfflineShell')
-      expect(response.body).to include('request.mode === \'navigate\' || url.pathname === OFFLINE_PATH')
+      expect(response).to(have_http_status(:ok))
+      expect(response.media_type).to(eq("text/javascript"))
+      expect(response.body).to(include("self.addEventListener"))
+      expect(response.body).to(include("const CACHE_VERSION = 'v3'"))
+      expect(response.body).to(include("self.skipWaiting()"))
+      expect(response.body).to(include("self.clients.claim()"))
+      expect(response.body).to(include("self.addEventListener('fetch'"))
+      expect(response.body).to(include("'/offline'"))
+      expect(response.body).to(include("cache.put("))
+      expect(response.body).to(include("cacheOfflineShell"))
+      expect(response.body).to(include("request.mode === 'navigate' || url.pathname === OFFLINE_PATH"))
     end
   end
 
-  describe 'offline bootstrap javascript' do
-    it 'refreshes cached snapshots and retries queued takes from normal app pages' do
-      source = Rails.root.join('app/javascript/application.js').read
+  describe "offline bootstrap javascript" do
+    it "refreshes cached snapshots and retries queued takes from normal app pages" do
+      source = Rails.root.join("app/javascript/application.js").read
 
-      expect(source).to include('refreshSnapshot')
-      expect(source).to include('syncQueuedTakes')
-      expect(source).to include('window.addEventListener(\'online\', runOfflineSync)')
+      expect(source).to(include("refreshSnapshot"))
+      expect(source).to(include("syncQueuedTakes"))
+      expect(source).to(include("window.addEventListener('online', runOfflineSync)"))
     end
   end
 
-  describe 'manifest link tag in layout' do
-    it 'includes a manifest link in the application layout' do
+  describe "manifest link tag in layout" do
+    it "includes a manifest link in the application layout" do
       sign_in(users(:admin))
-      get '/'
+      get("/")
       follow_redirect! if response.redirect?
 
-      expect(response.body).to include('<link rel="manifest" href="/manifest.webmanifest">')
-      expect(response.body).not_to include('fonts.googleapis.com')
-      expect(response.body).not_to include('fonts.gstatic.com')
+      expect(response.body).to(include("<link rel=\"manifest\" href=\"/manifest.webmanifest\">"))
+      expect(response.body).not_to(include("fonts.googleapis.com"))
+      expect(response.body).not_to(include("fonts.gstatic.com"))
     end
   end
 
-  describe 'Content-Security-Policy' do
-    it 'includes worker-src self to allow service worker registration' do
-      get '/manifest.webmanifest'
+  describe "Content-Security-Policy" do
+    it "includes worker-src self to allow service worker registration" do
+      get("/manifest.webmanifest")
 
-      csp = response.headers['Content-Security-Policy'] || response.headers['Content-Security-Policy-Report-Only']
-      expect(csp).to include('worker-src')
+      csp = response.headers["Content-Security-Policy"] || response.headers["Content-Security-Policy-Report-Only"]
+      expect(csp).to(include("worker-src"))
     end
   end
 end

@@ -4,10 +4,13 @@
 class Schedule < ApplicationRecord
   include TimingRestrictions
 
-  WEEKDAY_INDEXES = Date::DAYNAMES.each_with_index.with_object({}) do |(name, index), indexes|
-    indexes[name.downcase] = index
-    indexes[name.downcase.first(3)] = index
-  end.freeze
+  WEEKDAY_INDEXES = Date::DAYNAMES
+    .each_with_index
+    .with_object({}) do |(name, index), indexes|
+      indexes[name.downcase] = index
+      indexes[name.downcase.first(3)] = index
+    end
+    .freeze
 
   has_paper_trail
 
@@ -15,29 +18,36 @@ class Schedule < ApplicationRecord
 
   belongs_to :person
   belongs_to :medication
-  belongs_to :source_dosage_option, class_name: 'MedicationDosageOption', optional: true
+  belongs_to :source_dosage_option, class_name: "MedicationDosageOption", optional: true
 
-  enum :dose_cycle, { daily: 0, weekly: 1, monthly: 2 }
-  enum :schedule_type, {
-    daily: 0,
-    multiple_daily: 1,
-    weekly: 2,
-    specific_dates: 3,
-    prn: 4,
-    tapering: 5,
-    every_other_day: 6
-  }, prefix: :schedule_type
+  enum :dose_cycle, {daily: 0, weekly: 1, monthly: 2}
+  enum(
+    :schedule_type,
+    {
+      daily: 0,
+      multiple_daily: 1,
+      weekly: 2,
+      specific_dates: 3,
+      prn: 4,
+      tapering: 5,
+      every_other_day: 6
+    },
+    prefix: :schedule_type
+  )
 
   has_many :medication_takes, dependent: :destroy
 
-  scope :active, lambda {
-    where('start_date <= ? AND end_date >= ?', Time.zone.today, Time.zone.today)
-  }
+  scope(
+    :active,
+    lambda {
+      where("start_date <= ? AND end_date >= ?", Time.zone.today, Time.zone.today)
+    }
+  )
 
   validates :start_date, presence: true
   validates :end_date, presence: true
-  validates :dose_amount, presence: true, numericality: { greater_than: 0 }
-  validates :dose_unit, presence: true, inclusion: { in: Medication::DOSAGE_UNITS }
+  validates :dose_amount, presence: true, numericality: {greater_than: 0}
+  validates :dose_unit, presence: true, inclusion: {in: Medication::DOSAGE_UNITS}
   validate :source_dosage_option_matches_medication
   validate :source_dosage_option_matches_snapshot
   validate :end_date_after_start_date
@@ -57,11 +67,16 @@ class Schedule < ApplicationRecord
     return false unless within_schedule_range?(date)
 
     case schedule_type
-    when 'weekly' then configured_weekday?(date)
-    when 'specific_dates' then configured_date?(date)
-    when 'every_other_day' then every_other_day_from_start?(date)
-    when 'tapering' then current_taper_step(date).present?
-    else true
+    when "weekly"
+      configured_weekday?(date)
+    when "specific_dates"
+      configured_date?(date)
+    when "every_other_day"
+      every_other_day_from_start?(date)
+    when "tapering"
+      current_taper_step(date).present?
+    else
+      true
     end
   end
 
@@ -73,19 +88,19 @@ class Schedule < ApplicationRecord
   end
 
   def effective_dose_amount(date = Time.zone.today)
-    decimal_config_value(effective_config_for(date), 'amount', 'dose_amount') || dose_amount
+    decimal_config_value(effective_config_for(date), "amount", "dose_amount") || dose_amount
   end
 
   def effective_dose_unit(date = Time.zone.today)
-    config_value(effective_config_for(date), 'unit', 'dose_unit') || dose_unit
+    config_value(effective_config_for(date), "unit", "dose_unit") || dose_unit
   end
 
   def effective_max_daily_doses(date = Time.zone.today)
-    integer_config_value(effective_config_for(date), 'max_daily_doses', 'max_doses', 'max') || max_daily_doses
+    integer_config_value(effective_config_for(date), "max_daily_doses", "max_doses", "max") || max_daily_doses
   end
 
   def effective_min_hours_between_doses(date = Time.zone.today)
-    numeric_config_value(effective_config_for(date), 'min_hours_between_doses', 'min_hours', 'minimum_hours') ||
+    numeric_config_value(effective_config_for(date), "min_hours_between_doses", "min_hours", "minimum_hours") ||
       min_hours_between_doses
   end
 
@@ -142,21 +157,21 @@ class Schedule < ApplicationRecord
 
     return unless end_date < start_date
 
-    errors.add(:end_date, 'must be after the start date')
+    errors.add(:end_date, "must be after the start date")
   end
 
   def source_dosage_option_matches_medication
     return if source_dosage_option.blank? || medication.blank?
     return if source_dosage_option.medication_id == medication_id
 
-    errors.add(:source_dosage_option, 'must belong to the selected medication')
+    errors.add(:source_dosage_option, "must belong to the selected medication")
   end
 
   def source_dosage_option_matches_snapshot
     return if source_dosage_option.blank? || dose_amount.blank? || dose_unit.blank?
     return if source_dosage_option.amount.to_s == dose_amount.to_s && source_dosage_option.unit == dose_unit
 
-    errors.add(:source_dosage_option, 'must match the selected dose')
+    errors.add(:source_dosage_option, "must match the selected dose")
   end
 
   def uniquely_matching_dosage_option
@@ -175,19 +190,20 @@ class Schedule < ApplicationRecord
   end
 
   def configured_weekday?(date)
-    Array(config_value(schedule_config_hash, 'weekdays')).any? { |weekday| weekday_matches?(weekday, date) }
+    Array(config_value(schedule_config_hash, "weekdays")).any? { |weekday| weekday_matches?(weekday, date) }
   end
 
   def configured_date?(date)
-    dates = Array(config_value(schedule_config_hash, 'dates')).filter_map do |configured_date|
+    dates = Array(config_value(schedule_config_hash, "dates")).filter_map do |configured_date|
       normalize_date(configured_date)
     end
+
     dates.include?(date)
   end
 
   def every_other_day_from_start?(date) = ((date - start_date).to_i % 2).zero?
 
-  def configured_times = Array(config_value(schedule_config_hash, 'times')).compact_blank
+  def configured_times = Array(config_value(schedule_config_hash, "times")).compact_blank
 
   def effective_config_for(date)
     date = normalize_date(date)
@@ -197,14 +213,14 @@ class Schedule < ApplicationRecord
   end
 
   def current_taper_step(date)
-    Array(config_value(schedule_config_hash, 'taper_steps')).find do |step|
+    Array(config_value(schedule_config_hash, "taper_steps")).find do |step|
       step_applies_on?(step, date)
     end
   end
 
   def step_applies_on?(step, date)
-    step_start = normalize_date(config_value(step, 'start_date'))
-    step_end = normalize_date(config_value(step, 'end_date'))
+    step_start = normalize_date(config_value(step, "start_date"))
+    step_end = normalize_date(config_value(step, "end_date"))
     return false if step_start.blank? || step_end.blank?
 
     date.between?(step_start, step_end)

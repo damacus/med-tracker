@@ -12,7 +12,7 @@ module Components
         end
 
         def view_template
-          div(id: 'wizard-content', class: 'space-y-8') do
+          div(id: "wizard-content", class: "space-y-8") do
             render_header
             render_dosage_list
             render_actions
@@ -22,34 +22,36 @@ module Components
         private
 
         def render_header
-          div(class: 'text-center space-y-3') do
+          div(class: "text-center space-y-3") do
             div(
-              class: 'mx-auto w-14 h-14 rounded-shape-xl bg-success-container flex items-center justify-center ' \
-                     'text-on-success-container mb-2'
+              class: "mx-auto w-14 h-14 rounded-shape-xl bg-success-container flex items-center justify-center " \
+                "text-on-success-container mb-2"
             ) do
-              render Icons::CheckCircle.new(size: 28)
+              render(Icons::CheckCircle.new(size: 28))
             end
-            m3_heading(level: 3, size: '5', class: 'font-bold tracking-tight text-foreground') do
+
+            m3_heading(level: 3, size: "5", class: "font-bold tracking-tight text-foreground") do
               "#{medication.name} created!"
             end
-            m3_text(size: '2', class: 'text-on-surface-variant max-w-sm mx-auto') do
-              'Review the dose options and continue in the medication editor if you need to add or adjust them.'
+
+            m3_text(size: "2", class: "text-on-surface-variant max-w-sm mx-auto") do
+              "Review the dose options and continue in the medication editor if you need to add or adjust them."
             end
           end
         end
 
         def render_dosage_list
-          div(id: 'dosage-list', class: 'space-y-3') do
+          div(id: "dosage-list", class: "space-y-3") do
             if medication.dosages.any?
               medication.dosages.sort_by(&:amount).each do |dosage|
-                render DosageRow.new(dosage: dosage)
+                render(DosageRow.new(dosage: dosage))
               end
             else
               div(
-                class: 'rounded-shape-xl border border-dashed border-border p-6 bg-card text-center'
+                class: "rounded-shape-xl border border-dashed border-border p-6 bg-card text-center"
               ) do
-                m3_text(size: '2', class: 'text-on-surface-variant') do
-                  'No dose options are configured yet.'
+                m3_text(size: "2", class: "text-on-surface-variant") do
+                  "No dose options are configured yet."
                 end
               end
             end
@@ -58,23 +60,23 @@ module Components
 
         def render_actions
           div(
-            class: 'flex flex-col-reverse gap-3 pt-6 border-t border-border ' \
-                   'sm:flex-row sm:items-center sm:justify-between sm:gap-4'
+            class: "flex flex-col-reverse gap-3 pt-6 border-t border-border " \
+              "sm:flex-row sm:items-center sm:justify-between sm:gap-4"
           ) do
             Link(
               href: edit_medication_path(medication, return_to: medication_path(medication)),
               variant: :outlined,
-              class: 'w-full sm:w-auto justify-center font-bold',
-              data: { turbo_frame: '_top' }
-            ) { 'Manage dose options' }
+              class: "w-full sm:w-auto justify-center font-bold",
+              data: {turbo_frame: "_top"}
+            ) { "Manage dose options" }
 
             Link(
               href: medication_path(medication),
               variant: :filled,
               size: :lg,
-              class: 'w-full sm:w-auto justify-center sm:px-8 rounded-shape-xl shadow-lg shadow-primary/20',
-              data: { turbo_frame: '_top' }
-            ) { 'Done' }
+              class: "w-full sm:w-auto justify-center sm:px-8 rounded-shape-xl shadow-lg shadow-primary/20",
+              data: {turbo_frame: "_top"}
+            ) { "Done" }
           end
         end
       end

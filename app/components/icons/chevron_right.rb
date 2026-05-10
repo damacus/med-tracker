@@ -3,7 +3,7 @@
 module Components
   module Icons
     class ChevronRight < Base
-      DEFAULT_PATH = 'm9 18 6-6-6-6'
+      DEFAULT_PATH = "m9 18 6-6-6-6"
 
       def initialize(path: DEFAULT_PATH, stroke_width: nil, **attrs)
         @path = path

@@ -6,8 +6,8 @@ module Views
       def view_template
         page_layout do
           render_page_header(
-            title: t('rodauth.views.webauthn_auth.page_title'),
-            subtitle: t('rodauth.views.webauthn_auth.page_subtitle')
+            title: t("rodauth.views.webauthn_auth.page_title"),
+            subtitle: t("rodauth.views.webauthn_auth.page_subtitle")
           )
           form_section
         end
@@ -17,8 +17,8 @@ module Views
 
       def form_section
         render_auth_card(
-          title: t('rodauth.views.webauthn_auth.card_title'),
-          subtitle: t('rodauth.views.webauthn_auth.card_description')
+          title: t("rodauth.views.webauthn_auth.card_title"),
+          subtitle: t("rodauth.views.webauthn_auth.card_description")
         ) do
           flash_section
           webauthn_form
@@ -52,10 +52,10 @@ module Views
         {
           method: :post,
           action: rodauth.webauthn_auth_form_path,
-          role: 'form',
-          id: 'webauthn-auth-form',
+          role: "form",
+          id: "webauthn-auth-form",
           data_credential_options: credential_options.as_json.to_json,
-          class: 'space-y-6'
+          class: "space-y-6"
         }
       end
 
@@ -67,9 +67,9 @@ module Views
       end
 
       def challenge_fields(credential_options)
-        input(type: 'hidden', name: rodauth.webauthn_auth_challenge_param, value: credential_options.challenge)
+        input(type: "hidden", name: rodauth.webauthn_auth_challenge_param, value: credential_options.challenge)
         input(
-          type: 'hidden',
+          type: "hidden",
           name: rodauth.webauthn_auth_challenge_hmac_param,
           value: rodauth.compute_hmac(credential_options.challenge)
         )
@@ -77,12 +77,12 @@ module Views
 
       def hidden_credential_input
         input(
-          type: 'text',
+          type: "text",
           name: rodauth.webauthn_auth_param,
-          id: 'webauthn-auth',
-          value: '',
-          class: 'sr-only',
-          aria_hidden: 'true'
+          id: "webauthn-auth",
+          value: "",
+          class: "sr-only",
+          aria_hidden: "true"
         )
       end
 

@@ -7,5 +7,5 @@ class Location < ApplicationRecord
   has_many :location_memberships, dependent: :destroy
   has_many :members, through: :location_memberships, source: :person
 
-  validates :name, presence: true, uniqueness: { case_sensitive: false }
+  validates :name, presence: true, uniqueness: {case_sensitive: false}
 end

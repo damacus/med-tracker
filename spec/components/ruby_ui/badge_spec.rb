@@ -1,38 +1,38 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
 RSpec.describe RubyUI::Badge, type: :component do
-  describe 'WCAG 2.2 SC 2.5.8 minimum target size' do
+  describe "WCAG 2.2 SC 2.5.8 minimum target size" do
     %i[sm md lg].each do |size|
       it "includes min-h-[24px] and min-w-[24px] for :#{size} size" do
-        rendered = render_inline(described_class.new(size: size)) { 'Test' }
+        rendered = render_inline(described_class.new(size: size)) { "Test" }
 
-        badge = rendered.css('span').first
-        expect(badge['class']).to include('min-h-[24px]')
-        expect(badge['class']).to include('min-w-[24px]')
+        badge = rendered.css("span").first
+        expect(badge["class"]).to(include("min-h-[24px]"))
+        expect(badge["class"]).to(include("min-w-[24px]"))
       end
     end
   end
 
-  it 'renders with primary variant by default' do
-    rendered = render_inline(described_class.new) { 'Badge' }
+  it "renders with primary variant by default" do
+    rendered = render_inline(described_class.new) { "Badge" }
 
-    badge = rendered.css('span').first
-    expect(badge['class']).to include('text-on-primary-container')
+    badge = rendered.css("span").first
+    expect(badge["class"]).to(include("text-on-primary-container"))
   end
 
-  it 'normalizes outlined to outline' do
-    rendered = render_inline(described_class.new(variant: :outlined)) { 'Badge' }
+  it "normalizes outlined to outline" do
+    rendered = render_inline(described_class.new(variant: :outlined)) { "Badge" }
 
-    badge = rendered.css('span').first
-    expect(badge['class']).to include('ring-border')
+    badge = rendered.css("span").first
+    expect(badge["class"]).to(include("ring-border"))
   end
 
-  it 'normalizes tonal to secondary' do
-    rendered = render_inline(described_class.new(variant: :tonal)) { 'Badge' }
+  it "normalizes tonal to secondary" do
+    rendered = render_inline(described_class.new(variant: :tonal)) { "Badge" }
 
-    badge = rendered.css('span').first
-    expect(badge['class']).to include('text-secondary-foreground')
+    badge = rendered.css("span").first
+    expect(badge["class"]).to(include("text-secondary-foreground"))
   end
 end

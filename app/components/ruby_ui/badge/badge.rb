@@ -3,18 +3,18 @@
 module RubyUI
   class Badge < Base
     SIZES = {
-      sm: 'px-1.5 py-0.5 text-xs',
-      md: 'px-2 py-1 text-xs',
-      lg: 'px-3 py-1 text-sm'
+      sm: "px-1.5 py-0.5 text-xs",
+      md: "px-2 py-1 text-xs",
+      lg: "px-3 py-1 text-sm"
     }.freeze
 
     COLORS = {
-      primary: 'text-on-primary-container bg-primary-container ring-primary/20',
-      secondary: 'text-secondary-foreground bg-secondary/10 ring-secondary/20',
-      outline: 'text-foreground bg-background ring-border',
-      destructive: 'text-on-error-container bg-error-container ring-error/20',
-      success: 'text-on-success-container bg-success-container ring-success/20',
-      warning: 'text-on-warning-container bg-warning-container ring-warning/20'
+      primary: "text-on-primary-container bg-primary-container ring-primary/20",
+      secondary: "text-secondary-foreground bg-secondary/10 ring-secondary/20",
+      outline: "text-foreground bg-background ring-border",
+      destructive: "text-on-error-container bg-error-container ring-error/20",
+      success: "text-on-success-container bg-success-container ring-success/20",
+      warning: "text-on-warning-container bg-warning-container ring-warning/20"
     }.freeze
 
     def initialize(variant: :primary, size: :md, **args)
@@ -31,15 +31,22 @@ module RubyUI
 
     def normalize_variant(variant)
       case variant.to_sym
-      when :outlined then :outline
-      when :tonal then :secondary
-      else variant.to_sym
+      when :outlined
+        :outline
+      when :tonal
+        :secondary
+      else
+        variant.to_sym
       end
     end
 
     def default_attrs
       {
-        class: ['inline-flex items-center rounded-shape-full font-medium ring-1 ring-inset min-h-[24px] min-w-[24px]', SIZES[@size], COLORS[@variant]]
+        class: [
+          "inline-flex items-center rounded-shape-full font-medium ring-1 ring-inset min-h-[24px] min-w-[24px]",
+          SIZES[@size],
+          COLORS[@variant]
+        ]
       }
     end
   end

@@ -11,31 +11,32 @@ module Components
       end
 
       def view_template
-        m3_card(class: 'p-8 space-y-6') do
-          m3_heading(variant: :title_medium, level: 3, class: 'font-bold') { t('medications.show.standard_dosage') }
+        m3_card(class: "p-8 space-y-6") do
+          m3_heading(variant: :title_medium, level: 3, class: "font-bold") { t("medications.show.standard_dosage") }
 
           if dosage_specified?
-            div(class: 'flex items-center gap-4') do
+            div(class: "flex items-center gap-4") do
               div(
-                class: 'w-12 h-12 rounded-shape-xl bg-success/10 flex items-center justify-center ' \
-                       'text-success shadow-inner'
+                class: "w-12 h-12 rounded-shape-xl bg-success/10 flex items-center justify-center " \
+                  "text-success shadow-inner"
               ) do
-                render Icons::CheckCircle.new(size: 24)
+                render(Icons::CheckCircle.new(size: 24))
               end
+
               div do
-                span(class: 'text-3xl font-black text-foreground tracking-tight') { medication.dosage_amount.to_s }
-                span(class: 'text-lg font-bold text-on-surface-variant ml-1') { pluralized_dosage_unit }
+                span(class: "text-3xl font-black text-foreground tracking-tight") { medication.dosage_amount.to_s }
+                span(class: "text-lg font-bold text-on-surface-variant ml-1") { pluralized_dosage_unit }
               end
             end
           else
-            m3_text(variant: :body_medium, class: 'text-on-surface-variant italic font-medium') do
-              t('medications.show.no_dosage')
+            m3_text(variant: :body_medium, class: "text-on-surface-variant italic font-medium") do
+              t("medications.show.no_dosage")
             end
           end
 
-          div(class: 'pt-4 border-t border-border') do
+          div(class: "pt-4 border-t border-border") do
             render_overview_item(
-              t('medications.show.reorder_at_label'),
+              t("medications.show.reorder_at_label"),
               reorder_threshold_label
             )
           end
@@ -54,25 +55,27 @@ module Components
 
       def reorder_threshold_label
         threshold = MedicationStockQuantityFormatter.format(medication.reorder_threshold)
-        return "#{threshold} ml" if medication.dosage_unit == 'ml'
+        return "#{threshold} ml" if medication.dosage_unit == "ml"
 
-        threshold == '1' ? '1 unit' : "#{threshold} units"
+        threshold == "1" ? "1 unit" : "#{threshold} units"
       end
 
       def render_overview_item(label, value)
-        div(class: 'flex items-center gap-4 group') do
+        div(class: "flex items-center gap-4 group") do
           div(
-            class: 'w-10 h-10 rounded-shape-xl bg-primary/10 flex items-center justify-center ' \
-                   'text-primary ' \
-                   'group-hover:bg-primary/20 transition-colors shadow-inner'
+            class: "w-10 h-10 rounded-shape-xl bg-primary/10 flex items-center justify-center " \
+              "text-primary " \
+              "group-hover:bg-primary/20 transition-colors shadow-inner"
           ) do
-            render Icons::Settings.new(size: 20)
+            render(Icons::Settings.new(size: 20))
           end
+
           div do
-            m3_text(variant: :label_small, class: 'uppercase tracking-widest text-on-surface-variant font-black') do
+            m3_text(variant: :label_small, class: "uppercase tracking-widest text-on-surface-variant font-black") do
               label
             end
-            m3_text(variant: :body_medium, class: 'font-semibold') { value }
+
+            m3_text(variant: :body_medium, class: "font-semibold") { value }
           end
         end
       end

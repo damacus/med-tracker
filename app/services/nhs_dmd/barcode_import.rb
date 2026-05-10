@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'csv'
+require "csv"
 
 module NhsDmd
   class BarcodeImport
@@ -36,7 +36,7 @@ module NhsDmd
     def validate_headers!(headers)
       normalized_headers = headers.compact.map(&:strip)
       missing_headers = REQUIRED_HEADERS - normalized_headers
-      raise ArgumentError, "Missing required headers: #{missing_headers.join(', ')}" if missing_headers.any?
+      raise ArgumentError, "Missing required headers: #{missing_headers.join(", ")}" if missing_headers.any?
     end
 
     def persist(attrs)
@@ -46,17 +46,17 @@ module NhsDmd
     end
 
     def build_attrs(row)
-      gtin = normalized(row, 'gtin', digits_only: true)
-      code = normalized(row, 'code')
-      display = normalized(row, 'display')
+      gtin = normalized(row, "gtin", digits_only: true)
+      code = normalized(row, "code")
+      display = normalized(row, "display")
       return nil if gtin.blank? || code.blank? || display.blank?
 
       {
         gtin: gtin,
         code: code,
         display: display,
-        system: normalized(row, 'system').presence || 'https://dmd.nhs.uk',
-        concept_class: normalized(row, 'concept_class').presence
+        system: normalized(row, "system").presence || "https://dmd.nhs.uk",
+        concept_class: normalized(row, "concept_class").presence
       }
     end
 

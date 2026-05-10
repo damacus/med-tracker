@@ -17,27 +17,45 @@ class MedicationInventoryMatcher
   }ix
   PACK_COUNT_PATTERN = /\b\d+(?:\.\d+)?\s*(?:tablets?|capsules?|caplets?|sachets?|sprays?|drops?|pads?|ml|l)\b/i
   FORM_WORDS = %w[
-    tablet tablets capsule capsules caplet caplets sachet sachets spray sprays drop drops pad pads
-    oral solution suspension liquid powder
-  ].freeze
+    tablet
+    tablets
+    capsule
+    capsules
+    caplet
+    caplets
+    sachet
+    sachets
+    spray
+    sprays
+    drop
+    drops
+    pad
+    pads
+    oral
+    solution
+    suspension
+    liquid
+    powder
+  ]
+    .freeze
   FORM_UNITS = {
-    'tablet' => 'tablet',
-    'tablets' => 'tablet',
-    'capsule' => 'capsule',
-    'capsules' => 'capsule',
-    'caplet' => 'tablet',
-    'caplets' => 'tablet',
-    'sachet' => 'sachet',
-    'sachets' => 'sachet',
-    'spray' => 'spray',
-    'sprays' => 'spray',
-    'drop' => 'drop',
-    'drops' => 'drop',
-    'pad' => 'pad',
-    'pads' => 'pad',
-    'solution' => 'liquid',
-    'suspension' => 'liquid',
-    'liquid' => 'liquid'
+    "tablet" => "tablet",
+    "tablets" => "tablet",
+    "capsule" => "capsule",
+    "capsules" => "capsule",
+    "caplet" => "tablet",
+    "caplets" => "tablet",
+    "sachet" => "sachet",
+    "sachets" => "sachet",
+    "spray" => "spray",
+    "sprays" => "spray",
+    "drop" => "drop",
+    "drops" => "drop",
+    "pad" => "pad",
+    "pads" => "pad",
+    "solution" => "liquid",
+    "suspension" => "liquid",
+    "liquid" => "liquid"
   }.freeze
   STRENGTH_UNITS = %w[mg mcg g iu].freeze
 
@@ -99,19 +117,21 @@ class MedicationInventoryMatcher
   end
 
   def name_key(medication)
-    medication.name.to_s
-              .downcase
-              .gsub(/\([^)]*\)/, ' ')
-              .gsub(STRENGTH_PATTERN, ' ')
-              .gsub(PACK_COUNT_PATTERN, ' ')
-              .then { |name| remove_form_words(name) }
-              .gsub(/[^a-z0-9]+/, ' ')
-              .squish
+    medication
+      .name
+      .to_s
+      .downcase
+      .gsub(/\([^)]*\)/, " ")
+      .gsub(STRENGTH_PATTERN, " ")
+      .gsub(PACK_COUNT_PATTERN, " ")
+      .then { |name| remove_form_words(name) }
+      .gsub(/[^a-z0-9]+/, " ")
+      .squish
   end
 
   def remove_form_words(name)
-    words = FORM_WORDS.map { |word| Regexp.escape(word) }.join('|')
-    name.gsub(/\b(?:#{words})\b/i, ' ')
+    words = FORM_WORDS.map { |word| Regexp.escape(word) }.join("|")
+    name.gsub(/\b(?:#{words})\b/i, " ")
   end
 
   def strength_key(medication)
@@ -141,7 +161,7 @@ class MedicationInventoryMatcher
 
   def normalized_strength_unit(unit)
     normalized_unit = unit.to_s.downcase
-    return 'mcg' if normalized_unit.start_with?('microgram')
+    return "mcg" if normalized_unit.start_with?("microgram")
 
     normalized_unit
   end
@@ -162,6 +182,6 @@ class MedicationInventoryMatcher
   end
 
   def normalized_decimal(value)
-    BigDecimal(value.to_s).to_s('F').sub(/\.?0+\z/, '')
+    BigDecimal(value.to_s).to_s("F").sub(/\.?0+\z/, "")
   end
 end

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class DoseTimingPolicy
-  def initialize(takes:, dose_constraints:, dose_cycle: 'daily')
+  def initialize(takes:, dose_constraints:, dose_cycle: "daily")
     @takes = takes
     @dose_constraints = dose_constraints
     @cycle = DoseCycle.new(dose_cycle)
@@ -34,7 +34,7 @@ class DoseTimingPolicy
   def countdown_display
     seconds = time_until_next_dose
     return nil unless seconds
-    return 'less than 1 minute' if seconds < 60
+    return "less than 1 minute" if seconds < 60
 
     hours = seconds / 3600
     minutes = (seconds % 3600) / 60

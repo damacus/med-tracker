@@ -1,24 +1,25 @@
 # frozen_string_literal: true
 
-require 'net/http'
-require 'uri'
-require 'json'
-require 'digest'
+require "net/http"
+require "uri"
+require "json"
+require "digest"
 
 module NhsDmd
   class Client
-    class ApiError < StandardError; end
+    class ApiError < StandardError
+    end
 
-    BASE_URL = 'https://ontology.nhs.uk/production1/fhir'
-    TOKEN_URL = 'https://ontology.nhs.uk/authorisation/auth/realms/nhs-digital-terminology/protocol/openid-connect/token'
-    CACHE_PREFIX = 'nhs_dmd'
+    BASE_URL = "https://ontology.nhs.uk/production1/fhir"
+    TOKEN_URL = "https://ontology.nhs.uk/authorisation/auth/realms/nhs-digital-terminology/protocol/openid-connect/token"
+    CACHE_PREFIX = "nhs_dmd"
     DEFAULT_COUNT = 20
     SEARCH_CACHE_TTL = 12.hours
     TOKEN_CACHE_TTL = 50.minutes
     TIMEOUT_SECONDS = 10
 
-    VMP_VALUE_SET = 'https://dmd.nhs.uk/ValueSet/VMP'
-    AMP_VALUE_SET = 'https://dmd.nhs.uk/ValueSet/AMP'
+    VMP_VALUE_SET = "https://dmd.nhs.uk/ValueSet/VMP"
+    AMP_VALUE_SET = "https://dmd.nhs.uk/ValueSet/AMP"
     NETWORK_ERRORS = [
       Net::OpenTimeout,
       Net::ReadTimeout,
@@ -58,9 +59,9 @@ module NhsDmd
     def build_uri(value_set_url, query, count)
       uri = URI("#{BASE_URL}/ValueSet/$expand")
       uri.query = URI.encode_www_form(
-        'url' => value_set_url,
-        'count' => count.to_s,
-        'filter' => query
+        "url" => value_set_url,
+        "count" => count.to_s,
+        "filter" => query
       )
       uri
     end
@@ -72,8 +73,8 @@ module NhsDmd
       http.read_timeout = TIMEOUT_SECONDS
 
       request = Net::HTTP::Get.new(uri)
-      request['Accept'] = 'application/json'
-      request['Authorization'] = "Bearer #{access_token}" if authenticated?
+      request["Accept"] = "application/json"
+      request["Authorization"] = "Bearer #{access_token}" if authenticated?
 
       http.request(request)
     rescue *NETWORK_ERRORS => e
@@ -84,7 +85,7 @@ module NhsDmd
       raise ApiError, "NHS dm+d API returned #{response.code}" unless response.is_a?(Net::HTTPSuccess)
 
       body = JSON.parse(response.body)
-      contains = body.dig('expansion', 'contains') || []
+      contains = body.dig("expansion", "contains") || []
       contains.map { |item| map_item(item) }
     rescue JSON::ParserError => e
       raise ApiError, "NHS dm+d API returned invalid JSON: #{e.message}"
@@ -92,19 +93,20 @@ module NhsDmd
 
     def map_item(item)
       {
-        code: item['code'],
-        display: item['display'],
-        system: item['system'],
+        code: item["code"],
+        display: item["display"],
+        system: item["system"],
         concept_class: extract_concept_class(item)
       }
     end
 
     def extract_concept_class(item)
-      extensions = item['extension'] || []
+      extensions = item["extension"] || []
       comment_ext = extensions.find do |ext|
-        ext['url'] == 'http://hl7.org/fhir/StructureDefinition/valueset-concept-comments'
+        ext["url"] == "http://hl7.org/fhir/StructureDefinition/valueset-concept-comments"
       end
-      comment_ext&.dig('valueString')
+
+      comment_ext&.dig("valueString")
     end
 
     def authenticated?
@@ -119,15 +121,18 @@ module NhsDmd
 
     def fetch_access_token
       uri = URI(TOKEN_URL)
-      response = Net::HTTP.post_form(uri, {
-                                       'grant_type' => 'client_credentials',
-                                       'client_id' => client_id,
-                                       'client_secret' => client_secret
-                                     })
+      response = Net::HTTP.post_form(
+        uri,
+        {
+          "grant_type" => "client_credentials",
+          "client_id" => client_id,
+          "client_secret" => client_secret
+        }
+      )
 
       raise ApiError, "Failed to obtain NHS dm+d access token: #{response.code}" unless response.is_a?(Net::HTTPSuccess)
 
-      JSON.parse(response.body)['access_token']
+      JSON.parse(response.body)["access_token"]
     rescue JSON::ParserError => e
       raise ApiError, "NHS dm+d token response was invalid JSON: #{e.message}"
     rescue *NETWORK_ERRORS => e
@@ -135,11 +140,11 @@ module NhsDmd
     end
 
     def client_id
-      ENV.fetch('NHS_DMD_CLIENT_ID', nil)
+      ENV.fetch("NHS_DMD_CLIENT_ID", nil)
     end
 
     def client_secret
-      ENV.fetch('NHS_DMD_CLIENT_SECRET', nil)
+      ENV.fetch("NHS_DMD_CLIENT_SECRET", nil)
     end
 
     def value_set_cache_key(value_set_url, query, count)

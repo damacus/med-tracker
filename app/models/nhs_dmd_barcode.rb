@@ -9,7 +9,7 @@ class NhsDmdBarcode < ApplicationRecord
   after_commit :expire_cache
 
   def self.normalize_gtin(value)
-    value.to_s.gsub(/\D/, '')
+    value.to_s.gsub(/\D/, "")
   end
 
   private

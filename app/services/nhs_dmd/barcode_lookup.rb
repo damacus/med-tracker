@@ -2,7 +2,7 @@
 
 module NhsDmd
   class BarcodeLookup
-    CACHE_PREFIX = 'nhs_dmd/barcode'
+    CACHE_PREFIX = "nhs_dmd/barcode"
 
     def self.barcode_query?(barcode)
       normalized = NhsDmdBarcode.normalize_gtin(barcode)
@@ -30,8 +30,8 @@ module NhsDmd
       normalized = NhsDmdBarcode.normalize_gtin(barcode)
 
       candidates = [normalized]
-      candidates << normalized.rjust(14, '0') if normalized.length == 13
-      candidates << normalized.delete_prefix('0') if normalized.length == 14 && normalized.start_with?('0')
+      candidates << normalized.rjust(14, "0") if normalized.length == 13
+      candidates << normalized.delete_prefix("0") if normalized.length == 14 && normalized.start_with?("0")
       candidates.uniq
     end
 

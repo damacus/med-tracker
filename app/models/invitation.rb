@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'digest'
+require "digest"
 
 class Invitation < ApplicationRecord
   attr_reader :plain_token
@@ -10,18 +10,21 @@ class Invitation < ApplicationRecord
   before_create :assign_token_digest
   before_create :set_expires_at
 
-  validates :email, presence: true,
-                    format: { with: URI::MailTo::EMAIL_REGEXP },
-                    uniqueness: { case_sensitive: false, conditions: -> { pending } }
+  validates(
+    :email,
+    presence: true,
+    format: {with: URI::MailTo::EMAIL_REGEXP},
+    uniqueness: {case_sensitive: false, conditions: -> { pending }}
+  )
   validates :role, presence: true
   validate :role_cannot_be_minor
 
-  enum :role, { administrator: 0, doctor: 1, nurse: 2, carer: 3, parent: 4, minor: 5 }, validate: true
+  enum :role, {administrator: 0, doctor: 1, nurse: 2, carer: 3, parent: 4, minor: 5}, validate: true
 
-  scope :pending, -> { where(accepted_at: nil).where('expires_at > ?', Time.current) }
+  scope :pending, -> { where(accepted_at: nil).where("expires_at > ?", Time.current) }
 
   def self.assignable_roles
-    roles.except('minor')
+    roles.except("minor")
   end
 
   def expired?
@@ -47,7 +50,7 @@ class Invitation < ApplicationRecord
   def resend!
     raise ActiveRecord::RecordInvalid, self unless resendable?
 
-    self.paper_trail_event = 'resend'
+    self.paper_trail_event = "resend"
     assign_token_digest
     update!(token_digest:, expires_at: 7.days.from_now)
   end
@@ -74,6 +77,6 @@ class Invitation < ApplicationRecord
   end
 
   def role_cannot_be_minor
-    errors.add(:role, 'Children must be added by a parent or carer.') if minor?
+    errors.add(:role, "Children must be added by a parent or carer.") if minor?
   end
 end

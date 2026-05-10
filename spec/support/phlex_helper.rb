@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
 module PhlexTestingSupport
   def render(component)
@@ -29,13 +29,13 @@ module PhlexTestingSupport
       controller.instance_variable_set(:@_routes, Rails.application.routes)
       controller.singleton_class.include(Rails.application.routes.url_helpers)
       controller.singleton_class.define_method(:default_url_options) do
-        { host: 'test.host' }
+        {host: "test.host"}
       end
     end
   end
 end
 
 RSpec.configure do |config|
-  config.include PhlexTestingSupport, type: :component
-  config.include PhlexTestingSupport, type: :view
+  config.include(PhlexTestingSupport, type: :component)
+  config.include(PhlexTestingSupport, type: :view)
 end

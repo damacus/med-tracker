@@ -1,73 +1,73 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
 RSpec.describe MedicationTake do
   let(:person) { create(:person) }
   let(:medication) do
     create(
       :medication,
-      name: 'Lisinopril',
+      name: "Lisinopril",
       dosage_amount: 10,
-      dosage_unit: 'mg',
+      dosage_unit: "mg",
       current_supply: 10,
       reorder_threshold: 2
     )
   end
 
-  it 'decrements the matching alternate dosage record instead of an arbitrary row' do
+  it "decrements the matching alternate dosage record instead of an arbitrary row" do
     schedule = create_ambiguous_schedule(person: person, medication: medication)
     alternate_medication, inventory_options = create_alternate_medication_with_ambiguous_options(
       assigned_medication: medication,
-      location_name: 'Deterministic Alt'
+      location_name: "Deterministic Alt"
     )
 
     create_taken_from_schedule(schedule: schedule, taken_from_medication: alternate_medication)
 
-    expect(inventory_options[:morning].reload.current_supply).to eq(6)
-    expect(inventory_options[:evening].reload.current_supply).to eq(3)
-    expect(alternate_medication.reload.current_supply).to eq(9)
+    expect(inventory_options[:morning].reload.current_supply).to(eq(6))
+    expect(inventory_options[:evening].reload.current_supply).to(eq(3))
+    expect(alternate_medication.reload.current_supply).to(eq(9))
   end
 
-  it 'syncs aggregate inventory once when decrementing a dosage record' do
+  it "syncs aggregate inventory once when decrementing a dosage record" do
     schedule = create_ambiguous_schedule(person: person, medication: medication)
     alternate_medication, = create_alternate_medication_with_ambiguous_options(
       assigned_medication: medication,
-      location_name: 'Single Sync Alt'
+      location_name: "Single Sync Alt"
     )
 
-    allow(alternate_medication).to receive(:sync_inventory_from_dosage_records!).and_call_original
+    allow(alternate_medication).to(receive(:sync_inventory_from_dosage_records!).and_call_original)
 
     create_taken_from_schedule(schedule: schedule, taken_from_medication: alternate_medication)
 
-    expect(alternate_medication).to have_received(:sync_inventory_from_dosage_records!).once
+    expect(alternate_medication).to(have_received(:sync_inventory_from_dosage_records!).once)
   end
 
-  it 'locks the dosage record before locking aggregate inventory' do
+  it "locks the dosage record before locking aggregate inventory" do
     schedule = create_ambiguous_schedule(person: person, medication: medication)
     alternate_medication, inventory_options = create_alternate_medication_with_ambiguous_options(
       assigned_medication: medication,
-      location_name: 'Lock Order Alt'
+      location_name: "Lock Order Alt"
     )
     lock_order = record_lock_order(inventory: alternate_medication, dosage_option: inventory_options[:evening])
 
     take = build_taken_from_schedule(schedule: schedule, taken_from_medication: alternate_medication)
 
     stock_source = MedicationTakeStockSource.new(take: take, inventory: alternate_medication)
-    allow(stock_source).to receive(:dosage_option).and_return(inventory_options[:evening])
+    allow(stock_source).to(receive(:dosage_option).and_return(inventory_options[:evening]))
     MedicationTakeStockDecrement.new(take).call(stock_source)
 
-    expect(lock_order).to eq(%i[dosage inventory])
+    expect(lock_order).to(eq(%i[dosage inventory]))
   end
 
-  it 'rejects an alternate medication that does not have the selected dosage record' do
+  it "rejects an alternate medication that does not have the selected dosage record" do
     schedule = create_ambiguous_schedule(person: person, medication: medication)
     alternate_medication = create_incomplete_alternate_medication(assigned_medication: medication)
 
     take = build_taken_from_schedule(schedule: schedule, taken_from_medication: alternate_medication)
 
-    expect(take).not_to be_valid
-    expect(take.errors[:taken_from_medication]).to include('must include stock for the selected dose')
+    expect(take).not_to(be_valid)
+    expect(take.errors[:taken_from_medication]).to(include("must include stock for the selected dose"))
   end
 
   def create_ambiguous_schedule(person:, medication:)
@@ -84,7 +84,7 @@ RSpec.describe MedicationTake do
   def create_ambiguous_tracked_options(medication:, current_supply:, reorder_threshold:)
     create_option_pair(
       medication: medication,
-      supplies: { morning: current_supply, evening: current_supply },
+      supplies: {morning: current_supply, evening: current_supply},
       reorder_threshold: reorder_threshold
     )
   end
@@ -101,7 +101,7 @@ RSpec.describe MedicationTake do
       alternate_medication,
       create_option_pair(
         medication: alternate_medication,
-        supplies: { morning: 6, evening: 4 },
+        supplies: {morning: 6, evening: 4},
         reorder_threshold: 1
       )
     ]
@@ -110,14 +110,14 @@ RSpec.describe MedicationTake do
   def create_incomplete_alternate_medication(assigned_medication:)
     alternate_medication = create_matching_medication(
       medication: assigned_medication,
-      location: create(:location, name: 'Incomplete Alt'),
+      location: create(:location, name: "Incomplete Alt"),
       current_supply: 10,
       reorder_threshold: 2
     )
     create_tracked_dosage(
       medication: alternate_medication,
-      frequency: 'Morning',
-      description: 'Morning tablet',
+      frequency: "Morning",
+      description: "Morning tablet",
       current_supply: 6,
       reorder_threshold: 1
     )
@@ -133,7 +133,7 @@ RSpec.describe MedicationTake do
   end
 
   def record_lock(record, lock_order, label)
-    allow(record).to receive(:with_lock).and_wrap_original do |method, *args, &block|
+    allow(record).to(receive(:with_lock).and_wrap_original) do |method, *args, &block|
       lock_order << label
       method.call(*args, &block)
     end
@@ -173,7 +173,7 @@ RSpec.describe MedicationTake do
       :dosage,
       medication: medication,
       amount: 1,
-      unit: 'tablet',
+      unit: "tablet",
       frequency: frequency,
       description: description,
       current_supply: current_supply,

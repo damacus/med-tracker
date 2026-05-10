@@ -10,7 +10,8 @@ module RubyUI
     def view_template(&)
       div(**attrs) do
         div(
-          class: 'max-h-96 w-full overflow-auto rounded-shape-sm border border-border/70 bg-popover p-1 text-wrap text-foreground shadow-elevation-3 animate-out group-data-[ruby-ui--select-open-value=true]/select:animate-in fade-out-0 group-data-[ruby-ui--select-open-value=true]/select:fade-in-0 zoom-out-95 group-data-[ruby-ui--select-open-value=true]/select:zoom-in-95 slide-in-from-top-2', &
+          class: "max-h-96 w-full overflow-auto rounded-shape-sm border border-border/70 bg-popover p-1 text-wrap text-foreground shadow-elevation-3 animate-out group-data-[ruby-ui--select-open-value=true]/select:animate-in fade-out-0 group-data-[ruby-ui--select-open-value=true]/select:fade-in-0 zoom-out-95 group-data-[ruby-ui--select-open-value=true]/select:zoom-in-95 slide-in-from-top-2",
+          &
         )
       end
     end
@@ -20,12 +21,12 @@ module RubyUI
     def default_attrs
       {
         id: @id,
-        role: 'listbox',
-        tabindex: '-1',
+        role: "listbox",
+        tabindex: "-1",
         data: {
-          ruby_ui__select_target: 'content'
+          ruby_ui__select_target: "content"
         },
-        class: 'hidden w-full absolute top-0 left-0 z-50'
+        class: "hidden w-full absolute top-0 left-0 z-50"
       }
     end
   end

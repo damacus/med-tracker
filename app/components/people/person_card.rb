@@ -12,7 +12,7 @@ module Components
       end
 
       def view_template
-        m3_card(id: "person_#{person.id}", class: 'h-full flex flex-col') do
+        m3_card(id: "person_#{person.id}", class: "h-full flex flex-col") do
           render_card_header
           render_card_content
           render_card_footer
@@ -22,19 +22,23 @@ module Components
       private
 
       def render_card_header
-        m3_card_header(class: 'pb-4 pt-8 px-8') do
-          div(class: 'flex items-start justify-between') do
+        m3_card_header(class: "pb-4 pt-8 px-8") do
+          div(class: "flex items-start justify-between") do
             render_person_icon
             render_needs_carer_badge if person.needs_carer?
           end
-          div(class: 'space-y-1 mt-6') do
+
+          div(class: "space-y-1 mt-6") do
             m3_link(
               href: person_path(person),
               variant: :text,
-              class: 'p-0 h-auto no-underline hover:no-underline'
+              class: "p-0 h-auto no-underline hover:no-underline"
             ) do
-              m3_heading(variant: :title_large, level: 2,
-                         class: 'font-black tracking-tight text-foreground hover:text-primary transition-colors') do
+              m3_heading(
+                variant: :title_large,
+                level: 2,
+                class: "font-black tracking-tight text-foreground hover:text-primary transition-colors"
+              ) do
                 person.name
               end
             end
@@ -44,33 +48,38 @@ module Components
 
       def render_person_icon
         div(
-          class: 'w-10 h-10 rounded-xl flex items-center justify-center ' \
-                 'bg-secondary-container text-on-secondary-container'
+          class: "w-10 h-10 rounded-xl flex items-center justify-center " \
+            "bg-secondary-container text-on-secondary-container"
         ) do
-          render Icons::User.new(size: 20)
+          render(Icons::User.new(size: 20))
         end
       end
 
       def render_card_content
-        m3_card_content(class: 'flex-grow space-y-4 px-8') do
-          div(class: 'space-y-3 text-sm text-on-surface-variant font-medium') do
+        m3_card_content(class: "flex-grow space-y-4 px-8") do
+          div(class: "space-y-3 text-sm text-on-surface-variant font-medium") do
             p do
-              strong(class: 'font-black uppercase tracking-widest text-[10px] opacity-60 mr-2') do
-                "#{t('people.card.born')} "
+              strong(class: "font-black uppercase tracking-widest text-[10px] opacity-60 mr-2") do
+                "#{t("people.card.born")} "
               end
-              plain person.date_of_birth.strftime('%B %d, %Y')
+
+              plain(person.date_of_birth.strftime("%B %d, %Y"))
             end
+
             p do
-              strong(class: 'font-black uppercase tracking-widest text-[10px] opacity-60 mr-2') do
-                "#{t('people.card.age')} "
+              strong(class: "font-black uppercase tracking-widest text-[10px] opacity-60 mr-2") do
+                "#{t("people.card.age")} "
               end
-              plain person.age.to_s
+
+              plain(person.age.to_s)
             end
+
             p do
-              strong(class: 'font-black uppercase tracking-widest text-[10px] opacity-60 mr-2') do
-                "#{t('people.card.medications')} "
+              strong(class: "font-black uppercase tracking-widest text-[10px] opacity-60 mr-2") do
+                "#{t("people.card.medications")} "
               end
-              plain active_medication_count_text
+
+              plain(active_medication_count_text)
             end
           end
         end
@@ -78,10 +87,10 @@ module Components
 
       def active_schedules
         @active_schedules ||= if person.schedules.loaded?
-                                person.schedules.select(&:active?)
-                              else
-                                person.schedules.active
-                              end
+          person.schedules.select(&:active?)
+        else
+          person.schedules.active
+        end
       end
 
       def visible_person_medications
@@ -96,35 +105,35 @@ module Components
 
       def active_medication_count_text
         if active_medications_count.positive?
-          view_context.pluralize(active_medications_count, 'active medication')
+          view_context.pluralize(active_medications_count, "active medication")
         else
-          t('people.card.no_active_medications')
+          t("people.card.no_active_medications")
         end
       end
 
       def render_needs_carer_badge
         m3_badge(
           variant: :outlined,
-          class: 'h-auto py-1.5 px-3 rounded-xl border-warning/50 bg-warning-container/20 text-on-warning-container ' \
-                 'font-black uppercase tracking-wider text-[10px]',
-          data: { testid: 'needs-carer-badge' }
+          class: "h-auto py-1.5 px-3 rounded-xl border-warning/50 bg-warning-container/20 text-on-warning-container " \
+            "font-black uppercase tracking-wider text-[10px]",
+          data: {testid: "needs-carer-badge"}
         ) do
-          plain t('people.card.needs_carer')
+          plain(t("people.card.needs_carer"))
         end
       end
 
       def render_card_footer
-        m3_card_footer(class: 'flex flex-col gap-3 mt-auto pt-6 px-8') do
+        m3_card_footer(class: "flex flex-col gap-3 mt-auto pt-6 px-8") do
           render_add_medication_link if can_add_medication?
 
-          div(class: 'flex gap-2 w-full') do
+          div(class: "flex gap-2 w-full") do
             if active_medications_count.positive?
               m3_link(
                 href: person_path(person),
                 variant: :outlined,
                 size: :lg,
-                class: 'flex-1 rounded-xl font-bold bg-surface-container-low'
-              ) { t('people.card.view_medications') }
+                class: "flex-1 rounded-xl font-bold bg-surface-container-low"
+              ) { t("people.card.view_medications") }
             end
 
             render_assign_carer_link if person.needs_carer? && can_create?(CarerRelationship)
@@ -137,8 +146,8 @@ module Components
           href: new_person_medication_assignment_path(person),
           variant: :filled,
           size: :lg,
-          class: 'w-full rounded-xl font-black py-6 shadow-lg shadow-primary/20'
-        ) { t('people.card.add_medication') }
+          class: "w-full rounded-xl font-black py-6 shadow-lg shadow-primary/20"
+        ) { t("people.card.add_medication") }
       end
 
       def can_add_medication?
@@ -151,9 +160,9 @@ module Components
           href: new_admin_carer_relationship_path(patient_id: person.id),
           variant: :outlined,
           size: :lg,
-          class: 'flex-1 rounded-xl font-bold text-on-warning-container border-warning/50 bg-warning-container/10',
-          data: { turbo_frame: 'modal' }
-        ) { t('people.card.assign_carer') }
+          class: "flex-1 rounded-xl font-bold text-on-warning-container border-warning/50 bg-warning-container/10",
+          data: {turbo_frame: "modal"}
+        ) { t("people.card.assign_carer") }
       end
 
       def can_create?(record)

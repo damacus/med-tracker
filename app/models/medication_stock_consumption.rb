@@ -4,10 +4,10 @@ class MedicationStockConsumption
   VOLUME_UNITS = %w[ml].freeze
 
   def self.quantity_for(dose_amount:, dose_unit:)
-    return BigDecimal('0') if dose_amount.blank?
+    return BigDecimal("0") if dose_amount.blank?
     return BigDecimal(dose_amount.to_s) if volume_unit?(dose_unit)
 
-    BigDecimal('1')
+    BigDecimal("1")
   end
 
   def self.sufficient?(current_supply:, dose_amount:, dose_unit:)

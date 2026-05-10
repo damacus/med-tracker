@@ -1,18 +1,18 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
-RSpec.describe 'Two-Factor Soft Enforcement' do
-  fixtures :accounts, :people, :users
+RSpec.describe "Two-Factor Soft Enforcement" do
+  fixtures(:accounts, :people, :users)
 
-  it 'shows the privileged-user reminder on the profile page in the browser' do
+  it "shows the privileged-user reminder on the profile page in the browser" do
     user = users(:damacus)
     clear_2fa_for_account(user.person.account)
 
     login_as(user)
-    visit profile_path
+    visit(profile_path)
 
-    expect(page).to have_text('For enhanced security, please set up two-factor authentication')
-    expect(page).to have_current_path(profile_path)
+    expect(page).to(have_text("For enhanced security, please set up two-factor authentication"))
+    expect(page).to(have_current_path(profile_path))
   end
 end

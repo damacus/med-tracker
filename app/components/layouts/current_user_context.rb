@@ -25,7 +25,7 @@ module Components
       end
 
       def current_user_initials
-        return 'U' if current_user_name.blank?
+        return "U" if current_user_name.blank?
 
         current_user_name.split.map(&:first).join.upcase
       end

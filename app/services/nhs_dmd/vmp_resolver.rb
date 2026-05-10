@@ -14,7 +14,7 @@ module NhsDmd
       return nil if de_branded == display
 
       results = @client.search(de_branded)
-      results.find { |item| item[:concept_class] == 'VMP' }
+      results.find { |item| item[:concept_class] == "VMP" }
     rescue Client::ApiError, StandardError => e
       Rails.logger.error("NhsDmd::VmpResolver failed: #{e.class}: #{e.message}")
       nil
@@ -23,7 +23,7 @@ module NhsDmd
     private
 
     def de_brand(name)
-      name.to_s.sub(/\s*\([^)]*\)\z/, '').strip
+      name.to_s.sub(/\s*\([^)]*\)\z/, "").strip
     end
 
     def amp_or_ampp?(item)

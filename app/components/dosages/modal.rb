@@ -16,15 +16,16 @@ module Components
       end
 
       def view_template
-        turbo_frame_tag 'modal' do
+        turbo_frame_tag("modal") do
           Dialog(open: true) do
             DialogContent(size: :lg) do
               DialogHeader do
-                DialogTitle { dosage.new_record? ? t('dosages.new.title') : t('dosages.edit.title') }
+                DialogTitle { dosage.new_record? ? t("dosages.new.title") : t("dosages.edit.title") }
                 DialogDescription { medication.name }
               end
+
               DialogMiddle do
-                render Form.new(dosage: dosage, medication: medication)
+                render(Form.new(dosage: dosage, medication: medication))
               end
             end
           end

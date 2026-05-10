@@ -21,11 +21,13 @@ module Components
       private
 
       def render_card
-        render Components::Shared::MetricCard.new(
-          title: title,
-          value: value,
-          icon_type: icon_type,
-          href: href
+        render(
+          Components::Shared::MetricCard.new(
+            title: title,
+            value: value,
+            icon_type: icon_type,
+            href: href
+          )
         )
       end
     end

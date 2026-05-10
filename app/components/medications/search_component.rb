@@ -18,9 +18,13 @@ module Components
       def view_template
         return if locations.empty? && categories.empty?
 
-        div(class: 'mb-12 grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl') do
-          form_with(url: medications_path, method: :get, class: 'contents',
-                    data: { controller: 'form-submit', turbo_frame: 'medications_inventory' }) do
+        div(class: "mb-12 grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl") do
+          form_with(
+            url: medications_path,
+            method: :get,
+            class: "contents",
+            data: {controller: "form-submit", turbo_frame: "medications_inventory"}
+          ) do
             render_filter(location_filter_config) if locations.any?
             render_filter(category_filter_config) if categories.any?
           end
@@ -30,39 +34,42 @@ module Components
       private
 
       def render_filter(config)
-        div(class: 'space-y-2') do
+        div(class: "space-y-2") do
           render_filter_label(config)
           render_filter_combobox(config)
         end
       end
 
       def render_filter_label(config)
-        render RubyUI::FormFieldLabel.new(
-          for: config.fetch(:label_for),
-          class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
-        ) { config.fetch(:label_text) }
+        render(
+          RubyUI::FormFieldLabel
+            .new(
+              for: config.fetch(:label_for),
+              class: "text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1"
+            ) { config.fetch(:label_text) }
+        )
       end
 
       def render_filter_combobox(config)
-        render RubyUI::Combobox.new(class: 'w-full') do
-          render RubyUI::ComboboxTrigger.new(placeholder: config.fetch(:trigger_placeholder))
+        render(RubyUI::Combobox.new(class: "w-full")) do
+          render(RubyUI::ComboboxTrigger.new(placeholder: config.fetch(:trigger_placeholder)))
           render_filter_popover(config)
         end
       end
 
       def render_filter_popover(config)
-        render RubyUI::ComboboxPopover.new do
-          render RubyUI::ComboboxSearchInput.new(placeholder: config.fetch(:search_placeholder))
+        render(RubyUI::ComboboxPopover.new) do
+          render(RubyUI::ComboboxSearchInput.new(placeholder: config.fetch(:search_placeholder)))
           render_filter_list(config)
         end
       end
 
       def render_filter_list(config)
-        render RubyUI::ComboboxList.new do
+        render(RubyUI::ComboboxList.new) do
           render(RubyUI::ComboboxEmptyState.new { config.fetch(:empty_text) })
           render_filter_option(
             name: config.fetch(:name),
-            value: '',
+            value: "",
             checked: config.fetch(:current_value).blank?,
             label: config.fetch(:all_text)
           )
@@ -84,15 +91,15 @@ module Components
 
       def location_filter_config
         {
-          label_for: 'inventory_location_trigger',
-          label_text: t('medications.show.location'),
+          label_for: "inventory_location_trigger",
+          label_text: t("medications.show.location"),
           trigger_placeholder: current_location_name ||
-            t('medications.index.all_locations', default: 'All locations'),
-          search_placeholder: t('medications.index.search_locations', default: 'Filter locations'),
-          empty_text: t('medications.index.no_locations_found', default: 'No locations found'),
-          name: 'location_id',
+            t("medications.index.all_locations", default: "All locations"),
+          search_placeholder: t("medications.index.search_locations", default: "Filter locations"),
+          empty_text: t("medications.index.no_locations_found", default: "No locations found"),
+          name: "location_id",
           current_value: current_location_id,
-          all_text: t('medications.index.all_locations', default: 'All locations'),
+          all_text: t("medications.index.all_locations", default: "All locations"),
           options: locations,
           value_key: :id,
           label_key: :name
@@ -101,14 +108,14 @@ module Components
 
       def category_filter_config
         {
-          label_for: 'inventory_category_trigger',
-          label_text: 'Category',
-          trigger_placeholder: current_category.presence || t('medications.index.all'),
-          search_placeholder: t('forms.medications.filter_categories'),
-          empty_text: t('forms.medications.no_categories_found'),
-          name: 'category',
+          label_for: "inventory_category_trigger",
+          label_text: "Category",
+          trigger_placeholder: current_category.presence || t("medications.index.all"),
+          search_placeholder: t("forms.medications.filter_categories"),
+          empty_text: t("forms.medications.no_categories_found"),
+          name: "category",
           current_value: current_category,
-          all_text: t('medications.index.all'),
+          all_text: t("medications.index.all"),
           options: categories
         }
       end
@@ -124,12 +131,14 @@ module Components
       end
 
       def render_filter_option(name:, value:, checked:, label:)
-        render RubyUI::ComboboxItem.new do
-          render RubyUI::ComboboxRadio.new(
-            name: name,
-            value: value,
-            checked: checked,
-            data: { action: 'change->form-submit#submitForm' }
+        render(RubyUI::ComboboxItem.new) do
+          render(
+            RubyUI::ComboboxRadio.new(
+              name: name,
+              value: value,
+              checked: checked,
+              data: {action: "change->form-submit#submitForm"}
+            )
           )
           span { label }
         end

@@ -3,21 +3,21 @@
 class NotificationPreferencesController < ApplicationController
   def update
     @preference = current_user.person.notification_preference ||
-                  current_user.person.build_notification_preference
+      current_user.person.build_notification_preference
     if @preference.update(preference_params)
       respond_to do |format|
-        format.html { redirect_to profile_path, notice: t('notification_preferences.updated') }
+        format.html { redirect_to(profile_path, notice: t("notification_preferences.updated")) }
         format.turbo_stream do
-          flash.now[:notice] = t('notification_preferences.updated')
-          render turbo_stream: notification_preference_streams
+          flash.now[:notice] = t("notification_preferences.updated")
+          render(turbo_stream: notification_preference_streams)
         end
       end
     else
       respond_to do |format|
-        format.html { redirect_to profile_path, alert: t('notification_preferences.update_failed') }
+        format.html { redirect_to(profile_path, alert: t("notification_preferences.update_failed")) }
         format.turbo_stream do
-          flash.now[:alert] = t('notification_preferences.update_failed')
-          render turbo_stream: notification_preference_streams, status: :unprocessable_content
+          flash.now[:alert] = t("notification_preferences.update_failed")
+          render(turbo_stream: notification_preference_streams, status: :unprocessable_content)
         end
       end
     end
@@ -31,8 +31,11 @@ class NotificationPreferencesController < ApplicationController
 
   def notification_preference_streams
     [
-      turbo_stream.replace('notifications-card', Views::Profiles::NotificationsCard.new(person: current_user.person.reload)),
-      turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
+      turbo_stream.replace(
+        "notifications-card",
+        Views::Profiles::NotificationsCard.new(person: current_user.person.reload)
+      ),
+      turbo_stream.update("flash", Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
     ]
   end
 end

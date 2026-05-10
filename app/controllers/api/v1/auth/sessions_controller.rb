@@ -24,42 +24,49 @@ module Api
             user_agent: request.user_agent
           )
 
-          render json: {
-            data: {
-              access_token: access_token,
-              access_token_expires_at: api_session.access_expires_at.iso8601,
-              refresh_token: refresh_token,
-              refresh_token_expires_at: api_session.refresh_expires_at.iso8601,
-              me: Api::V1::MeSerializer.new(user).as_json
-            }
-          }, status: :created
+          render(
+            json: {
+              data: {
+                access_token: access_token,
+                access_token_expires_at: api_session.access_expires_at.iso8601,
+                refresh_token: refresh_token,
+                refresh_token_expires_at: api_session.refresh_expires_at.iso8601,
+                me: Api::V1::MeSerializer.new(user).as_json
+              }
+            },
+            status: :created
+          )
         end
 
         def refresh
           api_session = ApiSession.lookup_by_refresh_token(params[:refresh_token].to_s)
-          unless api_session&.active_refresh_token? && api_session.account.verified? && api_session.account.person&.user&.active?
+          unless api_session&.active_refresh_token? &&
+              api_session.account.verified? &&
+              api_session.account.person&.user&.active?
             render_invalid_refresh_token
             return
           end
 
           access_token, refresh_token = api_session.rotate_tokens!
 
-          render json: {
-            data: {
-              access_token: access_token,
-              access_token_expires_at: api_session.access_expires_at.iso8601,
-              refresh_token: refresh_token,
-              refresh_token_expires_at: api_session.refresh_expires_at.iso8601
+          render(
+            json: {
+              data: {
+                access_token: access_token,
+                access_token_expires_at: api_session.access_expires_at.iso8601,
+                refresh_token: refresh_token,
+                refresh_token_expires_at: api_session.refresh_expires_at.iso8601
+              }
             }
-          }
+          )
         end
 
         def destroy
-          token = request.headers['Authorization'].to_s.split(' ', 2).last
+          token = request.headers["Authorization"].to_s.split(" ", 2).last
           api_session = ApiSession.lookup_by_access_token(token)
           api_session&.revoke!
 
-          head :no_content
+          head(:no_content)
         end
 
         private
@@ -74,13 +81,17 @@ module Api
         end
 
         def render_invalid_credentials
-          render json: { error: { code: 'invalid_credentials', message: 'Email or password is invalid' } },
-                 status: :unauthorized
+          render(
+            json: {error: {code: "invalid_credentials", message: "Email or password is invalid"}},
+            status: :unauthorized
+          )
         end
 
         def render_invalid_refresh_token
-          render json: { error: { code: 'invalid_refresh_token', message: 'Refresh token is invalid or expired' } },
-                 status: :unauthorized
+          render(
+            json: {error: {code: "invalid_refresh_token", message: "Refresh token is invalid or expired"}},
+            status: :unauthorized
+          )
         end
       end
     end

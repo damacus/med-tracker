@@ -553,6 +553,9 @@ GEM
       lint_roller (~> 1.1)
       rubocop (~> 1.72, >= 1.72.1)
       rubocop-rspec (~> 3.5)
+    rubocop-rubyfmt (0.1.1)
+      lint_roller (~> 1.1)
+      rubocop (>= 1.72.2)
     ruby-lsp (0.26.9)
       language_server-protocol (~> 3.17.0)
       prism (>= 1.2, < 2.0)
@@ -733,6 +736,7 @@ DEPENDENCIES
   rubocop-rails-omakase
   rubocop-rspec
   rubocop-rspec_rails
+  rubocop-rubyfmt
   ruby-lsp (~> 0.26.9)
   ruby-lsp-rails (~> 0.4.8)
   ruby_llm

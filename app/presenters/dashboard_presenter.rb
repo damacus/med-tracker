@@ -13,10 +13,11 @@ class DashboardPresenter
   end
 
   def active_schedules
-    @active_schedules ||= Schedule.active
-                                  .where(person_id: people.map(&:id))
-                                  .includes(person: :user, medication: [])
-                                  .to_a
+    @active_schedules ||= Schedule
+      .active
+      .where(person_id: people.map(&:id))
+      .includes(person: :user, medication: [])
+      .to_a
   end
 
   def upcoming_schedules
@@ -50,10 +51,10 @@ class DashboardPresenter
 
   def people_scope(scope_or_ids)
     scope = if scope_or_ids.is_a?(ActiveRecord::Relation)
-              scope_or_ids
-            else
-              Person.where(id: Array(scope_or_ids).uniq)
-            end
+      scope_or_ids
+    else
+      Person.where(id: Array(scope_or_ids).uniq)
+    end
 
     scope.includes(:user, schedules: [:medication], person_medications: :medication)
   end

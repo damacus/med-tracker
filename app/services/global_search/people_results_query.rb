@@ -4,7 +4,7 @@ module GlobalSearch
   class PeopleResultsQuery < RecordResultsQuery
     def call
       scoped(Person)
-        .where('people.name ILIKE ?', search_term)
+        .where("people.name ILIKE ?", search_term)
         .order(:name)
         .limit(limit)
         .map { |person| result_for(person) }
@@ -14,9 +14,9 @@ module GlobalSearch
 
     def result_for(person)
       builder.build(
-        type: 'person',
+        type: "person",
         title: person.name,
-        subtitle: I18n.t('global_search.types.person'),
+        subtitle: I18n.t("global_search.types.person"),
         path: person_path(person)
       )
     end

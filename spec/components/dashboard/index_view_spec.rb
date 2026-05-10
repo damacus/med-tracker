@@ -1,10 +1,19 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
 RSpec.describe Components::Dashboard::IndexView, type: :component do
-  fixtures :accounts, :people, :users, :locations, :medications, :dosages, :schedules,
-           :person_medications, :medication_takes
+  fixtures(
+    :accounts,
+    :people,
+    :users,
+    :locations,
+    :medications,
+    :dosages,
+    :schedules,
+    :person_medications,
+    :medication_takes
+  )
 
   subject(:dashboard_view) do
     described_class.new(presenter: presenter)
@@ -12,165 +21,166 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
 
   let(:active_schedules_icon_path) do
     [
-      'M200-640h560v-80H200v80Zm0 0v-80 80Zm0 560q-33 0-56.5-23.5T120-160v-560q0-33 ',
-      '23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v227q-19-9-39-15t-41-9v-43H200v400h252q7 ',
-      '22 16.5 42T491-80H200Zm378.5-18.5Q520-157 520-240t58.5-141.5Q637-440 ',
-      '720-440t141.5 58.5Q920-323 920-240T861.5-98.5Q803-40 ',
-      '720-40T578.5-98.5ZM787-145l28-28-75-75v-112h-40v128l87 87Z'
+      "M200-640h560v-80H200v80Zm0 0v-80 80Zm0 560q-33 0-56.5-23.5T120-160v-560q0-33 ",
+      "23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v227q-19-9-39-15t-41-9v-43H200v400h252q7 ",
+      "22 16.5 42T491-80H200Zm378.5-18.5Q520-157 520-240t58.5-141.5Q637-440 ",
+      "720-440t141.5 58.5Q920-323 920-240T861.5-98.5Q803-40 ",
+      "720-40T578.5-98.5ZM787-145l28-28-75-75v-112h-40v128l87 87Z"
     ].join
   end
 
   let(:compliance_icon_path) do
     [
-      'M480-80q-139-35-229.5-159.5T160-516v-244l320-120 320 120v200h-80v-145l-240-90-240 ',
-      '90v189q0 121 68 220t172 132q26-8 49.5-20.5T576-214l56 56q-33 27-71.5 47T480-80Zm331.5-11.5Q800-103 ',
-      '800-120t11.5-28.5Q823-160 840-160t28.5 11.5Q880-137 880-120t-11.5 28.5Q857-80 ',
-      '840-80t-28.5-11.5ZM800-240v-240h80v240h-80ZM480-480Zm56.5 ',
-      '56.5Q560-447 560-480t-23.5-56.5Q513-560 480-560t-56.5 23.5Q400-513 400-480t23.5 ',
-      '56.5Q447-400 480-400t56.5-23.5ZM480-320q-66 ',
-      '0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 22-5.5 42.5T618-398l119 ',
-      '118-57 57-120-119q-18 11-38.5 16.5T480-320Z'
+      "M480-80q-139-35-229.5-159.5T160-516v-244l320-120 320 120v200h-80v-145l-240-90-240 ",
+      "90v189q0 121 68 220t172 132q26-8 49.5-20.5T576-214l56 56q-33 27-71.5 47T480-80Zm331.5-11.5Q800-103 ",
+      "800-120t11.5-28.5Q823-160 840-160t28.5 11.5Q880-137 880-120t-11.5 28.5Q857-80 ",
+      "840-80t-28.5-11.5ZM800-240v-240h80v240h-80ZM480-480Zm56.5 ",
+      "56.5Q560-447 560-480t-23.5-56.5Q513-560 480-560t-56.5 23.5Q400-513 400-480t23.5 ",
+      "56.5Q447-400 480-400t56.5-23.5ZM480-320q-66 ",
+      "0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 22-5.5 42.5T618-398l119 ",
+      "118-57 57-120-119q-18 11-38.5 16.5T480-320Z"
     ].join
   end
 
   let(:admin_user) { users(:admin) }
   let(:presenter) { DashboardPresenter.new(current_user: admin_user) }
 
-  describe 'greetings' do
-    it 'renders Good morning in the morning' do
-      travel_to Time.zone.parse('2026-02-25 09:00:00') do
+  describe "greetings" do
+    it "renders Good morning in the morning" do
+      travel_to(Time.zone.parse("2026-02-25 09:00:00")) do
         rendered = render_inline(dashboard_view)
-        expect(rendered.text).to include('Good morning')
+        expect(rendered.text).to(include("Good morning"))
       end
     end
 
-    it 'renders Good afternoon in the afternoon' do
-      travel_to Time.zone.parse('2026-02-25 15:00:00') do
+    it "renders Good afternoon in the afternoon" do
+      travel_to(Time.zone.parse("2026-02-25 15:00:00")) do
         rendered = render_inline(dashboard_view)
-        expect(rendered.text).to include('Good afternoon')
+        expect(rendered.text).to(include("Good afternoon"))
       end
     end
 
-    it 'renders Good evening in the evening' do
-      travel_to Time.zone.parse('2026-02-25 20:00:00') do
+    it "renders Good evening in the evening" do
+      travel_to(Time.zone.parse("2026-02-25 20:00:00")) do
         rendered = render_inline(dashboard_view)
-        expect(rendered.text).to include('Good evening')
+        expect(rendered.text).to(include("Good evening"))
       end
     end
   end
 
-  it 'renders the schedule heading' do
+  it "renders the schedule heading" do
     rendered = render_inline(dashboard_view)
-    expect(rendered.text).to include("Today's Schedule")
+    expect(rendered.text).to(include("Today's Schedule"))
   end
 
-  describe 'stats display' do
-    it 'renders people count' do
+  describe "stats display" do
+    it "renders people count" do
       rendered = render_inline(dashboard_view)
-      expect(rendered.text).to include(presenter.people.count.to_s)
+      expect(rendered.text).to(include(presenter.people.count.to_s))
     end
 
-    it 'renders active schedules count' do
+    it "renders active schedules count" do
       rendered = render_inline(dashboard_view)
-      expect(rendered.text).to include(presenter.active_schedules.count.to_s)
+      expect(rendered.text).to(include(presenter.active_schedules.count.to_s))
     end
 
-    it 'renders parent-scoped people count including self' do
+    it "renders parent-scoped people count including self" do
       parent_presenter = DashboardPresenter.new(current_user: users(:parent))
       parent_view = described_class.new(presenter: parent_presenter)
       expected_count = users(:parent).person.patients.where(person_type: :minor).count + 1
 
       rendered = render_inline(parent_view)
 
-      expect(rendered.text).to include(expected_count.to_s)
+      expect(rendered.text).to(include(expected_count.to_s))
     end
 
-    it 'links People stat card to people page' do
+    it "links People stat card to people page" do
       rendered = render_inline(dashboard_view)
 
-      expect(rendered.css("a[href='/people']")).to be_present
+      expect(rendered.css("a[href='/people']")).to(be_present)
     end
 
-    it 'links Active Schedules stat card to schedules page' do
+    it "links Active Schedules stat card to schedules page" do
       rendered = render_inline(dashboard_view)
 
-      expect(rendered.css("a[href='/schedules']")).to be_present
+      expect(rendered.css("a[href='/schedules']")).to(be_present)
     end
 
-    it 'links Compliance stat card to reports page' do
+    it "links Compliance stat card to reports page" do
       rendered = render_inline(dashboard_view)
 
-      expect(rendered.css("a[href='/reports']")).to be_present
+      expect(rendered.css("a[href='/reports']")).to(be_present)
     end
 
-    it 'renders the active schedules icon on the active schedules stat card' do
+    it "renders the active schedules icon on the active schedules stat card" do
       rendered = render_inline(dashboard_view)
       card = rendered.at_css("a[href='/schedules']")
 
-      expect(card.at_css("path[d='#{active_schedules_icon_path}']")).to be_present
+      expect(card.at_css("path[d='#{active_schedules_icon_path}']")).to(be_present)
     end
 
-    it 'renders the compliance icon on the compliance stat card' do
+    it "renders the compliance icon on the compliance stat card" do
       rendered = render_inline(dashboard_view)
       card = rendered.at_css("a[href='/reports']")
 
-      expect(card.at_css("path[d='#{compliance_icon_path}']")).to be_present
+      expect(card.at_css("path[d='#{compliance_icon_path}']")).to(be_present)
     end
   end
 
-  describe 'quick actions' do
-    it 'renders Add Medication link' do
+  describe "quick actions" do
+    it "renders Add Medication link" do
       rendered = render_inline(dashboard_view)
-      expect(rendered.text).to include('Add Medication')
+      expect(rendered.text).to(include("Add Medication"))
     end
 
-    it 'hides Add Person for admin users' do
+    it "hides Add Person for admin users" do
       rendered = render_inline(dashboard_view)
-      expect(rendered.text).not_to include('Add Person')
+      expect(rendered.text).not_to(include("Add Person"))
     end
   end
 
-  describe 'high-fidelity sections' do
-    it 'renders Smart Insights' do
+  describe "high-fidelity sections" do
+    it "renders Smart Insights" do
       rendered = render_inline(dashboard_view)
-      expect(rendered.text).to include('Smart Insights')
+      expect(rendered.text).to(include("Smart Insights"))
     end
 
-    it 'renders Stock Inventory' do
+    it "renders Stock Inventory" do
       rendered = render_inline(dashboard_view)
-      expect(rendered.text).to include('Stock Inventory')
+      expect(rendered.text).to(include("Stock Inventory"))
     end
 
-    it 'does not render a duplicate Next Dose card in the right rail' do
+    it "does not render a duplicate Next Dose card in the right rail" do
       rendered = render_inline(dashboard_view)
 
-      expect(rendered.at_css('[data-testid="dashboard-right-rail-next-dose"]')).not_to be_present
+      expect(rendered.at_css("[data-testid=\"dashboard-right-rail-next-dose\"]")).not_to(be_present)
     end
 
-    it 'does not render a duplicate Medication Schedule section in the right rail' do
+    it "does not render a duplicate Medication Schedule section in the right rail" do
       rendered = render_inline(dashboard_view)
 
-      expect(rendered.css('h2').map(&:text)).not_to include('Medication Schedule')
+      expect(rendered.css("h2").map(&:text)).not_to(include("Medication Schedule"))
     end
 
-    it 'renders the mobile content flow with inventory before insights' do
+    it "renders the mobile content flow with inventory before insights" do
       rendered = render_inline(dashboard_view)
       html = rendered.to_html
 
-      expect(html.index('Stock Inventory')).to be < html.index('Smart Insights')
+      expect(html.index("Stock Inventory")).to(be < html.index("Smart Insights"))
     end
   end
 
-  context 'when there are no active schedules or person medications' do
+  context("when there are no active schedules or person medications") do
     before do
       MedicationTake.delete_all
       PersonMedication.delete_all
-      Schedule.update_all(end_date: 1.year.ago) # rubocop:disable Rails/SkipsModelValidations
+      # rubocop:disable Rails/SkipsModelValidations
+      Schedule.update_all(end_date: 1.year.ago)
     end
 
-    it 'renders the empty state message' do
+    it "renders the empty state message" do
       rendered = render_inline(dashboard_view)
-      expect(rendered.text).to include('No medications scheduled for today')
+      expect(rendered.text).to(include("No medications scheduled for today"))
     end
   end
 end

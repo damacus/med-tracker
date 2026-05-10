@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
-require 'uri'
+require "uri"
 
 module AiMedication
   class TrustedSourceAllowlist
     Entry = Data.define(:name, :domains, :path_patterns, :seed_urls)
 
-    def initialize(config_path: Rails.root.join('config/ai_medication_sources.yml'))
+    def initialize(config_path: Rails.root.join("config/ai_medication_sources.yml"))
       @config_path = config_path
     end
 
@@ -29,12 +29,12 @@ module AiMedication
     def entries
       @entries ||= begin
         payload = YAML.safe_load_file(config_path, aliases: false) || {}
-        Array(payload.fetch('sources', [])).map do |source|
+        Array(payload.fetch("sources", [])).map do |source|
           Entry.new(
-            name: source.fetch('name'),
-            domains: Array(source.fetch('domains', [])),
-            path_patterns: Array(source.fetch('path_patterns', [])).map { |pattern| Regexp.new(pattern) },
-            seed_urls: Array(source.fetch('seed_urls', []))
+            name: source.fetch("name"),
+            domains: Array(source.fetch("domains", [])),
+            path_patterns: Array(source.fetch("path_patterns", [])).map { |pattern| Regexp.new(pattern) },
+            seed_urls: Array(source.fetch("seed_urls", []))
           )
         end
       end

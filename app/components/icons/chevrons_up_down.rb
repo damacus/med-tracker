@@ -5,8 +5,8 @@ module Components
     class ChevronsUpDown < Base
       def view_template
         svg(**attrs) do |s|
-          s.path(d: 'm7 15 5 5 5-5')
-          s.path(d: 'm7 9 5-5 5 5')
+          s.path(d: "m7 15 5 5 5-5")
+          s.path(d: "m7 9 5-5 5 5")
         end
       end
     end

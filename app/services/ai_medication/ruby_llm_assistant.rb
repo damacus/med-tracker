@@ -2,11 +2,11 @@
 
 module AiMedication
   class RubyLlmAssistant
-    MODEL_ENV = 'MEDTRACKER_AI_MEDICATION_HELP_MODEL'
+    MODEL_ENV = "MEDTRACKER_AI_MEDICATION_HELP_MODEL"
 
     def call(medication_identity:)
-      return Suggestion.new(errors: ['ruby_llm_unavailable']) unless ruby_llm_available?
-      return Suggestion.new(errors: ['ruby_llm_unconfigured']) unless configured?
+      return Suggestion.new(errors: ["ruby_llm_unavailable"]) unless ruby_llm_available?
+      return Suggestion.new(errors: ["ruby_llm_unconfigured"]) unless configured?
 
       response = chat.ask(prompt_for(medication_identity))
       suggestion_from(response.content)
@@ -41,13 +41,13 @@ module AiMedication
     end
 
     def instructions
-      'Help fill medication onboarding fields only from trusted source tool results. ' \
-        'Return JSON with medication, doses, and sources. Do not guess missing dose guidance.'
+      "Help fill medication onboarding fields only from trusted source tool results. " \
+        "Return JSON with medication, doses, and sources. Do not guess missing dose guidance."
     end
 
     def prompt_for(medication_identity)
       {
-        task: 'Find trusted source evidence and draft medication onboarding fields.',
+        task: "Find trusted source evidence and draft medication onboarding fields.",
         medication_identity: medication_identity
       }.to_json
     end
@@ -55,13 +55,13 @@ module AiMedication
     def suggestion_from(content)
       payload = content.is_a?(Hash) ? content : JSON.parse(content.to_s)
       Suggestion.new(
-        medication: payload.fetch('medication', {}),
-        doses: payload.fetch('doses', []),
-        sources: payload.fetch('sources', []),
-        errors: payload.fetch('errors', [])
+        medication: payload.fetch("medication", {}),
+        doses: payload.fetch("doses", []),
+        sources: payload.fetch("sources", []),
+        errors: payload.fetch("errors", [])
       )
     rescue JSON::ParserError
-      Suggestion.new(errors: ['invalid_model_response'])
+      Suggestion.new(errors: ["invalid_model_response"])
     end
   end
 end

@@ -10,9 +10,9 @@ module RubyUI
 
     def default_attrs
       {
-        role: 'separator',
-        aria_orientation: 'horizontal',
-        class: '-mx-1 my-1 h-px bg-secondary-container'
+        role: "separator",
+        aria_orientation: "horizontal",
+        class: "-mx-1 my-1 h-px bg-secondary-container"
       }
     end
   end

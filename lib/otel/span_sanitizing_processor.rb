@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative 'span_sanitizer'
+require_relative "span_sanitizer"
 
 module Otel
   class SpanSanitizingProcessor
@@ -15,11 +15,13 @@ module Otel
       sanitized.each do |key, value|
         span.set_attribute(key, value) if value != span.attributes[key]
       end
+
     rescue StandardError => e
-      Rails.logger.warn "[OpenTelemetry] SpanSanitizingProcessor error: #{e.message}"
+      Rails.logger.warn("[OpenTelemetry] SpanSanitizingProcessor error: #{e.message}")
     end
 
-    def on_finish(_span); end
+    def on_finish(_span)
+    end
 
     def force_flush(**_)
       OpenTelemetry::SDK::Trace::Export::SUCCESS

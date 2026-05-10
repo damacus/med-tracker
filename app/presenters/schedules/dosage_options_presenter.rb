@@ -27,19 +27,23 @@ module Schedules
     end
 
     def dosage_dom_id(dosage)
-      key = dosage.selection_key.parameterize(separator: '_')
+      key = dosage.selection_key.parameterize(separator: "_")
       return "schedule_dose_option_#{key}" unless duplicate_dose_selection_keys.include?(dosage.selection_key)
 
-      description = dosage.description.to_s.parameterize(separator: '_').presence || dosage.object_id
+      description = dosage.description.to_s.parameterize(separator: "_").presence || dosage.object_id
       "schedule_dose_option_#{key}_#{description}"
     end
 
     def duplicate_dose_selection_keys
-      @duplicate_dose_selection_keys ||= dosages.group_by(&:selection_key).each_with_object([]) do |group,
-                                                                                                selection_keys|
-        selection_key, matching_dosages = group
-        selection_keys << selection_key if matching_dosages.size > 1
-      end
+      @duplicate_dose_selection_keys ||= dosages
+        .group_by(&:selection_key)
+        .each_with_object([]) do |
+            group,
+            selection_keys
+          |
+          selection_key, matching_dosages = group
+          selection_keys << selection_key if matching_dosages.size > 1
+        end
     end
 
     def dosages

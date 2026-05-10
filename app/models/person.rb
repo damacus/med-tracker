@@ -17,20 +17,31 @@ class Person < ApplicationRecord
   has_many :person_medications, dependent: :destroy
   has_many :non_schedule_medications, through: :person_medications, source: :medication
   has_many :carer_relationships, foreign_key: :patient_id, dependent: :destroy, inverse_of: :patient
-  has_many :active_carer_relationships, -> { active }, class_name: 'CarerRelationship',
-                                                       foreign_key: :patient_id,
-                                                       dependent: false,
-                                                       inverse_of: :patient
+  has_many(
+    :active_carer_relationships,
+    -> { active },
+    class_name: "CarerRelationship",
+    foreign_key: :patient_id,
+    dependent: false,
+    inverse_of: :patient
+  )
   has_many :carers, through: :active_carer_relationships, source: :carer
 
-  has_many :patient_relationships, class_name: 'CarerRelationship',
-                                   foreign_key: :carer_id,
-                                   dependent: :destroy,
-                                   inverse_of: :carer
-  has_many :active_patient_relationships, -> { active }, class_name: 'CarerRelationship',
-                                                         foreign_key: :carer_id,
-                                                         dependent: false,
-                                                         inverse_of: :carer
+  has_many(
+    :patient_relationships,
+    class_name: "CarerRelationship",
+    foreign_key: :carer_id,
+    dependent: :destroy,
+    inverse_of: :carer
+  )
+  has_many(
+    :active_patient_relationships,
+    -> { active },
+    class_name: "CarerRelationship",
+    foreign_key: :carer_id,
+    dependent: false,
+    inverse_of: :carer
+  )
   has_many :patients, through: :active_patient_relationships, source: :patient
 
   has_many :location_memberships, dependent: :destroy
@@ -38,22 +49,28 @@ class Person < ApplicationRecord
 
   has_one :notification_preference, dependent: :destroy
 
-  normalizes :email, with: ->(email) { email.to_s.strip.downcase.presence }
+  normalizes :email, with: -> (email) { email.to_s.strip.downcase.presence }
 
-  enum :person_type, {
-    adult: 0,
-    minor: 1,
-    dependent_adult: 2
-  }
+  enum(
+    :person_type,
+    {
+      adult: 0,
+      minor: 1,
+      dependent_adult: 2
+    }
+  )
 
   before_validation :set_capacity_from_person_type
   before_validation :assign_default_location, on: :create
 
   validates :date_of_birth, presence: true
   validates :name, presence: true
-  validates :email, allow_blank: true,
-                    format: { with: URI::MailTo::EMAIL_REGEXP, allow_blank: true },
-                    uniqueness: { allow_blank: true }
+  validates(
+    :email,
+    allow_blank: true,
+    format: {with: URI::MailTo::EMAIL_REGEXP, allow_blank: true},
+    uniqueness: {allow_blank: true}
+  )
   validate :carer_required_when_lacking_capacity
   validate :must_have_at_least_one_location
 
@@ -69,21 +86,21 @@ class Person < ApplicationRecord
   end
 
   def adult?
-    return person_type == 'adult' if age.nil?
+    return person_type == "adult" if age.nil?
 
-    age >= 18 || person_type == 'adult'
+    age >= 18 || person_type == "adult"
   end
 
   def minor?
     return false if age.nil?
 
-    age < 18 && person_type == 'minor'
+    age < 18 && person_type == "minor"
   end
 
   def dependent_adult?
     return false if age.nil?
 
-    age >= 18 && person_type == 'dependent_adult'
+    age >= 18 && person_type == "dependent_adult"
   end
 
   def needs_carer?
@@ -100,9 +117,10 @@ class Person < ApplicationRecord
       return
     end
 
-    home = Location.find_or_create_by!(name: 'Home') do |l|
-      l.description = 'Primary home location'
+    home = Location.find_or_create_by!(name: "Home") do |l|
+      l.description = "Primary home location"
     end
+
     location_memberships.build(location: home)
   end
 
@@ -125,7 +143,7 @@ class Person < ApplicationRecord
     return if has_capacity
     return if active_carer_relationship?
 
-    errors.add(:base, 'A person without capacity must have at least one carer assigned')
+    errors.add(:base, "A person without capacity must have at least one carer assigned")
   end
 
   def active_carer_relationship?
@@ -138,6 +156,6 @@ class Person < ApplicationRecord
   def must_have_at_least_one_location
     return if locations.any? || location_memberships.any?
 
-    errors.add(:base, 'A person must belong to at least one location')
+    errors.add(:base, "A person must belong to at least one location")
   end
 end

@@ -1,11 +1,20 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
-require 'timeout'
+require "rails_helper"
+require "timeout"
 
-RSpec.describe 'Offline medication takes', :js do
-  fixtures :accounts, :people, :users, :locations, :location_memberships, :medications, :schedules,
-           :person_medications, :medication_takes
+RSpec.describe "Offline medication takes", :js do
+  fixtures(
+    :accounts,
+    :people,
+    :users,
+    :locations,
+    :location_memberships,
+    :medications,
+    :schedules,
+    :person_medications,
+    :medication_takes
+  )
 
   let(:user) { users(:admin) }
   let(:medication) { medications(:gabapentin) }
@@ -14,8 +23,8 @@ RSpec.describe 'Offline medication takes', :js do
       person: people(:admin),
       medication: medication,
       dose_amount: 300,
-      dose_unit: 'mg',
-      frequency: 'As needed',
+      dose_unit: "mg",
+      frequency: "As needed",
       start_date: Time.zone.today,
       end_date: 1.year.from_now.to_date,
       max_daily_doses: nil,
@@ -23,30 +32,30 @@ RSpec.describe 'Offline medication takes', :js do
     )
   end
 
-  it 'queues a take in the offline shell and syncs it when online fires' do
+  it "queues a take in the offline shell and syncs it when online fires" do
     medication.update!(current_supply: 1)
 
     login_as(user)
-    visit offline_path
+    visit(offline_path)
 
-    expect(page).to have_text('OFFLINE CARE')
-    expect(page).to have_text('Gabapentin')
+    expect(page).to(have_text("OFFLINE CARE"))
+    expect(page).to(have_text("Gabapentin"))
 
-    within('[data-testid="offline-dose-card"]', text: 'Gabapentin') do
-      click_button 'Take now'
-      expect(page).to have_text('QUEUED LOCALLY')
-      expect(page).to have_button('Out of stock', disabled: true)
+    within("[data-testid=\"offline-dose-card\"]", text: "Gabapentin") do
+      click_button("Take now")
+      expect(page).to(have_text("QUEUED LOCALLY"))
+      expect(page).to(have_button("Out of stock", disabled: true))
     end
 
-    expect(page).to have_text('PENDING SYNC')
-    expect(page).to have_css('[data-offline-shell-target="pendingCount"]', text: '1')
+    expect(page).to(have_text("PENDING SYNC"))
+    expect(page).to(have_css("[data-offline-shell-target=\"pendingCount\"]", text: "1"))
 
-    page.execute_script('window.dispatchEvent(new Event("online"))')
+    page.execute_script("window.dispatchEvent(new Event(\"online\"))")
 
     Timeout.timeout(5) do
-      sleep 0.1 until MedicationTake.where(schedule: schedule).where.not(client_uuid: nil).exists?
+      sleep(0.1) until MedicationTake.where(schedule: schedule).where.not(client_uuid: nil).exists?
     end
 
-    expect(page).to have_css('[data-offline-shell-target="pendingCount"]', text: '0')
+    expect(page).to(have_css("[data-offline-shell-target=\"pendingCount\"]", text: "0"))
   end
 end

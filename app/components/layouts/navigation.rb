@@ -9,76 +9,76 @@ module Components
 
       def view_template
         header(
-          class: 'sticky top-0 z-40 w-full border-b border-outline-variant bg-surface-container ' \
-                 'shadow-elevation-1 md:hidden'
+          class: "sticky top-0 z-40 w-full border-b border-outline-variant bg-surface-container " \
+            "shadow-elevation-1 md:hidden"
         ) do
           render_skip_link
-          nav(class: 'nav') do
-            div(class: 'nav__container flex h-16 items-center justify-between px-4') do
+          nav(class: "nav") do
+            div(class: "nav__container flex h-16 items-center justify-between px-4") do
               render_left_section
               render_right_section
             end
           end
         end
 
-        render Components::Layouts::MobileRail.new(current_user: current_user) if authenticated?
+        render(Components::Layouts::MobileRail.new(current_user: current_user)) if authenticated?
       end
 
       private
 
       def render_skip_link
         a(
-          href: '#main-content',
-          class: 'sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 ' \
-                 'focus:bg-background focus:text-foreground focus:ring-2 focus:ring-ring focus:rounded-md'
-        ) { t('layouts.navigation.skip_to_content') }
+          href: "#main-content",
+          class: "sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 " \
+            "focus:bg-background focus:text-foreground focus:ring-2 focus:ring-ring focus:rounded-md"
+        ) { t("layouts.navigation.skip_to_content") }
       end
 
       def render_left_section
-        div(class: 'nav__left flex items-center gap-6') do
-          render Components::Layouts::MobileMenu.new(current_user: current_user) if authenticated?
+        div(class: "nav__left flex items-center gap-6") do
+          render(Components::Layouts::MobileMenu.new(current_user: current_user)) if authenticated?
           render_brand
         end
       end
 
       def render_right_section
-        div(class: 'nav__right flex items-center gap-4') do
+        div(class: "nav__right flex items-center gap-4") do
           render_auth_actions
         end
       end
 
       def render_brand
-        div(class: 'nav__brand') do
-          link_to(t('layouts.navigation.brand'), root_path, class: 'nav__brand-link text-foreground')
+        div(class: "nav__brand") do
+          link_to(t("layouts.navigation.brand"), root_path, class: "nav__brand-link text-foreground")
         end
       end
 
       def render_auth_actions
         if authenticated?
           button(
-            type: 'button',
-            class: 'flex h-11 w-11 items-center justify-center rounded-full text-on-surface-variant ' \
-                   'hover:bg-surface-container-high focus-visible:outline-none focus-visible:ring-2 ' \
-                   'focus-visible:ring-primary',
-            aria: { label: t('global_search.open'), expanded: 'false', controls: 'global_search_panel' },
-            data: { action: 'global-search#open', global_search_target: 'trigger' }
+            type: "button",
+            class: "flex h-11 w-11 items-center justify-center rounded-full text-on-surface-variant " \
+              "hover:bg-surface-container-high focus-visible:outline-none focus-visible:ring-2 " \
+              "focus-visible:ring-primary",
+            aria: {label: t("global_search.open"), expanded: "false", controls: "global_search_panel"},
+            data: {action: "global-search#open", global_search_target: "trigger"}
           ) do
-            render Icons::Search.new(size: 22)
+            render(Icons::Search.new(size: 22))
           end
         end
 
-        div(class: 'nav__user-menu hidden md:block') do
+        div(class: "nav__user-menu hidden md:block") do
           if authenticated?
-            render Components::Layouts::ProfileMenu.new(current_user: current_user)
+            render(Components::Layouts::ProfileMenu.new(current_user: current_user))
           else
-            link_to(t('layouts.navigation.login'), '/login', class: 'nav__link text-sm font-medium')
+            link_to(t("layouts.navigation.login"), "/login", class: "nav__link text-sm font-medium")
           end
         end
 
         return if authenticated?
 
-        div(class: 'md:hidden') do
-          link_to(t('layouts.navigation.login'), '/login', class: 'nav__link text-sm font-medium')
+        div(class: "md:hidden") do
+          link_to(t("layouts.navigation.login"), "/login", class: "nav__link text-sm font-medium")
         end
       end
     end

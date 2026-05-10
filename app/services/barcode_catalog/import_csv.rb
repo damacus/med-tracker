@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'csv'
+require "csv"
 
 module BarcodeCatalog
   class ImportCsv
@@ -36,7 +36,7 @@ module BarcodeCatalog
     def validate_headers!(headers)
       normalized_headers = headers.compact.map(&:strip)
       missing_headers = REQUIRED_HEADERS - normalized_headers
-      raise ArgumentError, "Missing required headers: #{missing_headers.join(', ')}" if missing_headers.any?
+      raise ArgumentError, "Missing required headers: #{missing_headers.join(", ")}" if missing_headers.any?
     end
 
     def persist(attrs)
@@ -46,18 +46,18 @@ module BarcodeCatalog
     end
 
     def build_attrs(row)
-      gtin = normalized(row, 'gtin', digits_only: true)
-      display = normalized(row, 'display')
-      source = normalized(row, 'source')
+      gtin = normalized(row, "gtin", digits_only: true)
+      display = normalized(row, "display")
+      source = normalized(row, "source")
       return nil if gtin.blank? || display.blank? || source.blank?
 
       {
         gtin: gtin,
         display: display,
         source: source,
-        code: normalized(row, 'code').presence,
-        system: normalized(row, 'system').presence,
-        concept_class: normalized(row, 'concept_class').presence
+        code: normalized(row, "code").presence,
+        system: normalized(row, "system").presence,
+        concept_class: normalized(row, "concept_class").presence
       }
     end
 

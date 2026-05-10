@@ -33,15 +33,15 @@ module Components
       attr_reader :icon, :color_classes
 
       def frame_classes
-        return '' if custom_icon?
+        return "" if custom_icon?
 
         "rounded-lg border #{color_classes}"
       end
 
       def render_icon
-        return render custom_icon_component.new if custom_icon?
+        return render(custom_icon_component.new) if custom_icon?
 
-        render standard_icon_component.new(size: 24)
+        render(standard_icon_component.new(size: 24))
       end
 
       def custom_icon?

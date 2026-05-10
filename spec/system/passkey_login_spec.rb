@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
-require 'webauthn/fake_client'
+require "rails_helper"
+require "webauthn/fake_client"
 
-RSpec.describe 'Passkey login', :js do
-  fixtures :accounts, :people, :users
+RSpec.describe "Passkey login", :js do
+  fixtures(:accounts, :people, :users)
 
   def add_init_script(script)
     page.driver.with_playwright_page do |playwright_page|
@@ -146,7 +146,7 @@ RSpec.describe 'Passkey login', :js do
   end
 
   def configured_webauthn_origin
-    ENV.fetch('APP_URL', current_origin)
+    ENV.fetch("APP_URL", current_origin)
   end
 
   def create_passkey_for(account, origin)
@@ -164,14 +164,14 @@ RSpec.describe 'Passkey login', :js do
   end
 
   def challenge_value
-    find('#webauthn-login-form input[name$="challenge"]', visible: :all).value
+    find("#webauthn-login-form input[name$=\"challenge\"]", visible: :all).value
   end
 
   def relying_party_for(origin)
     WebAuthn::RelyingParty.new(
       allowed_origins: [origin],
       id: URI.parse(origin).host,
-      name: 'MedTracker'
+      name: "MedTracker"
     )
   end
 
@@ -179,34 +179,34 @@ RSpec.describe 'Passkey login', :js do
     page.execute_script("window.__setPasskeyCredential(#{assertion.to_json})")
   end
 
-  it 'starts conditional passkey autofill on page load when supported' do
-    add_init_script(base_passkey_stub(conditional_available: 'true'))
+  it "starts conditional passkey autofill on page load when supported" do
+    add_init_script(base_passkey_stub(conditional_available: "true"))
 
-    visit login_path
+    visit(login_path)
 
-    expect(page).to have_button('Continue with Passkey')
-    expect(page).to have_css('html[data-passkey-mediation="conditional"]', visible: :all)
-    expect(page).to have_css('html[data-passkey-submit-count="1"]', visible: :all)
-    expect(find_by_id('webauthn-auth', visible: :all).value).to include('"rawId":"AQID"')
+    expect(page).to(have_button("Continue with Passkey"))
+    expect(page).to(have_css("html[data-passkey-mediation=\"conditional\"]", visible: :all))
+    expect(page).to(have_css("html[data-passkey-submit-count=\"1\"]", visible: :all))
+    expect(find_by_id("webauthn-auth", visible: :all).value).to(include("\"rawId\":\"AQID\""))
   end
 
-  it 'submits the hidden login form after the passkey CTA is clicked' do
-    add_init_script(base_passkey_stub(conditional_available: 'false'))
+  it "submits the hidden login form after the passkey CTA is clicked" do
+    add_init_script(base_passkey_stub(conditional_available: "false"))
 
-    visit login_path
+    visit(login_path)
 
-    expect(page).to have_button('Continue with Passkey')
-    click_button 'Continue with Passkey'
+    expect(page).to(have_button("Continue with Passkey"))
+    click_button("Continue with Passkey")
 
-    expect(page).to have_css('html[data-passkey-mediation="explicit"]', visible: :all)
-    expect(page).to have_css('html[data-passkey-submit-count="1"]', visible: :all)
-    expect(find_by_id('webauthn-auth', visible: :all).value).to include('"rawId":"AQID"')
+    expect(page).to(have_css("html[data-passkey-mediation=\"explicit\"]", visible: :all))
+    expect(page).to(have_css("html[data-passkey-submit-count=\"1\"]", visible: :all))
+    expect(find_by_id("webauthn-auth", visible: :all).value).to(include("\"rawId\":\"AQID\""))
   end
 
-  it 'signs in with a discoverable passkey without entering an email address' do
+  it "signs in with a discoverable passkey without entering an email address" do
     add_init_script(passkey_browser_stub)
 
-    visit login_path
+    visit(login_path)
 
     origin = configured_webauthn_origin
     client, user_id, key = create_passkey_for(accounts(:carer), origin)
@@ -215,55 +215,60 @@ RSpec.describe 'Passkey login', :js do
 
     expect(
       assertion_credential.verify(challenge_value, public_key: key.public_key, sign_count: key.sign_count)
-    ).to be(true)
+    )
+      .to(be(true))
 
     prime_passkey_credential(assertion)
 
-    click_button 'Continue with Passkey'
+    click_button("Continue with Passkey")
 
-    expect(page).to have_current_path('/dashboard')
+    expect(page).to(have_current_path("/dashboard"))
   end
 
-  it 'shows a helpful message when explicit passkey sign-in is cancelled' do
-    add_init_script(failing_passkey_stub('NotAllowedError'))
+  it "shows a helpful message when explicit passkey sign-in is cancelled" do
+    add_init_script(failing_passkey_stub("NotAllowedError"))
 
-    visit login_path
-    click_button 'Continue with Passkey'
+    visit(login_path)
+    click_button("Continue with Passkey")
 
-    expect(page).to have_css(
-      '#passkey-login-error',
-      text: 'Passkey sign-in was cancelled. Try again or use your password.'
+    expect(page).to(
+      have_css(
+        "#passkey-login-error",
+        text: "Passkey sign-in was cancelled. Try again or use your password."
+      )
     )
-    expect(page).to have_field('email')
-    expect(page).to have_field('password')
+    expect(page).to(have_field("email"))
+    expect(page).to(have_field("password"))
   end
 
-  it 'shows a friendly failure when the selected passkey is unknown' do
+  it "shows a friendly failure when the selected passkey is unknown" do
     add_init_script(invalid_passkey_stub)
 
-    visit login_path
-    click_button 'Continue with Passkey'
+    visit(login_path)
+    click_button("Continue with Passkey")
 
-    expect(page).to have_current_path('/login')
-    expect(page).to have_text('We could not sign you in with that passkey. Try again or use your password.')
+    expect(page).to(have_current_path("/login"))
+    expect(page).to(have_text("We could not sign you in with that passkey. Try again or use your password."))
   end
 
-  it 'keeps the passkey CTA hidden when WebAuthn is unavailable' do
-    add_init_script(<<~JS)
-      delete globalThis.PublicKeyCredential;
-      Object.defineProperty(Navigator.prototype, "credentials", {
-        configurable: true,
-        get() {
-          return undefined;
-        },
-      });
-    JS
+  it "keeps the passkey CTA hidden when WebAuthn is unavailable" do
+    add_init_script(
+      <<~JS
+        delete globalThis.PublicKeyCredential;
+        Object.defineProperty(Navigator.prototype, "credentials", {
+          configurable: true,
+          get() {
+            return undefined;
+          },
+        });
+      JS
+    )
 
-    visit login_path
+    visit(login_path)
 
-    expect(page).to have_field('email')
-    expect(page).to have_field('password')
-    expect(page).to have_no_button('Continue with Passkey')
-    expect(page).to have_css('#passkey-login-section[hidden]', visible: :all)
+    expect(page).to(have_field("email"))
+    expect(page).to(have_field("password"))
+    expect(page).to(have_no_button("Continue with Passkey"))
+    expect(page).to(have_css("#passkey-login-section[hidden]", visible: :all))
   end
 end

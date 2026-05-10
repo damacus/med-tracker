@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
 RSpec.describe NhsDmd::ReleaseArchiveImport do
   subject(:service) { described_class.new(importer: importer, extractor: extractor) }
@@ -17,28 +17,30 @@ RSpec.describe NhsDmd::ReleaseArchiveImport do
       skipped_invalid_count: 1
     )
   end
-  let(:uploaded_file) { Struct.new(:path).new('/tmp/release.zip') }
 
-  it 'extracts the uploaded archive into a temp directory before importing it' do
+  let(:uploaded_file) { Struct.new(:path).new("/tmp/release.zip") }
+
+  it "extracts the uploaded archive into a temp directory before importing it" do
     extracted_dir = nil
 
-    allow(extractor).to receive(:extract) do |_zip_path, destination|
+    allow(extractor).to(receive(:extract)) do |_zip_path, destination|
       extracted_dir = destination
     end
-    allow(importer).to receive(:import).and_return(result)
 
-    service.import(uploaded_file, progress_callback: ->(_payload) {})
+    allow(importer).to(receive(:import).and_return(result))
 
-    expect(extractor).to have_received(:extract).with('/tmp/release.zip', extracted_dir)
-    expect(importer).to have_received(:import).with(extracted_dir, progress_callback: instance_of(Proc))
+    service.import(uploaded_file, progress_callback: -> (_payload) { })
+
+    expect(extractor).to(have_received(:extract).with("/tmp/release.zip", extracted_dir))
+    expect(importer).to(have_received(:import).with(extracted_dir, progress_callback: instance_of(Proc)))
   end
 
-  it 'returns the importer result' do
-    allow(extractor).to receive(:extract)
-    allow(importer).to receive(:import).and_return(result)
+  it "returns the importer result" do
+    allow(extractor).to(receive(:extract))
+    allow(importer).to(receive(:import).and_return(result))
 
-    returned_result = service.import(uploaded_file, progress_callback: ->(_payload) {})
+    returned_result = service.import(uploaded_file, progress_callback: -> (_payload) { })
 
-    expect(returned_result).to eq(result)
+    expect(returned_result).to(eq(result))
   end
 end

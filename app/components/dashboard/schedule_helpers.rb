@@ -6,20 +6,20 @@ module Components
       def format_dosage
         amount = schedule.dose_amount
         unit = schedule.dose_unit
-        return '—' unless amount && unit
+        return "—" unless amount && unit
 
         DoseAmount.new(amount, unit).to_s
       end
 
       def format_quantity
         remaining_supply = schedule.medication&.current_supply
-        return '—' if remaining_supply.nil?
+        return "—" if remaining_supply.nil?
 
         MedicationStockQuantityFormatter.format(remaining_supply)
       end
 
       def format_end_date
-        schedule.end_date ? schedule.end_date.strftime('%b %d, %Y') : '—'
+        schedule.end_date ? schedule.end_date.strftime("%b %d, %Y") : "—"
       end
 
       def can_delete?

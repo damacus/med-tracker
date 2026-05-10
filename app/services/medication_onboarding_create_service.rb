@@ -28,7 +28,7 @@ class MedicationOnboardingCreateService
   private
 
   def save_medication
-    medication.paper_trail_event = 'create'
+    medication.paper_trail_event = "create"
     Result.new(success: medication.save, medication: medication, schedule: nil, restocked: false)
   end
 
@@ -47,7 +47,7 @@ class MedicationOnboardingCreateService
 
   def persist_medication_with_schedule
     assign_medication_schedule_defaults
-    medication.paper_trail_event = 'create'
+    medication.paper_trail_event = "create"
     raise ActiveRecord::Rollback unless medication.save
 
     schedule = build_schedule(medication)
@@ -68,7 +68,7 @@ class MedicationOnboardingCreateService
   end
 
   def assign_medication_schedule_defaults
-    medication.default_schedule_type = schedule_attributes[:schedule_type].presence || 'multiple_daily'
+    medication.default_schedule_type = schedule_attributes[:schedule_type].presence || "multiple_daily"
     medication.default_schedule_config = normalized_schedule_config
   end
 
@@ -158,7 +158,8 @@ class MedicationOnboardingCreateService
   end
 
   def dosage_stock_mergeable?(existing_medication)
-    incoming_tracked_dosages.any? && existing_medication.dosage_records.any? &&
+    incoming_tracked_dosages.any? &&
+      existing_medication.dosage_records.any? &&
       incoming_tracked_dosages.all? do |incoming_dosage|
         matching_existing_dosage(existing_medication, incoming_dosage).present?
       end

@@ -18,23 +18,27 @@ class MedicationAssignmentsController < ApplicationController
     ensure_medication_access
     @medications = medication_options_query.call
 
-    result = MedicationAssignmentCreator.new(
-      person: @person,
-      medication_scope: policy_scope(Medication),
-      assignment: @assignment
-    ).call
+    result = MedicationAssignmentCreator
+      .new(
+        person: @person,
+        medication_scope: policy_scope(Medication),
+        assignment: @assignment
+      )
+      .call
 
     if result.success
       respond_to do |format|
-        format.html { redirect_to person_path(@person), notice: t('schedules.created') }
+        format.html { redirect_to(person_path(@person), notice: t("schedules.created")) }
         format.turbo_stream do
-          flash.now[:notice] = t('schedules.created')
-          render turbo_stream: [
-            turbo_stream.update('modal', ''),
-            turbo_stream.replace("person_#{@person.id}", Components::People::PersonCard.new(person: @person.reload)),
-            turbo_stream.replace("person_show_#{@person.id}", person_show_view(@person.reload)),
-            turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
-          ]
+          flash.now[:notice] = t("schedules.created")
+          render(
+            turbo_stream: [
+              turbo_stream.update("modal", ""),
+              turbo_stream.replace("person_#{@person.id}", Components::People::PersonCard.new(person: @person.reload)),
+              turbo_stream.replace("person_show_#{@person.id}", person_show_view(@person.reload)),
+              turbo_stream.update("flash", Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
+            ]
+          )
         end
       end
     else
@@ -47,7 +51,7 @@ class MedicationAssignmentsController < ApplicationController
 
   def set_person
     @person = policy_scope(Person).find(params[:person_id])
-    authorize @person, :show?
+    authorize(@person, :show?)
   end
 
   def authorize_assignment
@@ -86,36 +90,47 @@ class MedicationAssignmentsController < ApplicationController
   end
 
   def render_assignment_form(status: :ok)
-    back_path = params[:source] == 'workflow' ? add_medication_path(medication_id: params[:medication_id]) : nil
-    is_modal = request.headers['Turbo-Frame'] == 'modal'
+    back_path = params[:source] == "workflow" ? add_medication_path(medication_id: params[:medication_id]) : nil
+    is_modal = request.headers["Turbo-Frame"] == "modal"
 
     respond_to do |format|
       format.html do
         if is_modal
-          render Components::MedicationAssignments::Modal.new(
-            assignment: @assignment,
-            person: @person,
-            medications: @medications,
-            back_path: back_path
-          ), layout: false, status: status
+          render(
+            Components::MedicationAssignments::Modal.new(
+              assignment: @assignment,
+              person: @person,
+              medications: @medications,
+              back_path: back_path
+            ),
+            layout: false,
+            status: status
+          )
         else
-          render Components::MedicationAssignments::FormView.new(
-            assignment: @assignment,
-            person: @person,
-            medications: @medications
-          ), status: status
+          render(
+            Components::MedicationAssignments::FormView.new(
+              assignment: @assignment,
+              person: @person,
+              medications: @medications
+            ),
+            status: status
+          )
         end
       end
+
       format.turbo_stream do
-        render turbo_stream: turbo_stream.replace(
-          'modal',
-          Components::MedicationAssignments::Modal.new(
-            assignment: @assignment,
-            person: @person,
-            medications: @medications,
-            back_path: back_path
-          )
-        ), status: status
+        render(
+          turbo_stream: turbo_stream.replace(
+            "modal",
+            Components::MedicationAssignments::Modal.new(
+              assignment: @assignment,
+              person: @person,
+              medications: @medications,
+              back_path: back_path
+            )
+          ),
+          status: status
+        )
       end
     end
   end

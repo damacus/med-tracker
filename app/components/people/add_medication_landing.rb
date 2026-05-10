@@ -19,38 +19,41 @@ module Components
       end
 
       def view_template
-        turbo_frame_tag 'modal' do
+        turbo_frame_tag("modal") do
           Dialog(open: true) do
             DialogContent(size: :md) do
               DialogHeader do
                 if back_path
                   a(
                     href: back_path,
-                    data: { turbo_frame: 'modal' },
-                    class: 'inline-flex items-center text-sm text-on-surface-variant hover:text-foreground ' \
-                           'transition-colors mb-2 no-underline'
+                    data: {turbo_frame: "modal"},
+                    class: "inline-flex items-center text-sm text-on-surface-variant hover:text-foreground " \
+                      "transition-colors mb-2 no-underline"
                   ) do
-                    plain t('medication_workflow.back')
+                    plain(t("medication_workflow.back"))
                   end
                 end
-                DialogTitle { t('people.add_medication.title') }
-                DialogDescription { t('people.add_medication.subtitle') }
+
+                DialogTitle { t("people.add_medication.title") }
+                DialogDescription { t("people.add_medication.subtitle") }
               end
+
               DialogMiddle do
-                div(class: 'grid grid-cols-1 gap-3 py-2') do
+                div(class: "grid grid-cols-1 gap-3 py-2") do
                   if can_schedule
                     render_option(
                       href: new_person_schedule_path(person, medication_id: medication_id),
-                      title: t('people.add_medication.scheduled_title'),
-                      description: t('people.add_medication.scheduled_description'),
+                      title: t("people.add_medication.scheduled_title"),
+                      description: t("people.add_medication.scheduled_description"),
                       icon: Icons::Calendar
                     )
                   end
+
                   if can_person_medication
                     render_option(
                       href: new_person_person_medication_path(person, medication_id: medication_id),
-                      title: t('people.add_medication.otc_title'),
-                      description: t('people.add_medication.otc_description'),
+                      title: t("people.add_medication.otc_title"),
+                      description: t("people.add_medication.otc_description"),
                       icon: Icons::Pill
                     )
                   end
@@ -66,18 +69,21 @@ module Components
       def render_option(href:, title:, description:, icon:)
         a(
           href: href,
-          data: { turbo_frame: 'modal' },
-          class: 'flex items-start gap-4 w-full rounded-2xl border-2 border-outline p-6 ' \
-                 'hover:border-primary hover:bg-primary/5 active:bg-primary/10 ' \
-                 'transition-all cursor-pointer no-underline'
+          data: {turbo_frame: "modal"},
+          class: "flex items-start gap-4 w-full rounded-2xl border-2 border-outline p-6 " \
+            "hover:border-primary hover:bg-primary/5 active:bg-primary/10 " \
+            "transition-all cursor-pointer no-underline"
         ) do
-          div(class: 'w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center ' \
-                     'text-primary flex-none mt-0.5') do
-            render icon.new(size: 24)
+          div(
+            class: "w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center " \
+              "text-primary flex-none mt-0.5"
+          ) do
+            render(icon.new(size: 24))
           end
+
           div do
-            div(class: 'font-semibold text-base text-foreground') { title }
-            div(class: 'text-on-surface-variant text-sm mt-1') { description }
+            div(class: "font-semibold text-base text-foreground") { title }
+            div(class: "text-on-surface-variant text-sm mt-1") { description }
           end
         end
       end

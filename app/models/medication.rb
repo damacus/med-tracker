@@ -1,54 +1,55 @@
 # frozen_string_literal: true
 
-class Medication < ApplicationRecord # :nodoc:
+# :nodoc:
+class Medication < ApplicationRecord
   DOSAGE_UNITS = %w[tablet capsule mg ml g mcg IU spray drop sachet pad].freeze
   CATEGORIES = [
-    'Analgesic',
-    'Antibiotic',
-    'Anticoagulant',
-    'Anticonvulsant',
-    'Antidepressant',
-    'Antidiabetic',
-    'Antiemetic',
-    'Antifungal',
-    'Antihistamine',
-    'Antihypertensive',
-    'Anti-Inflammatory',
-    'Antiparasitic',
-    'Antipsychotic',
-    'Antiviral',
-    'Anxiolytic',
-    'Cardiovascular',
-    'Cholesterol',
-    'Contraceptive',
-    'Dermatological',
-    'Gastrointestinal',
-    'Hormonal',
-    'Immunosuppressant',
-    'Migraine',
-    'Mineral',
-    'Muscle Relaxant',
-    'Neurological',
-    'Oncology',
-    'Ophthalmic',
-    'Osmotic Laxative',
-    'Opioid',
-    'Osteoporosis',
-    'Respiratory',
-    'Sleep Aid',
-    'Smoking Cessation',
-    'Supplement',
-    'Thyroid',
-    'Urological',
-    'Vitamin',
-    'Weight Management'
+    "Analgesic",
+    "Antibiotic",
+    "Anticoagulant",
+    "Anticonvulsant",
+    "Antidepressant",
+    "Antidiabetic",
+    "Antiemetic",
+    "Antifungal",
+    "Antihistamine",
+    "Antihypertensive",
+    "Anti-Inflammatory",
+    "Antiparasitic",
+    "Antipsychotic",
+    "Antiviral",
+    "Anxiolytic",
+    "Cardiovascular",
+    "Cholesterol",
+    "Contraceptive",
+    "Dermatological",
+    "Gastrointestinal",
+    "Hormonal",
+    "Immunosuppressant",
+    "Migraine",
+    "Mineral",
+    "Muscle Relaxant",
+    "Neurological",
+    "Oncology",
+    "Ophthalmic",
+    "Osmotic Laxative",
+    "Opioid",
+    "Osteoporosis",
+    "Respiratory",
+    "Sleep Aid",
+    "Smoking Cessation",
+    "Supplement",
+    "Thyroid",
+    "Urological",
+    "Vitamin",
+    "Weight Management"
   ].freeze
 
   has_paper_trail if: proc { |medication| medication.paper_trail_event.present? }
 
   belongs_to :location
 
-  has_many :dosage_records, class_name: 'MedicationDosageOption', dependent: :destroy, inverse_of: :medication
+  has_many :dosage_records, class_name: "MedicationDosageOption", dependent: :destroy, inverse_of: :medication
   has_many :schedules, dependent: :destroy
   has_many :person_medications, dependent: :destroy
 
@@ -60,18 +61,18 @@ class Medication < ApplicationRecord # :nodoc:
   validate :nested_dosage_records_are_valid
   after_commit :sync_dosages, on: :update
 
-  enum :reorder_status, { ordered: 1, received: 2 }, prefix: :reorder
+  enum :reorder_status, {ordered: 1, received: 2}, prefix: :reorder
 
-  validates :barcode, format: { with: /\A\d{13,14}\z/ }, allow_blank: true
+  validates :barcode, format: {with: /\A\d{13,14}\z/}, allow_blank: true
   validates :barcode, uniqueness: true, allow_blank: true
   validates :dmd_system, presence: true, if: -> { dmd_code.present? }
   validates :name, presence: true
-  validates :category, inclusion: { in: CATEGORIES }, allow_blank: true
-  validates :dosage_amount, numericality: { greater_than: 0 }, allow_nil: true
-  validates :dosage_unit, inclusion: { in: DOSAGE_UNITS }, allow_blank: true
-  validates :current_supply, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
-  validates :supply_at_last_restock, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
-  validates :reorder_threshold, presence: true, numericality: { greater_than_or_equal_to: 0 }
+  validates :category, inclusion: {in: CATEGORIES}, allow_blank: true
+  validates :dosage_amount, numericality: {greater_than: 0}, allow_nil: true
+  validates :dosage_unit, inclusion: {in: DOSAGE_UNITS}, allow_blank: true
+  validates :current_supply, numericality: {greater_than_or_equal_to: 0}, allow_nil: true
+  validates :supply_at_last_restock, numericality: {greater_than_or_equal_to: 0}, allow_nil: true
+  validates :reorder_threshold, presence: true, numericality: {greater_than_or_equal_to: 0}
 
   delegate :low_stock?, :out_of_stock?, to: :supply_level
 
@@ -82,7 +83,7 @@ class Medication < ApplicationRecord # :nodoc:
     current_supply_total = tracked_dosages.sum(:current_supply)
     update!(
       current_supply: current_supply_total,
-      reorder_threshold: tracked_dosages.sum('COALESCE(reorder_threshold, 0)'),
+      reorder_threshold: tracked_dosages.sum("COALESCE(reorder_threshold, 0)"),
       supply_at_last_restock: next_supply_at_last_restock(current_supply_total)
     )
   end
@@ -97,16 +98,17 @@ class Medication < ApplicationRecord # :nodoc:
     # When switching to single-dose mode (dosage_amount is set),
     # remove all orphaned multi-dose records to prevent data pollution.
     # Uses SQL to comply with RuboCop and project standards.
-    binds = [ActiveRecord::Relation::QueryAttribute.new('medication_id', id, ActiveRecord::Type::BigInteger.new)]
+    binds = [ActiveRecord::Relation::QueryAttribute.new("medication_id", id, ActiveRecord::Type::BigInteger.new)]
     ActiveRecord::Base.connection.exec_update(
-      'UPDATE person_medications SET source_dosage_option_id = NULL WHERE medication_id = $1',
-      'Sync Person Medication Dosage Sources',
+      "UPDATE person_medications SET source_dosage_option_id = NULL WHERE medication_id = $1",
+      "Sync Person Medication Dosage Sources",
       binds
     )
-    ActiveRecord::Base.connection.exec_delete('DELETE FROM dosages WHERE medication_id = $1', 'Sync Dosages', binds)
+    ActiveRecord::Base.connection.exec_delete("DELETE FROM dosages WHERE medication_id = $1", "Sync Dosages", binds)
   end
 
-  def restock!(quantity:) # rubocop:disable Naming/PredicateMethod
+  # rubocop:disable Naming/PredicateMethod
+  def restock!(quantity:)
     increment = BigDecimal(quantity.to_s)
     return false if increment <= 0
 
@@ -213,7 +215,7 @@ class Medication < ApplicationRecord # :nodoc:
     meaningful_attributes = attributes.except(*ignored_keys)
 
     meaningful_attributes.values.all? do |value|
-      value.blank? || value == '0'
+      value.blank? || value == "0"
     end
   end
 
@@ -224,8 +226,10 @@ class Medication < ApplicationRecord # :nodoc:
     # This avoids a redundant COUNT/EXISTS query if `schedules` is already loaded in memory
     return unless schedules.any?
 
-    errors.add(:dosage_amount,
-               'cannot switch to a single standard dose while schedules still use dose options')
+    errors.add(
+      :dosage_amount,
+      "cannot switch to a single standard dose while schedules still use dose options"
+    )
   end
 
   def switching_to_single_dose_mode?
@@ -236,7 +240,7 @@ class Medication < ApplicationRecord # :nodoc:
   end
 
   def switched_to_single_dose_mode?
-    change = previous_changes['dosage_amount']
+    change = previous_changes["dosage_amount"]
     return false if change.blank?
 
     previous_amount, new_amount = change

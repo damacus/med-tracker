@@ -14,7 +14,7 @@ class User < ApplicationRecord
 
   def wizard_variant
     v = super
-    WIZARD_VARIANTS.include?(v) ? v : 'fullpage'
+    WIZARD_VARIANTS.include?(v) ? v : "fullpage"
   end
 
   belongs_to :person, inverse_of: :user
@@ -25,14 +25,17 @@ class User < ApplicationRecord
   has_many :schedules, through: :person
   has_many :medications, through: :schedules
 
-  normalizes :email_address, with: ->(e) { e.strip.downcase }
+  normalizes :email_address, with: -> (e) { e.strip.downcase }
 
-  validates :email_address, presence: true,
-                            uniqueness: { case_sensitive: false },
-                            format: { with: /\A[\w+\-.]+@[a-z\d\-.]+\.[a-z]+\z/i }
-  validates :password, length: { minimum: 8 }, allow_nil: true, if: -> { password.present? }
+  validates(
+    :email_address,
+    presence: true,
+    uniqueness: {case_sensitive: false},
+    format: {with: /\A[\w+\-.]+@[a-z\d\-.]+\.[a-z]+\z/i}
+  )
+  validates :password, length: {minimum: 8}, allow_nil: true, if: -> { password.present? }
 
-  enum :role, { administrator: 0, doctor: 1, nurse: 2, carer: 3, parent: 4, minor: 5 }, validate: true
+  enum :role, {administrator: 0, doctor: 1, nurse: 2, carer: 3, parent: 4, minor: 5}, validate: true
 
   scope :active, -> { where(active: true) }
   scope :inactive, -> { where(active: false) }

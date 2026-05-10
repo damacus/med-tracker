@@ -8,17 +8,17 @@ module Components
       def default_attrs
         {
           data: {
-            ruby_ui__form_field_target: 'input',
+            ruby_ui__form_field_target: "input",
             action: [
-              'input->ruby-ui--form-field#onInput',
-              'invalid->ruby-ui--form-field#onInvalid'
-            ].join(' ')
+              "input->ruby-ui--form-field#onInput",
+              "invalid->ruby-ui--form-field#onInvalid"
+            ].join(" ")
           },
           class: [
             %w[
               flex
               h-14
-              min-h-[56px]
+              min-h-\[56px\]
               w-full
               rounded-shape-xs
               border
@@ -28,16 +28,17 @@ module Components
               text-base
               transition-all
               border-outline
-            ].join(' '),
-            'placeholder:text-on-surface-variant',
-            'disabled:cursor-not-allowed disabled:opacity-38',
-            'file:border-0 file:bg-transparent file:text-sm file:font-medium',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+            ]
+              .join(" "),
+            "placeholder:text-on-surface-variant",
+            "disabled:cursor-not-allowed disabled:opacity-38",
+            "file:border-0 file:bg-transparent file:text-sm file:font-medium",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
             %w[
               aria-disabled:cursor-not-allowed
               aria-disabled:opacity-38
               aria-disabled:pointer-events-none
-            ].join(' ')
+            ].join(" ")
           ]
         }
       end

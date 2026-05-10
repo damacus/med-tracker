@@ -1,13 +1,15 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
-RSpec.describe 'AUTH: OmniAuth Auto Linking', type: :system do
-  fixtures :accounts, :people, :users
+RSpec.describe "AUTH: OmniAuth Auto Linking", type: :system do
+  fixtures(:accounts, :people, :users)
 
   before do
-    skip 'OIDC not configured' unless ENV.fetch('OIDC_CLIENT_ID', nil).present? &&
-                                      ENV.fetch('OIDC_ISSUER_URL', nil).present?
+    unless ENV.fetch("OIDC_CLIENT_ID", nil).present? &&
+        ENV.fetch("OIDC_ISSUER_URL", nil).present?
+      skip("OIDC not configured")
+    end
 
     OmniAuth.config.test_mode = true
   end
@@ -17,31 +19,31 @@ RSpec.describe 'AUTH: OmniAuth Auto Linking', type: :system do
     OmniAuth.config.mock_auth[:oidc] = nil
   end
 
-  it 'auto-links an existing account based on email when logging in via OmniAuth' do
+  it "auto-links an existing account based on email when logging in via OmniAuth" do
     existing_account = accounts(:damacus)
     email = existing_account.email
 
     # Verify no identities exist yet
-    expect(AccountIdentity.where(account_id: existing_account.id).count).to eq(0)
+    expect(AccountIdentity.where(account_id: existing_account.id).count).to(eq(0))
 
     # Mock the OmniAuth response
     OmniAuth.config.mock_auth[:oidc] = OmniAuth::AuthHash.new(
-      provider: 'oidc',
-      uid: '12345',
+      provider: "oidc",
+      uid: "12345",
       info: {
         email: email,
-        name: 'Damacus Test'
+        name: "Damacus Test"
       }
     )
 
     # In a real setup, there would be a button to login with OIDC
     # We can simulate the callback directly or click the button if it exists
-    visit '/auth/oidc/callback'
+    visit("/auth/oidc/callback")
 
     # Should be logged in and redirected to dashboard
-    expect(page).to have_current_path('/dashboard')
+    expect(page).to(have_current_path("/dashboard"))
 
     # Should have created an identity linked to the existing account
-    expect(AccountIdentity.where(account_id: existing_account.id, provider: 'oidc', uid: '12345').count).to eq(1)
+    expect(AccountIdentity.where(account_id: existing_account.id, provider: "oidc", uid: "12345").count).to(eq(1))
   end
 end

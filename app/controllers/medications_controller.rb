@@ -7,72 +7,96 @@ class MedicationsController < ApplicationController
   include MedicationFormContext
   include MedicationWizardSupport
 
-  before_action :set_medication,
-                only: %i[show nhs_guidance administration edit update destroy refill adjust_inventory
-                         mark_as_ordered mark_as_received]
+  before_action(
+    :set_medication,
+    only: %i[
+      show
+      nhs_guidance
+      administration
+      edit
+      update
+      destroy
+      refill
+      adjust_inventory
+      mark_as_ordered
+      mark_as_received
+    ]
+  )
 
   def index
     render_medications_index_for_request
   end
 
   def show
-    authorize @medication
-    render Components::Medications::ShowView.new(
-      medication: @medication,
-      notice: flash[:notice]
+    authorize(@medication)
+    render(
+      Components::Medications::ShowView.new(
+        medication: @medication,
+        notice: flash[:notice]
+      )
     )
   end
 
   def nhs_guidance
-    authorize @medication, :show?
+    authorize(@medication, :show?)
 
-    render Components::Medications::NhsGuidanceFrame.new(
-      medication: @medication,
-      guidance: NhsWebsiteContent::MedicineGuidanceLookup.new.call(@medication.name)
-    ), layout: false
+    render(
+      Components::Medications::NhsGuidanceFrame.new(
+        medication: @medication,
+        guidance: NhsWebsiteContent::MedicineGuidanceLookup.new.call(@medication.name)
+      ),
+      layout: false
+    )
   end
 
   def administration
-    authorize @medication, :show?
+    authorize(@medication, :show?)
 
-    render Components::Medications::AdministrationModal.new(
-      medication: @medication,
-      schedules: administration_schedules,
-      person_medications: administration_person_medications,
-      current_user: current_user
-    ), layout: false
+    render(
+      Components::Medications::AdministrationModal.new(
+        medication: @medication,
+        schedules: administration_schedules,
+        person_medications: administration_person_medications,
+        current_user: current_user
+      ),
+      layout: false
+    )
   end
 
   def new
     @medication = Medication.new
     @medication.location_id ||= primary_location&.id
-    authorize @medication
+    authorize(@medication)
     onboarding_builder.build_new(medication: @medication, params: params)
 
-    render wizard_wrapper_class.new(
-      medication: @medication,
-      locations: available_locations,
-      people: available_people,
-      current_user: current_user
+    render(
+      wizard_wrapper_class.new(
+        medication: @medication,
+        locations: available_locations,
+        people: available_people,
+        current_user: current_user
+      )
     )
   end
 
   def edit
-    authorize @medication
+    authorize(@medication)
     @return_to = url_from(params[:return_to])
-    render Components::Medications::FormView.new(
-      medication: @medication,
-      locations: available_locations,
-      title: t('medications.form.edit_title'),
-      subtitle: t('medications.form.edit_subtitle', name: @medication.name),
-      return_to: @return_to
+    render(
+      Components::Medications::FormView.new(
+        medication: @medication,
+        locations: available_locations,
+        title: t("medications.form.edit_title"),
+        subtitle: t("medications.form.edit_subtitle", name: @medication.name),
+        return_to: @return_to
+      )
     )
   end
 
   def create
     @medication = build_medication_from_request
     @medication.location_id ||= primary_location&.id
-    authorize @medication
+    authorize(@medication)
 
     return if reject_unconfirmed_ai_medication_suggestion?
 
@@ -85,8 +109,8 @@ class MedicationsController < ApplicationController
   end
 
   def update
-    authorize @medication
-    @medication.paper_trail_event = 'update'
+    authorize(@medication)
+    @medication.paper_trail_event = "update"
     if @medication.update(medication_params)
       redirect_update_success
     else
@@ -95,22 +119,22 @@ class MedicationsController < ApplicationController
   end
 
   def destroy
-    authorize @medication
+    authorize(@medication)
     destroy_medication
   end
 
   def mark_as_ordered
-    authorize @medication
-    update_reorder_status(:ordered, notice: t('medications.ordered'))
+    authorize(@medication)
+    update_reorder_status(:ordered, notice: t("medications.ordered"))
   end
 
   def mark_as_received
-    authorize @medication
-    update_reorder_status(:received, notice: t('medications.received'))
+    authorize(@medication)
+    update_reorder_status(:received, notice: t("medications.received"))
   end
 
   def refill
-    authorize @medication, :update?
+    authorize(@medication, :update?)
 
     result = restock_medication
 
@@ -120,7 +144,7 @@ class MedicationsController < ApplicationController
   end
 
   def adjust_inventory
-    authorize @medication, :update?
+    authorize(@medication, :update?)
 
     result = AdjustMedicationInventoryService.new.call(
       medication: @medication,
@@ -134,15 +158,15 @@ class MedicationsController < ApplicationController
   end
 
   def finder
-    authorize Medication
-    render Components::Medications::FinderView.new
+    authorize(Medication)
+    render(Components::Medications::FinderView.new)
   end
 
   def search
-    authorize Medication, :finder?
+    authorize(Medication, :finder?)
     response = medication_finder_search_responder.call(query: params[:q])
 
-    render json: response.body, status: response.status
+    render(json: response.body, status: response.status)
   end
 
   private
@@ -179,10 +203,10 @@ class MedicationsController < ApplicationController
 
   def render_destroy_success(medication_id)
     respond_to do |format|
-      format.html { redirect_to medications_url, notice: t('medications.deleted') }
+      format.html { redirect_to(medications_url, notice: t("medications.deleted")) }
       format.turbo_stream do
-        flash.now[:notice] = t('medications.deleted')
-        render turbo_stream: destroy_medication_streams(medication_id)
+        flash.now[:notice] = t("medications.deleted")
+        render(turbo_stream: destroy_medication_streams(medication_id))
       end
     end
   end
@@ -191,7 +215,7 @@ class MedicationsController < ApplicationController
     [
       turbo_stream.remove("medication_#{medication_id}"),
       turbo_stream.remove("medication_show_#{medication_id}"),
-      turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
+      turbo_stream.update("flash", Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
     ]
   end
 
@@ -200,26 +224,29 @@ class MedicationsController < ApplicationController
   end
 
   def redirect_update_success
-    redirect_to safe_redirect_path(params[:return_to]) || @medication, notice: t('medications.updated')
+    redirect_to(safe_redirect_path(params[:return_to]) || @medication, notice: t("medications.updated"))
   end
 
   def render_update_failure
-    render Components::Medications::FormView.new(
-      medication: @medication,
-      locations: available_locations,
-      title: t('medications.form.edit_title'),
-      subtitle: t('medications.form.edit_subtitle', name: @medication.name),
-      return_to: url_from(params[:return_to])
-    ), status: :unprocessable_content
+    render(
+      Components::Medications::FormView.new(
+        medication: @medication,
+        locations: available_locations,
+        title: t("medications.form.edit_title"),
+        subtitle: t("medications.form.edit_subtitle", name: @medication.name),
+        return_to: url_from(params[:return_to])
+      ),
+      status: :unprocessable_content
+    )
   end
 
   def update_reorder_status(status, notice:)
     MedicationReorderStatusService.new.call(medication: @medication, status: status)
     respond_to do |format|
-      format.html { redirect_back_or_to @medication, notice: notice }
+      format.html { redirect_back_or_to(@medication, notice: notice) }
       format.turbo_stream do
         flash.now[:notice] = notice
-        render turbo_stream: medication_streams
+        render(turbo_stream: medication_streams)
       end
     end
   end
@@ -235,21 +262,25 @@ class MedicationsController < ApplicationController
   def render_refill_error(message)
     respond_to do |format|
       format.html do
-        render Components::Medications::ShowView.new(medication: @medication, notice: message), status: :unprocessable_content
+        render(
+          Components::Medications::ShowView.new(medication: @medication, notice: message),
+          status: :unprocessable_content
+        )
       end
+
       format.turbo_stream do
         flash.now[:alert] = message
-        render turbo_stream: medication_streams, status: :unprocessable_content
+        render(turbo_stream: medication_streams, status: :unprocessable_content)
       end
     end
   end
 
   def render_refill_success
     respond_to do |format|
-      format.html { redirect_back_or_to @medication, notice: t('medications.refilled') }
+      format.html { redirect_back_or_to(@medication, notice: t("medications.refilled")) }
       format.turbo_stream do
-        flash.now[:notice] = t('medications.refilled')
-        render turbo_stream: medication_streams
+        flash.now[:notice] = t("medications.refilled")
+        render(turbo_stream: medication_streams)
       end
     end
   end
@@ -257,22 +288,25 @@ class MedicationsController < ApplicationController
   def render_adjust_error(message)
     respond_to do |format|
       format.html do
-        render Components::Medications::ShowView.new(medication: @medication, notice: message),
-               status: :unprocessable_content
+        render(
+          Components::Medications::ShowView.new(medication: @medication, notice: message),
+          status: :unprocessable_content
+        )
       end
+
       format.turbo_stream do
         flash.now[:alert] = message
-        render turbo_stream: medication_streams, status: :unprocessable_content
+        render(turbo_stream: medication_streams, status: :unprocessable_content)
       end
     end
   end
 
   def render_adjust_success
     respond_to do |format|
-      format.html { redirect_back_or_to @medication, notice: t('medications.inventory_adjusted') }
+      format.html { redirect_back_or_to(@medication, notice: t("medications.inventory_adjusted")) }
       format.turbo_stream do
-        flash.now[:notice] = t('medications.inventory_adjusted')
-        render turbo_stream: medication_streams
+        flash.now[:notice] = t("medications.inventory_adjusted")
+        render(turbo_stream: medication_streams)
       end
     end
   end
@@ -280,9 +314,12 @@ class MedicationsController < ApplicationController
   def medication_streams
     medication = @medication.reload
     [
-      turbo_stream.replace("medication_show_#{medication.id}", Components::Medications::ShowView.new(medication: medication)),
+      turbo_stream.replace(
+        "medication_show_#{medication.id}",
+        Components::Medications::ShowView.new(medication: medication)
+      ),
       turbo_stream.replace("medication_#{medication.id}", medication_list_item(medication)),
-      turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
+      turbo_stream.update("flash", Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
     ]
   end
 
@@ -295,20 +332,22 @@ class MedicationsController < ApplicationController
   end
 
   def create_medication_from_request
-    MedicationOnboardingCreateService.new(
-      medication: @medication,
-      schedule_attributes: onboarding_schedule_params_for_create,
-      people_scope: policy_scope(Person),
-      medication_scope: policy_scope(Medication)
-    ).call
+    MedicationOnboardingCreateService
+      .new(
+        medication: @medication,
+        schedule_attributes: onboarding_schedule_params_for_create,
+        people_scope: policy_scope(Person),
+        medication_scope: policy_scope(Medication)
+      )
+      .call
   end
 
   def create_success_notice(result)
-    result.restocked? ? t('medications.refilled') : t('medications.created')
+    result.restocked? ? t("medications.refilled") : t("medications.created")
   end
 
   def onboarding_schedule_params_for_create
-    return nil unless params[:wizard] == 'true' && params[:onboarding_schedule].present?
+    return nil unless params[:wizard] == "true" && params[:onboarding_schedule].present?
 
     onboarding_schedule_params.to_h.deep_symbolize_keys
   end

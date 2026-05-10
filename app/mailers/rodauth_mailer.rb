@@ -7,25 +7,25 @@ class RodauthMailer < ApplicationMailer
     @rodauth = rodauth(name, account_id) { @verify_account_key_value = key }
     @account = @rodauth.rails_account
 
-    mail subject: @rodauth.email_subject_prefix + @rodauth.verify_account_email_subject
+    mail(subject: @rodauth.email_subject_prefix + @rodauth.verify_account_email_subject)
   end
 
   def reset_password(name, account_id, key)
     @rodauth = rodauth(name, account_id) { @reset_password_key_value = key }
     @account = @rodauth.rails_account
-    mail subject: @rodauth.email_subject_prefix + @rodauth.reset_password_email_subject
+    mail(subject: @rodauth.email_subject_prefix + @rodauth.reset_password_email_subject)
   end
 
   def verify_login_change(name, account_id, key)
     @rodauth = rodauth(name, account_id) { @verify_login_change_key_value = key }
     @account = @rodauth.rails_account
-    mail subject: @rodauth.email_subject_prefix + @rodauth.verify_login_change_email_subject
+    mail(subject: @rodauth.email_subject_prefix + @rodauth.verify_login_change_email_subject)
   end
 
   def unlock_account(name, account_id, key)
     @rodauth = rodauth(name, account_id) { @account_lockouts_key_value = key }
     @account = @rodauth.rails_account
-    mail subject: @rodauth.email_subject_prefix + @rodauth.unlock_account_email_subject
+    mail(subject: @rodauth.email_subject_prefix + @rodauth.unlock_account_email_subject)
   end
 
   private

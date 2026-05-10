@@ -17,22 +17,22 @@ module Views
 
       def header_title
         if rodauth.two_factor_authentication_setup?
-          t('rodauth.views.two_factor_manage.page_title_configured')
+          t("rodauth.views.two_factor_manage.page_title_configured")
         else
-          t('rodauth.views.two_factor_manage.page_title_unconfigured')
+          t("rodauth.views.two_factor_manage.page_title_unconfigured")
         end
       end
 
       def header_subtitle
         if rodauth.two_factor_authentication_setup?
-          t('rodauth.views.two_factor_manage.page_subtitle_configured')
+          t("rodauth.views.two_factor_manage.page_subtitle_configured")
         else
-          t('rodauth.views.two_factor_manage.page_subtitle_unconfigured')
+          t("rodauth.views.two_factor_manage.page_subtitle_unconfigured")
         end
       end
 
       def render_card_content
-        div(class: 'space-y-4') do
+        div(class: "space-y-4") do
           render_webauthn_option
           render_totp_option
           render_recovery_codes_option if rodauth.two_factor_authentication_setup?
@@ -40,69 +40,83 @@ module Views
       end
 
       def render_webauthn_option
-        render_auth_method_card({
-                                  title: t('rodauth.views.two_factor_manage.methods.passkeys_title'),
-                                  description: t('rodauth.views.two_factor_manage.methods.passkeys_description'),
-                                  icon: :passkey,
-                                  setup_path: rodauth.webauthn_setup_path,
-                                  setup_text: t('rodauth.views.two_factor_manage.methods.passkeys_setup'),
-                                  enabled: webauthn_enabled?,
-                                  manage_path: webauthn_enabled? ? rodauth.webauthn_remove_path : nil,
-                                  manage_text: t('rodauth.views.two_factor_manage.methods.passkeys_manage')
-                                })
+        render_auth_method_card(
+          {
+            title: t("rodauth.views.two_factor_manage.methods.passkeys_title"),
+            description: t("rodauth.views.two_factor_manage.methods.passkeys_description"),
+            icon: :passkey,
+            setup_path: rodauth.webauthn_setup_path,
+            setup_text: t("rodauth.views.two_factor_manage.methods.passkeys_setup"),
+            enabled: webauthn_enabled?,
+            manage_path: webauthn_enabled? ? rodauth.webauthn_remove_path : nil,
+            manage_text: t("rodauth.views.two_factor_manage.methods.passkeys_manage")
+          }
+        )
       end
 
       def render_totp_option
-        render_auth_method_card({
-                                  title: t('rodauth.views.two_factor_manage.methods.totp_title'),
-                                  description: t('rodauth.views.two_factor_manage.methods.totp_description'),
-                                  icon: :totp,
-                                  setup_path: rodauth.otp_setup_path,
-                                  setup_text: t('rodauth.views.two_factor_manage.methods.totp_setup'),
-                                  enabled: totp_enabled?,
-                                  manage_path: totp_enabled? ? rodauth.otp_disable_path : nil,
-                                  manage_text: t('rodauth.views.two_factor_manage.methods.totp_manage')
-                                })
+        render_auth_method_card(
+          {
+            title: t("rodauth.views.two_factor_manage.methods.totp_title"),
+            description: t("rodauth.views.two_factor_manage.methods.totp_description"),
+            icon: :totp,
+            setup_path: rodauth.otp_setup_path,
+            setup_text: t("rodauth.views.two_factor_manage.methods.totp_setup"),
+            enabled: totp_enabled?,
+            manage_path: totp_enabled? ? rodauth.otp_disable_path : nil,
+            manage_text: t("rodauth.views.two_factor_manage.methods.totp_manage")
+          }
+        )
       end
 
       def render_recovery_codes_option
-        render_auth_method_card({
-                                  title: t('rodauth.views.two_factor_manage.methods.recovery_codes_title'),
-                                  description: t('rodauth.views.two_factor_manage.methods.recovery_codes_description'),
-                                  icon: :recovery,
-                                  setup_path: rodauth.recovery_codes_path,
-                                  setup_text: t('rodauth.views.two_factor_manage.methods.recovery_codes_setup'),
-                                  enabled: recovery_codes_enabled?,
-                                  manage_path: nil,
-                                  manage_text: nil
-                                })
+        render_auth_method_card(
+          {
+            title: t("rodauth.views.two_factor_manage.methods.recovery_codes_title"),
+            description: t("rodauth.views.two_factor_manage.methods.recovery_codes_description"),
+            icon: :recovery,
+            setup_path: rodauth.recovery_codes_path,
+            setup_text: t("rodauth.views.two_factor_manage.methods.recovery_codes_setup"),
+            enabled: recovery_codes_enabled?,
+            manage_path: nil,
+            manage_text: nil
+          }
+        )
       end
 
-      def render_auth_method_card(method_config) # rubocop:disable Metrics/AbcSize
-        div(class: 'flex items-start gap-4 rounded-[2rem] border border-outline-variant/50 bg-surface-container-low p-6 transition-all hover:bg-surface-container-high hover:shadow-md') do
+      # rubocop:disable Metrics/AbcSize
+      def render_auth_method_card(method_config)
+        div(
+          class: "flex items-start gap-4 rounded-[2rem] border border-outline-variant/50 bg-surface-container-low p-6 transition-all hover:bg-surface-container-high hover:shadow-md"
+        ) do
           render_method_icon(method_config[:icon], method_config[:enabled])
 
-          div(class: 'flex-1 min-w-0 py-1') do
-            div(class: 'flex items-center gap-2') do
-              h4(class: 'font-black text-foreground tracking-tight') { method_config[:title] }
+          div(class: "flex-1 min-w-0 py-1") do
+            div(class: "flex items-center gap-2") do
+              h4(class: "font-black text-foreground tracking-tight") { method_config[:title] }
               render_status_badge(method_config[:enabled]) if method_config[:enabled]
             end
-            p(class: 'mt-1 text-sm text-on-surface-variant font-medium line-clamp-2') { method_config[:description] }
+
+            p(class: "mt-1 text-sm text-on-surface-variant font-medium line-clamp-2") { method_config[:description] }
           end
 
-          div(class: 'flex-shrink-0 self-center') do
+          div(class: "flex-shrink-0 self-center") do
             if method_config[:enabled] && method_config[:manage_path]
-              m3_link(href: method_config[:manage_path], variant: :outlined, size: :sm, class: 'font-bold') { method_config[:manage_text] }
+              m3_link(href: method_config[:manage_path], variant: :outlined, size: :sm, class: "font-bold") {
+                method_config[:manage_text]
+              }
             elsif !method_config[:enabled] && method_config[:setup_path]
-              m3_link(href: method_config[:setup_path], variant: :filled, size: :sm, class: 'font-bold shadow-sm') { method_config[:setup_text] }
+              m3_link(href: method_config[:setup_path], variant: :filled, size: :sm, class: "font-bold shadow-sm") {
+                method_config[:setup_text]
+              }
             end
           end
         end
       end
 
       def render_method_icon(icon_type, enabled)
-        bg_class = enabled ? 'bg-primary/10' : 'bg-surface-container-highest'
-        icon_class = enabled ? 'text-primary' : 'text-on-surface-variant/70'
+        bg_class = enabled ? "bg-primary/10" : "bg-surface-container-highest"
+        icon_class = enabled ? "text-primary" : "text-on-surface-variant/70"
 
         div(class: "flex-shrink-0 w-14 h-14 #{bg_class} rounded-2xl flex items-center justify-center transition-colors") do
           case icon_type
@@ -117,22 +131,22 @@ module Views
       end
 
       def render_passkey_icon(icon_class)
-        render Icons::Fingerprint.new(size: 28, class: icon_class)
+        render(Icons::Fingerprint.new(size: 28, class: icon_class))
       end
 
       def render_totp_icon(icon_class)
-        render Icons::Smartphone.new(size: 28, class: icon_class)
+        render(Icons::Smartphone.new(size: 28, class: icon_class))
       end
 
       def render_recovery_icon(icon_class)
-        render Icons::Key.new(size: 28, class: icon_class)
+        render(Icons::Key.new(size: 28, class: icon_class))
       end
 
       def render_status_badge(enabled)
         return unless enabled
 
-        m3_badge(variant: :success, class: 'px-2.5 py-0.5 font-bold text-[10px] uppercase tracking-wider') do
-          t('rodauth.views.two_factor_manage.status_enabled')
+        m3_badge(variant: :success, class: "px-2.5 py-0.5 font-bold text-[10px] uppercase tracking-wider") do
+          t("rodauth.views.two_factor_manage.status_enabled")
         end
       end
 

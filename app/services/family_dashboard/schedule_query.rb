@@ -30,20 +30,22 @@ module FamilyDashboard
     private
 
     def fetch_active_schedules
-      schedules_by_person_id = Schedule.active
-                                       .where(person_id: @person_ids)
-                                       .includes(:medication)
-                                       .to_a
-                                       .group_by(&:person_id)
+      schedules_by_person_id = Schedule
+        .active
+        .where(person_id: @person_ids)
+        .includes(:medication)
+        .to_a
+        .group_by(&:person_id)
 
       @people.to_h { |person| [person.id, schedules_by_person_id.fetch(person.id, [])] }
     end
 
     def fetch_person_medications
-      person_medications_by_person_id = PersonMedication.where(person_id: @person_ids)
-                                                        .includes(:medication)
-                                                        .to_a
-                                                        .group_by(&:person_id)
+      person_medications_by_person_id = PersonMedication
+        .where(person_id: @person_ids)
+        .includes(:medication)
+        .to_a
+        .group_by(&:person_id)
 
       @people.to_h { |person| [person.id, person_medications_by_person_id.fetch(person.id, [])] }
     end
@@ -55,7 +57,7 @@ module FamilyDashboard
 
       # Group by [source_type, source_id] for fast lookup
       takes_by_source = all_takes.group_by do |t|
-        t.schedule_id ? ['Schedule', t.schedule_id] : ['PersonMedication', t.person_medication_id]
+        t.schedule_id ? ["Schedule", t.schedule_id] : ["PersonMedication", t.person_medication_id]
       end
 
       # Associate preloaded takes with these objects to avoid N+1 in TimingRestrictions
@@ -71,10 +73,11 @@ module FamilyDashboard
       pm_ids = @all_person_medications.values.flatten.map(&:id)
       range = 30.days.ago..Time.current.end_of_day
 
-      MedicationTake.where(taken_at: range, schedule_id: schedule_ids)
-                    .or(MedicationTake.where(taken_at: range, person_medication_id: pm_ids))
-                    .includes(:taken_from_location, :taken_from_medication)
-                    .to_a
+      MedicationTake
+        .where(taken_at: range, schedule_id: schedule_ids)
+        .or(MedicationTake.where(taken_at: range, person_medication_id: pm_ids))
+        .includes(:taken_from_location, :taken_from_medication)
+        .to_a
     end
 
     def associate_takes_to_sources(sources, takes_by_source)
@@ -117,13 +120,14 @@ module FamilyDashboard
       next_time = source.next_available_time
       if next_time && next_time <= now + 24.hours
         status = MedicationStockSourceResolver.new(user: current_user, source: source).blocked_reason || :upcoming
-        doses << {
-          person: person,
-          source: source,
-          scheduled_at: next_time,
-          taken_at: nil,
-          status: status
-        }
+        doses <<
+          {
+            person: person,
+            source: source,
+            scheduled_at: next_time,
+            taken_at: nil,
+            status: status
+          }
       end
 
       doses

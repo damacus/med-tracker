@@ -7,28 +7,28 @@ module Components
       def view_template
         div(
           data: {
-            testid: 'medication-finder',
-            controller: 'medication-search',
-            action: 'barcode-scanner:decoded->medication-search#barcodeDecoded',
+            testid: "medication-finder",
+            controller: "medication-search",
+            action: "barcode-scanner:decoded->medication-search#barcodeDecoded",
             medication_search_translations_value: {
-              loading: t('medications.finder.loading'),
-              idleText: t('medications.finder.idle_text'),
-              unavailableTitle: t('medications.finder.unavailable_title'),
-              unavailableMessage: t('medications.finder.unavailable_message'),
-              noResultsTitle: t('medications.finder.no_results_title'),
-              noResultsMessage: t('medications.finder.no_results_message'),
-              resultsTitle: t('medications.finder.results_title'),
-              source: t('medications.finder.source'),
-              barcode: t('medications.finder.barcode'),
-              dmdCode: t('medications.finder.dmd_code'),
-              addMedication: t('medications.index.add_medication'),
+              loading: t("medications.finder.loading"),
+              idleText: t("medications.finder.idle_text"),
+              unavailableTitle: t("medications.finder.unavailable_title"),
+              unavailableMessage: t("medications.finder.unavailable_message"),
+              noResultsTitle: t("medications.finder.no_results_title"),
+              noResultsMessage: t("medications.finder.no_results_message"),
+              resultsTitle: t("medications.finder.results_title"),
+              source: t("medications.finder.source"),
+              barcode: t("medications.finder.barcode"),
+              dmdCode: t("medications.finder.dmd_code"),
+              addMedication: t("medications.index.add_medication"),
               resultCount: {
-                one: t('medications.finder.result_count.one'),
-                other: t('medications.finder.result_count.other')
+                one: t("medications.finder.result_count.one"),
+                other: t("medications.finder.result_count.other")
               }
             }.to_json
           },
-          class: 'container mx-auto px-4 py-12 max-w-5xl'
+          class: "container mx-auto px-4 py-12 max-w-5xl"
         ) do
           render_header
           render_scanner_section
@@ -40,65 +40,78 @@ module Components
       private
 
       def render_header
-        div(class: 'mb-10') do
-          m3_text(size: '2', weight: 'muted', class: 'uppercase tracking-widest mb-1 block font-bold') { t('medications.finder.nhs_directory') }
-          m3_heading(level: 1, size: '7', class: 'font-bold tracking-tight') { t('medications.finder.title') }
-          m3_text(size: '3', class: 'text-on-surface-variant mt-2') do
-            plain t('medications.finder.subtitle')
+        div(class: "mb-10") do
+          m3_text(size: "2", weight: "muted", class: "uppercase tracking-widest mb-1 block font-bold") {
+            t("medications.finder.nhs_directory")
+          }
+          m3_heading(level: 1, size: "7", class: "font-bold tracking-tight") { t("medications.finder.title") }
+          m3_text(size: "3", class: "text-on-surface-variant mt-2") do
+            plain(t("medications.finder.subtitle"))
           end
         end
       end
 
       def render_scanner_section
-        div(class: 'mb-8') do
-          render Components::BarcodeScanner.new
+        div(class: "mb-8") do
+          render(Components::BarcodeScanner.new)
         end
       end
 
       def render_search_section
         form(
-          data: { action: 'submit->medication-search#search', medication_search_target: 'form' },
-          class: 'mb-12'
+          data: {action: "submit->medication-search#search", medication_search_target: "form"},
+          class: "mb-12"
         ) do
-          div(class: 'relative group') do
-            div(class: 'absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none text-on-surface-variant group-focus-within:text-primary transition-colors') do
-              render Icons::Search.new(size: 22)
+          div(class: "relative group") do
+            div(
+              class: "absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none text-on-surface-variant group-focus-within:text-primary transition-colors"
+            ) do
+              render(Icons::Search.new(size: 22))
             end
+
             input(
-              type: 'text',
-              id: 'medication-search-input',
-              name: 'q',
-              placeholder: t('medications.finder.placeholder'),
-              autocomplete: 'off',
-              data: { medication_search_target: 'input' },
-              class: 'block w-full pl-14 pr-32 py-6 border border-border rounded-[1.5rem] leading-5 bg-card shadow-[0_10px_40px_rgba(0,0,0,0.03)] focus:shadow-[0_10px_40px_rgba(0,0,0,0.06)] focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary sm:text-base transition-all placeholder:text-on-surface-variant'
+              type: "text",
+              id: "medication-search-input",
+              name: "q",
+              placeholder: t("medications.finder.placeholder"),
+              autocomplete: "off",
+              data: {medication_search_target: "input"},
+              class: "block w-full pl-14 pr-32 py-6 border border-border rounded-[1.5rem] leading-5 bg-card shadow-[0_10px_40px_rgba(0,0,0,0.03)] focus:shadow-[0_10px_40px_rgba(0,0,0,0.06)] focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary sm:text-base transition-all placeholder:text-on-surface-variant"
             )
-            div(class: 'absolute inset-y-2 right-2 flex items-center') do
+            div(class: "absolute inset-y-2 right-2 flex items-center") do
               m3_button(
                 type: :submit,
                 variant: :filled,
-                class: 'h-full rounded-shape-xl px-8 font-bold text-sm shadow-lg shadow-primary/20',
-                data: { medication_search_target: 'submitButton' }
-              ) { t('medications.finder.search_button') }
+                class: "h-full rounded-shape-xl px-8 font-bold text-sm shadow-lg shadow-primary/20",
+                data: {medication_search_target: "submitButton"}
+              ) { t("medications.finder.search_button") }
             end
           end
         end
       end
 
       def render_results_section
-        div(data: { medication_search_target: 'results' }, class: 'space-y-6') do
+        div(data: {medication_search_target: "results"}, class: "space-y-6") do
           render_idle_state
         end
       end
 
       def render_idle_state
-        div(data: { medication_search_target: 'idle' }, class: 'text-center py-24 px-8 rounded-[3rem] border-2 border-dashed border-border') do
-          div(class: 'w-20 h-20 rounded-full bg-card flex items-center justify-center text-on-surface-variant mx-auto mb-6') do
-            render Icons::Search.new(size: 40)
+        div(
+          data: {medication_search_target: "idle"},
+          class: "text-center py-24 px-8 rounded-[3rem] border-2 border-dashed border-border"
+        ) do
+          div(
+            class: "w-20 h-20 rounded-full bg-card flex items-center justify-center text-on-surface-variant mx-auto mb-6"
+          ) do
+            render(Icons::Search.new(size: 40))
           end
-          m3_heading(level: 3, size: '5', class: 'font-bold text-on-surface-variant mb-2') { t('medications.finder.idle_heading') }
-          m3_text(size: '2', class: 'text-on-surface-variant max-w-sm mx-auto') do
-            t('medications.finder.idle_text')
+
+          m3_heading(level: 3, size: "5", class: "font-bold text-on-surface-variant mb-2") {
+            t("medications.finder.idle_heading")
+          }
+          m3_text(size: "2", class: "text-on-surface-variant max-w-sm mx-auto") do
+            t("medications.finder.idle_text")
           end
         end
       end

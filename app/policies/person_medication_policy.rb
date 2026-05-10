@@ -48,8 +48,10 @@ class PersonMedicationPolicy < ApplicationPolicy
     return false unless user&.person
 
     person = record.is_a?(Class) ? nil : record.person
-    return true if person.nil? # For new? action with PersonMedication class - actual authorization happens in create?
-    return true if person.id == user.person_id # Self
+    # For new? action with PersonMedication class - actual authorization happens in create?
+    return true if person.nil?
+    # Self
+    return true if person.id == user.person_id
 
     false
   end

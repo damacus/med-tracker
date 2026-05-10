@@ -12,11 +12,12 @@ module Components
       end
 
       def view_template
-        div(class: 'container mx-auto max-w-4xl px-4 py-10 space-y-8') do
-          header(class: 'space-y-2') do
-            m3_heading(variant: :display_small, level: 1) { t('global_search.page_title') }
-            m3_text(class: 'text-on-surface-variant') { t('global_search.page_subtitle') }
+        div(class: "container mx-auto max-w-4xl px-4 py-10 space-y-8") do
+          header(class: "space-y-2") do
+            m3_heading(variant: :display_small, level: 1) { t("global_search.page_title") }
+            m3_text(class: "text-on-surface-variant") { t("global_search.page_subtitle") }
           end
+
           render_form
           render_results
         end
@@ -25,34 +26,36 @@ module Components
       private
 
       def render_form
-        form(action: search_path, method: :get, class: 'flex gap-3') do
-          label(class: 'sr-only', for: 'search_q') { t('global_search.input_label') }
+        form(action: search_path, method: :get, class: "flex gap-3") do
+          label(class: "sr-only", for: "search_q") { t("global_search.input_label") }
           input(
-            id: 'search_q',
-            name: 'q',
-            type: 'search',
+            id: "search_q",
+            name: "q",
+            type: "search",
             value: query,
-            class: 'min-h-[44px] flex-1 rounded-md border border-outline-variant bg-surface-container-low px-4',
-            placeholder: t('global_search.placeholder')
+            class: "min-h-[44px] flex-1 rounded-md border border-outline-variant bg-surface-container-low px-4",
+            placeholder: t("global_search.placeholder")
           )
-          m3_button(type: :submit) { t('global_search.page_submit') }
+          m3_button(type: :submit) { t("global_search.page_submit") }
         end
       end
 
       def render_results
         if results.empty?
-          m3_text(class: 'text-on-surface-variant') { t('global_search.no_results') }
+          m3_text(class: "text-on-surface-variant") { t("global_search.no_results") }
           return
         end
 
-        div(class: 'space-y-2') do
+        div(class: "space-y-2") do
           results.each do |result|
-            link_to result.path,
-                    class: 'block rounded-md border border-outline-variant bg-surface-container-low p-4 ' \
-                           'no-underline hover:border-primary focus-visible:outline-none focus-visible:ring-2 ' \
-                           'focus-visible:ring-primary' do
-              p(class: 'font-bold text-foreground') { result.title }
-              p(class: 'text-sm text-on-surface-variant') { result.subtitle }
+            link_to(
+              result.path,
+              class: "block rounded-md border border-outline-variant bg-surface-container-low p-4 " \
+                "no-underline hover:border-primary focus-visible:outline-none focus-visible:ring-2 " \
+                "focus-visible:ring-primary"
+            ) do
+              p(class: "font-bold text-foreground") { result.title }
+              p(class: "text-sm text-on-surface-variant") { result.subtitle }
             end
           end
         end

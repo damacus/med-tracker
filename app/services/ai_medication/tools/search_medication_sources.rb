@@ -3,11 +3,11 @@
 module AiMedication
   module Tools
     class SearchMedicationSources < (defined?(RubyLLM::Tool) ? RubyLLM::Tool : Object)
-      description 'Searches configured trusted medication guidance source seeds' if respond_to?(:description)
+      description "Searches configured trusted medication guidance source seeds" if respond_to?(:description)
 
       if respond_to?(:params)
         params do
-          string :query, description: 'Medication source search query'
+          string :query, description: "Medication source search query"
         end
       end
 
@@ -23,8 +23,8 @@ module AiMedication
           next unless source_matches?(source, tokens)
 
           {
-            url: source.fetch('url'),
-            title: source.fetch('title'),
+            url: source.fetch("url"),
+            title: source.fetch("title"),
             matched_keywords: matching_keywords(source, tokens)
           }
         end
@@ -33,7 +33,7 @@ module AiMedication
       private
 
       def source_allowed?(source)
-        @allowlist.allowed?(source.fetch('url'))
+        @allowlist.allowed?(source.fetch("url"))
       end
 
       def source_matches?(source, tokens)
@@ -41,7 +41,7 @@ module AiMedication
       end
 
       def matching_keywords(source, tokens)
-        Array(source.fetch('keywords', [])).select do |keyword|
+        Array(source.fetch("keywords", [])).select do |keyword|
           keyword_tokens = query_tokens(keyword)
           keyword_tokens.any? { |token| tokens.include?(token) }
         end

@@ -5,30 +5,39 @@ class DoseCycle
 
   def initialize(value)
     str = value.to_s
-    @value = VALID_CYCLES.include?(str) ? str : 'daily'
+    @value = VALID_CYCLES.include?(str) ? str : "daily"
   end
 
   def range_for(time)
     case @value
-    when 'weekly' then time.all_week
-    when 'monthly' then time.all_month
-    else time.all_day
+    when "weekly"
+      time.all_week
+    when "monthly"
+      time.all_month
+    else
+      time.all_day
     end
   end
 
   def next_reset_time(time)
     case @value
-    when 'weekly' then time.end_of_week + 1.second
-    when 'monthly' then time.end_of_month + 1.second
-    else time.end_of_day + 1.second
+    when "weekly"
+      time.end_of_week + 1.second
+    when "monthly"
+      time.end_of_month + 1.second
+    else
+      time.end_of_day + 1.second
     end
   end
 
   def period
     case @value
-    when 'weekly' then 1.week
-    when 'monthly' then 1.month
-    else 1.day
+    when "weekly"
+      1.week
+    when "monthly"
+      1.month
+    else
+      1.day
     end
   end
 

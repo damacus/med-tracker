@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'yaml'
+require "yaml"
 
 module BarcodeCatalog
   class CuratedProducts
@@ -52,7 +52,7 @@ module BarcodeCatalog
           display: display_name,
           system: system,
           concept_class: concept_class,
-          source: 'curated'
+          source: "curated"
         }
       end
 
@@ -91,38 +91,38 @@ module BarcodeCatalog
 
       def products
         @products ||= begin
-          raw_products = YAML.load_file(Rails.root.join('config/nhs_dmd_curated_products.yml'))
-          Array(raw_products['products']).map { |entry| build_product(entry) }
+          raw_products = YAML.load_file(Rails.root.join("config/nhs_dmd_curated_products.yml"))
+          Array(raw_products["products"]).map { |entry| build_product(entry) }
         end
       end
 
       def build_product(entry)
         Product.new(
-          gtin: entry['gtin'],
-          code: entry['code'],
-          display_name: entry.fetch('display'),
-          system: entry['system'],
-          concept_class: entry['concept_class'],
-          category: entry['category'],
-          description: entry['description'],
-          warnings: entry['warnings'],
-          suggested_doses: Array(entry['suggested_doses']).map { |dose| build_dose(dose) }
+          gtin: entry["gtin"],
+          code: entry["code"],
+          display_name: entry.fetch("display"),
+          system: entry["system"],
+          concept_class: entry["concept_class"],
+          category: entry["category"],
+          description: entry["description"],
+          warnings: entry["warnings"],
+          suggested_doses: Array(entry["suggested_doses"]).map { |dose| build_dose(dose) }
         )
       end
 
       def build_dose(entry)
         Dose.new(
-          amount: entry.fetch('amount'),
-          unit: entry.fetch('unit'),
-          frequency: entry.fetch('frequency'),
-          description: entry['description'],
-          default_for_adults: entry.fetch('default_for_adults', false),
-          default_for_children: entry.fetch('default_for_children', false),
-          default_max_daily_doses: entry.fetch('default_max_daily_doses'),
-          default_min_hours_between_doses: entry.fetch('default_min_hours_between_doses'),
-          default_dose_cycle: entry.fetch('default_dose_cycle'),
-          current_supply: entry['current_supply'],
-          reorder_threshold: entry['reorder_threshold']
+          amount: entry.fetch("amount"),
+          unit: entry.fetch("unit"),
+          frequency: entry.fetch("frequency"),
+          description: entry["description"],
+          default_for_adults: entry.fetch("default_for_adults", false),
+          default_for_children: entry.fetch("default_for_children", false),
+          default_max_daily_doses: entry.fetch("default_max_daily_doses"),
+          default_min_hours_between_doses: entry.fetch("default_min_hours_between_doses"),
+          default_dose_cycle: entry.fetch("default_dose_cycle"),
+          current_supply: entry["current_supply"],
+          reorder_threshold: entry["reorder_threshold"]
         )
       end
     end

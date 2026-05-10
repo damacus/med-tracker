@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'nokogiri'
+require "nokogiri"
 
 module NhsDmd
   class ReleaseImport
@@ -14,7 +14,8 @@ module NhsDmd
       skipped_expired_count
       skipped_missing_name_count
       skipped_invalid_count
-    ].freeze
+    ]
+      .freeze
 
     Result = Struct.new(*RESULT_KEYS, keyword_init: true) do
       def imported_count = created_count + updated_count
@@ -23,7 +24,7 @@ module NhsDmd
 
     def import(release_dir, progress_callback: nil)
       dir = Pathname.new(release_dir)
-      ampp_file = glob_one(dir, 'f_ampp2_3*.xml')
+      ampp_file = glob_one(dir, "f_ampp2_3*.xml")
       gtin_file = find_gtin_file(dir)
 
       counts = build_counts(ampp_file, gtin_file)
@@ -45,26 +46,33 @@ module NhsDmd
     end
 
     def find_gtin_file(dir)
-      existing = Dir.glob(dir.join('f_gtin2_0*.xml'))
+      existing = Dir.glob(dir.join("f_gtin2_0*.xml"))
       return existing.first if existing.any?
 
-      zip = Dir.glob(dir.join('*GTIN.zip')).first
+      zip = Dir.glob(dir.join("*GTIN.zip")).first
       raise ArgumentError, "No GTIN XML or ZIP found in #{dir}" unless zip
 
-      extract_dir = Dir.mktmpdir('dmd-gtin')
+      extract_dir = Dir.mktmpdir("dmd-gtin")
       extract_gtin_xml(zip, extract_dir)
-      Dir.glob(File.join(extract_dir, 'f_gtin2_0*.xml')).first
+      Dir.glob(File.join(extract_dir, "f_gtin2_0*.xml")).first
     end
 
     def extract_gtin_xml(zip_path, dest)
-      system('unzip', '-o', zip_path.to_s, 'f_gtin2_0*.xml', '-d', dest.to_s,
-             exception: true)
+      system(
+        "unzip",
+        "-o",
+        zip_path.to_s,
+        "f_gtin2_0*.xml",
+        "-d",
+        dest.to_s,
+        exception: true
+      )
     end
 
     def parse_ampp_names(path, counts:, progress_callback:)
       each_ampp_doc(path).with_object({}) do |doc, names|
-        appid = node_text(doc, 'APPID')
-        name = node_text(doc, 'NM')
+        appid = node_text(doc, "APPID")
+        name = node_text(doc, "NM")
         track_ampp_progress(counts, progress_callback)
         if appid.blank? || name.blank?
           counts[:ampp_skipped] += 1
@@ -74,6 +82,7 @@ module NhsDmd
         counts[:ampp_named] += 1
         names[appid] = name
       end
+
     ensure
       emit_progress(counts, progress_callback, force: true, message: ampp_progress_message(counts))
     end
@@ -101,18 +110,18 @@ module NhsDmd
     end
 
     def ampp_element?(node)
-      node.name == 'AMPP' && node.node_type == Nokogiri::XML::Reader::TYPE_ELEMENT
+      node.name == "AMPP" && node.node_type == Nokogiri::XML::Reader::TYPE_ELEMENT
     end
 
     def import_ampp_gtins(doc, names:, today:, counts:, progress_callback:)
-      amppid = node_text(doc, 'AMPPID')
+      amppid = node_text(doc, "AMPPID")
       if amppid.blank?
         process_unmatched_gtins(doc, counts, progress_callback)
         return
       end
 
       display = names[amppid]
-      doc.css('GTINDATA').each do |gtin_data|
+      doc.css("GTINDATA").each do |gtin_data|
         import_gtin_data(gtin_data, amppid:, display:, today:, counts:)
         emit_progress(counts, progress_callback, message: gtin_progress_message(counts))
       end
@@ -120,19 +129,19 @@ module NhsDmd
 
     def import_gtin_data(gtin_data, amppid:, display:, today:, counts:)
       mark_gtin_processed(counts)
-      gtin = node_text(gtin_data, 'GTIN')
+      gtin = node_text(gtin_data, "GTIN")
       return increment(counts, :skipped_invalid) if gtin.blank?
       return increment(counts, :skipped_expired) if expired?(gtin_data, today)
       return increment(counts, :skipped_missing_name) if display.blank?
 
-      stripped = display.sub(/\s*\([^)]*\)\z/, '').strip
+      stripped = display.sub(/\s*\([^)]*\)\z/, "").strip
       outcome = persist(
         gtin: NhsDmdBarcode.normalize_gtin(gtin),
         code: amppid,
         display: display,
         vmp_name: stripped == display ? nil : stripped,
-        system: 'https://dmd.nhs.uk',
-        concept_class: 'AMPP'
+        system: "https://dmd.nhs.uk",
+        concept_class: "AMPP"
       )
       increment(counts, outcome)
     end
@@ -143,7 +152,7 @@ module NhsDmd
     end
 
     def expired?(gtin_data, today)
-      end_date = node_text(gtin_data, 'ENDDT')
+      end_date = node_text(gtin_data, "ENDDT")
       end_date.present? && Date.parse(end_date) <= today
     end
 
@@ -166,9 +175,9 @@ module NhsDmd
       end
     end
 
-    def count_gtin_records(path) = count_records(path, 'GTINDATA')
+    def count_gtin_records(path) = count_records(path, "GTINDATA")
 
-    def count_ampp_records(path) = count_records(path, 'AMPP')
+    def count_ampp_records(path) = count_records(path, "AMPP")
 
     def count_records(path, node_name)
       Nokogiri::XML::Reader(File.open(path)).count do |node|

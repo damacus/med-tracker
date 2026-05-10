@@ -8,10 +8,10 @@ class PersonMedication < ApplicationRecord
 
   belongs_to :person
   belongs_to :medication
-  belongs_to :source_dosage_option, class_name: 'MedicationDosageOption', optional: true
+  belongs_to :source_dosage_option, class_name: "MedicationDosageOption", optional: true
   has_many :medication_takes, dependent: :destroy
 
-  enum :dose_cycle, { daily: 0, weekly: 1, monthly: 2 }, prefix: :dose
+  enum :dose_cycle, {daily: 0, weekly: 1, monthly: 2}, prefix: :dose
 
   # CRITICAL: Audit trail for person-medication links
   # Tracks: which medications are assigned to which people, and their non-scheduled dosing rules
@@ -23,11 +23,19 @@ class PersonMedication < ApplicationRecord
   before_validation :assign_default_dose
   before_validation :assign_position, on: :create
 
-  validates :person_id, uniqueness: { scope: :medication_id }
-  validates :dose_amount, presence: true, numericality: { greater_than: 0 },
-                          unless: :legacy_record_without_resolvable_dose?
-  validates :dose_unit, presence: true, inclusion: { in: Medication::DOSAGE_UNITS },
-                        unless: :legacy_record_without_resolvable_dose?
+  validates :person_id, uniqueness: {scope: :medication_id}
+  validates(
+    :dose_amount,
+    presence: true,
+    numericality: {greater_than: 0},
+    unless: :legacy_record_without_resolvable_dose?
+  )
+  validates(
+    :dose_unit,
+    presence: true,
+    inclusion: {in: Medication::DOSAGE_UNITS},
+    unless: :legacy_record_without_resolvable_dose?
+  )
   validate :source_dosage_option_matches_medication
   validate :source_dosage_option_matches_snapshot
 
@@ -71,8 +79,11 @@ class PersonMedication < ApplicationRecord
   end
 
   def legacy_record_without_resolvable_dose?
-    persisted? && dose_amount.blank? && dose_unit.blank? &&
-      resolved_dose_amount.blank? && resolved_dose_unit.blank?
+    persisted? &&
+      dose_amount.blank? &&
+      dose_unit.blank? &&
+      resolved_dose_amount.blank? &&
+      resolved_dose_unit.blank?
   end
 
   def resolved_dose_amount
@@ -104,14 +115,14 @@ class PersonMedication < ApplicationRecord
     return if source_dosage_option.blank? || medication.blank?
     return if source_dosage_option.medication_id == medication_id
 
-    errors.add(:source_dosage_option, 'must belong to the selected medication')
+    errors.add(:source_dosage_option, "must belong to the selected medication")
   end
 
   def source_dosage_option_matches_snapshot
     return if source_dosage_option.blank? || dose_amount.blank? || dose_unit.blank?
     return if source_dosage_option.amount.to_s == dose_amount.to_s && source_dosage_option.unit == dose_unit
 
-    errors.add(:source_dosage_option, 'must match the selected dose')
+    errors.add(:source_dosage_option, "must match the selected dose")
   end
 
   def uniquely_matching_dosage_option

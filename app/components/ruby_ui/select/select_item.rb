@@ -17,31 +17,30 @@ module RubyUI
     private
 
     def selected_icon
-      render ::Components::Icons::Check.new(size: 16, class: 'invisible group-aria-selected:visible mr-2 flex-none')
+      render(::Components::Icons::Check.new(size: 16, class: "invisible group-aria-selected:visible mr-2 flex-none"))
     end
 
     def default_attrs
       {
-        role: 'option',
-        tabindex: '0',
+        role: "option",
+        tabindex: "0",
         data_value: @value,
-        aria_selected: 'false',
-        data_orientation: 'vertical',
+        aria_selected: "false",
+        data_orientation: "vertical",
         class: [
-          'item group relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors',
-          'focus:bg-tertiary-container focus:text-on-tertiary-container',
-          'hover:bg-tertiary-container hover:text-on-tertiary-container',
-          'disabled:pointer-events-none disabled:opacity-50',
-          'aria-selected:bg-tertiary-container aria-selected:text-on-tertiary-container',
-          'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
-          'aria-disabled:pointer-events-none aria-disabled:opacity-50 aria-disabled:cursor-not-allowed'
+          "item group relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors",
+          "focus:bg-tertiary-container focus:text-on-tertiary-container",
+          "hover:bg-tertiary-container hover:text-on-tertiary-container",
+          "disabled:pointer-events-none disabled:opacity-50",
+          "aria-selected:bg-tertiary-container aria-selected:text-on-tertiary-container",
+          "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+          "aria-disabled:pointer-events-none aria-disabled:opacity-50 aria-disabled:cursor-not-allowed"
         ],
         data: {
-          controller: 'ruby-ui--select-item',
-          action: 'click->ruby-ui--select#selectItem keydown.enter->ruby-ui--select#selectItem keydown.down->ruby-ui--select#handleKeyDown keydown.up->ruby-ui--select#handleKeyUp keydown.esc->ruby-ui--select#handleEsc',
-          ruby_ui__select_target: 'item'
+          controller: "ruby-ui--select-item",
+          action: "click->ruby-ui--select#selectItem keydown.enter->ruby-ui--select#selectItem keydown.down->ruby-ui--select#handleKeyDown keydown.up->ruby-ui--select#handleKeyUp keydown.esc->ruby-ui--select#handleEsc",
+          ruby_ui__select_target: "item"
         }
-
       }
     end
   end

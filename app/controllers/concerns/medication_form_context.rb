@@ -66,18 +66,20 @@ module MedicationFormContext
         :frequency,
         :as_needed,
         :tapering_plan,
-        { times: [] },
-        { weekdays: [] },
-        { dates: [] },
-        { taper_steps: %i[
-          start_date
-          end_date
-          amount
-          unit
-          frequency
-          max_daily_doses
-          min_hours_between_doses
-        ] }
+        {times: []},
+        {weekdays: []},
+        {dates: []},
+        {
+          taper_steps: %i[
+            start_date
+            end_date
+            amount
+            unit
+            frequency
+            max_daily_doses
+            min_hours_between_doses
+          ]
+        }
       ]
     )
   end

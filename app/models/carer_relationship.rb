@@ -5,8 +5,8 @@
 class CarerRelationship < ApplicationRecord
   RELATIONSHIP_TYPES = %w[parent family_member professional_carer self].map { |v| [v.humanize, v] }.freeze
 
-  belongs_to :carer, class_name: 'Person', inverse_of: :patient_relationships
-  belongs_to :patient, class_name: 'Person', inverse_of: :carer_relationships
+  belongs_to :carer, class_name: "Person", inverse_of: :patient_relationships
+  belongs_to :patient, class_name: "Person", inverse_of: :carer_relationships
 
   # Audit trail for carer assignments and removals
   # Important for safeguarding: tracks who has access to patient records
@@ -14,7 +14,7 @@ class CarerRelationship < ApplicationRecord
   # @see docs/audit-trail.md
   has_paper_trail
 
-  validates :carer_id, uniqueness: { scope: :patient_id }
+  validates :carer_id, uniqueness: {scope: :patient_id}
   validates :relationship_type, presence: true
 
   scope :active, -> { where(active: true) }

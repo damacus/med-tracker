@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
-RSpec.describe 'Mobile Navigation' do
-  fixtures :accounts, :people, :users
+RSpec.describe "Mobile Navigation" do
+  fixtures(:accounts, :people, :users)
 
   let(:user) { users(:bob) }
   let(:navigation_visibility_script) do
@@ -33,6 +33,7 @@ RSpec.describe 'Mobile Navigation' do
       })()
     JS
   end
+
   let(:mobile_metric_label_overflow_script) do
     <<~JS
       (() => {
@@ -58,140 +59,144 @@ RSpec.describe 'Mobile Navigation' do
     login_as(user)
   end
 
-  scenario 'renders the mobile navigation shell on a small viewport' do
+  scenario("renders the mobile navigation shell on a small viewport") do
     page.current_window.resize_to(375, 667)
-    visit root_path
+    visit(root_path)
 
-    expect(page).to have_css('button[aria-label="Open menu"]')
-    expect(page).to have_css('aside[data-testid="mobile-rail"]')
-    expect(page).to have_css(%(a[aria-label="Dashboard"][aria-current="page"]))
-    expect(page).to have_css(%(a[aria-label="Inventory"][href="#{medications_path}"]))
-    expect(page).to have_css(%(a[aria-label="Locations"][href="#{locations_path}"]))
-    expect(page).to have_css(%(a[aria-label="Reports"][href="#{reports_path}"]))
-    expect(page).to have_css(%(a[aria-label="Profile"][href="#{profile_path}"]))
-    expect(page).to have_no_css('nav.mobile-nav')
+    expect(page).to(have_css("button[aria-label=\"Open menu\"]"))
+    expect(page).to(have_css("aside[data-testid=\"mobile-rail\"]"))
+    expect(page).to(have_css("a[aria-label=\"Dashboard\"][aria-current=\"page\"]"))
+    expect(page).to(have_css("a[aria-label=\"Inventory\"][href=\"#{medications_path}\"]"))
+    expect(page).to(have_css("a[aria-label=\"Locations\"][href=\"#{locations_path}\"]"))
+    expect(page).to(have_css("a[aria-label=\"Reports\"][href=\"#{reports_path}\"]"))
+    expect(page).to(have_css("a[aria-label=\"Profile\"][href=\"#{profile_path}\"]"))
+    expect(page).to(have_no_css("nav.mobile-nav"))
   end
 
-  scenario 'marks Dashboard active on the dashboard route' do
+  scenario("marks Dashboard active on the dashboard route") do
     page.current_window.resize_to(375, 667)
-    visit dashboard_path
+    visit(dashboard_path)
 
-    expect(page).to have_css(%(a[aria-label="Dashboard"][aria-current="page"]))
+    expect(page).to(have_css("a[aria-label=\"Dashboard\"][aria-current=\"page\"]"))
   end
 
-  scenario 'uses one navigation system at the md breakpoint' do
+  scenario("uses one navigation system at the md breakpoint") do
     page.current_window.resize_to(767, 844)
-    visit root_path
+    visit(root_path)
 
-    expect(navigation_visibility).to include(
-      'rail' => true,
-      'sidebar' => false,
-      'header' => true,
-      'fab' => true
+    expect(navigation_visibility).to(
+      include(
+        "rail" => true,
+        "sidebar" => false,
+        "header" => true,
+        "fab" => true
+      )
     )
 
     page.current_window.resize_to(768, 844)
 
-    expect(navigation_visibility).to include(
-      'rail' => false,
-      'sidebar' => true,
-      'header' => false,
-      'fab' => false
+    expect(navigation_visibility).to(
+      include(
+        "rail" => false,
+        "sidebar" => true,
+        "header" => false,
+        "fab" => false
+      )
     )
   end
 
-  scenario 'keeps core mobile dashboard metric labels readable beside the rail' do
+  scenario("keeps core mobile dashboard metric labels readable beside the rail") do
     page.current_window.resize_to(390, 844)
-    visit dashboard_path
+    visit(dashboard_path)
 
-    overflowing_labels = mobile_metric_label_overflow.select { |label| label['overflows'] }
+    overflowing_labels = mobile_metric_label_overflow.select { |label| label["overflows"] }
 
-    expect(overflowing_labels).to be_empty
+    expect(overflowing_labels).to(be_empty)
   end
 
-  scenario 'opens a left-side drawer with navigation and accessible sizing' do
+  scenario("opens a left-side drawer with navigation and accessible sizing") do
     page.current_window.resize_to(375, 667)
-    visit root_path
+    visit(root_path)
 
-    find('button[aria-label="Open menu"]').click
+    find("button[aria-label=\"Open menu\"]").click
 
-    within('[role="dialog"]') do
-      expect(page).to have_link('Inventory', href: medications_path)
-      expect(page).to have_link('Locations', href: locations_path)
-      expect(page).to have_link('People', href: people_path)
-      expect(page).to have_link('Medication Finder', href: medication_finder_path)
-      expect(page).to have_link('Reports', href: reports_path)
-      expect(page).to have_link('Profile', href: profile_path)
-      expect(page).to have_button('Logout')
+    within("[role=\"dialog\"]") do
+      expect(page).to(have_link("Inventory", href: medications_path))
+      expect(page).to(have_link("Locations", href: locations_path))
+      expect(page).to(have_link("People", href: people_path))
+      expect(page).to(have_link("Medication Finder", href: medication_finder_path))
+      expect(page).to(have_link("Reports", href: reports_path))
+      expect(page).to(have_link("Profile", href: profile_path))
+      expect(page).to(have_button("Logout"))
     end
 
-    drawer = find('[role="dialog"]')
-    drawer_left = drawer.evaluate_script('this.getBoundingClientRect().left')
-    expect(drawer_left).to eq(0)
+    drawer = find("[role=\"dialog\"]")
+    drawer_left = drawer.evaluate_script("this.getBoundingClientRect().left")
+    expect(drawer_left).to(eq(0))
 
-    expect(page).to have_css('[data-testid="drawer-backdrop"]')
+    expect(page).to(have_css("[data-testid=\"drawer-backdrop\"]"))
 
-    drawer_width = drawer.evaluate_script('this.getBoundingClientRect().width')
+    drawer_width = drawer.evaluate_script("this.getBoundingClientRect().width")
     viewport_width = 375.0
 
     ratio = drawer_width / viewport_width
-    expect(ratio).to be_between(0.70, 0.85)
+    expect(ratio).to(be_between(0.70, 0.85))
 
-    expect(drawer[:'aria-modal']).to eq('true')
-    expect(drawer[:'aria-label']).to be_present
+    expect(drawer[:"aria-modal"]).to(eq("true"))
+    expect(drawer[:"aria-label"]).to(be_present)
 
-    within('[role="dialog"]') do
-      all('a, button').each do |target|
-        height = target.evaluate_script('this.getBoundingClientRect().height')
-        expect(height).to be >= 24, "Touch target '#{target.text}' height #{height}px < 24px minimum"
+    within("[role=\"dialog\"]") do
+      all("a, button").each do |target|
+        height = target.evaluate_script("this.getBoundingClientRect().height")
+        expect(height).to(be >= 24, "Touch target '#{target.text}' height #{height}px < 24px minimum")
       end
     end
   end
 
-  scenario 'dismisses the drawer with backdrop and Escape and can reopen' do
+  scenario("dismisses the drawer with backdrop and Escape and can reopen") do
     page.current_window.resize_to(375, 667)
-    visit root_path
+    visit(root_path)
 
-    find('button[aria-label="Open menu"]').click
-    expect(page).to have_css('[role="dialog"]')
+    find("button[aria-label=\"Open menu\"]").click
+    expect(page).to(have_css("[role=\"dialog\"]"))
 
     page.execute_script("document.querySelector('[data-testid=\"drawer-backdrop\"]').click()")
-    expect(page).to have_no_css('[role="dialog"]')
+    expect(page).to(have_no_css("[role=\"dialog\"]"))
 
-    find('button[aria-label="Open menu"]').click
-    expect(page).to have_css('[role="dialog"]')
+    find("button[aria-label=\"Open menu\"]").click
+    expect(page).to(have_css("[role=\"dialog\"]"))
 
-    find('body').send_keys(:escape)
-    expect(page).to have_no_css('[role="dialog"]')
+    find("body").send_keys(:escape)
+    expect(page).to(have_no_css("[role=\"dialog\"]"))
 
-    find('button[aria-label="Open menu"]').click
-    expect(page).to have_css('[role="dialog"]')
+    find("button[aria-label=\"Open menu\"]").click
+    expect(page).to(have_css("[role=\"dialog\"]"))
   end
 
-  scenario 'opens and closes the floating action menu and launches the medication workflow' do
+  scenario("opens and closes the floating action menu and launches the medication workflow") do
     page.current_window.resize_to(375, 667)
-    visit root_path
+    visit(root_path)
 
-    expect(page).to have_css('button[aria-label="Open quick actions"]')
+    expect(page).to(have_css("button[aria-label=\"Open quick actions\"]"))
 
-    find('button[aria-label="Open quick actions"]').click
-    expect(page).to have_css('button[aria-label="Close quick actions"]')
-    expect(page).to have_css('[data-testid="floating-action-menu-items"]', visible: :visible)
-    expect(page).to have_link('Add Medication', href: add_medication_path)
+    find("button[aria-label=\"Open quick actions\"]").click
+    expect(page).to(have_css("button[aria-label=\"Close quick actions\"]"))
+    expect(page).to(have_css("[data-testid=\"floating-action-menu-items\"]", visible: :visible))
+    expect(page).to(have_link("Add Medication", href: add_medication_path))
 
-    find('body').send_keys(:escape)
-    expect(page).to have_css('button[aria-label="Open quick actions"]')
-    expect(page).to have_no_css('[data-testid="floating-action-menu-items"]', visible: :visible)
+    find("body").send_keys(:escape)
+    expect(page).to(have_css("button[aria-label=\"Open quick actions\"]"))
+    expect(page).to(have_no_css("[data-testid=\"floating-action-menu-items\"]", visible: :visible))
 
-    find('button[aria-label="Open quick actions"]').click
-    find('[data-testid="floating-action-backdrop"]').click
-    expect(page).to have_css('button[aria-label="Open quick actions"]')
+    find("button[aria-label=\"Open quick actions\"]").click
+    find("[data-testid=\"floating-action-backdrop\"]").click
+    expect(page).to(have_css("button[aria-label=\"Open quick actions\"]"))
 
-    find('button[aria-label="Open quick actions"]').click
-    click_link 'Add Medication'
+    find("button[aria-label=\"Open quick actions\"]").click
+    click_link("Add Medication")
 
-    expect(page).to have_css('button[aria-label="Open quick actions"]', wait: 10)
-    expect(page).to have_text('Who is this medication for?', wait: 10)
+    expect(page).to(have_css("button[aria-label=\"Open quick actions\"]", wait: 10))
+    expect(page).to(have_text("Who is this medication for?", wait: 10))
   end
 
   def navigation_visibility

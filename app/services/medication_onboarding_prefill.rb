@@ -4,26 +4,26 @@ class MedicationOnboardingPrefill
   Result = Data.define(:medication_attributes, :dosage_records_attributes)
 
   DISPLAY_UNIT_MAP = {
-    'tablet' => 'tablet',
-    'tablets' => 'tablet',
-    'capsule' => 'capsule',
-    'capsules' => 'capsule',
-    'sachet' => 'sachet',
-    'sachets' => 'sachet',
-    'spray' => 'spray',
-    'sprays' => 'spray',
-    'drop' => 'drop',
-    'drops' => 'drop',
-    'pad' => 'pad',
-    'pads' => 'pad'
+    "tablet" => "tablet",
+    "tablets" => "tablet",
+    "capsule" => "capsule",
+    "capsules" => "capsule",
+    "sachet" => "sachet",
+    "sachets" => "sachet",
+    "spray" => "spray",
+    "sprays" => "spray",
+    "drop" => "drop",
+    "drops" => "drop",
+    "pad" => "pad",
+    "pads" => "pad"
   }.freeze
   DEFAULT_TIMING = {
-    frequency: 'As directed',
+    frequency: "As directed",
     default_for_adults: true,
     default_for_children: false,
     default_max_daily_doses: 1,
     default_min_hours_between_doses: 24,
-    default_dose_cycle: 'daily'
+    default_dose_cycle: "daily"
   }.freeze
   DISCRETE_PACKAGE_UNITS = %w[tablet capsule sachet spray drop pad].freeze
 
@@ -165,11 +165,13 @@ class MedicationOnboardingPrefill
   end
 
   def parse_units(name)
-    name.to_s.scan(/\b(tablets?|capsules?|sachets?|sprays?|drops?|pads?)\b/i)
-        .flatten
-        .map { |raw_unit| DISPLAY_UNIT_MAP.fetch(raw_unit.downcase, nil) }
-        .compact
-        .uniq
+    name
+      .to_s
+      .scan(/\b(tablets?|capsules?|sachets?|sprays?|drops?|pads?)\b/i)
+      .flatten
+      .map { |raw_unit| DISPLAY_UNIT_MAP.fetch(raw_unit.downcase, nil) }
+      .compact
+      .uniq
   end
 
   def build_dosage(unit:, current_supply: nil, reorder_threshold: nil)
@@ -182,7 +184,7 @@ class MedicationOnboardingPrefill
   end
 
   def normalize_package_quantity(quantity)
-    numeric = quantity.to_s.strip.tr(',', '.')
+    numeric = quantity.to_s.strip.tr(",", ".")
     return nil if numeric.blank? || !numeric.match?(/\A\d+(?:\.\d+)?\z/)
 
     return numeric.to_i if numeric.match?(/\A\d+\z/)

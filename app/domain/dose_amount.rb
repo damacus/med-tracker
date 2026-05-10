@@ -15,7 +15,7 @@ class DoseAmount
   end
 
   def to_s
-    return '' if @amount.blank? || @unit.blank?
+    return "" if @amount.blank? || @unit.blank?
 
     "#{formatted_value} #{self.class.pluralize_unit(@amount, @unit)}"
   end
@@ -23,6 +23,6 @@ class DoseAmount
   private
 
   def formatted_value
-    @amount.to_f.to_s.sub(/\.0$/, '')
+    @amount.to_f.to_s.sub(/\.0$/, "")
   end
 end

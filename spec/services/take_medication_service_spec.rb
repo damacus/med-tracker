@@ -1,10 +1,19 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
 RSpec.describe TakeMedicationService do
-  fixtures :accounts, :people, :users, :locations, :location_memberships,
-           :medications, :dosages, :schedules, :person_medications
+  fixtures(
+    :accounts,
+    :people,
+    :users,
+    :locations,
+    :location_memberships,
+    :medications,
+    :dosages,
+    :schedules,
+    :person_medications
+  )
 
   subject(:service) { described_class.new }
 
@@ -20,56 +29,57 @@ RSpec.describe TakeMedicationService do
     )
   end
 
-  shared_examples 'a successful dose' do |expected_amount|
-    it 'returns success' do
-      expect(result.success).to be true
+  shared_examples("a successful dose") do |expected_amount|
+    it "returns success" do
+      expect(result.success).to(be(true))
     end
 
-    it 'returns a persisted MedicationTake' do
-      expect(result.take).to be_a(MedicationTake)
-      expect(result.take).to be_persisted
+    it "returns a persisted MedicationTake" do
+      expect(result.take).to(be_a(MedicationTake))
+      expect(result.take).to(be_persisted)
     end
 
-    it 'records the correct amount' do
-      expect(result.take.dose_amount).to eq(BigDecimal(expected_amount.to_s))
+    it "records the correct amount" do
+      expect(result.take.dose_amount).to(eq(BigDecimal(expected_amount.to_s)))
     end
 
-    it 'records no error' do
-      expect(result.error).to be_nil
+    it "records no error" do
+      expect(result.error).to(be_nil)
     end
   end
 
-  describe '#call with a Schedule source' do
+  describe "#call with a Schedule source" do
     let(:schedule) { schedules(:john_paracetamol) }
 
     # Travel to a time well past the cooldown window so fixture takes don't interfere
-    before { travel_to Time.current.end_of_day - 1.minute }
+    before { travel_to(Time.current.end_of_day - 1.minute) }
 
-    context 'when everything is valid and no override amount' do
+    context("when everything is valid and no override amount") do
       let(:result) { call_service(source: schedule) }
 
-      it_behaves_like 'a successful dose', 1000 # paracetamol_adult dosage amount
+      # paracetamol_adult dosage amount
+      it_behaves_like("a successful dose", 1000)
     end
 
-    context 'when an explicit amount override is provided' do
-      let(:result) { call_service(source: schedule, amount_override: '750') }
+    context("when an explicit amount override is provided") do
+      let(:result) { call_service(source: schedule, amount_override: "750") }
 
-      it_behaves_like 'a successful dose', 750
+      it_behaves_like("a successful dose", 750)
     end
 
-    context 'when a tapering schedule has an effective amount for today' do
+    context("when a tapering schedule has an effective amount for today") do
       before do
         schedule.update!(
           schedule_type: :tapering,
           schedule_config: {
-            'taper_steps' => [
+            "taper_steps" => [
               {
-                'start_date' => Time.zone.today.iso8601,
-                'end_date' => Time.zone.today.iso8601,
-                'amount' => '500',
-                'unit' => schedule.dose_unit,
-                'max_daily_doses' => 4,
-                'min_hours_between_doses' => 4
+                "start_date" => Time.zone.today.iso8601,
+                "end_date" => Time.zone.today.iso8601,
+                "amount" => "500",
+                "unit" => schedule.dose_unit,
+                "max_daily_doses" => 4,
+                "min_hours_between_doses" => 4
               }
             ]
           }
@@ -78,22 +88,22 @@ RSpec.describe TakeMedicationService do
 
       let(:result) { call_service(source: schedule) }
 
-      it_behaves_like 'a successful dose', 500
+      it_behaves_like("a successful dose", 500)
     end
 
-    context 'when the medication is out of stock' do
+    context("when the medication is out of stock") do
       before { schedule.medication.update!(current_supply: 0) }
 
-      it 'returns :out_of_stock error' do
-        expect(call_service(source: schedule).error).to eq(:out_of_stock)
+      it "returns :out_of_stock error" do
+        expect(call_service(source: schedule).error).to(eq(:out_of_stock))
       end
 
-      it 'does not create a MedicationTake' do
-        expect { call_service(source: schedule) }.not_to change(MedicationTake, :count)
+      it "does not create a MedicationTake" do
+        expect { call_service(source: schedule) }.not_to(change(MedicationTake, :count))
       end
     end
 
-    context 'when timing restrictions prevent the dose' do
+    context("when timing restrictions prevent the dose") do
       before do
         # Create a recent take to trigger the cooldown
         schedule.medication_takes.create!(
@@ -104,77 +114,78 @@ RSpec.describe TakeMedicationService do
         )
       end
 
-      it 'returns :cooldown error' do
-        expect(call_service(source: schedule).error).to eq(:cooldown)
+      it "returns :cooldown error" do
+        expect(call_service(source: schedule).error).to(eq(:cooldown))
       end
 
-      it 'does not create a MedicationTake' do
-        expect { call_service(source: schedule) }.not_to change(MedicationTake, :count)
-      end
-    end
-
-    context 'when the resolved dose amount is nil' do
-      before { allow(schedule).to receive(:effective_dose_amount).and_return(nil) }
-
-      it 'returns :invalid_amount error' do
-        expect(call_service(source: schedule).error).to eq(:invalid_amount)
+      it "does not create a MedicationTake" do
+        expect { call_service(source: schedule) }.not_to(change(MedicationTake, :count))
       end
     end
 
-    context 'when the override amount is zero' do
-      it 'returns :invalid_amount error' do
-        expect(call_service(source: schedule, amount_override: '0').error).to eq(:invalid_amount)
+    context("when the resolved dose amount is nil") do
+      before { allow(schedule).to(receive(:effective_dose_amount).and_return(nil)) }
+
+      it "returns :invalid_amount error" do
+        expect(call_service(source: schedule).error).to(eq(:invalid_amount))
       end
     end
 
-    context 'when the override amount is negative' do
-      it 'returns :invalid_amount error' do
-        expect(call_service(source: schedule, amount_override: '-5').error).to eq(:invalid_amount)
+    context("when the override amount is zero") do
+      it "returns :invalid_amount error" do
+        expect(call_service(source: schedule, amount_override: "0").error).to(eq(:invalid_amount))
       end
     end
 
-    context 'when the override amount is not a number' do
-      it 'returns :invalid_amount error' do
-        expect(call_service(source: schedule, amount_override: 'abc').error).to eq(:invalid_amount)
+    context("when the override amount is negative") do
+      it "returns :invalid_amount error" do
+        expect(call_service(source: schedule, amount_override: "-5").error).to(eq(:invalid_amount))
+      end
+    end
+
+    context("when the override amount is not a number") do
+      it "returns :invalid_amount error" do
+        expect(call_service(source: schedule, amount_override: "abc").error).to(eq(:invalid_amount))
       end
     end
   end
 
-  describe '#call with a PersonMedication source' do
+  describe "#call with a PersonMedication source" do
     let(:person_medication) { person_medications(:jane_vitamin_d) }
 
-    context 'when everything is valid and no override amount' do
+    context("when everything is valid and no override amount") do
       let(:result) { call_service(source: person_medication) }
 
-      it_behaves_like 'a successful dose', 1000 # jane_vitamin_d dose_amount
+      # jane_vitamin_d dose_amount
+      it_behaves_like("a successful dose", 1000)
     end
 
-    context 'when an explicit amount override is provided' do
-      let(:result) { call_service(source: person_medication, amount_override: '500') }
+    context("when an explicit amount override is provided") do
+      let(:result) { call_service(source: person_medication, amount_override: "500") }
 
-      it_behaves_like 'a successful dose', 500
+      it_behaves_like("a successful dose", 500)
     end
 
-    context 'when the medication is out of stock' do
+    context("when the medication is out of stock") do
       before { person_medication.medication.update!(current_supply: 0) }
 
-      it 'returns :out_of_stock error' do
-        expect(call_service(source: person_medication).error).to eq(:out_of_stock)
+      it "returns :out_of_stock error" do
+        expect(call_service(source: person_medication).error).to(eq(:out_of_stock))
       end
 
-      it 'does not create a MedicationTake' do
-        expect { call_service(source: person_medication) }.not_to change(MedicationTake, :count)
+      it "does not create a MedicationTake" do
+        expect { call_service(source: person_medication) }.not_to(change(MedicationTake, :count))
       end
     end
   end
 
-  describe 'taken_at override' do
+  describe "taken_at override" do
     let(:schedule) { schedules(:john_paracetamol) }
     let(:custom_time) { 2.hours.ago }
 
-    before { travel_to Time.current.end_of_day - 1.minute }
+    before { travel_to(Time.current.end_of_day - 1.minute) }
 
-    it 'records the custom taken_at when provided' do
+    it "records the custom taken_at when provided" do
       result = service.call(
         source: schedule,
         amount_override: nil,
@@ -182,22 +193,22 @@ RSpec.describe TakeMedicationService do
         user: user,
         taken_at: custom_time
       )
-      expect(result.success).to be true
-      expect(result.take.taken_at).to be_within(1.second).of(custom_time)
+      expect(result.success).to(be(true))
+      expect(result.take.taken_at).to(be_within(1.second).of(custom_time))
     end
 
-    it 'defaults taken_at to now when not provided' do
+    it "defaults taken_at to now when not provided" do
       result = call_service(source: schedule)
-      expect(result.take.taken_at).to be_within(5.seconds).of(Time.current)
+      expect(result.take.taken_at).to(be_within(5.seconds).of(Time.current))
     end
   end
 
-  describe 'per-dose inventory tracking' do
+  describe "per-dose inventory tracking" do
     let(:location) { locations(:home) }
     let(:inventory_medication) do
       create(
         :medication,
-        name: 'Pregnacare Plus tablets and capsules (Vitabiotics Ltd)',
+        name: "Pregnacare Plus tablets and capsules (Vitabiotics Ltd)",
         location: location,
         dosage_amount: nil,
         dosage_unit: nil,
@@ -206,24 +217,26 @@ RSpec.describe TakeMedicationService do
         reorder_threshold: 21
       )
     end
+
     let!(:tablet_option) do
       create(
         :dosage,
         medication: inventory_medication,
         amount: 1,
-        unit: 'tablet',
-        frequency: 'As directed',
+        unit: "tablet",
+        frequency: "As directed",
         current_supply: 56,
         reorder_threshold: 14
       )
     end
+
     let!(:capsule_option) do
       create(
         :dosage,
         medication: inventory_medication,
         amount: 1,
-        unit: 'capsule',
-        frequency: 'As directed',
+        unit: "capsule",
+        frequency: "As directed",
         current_supply: 28,
         reorder_threshold: 7
       )
@@ -235,7 +248,7 @@ RSpec.describe TakeMedicationService do
         person: people(:john),
         medication: medication,
         dose_amount: 1,
-        dose_unit: 'tablet',
+        dose_unit: "tablet",
         max_daily_doses: 1,
         min_hours_between_doses: 24,
         dose_cycle: :daily
@@ -250,7 +263,7 @@ RSpec.describe TakeMedicationService do
         dosage: nil,
         source_dosage_option: nil,
         dose_amount: 2,
-        dose_unit: 'tablet',
+        dose_unit: "tablet",
         max_daily_doses: 1,
         min_hours_between_doses: 24,
         schedule_type: :tapering,
@@ -260,29 +273,29 @@ RSpec.describe TakeMedicationService do
 
     def effective_capsule_schedule_config
       {
-        'taper_steps' => [
-          taper_step_config(date: Time.zone.today, unit: 'capsule')
+        "taper_steps" => [
+          taper_step_config(date: Time.zone.today, unit: "capsule")
         ]
       }
     end
 
     def two_step_taper_schedule_config(capsule_date:, tablet_date:)
       {
-        'taper_steps' => [
-          taper_step_config(date: capsule_date, unit: 'capsule'),
-          taper_step_config(date: tablet_date, unit: 'tablet')
+        "taper_steps" => [
+          taper_step_config(date: capsule_date, unit: "capsule"),
+          taper_step_config(date: tablet_date, unit: "tablet")
         ]
       }
     end
 
     def taper_step_config(date:, unit:)
       {
-        'start_date' => date.iso8601,
-        'end_date' => date.iso8601,
-        'amount' => '1',
-        'unit' => unit,
-        'max_daily_doses' => 1,
-        'min_hours_between_doses' => 24
+        "start_date" => date.iso8601,
+        "end_date" => date.iso8601,
+        "amount" => "1",
+        "unit" => unit,
+        "max_daily_doses" => 1,
+        "min_hours_between_doses" => 24
       }
     end
 
@@ -294,7 +307,7 @@ RSpec.describe TakeMedicationService do
           medication: inventory_medication,
           dosage: tablet_option,
           dose_amount: 1,
-          dose_unit: 'tablet',
+          dose_unit: "tablet",
           max_daily_doses: 1,
           min_hours_between_doses: 24,
           schedule_type: :tapering
@@ -305,7 +318,7 @@ RSpec.describe TakeMedicationService do
     def take_schedule_at(schedule:, travel_date:, taken_at:)
       result = nil
 
-      travel_to travel_date.noon do
+      travel_to(travel_date.noon) do
         expect do
           result = service.call(
             source: schedule,
@@ -314,8 +327,9 @@ RSpec.describe TakeMedicationService do
             user: user,
             taken_at: taken_at
           )
-          expect(result.success).to be(true)
-        end.to change(MedicationTake, :count).by(1)
+          expect(result.success).to(be(true))
+        end
+          .to(change(MedicationTake, :count).by(1))
       end
 
       result
@@ -323,52 +337,59 @@ RSpec.describe TakeMedicationService do
 
     def expect_inventory_supply(tablet:, capsule:, medication:)
       expect(
-        [tablet_option.reload.current_supply, capsule_option.reload.current_supply,
-         inventory_medication.reload.current_supply]
-      ).to eq([tablet, capsule, medication])
+        [
+          tablet_option.reload.current_supply,
+          capsule_option.reload.current_supply,
+          inventory_medication.reload.current_supply
+        ]
+      )
+        .to(eq([tablet, capsule, medication]))
     end
 
-    it 'decrements only the matching dose-option inventory and keeps aggregate stock in sync' do
+    it "decrements only the matching dose-option inventory and keeps aggregate stock in sync" do
       person_medication = build_combo_person_medication(inventory_medication)
       result = nil
 
       expect do
         result = call_service(source: person_medication)
-        expect(result.success).to be(true)
-      end.to change(MedicationTake, :count).by(1)
+        expect(result.success).to(be(true))
+      end
+        .to(change(MedicationTake, :count).by(1))
 
-      expect(tablet_option.reload.current_supply).to eq(55)
-      expect(capsule_option.reload.current_supply).to eq(28)
-      expect(inventory_medication.reload.current_supply).to eq(83)
+      expect(tablet_option.reload.current_supply).to(eq(55))
+      expect(capsule_option.reload.current_supply).to(eq(28))
+      expect(inventory_medication.reload.current_supply).to(eq(83))
     end
 
-    it 'matches schedule inventory using the effective dose option' do
+    it "matches schedule inventory using the effective dose option" do
       schedule = build_effective_capsule_schedule(inventory_medication)
       result = nil
 
       expect do
         result = call_service(source: schedule)
-        expect(result.success).to be(true)
-      end.to change(MedicationTake, :count).by(1)
+        expect(result.success).to(be(true))
+      end
+        .to(change(MedicationTake, :count).by(1))
 
-      expect(tablet_option.reload.current_supply).to eq(56)
-      expect(capsule_option.reload.current_supply).to eq(27)
-      expect(inventory_medication.reload.current_supply).to eq(83)
+      expect(tablet_option.reload.current_supply).to(eq(56))
+      expect(capsule_option.reload.current_supply).to(eq(27))
+      expect(inventory_medication.reload.current_supply).to(eq(83))
     end
 
-    it 'prefers the active taper step dose over the source dose option for inventory matching' do
+    it "prefers the active taper step dose over the source dose option for inventory matching" do
       schedule = build_source_tablet_taper_schedule(schedule_config: effective_capsule_schedule_config)
       result = nil
 
       expect do
         result = call_service(source: schedule)
-        expect(result.success).to be(true)
-      end.to change(MedicationTake, :count).by(1)
+        expect(result.success).to(be(true))
+      end
+        .to(change(MedicationTake, :count).by(1))
 
       expect_inventory_supply(tablet: 56, capsule: 27, medication: 83)
     end
 
-    it 'matches tapering inventory using the provided taken_at date' do
+    it "matches tapering inventory using the provided taken_at date" do
       capsule_date = Date.new(2026, 4, 21)
       tablet_date = Date.new(2026, 4, 24)
       schedule = build_source_tablet_taper_schedule(
@@ -378,28 +399,28 @@ RSpec.describe TakeMedicationService do
       )
       result = take_schedule_at(schedule: schedule, travel_date: tablet_date, taken_at: capsule_date.noon)
 
-      expect(result.take.dose_amount).to eq(BigDecimal('1'))
+      expect(result.take.dose_amount).to(eq(BigDecimal("1")))
       expect_inventory_supply(tablet: 56, capsule: 27, medication: 83)
     end
   end
 
-  describe 'result object' do
+  describe "result object" do
     let(:schedule) { schedules(:john_paracetamol) }
 
-    before { travel_to Time.current.end_of_day - 1.minute }
+    before { travel_to(Time.current.end_of_day - 1.minute) }
 
-    it 'exposes success, take, and error attributes' do
+    it "exposes success, take, and error attributes" do
       result = call_service(source: schedule)
-      expect(result).to respond_to(:success, :take, :error)
+      expect(result).to(respond_to(:success, :take, :error))
     end
 
-    it 'is immutable' do
+    it "is immutable" do
       result = call_service(source: schedule)
-      expect { result.success = false }.to raise_error(NoMethodError)
+      expect { result.success = false }.to(raise_error(NoMethodError))
     end
   end
 
-  describe 'dose_taken.med_tracker' do
+  describe "dose_taken.med_tracker" do
     def captured_event_payloads(event_name, &)
       payloads = []
       subscriber = lambda do |*args|
@@ -412,29 +433,31 @@ RSpec.describe TakeMedicationService do
     end
 
     def expect_dose_taken_payload(payloads, result:, source:, dose_amount:, source_type:)
-      expect(payloads).to contain_exactly(
-        include(
-          take_id: result.take.id,
-          source_type: source_type,
-          source_id: source.id,
-          person_id: source.person_id,
-          medication_id: source.medication_id,
-          inventory_medication_id: source.medication_id,
-          inventory_location_id: source.medication.location_id,
-          dose_amount: dose_amount,
-          dose_unit: source.dose_unit,
-          taken_at: result.take.taken_at
+      expect(payloads).to(
+        contain_exactly(
+          include(
+            take_id: result.take.id,
+            source_type: source_type,
+            source_id: source.id,
+            person_id: source.person_id,
+            medication_id: source.medication_id,
+            inventory_medication_id: source.medication_id,
+            inventory_location_id: source.medication.location_id,
+            dose_amount: dose_amount,
+            dose_unit: source.dose_unit,
+            taken_at: result.take.taken_at
+          )
         )
       )
     end
 
-    it 'publishes one event for a successful scheduled dose' do
+    it "publishes one event for a successful scheduled dose" do
       schedule = schedules(:john_paracetamol)
       result = nil
 
-      travel_to Time.current.end_of_day - 1.minute do
-        payloads = captured_event_payloads('dose_taken.med_tracker') do
-          result = call_service(source: schedule, amount_override: '750')
+      travel_to(Time.current.end_of_day - 1.minute) do
+        payloads = captured_event_payloads("dose_taken.med_tracker") do
+          result = call_service(source: schedule, amount_override: "750")
         end
 
         expect_dose_taken_payload(
@@ -442,16 +465,16 @@ RSpec.describe TakeMedicationService do
           result: result,
           source: schedule,
           dose_amount: 750.0,
-          source_type: 'schedule'
+          source_type: "schedule"
         )
       end
     end
 
-    it 'publishes one event for a successful as-needed dose' do
+    it "publishes one event for a successful as-needed dose" do
       person_medication = person_medications(:jane_vitamin_d)
       result = nil
 
-      payloads = captured_event_payloads('dose_taken.med_tracker') do
+      payloads = captured_event_payloads("dose_taken.med_tracker") do
         result = call_service(source: person_medication)
       end
 
@@ -460,25 +483,25 @@ RSpec.describe TakeMedicationService do
         result: result,
         source: person_medication,
         dose_amount: 1000.0,
-        source_type: 'person_medication'
+        source_type: "person_medication"
       )
     end
 
-    it 'does not publish when dose creation fails because stock is unavailable' do
+    it "does not publish when dose creation fails because stock is unavailable" do
       schedule = schedules(:john_paracetamol)
       schedule.medication.update!(current_supply: 0)
 
-      payloads = captured_event_payloads('dose_taken.med_tracker') do
+      payloads = captured_event_payloads("dose_taken.med_tracker") do
         call_service(source: schedule)
       end
 
-      expect(payloads).to be_empty
+      expect(payloads).to(be_empty)
     end
 
-    it 'does not publish when timing restrictions block the dose' do
+    it "does not publish when timing restrictions block the dose" do
       schedule = schedules(:john_paracetamol)
 
-      travel_to Time.current.end_of_day - 1.minute do
+      travel_to(Time.current.end_of_day - 1.minute) do
         schedule.medication_takes.create!(
           taken_at: 1.minute.ago,
           dose_amount: schedule.default_dose_amount,
@@ -486,46 +509,46 @@ RSpec.describe TakeMedicationService do
           taken_from_location: schedule.medication.location
         )
 
-        payloads = captured_event_payloads('dose_taken.med_tracker') do
+        payloads = captured_event_payloads("dose_taken.med_tracker") do
           call_service(source: schedule)
         end
 
-        expect(payloads).to be_empty
+        expect(payloads).to(be_empty)
       end
     end
 
-    it 'does not publish when the amount is invalid' do
+    it "does not publish when the amount is invalid" do
       schedule = schedules(:john_paracetamol)
 
-      payloads = captured_event_payloads('dose_taken.med_tracker') do
-        call_service(source: schedule, amount_override: '0')
+      payloads = captured_event_payloads("dose_taken.med_tracker") do
+        call_service(source: schedule, amount_override: "0")
       end
 
-      expect(payloads).to be_empty
+      expect(payloads).to(be_empty)
     end
 
-    it 'does not publish when stock-source selection is required' do
+    it "does not publish when stock-source selection is required" do
       schedule = schedules(:john_paracetamol)
       create_matching_medication(
         medication: schedule.medication,
-        location: Location.create!(name: 'Selection Required Home')
+        location: Location.create!(name: "Selection Required Home")
       )
 
-      payloads = captured_event_payloads('dose_taken.med_tracker') do
+      payloads = captured_event_payloads("dose_taken.med_tracker") do
         call_service(source: schedule)
       end
 
-      expect(payloads).to be_empty
+      expect(payloads).to(be_empty)
     end
 
-    it 'does not publish when the selected inventory source is invalid' do
+    it "does not publish when the selected inventory source is invalid" do
       schedule = schedules(:john_paracetamol)
 
-      payloads = captured_event_payloads('dose_taken.med_tracker') do
+      payloads = captured_event_payloads("dose_taken.med_tracker") do
         call_service(source: schedule, taken_from_medication_id: -1)
       end
 
-      expect(payloads).to be_empty
+      expect(payloads).to(be_empty)
     end
   end
 

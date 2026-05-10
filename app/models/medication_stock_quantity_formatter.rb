@@ -10,7 +10,7 @@ class MedicationStockQuantityFormatter
   end
 
   def format
-    value.include?('.') ? value.sub(/\.?0+\z/, '') : value
+    value.include?(".") ? value.sub(/\.?0+\z/, "") : value
   end
 
   private
@@ -18,7 +18,7 @@ class MedicationStockQuantityFormatter
   attr_reader :quantity
 
   def value
-    decimal.frac.zero? ? decimal.to_i.to_s : decimal.to_s('F')
+    decimal.frac.zero? ? decimal.to_i.to_s : decimal.to_s("F")
   end
 
   def decimal

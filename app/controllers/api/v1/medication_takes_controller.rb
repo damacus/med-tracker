@@ -7,7 +7,12 @@ module Api
         render_collection(
           policy_scope(MedicationTake),
           serializer: MedicationTakeSerializer,
-          includes: [{ schedule: %i[person medication] }, { person_medication: %i[person medication] }, :taken_from_location, :taken_from_medication]
+          includes: [
+            {schedule: %i[person medication]},
+            {person_medication: %i[person medication]},
+            :taken_from_location,
+            :taken_from_medication
+          ]
         )
       end
     end

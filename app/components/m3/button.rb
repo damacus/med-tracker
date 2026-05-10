@@ -14,14 +14,15 @@ module Components
           font-medium
           transition-all
           state-layer
-        ].join(' '),
-        'disabled:pointer-events-none disabled:opacity-38',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary',
+        ]
+          .join(" "),
+        "disabled:pointer-events-none disabled:opacity-38",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary",
         %w[
           aria-disabled:pointer-events-none
           aria-disabled:opacity-38
           aria-disabled:cursor-not-allowed
-        ].join(' ')
+        ].join(" ")
       ].freeze
 
       # M3 Variant Mapping:
@@ -37,18 +38,23 @@ module Components
 
         # Translate M3 variant to RubyUI base variant for inherited logic
         base_variant = case @m3_variant
-                       when :filled then :primary
-                       when :tonal then :secondary
-                       when :text then :ghost
-                       when :outlined then :outline
-                       else @m3_variant
-                       end
+        when :filled
+          :primary
+        when :tonal
+          :secondary
+        when :text
+          :ghost
+        when :outlined
+          :outline
+        else
+          @m3_variant
+        end
 
         super(variant: base_variant, **attrs)
       end
 
       def default_attrs
-        { type: @type, class: default_classes }
+        {type: @type, class: default_classes}
       end
 
       private
@@ -57,7 +63,7 @@ module Components
         [
           BASE_CLASSES,
           size_classes,
-          'bg-primary text-on-primary shadow-elevation-1 hover:shadow-elevation-2'
+          "bg-primary text-on-primary shadow-elevation-1 hover:shadow-elevation-2"
         ]
       end
 
@@ -70,7 +76,7 @@ module Components
             text-on-secondary-container
             shadow-elevation-1
             hover:shadow-elevation-2
-          ].join(' ')
+          ].join(" ")
         ]
       end
 
@@ -78,7 +84,7 @@ module Components
         [
           BASE_CLASSES,
           size_classes,
-          'bg-surface-container-low text-primary shadow-elevation-1 hover:shadow-elevation-2'
+          "bg-surface-container-low text-primary shadow-elevation-1 hover:shadow-elevation-2"
         ]
       end
 
@@ -92,7 +98,7 @@ module Components
             bg-transparent
             text-primary
             hover:bg-surface-container-low
-          ].join(' ')
+          ].join(" ")
         ]
       end
 
@@ -100,7 +106,7 @@ module Components
         [
           BASE_CLASSES,
           size_classes,
-          'bg-transparent text-primary hover:bg-surface-container-low'
+          "bg-transparent text-primary hover:bg-surface-container-low"
         ]
       end
 
@@ -108,7 +114,7 @@ module Components
         [
           BASE_CLASSES,
           size_classes,
-          'bg-error text-on-error shadow-elevation-1 hover:shadow-elevation-2'
+          "bg-error text-on-error shadow-elevation-1 hover:shadow-elevation-2"
         ]
       end
 
@@ -122,7 +128,7 @@ module Components
             bg-transparent
             text-error
             hover:bg-error-container
-          ].join(' ')
+          ].join(" ")
         ]
       end
 
@@ -136,7 +142,7 @@ module Components
             bg-transparent
             text-success
             hover:bg-success-container
-          ].join(' ')
+          ].join(" ")
         ]
       end
 

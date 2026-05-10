@@ -15,19 +15,25 @@ module Components
       def view_template
         return if medication.current_supply.blank?
 
-        render RubyUI::Badge.new(
-          variant: badge_variant,
-          class: 'rounded-full text-[10px] py-0.5 px-2 shrink-0 whitespace-nowrap justify-center'
-        ) { badge_text }
+        render(
+          RubyUI::Badge
+            .new(
+              variant: badge_variant,
+              class: "rounded-full text-[10px] py-0.5 px-2 shrink-0 whitespace-nowrap justify-center"
+            ) { badge_text }
+        )
       end
 
       private
 
       def badge_variant
         case stock_status
-        when :out_of_stock then :destructive
-        when :low_stock then :warning
-        else :outline
+        when :out_of_stock
+          :destructive
+        when :low_stock
+          :warning
+        else
+          :outline
         end
       end
 
@@ -35,15 +41,18 @@ module Components
         count = formatted_supply
 
         case stock_status
-        when :out_of_stock then "Out of Stock (#{count})"
-        when :low_stock then "Low Stock (#{count})"
-        else "#{count} left"
+        when :out_of_stock
+          "Out of Stock (#{count})"
+        when :low_stock
+          "Low Stock (#{count})"
+        else
+          "#{count} left"
         end
       end
 
       def formatted_supply
         value = MedicationStockQuantityFormatter.format(medication.current_supply)
-        return "#{value} ml" if medication.dosage_unit == 'ml'
+        return "#{value} ml" if medication.dosage_unit == "ml"
 
         value
       end

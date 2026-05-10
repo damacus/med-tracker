@@ -30,7 +30,7 @@ module Api
       end
 
       def formatted_time(value)
-        value&.strftime('%H:%M:%S')
+        value&.strftime("%H:%M:%S")
       end
     end
   end

@@ -1,17 +1,17 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
 RSpec.describe Components::Schedules::Card, type: :component do
   let(:person) { create(:person) }
-  let(:medication) { create(:medication, name: 'Ibuprofen') }
+  let(:medication) { create(:medication, name: "Ibuprofen") }
   let(:schedule) do
     Schedule.create!(
       person: person,
       medication: medication,
       dose_amount: 400.0,
-      dose_unit: 'mg',
-      frequency: 'Twice daily',
+      dose_unit: "mg",
+      frequency: "Twice daily",
       start_date: 1.month.ago,
       end_date: 1.month.from_now
     )
@@ -20,7 +20,7 @@ RSpec.describe Components::Schedules::Card, type: :component do
   def render_card(todays_takes: nil)
     vc = view_context
     vc.singleton_class.define_method(:current_user) { nil }
-    kwargs = { schedule: schedule, person: person }
+    kwargs = {schedule: schedule, person: person}
     kwargs[:todays_takes] = todays_takes unless todays_takes.nil?
     html = vc.render(described_class.new(**kwargs))
     Nokogiri::HTML::DocumentFragment.parse(html)
@@ -31,57 +31,57 @@ RSpec.describe Components::Schedules::Card, type: :component do
 
     subscriber = lambda do |_name, _start, _finish, _id, payload|
       sql = payload[:sql]
-      next if payload[:cached] || payload[:name] == 'SCHEMA'
-      next unless sql.include?('"medication_takes"')
+      next if payload[:cached] || payload[:name] == "SCHEMA"
+      next unless sql.include?("\"medication_takes\"")
 
       query_count += 1
     end
 
-    ActiveSupport::Notifications.subscribed(subscriber, 'sql.active_record', &)
+    ActiveSupport::Notifications.subscribed(subscriber, "sql.active_record", &)
     query_count
   end
 
-  describe 'pre-loaded todays_takes' do
+  describe "pre-loaded todays_takes" do
     let(:take) { MedicationTake.create!(schedule: schedule, taken_at: Time.current, dose_amount: 400) }
 
-    it 'displays takes from pre-loaded collection' do
+    it "displays takes from pre-loaded collection" do
       rendered = render_card(todays_takes: [take])
-      expect(rendered.text).to include('400 mg')
+      expect(rendered.text).to(include("400 mg"))
     end
 
-    it 'shows no doses message when pre-loaded takes is empty' do
+    it "shows no doses message when pre-loaded takes is empty" do
       rendered = render_card(todays_takes: [])
-      expect(rendered.text).to include('No doses taken today')
+      expect(rendered.text).to(include("No doses taken today"))
     end
 
-    it 'falls back to querying when todays_takes is not provided' do
+    it "falls back to querying when todays_takes is not provided" do
       take
       rendered = render_card
-      expect(rendered.text).to include('400 mg')
+      expect(rendered.text).to(include("400 mg"))
     end
 
-    it 'reuses one medication_takes load for the dose badge and list' do
+    it "reuses one medication_takes load for the dose badge and list" do
       schedule.update!(max_daily_doses: 4)
-      allow(schedule).to receive_messages(out_of_stock?: false, can_take_at?: true, can_take_now?: true)
+      allow(schedule).to(receive_messages(out_of_stock?: false, can_take_at?: true, can_take_now?: true))
 
       take
 
-      expect(count_medication_take_queries { render_card }).to eq(1)
+      expect(count_medication_take_queries { render_card }).to(eq(1))
     end
 
-    it 'memoizes schedule availability checks for the render' do
+    it "memoizes schedule availability checks for the render" do
       resolver = instance_double(
         MedicationStockSourceResolver,
         blocked_reason: nil,
         available_medications: [medication]
       )
-      allow(MedicationStockSourceResolver).to receive(:new).and_return(resolver)
-      allow(schedule).to receive_messages(can_take_at?: true, can_take_now?: true)
+      allow(MedicationStockSourceResolver).to(receive(:new).and_return(resolver))
+      allow(schedule).to(receive_messages(can_take_at?: true, can_take_now?: true))
 
       render_card
 
-      expect(schedule).to have_received(:can_take_now?).once
-      expect(resolver).to have_received(:blocked_reason).once
+      expect(schedule).to(have_received(:can_take_now?).once)
+      expect(resolver).to(have_received(:blocked_reason).once)
     end
   end
 end

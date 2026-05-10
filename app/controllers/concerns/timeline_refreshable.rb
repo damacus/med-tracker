@@ -19,14 +19,17 @@ module TimelineRefreshable
   def update_timeline_item_stream(source, take)
     turbo_stream.replace(
       timeline_dom_id(source),
-      Components::Dashboard::TimelineItem.new(dose: {
-                                                person: source.person,
-                                                source: source,
-                                                scheduled_at: take.taken_at,
-                                                taken_at: take.taken_at,
-                                                status: :taken,
-                                                taken_from_location_name: take.inventory_location&.name
-                                              }, current_user: current_user)
+      Components::Dashboard::TimelineItem.new(
+        dose: {
+          person: source.person,
+          source: source,
+          scheduled_at: take.taken_at,
+          taken_at: take.taken_at,
+          status: :taken,
+          taken_from_location_name: take.inventory_location&.name
+        },
+        current_user: current_user
+      )
     )
   end
 
@@ -39,7 +42,11 @@ module TimelineRefreshable
     else
       turbo_stream.replace(
         "person_medication_#{source.id}",
-        Components::PersonMedications::Card.new(person_medication: source, person: source.person, current_user: current_user)
+        Components::PersonMedications::Card.new(
+          person_medication: source,
+          person: source.person,
+          current_user: current_user
+        )
       )
     end
   end
@@ -69,13 +76,16 @@ module TimelineRefreshable
 
     turbo_stream.replace(
       timeline_dom_id(source),
-      Components::Dashboard::TimelineItem.new(dose: {
-                                                person: source.person,
-                                                source: source,
-                                                scheduled_at: next_time,
-                                                taken_at: nil,
-                                                status: status
-                                              }, current_user: current_user)
+      Components::Dashboard::TimelineItem.new(
+        dose: {
+          person: source.person,
+          source: source,
+          scheduled_at: next_time,
+          taken_at: nil,
+          status: status
+        },
+        current_user: current_user
+      )
     )
   end
 

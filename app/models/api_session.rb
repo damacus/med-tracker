@@ -6,8 +6,14 @@ class ApiSession < ApplicationRecord
 
   belongs_to :account
 
-  validates :access_token_digest, :refresh_token_digest, :access_expires_at,
-            :refresh_expires_at, :last_used_at, presence: true
+  validates(
+    :access_token_digest,
+    :refresh_token_digest,
+    :access_expires_at,
+    :refresh_expires_at,
+    :last_used_at,
+    presence: true
+  )
 
   scope :active, -> { where(revoked_at: nil) }
 
@@ -79,5 +85,6 @@ class ApiSession < ApplicationRecord
   def self.build_token
     "mt_#{SecureRandom.urlsafe_base64(48)}"
   end
+
   private_class_method :build_token
 end

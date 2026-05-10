@@ -6,53 +6,55 @@ class PeopleController < ApplicationController
   before_action :set_person, only: %i[show update destroy add_medication]
 
   def index
-    authorize Person
+    authorize(Person)
     people = PeopleIndexQuery.new(scope: policy_scope(Person)).call
-    render Components::People::IndexView.new(people: people)
+    render(Components::People::IndexView.new(people: people))
   end
 
   def show
-    authorize @person
+    authorize(@person)
     show_data = PersonShowQuery.new(person: @person).call
 
-    render Components::People::ShowView.new(
-      person: @person,
-      schedules: show_data.schedules,
-      person_medications: show_data.person_medications,
-      preloaded_takes: show_data.preloaded_takes,
-      current_user: current_user
+    render(
+      Components::People::ShowView.new(
+        person: @person,
+        schedules: show_data.schedules,
+        person_medications: show_data.person_medications,
+        preloaded_takes: show_data.preloaded_takes,
+        current_user: current_user
+      )
     )
   end
 
   def new
     @person = Person.new
-    authorize @person
-    is_modal = request.headers['Turbo-Frame'] == 'modal'
+    authorize(@person)
+    is_modal = request.headers["Turbo-Frame"] == "modal"
     assigned_location = primary_location
 
     if is_modal
-      render Components::People::Modal.new(person: @person, assigned_location: assigned_location), layout: false
+      render(Components::People::Modal.new(person: @person, assigned_location: assigned_location), layout: false)
     else
-      render Components::People::FormView.new(person: @person, assigned_location: assigned_location)
+      render(Components::People::FormView.new(person: @person, assigned_location: assigned_location))
     end
   end
 
   def edit
     @person = policy_scope(Person).find(params[:id])
-    authorize @person
+    authorize(@person)
     @return_to = url_from(params[:return_to])
-    is_modal = request.headers['Turbo-Frame'] == 'modal'
+    is_modal = request.headers["Turbo-Frame"] == "modal"
 
     if is_modal
-      render Components::People::Modal.new(person: @person, return_to: @return_to), layout: false
+      render(Components::People::Modal.new(person: @person, return_to: @return_to), layout: false)
     else
-      render Components::People::FormView.new(person: @person, return_to: @return_to)
+      render(Components::People::FormView.new(person: @person, return_to: @return_to))
     end
   end
 
   def create
     @person = Person.new(person_params)
-    authorize @person
+    authorize(@person)
     @person.primary_location = primary_location
 
     if current_user.parent? || current_user.carer?
@@ -65,77 +67,98 @@ class PeopleController < ApplicationController
 
     respond_to do |format|
       if @person.save
-        format.html { redirect_to @person, notice: t('people.created') }
+        format.html { redirect_to(@person, notice: t("people.created")) }
         format.turbo_stream do
-          flash.now[:notice] = t('people.created')
-          render turbo_stream: [
-            turbo_stream.update('modal', ''),
-            turbo_stream.prepend('people', Components::People::PersonCard.new(person: @person.reload)),
-            turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
-          ]
+          flash.now[:notice] = t("people.created")
+          render(
+            turbo_stream: [
+              turbo_stream.update("modal", ""),
+              turbo_stream.prepend("people", Components::People::PersonCard.new(person: @person.reload)),
+              turbo_stream.update("flash", Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
+            ]
+          )
         end
       else
         format.html do
-          render Components::People::FormView.new(person: @person, assigned_location: primary_location),
-                 status: :unprocessable_content
+          render(
+            Components::People::FormView.new(person: @person, assigned_location: primary_location),
+            status: :unprocessable_content
+          )
         end
+
         format.turbo_stream do
-          render turbo_stream: turbo_stream.replace(
-            'modal',
-            Components::People::Modal.new(person: @person, assigned_location: primary_location)
-          ), status: :unprocessable_content
+          render(
+            turbo_stream: turbo_stream.replace(
+              "modal",
+              Components::People::Modal.new(person: @person, assigned_location: primary_location)
+            ),
+            status: :unprocessable_content
+          )
         end
       end
     end
   end
 
   def update
-    authorize @person
+    authorize(@person)
     respond_to do |format|
       if @person.update(person_params)
-        format.html { redirect_to safe_redirect_path(params[:return_to]) || @person, notice: t('people.updated') }
+        format.html { redirect_to(safe_redirect_path(params[:return_to]) || @person, notice: t("people.updated")) }
         format.turbo_stream do
-          flash.now[:notice] = t('people.updated')
-          render turbo_stream: [
-            turbo_stream.update('modal', ''),
-            turbo_stream.replace("person_#{@person.id}", Components::People::PersonCard.new(person: @person.reload)),
-            turbo_stream.replace("person_show_#{@person.id}", person_show_view(@person.reload)),
-            turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
-          ]
+          flash.now[:notice] = t("people.updated")
+          render(
+            turbo_stream: [
+              turbo_stream.update("modal", ""),
+              turbo_stream.replace("person_#{@person.id}", Components::People::PersonCard.new(person: @person.reload)),
+              turbo_stream.replace("person_show_#{@person.id}", person_show_view(@person.reload)),
+              turbo_stream.update("flash", Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
+            ]
+          )
         end
-        format.json { render :show, status: :ok, location: @person }
+
+        format.json { render(:show, status: :ok, location: @person) }
       else
         format.html do
-          render Components::People::FormView.new(person: @person, return_to: url_from(params[:return_to])), status: :unprocessable_content
+          render(
+            Components::People::FormView.new(person: @person, return_to: url_from(params[:return_to])),
+            status: :unprocessable_content
+          )
         end
+
         format.turbo_stream do
-          render turbo_stream: turbo_stream.replace(
-            'modal',
-            Components::People::Modal.new(person: @person, return_to: url_from(params[:return_to]))
-          ), status: :unprocessable_content
+          render(
+            turbo_stream: turbo_stream.replace(
+              "modal",
+              Components::People::Modal.new(person: @person, return_to: url_from(params[:return_to]))
+            ),
+            status: :unprocessable_content
+          )
         end
-        format.json { render json: @person.errors, status: :unprocessable_content }
+
+        format.json { render(json: @person.errors, status: :unprocessable_content) }
       end
     end
   end
 
   # DELETE /people/1 or /people/1.json
   def destroy
-    authorize @person
+    authorize(@person)
     @person.destroy!
 
     respond_to do |format|
-      format.html { redirect_to people_path, status: :see_other, notice: t('people.deleted') }
-      format.json { head :no_content }
+      format.html { redirect_to(people_path, status: :see_other, notice: t("people.deleted")) }
+      format.json { head(:no_content) }
     end
   end
 
   def add_medication
-    authorize @person, :show?
-    redirect_to new_person_medication_assignment_path(
-      @person,
-      source: params[:source],
-      medication_id: params[:medication_id]
+    authorize(@person, :show?)
+    redirect_to(
+      new_person_medication_assignment_path(
+        @person,
+        source: params[:source],
+        medication_id: params[:medication_id]
+      )
     )
   end
 

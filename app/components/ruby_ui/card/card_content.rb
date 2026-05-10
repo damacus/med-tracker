@@ -2,6 +2,6 @@
 
 module RubyUI
   class CardContent < DivWrapper
-    DEFAULT_CLASS = 'p-6 pt-0'
+    DEFAULT_CLASS = "p-6 pt-0"
   end
 end

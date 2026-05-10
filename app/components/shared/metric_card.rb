@@ -22,10 +22,10 @@ module Components
         if href.present?
           a(
             href: href,
-            data: testid.present? ? { testid: testid } : nil,
-            class: 'block h-full no-underline focus-visible:outline-none ' \
-                   'focus-visible:ring-2 focus-visible:ring-primary ' \
-                   'focus-visible:ring-offset-2 rounded-[2rem]'
+            data: testid.present? ? {testid: testid} : nil,
+            class: "block h-full no-underline focus-visible:outline-none " \
+              "focus-visible:ring-2 focus-visible:ring-primary " \
+              "focus-visible:ring-offset-2 rounded-[2rem]"
           ) do
             render_card(as_link: true)
           end
@@ -40,25 +40,27 @@ module Components
         m3_card(
           variant: :elevated,
           class: "#{border_class} #{card_height_class} #{min_height_class} " \
-                 "shadow-elevation-1 bg-surface-container-low #{hover_class} " \
-                 "#{cursor_class} group relative state-layer overflow-hidden",
-          data: testid.present? && !as_link ? { testid: testid } : nil
+            "shadow-elevation-1 bg-surface-container-low #{hover_class} " \
+            "#{cursor_class} group relative state-layer overflow-hidden",
+          data: testid.present? && !as_link ? {testid: testid} : nil
         ) do
           m3_card_content(class: "#{content_padding_class} #{content_height_class} flex flex-col z-10") do
             div(class: "flex items-center justify-between gap-1 sm:gap-2 #{header_margin_class} min-w-0") do
               p(
-                class: 'truncate text-[11px] font-black uppercase tracking-normal ' \
-                       "#{title_class} text-on-surface-variant"
+                class: "truncate text-[11px] font-black uppercase tracking-normal " \
+                  "#{title_class} text-on-surface-variant"
               ) do
                 title
               end
+
               div(
                 class: "#{icon_padding_class} rounded-xl flex-shrink-0 " \
-                       "#{icon_bg_class} #{value_color_class} transition-all shadow-inner"
+                  "#{icon_bg_class} #{value_color_class} transition-all shadow-inner"
               ) do
                 render_icon(size: icon_size)
               end
             end
+
             div(class: value_wrapper_class) do
               span(
                 class: "#{value_size_class} font-black tracking-tight #{value_color_class}",
@@ -66,10 +68,11 @@ module Components
               ) do
                 value.to_s
               end
+
               if badge.present?
                 m3_badge(
                   variant: :tonal,
-                  class: 'px-2.5 py-1 text-[10px] font-black uppercase tracking-wider'
+                  class: "px-2.5 py-1 text-[10px] font-black uppercase tracking-wider"
                 ) do
                   badge
                 end
@@ -84,49 +87,49 @@ module Components
       end
 
       def wrapper_height_class
-        compact? ? '' : 'h-full'
+        compact? ? "" : "h-full"
       end
 
       def card_height_class
-        compact? ? '' : 'h-full'
+        compact? ? "" : "h-full"
       end
 
       def content_height_class
-        compact? ? '' : 'h-full'
+        compact? ? "" : "h-full"
       end
 
       def value_wrapper_class
-        compact? ? 'flex flex-col items-start gap-1' : 'mt-auto flex flex-col items-start gap-2'
+        compact? ? "flex flex-col items-start gap-1" : "mt-auto flex flex-col items-start gap-2"
       end
 
       def cursor_class
-        href.present? ? 'cursor-pointer' : 'cursor-default'
+        href.present? ? "cursor-pointer" : "cursor-default"
       end
 
       def min_height_class
-        compact? ? 'min-h-[7rem]' : 'min-h-[9.5rem] sm:min-h-[10rem]'
+        compact? ? "min-h-[7rem]" : "min-h-[9.5rem] sm:min-h-[10rem]"
       end
 
       def hover_class
-        return '' if compact?
+        return "" if compact?
 
-        'transition-all duration-300 md:hover:scale-[1.02] md:hover:shadow-elevation-2'
+        "transition-all duration-300 md:hover:scale-[1.02] md:hover:shadow-elevation-2"
       end
 
       def content_padding_class
-        compact? ? 'p-4' : 'p-3 sm:p-6'
+        compact? ? "p-4" : "p-3 sm:p-6"
       end
 
       def header_margin_class
-        compact? ? 'mb-3' : 'mb-2'
+        compact? ? "mb-3" : "mb-2"
       end
 
       def title_class
-        compact? ? '' : 'group-hover:text-primary transition-colors'
+        compact? ? "" : "group-hover:text-primary transition-colors"
       end
 
       def icon_padding_class
-        compact? ? 'p-1.5' : 'p-1.5 sm:p-2.5'
+        compact? ? "p-1.5" : "p-1.5 sm:p-2.5"
       end
 
       def icon_size
@@ -134,44 +137,59 @@ module Components
       end
 
       def value_size_class
-        compact? ? 'text-2xl' : 'text-3xl sm:text-4xl'
+        compact? ? "text-2xl" : "text-3xl sm:text-4xl"
       end
 
       def border_class
-        variant == :warning ? 'border border-warning/30' : 'border-none'
+        variant == :warning ? "border border-warning/30" : "border-none"
       end
 
       def render_icon(size:)
         case icon_type
-        when 'users' then render Icons::Users.new(size: size)
-        when 'pill' then render Icons::Pill.new(size: size)
-        when 'active_schedules' then render Icons::ActiveSchedules.new(size: size)
-        when 'check' then render Icons::CheckCircle.new(size: size)
-        when 'compliance' then render Icons::Compliance.new(size: size)
-        when 'clock' then render Icons::Clock.new(size: size)
-        else render Icons::Activity.new(size: size)
+        when "users"
+          render(Icons::Users.new(size: size))
+        when "pill"
+          render(Icons::Pill.new(size: size))
+        when "active_schedules"
+          render(Icons::ActiveSchedules.new(size: size))
+        when "check"
+          render(Icons::CheckCircle.new(size: size))
+        when "compliance"
+          render(Icons::Compliance.new(size: size))
+        when "clock"
+          render(Icons::Clock.new(size: size))
+        else
+          render(Icons::Activity.new(size: size))
         end
       end
 
       def icon_bg_class
-        return 'bg-warning-container/40' if variant == :warning
+        return "bg-warning-container/40" if variant == :warning
 
         case icon_type
-        when 'users' then 'bg-primary/10'
-        when 'pill', 'active_schedules' then 'bg-success-container/50'
-        else 'bg-secondary-container'
+        when "users"
+          "bg-primary/10"
+        when "pill", "active_schedules"
+          "bg-success-container/50"
+        else
+          "bg-secondary-container"
         end
       end
 
       def value_color_class
-        return 'text-on-warning-container' if variant == :warning
+        return "text-on-warning-container" if variant == :warning
 
         case icon_type
-        when 'users' then 'text-primary'
-        when 'pill', 'active_schedules' then 'text-on-success-container'
-        when 'check', 'compliance' then 'text-on-secondary-container'
-        when 'clock' then 'text-on-warning-container'
-        else 'text-foreground'
+        when "users"
+          "text-primary"
+        when "pill", "active_schedules"
+          "text-on-success-container"
+        when "check", "compliance"
+          "text-on-secondary-container"
+        when "clock"
+          "text-on-warning-container"
+        else
+          "text-foreground"
         end
       end
     end

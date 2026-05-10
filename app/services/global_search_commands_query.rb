@@ -14,7 +14,7 @@ class GlobalSearchCommandsQuery
       next unless command_allowed?(command)
 
       GlobalSearchQuery::Result.new(
-        type: 'command',
+        type: "command",
         title: command.fetch(:title),
         subtitle: command.fetch(:subtitle),
         path: command.fetch(:path),

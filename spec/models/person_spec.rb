@@ -1,395 +1,401 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
 RSpec.describe Person do
   subject(:person) do
     described_class.new(
-      name: 'Jane Smith',
-      email: 'jane.smith@example.com',
+      name: "Jane Smith",
+      email: "jane.smith@example.com",
       date_of_birth: Date.new(2010, 6, 15)
     )
   end
 
-  describe 'associations' do
-    it { is_expected.to have_one(:user).inverse_of(:person).dependent(:destroy) }
-    it { is_expected.to have_many(:schedules).dependent(:destroy) }
-    it { is_expected.to have_many(:medications).through(:schedules) }
-    it { is_expected.to have_many(:carer_relationships).dependent(:destroy) }
-    it { is_expected.to have_many(:active_carer_relationships) }
-    it { is_expected.to have_many(:carers).through(:active_carer_relationships) }
-    it { is_expected.to have_many(:patient_relationships).dependent(:destroy) }
-    it { is_expected.to have_many(:active_patient_relationships) }
-    it { is_expected.to have_many(:patients).through(:active_patient_relationships) }
+  describe "associations" do
+    it { is_expected.to(have_one(:user).inverse_of(:person).dependent(:destroy)) }
+    it { is_expected.to(have_many(:schedules).dependent(:destroy)) }
+    it { is_expected.to(have_many(:medications).through(:schedules)) }
+    it { is_expected.to(have_many(:carer_relationships).dependent(:destroy)) }
+    it { is_expected.to(have_many(:active_carer_relationships)) }
+    it { is_expected.to(have_many(:carers).through(:active_carer_relationships)) }
+    it { is_expected.to(have_many(:patient_relationships).dependent(:destroy)) }
+    it { is_expected.to(have_many(:active_patient_relationships)) }
+    it { is_expected.to(have_many(:patients).through(:active_patient_relationships)) }
 
-    it 'destroys carer relationships when the patient is destroyed' do
+    it "destroys carer relationships when the patient is destroyed" do
       relationship = create(:carer_relationship)
 
       expect { relationship.patient.destroy! }
-        .to change { CarerRelationship.exists?(relationship.id) }.from(true).to(false)
+        .to(change { CarerRelationship.exists?(relationship.id) }.from(true).to(false))
     end
 
-    it 'destroys carer relationships when the carer is destroyed' do
+    it "destroys carer relationships when the carer is destroyed" do
       relationship = create(:carer_relationship)
 
       expect { relationship.carer.destroy! }
-        .to change { CarerRelationship.exists?(relationship.id) }.from(true).to(false)
+        .to(change { CarerRelationship.exists?(relationship.id) }.from(true).to(false))
     end
   end
 
-  describe 'validations' do
-    it { is_expected.to validate_presence_of(:name) }
-    it { is_expected.to validate_presence_of(:date_of_birth) }
-    it { is_expected.to validate_uniqueness_of(:email).case_insensitive }
+  describe "validations" do
+    it { is_expected.to(validate_presence_of(:name)) }
+    it { is_expected.to(validate_presence_of(:date_of_birth)) }
+    it { is_expected.to(validate_uniqueness_of(:email).case_insensitive) }
 
-    it 'allows a blank email' do
-      person.email = ''
-      expect(person).to be_valid
+    it "allows a blank email" do
+      person.email = ""
+      expect(person).to(be_valid)
     end
 
-    it 'normalizes blank email to nil on save' do
-      person.email = '   '
+    it "normalizes blank email to nil on save" do
+      person.email = "   "
       person.save!
 
-      expect(person.reload.email).to be_nil
+      expect(person.reload.email).to(be_nil)
     end
 
-    it 'allows multiple people with blank or nil email' do
+    it "allows multiple people with blank or nil email" do
       first_person = described_class.new(
-        name: 'First No Email',
-        email: '',
+        name: "First No Email",
+        email: "",
         date_of_birth: Date.new(2011, 1, 1)
       )
       second_person = described_class.new(
-        name: 'Second No Email',
+        name: "Second No Email",
         email: nil,
         date_of_birth: Date.new(2012, 1, 1)
       )
 
-      expect(first_person).to be_valid
-      expect(second_person).to be_valid
+      expect(first_person).to(be_valid)
+      expect(second_person).to(be_valid)
 
       first_person.save!
-      expect { second_person.save! }.not_to raise_error
+      expect { second_person.save! }.not_to(raise_error)
     end
 
-    it 'enforces case-insensitive uniqueness when email is present' do
+    it "enforces case-insensitive uniqueness when email is present" do
       described_class.create!(
-        name: 'Existing Person',
-        email: 'duplicate@example.com',
+        name: "Existing Person",
+        email: "duplicate@example.com",
         date_of_birth: Date.new(1990, 1, 1)
       )
 
-      person.email = 'DUPLICATE@example.com'
-      expect(person).not_to be_valid
-      expect(person.errors[:email]).to include('has already been taken')
+      person.email = "DUPLICATE@example.com"
+      expect(person).not_to(be_valid)
+      expect(person.errors[:email]).to(include("has already been taken"))
     end
 
-    it 'allows a person without a user account' do
-      expect(person).to be_valid
+    it "allows a person without a user account" do
+      expect(person).to(be_valid)
     end
   end
 
-  describe 'person types' do
-    it 'defaults to adult type' do
+  describe "person types" do
+    it "defaults to adult type" do
       new_person = described_class.create!(
-        name: 'Default Person',
+        name: "Default Person",
         date_of_birth: 20.years.ago
       )
 
-      expect(new_person.adult?).to be true
+      expect(new_person.adult?).to(be(true))
     end
 
-    it 'can be a minor' do
-      carer = described_class.create!(name: 'Carer', date_of_birth: 40.years.ago, person_type: :adult)
+    it "can be a minor" do
+      carer = described_class.create!(name: "Carer", date_of_birth: 40.years.ago, person_type: :adult)
       minor = described_class.new(
-        name: 'Minor Person',
+        name: "Minor Person",
         date_of_birth: 10.years.ago,
         person_type: :minor
       )
-      minor.carer_relationships.build(carer: carer, relationship_type: 'parent')
+      minor.carer_relationships.build(carer: carer, relationship_type: "parent")
       minor.save!
 
-      expect(minor.minor?).to be true
+      expect(minor.minor?).to(be(true))
     end
 
-    it 'can be a dependent adult' do
-      carer = described_class.create!(name: 'Carer', date_of_birth: 40.years.ago, person_type: :adult)
+    it "can be a dependent adult" do
+      carer = described_class.create!(name: "Carer", date_of_birth: 40.years.ago, person_type: :adult)
       dependent = described_class.new(
-        name: 'Dependent Adult',
+        name: "Dependent Adult",
         date_of_birth: 75.years.ago,
         person_type: :dependent_adult
       )
-      dependent.carer_relationships.build(carer: carer, relationship_type: 'guardian')
+      dependent.carer_relationships.build(carer: carer, relationship_type: "guardian")
       dependent.save!
 
-      expect(dependent.dependent_adult?).to be true
+      expect(dependent.dependent_adult?).to(be(true))
     end
   end
 
-  describe 'default location assignment' do
-    let(:school_location) { Location.create!(name: 'Spec School', description: 'School') }
+  describe "default location assignment" do
+    let(:school_location) { Location.create!(name: "Spec School", description: "School") }
 
-    it 'assigns primary location when provided' do
+    it "assigns primary location when provided" do
       person_with_primary_location = described_class.new(
-        name: 'Primary Location Child',
+        name: "Primary Location Child",
         date_of_birth: 8.years.ago,
         person_type: :minor
       )
       person_with_primary_location.primary_location = school_location
 
-      carer = described_class.create!(name: 'Parent Carer', date_of_birth: 40.years.ago, person_type: :adult)
-      person_with_primary_location.carer_relationships.build(carer: carer, relationship_type: 'parent')
+      carer = described_class.create!(name: "Parent Carer", date_of_birth: 40.years.ago, person_type: :adult)
+      person_with_primary_location.carer_relationships.build(carer: carer, relationship_type: "parent")
       person_with_primary_location.save!
 
-      expect(person_with_primary_location.locations).to contain_exactly(school_location)
+      expect(person_with_primary_location.locations).to(contain_exactly(school_location))
     end
   end
 
-  describe '#age' do
-    it 'calculates age correctly' do
+  describe "#age" do
+    it "calculates age correctly" do
       person_twenty_five = described_class.new(
-        name: 'Test Person',
+        name: "Test Person",
         date_of_birth: 25.years.ago
       )
 
-      expect(person_twenty_five.age).to eq(25)
+      expect(person_twenty_five.age).to(eq(25))
     end
 
-    it 'handles birthdays correctly' do
+    it "handles birthdays correctly" do
       today = Date.new(2024, 6, 15)
       person_before_birthday = described_class.new(
-        name: 'Test Person',
+        name: "Test Person",
         date_of_birth: Date.new(2000, 6, 16)
       )
 
-      expect(person_before_birthday.age(today)).to eq(23)
+      expect(person_before_birthday.age(today)).to(eq(23))
     end
 
-    it 'returns nil when date_of_birth is nil' do
-      person_no_dob = described_class.new(name: 'Test Person')
-      expect(person_no_dob.age).to be_nil
+    it "returns nil when date_of_birth is nil" do
+      person_no_dob = described_class.new(name: "Test Person")
+      expect(person_no_dob.age).to(be_nil)
     end
   end
 
-  describe '#adult?' do
-    it 'returns true for person 18 years or older with adult person_type' do
+  describe "#adult?" do
+    it "returns true for person 18 years or older with adult person_type" do
       adult = described_class.new(
-        name: 'Adult Person',
+        name: "Adult Person",
         date_of_birth: 25.years.ago,
         person_type: :adult
       )
 
-      expect(adult.adult?).to be true
+      expect(adult.adult?).to(be(true))
     end
 
-    it 'returns true for person with adult person_type regardless of age' do
+    it "returns true for person with adult person_type regardless of age" do
       young_adult = described_class.new(
-        name: 'Young Adult',
+        name: "Young Adult",
         date_of_birth: 10.years.ago,
         person_type: :adult
       )
 
-      expect(young_adult.adult?).to be true
+      expect(young_adult.adult?).to(be(true))
     end
 
-    it 'returns true for person 18 years or older even without adult person_type' do
+    it "returns true for person 18 years or older even without adult person_type" do
       adult_eighteen = described_class.new(
-        name: 'Just Adult',
+        name: "Just Adult",
         date_of_birth: 18.years.ago,
         person_type: :minor
       )
 
-      expect(adult_eighteen.adult?).to be true
+      expect(adult_eighteen.adult?).to(be(true))
     end
 
-    it 'returns false for person under 18 without adult person_type' do
+    it "returns false for person under 18 without adult person_type" do
       minor = described_class.new(
-        name: 'Minor Person',
+        name: "Minor Person",
         date_of_birth: 10.years.ago,
         person_type: :minor
       )
 
-      expect(minor.adult?).to be false
+      expect(minor.adult?).to(be(false))
     end
   end
 
-  describe '#minor?' do
-    it 'returns true for person under 18 with minor person_type' do
+  describe "#minor?" do
+    it "returns true for person under 18 with minor person_type" do
       minor = described_class.new(
-        name: 'Minor Person',
+        name: "Minor Person",
         date_of_birth: 10.years.ago,
         person_type: :minor
       )
 
-      expect(minor.minor?).to be true
+      expect(minor.minor?).to(be(true))
     end
 
-    it 'returns false for person 18 years or older even with minor person_type' do
+    it "returns false for person 18 years or older even with minor person_type" do
       adult_age_minor_type = described_class.new(
-        name: 'Adult Age Minor Type',
+        name: "Adult Age Minor Type",
         date_of_birth: 25.years.ago,
         person_type: :minor
       )
 
-      expect(adult_age_minor_type.minor?).to be false
+      expect(adult_age_minor_type.minor?).to(be(false))
     end
 
-    it 'returns false for person under 18 without minor person_type' do
+    it "returns false for person under 18 without minor person_type" do
       young_adult = described_class.new(
-        name: 'Young Adult',
+        name: "Young Adult",
         date_of_birth: 10.years.ago,
         person_type: :adult
       )
 
-      expect(young_adult.minor?).to be false
+      expect(young_adult.minor?).to(be(false))
     end
 
-    it 'returns false for person exactly 18 years old' do
+    it "returns false for person exactly 18 years old" do
       adult_eighteen = described_class.new(
-        name: 'Just Adult',
+        name: "Just Adult",
         date_of_birth: 18.years.ago,
         person_type: :minor
       )
 
-      expect(adult_eighteen.minor?).to be false
+      expect(adult_eighteen.minor?).to(be(false))
     end
   end
 
-  describe 'capacity' do
-    it 'has capacity by default' do
+  describe "capacity" do
+    it "has capacity by default" do
       new_person = described_class.create!(
-        name: 'Capable Person',
+        name: "Capable Person",
         date_of_birth: 20.years.ago
       )
 
-      expect(new_person.has_capacity).to be true
+      expect(new_person.has_capacity).to(be(true))
     end
 
-    it 'can be marked as lacking capacity when carer is assigned' do
+    it "can be marked as lacking capacity when carer is assigned" do
       carer = described_class.create!(
-        name: 'Carer Person',
+        name: "Carer Person",
         date_of_birth: 40.years.ago,
         person_type: :adult
       )
 
       person_without_capacity = described_class.new(
-        name: 'Person Without Capacity',
+        name: "Person Without Capacity",
         date_of_birth: 5.years.ago,
         has_capacity: false
       )
-      person_without_capacity.carer_relationships.build(carer: carer, relationship_type: 'parent')
+      person_without_capacity.carer_relationships.build(carer: carer, relationship_type: "parent")
       person_without_capacity.save!
 
-      expect(person_without_capacity.has_capacity).to be false
-      expect(person_without_capacity).to be_valid
+      expect(person_without_capacity.has_capacity).to(be(false))
+      expect(person_without_capacity).to(be_valid)
     end
   end
 
-  describe 'carer requirement validation' do
-    it 'requires carer when has_capacity is false and no carers assigned' do
+  describe "carer requirement validation" do
+    it "requires carer when has_capacity is false and no carers assigned" do
       person_without_capacity = described_class.new(
-        name: 'Person Without Capacity',
+        name: "Person Without Capacity",
         date_of_birth: 5.years.ago,
         has_capacity: false
       )
 
-      expect(person_without_capacity).not_to be_valid
-      expect(person_without_capacity.errors[:base]).to include(
-        'A person without capacity must have at least one carer assigned'
+      expect(person_without_capacity).not_to(be_valid)
+      expect(person_without_capacity.errors[:base]).to(
+        include(
+          "A person without capacity must have at least one carer assigned"
+        )
       )
     end
 
-    it 'allows saving when has_capacity is false and carer is assigned' do
+    it "allows saving when has_capacity is false and carer is assigned" do
       carer = described_class.create!(
-        name: 'Carer Person',
+        name: "Carer Person",
         date_of_birth: 40.years.ago,
         person_type: :adult
       )
 
       person_without_capacity = described_class.new(
-        name: 'Person Without Capacity',
+        name: "Person Without Capacity",
         date_of_birth: 5.years.ago,
         has_capacity: false
       )
-      person_without_capacity.carer_relationships.build(carer: carer, relationship_type: 'parent')
+      person_without_capacity.carer_relationships.build(carer: carer, relationship_type: "parent")
 
-      expect(person_without_capacity).to be_valid
+      expect(person_without_capacity).to(be_valid)
     end
 
-    it 'allows saving when has_capacity is true without carers' do
+    it "allows saving when has_capacity is true without carers" do
       person_with_capacity = described_class.new(
-        name: 'Person With Capacity',
+        name: "Person With Capacity",
         date_of_birth: 30.years.ago,
         has_capacity: true
       )
 
-      expect(person_with_capacity).to be_valid
+      expect(person_with_capacity).to(be_valid)
     end
 
-    it 'prevents removing capacity when no carers assigned' do
+    it "prevents removing capacity when no carers assigned" do
       person = described_class.create!(
-        name: 'Person',
+        name: "Person",
         date_of_birth: 30.years.ago,
         has_capacity: true
       )
 
       person.has_capacity = false
 
-      expect(person).not_to be_valid
-      expect(person.errors[:base]).to include(
-        'A person without capacity must have at least one carer assigned'
+      expect(person).not_to(be_valid)
+      expect(person.errors[:base]).to(
+        include(
+          "A person without capacity must have at least one carer assigned"
+        )
       )
     end
 
-    it 'allows removing capacity when carer is already assigned' do
+    it "allows removing capacity when carer is already assigned" do
       carer = described_class.create!(
-        name: 'Carer Person',
+        name: "Carer Person",
         date_of_birth: 40.years.ago,
         person_type: :adult
       )
 
       person = described_class.create!(
-        name: 'Person',
+        name: "Person",
         date_of_birth: 30.years.ago,
         has_capacity: true
       )
-      person.carer_relationships.create!(carer: carer, relationship_type: 'support')
+      person.carer_relationships.create!(carer: carer, relationship_type: "support")
 
       person.has_capacity = false
 
-      expect(person).to be_valid
+      expect(person).to(be_valid)
     end
 
     # rubocop:disable RSpec/ExampleLength
-    it 'requires active carer when has_capacity is false and only inactive carers exist' do
+    it "requires active carer when has_capacity is false and only inactive carers exist" do
       carer = described_class.create!(
-        name: 'Inactive Carer',
+        name: "Inactive Carer",
         date_of_birth: 40.years.ago,
         person_type: :adult
       )
 
       person = described_class.create!(
-        name: 'Person',
+        name: "Person",
         date_of_birth: 30.years.ago,
         has_capacity: true
       )
-      person.carer_relationships.create!(carer: carer, relationship_type: 'support', active: false)
+      person.carer_relationships.create!(carer: carer, relationship_type: "support", active: false)
 
       person.has_capacity = false
 
-      expect(person).not_to be_valid
-      expect(person.errors[:base]).to include(
-        'A person without capacity must have at least one carer assigned'
+      expect(person).not_to(be_valid)
+      expect(person.errors[:base]).to(
+        include(
+          "A person without capacity must have at least one carer assigned"
+        )
       )
     end
     # rubocop:enable RSpec/ExampleLength
   end
 
-  describe 'carer relationships' do
+  describe "carer relationships" do
     let(:carer) do
       described_class.create!(
-        name: 'Parent Carer',
+        name: "Parent Carer",
         date_of_birth: 35.years.ago,
         person_type: :adult
       )
@@ -397,43 +403,43 @@ RSpec.describe Person do
 
     let(:patient) do
       p = described_class.new(
-        name: 'Child Patient',
+        name: "Child Patient",
         date_of_birth: 5.years.ago,
         person_type: :minor,
         has_capacity: false
       )
-      p.carer_relationships.build(carer: carer, relationship_type: 'parent')
+      p.carer_relationships.build(carer: carer, relationship_type: "parent")
       p.save!
       p
     end
 
-    it 'can have carers assigned' do
-      expect(patient.carers).to include(carer)
-      expect(carer.patients).to include(patient)
+    it "can have carers assigned" do
+      expect(patient.carers).to(include(carer))
+      expect(carer.patients).to(include(patient))
     end
 
-    it 'can have multiple carers' do
+    it "can have multiple carers" do
       carer2 = described_class.create!(
-        name: 'Second Carer',
+        name: "Second Carer",
         date_of_birth: 40.years.ago,
         person_type: :adult
       )
 
-      patient.carer_relationships.create!(carer: carer2, relationship_type: 'guardian')
+      patient.carer_relationships.create!(carer: carer2, relationship_type: "guardian")
 
-      expect(patient.carers.count).to eq(2)
+      expect(patient.carers.count).to(eq(2))
     end
 
-    it 'can specify relationship type' do
+    it "can specify relationship type" do
       relationship = patient.carer_relationships.first
 
-      expect(relationship.relationship_type).to eq('parent')
+      expect(relationship.relationship_type).to(eq("parent"))
     end
 
-    context 'with active and inactive relationships' do
+    context("with active and inactive relationships") do
       let(:active_carer) do
         described_class.create!(
-          name: 'Active Carer',
+          name: "Active Carer",
           date_of_birth: 35.years.ago,
           person_type: :adult
         )
@@ -441,7 +447,7 @@ RSpec.describe Person do
 
       let(:inactive_carer) do
         described_class.create!(
-          name: 'Inactive Carer',
+          name: "Inactive Carer",
           date_of_birth: 40.years.ago,
           person_type: :adult
         )
@@ -449,7 +455,7 @@ RSpec.describe Person do
 
       let(:patient_with_mixed_relationships) do
         described_class.create!(
-          name: 'Patient With Mixed',
+          name: "Patient With Mixed",
           date_of_birth: 30.years.ago,
           person_type: :adult,
           has_capacity: true
@@ -460,226 +466,226 @@ RSpec.describe Person do
         CarerRelationship.create!(
           carer: active_carer,
           patient: patient_with_mixed_relationships,
-          relationship_type: 'family_member',
+          relationship_type: "family_member",
           active: true
         )
         CarerRelationship.create!(
           carer: inactive_carer,
           patient: patient_with_mixed_relationships,
-          relationship_type: 'professional_carer',
+          relationship_type: "professional_carer",
           active: false
         )
       end
 
-      it 'active_carer_relationships only returns active relationships' do
-        expect(patient_with_mixed_relationships.active_carer_relationships.count).to eq(1)
-        expect(patient_with_mixed_relationships.active_carer_relationships.first.carer).to eq(active_carer)
+      it "active_carer_relationships only returns active relationships" do
+        expect(patient_with_mixed_relationships.active_carer_relationships.count).to(eq(1))
+        expect(patient_with_mixed_relationships.active_carer_relationships.first.carer).to(eq(active_carer))
       end
 
-      it 'carer_relationships returns all relationships' do
-        expect(patient_with_mixed_relationships.carer_relationships.count).to eq(2)
+      it "carer_relationships returns all relationships" do
+        expect(patient_with_mixed_relationships.carer_relationships.count).to(eq(2))
       end
 
-      it 'carers only returns carers with active relationships' do
-        expect(patient_with_mixed_relationships.carers).to include(active_carer)
-        expect(patient_with_mixed_relationships.carers).not_to include(inactive_carer)
+      it "carers only returns carers with active relationships" do
+        expect(patient_with_mixed_relationships.carers).to(include(active_carer))
+        expect(patient_with_mixed_relationships.carers).not_to(include(inactive_carer))
       end
 
-      it 'active_patient_relationships only returns active relationships' do
-        expect(active_carer.active_patient_relationships.count).to eq(1)
-        expect(inactive_carer.active_patient_relationships.count).to eq(0)
+      it "active_patient_relationships only returns active relationships" do
+        expect(active_carer.active_patient_relationships.count).to(eq(1))
+        expect(inactive_carer.active_patient_relationships.count).to(eq(0))
       end
 
-      it 'patients only returns patients with active relationships' do
-        expect(active_carer.patients).to include(patient_with_mixed_relationships)
-        expect(inactive_carer.patients).not_to include(patient_with_mixed_relationships)
+      it "patients only returns patients with active relationships" do
+        expect(active_carer.patients).to(include(patient_with_mixed_relationships))
+        expect(inactive_carer.patients).not_to(include(patient_with_mixed_relationships))
       end
     end
   end
 
-  describe '#dependent_adult?' do
-    it 'returns true for person 18 years or older with dependent_adult person_type' do
+  describe "#dependent_adult?" do
+    it "returns true for person 18 years or older with dependent_adult person_type" do
       dependent = described_class.new(
-        name: 'Dependent Adult',
+        name: "Dependent Adult",
         date_of_birth: 70.years.ago,
         person_type: :dependent_adult
       )
 
-      expect(dependent.dependent_adult?).to be true
+      expect(dependent.dependent_adult?).to(be(true))
     end
 
-    it 'returns false for person under 18 even with dependent_adult person_type' do
+    it "returns false for person under 18 even with dependent_adult person_type" do
       young_dependent = described_class.new(
-        name: 'Young Dependent',
+        name: "Young Dependent",
         date_of_birth: 10.years.ago,
         person_type: :dependent_adult
       )
 
-      expect(young_dependent.dependent_adult?).to be false
+      expect(young_dependent.dependent_adult?).to(be(false))
     end
 
-    it 'returns false for person 18 years or older without dependent_adult person_type' do
+    it "returns false for person 18 years or older without dependent_adult person_type" do
       adult = described_class.new(
-        name: 'Adult',
+        name: "Adult",
         date_of_birth: 30.years.ago,
         person_type: :adult
       )
 
-      expect(adult.dependent_adult?).to be false
+      expect(adult.dependent_adult?).to(be(false))
     end
   end
 
-  describe '#needs_carer?' do
-    context 'when person is adult type' do
+  describe "#needs_carer?" do
+    context("when person is adult type") do
       let(:adult_person) do
         described_class.create!(
-          name: 'Adult Person',
+          name: "Adult Person",
           date_of_birth: 30.years.ago,
           person_type: :adult
         )
       end
 
-      it 'returns false even without carers' do
-        expect(adult_person.needs_carer?).to be false
+      it "returns false even without carers" do
+        expect(adult_person.needs_carer?).to(be(false))
       end
 
-      it 'returns false with carers assigned' do
+      it "returns false with carers assigned" do
         carer = described_class.create!(
-          name: 'Carer',
+          name: "Carer",
           date_of_birth: 40.years.ago,
           person_type: :adult
         )
-        adult_person.carer_relationships.create!(carer: carer, relationship_type: 'support')
+        adult_person.carer_relationships.create!(carer: carer, relationship_type: "support")
 
-        expect(adult_person.needs_carer?).to be false
+        expect(adult_person.needs_carer?).to(be(false))
       end
     end
 
-    context 'when person is minor type' do
+    context("when person is minor type") do
       let(:carer_for_minor) do
-        described_class.create!(name: 'Carer For Minor', date_of_birth: 40.years.ago, person_type: :adult)
+        described_class.create!(name: "Carer For Minor", date_of_birth: 40.years.ago, person_type: :adult)
       end
 
       let(:minor_person) do
         p = described_class.new(
-          name: 'Minor Person',
+          name: "Minor Person",
           date_of_birth: 10.years.ago,
           person_type: :minor
         )
-        p.carer_relationships.build(carer: carer_for_minor, relationship_type: 'parent')
+        p.carer_relationships.build(carer: carer_for_minor, relationship_type: "parent")
         p.save!
         p
       end
 
-      it 'returns true without carers' do
+      it "returns true without carers" do
         minor_person.carer_relationships.destroy_all
         minor_person.reload
-        expect(minor_person.needs_carer?).to be true
+        expect(minor_person.needs_carer?).to(be(true))
       end
 
-      it 'returns false with carers assigned' do
+      it "returns false with carers assigned" do
         parent = described_class.create!(
-          name: 'Parent',
+          name: "Parent",
           date_of_birth: 40.years.ago,
           person_type: :adult
         )
-        minor_person.carer_relationships.create!(carer: parent, relationship_type: 'parent')
+        minor_person.carer_relationships.create!(carer: parent, relationship_type: "parent")
 
-        expect(minor_person.needs_carer?).to be false
+        expect(minor_person.needs_carer?).to(be(false))
       end
     end
 
-    context 'when person is dependent_adult type' do
+    context("when person is dependent_adult type") do
       let(:carer_for_dependent) do
-        described_class.create!(name: 'Carer For Dependent', date_of_birth: 45.years.ago, person_type: :adult)
+        described_class.create!(name: "Carer For Dependent", date_of_birth: 45.years.ago, person_type: :adult)
       end
 
       let(:dependent_person) do
         p = described_class.new(
-          name: 'Dependent Adult',
+          name: "Dependent Adult",
           date_of_birth: 70.years.ago,
           person_type: :dependent_adult
         )
-        p.carer_relationships.build(carer: carer_for_dependent, relationship_type: 'guardian')
+        p.carer_relationships.build(carer: carer_for_dependent, relationship_type: "guardian")
         p.save!
         p
       end
 
-      it 'returns true without carers' do
+      it "returns true without carers" do
         dependent_person.carer_relationships.destroy_all
         dependent_person.reload
-        expect(dependent_person.needs_carer?).to be true
+        expect(dependent_person.needs_carer?).to(be(true))
       end
 
-      it 'returns false with carers assigned' do
+      it "returns false with carers assigned" do
         carer = described_class.create!(
-          name: 'Carer',
+          name: "Carer",
           date_of_birth: 45.years.ago,
           person_type: :adult
         )
-        dependent_person.carer_relationships.create!(carer: carer, relationship_type: 'guardian')
+        dependent_person.carer_relationships.create!(carer: carer, relationship_type: "guardian")
 
-        expect(dependent_person.needs_carer?).to be false
+        expect(dependent_person.needs_carer?).to(be(false))
       end
     end
   end
 
-  describe '#set_capacity_from_person_type' do
-    let(:carer) { described_class.create!(name: 'Carer', date_of_birth: 40.years.ago, person_type: :adult) }
+  describe "#set_capacity_from_person_type" do
+    let(:carer) { described_class.create!(name: "Carer", date_of_birth: 40.years.ago, person_type: :adult) }
 
-    it 'auto-sets has_capacity to false for minors with a carer' do
+    it "auto-sets has_capacity to false for minors with a carer" do
       minor = described_class.new(
-        name: 'Minor',
+        name: "Minor",
         date_of_birth: 10.years.ago,
         person_type: :minor,
         has_capacity: true
       )
-      minor.carer_relationships.build(carer: carer, relationship_type: 'parent')
+      minor.carer_relationships.build(carer: carer, relationship_type: "parent")
       minor.valid?
 
-      expect(minor.has_capacity).to be false
+      expect(minor.has_capacity).to(be(false))
     end
 
-    it 'auto-sets has_capacity to false for dependent adults with a carer' do
+    it "auto-sets has_capacity to false for dependent adults with a carer" do
       dependent = described_class.new(
-        name: 'Dependent',
+        name: "Dependent",
         date_of_birth: 70.years.ago,
         person_type: :dependent_adult,
         has_capacity: true
       )
-      dependent.carer_relationships.build(carer: carer, relationship_type: 'guardian')
+      dependent.carer_relationships.build(carer: carer, relationship_type: "guardian")
       dependent.valid?
 
-      expect(dependent.has_capacity).to be false
+      expect(dependent.has_capacity).to(be(false))
     end
 
-    it 'does not change has_capacity for adults' do
+    it "does not change has_capacity for adults" do
       adult = described_class.new(
-        name: 'Adult',
+        name: "Adult",
         date_of_birth: 30.years.ago,
         person_type: :adult,
         has_capacity: true
       )
       adult.valid?
 
-      expect(adult.has_capacity).to be true
+      expect(adult.has_capacity).to(be(true))
     end
 
-    it 'does not force has_capacity for minors without a carer (self-signup)' do
+    it "does not force has_capacity for minors without a carer (self-signup)" do
       minor = described_class.new(
-        name: 'Self-Signup Minor',
+        name: "Self-Signup Minor",
         date_of_birth: 10.years.ago,
         person_type: :minor,
         has_capacity: true
       )
       minor.valid?
 
-      expect(minor.has_capacity).to be true
+      expect(minor.has_capacity).to(be(true))
     end
   end
 
-  describe 'versioning' do
-    fixtures :accounts, :people, :users, :locations, :location_memberships
+  describe "versioning" do
+    fixtures(:accounts, :people, :users, :locations, :location_memberships)
 
     let(:admin) { users(:admin) }
 
@@ -691,32 +697,34 @@ RSpec.describe Person do
       PaperTrail.request.whodunnit = nil
     end
 
-    it 'creates version on person creation' do
+    it "creates version on person creation" do
       person = nil
 
       expect do
-        person = described_class.create!(name: 'New Person', date_of_birth: 25.years.ago)
-      end.to change { PaperTrail::Version.where(item_type: 'Person').count }.by(1)
+        person = described_class.create!(name: "New Person", date_of_birth: 25.years.ago)
+      end
+        .to(change { PaperTrail::Version.where(item_type: "Person").count }.by(1))
 
-      version = PaperTrail::Version.where(item_type: 'Person', item_id: person.id).last
-      expect(version.event).to eq('create')
-      expect(version.item_type).to eq('Person')
+      version = PaperTrail::Version.where(item_type: "Person", item_id: person.id).last
+      expect(version.event).to(eq("create"))
+      expect(version.item_type).to(eq("Person"))
     end
 
-    it 'creates version on person update' do
+    it "creates version on person update" do
       john = people(:john)
 
       expect do
-        john.update!(name: 'John Updated')
-      end.to change(PaperTrail::Version, :count).by(1)
+        john.update!(name: "John Updated")
+      end
+        .to(change(PaperTrail::Version, :count).by(1))
 
       version = john.versions.last
-      expect(version.event).to eq('update')
+      expect(version.event).to(eq("update"))
       # PaperTrail stores the previous state
-      expect(version.object).to be_present
+      expect(version.object).to(be_present)
     end
 
-    it 'tracks sensitive field changes' do
+    it "tracks sensitive field changes" do
       john = people(:john)
       original_dob = john.date_of_birth
 
@@ -725,15 +733,15 @@ RSpec.describe Person do
 
       version = john.versions.last
       # Verify the version captured the change
-      expect(version.object).to be_present
+      expect(version.object).to(be_present)
       reified = version.reify
-      expect(reified.date_of_birth).to eq(original_dob)
+      expect(reified.date_of_birth).to(eq(original_dob))
     end
 
-    it 'associates version with current user' do
+    it "associates version with current user" do
       john = people(:john)
-      john.update!(name: 'John Modified')
-      expect(john.versions.last.whodunnit).to eq(admin.id.to_s)
+      john.update!(name: "John Modified")
+      expect(john.versions.last.whodunnit).to(eq(admin.id.to_s))
     end
   end
 end

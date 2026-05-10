@@ -14,7 +14,7 @@ module Views
       end
 
       def view_template
-        render CardContent.new(class: 'space-y-4') do
+        render(CardContent.new(class: "space-y-4")) do
           render_basic_info_rows
           render_age_row if person.age
           render_capacity_info_rows
@@ -24,31 +24,31 @@ module Views
       private
 
       def render_basic_info_rows
-        render_info_row('Name', person.name)
-        render_info_row('Email', account.email)
-        render_info_row('Date of Birth', formatted_date_of_birth)
+        render_info_row("Name", person.name)
+        render_info_row("Email", account.email)
+        render_info_row("Date of Birth", formatted_date_of_birth)
       end
 
       def render_age_row
-        render_info_row('Age', person.age.to_s)
+        render_info_row("Age", person.age.to_s)
       end
 
       def render_capacity_info_rows
-        render_info_row('Person Type', person.person_type.humanize)
-        render_info_row('Has Capacity', person.has_capacity? ? 'Yes' : 'No')
+        render_info_row("Person Type", person.person_type.humanize)
+        render_info_row("Has Capacity", person.has_capacity? ? "Yes" : "No")
       end
 
       def render_info_row(label, value)
-        div(class: 'flex items-center justify-between border-b border-border py-3 last:border-0') do
-          dt(class: 'text-sm font-medium text-on-surface-variant') { label }
-          dd(class: 'text-sm text-foreground') { value || 'Not set' }
+        div(class: "flex items-center justify-between border-b border-border py-3 last:border-0") do
+          dt(class: "text-sm font-medium text-on-surface-variant") { label }
+          dd(class: "text-sm text-foreground") { value || "Not set" }
         end
       end
 
       def formatted_date_of_birth
-        return 'Not set' unless person.date_of_birth
+        return "Not set" unless person.date_of_birth
 
-        person.date_of_birth.strftime('%B %d, %Y')
+        person.date_of_birth.strftime("%B %d, %Y")
       end
     end
   end

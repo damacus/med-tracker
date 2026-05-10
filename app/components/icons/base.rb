@@ -16,15 +16,15 @@ module Components
 
       def default_attrs
         {
-          xmlns: 'http://www.w3.org/2000/svg',
+          xmlns: "http://www.w3.org/2000/svg",
           width: size.to_s,
           height: size.to_s,
-          viewBox: '0 0 24 24',
-          fill: 'none',
-          stroke: 'currentColor',
-          stroke_width: '2',
-          stroke_linecap: 'round',
-          stroke_linejoin: 'round',
+          viewBox: "0 0 24 24",
+          fill: "none",
+          stroke: "currentColor",
+          stroke_width: "2",
+          stroke_linecap: "round",
+          stroke_linejoin: "round",
           class: "lucide lucide-#{self.class.name.demodulize.underscore.dasherize}"
         }
       end

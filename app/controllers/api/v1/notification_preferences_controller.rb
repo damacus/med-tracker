@@ -5,7 +5,7 @@ module Api
     class NotificationPreferencesController < BaseController
       def show
         preference = policy_scope(NotificationPreference).find_by!(person_id: current_user.person_id)
-        authorize preference
+        authorize(preference)
 
         render_resource(preference, serializer: NotificationPreferenceSerializer)
       end

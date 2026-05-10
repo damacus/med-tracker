@@ -114,6 +114,9 @@ group :tools do
   # Factory Bot [https://github.com/thoughtbot/factory_bot_rails]
   gem 'rubocop-factory_bot', require: false
 
+  # Disables RuboCop cops that conflict with rubyfmt formatting
+  gem 'rubocop-rubyfmt', require: false
+
   gem 'rspec-github', require: false
   gem 'rubocop-capybara'
   gem 'rubocop-rails'

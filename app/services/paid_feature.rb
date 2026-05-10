@@ -2,11 +2,11 @@
 
 class PaidFeature
   ENV_FLAGS = {
-    ai_medication_help: 'MEDTRACKER_AI_MEDICATION_HELP_ENABLED'
+    ai_medication_help: "MEDTRACKER_AI_MEDICATION_HELP_ENABLED"
   }.freeze
 
   PLAN_FEATURES = {
-    'family_plus' => %i[ai_medication_help]
+    "family_plus" => %i[ai_medication_help]
   }.freeze
 
   TRUE_VALUES = %w[1 true yes on].freeze
@@ -33,7 +33,7 @@ class PaidFeature
   attr_reader :user
 
   def global_flag_enabled?(flag)
-    TRUE_VALUES.include?(ENV.fetch(flag, 'false').to_s.downcase)
+    TRUE_VALUES.include?(ENV.fetch(flag, "false").to_s.downcase)
   end
 
   def account_entitled?(feature)

@@ -28,8 +28,14 @@ module Views
       end
 
       def render_change_password_form
-        render RubyUI::Form.new(action: rodauth.change_password_path, method: :post, class: 'space-y-6',
-                                data_turbo: 'false') do
+        render(
+          RubyUI::Form.new(
+            action: rodauth.change_password_path,
+            method: :post,
+            class: "space-y-6",
+            data_turbo: "false"
+          )
+        ) do
           authenticity_token_field
           render_current_password_field
           render_new_password_field
@@ -40,13 +46,13 @@ module Views
 
       def render_current_password_field
         render_m3_form_field(
-          label: t('rodauth.views.change_password.password_label'),
+          label: t("rodauth.views.change_password.password_label"),
           input_attrs: {
             type: :password,
             name: rodauth.password_param,
-            id: 'password',
+            id: "password",
             required: true,
-            autocomplete: 'current-password'
+            autocomplete: "current-password"
           },
           error: rodauth.field_error(rodauth.password_param)
         )
@@ -54,13 +60,13 @@ module Views
 
       def render_new_password_field
         render_m3_form_field(
-          label: t('rodauth.views.change_password.new_password_label'),
+          label: t("rodauth.views.change_password.new_password_label"),
           input_attrs: {
             type: :password,
             name: rodauth.new_password_param,
-            id: 'new-password',
+            id: "new-password",
             required: true,
-            autocomplete: 'new-password'
+            autocomplete: "new-password"
           },
           error: rodauth.field_error(rodauth.new_password_param)
         )
@@ -68,13 +74,13 @@ module Views
 
       def render_confirm_password_field
         render_m3_form_field(
-          label: t('rodauth.views.change_password.confirm_password_label'),
+          label: t("rodauth.views.change_password.confirm_password_label"),
           input_attrs: {
             type: :password,
             name: rodauth.password_confirm_param,
-            id: 'password-confirm',
+            id: "password-confirm",
             required: true,
-            autocomplete: 'new-password'
+            autocomplete: "new-password"
           },
           error: rodauth.field_error(rodauth.password_confirm_param)
         )

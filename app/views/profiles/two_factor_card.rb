@@ -20,13 +20,16 @@ module Views
 
       def view_template
         Card do
-          render CardHeader.new do
-            render(CardTitle.new { 'Two-Factor Authentication' })
-            render(CardDescription.new do
-              'Secure your account with multiple authentication methods'
-            end)
+          render(CardHeader.new) do
+            render(CardTitle.new { "Two-Factor Authentication" })
+            render(
+              CardDescription.new do
+                "Secure your account with multiple authentication methods"
+              end
+            )
           end
-          render CardContent.new(class: 'space-y-6') do
+
+          render(CardContent.new(class: "space-y-6")) do
             render_totp_section
             render_recovery_codes_section
             render_passkeys_section
@@ -37,10 +40,10 @@ module Views
       private
 
       def render_totp_section
-        div(class: 'space-y-3') do
+        div(class: "space-y-3") do
           render_section_header(
-            'Authenticator App (TOTP)',
-            'Use an app like Google Authenticator or 1Password to generate codes'
+            "Authenticator App (TOTP)",
+            "Use an app like Google Authenticator or 1Password to generate codes"
           )
           render_totp_status
         end
@@ -49,24 +52,24 @@ module Views
       def render_totp_status
         if totp_enabled?
           render_enabled_method(
-            'Authenticator app is active',
+            "Authenticator app is active",
             disable_path: otp_disable_path,
-            disable_text: 'Disable'
+            disable_text: "Disable"
           )
         else
           render_disabled_method(
-            'Not configured',
-            setup_path: '/otp-setup',
-            setup_text: 'Set up authenticator app'
+            "Not configured",
+            setup_path: "/otp-setup",
+            setup_text: "Set up authenticator app"
           )
         end
       end
 
       def render_recovery_codes_section
-        div(class: 'space-y-3 border-t border-border pt-4') do
+        div(class: "space-y-3 border-t border-border pt-4") do
           render_section_header(
-            'Recovery Codes',
-            'Use these codes to access your account if you lose your 2FA device'
+            "Recovery Codes",
+            "Use these codes to access your account if you lose your 2FA device"
           )
           render_recovery_codes_status
         end
@@ -77,44 +80,47 @@ module Views
           render_recovery_codes_actions
         else
           render_disabled_method(
-            'Not generated',
-            setup_path: '/recovery-codes',
-            setup_text: 'Generate recovery codes'
+            "Not generated",
+            setup_path: "/recovery-codes",
+            setup_text: "Generate recovery codes"
           )
         end
       end
 
       def render_recovery_codes_actions
-        div(class: 'flex items-center justify-between rounded-lg border border-border bg-secondary-container/60 p-3') do
-          div(class: 'flex items-center gap-2') do
-            render Components::Icons::CheckCircle.new(size: 20, class: 'text-green-600')
+        div(class: "flex items-center justify-between rounded-lg border border-border bg-secondary-container/60 p-3") do
+          div(class: "flex items-center gap-2") do
+            render(Components::Icons::CheckCircle.new(size: 20, class: "text-green-600"))
             div do
-              p(class: 'text-sm font-medium text-foreground') { 'Recovery codes generated' }
-              p(class: 'text-xs text-on-surface-variant') { "#{recovery_codes_count} codes available" }
+              p(class: "text-sm font-medium text-foreground") { "Recovery codes generated" }
+              p(class: "text-xs text-on-surface-variant") { "#{recovery_codes_count} codes available" }
             end
           end
-          div(class: 'flex gap-2') do
-            render RubyUI::Link.new(
-              variant: :outlined,
-              size: :sm,
-              href: '/recovery-codes'
-            ) { 'View codes' }
+
+          div(class: "flex gap-2") do
+            render(
+              RubyUI::Link.new(
+                variant: :outlined,
+                size: :sm,
+                href: "/recovery-codes"
+              ) { "View codes" }
+            )
             button_to(
-              'Regenerate',
-              '/recovery-codes',
+              "Regenerate",
+              "/recovery-codes",
               method: :post,
-              class: 'inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background border border-outline hover:bg-tertiary-container hover:text-on-tertiary-container h-9 px-3',
-              data: { turbo_confirm: 'This will invalidate your existing recovery codes. Continue?' }
+              class: "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background border border-outline hover:bg-tertiary-container hover:text-on-tertiary-container h-9 px-3",
+              data: {turbo_confirm: "This will invalidate your existing recovery codes. Continue?"}
             )
           end
         end
       end
 
       def render_passkeys_section
-        div(class: 'space-y-3 border-t border-border pt-4') do
+        div(class: "space-y-3 border-t border-border pt-4") do
           render_section_header(
-            'Passkeys',
-            'Passwordless authentication using biometrics or security keys'
+            "Passkeys",
+            "Passwordless authentication using biometrics or security keys"
           )
           render_passkeys_list
         end
@@ -126,10 +132,11 @@ module Views
         if passkeys.empty?
           render_empty_passkeys_state
         else
-          div(class: 'space-y-3') do
+          div(class: "space-y-3") do
             passkeys.each do |passkey|
               render_passkey_item(passkey)
             end
+
             render_add_passkey_button
           end
         end
@@ -137,78 +144,90 @@ module Views
 
       def render_empty_passkeys_state
         render_disabled_method(
-          'No passkeys registered',
-          setup_path: '/webauthn-setup',
-          setup_text: 'Add a passkey'
+          "No passkeys registered",
+          setup_path: "/webauthn-setup",
+          setup_text: "Add a passkey"
         )
       end
 
       def render_passkey_item(passkey)
-        div(class: 'flex items-center justify-between rounded-lg border border-border bg-card/70 p-3') do
-          div(class: 'flex items-center gap-3 flex-1') do
-            render Components::Icons::Key.new(size: 20, class: 'text-on-surface-variant')
+        div(class: "flex items-center justify-between rounded-lg border border-border bg-card/70 p-3") do
+          div(class: "flex items-center gap-3 flex-1") do
+            render(Components::Icons::Key.new(size: 20, class: "text-on-surface-variant"))
             div do
-              p(class: 'text-sm font-medium text-foreground') { passkey.nickname }
-              p(class: 'text-xs text-on-surface-variant') do
-                "Added #{passkey.created_at.strftime('%B %d, %Y')}"
+              p(class: "text-sm font-medium text-foreground") { passkey.nickname }
+              p(class: "text-xs text-on-surface-variant") do
+                "Added #{passkey.created_at.strftime("%B %d, %Y")}"
               end
             end
           end
-          render RubyUI::Link.new(
-            href: "/webauthn-remove?#{URI.encode_www_form(view_context.rodauth.webauthn_remove_param => passkey.webauthn_id)}",
-            variant: :link,
-            class: 'text-sm text-destructive hover:text-destructive/80 font-medium p-0 h-auto'
-          ) { 'Remove' }
+
+          render(
+            RubyUI::Link
+              .new(
+                href: "/webauthn-remove?#{URI.encode_www_form(view_context.rodauth.webauthn_remove_param => passkey.webauthn_id)}",
+                variant: :link,
+                class: "text-sm text-destructive hover:text-destructive/80 font-medium p-0 h-auto"
+              ) { "Remove" }
+          )
         end
       end
 
       def render_add_passkey_button
-        div(class: 'pt-2') do
-          render RubyUI::Link.new(
-            variant: :outlined,
-            size: :sm,
-            href: '/webauthn-setup'
-          ) { 'Add a passkey' }
+        div(class: "pt-2") do
+          render(
+            RubyUI::Link.new(
+              variant: :outlined,
+              size: :sm,
+              href: "/webauthn-setup"
+            ) { "Add a passkey" }
+          )
         end
       end
 
       def render_section_header(title, description)
-        div(class: 'space-y-1') do
-          h3(class: 'text-sm font-semibold text-foreground') { title }
-          p(class: 'text-xs text-on-surface-variant') { description }
+        div(class: "space-y-1") do
+          h3(class: "text-sm font-semibold text-foreground") { title }
+          p(class: "text-xs text-on-surface-variant") { description }
         end
       end
 
       def render_enabled_method(status_text, disable_path:, disable_text:)
-        div(class: 'flex items-center justify-between rounded-lg border border-success/40 bg-success-light p-3') do
-          div(class: 'flex items-center gap-2') do
-            render Components::Icons::CheckCircle.new(size: 20, class: 'text-green-600')
-            p(class: 'text-sm font-medium text-success-text') { status_text }
+        div(class: "flex items-center justify-between rounded-lg border border-success/40 bg-success-light p-3") do
+          div(class: "flex items-center gap-2") do
+            render(Components::Icons::CheckCircle.new(size: 20, class: "text-green-600"))
+            p(class: "text-sm font-medium text-success-text") { status_text }
           end
-          render RubyUI::Link.new(
-            variant: :outlined,
-            size: :sm,
-            href: disable_path
-          ) { disable_text }
+
+          render(
+            RubyUI::Link.new(
+              variant: :outlined,
+              size: :sm,
+              href: disable_path
+            ) { disable_text }
+          )
         end
       end
 
       def render_disabled_method(status_text, setup_path:, setup_text:)
-        div(class: 'flex items-center justify-between rounded-lg border border-border bg-secondary-container/60 p-3') do
-          div(class: 'flex items-center gap-2') do
-            render Components::Icons::XCircle.new(size: 20, class: 'text-on-surface-variant')
-            p(class: 'text-sm text-on-surface-variant') { status_text }
+        div(class: "flex items-center justify-between rounded-lg border border-border bg-secondary-container/60 p-3") do
+          div(class: "flex items-center gap-2") do
+            render(Components::Icons::XCircle.new(size: 20, class: "text-on-surface-variant"))
+            p(class: "text-sm text-on-surface-variant") { status_text }
           end
-          render RubyUI::Link.new(
-            variant: :default,
-            size: :sm,
-            href: setup_path
-          ) { setup_text }
+
+          render(
+            RubyUI::Link.new(
+              variant: :default,
+              size: :sm,
+              href: setup_path
+            ) { setup_text }
+          )
         end
       end
 
       def totp_enabled?
-        return false unless ActiveRecord::Base.connection.table_exists?('account_otp_keys')
+        return false unless ActiveRecord::Base.connection.table_exists?("account_otp_keys")
 
         AccountOtpKey.exists?(id: account.id)
       rescue StandardError
@@ -216,7 +235,7 @@ module Views
       end
 
       def recovery_codes_exist?
-        return false unless ActiveRecord::Base.connection.table_exists?('account_recovery_codes')
+        return false unless ActiveRecord::Base.connection.table_exists?("account_recovery_codes")
 
         recovery_codes_count.positive?
       rescue StandardError
@@ -226,11 +245,12 @@ module Views
       def recovery_codes_count
         return @recovery_codes_count if defined?(@recovery_codes_count)
 
-        @recovery_codes_count = if ActiveRecord::Base.connection.table_exists?('account_recovery_codes')
-                                  AccountRecoveryCode.where(id: account.id).count
-                                else
-                                  0
-                                end
+        @recovery_codes_count = if ActiveRecord::Base.connection.table_exists?("account_recovery_codes")
+          AccountRecoveryCode.where(id: account.id).count
+        else
+          0
+        end
+
       rescue StandardError
         @recovery_codes_count = 0
       end

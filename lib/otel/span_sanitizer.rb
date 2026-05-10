@@ -26,25 +26,25 @@ module Otel
       return value unless value.is_a?(String)
 
       result = value.dup
-      result = result.gsub(EMAIL_PATTERN, '[EMAIL REDACTED]')
-      result = result.gsub(IP_PATTERN, '[IP REDACTED]')
+      result = result.gsub(EMAIL_PATTERN, "[EMAIL REDACTED]")
+      result = result.gsub(IP_PATTERN, "[IP REDACTED]")
       redact_date_only(result)
     end
 
     def sanitize_attributes(attrs)
       attrs.each_with_object({}) do |(key, value), sanitized|
         sanitized[key] = if self.class.sensitive_key?(key)
-                           '[REDACTED]'
-                         else
-                           sanitize_value(value)
-                         end
+          "[REDACTED]"
+        else
+          sanitize_value(value)
+        end
       end
     end
 
     def self.sensitive_key?(key)
-      return false if key == 'model.name'
-      return false if key == 'model.operation'
-      return false if key == 'model.id'
+      return false if key == "model.name"
+      return false if key == "model.operation"
+      return false if key == "model.id"
 
       SENSITIVE_KEY_PATTERNS.any? { |pattern| key.match?(pattern) } ||
         PII_KEY_PATTERNS.any? { |pattern| key.match?(pattern) }
@@ -53,8 +53,8 @@ module Otel
     private
 
     def redact_date_only(value)
-      result = value.gsub(DATE_DMY_PATTERN, '[DATE REDACTED]')
-      result.gsub(DATE_ONLY_PATTERN, '[DATE REDACTED]')
+      result = value.gsub(DATE_DMY_PATTERN, "[DATE REDACTED]")
+      result.gsub(DATE_ONLY_PATTERN, "[DATE REDACTED]")
     end
   end
 end

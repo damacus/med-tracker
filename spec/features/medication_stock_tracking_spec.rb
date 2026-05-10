@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
-RSpec.describe 'Medication Stock Tracking', type: :system do
-  fixtures :accounts, :people, :users, :locations, :medications, :dosages, :schedules
+RSpec.describe "Medication Stock Tracking", type: :system do
+  fixtures(:accounts, :people, :users, :locations, :medications, :dosages, :schedules)
 
   let(:admin) { users(:admin) }
   let(:person) { people(:john) }
@@ -21,67 +21,72 @@ RSpec.describe 'Medication Stock Tracking', type: :system do
     login_as(admin)
   end
 
-  it 'displays current stock on the dashboard' do
-    visit person_path(person)
+  it "displays current stock on the dashboard" do
+    visit(person_path(person))
 
-    within "#schedule_#{schedule.id}" do
+    within("#schedule_#{schedule.id}") do
       # Badge doesn't show when adequately stocked (only for low/out of stock)
-      expect(page).to have_no_text('In Stock')
-      expect(page).to have_text('10')
+      expect(page).to(have_no_text("In Stock"))
+      expect(page).to(have_text("10"))
     end
   end
 
-  it 'shows low stock badge when stock reaches threshold' do
+  it "shows low stock badge when stock reaches threshold" do
     medication.update!(current_supply: 5)
-    visit person_path(person)
+    visit(person_path(person))
 
-    within "#schedule_#{schedule.id}" do
-      expect(page).to have_text('Low Stock')
-      expect(page).to have_text('5')
+    within("#schedule_#{schedule.id}") do
+      expect(page).to(have_text("Low Stock"))
+      expect(page).to(have_text("5"))
     end
   end
 
-  it 'shows out of stock badge when stock is zero' do
+  it "shows out of stock badge when stock is zero" do
     medication.update!(current_supply: 0)
-    visit person_path(person)
+    visit(person_path(person))
 
-    within "#schedule_#{schedule.id}" do
-      expect(page).to have_text('Out of Stock')
-      expect(page).to have_text('0')
+    within("#schedule_#{schedule.id}") do
+      expect(page).to(have_text("Out of Stock"))
+      expect(page).to(have_text("0"))
     end
   end
 
-  it 'disables the Take Now button when out of stock' do
+  it "disables the Take Now button when out of stock" do
     medication.update!(current_supply: 0)
-    visit person_path(person)
+    visit(person_path(person))
 
-    within "#schedule_#{schedule.id}" do
-      expect(page).to have_css("[data-testid='take-schedule-#{schedule.id}-disabled']",
-                               text: /Out of Stock/i)
+    within("#schedule_#{schedule.id}") do
+      expect(page).to(
+        have_css(
+          "[data-testid='take-schedule-#{schedule.id}-disabled']",
+          text: /Out of Stock/i
+        )
+      )
     end
   end
 
-  it 'deducts stock when taking a dose' do
-    visit person_path(person)
+  it "deducts stock when taking a dose" do
+    visit(person_path(person))
 
-    within "#schedule_#{schedule.id}" do
-      expect(page).to have_text('10')
+    within("#schedule_#{schedule.id}") do
+      expect(page).to(have_text("10"))
 
       # Use the specific test ID for the Take button
       find("[data-testid='take-schedule-#{schedule.id}']").click
     end
-    confirm_record_dose(take_medication_person_schedule_path(person, schedule), I18n.t('schedules.card.give'))
 
-    expect(page).to have_text(/taken successfully/)
+    confirm_record_dose(take_medication_person_schedule_path(person, schedule), I18n.t("schedules.card.give"))
 
-    within "#schedule_#{schedule.id}" do
-      expect(page).to have_text('9 left')
+    expect(page).to(have_text(/taken successfully/))
+
+    within("#schedule_#{schedule.id}") do
+      expect(page).to(have_text("9 left"))
     end
   end
 
   def confirm_record_dose(path, label)
     within("form[action='#{path}']") do
-      click_button label
+      click_button(label)
     end
   end
 end

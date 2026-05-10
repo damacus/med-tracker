@@ -4,10 +4,10 @@ class MedicationReminderJob < ApplicationJob
   queue_as :default
 
   PERIOD_LABELS = {
-    morning: 'Morning',
-    afternoon: 'Afternoon',
-    evening: 'Evening',
-    night: 'Night'
+    morning: "Morning",
+    afternoon: "Afternoon",
+    evening: "Evening",
+    night: "Night"
   }.freeze
 
   def perform(person_id, period)
@@ -19,13 +19,13 @@ class MedicationReminderJob < ApplicationJob
     return if med_names.empty?
 
     period_label = PERIOD_LABELS[period.to_sym] || period.to_s.humanize
-    body = "#{period_label} medications: #{med_names.join(', ')}"
+    body = "#{period_label} medications: #{med_names.join(", ")}"
 
     PushNotificationService.send_to_account(
       person.account,
-      title: 'Medication Reminder',
+      title: "Medication Reminder",
       body: body,
-      path: '/'
+      path: "/"
     )
   end
 

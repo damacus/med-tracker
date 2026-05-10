@@ -6,8 +6,8 @@ module Views
       def view_template
         page_layout do
           render_auth_card(
-            title: t('rodauth.views.otp_disable.page_title'),
-            subtitle: t('rodauth.views.otp_disable.page_subtitle')
+            title: t("rodauth.views.otp_disable.page_title"),
+            subtitle: t("rodauth.views.otp_disable.page_subtitle")
           ) do
             render_otp_disable_form
           end
@@ -17,7 +17,9 @@ module Views
       private
 
       def render_otp_disable_form
-        render RubyUI::Form.new(action: rodauth.otp_disable_path, method: :post, class: 'space-y-6', data_turbo: 'false') do
+        render(
+          RubyUI::Form.new(action: rodauth.otp_disable_path, method: :post, class: "space-y-6", data_turbo: "false")
+        ) do
           additional_tags = rodauth.otp_disable_additional_form_tags
           safe(additional_tags) if additional_tags.present?
           authenticity_token_field
@@ -28,20 +30,25 @@ module Views
 
       def render_password_field
         render_m3_form_field(
-          label: t('rodauth.views.otp_disable.password_label'),
+          label: t("rodauth.views.otp_disable.password_label"),
           input_attrs: {
             type: :password,
-            name: 'password',
-            id: 'password',
+            name: "password",
+            id: "password",
             required: true,
-            autocomplete: 'current-password',
-            placeholder: t('rodauth.views.otp_disable.password_placeholder')
+            autocomplete: "current-password",
+            placeholder: t("rodauth.views.otp_disable.password_placeholder")
           }
         )
       end
 
       def render_submit_button
-        m3_button(type: :submit, variant: :destructive, size: :lg, class: 'w-full py-6 font-bold shadow-lg shadow-error/20') do
+        m3_button(
+          type: :submit,
+          variant: :destructive,
+          size: :lg,
+          class: "w-full py-6 font-bold shadow-lg shadow-error/20"
+        ) do
           rodauth.otp_disable_button
         end
       end

@@ -2,7 +2,7 @@
 
 class ReportsController < ApplicationController
   def index
-    authorize :report, :index?
+    authorize(:report, :index?)
 
     # Resolve date range
     @end_date = params[:end_date].present? ? Date.parse(params[:end_date]) : Time.zone.today
@@ -15,15 +15,17 @@ class ReportsController < ApplicationController
     @daily_data = report_data.daily_data
     @inventory_alerts = report_data.inventory_alerts
 
-    render Views::Reports::Index.new(
-      daily_data: @daily_data,
-      inventory_alerts: @inventory_alerts,
-      start_date: @start_date,
-      end_date: @end_date
+    render(
+      Views::Reports::Index.new(
+        daily_data: @daily_data,
+        inventory_alerts: @inventory_alerts,
+        start_date: @start_date,
+        end_date: @end_date
+      )
     )
   rescue ArgumentError
     # rubocop:disable Rails/I18nLocaleTexts
-    redirect_to reports_path, alert: 'Invalid date format provided.'
+    redirect_to(reports_path, alert: "Invalid date format provided.")
     # rubocop:enable Rails/I18nLocaleTexts
   end
 end

@@ -21,31 +21,35 @@ class ApplicationController < ActionController::Base
   end
 
   def info_for_paper_trail
-    { ip: request.remote_ip, request_id: request.request_id }
+    {ip: request.remote_ip, request_id: request.request_id}
   end
 
   def safe_redirect_path(path)
     url_from(path)
   end
+
   helper_method :safe_redirect_path
 
   def user_not_authorized
-    flash[:alert] = t('pundit.not_authorized', default: 'You are not authorized to perform this action.')
+    flash[:alert] = t("pundit.not_authorized", default: "You are not authorized to perform this action.")
     redirect_back_or_to(root_path)
   end
 
   def handle_invalid_authenticity_token
     reset_session
-    session_expired_message = t('authentication.session_expired')
+    session_expired_message = t("authentication.session_expired")
 
     respond_to do |format|
       format.json do
-        render json: { error: session_expired_message }, status: :unauthorized
+        render(json: {error: session_expired_message}, status: :unauthorized)
       end
+
       format.any do
-        redirect_to rodauth.login_path,
-                    alert: session_expired_message,
-                    status: :see_other
+        redirect_to(
+          rodauth.login_path,
+          alert: session_expired_message,
+          status: :see_other
+        )
       end
     end
   end

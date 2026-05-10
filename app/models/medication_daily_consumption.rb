@@ -17,10 +17,11 @@ class MedicationDailyConsumption
     medication.schedules.select(&:active?).sum do |schedule|
       next 0.0 if schedule.max_daily_doses.blank?
 
-      daily_rate(schedule) * consumption_for(
-        schedule.effective_dose_amount(Time.zone.today),
-        schedule.effective_dose_unit(Time.zone.today)
-      )
+      daily_rate(schedule) *
+        consumption_for(
+          schedule.effective_dose_amount(Time.zone.today),
+          schedule.effective_dose_unit(Time.zone.today)
+        )
     end
   end
 
@@ -28,10 +29,11 @@ class MedicationDailyConsumption
     medication.person_medications.sum do |person_medication|
       next 0.0 if person_medication.max_daily_doses.blank?
 
-      person_medication.max_daily_doses.to_f * consumption_for(
-        person_medication.default_dose_amount,
-        person_medication.dose_unit
-      )
+      person_medication.max_daily_doses.to_f *
+        consumption_for(
+          person_medication.default_dose_amount,
+          person_medication.dose_unit
+        )
     end
   end
 

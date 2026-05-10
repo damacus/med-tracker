@@ -20,13 +20,14 @@ module Components
 
         def view_template
           if modal
-            turbo_frame_tag 'modal' do
+            turbo_frame_tag("modal") do
               Dialog(open: true) do
                 DialogContent(size: :xl) do
                   DialogHeader do
-                    DialogTitle { relationship.new_record? ? 'New Carer Relationship' : 'Edit Carer Relationship' }
-                    DialogDescription { 'Assign a carer to a patient.' }
+                    DialogTitle { relationship.new_record? ? "New Carer Relationship" : "Edit Carer Relationship" }
+                    DialogDescription { "Assign a carer to a patient." }
                   end
+
                   DialogMiddle do
                     render_form
                   end
@@ -34,7 +35,7 @@ module Components
               end
             end
           else
-            div(class: 'max-w-2xl mx-auto') do
+            div(class: "max-w-2xl mx-auto") do
               render_header
               render_form
             end
@@ -44,18 +45,19 @@ module Components
         private
 
         def render_header
-          header(class: 'mb-8') do
+          header(class: "mb-8") do
             m3_heading(level: 1) do
-              relationship.new_record? ? 'New Carer Relationship' : 'Edit Carer Relationship'
+              relationship.new_record? ? "New Carer Relationship" : "Edit Carer Relationship"
             end
-            m3_text(weight: 'muted', class: 'mt-2') { 'Assign a carer to a patient.' }
+
+            m3_text(weight: "muted", class: "mt-2") { "Assign a carer to a patient." }
           end
         end
 
         def render_form
           form_with(
             model: [:admin, relationship],
-            class: 'space-y-6'
+            class: "space-y-6"
           ) do |f|
             render_errors if relationship.errors.any?
             render_carer_field(f)
@@ -66,10 +68,10 @@ module Components
         end
 
         def render_errors
-          Alert(variant: :destructive, class: 'mb-6') do
+          Alert(variant: :destructive, class: "mb-6") do
             AlertTitle { "#{relationship.errors.count} error(s) prohibited this relationship from being saved:" }
             AlertDescription do
-              ul(class: 'my-2 ml-6 list-disc [&>li]:mt-1') do
+              ul(class: "my-2 ml-6 list-disc [&>li]:mt-1") do
                 relationship.errors.full_messages.each do |message|
                   li { message }
                 end
@@ -81,13 +83,13 @@ module Components
         def render_carer_field(_form)
           div do
             FormField do
-              FormFieldLabel(for: 'carer_relationship_carer_id') { 'Carer' }
+              FormFieldLabel(for: "carer_relationship_carer_id") { "Carer" }
               select(
-                name: 'carer_relationship[carer_id]',
-                id: 'carer_relationship_carer_id',
+                name: "carer_relationship[carer_id]",
+                id: "carer_relationship_carer_id",
                 class: select_classes
               ) do
-                option(value: '', selected: relationship.carer_id.blank?) { 'Select a carer...' }
+                option(value: "", selected: relationship.carer_id.blank?) { "Select a carer..." }
                 carers.each do |carer|
                   option(value: carer.id, selected: relationship.carer_id == carer.id) { carer.name }
                 end
@@ -99,13 +101,13 @@ module Components
         def render_patient_field(_form)
           div do
             FormField do
-              FormFieldLabel(for: 'carer_relationship_patient_id') { 'Patient' }
+              FormFieldLabel(for: "carer_relationship_patient_id") { "Patient" }
               select(
-                name: 'carer_relationship[patient_id]',
-                id: 'carer_relationship_patient_id',
+                name: "carer_relationship[patient_id]",
+                id: "carer_relationship_patient_id",
                 class: select_classes
               ) do
-                option(value: '', selected: relationship.patient_id.blank?) { 'Select a patient...' }
+                option(value: "", selected: relationship.patient_id.blank?) { "Select a patient..." }
                 patients.each do |patient|
                   option(value: patient.id, selected: relationship.patient_id == patient.id) { patient.name }
                 end
@@ -117,13 +119,13 @@ module Components
         def render_relationship_type_field(_form)
           div do
             FormField do
-              FormFieldLabel(for: 'carer_relationship_relationship_type') { 'Relationship type' }
+              FormFieldLabel(for: "carer_relationship_relationship_type") { "Relationship type" }
               select(
-                name: 'carer_relationship[relationship_type]',
-                id: 'carer_relationship_relationship_type',
+                name: "carer_relationship[relationship_type]",
+                id: "carer_relationship_relationship_type",
                 class: select_classes
               ) do
-                option(value: '', selected: relationship.relationship_type.blank?) { 'Select relationship type...' }
+                option(value: "", selected: relationship.relationship_type.blank?) { "Select relationship type..." }
                 CarerRelationship::RELATIONSHIP_TYPES.each do |label, value|
                   option(value: value, selected: relationship.relationship_type == value) { label }
                 end
@@ -133,14 +135,15 @@ module Components
         end
 
         def render_submit_button(_form)
-          div(class: 'flex items-center gap-4') do
+          div(class: "flex items-center gap-4") do
             m3_button(type: :submit, variant: :filled) do
-              relationship.new_record? ? 'Create Relationship' : 'Update Relationship'
+              relationship.new_record? ? "Create Relationship" : "Update Relationship"
             end
+
             if modal
-              m3_button(variant: :text, data: { action: 'click->ruby-ui--dialog#dismiss' }) { 'Cancel' }
+              m3_button(variant: :text, data: {action: "click->ruby-ui--dialog#dismiss"}) { "Cancel" }
             else
-              Link(href: '/admin/carer_relationships', variant: :link) { 'Cancel' }
+              Link(href: "/admin/carer_relationships", variant: :link) { "Cancel" }
             end
           end
         end

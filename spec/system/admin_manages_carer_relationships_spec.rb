@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
-RSpec.describe 'AdminManagesCarerRelationships' do
-  fixtures :accounts, :people, :users, :carer_relationships
+RSpec.describe "AdminManagesCarerRelationships" do
+  fixtures(:accounts, :people, :users, :carer_relationships)
 
   let(:admin) { users(:admin) }
   let(:carer) { users(:carer) }
@@ -14,106 +14,106 @@ RSpec.describe 'AdminManagesCarerRelationships' do
     driven_by(example.metadata[:js] ? :playwright : :rack_test)
   end
 
-  context 'when user is logged in as an admin' do
-    it 'allows admin to see the list of carer relationships' do
+  context("when user is logged in as an admin") do
+    it "allows admin to see the list of carer relationships" do
       login_as(admin)
 
-      visit admin_carer_relationships_path
+      visit(admin_carer_relationships_path)
 
-      expect(page).to have_text('Carer Relationships')
-      expect(page).to have_text(jane.name)
+      expect(page).to(have_text("Carer Relationships"))
+      expect(page).to(have_text(jane.name))
     end
 
-    it 'allows admin to create a new carer relationship' do
+    it "allows admin to create a new carer relationship" do
       login_as(admin)
 
-      visit admin_carer_relationships_path
-      click_link 'New Relationship'
+      visit(admin_carer_relationships_path)
+      click_link("New Relationship")
 
-      expect(page).to have_text('New Carer Relationship')
+      expect(page).to(have_text("New Carer Relationship"))
 
-      select jane.name, from: 'Carer'
-      select people(:john).name, from: 'Patient'
-      select 'Family member', from: 'Relationship type'
+      select(jane.name, from: "Carer")
+      select(people(:john).name, from: "Patient")
+      select("Family member", from: "Relationship type")
 
-      click_button 'Create Relationship'
+      click_button("Create Relationship")
 
-      expect(page).to have_text('Carer relationship was successfully created')
+      expect(page).to(have_text("Carer relationship was successfully created"))
     end
 
-    it 'allows admin to deactivate a carer relationship', :js do
+    it "allows admin to deactivate a carer relationship", :js do
       relationship = carer_relationships(:jane_cares_for_child)
       login_as(admin)
 
-      visit admin_carer_relationships_path
+      visit(admin_carer_relationships_path)
 
-      within "[data-relationship-id='#{relationship.id}']" do
-        click_button 'Deactivate'
+      within("[data-relationship-id='#{relationship.id}']") do
+        click_button("Deactivate")
       end
 
       # Confirm in the AlertDialog
-      within('[role="alertdialog"]') do
-        click_button 'Deactivate'
+      within("[role=\"alertdialog\"]") do
+        click_button("Deactivate")
       end
 
-      expect(page).to have_text('Carer relationship has been deactivated')
+      expect(page).to(have_text("Carer relationship has been deactivated"))
     end
 
-    it 'allows admin to reactivate a deactivated carer relationship' do
+    it "allows admin to reactivate a deactivated carer relationship" do
       relationship = carer_relationships(:inactive_relationship)
       login_as(admin)
 
-      visit admin_carer_relationships_path
+      visit(admin_carer_relationships_path)
 
-      within "[data-relationship-id='#{relationship.id}']" do
-        expect(page).to have_text('Inactive')
-        click_button 'Activate'
+      within("[data-relationship-id='#{relationship.id}']") do
+        expect(page).to(have_text("Inactive"))
+        click_button("Activate")
       end
 
-      expect(page).to have_text('Carer relationship has been activated')
+      expect(page).to(have_text("Carer relationship has been activated"))
 
-      within "[data-relationship-id='#{relationship.id}']" do
-        expect(page).to have_text('Active')
+      within("[data-relationship-id='#{relationship.id}']") do
+        expect(page).to(have_text("Active"))
       end
     end
 
-    it 'allows carer to access patient after relationship is reactivated' do
+    it "allows carer to access patient after relationship is reactivated" do
       relationship = carer_relationships(:inactive_relationship)
       carer_user = relationship.carer.user
       patient = relationship.patient
 
       # First verify carer cannot access patient when relationship is inactive
       login_as(carer_user)
-      visit person_path(patient)
+      visit(person_path(patient))
       # Rails test environment renders the detailed exception page for RecordNotFound in system tests
-      expect(page).to have_text(/RecordNotFound|Couldn't find/i)
+      expect(page).to(have_text(/RecordNotFound|Couldn't find/i))
 
       # Admin reactivates the relationship
       rodauth_logout
       login_as(admin)
-      visit admin_carer_relationships_path
+      visit(admin_carer_relationships_path)
 
-      within "[data-relationship-id='#{relationship.id}']" do
-        click_button 'Activate'
+      within("[data-relationship-id='#{relationship.id}']") do
+        click_button("Activate")
       end
 
-      expect(page).to have_text('Carer relationship has been activated')
+      expect(page).to(have_text("Carer relationship has been activated"))
 
       # Now carer can access patient
       rodauth_logout
       login_as(carer_user)
-      visit person_path(patient)
-      expect(page).to have_text(patient.name)
+      visit(person_path(patient))
+      expect(page).to(have_text(patient.name))
     end
   end
 
-  context 'when user is logged in as a non-admin' do
-    it 'denies access to the carer relationships list' do
+  context("when user is logged in as a non-admin") do
+    it "denies access to the carer relationships list" do
       login_as(carer)
 
-      visit admin_carer_relationships_path
+      visit(admin_carer_relationships_path)
 
-      expect(page).to have_css('#flash', text: 'You are not authorized to perform this action.')
+      expect(page).to(have_css("#flash", text: "You are not authorized to perform this action."))
     end
   end
 end

@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
-require 'rake'
+require "rails_helper"
+require "rake"
 
 RSpec.describe Rake::Task do
-  let(:task_name) { 'med_tracker:bootstrap_admin' }
+  let(:task_name) { "med_tracker:bootstrap_admin" }
   let(:task) { described_class[task_name] }
 
   before do
@@ -14,10 +14,10 @@ RSpec.describe Rake::Task do
 
   around do |example|
     previous_values = {
-      'ADMIN_EMAIL' => ENV.fetch('ADMIN_EMAIL', nil),
-      'ADMIN_PASSWORD' => ENV.fetch('ADMIN_PASSWORD', nil),
-      'ADMIN_NAME' => ENV.fetch('ADMIN_NAME', nil),
-      'ADMIN_DOB' => ENV.fetch('ADMIN_DOB', nil)
+      "ADMIN_EMAIL" => ENV.fetch("ADMIN_EMAIL", nil),
+      "ADMIN_PASSWORD" => ENV.fetch("ADMIN_PASSWORD", nil),
+      "ADMIN_NAME" => ENV.fetch("ADMIN_NAME", nil),
+      "ADMIN_DOB" => ENV.fetch("ADMIN_DOB", nil)
     }
 
     example.run
@@ -26,48 +26,52 @@ RSpec.describe Rake::Task do
   end
 
   def set_admin_env(email: nil, password: nil, name: nil, dob: nil)
-    ENV['ADMIN_EMAIL'] = email
-    ENV['ADMIN_PASSWORD'] = password
-    ENV['ADMIN_NAME'] = name
-    ENV['ADMIN_DOB'] = dob
+    ENV["ADMIN_EMAIL"] = email
+    ENV["ADMIN_PASSWORD"] = password
+    ENV["ADMIN_NAME"] = name
+    ENV["ADMIN_DOB"] = dob
   end
 
   def expect_bootstrap_service_called
-    expect(Admin::BootstrapService).to have_received(:call).with(
-      email: 'bootstrap.admin@example.com',
-      password: 'SecureP@ssword123!',
-      name: 'Bootstrap Admin',
-      date_of_birth: '1980-02-01'
+    expect(Admin::BootstrapService).to(
+      have_received(:call).with(
+        email: "bootstrap.admin@example.com",
+        password: "SecureP@ssword123!",
+        name: "Bootstrap Admin",
+        date_of_birth: "1980-02-01"
+      )
     )
   end
 
-  it 'invokes bootstrap service with environment variables' do
+  it "invokes bootstrap service with environment variables" do
     set_admin_env(
-      email: 'bootstrap.admin@example.com',
-      password: 'SecureP@ssword123!',
-      name: 'Bootstrap Admin',
-      dob: '1980-02-01'
+      email: "bootstrap.admin@example.com",
+      password: "SecureP@ssword123!",
+      name: "Bootstrap Admin",
+      dob: "1980-02-01"
     )
 
-    user = instance_double(User, email_address: 'bootstrap.admin@example.com')
+    user = instance_double(User, email_address: "bootstrap.admin@example.com")
     result = instance_double(Admin::BootstrapService::Result, success?: true, error: nil, user: user)
 
-    allow(Admin::BootstrapService).to receive(:call).and_return(result)
+    allow(Admin::BootstrapService).to(receive(:call).and_return(result))
 
     expect do
       task.invoke
       expect_bootstrap_service_called
-    end.to output(/created|success/i).to_stdout
+    end
+      .to(output(/created|success/i).to_stdout)
   end
 
-  it 'fails fast when required environment variables are missing' do
+  it "fails fast when required environment variables are missing" do
     set_admin_env
 
-    allow(Admin::BootstrapService).to receive(:call)
+    allow(Admin::BootstrapService).to(receive(:call))
 
     expect do
       task.invoke
-      expect(Admin::BootstrapService).not_to have_received(:call)
-    end.to output(/missing required environment variables/i).to_stdout
+      expect(Admin::BootstrapService).not_to(have_received(:call))
+    end
+      .to(output(/missing required environment variables/i).to_stdout)
   end
 end

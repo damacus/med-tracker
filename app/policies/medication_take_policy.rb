@@ -43,14 +43,16 @@ class MedicationTakePolicy < ApplicationPolicy
 
     def carer_parent_scope
       ids = accessible_patient_ids
-      scope.left_joins(:schedule, :person_medication)
-           .where('schedules.person_id IN (:ids) OR person_medications.person_id IN (:ids)', ids: ids)
+      scope
+        .left_joins(:schedule, :person_medication)
+        .where("schedules.person_id IN (:ids) OR person_medications.person_id IN (:ids)", ids: ids)
     end
 
     def own_takes_scope
       person_id = user.person.id
-      scope.left_joins(:schedule, :person_medication)
-           .where('schedules.person_id = :id OR person_medications.person_id = :id', id: person_id)
+      scope
+        .left_joins(:schedule, :person_medication)
+        .where("schedules.person_id = :id OR person_medications.person_id = :id", id: person_id)
     end
 
     def owns_record?

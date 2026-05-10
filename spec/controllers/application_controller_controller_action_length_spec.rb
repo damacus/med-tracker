@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
 RSpec.describe ApplicationController do
   let(:action_class) { Data.define(:controller, :name, :line_number, :body_lines) }
@@ -12,11 +12,12 @@ RSpec.describe ApplicationController do
     ]
   end
 
-  it 'keeps each public action under ten nonblank body lines' do
-    oversized_actions = controllers.flat_map { |controller| public_actions_for(controller) }
-                                   .select { |action| action.body_lines > 10 }
+  it "keeps each public action under ten nonblank body lines" do
+    oversized_actions = controllers
+      .flat_map { |controller| public_actions_for(controller) }
+      .select { |action| action.body_lines > 10 }
 
-    expect(oversized_actions).to eq([])
+    expect(oversized_actions).to(eq([]))
   end
 
   def public_actions_for(controller)
@@ -27,7 +28,7 @@ RSpec.describe ApplicationController do
   end
 
   def controller_source_lines(controller)
-    Rails.root.join('app/controllers', controller.name.underscore.concat('.rb')).readlines
+    Rails.root.join("app/controllers", controller.name.underscore.concat(".rb")).readlines
   end
 
   def public_method_lines(lines)

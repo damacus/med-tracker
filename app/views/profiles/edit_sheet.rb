@@ -15,11 +15,11 @@ module Views
         @field = field_config[:field]
         @label = field_config[:label]
         @current_value = field_config[:current_value]
-        @button_text = field_config.fetch(:button_text, 'Edit')
+        @button_text = field_config.fetch(:button_text, "Edit")
       end
 
       def view_template
-        render Sheet.new do
+        render(Sheet.new) do
           render_sheet_trigger
           render_sheet_content
         end
@@ -28,20 +28,20 @@ module Views
       private
 
       def render_sheet_trigger
-        render SheetTrigger.new do
+        render(SheetTrigger.new) do
           m3_button(variant: :outlined, size: :sm) { @button_text }
         end
       end
 
       def render_sheet_content
-        render SheetContent.new(class: 'sm:max-w-sm') do
+        render(SheetContent.new(class: "sm:max-w-sm")) do
           render_sheet_header
           render_sheet_form
         end
       end
 
       def render_sheet_header
-        render SheetHeader.new do
+        render(SheetHeader.new) do
           render(SheetTitle.new { "Edit #{@label}" })
           render(SheetDescription.new { "Update your #{@label.downcase} information." })
         end
@@ -49,36 +49,37 @@ module Views
 
       def render_sheet_form
         form_with(model: @field == :email ? @account : @person, url: profile_path, method: :patch) do
-          render SheetMiddle.new do
+          render(SheetMiddle.new) do
             render_field_input
           end
+
           render_sheet_footer
         end
       end
 
       def render_sheet_footer
-        render SheetFooter.new do
-          m3_button(variant: :outlined, data: { action: 'click->ruby-ui--sheet-content#close' }) { 'Cancel' }
-          m3_button(type: :submit) { 'Save' }
+        render(SheetFooter.new) do
+          m3_button(variant: :outlined, data: {action: "click->ruby-ui--sheet-content#close"}) { "Cancel" }
+          m3_button(type: :submit) { "Save" }
         end
       end
 
       def render_field_input
         case @field
         when :email
-          label(class: 'mb-2 block text-sm font-medium text-foreground') { 'Email Address' }
+          label(class: "mb-2 block text-sm font-medium text-foreground") { "Email Address" }
           m3_input(
-            type: 'email',
-            name: 'account[email]',
-            placeholder: 'your.email@example.com',
+            type: "email",
+            name: "account[email]",
+            placeholder: "your.email@example.com",
             value: @current_value
           )
         when :date_of_birth
-          label(class: 'mb-2 block text-sm font-medium text-foreground') { 'Date of Birth' }
+          label(class: "mb-2 block text-sm font-medium text-foreground") { "Date of Birth" }
           m3_input(
-            type: 'date',
-            name: 'person[date_of_birth]',
-            value: @person.date_of_birth&.strftime('%Y-%m-%d')
+            type: "date",
+            name: "person[date_of_birth]",
+            value: @person.date_of_birth&.strftime("%Y-%m-%d")
           )
         end
       end

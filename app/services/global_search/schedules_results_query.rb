@@ -7,7 +7,7 @@ module GlobalSearch
         .joins(:person, :medication)
         .includes(:person, :medication)
         .where(search_sql, term: search_term)
-        .order('medications.name ASC', 'people.name ASC')
+        .order("medications.name ASC", "people.name ASC")
         .limit(limit)
         .map { |schedule| result_for(schedule) }
     end
@@ -16,8 +16,8 @@ module GlobalSearch
 
     def result_for(schedule)
       builder.build(
-        type: 'schedule',
-        title: I18n.t('global_search.result_titles.schedule', medication: schedule.medication.name),
+        type: "schedule",
+        title: I18n.t("global_search.result_titles.schedule", medication: schedule.medication.name),
         subtitle: subtitle_for(schedule),
         path: person_path(schedule.person, anchor: "schedule_#{schedule.id}"),
         secondary_values: [schedule.person.name]
@@ -26,14 +26,14 @@ module GlobalSearch
 
     def subtitle_for(schedule)
       I18n.t(
-        'global_search.subtitles.schedule',
+        "global_search.subtitles.schedule",
         person: schedule.person.name,
-        frequency: schedule.frequency.presence || I18n.t('global_search.subtitles.no_frequency')
+        frequency: schedule.frequency.presence || I18n.t("global_search.subtitles.no_frequency")
       )
     end
 
     def search_sql
-      'medications.name ILIKE :term OR people.name ILIKE :term'
+      "medications.name ILIKE :term OR people.name ILIKE :term"
     end
   end
 end

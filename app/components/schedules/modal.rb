@@ -23,25 +23,27 @@ module Components
       end
 
       def view_template
-        turbo_frame_tag 'modal' do
+        turbo_frame_tag("modal") do
           Dialog(open: true) do
             DialogContent(size: :xl) do
               DialogHeader do
                 if back_path
                   a(
                     href: back_path,
-                    data: { turbo_frame: 'modal' },
-                    class: 'inline-flex items-center text-sm text-on-surface-variant hover:text-foreground ' \
-                           'transition-colors mb-2 no-underline'
+                    data: {turbo_frame: "modal"},
+                    class: "inline-flex items-center text-sm text-on-surface-variant hover:text-foreground " \
+                      "transition-colors mb-2 no-underline"
                   ) do
-                    plain t('medication_workflow.back')
+                    plain(t("medication_workflow.back"))
                   end
                 end
+
                 DialogTitle { title }
-                DialogDescription { t('schedules.modal.subtitle') }
+                DialogDescription { t("schedules.modal.subtitle") }
               end
+
               DialogMiddle do
-                render Form.new(schedule: schedule, person: person, medications: medications, frame_id: 'modal')
+                render(Form.new(schedule: schedule, person: person, medications: medications, frame_id: "modal"))
               end
             end
           end

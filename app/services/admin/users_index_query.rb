@@ -17,11 +17,11 @@ module Admin
 
     def apply_sorting(relation)
       case sort_column
-      when 'name'
+      when "name"
         relation.left_joins(:person).order(Person.arel_table[:name].public_send(direction_symbol))
-      when 'email'
+      when "email"
         relation.order(email_address: direction_symbol)
-      when 'role'
+      when "role"
         relation.order(role: direction_symbol)
       else
         relation.order(created_at: direction_symbol)
@@ -58,16 +58,16 @@ module Admin
 
     def apply_search(relation)
       search_term = "%#{ActiveRecord::Base.sanitize_sql_like(search)}%"
-      relation.joins(:person).where('people.name ILIKE ? OR users.email_address ILIKE ?', search_term, search_term)
+      relation.joins(:person).where("people.name ILIKE ? OR users.email_address ILIKE ?", search_term, search_term)
     end
 
     def apply_status_filter(relation)
       case status
-      when 'active'
+      when "active"
         relation.active
-      when 'inactive'
+      when "inactive"
         relation.inactive
-      when 'soft_deleted'
+      when "soft_deleted"
         soft_deleted_scope(relation)
       else
         relation
@@ -76,15 +76,15 @@ module Admin
 
     def soft_deleted_scope(relation)
       account_join = relation.left_joins(person: :account)
-      account_join.where(accounts: { id: nil }).or(account_join.where(accounts: { status: Account.statuses[:closed] }))
+      account_join.where(accounts: {id: nil}).or(account_join.where(accounts: {status: Account.statuses[:closed]}))
     end
 
     def sort_column
-      sort.presence_in(%w[name email created_at role]) || 'created_at'
+      sort.presence_in(%w[name email created_at role]) || "created_at"
     end
 
     def direction_symbol
-      { 'desc' => :desc }.fetch(direction, :asc)
+      {"desc" => :desc}.fetch(direction, :asc)
     end
   end
 end

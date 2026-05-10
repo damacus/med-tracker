@@ -4,9 +4,9 @@ class BarcodeCatalogEntry < ApplicationRecord
   validates :gtin, presence: true
   validates :display, presence: true
   validates :source, presence: true
-  validates :gtin, uniqueness: { scope: :source }
+  validates :gtin, uniqueness: {scope: :source}
 
   def self.normalize_gtin(value)
-    value.to_s.gsub(/\D/, '')
+    value.to_s.gsub(/\D/, "")
   end
 end

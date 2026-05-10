@@ -10,7 +10,7 @@ module RubyUI
 
     def default_attrs
       {
-        class: 'border-b transition-colors hover:bg-secondary-container/50 data-[state=selected]:bg-secondary-container'
+        class: "border-b transition-colors hover:bg-secondary-container/50 data-[state=selected]:bg-secondary-container"
       }
     end
   end

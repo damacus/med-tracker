@@ -19,6 +19,7 @@ class MedicationOnboardingBuilder
     defaults.medication_attributes.each do |key, value|
       medication.public_send("#{key}=", value)
     end
+
     build_onboarding_dosage_records!(medication, defaults.dosage_records_attributes)
     medication
   end
@@ -142,9 +143,11 @@ class MedicationOnboardingBuilder
   end
 
   def default_primary_dosage_attributes(medication)
-    MedicationOnboardingPrefill::DEFAULT_TIMING.merge(
-      amount: medication.dosage_amount,
-      unit: medication.dosage_unit
-    ).compact
+    MedicationOnboardingPrefill::DEFAULT_TIMING
+      .merge(
+        amount: medication.dosage_amount,
+        unit: medication.dosage_unit
+      )
+      .compact
   end
 end

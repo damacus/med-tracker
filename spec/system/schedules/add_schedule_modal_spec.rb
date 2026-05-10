@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
-RSpec.describe 'Add schedule modal flow' do
-  fixtures :accounts, :users, :people, :locations, :medications, :dosages
+RSpec.describe "Add schedule modal flow" do
+  fixtures(:accounts, :users, :people, :locations, :medications, :dosages)
 
   before do
     driven_by(:playwright)
@@ -12,45 +12,46 @@ RSpec.describe 'Add schedule modal flow' do
   let(:admin) { users(:admin) }
   let(:person) { people(:child_patient) }
 
-  it 'opens add schedule modal from person page and creates a schedule via turbo' do
+  it "opens add schedule modal from person page and creates a schedule via turbo" do
     login_as(admin)
-    visit new_person_schedule_path(person)
+    visit(new_person_schedule_path(person))
 
-    expect(page).to have_text("Add schedule for #{person.name}")
-    expect(page).to have_text('Choose a medication')
+    expect(page).to(have_text("Add schedule for #{person.name}"))
+    expect(page).to(have_text("Choose a medication"))
 
-    find_by_id('medication_trigger').click
-    find('label', text: 'Ibuprofen', visible: :all, wait: 10).click
+    find_by_id("medication_trigger").click
+    find("label", text: "Ibuprofen", visible: :all, wait: 10).click
 
-    sleep 1.0 # Wait for dosage cards to render
-    find('label', text: /Standard child dose \(6-12 years\)/, visible: :all, wait: 10).click
+    # Wait for dosage cards to render
+    sleep(1.0)
+    find("label", text: /Standard child dose \(6-12 years\)/, visible: :all, wait: 10).click
 
-    fill_in 'Frequency', with: 'Twice daily'
-    fill_in 'Start date', with: Date.current.strftime('%Y-%m-%d')
-    fill_in 'End date', with: 1.week.from_now.to_date.strftime('%Y-%m-%d')
-    fill_in 'Notes', with: 'Turbo modal e2e schedule'
+    fill_in("Frequency", with: "Twice daily")
+    fill_in("Start date", with: Date.current.strftime("%Y-%m-%d"))
+    fill_in("End date", with: 1.week.from_now.to_date.strftime("%Y-%m-%d"))
+    fill_in("Notes", with: "Turbo modal e2e schedule")
 
-    click_on 'Add Plan'
+    click_on("Add Plan")
 
-    expect(page).to have_text('Schedule was successfully created.')
-    expect(page).to have_no_text("New Schedule for #{person.name}")
-    expect(page).to have_text('Ibuprofen')
+    expect(page).to(have_text("Schedule was successfully created."))
+    expect(page).to(have_no_text("New Schedule for #{person.name}"))
+    expect(page).to(have_text("Ibuprofen"))
   end
 
-  it 'closes the add medication assignment cleanly when cancelled' do
+  it "closes the add medication assignment cleanly when cancelled" do
     login_as(admin)
-    visit person_path(person)
+    visit(person_path(person))
 
-    within '[data-testid="quick-actions"]' do
-      click_on 'Add Medication'
+    within("[data-testid=\"quick-actions\"]") do
+      click_on("Add Medication")
     end
 
-    expect(page).to have_text("Add Medication for #{person.name}")
+    expect(page).to(have_text("Add Medication for #{person.name}"))
 
-    click_on 'Cancel'
+    click_on("Cancel")
 
-    expect(page).to have_current_path(person_path(person))
-    expect(page).to have_no_text("Add Medication for #{person.name}")
-    expect(page).to have_text(person.name)
+    expect(page).to(have_current_path(person_path(person)))
+    expect(page).to(have_no_text("Add Medication for #{person.name}"))
+    expect(page).to(have_text(person.name))
   end
 end

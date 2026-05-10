@@ -12,10 +12,10 @@ module Schedules
     end
 
     def status_top_border_class
-      return 'border-t-rose-500' if out_of_stock?
-      return 'border-t-amber-500' unless can_take_now?
+      return "border-t-rose-500" if out_of_stock?
+      return "border-t-amber-500" unless can_take_now?
 
-      'border-t-primary'
+      "border-t-primary"
     end
 
     def status_badge?
@@ -27,9 +27,9 @@ module Schedules
     end
 
     def status_badge_label
-      return I18n.t('schedules.card.ready_now') if can_take_now?
+      return I18n.t("schedules.card.ready_now") if can_take_now?
 
-      I18n.t('schedules.card.waiting')
+      I18n.t("schedules.card.waiting")
     end
 
     def dose_description
@@ -77,13 +77,13 @@ module Schedules
     end
 
     def take_label
-      own_dose? ? I18n.t('schedules.card.take') : I18n.t('schedules.card.give')
+      own_dose? ? I18n.t("schedules.card.take") : I18n.t("schedules.card.give")
     end
 
     def take_state_label
-      return I18n.t('schedules.card.invalid_dose') if invalid_dose_configured?
-      return I18n.t('schedules.card.out_of_stock') if out_of_stock?
-      return I18n.t('schedules.card.waiting') unless can_administer?
+      return I18n.t("schedules.card.invalid_dose") if invalid_dose_configured?
+      return I18n.t("schedules.card.out_of_stock") if out_of_stock?
+      return I18n.t("schedules.card.waiting") unless can_administer?
 
       take_label
     end
@@ -101,16 +101,18 @@ module Schedules
     end
 
     def loaded_todays_takes
-      schedule.medication_takes
-              .select { |take| take.taken_at >= Time.current.beginning_of_day }
-              .sort_by(&:taken_at)
-              .reverse
+      schedule
+        .medication_takes
+        .select { |take| take.taken_at >= Time.current.beginning_of_day }
+        .sort_by(&:taken_at)
+        .reverse
     end
 
     def queried_todays_takes
-      schedule.medication_takes
-              .where(taken_at: Time.current.beginning_of_day..)
-              .order(taken_at: :desc)
+      schedule
+        .medication_takes
+        .where(taken_at: Time.current.beginning_of_day..)
+        .order(taken_at: :desc)
     end
 
     def blocked_reason

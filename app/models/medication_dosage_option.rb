@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class MedicationDosageOption < ApplicationRecord
-  self.table_name = 'dosages'
+  self.table_name = "dosages"
 
   has_paper_trail
 
@@ -12,19 +12,19 @@ class MedicationDosageOption < ApplicationRecord
   after_commit :reset_inventory_sync_suppression, on: %i[create update destroy]
   after_rollback :reset_inventory_sync_suppression
 
-  enum :default_dose_cycle, { daily: 0, weekly: 1, monthly: 2 }, prefix: :default
+  enum :default_dose_cycle, {daily: 0, weekly: 1, monthly: 2}, prefix: :default
 
-  scope :adult_default,  -> { where(default_for_adults: true) }
-  scope :child_default,  -> { where(default_for_children: true) }
+  scope :adult_default, -> { where(default_for_adults: true) }
+  scope :child_default, -> { where(default_for_children: true) }
 
-  validates :amount, presence: true, numericality: { greater_than: 0 }
+  validates :amount, presence: true, numericality: {greater_than: 0}
   validates :unit, presence: true
   validates :frequency, presence: true
-  validates :default_max_daily_doses, presence: true, numericality: { greater_than: 0 }
-  validates :default_min_hours_between_doses, presence: true, numericality: { greater_than_or_equal_to: 0 }
+  validates :default_max_daily_doses, presence: true, numericality: {greater_than: 0}
+  validates :default_min_hours_between_doses, presence: true, numericality: {greater_than_or_equal_to: 0}
   validates :default_dose_cycle, presence: true
-  validates :current_supply, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
-  validates :reorder_threshold, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
+  validates :current_supply, numericality: {greater_than_or_equal_to: 0}, allow_nil: true
+  validates :reorder_threshold, numericality: {greater_than_or_equal_to: 0}, allow_nil: true
 
   delegate :selection_key, to: :to_value
 
@@ -79,11 +79,11 @@ class MedicationDosageOption < ApplicationRecord
   private
 
   def sync_medication_dosage
-    stmt = 'UPDATE medications SET dosage_amount = NULL WHERE id = $1'
+    stmt = "UPDATE medications SET dosage_amount = NULL WHERE id = $1"
     binds = [
-      ActiveRecord::Relation::QueryAttribute.new('id', medication_id, ActiveRecord::Type::BigInteger.new)
+      ActiveRecord::Relation::QueryAttribute.new("id", medication_id, ActiveRecord::Type::BigInteger.new)
     ]
-    ActiveRecord::Base.connection.exec_update(stmt, 'Sync Medication Dosage', binds)
+    ActiveRecord::Base.connection.exec_update(stmt, "Sync Medication Dosage", binds)
   end
 
   def sync_medication_inventory

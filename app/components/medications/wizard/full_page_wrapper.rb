@@ -11,22 +11,24 @@ module Components
           @locations = locations
           @people = people
           @current_user = current_user
-          @variant = 'fullpage'
+          @variant = "fullpage"
           super()
         end
 
         def view_template
-          div(class: 'container mx-auto px-4 py-12 max-w-2xl') do
+          div(class: "container mx-auto px-4 py-12 max-w-2xl") do
             render_header
 
-            m3_card(variant: :elevated, class: 'overflow-visible border-none shadow-elevation-3 rounded-shape-xl') do
-              div(class: 'p-10') do
-                render StepContent.new(
-                  medication: medication,
-                  locations: locations,
-                  people: people,
-                  current_user: current_user,
-                  variant: variant
+            m3_card(variant: :elevated, class: "overflow-visible border-none shadow-elevation-3 rounded-shape-xl") do
+              div(class: "p-10") do
+                render(
+                  StepContent.new(
+                    medication: medication,
+                    locations: locations,
+                    people: people,
+                    current_user: current_user,
+                    variant: variant
+                  )
                 )
               end
             end
@@ -36,21 +38,24 @@ module Components
         private
 
         def render_header
-          div(class: 'text-center mb-10 space-y-2') do
+          div(class: "text-center mb-10 space-y-2") do
             div(
-              class: 'mx-auto w-16 h-16 rounded-shape-xl bg-primary/10 flex items-center justify-center ' \
-                     'text-primary shadow-inner mb-6'
+              class: "mx-auto w-16 h-16 rounded-shape-xl bg-primary/10 flex items-center justify-center " \
+                "text-primary shadow-inner mb-6"
             ) do
-              render Icons::Pill.new(size: 32)
+              render(Icons::Pill.new(size: 32))
             end
-            m3_text(variant: :label_medium, class: 'uppercase tracking-[0.2em] font-black opacity-40') do
-              t('forms.medications.inventory_management')
+
+            m3_text(variant: :label_medium, class: "uppercase tracking-[0.2em] font-black opacity-40") do
+              t("forms.medications.inventory_management")
             end
-            m3_heading(variant: :display_small, level: 1, class: 'font-black tracking-tight text-foreground') do
-              t('medications.form.new_title')
+
+            m3_heading(variant: :display_small, level: 1, class: "font-black tracking-tight text-foreground") do
+              t("medications.form.new_title")
             end
-            m3_text(variant: :body_large, class: 'text-on-surface-variant') do
-              t('medications.form.new_subtitle')
+
+            m3_text(variant: :body_large, class: "text-on-surface-variant") do
+              t("medications.form.new_subtitle")
             end
           end
         end

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
 RSpec.describe Components::Shared::StockBadge, type: :component do
   subject(:component) { described_class.new(medication: medication) }
@@ -9,64 +9,65 @@ RSpec.describe Components::Shared::StockBadge, type: :component do
   let(:medication) do
     instance_double(Medication, current_supply: current_supply, dosage_unit: dosage_unit, supply_level: supply_level)
   end
+
   let(:current_supply) { 100 }
-  let(:dosage_unit) { 'mg' }
+  let(:dosage_unit) { "mg" }
   let(:status) { :in_stock }
 
-  describe '#view_template' do
-    context 'when medication has no current_supply value' do
+  describe "#view_template" do
+    context("when medication has no current_supply value") do
       let(:current_supply) { nil }
 
-      it 'renders nothing' do
+      it "renders nothing" do
         result = render_inline(component)
-        expect(result.to_html).to be_empty
+        expect(result.to_html).to(be_empty)
       end
     end
 
-    context 'when medication is in stock' do
+    context("when medication is in stock") do
       let(:current_supply) { 100 }
 
-      it 'renders the supply count' do
+      it "renders the supply count" do
         result = render_inline(component)
-        expect(result.text).to include('100 left')
+        expect(result.text).to(include("100 left"))
       end
 
-      it 'does not allow the count to wrap in compact card headers' do
+      it "does not allow the count to wrap in compact card headers" do
         result = render_inline(component)
-        badge = result.at_css('span')
+        badge = result.at_css("span")
 
-        expect(badge['class']).to include('whitespace-nowrap')
-        expect(badge['class']).to include('shrink-0')
-      end
-    end
-
-    context 'when medication is volume tracked' do
-      let(:current_supply) { BigDecimal('97.5') }
-      let(:dosage_unit) { 'ml' }
-
-      it 'renders the decimal volume count' do
-        result = render_inline(component)
-        expect(result.text).to include('97.5 ml left')
+        expect(badge["class"]).to(include("whitespace-nowrap"))
+        expect(badge["class"]).to(include("shrink-0"))
       end
     end
 
-    context 'when medication is low stock' do
+    context("when medication is volume tracked") do
+      let(:current_supply) { BigDecimal("97.5") }
+      let(:dosage_unit) { "ml" }
+
+      it "renders the decimal volume count" do
+        result = render_inline(component)
+        expect(result.text).to(include("97.5 ml left"))
+      end
+    end
+
+    context("when medication is low stock") do
       let(:current_supply) { 5 }
       let(:status) { :low_stock }
 
-      it 'renders Low Stock badge with count' do
+      it "renders Low Stock badge with count" do
         result = render_inline(component)
-        expect(result.text).to include('Low Stock (5)')
+        expect(result.text).to(include("Low Stock (5)"))
       end
     end
 
-    context 'when medication is out of stock' do
+    context("when medication is out of stock") do
       let(:current_supply) { 0 }
       let(:status) { :out_of_stock }
 
-      it 'renders Out of Stock badge with count' do
+      it "renders Out of Stock badge with count" do
         result = render_inline(component)
-        expect(result.text).to include('Out of Stock (0)')
+        expect(result.text).to(include("Out of Stock (0)"))
       end
     end
   end

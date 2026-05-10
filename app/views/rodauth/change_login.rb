@@ -27,8 +27,14 @@ module Views
       end
 
       def render_change_login_form
-        render RubyUI::Form.new(action: rodauth.change_login_path, method: :post, class: 'space-y-6',
-                                data_turbo: 'false') do
+        render(
+          RubyUI::Form.new(
+            action: rodauth.change_login_path,
+            method: :post,
+            class: "space-y-6",
+            data_turbo: "false"
+          )
+        ) do
           authenticity_token_field
           render_login_field
           render_password_field
@@ -38,13 +44,13 @@ module Views
 
       def render_login_field
         render_m3_form_field(
-          label: t('rodauth.views.change_login.new_login_label'),
+          label: t("rodauth.views.change_login.new_login_label"),
           input_attrs: {
             type: :email,
             name: rodauth.login_param,
-            id: 'login',
+            id: "login",
             required: true,
-            autocomplete: 'username'
+            autocomplete: "username"
           },
           error: rodauth.field_error(rodauth.login_param)
         )
@@ -52,13 +58,13 @@ module Views
 
       def render_password_field
         render_m3_form_field(
-          label: t('rodauth.views.change_login.password_label'),
+          label: t("rodauth.views.change_login.password_label"),
           input_attrs: {
             type: :password,
             name: rodauth.password_param,
-            id: 'password',
+            id: "password",
             required: true,
-            autocomplete: 'current-password'
+            autocomplete: "current-password"
           },
           error: rodauth.field_error(rodauth.password_param)
         )

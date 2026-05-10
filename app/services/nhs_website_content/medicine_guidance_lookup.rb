@@ -1,18 +1,54 @@
 # frozen_string_literal: true
 
-require 'uri'
+require "uri"
 
 module NhsWebsiteContent
-  class MedicineGuidanceLookup # rubocop:disable Metrics/ClassLength
+  # rubocop:disable Metrics/ClassLength
+  class MedicineGuidanceLookup
     Section = Data.define(:title, :text)
-    Result = Data.define(:title, :description, :webpage, :last_reviewed_on, :sections, :author_name, :author_url,
-                         :author_logo)
+    Result = Data.define(
+      :title,
+      :description,
+      :webpage,
+      :last_reviewed_on,
+      :sections,
+      :author_name,
+      :author_url,
+      :author_logo
+    )
 
     FORM_WORDS = %w[
-      tablet tablets capsule capsules sachet sachets oral solution suspension liquid cream ointment gel spray sprays
-      drop drops powder granules injection injections patch patches inhaler inhalers lozenge lozenges
-      suppository suppositories
-    ].freeze
+      tablet
+      tablets
+      capsule
+      capsules
+      sachet
+      sachets
+      oral
+      solution
+      suspension
+      liquid
+      cream
+      ointment
+      gel
+      spray
+      sprays
+      drop
+      drops
+      powder
+      granules
+      injection
+      injections
+      patch
+      patches
+      inhaler
+      inhalers
+      lozenge
+      lozenges
+      suppository
+      suppositories
+    ]
+      .freeze
     STRENGTH_PATTERN = %r{
       \b
       \d+(?:\.\d+)?
@@ -22,12 +58,12 @@ module NhsWebsiteContent
       \b
     }ix
     SECTION_PRIORITY = {
-      'OverviewHealthAspect' => 0,
-      'UsageOrScheduleHealthAspect' => 1,
-      'SideEffectsHealthAspect' => 2,
-      'InteractionsHealthAspect' => 3,
-      'WarningHealthAspect' => 4,
-      'SuitabilityHealthAspect' => 5
+      "OverviewHealthAspect" => 0,
+      "UsageOrScheduleHealthAspect" => 1,
+      "SideEffectsHealthAspect" => 2,
+      "InteractionsHealthAspect" => 3,
+      "WarningHealthAspect" => 4,
+      "SuitabilityHealthAspect" => 5
     }.freeze
 
     def initialize(client: Client.new, audit_logger: ExternalLookup::AuditLogger.new)
@@ -37,31 +73,36 @@ module NhsWebsiteContent
 
     def call(name)
       return nil if name.blank?
-      return audit_and_nil(name, 'not_configured') unless @client.configured?
+      return audit_and_nil(name, "not_configured") unless @client.configured?
 
       page = resolve_page(name)
-      return audit_and_nil(name, 'not_found') unless page
+      return audit_and_nil(name, "not_found") unless page
 
       fetch_guidance_with_audit(name, page)
     rescue Client::ApiError => e
       Rails.logger.error("NhsWebsiteContent::MedicineGuidanceLookup failed: #{e.message}")
-      audit_and_nil(name, 'error')
+      audit_and_nil(name, "error")
     rescue StandardError => e
       Rails.logger.error("NhsWebsiteContent::MedicineGuidanceLookup crashed: #{e.class}: #{e.message}")
-      audit_and_nil(name, 'error')
+      audit_and_nil(name, "error")
     end
 
     private
 
     def fetch_guidance_with_audit(name, page)
-      result = build_result(@client.get_medicine(slug: slug_from(page['url']), modules: true))
-      audit(name, 'success', 1)
+      result = build_result(@client.get_medicine(slug: slug_from(page["url"]), modules: true))
+      audit(name, "success", 1)
       result
     end
 
     def audit(name, status, count = 0)
-      @audit_logger.record(source: 'nhs_website_content', event: 'medicine_guidance_lookup',
-                           query: name, result_status: status, result_count: count)
+      @audit_logger.record(
+        source: "nhs_website_content",
+        event: "medicine_guidance_lookup",
+        query: name,
+        result_status: status,
+        result_count: count
+      )
     end
 
     def audit_and_nil(name, status)
@@ -84,12 +125,12 @@ module NhsWebsiteContent
     end
 
     def list_pages_for(category)
-      page = '1'
+      page = "1"
       results = []
 
       loop do
         response = @client.list_medicines(category: category, page: page)
-        results.concat(Array(response['significantLink']))
+        results.concat(Array(response["significantLink"]))
         page = next_page_number(response)
         break if page.blank?
       end
@@ -98,20 +139,21 @@ module NhsWebsiteContent
     end
 
     def next_page_number(response)
-      link = Array(response['relatedLink']).find do |related_link|
-        related_link['name'] == 'Next Page' || related_link['linkRelationship'] == 'Next'
+      link = Array(response["relatedLink"]).find do |related_link|
+        related_link["name"] == "Next Page" || related_link["linkRelationship"] == "Next"
       end
+
       return nil if link.blank?
 
-      URI.decode_www_form(URI.parse(link['url']).query.to_s).to_h['page']
+      URI.decode_www_form(URI.parse(link["url"]).query.to_s).to_h["page"]
     rescue URI::InvalidURIError
       nil
     end
 
     def score(page, query)
       score_for(
-        page_name: normalized(page['name']),
-        description: normalized(page['description']),
+        page_name: normalized(page["name"]),
+        description: normalized(page["description"]),
         query: query,
         query_tokens: query.split
       )
@@ -129,47 +171,49 @@ module NhsWebsiteContent
     end
 
     def candidate_queries(name)
-      stripped = name.to_s.gsub(/\([^)]*\)/, ' ')
+      stripped = name.to_s.gsub(/\([^)]*\)/, " ")
 
       [
         normalized(stripped),
-        normalized(stripped.gsub(STRENGTH_PATTERN, ' ')),
-        normalized(remove_form_words(stripped.gsub(STRENGTH_PATTERN, ' ')))
+        normalized(stripped.gsub(STRENGTH_PATTERN, " ")),
+        normalized(remove_form_words(stripped.gsub(STRENGTH_PATTERN, " ")))
       ].compact_blank.uniq
     end
 
     def remove_form_words(text)
       FORM_WORDS.reduce(text.to_s) do |memo, word|
-        memo.gsub(/\b#{Regexp.escape(word)}\b/i, ' ')
+        memo.gsub(/\b#{Regexp.escape(word)}\b/i, " ")
       end
     end
 
     def normalized(text)
-      text.to_s.downcase
-          .gsub(/[^a-z0-9\s]/, ' ')
-          .gsub(/\b(?:ltd|limited|plc|inc|uk)\b/, ' ')
-          .squish
+      text
+        .to_s
+        .downcase
+        .gsub(/[^a-z0-9\s]/, " ")
+        .gsub(/\b(?:ltd|limited|plc|inc|uk)\b/, " ")
+        .squish
     end
 
     def slug_from(url)
-      URI.parse(url).path.split('/').compact_blank.last
+      URI.parse(url).path.split("/").compact_blank.last
     end
 
     def build_result(payload)
       Result.new(
-        title: payload['name'],
-        description: payload['description'],
-        webpage: payload['webpage'],
+        title: payload["name"],
+        description: payload["description"],
+        webpage: payload["webpage"],
         last_reviewed_on: last_reviewed_on(payload),
         sections: build_sections(payload),
-        author_name: payload.dig('author', 'name'),
-        author_url: payload.dig('author', 'url'),
-        author_logo: payload.dig('author', 'logo')
+        author_name: payload.dig("author", "name"),
+        author_url: payload.dig("author", "url"),
+        author_logo: payload.dig("author", "logo")
       )
     end
 
     def last_reviewed_on(payload)
-      last_reviewed = Array(payload.dig('mainEntityOfPage', 'lastReviewed')).last
+      last_reviewed = Array(payload.dig("mainEntityOfPage", "lastReviewed")).last
       return nil if last_reviewed.blank?
 
       Date.parse(last_reviewed)
@@ -178,19 +222,20 @@ module NhsWebsiteContent
     end
 
     def build_sections(payload)
-      sections = Array(payload['hasPart']).filter_map do |part|
-        text = stripped_text(part['text'])
+      sections = Array(payload["hasPart"]).filter_map do |part|
+        text = stripped_text(part["text"])
         next if text.blank?
 
         Section.new(title: section_title(part), text: text)
       end
 
-      sections.sort_by { |section| SECTION_PRIORITY.fetch(section_priority_key(section.title), 99) }
-              .first(3)
+      sections
+        .sort_by { |section| SECTION_PRIORITY.fetch(section_priority_key(section.title), 99) }
+        .first(3)
     end
 
     def section_title(part)
-      part['headline'].presence || part['name'].presence || humanized_health_aspect(part['healthAspect'])
+      part["headline"].presence || part["name"].presence || humanized_health_aspect(part["healthAspect"])
     end
 
     def section_priority_key(title)
@@ -198,7 +243,7 @@ module NhsWebsiteContent
     end
 
     def humanized_health_aspect(value)
-      value.to_s.delete_suffix('HealthAspect').gsub(/([a-z])([A-Z])/, '\1 \2').presence
+      value.to_s.delete_suffix("HealthAspect").gsub(/([a-z])([A-Z])/, "\\1 \\2").presence
     end
 
     def stripped_text(text)
@@ -236,7 +281,7 @@ module NhsWebsiteContent
     end
 
     def page_key(page)
-      page['url'].presence || normalized(page['name'])
+      page["url"].presence || normalized(page["name"])
     end
 
     def scored_ranked_matches(name)

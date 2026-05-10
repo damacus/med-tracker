@@ -11,31 +11,37 @@ module Components
 
       def initialize(person:, title: nil, subtitle: nil, return_to: nil, assigned_location: nil)
         @person = person
-        @title = title || (person.new_record? ? 'New Person' : 'Edit Person')
-        @subtitle = subtitle || (if person.new_record?
-                                   'Add a new person to track medications for'
-                                 else
-                                   "Update #{person.name}'s details"
-                                 end)
+        @title = title || (person.new_record? ? "New Person" : "Edit Person")
+        @subtitle = subtitle ||
+          (
+            if person.new_record?
+              "Add a new person to track medications for"
+            else
+              "Update #{person.name}'s details"
+            end
+          )
         @return_to = return_to
         @assigned_location = assigned_location
         super()
       end
 
       def view_template
-        turbo_frame_tag 'modal' do
+        turbo_frame_tag("modal") do
           Dialog(open: true) do
             DialogContent(size: :xl) do
               DialogHeader do
                 DialogTitle { title }
                 DialogDescription { subtitle }
               end
+
               DialogMiddle do
-                render FormView.new(
-                  person: person,
-                  return_to: return_to,
-                  is_modal: true,
-                  assigned_location: assigned_location
+                render(
+                  FormView.new(
+                    person: person,
+                    return_to: return_to,
+                    is_modal: true,
+                    assigned_location: assigned_location
+                  )
                 )
               end
             end

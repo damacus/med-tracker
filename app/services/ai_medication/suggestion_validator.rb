@@ -20,7 +20,7 @@ module AiMedication
     attr_reader :allowlist
 
     def valid_medication_attributes(attributes)
-      attributes.slice('name', 'category', 'description', 'warnings')
+      attributes.slice("name", "category", "description", "warnings")
     end
 
     def valid_doses(doses)
@@ -32,24 +32,24 @@ module AiMedication
     end
 
     def source_valid?(source)
-      source['url'].present? && source['title'].present? && allowlist.allowed?(source['url'])
+      source["url"].present? && source["title"].present? && allowlist.allowed?(source["url"])
     end
 
     def valid_dose?(dose)
-      dose_evidence_valid?(dose['evidence']) &&
-        positive_number?(dose['amount']) &&
-        Medication::DOSAGE_UNITS.include?(dose['unit'].to_s) &&
-        positive_integer?(dose['default_max_daily_doses']) &&
-        non_negative_number?(dose['default_min_hours_between_doses']) &&
-        MedicationDosageOption.default_dose_cycles.key?(dose['default_dose_cycle'].to_s)
+      dose_evidence_valid?(dose["evidence"]) &&
+        positive_number?(dose["amount"]) &&
+        Medication::DOSAGE_UNITS.include?(dose["unit"].to_s) &&
+        positive_integer?(dose["default_max_daily_doses"]) &&
+        non_negative_number?(dose["default_min_hours_between_doses"]) &&
+        MedicationDosageOption.default_dose_cycles.key?(dose["default_dose_cycle"].to_s)
     end
 
     def dose_evidence_valid?(evidence)
       evidence.is_a?(Hash) &&
-        evidence['url'].present? &&
-        evidence['title'].present? &&
-        evidence['text'].present? &&
-        allowlist.allowed?(evidence['url'])
+        evidence["url"].present? &&
+        evidence["title"].present? &&
+        evidence["text"].present? &&
+        allowlist.allowed?(evidence["url"])
     end
 
     def positive_number?(value)

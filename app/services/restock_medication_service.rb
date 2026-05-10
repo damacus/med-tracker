@@ -12,12 +12,13 @@ class RestockMedicationService
     normalized_date = normalize_date(restock_date)
 
     if normalized_quantity.blank? || normalized_quantity <= 0
-      return failure(medication, 'Quantity must be greater than 0')
+      return failure(medication, "Quantity must be greater than 0")
     end
-    return failure(medication, 'Restock date is invalid') unless normalized_date
+
+    return failure(medication, "Restock date is invalid") unless normalized_date
 
     medication.paper_trail_event = "restock (qty: #{MedicationStockQuantityFormatter.format(normalized_quantity)}, " \
-                                   "date: #{normalized_date.iso8601})"
+      "date: #{normalized_date.iso8601})"
     medication.restock!(quantity: normalized_quantity)
 
     Result.new(success: true, medication: medication, error: nil)

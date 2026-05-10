@@ -46,6 +46,11 @@ pre-commit:
         - "app/components/ruby_ui/typography/**/*.rb"
       run: task translator:hook
 
+    - name: rubyfmt
+      glob: "*.rb"
+      stage_fixed: true
+      run: rubyfmt --in-place {all_files}
+
     - name: rubocop
       glob: "*.rb"
       exclude:

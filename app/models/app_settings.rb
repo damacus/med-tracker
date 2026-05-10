@@ -12,8 +12,8 @@ class AppSettings < ApplicationRecord
   # without touching the database.  When absent, the admin-configured DB value
   # is used.
   def self.invite_only?
-    if ENV.key?('INVITE_ONLY')
-      ActiveModel::Type::Boolean.new.cast(ENV.fetch('INVITE_ONLY'))
+    if ENV.key?("INVITE_ONLY")
+      ActiveModel::Type::Boolean.new.cast(ENV.fetch("INVITE_ONLY"))
     else
       instance.invite_only
     end
@@ -22,6 +22,6 @@ class AppSettings < ApplicationRecord
   # Returns :env when the value is locked by the environment variable,
   # :database otherwise.  Used by the admin UI to disable the toggle.
   def self.invite_only_source
-    ENV.key?('INVITE_ONLY') ? :env : :database
+    ENV.key?("INVITE_ONLY") ? :env : :database
   end
 end

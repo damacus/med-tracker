@@ -19,16 +19,20 @@ class PersonMedicationReorderService
 
   def adjacent_record(person_medication, direction)
     case direction
-    when 'up'
-      person_medication.person.person_medications
-                       .where(position: ...person_medication.position)
-                       .order(position: :desc, id: :desc)
-                       .first
-    when 'down'
-      person_medication.person.person_medications
-                       .where(position: (person_medication.position + 1)..)
-                       .order(position: :asc, id: :asc)
-                       .first
+    when "up"
+      person_medication
+        .person
+        .person_medications
+        .where(position: ...person_medication.position)
+        .order(position: :desc, id: :desc)
+        .first
+    when "down"
+      person_medication
+        .person
+        .person_medications
+        .where(position: (person_medication.position + 1)..)
+        .order(position: :asc, id: :asc)
+        .first
     end
   end
 

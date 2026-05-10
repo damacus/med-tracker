@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
-RSpec.describe 'Admin Access Authorization' do
-  fixtures :accounts, :people, :users
+RSpec.describe "Admin Access Authorization" do
+  fixtures(:accounts, :people, :users)
 
   before do
     driven_by(:playwright)
@@ -12,40 +12,40 @@ RSpec.describe 'Admin Access Authorization' do
   let(:admin) { users(:admin) }
   let(:carer) { users(:jane) }
 
-  describe 'admin user management' do
-    it 'allows administrators to access user management' do
+  describe "admin user management" do
+    it "allows administrators to access user management" do
       login_as(admin)
-      visit admin_users_path
+      visit(admin_users_path)
 
-      expect(page).to have_text('User Management')
-      expect(page).to have_text(admin.email_address)
+      expect(page).to(have_text("User Management"))
+      expect(page).to(have_text(admin.email_address))
     end
 
-    it 'denies non-administrators access to user management' do
+    it "denies non-administrators access to user management" do
       login_as(carer)
-      visit admin_users_path
+      visit(admin_users_path)
 
-      expect(page).to have_text('You are not authorized to perform this action')
-      expect(page).to have_no_text('User Management')
+      expect(page).to(have_text("You are not authorized to perform this action"))
+      expect(page).to(have_no_text("User Management"))
     end
   end
 
-  describe 'people management' do
-    it 'allows administrators to view all people' do
+  describe "people management" do
+    it "allows administrators to view all people" do
       login_as(admin)
-      visit people_path
+      visit(people_path)
 
-      expect(page).to have_text('People')
-      expect(Person.count).to be > 0
+      expect(page).to(have_text("People"))
+      expect(Person.count).to(be > 0)
     end
 
-    it 'restricts carers to viewing only their assigned people' do
+    it "restricts carers to viewing only their assigned people" do
       login_as(carer)
-      visit people_path
+      visit(people_path)
 
       # Carer should only see themselves and their patients
-      expect(page).to have_text(carer.person.name)
-      expect(page).to have_text('Child Patient')
+      expect(page).to(have_text(carer.person.name))
+      expect(page).to(have_text("Child Patient"))
     end
   end
 end

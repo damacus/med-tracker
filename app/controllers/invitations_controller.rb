@@ -10,11 +10,11 @@ class InvitationsController < ApplicationController
     @invitation = Invitation.pending.where.not(role: Invitation.roles[:minor]).find_by(token_digest: digest)
 
     unless @invitation
-      render plain: 'This invitation link is invalid or has expired.', status: :not_found
+      render(plain: "This invitation link is invalid or has expired.", status: :not_found)
       return
     end
 
     view = Components::Invitations::AcceptView.new(invitation: @invitation, token: token_value)
-    render Components::Layouts::AuthLayout.new(title: 'Accept Invitation - MedTracker', component: view)
+    render(Components::Layouts::AuthLayout.new(title: "Accept Invitation - MedTracker", component: view))
   end
 end

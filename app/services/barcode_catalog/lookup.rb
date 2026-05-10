@@ -45,7 +45,7 @@ module BarcodeCatalog
         display: record.vmp_name.presence || record.display,
         system: record.system,
         concept_class: record.concept_class,
-        source: 'nhs_dmd'
+        source: "nhs_dmd"
       }
     end
 

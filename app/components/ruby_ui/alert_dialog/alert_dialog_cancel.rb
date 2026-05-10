@@ -12,7 +12,7 @@ module RubyUI
       {
         variant: :outline,
         data: {
-          action: 'click->ruby-ui--alert-dialog#dismiss'
+          action: "click->ruby-ui--alert-dialog#dismiss"
         }
       }
     end

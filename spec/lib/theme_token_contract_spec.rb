@@ -1,71 +1,74 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
 ThemeTokenContract = Struct.new(:source)
 
 RSpec.describe ThemeTokenContract do
-  let(:source) { Rails.root.join('app/assets/tailwind/application.css').read }
+  let(:source) { Rails.root.join("app/assets/tailwind/application.css").read }
 
-  it 'authors the signed-in command centre baseline in oklch tokens' do
+  it "authors the signed-in command centre baseline in oklch tokens" do
     [
-      ':root[data-allow-palette="true"]',
-      '.dark:root[data-allow-palette="true"]'
+      ":root[data-allow-palette=\"true\"]",
+      ".dark:root[data-allow-palette=\"true\"]"
     ].each do |selector|
       block = css_block(selector)
 
-      expect(block).to include('--palette-color: oklch(')
-      expect(block).to include('--primary: oklch(')
-      expect(block).to include('--background: oklch(')
-      expect(block).to include('--surface-container-high: oklch(')
+      expect(block).to(include("--palette-color: oklch("))
+      expect(block).to(include("--primary: oklch("))
+      expect(block).to(include("--background: oklch("))
+      expect(block).to(include("--surface-container-high: oklch("))
     end
   end
 
-  it 'defines every profile theme seed with an oklch palette color' do
-    palette_definitions = source.scan(
-      /:root\[data-allow-palette="true"\]\.theme-[\w-]+\s*\{\s*--palette-color:\s*([^;]+);/m
-    ).flatten
+  it "defines every profile theme seed with an oklch palette color" do
+    palette_definitions = source
+      .scan(
+        /:root\[data-allow-palette="true"\]\.theme-[\w-]+\s*\{\s*--palette-color:\s*([^;]+);/m
+      )
+      .flatten
 
-    expect(palette_definitions).not_to be_empty
-    expect(palette_definitions).to all(include('oklch('))
+    expect(palette_definitions).not_to(be_empty)
+    expect(palette_definitions).to(all(include("oklch(")))
   end
 
-  it 'keeps dark signed-in on-container tokens above earlier signed-in overrides' do
-    block = css_block('.dark:root[data-allow-palette="true"]')
+  it "keeps dark signed-in on-container tokens above earlier signed-in overrides" do
+    block = css_block(".dark:root[data-allow-palette=\"true\"]")
 
-    expect(block).to include('--on-primary-container: var(--foreground) !important')
-    expect(block.scan('--on-secondary-container: var(--foreground) !important').count).to eq(2)
+    expect(block).to(include("--on-primary-container: var(--foreground) !important"))
+    expect(block.scan("--on-secondary-container: var(--foreground) !important").count).to(eq(2))
   end
 
-  it 'keeps derived theme overrides inside perceptual color spaces' do
+  it "keeps derived theme overrides inside perceptual color spaces" do
     [
-      ':root[data-allow-palette="true"][class*="theme-"]',
-      '.dark:root[data-allow-palette="true"][class*="theme-"]'
+      ":root[data-allow-palette=\"true\"][class*=\"theme-\"]",
+      ".dark:root[data-allow-palette=\"true\"][class*=\"theme-\"]"
     ].each do |selector|
       block = css_block(selector)
 
-      expect(block).to include('color-mix(in oklab')
-      expect(block).not_to match(/\bblack\b/)
-      expect(block).not_to match(/\bwhite\b/)
+      expect(block).to(include("color-mix(in oklab"))
+      expect(block).not_to(match(/\bblack\b/))
+      expect(block).not_to(match(/\bwhite\b/))
     end
   end
 
-  it 'aliases legacy tokens to M3 semantic roles for backward compatibility' do
-    block = css_block('@theme inline')
+  it "aliases legacy tokens to M3 semantic roles for backward compatibility" do
+    block = css_block("@theme inline")
 
-    expect(block).to include('--color-muted: var(--secondary-container)')
-    expect(block).to include('--color-muted-foreground: var(--on-secondary-container)')
-    expect(block).to include('--color-accent: var(--tertiary-container)')
-    expect(block).to include('--color-accent-foreground: var(--on-tertiary-container)')
+    expect(block).to(include("--color-muted: var(--secondary-container)"))
+    expect(block).to(include("--color-muted-foreground: var(--on-secondary-container)"))
+    expect(block).to(include("--color-accent: var(--tertiary-container)"))
+    expect(block).to(include("--color-accent-foreground: var(--on-tertiary-container)"))
   end
 
-  it 'defines the full M3 surface container scale' do
-    block = css_block(':root')
+  it "defines the full M3 surface container scale" do
+    block = css_block(":root")
 
     %w[lowest low high highest].each do |level|
-      expect(block).to include("--surface-container-#{level}:")
+      expect(block).to(include("--surface-container-#{level}:"))
     end
-    expect(block).to include('--surface-container:')
+
+    expect(block).to(include("--surface-container:"))
   end
 
   def css_block(selector)

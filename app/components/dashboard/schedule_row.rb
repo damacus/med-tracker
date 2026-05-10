@@ -22,19 +22,19 @@ module Components
           render_medication_cell
           TableCell { format_dosage }
           TableCell { format_quantity }
-          TableCell { schedule.frequency || '—' }
+          TableCell { schedule.frequency || "—" }
           TableCell { format_end_date }
-          TableCell(class: 'text-center') { render_actions }
+          TableCell(class: "text-center") { render_actions }
         end
       end
 
       private
 
       def render_person_cell
-        TableCell(class: 'font-medium') do
-          div(class: 'flex items-center gap-2') do
+        TableCell(class: "font-medium") do
+          div(class: "flex items-center gap-2") do
             render_person_avatar
-            span(class: 'font-semibold text-foreground') { person.name }
+            span(class: "font-semibold text-foreground") { person.name }
           end
         end
       end
@@ -42,31 +42,32 @@ module Components
       def render_person_avatar
         Avatar(size: :sm) do
           AvatarFallback do
-            render Icons::User.new(size: 14, aria_hidden: 'true', class: 'text-on-secondary-container')
+            render(Icons::User.new(size: 14, aria_hidden: "true", class: "text-on-secondary-container"))
           end
         end
       end
 
       def render_medication_cell
         TableCell do
-          div(class: 'flex justify-between items-center w-full gap-2') do
-            div(class: 'flex items-start gap-2 min-w-0') do
+          div(class: "flex justify-between items-center w-full gap-2") do
+            div(class: "flex items-start gap-2 min-w-0") do
               render_medication_icon
-              span(class: 'font-medium break-words leading-snug') { schedule.medication.name }
+              span(class: "font-medium break-words leading-snug") { schedule.medication.name }
             end
-            render Components::Shared::StockBadge.new(medication: schedule.medication)
+
+            render(Components::Shared::StockBadge.new(medication: schedule.medication))
           end
         end
       end
 
       def render_medication_icon
-        div(class: 'w-8 h-8 rounded-lg flex items-center justify-center bg-success-light text-success flex-shrink-0') do
-          render Icons::Pill.new(size: 16)
+        div(class: "w-8 h-8 rounded-lg flex items-center justify-center bg-success-light text-success flex-shrink-0") do
+          render(Icons::Pill.new(size: 16))
         end
       end
 
       def render_actions
-        div(class: 'flex items-center justify-center gap-2') do
+        div(class: "flex items-center justify-center gap-2") do
           render_take_now_button
           render_delete_button if can_delete?
         end
@@ -74,28 +75,31 @@ module Components
 
       def render_take_now_button
         label = if blocked_reason == :out_of_stock
-                  t('dashboard.person_schedule.out_of_stock')
-                else
-                  t('dashboard.person_schedule.on_cooldown')
-                end
-        render Components::Medications::TakeAction.new(
-          source: schedule,
-          context: { person: person, current_user: current_user },
-          amount: schedule.dose_amount,
-          button: {
-            label: t('dashboard.person_schedule.take_now'),
-            variant: :success_outline,
-            size: :sm,
-            icon: Icons::Pill,
-            class: 'inline-block',
-            testid: "take-medication-#{schedule.id}",
-            form_class: 'inline-block'
-          },
-          state: {
-            disabled: blocked_reason.present?,
-            label: label,
-            icon: Icons::AlertCircle
-          }
+          t("dashboard.person_schedule.out_of_stock")
+        else
+          t("dashboard.person_schedule.on_cooldown")
+        end
+
+        render(
+          Components::Medications::TakeAction.new(
+            source: schedule,
+            context: {person: person, current_user: current_user},
+            amount: schedule.dose_amount,
+            button: {
+              label: t("dashboard.person_schedule.take_now"),
+              variant: :success_outline,
+              size: :sm,
+              icon: Icons::Pill,
+              class: "inline-block",
+              testid: "take-medication-#{schedule.id}",
+              form_class: "inline-block"
+            },
+            state: {
+              disabled: blocked_reason.present?,
+              label: label,
+              icon: Icons::AlertCircle
+            }
+          )
         )
       end
 
@@ -104,8 +108,10 @@ module Components
       end
 
       def render_delete_button
-        render Components::Dashboard::DeleteConfirmationDialog.new(
-          schedule: schedule
+        render(
+          Components::Dashboard::DeleteConfirmationDialog.new(
+            schedule: schedule
+          )
         )
       end
     end

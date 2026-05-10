@@ -8,7 +8,7 @@ module Components
 
         attr_reader :medication, :locations, :people, :current_user, :variant
 
-        def initialize(medication:, locations:, people:, current_user: nil, variant: 'fullpage')
+        def initialize(medication:, locations:, people:, current_user: nil, variant: "fullpage")
           @medication = medication
           @locations = locations
           @people = people
@@ -19,38 +19,40 @@ module Components
 
         def view_template
           div(
-            id: 'wizard-content',
+            id: "wizard-content",
             data: {
-              controller: ai_medication_help_enabled? ? 'wizard ai-medication-help' : 'wizard',
+              controller: ai_medication_help_enabled? ? "wizard ai-medication-help" : "wizard",
               wizard_current_value: 0,
               ai_medication_help_url_value: ai_medication_suggestions_path
             }
           ) do
-            render StepIndicator.new
+            render(StepIndicator.new)
 
             form_with(
               model: medication,
-              class: 'space-y-8',
+              class: "space-y-8",
               turbo_frame: frame_target,
-              data: { testid: 'medication-wizard-form' }
+              data: {testid: "medication-wizard-form"}
             ) do |_form|
               render_errors if medication.errors.any?
-              input(type: 'hidden', name: 'wizard', value: 'true')
+              input(type: "hidden", name: "wizard", value: "true")
               if ai_medication_help_enabled?
                 input(
-                  type: 'hidden',
-                  name: 'ai_medication_suggestion_applied',
-                  value: '',
-                  data: { 'ai-medication-help-target': 'appliedField' }
+                  type: "hidden",
+                  name: "ai_medication_suggestion_applied",
+                  value: "",
+                  data: {'ai-medication-help-target': "appliedField"}
                 )
               end
+
               if medication.barcode.present?
-                input(type: 'hidden', name: 'medication[barcode]', value: medication.barcode)
+                input(type: "hidden", name: "medication[barcode]", value: medication.barcode)
               end
+
               if medication.dmd_code.present?
-                input(type: 'hidden', name: 'medication[dmd_code]', value: medication.dmd_code)
-                input(type: 'hidden', name: 'medication[dmd_system]', value: medication.dmd_system)
-                input(type: 'hidden', name: 'medication[dmd_concept_class]', value: medication.dmd_concept_class)
+                input(type: "hidden", name: "medication[dmd_code]", value: medication.dmd_code)
+                input(type: "hidden", name: "medication[dmd_system]", value: medication.dmd_system)
+                input(type: "hidden", name: "medication[dmd_concept_class]", value: medication.dmd_concept_class)
               end
 
               render_step_panels
@@ -62,7 +64,7 @@ module Components
         private
 
         def frame_target
-          overlay_variant? ? 'modal' : nil
+          overlay_variant? ? "modal" : nil
         end
 
         def overlay_variant?
@@ -70,15 +72,20 @@ module Components
         end
 
         def render_errors
-          render RubyUI::Alert.new(variant: :destructive,
-                                   class: 'mb-4 rounded-shape-xl border-none shadow-elevation-1') do
-            div(class: 'flex items-start gap-3') do
-              render Icons::AlertCircle.new(size: 20)
+          render(
+            RubyUI::Alert.new(
+              variant: :destructive,
+              class: "mb-4 rounded-shape-xl border-none shadow-elevation-1"
+            )
+          ) do
+            div(class: "flex items-start gap-3") do
+              render(Icons::AlertCircle.new(size: 20))
               div do
-                m3_heading(variant: :title_medium, level: 2, class: 'font-bold mb-1') do
-                  t('forms.medications.validation_errors', count: medication.errors.count)
+                m3_heading(variant: :title_medium, level: 2, class: "font-bold mb-1") do
+                  t("forms.medications.validation_errors", count: medication.errors.count)
                 end
-                ul(class: 'text-sm opacity-90 list-disc pl-4 space-y-1 font-medium') do
+
+                ul(class: "text-sm opacity-90 list-disc pl-4 space-y-1 font-medium") do
                   medication.errors.full_messages.each do |message|
                     li { message }
                   end
@@ -89,26 +96,30 @@ module Components
         end
 
         def render_step_panels
-          div(data: { wizard_target: 'step' }) do
-            render StepBasicInfo.new(
-              medication: medication,
-              locations: locations,
-              ai_medication_help_enabled: ai_medication_help_enabled?
+          div(data: {wizard_target: "step"}) do
+            render(
+              StepBasicInfo.new(
+                medication: medication,
+                locations: locations,
+                ai_medication_help_enabled: ai_medication_help_enabled?
+              )
             )
           end
 
-          div(class: 'hidden', data: { wizard_target: 'step' }) do
-            render StepDoseSchedule.new(medication: medication, people: people)
+          div(class: "hidden", data: {wizard_target: "step"}) do
+            render(StepDoseSchedule.new(medication: medication, people: people))
           end
 
-          div(class: 'hidden', data: { wizard_target: 'step' }) do
-            render StepSupply.new(medication: medication)
+          div(class: "hidden", data: {wizard_target: "step"}) do
+            render(StepSupply.new(medication: medication))
           end
 
-          div(class: 'hidden', data: { wizard_target: 'step' }) do
-            render StepWarnings.new(
-              medication: medication,
-              ai_medication_help_enabled: ai_medication_help_enabled?
+          div(class: "hidden", data: {wizard_target: "step"}) do
+            render(
+              StepWarnings.new(
+                medication: medication,
+                ai_medication_help_enabled: ai_medication_help_enabled?
+              )
             )
           end
         end
@@ -119,21 +130,21 @@ module Components
 
         def render_navigation
           div(
-            class: 'flex flex-col-reverse gap-3 pt-6 border-t border-outline-variant/30 ' \
-                   'sm:flex-row sm:items-center sm:justify-between sm:gap-4'
+            class: "flex flex-col-reverse gap-3 pt-6 border-t border-outline-variant/30 " \
+              "sm:flex-row sm:items-center sm:justify-between sm:gap-4"
           ) do
-            div(class: 'flex items-center gap-3') do
+            div(class: "flex items-center gap-3") do
               m3_button(
                 type: :button,
                 variant: :text,
-                class: 'font-bold text-on-surface-variant hover:text-foreground invisible',
+                class: "font-bold text-on-surface-variant hover:text-foreground invisible",
                 data: {
-                  wizard_target: 'prevButton',
-                  action: 'click->wizard#prev'
+                  wizard_target: "prevButton",
+                  action: "click->wizard#prev"
                 }
               ) do
-                render Icons::ChevronLeft.new(size: 16, class: 'mr-1')
-                plain t('forms.medications.back')
+                render(Icons::ChevronLeft.new(size: 16, class: "mr-1"))
+                plain(t("forms.medications.back"))
               end
 
               if overlay_variant?
@@ -141,37 +152,37 @@ module Components
                   href: medications_path,
                   variant: :text,
                   size: :sm,
-                  class: 'font-bold text-on-surface-variant hover:text-foreground',
-                  data: { turbo_frame: '_top' }
-                ) { 'Cancel' }
+                  class: "font-bold text-on-surface-variant hover:text-foreground",
+                  data: {turbo_frame: "_top"}
+                ) { "Cancel" }
               end
             end
 
-            div(class: 'flex flex-col gap-3 sm:flex-row sm:gap-3') do
+            div(class: "flex flex-col gap-3 sm:flex-row sm:gap-3") do
               m3_button(
                 type: :button,
                 variant: :filled,
                 size: :lg,
-                class: 'w-full sm:w-auto sm:px-8 rounded-shape-xl shadow-lg shadow-primary/20',
+                class: "w-full sm:w-auto sm:px-8 rounded-shape-xl shadow-lg shadow-primary/20",
                 data: {
-                  wizard_target: 'nextButton',
-                  action: 'click->wizard#next'
+                  wizard_target: "nextButton",
+                  action: "click->wizard#next"
                 }
               ) do
-                plain t('forms.medications.wizard.continue')
+                plain(t("forms.medications.wizard.continue"))
               end
 
               m3_button(
                 type: :submit,
                 variant: :filled,
                 size: :lg,
-                class: 'w-full sm:w-auto sm:px-8 rounded-shape-xl shadow-lg shadow-primary/20 hidden',
+                class: "w-full sm:w-auto sm:px-8 rounded-shape-xl shadow-lg shadow-primary/20 hidden",
                 data: {
-                  wizard_target: 'submitButton',
-                  turbo_submits_with: t('forms.medications.saving')
+                  wizard_target: "submitButton",
+                  turbo_submits_with: t("forms.medications.saving")
                 }
               ) do
-                plain t('forms.medications.save_medication')
+                plain(t("forms.medications.save_medication"))
               end
             end
           end

@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
 RSpec.describe Medication do
   subject(:medication) do
     described_class.new(
-      name: 'Ibuprofen',
+      name: "Ibuprofen",
       current_supply: 200,
       reorder_threshold: 50
     )
@@ -13,24 +13,24 @@ RSpec.describe Medication do
 
   def blank_dosage_row_attributes
     {
-      amount: '',
-      unit: 'ml',
-      frequency: '',
-      description: '',
-      default_max_daily_doses: '',
-      default_min_hours_between_doses: '',
-      default_dose_cycle: 'daily',
-      default_for_adults: '0',
-      default_for_children: '0',
-      _destroy: '0'
+      amount: "",
+      unit: "ml",
+      frequency: "",
+      description: "",
+      default_max_daily_doses: "",
+      default_min_hours_between_doses: "",
+      default_dose_cycle: "daily",
+      default_for_adults: "0",
+      default_for_children: "0",
+      _destroy: "0"
     }
   end
 
   def create_persisted_dose_option(medication)
     medication.dosage_records.create!(
       amount: 2.5,
-      unit: 'ml',
-      frequency: 'Every morning',
+      unit: "ml",
+      frequency: "Every morning",
       default_max_daily_doses: 1,
       default_min_hours_between_doses: 24,
       default_dose_cycle: :daily
@@ -42,7 +42,7 @@ RSpec.describe Medication do
       :dosage,
       medication: medication,
       amount: 1,
-      unit: 'tablet',
+      unit: "tablet",
       frequency: frequency,
       current_supply: current_supply,
       reorder_threshold: reorder_threshold
@@ -52,7 +52,7 @@ RSpec.describe Medication do
   def create_morning_tracked_dosage_record(medication:, current_supply:, reorder_threshold:)
     create_tracked_dosage_record(
       medication: medication,
-      frequency: 'Morning',
+      frequency: "Morning",
       current_supply: current_supply,
       reorder_threshold: reorder_threshold
     )
@@ -61,7 +61,7 @@ RSpec.describe Medication do
   def create_evening_tracked_dosage_record(medication:, current_supply:, reorder_threshold:)
     create_tracked_dosage_record(
       medication: medication,
-      frequency: 'Evening',
+      frequency: "Evening",
       current_supply: current_supply,
       reorder_threshold: reorder_threshold
     )
@@ -83,142 +83,147 @@ RSpec.describe Medication do
   end
 
   def expect_inventory_aggregate(medication:, current_supply:, supply_at_last_restock:, reorder_threshold:)
-    expect(medication.reload).to have_attributes(
-      current_supply: current_supply,
-      supply_at_last_restock: supply_at_last_restock,
-      reorder_threshold: reorder_threshold
+    expect(medication.reload).to(
+      have_attributes(
+        current_supply: current_supply,
+        supply_at_last_restock: supply_at_last_restock,
+        reorder_threshold: reorder_threshold
+      )
     )
   end
 
-  describe 'validations' do
-    it { is_expected.to validate_presence_of(:name) }
-    it { is_expected.not_to validate_presence_of(:current_supply) }
-    it { is_expected.to allow_value('sachet').for(:dosage_unit) }
-    it { is_expected.to allow_value('capsule').for(:dosage_unit) }
-    it { is_expected.to allow_value('pad').for(:dosage_unit) }
-    it { is_expected.to validate_numericality_of(:dosage_amount).is_greater_than(0).allow_nil }
+  describe "validations" do
+    it { is_expected.to(validate_presence_of(:name)) }
+    it { is_expected.not_to(validate_presence_of(:current_supply)) }
+    it { is_expected.to(allow_value("sachet").for(:dosage_unit)) }
+    it { is_expected.to(allow_value("capsule").for(:dosage_unit)) }
+    it { is_expected.to(allow_value("pad").for(:dosage_unit)) }
+    it { is_expected.to(validate_numericality_of(:dosage_amount).is_greater_than(0).allow_nil) }
 
-    it { is_expected.to allow_value(97.5).for(:current_supply) }
-    it { is_expected.to allow_value(2.5).for(:reorder_threshold) }
-    it { is_expected.to validate_numericality_of(:current_supply).is_greater_than_or_equal_to(0).allow_nil }
-    it { is_expected.to validate_numericality_of(:reorder_threshold).is_greater_than_or_equal_to(0) }
+    it { is_expected.to(allow_value(97.5).for(:current_supply)) }
+    it { is_expected.to(allow_value(2.5).for(:reorder_threshold)) }
+    it { is_expected.to(validate_numericality_of(:current_supply).is_greater_than_or_equal_to(0).allow_nil) }
+    it { is_expected.to(validate_numericality_of(:reorder_threshold).is_greater_than_or_equal_to(0)) }
 
-    it { is_expected.to allow_value('Analgesic').for(:category) }
-    it { is_expected.to allow_value('Osmotic Laxative').for(:category) }
-    it { is_expected.to allow_value('Vitamin').for(:category) }
-    it { is_expected.to allow_value(nil).for(:category) }
-    it { is_expected.to allow_value('').for(:category) }
-    it { is_expected.not_to allow_value('invalid_category').for(:category) }
+    it { is_expected.to(allow_value("Analgesic").for(:category)) }
+    it { is_expected.to(allow_value("Osmotic Laxative").for(:category)) }
+    it { is_expected.to(allow_value("Vitamin").for(:category)) }
+    it { is_expected.to(allow_value(nil).for(:category)) }
+    it { is_expected.to(allow_value("").for(:category)) }
+    it { is_expected.not_to(allow_value("invalid_category").for(:category)) }
 
-    it { is_expected.to allow_value(nil).for(:barcode) }
-    it { is_expected.to allow_value('').for(:barcode) }
-    it { is_expected.to allow_value('5000158100138').for(:barcode) }
-    it { is_expected.to allow_value('05000158100138').for(:barcode) }
-    it { is_expected.to allow_value(nil).for(:dmd_code) }
-    it { is_expected.to allow_value('').for(:dmd_code) }
+    it { is_expected.to(allow_value(nil).for(:barcode)) }
+    it { is_expected.to(allow_value("").for(:barcode)) }
+    it { is_expected.to(allow_value("5000158100138").for(:barcode)) }
+    it { is_expected.to(allow_value("05000158100138").for(:barcode)) }
+    it { is_expected.to(allow_value(nil).for(:dmd_code)) }
+    it { is_expected.to(allow_value("").for(:dmd_code)) }
 
-    it 'rejects non-GTIN barcodes' do
-      medication.barcode = '1234567890'
+    it "rejects non-GTIN barcodes" do
+      medication.barcode = "1234567890"
       medication.valid?
 
-      expect(medication.errors[:barcode]).to include('must be a 13 or 14 digit GTIN')
+      expect(medication.errors[:barcode]).to(include("must be a 13 or 14 digit GTIN"))
     end
 
-    it 'rejects non-numeric barcodes' do
-      medication.barcode = 'abc123'
+    it "rejects non-numeric barcodes" do
+      medication.barcode = "abc123"
       medication.valid?
 
-      expect(medication.errors[:barcode]).to include('must be a 13 or 14 digit GTIN')
+      expect(medication.errors[:barcode]).to(include("must be a 13 or 14 digit GTIN"))
     end
 
-    it 'rejects duplicate barcodes' do
-      create(:medication, barcode: '5000158100138')
-      medication.barcode = '5000158100138'
+    it "rejects duplicate barcodes" do
+      create(:medication, barcode: "5000158100138")
+      medication.barcode = "5000158100138"
       medication.valid?
-      expect(medication.errors[:barcode]).to include('is already linked to another medication in inventory')
+      expect(medication.errors[:barcode]).to(include("is already linked to another medication in inventory"))
     end
 
-    it 'allows multiple nil barcodes' do
+    it "allows multiple nil barcodes" do
       create(:medication, barcode: nil)
       other = build(:medication, barcode: nil)
-      expect(other).to be_valid
+      expect(other).to(be_valid)
     end
 
-    it 'requires a dm+d system when a dm+d code is present' do
-      medication.dmd_code = '4585411000001109'
-      medication.dmd_system = ''
+    it "requires a dm+d system when a dm+d code is present" do
+      medication.dmd_code = "4585411000001109"
+      medication.dmd_system = ""
       medication.valid?
 
-      expect(medication.errors[:dmd_system]).to include("can't be blank")
+      expect(medication.errors[:dmd_system]).to(include("can't be blank"))
     end
   end
 
-  describe 'associations' do
-    it { is_expected.to belong_to(:location) }
-    it { is_expected.to have_many(:dosage_records).class_name('MedicationDosageOption').dependent(:destroy) }
-    it { is_expected.to have_many(:schedules).dependent(:destroy) }
+  describe "associations" do
+    it { is_expected.to(belong_to(:location)) }
+    it { is_expected.to(have_many(:dosage_records).class_name("MedicationDosageOption").dependent(:destroy)) }
+    it { is_expected.to(have_many(:schedules).dependent(:destroy)) }
   end
 
-  describe 'reorder_status' do
-    it 'only exposes reachable reorder workflow states' do
-      expect(described_class.reorder_statuses).to eq('ordered' => 1, 'received' => 2)
+  describe "reorder_status" do
+    it "only exposes reachable reorder workflow states" do
+      expect(described_class.reorder_statuses).to(eq("ordered" => 1, "received" => 2))
     end
   end
 
-  describe 'nested dosage records' do
-    it 'ignores untouched auto-appended dose option rows on update' do
-      medication = create(:medication, dosage_unit: 'ml')
+  describe "nested dosage records" do
+    it "ignores untouched auto-appended dose option rows on update" do
+      medication = create(:medication, dosage_unit: "ml")
       create_persisted_dose_option(medication)
 
       expect(
         medication.update(
-          name: 'Updated medication',
-          dosage_records_attributes: { '0' => blank_dosage_row_attributes }
+          name: "Updated medication",
+          dosage_records_attributes: {"0" => blank_dosage_row_attributes}
         )
-      ).to be(true)
+      )
+        .to(be(true))
 
-      expect(medication.reload.dosage_records.count).to eq(1)
+      expect(medication.reload.dosage_records.count).to(eq(1))
     end
   end
 
-  describe '#restock!' do
+  describe "#restock!" do
     let(:medication) { create(:medication, current_supply: 10, reorder_threshold: 5) }
 
-    it 'increments current_supply by the given quantity' do
-      expect { medication.restock!(quantity: 20) }.to change { medication.reload.current_supply }.from(10).to(30)
+    it "increments current_supply by the given quantity" do
+      expect { medication.restock!(quantity: 20) }.to(change { medication.reload.current_supply }.from(10).to(30))
     end
 
-    it 'increments current_supply by a decimal quantity' do
-      medication.update!(dosage_unit: 'ml', current_supply: 100, supply_at_last_restock: 100, reorder_threshold: 10)
+    it "increments current_supply by a decimal quantity" do
+      medication.update!(dosage_unit: "ml", current_supply: 100, supply_at_last_restock: 100, reorder_threshold: 10)
 
       expect do
-        medication.restock!(quantity: BigDecimal('12.5'))
-      end.to change { medication.reload.current_supply }.from(100).to(BigDecimal('112.5'))
+        medication.restock!(quantity: BigDecimal("12.5"))
+      end
+        .to(change { medication.reload.current_supply }.from(100).to(BigDecimal("112.5")))
     end
 
-    it 'treats a nil current_supply as zero' do
+    it "treats a nil current_supply as zero" do
       medication.update!(current_supply: nil, supply_at_last_restock: nil)
 
       expect do
-        medication.restock!(quantity: BigDecimal('12.5'))
-      end.to change { medication.reload.current_supply }.from(nil).to(BigDecimal('12.5'))
+        medication.restock!(quantity: BigDecimal("12.5"))
+      end
+        .to(change { medication.reload.current_supply }.from(nil).to(BigDecimal("12.5")))
     end
 
-    it 'sets supply_at_last_restock to the new current_supply' do
+    it "sets supply_at_last_restock to the new current_supply" do
       medication.restock!(quantity: 20)
-      expect(medication.reload.supply_at_last_restock).to eq(30)
+      expect(medication.reload.supply_at_last_restock).to(eq(30))
     end
 
-    it 'returns false for zero quantity' do
-      expect(medication.restock!(quantity: 0)).to be(false)
+    it "returns false for zero quantity" do
+      expect(medication.restock!(quantity: 0)).to(be(false))
     end
 
-    it 'returns false for negative quantity' do
-      expect(medication.restock!(quantity: -5)).to be(false)
+    it "returns false for negative quantity" do
+      expect(medication.restock!(quantity: -5)).to(be(false))
     end
   end
 
-  describe '#sync_inventory_from_dosage_records!' do
+  describe "#sync_inventory_from_dosage_records!" do
     let(:medication) do
       create(
         :medication,
@@ -228,16 +233,17 @@ RSpec.describe Medication do
       )
     end
 
-    it 'clears aggregate inventory when the last tracked dosage record is removed' do
+    it "clears aggregate inventory when the last tracked dosage record is removed" do
       create(
         :dosage,
         medication: medication,
         amount: 1,
-        unit: 'tablet',
-        frequency: 'Morning',
+        unit: "tablet",
+        frequency: "Morning",
         current_supply: 8,
         reorder_threshold: 3
-      ).destroy!
+      )
+        .destroy!
 
       expect_inventory_aggregate(
         medication: medication,
@@ -247,257 +253,261 @@ RSpec.describe Medication do
       )
     end
 
-    it 'recomputes aggregate inventory from the remaining tracked dosage records' do
+    it "recomputes aggregate inventory from the remaining tracked dosage records" do
       dosage_records = create_remaining_tracked_dosage_records(medication)
 
       dosage_records[:morning].destroy!
 
-      expect_inventory_aggregate(medication: medication, current_supply: 3, supply_at_last_restock: 8,
-                                 reorder_threshold: 1)
-      expect(dosage_records[:evening].reload.current_supply).to eq(3)
+      expect_inventory_aggregate(
+        medication: medication,
+        current_supply: 3,
+        supply_at_last_restock: 8,
+        reorder_threshold: 1
+      )
+      expect(dosage_records[:evening].reload.current_supply).to(eq(3))
     end
   end
 
-  describe '#supply_percentage' do
-    context 'when supply_at_last_restock is set' do
+  describe "#supply_percentage" do
+    context("when supply_at_last_restock is set") do
       let(:medication) { build(:medication, current_supply: 40, supply_at_last_restock: 80, reorder_threshold: 10) }
 
-      it 'returns percentage of current_supply relative to supply_at_last_restock' do
-        expect(medication.supply_percentage).to eq(50)
+      it "returns percentage of current_supply relative to supply_at_last_restock" do
+        expect(medication.supply_percentage).to(eq(50))
       end
     end
 
-    context 'when supply_at_last_restock is nil' do
+    context("when supply_at_last_restock is nil") do
       let(:medication) { build(:medication, current_supply: 40, supply_at_last_restock: nil, reorder_threshold: 10) }
 
-      it 'falls back to reorder_threshold as denominator' do
-        expect(medication.supply_percentage).to eq(100)
+      it "falls back to reorder_threshold as denominator" do
+        expect(medication.supply_percentage).to(eq(100))
       end
     end
 
-    context 'when current_supply exceeds supply_at_last_restock' do
+    context("when current_supply exceeds supply_at_last_restock") do
       let(:medication) { build(:medication, current_supply: 100, supply_at_last_restock: 80, reorder_threshold: 10) }
 
-      it 'caps at 100' do
-        expect(medication.supply_percentage).to eq(100)
+      it "caps at 100" do
+        expect(medication.supply_percentage).to(eq(100))
       end
     end
 
-    context 'when current_supply is zero' do
+    context("when current_supply is zero") do
       let(:medication) { build(:medication, current_supply: 0, supply_at_last_restock: 80, reorder_threshold: 10) }
 
-      it 'returns zero' do
-        expect(medication.supply_percentage).to eq(0)
+      it "returns zero" do
+        expect(medication.supply_percentage).to(eq(0))
       end
     end
 
-    context 'when current_supply is nil' do
+    context("when current_supply is nil") do
       let(:medication) { build(:medication, current_supply: nil, supply_at_last_restock: nil, reorder_threshold: 10) }
 
-      it 'returns zero' do
-        expect(medication.supply_percentage).to eq(0)
+      it "returns zero" do
+        expect(medication.supply_percentage).to(eq(0))
       end
     end
   end
 
-  describe '#low_stock?' do
+  describe "#low_stock?" do
     subject(:medication) do
       described_class.new(
-        name: 'Ibuprofen',
+        name: "Ibuprofen",
         current_supply: current_supply,
         reorder_threshold: 50
       )
     end
 
-    context 'when current_supply is below the reorder threshold' do
+    context("when current_supply is below the reorder threshold") do
       let(:current_supply) { 25 }
 
-      it 'returns true' do
-        expect(medication.low_stock?).to be(true)
+      it "returns true" do
+        expect(medication.low_stock?).to(be(true))
       end
     end
 
-    context 'when current_supply meets the reorder threshold' do
+    context("when current_supply meets the reorder threshold") do
       let(:current_supply) { 50 }
 
-      it 'returns true' do
-        expect(medication.low_stock?).to be(true)
+      it "returns true" do
+        expect(medication.low_stock?).to(be(true))
       end
     end
 
-    context 'when current_supply is above the reorder threshold' do
+    context("when current_supply is above the reorder threshold") do
       let(:current_supply) { 75 }
 
-      it 'returns false' do
-        expect(medication.low_stock?).to be(false)
+      it "returns false" do
+        expect(medication.low_stock?).to(be(false))
       end
     end
   end
 
-  describe '#out_of_stock?' do
+  describe "#out_of_stock?" do
     subject(:medication) { described_class.new(current_supply: current_supply) }
 
-    context 'when current_supply is 0' do
+    context("when current_supply is 0") do
       let(:current_supply) { 0 }
 
-      it { is_expected.to be_out_of_stock }
+      it { is_expected.to(be_out_of_stock) }
     end
 
-    context 'when current_supply is positive' do
+    context("when current_supply is positive") do
       let(:current_supply) { 1 }
 
-      it { is_expected.not_to be_out_of_stock }
+      it { is_expected.not_to(be_out_of_stock) }
     end
 
-    context 'when current_supply is nil (untracked)' do
+    context("when current_supply is nil (untracked)") do
       let(:current_supply) { nil }
 
-      it { is_expected.not_to be_out_of_stock }
+      it { is_expected.not_to(be_out_of_stock) }
     end
   end
 
-  describe '#estimated_daily_consumption' do
+  describe "#estimated_daily_consumption" do
     let(:medication) { create(:medication, current_supply: 100, reorder_threshold: 10) }
 
-    context 'with no schedules or person_medications' do
-      it 'returns 0.0 with no schedules or person_medications' do
-        expect(medication.estimated_daily_consumption).to eq(0.0)
+    context("with no schedules or person_medications") do
+      it "returns 0.0 with no schedules or person_medications" do
+        expect(medication.estimated_daily_consumption).to(eq(0.0))
       end
     end
 
-    context 'with a daily schedule' do
+    context("with a daily schedule") do
       before do
         dosage = create(:dosage, medication: medication)
         create(:schedule, medication: medication, dosage: dosage, max_daily_doses: 4, dose_cycle: :daily)
       end
 
-      it 'returns the max_daily_doses' do
-        expect(medication.estimated_daily_consumption).to eq(4.0)
+      it "returns the max_daily_doses" do
+        expect(medication.estimated_daily_consumption).to(eq(4.0))
       end
     end
 
-    context 'with a weekly schedule' do
+    context("with a weekly schedule") do
       before do
         dosage = create(:dosage, medication: medication)
         create(:schedule, :weekly, medication: medication, dosage: dosage, max_daily_doses: 7)
       end
 
-      it 'normalizes weekly schedule to daily rate' do
-        expect(medication.estimated_daily_consumption).to eq(1.0)
+      it "normalizes weekly schedule to daily rate" do
+        expect(medication.estimated_daily_consumption).to(eq(1.0))
       end
     end
 
-    context 'with a monthly schedule' do
+    context("with a monthly schedule") do
       before do
         dosage = create(:dosage, medication: medication)
         create(:schedule, :monthly, medication: medication, dosage: dosage, max_daily_doses: 30)
       end
 
-      it 'normalizes monthly schedule to daily rate' do
-        expect(medication.estimated_daily_consumption).to eq(1.0)
+      it "normalizes monthly schedule to daily rate" do
+        expect(medication.estimated_daily_consumption).to(eq(1.0))
       end
     end
 
-    context 'with multiple schedules' do
+    context("with multiple schedules") do
       before do
         dosage = create(:dosage, medication: medication)
         create(:schedule, medication: medication, dosage: dosage, max_daily_doses: 4, dose_cycle: :daily)
         create(:schedule, medication: medication, dosage: dosage, max_daily_doses: 2, dose_cycle: :daily)
       end
 
-      it 'sums across all active schedules' do
-        expect(medication.estimated_daily_consumption).to eq(6.0)
+      it "sums across all active schedules" do
+        expect(medication.estimated_daily_consumption).to(eq(6.0))
       end
     end
 
-    context 'with expired schedules' do
+    context("with expired schedules") do
       before do
         dosage = create(:dosage, medication: medication)
         create(:schedule, :expired, medication: medication, dosage: dosage, max_daily_doses: 4)
       end
 
-      it 'excludes expired schedules' do
-        expect(medication.estimated_daily_consumption).to eq(0.0)
+      it "excludes expired schedules" do
+        expect(medication.estimated_daily_consumption).to(eq(0.0))
       end
     end
 
-    context 'with person_medications' do
+    context("with person_medications") do
       before do
         create(:person_medication, medication: medication, max_daily_doses: 2)
       end
 
-      it 'includes person_medication daily doses' do
-        expect(medication.estimated_daily_consumption).to eq(2.0)
+      it "includes person_medication daily doses" do
+        expect(medication.estimated_daily_consumption).to(eq(2.0))
       end
     end
 
-    context 'with schedules and person_medications combined' do
+    context("with schedules and person_medications combined") do
       before do
         dosage = create(:dosage, medication: medication)
         create(:schedule, medication: medication, dosage: dosage, max_daily_doses: 3, dose_cycle: :daily)
         create(:person_medication, medication: medication, max_daily_doses: 1)
       end
 
-      it 'sums both sources' do
-        expect(medication.estimated_daily_consumption).to eq(4.0)
+      it "sums both sources" do
+        expect(medication.estimated_daily_consumption).to(eq(4.0))
       end
     end
 
-    context 'with nil max_daily_doses' do
+    context("with nil max_daily_doses") do
       before do
         create(:person_medication, medication: medication, max_daily_doses: nil)
       end
 
-      it 'treats nil as zero' do
-        expect(medication.estimated_daily_consumption).to eq(0.0)
+      it "treats nil as zero" do
+        expect(medication.estimated_daily_consumption).to(eq(0.0))
       end
     end
   end
 
-  describe '#forecast_available?' do
+  describe "#forecast_available?" do
     let(:medication) { create(:medication, current_supply: 100, reorder_threshold: 10) }
 
-    context 'when current_supply is present and daily consumption is positive' do
+    context("when current_supply is present and daily consumption is positive") do
       before do
         dosage = create(:dosage, medication: medication)
         create(:schedule, medication: medication, dosage: dosage, max_daily_doses: 2, dose_cycle: :daily)
       end
 
-      it 'returns true' do
-        expect(medication.forecast_available?).to be(true)
+      it "returns true" do
+        expect(medication.forecast_available?).to(be(true))
       end
     end
 
-    context 'when current_supply is nil' do
+    context("when current_supply is nil") do
       let(:medication) { create(:medication, current_supply: nil) }
 
-      it 'returns false' do
-        expect(medication.forecast_available?).to be(false)
+      it "returns false" do
+        expect(medication.forecast_available?).to(be(false))
       end
     end
 
-    context 'when no schedules exist' do
-      it 'returns false' do
-        expect(medication.forecast_available?).to be(false)
+    context("when no schedules exist") do
+      it "returns false" do
+        expect(medication.forecast_available?).to(be(false))
       end
     end
   end
 
-  describe '#days_until_out_of_stock' do
+  describe "#days_until_out_of_stock" do
     let(:medication) { create(:medication, current_supply: 20, reorder_threshold: 5) }
 
-    context 'when forecast is available' do
+    context("when forecast is available") do
       before do
         dosage = create(:dosage, medication: medication)
         create(:schedule, medication: medication, dosage: dosage, max_daily_doses: 4, dose_cycle: :daily)
       end
 
-      it 'returns the number of days' do
-        expect(medication.days_until_out_of_stock).to eq(5)
+      it "returns the number of days" do
+        expect(medication.days_until_out_of_stock).to(eq(5))
       end
     end
 
-    context 'when already out of stock' do
+    context("when already out of stock") do
       let(:medication) { create(:medication, current_supply: 0, reorder_threshold: 5) }
 
       before do
@@ -505,44 +515,44 @@ RSpec.describe Medication do
         create(:schedule, medication: medication, dosage: dosage, max_daily_doses: 4, dose_cycle: :daily)
       end
 
-      it 'returns zero' do
-        expect(medication.days_until_out_of_stock).to eq(0)
+      it "returns zero" do
+        expect(medication.days_until_out_of_stock).to(eq(0))
       end
     end
 
-    context 'when forecast is not available' do
-      it 'returns nil' do
-        expect(medication.days_until_out_of_stock).to be_nil
+    context("when forecast is not available") do
+      it "returns nil" do
+        expect(medication.days_until_out_of_stock).to(be_nil)
       end
     end
 
-    context 'with fractional daily rate' do
+    context("with fractional daily rate") do
       before do
         dosage = create(:dosage, medication: medication)
         create(:schedule, :weekly, medication: medication, dosage: dosage, max_daily_doses: 7)
       end
 
-      it 'rounds up to nearest day' do
-        expect(medication.days_until_out_of_stock).to eq(20)
+      it "rounds up to nearest day" do
+        expect(medication.days_until_out_of_stock).to(eq(20))
       end
     end
   end
 
-  describe '#days_until_low_stock' do
+  describe "#days_until_low_stock" do
     let(:medication) { create(:medication, current_supply: 20, reorder_threshold: 5) }
 
-    context 'when forecast is available' do
+    context("when forecast is available") do
       before do
         dosage = create(:dosage, medication: medication)
         create(:schedule, medication: medication, dosage: dosage, max_daily_doses: 5, dose_cycle: :daily)
       end
 
-      it 'returns the number of days until supply reaches threshold' do
-        expect(medication.days_until_low_stock).to eq(3)
+      it "returns the number of days until supply reaches threshold" do
+        expect(medication.days_until_low_stock).to(eq(3))
       end
     end
 
-    context 'when already low stock' do
+    context("when already low stock") do
       let(:medication) { create(:medication, current_supply: 5, reorder_threshold: 10) }
 
       before do
@@ -550,19 +560,19 @@ RSpec.describe Medication do
         create(:schedule, medication: medication, dosage: dosage, max_daily_doses: 2, dose_cycle: :daily)
       end
 
-      it 'returns zero' do
-        expect(medication.days_until_low_stock).to eq(0)
+      it "returns zero" do
+        expect(medication.days_until_low_stock).to(eq(0))
       end
     end
 
-    context 'when forecast is not available' do
-      it 'returns nil' do
-        expect(medication.days_until_low_stock).to be_nil
+    context("when forecast is not available") do
+      it "returns nil" do
+        expect(medication.days_until_low_stock).to(be_nil)
       end
     end
   end
 
-  describe '#out_of_stock_date' do
+  describe "#out_of_stock_date" do
     let(:medication) { create(:medication, current_supply: 20, reorder_threshold: 5) }
 
     before do
@@ -570,12 +580,12 @@ RSpec.describe Medication do
       create(:schedule, medication: medication, dosage: dosage, max_daily_doses: 4, dose_cycle: :daily)
     end
 
-    it 'returns the forecasted date' do
-      expect(medication.out_of_stock_date).to eq(Time.zone.today + 5.days)
+    it "returns the forecasted date" do
+      expect(medication.out_of_stock_date).to(eq(Time.zone.today + 5.days))
     end
   end
 
-  describe '#low_stock_date' do
+  describe "#low_stock_date" do
     let(:medication) { create(:medication, current_supply: 25, reorder_threshold: 5) }
 
     before do
@@ -583,106 +593,111 @@ RSpec.describe Medication do
       create(:schedule, medication: medication, dosage: dosage, max_daily_doses: 5, dose_cycle: :daily)
     end
 
-    it 'returns the forecasted date' do
-      expect(medication.low_stock_date).to eq(Time.zone.today + 4.days)
+    it "returns the forecasted date" do
+      expect(medication.low_stock_date).to(eq(Time.zone.today + 4.days))
     end
   end
 
-  describe '#sync_dosages' do
+  describe "#sync_dosages" do
     let(:medication) { create(:medication, dosage_amount: nil, dosage_unit: nil) }
 
     before do
-      create(:dosage, medication: medication, amount: 10, unit: 'mg')
-      create(:dosage, medication: medication, amount: 20, unit: 'mg')
+      create(:dosage, medication: medication, amount: 10, unit: "mg")
+      create(:dosage, medication: medication, amount: 20, unit: "mg")
     end
 
-    context 'when switching from multi-dose to single-dose' do
-      it 'removes associated dosages when dosage_amount is set and there are no schedules' do
+    context("when switching from multi-dose to single-dose") do
+      it "removes associated dosages when dosage_amount is set and there are no schedules" do
         expect do
-          medication.update!(dosage_amount: 500, dosage_unit: 'mg')
-        end.to change { medication.dosages.count }.from(2).to(0)
+          medication.update!(dosage_amount: 500, dosage_unit: "mg")
+        end
+          .to(change { medication.dosages.count }.from(2).to(0))
       end
     end
 
-    context 'when schedules still use the dosage options' do
+    context("when schedules still use the dosage options") do
       before do
         create(:schedule, medication: medication, dosage: medication.dosages.first)
       end
 
-      it 'rejects the switch to single-dose mode' do
-        expect(medication.update(dosage_amount: 500, dosage_unit: 'mg')).to be(false)
-        expect(medication.errors[:dosage_amount]).to include(
-          'cannot switch to a single standard dose while schedules still use dose options'
+      it "rejects the switch to single-dose mode" do
+        expect(medication.update(dosage_amount: 500, dosage_unit: "mg")).to(be(false))
+        expect(medication.errors[:dosage_amount]).to(
+          include(
+            "cannot switch to a single standard dose while schedules still use dose options"
+          )
         )
       end
 
-      it 'keeps the existing dosages intact' do
+      it "keeps the existing dosages intact" do
         expect do
-          medication.update(dosage_amount: 500, dosage_unit: 'mg')
-        end.not_to(change { medication.dosages.count })
+          medication.update(dosage_amount: 500, dosage_unit: "mg")
+        end
+          .not_to(change { medication.dosages.count })
       end
     end
 
-    context 'when remaining in multi-dose mode' do
-      it 'does not remove dosages when dosage_amount remains nil' do
+    context("when remaining in multi-dose mode") do
+      it "does not remove dosages when dosage_amount remains nil" do
         expect do
-          medication.update!(name: 'New Name')
-        end.not_to change(medication.dosages, :count)
+          medication.update!(name: "New Name")
+        end
+          .not_to(change(medication.dosages, :count))
       end
     end
 
-    context 'when switching from multi-dose to single-dose with take history' do
-      it 'keeps existing person medication takes linked to their source' do
+    context("when switching from multi-dose to single-dose with take history") do
+      it "keeps existing person medication takes linked to their source" do
         person_medication = create(:person_medication, medication: medication)
         take = create(:medication_take, :for_person_medication, person_medication: person_medication)
 
-        medication.update!(dosage_amount: 500, dosage_unit: 'mg')
+        medication.update!(dosage_amount: 500, dosage_unit: "mg")
 
-        expect(take.reload.person_medication).to eq(person_medication)
-        expect(person_medication.reload.source_dosage_option).to be_nil
-        expect(medication.reload.dosages).to be_empty
+        expect(take.reload.person_medication).to(eq(person_medication))
+        expect(person_medication.reload.source_dosage_option).to(be_nil)
+        expect(medication.reload.dosages).to(be_empty)
       end
 
-      it 'keeps dose constraints effective immediately after the switch' do
+      it "keeps dose constraints effective immediately after the switch" do
         person_medication = create(:person_medication, medication: medication, max_daily_doses: 1)
         create(:medication_take, :for_person_medication, :today, person_medication: person_medication)
 
-        medication.update!(dosage_amount: 500, dosage_unit: 'mg')
+        medication.update!(dosage_amount: 500, dosage_unit: "mg")
 
-        expect(person_medication.reload.can_take_now?).to be false
+        expect(person_medication.reload.can_take_now?).to(be(false))
       end
 
-      it 'keeps supply forecasts based on max daily doses' do
+      it "keeps supply forecasts based on max daily doses" do
         person_medication = create(:person_medication, medication: medication, max_daily_doses: 2)
         before_switch = medication.days_until_low_stock
 
-        medication.update!(dosage_amount: 500, dosage_unit: 'mg')
+        medication.update!(dosage_amount: 500, dosage_unit: "mg")
         refreshed_medication = described_class.find(medication.id)
 
-        expect(refreshed_medication.days_until_low_stock).to eq(before_switch)
-        expect(person_medication.reload.medication).to eq(medication)
+        expect(refreshed_medication.days_until_low_stock).to(eq(before_switch))
+        expect(person_medication.reload.medication).to(eq(medication))
       end
     end
   end
 
-  describe 'dose mode transitions' do
-    context 'when switching from single-dose to multi-dose with take history' do
-      let(:medication) { create(:medication, dosage_amount: 500, dosage_unit: 'mg') }
+  describe "dose mode transitions" do
+    context("when switching from single-dose to multi-dose with take history") do
+      let(:medication) { create(:medication, dosage_amount: 500, dosage_unit: "mg") }
 
-      it 'keeps existing person medication behavior intact' do
+      it "keeps existing person medication behavior intact" do
         person_medication = create(:person_medication, medication: medication, max_daily_doses: 1)
         take = create(:medication_take, :for_person_medication, :today, person_medication: person_medication)
         before_low_stock = medication.days_until_low_stock
         before_out_of_stock = medication.days_until_out_of_stock
 
-        create(:dosage, medication: medication, amount: 250, unit: 'mg')
+        create(:dosage, medication: medication, amount: 250, unit: "mg")
         refreshed_medication = described_class.find(medication.id)
 
-        expect(take.reload.person_medication).to eq(person_medication)
-        expect(medication.reload.dosage_amount).to be_nil
-        expect(person_medication.reload.can_take_now?).to be false
-        expect(refreshed_medication.days_until_low_stock).to eq(before_low_stock)
-        expect(refreshed_medication.days_until_out_of_stock).to eq(before_out_of_stock)
+        expect(take.reload.person_medication).to(eq(person_medication))
+        expect(medication.reload.dosage_amount).to(be_nil)
+        expect(person_medication.reload.can_take_now?).to(be(false))
+        expect(refreshed_medication.days_until_low_stock).to(eq(before_low_stock))
+        expect(refreshed_medication.days_until_out_of_stock).to(eq(before_out_of_stock))
       end
     end
   end

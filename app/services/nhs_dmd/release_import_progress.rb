@@ -30,7 +30,7 @@ module NhsDmd
     end
 
     def process_unmatched_gtins(doc, counts, progress_callback)
-      doc.css('GTINDATA').each do
+      doc.css("GTINDATA").each do
         mark_gtin_processed(counts)
         counts[:skipped_missing_name] += 1
         emit_progress(counts, progress_callback, message: gtin_progress_message(counts))
@@ -52,7 +52,7 @@ module NhsDmd
     def starting_ampp_progress(counts)
       initial_progress_payload(
         status: :importing,
-        message: 'Starting AMPP name import',
+        message: "Starting AMPP name import",
         total_records: counts[:total]
       )
     end
@@ -63,9 +63,10 @@ module NhsDmd
       progress_callback.call(
         initial_progress_payload(
           status: :importing,
-          message: 'Starting GTIN import',
+          message: "Starting GTIN import",
           total_records: counts[:total]
-        ).merge(processed_records: counts[:processed])
+        )
+          .merge(processed_records: counts[:processed])
       )
     end
 

@@ -7,13 +7,35 @@ module Components
         include Phlex::Rails::Helpers::FormWith
 
         # Models that have audit trail enabled
-        AUDITED_MODELS = %w[User Account Person CarerRelationship Location LocationMembership
-                            MedicationTake Medication MedicationDosageOption Schedule NotificationPreference
-                            AppSettings ExternalMedicineLookup AiMedicationSuggestion].freeze
+        AUDITED_MODELS = %w[
+          User
+          Account
+          Person
+          CarerRelationship
+          Location
+          LocationMembership
+          MedicationTake
+          Medication
+          MedicationDosageOption
+          Schedule
+          NotificationPreference
+          AppSettings
+          ExternalMedicineLookup
+          AiMedicationSuggestion
+        ]
+          .freeze
         # Available event types for filtering
-        EVENT_TYPES = ['create', 'update', 'destroy', 'restock', 'adjust inventory',
-                       'dose_decrement', 'mark_as_ordered', 'mark_as_received',
-                       'ai_medication/suggestion'].freeze
+        EVENT_TYPES = [
+          "create",
+          "update",
+          "destroy",
+          "restock",
+          "adjust inventory",
+          "dose_decrement",
+          "mark_as_ordered",
+          "mark_as_received",
+          "ai_medication/suggestion"
+        ].freeze
 
         attr_reader :versions, :filter_params, :current_page, :total_count, :per_page
 
@@ -28,8 +50,10 @@ module Components
         end
 
         def view_template
-          div(data: { testid: 'admin-audit-logs' },
-              class: 'container mx-auto px-4 py-8 pb-24 md:pb-8 max-w-6xl space-y-8') do
+          div(
+            data: {testid: "admin-audit-logs"},
+            class: "container mx-auto px-4 py-8 pb-24 md:pb-8 max-w-6xl space-y-8"
+          ) do
             render_header
             render_filter_form
             render_versions_table
@@ -40,22 +64,22 @@ module Components
         private
 
         def render_header
-          header(class: 'flex items-center justify-between') do
-            div(class: 'space-y-2') do
-              m3_heading(level: 1) { t('admin.audit_logs.index.title') }
-              m3_text(weight: 'muted') { t('admin.audit_logs.index.subtitle') }
+          header(class: "flex items-center justify-between") do
+            div(class: "space-y-2") do
+              m3_heading(level: 1) { t("admin.audit_logs.index.title") }
+              m3_text(weight: "muted") { t("admin.audit_logs.index.subtitle") }
             end
           end
         end
 
         def render_filter_form
           Card do
-            CardContent(class: 'pt-6') do
+            CardContent(class: "pt-6") do
               form_with(
-                url: '/admin/audit_logs',
+                url: "/admin/audit_logs",
                 method: :get,
-                class: 'flex gap-4 items-end',
-                data: { controller: 'filter-form' }
+                class: "flex gap-4 items-end",
+                data: {controller: "filter-form"}
               ) do
                 render_item_type_filter
                 render_event_type_filter
@@ -66,18 +90,19 @@ module Components
         end
 
         def render_item_type_filter
-          div(class: 'w-48') do
-            render RubyUI::FormField.new do
-              render RubyUI::FormFieldLabel.new(for: 'item_type') { t('admin.audit_logs.index.filter.record_type') }
+          div(class: "w-48") do
+            render(RubyUI::FormField.new) do
+              render(RubyUI::FormFieldLabel.new(for: "item_type") { t("admin.audit_logs.index.filter.record_type") })
               select(
-                name: 'item_type',
-                id: 'item_type',
+                name: "item_type",
+                id: "item_type",
                 class: select_classes,
-                data: { action: 'change->filter-form#submit' }
+                data: {action: "change->filter-form#submit"}
               ) do
-                option(value: '', selected: filter_params[:item_type].blank?) do
-                  t('admin.audit_logs.index.filter.all_types')
+                option(value: "", selected: filter_params[:item_type].blank?) do
+                  t("admin.audit_logs.index.filter.all_types")
                 end
+
                 AUDITED_MODELS.each do |type|
                   option(value: type, selected: filter_params[:item_type] == type) { type.titleize }
                 end
@@ -87,18 +112,19 @@ module Components
         end
 
         def render_event_type_filter
-          div(class: 'w-48') do
-            render RubyUI::FormField.new do
-              render RubyUI::FormFieldLabel.new(for: 'event') { t('admin.audit_logs.index.filter.event_type') }
+          div(class: "w-48") do
+            render(RubyUI::FormField.new) do
+              render(RubyUI::FormFieldLabel.new(for: "event") { t("admin.audit_logs.index.filter.event_type") })
               select(
-                name: 'event',
-                id: 'event',
+                name: "event",
+                id: "event",
                 class: select_classes,
-                data: { action: 'change->filter-form#submit' }
+                data: {action: "change->filter-form#submit"}
               ) do
-                option(value: '', selected: filter_params[:event].blank?) do
-                  t('admin.audit_logs.index.filter.all_events')
+                option(value: "", selected: filter_params[:event].blank?) do
+                  t("admin.audit_logs.index.filter.all_events")
                 end
+
                 EVENT_TYPES.each do |event|
                   option(value: event, selected: filter_params[:event] == event) { event.titleize }
                 end
@@ -108,10 +134,11 @@ module Components
         end
 
         def render_filter_actions
-          div(class: 'flex gap-2') do
-            m3_button(type: :submit, variant: :filled, class: 'hidden') do
-              t('admin.audit_logs.index.filter.filter_button')
+          div(class: "flex gap-2") do
+            m3_button(type: :submit, variant: :filled, class: "hidden") do
+              t("admin.audit_logs.index.filter.filter_button")
             end
+
             render_clear_button if filters_active?
           end
         end
@@ -122,20 +149,20 @@ module Components
 
         def render_clear_button
           Link(
-            href: '/admin/audit_logs',
+            href: "/admin/audit_logs",
             variant: :link,
-            class: 'inline-flex items-center justify-center rounded-md font-medium transition-colors ' \
-                   'px-4 py-2 h-10 text-sm border border-outline bg-background hover:bg-tertiary-container ' \
-                   'hover:text-on-tertiary-container'
-          ) { t('admin.audit_logs.index.filter.clear_filters') }
+            class: "inline-flex items-center justify-center rounded-md font-medium transition-colors " \
+              "px-4 py-2 h-10 text-sm border border-outline bg-background hover:bg-tertiary-container " \
+              "hover:text-on-tertiary-container"
+          ) { t("admin.audit_logs.index.filter.clear_filters") }
         end
 
         def render_versions_table
           if versions.empty?
             render_empty_state
           else
-            div(class: 'rounded-[2rem] border border-border bg-card shadow-sm overflow-x-auto p-4') do
-              Table(class: 'min-w-[800px]') do
+            div(class: "rounded-[2rem] border border-border bg-card shadow-sm overflow-x-auto p-4") do
+              Table(class: "min-w-[800px]") do
                 render_table_header
                 render_table_body
               end
@@ -144,21 +171,21 @@ module Components
         end
 
         def render_empty_state
-          div(class: 'rounded-xl border border-border bg-card p-12 text-center shadow-sm') do
-            m3_text(size: '4', class: 'text-on-surface-variant') { t('admin.audit_logs.index.empty.no_logs') }
-            m3_text(size: '2', weight: 'muted', class: 'mt-2') { t('admin.audit_logs.index.empty.adjust_filters') }
+          div(class: "rounded-xl border border-border bg-card p-12 text-center shadow-sm") do
+            m3_text(size: "4", class: "text-on-surface-variant") { t("admin.audit_logs.index.empty.no_logs") }
+            m3_text(size: "2", weight: "muted", class: "mt-2") { t("admin.audit_logs.index.empty.adjust_filters") }
           end
         end
 
         def render_table_header
-          TableHeader(class: 'bg-secondary-container') do
+          TableHeader(class: "bg-secondary-container") do
             TableRow do
-              TableHead { t('admin.audit_logs.index.table.timestamp') }
-              TableHead { t('admin.audit_logs.index.table.record_type') }
-              TableHead { t('admin.audit_logs.index.table.event') }
-              TableHead { t('admin.audit_logs.index.table.user') }
-              TableHead { t('admin.audit_logs.index.table.ip_address') }
-              TableHead(class: 'text-right') { t('admin.audit_logs.index.table.actions') }
+              TableHead { t("admin.audit_logs.index.table.timestamp") }
+              TableHead { t("admin.audit_logs.index.table.record_type") }
+              TableHead { t("admin.audit_logs.index.table.event") }
+              TableHead { t("admin.audit_logs.index.table.user") }
+              TableHead { t("admin.audit_logs.index.table.ip_address") }
+              TableHead(class: "text-right") { t("admin.audit_logs.index.table.actions") }
             end
           end
         end
@@ -172,39 +199,42 @@ module Components
         end
 
         def render_version_row(version)
-          TableRow(class: 'hover:bg-tertiary-container', data: { version_id: version.id }) do
-            TableCell(class: 'text-foreground') do
-              version.created_at.strftime('%Y-%m-%d %H:%M:%S')
+          TableRow(class: "hover:bg-tertiary-container", data: {version_id: version.id}) do
+            TableCell(class: "text-foreground") do
+              version.created_at.strftime("%Y-%m-%d %H:%M:%S")
             end
-            TableCell(class: 'text-on-surface-variant') { version.item_type.titleize }
+
+            TableCell(class: "text-on-surface-variant") { version.item_type.titleize }
             TableCell do
               render_event_badge(version.event)
             end
-            TableCell(class: 'text-on-surface-variant') do
+
+            TableCell(class: "text-on-surface-variant") do
               render_user_info(version.whodunnit)
             end
-            TableCell(class: 'text-on-surface-variant font-mono') { version.ip || 'N/A' }
-            TableCell(class: 'text-right') do
+
+            TableCell(class: "text-on-surface-variant font-mono") { version.ip || "N/A" }
+            TableCell(class: "text-right") do
               Link(
                 href: "/admin/audit_logs/#{version.id}",
                 variant: :link,
-                class: 'text-primary hover:text-primary/80 font-medium'
-              ) { t('admin.audit_logs.index.table.view_details') }
+                class: "text-primary hover:text-primary/80 font-medium"
+              ) { t("admin.audit_logs.index.table.view_details") }
             end
           end
         end
 
         def render_event_badge(event)
           badge_class = case event
-                        when 'create'
-                          'bg-success-light text-success-text'
-                        when 'update'
-                          'bg-tertiary-container text-on-tertiary-container'
-                        when 'destroy'
-                          'bg-destructive-light text-destructive-text'
-                        else
-                          'bg-surface-container text-foreground'
-                        end
+          when "create"
+            "bg-success-light text-success-text"
+          when "update"
+            "bg-tertiary-container text-on-tertiary-container"
+          when "destroy"
+            "bg-destructive-light text-destructive-text"
+          else
+            "bg-surface-container text-foreground"
+          end
 
           span(class: "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium #{badge_class}") do
             event.titleize
@@ -215,7 +245,7 @@ module Components
         # @param whodunnit [String, nil] User ID from PaperTrail
         # @return [String] User name, "System", or "User #ID"
         def render_user_info(whodunnit)
-          return I18n.t('admin.audit_logs.index.system') if whodunnit.blank?
+          return I18n.t("admin.audit_logs.index.system") if whodunnit.blank?
 
           # Cache user lookups to prevent N+1 queries when rendering multiple rows
           @user_cache[whodunnit] ||= User.find_by(id: whodunnit)
@@ -233,9 +263,9 @@ module Components
 
         def render_pagination
           nav(
-            class: 'flex items-center justify-between border-t border-border ' \
-                   'bg-card px-4 py-3 sm:px-6',
-            'aria-label': 'Pagination'
+            class: "flex items-center justify-between border-t border-border " \
+              "bg-card px-4 py-3 sm:px-6",
+            'aria-label': "Pagination"
           ) do
             render_pagination_info
             render_pagination_controls
@@ -243,15 +273,15 @@ module Components
         end
 
         def render_pagination_info
-          div(class: 'hidden sm:block') do
-            m3_text(size: '2', class: 'text-foreground') do
-              plain "#{t('admin.audit_logs.index.pagination.showing')} "
-              span(class: 'font-medium') { first_item_number.to_s }
-              plain " #{t('admin.audit_logs.index.pagination.to')} "
-              span(class: 'font-medium') { last_item_number.to_s }
-              plain " #{t('admin.audit_logs.index.pagination.of')} "
-              span(class: 'font-medium') { total_count.to_s }
-              plain " #{t('admin.audit_logs.index.pagination.results')}"
+          div(class: "hidden sm:block") do
+            m3_text(size: "2", class: "text-foreground") do
+              plain("#{t("admin.audit_logs.index.pagination.showing")} ")
+              span(class: "font-medium") { first_item_number.to_s }
+              plain(" #{t("admin.audit_logs.index.pagination.to")} ")
+              span(class: "font-medium") { last_item_number.to_s }
+              plain(" #{t("admin.audit_logs.index.pagination.of")} ")
+              span(class: "font-medium") { total_count.to_s }
+              plain(" #{t("admin.audit_logs.index.pagination.results")}")
             end
           end
         end
@@ -265,7 +295,7 @@ module Components
         end
 
         def render_pagination_controls
-          div(class: 'flex flex-1 justify-between sm:justify-end gap-2') do
+          div(class: "flex flex-1 justify-between sm:justify-end gap-2") do
             render_previous_button
             render_next_button
           end
@@ -277,10 +307,10 @@ module Components
               href: pagination_url(current_page - 1),
               variant: :link,
               class: pagination_button_classes
-            ) { t('admin.audit_logs.index.pagination.previous') }
+            ) { t("admin.audit_logs.index.pagination.previous") }
           else
             span(class: "#{pagination_button_classes} opacity-50 cursor-not-allowed") do
-              t('admin.audit_logs.index.pagination.previous')
+              t("admin.audit_logs.index.pagination.previous")
             end
           end
         end
@@ -291,17 +321,17 @@ module Components
               href: pagination_url(current_page + 1),
               variant: :link,
               class: pagination_button_classes
-            ) { t('admin.audit_logs.index.pagination.next') }
+            ) { t("admin.audit_logs.index.pagination.next") }
           else
             span(class: "#{pagination_button_classes} opacity-50 cursor-not-allowed") do
-              t('admin.audit_logs.index.pagination.next')
+              t("admin.audit_logs.index.pagination.next")
             end
           end
         end
 
         def pagination_button_classes
-          'relative inline-flex items-center rounded-md bg-card px-3 py-2 text-sm font-semibold ' \
-            'text-foreground ring-1 ring-inset ring-border hover:bg-tertiary-container'
+          "relative inline-flex items-center rounded-md bg-card px-3 py-2 text-sm font-semibold " \
+            "text-foreground ring-1 ring-inset ring-border hover:bg-tertiary-container"
         end
 
         def pagination_url(page)

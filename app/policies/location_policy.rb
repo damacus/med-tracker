@@ -60,11 +60,13 @@ class LocationPolicy < ApplicationPolicy
     def parent_dependent_patient_ids
       return [] unless user.parent?
 
-      Person.where(
-        id: active_patient_relationships.select(:patient_id),
-        person_type: %i[minor dependent_adult],
-        has_capacity: false
-      ).pluck(:id)
+      Person
+        .where(
+          id: active_patient_relationships.select(:patient_id),
+          person_type: %i[minor dependent_adult],
+          has_capacity: false
+        )
+        .pluck(:id)
     end
   end
 
@@ -94,10 +96,12 @@ class LocationPolicy < ApplicationPolicy
   def parent_dependent_patient_ids_for_policy
     return [] unless user.parent?
 
-    Person.where(
-      id: active_patient_relationships.select(:patient_id),
-      person_type: %i[minor dependent_adult],
-      has_capacity: false
-    ).pluck(:id)
+    Person
+      .where(
+        id: active_patient_relationships.select(:patient_id),
+        person_type: %i[minor dependent_adult],
+        has_capacity: false
+      )
+      .pluck(:id)
   end
 end

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require 'net/http'
-require 'uri'
+require "net/http"
+require "uri"
 
 module AiMedication
   class SourcePageClient
@@ -35,7 +35,7 @@ module AiMedication
 
     def perform_request(uri)
       http = Net::HTTP.new(uri.host, uri.port)
-      http.use_ssl = uri.scheme == 'https'
+      http.use_ssl = uri.scheme == "https"
       http.open_timeout = TIMEOUT_SECONDS
       http.read_timeout = TIMEOUT_SECONDS
       http.request(Net::HTTP::Get.new(uri))

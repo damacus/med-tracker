@@ -14,20 +14,21 @@ module Components
       end
 
       def view_template
-        div(class: 'container mx-auto px-4 py-8 max-w-4xl') do
+        div(class: "container mx-auto px-4 py-8 max-w-4xl") do
           render_header
-          render Form.new(schedule: schedule, person: person, medications: medications)
+          render(Form.new(schedule: schedule, person: person, medications: medications))
         end
       end
 
       private
 
       def render_header
-        div(class: 'mb-8 space-y-2') do
-          m3_text(variant: :label_medium, class: 'uppercase tracking-[0.2em] font-black opacity-40') do
-            'New Schedule'
+        div(class: "mb-8 space-y-2") do
+          m3_text(variant: :label_medium, class: "uppercase tracking-[0.2em] font-black opacity-40") do
+            "New Schedule"
           end
-          m3_heading(variant: :display_small, level: 1, class: 'font-black tracking-tight text-foreground') do
+
+          m3_heading(variant: :display_small, level: 1, class: "font-black tracking-tight text-foreground") do
             "Add schedule for #{person.name}"
           end
         end

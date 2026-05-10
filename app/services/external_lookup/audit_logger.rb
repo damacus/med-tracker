@@ -2,7 +2,7 @@
 
 module ExternalLookup
   class AuditLogger
-    ITEM_TYPE = 'ExternalMedicineLookup'
+    ITEM_TYPE = "ExternalMedicineLookup"
 
     def record(source:, event:, query:, result_status:, result_count: 0)
       # rubocop:disable Rails/SkipsModelValidations
@@ -22,9 +22,11 @@ module ExternalLookup
         item_type: ITEM_TYPE,
         item_id: 0,
         event: "#{source}/#{event}",
-        object: { query_hash: Digest::SHA256.hexdigest(query.to_s.strip.downcase),
-                  result_status: result_status,
-                  result_count: result_count }.to_json,
+        object: {
+          query_hash: Digest::SHA256.hexdigest(query.to_s.strip.downcase),
+          result_status: result_status,
+          result_count: result_count
+        }.to_json,
         whodunnit: PaperTrail.request.whodunnit,
         ip: PaperTrail.request.controller_info&.dig(:ip),
         request_id: PaperTrail.request.controller_info&.dig(:request_id),

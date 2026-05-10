@@ -1,17 +1,17 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
 RSpec.describe CarerRelationship do
-  describe 'associations' do
-    it { is_expected.to belong_to(:carer).class_name('Person') }
-    it { is_expected.to belong_to(:patient).class_name('Person') }
+  describe "associations" do
+    it { is_expected.to(belong_to(:carer).class_name("Person")) }
+    it { is_expected.to(belong_to(:patient).class_name("Person")) }
   end
 
-  describe 'validations' do
+  describe "validations" do
     let(:carer) do
       Person.create!(
-        name: 'Carer Person',
+        name: "Carer Person",
         date_of_birth: 30.years.ago,
         person_type: :adult
       )
@@ -19,45 +19,45 @@ RSpec.describe CarerRelationship do
 
     let(:patient) do
       Person.create!(
-        name: 'Patient Person',
+        name: "Patient Person",
         date_of_birth: 5.years.ago,
         person_type: :adult,
         has_capacity: true
       )
     end
 
-    it 'validates uniqueness of carer_id scoped to patient_id' do
+    it "validates uniqueness of carer_id scoped to patient_id" do
       described_class.create!(
         carer: carer,
         patient: patient,
-        relationship_type: 'parent'
+        relationship_type: "parent"
       )
 
       duplicate = described_class.new(
         carer: carer,
         patient: patient,
-        relationship_type: 'guardian'
+        relationship_type: "guardian"
       )
 
-      expect(duplicate).not_to be_valid
-      expect(duplicate.errors[:carer_id]).to include('has already been taken')
+      expect(duplicate).not_to(be_valid)
+      expect(duplicate.errors[:carer_id]).to(include("has already been taken"))
     end
 
-    it 'requires relationship_type' do
+    it "requires relationship_type" do
       relationship = described_class.new(
         carer: carer,
         patient: patient
       )
 
-      expect(relationship).not_to be_valid
-      expect(relationship.errors[:relationship_type]).to include("can't be blank")
+      expect(relationship).not_to(be_valid)
+      expect(relationship.errors[:relationship_type]).to(include("can't be blank"))
     end
   end
 
-  describe 'scopes' do
+  describe "scopes" do
     let(:carer) do
       Person.create!(
-        name: 'Carer Person',
+        name: "Carer Person",
         date_of_birth: 30.years.ago,
         person_type: :adult
       )
@@ -65,64 +65,64 @@ RSpec.describe CarerRelationship do
 
     let(:patient) do
       Person.create!(
-        name: 'Patient Person',
+        name: "Patient Person",
         date_of_birth: 5.years.ago,
         person_type: :adult
       )
     end
 
-    it 'has an active scope' do
+    it "has an active scope" do
       active_relationship = described_class.create!(
         carer: carer,
         patient: patient,
-        relationship_type: 'parent',
+        relationship_type: "parent",
         active: true
       )
 
       inactive_relationship = described_class.create!(
         carer: carer,
-        patient: Person.create!(name: 'Another Patient', date_of_birth: 10.years.ago),
-        relationship_type: 'guardian',
+        patient: Person.create!(name: "Another Patient", date_of_birth: 10.years.ago),
+        relationship_type: "guardian",
         active: false
       )
 
-      expect(described_class.active).to include(active_relationship)
-      expect(described_class.active).not_to include(inactive_relationship)
+      expect(described_class.active).to(include(active_relationship))
+      expect(described_class.active).not_to(include(inactive_relationship))
     end
   end
 
-  describe '#deactivate!' do
-    it 'sets active to false' do
+  describe "#deactivate!" do
+    it "sets active to false" do
       relationship = described_class.create!(
-        carer: Person.create!(name: 'Carer', date_of_birth: 30.years.ago, person_type: :adult),
-        patient: Person.create!(name: 'Patient', date_of_birth: 5.years.ago, person_type: :adult),
-        relationship_type: 'parent',
+        carer: Person.create!(name: "Carer", date_of_birth: 30.years.ago, person_type: :adult),
+        patient: Person.create!(name: "Patient", date_of_birth: 5.years.ago, person_type: :adult),
+        relationship_type: "parent",
         active: true
       )
 
       relationship.deactivate!
 
-      expect(relationship.reload.active).to be false
+      expect(relationship.reload.active).to(be(false))
     end
   end
 
-  describe '#activate!' do
-    it 'sets active to true' do
+  describe "#activate!" do
+    it "sets active to true" do
       relationship = described_class.create!(
-        carer: Person.create!(name: 'Carer', date_of_birth: 30.years.ago, person_type: :adult),
-        patient: Person.create!(name: 'Patient', date_of_birth: 5.years.ago, person_type: :adult),
-        relationship_type: 'parent',
+        carer: Person.create!(name: "Carer", date_of_birth: 30.years.ago, person_type: :adult),
+        patient: Person.create!(name: "Patient", date_of_birth: 5.years.ago, person_type: :adult),
+        relationship_type: "parent",
         active: false
       )
 
       relationship.activate!
 
-      expect(relationship.reload.active).to be true
+      expect(relationship.reload.active).to(be(true))
     end
   end
 
-  describe 'versioning' do
-    fixtures :accounts, :people, :users
+  describe "versioning" do
+    fixtures(:accounts, :people, :users)
 
     let(:admin) { users(:admin) }
     let(:carer) { people(:jane) }
@@ -136,60 +136,63 @@ RSpec.describe CarerRelationship do
       PaperTrail.request.whodunnit = nil
     end
 
-    it 'creates version on relationship creation' do
+    it "creates version on relationship creation" do
       expect do
         described_class.create!(
           carer: carer,
           patient: patient,
-          relationship_type: 'guardian'
+          relationship_type: "guardian"
         )
-      end.to change(PaperTrail::Version, :count).by(1)
+      end
+        .to(change(PaperTrail::Version, :count).by(1))
 
       version = PaperTrail::Version.last
-      expect(version.event).to eq('create')
-      expect(version.item_type).to eq('CarerRelationship')
+      expect(version.event).to(eq("create"))
+      expect(version.item_type).to(eq("CarerRelationship"))
     end
 
-    it 'creates version on relationship update' do
+    it "creates version on relationship update" do
       relationship = described_class.create!(
         carer: carer,
         patient: patient,
-        relationship_type: 'parent'
+        relationship_type: "parent"
       )
 
       expect do
-        relationship.update!(relationship_type: 'guardian')
-      end.to change(PaperTrail::Version, :count).by(1)
+        relationship.update!(relationship_type: "guardian")
+      end
+        .to(change(PaperTrail::Version, :count).by(1))
 
       version = relationship.versions.last
-      expect(version.event).to eq('update')
-      expect(version.object).to be_present
+      expect(version.event).to(eq("update"))
+      expect(version.object).to(be_present)
     end
 
-    it 'tracks activation/deactivation changes' do
+    it "tracks activation/deactivation changes" do
       relationship = described_class.create!(
         carer: carer,
         patient: patient,
-        relationship_type: 'parent',
+        relationship_type: "parent",
         active: true
       )
 
       expect do
         relationship.deactivate!
-      end.to change(PaperTrail::Version, :count).by(1)
+      end
+        .to(change(PaperTrail::Version, :count).by(1))
 
       version = relationship.versions.last
       reified = version.reify
-      expect(reified.active).to be true
+      expect(reified.active).to(be(true))
     end
 
-    it 'associates version with current user' do
+    it "associates version with current user" do
       relationship = described_class.create!(
         carer: carer,
         patient: patient,
-        relationship_type: 'parent'
+        relationship_type: "parent"
       )
-      expect(relationship.versions.last.whodunnit).to eq(admin.id.to_s)
+      expect(relationship.versions.last.whodunnit).to(eq(admin.id.to_s))
     end
   end
 end

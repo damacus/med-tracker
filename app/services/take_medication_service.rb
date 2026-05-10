@@ -81,8 +81,13 @@ class TakeMedicationService
 
   def prepared_error(error)
     PreparedTake.new(
-      source: nil, amount: nil, unit: nil, medication: nil,
-      taken_at: nil, client_uuid: nil, error: error
+      source: nil,
+      amount: nil,
+      unit: nil,
+      medication: nil,
+      taken_at: nil,
+      client_uuid: nil,
+      error: error
     )
   end
 
@@ -138,7 +143,7 @@ class TakeMedicationService
   end
 
   def publish_dose_taken(take)
-    ActiveSupport::Notifications.instrument('dose_taken.med_tracker', dose_taken_payload(take))
+    ActiveSupport::Notifications.instrument("dose_taken.med_tracker", dose_taken_payload(take))
   end
 
   def dose_taken_payload(take)

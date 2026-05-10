@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
-RSpec.describe 'MedicationFinder' do
-  fixtures :accounts, :people, :users
+RSpec.describe "MedicationFinder" do
+  fixtures(:accounts, :people, :users)
 
   let(:user) { users(:john) }
 
@@ -12,17 +12,17 @@ RSpec.describe 'MedicationFinder' do
     login_as(user)
   end
 
-  it 'displays the medication finder page' do
-    visit medication_finder_path
+  it "displays the medication finder page" do
+    visit(medication_finder_path)
 
-    within '[data-testid="medication-finder"]' do
-      aggregate_failures 'medication finder content' do
-        expect(page).to have_text('Medication Finder')
-        expect(page).to have_field('medication-search-input')
-        expect(page).to have_button('Search')
-        expected_text = 'Search the NHS Dictionary of Medications and Devices (dm+d) by name or active ingredient.'
-        expect(page).to have_text(expected_text)
-        expect(page).to have_css('[data-testid="barcode-scanner"]')
+    within("[data-testid=\"medication-finder\"]") do
+      aggregate_failures("medication finder content") do
+        expect(page).to(have_text("Medication Finder"))
+        expect(page).to(have_field("medication-search-input"))
+        expect(page).to(have_button("Search"))
+        expected_text = "Search the NHS Dictionary of Medications and Devices (dm+d) by name or active ingredient."
+        expect(page).to(have_text(expected_text))
+        expect(page).to(have_css("[data-testid=\"barcode-scanner\"]"))
       end
     end
   end

@@ -21,9 +21,9 @@ class MedicationReorderStatusService
   def attributes_for(status, at)
     case status.to_sym
     when :ordered
-      { reorder_status: :ordered, ordered_at: at }
+      {reorder_status: :ordered, ordered_at: at}
     when :received
-      { reorder_status: :received, reordered_at: at }
+      {reorder_status: :received, reordered_at: at}
     end
   end
 end

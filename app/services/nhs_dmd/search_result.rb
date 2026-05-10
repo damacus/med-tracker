@@ -2,8 +2,22 @@
 
 module NhsDmd
   class SearchResult
-    attr_reader :barcode, :code, :display, :system, :concept_class, :match_reason, :name, :category, :package_size,
-                :package_quantity, :package_unit, :description, :directions, :warnings
+    attr_reader(
+      :barcode,
+      :code,
+      :display,
+      :system,
+      :concept_class,
+      :match_reason,
+      :name,
+      :category,
+      :package_size,
+      :package_quantity,
+      :package_unit,
+      :description,
+      :directions,
+      :warnings
+    )
 
     def initialize(code:, display:, system:, **attributes)
       @code = code
@@ -30,25 +44,34 @@ module NhsDmd
 
     def concept_class_label
       case concept_class
-      when 'VMP' then 'Virtual Medicinal Product'
-      when 'AMP' then 'Actual Medicinal Product'
-      when 'VMPP' then 'Virtual Medicinal Product Pack'
-      when 'AMPP' then 'Actual Medicinal Product Pack'
-      else concept_class
+      when "VMP"
+        "Virtual Medicinal Product"
+      when "AMP"
+        "Actual Medicinal Product"
+      when "VMPP"
+        "Virtual Medicinal Product Pack"
+      when "AMPP"
+        "Actual Medicinal Product Pack"
+      else
+        concept_class
       end
     end
 
     def source_label
       case system
-      when 'https://dmd.nhs.uk' then 'NHS dm+d'
-      when OpenFoodFacts::Client::BASE_URL then 'Open Food Facts'
-      else system
+      when "https://dmd.nhs.uk"
+        "NHS dm+d"
+      when OpenFoodFacts::Client::BASE_URL
+        "Open Food Facts"
+      else
+        system
       end
     end
 
     def match_reason_label
       case match_reason
-      when 'barcode_match' then 'Barcode match'
+      when "barcode_match"
+        "Barcode match"
       end
     end
 

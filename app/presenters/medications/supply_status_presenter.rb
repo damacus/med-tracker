@@ -15,49 +15,55 @@ module Medications
       return :success if medication.reorder_received?
 
       case supply_level.status
-      when :out_of_stock then :destructive
-      when :low_stock then :warning
-      else :success
+      when :out_of_stock
+        :destructive
+      when :low_stock
+        :warning
+      else
+        :success
       end
     end
 
     def status_label
-      return I18n.t('medications.reorder_statuses.ordered') if medication.reorder_ordered?
-      return I18n.t('medications.reorder_statuses.received') if medication.reorder_received?
+      return I18n.t("medications.reorder_statuses.ordered") if medication.reorder_ordered?
+      return I18n.t("medications.reorder_statuses.received") if medication.reorder_received?
 
       case supply_level.status
-      when :out_of_stock then I18n.t('dashboard.statuses.out_of_stock')
-      when :low_stock then I18n.t('medications.show.low_stock_alert')
-      else I18n.t('medications.index.in_stock', default: 'In Stock')
+      when :out_of_stock
+        I18n.t("dashboard.statuses.out_of_stock")
+      when :low_stock
+        I18n.t("medications.show.low_stock_alert")
+      else
+        I18n.t("medications.index.in_stock", default: "In Stock")
       end
     end
 
     def stock_count_class
       if supply_level.low_stock?
-        'text-5xl font-black text-on-error-container'
+        "text-5xl font-black text-on-error-container"
       else
-        'text-5xl font-black text-primary'
+        "text-5xl font-black text-primary"
       end
     end
 
     def supply_bar_class
-      supply_level.low_stock? ? 'bg-error' : 'bg-primary'
+      supply_level.low_stock? ? "bg-error" : "bg-primary"
     end
 
     def list_supply_bar_class
-      supply_level.low_stock? ? 'bg-destructive' : 'bg-primary'
+      supply_level.low_stock? ? "bg-destructive" : "bg-primary"
     end
 
     def remaining_units_label
-      return 'ml remaining' if volume_stock?
+      return "ml remaining" if volume_stock?
 
-      supply_level.current == 1 ? 'unit remaining' : 'units remaining'
+      supply_level.current == 1 ? "unit remaining" : "units remaining"
     end
 
     def inventory_units_label
       return "#{formatted_supply_current} ml" if volume_stock?
 
-      formatted_supply_current == '1' ? '1 unit' : "#{formatted_supply_current} units"
+      formatted_supply_current == "1" ? "1 unit" : "#{formatted_supply_current} units"
     end
 
     def formatted_supply_current
@@ -76,9 +82,12 @@ module Medications
 
     def reorder_status_variant
       case medication.reorder_status&.to_sym
-      when :ordered then :default
-      when :received then :success
-      else :outline
+      when :ordered
+        :default
+      when :received
+        :success
+      else
+        :outline
       end
     end
 
@@ -103,7 +112,7 @@ module Medications
       return unless medication.days_until_low_stock&.positive?
 
       {
-        message: I18n.t('medications.show.forecast.low_in_days', days: medication.days_until_low_stock),
+        message: I18n.t("medications.show.forecast.low_in_days", days: medication.days_until_low_stock),
         variant: :warning
       }
     end
@@ -113,7 +122,7 @@ module Medications
 
       {
         message: I18n.t(
-          'medications.show.forecast.empty_in_days',
+          "medications.show.forecast.empty_in_days",
           days: medication.days_until_out_of_stock
         ),
         variant: :destructive

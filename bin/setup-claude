@@ -15,6 +15,18 @@ else
   echo "    task already installed: $(task --version)"
 fi
 
+echo "==> Installing rubyfmt..."
+RUBYFMT_VERSION="v0.13.0"
+if ! command -v rubyfmt &>/dev/null; then
+  curl -sL "https://github.com/fables-tales/rubyfmt/releases/download/${RUBYFMT_VERSION}/rubyfmt-${RUBYFMT_VERSION}-Linux-x86_64.tar.gz" \
+    | tar -xzf - -C /tmp --strip-components=3 "tmp/releases/${RUBYFMT_VERSION}-Linux/rubyfmt"
+  mv /tmp/rubyfmt /usr/local/bin/rubyfmt
+  chmod +x /usr/local/bin/rubyfmt
+  echo "    rubyfmt $(rubyfmt --version) installed"
+else
+  echo "    rubyfmt already installed: $(rubyfmt --version)"
+fi
+
 echo "==> Installing Ruby gems..."
 # Bundler 4.0.x + Ruby 3.3 has a CGI class variable bug when proxied.
 # RUBYOPT="-rcgi" preloads CGI to avoid it.

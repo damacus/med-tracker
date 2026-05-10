@@ -1,16 +1,21 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
 RSpec.describe Components::PersonMedications::Card, type: :component do
   let(:person) { create(:person) }
-  let(:medication) { create(:medication, dosage_amount: 1, dosage_unit: 'tablet') }
+  let(:medication) { create(:medication, dosage_amount: 1, dosage_unit: "tablet") }
   let(:person_medication) do
-    create(:person_medication, person: person, medication: medication, max_daily_doses: nil,
-                               min_hours_between_doses: nil)
+    create(
+      :person_medication,
+      person: person,
+      medication: medication,
+      max_daily_doses: nil,
+      min_hours_between_doses: nil
+    )
   end
 
-  it 'disables the take button when medication dose is invalid' do
+  it "disables the take button when medication dose is invalid" do
     person_medication.dose_amount = 0
     vc = view_context
     vc.singleton_class.define_method(:current_user) { nil }
@@ -21,34 +26,34 @@ RSpec.describe Components::PersonMedications::Card, type: :component do
     rendered = Nokogiri::HTML::DocumentFragment.parse(html)
 
     button = rendered.at_css("button[data-testid='take-person-medication-#{person_medication.id}-disabled'][disabled]")
-    expect(button).not_to be_nil
-    expect(button.text).to include('Invalid Dose Configured')
+    expect(button).not_to(be_nil)
+    expect(button.text).to(include("Invalid Dose Configured"))
   end
 
-  it 'shows the recorded location for today takes' do
-    add_person_medication_take_for('PRN Alt Location')
+  it "shows the recorded location for today takes" do
+    add_person_medication_take_for("PRN Alt Location")
     rendered = render_person_medication_card
-    expect(rendered.text).to include('PRN Alt Location')
+    expect(rendered.text).to(include("PRN Alt Location"))
   end
 
-  it 'wraps full medication names inside the card header' do
-    medication.update!(name: 'Calpol Six Plus 250mg/5ml oral suspension (McNeil Products Ltd)')
+  it "wraps full medication names inside the card header" do
+    medication.update!(name: "Calpol Six Plus 250mg/5ml oral suspension (McNeil Products Ltd)")
     rendered = render_person_medication_card
 
-    title = rendered.at_css('h3')
-    expect(title.text).to include(medication.name)
-    expect(title['class']).to include('break-words')
+    title = rendered.at_css("h3")
+    expect(title.text).to(include(medication.name))
+    expect(title["class"]).to(include("break-words"))
   end
 
-  it 'renders an overflow menu with a Log a past dose item when the user can take medication' do
+  it "renders an overflow menu with a Log a past dose item when the user can take medication" do
     rendered = render_person_medication_card
 
     trigger = rendered.at_css("button[data-testid='more-actions-person-medication-#{person_medication.id}']")
     item = rendered.at_css("[role='menuitem'][data-testid='log-past-dose-person-medication-#{person_medication.id}']")
 
-    expect(trigger).not_to be_nil
-    expect(item).not_to be_nil
-    expect(item.text).to include('Log a past dose')
+    expect(trigger).not_to(be_nil)
+    expect(item).not_to(be_nil)
+    expect(item.text).to(include("Log a past dose"))
   end
 
   def render_person_medication_card

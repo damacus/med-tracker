@@ -1,15 +1,16 @@
 # frozen_string_literal: true
 
-require 'json'
-require 'net/http'
-require 'uri'
+require "json"
+require "net/http"
+require "uri"
 
 module OpenFoodFacts
   class Client
-    class ApiError < StandardError; end
+    class ApiError < StandardError
+    end
 
-    BASE_URL = 'https://world.openfoodfacts.org'
-    CACHE_PREFIX = 'open_food_facts'
+    BASE_URL = "https://world.openfoodfacts.org"
+    CACHE_PREFIX = "open_food_facts"
     TIMEOUT_SECONDS = 5
     DEFAULT_FIELDS = %w[product_name generic_name brands quantity categories_tags_en image_url].freeze
     DEFAULT_SEARCH_PAGE_SIZE = 10
@@ -29,7 +30,7 @@ module OpenFoodFacts
 
       Rails.cache.fetch(cache_key(normalized, fields), expires_in: 12.hours) do
         uri = URI("#{BASE_URL}/api/v2/product/#{normalized}.json")
-        uri.query = URI.encode_www_form('fields' => Array(fields).join(','))
+        uri.query = URI.encode_www_form("fields" => Array(fields).join(","))
         response = perform_request(uri)
         parse_response(response)
       end
@@ -42,11 +43,11 @@ module OpenFoodFacts
       Rails.cache.fetch(search_cache_key(normalized_query, page_size), expires_in: 1.hour) do
         uri = URI("#{BASE_URL}/cgi/search.pl")
         uri.query = URI.encode_www_form(
-          'search_terms' => normalized_query,
-          'search_simple' => '1',
-          'action' => 'process',
-          'json' => '1',
-          'page_size' => page_size.to_s
+          "search_terms" => normalized_query,
+          "search_simple" => "1",
+          "action" => "process",
+          "json" => "1",
+          "page_size" => page_size.to_s
         )
         response = perform_request(uri)
         parse_search_response(response)
@@ -56,7 +57,7 @@ module OpenFoodFacts
     private
 
     def cache_key(barcode, fields)
-      "#{CACHE_PREFIX}/product/#{barcode}/#{Array(fields).join(',')}"
+      "#{CACHE_PREFIX}/product/#{barcode}/#{Array(fields).join(",")}"
     end
 
     def search_cache_key(query, page_size)
@@ -73,7 +74,7 @@ module OpenFoodFacts
       raise ApiError, "Open Food Facts API returned #{response.code}" unless response.is_a?(Net::HTTPSuccess)
 
       payload = JSON.parse(response.body)
-      return nil unless payload['status'] == 1
+      return nil unless payload["status"] == 1
 
       payload
     rescue JSON::ParserError => e
@@ -84,7 +85,7 @@ module OpenFoodFacts
       raise ApiError, "Open Food Facts API returned #{response.code}" unless response.is_a?(Net::HTTPSuccess)
 
       payload = JSON.parse(response.body)
-      Array(payload['products'])
+      Array(payload["products"])
     rescue JSON::ParserError => e
       raise ApiError, "Open Food Facts API returned invalid JSON: #{e.message}"
     end
@@ -99,8 +100,8 @@ module OpenFoodFacts
 
     def build_request(uri)
       Net::HTTP::Get.new(uri).tap do |request|
-        request['Accept'] = 'application/json'
-        request['User-Agent'] = user_agent
+        request["Accept"] = "application/json"
+        request["User-Agent"] = user_agent
       end
     end
 
@@ -109,15 +110,15 @@ module OpenFoodFacts
     end
 
     def app_name
-      ENV.fetch('OPEN_FOOD_FACTS_APP_NAME', 'MedTracker')
+      ENV.fetch("OPEN_FOOD_FACTS_APP_NAME", "MedTracker")
     end
 
     def app_version
-      ENV.fetch('OPEN_FOOD_FACTS_APP_VERSION', '1.0')
+      ENV.fetch("OPEN_FOOD_FACTS_APP_VERSION", "1.0")
     end
 
     def contact_email
-      ENV.fetch('OPEN_FOOD_FACTS_CONTACT_EMAIL', 'support@medtracker.app')
+      ENV.fetch("OPEN_FOOD_FACTS_CONTACT_EMAIL", "support@medtracker.app")
     end
   end
 end

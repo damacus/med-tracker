@@ -49,7 +49,7 @@ class MedicationAssignmentCreator
     return if assignment.source_dosage_option_id.blank?
 
     dosage = medication&.dosage_records&.find_by(id: assignment.source_dosage_option_id)
-    assignment.errors.add(:source_dosage_option, 'Select a valid predefined dose') if dosage.blank?
+    assignment.errors.add(:source_dosage_option, "Select a valid predefined dose") if dosage.blank?
     dosage
   end
 
@@ -66,7 +66,7 @@ class MedicationAssignmentCreator
       default_for_children: false,
       default_max_daily_doses: nil,
       default_min_hours_between_doses: nil,
-      default_dose_cycle: 'daily'
+      default_dose_cycle: "daily"
     )
   end
 
@@ -107,26 +107,26 @@ class MedicationAssignmentCreator
       end_date: 1.month.from_now.to_date,
       max_daily_doses: selected_dose.default_max_daily_doses,
       min_hours_between_doses: selected_dose.default_min_hours_between_doses,
-      dose_cycle: selected_dose.default_dose_cycle.presence || 'daily',
+      dose_cycle: selected_dose.default_dose_cycle.presence || "daily",
       schedule_type: schedule_type,
       schedule_config: schedule_config
     }
   end
 
   def schedule_type
-    medication.default_schedule_type.presence || 'multiple_daily'
+    medication.default_schedule_type.presence || "multiple_daily"
   end
 
   def schedule_config
     config = medication.default_schedule_config.to_h.deep_dup
-    config['schedule_type'] = schedule_type
-    config['frequency'] = selected_dose.frequency.presence || fallback_frequency
-    config['as_needed'] = true if schedule_type == 'prn'
+    config["schedule_type"] = schedule_type
+    config["frequency"] = selected_dose.frequency.presence || fallback_frequency
+    config["as_needed"] = true if schedule_type == "prn"
     config
   end
 
   def fallback_frequency
-    schedule_type == 'prn' ? 'As needed' : 'As directed'
+    schedule_type == "prn" ? "As needed" : "As directed"
   end
 
   def failure
@@ -136,7 +136,7 @@ class MedicationAssignmentCreator
 
   def add_failure_errors
     assignment.errors.add(:medication, :blank) if medication.blank?
-    assignment.errors.add(:source_dosage_option, 'Select a valid predefined dose') if missing_dose_error?
+    assignment.errors.add(:source_dosage_option, "Select a valid predefined dose") if missing_dose_error?
   end
 
   def missing_dose_error?

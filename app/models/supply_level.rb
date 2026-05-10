@@ -10,7 +10,7 @@ class SupplyLevel
   end
 
   def current
-    raw_current || BigDecimal('0')
+    raw_current || BigDecimal("0")
   end
 
   def tracked?

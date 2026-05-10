@@ -2,7 +2,7 @@
 
 module AiMedication
   class AuditLogger
-    ITEM_TYPE = 'AiMedicationSuggestion'
+    ITEM_TYPE = "AiMedicationSuggestion"
 
     def record(user:, medication_identity:, suggestion:)
       # rubocop:disable Rails/SkipsModelValidations
@@ -18,7 +18,7 @@ module AiMedication
       {
         item_type: ITEM_TYPE,
         item_id: 0,
-        event: 'ai_medication/suggestion',
+        event: "ai_medication/suggestion",
         object: version_object(medication_identity:, suggestion:).to_json,
         whodunnit: user&.id&.to_s,
         ip: PaperTrail.request.controller_info&.dig(:ip),
@@ -42,7 +42,7 @@ module AiMedication
     end
 
     def result_status(suggestion)
-      suggestion.errors.any? ? 'error' : 'found'
+      suggestion.errors.any? ? "error" : "found"
     end
   end
 end

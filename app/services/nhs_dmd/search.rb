@@ -1,17 +1,21 @@
 # frozen_string_literal: true
 
 module NhsDmd
-  class Search # rubocop:disable Metrics/ClassLength
+  # rubocop:disable Metrics/ClassLength
+  class Search
     Result = Struct.new(:results, :error, :resolved_query, :barcode, keyword_init: true) do
       def success?
         error.nil?
       end
     end
 
-    def initialize(client: Client.new, barcode_lookup: BarcodeCatalog::Lookup.new,
-                   open_food_facts_lookup: OpenFoodFacts::BarcodeLookup.new,
-                   open_food_facts_search: OpenFoodFacts::Search.new,
-                   audit_logger: ExternalLookup::AuditLogger.new)
+    def initialize(
+      client: Client.new,
+      barcode_lookup: BarcodeCatalog::Lookup.new,
+      open_food_facts_lookup: OpenFoodFacts::BarcodeLookup.new,
+      open_food_facts_search: OpenFoodFacts::Search.new,
+      audit_logger: ExternalLookup::AuditLogger.new
+    )
       @client = client
       @barcode_lookup = barcode_lookup
       @open_food_facts_lookup = open_food_facts_lookup
@@ -30,7 +34,7 @@ module NhsDmd
       audit_search(query, result)
       result
     rescue StandardError => e
-      result = failed_result('unexpected_error', e)
+      result = failed_result("unexpected_error", e)
       audit_search(query, result)
       result
     end
@@ -38,7 +42,7 @@ module NhsDmd
     private
 
     def not_configured_result
-      Result.new(results: [], error: 'not_configured')
+      Result.new(results: [], error: "not_configured")
     end
 
     def empty_result
@@ -91,8 +95,8 @@ module NhsDmd
 
     def audit_search(query, result)
       @audit_logger.record(
-        source: 'nhs_dmd',
-        event: 'search',
+        source: "nhs_dmd",
+        event: "search",
         query: query,
         result_status: search_result_status(result),
         result_count: result.results.size
@@ -100,10 +104,10 @@ module NhsDmd
     end
 
     def search_result_status(result)
-      return result.error == 'not_configured' ? 'not_configured' : 'error' unless result.success?
-      return 'not_found' if result.results.empty?
+      return result.error == "not_configured" ? "not_configured" : "error" unless result.success?
+      return "not_found" if result.results.empty?
 
-      'success'
+      "success"
     end
 
     def log_failure(message, exception)
@@ -163,7 +167,7 @@ module NhsDmd
       log_failure(e.message, e)
       [barcode_match]
     rescue StandardError => e
-      log_failure('unexpected_error', e)
+      log_failure("unexpected_error", e)
       [barcode_match]
     end
 
@@ -205,13 +209,13 @@ module NhsDmd
     end
 
     def supplement_item?(item)
-      item[:source] == 'open_food_facts' ||
+      item[:source] == "open_food_facts" ||
         item[:system] == OpenFoodFacts::Client::BASE_URL ||
-        item[:concept_class] == 'Supplement'
+        item[:concept_class] == "Supplement"
     end
 
     def curated_barcode_match?(item)
-      item[:source] == 'curated'
+      item[:source] == "curated"
     end
 
     def likely_supplement_text_query?(query)
@@ -268,16 +272,17 @@ module NhsDmd
       nhs_items(translated_query).find do |item|
         item[:code] == barcode_match[:code] && item[:system] == barcode_match[:system]
       end
+
     rescue Client::ApiError => e
       log_failure(e.message, e)
       nil
     rescue StandardError => e
-      log_failure('unexpected_error', e)
+      log_failure("unexpected_error", e)
       nil
     end
 
     def annotate_barcode_match(item)
-      item.merge(match_reason: 'barcode_match')
+      item.merge(match_reason: "barcode_match")
     end
   end
 end

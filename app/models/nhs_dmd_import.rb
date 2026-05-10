@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'fileutils'
+require "fileutils"
 
 class NhsDmdImport < ApplicationRecord
   PROGRESS_COUNTER_KEYS = %i[
@@ -14,16 +14,22 @@ class NhsDmdImport < ApplicationRecord
     skipped_expired_count
     skipped_missing_name_count
     skipped_invalid_count
-  ].freeze
+  ]
+    .freeze
 
-  enum :status, {
-    queued: 0,
-    extracting: 1,
-    counting: 2,
-    importing: 3,
-    completed: 4,
-    failed: 5
-  }, default: :queued, validate: true
+  enum(
+    :status,
+    {
+      queued: 0,
+      extracting: 1,
+      counting: 2,
+      importing: 3,
+      completed: 4,
+      failed: 5
+    },
+    default: :queued,
+    validate: true
+  )
 
   validates :uploaded_filename, presence: true
 
@@ -33,7 +39,7 @@ class NhsDmdImport < ApplicationRecord
 
   def persist_archive!(uploaded_file)
     source_path = uploaded_file.respond_to?(:path) ? uploaded_file.path : uploaded_file.to_s
-    raise ArgumentError, 'Import archive is missing.' if source_path.blank?
+    raise ArgumentError, "Import archive is missing." if source_path.blank?
 
     FileUtils.mkdir_p(archive_directory)
     FileUtils.cp(source_path, archive_destination_path)
@@ -93,7 +99,7 @@ class NhsDmdImport < ApplicationRecord
   end
 
   def archive_directory
-    Rails.root.join('storage', 'nhs_dmd', 'imports', id.to_s)
+    Rails.root.join("storage", "nhs_dmd", "imports", id.to_s)
   end
 
   def archive_destination_path
@@ -101,7 +107,7 @@ class NhsDmdImport < ApplicationRecord
   end
 
   def sanitized_filename
-    File.basename(uploaded_filename.to_s).gsub(/[^A-Za-z0-9.\-_]/, '_').presence || 'release.zip'
+    File.basename(uploaded_filename.to_s).gsub(/[^A-Za-z0-9.\-_]/, "_").presence || "release.zip"
   end
 
   def appended_log(message)

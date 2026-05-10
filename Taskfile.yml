@@ -56,6 +56,17 @@ tasks:
       - task: internal:stop
         vars: { ENVIRONMENT: prod }
 
+  rubyfmt:
+    desc: Format Ruby files with rubyfmt (optionally check only)
+    summary: |
+      Format Ruby files with rubyfmt.
+      Usage: task rubyfmt              # format in-place
+      Usage: task rubyfmt CHECK=true   # check without modifying
+    vars:
+      check: '{{ .CHECK | default "false" }}'
+    cmds:
+      - '{{ if eq .check "true" }}rubyfmt --check app/ lib/ spec/{{ else }}rubyfmt --in-place app/ lib/ spec/{{ end }}'
+
   rubocop:
     desc: Run RuboCop linter (optionally with autocorrect)
     summary: |

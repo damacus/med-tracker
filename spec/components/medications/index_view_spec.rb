@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
 RSpec.describe Components::Medications::IndexView, type: :component do
-  fixtures :accounts, :people, :users
+  fixtures(:accounts, :people, :users)
 
   def render_view(**args)
     view_context_helper = view_context
@@ -18,32 +18,32 @@ RSpec.describe Components::Medications::IndexView, type: :component do
     Nokogiri::HTML::DocumentFragment.parse(html)
   end
 
-  it 'renders the empty state when there are no medications' do
+  it "renders the empty state when there are no medications" do
     rendered = render_view(medications: [])
 
-    expect(rendered.text).to include('No medications yet')
-    expect(rendered.text).to include('Add Medication')
+    expect(rendered.text).to(include("No medications yet"))
+    expect(rendered.text).to(include("Add Medication"))
   end
 
-  it 'offsets the content to align with the header title column' do
+  it "offsets the content to align with the header title column" do
     rendered = render_view(medications: [])
 
     content = rendered.at_css("[data-testid='medications-content']")
 
-    expect(content).to be_present
-    expect(content[:class]).to include('md:pl-[6.5rem]')
+    expect(content).to(be_present)
+    expect(content[:class]).to(include("md:pl-[6.5rem]"))
   end
 
-  it 'renders medication actions with m3 link variants' do
+  it "renders medication actions with m3 link variants" do
     rendered = render_view(medications: [])
 
-    add_schedule_link = rendered.css('a').find { |link| link.text.include?('Add Schedule') }
-    add_medication_link = rendered.css('a').find { |link| link.text.include?('Add Medication') }
+    add_schedule_link = rendered.css("a").find { |link| link.text.include?("Add Schedule") }
+    add_medication_link = rendered.css("a").find { |link| link.text.include?("Add Medication") }
 
-    expect(add_schedule_link[:class]).to include('rounded-full')
-    expect(add_schedule_link[:class]).to include('hover:bg-tertiary-container')
-    expect(add_schedule_link[:class]).to include('bg-card')
-    expect(add_medication_link[:class]).to include('bg-primary')
-    expect(add_medication_link[:class]).to include('text-primary-foreground')
+    expect(add_schedule_link[:class]).to(include("rounded-full"))
+    expect(add_schedule_link[:class]).to(include("hover:bg-tertiary-container"))
+    expect(add_schedule_link[:class]).to(include("bg-card"))
+    expect(add_medication_link[:class]).to(include("bg-primary"))
+    expect(add_medication_link[:class]).to(include("text-primary-foreground"))
   end
 end

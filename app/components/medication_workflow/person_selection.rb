@@ -16,13 +16,14 @@ module Components
       end
 
       def view_template
-        turbo_frame_tag 'modal' do
+        turbo_frame_tag("modal") do
           Dialog(open: true) do
             DialogContent(size: :md) do
               DialogHeader do
-                DialogTitle { t('medication_workflow.person_selection.title') }
-                DialogDescription { t('medication_workflow.person_selection.subtitle') }
+                DialogTitle { t("medication_workflow.person_selection.title") }
+                DialogDescription { t("medication_workflow.person_selection.subtitle") }
               end
+
               DialogMiddle do
                 if people.count <= 4
                   render_person_buttons
@@ -38,22 +39,25 @@ module Components
       private
 
       def render_person_buttons
-        div(class: 'grid grid-cols-1 gap-3 py-2') do
+        div(class: "grid grid-cols-1 gap-3 py-2") do
           people.each do |person|
             a(
               href: new_person_medication_assignment_path(person, source: :workflow, medication_id: medication_id),
-              data: { turbo_frame: 'modal' },
-              class: 'flex items-center gap-4 w-full rounded-2xl border-2 border-outline p-4 ' \
-                     'hover:border-primary hover:bg-primary/5 active:bg-primary/10 ' \
-                     'transition-all cursor-pointer no-underline'
+              data: {turbo_frame: "modal"},
+              class: "flex items-center gap-4 w-full rounded-2xl border-2 border-outline p-4 " \
+                "hover:border-primary hover:bg-primary/5 active:bg-primary/10 " \
+                "transition-all cursor-pointer no-underline"
             ) do
-              div(class: 'w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center ' \
-                         'text-primary font-bold text-sm flex-none') do
-                plain person.name.first.upcase
+              div(
+                class: "w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center " \
+                  "text-primary font-bold text-sm flex-none"
+              ) do
+                plain(person.name.first.upcase)
               end
+
               div do
-                div(class: 'font-semibold text-sm text-foreground') { person.name }
-                div(class: 'text-on-surface-variant text-xs mt-0.5') { person.person_type.humanize }
+                div(class: "font-semibold text-sm text-foreground") { person.name }
+                div(class: "text-on-surface-variant text-xs mt-0.5") { person.person_type.humanize }
               end
             end
           end
@@ -61,32 +65,34 @@ module Components
       end
 
       def render_person_combobox
-        div(class: 'py-2', data: { controller: 'medication-workflow' }) do
-          search_placeholder = t('medication_workflow.person_selection.search_placeholder')
-          render RubyUI::Combobox.new(class: 'w-full') do
-            render RubyUI::ComboboxTrigger.new(placeholder: search_placeholder)
+        div(class: "py-2", data: {controller: "medication-workflow"}) do
+          search_placeholder = t("medication_workflow.person_selection.search_placeholder")
+          render(RubyUI::Combobox.new(class: "w-full")) do
+            render(RubyUI::ComboboxTrigger.new(placeholder: search_placeholder))
 
-            render RubyUI::ComboboxPopover.new do
-              render RubyUI::ComboboxSearchInput.new(placeholder: search_placeholder)
+            render(RubyUI::ComboboxPopover.new) do
+              render(RubyUI::ComboboxSearchInput.new(placeholder: search_placeholder))
 
-              render RubyUI::ComboboxList.new do
-                render(RubyUI::ComboboxEmptyState.new { t('medication_workflow.person_selection.no_results') })
+              render(RubyUI::ComboboxList.new) do
+                render(RubyUI::ComboboxEmptyState.new { t("medication_workflow.person_selection.no_results") })
 
                 people.each do |person|
-                  render RubyUI::ComboboxItem.new do
-                    render RubyUI::ComboboxRadio.new(
-                      name: 'person_id',
-                      id: "person_#{person.id}",
-                      value: person.id,
-                      data: {
-                        text: person.name,
-                        action: 'change->medication-workflow#navigateToType',
-                        url: new_person_medication_assignment_path(
-                          person,
-                          source: :workflow,
-                          medication_id: medication_id
-                        )
-                      }
+                  render(RubyUI::ComboboxItem.new) do
+                    render(
+                      RubyUI::ComboboxRadio.new(
+                        name: "person_id",
+                        id: "person_#{person.id}",
+                        value: person.id,
+                        data: {
+                          text: person.name,
+                          action: "change->medication-workflow#navigateToType",
+                          url: new_person_medication_assignment_path(
+                            person,
+                            source: :workflow,
+                            medication_id: medication_id
+                          )
+                        }
+                      )
                     )
                     span { person.name }
                   end

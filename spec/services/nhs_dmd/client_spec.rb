@@ -1,50 +1,53 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
 RSpec.describe NhsDmd::Client do
   subject(:client) { described_class.new }
 
-  let(:base_url) { 'https://ontology.nhs.uk/production1/fhir' }
-  let(:vmp_url) { 'https://dmd.nhs.uk/ValueSet/VMP' }
-  let(:amp_url) { 'https://dmd.nhs.uk/ValueSet/AMP' }
+  let(:base_url) { "https://ontology.nhs.uk/production1/fhir" }
+  let(:vmp_url) { "https://dmd.nhs.uk/ValueSet/VMP" }
+  let(:amp_url) { "https://dmd.nhs.uk/ValueSet/AMP" }
   let(:cache_store) { ActiveSupport::Cache::MemoryStore.new }
 
   before do
-    allow(Rails).to receive(:cache).and_return(cache_store)
+    allow(Rails).to(receive(:cache).and_return(cache_store))
     Rails.cache.clear
-    allow(ENV).to receive(:fetch).and_call_original
-    allow(ENV).to receive(:fetch).with('NHS_DMD_CLIENT_ID', nil).and_return('test-client-id')
-    allow(ENV).to receive(:fetch).with('NHS_DMD_CLIENT_SECRET', nil).and_return('test-secret')
+    allow(ENV).to(receive(:fetch).and_call_original)
+    allow(ENV).to(receive(:fetch).with("NHS_DMD_CLIENT_ID", nil).and_return("test-client-id"))
+    allow(ENV).to(receive(:fetch).with("NHS_DMD_CLIENT_SECRET", nil).and_return("test-secret"))
     stub_request(:post, %r{openid-connect/token})
-      .to_return(status: 200, body: { 'access_token' => 'test-token' }.to_json,
-                 headers: { 'Content-Type' => 'application/json' })
+      .to_return(
+        status: 200,
+        body: {"access_token" => "test-token"}.to_json,
+        headers: {"Content-Type" => "application/json"}
+      )
   end
 
-  describe '#search' do
-    context 'when the API returns results' do
+  describe "#search" do
+    context("when the API returns results") do
       let(:fhir_response) do
         {
-          'resourceType' => 'ValueSet',
-          'expansion' => {
-            'total' => 2,
-            'contains' => [
+          "resourceType" => "ValueSet",
+          "expansion" => {
+            "total" => 2,
+            "contains" => [
               {
-                'system' => 'https://dmd.nhs.uk',
-                'code' => '39720311000001101',
-                'display' => 'Aspirin 300mg tablets',
-                'extension' => [
+                "system" => "https://dmd.nhs.uk",
+                "code" => "39720311000001101",
+                "display" => "Aspirin 300mg tablets",
+                "extension" => [
                   {
-                    'url' => 'http://hl7.org/fhir/StructureDefinition/valueset-concept-comments',
-                    'valueString' => 'VMP'
+                    "url" => "http://hl7.org/fhir/StructureDefinition/valueset-concept-comments",
+                    "valueString" => "VMP"
                   }
                 ]
               },
               {
-                'system' => 'https://dmd.nhs.uk',
-                'code' => '39720411000001102',
-                'display' => 'Aspirin 75mg tablets',
-                'extension' => []
+                "system" => "https://dmd.nhs.uk",
+                "code" => "39720411000001102",
+                "display" => "Aspirin 75mg tablets",
+                "extension" => []
               }
             ]
           }
@@ -53,189 +56,224 @@ RSpec.describe NhsDmd::Client do
 
       before do
         stub_request(:get, /ontology\.nhs\.uk/)
-          .to_return(status: 200, body: fhir_response, headers: { 'Content-Type' => 'application/json' })
+          .to_return(status: 200, body: fhir_response, headers: {"Content-Type" => "application/json"})
       end
 
-      it 'returns an array of hashes with code, display, and concept_class' do
-        results = client.search('aspirin')
+      it "returns an array of hashes with code, display, and concept_class" do
+        results = client.search("aspirin")
 
-        expect(results).to be_an(Array)
-        expect(results.length).to eq(2)
-        expect(results.first).to include(
-          code: '39720311000001101',
-          display: 'Aspirin 300mg tablets'
+        expect(results).to(be_an(Array))
+        expect(results.length).to(eq(2))
+        expect(results.first).to(
+          include(
+            code: "39720311000001101",
+            display: "Aspirin 300mg tablets"
+          )
         )
       end
 
-      it 'includes the concept_class when present in extensions' do
-        results = client.search('aspirin')
+      it "includes the concept_class when present in extensions" do
+        results = client.search("aspirin")
 
-        expect(results.first[:concept_class]).to eq('VMP')
+        expect(results.first[:concept_class]).to(eq("VMP"))
       end
 
-      it 'sets concept_class to nil when extension is absent' do
-        results = client.search('aspirin')
+      it "sets concept_class to nil when extension is absent" do
+        results = client.search("aspirin")
 
-        expect(results.last[:concept_class]).to be_nil
+        expect(results.last[:concept_class]).to(be_nil)
       end
     end
 
-    context 'when the API returns no results' do
+    context("when the API returns no results") do
       let(:empty_response) do
         {
-          'resourceType' => 'ValueSet',
-          'expansion' => {
-            'total' => 0,
-            'contains' => []
+          "resourceType" => "ValueSet",
+          "expansion" => {
+            "total" => 0,
+            "contains" => []
           }
         }.to_json
       end
 
       before do
         stub_request(:get, /ontology\.nhs\.uk/)
-          .to_return(status: 200, body: empty_response, headers: { 'Content-Type' => 'application/json' })
+          .to_return(status: 200, body: empty_response, headers: {"Content-Type" => "application/json"})
       end
 
-      it 'returns an empty array' do
-        results = client.search('nonexistentmedication12345')
+      it "returns an empty array" do
+        results = client.search("nonexistentmedication12345")
 
-        expect(results).to eq([])
+        expect(results).to(eq([]))
       end
     end
 
-    context 'when the API returns no expansion key' do
+    context("when the API returns no expansion key") do
       before do
         stub_request(:get, /ontology\.nhs\.uk/)
-          .to_return(status: 200, body: '{"resourceType":"ValueSet"}',
-                     headers: { 'Content-Type' => 'application/json' })
+          .to_return(
+            status: 200,
+            body: "{\"resourceType\":\"ValueSet\"}",
+            headers: {"Content-Type" => "application/json"}
+          )
       end
 
-      it 'returns an empty array' do
-        results = client.search('aspirin')
+      it "returns an empty array" do
+        results = client.search("aspirin")
 
-        expect(results).to eq([])
+        expect(results).to(eq([]))
       end
     end
 
-    context 'when the API returns a non-200 status' do
+    context("when the API returns a non-200 status") do
       before do
         stub_request(:get, /ontology\.nhs\.uk/)
-          .to_return(status: 503, body: 'Service Unavailable')
+          .to_return(status: 503, body: "Service Unavailable")
       end
 
-      it 'raises NhsDmd::Client::ApiError' do
-        expect { client.search('aspirin') }.to raise_error(NhsDmd::Client::ApiError)
+      it "raises NhsDmd::Client::ApiError" do
+        expect { client.search("aspirin") }.to(raise_error(NhsDmd::Client::ApiError))
       end
     end
 
-    context 'when the request times out' do
+    context("when the request times out") do
       before do
         stub_request(:get, /ontology\.nhs\.uk/).to_timeout
       end
 
-      it 'raises NhsDmd::Client::ApiError' do
-        expect { client.search('aspirin') }.to raise_error(NhsDmd::Client::ApiError)
+      it "raises NhsDmd::Client::ApiError" do
+        expect { client.search("aspirin") }.to(raise_error(NhsDmd::Client::ApiError))
       end
     end
 
-    context 'when the query is blank' do
-      it 'returns an empty result set immediately' do
-        results = client.search('')
+    context("when the query is blank") do
+      it "returns an empty result set immediately" do
+        results = client.search("")
 
-        expect(results).to eq([])
+        expect(results).to(eq([]))
       end
     end
 
-    context 'when credentials are not configured' do
+    context("when credentials are not configured") do
       before do
-        allow(ENV).to receive(:fetch).with('NHS_DMD_CLIENT_ID', nil).and_return(nil)
-        allow(ENV).to receive(:fetch).with('NHS_DMD_CLIENT_SECRET', nil).and_return(nil)
+        allow(ENV).to(receive(:fetch).with("NHS_DMD_CLIENT_ID", nil).and_return(nil))
+        allow(ENV).to(receive(:fetch).with("NHS_DMD_CLIENT_SECRET", nil).and_return(nil))
       end
 
-      it 'returns an empty result set immediately' do
-        results = client.search('aspirin')
+      it "returns an empty result set immediately" do
+        results = client.search("aspirin")
 
-        expect(results).to eq([])
-      end
-    end
-
-    context 'when authenticated with credentials' do
-      before do
-        stub_request(:get, /ontology\.nhs\.uk/)
-          .to_return(status: 200, body: '{"resourceType":"ValueSet","expansion":{"total":0,"contains":[]}}',
-                     headers: { 'Content-Type' => 'application/json' })
-      end
-
-      it 'includes an Authorization header in the request' do
-        client.search('aspirin')
-
-        expect(WebMock).to have_requested(:get, /ontology\.nhs\.uk/)
-          .with(headers: { 'Authorization' => 'Bearer test-token' }).twice
+        expect(results).to(eq([]))
       end
     end
 
-    context 'with a custom count' do
+    context("when authenticated with credentials") do
       before do
         stub_request(:get, /ontology\.nhs\.uk/)
-          .to_return(status: 200, body: '{"resourceType":"ValueSet","expansion":{"total":0,"contains":[]}}',
-                     headers: { 'Content-Type' => 'application/json' })
+          .to_return(
+            status: 200,
+            body: "{\"resourceType\":\"ValueSet\",\"expansion\":{\"total\":0,\"contains\":[]}}",
+            headers: {"Content-Type" => "application/json"}
+          )
       end
 
-      it 'passes the count parameter to both VMP and AMP API requests' do
-        client.search('aspirin', count: 5)
+      it "includes an Authorization header in the request" do
+        client.search("aspirin")
 
-        expect(WebMock).to have_requested(:get, /ontology\.nhs\.uk/)
-          .with(query: hash_including('count' => '5')).twice
-      end
-    end
-
-    context 'when the same query is requested repeatedly' do
-      before do
-        stub_request(:get, /ontology\.nhs\.uk/)
-          .to_return(status: 200, body: '{"resourceType":"ValueSet","expansion":{"total":0,"contains":[]}}',
-                     headers: { 'Content-Type' => 'application/json' })
-      end
-
-      it 'caches value set lookups across client instances' do
-        described_class.new.search('aspirin')
-        described_class.new.search('aspirin')
-
-        expect(WebMock).to have_requested(:get, /ontology\.nhs\.uk/).twice
+        expect(WebMock).to(
+          have_requested(:get, /ontology\.nhs\.uk/)
+            .with(headers: {"Authorization" => "Bearer test-token"})
+            .twice
+        )
       end
     end
 
-    context 'when the token is reused for different queries' do
+    context("with a custom count") do
       before do
         stub_request(:get, /ontology\.nhs\.uk/)
-          .to_return(status: 200, body: '{"resourceType":"ValueSet","expansion":{"total":0,"contains":[]}}',
-                     headers: { 'Content-Type' => 'application/json' })
+          .to_return(
+            status: 200,
+            body: "{\"resourceType\":\"ValueSet\",\"expansion\":{\"total\":0,\"contains\":[]}}",
+            headers: {"Content-Type" => "application/json"}
+          )
       end
 
-      it 'caches the access token across client instances' do
-        described_class.new.search('aspirin')
-        described_class.new.search('ibuprofen')
+      it "passes the count parameter to both VMP and AMP API requests" do
+        client.search("aspirin", count: 5)
 
-        expect(WebMock).to have_requested(:post, %r{openid-connect/token}).once
+        expect(WebMock).to(
+          have_requested(:get, /ontology\.nhs\.uk/)
+            .with(query: hash_including("count" => "5"))
+            .twice
+        )
+      end
+    end
+
+    context("when the same query is requested repeatedly") do
+      before do
+        stub_request(:get, /ontology\.nhs\.uk/)
+          .to_return(
+            status: 200,
+            body: "{\"resourceType\":\"ValueSet\",\"expansion\":{\"total\":0,\"contains\":[]}}",
+            headers: {"Content-Type" => "application/json"}
+          )
       end
 
-      it 're-reads the cache for reused client instances after token eviction' do
+      it "caches value set lookups across client instances" do
+        described_class.new.search("aspirin")
+        described_class.new.search("aspirin")
+
+        expect(WebMock).to(have_requested(:get, /ontology\.nhs\.uk/).twice)
+      end
+    end
+
+    context("when the token is reused for different queries") do
+      before do
+        stub_request(:get, /ontology\.nhs\.uk/)
+          .to_return(
+            status: 200,
+            body: "{\"resourceType\":\"ValueSet\",\"expansion\":{\"total\":0,\"contains\":[]}}",
+            headers: {"Content-Type" => "application/json"}
+          )
+      end
+
+      it "caches the access token across client instances" do
+        described_class.new.search("aspirin")
+        described_class.new.search("ibuprofen")
+
+        expect(WebMock).to(have_requested(:post, %r{openid-connect/token}).once)
+      end
+
+      it "re-reads the cache for reused client instances after token eviction" do
         stub_request(:post, %r{openid-connect/token})
           .to_return(
-            { status: 200, body: { 'access_token' => 'first-token' }.to_json,
-              headers: { 'Content-Type' => 'application/json' } },
-            { status: 200, body: { 'access_token' => 'second-token' }.to_json,
-              headers: { 'Content-Type' => 'application/json' } }
+            {
+              status: 200,
+              body: {"access_token" => "first-token"}.to_json,
+              headers: {"Content-Type" => "application/json"}
+            },
+            {
+              status: 200,
+              body: {"access_token" => "second-token"}.to_json,
+              headers: {"Content-Type" => "application/json"}
+            }
           )
 
-        client.search('aspirin')
+        client.search("aspirin")
         Rails.cache.clear
-        client.search('ibuprofen')
+        client.search("ibuprofen")
 
-        expect(WebMock).to have_requested(:post, %r{openid-connect/token}).twice
-        expect(WebMock).to have_requested(:get, /ontology\.nhs\.uk/)
-          .with(headers: { 'Authorization' => 'Bearer first-token' }).twice
-        expect(WebMock).to have_requested(:get, /ontology\.nhs\.uk/)
-          .with(headers: { 'Authorization' => 'Bearer second-token' }).twice
+        expect(WebMock).to(have_requested(:post, %r{openid-connect/token}).twice)
+        expect(WebMock).to(
+          have_requested(:get, /ontology\.nhs\.uk/)
+            .with(headers: {"Authorization" => "Bearer first-token"})
+            .twice
+        )
+        expect(WebMock).to(
+          have_requested(:get, /ontology\.nhs\.uk/)
+            .with(headers: {"Authorization" => "Bearer second-token"})
+            .twice
+        )
       end
     end
   end

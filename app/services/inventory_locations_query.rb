@@ -8,10 +8,11 @@ class InventoryLocationsQuery
   end
 
   def call
-    Location.joins(:medications)
-            .merge(medications_scope.except(:includes))
-            .distinct
-            .order(:name)
-            .to_a
+    Location
+      .joins(:medications)
+      .merge(medications_scope.except(:includes))
+      .distinct
+      .order(:name)
+      .to_a
   end
 end

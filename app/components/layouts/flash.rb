@@ -11,8 +11,8 @@ module Components
       end
 
       def view_template
-        div(class: 'fixed inset-x-0 top-4 z-[60] pointer-events-none') do
-          div(class: 'container mx-auto px-4') do
+        div(class: "fixed inset-x-0 top-4 z-[60] pointer-events-none") do
+          div(class: "container mx-auto px-4") do
             render_notice if @notice
             render_warning if @warning
             render_alert if @alert
@@ -23,7 +23,7 @@ module Components
       private
 
       def render_notice
-        div(data: { controller: 'flash', flash_dismiss_after_value: 3000 }, class: 'pointer-events-auto') do
+        div(data: {controller: "flash", flash_dismiss_after_value: 3000}, class: "pointer-events-auto") do
           Alert(variant: :success) do
             check_icon
             AlertDescription { @notice }
@@ -32,7 +32,7 @@ module Components
       end
 
       def render_warning
-        div(data: { controller: 'flash', flash_dismiss_after_value: 8000 }, class: 'pointer-events-auto') do
+        div(data: {controller: "flash", flash_dismiss_after_value: 8000}, class: "pointer-events-auto") do
           Alert(variant: :warning) do
             alert_circle_icon
             AlertDescription { @warning }
@@ -41,7 +41,7 @@ module Components
       end
 
       def render_alert
-        div(data: { controller: 'flash', flash_dismiss_after_value: 0 }, class: 'pointer-events-auto') do
+        div(data: {controller: "flash", flash_dismiss_after_value: 0}, class: "pointer-events-auto") do
           Alert(variant: :destructive) do
             alert_circle_icon
             AlertDescription { @alert }
@@ -50,11 +50,11 @@ module Components
       end
 
       def check_icon
-        render Icons::Check.new(size: 16)
+        render(Icons::Check.new(size: 16))
       end
 
       def alert_circle_icon
-        render Icons::AlertCircle.new(size: 16)
+        render(Icons::AlertCircle.new(size: 16))
       end
     end
   end
