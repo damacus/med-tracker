@@ -707,7 +707,7 @@ ga:
     modal:
       new_title: "Cuir Leigheas Leis do %{person}"
       edit_title: "Cuir Leigheas in Eagar do %{person}"
-      subtitle: "Cuir leigheas de réir mar is gá leis"
+      subtitle: "Cuir cógas rialta nó de réir mar is gá leis"
     card:
       notes: "Nótaí:"
       timing_restrictions: "Srianta Ama:"
@@ -744,7 +744,7 @@ ga:
       select_dose: "Roghnaigh dáileog"
       select_medication_first: "Roghnaigh leigheas ar dtús"
       no_doses_available: "Níl aon dáileoga ar fáil"
-      dose_hint: "Teastaíonn dáileog ó gach leigheas de réir mar is gá"
+      dose_hint: "Teastaíonn dáileog ó gach cógas"
       notes: "Nótaí"
       notes_placeholder: "Cuir aon treoracha speisialta nó nótaí leis"
       notes_hint: "Cuir aon treoracha speisialta nó nótaí leis"
@@ -755,6 +755,15 @@ ga:
       dose_cycle: "Timthriall dáileoige"
       default_dose_cycle: "Laethúil"
       dose_cycle_hint: "Tréimhse athshocraithe an timthrialla"
+      administration_kind: "Cineál cógais"
+      administration_kind_hint: "Áirítear tascanna rialta don lá inniu; ní thaispeántar cógas de réir mar is gá ach nuair is féidir é a thabhairt."
+      administration_kinds:
+        routine:
+          label: "Rialta"
+          description: "Tasc laethúil le críochnú nuair a athshocraíonn an timthriall"
+        as_needed:
+          label: "De réir mar is gá"
+          description: "Ní úsáidtear é ach nuair a éilíonn comharthaí nó treoir é"
       no_options: "Níl aon roghanna ann."
       optional: "Roghnach"
       back: "Ar Ais"
@@ -763,7 +772,7 @@ ga:
         choose_medication_title: "Roghnaigh leigheas"
         choose_medication_description: "Tosaigh trí roghnú an leighis is mian leat a chur leis."
         choose_dose_title: "Roghnaigh an dáileog"
-        choose_dose_description: "Teastaíonn dáileog ó gach leigheas de réir mar is gá sula leanann tú ar aghaidh."
+        choose_dose_description: "Roghnaigh an dáileog sula leanann tú ar aghaidh."
         add_guidance_title: "Cuir treoir roghnach leis"
         add_guidance_description: "Cuir nótaí nó teorainneacha dáileoige leis ar mian leat a rianú leis an leigheas seo."
       add_medication_button: "Cuir Leigheas Leis"
@@ -1159,6 +1168,14 @@ ga:
     add_schedules_hint: "Cuir oideas leigheasanna leis chun iad a fheiceáil anseo"
     dose_taken_at: "%{person} • Tógtha ag %{time}"
     empty_state: "Gan leigheasanna sceidealta inniu."
+    routine:
+      anytime: "Am ar bith"
+      done_short: "Déanta"
+      done_today: "Tascanna rialta déanta inniu"
+      empty: "Níl aon tascanna rialta le déanamh inniu"
+      left_today:
+        one: "1 tasc rialta fágtha inniu"
+        other: "%{count} tasc rialta fágtha inniu"
     insights:
       title: "Léarchéal Cliste"
       pattern_detected: "Patrún aimsithe"
@@ -1173,6 +1190,7 @@ ga:
       active_schedules: "Oideas Leigheasanna Gníomhacha"
       compliance: "Comhlíonadh"
       next_dose: "An Chéad Dháileog Eile"
+      due_today: "Inniu"
       no_upcoming_doses: "Níl ceann ar bith inniu"
     quick_stats:
       title: "Staitisticí Tapa"
@@ -1181,8 +1199,11 @@ ga:
     statuses:
       taken: "Tógtha"
       upcoming: "Ag Teacht"
+      available_now: "Ar fáil anois"
+      available_at: "Ar fáil ag %{time}"
       cooldown: "Fan"
       missed: "Caillte"
+      max_reached: "Uasmhéid laethúil bainte amach"
       out_of_stock: "As Stoc"
     table:
       person: "Duine"

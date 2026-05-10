@@ -707,7 +707,7 @@ pt:
     modal:
       new_title: "Adicionar Medicamento para %{person}"
       edit_title: "Editar Medicamento para %{person}"
-      subtitle: "Adicionar um medicamento conforme necessário"
+      subtitle: "Adicionar uma medicação de rotina ou conforme necessário"
     card:
       notes: "Notas:"
       timing_restrictions: "Restrições de Tempo:"
@@ -744,7 +744,7 @@ pt:
       select_dose: "Selecionar uma dose"
       select_medication_first: "Selecione primeiro um medicamento"
       no_doses_available: "Não existem doses disponíveis"
-      dose_hint: "Todos os medicamentos conforme necessário requerem uma dose"
+      dose_hint: "Todos os medicamentos requerem uma dose"
       notes: "Notas"
       notes_placeholder: "Adicione quaisquer instruções ou notas especiais"
       notes_hint: "Adicione quaisquer instruções ou notas especiais"
@@ -755,6 +755,15 @@ pt:
       dose_cycle: "Ciclo de dose"
       default_dose_cycle: "Diário"
       dose_cycle_hint: "Período de reinício do ciclo"
+      administration_kind: "Tipo de medicação"
+      administration_kind_hint: "As tarefas de rotina contam para hoje; a medicação conforme necessário só aparece quando pode ser administrada."
+      administration_kinds:
+        routine:
+          label: "Rotina"
+          description: "Uma tarefa diária para concluir quando o ciclo reinicia"
+        as_needed:
+          label: "Conforme necessário"
+          description: "Usada apenas quando os sintomas ou as orientações o exigem"
       no_options: "Sem opções."
       optional: "Opcional"
       back: "Voltar"
@@ -763,7 +772,7 @@ pt:
         choose_medication_title: "Escolha um medicamento"
         choose_medication_description: "Comece por escolher o medicamento que quer adicionar."
         choose_dose_title: "Escolha a dose"
-        choose_dose_description: "Cada medicamento conforme necessário precisa de uma dose antes de continuar."
+        choose_dose_description: "Escolha a dose antes de continuar."
         add_guidance_title: "Adicionar orientação opcional"
         add_guidance_description: "Adicione notas ou limites de dose que queira acompanhar com este medicamento."
       add_medication_button: "Adicionar Medicamento"
@@ -1328,6 +1337,14 @@ pt:
     add_schedules_hint: "Adicione prescrições para vê-las aqui"
     dose_taken_at: "%{person} • Tomado às %{time}"
     empty_state: "Nenhum medicamento agendado para hoje."
+    routine:
+      anytime: "A qualquer momento"
+      done_short: "Feito"
+      done_today: "Tarefas de rotina concluídas hoje"
+      empty: "Nenhuma tarefa de rotina pendente hoje"
+      left_today:
+        one: "1 tarefa de rotina pendente hoje"
+        other: "%{count} tarefas de rotina pendentes hoje"
     insights:
       title: "Informações inteligentes"
       pattern_detected: "Padrão detetado"
@@ -1342,12 +1359,16 @@ pt:
       active_schedules: "Prescrições Ativas"
       compliance: "Conformidade"
       next_dose: "Próxima dose"
+      due_today: "Hoje"
       no_upcoming_doses: "Nenhuma hoje"
     statuses:
       taken: "Tomado"
       upcoming: "Próximo"
+      available_now: "Disponível agora"
+      available_at: "Disponível às %{time}"
       cooldown: "Aguardar"
       missed: "Perdido"
+      max_reached: "Máximo diário atingido"
       out_of_stock: "Sem Stock"
     table:
       person: "Pessoa"

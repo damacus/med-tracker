@@ -34,11 +34,15 @@ module Components
       private
 
       delegate :people, :active_schedules, :upcoming_schedules,
-               :current_user, :doses, :next_dose_time, :compliance_percentage, to: :presenter
+               :current_user, :doses, :next_dose_time, :routine_tasks_due?,
+               :routine_tasks_by_person, :as_needed_by_person, :compliance_percentage, to: :presenter
 
       def next_dose_value
         time = next_dose_time
-        time ? time.strftime('%H:%M') : t('dashboard.stats.no_upcoming_doses')
+        return time.strftime('%H:%M') if time
+        return t('dashboard.stats.due_today') if routine_tasks_due?
+
+        t('dashboard.stats.no_upcoming_doses')
       end
 
       def render_header
@@ -116,10 +120,16 @@ module Components
             end
           end
 
-          if doses.any?
+          task_people = people_with_dashboard_items
+          if task_people.any?
             div(class: 'space-y-4') do
-              doses.each do |dose|
-                render Components::Dashboard::TimelineItem.new(dose: dose, current_user: current_user)
+              task_people.each do |person|
+                render Components::Dashboard::PersonTaskCard.new(
+                  person: person,
+                  routine_tasks: routine_tasks_by_person.fetch(person, []),
+                  as_needed_items: as_needed_by_person.fetch(person, []),
+                  current_user: current_user
+                )
               end
             end
           else
@@ -131,6 +141,12 @@ module Components
               end
             end
           end
+        end
+      end
+
+      def people_with_dashboard_items
+        people.select do |person|
+          routine_tasks_by_person.fetch(person, []).any? || as_needed_by_person.fetch(person, []).any?
         end
       end
 

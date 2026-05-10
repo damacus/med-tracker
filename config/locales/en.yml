@@ -763,7 +763,7 @@ en:
     modal:
       new_title: "Add Medication for %{person}"
       edit_title: "Edit Medication for %{person}"
-      subtitle: "Add an as-needed medication"
+      subtitle: "Add a routine or as-needed medication"
     card:
       notes: "Notes:"
       timing_restrictions: "Timing Restrictions:"
@@ -800,7 +800,7 @@ en:
       select_dose: "Select a dose"
       select_medication_first: "Select a medication first"
       no_doses_available: "No doses available"
-      dose_hint: "All as-needed medications require a dose"
+      dose_hint: "Every medication requires a dose"
       notes: "Notes"
       notes_placeholder: "Add any special instructions or notes"
       notes_hint: "Add any special instructions or notes"
@@ -811,6 +811,15 @@ en:
       dose_cycle: "Dose cycle"
       default_dose_cycle: "Daily"
       dose_cycle_hint: "Cycle reset period"
+      administration_kind: "Medication type"
+      administration_kind_hint: "Routine tasks count against today; as-needed medication only shows when it can be given."
+      administration_kinds:
+        routine:
+          label: "Routine"
+          description: "A daily task to complete once the cycle resets"
+        as_needed:
+          label: "As needed"
+          description: "Only used when symptoms or guidance call for it"
       no_options: "No options."
       optional: "Optional"
       back: "Back"
@@ -819,7 +828,7 @@ en:
         choose_medication_title: "Choose a medication"
         choose_medication_description: "Start by choosing the medication you want to add."
         choose_dose_title: "Choose the dose"
-        choose_dose_description: "Every as-needed medication needs a dose before you continue."
+        choose_dose_description: "Choose the dose before you continue."
         add_guidance_title: "Add optional guidance"
         add_guidance_description: "Add any notes or dose limits you want to track with this medication."
       add_medication_button: "Add Medication"
@@ -1368,13 +1377,21 @@ en:
     subtitle: "Your family's medication schedule for today."
     todays_schedule: "Today's Schedule"
     as_needed:
-      title: "Take as Needed"
+      title: "As needed"
     overdue_alert: "Overdue: %{medication} for %{person} (scheduled at %{time})"
     out_of_stock_alert: "Out of Stock: %{medication}. Cannot record doses for %{person}."
     no_active_schedules: "No active schedules found"
     add_schedules_hint: "Add schedules to see them here"
     dose_taken_at: "%{person} • Taken at %{time}"
     empty_state: "No medications scheduled for today."
+    routine:
+      anytime: "Anytime"
+      done_short: "Done"
+      done_today: "Routine tasks done today"
+      empty: "No routine tasks due today"
+      left_today:
+        one: "1 routine task left today"
+        other: "%{count} routine tasks left today"
     insights:
       title: "Smart Insights"
       pattern_detected: "Pattern detected"
@@ -1389,12 +1406,16 @@ en:
       active_schedules: "Active Schedules"
       compliance: "Compliance"
       next_dose: "Next Dose"
+      due_today: "Today"
       no_upcoming_doses: "None today"
     statuses:
       taken: "Taken"
       upcoming: "Upcoming"
+      available_now: "Available now"
+      available_at: "Available at %{time}"
       cooldown: "Wait"
       missed: "Missed"
+      max_reached: "Daily max reached"
       out_of_stock: "Out of Stock"
     table:
       person: "Person"

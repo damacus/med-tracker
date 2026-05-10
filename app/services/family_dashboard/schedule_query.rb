@@ -3,6 +3,10 @@
 module FamilyDashboard
   # Query object to fetch a 24-hour medication schedule for a person and their dependents
   class ScheduleQuery
+    Result = Data.define(:routine_tasks, :routine_tasks_by_person, :as_needed_by_person)
+
+    delegate :routine_tasks, :routine_tasks_by_person, :as_needed_by_person, to: :result
+
     attr_reader :current_user
 
     def initialize(people, current_user: nil)
@@ -11,6 +15,16 @@ module FamilyDashboard
     end
 
     def call
+      result.routine_tasks
+    end
+
+    private
+
+    def result
+      @result ||= build_result
+    end
+
+    def build_result
       # 1. Fetch all active schedules and person_medications for these people first
       # to get the IDs for take preloading
       @person_ids = @people.map(&:id)
@@ -21,13 +35,16 @@ module FamilyDashboard
       preload_takes
 
       # 3. Aggregate all doses
-      doses = aggregate_family_doses
+      routine_tasks = sort_rows(aggregate_family_doses)
+      as_needed_items = sort_rows(aggregate_family_as_needed_items)
 
       # 4. Sort by time and return
-      doses.sort_by { |d| d[:scheduled_at] }
+      Result.new(
+        routine_tasks: routine_tasks,
+        routine_tasks_by_person: group_rows_by_person(routine_tasks),
+        as_needed_by_person: group_rows_by_person(as_needed_items)
+      )
     end
-
-    private
 
     def fetch_active_schedules
       schedules_by_person_id = Schedule.active
@@ -90,43 +107,67 @@ module FamilyDashboard
     end
 
     def aggregate_family_doses
-      @people.each_with_object([]) do |member, doses|
-        (@all_schedules[member.id] || []).each do |schedule|
-          doses.concat(generate_doses_for(schedule, member))
-        end
+      aggregate_rows { |source, member| generate_doses_for(source, member) }
+    end
 
-        (@all_person_medications[member.id] || []).each do |pm|
-          doses.concat(generate_doses_for(pm, member))
-        end
+    def aggregate_family_as_needed_items
+      aggregate_rows { |source, member| generate_as_needed_rows_for(source, member) }
+    end
+
+    def aggregate_rows
+      @people.each_with_object([]) do |member, rows|
+        sources_for(member).each { |source| rows.concat(yield(source, member)) }
       end
     end
 
-    def generate_member_doses(member)
-      self.class.new(member).call
+    def sources_for(member)
+      (@all_schedules[member.id] || []) + (@all_person_medications[member.id] || [])
     end
 
     def generate_doses_for(source, person)
-      now = Time.current
+      return [] if as_needed_source?(source)
+
       # 1. Get doses already taken today from our preloaded association
       # This uses the association preloaded in aggregate_family_doses to avoid N+1 queries
-      takes = source.medication_takes.select { |t| Time.current.all_day.cover?(t.taken_at) }
+      takes = todays_takes(source)
       doses = generate_taken_doses(takes, source, person)
 
       # 2. Determine if an upcoming dose should be shown
       # We show the "next available" dose if it falls within today
-      next_time = source.next_available_time
-      if next_time && next_time <= now + 24.hours
-        status = MedicationStockSourceResolver.new(user: current_user, source: source).blocked_reason || :upcoming
-        doses << {
-          person: person,
-          source: source,
-          scheduled_at: next_time,
-          taken_at: nil,
-          status: status
-        }
-      end
-
+      doses << build_upcoming_row(source, person, takes) if upcoming_routine_row?(source)
       doses
+    end
+
+    def todays_takes(source)
+      source.medication_takes.select { |take| Time.current.all_day.cover?(take.taken_at) }
+    end
+
+    def upcoming_routine_row?(source)
+      expected_doses = expected_routine_doses_for(source)
+      expected_doses.positive? && taken_count_for_cycle(source, Time.current) < expected_doses
+    end
+
+    def build_upcoming_row(source, person, takes)
+      {
+        person: person,
+        source: source,
+        scheduled_at: routine_scheduled_at(source, takes.length),
+        taken_at: nil,
+        status: MedicationStockSourceResolver.new(user: current_user, source: source).blocked_reason || :upcoming
+      }
+    end
+
+    def generate_as_needed_rows_for(source, person)
+      return [] unless as_needed_source?(source)
+
+      status = as_needed_status_for(source)
+      [{
+        person: person,
+        source: source,
+        scheduled_at: as_needed_scheduled_at(source, status),
+        taken_at: nil,
+        status: status
+      }]
     end
 
     def generate_taken_doses(takes, source, person)
@@ -140,6 +181,100 @@ module FamilyDashboard
           taken_from_location_name: take.inventory_location&.name
         }
       end
+    end
+
+    def expected_routine_doses_for(source)
+      return expected_schedule_doses_for(source) if source.is_a?(Schedule)
+
+      source.max_daily_doses.presence || 1
+    end
+
+    def expected_schedule_doses_for(schedule)
+      return 0 unless schedule.applies_on?(Date.current)
+
+      expected = schedule.expected_doses_on(Date.current)
+      return expected unless expected == 1 && schedule.effective_max_daily_doses.blank?
+      return expected if schedule.effective_min_hours_between_doses.blank?
+
+      (24 / schedule.effective_min_hours_between_doses.to_f).ceil
+    end
+
+    def taken_count_for_cycle(source, now)
+      cycle = source_cycle(source)
+      source.medication_takes.count { |take| cycle.range_for(now).cover?(take.taken_at) }
+    end
+
+    def as_needed_status_for(source)
+      blocked_reason = MedicationStockSourceResolver.new(user: current_user, source: source).blocked_reason
+      return :available if blocked_reason.blank?
+      return :max_reached if blocked_reason == :cooldown && daily_limit_reached?(source)
+
+      blocked_reason
+    end
+
+    def as_needed_scheduled_at(source, status)
+      return Time.current if status == :available
+      return source.next_available_time if %i[cooldown max_reached].include?(status)
+
+      nil
+    end
+
+    def daily_limit_reached?(source)
+      source.dose_constraints.would_exceed_daily_limit?(
+        takes: source.medication_takes.to_a,
+        cycle: source_cycle(source),
+        check_time: Time.current
+      )
+    end
+
+    def source_cycle(source)
+      DoseCycle.new(source.respond_to?(:dose_cycle) ? source.dose_cycle : 'daily')
+    end
+
+    def as_needed_source?(source)
+      return schedule_as_needed?(source) if source.is_a?(Schedule)
+
+      source.as_needed?
+    end
+
+    def schedule_as_needed?(schedule)
+      schedule.schedule_type_prn? || schedule_config_as_needed?(schedule) || frequency_as_needed?(schedule)
+    end
+
+    def schedule_config_as_needed?(schedule) = schedule.schedule_config.to_h['as_needed'] == true
+
+    def frequency_as_needed?(schedule) = schedule.frequency.to_s.casecmp('as needed').zero?
+
+    def routine_scheduled_at(source, taken_count)
+      return unless source.is_a?(Schedule)
+
+      configured_time_at(source, taken_count)
+    end
+
+    def configured_time_at(schedule, index)
+      raw_time = Array(schedule.schedule_config.to_h['times']).compact_blank[index]
+      return if raw_time.blank?
+
+      current_day_at(*configured_hour_and_minute(raw_time))
+    end
+
+    def configured_hour_and_minute(raw_time)
+      raw_time.to_s.split(':').map(&:to_i)
+    end
+
+    def current_day_at(hour, minute)
+      date = Date.current
+      Time.zone.local(date.year, date.month, date.day, hour, minute)
+    end
+
+    def sort_rows(rows)
+      rows.sort_by { |row| [row[:scheduled_at] || Time.current.end_of_day, row[:source].id] }
+    end
+
+    def group_rows_by_person(rows)
+      grouped = @people.index_with { [] }
+      rows.each { |row| grouped[row[:person]] << row }
+      grouped
     end
   end
 end

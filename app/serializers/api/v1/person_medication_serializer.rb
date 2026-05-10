@@ -32,6 +32,7 @@ module Api
       def schedule_data
         {
           dose_cycle: person_medication.dose_cycle,
+          administration_kind: person_medication.administration_kind,
           notes: person_medication.notes,
           position: person_medication.position,
           updated_at: person_medication.updated_at.iso8601

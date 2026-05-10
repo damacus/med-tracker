@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe FamilyDashboard::ScheduleQuery do
-  fixtures :people, :carer_relationships, :schedules, :person_medications, :medication_takes,
+  fixtures :accounts, :people, :carer_relationships, :schedules, :person_medications, :medication_takes,
            :locations, :medications, :dosages
 
   let(:jane) { people(:jane) }
@@ -57,9 +57,63 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
       expect(pms).to include(person_medications(:jane_vitamin_d))
     end
 
+    it 'keeps routine direct medications due after a previous-day dose' do
+      travel_to Time.zone.parse('2026-05-05 08:00:00') do
+        routine_medication = create_routine_person_medication
+        MedicationTake.create!(
+          person_medication: routine_medication,
+          taken_at: Time.zone.parse('2026-05-04 20:00:00'),
+          dose_amount: 500,
+          dose_unit: 'mg'
+        )
+
+        rows = described_class.new([people(:john)]).call.select { |row| row[:source] == routine_medication }
+
+        expect(rows.pluck(:status)).to include(:upcoming)
+      end
+    end
+
+    it 'does not emit a reset-time row after today routine direct medication has been taken' do
+      travel_to Time.zone.parse('2026-05-05 20:00:00') do
+        routine_medication = create_routine_person_medication
+        MedicationTake.create!(
+          person_medication: routine_medication,
+          taken_at: Time.zone.parse('2026-05-05 08:00:00'),
+          dose_amount: 500,
+          dose_unit: 'mg'
+        )
+
+        rows = described_class.new([people(:john)]).call.select { |row| row[:source] == routine_medication }
+
+        expect(rows.pluck(:status)).to eq([:taken])
+      end
+    end
+
+    it 'groups PRN schedules under as-needed medications instead of routine tasks' do
+      prn_schedule = create_prn_schedule
+      query = described_class.new([people(:john)])
+
+      routine_rows = query.call.select { |row| row[:source] == prn_schedule }
+      as_needed_rows = query.as_needed_by_person.fetch(people(:john)).select { |row| row[:source] == prn_schedule }
+
+      expect(routine_rows).to be_empty
+      expect(as_needed_rows.pluck(:status)).to eq([:available])
+    end
+
+    it 'marks PRN availability as max reached when the daily limit is exhausted' do
+      prn_schedule = create_prn_schedule(max_daily_doses: 1)
+      MedicationTake.create!(schedule: prn_schedule, taken_at: Time.current, dose_amount: 1000, dose_unit: 'mg')
+      query = described_class.new([people(:john)])
+
+      query.call
+      rows = query.as_needed_by_person.fetch(people(:john)).select { |row| row[:source] == prn_schedule }
+
+      expect(rows.pluck(:status)).to eq([:max_reached])
+    end
+
     it 'returns doses sorted by scheduled_at' do
       results = query.call
-      times = results.pluck(:scheduled_at)
+      times = results.pluck(:scheduled_at).compact
       expect(times).to eq(times.sort)
     end
 
@@ -209,5 +263,32 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
         expect(upcoming).to be_empty
       end
     end
+  end
+
+  def create_routine_person_medication
+    PersonMedication.create!(
+      person: people(:john),
+      medication: medications(:vitamin_c),
+      dose_amount: 500,
+      dose_unit: 'mg',
+      max_daily_doses: 1,
+      min_hours_between_doses: nil,
+      administration_kind: :routine
+    )
+  end
+
+  def create_prn_schedule(max_daily_doses: 4, min_hours_between_doses: 4)
+    Schedule.create!(
+      person: people(:john),
+      medication: medications(:paracetamol),
+      dose_amount: 1000,
+      dose_unit: 'mg',
+      start_date: Time.zone.today,
+      end_date: 1.year.from_now.to_date,
+      frequency: 'As needed',
+      schedule_type: :prn,
+      max_daily_doses: max_daily_doses,
+      min_hours_between_doses: min_hours_between_doses
+    )
   end
 end

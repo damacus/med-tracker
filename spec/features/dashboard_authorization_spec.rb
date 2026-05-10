@@ -108,6 +108,7 @@ RSpec.describe 'Dashboard Authorization', type: :system do
         sign_in(parent)
 
         visit dashboard_path
+        open_as_needed_disclosures
 
         # Should see child's schedule
         expect(page).to have_text('Paracetamol')
@@ -139,6 +140,7 @@ RSpec.describe 'Dashboard Authorization', type: :system do
         sign_in(adult_patient)
 
         visit dashboard_path
+        open_as_needed_disclosures
 
         # Should see their own schedule (paracetamol)
         expect(page).to have_text('Paracetamol')
@@ -148,5 +150,9 @@ RSpec.describe 'Dashboard Authorization', type: :system do
         expect(page).to have_no_text('Ibuprofen')
       end
     end
+  end
+
+  def open_as_needed_disclosures
+    page.all('details[data-testid="dashboard-as-needed-person"] summary').to_a.each(&:click)
   end
 end

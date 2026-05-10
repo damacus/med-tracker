@@ -257,6 +257,7 @@ class PersonMedicationsController < ApplicationController
         dose_amount
         dose_unit
         source_dosage_option_id
+        administration_kind
         notes
         max_daily_doses
         min_hours_between_doses
@@ -271,6 +272,7 @@ class PersonMedicationsController < ApplicationController
         dose_amount
         dose_unit
         source_dosage_option_id
+        administration_kind
         notes
         max_daily_doses
         min_hours_between_doses

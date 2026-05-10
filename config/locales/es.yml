@@ -706,7 +706,7 @@ es:
     invalid_dose_configured: "La dosis configurada no es válida. Actualiza la dosis del medicamento antes de tomarlo."
     modal:
       new_title: "Agregar Medicamento para %{person}"
-      subtitle: "Agregar un medicamento según sea necesario"
+      subtitle: "Agregar un medicamento rutinario o según necesidad"
       edit_title: "Editar medicamento para %{person}"
     card:
       notes: "Notas:"
@@ -745,7 +745,7 @@ es:
       select_dose: "Selecciona una dosis"
       select_medication_first: "Selecciona primero un medicamento"
       no_doses_available: "No hay dosis disponibles"
-      dose_hint: "Todos los medicamentos según sea necesario requieren una dosis"
+      dose_hint: "Todo medicamento requiere una dosis"
       notes: "Notas"
       notes_placeholder: "Añade cualquier instrucción especial o nota"
       notes_hint: "Añade cualquier instrucción especial o nota"
@@ -756,6 +756,15 @@ es:
       dose_cycle: "Ciclo de dosis"
       default_dose_cycle: "Diario"
       dose_cycle_hint: "Periodo de reinicio del ciclo"
+      administration_kind: "Tipo de medicamento"
+      administration_kind_hint: "Las tareas rutinarias cuentan para hoy; los medicamentos según necesidad solo se muestran cuando se pueden administrar."
+      administration_kinds:
+        routine:
+          label: "Rutina"
+          description: "Una tarea diaria para completar cuando se reinicia el ciclo"
+        as_needed:
+          label: "Según necesidad"
+          description: "Solo se usa cuando los síntomas o las indicaciones lo requieren"
       no_options: "No hay opciones."
       optional: "Opcional"
       back: "Volver"
@@ -765,7 +774,7 @@ es:
         choose_medication_title: "Elige un medicamento"
         choose_medication_description: "Empieza eligiendo el medicamento que quieres añadir."
         choose_dose_title: "Elige la dosis"
-        choose_dose_description: "Todo medicamento según sea necesario necesita una dosis antes de continuar."
+        choose_dose_description: "Elige la dosis antes de continuar."
         add_guidance_title: "Añade orientación opcional"
         add_guidance_description: "Añade notas o límites de dosis que quieras seguir con este medicamento."
 
@@ -1192,6 +1201,14 @@ es:
     overdue_alert: "Atrasado: %{medication} para %{person} (programado a las %{time})"
     out_of_stock_alert: "Sin stock: %{medication}. No se pueden registrar dosis para %{person}."
     empty_state: "No hay medicamentos programados para hoy."
+    routine:
+      anytime: "En cualquier momento"
+      done_short: "Hecho"
+      done_today: "Tareas rutinarias completadas hoy"
+      empty: "No hay tareas rutinarias pendientes hoy"
+      left_today:
+        one: "1 tarea rutinaria pendiente hoy"
+        other: "%{count} tareas rutinarias pendientes hoy"
     insights:
       title: "Información inteligente"
       pattern_detected: "Patrón detectado"
@@ -1207,6 +1224,7 @@ es:
       no_upcoming_doses: "Ninguna hoy"
       compliance: "Adherencia"
       next_dose: "Próxima dosis"
+      due_today: "Hoy"
     person_schedule:
       age: "Edad"
       dosage: "Dosis"
@@ -1228,8 +1246,11 @@ es:
     statuses:
       taken: "Tomado"
       upcoming: "Próximo"
+      available_now: "Disponible ahora"
+      available_at: "Disponible a las %{time}"
       cooldown: "Esperar"
       missed: "Perdido"
+      max_reached: "Máximo diario alcanzado"
       out_of_stock: "Sin Stock"
     table:
       person: "Persona"
