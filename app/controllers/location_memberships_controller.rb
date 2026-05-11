@@ -5,7 +5,8 @@ class LocationMembershipsController < ApplicationController
 
   def create
     authorize LocationMembership
-    @person = policy_scope(Person).find(params.expect(:location_membership)[:person_id])
+    location_membership_params = params.expect(location_membership: [:person_id])
+    @person = policy_scope(Person).find(location_membership_params[:person_id])
 
     if LocationMembership.create(location: @location, person: @person)
       respond_to do |format|

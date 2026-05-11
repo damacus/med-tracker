@@ -179,7 +179,7 @@ RSpec.describe 'Medication creation scope' do
       expect(response.body).not_to include('Wellman Original (Wellman) 29')
       expect(description.text).to eq('Daily multivitamin food supplement')
       expect(selected_category).to be_present
-      expect(selected_category['checked']).to be_present
+      expect(selected_category).to have_attribute('checked')
       expect(response.body).to include('name="medication[current_supply]"')
       expect(response.body).to include('value="29"')
       expect(amount['value']).to eq('1.0')
