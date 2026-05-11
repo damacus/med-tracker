@@ -102,7 +102,7 @@ module Components
             label: take_label,
             variant: row[:status] == :available ? :outlined : :filled,
             size: :md,
-            icon: Icons::Pill,
+            icon: Icons::HandPackage,
             testid: "take-dose-#{dose_id(row[:source])}",
             form_class: nil
           }

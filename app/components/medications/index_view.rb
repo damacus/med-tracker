@@ -48,7 +48,7 @@ module Components
               class: 'w-20 h-20 rounded-shape-xl bg-primary/10 flex items-center justify-center ' \
                      'text-primary shadow-inner'
             ) do
-              render Icons::Pill.new(size: 32)
+              render Icons::Inventory.new(size: 32)
             end
             div(class: 'space-y-1') do
               m3_text(size: '2', weight: 'bold',

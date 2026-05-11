@@ -144,7 +144,7 @@ module Components
       def render_icon(size:)
         case icon_type
         when 'users' then render Icons::Users.new(size: size)
-        when 'pill' then render Icons::Pill.new(size: size)
+        when 'inventory', 'pill' then render Icons::Inventory.new(size: size)
         when 'active_schedules' then render Icons::ActiveSchedules.new(size: size)
         when 'check' then render Icons::CheckCircle.new(size: size)
         when 'compliance' then render Icons::Compliance.new(size: size)
@@ -158,7 +158,7 @@ module Components
 
         case icon_type
         when 'users' then 'bg-primary/10'
-        when 'pill', 'active_schedules' then 'bg-success-container/50'
+        when 'inventory', 'pill', 'active_schedules' then 'bg-success-container/50'
         else 'bg-secondary-container'
         end
       end

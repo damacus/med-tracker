@@ -22,15 +22,14 @@ module Components
                  'group overflow-hidden'
         ) do
           CardHeader(class: 'pb-4 pt-8 px-8') do
-            div(class: 'flex justify-between items-start mb-4') do
+            div(class: 'flex items-start gap-3 min-w-0') do
               render_medication_icon
-              render_status_badge
-            end
-            div(class: 'space-y-2') do
-              m3_heading(level: 2, size: '5', class: 'font-bold tracking-tight break-words leading-tight') do
-                medication.display_name
+              div(class: 'min-w-0 space-y-2') do
+                m3_heading(level: 2, size: '5', class: 'font-bold tracking-tight break-words leading-tight') do
+                  medication.display_name
+                end
+                Badge(variant: :outlined, class: 'w-fit rounded-full text-[10px]') { medication.location.name }
               end
-              Badge(variant: :outlined, class: 'w-fit rounded-full text-[10px]') { medication.location.name }
             end
           end
 
@@ -58,17 +57,11 @@ module Components
         @presenter ||= ::Medications::SupplyStatusPresenter.new(medication: medication)
       end
 
-      def render_status_badge
-        Badge(variant: presenter.status_variant, class: 'shrink-0 whitespace-nowrap justify-center') do
-          presenter.status_label
-        end
-      end
-
       def render_supply_bar
         div(class: 'space-y-2') do
           div(
             class: 'flex justify-between items-center text-[10px] font-black uppercase ' \
-                   'tracking-widest text-on-surface-variant'
+                   "tracking-widest #{presenter.list_inventory_text_class}"
           ) do
             span { t('medications.index.inventory_level') }
             span { presenter.inventory_units_label }
@@ -81,13 +74,7 @@ module Components
       end
 
       def render_medication_icon
-        div(
-          class: 'w-12 h-12 rounded-shape-xl bg-card flex items-center ' \
-                 'justify-center text-on-surface-variant ' \
-                 'group-hover:text-primary group-hover:bg-primary/5 transition-all'
-        ) do
-          render Icons::Pill.new(size: 24)
-        end
+        render Icons::Medication.new(size: 24, class: 'mt-1 shrink-0 text-on-surface-variant group-hover:text-primary')
       end
 
       def render_actions

@@ -47,16 +47,16 @@ RSpec.describe Components::Medications::TakeAction, type: :component do
   end
 
   it 'renders decorative SVG icons on enabled and confirmation buttons' do
-    rendered = render_take_action(button: { icon: Components::Icons::Pill })
+    rendered = render_take_action(button: { icon: Components::Icons::HandPackage })
 
-    icons = rendered.css('button svg.lucide-pill')
+    icons = rendered.css('button svg.material-symbol-hand-package')
     expect(icons.count).to eq(2)
     expect(icons.all? { |icon| icon['aria-hidden'] == 'true' }).to be(true)
   end
 
   it 'renders a decorative SVG icon on disabled buttons' do
     rendered = render_take_action(
-      button: { icon: Components::Icons::Pill },
+      button: { icon: Components::Icons::HandPackage },
       state: { disabled: true, label: 'Out of Stock', icon: Components::Icons::AlertCircle }
     )
 

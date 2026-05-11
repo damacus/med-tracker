@@ -230,7 +230,7 @@ module Components
             label: take_label,
             variant: :filled,
             size: :lg,
-            icon: Icons::Pill,
+            icon: Icons::HandPackage,
             class: 'w-full rounded-xl py-6 font-bold shadow-lg shadow-primary/20 hover:shadow-xl ' \
                    'hover:shadow-primary/30',
             testid: "take-person-medication-#{person_medication.id}",

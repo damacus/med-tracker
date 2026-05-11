@@ -58,7 +58,7 @@ module Components
               label: presenter.take_label,
               variant: :filled,
               size: :lg,
-              icon: Icons::Pill,
+              icon: Icons::HandPackage,
               class: 'w-full rounded-xl py-6 font-bold shadow-lg shadow-primary/20 hover:shadow-xl ' \
                      'hover:shadow-primary/30 transition-all',
               testid: "take-schedule-#{schedule.id}",

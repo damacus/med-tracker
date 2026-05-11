@@ -26,6 +26,12 @@ RSpec.describe Components::Layouts::MobileRail, type: :component do
     expect(rendered.css('button[aria-label="Sign Out"]')).to be_empty
   end
 
+  it 'renders the inventory item with the inventory icon' do
+    rendered = render_rail(user: admin_user)
+
+    expect(rendered.at_css('a[aria-label="Inventory"] svg.material-symbol-inventory')).to be_present
+  end
+
   it 'marks the active rail item with aria-current' do
     rendered = render_rail(user: admin_user, path: Rails.application.routes.url_helpers.medications_path)
     inventory_link = rendered.at_css(%(a[aria-label="Inventory"]))

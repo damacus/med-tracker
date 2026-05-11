@@ -22,10 +22,10 @@ RSpec.describe Components::Dashboard::StatCard, type: :component do
       expect(rendered.css('svg')).to be_present
     end
 
-    it 'renders a pill icon when icon_type is pill' do
-      rendered = render_inline(described_class.new(title: 'Medications', value: 3, icon_type: 'pill'))
+    it 'renders an inventory icon when icon_type is inventory' do
+      rendered = render_inline(described_class.new(title: 'Medications', value: 3, icon_type: 'inventory'))
 
-      expect(rendered.css('svg')).to be_present
+      expect(rendered.css('svg.material-symbol-inventory')).to be_present
     end
   end
 
@@ -37,7 +37,7 @@ RSpec.describe Components::Dashboard::StatCard, type: :component do
     end
 
     it 'renders the title' do
-      rendered = render_inline(described_class.new(title: 'Active Schedules', value: 10, icon_type: 'pill'))
+      rendered = render_inline(described_class.new(title: 'Active Schedules', value: 10, icon_type: 'inventory'))
 
       expect(rendered.text).to include('Active Schedules')
     end

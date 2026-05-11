@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe Components::Medications::ListItemComponent, type: :component do
-  fixtures :medications
+  fixtures :locations, :medications
 
   it 'renders the view link with a top-level frame target' do
     medication = medications(:paracetamol)
@@ -31,5 +31,31 @@ RSpec.describe Components::Medications::ListItemComponent, type: :component do
 
     expect(rendered.at_css('h2').text).to include('Movicol Paediatric Plain')
     expect(rendered.at_css('h2').text).not_to include('Norgine Pharmaceuticals')
+  end
+
+  it 'renders each medicine with the medication icon' do
+    medication = medications(:paracetamol)
+
+    rendered = render_inline(described_class.new(medication: medication))
+
+    expect(rendered.at_css("div#medication_#{medication.id} svg.material-symbol-medication")).to be_present
+  end
+
+  it 'renders the medication icon inline with the medicine name' do
+    medication = medications(:paracetamol)
+
+    rendered = render_inline(described_class.new(medication: medication))
+    header_group = rendered.at_css("div#medication_#{medication.id} div.flex.items-start.gap-3")
+
+    expect(header_group.at_css('svg.material-symbol-medication')).to be_present
+    expect(header_group.text).to include(medication.display_name)
+  end
+
+  it 'does not render the duplicate stock badge' do
+    medication = medications(:paracetamol)
+
+    rendered = render_inline(described_class.new(medication: medication))
+
+    expect(rendered.text).not_to include('In Stock')
   end
 end
