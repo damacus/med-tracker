@@ -1156,6 +1156,8 @@ en:
       title: "System Information"
       description: "Application version and resources"
       app_version: "App Version"
+      worktree: "Worktree"
+      commit: "Commit"
       release_notes: "Release Notes"
       documentation: "Documentation"
       view_docs: "View Docs"

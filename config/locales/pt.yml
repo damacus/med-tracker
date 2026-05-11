@@ -1075,6 +1075,8 @@ pt:
       title: "Informação do Sistema"
       description: "Versão da aplicação e recursos"
       app_version: "Versão da aplicação"
+      worktree: "Árvore de trabalho"
+      commit: "Commit"
       release_notes: "Notas de lançamento"
       documentation: "Documentação"
       view_docs: "Ver documentação"
