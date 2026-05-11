@@ -10,7 +10,7 @@
 **Vulnerability:** Open redirect vulnerabilities occur when a user-controlled parameter (like `return_to`) is passed directly to `redirect_to`, allowing an attacker to construct URLs that send authenticated users to a malicious site.
 **Learning:** In Rails, `redirect_to` will follow absolute URLs provided in parameters. Checking for presence (`params[:return_to].presence`) does not prevent redirecting to external domains.
 **Prevention:** Always use Rails's built-in `url_from` method (or a wrapper like `safe_redirect_path`) to ensure the provided path is relative to the application and not an external URL. If `url_from` cannot parse it as an internal URL, it will return `nil`, allowing a safe fallback like `|| @resource`.
-## $(date +%Y-%m-%d) - Unvalidated Data Exposure via \`to_unsafe_h\`
+## 2026-05-11 - Unvalidated Data Exposure via \`to_unsafe_h\`
 **Vulnerability:** Unvalidated Data Exposure bypassing Strong Parameters by using \`.to_unsafe_h\` on ActionController::Parameters when initializing scheduling.
 **Learning:** Using \`to_unsafe_h\` on \`ActionController::Parameters\` entirely disables parameter whitelisting for that nested hash, enabling a malicious user to construct arbitrary nested hashes which might trigger mass-assignment, logic bugs, or application crashes downstream when expecting a simple string hash.
 **Prevention:** Instead of using \`.to_unsafe_h\`, explicitly permit all expected keys (including nested arrays and hashes) using a constant like \`SCHEDULE_CONFIG_KEYS\`, and then safely call \`.permit(*SCHEDULE_CONFIG_KEYS).to_h\`.
