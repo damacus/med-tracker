@@ -9,7 +9,7 @@ module Api
       end
 
       def show
-        schedule = policy_scope(Schedule).includes(:person, :medication).find(params[:id])
+        schedule = policy_scope(Schedule).includes(:person, :medication).find(params.expect(:id))
         authorize schedule
 
         render_resource(schedule, serializer: ScheduleSerializer)

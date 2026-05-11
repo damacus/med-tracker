@@ -76,12 +76,12 @@ class PersonMedicationsController < ApplicationController
   private
 
   def set_person
-    @person = policy_scope(Person).find(params[:person_id])
+    @person = policy_scope(Person).find(params.expect(:person_id))
     authorize @person, :show?
   end
 
   def set_person_medication
-    @person_medication = @person.person_medications.find(params[:id])
+    @person_medication = @person.person_medications.find(params.expect(:id))
   end
 
   def prepare_new_person_medication

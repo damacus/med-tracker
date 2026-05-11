@@ -38,7 +38,7 @@ class PeopleController < ApplicationController
   end
 
   def edit
-    @person = policy_scope(Person).find(params[:id])
+    @person = policy_scope(Person).find(params.expect(:id))
     authorize @person
     @return_to = url_from(params[:return_to])
     is_modal = request.headers['Turbo-Frame'] == 'modal'
@@ -142,7 +142,7 @@ class PeopleController < ApplicationController
   private
 
   def set_person
-    @person = policy_scope(Person).find(params[:id])
+    @person = policy_scope(Person).find(params.expect(:id))
   end
 
   def person_params

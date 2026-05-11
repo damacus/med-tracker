@@ -5,9 +5,9 @@ module Api
     module Auth
       class SessionsController < ActionController::API
         def create
-          account = Account.find_by(email: params[:email].to_s.strip.downcase)
+          account = Account.find_by(email: params.expect(:email).to_s.strip.downcase)
 
-          unless authenticated_account?(account, params[:password].to_s)
+          unless authenticated_account?(account, params.expect(:password).to_s)
             render_invalid_credentials
             return
           end
@@ -36,7 +36,7 @@ module Api
         end
 
         def refresh
-          api_session = ApiSession.lookup_by_refresh_token(params[:refresh_token].to_s)
+          api_session = ApiSession.lookup_by_refresh_token(params.expect(:refresh_token).to_s)
           unless api_session&.active_refresh_token? && api_session.account.verified? && api_session.account.person&.user&.active?
             render_invalid_refresh_token
             return

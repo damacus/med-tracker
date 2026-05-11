@@ -168,7 +168,7 @@ RSpec.describe 'Medication creation scope' do
         package_unit: 'tablet'
       }
 
-      html = Nokogiri::HTML(response.body)
+      html = response.parsed_body
       selected_category = html.at_css('input[name="medication[category]"][value="Supplement"]')
       description = html.at_css('textarea[name="medication[description]"]')
       amount = html.at_css("input[name='medication[dosage_records_attributes][0][amount]']")
@@ -201,7 +201,7 @@ RSpec.describe 'Medication creation scope' do
 
       get new_medication_path, params: { barcode: '5021265221301' }
 
-      html = Nokogiri::HTML(response.body)
+      html = response.parsed_body
       description = html.at_css('textarea[name="medication[description]"]')
       amount = html.at_css("input[name='medication[dosage_records_attributes][0][amount]']")
       unit = html.at_css("input[name='medication[dosage_records_attributes][0][unit]'][value='tablet']")

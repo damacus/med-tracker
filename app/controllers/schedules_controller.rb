@@ -81,7 +81,7 @@ class SchedulesController < ApplicationController
   private
 
   def set_person
-    @person = policy_scope(Person).find(params[:person_id])
+    @person = policy_scope(Person).find(params.expect(:person_id))
     authorize @person, :show?
   end
 
@@ -124,8 +124,8 @@ class SchedulesController < ApplicationController
     new_person_schedule_path(
       selection.person,
       medication_id: selection.medication.id,
-      frequency: params[:frequency].to_s,
-      schedule_type: params[:schedule_type].to_s
+      frequency: params.expect(:frequency).to_s,
+      schedule_type: params.expect(:schedule_type).to_s
     )
   end
 

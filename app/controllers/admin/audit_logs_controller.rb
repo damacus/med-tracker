@@ -34,7 +34,7 @@ module Admin
     # GET /admin/audit_logs/:id
     # Shows detailed information about a specific audit log entry
     def show
-      @version = PaperTrail::Version.find(params[:id])
+      @version = PaperTrail::Version.find(params.expect(:id))
       authorize @version, policy_class: AuditLogPolicy
 
       render Components::Admin::AuditLogs::ShowView.new(version: @version)

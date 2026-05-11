@@ -15,6 +15,6 @@ class SearchesController < ApplicationController
   end
 
   def search_query
-    params[:q].to_s
+    params.expect(:q).to_s
   end
 end
