@@ -75,6 +75,10 @@ Rails.application.routes.draw do
 
   # Medication management
   resources :medications do
+    collection do
+      post :scan_restock
+    end
+
     member do
       get :administration
       get :nhs_guidance

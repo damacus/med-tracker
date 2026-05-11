@@ -133,6 +133,16 @@ class MedicationsController < ApplicationController
     render_adjust_success
   end
 
+  def scan_restock
+    authorize Medication, :index?
+
+    medication = scanned_restock_medication
+    return redirect_to medications_path, alert: t('medications.scan_restock_no_match') unless medication
+
+    authorize medication, :update?
+    render_scan_restock_result(restock_scanned_medication(medication))
+  end
+
   def finder
     authorize Medication
     render Components::Medications::FinderView.new
@@ -146,6 +156,20 @@ class MedicationsController < ApplicationController
   end
 
   private
+
+  def restock_scanned_medication(medication)
+    RestockMedicationService.new.call(
+      medication: medication,
+      quantity: params.dig(:inventory_scan, :quantity),
+      restock_date: Date.current
+    )
+  end
+
+  def render_scan_restock_result(result)
+    return redirect_to medications_path, alert: result.error unless result.success?
+
+    redirect_to result.medication, notice: t('medications.scan_restocked')
+  end
 
   def set_medication
     @medication = policy_scope(Medication).find(params.expect(:id))
@@ -230,6 +254,28 @@ class MedicationsController < ApplicationController
       quantity: params.dig(:refill, :quantity),
       restock_date: params.dig(:refill, :restock_date)
     )
+  end
+
+  def scanned_restock_medication
+    barcode = NhsDmdBarcode.normalize_gtin(params.dig(:inventory_scan, :barcode))
+    return if barcode.blank?
+
+    policy_scope(Medication).find_by(barcode: barcode) || scanned_barcode_catalog_match(barcode)
+  end
+
+  def scanned_barcode_catalog_match(barcode)
+    catalog_match = BarcodeCatalog::Lookup.new.lookup(barcode)
+    return if catalog_match.blank?
+
+    candidate = Medication.new(
+      name: catalog_match[:display],
+      barcode: barcode,
+      dmd_code: catalog_match[:code],
+      dmd_system: catalog_match[:system],
+      dmd_concept_class: catalog_match[:concept_class]
+    )
+
+    MedicationInventoryMatcher.new(scope: policy_scope(Medication)).call(candidate)
   end
 
   def render_refill_error(message)

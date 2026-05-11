@@ -59,26 +59,29 @@ module Components
             end
           end
 
-          if view_context.policy(Medication).create?
+          if view_context.policy(Medication).create? || view_context.policy(Medication).update?
             div(class: 'hidden gap-3 md:flex') do
-              Link(
-                href: add_medication_path,
-                variant: :outlined,
-                size: :lg,
-                class: 'rounded-full font-bold text-sm bg-card shadow-sm border-border'
-              ) do
-                render Icons::PlusCircle.new(size: 20, class: 'mr-2 text-primary')
-                span { 'Add Schedule' }
-              end
-              Link(
-                href: new_medication_path,
-                variant: :filled,
-                size: :lg,
-                class: 'rounded-full font-bold text-sm shadow-elevation-2',
-                **wizard_link_data
-              ) do
-                render Icons::Pill.new(size: 20, class: 'mr-2')
-                span { t('medications.index.add_medication') }
+              render Components::Medications::InventoryScanModal.new if view_context.policy(Medication).update?
+              if view_context.policy(Medication).create?
+                Link(
+                  href: add_medication_path,
+                  variant: :outlined,
+                  size: :lg,
+                  class: 'rounded-full font-bold text-sm bg-card shadow-sm border-border'
+                ) do
+                  render Icons::PlusCircle.new(size: 20, class: 'mr-2 text-primary')
+                  span { 'Add Schedule' }
+                end
+                Link(
+                  href: new_medication_path,
+                  variant: :filled,
+                  size: :lg,
+                  class: 'rounded-full font-bold text-sm shadow-elevation-2',
+                  **wizard_link_data
+                ) do
+                  render Icons::Pill.new(size: 20, class: 'mr-2')
+                  span { t('medications.index.add_medication') }
+                end
               end
             end
           end
