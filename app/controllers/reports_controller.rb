@@ -12,12 +12,13 @@ class ReportsController < ApplicationController
     # We use PersonPolicy::Scope to fetch people the user is authorized to see
     @people = policy_scope(Person)
     report_data = Reports::IndexQuery.new(people: @people, start_date: @start_date, end_date: @end_date).call
+    smart_insights = SmartInsights::IndexQuery.new(people: @people, start_date: @start_date, end_date: @end_date).call
     @daily_data = report_data.daily_data
     @inventory_alerts = report_data.inventory_alerts
 
     render Views::Reports::Index.new(
       daily_data: @daily_data,
-      inventory_alerts: @inventory_alerts,
+      smart_insights: smart_insights,
       start_date: @start_date,
       end_date: @end_date
     )

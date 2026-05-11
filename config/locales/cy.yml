@@ -1230,8 +1230,6 @@ cy:
     out_of_stock_alert: "Allan o stoc: %{medication}. Ni ellir cofnodi dosau ar gyfer %{person}."
     insights:
       title: "Mewnwelediadau Clyfar"
-      pattern_detected: "Patrwm wedi'i ganfod"
-      message: "Rydych chi wedi bod yn gyson iawn yr wythnos hon! Da iawn am aros ar y trywydd iawn gyda'ch trefn graidd."
       view_report: "Gweld yr adroddiad llawn"
     inventory:
       title: "Rhestr Stoc"
@@ -1332,20 +1330,15 @@ cy:
       summary:
         overall_compliance: "Cydymffurfiaeth Gyffredinol"
         total_doses_logged: "Cyfanswm dosau wedi'u cofnodi"
-        current_health_status: "Statws iechyd cyfredol"
+        evidence_reviewed: "Tystiolaeth wedi'i hadolygu"
         excellent: "Ardderchog"
         needs_attention: "Angen sylw"
         on_track: "Ar y trywydd iawn"
         missed_doses: "Dosau wedi'u methu"
-        optimal: "Optimaidd"
-        vibrant: "Bywiog"
+        based_on_logs: "Yn seiliedig ar ddosau wedi'u cofnodi"
       timeline_title: "Llinell Amser Cydymffurfiaeth"
       download_pdf: "Lawrlwytho PDF"
       timeline_compliance: "%{percentage}% Cydymffurfiaeth"
-      achievement_streak:
-        title: "Stryd cyflawniad"
-        value: "4 diwrnod yn ddi-dor"
-        description: "Nid ydych wedi colli hyd yn oed un dos ers bore dydd Gwener. Mae eich corff yn cynnal lefelau optimaidd."
       inventory_alert:
         title: "Rhybudd Rhestr"
         out_of_stock: "Allan o Stoc"
@@ -1355,6 +1348,75 @@ cy:
           one: "Bydd cyflenwad %{medication_name} yn dod i ben mewn %{count} diwrnod. Rydym yn argymell archebu ail-lenwi y prynhawn yma."
           other: "Bydd cyflenwad %{medication_name} yn dod i ben mewn %{count} diwrnod. Rydym yn argymell archebu ail-lenwi y prynhawn yma."
       actionable_insight: "Mewnwelediad gweithredadwy"
+  smart_insights:
+    title: "Mewnwelediadau Clyfar"
+    evidence_summary:
+      one: "%{days} diwrnod wedi'u hadolygu gyda %{events} digwyddiad meddyginiaeth"
+      other: "%{days} diwrnod wedi'u hadolygu gyda %{events} digwyddiad meddyginiaeth"
+    learning:
+      title: "Dysgu eich trefn"
+      summary: "Parhewch i gofnodi dosau fel y gall MedTracker weld patrymau go iawn."
+      detail: "Mae Smart Insights yn aros am ddigon o dystiolaeth cyn galw rhywbeth yn batrwm."
+    no_action:
+      title: "Nid oes patrwm angen sylw"
+      summary: "Nid oes dim anarferol yn sefyll allan yn y cyfnod adrodd hwn."
+      detail: "Mae eich adroddiad yn dal i ddangos hanes dosau a rhestr stoc fel y gallwch adolygu'r manylion."
+    detectors:
+      adherence_streak:
+        title: "Stryd trefn gref"
+        summary:
+          one: "Cofnodwyd pob dos disgwyliedig ddoe."
+          other: "Cofnodwyd pob dos disgwyliedig am %{count} diwrnod."
+        detail: "Mae'r cysondeb hwnnw'n rhoi rhythm cadarn i'ch trefn ofal."
+        metric_label: "Stryd gyfredol"
+        metric_value:
+          one: "1 diwrnod"
+          other: "%{count} diwrnod"
+      missed_dose_pattern:
+        title: "Patrwm dosau wedi'u methu"
+        summary:
+          one: "Methwyd dosau disgwyliedig ddoe."
+          other: "Methwyd dosau disgwyliedig am %{count} diwrnod yn olynol."
+        detail: "Adolygwch yr amserlen a'r atgoffwyr ar gyfer y cyfnod hwn."
+        metric_label: "Rhediad hiraf"
+        metric_value:
+          one: "1 diwrnod"
+          other: "%{count} diwrnod"
+      timing_consistency:
+        title: "Amseriad dosau cyson"
+        summary: "Roedd %{percentage}% o'r dosau wedi'u cofnodi yn agos at eu hamser trefnedig."
+        detail: "Mae eich amseriad wedi'i gofnodi wedi bod yn sefydlog yn y cyfnod adrodd hwn."
+        metric_label: "Cofnodion ar amser"
+        metric_value:
+          one: "1 dos"
+          other: "%{count} dos"
+      inventory_risk:
+        title: "Mae angen sylw ar gyflenwad"
+        summary_zero: "Mae %{medication_name} yn ymddangos allan o stoc."
+        summary:
+          one: "Mae gan %{medication_name} tua 1 diwrnod o gyflenwad ar ôl."
+          other: "Mae gan %{medication_name} tua %{count} diwrnod o gyflenwad ar ôl."
+        detail: "Gwiriwch gofnod stoc %{medication_name} a chynlluniwch yr ail-lenwi nesaf."
+        metric_label: "Cyflenwad ar ôl"
+        metric_value:
+          one: "1 diwrnod"
+          other: "%{count} diwrnod"
+      prn_usage:
+        title: "Defnydd yn ôl yr angen wedi'i gofnodi"
+        summary:
+          one: "Cofnodwyd 1 dos yn ôl yr angen yn y cyfnod hwn."
+          other: "Cofnodwyd %{count} dos yn ôl yr angen yn y cyfnod hwn."
+        detail: "Adolygwch y cofnodion hyn ochr yn ochr â dosau rheolaidd i gadw'r darlun llawn yn glir."
+        metric_label: "Cofnodion PRN"
+        metric_value:
+          one: "1 dos"
+          other: "%{count} dos"
+      schedule_hygiene:
+        title: "Manylyn amserlen i'w adolygu"
+        summary: "Mae %{medication_name} wedi'i osod ar gyfer sawl dos dyddiol heb amseroedd penodol."
+        detail: "Gall ychwanegu amseroedd wneud atgoffwyr, adroddiadau a mewnwelediadau amseriad yn gliriach."
+        metric_label: "Adolygu"
+        metric_value: "Amserlen"
 
   notification_settings:
     title: "Gosodiadau Hysbysiadau"

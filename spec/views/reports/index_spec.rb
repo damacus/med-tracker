@@ -6,7 +6,7 @@ RSpec.describe Views::Reports::Index do
   subject(:report_view) do
     described_class.new(
       daily_data: daily_data,
-      inventory_alerts: inventory_alerts,
+      smart_insights: smart_insights,
       start_date: 7.days.ago.to_date,
       end_date: Time.zone.today
     )
@@ -20,10 +20,25 @@ RSpec.describe Views::Reports::Index do
     ]
   end
 
-  let(:inventory_alerts) do
-    [
-      { medication_name: 'Ibuprofen', days_left: 3, doses_left: 12 }
-    ]
+  let(:smart_insights) do
+    insight = SmartInsights::Insight.new(
+      key: :inventory_risk,
+      family: :inventory,
+      severity: :urgent,
+      title: 'Supply needs attention',
+      summary: 'Ibuprofen has about 3 days of supply left.',
+      detail: 'Check the stock record for Ibuprofen and plan the next refill.',
+      metric_label: 'Supply window',
+      metric_value: '3 days',
+      cta_path: '/reports#insights'
+    )
+
+    SmartInsights::Result.new(
+      primary_insight: insight,
+      insights: [insight],
+      learning_state?: false,
+      evidence_summary: '12 medication events across 7 days'
+    )
   end
 
   before do
@@ -54,11 +69,11 @@ RSpec.describe Views::Reports::Index do
     expect(rendered).to include('Wed')
   end
 
-  it 'renders the inventory alert with interpolated data' do
+  it 'renders the smart insight with interpolated data' do
     rendered = render report_view
-    expect(rendered).to include('Inventory Alert')
+    expect(rendered).to include('Smart Insights')
     expect(rendered).to include('Ibuprofen')
-    expect(rendered).to include('exhausted in 3 days')
+    expect(rendered).to include('about 3 days of supply left')
   end
 
   it 'renders report copy from the active locale' do

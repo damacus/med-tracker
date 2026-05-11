@@ -157,34 +157,149 @@ module Components
           end
           m3_card(
             variant: :filled,
-            class: 'bg-primary rounded-[2.5rem] p-10 text-on-primary relative overflow-hidden border-none ' \
-                   'transition-all duration-300 hover:shadow-xl hover:shadow-primary/30 ' \
-                   'group cursor-default'
+            class: 'rounded-[2.5rem] p-10 relative overflow-hidden border-none transition-all duration-300 ' \
+                   "#{dashboard_insight_card_classes}"
           ) do
-            div(class: 'absolute -right-12 -top-12 w-48 h-48 bg-white/10 rounded-full blur-3xl ' \
-                       'group-hover:bg-white/20 transition-all')
             div(class: 'relative z-10') do
-              div(class: 'w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center mb-6 ' \
-                         'group-hover:scale-110 transition-transform shadow-inner') do
-                render Icons::AlertCircle.new(size: 24)
-              end
-              m3_heading(variant: :headline_small, level: 3, class: 'font-black mb-2 tracking-tight') do
-                t('dashboard.insights.pattern_detected')
-              end
-              m3_text(variant: :body_large, class: 'text-on-primary/90 leading-relaxed mb-8 font-medium') do
-                t('dashboard.insights.message')
-              end
-              m3_button(
-                variant: :text,
-                class: 'p-0 h-auto font-black uppercase tracking-widest text-on-primary ' \
-                       'border-b-2 border-on-primary/30 ' \
-                       'rounded-none hover:border-on-primary hover:bg-transparent transition-all'
-              ) do
-                t('dashboard.insights.view_report')
-              end
+              render_dashboard_insight_content
             end
           end
         end
+      end
+
+      def render_dashboard_insight_content
+        insight = presenter.smart_insights.primary_insight
+
+        if presenter.smart_insights.learning_state?
+          render_dashboard_insight_state(
+            icon: Icons::Activity,
+            content: {
+              title: t('smart_insights.learning.title'),
+              summary: t('smart_insights.learning.summary'),
+              detail: t('smart_insights.learning.detail')
+            }
+          )
+        elsif insight
+          render_dashboard_primary_insight(insight)
+        else
+          render_dashboard_insight_state(
+            icon: Icons::CheckCircle,
+            content: {
+              title: t('smart_insights.no_action.title'),
+              summary: t('smart_insights.no_action.summary'),
+              detail: t('smart_insights.no_action.detail')
+            }
+          )
+        end
+      end
+
+      def render_dashboard_primary_insight(insight)
+        render_dashboard_insight_state(
+          icon: dashboard_insight_icon(insight),
+          content: {
+            title: insight.title,
+            summary: insight.summary,
+            detail: insight.detail,
+            metric_label: insight.metric_label,
+            metric_value: insight.metric_value
+          }
+        )
+      end
+
+      def render_dashboard_insight_state(icon:, content:)
+        div(class: dashboard_insight_icon_tile_classes) do
+          render icon.new(size: 24)
+        end
+        m3_heading(variant: :headline_small, level: 3, class: 'font-black mb-2 tracking-tight') do
+          content.fetch(:title)
+        end
+        m3_text(variant: :body_large, class: dashboard_insight_body_text_classes) { content.fetch(:summary) }
+        m3_text(variant: :body_medium, class: dashboard_insight_detail_text_classes) { content.fetch(:detail) }
+        render_dashboard_insight_metric(content)
+        render_dashboard_insight_link
+      end
+
+      def render_dashboard_insight_metric(content)
+        return if content[:metric_label].blank? || content[:metric_value].blank?
+
+        div(class: dashboard_insight_metric_tile_classes) do
+          span(class: 'text-xs font-bold uppercase tracking-widest') { content.fetch(:metric_label) }
+          span(class: 'text-sm font-black') { content.fetch(:metric_value) }
+        end
+      end
+
+      def render_dashboard_insight_link
+        return unless presenter.can_view_reports?
+
+        m3_link(
+          href: reports_path(anchor: 'insights'),
+          variant: :text,
+          class: "mt-8 p-0 h-auto font-black uppercase tracking-widest #{dashboard_insight_link_classes} " \
+                 'border-b-2 rounded-none hover:bg-transparent transition-all'
+        ) do
+          t('dashboard.insights.view_report')
+        end
+      end
+
+      def dashboard_insight_card_classes
+        insight = presenter.smart_insights.primary_insight
+        if insight.blank?
+          return 'bg-surface-container-low text-on-surface border border-outline-variant/70 shadow-elevation-1'
+        end
+
+        {
+          urgent: 'bg-error-container text-on-error-container shadow-elevation-2',
+          warning: 'bg-tertiary-container text-on-tertiary-container shadow-elevation-2',
+          positive: 'bg-primary text-on-primary shadow-elevation-2',
+          info: 'bg-secondary-container text-on-secondary-container shadow-elevation-1'
+        }.fetch(insight.severity, 'bg-secondary-container text-on-secondary-container shadow-elevation-1')
+      end
+
+      def dashboard_insight_icon_classes
+        presenter.smart_insights.primary_insight.present? ? 'bg-white/20' : 'bg-primary/10 text-primary'
+      end
+
+      def dashboard_insight_icon_tile_classes
+        "w-12 h-12 rounded-2xl #{dashboard_insight_icon_classes} " \
+          'flex items-center justify-center mb-6 shadow-inner'
+      end
+
+      def dashboard_insight_body_classes
+        presenter.smart_insights.primary_insight.present? ? 'text-current/90' : 'text-on-surface'
+      end
+
+      def dashboard_insight_body_text_classes
+        "#{dashboard_insight_body_classes} leading-relaxed font-medium"
+      end
+
+      def dashboard_insight_detail_classes
+        presenter.smart_insights.primary_insight.present? ? 'text-current/80' : 'text-on-surface-variant'
+      end
+
+      def dashboard_insight_detail_text_classes
+        "#{dashboard_insight_detail_classes} leading-relaxed mt-3"
+      end
+
+      def dashboard_insight_metric_classes
+        presenter.smart_insights.primary_insight.present? ? 'bg-white/20' : 'bg-primary/10 text-primary'
+      end
+
+      def dashboard_insight_metric_tile_classes
+        "mt-6 inline-flex items-center gap-2 rounded-full px-3 py-1.5 #{dashboard_insight_metric_classes}"
+      end
+
+      def dashboard_insight_link_classes
+        if presenter.smart_insights.primary_insight.present?
+          'text-current border-current/30 hover:border-current'
+        else
+          'text-primary border-primary/30 hover:border-primary'
+        end
+      end
+
+      def dashboard_insight_icon(insight)
+        return Icons::AlertCircle if %i[urgent warning].include?(insight.severity)
+
+        Icons::CheckCircle
       end
 
       def render_supply_levels

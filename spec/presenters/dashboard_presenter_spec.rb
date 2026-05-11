@@ -3,7 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe DashboardPresenter do
-  fixtures :accounts, :people, :users, :locations, :medications, :dosages, :schedules
+  fixtures :accounts, :people, :users, :locations, :medications, :dosages, :schedules, :person_medications,
+           :medication_takes
 
   let(:admin_user) { users(:admin) }
   let(:carer_user) { users(:carer) }
@@ -142,5 +143,40 @@ RSpec.describe DashboardPresenter do
       presenter = described_class.new(current_user: admin_user)
       expect(presenter.doses).to be_an(Array)
     end
+  end
+
+  describe '#smart_insights' do
+    it 'bulk loads dashboard insight sources for scoped people' do
+      baseline_counts = count_insight_source_queries { described_class.new(current_user: admin_user).smart_insights }
+
+      create_list(:person, 2).each do |person|
+        medication = create(:medication, current_supply: 500, supply_at_last_restock: 500)
+        create(:schedule, person: person, medication: medication)
+      end
+
+      expanded_counts = count_insight_source_queries { described_class.new(current_user: admin_user).smart_insights }
+
+      expect(expanded_counts[:schedules]).to eq(baseline_counts[:schedules])
+      expect(expanded_counts[:person_medications]).to eq(baseline_counts[:person_medications])
+      expect(expanded_counts[:medication_takes]).to eq(baseline_counts[:medication_takes])
+    end
+  end
+
+  def count_insight_source_queries(&)
+    counts = Hash.new(0)
+
+    subscriber = lambda do |_name, _start, _finish, _id, payload|
+      sql = payload[:sql]
+      next if payload[:cached] || payload[:name] == 'SCHEMA'
+
+      counts[:schedules] += 1 if sql.include?('FROM "schedules"')
+      counts[:person_medications] += 1 if sql.include?('FROM "person_medications"')
+      counts[:medication_takes] += 1 if sql.include?('FROM "medication_takes"')
+    end
+
+    ActiveRecord::Base.uncached do
+      ActiveSupport::Notifications.subscribed(subscriber, 'sql.active_record', &)
+    end
+    counts
   end
 end

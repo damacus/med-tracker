@@ -1030,20 +1030,15 @@ ga:
       summary:
         overall_compliance: "Cloí Iomlán"
         total_doses_logged: "Líon Iomlán Dáileoga Logáilte"
-        current_health_status: "Stádas Sláinte Reatha"
+        evidence_reviewed: "Fianaise Athbhreithnithe"
         excellent: "Sármhaith"
         needs_attention: "Teastaíonn aird"
         on_track: "Ar an mbóthar ceart"
         missed_doses: "Dáileoga caillte"
-        optimal: "Optamach"
-        vibrant: "Beoga"
+        based_on_logs: "Bunaithe ar dháileoga logáilte"
       timeline_title: "Amlíne Cloí"
       download_pdf: "Íoslódáil PDF"
       timeline_compliance: "%{percentage}% Cloí"
-      achievement_streak:
-        title: "Sraith Rathanna"
-        value: "4 Lae Neamhbhriste"
-        description: "Níl dáileog amháin caillte agat ó mhaidin Dé hAoine. Tá do chorp ag coinneáil leibhéil optamacha."
       inventory_alert:
         title: "Foláireamh Stoc"
         out_of_stock: "As Stoc"
@@ -1053,6 +1048,75 @@ ga:
           one: "Beidh do sholáthar %{medication_name} ídithe i gceann %{count} lá. Molaimid athlíonadh a ordú tráthnóna inniu."
           other: "Beidh do sholáthar %{medication_name} ídithe i gceann %{count} lá. Molaimid athlíonadh a ordú tráthnóna inniu."
       actionable_insight: "Léargas inbhainistithe"
+  smart_insights:
+    title: "Léargais Chliste"
+    evidence_summary:
+      one: "%{days} lá athbhreithnithe le %{events} imeacht leighis"
+      other: "%{days} lá athbhreithnithe le %{events} imeacht leighis"
+    learning:
+      title: "Ag foghlaim do ghnáthaimh"
+      summary: "Lean ort ag logáil dáileoga ionas gur féidir le MedTracker patrúin fhíora a aimsiú."
+      detail: "Fanann Smart Insights le dóthain fianaise sula nglaonn sé patrún ar rud."
+    no_action:
+      title: "Níl patrún ar bith ag teastáil aird"
+      summary: "Ní sheasann aon rud neamhghnách amach sa tréimhse tuairisce seo."
+      detail: "Taispeánann do thuairisc stair dáileog agus stoc fós ionas gur féidir leat na sonraí a athbhreithniú."
+    detectors:
+      adherence_streak:
+        title: "Sraith ghnáthaimh láidir"
+        summary:
+          one: "Logáladh gach dáileog ionchais inné."
+          other: "Logáladh gach dáileog ionchais ar feadh %{count} lá."
+        detail: "Tugann an chomhsheasmhacht sin rithim láidir do do ghnáthamh cúraim."
+        metric_label: "Sraith reatha"
+        metric_value:
+          one: "1 lá"
+          other: "%{count} lá"
+      missed_dose_pattern:
+        title: "Patrún dáileoga caillte"
+        summary:
+          one: "Cailleadh dáileoga ionchais inné."
+          other: "Cailleadh dáileoga ionchais ar feadh %{count} lá as a chéile."
+        detail: "Athbhreithnigh an sceideal agus na meabhrúcháin don tréimhse seo."
+        metric_label: "Rith is faide"
+        metric_value:
+          one: "1 lá"
+          other: "%{count} lá"
+      timing_consistency:
+        title: "Amú dáileog comhsheasmhach"
+        summary: "Bhí %{percentage}% de na dáileoga logáilte gar dá n-am sceidealaithe."
+        detail: "Bhí d'amú logáilte seasmhach sa tréimhse tuairisce seo."
+        metric_label: "Logaí in am"
+        metric_value:
+          one: "1 dáileog"
+          other: "%{count} dáileog"
+      inventory_risk:
+        title: "Teastaíonn aird ar sholáthar"
+        summary_zero: "Is cosúil go bhfuil %{medication_name} as stoc."
+        summary:
+          one: "Tá thart ar 1 lá soláthair fágtha ag %{medication_name}."
+          other: "Tá thart ar %{count} lá soláthair fágtha ag %{medication_name}."
+        detail: "Seiceáil taifead stoic %{medication_name} agus pleanáil an chéad athlíonadh eile."
+        metric_label: "Soláthar fágtha"
+        metric_value:
+          one: "1 lá"
+          other: "%{count} lá"
+      prn_usage:
+        title: "Úsáid de réir mar is gá logáilte"
+        summary:
+          one: "Logáladh 1 dáileog de réir mar is gá sa tréimhse seo."
+          other: "Logáladh %{count} dáileog de réir mar is gá sa tréimhse seo."
+        detail: "Athbhreithnigh na hiontrálacha seo in éineacht le dáileoga rialta chun an pictiúr iomlán a choinneáil soiléir."
+        metric_label: "Logaí PRN"
+        metric_value:
+          one: "1 dáileog"
+          other: "%{count} dáileog"
+      schedule_hygiene:
+        title: "Sonra sceidil le hathbhreithniú"
+        summary: "Tá %{medication_name} socraithe do roinnt dáileoga laethúla gan amanna sonracha."
+        detail: "Is féidir le hamanna a chur leis meabhrúcháin, tuairiscí agus léargais ama a dhéanamh níos soiléire."
+        metric_label: "Athbhreithniú"
+        metric_value: "Sceideal"
   forms:
     locations:
       name_placeholder: "m.sh. Baile, Scoil, Teach na Mamó"
@@ -1180,8 +1244,6 @@ ga:
         other: "%{count} tasc rialta fágtha inniu"
     insights:
       title: "Léarchéal Cliste"
-      pattern_detected: "Patrún aimsithe"
-      message: "Tá tú tar éis bheith an-chonsasta an tseachtain seo! Maith thú le fanacht ar an bhóthar le do phríomhchlár."
       view_report: "Féach ar an Tuarascáil Iomlán"
     inventory:
       title: "Stocchaint"

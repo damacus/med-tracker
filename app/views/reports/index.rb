@@ -5,9 +5,9 @@ module Views
     InsightCard = Data.define(:title, :value, :description, :icon_class, :text_color, :icon_background_class)
 
     class Index < Views::Base
-      def initialize(daily_data:, inventory_alerts:, start_date:, end_date:)
+      def initialize(daily_data:, smart_insights:, start_date:, end_date:)
         @daily_data = daily_data
-        @inventory_alerts = inventory_alerts
+        @smart_insights = smart_insights
         @start_date = start_date
         @end_date = end_date
         super()
@@ -72,10 +72,10 @@ module Views
                 total_actual >= total_expected ? t('reports.index.summary.on_track') : t('reports.index.summary.missed_doses')
               )
               summary_stat(
-                t('reports.index.summary.current_health_status'),
-                t('reports.index.summary.optimal'),
-                t('reports.index.summary.vibrant')
-              ) # This could be dynamic in the future based on compliance
+                t('reports.index.summary.evidence_reviewed'),
+                @smart_insights.evidence_summary,
+                t('reports.index.summary.based_on_logs')
+              )
             end
           end
         end
@@ -132,48 +132,46 @@ module Views
       end
 
       def render_insights_grid
-        div(class: 'grid grid-cols-1 md:grid-cols-2 gap-8') do
-          render_achievement_streak
-          render_inventory_alert
+        section(id: 'insights', class: 'space-y-6 scroll-mt-24') do
+          render_insights_header
+
+          if @smart_insights.learning_state?
+            render_learning_state
+          elsif @smart_insights.insights.any?
+            render_smart_insight_cards
+          else
+            render_no_action_state
+          end
         end
       end
 
-      def render_achievement_streak
-        render_insight_card(
-          InsightCard.new(
-            title: t('reports.index.achievement_streak.title'),
-            value: t('reports.index.achievement_streak.value'),
-            description: t('reports.index.achievement_streak.description'),
-            icon_class: Icons::CheckCircle,
-            text_color: 'text-emerald-600',
-            icon_background_class: 'bg-emerald-50'
-          )
+      def render_insights_header
+        div(class: 'space-y-2') do
+          m3_heading(level: 2, size: '5', class: 'font-bold') { t('smart_insights.title') }
+          m3_text(size: '2', class: 'text-on-surface-variant') { @smart_insights.evidence_summary }
+        end
+      end
+
+      def render_learning_state
+        render_state_card(
+          title: t('smart_insights.learning.title'),
+          summary: t('smart_insights.learning.summary'),
+          detail: t('smart_insights.learning.detail')
         )
       end
 
-      def render_inventory_alert
-        alert = @inventory_alerts.first
-        return unless alert
-
-        medication_name = alert[:medication_name]
-        days_left = alert[:days_left]
-
-        description = if days_left <= 0
-                        t('reports.index.inventory_alert.description_zero', medication_name:)
-                      else
-                        t('reports.index.inventory_alert.description', medication_name:, count: days_left)
-                      end
-
-        render_insight_card(
-          InsightCard.new(
-            title: t('reports.index.inventory_alert.title'),
-            value: days_left <= 0 ? t('reports.index.inventory_alert.out_of_stock') : t('reports.index.inventory_alert.refill_pending'),
-            description: description,
-            icon_class: Icons::AlertCircle,
-            text_color: 'text-rose-600',
-            icon_background_class: 'bg-rose-50'
-          )
+      def render_no_action_state
+        render_state_card(
+          title: t('smart_insights.no_action.title'),
+          summary: t('smart_insights.no_action.summary'),
+          detail: t('smart_insights.no_action.detail')
         )
+      end
+
+      def render_smart_insight_cards
+        div(class: 'grid grid-cols-1 md:grid-cols-2 gap-8') do
+          @smart_insights.insights.each { |insight| render_smart_insight_card(insight) }
+        end
       end
 
       # rubocop:disable Metrics/AbcSize
@@ -197,6 +195,51 @@ module Views
       end
 
       # rubocop:enable Metrics/AbcSize
+
+      def render_smart_insight_card(insight)
+        render_insight_card(
+          InsightCard.new(
+            title: insight.title,
+            value: insight.summary,
+            description: insight.detail,
+            icon_class: insight_icon(insight),
+            text_color: insight_text_color(insight),
+            icon_background_class: insight_icon_background(insight)
+          )
+        )
+      end
+
+      def render_state_card(title:, summary:, detail:)
+        m3_card(class: 'space-y-3 border border-border/70 bg-card p-8 shadow-elevation-1') do
+          m3_heading(level: 3, size: '4', class: 'font-bold') { title }
+          m3_text(size: '2', class: 'font-semibold text-on-surface') { summary }
+          m3_text(size: '2', class: 'text-on-surface-variant leading-relaxed') { detail }
+        end
+      end
+
+      def insight_icon(insight)
+        return Icons::AlertCircle if %i[urgent warning].include?(insight.severity)
+
+        Icons::CheckCircle
+      end
+
+      def insight_text_color(insight)
+        {
+          urgent: 'text-rose-600',
+          warning: 'text-amber-700',
+          positive: 'text-emerald-600',
+          info: 'text-primary'
+        }.fetch(insight.severity, 'text-primary')
+      end
+
+      def insight_icon_background(insight)
+        {
+          urgent: 'bg-rose-50',
+          warning: 'bg-amber-50',
+          positive: 'bg-emerald-50',
+          info: 'bg-primary/10'
+        }.fetch(insight.severity, 'bg-primary/10')
+      end
     end
   end
 end
