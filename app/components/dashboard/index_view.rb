@@ -12,7 +12,7 @@ module Components
       end
 
       def view_template
-        div(class: 'container mx-auto max-w-6xl px-4 py-8', data: { testid: 'dashboard' }) do
+        div(class: 'container mx-auto max-w-6xl px-4 py-6', data: { testid: 'dashboard' }) do
           render_header
           render_stats_section
 
@@ -46,7 +46,7 @@ module Components
       end
 
       def render_header
-        div(class: 'flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12') do
+        div(class: 'flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8') do
           div do
             m3_text(variant: :label_large, class: 'uppercase tracking-[0.2em] mb-1 block font-black opacity-40') do
               Time.current.strftime('%A, %b %d')
@@ -85,29 +85,33 @@ module Components
       end
 
       def render_stats_section
-        div(class: 'grid grid-cols-2 lg:grid-cols-4 auto-rows-fr gap-4 mb-12') do
+        div(class: 'grid grid-cols-2 lg:grid-cols-4 auto-rows-fr gap-3 mb-8') do
           render Components::Shared::MetricCard.new(
             title: t('dashboard.stats.people'),
             value: people.size,
             icon_type: 'users',
-            href: people_path
+            href: people_path,
+            layout: :compact
           )
           render Components::Shared::MetricCard.new(
             title: t('dashboard.stats.active_schedules'),
             value: active_schedules.size,
             icon_type: 'active_schedules',
-            href: schedules_path
+            href: schedules_path,
+            layout: :compact
           )
           render Components::Shared::MetricCard.new(
             title: t('dashboard.stats.compliance'),
             value: "#{compliance_percentage}%",
             icon_type: 'compliance',
-            href: reports_path
+            href: reports_path,
+            layout: :compact
           )
           render Components::Shared::MetricCard.new(
             title: t('dashboard.stats.next_dose'),
             value: next_dose_value,
-            icon_type: 'clock'
+            icon_type: 'clock',
+            layout: :compact
           )
         end
       end
