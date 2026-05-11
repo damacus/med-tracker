@@ -12,6 +12,7 @@ RSpec.describe 'Global search command palette' do
 
   scenario 'opens as a left-anchored dropdown with Ctrl+K and Cmd+K, searches, navigates, and closes' do
     visit root_path
+    sleep 0.5
 
     page.execute_script('document.querySelector("a[href=\"/people\"]").focus()')
     expect(page.evaluate_script('document.activeElement.getAttribute("href")')).to eq('/people')
@@ -74,6 +75,7 @@ RSpec.describe 'Global search command palette' do
   scenario 'opens from the mobile trigger' do
     page.current_window.resize_to(375, 667)
     visit root_path
+    sleep 0.5
 
     find('button[aria-label="Open global search"]').click
 

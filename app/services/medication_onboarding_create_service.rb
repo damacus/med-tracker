@@ -7,6 +7,25 @@ class MedicationOnboardingCreateService
     end
   end
 
+  SCHEDULE_CONFIG_KEYS = [
+    :schedule_type,
+    :frequency,
+    :as_needed,
+    :tapering_plan,
+    { times: [] },
+    { weekdays: [] },
+    { dates: [] },
+    { taper_steps: %i[
+      start_date
+      end_date
+      amount
+      unit
+      frequency
+      max_daily_doses
+      min_hours_between_doses
+    ] }
+  ].freeze
+
   attr_reader :medication, :schedule_attributes, :people_scope, :medication_scope
 
   def initialize(medication:, schedule_attributes: nil, people_scope: nil, medication_scope: nil)
@@ -186,7 +205,7 @@ class MedicationOnboardingCreateService
   def normalized_schedule_config
     raw = schedule_attributes[:schedule_config]
     return {} if raw.blank?
-    return raw.to_unsafe_h if raw.respond_to?(:to_unsafe_h)
+    return raw.permit(*SCHEDULE_CONFIG_KEYS).to_h if raw.respond_to?(:permit)
     return raw.to_h if raw.respond_to?(:to_h)
 
     JSON.parse(raw.to_s)
