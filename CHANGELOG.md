@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.3.52](https://github.com/damacus/med-tracker/compare/v0.3.51...v0.3.52) (2026-05-11)
+
+
+### Features
+
+* Add friendly medication display names ([#1220](https://github.com/damacus/med-tracker/issues/1220)) ([c4a4534](https://github.com/damacus/med-tracker/commit/c4a45346b940fdfc37fd021b48bfa02e08b6cb8e))
+* add material medication icons ([#1222](https://github.com/damacus/med-tracker/issues/1222)) ([9506503](https://github.com/damacus/med-tracker/commit/9506503cba7e70b96d98a79171b749c42ad1fbba))
+* rebuild smart insights ([#1223](https://github.com/damacus/med-tracker/issues/1223)) ([82b73fe](https://github.com/damacus/med-tracker/commit/82b73fe95956986ce00edd76d80ac575c931529e))
+* show git metadata on profile ([#1221](https://github.com/damacus/med-tracker/issues/1221)) ([b55d5a6](https://github.com/damacus/med-tracker/commit/b55d5a6f9f06751f66d00e6d2d552e8fbe10b675))
+* split dashboard medication timing ([#1200](https://github.com/damacus/med-tracker/issues/1200)) ([cebf450](https://github.com/damacus/med-tracker/commit/cebf450f05e6e6210bfb578a4bc8f7d550945e50))
+
+
+### Bug Fixes
+
+* **ci:** Allow PR comments from integration ([#1208](https://github.com/damacus/med-tracker/issues/1208)) ([87b0b62](https://github.com/damacus/med-tracker/commit/87b0b62d98237cfbba64b756913ded24f6d269e7))
+* constrain inventory view links to top frame ([#1210](https://github.com/damacus/med-tracker/issues/1210)) ([bb956af](https://github.com/damacus/med-tracker/commit/bb956afc4498e52bbf39d1baba5f17bc79b2a737))
+* **security:** Fix Unvalidated Data Exposure bypass ([#1204](https://github.com/damacus/med-tracker/issues/1204)) ([457616e](https://github.com/damacus/med-tracker/commit/457616e3b5a193e0edefbe27dd005d757ecb5716))
+* tighten dashboard schedule layout ([#1224](https://github.com/damacus/med-tracker/issues/1224)) ([39e40c5](https://github.com/damacus/med-tracker/commit/39e40c569203d6f2efbd628e580188711728e936))
+
 ## [0.3.51](https://github.com/damacus/med-tracker/compare/v0.3.50...v0.3.51) (2026-05-10)
 
 
