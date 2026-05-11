@@ -86,7 +86,7 @@ module Components
           end
           div(class: 'flex shrink-0 items-center gap-2 sm:justify-end') do
             render_action(row)
-            render_status_badge(row)
+            render_status_badge(row) unless row[:status] == :upcoming
           end
         end
       end

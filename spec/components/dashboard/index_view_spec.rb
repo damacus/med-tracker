@@ -186,6 +186,23 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       expect(rendered.text).to include('1 routine task left today')
       expect(rendered.text).not_to include('Routine tasks done today')
     end
+
+    it 'does not duplicate the default upcoming state as a badge' do
+      rendered = render_inline(described_class.new(presenter: person_task_presenter))
+      routine_task = rendered.at_css('[data-testid="dashboard-routine-task"]')
+
+      expect(routine_task.text).not_to include('Upcoming')
+    end
+  end
+
+  describe 'dashboard density' do
+    it 'renders top metric cards with the compact layout' do
+      rendered = render_inline(dashboard_view)
+      html = rendered.to_html
+
+      expect(html).to include('min-h-[7rem]')
+      expect(html).not_to include('min-h-[9.5rem]')
+    end
   end
 
   context 'when there are no active schedules or person medications' do
