@@ -956,6 +956,8 @@ ga:
       title: "Eolas Córais"
       description: "Leagan an fheidhmchláir agus acmhainní"
       app_version: "Leagan an Aipe"
+      worktree: "Crann oibre"
+      commit: "Commit"
       release_notes: "Nótaí Eisiúna"
       documentation: "Doiciméadú"
       view_docs: "Féach ar na Doiciméid"
