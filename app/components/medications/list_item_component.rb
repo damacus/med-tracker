@@ -97,7 +97,8 @@ module Components
             variant: :outlined,
             size: :sm,
             class: 'flex-1 rounded-xl py-5 border-border bg-card ' \
-                   'hover:bg-card text-on-surface-variant'
+                   'hover:bg-card text-on-surface-variant',
+            data: { turbo_frame: '_top' }
           ) do
             t('medications.index.view')
           end
