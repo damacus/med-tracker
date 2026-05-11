@@ -9,7 +9,7 @@ module Api
       end
 
       def show
-        medication = policy_scope(Medication).includes(:location).find(params[:id])
+        medication = policy_scope(Medication).includes(:location).find(params.expect(:id))
         authorize medication
 
         render_resource(medication, serializer: MedicationSerializer)

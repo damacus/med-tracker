@@ -10,25 +10,29 @@ module Components
         return unless visible?
 
         div(
-          class: 'group/floating-action-menu md:hidden',
+          class: 'app-floating-action-menu group/floating-action-menu md:hidden',
           data: {
             controller: 'floating-action-menu',
             open: 'false',
-            action: floating_action_menu_actions
+            action: floating_action_menu_actions,
+            responsive_shell_role: 'floating-action-menu'
           }
         ) do
           div(
             class: 'fixed inset-0 z-40 bg-foreground/5 transition-opacity duration-200 ' \
-                   'group-data-[open=false]/floating-action-menu:pointer-events-none ' \
+                   'pointer-events-none data-[state=open]:pointer-events-auto ' \
                    'group-data-[open=false]/floating-action-menu:opacity-0 ' \
                    'group-data-[open=true]/floating-action-menu:opacity-100',
-            data: { testid: 'floating-action-backdrop', action: 'click->floating-action-menu#close' }
+            data: {
+              testid: 'floating-action-backdrop',
+              action: 'click->floating-action-menu#close',
+              floating_action_menu_target: 'backdrop',
+              state: 'closed'
+            }
           )
 
           div(
-            class: 'fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] ' \
-                   'right-[calc(1rem+env(safe-area-inset-right))] ' \
-                   'z-50 flex flex-col items-end gap-3'
+            class: 'floating-action-menu-shell'
           ) do
             div(
               id: 'floating-action-menu-items',

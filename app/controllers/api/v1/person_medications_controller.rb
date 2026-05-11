@@ -9,7 +9,7 @@ module Api
       end
 
       def show
-        person_medication = policy_scope(PersonMedication).includes(:person, :medication).find(params[:id])
+        person_medication = policy_scope(PersonMedication).includes(:person, :medication).find(params.expect(:id))
         authorize person_medication
 
         render_resource(person_medication, serializer: PersonMedicationSerializer)

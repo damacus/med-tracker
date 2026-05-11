@@ -6,7 +6,7 @@ module ScheduleResourceResolvable
   private
 
   def set_schedule
-    @schedule = policy_scope(Schedule).find(params[:id])
+    @schedule = policy_scope(Schedule).find(params.expect(:id))
   end
 
   def schedule_params

@@ -168,7 +168,7 @@ RSpec.describe 'Medication creation scope' do
         package_unit: 'tablet'
       }
 
-      html = Nokogiri::HTML(response.body)
+      html = response.parsed_body
       selected_category = html.at_css('input[name="medication[category]"][value="Supplement"]')
       description = html.at_css('textarea[name="medication[description]"]')
       amount = html.at_css("input[name='medication[dosage_records_attributes][0][amount]']")
@@ -179,7 +179,7 @@ RSpec.describe 'Medication creation scope' do
       expect(response.body).not_to include('Wellman Original (Wellman) 29')
       expect(description.text).to eq('Daily multivitamin food supplement')
       expect(selected_category).to be_present
-      expect(selected_category['checked']).to be_present
+      expect(selected_category).to have_attribute('checked')
       expect(response.body).to include('name="medication[current_supply]"')
       expect(response.body).to include('value="29"')
       expect(amount['value']).to eq('1.0')
@@ -201,7 +201,7 @@ RSpec.describe 'Medication creation scope' do
 
       get new_medication_path, params: { barcode: '5021265221301' }
 
-      html = Nokogiri::HTML(response.body)
+      html = response.parsed_body
       description = html.at_css('textarea[name="medication[description]"]')
       amount = html.at_css("input[name='medication[dosage_records_attributes][0][amount]']")
       unit = html.at_css("input[name='medication[dosage_records_attributes][0][unit]'][value='tablet']")
