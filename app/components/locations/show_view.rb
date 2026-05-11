@@ -105,7 +105,7 @@ module Components
                   variant: :link,
                   class: 'font-semibold text-base no-underline whitespace-normal break-words text-left leading-snug'
                 ) do
-                  medication.name
+                  medication.display_name
                 end
                 if medication.dosage_amount.present? && medication.dosage_unit.present?
                   m3_text(size: '1', class: 'text-on-surface-variant') do

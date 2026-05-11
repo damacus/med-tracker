@@ -23,6 +23,7 @@ module Api
         {
           id: medication.id,
           name: medication.name,
+          display_name: medication.display_name,
           category: medication.category,
           description: medication.description,
           dosage_amount: medication.dosage_amount,

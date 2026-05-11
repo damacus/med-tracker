@@ -74,6 +74,7 @@ module Components
       def render_hidden_form_state
         render_hidden_input('return_to', return_to) if return_to.present?
         render_hidden_input('medication[barcode]', medication.barcode) if medication.barcode.present?
+        render_hidden_input('medication[friendly_name]', medication.friendly_name) if medication.friendly_name.present?
         render_hidden_dmd_state
       end
 

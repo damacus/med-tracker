@@ -20,6 +20,7 @@ module MedicationFormContext
   def medication_params
     params.require(:medication).permit(
       :name,
+      :friendly_name,
       :barcode,
       :dmd_code,
       :dmd_system,

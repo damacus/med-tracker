@@ -7,6 +7,9 @@ RSpec.describe 'Medication creation scope' do
 
   let(:parent_user) { users(:jane) }
   let!(:foreign_location) { locations(:grandmas) }
+  let(:movicol_dmd_name) do
+    'Movicol Paediatric Plain oral powder 6.9g sachets (Norgine Pharmaceuticals Ltd) 30 sachet 15 x 2 sachets'
+  end
 
   before { sign_in(parent_user) }
 
@@ -92,6 +95,20 @@ RSpec.describe 'Medication creation scope' do
       expect(response.body).to include('value="13629411000001105"')
       expect(response.body).to include('name="medication[dmd_system]"')
       expect(response.body).to include('name="medication[dmd_concept_class]"')
+    end
+
+    it 'prefills a hidden friendly name for long imported dm+d product names' do
+      get new_medication_path, params: {
+        name: movicol_dmd_name,
+        dmd_code: '3366911000001108',
+        dmd_system: 'https://dmd.nhs.uk',
+        dmd_concept_class: 'AMPP'
+      }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include(%(value="#{movicol_dmd_name}"))
+      expect(response.body).to include('name="medication[friendly_name]"')
+      expect(response.body).to include('value="Movicol Paediatric Plain"')
     end
 
     it 'prefills onboarding defaults from curated dm+d barcode metadata' do
@@ -259,6 +276,28 @@ RSpec.describe 'Medication creation scope' do
       expect(Medication.last.dmd_code).to eq('13629411000001105')
       expect(Medication.last.dmd_system).to eq('https://dmd.nhs.uk')
       expect(Medication.last.dmd_concept_class).to eq('AMPP')
+    end
+
+    it 'persists the full imported name and friendly display name from finder onboarding' do
+      expect do
+        post medications_path, params: {
+          medication: {
+            name: movicol_dmd_name,
+            friendly_name: 'Movicol Paediatric Plain',
+            dmd_code: '3366911000001108',
+            dmd_system: 'https://dmd.nhs.uk',
+            dmd_concept_class: 'AMPP',
+            dosage_amount: 1,
+            dosage_unit: 'sachet',
+            current_supply: 30,
+            reorder_threshold: 5,
+            location_id: locations(:home).id
+          }
+        }
+      end.to change(Medication, :count).by(1)
+
+      expect(Medication.last.name).to eq(movicol_dmd_name)
+      expect(Medication.last.friendly_name).to eq('Movicol Paediatric Plain')
     end
 
     it 'adds scanned stock to an existing matching medication instead of creating a duplicate' do

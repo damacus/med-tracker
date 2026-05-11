@@ -31,7 +31,7 @@ module Components
               end
               div do
                 m3_heading(variant: :title_medium, level: 3, class: 'font-bold tracking-tight') do
-                  dose[:source].medication.name
+                  dose[:source].medication.display_name
                 end
                 m3_text(variant: :body_medium, class: 'text-on-surface-variant font-medium') { subtitle_text }
               end

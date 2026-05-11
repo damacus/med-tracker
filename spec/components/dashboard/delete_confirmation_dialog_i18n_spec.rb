@@ -5,7 +5,7 @@ require 'rails_helper'
 RSpec.describe Components::Dashboard::DeleteConfirmationDialog, type: :component do
   describe 'i18n translations' do
     it 'renders delete dialog with default locale translations' do
-      medication = instance_double(Medication, name: 'Aspirin')
+      medication = instance_double(Medication, display_name: 'Aspirin')
       person = instance_double(Person, name: 'John Doe')
       schedule = instance_double(Schedule, id: 1, medication: medication, person: person)
 

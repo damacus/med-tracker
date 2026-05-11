@@ -87,7 +87,7 @@ module Reports
       days_left = (current.to_f / burn_rate).floor
 
       {
-        medication_name: schedule.medication.name,
+        medication_name: schedule.medication.display_name,
         days_left: days_left,
         doses_left: current,
         low_stock: days_left <= 3

@@ -1,0 +1,20 @@
+# frozen_string_literal: true
+
+require 'rails_helper'
+
+RSpec.describe Api::V1::MedicationSerializer do
+  it 'keeps the canonical name and exposes the friendly display name' do
+    medication = create(
+      :medication,
+      name: 'Movicol Paediatric Plain oral powder 6.9g sachets (Norgine Pharmaceuticals Ltd) 30 sachet 15 x 2 sachets',
+      friendly_name: 'Movicol Paediatric Plain'
+    )
+
+    json = described_class.new(medication).as_json
+
+    expect(json[:name]).to eq(
+      'Movicol Paediatric Plain oral powder 6.9g sachets (Norgine Pharmaceuticals Ltd) 30 sachet 15 x 2 sachets'
+    )
+    expect(json[:display_name]).to eq('Movicol Paediatric Plain')
+  end
+end

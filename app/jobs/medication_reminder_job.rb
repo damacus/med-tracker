@@ -33,7 +33,7 @@ class MedicationReminderJob < ApplicationJob
 
   def active_medication_names(person)
     schedule_meds = person.schedules.active.map(&:medication_name)
-    person_meds = person.person_medications.includes(:medication).map { |pm| pm.medication.name }
+    person_meds = person.person_medications.includes(:medication).map { |pm| pm.medication.display_name }
     (schedule_meds + person_meds).uniq
   end
 end

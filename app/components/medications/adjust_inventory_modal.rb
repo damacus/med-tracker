@@ -27,7 +27,7 @@ module Components
 
           DialogContent(size: :md) do
             DialogHeader do
-              DialogTitle { t('medications.adjust_inventory_modal.title', medication: medication.name) }
+              DialogTitle { t('medications.adjust_inventory_modal.title', medication: medication.display_name) }
               DialogDescription { t('medications.adjust_inventory_modal.description') }
             end
 

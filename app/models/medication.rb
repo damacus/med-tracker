@@ -128,6 +128,10 @@ class Medication < ApplicationRecord # :nodoc:
     supply_level.percentage
   end
 
+  def display_name
+    friendly_name.presence || name
+  end
+
   def estimated_daily_consumption
     return @estimated_daily_consumption if defined?(@estimated_daily_consumption)
 

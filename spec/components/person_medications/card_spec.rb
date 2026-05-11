@@ -40,6 +40,18 @@ RSpec.describe Components::PersonMedications::Card, type: :component do
     expect(title['class']).to include('break-words')
   end
 
+  it 'renders the friendly medication display name when present' do
+    medication.update!(
+      name: 'Movicol Paediatric Plain oral powder 6.9g sachets (Norgine Pharmaceuticals Ltd) 30 sachet 15 x 2 sachets',
+      friendly_name: 'Movicol Paediatric Plain'
+    )
+    rendered = render_person_medication_card
+
+    title = rendered.at_css('h3')
+    expect(title.text).to include('Movicol Paediatric Plain')
+    expect(title.text).not_to include('Norgine Pharmaceuticals')
+  end
+
   it 'renders an overflow menu with a Log a past dose item when the user can take medication' do
     rendered = render_person_medication_card
 

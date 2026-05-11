@@ -62,7 +62,7 @@ module Components
             variant: :title_medium,
             class: 'font-bold text-foreground tracking-tight break-words leading-tight'
           ) do
-            schedule.medication.name
+            schedule.medication.display_name
           end
         end
       end

@@ -21,7 +21,7 @@ module Components
             DialogContent(size: :lg) do
               DialogHeader do
                 DialogTitle { dosage.new_record? ? t('dosages.new.title') : t('dosages.edit.title') }
-                DialogDescription { medication.name }
+                DialogDescription { medication.display_name }
               end
               DialogMiddle do
                 render Form.new(dosage: dosage, medication: medication)

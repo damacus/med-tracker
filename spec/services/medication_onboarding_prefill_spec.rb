@@ -89,6 +89,15 @@ RSpec.describe MedicationOnboardingPrefill do
       )
     end
 
+    it 'derives a brand-plus-variant friendly name from an imported dm+d product name' do
+      result = described_class.new.call(
+        code: '3366911000001108',
+        name: 'Movicol Paediatric Plain oral powder 6.9g sachets (Norgine Pharmaceuticals Ltd) 30 sachet 15 x 2 sachets'
+      )
+
+      expect(result.medication_attributes).to include(friendly_name: 'Movicol Paediatric Plain')
+    end
+
     it 'returns curated refill defaults for Calpol vapour pads' do
       result = described_class.new.call(
         barcode: '3574661646435',

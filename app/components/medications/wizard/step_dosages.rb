@@ -30,7 +30,7 @@ module Components
               render Icons::CheckCircle.new(size: 28)
             end
             m3_heading(level: 3, size: '5', class: 'font-bold tracking-tight text-foreground') do
-              "#{medication.name} created!"
+              "#{medication.display_name} created!"
             end
             m3_text(size: '2', class: 'text-on-surface-variant max-w-sm mx-auto') do
               'Review the dose options and continue in the medication editor if you need to add or adjust them.'

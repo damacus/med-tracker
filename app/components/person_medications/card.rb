@@ -40,7 +40,7 @@ module Components
           end
           div(class: 'min-w-0') do
             CardTitle(class: 'text-2xl font-black tracking-tight mb-1 text-foreground break-words leading-tight') do
-              person_medication.medication.name
+              person_medication.medication.display_name
             end
             CardDescription(class: 'text-on-surface-variant font-bold uppercase text-[10px] tracking-widest') do
               medication_description
@@ -372,7 +372,8 @@ module Components
             AlertDialogHeader do
               AlertDialogTitle { t('person_medications.card.remove_medication') }
               AlertDialogDescription do
-                plain t('person_medications.card.remove_confirmation', medication: person_medication.medication.name)
+                plain t('person_medications.card.remove_confirmation',
+                        medication: person_medication.medication.display_name)
               end
             end
             AlertDialogFooter do

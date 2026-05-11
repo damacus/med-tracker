@@ -25,4 +25,16 @@ RSpec.describe Components::Schedules::Card::HeaderComponent, type: :component do
     expect(rendered.text).to include('400mg • Twice daily')
     expect(rendered.text).to include('Ready Now')
   end
+
+  it 'renders the friendly medication display name when present' do
+    medication.update!(
+      name: 'Movicol Paediatric Plain oral powder 6.9g sachets (Norgine Pharmaceuticals Ltd) 30 sachet 15 x 2 sachets',
+      friendly_name: 'Movicol Paediatric Plain'
+    )
+
+    rendered = render_inline(described_class.new(schedule: schedule, presenter: presenter))
+
+    expect(rendered.at_css('h3').text).to include('Movicol Paediatric Plain')
+    expect(rendered.at_css('h3').text).not_to include('Norgine Pharmaceuticals')
+  end
 end

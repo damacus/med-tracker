@@ -17,7 +17,7 @@ module GlobalSearch
     def result_for(schedule)
       builder.build(
         type: 'schedule',
-        title: I18n.t('global_search.result_titles.schedule', medication: schedule.medication.name),
+        title: I18n.t('global_search.result_titles.schedule', medication: schedule.medication.display_name),
         subtitle: subtitle_for(schedule),
         path: person_path(schedule.person, anchor: "schedule_#{schedule.id}"),
         secondary_values: [schedule.person.name]

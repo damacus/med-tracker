@@ -20,7 +20,7 @@ module Components
               dt(class: 'text-xs font-black uppercase text-on-surface-variant') do
                 t('medications.take_action.medication', default: 'Medication')
               end
-              dd(class: 'text-sm font-semibold text-foreground') { source.medication.name }
+              dd(class: 'text-sm font-semibold text-foreground') { source.medication.display_name }
             end
             div(class: 'space-y-1 sm:col-span-2') do
               dt(class: 'text-xs font-black uppercase text-on-surface-variant') do
@@ -111,7 +111,7 @@ module Components
       end
 
       def medication_description(medication)
-        parts = [medication.name]
+        parts = [medication.display_name]
         dose = DoseAmount.new(medication.dosage_amount, medication.dosage_unit).to_s
         parts << dose if dose.present?
         parts.join(' • ')

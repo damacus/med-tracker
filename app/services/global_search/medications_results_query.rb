@@ -16,10 +16,10 @@ module GlobalSearch
     def result_for(medication)
       builder.build(
         type: 'medication',
-        title: medication.name,
+        title: medication.display_name,
         subtitle: subtitle_for(medication),
         path: medication_path(medication),
-        secondary_values: [medication.category, medication.barcode, medication.dmd_code]
+        secondary_values: [medication.name, medication.category, medication.barcode, medication.dmd_code]
       )
     end
 

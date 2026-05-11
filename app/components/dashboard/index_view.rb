@@ -221,7 +221,7 @@ module Components
         div(class: 'space-y-3') do
           div(class: 'flex justify-between items-center') do
             m3_text(variant: :label_large, class: 'font-black text-foreground uppercase tracking-tight') do
-              medication.name
+              medication.display_name
             end
             m3_text(variant: :label_medium, class: 'text-on-surface-variant font-black') do
               t('dashboard.inventory.left', count: current)

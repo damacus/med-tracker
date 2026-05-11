@@ -43,7 +43,7 @@ module Components
 
           DialogContent(size: :md) do
             DialogHeader do
-              DialogTitle { t('medications.refill_modal.title', medication: medication.name) }
+              DialogTitle { t('medications.refill_modal.title', medication: medication.display_name) }
               DialogDescription { t('medications.refill_modal.description') }
             end
 
