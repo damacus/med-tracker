@@ -24,6 +24,18 @@ RSpec.describe 'Refill medication inventory' do
     expect(page).to have_text('Restock')
   end
 
+  it 'opens medication details from inventory card view action at the top level' do
+    visit medications_path
+
+    within "#medication_#{medication.id}" do
+      click_link 'View'
+    end
+
+    expect(page).to have_current_path(medication_path(medication))
+    expect(page).to have_css("[data-testid='medication-content']")
+    expect(page).to have_text(medication.name)
+  end
+
   it 'links medication cards on location pages to medication details' do
     visit location_path(medication.location)
 
