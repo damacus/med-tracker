@@ -1213,8 +1213,6 @@ es:
         other: "%{count} tareas rutinarias pendientes hoy"
     insights:
       title: "Información inteligente"
-      pattern_detected: "Patrón detectado"
-      message: "¡Has sido notablemente constante esta semana! Buen trabajo manteniéndote al día con tu régimen principal."
       view_report: "Ver informe completo"
     inventory:
       title: "Inventario de stock"
@@ -1385,20 +1383,15 @@ es:
       summary:
         overall_compliance: "Adherencia general"
         total_doses_logged: "Dosis registradas en total"
-        current_health_status: "Estado de salud actual"
+        evidence_reviewed: "Evidencia revisada"
         excellent: "Excelente"
         needs_attention: "Necesita atención"
         on_track: "En buen camino"
         missed_doses: "Dosis omitidas"
-        optimal: "Óptimo"
-        vibrant: "Vibrante"
+        based_on_logs: "Basado en dosis registradas"
       timeline_title: "Cronología de adherencia"
       download_pdf: "Descargar PDF"
       timeline_compliance: "%{percentage}% de adherencia"
-      achievement_streak:
-        title: "Racha de logros"
-        value: "4 días seguidos"
-        description: "No has omitido ni una sola dosis desde el viernes por la mañana. Tu cuerpo mantiene niveles óptimos."
       inventory_alert:
         title: "Alerta de inventario"
         out_of_stock: "Sin stock"
@@ -1408,3 +1401,72 @@ es:
           one: "Tu suministro de %{medication_name} se agotará en %{count} día. Recomendamos solicitar un reabastecimiento esta tarde."
           other: "Tu suministro de %{medication_name} se agotará en %{count} días. Recomendamos solicitar un reabastecimiento esta tarde."
       actionable_insight: "Información accionable"
+  smart_insights:
+    title: "Información inteligente"
+    evidence_summary:
+      one: "%{days} días revisados con %{events} evento de medicación"
+      other: "%{days} días revisados con %{events} eventos de medicación"
+    learning:
+      title: "Aprendiendo tu rutina"
+      summary: "Sigue registrando dosis para que MedTracker pueda detectar patrones reales."
+      detail: "Smart Insights espera a tener suficiente evidencia antes de llamar patrón a algo."
+    no_action:
+      title: "Ningún patrón necesita atención"
+      summary: "Nada inusual destaca en este periodo del informe."
+      detail: "Tu informe sigue mostrando el historial de dosis y el inventario para que puedas revisar los detalles."
+    detectors:
+      adherence_streak:
+        title: "Racha de rutina sólida"
+        summary:
+          one: "Todas las dosis esperadas se registraron ayer."
+          other: "Todas las dosis esperadas se registraron durante %{count} días."
+        detail: "Esa constancia da buen ritmo a tu rutina de cuidados."
+        metric_label: "Racha actual"
+        metric_value:
+          one: "1 día"
+          other: "%{count} días"
+      missed_dose_pattern:
+        title: "Patrón de dosis omitidas"
+        summary:
+          one: "Ayer se omitieron dosis esperadas."
+          other: "Se omitieron dosis esperadas durante %{count} días seguidos."
+        detail: "Revisa el horario y los recordatorios de este periodo."
+        metric_label: "Racha más larga"
+        metric_value:
+          one: "1 día"
+          other: "%{count} días"
+      timing_consistency:
+        title: "Horario de dosis constante"
+        summary: "%{percentage}% de las dosis registradas estuvieron cerca de su hora programada."
+        detail: "El horario registrado ha sido estable en este periodo del informe."
+        metric_label: "Registros puntuales"
+        metric_value:
+          one: "1 dosis"
+          other: "%{count} dosis"
+      inventory_risk:
+        title: "El suministro necesita atención"
+        summary_zero: "%{medication_name} parece estar sin stock."
+        summary:
+          one: "%{medication_name} tiene aproximadamente 1 día de suministro."
+          other: "%{medication_name} tiene aproximadamente %{count} días de suministro."
+        detail: "Revisa el registro de stock de %{medication_name} y planifica el próximo reabastecimiento."
+        metric_label: "Suministro restante"
+        metric_value:
+          one: "1 día"
+          other: "%{count} días"
+      prn_usage:
+        title: "Uso según necesidad registrado"
+        summary:
+          one: "Se registró 1 dosis según necesidad en este periodo."
+          other: "Se registraron %{count} dosis según necesidad en este periodo."
+        detail: "Revisa estas entradas junto con las dosis rutinarias para mantener el panorama completo."
+        metric_label: "Registros PRN"
+        metric_value:
+          one: "1 dosis"
+          other: "%{count} dosis"
+      schedule_hygiene:
+        title: "Detalle del horario para revisar"
+        summary: "%{medication_name} está configurado para varias dosis diarias sin horas específicas."
+        detail: "Agregar horas puede aclarar los recordatorios, informes e insights de horario."
+        metric_label: "Revisar"
+        metric_value: "Horario"

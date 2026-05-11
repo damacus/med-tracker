@@ -136,6 +136,64 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       expect(rendered.text).to include('Smart Insights')
     end
 
+    it 'does not render a fake detected pattern without an evidence-backed insight' do
+      insight_result = SmartInsights::Result.new(
+        primary_insight: nil,
+        insights: [],
+        learning_state?: true,
+        evidence_summary: '1 day tracked'
+      )
+      presenter = person_task_presenter(insight_result: insight_result)
+
+      rendered = render_inline(described_class.new(presenter: presenter))
+
+      expect(rendered.text).not_to include('Pattern detected')
+      expect(rendered.text).to include('Learning your routine')
+    end
+
+    it 'renders the no-action state when enough evidence has no detected patterns' do
+      insight_result = SmartInsights::Result.new(
+        primary_insight: nil,
+        insights: [],
+        learning_state?: false,
+        evidence_summary: '7 days tracked'
+      )
+      presenter = person_task_presenter(insight_result: insight_result)
+
+      rendered = render_inline(described_class.new(presenter: presenter))
+
+      expect(rendered.text).to include('No pattern needs attention')
+      expect(rendered.text).not_to include('Learning your routine')
+      expect(rendered.text).not_to include('Strong streak')
+    end
+
+    it 'links authorized users to the reports insights section' do
+      presenter = person_task_presenter(insight_result: detected_insight_result, can_view_reports: true)
+
+      rendered = render_inline(described_class.new(presenter: presenter))
+
+      expect(rendered.css("a[href='/reports#insights']")).to be_present
+    end
+
+    it 'renders the reports insights link with visible link affordance' do
+      presenter = person_task_presenter(insight_result: detected_insight_result, can_view_reports: true)
+
+      rendered = render_inline(described_class.new(presenter: presenter))
+      link = rendered.at_css("a[href='/reports#insights']")
+
+      expect(link.text).to include('View Full Report')
+      expect(link['class']).to include('border-b-2')
+      expect(link['class']).to include('hover:border-current')
+    end
+
+    it 'omits the reports link when the user cannot view reports' do
+      presenter = person_task_presenter(insight_result: detected_insight_result, can_view_reports: false)
+
+      rendered = render_inline(described_class.new(presenter: presenter))
+
+      expect(rendered.css("a[href='/reports#insights']")).not_to be_present
+    end
+
     it 'renders Stock Inventory' do
       rendered = render_inline(dashboard_view)
       expect(rendered.text).to include('Stock Inventory')
@@ -201,7 +259,7 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
     end
   end
 
-  def person_task_presenter(routine_status: :upcoming)
+  def person_task_presenter(routine_status: :upcoming, insight_result: nil, can_view_reports: true)
     person = people(:john)
     instance_double(
       DashboardPresenter,
@@ -210,9 +268,45 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       current_user: admin_user,
       compliance_percentage: 85,
       next_dose_time: nil,
+      smart_insights: insight_result || learning_insight_result,
+      can_view_reports?: can_view_reports,
       routine_tasks_due?: true,
       routine_tasks_by_person: { person => [routine_dashboard_row(person, status: routine_status)] },
       as_needed_by_person: { person => [as_needed_dashboard_row(person)] }
+    )
+  end
+
+  def learning_insight_result
+    SmartInsights::Result.new(
+      primary_insight: nil,
+      insights: [],
+      learning_state?: true,
+      evidence_summary: '1 day tracked'
+    )
+  end
+
+  def detected_insight_result
+    insight = detected_insight
+
+    SmartInsights::Result.new(
+      primary_insight: insight,
+      insights: [insight],
+      learning_state?: false,
+      evidence_summary: '7 days tracked'
+    )
+  end
+
+  def detected_insight
+    SmartInsights::Insight.new(
+      key: :adherence_streak,
+      family: :adherence,
+      severity: :positive,
+      title: 'Strong streak',
+      summary: '7 days logged',
+      detail: 'Every expected dose was logged in this report window.',
+      metric_label: 'Current streak',
+      metric_value: '7 days',
+      cta_path: '/reports#insights'
     )
   end
 

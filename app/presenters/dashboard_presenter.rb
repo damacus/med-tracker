@@ -39,12 +39,38 @@ class DashboardPresenter
   end
 
   def compliance_percentage
-    # Placeholder for actual compliance logic
-    # For now, return a realistic-looking mock value
-    85
+    expected, actual = compliance_counts
+    return 100 if expected.zero?
+
+    [(actual.to_f / expected * 100).round, 100].min
+  end
+
+  def smart_insights
+    @smart_insights ||= SmartInsights::IndexQuery.new(
+      people: people,
+      start_date: Time.zone.today - 6.days,
+      end_date: Time.zone.today
+    ).call
+  end
+
+  def can_view_reports?
+    ReportPolicy.new(current_user, :report).index?
   end
 
   private
+
+  def compliance_counts
+    daily_data = Reports::IndexQuery.new(
+      people: people,
+      start_date: Time.zone.today - 6.days,
+      end_date: Time.zone.today
+    ).call.daily_data
+
+    [
+      daily_data.sum { |day| day[:expected] },
+      daily_data.sum { |day| day[:actual] }
+    ]
+  end
 
   def load_people
     return Person.none if current_user.nil?

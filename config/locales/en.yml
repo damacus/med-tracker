@@ -1051,20 +1051,15 @@ en:
       summary:
         overall_compliance: "Overall Compliance"
         total_doses_logged: "Total Doses Logged"
-        current_health_status: "Current Health Status"
+        evidence_reviewed: "Evidence Reviewed"
         excellent: "Excellent"
         needs_attention: "Needs attention"
         on_track: "On Track"
         missed_doses: "Missed doses"
-        optimal: "Optimal"
-        vibrant: "Vibrant"
+        based_on_logs: "Based on logged doses"
       timeline_title: "Adherence Timeline"
       download_pdf: "Download PDF"
       timeline_compliance: "%{percentage}% Compliance"
-      achievement_streak:
-        title: "Achievement Streak"
-        value: "4 Days Uninterrupted"
-        description: "You haven't missed a single dose since Friday morning. Your body is maintaining optimal levels."
       inventory_alert:
         title: "Inventory Alert"
         out_of_stock: "Out of Stock"
@@ -1074,6 +1069,75 @@ en:
           one: "Your %{medication_name} supply will be exhausted in %{count} day. We recommend ordering a refill this afternoon."
           other: "Your %{medication_name} supply will be exhausted in %{count} days. We recommend ordering a refill this afternoon."
       actionable_insight: "Actionable insight"
+  smart_insights:
+    title: "Smart Insights"
+    evidence_summary:
+      one: "%{days} days reviewed with %{events} medication event"
+      other: "%{days} days reviewed with %{events} medication events"
+    learning:
+      title: "Learning your routine"
+      summary: "Keep logging doses so MedTracker can spot real patterns."
+      detail: "Smart Insights waits for enough evidence before calling anything a pattern."
+    no_action:
+      title: "No pattern needs attention"
+      summary: "Nothing unusual stands out in this report window."
+      detail: "Your report still shows dose history and inventory so you can review the details."
+    detectors:
+      adherence_streak:
+        title: "Strong routine streak"
+        summary:
+          one: "Every expected dose was logged yesterday."
+          other: "Every expected dose was logged for %{count} days."
+        detail: "That consistency gives your care routine a solid rhythm."
+        metric_label: "Current streak"
+        metric_value:
+          one: "1 day"
+          other: "%{count} days"
+      missed_dose_pattern:
+        title: "Missed-dose pattern"
+        summary:
+          one: "Expected doses were missed yesterday."
+          other: "Expected doses were missed for %{count} days in a row."
+        detail: "Review the schedule and reminders for this window."
+        metric_label: "Longest run"
+        metric_value:
+          one: "1 day"
+          other: "%{count} days"
+      timing_consistency:
+        title: "Consistent dose timing"
+        summary: "%{percentage}% of logged doses were close to their scheduled time."
+        detail: "Your logged timing has been steady in this report window."
+        metric_label: "On-time logs"
+        metric_value:
+          one: "1 dose"
+          other: "%{count} doses"
+      inventory_risk:
+        title: "Supply needs attention"
+        summary_zero: "%{medication_name} appears to be out of stock."
+        summary:
+          one: "%{medication_name} has about 1 day of supply left."
+          other: "%{medication_name} has about %{count} days of supply left."
+        detail: "Check the stock record for %{medication_name} and plan the next refill."
+        metric_label: "Supply left"
+        metric_value:
+          one: "1 day"
+          other: "%{count} days"
+      prn_usage:
+        title: "As-needed use logged"
+        summary:
+          one: "1 as-needed dose was logged in this window."
+          other: "%{count} as-needed doses were logged in this window."
+        detail: "Review these entries alongside routine doses to keep the full picture clear."
+        metric_label: "PRN logs"
+        metric_value:
+          one: "1 dose"
+          other: "%{count} doses"
+      schedule_hygiene:
+        title: "Schedule detail to review"
+        summary: "%{medication_name} is set for multiple daily doses without specific times."
+        detail: "Adding times can make reminders, reporting, and timing insights clearer."
+        metric_label: "Review"
+        metric_value: "Schedule"
   profiles:
     updated: "Profile updated successfully."
     email_updated: "Email updated successfully."
@@ -1396,8 +1460,6 @@ en:
         other: "%{count} routine tasks left today"
     insights:
       title: "Smart Insights"
-      pattern_detected: "Pattern detected"
-      message: "You've been remarkably consistent this week! Great job staying on track with your core regimen."
       view_report: "View Full Report"
     inventory:
       title: "Stock Inventory"
