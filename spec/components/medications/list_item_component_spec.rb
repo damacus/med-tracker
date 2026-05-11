@@ -20,6 +20,21 @@ RSpec.describe Components::Medications::ListItemComponent, type: :component do
     expect(medication_link['data-turbo-frame']).to eq('_top')
   end
 
+  it 'renders the edit link with a top-level frame target' do
+    medication = medications(:paracetamol)
+    edit_medication_url = Rails.application.routes.url_helpers.edit_medication_path(medication)
+
+    rendered = render_inline(described_class.new(medication: medication))
+    edit_medication_link = rendered.css('a').find do |link|
+      href = link['href'].to_s.split(/[?#]/).first
+      href == edit_medication_url
+    end
+
+    expect(edit_medication_link).to be_present
+    expect(edit_medication_link['href']).to include(edit_medication_url)
+    expect(edit_medication_link['data-turbo-frame']).to eq('_top')
+  end
+
   it 'renders the friendly display name when present' do
     medication = medications(:paracetamol)
     medication.update!(
