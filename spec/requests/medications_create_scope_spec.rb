@@ -289,7 +289,7 @@ RSpec.describe 'Medication creation scope' do
             dmd_concept_class: 'AMPP',
             dosage_amount: 1,
             dosage_unit: 'sachet',
-            current_supply: 30,
+            current_supply: 0,
             reorder_threshold: 5,
             location_id: locations(:home).id
           }
