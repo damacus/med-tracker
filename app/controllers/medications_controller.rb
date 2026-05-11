@@ -148,7 +148,7 @@ class MedicationsController < ApplicationController
   private
 
   def set_medication
-    @medication = policy_scope(Medication).find(params[:id])
+    @medication = policy_scope(Medication).find(params.expect(:id))
   end
 
   def render_medications_index_for_request

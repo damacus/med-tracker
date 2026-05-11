@@ -46,7 +46,7 @@ class MedicationAssignmentsController < ApplicationController
   private
 
   def set_person
-    @person = policy_scope(Person).find(params[:person_id])
+    @person = policy_scope(Person).find(params.expect(:person_id))
     authorize @person, :show?
   end
 

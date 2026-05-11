@@ -5,7 +5,7 @@ class InvitationsController < ApplicationController
   layout false
 
   def accept
-    token_value = params[:token].to_s
+    token_value = params.expect(:token).to_s
     digest = Invitation.digest(token_value)
     @invitation = Invitation.pending.where.not(role: Invitation.roles[:minor]).find_by(token_digest: digest)
 

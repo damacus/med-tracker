@@ -11,10 +11,10 @@ module Components
         return unless authenticated?
 
         aside(
-          class: 'fixed left-0 top-16 bottom-0 z-40 flex w-16 flex-col items-center border-r ' \
+          class: 'app-mobile-rail fixed left-0 top-16 bottom-0 z-40 flex w-16 flex-col items-center border-r ' \
                  'border-outline-variant/50 bg-surface-container-low py-4 md:hidden',
           aria: { label: t('layouts.mobile_rail.primary_navigation') },
-          data: { testid: 'mobile-rail' }
+          data: { testid: 'mobile-rail', responsive_shell_role: 'mobile-rail' }
         ) do
           nav(
             class: 'flex w-full flex-1 flex-col items-center gap-2 px-2',

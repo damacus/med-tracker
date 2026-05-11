@@ -9,7 +9,7 @@ module Api
       end
 
       def show
-        person = policy_scope(Person).includes(:locations, :notification_preference).find(params[:id])
+        person = policy_scope(Person).includes(:locations, :notification_preference).find(params.expect(:id))
         authorize person
 
         render_resource(person, serializer: PersonSerializer)

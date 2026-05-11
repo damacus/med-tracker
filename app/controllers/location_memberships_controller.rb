@@ -5,7 +5,8 @@ class LocationMembershipsController < ApplicationController
 
   def create
     authorize LocationMembership
-    @person = policy_scope(Person).find(params[:location_membership][:person_id])
+    location_membership_params = params.expect(location_membership: [:person_id])
+    @person = policy_scope(Person).find(location_membership_params[:person_id])
 
     if LocationMembership.create(location: @location, person: @person)
       respond_to do |format|
@@ -27,7 +28,7 @@ class LocationMembershipsController < ApplicationController
   end
 
   def destroy
-    @membership = @location.location_memberships.find(params[:id])
+    @membership = @location.location_memberships.find(params.expect(:id))
     authorize @membership
     @person = @membership.person
 
@@ -53,7 +54,7 @@ class LocationMembershipsController < ApplicationController
   private
 
   def set_location
-    @location = policy_scope(Location).find(params[:location_id])
+    @location = policy_scope(Location).find(params.expect(:location_id))
   end
 
   def location_show_streams

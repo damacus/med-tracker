@@ -87,7 +87,7 @@ module Admin
     end
 
     def destroy
-      @relationship = policy_scope(CarerRelationship).find(params[:id])
+      @relationship = policy_scope(CarerRelationship).find(params.expect(:id))
       authorize @relationship
 
       @relationship.deactivate!
@@ -101,7 +101,7 @@ module Admin
     end
 
     def activate
-      @relationship = policy_scope(CarerRelationship).find(params[:id])
+      @relationship = policy_scope(CarerRelationship).find(params.expect(:id))
       authorize @relationship
 
       @relationship.activate!

@@ -35,7 +35,7 @@ class MedicationTakesController < ApplicationController
   private
 
   def set_schedule
-    @schedule = policy_scope(Schedule).find(params[:schedule_id])
+    @schedule = policy_scope(Schedule).find(params.expect(:schedule_id))
   end
 
   def failure_message(error)

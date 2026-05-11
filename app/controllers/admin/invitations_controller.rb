@@ -36,7 +36,7 @@ module Admin
     end
 
     def resend
-      @invitation = Invitation.find(params[:id])
+      @invitation = Invitation.find(params.expect(:id))
       authorize @invitation, :resend?
 
       if @invitation.resendable?
