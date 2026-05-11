@@ -19,7 +19,7 @@ RSpec.describe Views::Profiles::VersionInfo, type: :component do
     expect(html).to include('/Users/damacus/.codex/worktrees/a270/med-tracker')
     expect(html).to include('Commit')
     expect(html).to include('bb956afc')
-    expect(html).not_to include('v0.3.51')
+    expect(html).not_to include("v#{MedTracker::VERSION}")
   end
 
   it 'renders app version and release notes outside development' do
@@ -29,9 +29,9 @@ RSpec.describe Views::Profiles::VersionInfo, type: :component do
     html = rendered.to_html
 
     expect(html).to include('App Version')
-    expect(html).to include('v0.3.51')
+    expect(html).to include("v#{MedTracker::VERSION}")
     expect(html).to include('Release Notes')
-    expect(html).to include('https://github.com/damacus/med-tracker/releases/tag/v0.3.51')
+    expect(html).to include("https://github.com/damacus/med-tracker/releases/tag/v#{MedTracker::VERSION}")
     expect(html).not_to match(/Worktree|Commit/)
   end
 
