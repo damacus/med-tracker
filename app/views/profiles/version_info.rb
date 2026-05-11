@@ -13,8 +13,8 @@ module Views
           end
 
           render CardContent.new(class: 'space-y-0') do
-            render_version_row
-            render_release_notes_row
+            render_worktree_row
+            render_commit_row
             render_docs_row
           end
         end
@@ -22,23 +22,17 @@ module Views
 
       private
 
-      def render_version_row
+      def render_worktree_row
         div(class: 'flex items-center justify-between border-b border-border/50 py-3') do
-          dt(class: 'text-sm font-medium text-on-surface-variant') { t('profiles.version_info.app_version') }
-          dd(class: 'text-sm font-mono text-foreground') { "v#{MedTracker::VERSION}" }
+          dt(class: 'text-sm font-medium text-on-surface-variant') { t('profiles.version_info.worktree') }
+          dd(class: 'break-all text-right text-sm font-mono text-foreground') { system_metadata.worktree }
         end
       end
 
-      def render_release_notes_row
+      def render_commit_row
         div(class: 'flex items-center justify-between border-b border-border/50 py-3') do
-          dt(class: 'text-sm font-medium text-on-surface-variant') { t('profiles.version_info.release_notes') }
-          dd do
-            link_to "v#{MedTracker::VERSION}",
-                    "https://github.com/damacus/med-tracker/releases/tag/v#{MedTracker::VERSION}",
-                    class: 'text-sm font-medium text-primary hover:underline',
-                    target: '_blank',
-                    rel: 'noopener'
-          end
+          dt(class: 'text-sm font-medium text-on-surface-variant') { t('profiles.version_info.commit') }
+          dd(class: 'text-sm font-mono text-foreground') { system_metadata.commit }
         end
       end
 
@@ -53,6 +47,10 @@ module Views
                     rel: 'noopener'
           end
         end
+      end
+
+      def system_metadata
+        @system_metadata ||= SystemMetadata.current
       end
     end
   end

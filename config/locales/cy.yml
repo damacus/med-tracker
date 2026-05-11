@@ -1052,6 +1052,8 @@ cy:
       title: "Gwybodaeth System"
       description: "Fersiwn y rhaglen ac adnoddau"
       app_version: "Fersiwn Ap"
+      worktree: "Coeden waith"
+      commit: "Commit"
       release_notes: "Nodiadau Rhyddhau"
       documentation: "Dogfennaeth"
       view_docs: "Gweld Dogfennaeth"
