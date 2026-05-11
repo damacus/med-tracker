@@ -9,8 +9,9 @@ module Components
 
       def view_template
         header(
-          class: 'sticky top-0 z-40 w-full border-b border-outline-variant bg-surface-container ' \
-                 'shadow-elevation-1 md:hidden'
+          class: 'app-mobile-top-bar sticky top-0 z-40 w-full border-b border-outline-variant bg-surface-container ' \
+                 'shadow-elevation-1 md:hidden',
+          data: { responsive_shell_role: 'mobile-top-bar' }
         ) do
           render_skip_link
           nav(class: 'nav') do

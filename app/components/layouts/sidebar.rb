@@ -12,8 +12,9 @@ module Components
         return unless authenticated?
 
         aside(
-          class: 'fixed left-0 top-0 z-50 hidden h-full w-64 flex-col border-r border-outline-variant ' \
-                 'bg-surface-container-low px-4 py-8 text-on-surface-variant transition-all duration-500 md:flex'
+          class: 'app-sidebar fixed left-0 top-0 z-50 h-full w-64 flex-col border-r border-outline-variant ' \
+                 'bg-surface-container-low px-4 py-8 text-on-surface-variant transition-all duration-500',
+          data: { responsive_shell_role: 'sidebar' }
         ) do
           render_brand
           render_search_trigger

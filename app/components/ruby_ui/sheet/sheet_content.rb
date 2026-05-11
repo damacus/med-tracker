@@ -50,8 +50,9 @@ module RubyUI
         data_testid: 'drawer-backdrop',
         data_action: 'click->ruby-ui--sheet-content#close',
         class: 'fixed inset-0 z-50 bg-foreground/10 backdrop-blur-[1.5px] transition-opacity duration-300 pointer-events-auto ' \
-               'data-[state=open]:opacity-100 data-[state=closed]:opacity-0',
-        aria_hidden: 'true'
+               'data-[state=open]:opacity-100 data-[state=closed]:opacity-0 data-[state=closed]:pointer-events-none',
+        aria_hidden: 'true',
+        data_state: 'closed'
       )
     end
 
