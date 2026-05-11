@@ -33,10 +33,11 @@ RSpec.describe Components::Dashboard::ScheduleCard, type: :component do
       expect(rendered.text).to include(MedicationStockQuantityFormatter.format(schedule.medication.current_supply))
     end
 
-    it 'renders the take action with a pill icon' do
+    it 'renders the take action with a hand package icon' do
       rendered = render_inline(described_class.new(person: person, schedule: schedule))
+      selector = "button[data-testid='take-medication-#{schedule.id}'] svg.material-symbol-hand-package"
 
-      expect(rendered.css("button[data-testid='take-medication-#{schedule.id}'] svg.lucide-pill")).to be_present
+      expect(rendered.css(selector)).to be_present
     end
   end
 

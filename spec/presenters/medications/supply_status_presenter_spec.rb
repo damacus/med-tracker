@@ -102,6 +102,60 @@ RSpec.describe Medications::SupplyStatusPresenter do
 
       expect(presenter.list_supply_bar_class).to eq('bg-primary')
     end
+
+    it 'returns destructive class when scheduled medication has less than five days left' do
+      medication = create(:medication, current_supply: 4, reorder_threshold: 0)
+      create(:schedule, medication: medication, dose_amount: 500, dose_unit: 'mg', max_daily_doses: 1,
+                        frequency: 'Once daily')
+      presenter = described_class.new(medication:)
+
+      expect(presenter.list_supply_bar_class).to eq('bg-destructive')
+    end
+
+    it 'returns primary class when scheduled medication has five days left' do
+      medication = create(:medication, current_supply: 5, reorder_threshold: 10)
+      create(:schedule, medication: medication, dose_amount: 500, dose_unit: 'mg', max_daily_doses: 1,
+                        frequency: 'Once daily')
+      presenter = described_class.new(medication:)
+
+      expect(presenter.list_supply_bar_class).to eq('bg-primary')
+    end
+
+    it 'returns destructive class when as-needed medication has less than ten doses left' do
+      medication = create(:medication, current_supply: 18, reorder_threshold: 0)
+      create(:person_medication, :as_needed, medication: medication, dose_amount: 2, dose_unit: 'tablet')
+      presenter = described_class.new(medication:)
+
+      expect(presenter.list_supply_bar_class).to eq('bg-destructive')
+    end
+
+    it 'returns primary class when as-needed medication has ten doses left' do
+      medication = create(:medication, current_supply: 20, reorder_threshold: 10)
+      create(:person_medication, :as_needed, medication: medication, dose_amount: 2, dose_unit: 'tablet')
+      presenter = described_class.new(medication:)
+
+      expect(presenter.list_supply_bar_class).to eq('bg-primary')
+    end
+  end
+
+  describe '#list_inventory_text_class' do
+    it 'returns destructive class for red inventory levels' do
+      medication = create(:medication, current_supply: 4, reorder_threshold: 0)
+      create(:schedule, medication: medication, dose_amount: 500, dose_unit: 'mg', max_daily_doses: 1,
+                        frequency: 'Once daily')
+      presenter = described_class.new(medication:)
+
+      expect(presenter.list_inventory_text_class).to eq('text-destructive')
+    end
+
+    it 'returns primary class for blue inventory levels' do
+      medication = create(:medication, current_supply: 5, reorder_threshold: 10)
+      create(:schedule, medication: medication, dose_amount: 500, dose_unit: 'mg', max_daily_doses: 1,
+                        frequency: 'Once daily')
+      presenter = described_class.new(medication:)
+
+      expect(presenter.list_inventory_text_class).to eq('text-primary')
+    end
   end
 
   describe '#remaining_units_label' do

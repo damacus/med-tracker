@@ -45,7 +45,11 @@ module Medications
     end
 
     def list_supply_bar_class
-      supply_level.low_stock? ? 'bg-destructive' : 'bg-primary'
+      list_stock_alert? ? 'bg-destructive' : 'bg-primary'
+    end
+
+    def list_inventory_text_class
+      list_stock_alert? ? 'text-destructive' : 'text-primary'
     end
 
     def remaining_units_label
@@ -97,6 +101,81 @@ module Medications
 
     def volume_stock?
       MedicationStockConsumption.volume_unit?(medication.dosage_unit)
+    end
+
+    def list_stock_alert?
+      return false unless supply_level.tracked?
+      return scheduled_stock_alert? if scheduled_inventory?
+      return as_needed_stock_alert? if as_needed_inventory?
+
+      supply_level.low_stock?
+    end
+
+    def scheduled_stock_alert?
+      medication.days_until_out_of_stock.present? && medication.days_until_out_of_stock < 5
+    end
+
+    def as_needed_stock_alert?
+      as_needed_doses_left < 10
+    end
+
+    def as_needed_doses_left
+      BigDecimal(supply_level.current.to_s) / as_needed_dose_quantity
+    end
+
+    def as_needed_dose_quantity
+      quantities = as_needed_sources.map { |source| dose_quantity_for(source) }.select(&:positive?)
+
+      quantities.max || BigDecimal('1')
+    end
+
+    def dose_quantity_for(source)
+      MedicationStockConsumption.quantity_for(
+        dose_amount: dose_amount_for(source),
+        dose_unit: dose_unit_for(source)
+      )
+    end
+
+    def dose_amount_for(source)
+      return source.effective_dose_amount if source.respond_to?(:effective_dose_amount)
+
+      source.default_dose_amount
+    end
+
+    def dose_unit_for(source)
+      return source.effective_dose_unit if source.respond_to?(:effective_dose_unit)
+
+      source.dose_unit
+    end
+
+    def scheduled_inventory?
+      scheduled_sources.any?
+    end
+
+    def as_needed_inventory?
+      as_needed_sources.any?
+    end
+
+    def scheduled_sources
+      @scheduled_sources ||= medication.schedules.select do |schedule|
+        schedule.active? && !as_needed_schedule?(schedule)
+      end
+    end
+
+    def as_needed_sources
+      @as_needed_sources ||= medication.person_medications.select(&:as_needed?) + as_needed_schedules
+    end
+
+    def as_needed_schedules
+      medication.schedules.select do |schedule|
+        schedule.active? && as_needed_schedule?(schedule)
+      end
+    end
+
+    def as_needed_schedule?(schedule)
+      schedule.schedule_type_prn? ||
+        schedule.schedule_config.to_h['as_needed'] == true ||
+        schedule.frequency.to_s.casecmp('as needed').zero?
     end
 
     def low_stock_forecast

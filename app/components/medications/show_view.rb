@@ -51,7 +51,7 @@ module Components
                      'text-primary shadow-inner flex-shrink-0',
               data: { testid: 'medication-hero-icon' }
             ) do
-              render Icons::Pill.new(size: 32)
+              render Icons::Inventory.new(size: 32)
             end
             div(class: 'space-y-1 min-w-0') do
               m3_text(variant: :label_medium, class: 'uppercase tracking-[0.2em] opacity-40 block mb-1 font-black') do

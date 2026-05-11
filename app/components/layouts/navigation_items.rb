@@ -8,7 +8,7 @@ module Components
       def primary_navigation_items
         [
           navigation_item(t('layouts.sidebar.dashboard'), root_path, Icons::Home),
-          navigation_item(t('layouts.sidebar.inventory'), medications_path, Icons::Pill),
+          navigation_item(t('layouts.sidebar.inventory'), medications_path, Icons::Inventory),
           navigation_item(t('layouts.sidebar.locations'), locations_path, Icons::Home),
           navigation_item(t('layouts.sidebar.people'), people_path, Icons::Users),
           navigation_item(t('layouts.sidebar.finder'), medication_finder_path, Icons::Search),

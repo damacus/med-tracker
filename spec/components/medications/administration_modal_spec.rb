@@ -9,7 +9,7 @@ RSpec.describe Components::Medications::AdministrationModal, type: :component do
   let(:schedule) { schedules(:jane_ibuprofen) }
   let(:current_user) { users(:admin) }
 
-  it 'renders each administration action with a pill icon' do
+  it 'renders each administration action with a hand package icon' do
     rendered = render_inline(
       described_class.new(
         medication: medication,
@@ -19,7 +19,7 @@ RSpec.describe Components::Medications::AdministrationModal, type: :component do
       )
     )
 
-    selector = "button[data-testid='log-administration-schedule-#{schedule.id}'] svg.lucide-pill"
+    selector = "button[data-testid='log-administration-schedule-#{schedule.id}'] svg.material-symbol-hand-package"
 
     expect(rendered.css(selector)).to be_present
   end

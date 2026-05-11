@@ -86,7 +86,7 @@ module Components
             label: t('dashboard.person_schedule.take_now'),
             variant: :success_outline,
             size: :sm,
-            icon: Icons::Pill,
+            icon: Icons::HandPackage,
             class: 'inline-block',
             testid: "take-medication-#{schedule.id}",
             form_class: 'inline-block'
