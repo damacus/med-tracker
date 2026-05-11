@@ -3,7 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe Views::Profiles::VersionInfo, type: :component do
-  it 'renders worktree and commit metadata instead of the app version' do
+  it 'renders worktree and commit metadata instead of the app version in development' do
+    allow(Rails).to receive(:env).and_return(ActiveSupport::StringInquirer.new('development'))
     allow(SystemMetadata).to receive(:current).and_return(
       SystemMetadata.new(
         worktree: '/Users/damacus/.codex/worktrees/a270/med-tracker',
@@ -19,6 +20,19 @@ RSpec.describe Views::Profiles::VersionInfo, type: :component do
     expect(html).to include('Commit')
     expect(html).to include('bb956afc')
     expect(html).not_to include('v0.3.51')
+  end
+
+  it 'renders app version and release notes outside development' do
+    allow(Rails).to receive(:env).and_return(ActiveSupport::StringInquirer.new('production'))
+
+    rendered = render_inline(described_class.new)
+    html = rendered.to_html
+
+    expect(html).to include('App Version')
+    expect(html).to include('v0.3.51')
+    expect(html).to include('Release Notes')
+    expect(html).to include('https://github.com/damacus/med-tracker/releases/tag/v0.3.51')
+    expect(html).not_to match(/Worktree|Commit/)
   end
 
   it 'uses token-driven shells for version info' do
