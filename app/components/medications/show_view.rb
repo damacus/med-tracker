@@ -58,7 +58,7 @@ module Components
                 t('medications.show.profile')
               end
               m3_heading(variant: :display_small, level: 1, class: 'font-black tracking-tight break-words') do
-                medication.name
+                medication.display_name
               end
               div(class: 'flex items-center gap-1 mt-1') do
                 render Icons::Home.new(size: 14, class: 'text-on-surface-variant')

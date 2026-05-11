@@ -21,7 +21,7 @@ module Components
           Dialog(open: true) do
             DialogContent(size: :xl) do
               DialogHeader do
-                DialogTitle { t('medications.administration.title', medication: medication.name) }
+                DialogTitle { t('medications.administration.title', medication: medication.display_name) }
                 DialogDescription { t('medications.administration.subtitle') }
               end
               DialogMiddle do
@@ -84,7 +84,7 @@ module Components
       def option_summary(option)
         frequency = option.frequency.presence if option.respond_to?(:frequency)
 
-        [option.medication.name, option.dose_display, frequency].compact.join(' • ')
+        [option.medication.display_name, option.dose_display, frequency].compact.join(' • ')
       end
 
       def render_empty_state

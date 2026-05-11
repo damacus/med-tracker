@@ -79,7 +79,7 @@ module Components
             end
             div(class: 'min-w-0') do
               m3_text(variant: :title_medium, class: 'font-bold tracking-tight break-words') do
-                row[:source].medication.name
+                row[:source].medication.display_name
               end
               m3_text(variant: :body_small, class: 'text-on-surface-variant font-medium') { dose_label(row[:source]) }
             end

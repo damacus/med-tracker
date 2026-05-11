@@ -35,23 +35,41 @@ class MedicationOnboardingPrefill
 
   def call(barcode: nil, code: nil, name: nil, package_quantity: nil, package_unit: nil)
     curated_product = BarcodeCatalog::CuratedProducts.find(barcode: barcode, code: code, name: name)
-    return result_from_curated_product(curated_product) if curated_product
+    return result_with_friendly_name(result_from_curated_product(curated_product), name:, code:) if curated_product
 
-    return result_from_package_metadata(package_quantity:, package_unit:) if package_quantity.present?
+    return package_metadata_result(package_quantity:, package_unit:, name:, code:) if package_quantity.present?
 
     open_food_facts_result = open_food_facts_result_for(barcode:, code:, name:)
     if open_food_facts_result
-      return result_from_open_food_facts_result(
-        open_food_facts_result,
-        package_quantity: package_quantity,
-        package_unit: package_unit
-      )
+      return open_food_facts_prefill_result(open_food_facts_result, package_quantity:, package_unit:, code:)
     end
 
-    result_from_dosages(parsed_dosages(name))
+    result_with_friendly_name(result_from_dosages(parsed_dosages(name)), name:, code:)
   end
 
   private
+
+  def package_metadata_result(package_quantity:, package_unit:, name:, code:)
+    result_with_friendly_name(result_from_package_metadata(package_quantity:, package_unit:), name:, code:)
+  end
+
+  def open_food_facts_prefill_result(open_food_facts_result, package_quantity:, package_unit:, code:)
+    result_with_friendly_name(
+      result_from_open_food_facts_result(open_food_facts_result, package_quantity:, package_unit:),
+      name: open_food_facts_result[:name],
+      code: code
+    )
+  end
+
+  def result_with_friendly_name(result, name:, code:)
+    friendly_name = MedicationFriendlyName.derive(name: name, code: code)
+    return result if friendly_name.blank?
+
+    Result.new(
+      medication_attributes: result.medication_attributes.merge(friendly_name: friendly_name),
+      dosage_records_attributes: result.dosage_records_attributes
+    )
+  end
 
   def result_from_curated_product(curated_product)
     dosages = curated_product.dosage_attributes
@@ -207,13 +225,9 @@ class MedicationOnboardingPrefill
     )
   end
 
-  def blank_result
-    Result.new(medication_attributes: {}, dosage_records_attributes: [])
-  end
+  def blank_result = Result.new(medication_attributes: {}, dosage_records_attributes: [])
 
-  def discrete_package_unit?(unit)
-    DISCRETE_PACKAGE_UNITS.include?(unit)
-  end
+  def discrete_package_unit?(unit) = DISCRETE_PACKAGE_UNITS.include?(unit)
 
   def open_food_facts_result_for(barcode:, code:, name:)
     return nil if code.present?

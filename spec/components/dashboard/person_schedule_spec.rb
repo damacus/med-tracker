@@ -25,7 +25,7 @@ RSpec.describe Components::Dashboard::PersonSchedule, type: :component do
     schedules.each do |schedule|
       schedule_element = rendered.css("#schedule_#{schedule.id}")
       expect(schedule_element).to be_present
-      expect(rendered.text).to include(schedule.medication.name)
+      expect(rendered.text).to include(schedule.medication.display_name)
     end
   end
 

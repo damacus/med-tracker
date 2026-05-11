@@ -97,7 +97,7 @@ module Components
                 variant: :label_small,
                 class: 'uppercase tracking-widest text-on-surface-variant font-black'
               ) { t('schedules.form.medication') }
-              m3_text(variant: :title_medium, class: 'font-bold') { schedule.medication.name }
+              m3_text(variant: :title_medium, class: 'font-bold') { schedule.medication.display_name }
             end
             m3_link(
               href: new_person_schedule_path(person),
@@ -167,7 +167,7 @@ module Components
             end
             SelectContent do
               medications.each do |medication|
-                SelectItem(value: medication.id.to_s) { medication.name }
+                SelectItem(value: medication.id.to_s) { medication.display_name }
               end
             end
           end
@@ -208,7 +208,7 @@ module Components
                       required: true,
                       data: { action: 'change->schedule-form#advanceToDetails' }
                     )
-                    span { medication.name }
+                    span { medication.display_name }
                   end
                 end
               end

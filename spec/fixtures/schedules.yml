@@ -13,6 +13,18 @@ john_paracetamol:
   min_hours_between_doses: 4
   dose_cycle: :daily
 
+john_movicol:
+  person: john
+  medication: movicol
+  dose_amount: 1
+  dose_unit: sachet
+  frequency: Once daily
+  start_date: <%= Date.today %>
+  end_date: <%= 1.year.from_now.to_date %>
+  max_daily_doses: 1
+  min_hours_between_doses: 24
+  dose_cycle: :daily
+
 # Ibuprofen schedules
 jane_ibuprofen:
   person: jane

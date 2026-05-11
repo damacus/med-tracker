@@ -108,7 +108,7 @@ module Components
               AlertDialogHeader do
                 AlertDialogTitle { t('schedules.card.delete_dialog.title') }
                 AlertDialogDescription do
-                  plain t('schedules.card.delete_dialog.confirm', medication: schedule.medication.name)
+                  plain t('schedules.card.delete_dialog.confirm', medication: schedule.medication.display_name)
                 end
               end
               AlertDialogFooter do

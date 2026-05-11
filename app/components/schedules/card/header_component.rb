@@ -27,7 +27,7 @@ module Components
                 level: 3,
                 class: 'font-black tracking-tight mb-1 text-foreground break-words leading-tight'
               ) do
-                schedule.medication.name
+                schedule.medication.display_name
               end
               m3_text(variant: :label_small, class: 'text-on-surface-variant font-black uppercase tracking-widest') do
                 presenter.dose_description

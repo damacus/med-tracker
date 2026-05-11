@@ -51,7 +51,7 @@ module Components
                           schedule.person.name
                         end
                       end
-                      td(class: 'px-6 py-5 text-foreground font-medium') { schedule.medication.name }
+                      td(class: 'px-6 py-5 text-foreground font-medium') { schedule.medication.display_name }
                       td(class: 'px-6 py-5 text-foreground font-medium') { dosage_label(schedule) }
                       td(class: 'px-6 py-5 text-foreground font-medium') { schedule.frequency }
                       td(class: 'px-6 py-5 text-on-surface-variant font-medium') { format_date(schedule.start_date) }

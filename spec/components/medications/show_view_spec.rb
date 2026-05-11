@@ -15,6 +15,18 @@ RSpec.describe Components::Medications::ShowView, type: :component do
     expect(rendered.text).to include('Paracetamol')
   end
 
+  it 'renders the friendly display name when present' do
+    medication.update!(
+      name: 'Movicol Paediatric Plain oral powder 6.9g sachets (Norgine Pharmaceuticals Ltd) 30 sachet 15 x 2 sachets',
+      friendly_name: 'Movicol Paediatric Plain'
+    )
+
+    rendered = render_inline(described_class.new(medication: medication))
+
+    expect(rendered.at_css('h1').text).to include('Movicol Paediatric Plain')
+    expect(rendered.at_css('h1').text).not_to include('Norgine Pharmaceuticals')
+  end
+
   it 'renders action links using Link component without raw button classes' do
     rendered = render_inline(described_class.new(medication: medication))
 

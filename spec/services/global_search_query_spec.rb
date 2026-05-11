@@ -34,6 +34,18 @@ RSpec.describe GlobalSearchQuery do
     expect(ranked.first).to have_attributes(type: 'medication', title: 'Vitamin D')
   end
 
+  it 'uses friendly medication display names in result titles' do
+    medication = medications(:calpol)
+    medication.update!(
+      name: 'Movicol Paediatric Plain oral powder 6.9g sachets (Norgine Pharmaceuticals Ltd) 30 sachet 15 x 2 sachets',
+      friendly_name: 'Movicol Paediatric Plain'
+    )
+
+    ranked = described_class.new(user: users(:damacus), query: 'Movicol', limit: 10).call
+
+    expect(ranked.first).to have_attributes(type: 'medication', title: 'Movicol Paediatric Plain')
+  end
+
   it 'scores exact command title matches as exact matches' do
     command_match = described_class.new(user: users(:damacus), query: 'Inventory', limit: 10).call.first
 

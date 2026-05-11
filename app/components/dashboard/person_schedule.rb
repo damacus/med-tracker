@@ -58,7 +58,7 @@ module Components
               weight: 'semibold',
               class: 'leading-tight tracking-tight text-foreground break-words'
             ) do
-              schedule.medication.name
+              schedule.medication.display_name
             end
           end
 
@@ -151,7 +151,7 @@ module Components
             AlertDialogHeader do
               AlertDialogTitle { t('dashboard.delete_confirmation.delete_schedule') }
               AlertDialogDescription do
-                t('dashboard.person_schedule.delete_confirmation', medication: schedule.medication.name)
+                t('dashboard.person_schedule.delete_confirmation', medication: schedule.medication.display_name)
               end
             end
             AlertDialogFooter do

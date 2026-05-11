@@ -132,12 +132,12 @@ module Components
                       checked: assignment.medication_id == medication.id,
                       required: true,
                       data: {
-                        text: medication.name,
+                        text: medication.display_name,
                         medication_assignment_form_target: 'medicationSelect',
                         action: 'change->medication-assignment-form#updateMedication'
                       }
                     )
-                    span { medication.name }
+                    span { medication.display_name }
                   end
                 end
               end
@@ -305,7 +305,7 @@ module Components
 
       def medication_payload(medication)
         {
-          name: medication.name,
+          name: medication.display_name,
           default_schedule_type: medication.default_schedule_type,
           schedule_type_label: schedule_type_label(medication.default_schedule_type),
           dose_options: dose_options_for(medication)

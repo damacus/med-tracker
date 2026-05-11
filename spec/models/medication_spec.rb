@@ -166,6 +166,20 @@ RSpec.describe Medication do
     end
   end
 
+  describe '#display_name' do
+    it 'falls back to the canonical medication name' do
+      medication.friendly_name = nil
+
+      expect(medication.display_name).to eq('Ibuprofen')
+    end
+
+    it 'uses a friendly name when present' do
+      medication.friendly_name = 'Movicol Paediatric Plain'
+
+      expect(medication.display_name).to eq('Movicol Paediatric Plain')
+    end
+  end
+
   describe 'nested dosage records' do
     it 'ignores untouched auto-appended dose option rows on update' do
       medication = create(:medication, dosage_unit: 'ml')

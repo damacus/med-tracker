@@ -68,6 +68,19 @@ calpol:
     days, consult your doctor. Contains paracetamol - do not use with
     other paracetamol-containing products.
 
+movicol:
+  name: >-
+    Movicol Paediatric Plain oral powder 6.9g sachets (Norgine Pharmaceuticals Ltd) 30 sachet
+    15 x 2 sachets
+  friendly_name: Movicol Paediatric Plain
+  location: home
+  category: Osmotic Laxative
+  dosage_amount: 1
+  dosage_unit: sachet
+  current_supply: 30
+  supply_at_last_restock: 30
+  expiry_date: <%= 1.year.from_now.to_date %>
+
 vitamin_d:
   name: Vitamin D
   location: home

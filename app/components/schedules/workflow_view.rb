@@ -88,7 +88,7 @@ module Components
             option(value: '') { t('schedules.workflow.medication_placeholder') }
             medications.each do |medication|
               option(value: medication.id, selected: medication.id.to_s == selected_medication_id.to_s) do
-                medication.name
+                medication.display_name
               end
             end
           end
@@ -115,7 +115,7 @@ module Components
             t('schedules.workflow.summary_title')
           end
           div(class: 'grid grid-cols-1 md:grid-cols-2 gap-6') do
-            render_summary_row(t('schedules.workflow.medication_label'), selected_medication&.name)
+            render_summary_row(t('schedules.workflow.medication_label'), selected_medication&.display_name)
             render_summary_row(t('schedules.workflow.person_label'), selected_person&.name)
             render_summary_row(t('schedules.workflow.schedule_type_label'), selected_schedule_type)
             render_summary_row(t('schedules.workflow.frequency_label'), frequency)

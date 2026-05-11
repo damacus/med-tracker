@@ -28,7 +28,7 @@ module Components
             end
             div(class: 'space-y-2') do
               m3_heading(level: 2, size: '5', class: 'font-bold tracking-tight break-words leading-tight') do
-                medication.name
+                medication.display_name
               end
               Badge(variant: :outlined, class: 'w-fit rounded-full text-[10px]') { medication.location.name }
             end
@@ -146,7 +146,7 @@ module Components
             AlertDialogHeader do
               AlertDialogTitle { t('medications.index.delete_dialog.title') }
               AlertDialogDescription do
-                t('medications.index.delete_dialog.confirm', name: medication.name)
+                t('medications.index.delete_dialog.confirm', name: medication.display_name)
               end
             end
             AlertDialogFooter do

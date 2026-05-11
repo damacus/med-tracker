@@ -29,7 +29,7 @@ module Components
             AlertDialogHeader do
               AlertDialogTitle { t('dashboard.delete_confirmation.delete_schedule') }
               AlertDialogDescription do
-                plain t('dashboard.delete_confirmation.are_you_sure', medication: schedule.medication.name,
+                plain t('dashboard.delete_confirmation.are_you_sure', medication: schedule.medication.display_name,
                                                                       person: schedule.person.name)
               end
             end
