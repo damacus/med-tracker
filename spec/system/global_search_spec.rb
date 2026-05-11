@@ -12,13 +12,12 @@ RSpec.describe 'Global search command palette' do
 
   scenario 'opens as a left-anchored dropdown with Ctrl+K and Cmd+K, searches, navigates, and closes' do
     visit root_path
+    sleep 0.5
 
     page.execute_script('document.querySelector("a[href=\"/people\"]").focus()')
     expect(page.evaluate_script('document.activeElement.getAttribute("href")')).to eq('/people')
 
-    page.execute_script(
-      'window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true, bubbles: true }))'
-    )
+    first('a[href="/people"]').send_keys([:control, 'k'])
 
     expect(page).to have_css('#global_search_panel[aria-hidden="false"]')
     expect(page).to have_no_css('dialog[open][aria-label="Global search"]')
@@ -31,9 +30,7 @@ RSpec.describe 'Global search command palette' do
     expect(page).to have_css('#global_search_panel[hidden]', visible: :all)
     expect(page.evaluate_script('document.activeElement.getAttribute("href")')).to eq('/people')
 
-    page.execute_script(
-      'window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true, bubbles: true }))'
-    )
+    first('a[href="/people"]').send_keys([:control, 'k'])
     find_by_id('global_search_query').send_keys(:escape)
     find('aside button[aria-label="Open global search"]').click
     expect(page).to have_css('#global_search_panel[aria-hidden="false"]')
@@ -51,9 +48,7 @@ RSpec.describe 'Global search command palette' do
     expect(page).to have_css('#global_search_panel[hidden]', visible: :all)
     expect(page.evaluate_script('document.activeElement.getAttribute("href")')).to eq('/people')
 
-    page.execute_script(
-      'window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true, bubbles: true }))'
-    )
+    first('a[href="/people"]').send_keys([:control, 'k'])
     expect(page).to have_css('#global_search_panel[aria-hidden="false"]')
 
     fill_in 'Search MedTracker', with: 'Vitamin D'
@@ -70,9 +65,7 @@ RSpec.describe 'Global search command palette' do
     expect(page).to have_current_path(medication_path(medications(:vitamin_d)))
 
     expect(page).to have_css('button[aria-label="Open global search"]')
-    page.execute_script(
-      'window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true, bubbles: true }))'
-    )
+    find('button[aria-label="Open global search"]').send_keys([:control, 'k'])
     expect(page).to have_css('#global_search_panel[aria-hidden="false"]')
 
     find_by_id('global_search_query').send_keys(:escape)
@@ -82,6 +75,7 @@ RSpec.describe 'Global search command palette' do
   scenario 'opens from the mobile trigger' do
     page.current_window.resize_to(375, 667)
     visit root_path
+    sleep 0.5
 
     find('button[aria-label="Open global search"]').click
 

@@ -3,8 +3,9 @@
 require 'rails_helper'
 
 RSpec.describe Views::Rodauth::TwoFactorAuth, type: :component do
+  # rubocop:disable RSpec/VerifiedDoubles
   it 'renders the two-factor auth selection screen' do
-    rodauth = Struct.new(:two_factor_auth_links).new([[10, '/otp-auth', 'Authenticator app']])
+    rodauth = double('Rodauth', two_factor_auth_links: [[10, '/otp-auth', 'Authenticator app']])
 
     allow(controller).to receive(:rodauth).and_return(rodauth)
 
@@ -14,4 +15,5 @@ RSpec.describe Views::Rodauth::TwoFactorAuth, type: :component do
     expect(rendered.text).to include('Authenticator app')
     expect(rendered.to_html).to include('min-h-screen')
   end
+  # rubocop:enable RSpec/VerifiedDoubles
 end
