@@ -29,7 +29,7 @@ module Api
         token = bearer_token
         @current_api_session = ApiSession.lookup_by_access_token(token)
 
-        unless @current_api_session&.active_access_token?
+        unless @current_api_session && @current_api_session.revoked_at.nil? && @current_api_session.access_expires_at&.future?
           render_unauthorized('Authentication required')
           return
         end
