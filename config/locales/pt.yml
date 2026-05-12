@@ -1242,6 +1242,17 @@ pt:
       personal_information:
         title: Informação Pessoal
         description: As informações básicas do seu perfil
+    avatar:
+      title: Foto de perfil
+      description: Carregue um avatar para os locais onde o seu nome aparece.
+      supported_formats: PNG, JPEG ou WebP até 5 MB.
+      upload_label: Carregar um avatar personalizado
+      upload: Carregar avatar
+      remove: Remover avatar
+      removed: Foto de perfil removida.
+      gravatar_label: Usar Gravatar
+      gravatar_description: Mostrar o seu Gravatar quando não existir um avatar personalizado carregado.
+      save_gravatar: Guardar escolha de Gravatar
     account_security:
       title: Segurança da Conta
       description: Gira as suas credenciais de início de sessão e definições de segurança

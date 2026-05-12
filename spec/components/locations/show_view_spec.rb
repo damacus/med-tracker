@@ -21,6 +21,16 @@ RSpec.describe Components::Locations::ShowView, type: :component do
     expect(supply_badge['class']).to include('shrink-0')
   end
 
+  it 'renders location members with the shared person avatar' do
+    person = create(:person, name: 'Location Member')
+    create(:location_membership, location: location, person: person)
+
+    rendered = render_location
+
+    expect(rendered.text).to include('Location Member')
+    expect(rendered.at_css('[data-testid="person-avatar"]')).to be_present
+  end
+
   def render_location
     vc = view_context
     policy_stub = Struct.new(:update?).new(false)

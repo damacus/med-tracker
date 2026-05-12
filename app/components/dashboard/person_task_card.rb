@@ -28,9 +28,12 @@ module Components
 
       def render_header
         div(class: 'flex items-start justify-between gap-4 pb-4') do
-          div(class: 'min-w-0') do
-            m3_heading(variant: :title_large, level: 3, class: 'font-black tracking-tight') { person.name }
-            m3_text(variant: :body_medium, class: 'text-on-surface-variant font-medium') { routine_summary }
+          div(class: 'flex min-w-0 items-center gap-3') do
+            render Components::Shared::PersonAvatar.new(person: person, size: :md)
+            div(class: 'min-w-0') do
+              m3_heading(variant: :title_large, level: 3, class: 'font-black tracking-tight') { person.name }
+              m3_text(variant: :body_medium, class: 'text-on-surface-variant font-medium') { routine_summary }
+            end
           end
           m3_badge(variant: remaining_routine_count.positive? ? :filled : :tonal,
                    class: 'shrink-0 px-3 py-1 text-[10px] font-black uppercase tracking-wider') do

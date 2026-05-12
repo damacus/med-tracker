@@ -36,9 +36,7 @@ module Components
       end
 
       def render_person_avatar
-        div(class: 'w-12 h-12 rounded-full flex items-center justify-center bg-surface-container text-foreground') do
-          render Icons::User.new(size: 24)
-        end
+        render Components::Shared::PersonAvatar.new(person: person, size: :lg)
       end
 
       def render_schedules_grid

@@ -20,10 +20,11 @@ RSpec.describe Components::Dashboard::ScheduleRow, type: :component do
     expect(rendered.text).to include(MedicationStockQuantityFormatter.format(schedule.medication.current_supply))
   end
 
-  it 'renders the person avatar with an SVG icon instead of emoji' do
+  it 'renders the shared person avatar with initials instead of emoji' do
     rendered = render_inline(row)
 
     expect(rendered.text).not_to include('👤')
-    expect(rendered.css('svg.lucide-user')).to be_present
+    expect(rendered.at_css('[data-testid="person-avatar"]')).to be_present
+    expect(rendered.text).to include('JD')
   end
 end

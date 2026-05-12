@@ -10,7 +10,12 @@ module Components
       def view_template
         render RubyUI::DropdownMenu.new do
           render RubyUI::DropdownMenuTrigger.new(class: 'w-full') do
-            m3_button(variant: :outlined) { current_user_name || t('layouts.profile_menu.account') }
+            m3_button(variant: :outlined, class: 'gap-2') do
+              if current_user&.person
+                render Components::Shared::PersonAvatar.new(person: current_user.person, size: :xs)
+              end
+              span { current_user_name || t('layouts.profile_menu.account') }
+            end
           end
           render RubyUI::DropdownMenuContent.new do
             render(RubyUI::DropdownMenuLabel.new { t('layouts.profile_menu.my_account') })

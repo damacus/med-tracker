@@ -11,6 +11,7 @@ class Person < ApplicationRecord
   has_paper_trail
 
   belongs_to :account, optional: true
+  has_one_attached :avatar
   has_one :user, inverse_of: :person, dependent: :destroy
   has_many :schedules, dependent: :destroy
   has_many :medications, through: :schedules
@@ -56,6 +57,8 @@ class Person < ApplicationRecord
                     uniqueness: { allow_blank: true }
   validate :carer_required_when_lacking_capacity
   validate :must_have_at_least_one_location
+  validate :avatar_must_be_supported_image
+  validate :avatar_must_be_smaller_than_five_megabytes
 
   scope :without_carers, -> { where.missing(:carer_relationships) }
 
@@ -139,5 +142,19 @@ class Person < ApplicationRecord
     return if locations.any? || location_memberships.any?
 
     errors.add(:base, 'A person must belong to at least one location')
+  end
+
+  def avatar_must_be_supported_image
+    return unless avatar.attached?
+    return if avatar.blob.content_type.in?(%w[image/png image/jpeg image/webp])
+
+    errors.add(:avatar, 'must be a PNG, JPEG, or WebP image')
+  end
+
+  def avatar_must_be_smaller_than_five_megabytes
+    return unless avatar.attached?
+    return if avatar.blob.byte_size <= 5.megabytes
+
+    errors.add(:avatar, 'must be smaller than 5 MB')
   end
 end
