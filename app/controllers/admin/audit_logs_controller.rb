@@ -25,6 +25,8 @@ module Admin
       render Components::Admin::AuditLogs::IndexView.new(
         versions: @versions,
         filter_params: params.permit(:item_type, :event, :whodunnit),
+        item_types: result.item_types,
+        events: result.events,
         current_page: result.page,
         total_count: @total_count,
         per_page: result.per_page

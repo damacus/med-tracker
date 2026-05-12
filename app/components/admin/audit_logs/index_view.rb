@@ -6,44 +6,16 @@ module Components
       class IndexView < Components::Base
         include Phlex::Rails::Helpers::FormWith
 
-        # Models that have audit trail enabled
-        AUDITED_MODELS = %w[User Account Person CarerRelationship Location LocationMembership
-                            MedicationTake Medication MedicationDosageOption Schedule NotificationPreference
-                            AppSettings ExternalMedicineLookup AiMedicationSuggestion AuthenticationToken].freeze
-        # Available event types for filtering
-        EVENT_TYPES = ['create', 'update', 'destroy', 'restock', 'adjust inventory',
-                       'dose_decrement', 'mark_as_ordered', 'mark_as_received',
-                       'ai_medication/suggestion',
-                       'auth_token/api_session/created',
-                       'auth_token/api_session/rotated',
-                       'auth_token/api_session/revoked',
-                       'auth_token/api_session/expired',
-                       'auth_token/push_subscription/created',
-                       'auth_token/push_subscription/revoked',
-                       'auth_token/native_device_token/created',
-                       'auth_token/native_device_token/revoked',
-                       'auth_token/otp_key/created',
-                       'auth_token/otp_key/revoked',
-                       'auth_token/recovery_codes/created',
-                       'auth_token/webauthn_credential/created',
-                       'auth_token/webauthn_credential/revoked',
-                       'auth_token/verification_key/created',
-                       'auth_token/verification_key/revoked',
-                       'auth_token/password_reset_key/created',
-                       'auth_token/password_reset_key/revoked',
-                       'auth_token/login_change_key/created',
-                       'auth_token/login_change_key/revoked',
-                       'auth_token/remember_key/created',
-                       'auth_token/remember_key/revoked'].freeze
+        attr_reader :versions, :filter_params, :item_types, :events, :current_page, :total_count, :per_page
 
-        attr_reader :versions, :filter_params, :current_page, :total_count, :per_page
-
-        def initialize(versions:, filter_params: {}, current_page: 1, total_count: 0, per_page: 50)
+        def initialize(versions:, filter_params: {}, item_types: [], events: [], **pagination)
           @versions = versions
           @filter_params = filter_params
-          @current_page = current_page
-          @total_count = total_count
-          @per_page = per_page
+          @item_types = item_types
+          @events = events
+          @current_page = pagination.fetch(:current_page, 1)
+          @total_count = pagination.fetch(:total_count, 0)
+          @per_page = pagination.fetch(:per_page, 50)
           @user_cache = {}
           super()
         end
@@ -99,7 +71,7 @@ module Components
                 option(value: '', selected: filter_params[:item_type].blank?) do
                   t('admin.audit_logs.index.filter.all_types')
                 end
-                AUDITED_MODELS.each do |type|
+                item_types.each do |type|
                   option(value: type, selected: filter_params[:item_type] == type) { type.titleize }
                 end
               end
@@ -120,7 +92,7 @@ module Components
                 option(value: '', selected: filter_params[:event].blank?) do
                   t('admin.audit_logs.index.filter.all_events')
                 end
-                EVENT_TYPES.each do |event|
+                events.each do |event|
                   option(value: event, selected: filter_params[:event] == event) { event.titleize }
                 end
               end

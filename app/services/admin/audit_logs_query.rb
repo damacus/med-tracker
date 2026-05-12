@@ -2,7 +2,7 @@
 
 module Admin
   class AuditLogsQuery
-    Result = Data.define(:versions, :total_count, :page, :per_page)
+    Result = Data.define(:versions, :total_count, :page, :per_page, :item_types, :events)
 
     attr_reader :scope, :filters, :page, :per_page
 
@@ -18,7 +18,9 @@ module Admin
         versions: filtered_scope.limit(per_page).offset((page - 1) * per_page),
         total_count: filtered_scope.count,
         page: page,
-        per_page: per_page
+        per_page: per_page,
+        item_types: distinct_values(:item_type),
+        events: distinct_values(:event)
       )
     end
 
@@ -42,6 +44,10 @@ module Admin
 
     def whodunnit
       filters[:whodunnit].to_s.presence
+    end
+
+    def distinct_values(column)
+      scope.reorder(nil).where.not(column => [nil, '']).distinct.order(column).pluck(column)
     end
   end
 end
