@@ -96,11 +96,17 @@ module Components
           class: 'max-w-full mb-6',
           data: { testid: 'dashboard-person-selector' }
         ) do
-          div(class: 'flex max-w-full flex-wrap items-center gap-2 rounded-2xl bg-surface-container-low p-1') do
-            direct_person_options.each do |option|
-              render_person_selector_option(option)
+          div(class: 'max-w-full rounded-2xl bg-surface-container-low p-1') do
+            div(class: 'flex min-w-0 items-center gap-2 sm:hidden') do
+              render_mobile_person_selector_current
+              render_mobile_person_selector_overflow
             end
-            render_person_selector_overflow
+            div(class: 'hidden max-w-full flex-wrap items-center gap-2 sm:flex') do
+              direct_person_options.each do |option|
+                render_person_selector_option(option)
+              end
+              render_person_selector_overflow
+            end
           end
         end
       end
@@ -133,12 +139,47 @@ module Components
         end
       end
 
+      def render_mobile_person_selector_current
+        option = selected_person_selector_option || direct_person_options.first
+        return unless option
+
+        div(
+          class: 'inline-flex min-h-12 min-w-0 flex-1 items-center gap-2 rounded-xl bg-primary px-3 py-2 ' \
+                 'text-sm font-bold text-on-primary shadow-elevation-1',
+          aria: { current: 'true' },
+          data: { testid: 'dashboard-person-mobile-current' }
+        ) do
+          render_person_selector_avatar(option)
+          span(class: 'truncate') { option.fetch(:label) }
+        end
+      end
+
+      def render_mobile_person_selector_overflow
+        return if mobile_overflow_selector_options.empty?
+
+        render_person_selector_dropdown(
+          options: mobile_overflow_selector_options,
+          testid: 'dashboard-person-mobile-overflow',
+          trigger_class: 'w-36 shrink-0',
+          content_class: 'w-64'
+        )
+      end
+
       def render_person_selector_overflow
         return if overflow_selector_options.empty?
 
+        render_person_selector_dropdown(
+          options: overflow_selector_options,
+          testid: 'dashboard-person-overflow',
+          trigger_class: 'min-w-44',
+          content_class: 'w-56'
+        )
+      end
+
+      def render_person_selector_dropdown(options:, testid:, trigger_class:, content_class:)
         render RubyUI::DropdownMenu.new(
-          class: 'min-w-44',
-          data: { testid: 'dashboard-person-overflow' }
+          class: trigger_class,
+          data: { testid: testid }
         ) do
           render RubyUI::DropdownMenuTrigger.new(class: 'w-full') do
             button(
@@ -153,8 +194,8 @@ module Components
               render Icons::ChevronsUpDown.new(size: 16, class: 'shrink-0 opacity-70')
             end
           end
-          render RubyUI::DropdownMenuContent.new(class: 'w-56') do
-            overflow_selector_options.each do |option|
+          render RubyUI::DropdownMenuContent.new(class: content_class) do
+            options.each do |option|
               render RubyUI::DropdownMenuItem.new(
                 href: dashboard_path(dashboard_person_id: option.fetch(:id)),
                 class: overflow_selector_item_class(option),
@@ -167,12 +208,20 @@ module Components
         end
       end
 
+      def selected_person_selector_option
+        dashboard_person_options.find { |option| option.fetch(:selected) }
+      end
+
       def direct_person_options
         person_selector_options.first(DIRECT_PERSON_OPTION_LIMIT)
       end
 
       def overflow_selector_options
         person_selector_options.drop(DIRECT_PERSON_OPTION_LIMIT) + all_family_options
+      end
+
+      def mobile_overflow_selector_options
+        dashboard_person_options.reject { |option| option.fetch(:selected) }
       end
 
       def overflow_selector_label

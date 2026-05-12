@@ -17,7 +17,7 @@ RSpec.describe 'Global search command palette' do
     page.execute_script('document.querySelector("a[href=\"/people\"]").focus()')
     expect(page.evaluate_script('document.activeElement.getAttribute("href")')).to eq('/people')
 
-    first('a[href="/people"]').send_keys([:control, 'k'])
+    open_global_search_shortcut
 
     expect(page).to have_css('#global_search_panel[aria-hidden="false"]')
     expect(page).to have_no_css('dialog[open][aria-label="Global search"]')
@@ -30,7 +30,7 @@ RSpec.describe 'Global search command palette' do
     expect(page).to have_css('#global_search_panel[hidden]', visible: :all)
     expect(page.evaluate_script('document.activeElement.getAttribute("href")')).to eq('/people')
 
-    first('a[href="/people"]').send_keys([:control, 'k'])
+    open_global_search_shortcut
     find_by_id('global_search_query').send_keys(:escape)
     find('aside button[aria-label="Open global search"]').click
     expect(page).to have_css('#global_search_panel[aria-hidden="false"]')
@@ -39,16 +39,14 @@ RSpec.describe 'Global search command palette' do
     find_by_id('global_search_query').send_keys(:escape)
     page.execute_script('document.querySelector("a[href=\"/people\"]").focus()')
 
-    page.execute_script(
-      'window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true, bubbles: true }))'
-    )
+    open_global_search_shortcut(modifier: :meta)
     expect(page).to have_css('#global_search_panel[aria-hidden="false"]')
 
     find_by_id('global_search_query').send_keys(:escape)
     expect(page).to have_css('#global_search_panel[hidden]', visible: :all)
     expect(page.evaluate_script('document.activeElement.getAttribute("href")')).to eq('/people')
 
-    first('a[href="/people"]').send_keys([:control, 'k'])
+    open_global_search_shortcut
     expect(page).to have_css('#global_search_panel[aria-hidden="false"]')
 
     fill_in 'Search MedTracker', with: 'Vitamin D'
@@ -66,9 +64,7 @@ RSpec.describe 'Global search command palette' do
 
     expect(page).to have_css('body[data-global-search-connected="true"]', visible: :all)
     expect(page).to have_css('button[aria-label="Open global search"]')
-    page.execute_script(
-      'window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true, bubbles: true }))'
-    )
+    open_global_search_shortcut
     expect(page).to have_css('#global_search_panel[aria-hidden="false"]')
 
     find_by_id('global_search_query').send_keys(:escape)
@@ -102,6 +98,16 @@ RSpec.describe 'Global search command palette' do
           panel_width: panelRect.width
         }
       })()
+    JS
+  end
+
+  def open_global_search_shortcut(modifier: :ctrl)
+    modifier_key = modifier == :meta ? 'metaKey' : 'ctrlKey'
+
+    page.execute_script(<<~JS)
+      document.activeElement.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "k", #{modifier_key}: true, bubbles: true })
+      )
     JS
   end
 end
