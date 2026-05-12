@@ -1520,6 +1520,11 @@ en:
     greeting_evening: Good evening, %{name}
     subtitle: Your family's medication schedule for today.
     todays_schedule: Today's Schedule
+    person_selector:
+      label: Dashboard person
+      all_family: All Family
+      all_family_initials: AF
+      more_people: More people
     as_needed:
       title: As needed
     overdue_alert: 'Overdue: %{medication} for %{person} (scheduled at %{time})'

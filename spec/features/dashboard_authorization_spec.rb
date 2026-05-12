@@ -13,6 +13,7 @@ RSpec.describe 'Dashboard Authorization', type: :system do
         sign_in(admin)
 
         visit dashboard_path
+        open_person_overflow
 
         # Should see multiple people
         expect(page).to have_text('John Doe')
@@ -30,6 +31,7 @@ RSpec.describe 'Dashboard Authorization', type: :system do
         sign_in(doctor)
 
         visit dashboard_path
+        open_person_overflow
 
         # Should see multiple people
         expect(page).to have_text('John Doe')
@@ -46,6 +48,7 @@ RSpec.describe 'Dashboard Authorization', type: :system do
         sign_in(nurse)
 
         visit dashboard_path
+        open_person_overflow
 
         # Should see multiple people
         expect(page).to have_text('John Doe')
@@ -108,6 +111,7 @@ RSpec.describe 'Dashboard Authorization', type: :system do
         sign_in(parent)
 
         visit dashboard_path
+        click_link 'Child User'
         open_as_needed_disclosures
 
         # Should see child's schedule
@@ -154,5 +158,9 @@ RSpec.describe 'Dashboard Authorization', type: :system do
 
   def open_as_needed_disclosures
     page.all('details[data-testid="dashboard-as-needed-person"] summary').to_a.each(&:click)
+  end
+
+  def open_person_overflow
+    find('[data-testid="dashboard-person-overflow"] button').click
   end
 end

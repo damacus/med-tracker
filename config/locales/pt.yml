@@ -1549,6 +1549,11 @@ pt:
     greeting_evening: Boa noite, %{name}
     subtitle: O horário de medicamentos da sua família para hoje.
     todays_schedule: Horário de Hoje
+    person_selector:
+      label: Pessoa do painel
+      all_family: Toda a Família
+      all_family_initials: TF
+      more_people: Mais pessoas
     as_needed:
       title: Tomar conforme necessário
     overdue_alert: 'Atrasado: %{medication} para %{person} (agendado às %{time})'

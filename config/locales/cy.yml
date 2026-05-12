@@ -1372,6 +1372,11 @@ cy:
     greeting_evening: Noswaith dda, %{name}
     subtitle: Amserlen meddyginiaeth eich teulu am heddiw.
     todays_schedule: Amserlen Heddiw
+    person_selector:
+      label: Person y dangosfwrdd
+      all_family: Y Teulu Cyfan
+      all_family_initials: TC
+      more_people: Mwy o bobl
     as_needed:
       title: Yn ôl yr angen
     overdue_alert: 'Hwyr: %{medication} ar gyfer %{person} (wedi''i drefnu am %{time})'
