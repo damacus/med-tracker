@@ -41,6 +41,13 @@ RSpec.describe Components::Layouts::Sidebar, type: :component do
       expect(inventory_link['class']).to include('bg-secondary-container')
       expect(inventory_link['class']).to include('text-on-secondary-container')
     end
+
+    it 'renders the shared person avatar in the profile navigation item' do
+      rendered = render_sidebar(user: admin_user)
+      profile_link = rendered.at_css(%(a[href="#{Rails.application.routes.url_helpers.profile_path}"]))
+
+      expect(profile_link.at_css('[data-testid="person-avatar"]')).to be_present
+    end
   end
 
   context 'when user is not an administrator' do

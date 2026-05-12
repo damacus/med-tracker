@@ -43,12 +43,7 @@ module Components
       end
 
       def render_person_icon
-        div(
-          class: 'w-10 h-10 rounded-xl flex items-center justify-center ' \
-                 'bg-secondary-container text-on-secondary-container'
-        ) do
-          render Icons::User.new(size: 20)
-        end
+        render Components::Shared::PersonAvatar.new(person: person, size: :md)
       end
 
       def render_card_content

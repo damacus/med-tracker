@@ -60,6 +60,7 @@ Rails.application.routes.draw do
   resource :profile, only: %i[show update] do
     patch :experiments, on: :member
   end
+  delete 'profile/avatar', to: 'profiles#avatar', as: :profile_avatar
 
   # Reports
   resources :reports, only: %i[index]

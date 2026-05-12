@@ -40,11 +40,7 @@ module Components
       end
 
       def render_person_avatar
-        Avatar(size: :sm) do
-          AvatarFallback do
-            render Icons::User.new(size: 14, aria_hidden: 'true', class: 'text-on-secondary-container')
-          end
-        end
+        render Components::Shared::PersonAvatar.new(person: person, size: :xs)
       end
 
       def render_medication_cell

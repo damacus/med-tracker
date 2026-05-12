@@ -54,20 +54,6 @@ RSpec.describe Components::Layouts::CurrentUserContext do
     end
   end
 
-  describe '#current_user_initials' do
-    it 'returns initials from the user name' do
-      expect(component.send(:current_user_initials)).to eq('AD')
-    end
-
-    context 'when the user has no name' do
-      let(:current_user) { build_user(name: nil, administrator: false) }
-
-      it 'falls back to U' do
-        expect(component.send(:current_user_initials)).to eq('U')
-      end
-    end
-  end
-
   def build_user(name:, administrator:)
     Class.new do
       attr_reader :name

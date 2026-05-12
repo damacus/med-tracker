@@ -1122,6 +1122,17 @@ ga:
       personal_information:
         title: Faisnéis Phearsanta
         description: Eolas bunúsach do phróifíle
+    avatar:
+      title: Grianghraf próifíle
+      description: Uaslódáil avatar do na háiteanna ina dtaispeántar d'ainm.
+      supported_formats: PNG, JPEG, nó WebP suas le 5 MB.
+      upload_label: Uaslódáil avatar saincheaptha
+      upload: Uaslódáil avatar
+      remove: Bain avatar
+      removed: Baineadh an grianghraf próifíle.
+      gravatar_label: Úsáid Gravatar
+      gravatar_description: Taispeáin do Gravatar nuair nach bhfuil avatar saincheaptha uaslódáilte.
+      save_gravatar: Sábháil rogha Gravatar
     account_security:
       title: Slándáil Chuntais
       description: Bainistigh do dhintiúir logála isteach agus do shocruithe slándála

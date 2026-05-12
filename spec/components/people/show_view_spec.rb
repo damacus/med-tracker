@@ -36,6 +36,7 @@ RSpec.describe Components::People::ShowView, type: :component do
     rendered = render_view
     expect(rendered.text).to include(person.name)
     expect(rendered.text).to include('Adult')
+    expect(rendered.at_css('[data-testid="person-avatar"]')).to be_present
   end
 
   it 'renders the Profile Overview card' do

@@ -1250,6 +1250,17 @@ en:
       personal_information:
         title: Personal Information
         description: Your basic profile information
+    avatar:
+      title: Profile photo
+      description: Upload an avatar for places where your name appears.
+      supported_formats: PNG, JPEG, or WebP up to 5 MB.
+      upload_label: Upload a custom avatar
+      upload: Upload avatar
+      remove: Remove avatar
+      removed: Profile photo removed.
+      gravatar_label: Use Gravatar
+      gravatar_description: Show your Gravatar when no custom avatar is uploaded.
+      save_gravatar: Save Gravatar choice
     account_security:
       title: Account Security
       description: Manage your login credentials and security settings

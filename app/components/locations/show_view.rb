@@ -149,12 +149,7 @@ module Components
               location.members.each do |member|
                 div(class: 'flex items-center justify-between group') do
                   div(class: 'flex items-center gap-3') do
-                    div(
-                      class: 'w-8 h-8 rounded-full bg-primary/10 flex items-center ' \
-                             'justify-center text-on-surface-variant'
-                    ) do
-                      render Icons::User.new(size: 16)
-                    end
+                    render Components::Shared::PersonAvatar.new(person: member, size: :sm)
                     m3_text(size: '2', weight: 'semibold', class: 'text-foreground') { member.name }
                   end
 

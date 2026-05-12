@@ -10,11 +10,15 @@ class User < ApplicationRecord
 
   WIZARD_VARIANTS = %w[fullpage modal slideover].freeze
 
-  store_accessor :preferences, :wizard_variant
+  store_accessor :preferences, :wizard_variant, :gravatar_enabled
 
   def wizard_variant
     v = super
     WIZARD_VARIANTS.include?(v) ? v : 'fullpage'
+  end
+
+  def gravatar_enabled?
+    !!ActiveModel::Type::Boolean.new.cast(gravatar_enabled)
   end
 
   belongs_to :person, inverse_of: :user
