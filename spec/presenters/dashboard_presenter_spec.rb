@@ -15,14 +15,14 @@ RSpec.describe DashboardPresenter do
   describe '#people' do
     context 'when user is an administrator' do
       it 'returns all people' do
-        presenter = described_class.new(current_user: admin_user)
+        presenter = described_class.new(current_user: admin_user, selected_person_id: 'all')
         expect(presenter.people).to eq(Person.all)
       end
     end
 
     context 'when user is a carer' do
       it 'returns patients of the carer' do
-        presenter = described_class.new(current_user: carer_user)
+        presenter = described_class.new(current_user: carer_user, selected_person_id: 'all')
         expect(presenter.people).to eq(carer_user.person.patients)
       end
 
@@ -35,7 +35,7 @@ RSpec.describe DashboardPresenter do
 
     context 'when user is a parent' do
       it 'returns the parent and their minor patients' do
-        presenter = described_class.new(current_user: parent_user)
+        presenter = described_class.new(current_user: parent_user, selected_person_id: 'all')
         parent_minor_ids = parent_user.person.patients.where(person_type: :minor).pluck(:id)
         expected_people = Person.where(id: [parent_user.person.id] + parent_minor_ids)
         expect(presenter.people).to eq(expected_people)
@@ -90,6 +90,52 @@ RSpec.describe DashboardPresenter do
         presenter = described_class.new(current_user: minor_user)
         expect(presenter.people).to eq(Person.none)
       end
+    end
+  end
+
+  describe 'dashboard person selection' do
+    it 'defaults to the logged-in user when they are selectable' do
+      presenter = described_class.new(current_user: parent_user)
+
+      expect(presenter.selected_person).to eq(parent_user.person)
+      expect(presenter.people).to eq([parent_user.person])
+    end
+
+    it 'defaults to the first available person when the logged-in user is not selectable' do
+      presenter = described_class.new(current_user: carer_user)
+
+      expect(presenter.selected_person).to eq(people(:child_patient))
+      expect(presenter.people).to eq([people(:child_patient)])
+    end
+
+    it 'uses the all-family scope when requested' do
+      presenter = described_class.new(current_user: parent_user, selected_person_id: 'all')
+
+      expected_people = [parent_user.person] + parent_user.person.patients.where(person_type: :minor).to_a
+      expect(presenter.selected_person).to be_nil
+      expect(presenter.people).to eq(expected_people)
+    end
+
+    it 'filters active schedules to the selected person only' do
+      presenter = described_class.new(current_user: parent_user, selected_person_id: people(:child_user_person).id)
+
+      expect(presenter.people).to eq([people(:child_user_person)])
+      expect(presenter.active_schedules).to include(schedules(:child_schedule))
+      expect(presenter.active_schedules).not_to include(schedules(:jane_ibuprofen))
+    end
+
+    it 'keeps all selectable people available for the selector while the dashboard is filtered' do
+      presenter = described_class.new(current_user: parent_user, selected_person_id: people(:child_user_person).id)
+
+      expect(presenter.selectable_people).to include(parent_user.person, people(:child_user_person))
+      expect(presenter.people).to eq([people(:child_user_person)])
+    end
+
+    it 'exposes individual people plus all-family selector options' do
+      presenter = described_class.new(current_user: parent_user)
+
+      labels = presenter.dashboard_person_options.map { |option| option.fetch(:label) }
+      expect(labels).to include(parent_user.person.name, people(:child_user_person).name, 'All Family')
     end
   end
 

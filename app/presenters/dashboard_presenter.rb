@@ -2,16 +2,46 @@
 
 # Presenter for the dashboard view that encapsulates data preparation logic
 class DashboardPresenter
+  ALL_FAMILY_PERSON_ID = 'all'
+
   delegate :routine_tasks_by_person, :as_needed_by_person, to: :dashboard_schedule
 
-  attr_reader :current_user
+  attr_reader :current_user, :selected_person_id
 
-  def initialize(current_user:)
+  def initialize(current_user:, selected_person_id: nil)
     @current_user = current_user
+    @selected_person_id = selected_person_id.presence
   end
 
   def people
-    @people ||= load_people.to_a
+    @people ||= scoped_people
+  end
+
+  def selectable_people
+    @selectable_people ||= load_people.to_a
+  end
+
+  def selected_person
+    return if all_family_selected?
+
+    @selected_person ||= requested_person || default_selected_person
+  end
+
+  def all_family_selected?
+    selected_person_id == ALL_FAMILY_PERSON_ID
+  end
+
+  def dashboard_person_options
+    selectable_people.map do |person|
+      {
+        id: person.id.to_s,
+        label: person.name,
+        initials: initials_for(person),
+        person: person,
+        selected: selected_person == person,
+        all_family: false
+      }
+    end + [all_family_option]
   end
 
   def active_schedules
@@ -58,6 +88,38 @@ class DashboardPresenter
     return people_scope(Person.all) if full_access?
 
     current_person_scope
+  end
+
+  def scoped_people
+    return selectable_people if all_family_selected?
+    return [] unless selected_person
+
+    [selected_person]
+  end
+
+  def requested_person
+    return if selected_person_id.blank?
+
+    selectable_people.find { |person| person.id.to_s == selected_person_id.to_s }
+  end
+
+  def default_selected_person
+    selectable_people.find { |person| person == current_person } || selectable_people.first
+  end
+
+  def initials_for(person)
+    person.name.to_s.split.map(&:first).join.upcase.presence || '?'
+  end
+
+  def all_family_option
+    {
+      id: ALL_FAMILY_PERSON_ID,
+      label: I18n.t('dashboard.person_selector.all_family'),
+      initials: I18n.t('dashboard.person_selector.all_family_initials'),
+      person: nil,
+      selected: all_family_selected?,
+      all_family: true
+    }
   end
 
   def people_scope(scope_or_ids)

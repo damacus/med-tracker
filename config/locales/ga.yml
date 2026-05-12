@@ -1450,6 +1450,11 @@ ga:
     greeting_evening: Oíche mhaith, %{name}
     subtitle: Sceideal leigheasanna do theaghlaigh inniu.
     todays_schedule: Sceideal an Lae Innuit
+    person_selector:
+      label: Duine an dashboard
+      all_family: An Teaghlach Uile
+      all_family_initials: TU
+      more_people: Tuilleadh daoine
     medication_schedule: Sceideal Leigheasanna
     as_needed:
       title: Glac de réir mar is gá

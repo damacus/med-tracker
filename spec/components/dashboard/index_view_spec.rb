@@ -62,8 +62,8 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       expect(rendered.text).to include(presenter.active_schedules.count.to_s)
     end
 
-    it 'renders parent-scoped people count including self' do
-      parent_presenter = DashboardPresenter.new(current_user: users(:parent))
+    it 'renders all-family people count including self' do
+      parent_presenter = DashboardPresenter.new(current_user: users(:parent), selected_person_id: 'all')
       parent_view = described_class.new(presenter: parent_presenter)
       expected_count = users(:parent).person.patients.where(person_type: :minor).count + 1
 
@@ -99,6 +99,55 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       card = rendered.at_css("a[href='/schedules']")
 
       expect(card.at_css("path[d='#{active_schedules_icon_path}']")).to be_present
+    end
+  end
+
+  describe 'person selector' do
+    it 'renders above the dashboard stats section with individual people and all family' do
+      presenter = DashboardPresenter.new(current_user: users(:parent))
+
+      rendered = render_inline(described_class.new(presenter: presenter))
+      selector = rendered.at_css('[data-testid="dashboard-person-selector"]')
+      overflow = rendered.at_css('[data-testid="dashboard-person-overflow"]')
+
+      expect(selector).to be_present
+      expect(selector.text).to include('Parent Person')
+      expect(overflow.text).to include('All Family')
+      expect(rendered.to_html.index('dashboard-person-selector')).to be < rendered.to_html.index('Active Schedules')
+    end
+
+    it 'marks the selected person with aria-current and initials fallback' do
+      presenter = DashboardPresenter.new(current_user: users(:parent))
+
+      rendered = render_inline(described_class.new(presenter: presenter))
+      selected = rendered.at_css('[data-testid="dashboard-person-option"][aria-current="true"]')
+
+      expect(selected.text).to include('Parent Person')
+      expect(selected.text).to include('PP')
+    end
+
+    it 'wraps selector controls instead of requiring horizontal scrolling' do
+      presenter = DashboardPresenter.new(current_user: users(:parent))
+
+      rendered = render_inline(described_class.new(presenter: presenter))
+      selector = rendered.at_css('[data-testid="dashboard-person-selector"]')
+
+      expect(selector['class']).not_to include('overflow-x-auto')
+      expect(selector['class']).to include('max-w-full')
+    end
+
+    it 'renders the first five people as pills and puts remaining options in a dropdown' do
+      presenter = DashboardPresenter.new(current_user: admin_user)
+
+      rendered = render_inline(described_class.new(presenter: presenter))
+      direct_options = rendered.css('[data-testid="dashboard-person-option"]')
+      overflow = rendered.at_css('[data-testid="dashboard-person-overflow"]')
+
+      expect(direct_options.count).to eq(5)
+      expect(overflow).to be_present
+      expect(overflow['data-controller']).to include('ruby-ui--dropdown-menu')
+      expect(overflow.at_css('select')).not_to be_present
+      expect(overflow.text).to include('All Family')
     end
   end
 
@@ -276,6 +325,7 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       next_dose_time: nil,
       smart_insights: insight_result || learning_insight_result,
       can_view_reports?: can_view_reports,
+      dashboard_person_options: [],
       routine_tasks_due?: true,
       routine_tasks_by_person: { person => [routine_dashboard_row(person, status: routine_status)] },
       as_needed_by_person: { person => [as_needed_dashboard_row(person)] }

@@ -4,6 +4,8 @@ module Components
   module Dashboard
     # Dashboard index view component that renders the main dashboard page
     class IndexView < Components::Base
+      DIRECT_PERSON_OPTION_LIMIT = 5
+
       attr_reader :presenter
 
       def initialize(presenter:)
@@ -14,6 +16,7 @@ module Components
       def view_template
         div(class: 'container mx-auto max-w-6xl px-4 py-6', data: { testid: 'dashboard' }) do
           render_header
+          render_person_selector
           render_stats_section
 
           div(class: 'grid grid-cols-1 lg:grid-cols-3 gap-8 items-start') do
@@ -35,7 +38,8 @@ module Components
 
       delegate :people, :active_schedules, :upcoming_schedules,
                :current_user, :doses, :next_dose_time, :routine_tasks_due?,
-               :routine_tasks_by_person, :as_needed_by_person, to: :presenter
+               :routine_tasks_by_person, :as_needed_by_person,
+               :dashboard_person_options, to: :presenter
 
       def next_dose_value
         time = next_dose_time
@@ -82,6 +86,114 @@ module Components
             end
           end
         end
+      end
+
+      def render_person_selector
+        return if dashboard_person_options.empty?
+
+        nav(
+          aria: { label: t('dashboard.person_selector.label') },
+          class: 'max-w-full mb-6',
+          data: { testid: 'dashboard-person-selector' }
+        ) do
+          div(class: 'flex max-w-full flex-wrap items-center gap-2 rounded-2xl bg-surface-container-low p-1') do
+            direct_person_options.each do |option|
+              render_person_selector_option(option)
+            end
+            render_person_selector_overflow
+          end
+        end
+      end
+
+      def render_person_selector_option(option)
+        selected = option.fetch(:selected)
+        link_class = if selected
+                       'bg-primary text-on-primary shadow-elevation-1'
+                     else
+                       'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
+                     end
+
+        a(
+          href: dashboard_path(dashboard_person_id: option.fetch(:id)),
+          class: "inline-flex min-h-12 items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold #{link_class}",
+          aria: selected ? { current: 'true' } : {},
+          data: { testid: 'dashboard-person-option' }
+        ) do
+          render_person_selector_avatar(option)
+          span(class: 'whitespace-nowrap') { option.fetch(:label) }
+        end
+      end
+
+      def render_person_selector_avatar(option)
+        span(
+          class: 'flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-container-high ' \
+                 'text-xs font-black text-on-surface'
+        ) do
+          option.fetch(:initials)
+        end
+      end
+
+      def render_person_selector_overflow
+        return if overflow_selector_options.empty?
+
+        render RubyUI::DropdownMenu.new(
+          class: 'min-w-44',
+          data: { testid: 'dashboard-person-overflow' }
+        ) do
+          render RubyUI::DropdownMenuTrigger.new(class: 'w-full') do
+            button(
+              type: 'button',
+              class: 'inline-flex min-h-12 w-full items-center justify-between gap-2 rounded-xl border ' \
+                     'border-outline-variant bg-surface-container-low px-3 py-2 text-sm font-bold ' \
+                     'text-on-surface-variant shadow-sm hover:bg-surface-container-high ' \
+                     'focus:outline-none focus:ring-2 focus:ring-primary/20',
+              aria: { label: t('dashboard.person_selector.more_people') }
+            ) do
+              span(class: 'truncate') { overflow_selector_label }
+              render Icons::ChevronsUpDown.new(size: 16, class: 'shrink-0 opacity-70')
+            end
+          end
+          render RubyUI::DropdownMenuContent.new(class: 'w-56') do
+            overflow_selector_options.each do |option|
+              render RubyUI::DropdownMenuItem.new(
+                href: dashboard_path(dashboard_person_id: option.fetch(:id)),
+                class: overflow_selector_item_class(option),
+                aria: option.fetch(:selected) ? { current: 'true' } : {}
+              ) do
+                option.fetch(:label)
+              end
+            end
+          end
+        end
+      end
+
+      def direct_person_options
+        person_selector_options.first(DIRECT_PERSON_OPTION_LIMIT)
+      end
+
+      def overflow_selector_options
+        person_selector_options.drop(DIRECT_PERSON_OPTION_LIMIT) + all_family_options
+      end
+
+      def overflow_selector_label
+        selected_option = overflow_selector_options.find { |option| option.fetch(:selected) }
+        return selected_option.fetch(:label) if selected_option
+
+        t('dashboard.person_selector.more_people')
+      end
+
+      def overflow_selector_item_class(option)
+        return 'bg-primary text-on-primary hover:bg-primary hover:text-on-primary' if option.fetch(:selected)
+
+        nil
+      end
+
+      def person_selector_options
+        dashboard_person_options.reject { |option| option.fetch(:all_family) }
+      end
+
+      def all_family_options
+        dashboard_person_options.select { |option| option.fetch(:all_family) }
       end
 
       def render_stats_section

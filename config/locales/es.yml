@@ -1339,6 +1339,11 @@ es:
     greeting_afternoon: Buenas tardes, %{name}
     greeting_evening: Buenas noches, %{name}
     subtitle: El horario de medicamentos de su familia para hoy.
+    person_selector:
+      label: Persona del panel
+      all_family: Toda la Familia
+      all_family_initials: TF
+      more_people: Más personas
     as_needed:
       title: Tomar según sea necesario
     todays_schedule: Horario de Hoy
