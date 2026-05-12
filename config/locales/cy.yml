@@ -465,7 +465,8 @@ cy:
         import_dmd_description: Mewnforio data meddyginiaethau NHS dm+d.
         import_dmd_title: Mewnforio dm+d
     nhs_dmd_imports:
-      created: Mewnforiad dm+d wedi'i greu
+      created: 'Rhyddhad NHS dm+d wedi''i fewnforio: %{imported} cofnod wedi''i fewnforio,
+        %{skipped} wedi''u hepgor.'
       form:
         cancel: Canslo
         help: Dewiswch ffeil ZIP rhyddhau NHS dm+d.
@@ -507,8 +508,8 @@ cy:
         subtitle: Rheoli pwy all gael mynediad i'r ap.
         title: Mynediad
       env_override:
-        body: Mae'r gosodiadau mynediad yn cael eu rheoli gan newidynnau amgylchedd
-          ac ni ellir eu newid yma.
+        body: Mae'r newidyn amgylchedd %{var} wedi'i osod i "%{value}". Tynnwch
+          ef i reoli'r gosodiad hwn yma.
         title: Gosodiadau amgylchedd
       save: Cadw gosodiadau
       subtitle: Ffurfweddu gosodiadau'r ap.
@@ -607,6 +608,8 @@ cy:
     updated: Diweddarwyd y feddyginiaeth yn llwyddiannus.
     deleted: Dilëwyd y feddyginiaeth yn llwyddiannus.
     refilled: Ailstociwyd y rhestr stoc yn llwyddiannus.
+    scan_restocked: Ychwanegwyd stoc wedi'i sganio yn llwyddiannus.
+    scan_restock_no_match: Nid oedd unrhyw feddyginiaeth yn cyfateb i'r cod bar hwnnw.
     ordered: Marciwyd yr ailstoc fel wedi'i archebu.
     received: Marciwyd yr ailstoc fel wedi'i dderbyn.
     refill_button: Ail-llenwi
@@ -657,6 +660,7 @@ cy:
       your_inventory: Eich Rhestr
       title: Meddyginiaethau
       add_medication: Ychwanegu Meddyginiaeth
+      scan_stock: Sganio stoc
       empty_title: Dim meddyginiaethau eto
       empty_description: Ychwanegwch eich meddyginiaeth gyntaf i ddechrau olrhain
         y rhestr a'r dos.
@@ -673,6 +677,13 @@ cy:
           weithred hon.
         submit: Dileu
         cancel: Canslo
+    inventory_scan_modal:
+      title: Sganio stoc
+      description: Sganiwch flwch meddyginiaeth, nodwch y swm a gyflenwyd, a'i ychwanegu
+        at yr eitem rhestr sy'n cyfateb.
+      barcode: Cod bar
+      quantity: Nifer
+      submit: Ychwanegu stoc wedi'i sganio
     show:
       profile: Proffil Meddyginiaeth
       edit_details: Golygu Manylion
