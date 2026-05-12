@@ -11,6 +11,21 @@ RSpec.describe 'Medications edit return_to sanitization' do
   before { sign_in(admin) }
 
   describe 'GET /medications/:id/edit' do
+    it 'shows an editable friendly display name field' do
+      medication = Medication.create!(
+        name: 'Paracetamol 500mg tablets',
+        friendly_name: 'Short Paracetamol',
+        location: locations(:home),
+        reorder_threshold: 5
+      )
+
+      get edit_medication_path(medication)
+
+      expect(response.body).to include('Display name')
+      expect(response.body).to include('name="medication[friendly_name]"')
+      expect(response.body).to include('value="Short Paracetamol"')
+    end
+
     it 'preserves a safe internal return_to path' do
       get edit_medication_path(medication, return_to: '/medications')
       expect(response.body).to include('href="/medications"')
