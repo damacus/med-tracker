@@ -95,6 +95,7 @@ module Components
             size: :sm,
             class: 'rounded-xl w-10 h-10 p-0 border-border bg-card ' \
                    'hover:bg-card text-on-surface-variant',
+            data: { turbo_frame: '_top' },
             aria_label: t('medications.index.edit', default: 'Edit medication')
           ) do
             render Icons::Pencil.new(size: 16)
