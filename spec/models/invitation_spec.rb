@@ -139,4 +139,21 @@ RSpec.describe Invitation do
       expect(invitation).not_to be_resendable
     end
   end
+
+  describe '#cancellable?' do
+    it 'returns true for pending invitations' do
+      invitation = build(:invitation)
+      expect(invitation).to be_cancellable
+    end
+
+    it 'returns true for expired invitations' do
+      invitation = build(:invitation, :expired)
+      expect(invitation).to be_cancellable
+    end
+
+    it 'returns false for accepted invitations' do
+      invitation = build(:invitation, :accepted)
+      expect(invitation).not_to be_cancellable
+    end
+  end
 end

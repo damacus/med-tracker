@@ -2,7 +2,7 @@
 
 module Admin
   class InvitationsIndexQuery
-    Result = Data.define(:invitations, :resendable_invitation_ids)
+    Result = Data.define(:invitations, :resendable_invitation_ids, :cancellable_invitation_ids)
 
     attr_reader :scope
 
@@ -15,7 +15,8 @@ module Admin
 
       Result.new(
         invitations: current_invitations,
-        resendable_invitation_ids: resendable_invitation_ids(current_invitations)
+        resendable_invitation_ids: resendable_invitation_ids(current_invitations),
+        cancellable_invitation_ids: cancellable_invitation_ids(current_invitations)
       )
     end
 
@@ -30,6 +31,12 @@ module Admin
         pending_count = pending_counts_by_email[invitation.email].to_i
         next invitation.id if invitation.pending? && pending_count == 1
         next invitation.id if invitation.expired? && pending_count.zero?
+      end
+    end
+
+    def cancellable_invitation_ids(current_invitations)
+      current_invitations.filter_map do |invitation|
+        invitation.id if invitation.cancellable?
       end
     end
   end

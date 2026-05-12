@@ -50,6 +50,18 @@ module Admin
       end
     end
 
+    def destroy
+      @invitation = Invitation.find(params.expect(:id))
+      authorize @invitation, :destroy?
+
+      if @invitation.cancellable?
+        @invitation.destroy!
+        redirect_with_invitation_notice(t('admin.invitations.cancelled'))
+      else
+        redirect_with_invitation_alert(t('admin.invitations.cannot_cancel_accepted'))
+      end
+    end
+
     private
 
     def invitation_params
@@ -68,7 +80,8 @@ module Admin
       Components::Admin::Invitations::IndexView.new(
         invitation: invitation,
         invitations: result.invitations,
-        resendable_invitation_ids: result.resendable_invitation_ids
+        resendable_invitation_ids: result.resendable_invitation_ids,
+        cancellable_invitation_ids: result.cancellable_invitation_ids
       )
     end
 

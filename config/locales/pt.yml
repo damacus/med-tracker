@@ -283,7 +283,9 @@ pt:
     invitations:
       created: Convite enviado
       resent: Convite reenviado
+      cancelled: Convite cancelado
       cannot_resend_accepted: Convites aceitos não podem ser reenviados
+      cannot_cancel_accepted: Convites aceitos não podem ser cancelados
       resend_failed: Este convite não pôde ser reenviado. Já pode existir um convite
         pendente para este e-mail.
       index:
@@ -291,6 +293,7 @@ pt:
         subtitle: Convide novos utilizadores para aderirem ao MedTracker.
         recent: Convites recentes
         resend: Reenviar
+        cancel: Cancelar
         form:
           email: Email
           role: Função

@@ -92,7 +92,9 @@ en:
     invitations:
       created: Invitation sent
       resent: Invitation resent
+      cancelled: Invitation cancelled
       cannot_resend_accepted: Accepted invitations cannot be resent
+      cannot_cancel_accepted: Accepted invitations cannot be cancelled
       resend_failed: This invitation could not be resent. A pending invitation for
         this email may already exist.
       index:
@@ -100,6 +102,7 @@ en:
         subtitle: Invite new users to join MedTracker.
         recent: Recent invitations
         resend: Resend
+        cancel: Cancel
         form:
           email: Email
           role: Role

@@ -92,7 +92,9 @@ ga:
     invitations:
       created: Cuireadh seolta
       resent: Cuireadh athsheolta
+      cancelled: Cuireadh cealaithe
       cannot_resend_accepted: Ní féidir cuirí a nglactar leo a athsheoladh
+      cannot_cancel_accepted: Ní féidir cuirí a nglactar leo a chealú
       resend_failed: Níorbh fhéidir an cuireadh seo a athsheoladh. Seans go bhfuil
         cuireadh ar feitheamh don ríomhphost seo ann cheana féin.
       index:
@@ -100,6 +102,7 @@ ga:
         subtitle: Tabhair cuireadh d'úsáideoirí nua páirt a ghlacadh i MedTracker.
         recent: Cuirí le déanaí
         resend: Athsheol
+        cancel: Cealaigh
         form:
           email: Ríomhphost
           role: Ról

@@ -44,6 +44,10 @@ class Invitation < ApplicationRecord
     !self.class.pending.where.not(id: id).exists?(email: email)
   end
 
+  def cancellable?
+    !accepted?
+  end
+
   def resend!
     raise ActiveRecord::RecordInvalid, self unless resendable?
 
