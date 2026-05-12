@@ -63,4 +63,52 @@ RSpec.describe 'Medications refill' do
       expect(response.body).to include('target="flash"')
     end
   end
+
+  describe 'POST /medications/scan_restock' do
+    it 'adds scanned stock to the matching medication' do
+      medication.update!(barcode: '5012345678901', current_supply: 0, supply_at_last_restock: 30)
+
+      expect do
+        post scan_restock_medications_path,
+             params: { inventory_scan: { barcode: '5012345678901', quantity: 30 } }
+      end.to change(PaperTrail::Version.where(item_type: 'Medication'), :count).by(1)
+
+      expect(response).to redirect_to(medication_path(medication))
+      expect(medication.reload).to have_attributes(
+        current_supply: 30,
+        supply_at_last_restock: 30
+      )
+    end
+
+    it 'adds scanned stock to an existing medication matched from barcode metadata' do
+      movicol = medications(:movicol)
+      movicol.update!(current_supply: 0, supply_at_last_restock: 30)
+      NhsDmdBarcode.create!(
+        gtin: '5012345678901',
+        code: '3366911000001108',
+        display: movicol.name,
+        system: 'https://dmd.nhs.uk',
+        concept_class: 'AMPP'
+      )
+
+      post scan_restock_medications_path,
+           params: { inventory_scan: { barcode: '5012345678901', quantity: 30 } }
+
+      expect(response).to redirect_to(medication_path(movicol))
+      expect(movicol.reload).to have_attributes(
+        current_supply: 30,
+        supply_at_last_restock: 30
+      )
+    end
+
+    it 'does not restock when the scanned barcode is unknown' do
+      expect do
+        post scan_restock_medications_path,
+             params: { inventory_scan: { barcode: '5012345678901', quantity: 30 } }
+      end.not_to(change { medication.reload.current_supply })
+
+      expect(response).to redirect_to(medications_path)
+      expect(flash[:alert]).to eq('No medication matched that barcode.')
+    end
+  end
 end

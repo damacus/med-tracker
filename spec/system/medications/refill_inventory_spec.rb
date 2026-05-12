@@ -63,6 +63,21 @@ RSpec.describe 'Refill medication inventory' do
     expect(medication.current_supply).to eq(92)
   end
 
+  it 'adds scanned stock from the inventory page' do
+    medication.update!(barcode: '5012345678901', current_supply: 0, supply_at_last_restock: 30)
+
+    visit medications_path
+    click_on 'Scan stock'
+
+    expect(page).to have_css('[data-testid="barcode-scanner"]')
+    fill_in 'inventory_scan_barcode', with: '5012345678901'
+    fill_in 'inventory_scan_quantity', with: '30'
+    click_on 'Add scanned stock'
+
+    expect(page).to have_text('Scanned stock added successfully.')
+    expect(medication.reload.current_supply).to eq(30)
+  end
+
   it 'shows validation errors when refill quantity is invalid' do
     visit medication_path(medication)
 
