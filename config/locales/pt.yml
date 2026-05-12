@@ -424,12 +424,21 @@ pt:
         title: Detalhes do Registo de Auditoria
         back: "← Voltar aos Registos de Auditoria"
         event_information: Informação do Evento
+        event_information_description: Os principais factos registados para este evento de auditoria
+        event_summary: Resumo do evento
         timestamp: Data/Hora
         record_type: Tipo de Registo
         record_id: ID do Registo
         event_type: Tipo de Evento
         user: Utilizador
         ip_address: Endereço IP
+        lookup: Pesquisa
+        result: Resultado
+        matches: Correspondências
+        matched_guidance: Orientação correspondente
+        matched_url: URL correspondente
+        audit_payload: Dados de auditoria
+        audit_payload_description: Os detalhes estruturados da pesquisa registados para este evento
         na: N/D
         system: Sistema
         previous_state: Estado Anterior

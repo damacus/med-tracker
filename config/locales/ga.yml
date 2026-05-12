@@ -233,12 +233,21 @@ ga:
         title: Sonraí Logála Fíoraithe
         back: "← Ar ais go Logáil Fíoraithe"
         event_information: Faisnéis Imeachta
+        event_information_description: Na príomhfhíricí a taifeadadh don imeacht iniúchta seo
+        event_summary: Achoimre imeachta
         timestamp: Stamp Ama
         record_type: Cineál Taifid
         record_id: ID Taifid
         event_type: Cineál Imeachta
         user: Úsáideoir
         ip_address: Seoladh IP
+        lookup: Cuardach
+        result: Toradh
+        matches: Meaitseálacha
+        matched_guidance: Treoir mheaitseáilte
+        matched_url: URL meaitseáilte
+        audit_payload: Ualach iniúchta
+        audit_payload_description: Na sonraí cuardaigh struchtúrtha a taifeadadh don imeacht seo
         na: N/A
         system: Córas
         previous_state: Stáid Roimhe Seo

@@ -135,5 +135,32 @@ RSpec.describe Components::Admin::AuditLogs::ShowView, type: :component do
         expect(view.send(:format_new_state, 123)).to eq('123')
       end
     end
+
+    describe '#event_summary_items' do
+      let(:version) do
+        PaperTrail::Version.new(
+          item_type: 'ExternalMedicineLookup',
+          item_id: 0,
+          event: 'nhs_website_content/medicine_guidance_lookup',
+          object: {
+            query: 'Panadol 500mg tablets',
+            result_status: 'success',
+            result_count: 1,
+            matched_title: 'Paracetamol for adults',
+            matched_url: 'https://www.nhs.uk/medicines/paracetamol-for-adults/'
+          }.to_json
+        )
+      end
+
+      it 'promotes external lookup context into readable summary items' do
+        expect(view.send(:event_summary_items)).to include(
+          ['Lookup', 'Panadol 500mg tablets'],
+          %w[Result Success],
+          %w[Matches 1],
+          ['Matched guidance', 'Paracetamol for adults'],
+          ['Matched URL', 'https://www.nhs.uk/medicines/paracetamol-for-adults/']
+        )
+      end
+    end
   end
 end

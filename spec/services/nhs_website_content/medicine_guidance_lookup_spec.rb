@@ -75,6 +75,22 @@ RSpec.describe NhsWebsiteContent::MedicineGuidanceLookup do
     )
   end
 
+  it 'records the requested medication and matched NHS guidance page in the audit log' do
+    lookup.call('Panadol 500mg tablets')
+
+    expect(audit_logger).to have_received(:record).with(
+      source: 'nhs_website_content',
+      event: 'medicine_guidance_lookup',
+      query: 'Panadol 500mg tablets',
+      result_status: 'success',
+      result_count: 1,
+      metadata: {
+        'matched_title' => 'Paracetamol for adults',
+        'matched_url' => 'https://www.nhs.uk/medicines/paracetamol-for-adults/'
+      }
+    )
+  end
+
   it 'returns nil when the client is unavailable' do
     allow(client).to receive(:configured?).and_return(false)
 
