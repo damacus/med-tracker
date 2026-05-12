@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.55](https://github.com/damacus/med-tracker/compare/v0.3.54...v0.3.55) (2026-05-12)
+
+
+### Features
+
+* add invitation cancellation ([#1247](https://github.com/damacus/med-tracker/issues/1247)) ([2806955](https://github.com/damacus/med-tracker/commit/280695546d3006b3c48290c1ec1879b8fb78b979))
+
+
+### Bug Fixes
+
+* add invitation translations and policy updates ([#1246](https://github.com/damacus/med-tracker/issues/1246)) ([bc7639b](https://github.com/damacus/med-tracker/commit/bc7639b3c2572b25e45d3e46d290a43c393a466d))
+* add missing translations for all locales ([d8d56c0](https://github.com/damacus/med-tracker/commit/d8d56c0bcf0f8c137434a3171997f35175183d04))
+* allow daily scheduled doses after reset ([#1250](https://github.com/damacus/med-tracker/issues/1250)) ([5c4ce9f](https://github.com/damacus/med-tracker/commit/5c4ce9fc972ec7db8a1d5c7a14a0567a5346cfb7))
+
 ## [0.3.54](https://github.com/damacus/med-tracker/compare/v0.3.53...v0.3.54) (2026-05-12)
 
 
