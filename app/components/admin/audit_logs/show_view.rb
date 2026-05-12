@@ -18,7 +18,10 @@ module Components
         end
 
         def view_template
-          div(data: { testid: 'admin-audit-log-detail' }, class: 'space-y-8') do
+          div(
+            data: { testid: 'admin-audit-log-detail' },
+            class: 'container mx-auto max-w-6xl space-y-6 px-4 py-8 pb-24 md:pb-8'
+          ) do
             render_header
             render_version_details
             render_changes_section
@@ -29,28 +32,43 @@ module Components
         private
 
         def render_header
-          header(class: 'flex items-center justify-between') do
-            div(class: 'space-y-2') do
+          header(class: 'flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between') do
+            div(class: 'space-y-1') do
               m3_heading(level: 1) { t('admin.audit_logs.show.title') }
-              m3_text(weight: 'muted') { "#{version.item_type} ##{version.item_id} - #{version.event.titleize}" }
+              m3_text(weight: 'muted') { event_heading }
             end
-            Link(href: '/admin/audit_logs', variant: :outlined) { t('admin.audit_logs.show.back') }
+            Link(href: '/admin/audit_logs', variant: :outlined, class: 'shrink-0 self-start') do
+              t('admin.audit_logs.show.back')
+            end
           end
         end
 
+        def event_heading
+          [version.item_type.titleize, record_identifier, version.event.titleize].compact.join(' - ')
+        end
+
+        def record_identifier
+          "##{version.item_id}" unless version.item_id.to_i.zero?
+        end
+
         def render_version_details
-          Card do
-            CardHeader do
+          Card(variant: :outlined, class: 'rounded-xl border border-outline bg-surface shadow-sm') do
+            CardHeader(class: 'space-y-2 p-6 pb-4') do
               m3_heading(level: 2, size: '4', class: 'font-semibold leading-none tracking-tight') do
                 t('admin.audit_logs.show.event_information')
               end
+              m3_text(size: '2', weight: 'muted') { t('admin.audit_logs.show.event_information_description') }
             end
-            CardContent do
-              dl(class: 'grid grid-cols-1 gap-4 sm:grid-cols-2') do
+            CardContent(class: 'space-y-6 p-6 pt-0') do
+              render_event_summary if event_summary_items.any?
+              dl(class: 'grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-3') do
                 render_detail_item(t('admin.audit_logs.show.timestamp'),
                                    version.created_at.strftime('%Y-%m-%d %H:%M:%S %Z'))
                 render_detail_item(t('admin.audit_logs.show.record_type'), version.item_type.titleize)
-                render_detail_item(t('admin.audit_logs.show.record_id'), version.item_id.to_s)
+                render_detail_item(
+                  t('admin.audit_logs.show.record_id'),
+                  record_identifier || t('admin.audit_logs.show.na')
+                )
                 render_detail_item(t('admin.audit_logs.show.event_type'), version.event.titleize)
                 render_detail_item(t('admin.audit_logs.show.user'), user_name)
                 render_detail_item(t('admin.audit_logs.show.ip_address'), version.ip || t('admin.audit_logs.show.na'))
@@ -59,10 +77,21 @@ module Components
           end
         end
 
+        def render_event_summary
+          section(class: 'rounded-lg border border-outline-variant bg-surface-container-low p-4') do
+            h3(class: 'text-sm font-semibold text-foreground') { t('admin.audit_logs.show.event_summary') }
+            dl(class: 'mt-4 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2') do
+              event_summary_items.each do |label, value|
+                render_detail_item(label, value)
+              end
+            end
+          end
+        end
+
         def render_detail_item(label, value)
           div do
-            dt(class: 'text-sm font-medium text-on-surface-variant') { label }
-            dd(class: 'mt-1 text-sm text-foreground') { value }
+            dt(class: 'text-xs font-medium uppercase text-on-surface-variant') { label }
+            dd(class: 'mt-1 break-words text-sm text-foreground') { value }
           end
         end
 
@@ -76,15 +105,15 @@ module Components
         def render_changes_section
           return if version.object.blank?
 
-          Card do
-            CardHeader do
+          Card(variant: :outlined, class: 'rounded-xl border border-outline bg-surface shadow-sm') do
+            CardHeader(class: 'space-y-2 p-6 pb-4') do
               m3_heading(level: 2, size: '4', class: 'font-semibold leading-none tracking-tight') do
-                t('admin.audit_logs.show.previous_state')
+                object_section_title
               end
-              CardDescription { t('admin.audit_logs.show.previous_state_description') }
+              CardDescription { object_section_description }
             end
-            CardContent do
-              pre(class: 'bg-secondary-container p-4 rounded-lg overflow-x-auto text-xs font-mono') do
+            CardContent(class: 'p-6 pt-0') do
+              pre(class: raw_payload_classes) do
                 code { format_object(version.object) }
               end
             end
@@ -97,19 +126,61 @@ module Components
           new_state = compute_new_state
           return if new_state.blank?
 
-          Card do
-            CardHeader do
+          Card(variant: :outlined, class: 'rounded-xl border border-outline bg-surface shadow-sm') do
+            CardHeader(class: 'space-y-2 p-6 pb-4') do
               m3_heading(level: 2, size: '4', class: 'font-semibold leading-none tracking-tight') do
                 t('admin.audit_logs.show.new_state')
               end
               CardDescription { description_for_new_state }
             end
-            CardContent do
-              pre(class: 'bg-secondary-container p-4 rounded-lg overflow-x-auto text-xs font-mono') do
+            CardContent(class: 'p-6 pt-0') do
+              pre(class: raw_payload_classes) do
                 code { format_new_state(new_state) }
               end
             end
           end
+        end
+
+        def object_section_title
+          external_lookup? ? t('admin.audit_logs.show.audit_payload') : t('admin.audit_logs.show.previous_state')
+        end
+
+        def raw_payload_classes
+          'max-h-[28rem] overflow-auto rounded-lg bg-surface-container p-4 text-xs font-mono leading-relaxed ' \
+            'text-foreground'
+        end
+
+        def object_section_description
+          if external_lookup?
+            t('admin.audit_logs.show.audit_payload_description')
+          else
+            t('admin.audit_logs.show.previous_state_description')
+          end
+        end
+
+        def event_summary_items
+          return [] unless external_lookup_data
+
+          {
+            I18n.t('admin.audit_logs.show.lookup') => external_lookup_data['query'],
+            I18n.t('admin.audit_logs.show.result') => external_lookup_data['result_status']&.titleize,
+            I18n.t('admin.audit_logs.show.matches') => external_lookup_data['result_count']&.to_s,
+            I18n.t('admin.audit_logs.show.matched_guidance') => external_lookup_data['matched_title'],
+            I18n.t('admin.audit_logs.show.matched_url') => external_lookup_data['matched_url']
+          }.filter_map { |label, value| [label, value] if value.present? }
+        end
+
+        def external_lookup?
+          version.item_type == ExternalLookup::AuditLogger::ITEM_TYPE
+        end
+
+        def external_lookup_data
+          return nil unless external_lookup? && version.object.present?
+
+          data = JSON.parse(version.object)
+          data if data.is_a?(Hash)
+        rescue JSON::ParserError
+          nil
         end
 
         def description_for_new_state

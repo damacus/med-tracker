@@ -249,12 +249,21 @@ en:
         title: Audit Log Details
         back: "← Back to Audit Logs"
         event_information: Event Information
+        event_information_description: The key facts recorded for this audit event
+        event_summary: Event Summary
         timestamp: Timestamp
         record_type: Record Type
         record_id: Record ID
         event_type: Event Type
         user: User
         ip_address: IP Address
+        lookup: Lookup
+        result: Result
+        matches: Matches
+        matched_guidance: Matched guidance
+        matched_url: Matched URL
+        audit_payload: Audit Payload
+        audit_payload_description: The structured lookup details recorded for this event
         na: N/A
         system: System
         previous_state: Previous State

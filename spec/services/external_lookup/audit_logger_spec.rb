@@ -35,15 +35,30 @@ RSpec.describe ExternalLookup::AuditLogger do
       expect(version.request_id).to eq('req-abc-123')
     end
 
-    it 'stores a SHA256 hash of the query and metadata in object JSON' do
+    it 'stores the readable query, SHA256 query hash, and metadata in object JSON' do
       audit_logger.record(source: 'nhs_dmd', event: 'search', query: 'Aspirin 300mg',
                           result_status: 'success', result_count: 3)
       version = PaperTrail::Version.where(item_type: 'ExternalMedicineLookup').last
       data = JSON.parse(version.object)
+      expect(data['query']).to eq('Aspirin 300mg')
       expect(data['query_hash']).to eq(Digest::SHA256.hexdigest('aspirin 300mg'))
       expect(data['result_status']).to eq('success')
       expect(data['result_count']).to eq(3)
-      expect(version.object).not_to include('Aspirin')
+    end
+
+    it 'stores additional lookup details when provided' do
+      audit_logger.record(source: 'nhs_website_content', event: 'medicine_guidance_lookup',
+                          query: 'Panadol 500mg tablets', result_status: 'success',
+                          result_count: 1,
+                          metadata: {
+                            'matched_title' => 'Paracetamol for adults',
+                            'matched_url' => 'https://www.nhs.uk/medicines/paracetamol-for-adults/'
+                          })
+      version = PaperTrail::Version.where(item_type: 'ExternalMedicineLookup').last
+      data = JSON.parse(version.object)
+
+      expect(data['matched_title']).to eq('Paracetamol for adults')
+      expect(data['matched_url']).to eq('https://www.nhs.uk/medicines/paracetamol-for-adults/')
     end
 
     it 'normalises the query before hashing (lowercase, stripped)' do

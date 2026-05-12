@@ -425,12 +425,21 @@ es:
         title: Detalles del Registro de Auditoría
         back: "← Volver a Registros de Auditoría"
         event_information: Información del Evento
+        event_information_description: Los datos clave registrados para este evento de auditoría
+        event_summary: Resumen del evento
         timestamp: Marca de Tiempo
         record_type: Tipo de Registro
         record_id: ID de Registro
         event_type: Tipo de Evento
         user: Usuario
         ip_address: Dirección IP
+        lookup: Búsqueda
+        result: Resultado
+        matches: Coincidencias
+        matched_guidance: Guía coincidente
+        matched_url: URL coincidente
+        audit_payload: Datos de auditoría
+        audit_payload_description: Los detalles estructurados de búsqueda registrados para este evento
         na: N/D
         system: Sistema
         previous_state: Estado Anterior

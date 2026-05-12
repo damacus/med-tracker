@@ -419,12 +419,21 @@ cy:
         title: Manylion Log Archwilio
         back: "← Yn ôl i Logiau Archwilio"
         event_information: Gwybodaeth Digwyddiad
+        event_information_description: Y ffeithiau allweddol a gofnodwyd ar gyfer y digwyddiad archwilio hwn
+        event_summary: Crynodeb o'r digwyddiad
         timestamp: Amser
         record_type: Math o Gofnod
         record_id: ID Cofnod
         event_type: Math o Ddigwyddiad
         user: Defnyddiwr
         ip_address: Cyfeiriad IP
+        lookup: Chwiliad
+        result: Canlyniad
+        matches: Cyfatebiadau
+        matched_guidance: Canllaw cyfatebol
+        matched_url: URL cyfatebol
+        audit_payload: Llwyth archwilio
+        audit_payload_description: Y manylion chwilio strwythuredig a gofnodwyd ar gyfer y digwyddiad hwn
         na: Amh
         system: System
         previous_state: Cyflwr Blaenorol

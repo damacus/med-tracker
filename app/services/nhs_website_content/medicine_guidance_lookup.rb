@@ -55,13 +55,13 @@ module NhsWebsiteContent
 
     def fetch_guidance_with_audit(name, page)
       result = build_result(@client.get_medicine(slug: slug_from(page['url']), modules: true))
-      audit(name, 'success', 1)
+      audit(name, 'success', 1, 'matched_title' => result.title, 'matched_url' => result.webpage)
       result
     end
 
-    def audit(name, status, count = 0)
+    def audit(name, status, count = 0, metadata = {})
       @audit_logger.record(source: 'nhs_website_content', event: 'medicine_guidance_lookup',
-                           query: name, result_status: status, result_count: count)
+                           query: name, result_status: status, result_count: count, metadata: metadata)
     end
 
     def audit_and_nil(name, status)
