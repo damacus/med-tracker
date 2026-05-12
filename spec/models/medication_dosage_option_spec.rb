@@ -94,4 +94,51 @@ RSpec.describe MedicationDosageOption do
         .to eq('update')
     end
   end
+
+  describe '#inventory_match_signature' do
+    it 'returns a hash of identifying attributes for inventory matching' do
+      dosage_option = build(
+        :dosage,
+        amount: 500.5,
+        unit: 'mg',
+        frequency: 'As needed',
+        description: 'Standard dose',
+        default_for_adults: true,
+        default_for_children: false,
+        default_max_daily_doses: 2,
+        default_min_hours_between_doses: 12.0,
+        default_dose_cycle: :daily
+      )
+
+      # default_dose_cycle :daily is mapped to integer 0
+      expected_signature = {
+        amount: '500.5',
+        unit: 'mg',
+        frequency: 'As needed',
+        description: 'Standard dose',
+        default_for_adults: true,
+        default_for_children: false,
+        default_max_daily_doses: 2,
+        default_min_hours_between_doses: 12.0,
+        default_dose_cycle: 0
+      }
+
+      expect(dosage_option.inventory_match_signature).to eq(expected_signature)
+    end
+
+    it 'handles nil description and amount stringification' do
+      dosage_option = build(
+        :dosage,
+        amount: 100,
+        description: nil,
+        default_dose_cycle: :weekly
+      )
+
+      signature = dosage_option.inventory_match_signature
+
+      expect(signature[:amount]).to eq('100.0')
+      expect(signature[:description]).to eq('')
+      expect(signature[:default_dose_cycle]).to eq(1) # :weekly maps to 1
+    end
+  end
 end
