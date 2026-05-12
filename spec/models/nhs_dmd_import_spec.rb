@@ -24,4 +24,43 @@ RSpec.describe NhsDmdImport do
       )
     end
   end
+
+  describe '#progress_percentage' do
+    subject(:import) { described_class.new }
+
+    context 'when total_records is nil' do
+      it 'returns 0' do
+        import.total_records = nil
+        expect(import.progress_percentage).to eq(0)
+      end
+    end
+
+    context 'when total_records is 0' do
+      it 'returns 0' do
+        import.total_records = 0
+        expect(import.progress_percentage).to eq(0)
+      end
+    end
+
+    context 'when total_records is negative' do
+      it 'returns 0' do
+        import.total_records = -5
+        expect(import.progress_percentage).to eq(0)
+      end
+    end
+
+    context 'when total_records is positive' do
+      it 'calculates the percentage correctly' do
+        import.total_records = 100
+        import.processed_records = 50
+        expect(import.progress_percentage).to eq(50)
+      end
+
+      it 'floors the calculated percentage' do
+        import.total_records = 3
+        import.processed_records = 1
+        expect(import.progress_percentage).to eq(33)
+      end
+    end
+  end
 end
