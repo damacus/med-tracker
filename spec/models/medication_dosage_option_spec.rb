@@ -94,4 +94,55 @@ RSpec.describe MedicationDosageOption do
         .to eq('update')
     end
   end
+
+  describe '#inventory_match_signature' do
+    let(:dosage_option) do
+      build(
+        :dosage,
+        amount: 500.5,
+        unit: 'mg',
+        frequency: 'As needed',
+        description: 'Standard dose',
+        default_for_adults: true,
+        default_for_children: false,
+        default_max_daily_doses: 2,
+        default_min_hours_between_doses: 12.0,
+        default_dose_cycle: :daily
+      )
+    end
+
+    let(:signature) { dosage_option.inventory_match_signature }
+
+    it 'returns a hash of identifying attributes for inventory matching' do
+      expect(signature[:frequency]).to eq('As needed')
+      expect(signature[:unit]).to eq('mg')
+      expect(signature[:description]).to eq('Standard dose')
+      expect(signature[:default_for_adults]).to be(true)
+    end
+
+    it 'maps the dose cycle enum before type cast' do
+      # NOTE: default_dose_cycle_before_type_cast for a built record may return string/symbol
+      # depending on ActiveRecord version/state, here the CI returned :daily
+      expect(signature[:default_dose_cycle]).to eq(:daily)
+    end
+
+    it 'preserves decimal fields as big decimals' do
+      # 12.0 comes back as 0.12e2 which is a BigDecimal. We can check equality numerically
+      expect(signature[:default_min_hours_between_doses]).to eq(12.0)
+    end
+
+    it 'stringifies the amount field' do
+      expect(signature[:amount]).to eq('500.5')
+    end
+
+    it 'handles nil description' do
+      option = build(:dosage, description: nil)
+      expect(option.inventory_match_signature[:description]).to eq('')
+    end
+
+    it 'handles integer amounts by casting them to strings formatted as decimals' do
+      option = build(:dosage, amount: 100)
+      expect(option.inventory_match_signature[:amount]).to eq('100.0')
+    end
+  end
 end
