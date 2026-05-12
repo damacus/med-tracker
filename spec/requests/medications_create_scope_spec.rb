@@ -278,6 +278,37 @@ RSpec.describe 'Medication creation scope' do
       expect(Medication.last.dmd_concept_class).to eq('AMPP')
     end
 
+    it 'persists schedule defaults submitted by the medication form' do
+      expect do
+        post medications_path, params: {
+          medication: {
+            name: 'Scheduled Drops',
+            category: 'Vitamin',
+            dosage_amount: 2,
+            dosage_unit: 'drop',
+            current_supply: 30,
+            reorder_threshold: 5,
+            location_id: locations(:home).id,
+            default_schedule_type: 'multiple_daily',
+            default_schedule_config: JSON.generate(
+              schedule_type: 'multiple_daily',
+              frequency: 'Twice daily',
+              times: %w[07:15 19:45]
+            )
+          }
+        }
+      end.to change(Medication, :count).by(1)
+
+      medication = Medication.last
+
+      expect(medication.default_schedule_type).to eq('multiple_daily')
+      expect(medication.default_schedule_config).to include(
+        'schedule_type' => 'multiple_daily',
+        'frequency' => 'Twice daily',
+        'times' => %w[07:15 19:45]
+      )
+    end
+
     it 'persists the full imported name and friendly display name from finder onboarding' do
       expect do
         post medications_path, params: {

@@ -129,14 +129,18 @@ export default class extends Controller {
       ? `<span class="text-xs text-on-surface-variant">${this.escapeHtml(result.concept_class_label)}</span>`
       : ''
 
-    const addAction = (result.name || result.display)
+    const existingMedication = result.existing_medication
+    const actionUrl = existingMedication?.path || this.addMedicationUrl(result, barcode || result.barcode)
+    const actionLabel = existingMedication ? this.t("updateStock") : this.t("addMedication")
+    const actionTestId = existingMedication ? "update-stock-link" : "add-medication-link"
+    const addAction = (existingMedication || result.name || result.display)
       ? `
         <div class="mt-4 flex justify-end">
           <a
-            href="${this.hrefAttribute(this.addMedicationUrl(result, barcode || result.barcode))}"
+            href="${this.hrefAttribute(actionUrl)}"
             class="inline-flex items-center rounded-full bg-primary px-4 py-2 text-sm font-medium text-on-primary shadow-sm transition-all hover:shadow-md"
-            data-testid="add-medication-link"
-          >${this.escapeHtml(this.t("addMedication"))}</a>
+            data-testid="${actionTestId}"
+          >${this.escapeHtml(actionLabel)}</a>
         </div>
       `
       : ''

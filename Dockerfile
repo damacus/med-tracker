@@ -89,7 +89,8 @@ RUN npm ci
 
 USER root
 
-RUN npx playwright install --with-deps chromium \
+RUN rm -rf /ms-playwright \
+  && npx playwright install --with-deps chromium \
   && chmod -R 755 /ms-playwright
 
 USER ruby

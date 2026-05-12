@@ -3,6 +3,25 @@
 module MedicationFormContext
   extend ActiveSupport::Concern
 
+  SCHEDULE_CONFIG_KEYS = [
+    :schedule_type,
+    :frequency,
+    :as_needed,
+    :tapering_plan,
+    { times: [] },
+    { weekdays: [] },
+    { dates: [] },
+    { taper_steps: %i[
+      start_date
+      end_date
+      amount
+      unit
+      frequency
+      max_daily_doses
+      min_hours_between_doses
+    ] }
+  ].freeze
+
   private
 
   def available_locations
@@ -33,6 +52,9 @@ module MedicationFormContext
       :reorder_threshold,
       :warnings,
       :location_id,
+      :default_schedule_type,
+      :default_schedule_config,
+      default_schedule_config: SCHEDULE_CONFIG_KEYS,
       dosage_records_attributes: %i[
         id
         amount
@@ -48,7 +70,7 @@ module MedicationFormContext
         reorder_threshold
         _destroy
       ]
-    )
+    ).tap { |permitted| normalize_default_schedule_config(permitted) }
   end
 
   def onboarding_schedule_params
@@ -62,25 +84,24 @@ module MedicationFormContext
       :min_hours_between_doses,
       :dose_cycle,
       :schedule_config,
-      schedule_config: [
-        :schedule_type,
-        :frequency,
-        :as_needed,
-        :tapering_plan,
-        { times: [] },
-        { weekdays: [] },
-        { dates: [] },
-        { taper_steps: %i[
-          start_date
-          end_date
-          amount
-          unit
-          frequency
-          max_daily_doses
-          min_hours_between_doses
-        ] }
-      ]
+      schedule_config: SCHEDULE_CONFIG_KEYS
     )
+  end
+
+  def normalize_default_schedule_config(permitted)
+    return unless permitted.key?(:default_schedule_config)
+
+    permitted[:default_schedule_config] = normalized_schedule_config_value(permitted[:default_schedule_config])
+  end
+
+  def normalized_schedule_config_value(raw)
+    return {} if raw.blank?
+    return raw.permit(*SCHEDULE_CONFIG_KEYS).to_h if raw.respond_to?(:permit)
+    return raw.to_h if raw.respond_to?(:to_h)
+
+    JSON.parse(raw.to_s)
+  rescue JSON::ParserError
+    {}
   end
 
   def onboarding_builder
@@ -88,6 +109,8 @@ module MedicationFormContext
   end
 
   def medication_finder_search_responder
-    @medication_finder_search_responder ||= MedicationFinderSearchResponder.new
+    @medication_finder_search_responder ||= MedicationFinderSearchResponder.new(
+      medication_scope: policy_scope(Medication)
+    )
   end
 end

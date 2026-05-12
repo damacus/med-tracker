@@ -77,6 +77,7 @@ Rails.application.routes.draw do
   resources :medications do
     collection do
       post :scan_restock
+      get :scan_restock_match
     end
 
     member do

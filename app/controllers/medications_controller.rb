@@ -143,6 +143,15 @@ class MedicationsController < ApplicationController
     render_scan_restock_result(restock_scanned_medication(medication))
   end
 
+  def scan_restock_match
+    authorize Medication, :index?
+
+    medication = stock_match_resolver.call(barcode: params[:q])
+    return render json: { matched: false } unless medication && policy(medication).update?
+
+    render json: { matched: true, medication: stock_match_payload(medication) }
+  end
+
   def finder
     authorize Medication
     render Components::Medications::FinderView.new
@@ -257,25 +266,22 @@ class MedicationsController < ApplicationController
   end
 
   def scanned_restock_medication
-    barcode = NhsDmdBarcode.normalize_gtin(params.dig(:inventory_scan, :barcode))
-    return if barcode.blank?
-
-    policy_scope(Medication).find_by(barcode: barcode) || scanned_barcode_catalog_match(barcode)
+    stock_match_resolver.call(barcode: params.dig(:inventory_scan, :barcode))
   end
 
-  def scanned_barcode_catalog_match(barcode)
-    catalog_match = BarcodeCatalog::Lookup.new.lookup(barcode)
-    return if catalog_match.blank?
+  def stock_match_resolver
+    @stock_match_resolver ||= MedicationStockMatchResolver.new(scope: policy_scope(Medication))
+  end
 
-    candidate = Medication.new(
-      name: catalog_match[:display],
-      barcode: barcode,
-      dmd_code: catalog_match[:code],
-      dmd_system: catalog_match[:system],
-      dmd_concept_class: catalog_match[:concept_class]
-    )
-
-    MedicationInventoryMatcher.new(scope: policy_scope(Medication)).call(candidate)
+  def stock_match_payload(medication)
+    {
+      id: medication.id,
+      name: medication.display_name,
+      full_name: medication.name,
+      location: medication.location.name,
+      current_supply: MedicationStockQuantityFormatter.format(medication.current_supply),
+      path: medication_path(medication)
+    }
   end
 
   def render_refill_error(message)

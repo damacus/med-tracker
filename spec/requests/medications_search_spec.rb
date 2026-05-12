@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'GET /medication-finder/search' do
-  fixtures :accounts, :people, :users
+  fixtures :accounts, :people, :users, :locations, :medications, :location_memberships, :carer_relationships
 
   let(:doctor) { users(:doctor) }
   let(:doctor_account) { accounts(:dr_jones) }
@@ -14,6 +14,10 @@ RSpec.describe 'GET /medication-finder/search' do
 
   def login_as_carer
     post '/login', params: { email: accounts(:carer).email, password: 'password' }
+  end
+
+  def login_as_parent
+    post '/login', params: { email: accounts(:parent).email, password: 'password' }
   end
 
   describe 'GET /medication-finder/search.json' do
@@ -50,6 +54,58 @@ RSpec.describe 'GET /medication-finder/search' do
         expect(json['results'].first['display']).to eq('Aspirin 300mg tablets')
         expect(json['results'].first['code']).to eq('39720311000001101')
         expect(json['results'].first['concept_class']).to eq('VMP')
+      end
+
+      it 'includes existing medication metadata when the result matches accessible stock' do
+        existing_medication = medications(:aspirin)
+        existing_medication.update!(
+          dmd_code: '39720311000001101',
+          dmd_system: 'https://dmd.nhs.uk',
+          dmd_concept_class: 'VMP'
+        )
+
+        get medication_finder_search_path(format: :json), params: { q: 'aspirin' }
+
+        expect(response.parsed_body['results'].first['existing_medication']).to include(
+          'id' => existing_medication.id,
+          'name' => existing_medication.display_name,
+          'location' => 'Home',
+          'path' => medication_path(existing_medication)
+        )
+      end
+    end
+
+    context 'when a result only matches inaccessible stock' do
+      let(:search_results) do
+        [
+          NhsDmd::SearchResult.new(
+            code: '39720311000001101',
+            display: 'Aspirin 300mg tablets',
+            system: 'https://dmd.nhs.uk',
+            concept_class: 'VMP'
+          )
+        ]
+      end
+      let(:search_outcome) { NhsDmd::Search::Result.new(results: search_results, error: nil) }
+
+      before do
+        login_as_parent
+        foreign_location = Location.create!(name: 'Foreign')
+        medications(:aspirin).update!(
+          location: foreign_location,
+          dmd_code: '39720311000001101',
+          dmd_system: 'https://dmd.nhs.uk',
+          dmd_concept_class: 'VMP'
+        )
+        search = instance_double(NhsDmd::Search, call: search_outcome)
+        allow(NhsDmd::Search).to receive(:new).and_return(search)
+      end
+
+      it 'does not expose existing medication metadata' do
+        get medication_finder_search_path(format: :json), params: { q: 'aspirin' }
+
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body['results'].first).not_to have_key('existing_medication')
       end
     end
 
