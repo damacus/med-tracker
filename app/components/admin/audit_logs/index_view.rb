@@ -9,11 +9,32 @@ module Components
         # Models that have audit trail enabled
         AUDITED_MODELS = %w[User Account Person CarerRelationship Location LocationMembership
                             MedicationTake Medication MedicationDosageOption Schedule NotificationPreference
-                            AppSettings ExternalMedicineLookup AiMedicationSuggestion].freeze
+                            AppSettings ExternalMedicineLookup AiMedicationSuggestion AuthenticationToken].freeze
         # Available event types for filtering
         EVENT_TYPES = ['create', 'update', 'destroy', 'restock', 'adjust inventory',
                        'dose_decrement', 'mark_as_ordered', 'mark_as_received',
-                       'ai_medication/suggestion'].freeze
+                       'ai_medication/suggestion',
+                       'auth_token/api_session/created',
+                       'auth_token/api_session/rotated',
+                       'auth_token/api_session/revoked',
+                       'auth_token/api_session/expired',
+                       'auth_token/push_subscription/created',
+                       'auth_token/push_subscription/revoked',
+                       'auth_token/native_device_token/created',
+                       'auth_token/native_device_token/revoked',
+                       'auth_token/otp_key/created',
+                       'auth_token/otp_key/revoked',
+                       'auth_token/recovery_codes/created',
+                       'auth_token/webauthn_credential/created',
+                       'auth_token/webauthn_credential/revoked',
+                       'auth_token/verification_key/created',
+                       'auth_token/verification_key/revoked',
+                       'auth_token/password_reset_key/created',
+                       'auth_token/password_reset_key/revoked',
+                       'auth_token/login_change_key/created',
+                       'auth_token/login_change_key/revoked',
+                       'auth_token/remember_key/created',
+                       'auth_token/remember_key/revoked'].freeze
 
         attr_reader :versions, :filter_params, :current_page, :total_count, :per_page
 

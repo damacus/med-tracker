@@ -70,16 +70,19 @@ class RodauthMain < Rodauth::Rails::Auth
     verify_account_email_subject { I18n.t('rodauth.verify_account.subject') }
 
     create_verify_account_email do
+      audit_auth_token('verification_key', 'created')
       RodauthMailer.verify_account(self.class.configuration_name, account_id, verify_account_key_value)
     end
 
     reset_password_email_subject { I18n.t('rodauth.reset_password.subject') }
     create_reset_password_email do
+      audit_auth_token('password_reset_key', 'created')
       RodauthMailer.reset_password(self.class.configuration_name, account_id, reset_password_key_value)
     end
 
     verify_login_change_email_subject { I18n.t('rodauth.verify_login_change.subject') }
     create_verify_login_change_email do |_login|
+      audit_auth_token('login_change_key', 'created')
       RodauthMailer.verify_login_change(self.class.configuration_name, account_id, verify_login_change_key_value)
     end
 
@@ -96,6 +99,23 @@ class RodauthMain < Rodauth::Rails::Auth
       super(password) && password_complex_enough?(password)
     end
     auth_class_eval do
+      def audit_auth_token(token_type, action, metadata = {})
+        audit_account = Account.find_by(id: account_id)
+        return unless audit_account
+
+        AuthTokenAuditLogger.new.record(
+          account: audit_account,
+          token_type: token_type,
+          action: action,
+          metadata: metadata,
+          context: {
+            whodunnit: audit_account.person&.user&.id,
+            ip: request.ip,
+            request_id: rails_controller_instance&.request&.request_id
+          }
+        )
+      end
+
       def password_complex_enough?(password)
         return true if password.match?(/\d/) && password.match?(/[^a-zA-Z\d]/)
 
@@ -122,7 +142,10 @@ class RodauthMain < Rodauth::Rails::Auth
     end
 
     after_login do
-      remember_login if param_or_nil('remember')
+      if param_or_nil('remember')
+        remember_login
+        audit_auth_token('remember_key', 'created')
+      end
 
       id_token = omniauth_auth&.dig('credentials', 'id_token')
       next unless id_token
@@ -377,9 +400,51 @@ class RodauthMain < Rodauth::Rails::Auth
 
     # Do additional cleanup after the account is closed.
     after_close_account do
+      audit_auth_token('remember_key', 'revoked')
       # Nullify the account_id on the person but don't delete the person
       # This preserves medication history for compliance
       Person.where(account_id: account_id).find_each { |p| p.update!(account_id: nil) }
+    end
+
+    after_otp_setup do
+      audit_auth_token('otp_key', 'created')
+    end
+
+    after_otp_disable do
+      audit_auth_token('otp_key', 'revoked')
+    end
+
+    after_add_recovery_codes do
+      audit_auth_token('recovery_codes', 'created')
+    end
+
+    after_webauthn_setup do
+      audit_auth_token('webauthn_credential', 'created')
+    end
+
+    after_webauthn_remove do
+      audit_auth_token('webauthn_credential', 'revoked')
+    end
+
+    after_remember do
+      remember_value = param_or_nil(remember_param)
+      if remember_value == remember_remember_param_value
+        audit_auth_token('remember_key', 'created')
+      elsif remember_value == remember_forget_param_value || remember_value == remember_disable_param_value
+        audit_auth_token('remember_key', 'revoked')
+      end
+    end
+
+    after_verify_account do
+      audit_auth_token('verification_key', 'revoked')
+    end
+
+    after_reset_password do
+      audit_auth_token('password_reset_key', 'revoked')
+    end
+
+    after_verify_login_change do
+      audit_auth_token('login_change_key', 'revoked')
     end
 
     # ==> Flash overrides

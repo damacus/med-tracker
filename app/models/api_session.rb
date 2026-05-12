@@ -11,42 +11,96 @@ class ApiSession < ApplicationRecord
 
   scope :active, -> { where(revoked_at: nil) }
 
-  def self.issue_for(account:, device_name: nil, user_agent: nil)
-    access_token = build_token
-    refresh_token = build_token
-    now = Time.current
+  class << self
+    def issue_for(account:, device_name: nil, user_agent: nil, audit_context: nil)
+      access_token = build_token
+      refresh_token = build_token
+      session = create_session(account:, device_name:, user_agent:, access_token:, refresh_token:)
 
-    session = create!(
-      account: account,
-      device_name: device_name,
-      user_agent: user_agent,
-      last_used_at: now,
-      access_expires_at: now + ACCESS_TOKEN_TTL,
-      refresh_expires_at: now + REFRESH_TOKEN_TTL,
-      access_token_digest: digest(access_token),
-      refresh_token_digest: digest(refresh_token)
-    )
+      record_audit(session, 'created', audit_context)
 
-    [session, access_token, refresh_token]
-  end
+      [session, access_token, refresh_token]
+    end
 
-  def self.lookup_by_access_token(token)
-    active.find_by(access_token_digest: digest(token))
-  end
+    def lookup_by_access_token(token)
+      active.find_by(access_token_digest: digest(token))
+    end
 
-  def self.lookup_by_refresh_token(token)
-    active.find_by(refresh_token_digest: digest(token))
-  end
+    def lookup_by_refresh_token(token)
+      active.find_by(refresh_token_digest: digest(token))
+    end
 
-  def self.digest(token)
-    Digest::SHA256.hexdigest(token.to_s)
+    def digest(token)
+      Digest::SHA256.hexdigest(token.to_s)
+    end
+
+    def record_audit(session, action, audit_context)
+      audit_logger.record(
+        account: session.account,
+        token_type: 'api_session',
+        action: action,
+        metadata: session.send(:audit_metadata),
+        context: audit_context
+      )
+    end
+
+    private
+
+    def create_session(account:, device_name:, user_agent:, access_token:, refresh_token:)
+      now = Time.current
+
+      create!(
+        account: account,
+        device_name: device_name,
+        user_agent: user_agent,
+        last_used_at: now,
+        access_expires_at: now + ACCESS_TOKEN_TTL,
+        refresh_expires_at: now + REFRESH_TOKEN_TTL,
+        access_token_digest: digest(access_token),
+        refresh_token_digest: digest(refresh_token)
+      )
+    end
+
+    def build_token
+      "mt_#{SecureRandom.urlsafe_base64(48)}"
+    end
+
+    def audit_logger
+      AuthTokenAuditLogger.new
+    end
   end
 
   def active_refresh_token?
     revoked_at.nil? && refresh_expires_at.future?
   end
 
-  def rotate_tokens!
+  def rotate_tokens!(audit_context: nil)
+    access_token, refresh_token = rotate_token_values!
+    self.class.record_audit(self, 'rotated', audit_context)
+
+    [access_token, refresh_token]
+  end
+
+  def revoke!(audit_context: nil, action: 'revoked')
+    update!(revoked_at: Time.current)
+    self.class.record_audit(self, action, audit_context)
+  end
+
+  def touch_last_used!
+    update!(last_used_at: Time.current)
+  end
+
+  private
+
+  def audit_metadata
+    {
+      device_name: device_name,
+      user_agent: user_agent,
+      expires_at: refresh_expires_at
+    }
+  end
+
+  def rotate_token_values!
     access_token = self.class.send(:build_token)
     refresh_token = self.class.send(:build_token)
     now = Time.current
@@ -61,19 +115,4 @@ class ApiSession < ApplicationRecord
 
     [access_token, refresh_token]
   end
-
-  def revoke!
-    update!(revoked_at: Time.current)
-  end
-
-  def touch_last_used!
-    update!(last_used_at: Time.current)
-  end
-
-  private
-
-  def self.build_token
-    "mt_#{SecureRandom.urlsafe_base64(48)}"
-  end
-  private_class_method :build_token
 end

@@ -7,6 +7,17 @@ RSpec.describe Components::Admin::AuditLogs::IndexView, type: :component do
 
   let(:admin) { users(:admin) }
   let(:person) { people(:john) }
+  let(:auth_token_events) do
+    %w[
+      auth_token/api_session/created auth_token/api_session/rotated auth_token/api_session/revoked
+      auth_token/api_session/expired auth_token/push_subscription/created auth_token/push_subscription/revoked
+      auth_token/native_device_token/created auth_token/native_device_token/revoked auth_token/otp_key/created
+      auth_token/otp_key/revoked auth_token/recovery_codes/created auth_token/webauthn_credential/created
+      auth_token/webauthn_credential/revoked auth_token/verification_key/created auth_token/verification_key/revoked
+      auth_token/password_reset_key/created auth_token/password_reset_key/revoked auth_token/login_change_key/created
+      auth_token/login_change_key/revoked auth_token/remember_key/created auth_token/remember_key/revoked
+    ]
+  end
   let(:versions) do
     PaperTrail.request.whodunnit = admin.id
     person.update!(name: 'Updated Name')
@@ -39,8 +50,13 @@ RSpec.describe Components::Admin::AuditLogs::IndexView, type: :component do
         'Location',
         'LocationMembership',
         'MedicationDosageOption',
-        'NotificationPreference'
+        'NotificationPreference',
+        'AuthenticationToken'
       )
+    end
+
+    it 'offers filters for auth token lifecycle events' do
+      expect(described_class::EVENT_TYPES).to include(*auth_token_events)
     end
   end
 
