@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.54](https://github.com/damacus/med-tracker/compare/v0.3.53...v0.3.54) (2026-05-12)
+
+
+### Features
+
+* Add inventory barcode restock flow ([#1240](https://github.com/damacus/med-tracker/issues/1240)) ([0917df1](https://github.com/damacus/med-tracker/commit/0917df1693439a69e4d46d76f6357b4858ef7461))
+* edit medication display names ([#1242](https://github.com/damacus/med-tracker/issues/1242)) ([df491a1](https://github.com/damacus/med-tracker/commit/df491a108a471b56cd65e7314c7249a2b96e0e59))
+
+
+### Bug Fixes
+
+* filter invalid take medication log payload ([a20b242](https://github.com/damacus/med-tracker/commit/a20b2426d503017620037598a1eefd492def3b0e))
+* open medication edit at top level ([#1226](https://github.com/damacus/med-tracker/issues/1226)) ([f7c20a0](https://github.com/damacus/med-tracker/commit/f7c20a06618f678972ef89cd23f63048c99f8d24))
+
 ## [0.3.53](https://github.com/damacus/med-tracker/compare/v0.3.52...v0.3.53) (2026-05-11)
 
 
