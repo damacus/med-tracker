@@ -1537,7 +1537,6 @@ en:
     stats:
       people: People
       active_schedules: Active Schedules
-      compliance: Compliance
       next_dose: Next Dose
       due_today: Today
       no_upcoming_doses: None today

@@ -1391,7 +1391,6 @@ cy:
     stats:
       people: Pobl
       active_schedules: Presgripsiynau Gweithredol
-      compliance: Cydymffurfiaeth
       next_dose: Dos nesaf
       due_today: Heddiw
       no_upcoming_doses: Dim un heddiw

@@ -147,7 +147,6 @@ module Components
         when 'inventory', 'pill' then render Icons::Inventory.new(size: size)
         when 'active_schedules' then render Icons::ActiveSchedules.new(size: size)
         when 'check' then render Icons::CheckCircle.new(size: size)
-        when 'compliance' then render Icons::Compliance.new(size: size)
         when 'clock' then render Icons::Clock.new(size: size)
         else render Icons::Activity.new(size: size)
         end
@@ -169,7 +168,7 @@ module Components
         case icon_type
         when 'users' then 'text-primary'
         when 'pill', 'active_schedules' then 'text-on-success-container'
-        when 'check', 'compliance' then 'text-on-secondary-container'
+        when 'check' then 'text-on-secondary-container'
         when 'clock' then 'text-on-warning-container'
         else 'text-foreground'
         end

@@ -35,7 +35,7 @@ module Components
 
       delegate :people, :active_schedules, :upcoming_schedules,
                :current_user, :doses, :next_dose_time, :routine_tasks_due?,
-               :routine_tasks_by_person, :as_needed_by_person, :compliance_percentage, to: :presenter
+               :routine_tasks_by_person, :as_needed_by_person, to: :presenter
 
       def next_dose_value
         time = next_dose_time
@@ -85,7 +85,7 @@ module Components
       end
 
       def render_stats_section
-        div(class: 'grid grid-cols-2 lg:grid-cols-4 auto-rows-fr gap-3 mb-8') do
+        div(class: 'grid grid-cols-1 sm:grid-cols-3 auto-rows-fr gap-3 mb-8') do
           render Components::Shared::MetricCard.new(
             title: t('dashboard.stats.people'),
             value: people.size,
@@ -98,13 +98,6 @@ module Components
             value: active_schedules.size,
             icon_type: 'active_schedules',
             href: schedules_path,
-            layout: :compact
-          )
-          render Components::Shared::MetricCard.new(
-            title: t('dashboard.stats.compliance'),
-            value: "#{compliance_percentage}%",
-            icon_type: 'compliance',
-            href: reports_path,
             layout: :compact
           )
           render Components::Shared::MetricCard.new(
