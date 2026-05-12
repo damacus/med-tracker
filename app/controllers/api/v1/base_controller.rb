@@ -26,20 +26,19 @@ module Api
       end
 
       def authenticate_api_request!
-        token = bearer_token
-        @current_api_session = ApiSession.lookup_by_access_token(token)
-
-        unless @current_api_session && @current_api_session.revoked_at.nil? && @current_api_session.access_expires_at&.future?
-          render_unauthorized('Authentication required')
-          return
-        end
-
-        if current_account.blank? || !current_account.verified? || current_user.blank? || !current_user.active?
-          render_unauthorized('Authentication required')
-          return
-        end
+        @current_api_session = ApiSession.lookup_by_access_token(bearer_token)
+        return render_unauthorized('Authentication required') unless valid_session?
+        return render_unauthorized('Authentication required') unless valid_account_and_user?
 
         @current_api_session.touch_last_used!
+      end
+
+      def valid_session?
+        @current_api_session.present? && @current_api_session.revoked_at.nil? && @current_api_session.access_expires_at&.future?
+      end
+
+      def valid_account_and_user?
+        current_account.present? && current_account.verified? && current_user.present? && current_user.active?
       end
 
       def bearer_token

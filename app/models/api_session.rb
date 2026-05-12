@@ -42,7 +42,6 @@ class ApiSession < ApplicationRecord
     Digest::SHA256.hexdigest(token.to_s)
   end
 
-
   def active_refresh_token?
     revoked_at.nil? && refresh_expires_at.future?
   end
