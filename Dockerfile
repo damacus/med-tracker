@@ -1,4 +1,4 @@
-FROM ruby:4.0.3-slim-trixie AS base
+FROM ruby:4.0.4-slim-trixie AS base
 WORKDIR /app
 
 ARG UID=1000
@@ -118,7 +118,7 @@ CMD ["bundle", "exec", "rubocop"]
 
 ###############################################################################
 
-FROM ruby:4.0.3-slim-trixie AS app
+FROM ruby:4.0.4-slim-trixie AS app
 WORKDIR /app
 
 ARG UID=1000
