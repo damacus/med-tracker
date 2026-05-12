@@ -8,8 +8,7 @@ module NhsWebsiteContent
   class Client
     class ApiError < StandardError; end
 
-    SANDBOX_BASE_URL = 'https://sandbox.api.service.nhs.uk/nhs-website-content'
-    PRODUCTION_BASE_URL = 'https://api.service.nhs.uk/nhs-website-content'
+    BASE_URL = 'https://api.service.nhs.uk/nhs-website-content'
     CACHE_PREFIX = 'nhs_website_content'
     TIMEOUT_SECONDS = 5
     NETWORK_ERRORS = [
@@ -23,12 +22,12 @@ module NhsWebsiteContent
     ].freeze
 
     def configured?
-      sandbox? || api_key.present?
+      api_key.present?
     end
 
     def list_medicines(category:, page: '1')
       fetch_json(
-        cache_key: "#{CACHE_PREFIX}/medicines/index/#{base_url}/#{category}/#{page}",
+        cache_key: "#{CACHE_PREFIX}/medicines/index/#{BASE_URL}/#{category}/#{page}",
         path: '/medicines',
         params: { 'category' => category, 'page' => page }
       )
@@ -36,7 +35,7 @@ module NhsWebsiteContent
 
     def get_medicine(slug:, modules: true)
       fetch_json(
-        cache_key: "#{CACHE_PREFIX}/medicines/page/#{base_url}/#{slug}/#{modules}",
+        cache_key: "#{CACHE_PREFIX}/medicines/page/#{BASE_URL}/#{slug}/#{modules}",
         path: "/medicines/#{slug}/",
         params: { 'modules' => modules.to_s }
       )
@@ -46,7 +45,7 @@ module NhsWebsiteContent
 
     def fetch_json(cache_key:, path:, params:)
       Rails.cache.fetch(cache_key, expires_in: 12.hours) do
-        uri = URI("#{base_url}#{path}")
+        uri = URI("#{BASE_URL}#{path}")
         uri.query = URI.encode_www_form(params.compact)
         response = perform_request(uri)
         parse_response(response)
@@ -65,14 +64,6 @@ module NhsWebsiteContent
       JSON.parse(response.body)
     rescue JSON::ParserError => e
       raise ApiError, "NHS website API returned invalid JSON: #{e.message}"
-    end
-
-    def sandbox?
-      ENV.fetch('NHS_WEBSITE_CONTENT_USE_SANDBOX', 'false') == 'true'
-    end
-
-    def base_url
-      sandbox? ? SANDBOX_BASE_URL : PRODUCTION_BASE_URL
     end
 
     def api_key
