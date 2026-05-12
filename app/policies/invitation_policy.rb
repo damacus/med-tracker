@@ -12,4 +12,8 @@ class InvitationPolicy < ApplicationPolicy
   def resend?
     admin?
   end
+
+  def destroy?
+    admin?
+  end
 end

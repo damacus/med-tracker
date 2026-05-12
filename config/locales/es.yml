@@ -283,7 +283,9 @@ es:
     invitations:
       created: Invitación enviada
       resent: Invitación reenviada
+      cancelled: Invitación cancelada
       cannot_resend_accepted: Las invitaciones aceptadas no se pueden reenviar
+      cannot_cancel_accepted: Las invitaciones aceptadas no se pueden cancelar
       resend_failed: No se pudo reenviar esta invitación. Es posible que ya exista
         una invitación pendiente para este correo electrónico.
       index:
@@ -291,6 +293,7 @@ es:
         subtitle: Invita a nuevos usuarios a unirse a MedTracker.
         recent: Invitaciones recientes
         resend: Reenviar
+        cancel: Cancelar
         form:
           email: Correo electrónico
           role: Rol

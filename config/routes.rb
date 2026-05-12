@@ -34,7 +34,7 @@ Rails.application.routes.draw do
         post :verify
       end
     end
-    resources :invitations, only: %i[index create] do
+    resources :invitations, only: %i[index create destroy] do
       member do
         post :resend
       end

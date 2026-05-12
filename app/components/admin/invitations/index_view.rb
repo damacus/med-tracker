@@ -11,11 +11,13 @@ module Components
         def initialize(
           invitation: Invitation.new,
           invitations: Invitation.order(created_at: :desc),
-          resendable_invitation_ids: []
+          resendable_invitation_ids: [],
+          cancellable_invitation_ids: []
         )
           @invitation = invitation
           @invitations = invitations
           @resendable_invitation_ids = resendable_invitation_ids
+          @cancellable_invitation_ids = cancellable_invitation_ids
         end
 
         def view_template
@@ -132,11 +134,27 @@ module Components
               p(class: 'text-xs text-on-surface-variant') { invitation_metadata(invitation) }
             end
 
-            next unless resendable_invitation?(invitation)
+            render_invitation_actions(invitation)
+          end
+        end
 
-            form_with(url: resend_admin_invitation_path(invitation), method: :post, class: 'shrink-0') do
-              m3_button(type: :submit, variant: :outlined, size: :sm, class: 'rounded-xl') do
-                t('admin.invitations.index.resend')
+        def render_invitation_actions(invitation)
+          return unless resendable_invitation?(invitation) || cancellable_invitation?(invitation)
+
+          div(class: 'flex items-center gap-2 shrink-0') do
+            if resendable_invitation?(invitation)
+              form_with(url: resend_admin_invitation_path(invitation), method: :post, class: 'shrink-0') do
+                m3_button(type: :submit, variant: :outlined, size: :sm, class: 'rounded-xl') do
+                  t('admin.invitations.index.resend')
+                end
+              end
+            end
+
+            if cancellable_invitation?(invitation)
+              form_with(url: admin_invitation_path(invitation), method: :delete, class: 'shrink-0') do
+                m3_button(type: :submit, variant: :outlined, size: :sm, class: 'rounded-xl') do
+                  t('admin.invitations.index.cancel')
+                end
               end
             end
           end
@@ -144,6 +162,10 @@ module Components
 
         def resendable_invitation?(invitation)
           @resendable_invitation_ids.include?(invitation.id)
+        end
+
+        def cancellable_invitation?(invitation)
+          @cancellable_invitation_ids.include?(invitation.id)
         end
 
         def invitation_status_label(invitation)

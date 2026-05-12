@@ -278,7 +278,9 @@ cy:
     invitations:
       created: Anfonwyd y gwahoddiad
       resent: Ailanfonwyd y gwahoddiad
+      cancelled: Gwahoddiad wedi'i ganslo
       cannot_resend_accepted: Ni ellir ailanfon gwahoddiadau sydd wedi'u derbyn
+      cannot_cancel_accepted: Ni ellir canslo gwahoddiadau sydd wedi'u derbyn
       resend_failed: Ni ellid ailanfon y gwahoddiad hwn. Mae'n bosibl bod gwahoddiad
         sy'n aros am yr e-bost hwn eisoes yn bodoli.
       index:
@@ -286,6 +288,7 @@ cy:
         subtitle: Gwahoddwch ddefnyddwyr newydd i ymuno â MedTracker.
         recent: Gwahoddiadau diweddar
         resend: Ail-anfon
+        cancel: Canslo
         form:
           email: E-bost
           role: Rôl
