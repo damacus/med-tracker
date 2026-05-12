@@ -175,15 +175,19 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       expect(rendered.css("a[href='/reports#insights']")).to be_present
     end
 
-    it 'renders the reports insights link with visible link affordance' do
+    it 'renders the reports insights link with visible link affordance', :aggregate_failures do
       presenter = person_task_presenter(insight_result: detected_insight_result, can_view_reports: true)
 
       rendered = render_inline(described_class.new(presenter: presenter))
       link = rendered.at_css("a[href='/reports#insights']")
 
       expect(link.text).to include('View Full Report')
-      expect(link['class']).to include('border-b-2')
-      expect(link['class']).to include('hover:border-current')
+      expect(link['class']).to include('bg-surface-container-low')
+      expect(link['class']).to include('text-on-surface')
+      expect(link['class']).to include('px-5')
+      expect(link['class']).to include('min-h-[44px]')
+      expect(link['class']).to include('max-w-full')
+      expect(link['class']).not_to include('p-0')
     end
 
     it 'omits the reports link when the user cannot view reports' do

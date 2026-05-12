@@ -237,9 +237,10 @@ module Components
 
         m3_link(
           href: reports_path(anchor: 'insights'),
-          variant: :text,
-          class: "mt-8 p-0 h-auto font-black uppercase tracking-widest #{dashboard_insight_link_classes} " \
-                 'border-b-2 rounded-none hover:bg-transparent transition-all'
+          variant: :tonal,
+          class: 'mt-8 inline-flex max-w-full items-center justify-center rounded-shape-full px-5 py-2.5 ' \
+                 'min-h-[44px] h-auto text-center text-sm font-bold uppercase tracking-wide leading-snug ' \
+                 "#{dashboard_insight_link_classes} shadow-elevation-1 transition-all"
         ) do
           t('dashboard.insights.view_report')
         end
@@ -294,9 +295,9 @@ module Components
 
       def dashboard_insight_link_classes
         if presenter.smart_insights.primary_insight.present?
-          'text-current border-current/30 hover:border-current'
+          'bg-surface-container-low text-on-surface border border-outline-variant/70 hover:bg-surface-container-high'
         else
-          'text-primary border-primary/30 hover:border-primary'
+          'bg-primary text-on-primary hover:bg-primary/90'
         end
       end
 

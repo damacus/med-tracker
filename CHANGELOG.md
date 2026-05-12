@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.53](https://github.com/damacus/med-tracker/compare/v0.3.52...v0.3.53) (2026-05-11)
+
+
+### Bug Fixes
+
+* improve smart insights CTA ([#1227](https://github.com/damacus/med-tracker/issues/1227)) ([3c4579c](https://github.com/damacus/med-tracker/commit/3c4579ccda86587b14585fe0d4f54c07b44eed6d))
+
 ## [0.3.52](https://github.com/damacus/med-tracker/compare/v0.3.51...v0.3.52) (2026-05-11)
 
 
