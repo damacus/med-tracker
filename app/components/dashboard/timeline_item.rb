@@ -111,7 +111,11 @@ module Components
         when :taken
           render Icons::CheckCircle.new(size: 24, class: 'text-on-success-container')
         when :upcoming
-          render Icons::Pill.new(size: 24, class: 'text-on-primary-container')
+          render Components::Shared::MedicationIcon.new(
+            medication: dose[:source].medication,
+            size: 24,
+            class: 'text-on-primary-container'
+          )
         when :cooldown
           render Icons::AlertCircle.new(size: 24, class: 'text-on-warning-container')
         when :out_of_stock

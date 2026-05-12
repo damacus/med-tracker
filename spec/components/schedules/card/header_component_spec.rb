@@ -16,14 +16,14 @@ RSpec.describe Components::Schedules::Card::HeaderComponent, type: :component do
       end_date: 1.month.from_now
     )
   end
-  let(:presenter) { Schedules::CardPresenter.new(schedule: schedule, todays_takes: [], current_user: nil, person: person) }
+  let(:presenter) { Schedules::CardPresenter.new(schedule: schedule, current_user: nil, person: person) }
 
   it 'renders schedule metadata and stock status' do
     rendered = render_inline(described_class.new(schedule: schedule, presenter: presenter))
 
     expect(rendered.text).to include('Ibuprofen')
     expect(rendered.text).to include('400mg • Twice daily')
-    expect(rendered.text).to include('Ready Now')
+    expect(rendered.text).not_to include('Ready Now')
   end
 
   it 'renders the friendly medication display name when present' do

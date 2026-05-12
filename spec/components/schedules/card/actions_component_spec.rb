@@ -16,42 +16,24 @@ RSpec.describe Components::Schedules::Card::ActionsComponent, type: :component d
       end_date: 1.month.from_now
     )
   end
-  let(:presenter) { Schedules::CardPresenter.new(schedule: schedule, todays_takes: [], current_user: nil, person: person) }
+  let(:presenter) { Schedules::CardPresenter.new(schedule: schedule, current_user: nil, person: person) }
 
-  it 'renders the take action with schedule context' do
+  it 'renders the log past dose action' do
     rendered = render_inline(
       described_class.new(schedule: schedule, person: person, presenter: presenter, current_user: nil)
     )
 
-    expect(rendered.css("[data-testid='take-schedule-#{schedule.id}']")).to be_present
+    expect(rendered.css("[data-testid='log-past-dose-schedule-#{schedule.id}']")).to be_present
   end
 
-  context 'when the dose is invalid' do
-    it 'renders a disabled take action' do
-      schedule.dose_amount = 0
-      rendered = render_inline(
-        described_class.new(schedule: schedule, person: person, presenter: presenter, current_user: nil)
-      )
+  it 'renders the edit and delete links' do
+    admin = instance_double(User, administrator?: true)
 
-      button = rendered.at_css("button[data-testid='take-schedule-#{schedule.id}-disabled'][disabled]")
-      expect(button).to be_present
-      expect(button.text).to include('Invalid Dose Configured')
-    end
-  end
+    rendered = render_inline(
+      described_class.new(schedule: schedule, person: person, presenter: presenter, current_user: admin)
+    )
 
-  context 'when the schedule is on cooldown' do
-    it 'renders a disabled waiting action' do
-      allow(MedicationStockSourceResolver).to receive(:new).and_return(
-        instance_double(MedicationStockSourceResolver, blocked_reason: :cooldown, available_medications: [])
-      )
-
-      rendered = render_inline(
-        described_class.new(schedule: schedule, person: person, presenter: presenter, current_user: nil)
-      )
-
-      button = rendered.at_css("button[data-testid='take-schedule-#{schedule.id}-disabled'][disabled]")
-      expect(button).to be_present
-      expect(button.text).to include('Waiting')
-    end
+    expect(rendered.css("[data-testid='edit-schedule-#{schedule.id}']")).to be_present
+    expect(rendered.css("[data-testid='delete-schedule-#{schedule.id}']")).to be_present
   end
 end

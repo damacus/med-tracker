@@ -79,7 +79,7 @@ module Components
                   class: 'rounded-full font-bold text-sm shadow-elevation-2',
                   **wizard_link_data
                 ) do
-                  render Icons::Pill.new(size: 20, class: 'mr-2')
+                  render Icons::Medication.new(size: 20, class: 'mr-2')
                   span { t('medications.index.add_medication') }
                 end
               end

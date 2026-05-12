@@ -72,7 +72,7 @@ module Components
           class: 'w-10 h-10 rounded-xl flex items-center justify-center bg-success-container/30 ' \
                  'text-on-success-container flex-shrink-0 shadow-inner'
         ) do
-          render Icons::Pill.new(size: 20)
+          render Components::Shared::MedicationIcon.new(medication: schedule.medication, size: 20)
         end
       end
 

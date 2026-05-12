@@ -97,7 +97,7 @@ module Components
                 class: 'w-10 h-10 rounded-xl bg-secondary-container flex items-center ' \
                        'justify-center text-on-surface-variant flex-shrink-0'
               ) do
-                render Icons::Pill.new(size: 20)
+                render Components::Shared::MedicationIcon.new(medication: medication, size: 20)
               end
               div(class: 'min-w-0 flex-1') do
                 Link(

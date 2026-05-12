@@ -18,7 +18,6 @@ module Components
               render_medication_icon
               div(class: 'flex flex-col items-end gap-2 shrink-0') do
                 render Components::Shared::StockBadge.new(medication: schedule.medication)
-                status_badge
               end
             end
             div(class: 'min-w-0') do
@@ -44,18 +43,7 @@ module Components
                    'justify-center text-on-surface-variant ' \
                    'group-hover:text-primary group-hover:bg-primary/5 transition-all'
           ) do
-            render Icons::Pill.new(size: 24)
-          end
-        end
-
-        def status_badge
-          return unless presenter.status_badge?
-
-          m3_badge(
-            variant: presenter.status_badge_variant,
-            class: 'px-3 py-1 text-[10px] font-black uppercase tracking-wider'
-          ) do
-            plain presenter.status_badge_label
+            render Components::Shared::MedicationIcon.new(medication: schedule.medication, size: 24)
           end
         end
       end

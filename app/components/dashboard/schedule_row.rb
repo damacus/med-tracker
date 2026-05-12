@@ -61,7 +61,7 @@ module Components
 
       def render_medication_icon
         div(class: 'w-8 h-8 rounded-lg flex items-center justify-center bg-success-light text-success flex-shrink-0') do
-          render Icons::Pill.new(size: 16)
+          render Components::Shared::MedicationIcon.new(medication: schedule.medication, size: 16)
         end
       end
 

@@ -41,7 +41,7 @@ module Components
               class: 'mx-auto w-16 h-16 rounded-shape-xl bg-primary/10 flex items-center justify-center ' \
                      'text-primary shadow-inner mb-6'
             ) do
-              render Icons::Pill.new(size: 32)
+              render Components::Shared::MedicationIcon.new(medication: medication, size: 32)
             end
             m3_text(variant: :label_medium, class: 'uppercase tracking-[0.2em] font-black opacity-40') do
               t('forms.medications.inventory_management')

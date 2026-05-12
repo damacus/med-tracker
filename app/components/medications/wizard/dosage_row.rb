@@ -21,7 +21,7 @@ module Components
               div(
                 class: 'w-10 h-10 rounded-xl bg-primary/5 flex items-center justify-center text-primary'
               ) do
-                render Icons::Pill.new(size: 18)
+                render Components::Shared::MedicationIcon.new(unit: dosage.unit, size: 18)
               end
               div do
                 span(class: 'font-bold text-sm text-foreground') do

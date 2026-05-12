@@ -21,7 +21,7 @@ RSpec.describe 'Medication Stock Tracking', type: :system do
     login_as(admin)
   end
 
-  it 'displays current stock on the dashboard' do
+  it 'displays current stock on the person profile' do
     visit person_path(person)
 
     within "#schedule_#{schedule.id}" do
@@ -51,29 +51,20 @@ RSpec.describe 'Medication Stock Tracking', type: :system do
     end
   end
 
-  it 'disables the Take Now button when out of stock' do
-    medication.update!(current_supply: 0)
-    visit person_path(person)
+  it 'deducts stock when taking a dose via the dashboard' do
+    visit dashboard_path(dashboard_person_id: DashboardPresenter::ALL_FAMILY_PERSON_ID)
 
-    within "#schedule_#{schedule.id}" do
-      expect(page).to have_css("[data-testid='take-schedule-#{schedule.id}-disabled']",
-                               text: /Out of Stock/i)
-    end
-  end
+    # Ensure the task is available on the dashboard
+    expect(page).to have_text('Paracetamol')
 
-  it 'deducts stock when taking a dose' do
-    visit person_path(person)
-
-    within "#schedule_#{schedule.id}" do
-      expect(page).to have_text('10')
-
-      # Use the specific test ID for the Take button
-      find("[data-testid='take-schedule-#{schedule.id}']").click
-    end
-    confirm_record_dose(take_medication_person_schedule_path(person, schedule), I18n.t('schedules.card.give'))
+    as_needed_card_for(schedule).find('summary').click
+    find("[data-testid='take-dose-schedule_#{schedule.id}']").click
+    confirm_record_dose(take_medication_person_schedule_path(person, schedule), I18n.t('person_medications.card.give'))
 
     expect(page).to have_text(/taken successfully/)
 
+    # Verify stock reduction on the person profile page
+    visit person_path(person)
     within "#schedule_#{schedule.id}" do
       expect(page).to have_text('9 left')
     end
@@ -82,6 +73,12 @@ RSpec.describe 'Medication Stock Tracking', type: :system do
   def confirm_record_dose(path, label)
     within("form[action='#{path}']") do
       click_button label
+    end
+  end
+
+  def as_needed_card_for(schedule)
+    all('details[data-testid="dashboard-as-needed-person"]', visible: :all).find do |details|
+      details.has_css?("#timeline_schedule_#{schedule.id}", visible: :all)
     end
   end
 end

@@ -26,10 +26,10 @@ RSpec.describe Components::Schedules::Card, type: :component do
       rendered = Nokogiri::HTML::DocumentFragment.parse(html)
       text = rendered.text
 
-      expect(text).to include("Today's Doses")
-      expect(text).to include('No doses taken today')
-      expect(text).to include('Started:')
-      expect(text).to include('Ends:')
+      expect(text).not_to include("Today's Doses")
+      expect(text).not_to include('No doses taken today')
+      expect(text).to include('Started')
+      expect(text).to include('Ends')
     end
 
     it 'renders delete dialog with translated strings for admin user' do

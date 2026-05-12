@@ -67,7 +67,7 @@ module Components
               class: 'w-12 h-12 rounded-shape-xl bg-primary/10 flex items-center justify-center ' \
                      'text-primary mb-4'
             ) do
-              render Icons::Pill.new(size: 24)
+              render Components::Shared::MedicationIcon.new(medication: medication, size: 24)
             end
             m3_heading(variant: :headline_small, level: 1, class: 'font-black tracking-tight text-foreground') do
               t('medications.form.new_title')
