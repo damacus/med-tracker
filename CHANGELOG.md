@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.57](https://github.com/damacus/med-tracker/compare/v0.3.56...v0.3.57) (2026-05-12)
+
+
+### Features
+
+* add profile avatars ([#1260](https://github.com/damacus/med-tracker/issues/1260)) ([a65849f](https://github.com/damacus/med-tracker/commit/a65849f40afc6c7dffba4abbbda463819265910d))
+* surface existing stock matches ([#1259](https://github.com/damacus/med-tracker/issues/1259)) ([b27092b](https://github.com/damacus/med-tracker/commit/b27092bb5cff241f621ddf4ee45fe8d5de8fdde7))
+
+
+### Bug Fixes
+
+* route scan restock match json ([#1262](https://github.com/damacus/med-tracker/issues/1262)) ([951755f](https://github.com/damacus/med-tracker/commit/951755f3ae10ad9d0648e878976c9d6662673711))
+
 ## [0.3.56](https://github.com/damacus/med-tracker/compare/v0.3.55...v0.3.56) (2026-05-12)
 
 
