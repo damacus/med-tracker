@@ -9,9 +9,9 @@ module Components
         Dialog do
           DialogTrigger do
             m3_button(
-              variant: :outlined,
+              variant: :elevated,
               size: :lg,
-              class: 'rounded-full font-bold text-sm bg-card shadow-sm border-border'
+              class: 'font-bold text-sm'
             ) do
               render Icons::Camera.new(size: 20, class: 'mr-2 text-primary')
               span { t('medications.index.scan_stock') }

@@ -60,7 +60,7 @@ module Components
           end
 
           if view_context.policy(Medication).create? || view_context.policy(Medication).update?
-            div(class: 'hidden gap-3 md:flex') do
+            div(class: 'medications-index-actions') do
               render Components::Medications::InventoryScanModal.new if view_context.policy(Medication).update?
               if view_context.policy(Medication).create?
                 Link(
