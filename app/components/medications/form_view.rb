@@ -74,7 +74,6 @@ module Components
       def render_hidden_form_state
         render_hidden_input('return_to', return_to) if return_to.present?
         render_hidden_input('medication[barcode]', medication.barcode) if medication.barcode.present?
-        render_hidden_input('medication[friendly_name]', medication.friendly_name) if medication.friendly_name.present?
         render_hidden_dmd_state
       end
 
@@ -96,6 +95,7 @@ module Components
             div(class: 'space-y-6') do
               render_location_field(form)
               render_name_field(form)
+              render_friendly_name_field(form)
               render_category_field(form)
               render_description_field(form)
             end
@@ -220,6 +220,27 @@ module Components
             **field_error_attributes(medication, :name, input_id: 'medication_name')
           )
           render_field_error(medication, :name, input_id: 'medication_name')
+        end
+      end
+
+      def render_friendly_name_field(_form)
+        div(class: 'space-y-2') do
+          render RubyUI::FormFieldLabel.new(
+            for: 'medication_friendly_name',
+            class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
+          ) { t('forms.medications.friendly_name') }
+          m3_input(
+            type: :text,
+            name: 'medication[friendly_name]',
+            id: 'medication_friendly_name',
+            value: medication.friendly_name,
+            placeholder: t('forms.medications.friendly_name_placeholder'),
+            class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 ' \
+                   'focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all'
+          )
+          m3_text(variant: :body_small, class: 'text-on-surface-variant ml-1') do
+            t('forms.medications.friendly_name_hint')
+          end
         end
       end
 
