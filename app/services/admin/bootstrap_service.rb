@@ -45,14 +45,9 @@ module Admin
       end
     end
 
-    def email_already_exists?
-      Account.exists?(email: email) || User.exists?(email_address: email)
-    end
-
     def precondition_error
       return "Missing required fields: #{missing_fields.join(', ')}" if missing_fields.any?
       return 'An administrator already exists' if administrator_exists?
-      return 'Email is already taken' if email_already_exists?
 
       nil
     end
