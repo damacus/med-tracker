@@ -8,7 +8,7 @@ RSpec.describe NhsDmdImport do
       import = described_class.create!(uploaded_filename: 'release.zip')
 
       freeze_time do
-        expect { import.start! }.to change { import.reload.started_at }.from(nil).to(Time.current)
+        expect { import.start! }.to(change { import.reload.started_at }.from(nil).to(Time.current))
       end
     end
 
@@ -16,7 +16,7 @@ RSpec.describe NhsDmdImport do
       existing_time = 1.day.ago.round
       import = described_class.create!(uploaded_filename: 'release.zip', started_at: existing_time)
 
-      expect { import.start! }.not_to change { import.reload.started_at }
+      expect { import.start! }.not_to(change { import.reload.started_at })
     end
   end
 
