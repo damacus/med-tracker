@@ -89,6 +89,22 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
       end
     end
 
+    it 'keeps a once-daily scheduled medication due after a late previous-day dose' do
+      travel_to Time.zone.parse('2026-05-12 10:20:00') do
+        schedule = create_daily_scheduled_medication
+        MedicationTake.create!(
+          schedule: schedule,
+          taken_at: Time.zone.parse('2026-05-11 20:00:00'),
+          dose_amount: 1,
+          dose_unit: 'tablet'
+        )
+
+        rows = described_class.new([people(:john)]).call.select { |row| row[:source] == schedule }
+
+        expect(rows.pluck(:status)).to eq([:upcoming])
+      end
+    end
+
     it 'groups PRN schedules under as-needed medications instead of routine tasks' do
       prn_schedule = create_prn_schedule
       query = described_class.new([people(:john)])
@@ -289,6 +305,25 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
       schedule_type: :prn,
       max_daily_doses: max_daily_doses,
       min_hours_between_doses: min_hours_between_doses
+    )
+  end
+
+  def create_daily_scheduled_medication
+    medication = medications(:vitamin_c).tap { |candidate| candidate.update!(current_supply: 30) }
+
+    create(
+      :schedule,
+      person: people(:john),
+      medication: medication,
+      dosage: nil,
+      dose_amount: 1,
+      dose_unit: 'tablet',
+      frequency: 'Once daily',
+      schedule_type: :daily,
+      schedule_config: { 'times' => ['08:00'] },
+      max_daily_doses: 1,
+      min_hours_between_doses: 24,
+      dose_cycle: :daily
     )
   end
 end

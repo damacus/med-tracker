@@ -85,16 +85,13 @@ class Schedule < ApplicationRecord
   end
 
   def effective_min_hours_between_doses(date = Time.zone.today)
+    return nil if schedule_type_daily? && Array(config_value(effective_config_for(date), 'times')).compact_blank.one?
+
     numeric_config_value(effective_config_for(date), 'min_hours_between_doses', 'min_hours', 'minimum_hours') ||
       min_hours_between_doses
   end
 
-  def active?
-    today = Time.zone.today
-    return false if start_date.nil? || end_date.nil?
-
-    today.between?(start_date, end_date)
-  end
+  def active? = start_date.present? && end_date.present? && Time.zone.today.between?(start_date, end_date)
 
   def cycle_period
     DoseCycle.new(dose_cycle).period
