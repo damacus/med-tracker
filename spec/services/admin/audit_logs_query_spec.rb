@@ -38,6 +38,13 @@ RSpec.describe Admin::AuditLogsQuery do
       expect(result.versions.size).to eq(1)
     end
 
+    it 'includes default filter options even when no matching versions exist' do
+      result = described_class.new(scope: PaperTrail::Version.none, filters: {}, page: 1, per_page: 10).call
+
+      expect(result.item_types).to include('AuthenticationToken', 'Medication')
+      expect(result.events).to include('auth_token/api_session/created', 'update')
+    end
+
     it 'returns filter options from all PaperTrail versions' do
       insert_unlisted_audit_record
 
