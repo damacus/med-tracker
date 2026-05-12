@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.3.56](https://github.com/damacus/med-tracker/compare/v0.3.55...v0.3.56) (2026-05-12)
+
+
+### Features
+
+* add dashboard person selector ([#1252](https://github.com/damacus/med-tracker/issues/1252)) ([dede128](https://github.com/damacus/med-tracker/commit/dede128efba73470a28055aaf235ddd894969a86))
+* Add redacted auth token audit logging ([#1256](https://github.com/damacus/med-tracker/issues/1256)) ([fb28e54](https://github.com/damacus/med-tracker/commit/fb28e547cf201f7c729aea1536e4f6a9844f647f))
+* improve audit log details ([#1253](https://github.com/damacus/med-tracker/issues/1253)) ([43d2d7f](https://github.com/damacus/med-tracker/commit/43d2d7fbf0cf402b1f1358d0d17e80210dbc1b55))
+* simplify mobile dashboard person selector ([#1257](https://github.com/damacus/med-tracker/issues/1257)) ([f80ea1a](https://github.com/damacus/med-tracker/commit/f80ea1a26969f85fbf61d39d30c95dff474ab800))
+
 ## [0.3.55](https://github.com/damacus/med-tracker/compare/v0.3.54...v0.3.55) (2026-05-12)
 
 
