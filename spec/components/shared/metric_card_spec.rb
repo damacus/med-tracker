@@ -13,19 +13,6 @@ RSpec.describe Components::Shared::MetricCard, type: :component do
     ].join
   end
 
-  let(:compliance_icon_path) do
-    [
-      'M480-80q-139-35-229.5-159.5T160-516v-244l320-120 320 120v200h-80v-145l-240-90-240 ',
-      '90v189q0 121 68 220t172 132q26-8 49.5-20.5T576-214l56 56q-33 27-71.5 47T480-80Zm331.5-11.5Q800-103 ',
-      '800-120t11.5-28.5Q823-160 840-160t28.5 11.5Q880-137 880-120t-11.5 28.5Q857-80 ',
-      '840-80t-28.5-11.5ZM800-240v-240h80v240h-80ZM480-480Zm56.5 ',
-      '56.5Q560-447 560-480t-23.5-56.5Q513-560 480-560t-56.5 23.5Q400-513 400-480t23.5 ',
-      '56.5Q447-400 480-400t56.5-23.5ZM480-320q-66 ',
-      '0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 22-5.5 42.5T618-398l119 ',
-      '118-57 57-120-119q-18 11-38.5 16.5T480-320Z'
-    ].join
-  end
-
   it 'renders a block link wrapper when href is provided' do
     rendered = render_inline(
       described_class.new(title: 'People', value: 5, icon_type: 'users', href: '/people')
@@ -102,14 +89,5 @@ RSpec.describe Components::Shared::MetricCard, type: :component do
 
     expect(rendered.at_css('svg')['viewbox']).to eq('0 -960 960 960')
     expect(rendered.at_css("path[d='#{active_schedules_icon_path}']")).to be_present
-  end
-
-  it 'renders the compliance icon path' do
-    rendered = render_inline(
-      described_class.new(title: 'Compliance', value: '85%', icon_type: 'compliance')
-    )
-
-    expect(rendered.at_css('svg')['viewbox']).to eq('0 -960 960 960')
-    expect(rendered.at_css("path[d='#{compliance_icon_path}']")).to be_present
   end
 end

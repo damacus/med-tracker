@@ -1568,7 +1568,6 @@ pt:
     stats:
       people: Pessoas
       active_schedules: Prescrições Ativas
-      compliance: Conformidade
       next_dose: Próxima dose
       due_today: Hoje
       no_upcoming_doses: Nenhuma hoje
