@@ -228,7 +228,10 @@ en:
         table:
           timestamp: Time
           activity: Activity
+          record_type: Record Type
+          event: Event
           user: User
+          ip_address: IP Address
           actions: ''
           view_details: View Details
         empty:
@@ -673,7 +676,9 @@ en:
       all: All
       view: View
       inventory_level: Inventory Level
-      units: units
+      units:
+        one: unit
+        other: units
       in_stock: In Stock
       delete_dialog:
         title: Delete Medication
@@ -700,7 +705,9 @@ en:
       no_description: No description provided.
       safety_warnings: Safety Warnings
       inventory_status: Inventory Status
-      remaining: units remaining
+      remaining:
+        one: unit remaining
+        other: units remaining
       supply_level: Supply Level
       reorder_at: reorder at %{threshold}
       forecast_unavailable: Forecast unavailable

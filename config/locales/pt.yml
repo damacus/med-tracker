@@ -470,7 +470,8 @@ pt:
         import_dmd_description: Importar dados de medicamentos do NHS dm+d.
         import_dmd_title: Importar dm+d
     nhs_dmd_imports:
-      created: Importação dm+d criada
+      created: 'Versão NHS dm+d importada: %{imported} registos importados, %{skipped}
+        ignorados.'
       form:
         cancel: Cancelar
         help: Selecione o ficheiro ZIP de libertação do NHS dm+d.
@@ -512,8 +513,8 @@ pt:
         subtitle: Controlar quem pode aceder à aplicação.
         title: Acesso
       env_override:
-        body: As definições de acesso são controladas por variáveis de ambiente e
-          não podem ser alteradas aqui.
+        body: A variável de ambiente %{var} está definida como "%{value}". Remova-a
+          para gerir esta definição aqui.
         title: Definições de ambiente
       save: Guardar definições
       subtitle: Configurar definições da aplicação.
@@ -612,6 +613,8 @@ pt:
     updated: Medicamento atualizado com sucesso.
     deleted: Medicamento eliminado com sucesso.
     refilled: Inventário reabastecido com sucesso.
+    scan_restocked: Stock digitalizado adicionado com sucesso.
+    scan_restock_no_match: Nenhum medicamento correspondeu a esse código de barras.
     ordered: Reabastecimento marcado como encomendado
     received: Reabastecimento marcado como recebido
     refill_button: Reabastecer
@@ -662,6 +665,7 @@ pt:
       your_inventory: O Seu Inventário
       title: Medicamentos
       add_medication: Adicionar Medicamento
+      scan_stock: Digitalizar stock
       empty_title: Ainda não há medicamentos
       empty_description: Adicione o seu primeiro medicamento para começar a acompanhar
         o inventário e a dosagem.
@@ -677,6 +681,13 @@ pt:
         confirm: Tem certeza que deseja eliminar %{name}? Esta ação não pode ser desfeita.
         submit: Eliminar
         cancel: Cancelar
+    inventory_scan_modal:
+      title: Digitalizar stock
+      description: Digitalize uma caixa de medicamento, introduza a quantidade fornecida
+        e adicione-a ao item de inventário correspondente.
+      barcode: Código de barras
+      quantity: Quantidade
+      submit: Adicionar stock digitalizado
     show:
       profile: Perfil do Medicamento
       edit_details: Editar Detalhes
@@ -1427,6 +1438,10 @@ pt:
       dosage_and_supply: Dosagem e Fornecimento
       name: Nome
       name_placeholder: p. ex., Paracetamol
+      friendly_name: Nome de apresentação
+      friendly_name_placeholder: Deixe em branco para usar o nome completo do medicamento
+      friendly_name_hint: Usado em listas, horários e histórico. O nome completo importado
+        é mantido para referência.
       description: Descrição
       description_placeholder: Para que é utilizado este medicamento?
       standard_dosage: Dose

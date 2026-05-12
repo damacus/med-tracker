@@ -279,7 +279,8 @@ ga:
         import_dmd_description: Iompórtáil sonraí cógais NHS dm+d.
         import_dmd_title: Iompórtáil dm+d
     nhs_dmd_imports:
-      created: Iompórtáil dm+d cruthaithe
+      created: 'Scaoileadh NHS dm+d iompórtáilte: %{imported} taifead iompórtáilte,
+        %{skipped} scipeáilte.'
       form:
         cancel: Cealaigh
         help: Roghnaigh an comhad ZIP scaoilte NHS dm+d.
@@ -321,8 +322,8 @@ ga:
         subtitle: Rialú aigeann a fhéadfaidh rochtain a fháil ar an app.
         title: Rochtain
       env_override:
-        body: Tá socruithe rochtaithe á rialú ag athróga timpeallachta agus ní féidir
-          iad a athrú anseo.
+        body: Tá an athróg timpeallachta %{var} socraithe go "%{value}". Bain í chun
+          an socrú seo a bhainistiú anseo.
         title: Socruithe timpeallachta
       save: Sábháil socruithe
       subtitle: Cumraigh socruithe an app.
@@ -610,6 +611,8 @@ ga:
     updated: Nuashonraíodh an leigheas go rathúil.
     deleted: Scriosadh an leigheas go rathúil.
     refilled: Athlionadh stoc go rathúil.
+    scan_restocked: Cuireadh stoc scanáilte leis go rathúil.
+    scan_restock_no_match: Níor mheaitseáil aon leigheas leis an mbarrachód sin.
     ordered: Athlionadh marcáilte mar ordaithe.
     received: Athlionadh marcáilte mar fhaighte.
     refill_button: Athlionadh
@@ -652,6 +655,7 @@ ga:
       your_inventory: Do Stoc
       title: Leigheasanna
       add_medication: Cuir Leigheas Leis
+      scan_stock: Scan stoc
       empty_title: Níl aon leigheasanna fós
       empty_description: Cuir do chéad leigheas leis chun tosú ag rianú stoc agus
         dáileog.
@@ -668,6 +672,13 @@ ga:
           an gníomh seo a chealú.
         submit: Scrios
         cancel: Cealaigh
+    inventory_scan_modal:
+      title: Scan stoc
+      description: Scan bosca leighis, cuir isteach an chainníocht a soláthraíodh,
+        agus cuir leis an mír fardail mheaitseáilte í.
+      barcode: Barrachód
+      quantity: Cainníocht
+      submit: Cuir stoc scanáilte leis
     show:
       profile: Próifíl Leigheas
       edit_details: Cuir Sonraí in Eagar
@@ -1334,6 +1345,10 @@ ga:
       dosage_and_supply: Dáileog & Soláthar
       name: Ainm
       name_placeholder: m.sh., Paracetamol
+      friendly_name: Ainm taispeána
+      friendly_name_placeholder: Fág bán chun ainm iomlán an leighis a úsáid
+      friendly_name_hint: Úsáidtear i liostaí, sceidil agus stair. Coinnítear an t-ainm
+        iomlán iompórtáilte mar thagairt.
       description: Cur Síos
       description_placeholder: Cén úsáid a bhaintear as an gcógas seo?
       standard_dosage: Dáileog
