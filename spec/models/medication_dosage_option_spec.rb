@@ -94,4 +94,25 @@ RSpec.describe MedicationDosageOption do
         .to eq('update')
     end
   end
+
+  describe '#to_option_payload' do
+    it 'merges id and option_value onto the payload from to_value' do
+      # use the class directly to avoid factory name guessing
+      dosage_option = described_class.new(id: 123)
+      # stub option_value explicitly just in case it doesn't default to id.to_s
+      allow(dosage_option).to receive(:option_value).and_return('123')
+
+      # Stub to_value to return a predictable object
+      mock_value = instance_double('MedicationDosage', to_option_payload: { foo: 'bar' })
+      allow(dosage_option).to receive(:to_value).and_return(mock_value)
+
+      result = dosage_option.to_option_payload
+
+      expect(result).to include(
+        foo: 'bar',
+        id: 123,
+        option_value: '123'
+      )
+    end
+  end
 end
