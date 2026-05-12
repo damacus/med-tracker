@@ -149,6 +149,25 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       expect(overflow.at_css('select')).not_to be_present
       expect(overflow.text).to include('All Family')
     end
+
+    it 'renders only the current selection plus a dropdown for other people on mobile' do
+      presenter = DashboardPresenter.new(current_user: admin_user)
+
+      rendered = render_inline(described_class.new(presenter: presenter))
+      current = rendered.at_css('[data-testid="dashboard-person-mobile-current"]')
+      overflow = rendered.at_css('[data-testid="dashboard-person-mobile-overflow"]')
+      selected_label = presenter.dashboard_person_options.find { |option| option.fetch(:selected) }.fetch(:label)
+      other_labels = presenter.dashboard_person_options.reject { |option| option.fetch(:selected) }.map do |option|
+        option.fetch(:label)
+      end
+
+      expect(current.text).to include(selected_label)
+      expect(overflow['data-controller']).to include('ruby-ui--dropdown-menu')
+      expect(overflow.at_css('select')).not_to be_present
+      other_labels.each do |label|
+        expect(overflow.text).to include(label)
+      end
+    end
   end
 
   describe 'quick actions' do
