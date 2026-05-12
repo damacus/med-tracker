@@ -8,7 +8,7 @@ module ExternalLookup
       # rubocop:disable Rails/SkipsModelValidations
       # PaperTrail::Version is a gem storage table — there are no meaningful validations to run.
       # We use insert to bypass PaperTrail's before_create callbacks, which would attempt to
-      # constantize item_type and look up a matching ActiveRecord class.
+      # resolve the item type string into a matching ActiveRecord class.
       PaperTrail::Version.insert(version_attrs(source:, event:, query:, result_status:, result_count:))
       # rubocop:enable Rails/SkipsModelValidations
     rescue StandardError => e
