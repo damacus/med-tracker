@@ -69,7 +69,12 @@ RSpec.describe 'Two-Factor Authentication Management', type: :system do
 
       fill_in 'Current Password', with: 'password'
       fill_in 'Authentication Code', with: totp.at(Time.current)
-      click_button 'Enable Two-Factor Authentication'
+      expect do
+        click_button 'Enable Two-Factor Authentication'
+      end.to change {
+        PaperTrail::Version.where(item_type: 'AuthenticationToken',
+                                  event: 'auth_token/otp_key/created').count
+      }.by(1)
 
       expect(AccountOtpKey.exists?(id: account.id)).to be true
 
@@ -77,7 +82,12 @@ RSpec.describe 'Two-Factor Authentication Management', type: :system do
       click_link 'Disable'
       expect(page).to have_current_path('/otp-disable')
       fill_in 'password', with: 'password'
-      click_button 'Disable TOTP Authentication'
+      expect do
+        click_button 'Disable TOTP Authentication'
+      end.to change {
+        PaperTrail::Version.where(item_type: 'AuthenticationToken',
+                                  event: 'auth_token/otp_key/revoked').count
+      }.by(1)
 
       expect(AccountOtpKey.exists?(id: account.id)).to be false
     end
@@ -94,6 +104,9 @@ RSpec.describe 'Two-Factor Authentication Management', type: :system do
 
       expect(page).to have_css('#recovery-codes')
       expect(AccountRecoveryCode.where(id: account.id).count).to be_positive
+      expect(PaperTrail::Version.where(item_type: 'AuthenticationToken',
+                                       event: 'auth_token/recovery_codes/created',
+                                       item_id: account.id)).to exist
     end
   end
 

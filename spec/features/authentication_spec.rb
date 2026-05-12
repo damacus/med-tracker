@@ -58,7 +58,12 @@ RSpec.describe 'Authentication Features', type: :system do
 
       expect(page).to have_current_path('/reset-password-request')
       fill_in 'Email address', with: 'resetme@example.com'
-      click_on 'Request Password Reset'
+      expect do
+        click_on 'Request Password Reset'
+      end.to change {
+        PaperTrail::Version.where(item_type: 'AuthenticationToken',
+                                  event: 'auth_token/password_reset_key/created').count
+      }.by(1)
 
       expect(page).to have_text(/email|sent|reset/i)
     end
@@ -109,7 +114,12 @@ RSpec.describe 'Authentication Features', type: :system do
       fill_in 'Email address', with: 'remember@example.com'
       fill_in 'Password', with: 'SecureP@ssword123!'
       check 'remember'
-      click_on 'Sign In'
+      expect do
+        click_on 'Sign In'
+      end.to change {
+        PaperTrail::Version.where(item_type: 'AuthenticationToken',
+                                  event: 'auth_token/remember_key/created').count
+      }.by(1)
 
       expect(page).to have_current_path('/dashboard')
       # Verify remember key was created in account_remember_keys table

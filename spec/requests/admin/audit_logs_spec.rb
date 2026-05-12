@@ -68,6 +68,15 @@ RSpec.describe 'Admin::AuditLogs' do
       get admin_audit_logs_path, params: { page: 1 }
       expect(response).to have_http_status(:success)
     end
+
+    it 'surfaces filter options for all PaperTrail item types and events' do
+      insert_unlisted_audit_record
+
+      get admin_audit_logs_path
+
+      expect(response.body).to include('Unlisted Audit Record')
+      expect(response.body).to include('Custom/Audit Event')
+    end
   end
 
   describe 'GET /admin/audit_logs/:id' do
@@ -110,5 +119,20 @@ RSpec.describe 'Admin::AuditLogs' do
         expect(response).to redirect_to(login_path)
       end
     end
+  end
+
+  def insert_unlisted_audit_record
+    PaperTrail::Version.connection.execute(
+      PaperTrail::Version.sanitize_sql_array(
+        [
+          'INSERT INTO versions (item_type, item_id, event, object, created_at) VALUES (?, ?, ?, ?, ?)',
+          'UnlistedAuditRecord',
+          123,
+          'custom/audit_event',
+          { changed: true }.to_json,
+          Time.current.to_fs(:db)
+        ]
+      )
+    )
   end
 end

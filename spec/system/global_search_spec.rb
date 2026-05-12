@@ -64,6 +64,7 @@ RSpec.describe 'Global search command palette' do
     find_by_id('global_search_query').send_keys(:enter)
     expect(page).to have_current_path(medication_path(medications(:vitamin_d)))
 
+    expect(page).to have_css('body[data-global-search-connected="true"]', visible: :all)
     expect(page).to have_css('button[aria-label="Open global search"]')
     page.execute_script(
       'window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true, bubbles: true }))'

@@ -6,23 +6,16 @@ module Components
       class IndexView < Components::Base
         include Phlex::Rails::Helpers::FormWith
 
-        # Models that have audit trail enabled
-        AUDITED_MODELS = %w[User Account Person CarerRelationship Location LocationMembership
-                            MedicationTake Medication MedicationDosageOption Schedule NotificationPreference
-                            AppSettings ExternalMedicineLookup AiMedicationSuggestion].freeze
-        # Available event types for filtering
-        EVENT_TYPES = ['create', 'update', 'destroy', 'restock', 'adjust inventory',
-                       'dose_decrement', 'mark_as_ordered', 'mark_as_received',
-                       'ai_medication/suggestion'].freeze
+        attr_reader :versions, :filter_params, :item_types, :events, :current_page, :total_count, :per_page
 
-        attr_reader :versions, :filter_params, :current_page, :total_count, :per_page
-
-        def initialize(versions:, filter_params: {}, current_page: 1, total_count: 0, per_page: 50)
+        def initialize(versions:, filter_params: {}, item_types: [], events: [], **pagination)
           @versions = versions
           @filter_params = filter_params
-          @current_page = current_page
-          @total_count = total_count
-          @per_page = per_page
+          @item_types = item_types
+          @events = events
+          @current_page = pagination.fetch(:current_page, 1)
+          @total_count = pagination.fetch(:total_count, 0)
+          @per_page = pagination.fetch(:per_page, 50)
           @user_cache = {}
           super()
         end
@@ -78,7 +71,7 @@ module Components
                 option(value: '', selected: filter_params[:item_type].blank?) do
                   t('admin.audit_logs.index.filter.all_types')
                 end
-                AUDITED_MODELS.each do |type|
+                item_types.each do |type|
                   option(value: type, selected: filter_params[:item_type] == type) { type.titleize }
                 end
               end
@@ -99,7 +92,7 @@ module Components
                 option(value: '', selected: filter_params[:event].blank?) do
                   t('admin.audit_logs.index.filter.all_events')
                 end
-                EVENT_TYPES.each do |event|
+                events.each do |event|
                   option(value: event, selected: filter_params[:event] == event) { event.titleize }
                 end
               end

@@ -7,6 +7,17 @@ RSpec.describe Components::Admin::AuditLogs::IndexView, type: :component do
 
   let(:admin) { users(:admin) }
   let(:person) { people(:john) }
+  let(:auth_token_events) do
+    %w[
+      auth_token/api_session/created auth_token/api_session/rotated auth_token/api_session/revoked
+      auth_token/api_session/expired auth_token/push_subscription/created auth_token/push_subscription/revoked
+      auth_token/native_device_token/created auth_token/native_device_token/revoked auth_token/otp_key/created
+      auth_token/otp_key/revoked auth_token/recovery_codes/created auth_token/webauthn_credential/created
+      auth_token/webauthn_credential/revoked auth_token/verification_key/created auth_token/verification_key/revoked
+      auth_token/password_reset_key/created auth_token/password_reset_key/revoked auth_token/login_change_key/created
+      auth_token/login_change_key/revoked auth_token/remember_key/created auth_token/remember_key/revoked
+    ]
+  end
   let(:versions) do
     PaperTrail.request.whodunnit = admin.id
     person.update!(name: 'Updated Name')
@@ -20,10 +31,14 @@ RSpec.describe Components::Admin::AuditLogs::IndexView, type: :component do
 
   describe 'initialization' do
     it 'accepts versions and filter_params' do
-      view = described_class.new(versions: versions, filter_params: { item_type: 'Person' })
+      item_types = %w[AuthenticationToken Person UnlistedAuditRecord User]
+      view = described_class.new(versions: versions, filter_params: { item_type: 'Person' },
+                                 item_types: item_types, events: auth_token_events)
 
       expect(view.versions).to eq(versions)
       expect(view.filter_params).to eq({ item_type: 'Person' })
+      expect(view.item_types).to eq(item_types)
+      expect(view.events).to eq(auth_token_events)
     end
 
     it 'defaults filter_params to empty hash' do
@@ -32,15 +47,17 @@ RSpec.describe Components::Admin::AuditLogs::IndexView, type: :component do
       expect(view.filter_params).to eq({})
     end
 
-    it 'offers filters for all audited domain record types' do
-      expect(described_class::AUDITED_MODELS).to include(
-        'Account',
-        'AppSettings',
-        'Location',
-        'LocationMembership',
-        'MedicationDosageOption',
-        'NotificationPreference'
-      )
+    it 'uses supplied PaperTrail item types for filtering' do
+      item_types = %w[AuthenticationToken Person UnlistedAuditRecord User]
+      view = described_class.new(versions: versions, item_types: item_types)
+
+      expect(view.item_types).to include('AuthenticationToken', 'UnlistedAuditRecord')
+    end
+
+    it 'uses supplied PaperTrail events for filtering' do
+      view = described_class.new(versions: versions, events: auth_token_events)
+
+      expect(view.events).to include(*auth_token_events)
     end
   end
 

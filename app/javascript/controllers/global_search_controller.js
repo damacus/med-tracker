@@ -12,6 +12,7 @@ export default class extends Controller {
     this.isOpen = false
     this.panelAnimation = null
     this.translations = JSON.parse(this.panelTarget.dataset.translations || "{}")
+    this.element.dataset.globalSearchConnected = "true"
   }
 
   disconnect() {
@@ -20,6 +21,7 @@ export default class extends Controller {
     this.abortCurrentSearch()
     this.cancelPanelAnimation()
     clearTimeout(this.searchTimer)
+    delete this.element.dataset.globalSearchConnected
   }
 
   shortcut(event) {
