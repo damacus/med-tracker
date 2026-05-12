@@ -1,1477 +1,1607 @@
 ---
 cy:
-  hello: "Helo byd"
+  hello: Helo byd
   ruby_ui:
     common:
-      close: "Cau"
-      navigation_menu: "Dewislen llywio"
-      more: "Mwy"
+      close: Cau
+      navigation_menu: Dewislen llywio
+      more: Mwy
     calendar:
-      previous_month: "Mynd i'r mis blaenorol"
-      next_month: "Mynd i'r mis nesaf"
+      previous_month: Mynd i'r mis blaenorol
+      next_month: Mynd i'r mis nesaf
   activerecord:
     attributes:
       invitation:
         roles:
-          admin: "Gweinyddu"
-          clinician: "Clinigwr"
-          carer: "Gofalwr"
-          parent: "Rhiant"
-          self: "Hunan"
+          admin: Gweinyddu
+          clinician: Clinigwr
+          carer: Gofalwr
+          parent: Rhiant
+          self: Hunan
       user:
         roles:
-          admin: "Gweinyddu"
-          clinician: "Clinigwr"
-          carer: "Gofalwr"
-          parent: "Rhiant"
-          self: "Hunan"
+          admin: Gweinyddu
+          clinician: Clinigwr
+          carer: Gofalwr
+          parent: Rhiant
+          self: Hunan
     errors:
       models:
         medication:
           attributes:
             barcode:
-              invalid: "rhaid iddo fod yn GTIN 13 neu 14 digid"
-              taken: "eisoes wedi'i gysylltu â meddyginiaeth arall yn y rhestr"
-
+              invalid: rhaid iddo fod yn GTIN 13 neu 14 digid
+              taken: eisoes wedi'i gysylltu â meddyginiaeth arall yn y rhestr
   app:
-    name: "MedTracker"
+    name: MedTracker
   global_search:
-    dialog_label: "Chwilio byd-eang"
-    open: "Agor chwilio byd-eang"
-    open_short: "Chwilio"
-    shortcut_hint: "Ctrl K"
-    input_label: "Chwilio MedTracker"
-    placeholder: "Chwilio pobl, meddyginiaethau, lleoliadau..."
-    close: "Cau chwilio"
-    loading: "Yn chwilio..."
-    no_results: "Dim canlyniadau"
-    page_title: "Chwilio"
-    page_subtitle: "Dod o hyd i gofnodion a llwybrau byr MedTracker."
-    page_submit: "Chwilio"
+    dialog_label: Chwilio byd-eang
+    open: Agor chwilio byd-eang
+    open_short: Chwilio
+    shortcut_hint: Ctrl K
+    input_label: Chwilio MedTracker
+    placeholder: Chwilio pobl, meddyginiaethau, lleoliadau...
+    close: Cau chwilio
+    loading: Yn chwilio...
+    no_results: Dim canlyniadau
+    page_title: Chwilio
+    page_subtitle: Dod o hyd i gofnodion a llwybrau byr MedTracker.
+    page_submit: Chwilio
     results:
-      one: "1 canlyniad"
+      one: 1 canlyniad
       other: "%{count} canlyniad"
     types:
-      command: "Gorchmynion"
-      person: "Pobl"
-      medication: "Meddyginiaethau"
-      person_medication: "Meddyginiaethau person"
-      schedule: "Amserlenni"
-      location: "Lleoliadau"
+      command: Gorchmynion
+      person: Pobl
+      medication: Meddyginiaethau
+      person_medication: Meddyginiaethau person
+      schedule: Amserlenni
+      location: Lleoliadau
     result_titles:
-      schedule: "Amserlen %{medication}"
+      schedule: Amserlen %{medication}
     subtitles:
       schedule: "%{person} · %{frequency}"
       person_medication: "%{person} · meddyginiaeth heb amserlen"
-      no_frequency: "Dim amlder"
+      no_frequency: Dim amlder
     commands:
       add_medication:
-        title: "Ychwanegu meddyginiaeth"
-        subtitle: "Dechrau'r llif meddyginiaeth"
+        title: Ychwanegu meddyginiaeth
+        subtitle: Dechrau'r llif meddyginiaeth
       medication_finder:
-        title: "Darganfyddwr Meddyginiaeth"
-        subtitle: "Chwilio NHS dm+d a ffynonellau cod bar"
+        title: Darganfyddwr Meddyginiaeth
+        subtitle: Chwilio NHS dm+d a ffynonellau cod bar
       inventory:
-        title: "Rhestr"
-        subtitle: "Agor rhestr meddyginiaethau"
+        title: Rhestr
+        subtitle: Agor rhestr meddyginiaethau
       people:
-        title: "Pobl"
-        subtitle: "Agor pobl"
+        title: Pobl
+        subtitle: Agor pobl
       locations:
-        title: "Lleoliadau"
-        subtitle: "Agor lleoliadau"
+        title: Lleoliadau
+        subtitle: Agor lleoliadau
       reports:
-        title: "Adroddiadau"
-        subtitle: "Agor adroddiadau"
+        title: Adroddiadau
+        subtitle: Agor adroddiadau
       add_person:
-        title: "Ychwanegu person"
-        subtitle: "Creu person dibynnol"
+        title: Ychwanegu person
+        subtitle: Creu person dibynnol
       schedule_workflow:
-        title: "Llif amserlen"
-        subtitle: "Creu amserlen meddyginiaeth"
+        title: Llif amserlen
+        subtitle: Creu amserlen meddyginiaeth
   rodauth:
     verify_account:
-      subject: "Dilyswch eich cyfrif MedTracker"
-      title: "Dilyswch eich cyfeiriad e-bost"
-      instruction: "Diolch am greu eich cyfrif MedTracker. Cliciwch y botwm isod i ddilysu eich cyfeiriad e-bost a chwblhau eich cofrestriad."
-      button: "Dilysu fy nghyfrif"
-      notice: "Bydd y ddolen hon yn dod i ben. Os na wnaethoch greu cyfrif, gallwch anwybyddu'r e-bost hwn yn ddiogel."
+      subject: Dilyswch eich cyfrif MedTracker
+      title: Dilyswch eich cyfeiriad e-bost
+      instruction: Diolch am greu eich cyfrif MedTracker. Cliciwch y botwm isod i
+        ddilysu eich cyfeiriad e-bost a chwblhau eich cofrestriad.
+      button: Dilysu fy nghyfrif
+      notice: Bydd y ddolen hon yn dod i ben. Os na wnaethoch greu cyfrif, gallwch
+        anwybyddu'r e-bost hwn yn ddiogel.
     reset_password:
-      subject: "Ailosod eich cyfrinair MedTracker"
-      title: "Ailosod eich cyfrinair"
-      instruction: "Cawsom gais i ailosod y cyfrinair ar gyfer eich cyfrif MedTracker. Cliciwch y botwm isod i ddewis cyfrinair newydd."
-      button: "Ailosod fy nghyfrinair"
-      notice: "Bydd y ddolen hon yn dod i ben. Os na wnaethoch ofyn am ailosod cyfrinair, gallwch anwybyddu'r e-bost hwn yn ddiogel — ni fydd eich cyfrinair yn cael ei newid."
+      subject: Ailosod eich cyfrinair MedTracker
+      title: Ailosod eich cyfrinair
+      instruction: Cawsom gais i ailosod y cyfrinair ar gyfer eich cyfrif MedTracker.
+        Cliciwch y botwm isod i ddewis cyfrinair newydd.
+      button: Ailosod fy nghyfrinair
+      notice: Bydd y ddolen hon yn dod i ben. Os na wnaethoch ofyn am ailosod cyfrinair,
+        gallwch anwybyddu'r e-bost hwn yn ddiogel — ni fydd eich cyfrinair yn cael
+        ei newid.
     unlock_account:
-      subject: "Datgloi eich cyfrif MedTracker"
-      title: "Mae eich cyfrif wedi'i gloi"
-      instruction: "Mae eich cyfrif MedTracker wedi'i gloi dros dro oherwydd sawl ymgais aflwyddiannus i fewngofnodi. Cliciwch y botwm isod i ddatgloi eich cyfrif ac adennill mynediad."
-      button: "Datgloi fy nghyfrif"
-      notice: "Os na wnaethoch geisio mewngofnodi, cysylltwch â ni ar unwaith — efallai bod rhywun yn ceisio cyrchu eich cyfrif."
+      subject: Datgloi eich cyfrif MedTracker
+      title: Mae eich cyfrif wedi'i gloi
+      instruction: Mae eich cyfrif MedTracker wedi'i gloi dros dro oherwydd sawl ymgais
+        aflwyddiannus i fewngofnodi. Cliciwch y botwm isod i ddatgloi eich cyfrif
+        ac adennill mynediad.
+      button: Datgloi fy nghyfrif
+      notice: Os na wnaethoch geisio mewngofnodi, cysylltwch â ni ar unwaith — efallai
+        bod rhywun yn ceisio cyrchu eich cyfrif.
     verify_login_change:
-      subject: "Cadarnhewch eich mewngofnod MedTracker newydd"
-      title: "Cadarnhewch eich cyfeiriad e-bost newydd"
-      instruction: "Yn ddiweddar gwnaethoch gais i newid y cyfeiriad e-bost ar gyfer eich cyfrif MedTracker. Cliciwch y botwm isod i gadarnhau eich cyfeiriad e-bost newydd."
-      button: "Cadarnhau cyfeiriad e-bost newydd"
-      notice: "Bydd y ddolen hon yn dod i ben. Os na wnaethoch ofyn am y newid hwn, cysylltwch â ni ar unwaith gan y gallai rhywun feddu ar fynediad i'ch cyfrif."
+      subject: Cadarnhewch eich mewngofnod MedTracker newydd
+      title: Cadarnhewch eich cyfeiriad e-bost newydd
+      instruction: Yn ddiweddar gwnaethoch gais i newid y cyfeiriad e-bost ar gyfer
+        eich cyfrif MedTracker. Cliciwch y botwm isod i gadarnhau eich cyfeiriad e-bost
+        newydd.
+      button: Cadarnhau cyfeiriad e-bost newydd
+      notice: Bydd y ddolen hon yn dod i ben. Os na wnaethoch ofyn am y newid hwn,
+        cysylltwch â ni ar unwaith gan y gallai rhywun feddu ar fynediad i'ch cyfrif.
     views:
       create_account:
-        page_subtitle: "Crëwch eich cyfrif i ddechrau olrhain meddyginiaethau'n ddiogel."
-        card_title: "Creu Cyfrif"
-        card_description: "Llenwch eich manylion i greu cyfrif newydd."
-        name_label: "Enw"
-        name_placeholder: "Rhowch eich enw llawn"
-        date_of_birth_label: "Dyddiad geni"
-        email_label: "E-bost"
-        email_placeholder: "Rhowch eich cyfeiriad e-bost"
-        password_label: "Cyfrinair"
-        password_placeholder: "Crëwch gyfrinair (o leiaf 12 nod)"
-        confirm_password_label: "Cadarnhau Cyfrinair"
-        confirm_password_placeholder: "Cadarnhewch eich cyfrinair"
-        submit: "Creu Cyfrif"
-        existing_account: "Oes gennych gyfrif eisoes?"
-        sign_in: "Mewngofnodi i'ch cyfrif"
+        page_subtitle: Crëwch eich cyfrif i ddechrau olrhain meddyginiaethau'n ddiogel.
+        card_title: Creu Cyfrif
+        card_description: Llenwch eich manylion i greu cyfrif newydd.
+        name_label: Enw
+        name_placeholder: Rhowch eich enw llawn
+        date_of_birth_label: Dyddiad geni
+        email_label: E-bost
+        email_placeholder: Rhowch eich cyfeiriad e-bost
+        password_label: Cyfrinair
+        password_placeholder: Crëwch gyfrinair (o leiaf 12 nod)
+        confirm_password_label: Cadarnhau Cyfrinair
+        confirm_password_placeholder: Cadarnhewch eich cyfrinair
+        submit: Creu Cyfrif
+        existing_account: Oes gennych gyfrif eisoes?
+        sign_in: Mewngofnodi i'ch cyfrif
       reset_password_request:
-        page_subtitle: "Ailosodwch eich cyfrinair i adennill mynediad i'ch cyfrif."
-        card_title: "Ailosod Cyfrinair"
-        card_description: "Rhowch eich cyfeiriad e-bost a byddwn yn anfon dolen i ailosod eich cyfrinair."
-        email_label: "Cyfeiriad e-bost"
-        email_placeholder: "Rhowch eich cyfeiriad e-bost"
-        submit: "Gofyn am Ailosod Cyfrinair"
-        other_options: "Opsiynau Eraill"
-        back_to_login: "Yn Ôl i Fewngofnodi"
-        create_account: "Creu Cyfrif Newydd"
+        page_subtitle: Ailosodwch eich cyfrinair i adennill mynediad i'ch cyfrif.
+        card_title: Ailosod Cyfrinair
+        card_description: Rhowch eich cyfeiriad e-bost a byddwn yn anfon dolen i ailosod
+          eich cyfrinair.
+        email_label: Cyfeiriad e-bost
+        email_placeholder: Rhowch eich cyfeiriad e-bost
+        submit: Gofyn am Ailosod Cyfrinair
+        other_options: Opsiynau Eraill
+        back_to_login: Yn Ôl i Fewngofnodi
+        create_account: Creu Cyfrif Newydd
       reset_password:
-        page_subtitle: "Crëwch gyfrinair newydd ar gyfer eich cyfrif."
-        card_title: "Gosod Cyfrinair Newydd"
-        card_description: "Rhowch eich cyfrinair newydd isod."
-        new_password_label: "Cyfrinair Newydd"
-        new_password_placeholder: "Rhowch eich cyfrinair newydd (o leiaf 12 nod)"
-        confirm_password_label: "Cadarnhau Cyfrinair Newydd"
-        confirm_password_placeholder: "Cadarnhewch eich cyfrinair newydd"
-        submit: "Ailosod Cyfrinair"
+        page_subtitle: Crëwch gyfrinair newydd ar gyfer eich cyfrif.
+        card_title: Gosod Cyfrinair Newydd
+        card_description: Rhowch eich cyfrinair newydd isod.
+        new_password_label: Cyfrinair Newydd
+        new_password_placeholder: Rhowch eich cyfrinair newydd (o leiaf 12 nod)
+        confirm_password_label: Cadarnhau Cyfrinair Newydd
+        confirm_password_placeholder: Cadarnhewch eich cyfrinair newydd
+        submit: Ailosod Cyfrinair
       verify_account:
-        page_subtitle: "Dilyswch eich cyfrif i gwblhau cofrestriad."
-        card_title: "Dilyswch Eich Cyfrif"
-        card_description: "Cliciwch y botwm isod i ddilysu eich e-bost a gweithredu eich cyfrif."
-        submit: "Dilysu Cyfrif"
+        page_subtitle: Dilyswch eich cyfrif i gwblhau cofrestriad.
+        card_title: Dilyswch Eich Cyfrif
+        card_description: Cliciwch y botwm isod i ddilysu eich e-bost a gweithredu
+          eich cyfrif.
+        submit: Dilysu Cyfrif
       verify_account_resend:
-        page_subtitle: "Anfon e-bost dilysu eich cyfrif eto."
-        card_title: "Anfon E-bost Dilysu Eto"
-        card_description: "Rhowch eich cyfeiriad e-bost a byddwn yn anfon dolen ddilysu newydd."
-        email_label: "Cyfeiriad e-bost"
-        email_placeholder: "Rhowch eich cyfeiriad e-bost"
-        submit: "Ail-anfon Gwybodaeth Dilysu Cyfrif"
-        other_options: "Opsiynau Eraill"
-        back_to_login: "Yn Ôl i Fewngofnodi"
-        create_account: "Creu Cyfrif Newydd"
+        page_subtitle: Anfon e-bost dilysu eich cyfrif eto.
+        card_title: Anfon E-bost Dilysu Eto
+        card_description: Rhowch eich cyfeiriad e-bost a byddwn yn anfon dolen ddilysu
+          newydd.
+        email_label: Cyfeiriad e-bost
+        email_placeholder: Rhowch eich cyfeiriad e-bost
+        submit: Ail-anfon Gwybodaeth Dilysu Cyfrif
+        other_options: Opsiynau Eraill
+        back_to_login: Yn Ôl i Fewngofnodi
+        create_account: Creu Cyfrif Newydd
       otp_auth:
-        page_title: "Rhowch eich cod dilysu"
-        page_subtitle: "Defnyddiwch y cod o'ch ap dilysu i barhau."
-        card_title: "Cod dilysu"
-        card_description: "Rhowch y cod 6 digid i orffen mewngofnodi."
-        code_placeholder: "Rhowch god 6 digid"
+        page_title: Rhowch eich cod dilysu
+        page_subtitle: Defnyddiwch y cod o'ch ap dilysu i barhau.
+        card_title: Cod dilysu
+        card_description: Rhowch y cod 6 digid i orffen mewngofnodi.
+        code_placeholder: Rhowch god 6 digid
       otp_setup:
-        page_title: "Sefydlu Dilysu Dau Ffactor"
-        page_subtitle: "Sganiwch y cod QR gyda'ch ap dilysu i alluogi 2FA."
-        card_title: "Sefydlu Dilysydd"
-        card_description: "Defnyddiwch ap dilysu fel Google Authenticator, Authy, neu 1Password i sganio'r cod QR isod."
-        qr_hint: "Sganiwch y cod QR hwn gyda'ch ap dilysu"
-        manual_entry_summary: "Methu sganio? Rhowch y cod â llaw"
-        secret_key: "Allwedd Gyfrinachol"
-        provisioning_url: "URL Darpariaeth"
-        copy_to_clipboard: "Copïo i'r clipfwrdd"
-        current_password_label: "Cyfrinair Presennol"
-        current_password_placeholder: "Rhowch eich cyfrinair i gadarnhau"
-        current_password_hint: "Angenrheidiol i wirio eich hunaniaeth"
-        auth_code_label: "Cod Dilysu"
-        auth_code_placeholder: "Rhowch god 6 digid o'r ap"
-        auth_code_hint: "Rhowch y cod a ddangosir yn eich ap dilysu"
-        submit: "Galluogi Dilysu Dau Ffactor"
+        page_title: Sefydlu Dilysu Dau Ffactor
+        page_subtitle: Sganiwch y cod QR gyda'ch ap dilysu i alluogi 2FA.
+        card_title: Sefydlu Dilysydd
+        card_description: Defnyddiwch ap dilysu fel Google Authenticator, Authy, neu
+          1Password i sganio'r cod QR isod.
+        qr_hint: Sganiwch y cod QR hwn gyda'ch ap dilysu
+        manual_entry_summary: Methu sganio? Rhowch y cod â llaw
+        secret_key: Allwedd Gyfrinachol
+        provisioning_url: URL Darpariaeth
+        copy_to_clipboard: Copïo i'r clipfwrdd
+        current_password_label: Cyfrinair Presennol
+        current_password_placeholder: Rhowch eich cyfrinair i gadarnhau
+        current_password_hint: Angenrheidiol i wirio eich hunaniaeth
+        auth_code_label: Cod Dilysu
+        auth_code_placeholder: Rhowch god 6 digid o'r ap
+        auth_code_hint: Rhowch y cod a ddangosir yn eich ap dilysu
+        submit: Galluogi Dilysu Dau Ffactor
       otp_disable:
-        page_title: "Analluogi ap dilysydd"
-        page_subtitle: "Cadarnhewch eich cyfrinair i ddiffodd codau amser-seiliedig."
-        card_title: "Diffodd codau dau ffactor"
-        card_description: "Gallwch ail-alluogi eich ap dilysydd unrhyw bryd."
-        password_label: "Cyfrinair"
-        password_placeholder: "Rhowch eich cyfrinair"
+        page_title: Analluogi ap dilysydd
+        page_subtitle: Cadarnhewch eich cyfrinair i ddiffodd codau amser-seiliedig.
+        card_title: Diffodd codau dau ffactor
+        card_description: Gallwch ail-alluogi eich ap dilysydd unrhyw bryd.
+        password_label: Cyfrinair
+        password_placeholder: Rhowch eich cyfrinair
       two_factor_auth:
-        page_title: "Mae angen dilysu ychwanegol"
-        page_subtitle: "Dewiswch ddull sydd ar gael i gadarnhau eich hunaniaeth."
-        card_title: "Dilysu gyda"
-        card_description: "Dewiswch un o'r dulliau dilysu sydd ar gael."
+        page_title: Mae angen dilysu ychwanegol
+        page_subtitle: Dewiswch ddull sydd ar gael i gadarnhau eich hunaniaeth.
+        card_title: Dilysu gyda
+        card_description: Dewiswch un o'r dulliau dilysu sydd ar gael.
       two_factor_manage:
-        page_title_configured: "Rheoli Dilysu Dau Ffactor"
-        page_title_unconfigured: "Sefydlu Dilysu Dau Ffactor"
-        page_subtitle_configured: "Rheolwch eich dulliau dilysu neu ychwanegwch ddiogelwch ychwanegol."
-        page_subtitle_unconfigured: "Dewiswch ddull i ddiogelu eich cyfrif gyda dilysu dau ffactor."
-        card_title: "Dulliau Dilysu"
-        card_description: "Dewiswch sut rydych am wirio eich hunaniaeth wrth fewngofnodi."
-        status_enabled: "Wedi'i alluogi"
+        page_title_configured: Rheoli Dilysu Dau Ffactor
+        page_title_unconfigured: Sefydlu Dilysu Dau Ffactor
+        page_subtitle_configured: Rheolwch eich dulliau dilysu neu ychwanegwch ddiogelwch
+          ychwanegol.
+        page_subtitle_unconfigured: Dewiswch ddull i ddiogelu eich cyfrif gyda dilysu
+          dau ffactor.
+        card_title: Dulliau Dilysu
+        card_description: Dewiswch sut rydych am wirio eich hunaniaeth wrth fewngofnodi.
+        status_enabled: Wedi'i alluogi
         methods:
-          passkeys_title: "Passkeys"
-          passkeys_description: "Defnyddiwch fiometreg neu allwedd ddiogelwch ar gyfer mewngofnodi heb gyfrinair."
-          passkeys_setup: "Sefydlu passkey"
-          passkeys_manage: "Rheoli passkeys"
-          totp_title: "Ap Dilysydd (TOTP)"
-          totp_description: "Defnyddiwch ap fel Google Authenticator neu 1Password."
-          totp_setup: "Sefydlu dilysydd"
-          totp_manage: "Analluogi TOTP"
-          recovery_codes_title: "Codau Adfer"
-          recovery_codes_description: "Codau wrth gefn pan fyddwch yn colli mynediad i'ch dyfais."
-          recovery_codes_setup: "Gweld codau adfer"
+          passkeys_title: Passkeys
+          passkeys_description: Defnyddiwch fiometreg neu allwedd ddiogelwch ar gyfer
+            mewngofnodi heb gyfrinair.
+          passkeys_setup: Sefydlu passkey
+          passkeys_manage: Rheoli passkeys
+          totp_title: Ap Dilysydd (TOTP)
+          totp_description: Defnyddiwch ap fel Google Authenticator neu 1Password.
+          totp_setup: Sefydlu dilysydd
+          totp_manage: Analluogi TOTP
+          recovery_codes_title: Codau Adfer
+          recovery_codes_description: Codau wrth gefn pan fyddwch yn colli mynediad
+            i'ch dyfais.
+          recovery_codes_setup: Gweld codau adfer
       webauthn_auth:
-        page_title: "Defnyddiwch eich passkey"
-        page_subtitle: "Cadarnhewch gyda biometrig eich dyfais neu allwedd ddiogelwch."
-        card_title: "Dilysu passkey"
-        card_description: "Tapio parhau i ddefnyddio eich passkey ar gyfer dilysu."
+        page_title: Defnyddiwch eich passkey
+        page_subtitle: Cadarnhewch gyda biometrig eich dyfais neu allwedd ddiogelwch.
+        card_title: Dilysu passkey
+        card_description: Tapio parhau i ddefnyddio eich passkey ar gyfer dilysu.
       webauthn_setup:
-        page_title: "Sefydlu Dilysu Passkey"
-        page_subtitle: "Ychwanegwch passkey ar gyfer mewngofnodi cyflym a diogel heb gyfrinair."
-        card_title: "Cofrestru Passkey"
-        card_description: "Mae passkeys yn defnyddio biometrig y ddyfais neu allwedd ddiogelwch ar gyfer dilysu diogel heb gyfrinair."
-        info_title: "Beth yw passkeys?"
-        info_description: "Mae passkeys yn ddisodliad diogel ar gyfer cyfrineiriau. Maent yn defnyddio diogelwch adeiledig eich dyfais (fel Face ID, Touch ID, neu Windows Hello) i wirio eich hunaniaeth."
-        current_password_label: "Cyfrinair Presennol"
-        current_password_placeholder: "Rhowch eich cyfrinair i gadarnhau"
-        current_password_hint: "Angenrheidiol i wirio eich hunaniaeth cyn ychwanegu passkey"
-        submit: "Cofrestru Passkey"
+        page_title: Sefydlu Dilysu Passkey
+        page_subtitle: Ychwanegwch passkey ar gyfer mewngofnodi cyflym a diogel heb
+          gyfrinair.
+        card_title: Cofrestru Passkey
+        card_description: Mae passkeys yn defnyddio biometrig y ddyfais neu allwedd
+          ddiogelwch ar gyfer dilysu diogel heb gyfrinair.
+        info_title: Beth yw passkeys?
+        info_description: Mae passkeys yn ddisodliad diogel ar gyfer cyfrineiriau.
+          Maent yn defnyddio diogelwch adeiledig eich dyfais (fel Face ID, Touch ID,
+          neu Windows Hello) i wirio eich hunaniaeth.
+        current_password_label: Cyfrinair Presennol
+        current_password_placeholder: Rhowch eich cyfrinair i gadarnhau
+        current_password_hint: Angenrheidiol i wirio eich hunaniaeth cyn ychwanegu
+          passkey
+        submit: Cofrestru Passkey
       webauthn_remove:
-        page_title: "Dileu Passkey"
-        page_subtitle: "Cadarnhewch eich cyfrinair i ddileu'r passkey hwn."
-        card_title: "Dileu passkey"
-        card_description: "Ni ellir dadwneud y weithred hon. Ni fyddwch yn gallu mewngofnodi gyda'r passkey hwn mwyach."
-        password_label: "Cyfrinair"
-        password_placeholder: "Rhowch eich cyfrinair"
+        page_title: Dileu Passkey
+        page_subtitle: Cadarnhewch eich cyfrinair i ddileu'r passkey hwn.
+        card_title: Dileu passkey
+        card_description: Ni ellir dadwneud y weithred hon. Ni fyddwch yn gallu mewngofnodi
+          gyda'r passkey hwn mwyach.
+        password_label: Cyfrinair
+        password_placeholder: Rhowch eich cyfrinair
       change_login:
-        new_login_label: "Mewngofnod Newydd"
-        password_label: "Cyfrinair"
+        new_login_label: Mewngofnod Newydd
+        password_label: Cyfrinair
       change_password:
-        password_label: "Cyfrinair"
-        new_password_label: "Cyfrinair Newydd"
-        confirm_password_label: "Cadarnhau Cyfrinair Newydd"
-
+        password_label: Cyfrinair
+        new_password_label: Cyfrinair Newydd
+        confirm_password_label: Cadarnhau Cyfrinair Newydd
   admin:
     invitations:
-      created: "Anfonwyd y gwahoddiad"
-      resent: "Ailanfonwyd y gwahoddiad"
-      cannot_resend_accepted: "Ni ellir ailanfon gwahoddiadau sydd wedi'u derbyn"
-      resend_failed: "Ni ellid ailanfon y gwahoddiad hwn. Mae'n bosibl bod gwahoddiad sy'n aros am yr e-bost hwn eisoes yn bodoli."
+      created: Anfonwyd y gwahoddiad
+      resent: Ailanfonwyd y gwahoddiad
+      cannot_resend_accepted: Ni ellir ailanfon gwahoddiadau sydd wedi'u derbyn
+      resend_failed: Ni ellid ailanfon y gwahoddiad hwn. Mae'n bosibl bod gwahoddiad
+        sy'n aros am yr e-bost hwn eisoes yn bodoli.
       index:
-        title: "Gwahoddiadau"
-        subtitle: "Gwahoddwch ddefnyddwyr newydd i ymuno â MedTracker."
-        recent: "Gwahoddiadau diweddar"
-        resend: "Ail-anfon"
+        title: Gwahoddiadau
+        subtitle: Gwahoddwch ddefnyddwyr newydd i ymuno â MedTracker.
+        recent: Gwahoddiadau diweddar
+        resend: Ail-anfon
         form:
-          email: "E-bost"
-          role: "Rôl"
-          submit: "Anfon gwahoddiad"
+          email: E-bost
+          role: Rôl
+          submit: Anfon gwahoddiad
         status:
-          accepted: "Wedi'i dderbyn"
-          expired: "Wedi dod i ben"
-          pending: "Yn aros"
+          accepted: Wedi'i dderbyn
+          expired: Wedi dod i ben
+          pending: Yn aros
         metadata:
-          accepted: "Wedi'i dderbyn %{time} yn ôl"
-          expired: "Daeth i ben %{time} yn ôl"
-          expires: "Yn dod i ben mewn %{time}"
+          accepted: Wedi'i dderbyn %{time} yn ôl
+          expired: Daeth i ben %{time} yn ôl
+          expires: Yn dod i ben mewn %{time}
     carer_relationships:
-      created: "Crëwyd perthynas gofalwr yn llwyddiannus."
-      deactivated: "Mae perthynas gofalwr wedi'i ddadactifadu."
-      activated: "Mae perthynas gofalwr wedi'i hactifadu."
+      created: Crëwyd perthynas gofalwr yn llwyddiannus.
+      deactivated: Mae perthynas gofalwr wedi'i ddadactifadu.
+      activated: Mae perthynas gofalwr wedi'i hactifadu.
       index:
-        title: "Perthnasoedd Gofalwr"
-        subtitle: "Rheoli aseiniadau gofalwr-claf."
-        new_relationship: "Perthynas Newydd"
+        title: Perthnasoedd Gofalwr
+        subtitle: Rheoli aseiniadau gofalwr-claf.
+        new_relationship: Perthynas Newydd
         table:
-          carer: "Gofalwr"
-          patient: "Claf"
-          type: "Math"
-          status: "Statws"
-          actions: "Gweithredoedd"
-        empty: "Dim perthnasoedd gofalwr wedi'u canfod."
-        active: "Actif"
-        inactive: "Anactif"
-        activate: "Actifadu"
-        deactivate: "Dadactifadu"
+          carer: Gofalwr
+          patient: Claf
+          type: Math
+          status: Statws
+          actions: Gweithredoedd
+        empty: Dim perthnasoedd gofalwr wedi'u canfod.
+        active: Actif
+        inactive: Anactif
+        activate: Actifadu
+        deactivate: Dadactifadu
         deactivate_dialog:
-          title: "Dadactifadu Perthynas"
-          confirm: "Ydych chi'n sicr eich bod am ddadactifadu'r berthynas rhwng %{carer} a %{patient}?"
-          cancel: "Canslo"
-          submit: "Dadactifadu"
+          title: Dadactifadu Perthynas
+          confirm: Ydych chi'n sicr eich bod am ddadactifadu'r berthynas rhwng %{carer}
+            a %{patient}?
+          cancel: Canslo
+          submit: Dadactifadu
         pagination:
-          showing: "Yn dangos"
-          to: "i"
-          of: "o"
-          results: "canlyniad"
+          showing: Yn dangos
+          to: i
+          of: o
+          results: canlyniad
     users:
-      unauthorized: "Nid oes gennych awdurdod i gyflawni'r weithred hon."
-      missing_account: "Nid oes gan y defnyddiwr gyfrif i'w ddilysu."
+      unauthorized: Nid oes gennych awdurdod i gyflawni'r weithred hon.
+      missing_account: Nid oes gan y defnyddiwr gyfrif i'w ddilysu.
       form:
-        subtitle: "Llenwch y manylion isod i greu cyfrif defnyddiwr newydd."
-        create_title: "Creu defnyddiwr newydd"
-        edit_title: "Golygu defnyddiwr"
-        name: "Enw"
-        date_of_birth: "Dyddiad geni"
-        locations: "Lleoliadau"
-        email_address: "Cyfeiriad e-bost"
-        password: "Cyfrinair"
-        password_confirmation: "Cadarnhad cyfrinair"
-        role: "Rôl"
-        select_role: "Dewis rôl"
-        cancel: "Canslo"
-        create_submit: "Creu defnyddiwr"
-        update_submit: "Diweddaru defnyddiwr"
+        subtitle: Llenwch y manylion isod i greu cyfrif defnyddiwr newydd.
+        create_title: Creu defnyddiwr newydd
+        edit_title: Golygu defnyddiwr
+        name: Enw
+        date_of_birth: Dyddiad geni
+        locations: Lleoliadau
+        email_address: Cyfeiriad e-bost
+        password: Cyfrinair
+        password_confirmation: Cadarnhad cyfrinair
+        role: Rôl
+        select_role: Dewis rôl
+        cancel: Canslo
+        create_submit: Creu defnyddiwr
+        update_submit: Diweddaru defnyddiwr
       search:
-        search: "Chwilio"
-        search_placeholder: "Chwilio yn ôl enw neu e-bost..."
-        role: "Rôl"
-        all_roles: "Pob rôl"
-        status: "Statws"
-        all: "Pawb"
-        clear: "Clirio"
+        search: Chwilio
+        search_placeholder: Chwilio yn ôl enw neu e-bost...
+        role: Rôl
+        all_roles: Pob rôl
+        status: Statws
+        all: Pawb
+        clear: Clirio
       table:
-        activation: "Actifadu"
-        verification: "Dilysu"
-        actions: "Gweithredoedd"
+        activation: Actifadu
+        verification: Dilysu
+        actions: Gweithredoedd
       pagination:
-        label: "Tudalennu"
-        showing: "Yn dangos"
-        to: "i"
-        of: "o"
-        results: "canlyniadau"
-        previous: "Blaenorol"
-        next: "Nesaf"
+        label: Tudalennu
+        showing: Yn dangos
+        to: i
+        of: o
+        results: canlyniadau
+        previous: Blaenorol
+        next: Nesaf
       user_row:
-        edit: "Golygu"
-        active: "Actif"
-        inactive: "Anactif"
-        soft_deleted: "Wedi'i ddileu'n feddal"
-        deactivate: "Dadactifadu"
-        activate: "Actifadu"
-        verify: "Dilysu"
-        verified: "Wedi'i ddilysu"
+        edit: Golygu
+        active: Actif
+        inactive: Anactif
+        soft_deleted: Wedi'i ddileu'n feddal
+        deactivate: Dadactifadu
+        activate: Actifadu
+        verify: Dilysu
+        verified: Wedi'i ddilysu
         deactivate_dialog:
-          title: "Dadactifadu Cyfrif Defnyddiwr"
-          confirm: "Ydych chi'n sicr eich bod am ddadactifadu cyfrif %{name}? Ni fyddant yn gallu mewngofnodi mwyach."
-          cancel: "Canslo"
-          submit: "Dadactifadu"
+          title: Dadactifadu Cyfrif Defnyddiwr
+          confirm: Ydych chi'n sicr eich bod am ddadactifadu cyfrif %{name}? Ni fyddant
+            yn gallu mewngofnodi mwyach.
+          cancel: Canslo
+          submit: Dadactifadu
     audit_logs:
       index:
-        title: "Llwybr Archwilio"
-        subtitle: "Hanes cyflawn o bob newid a wnaed yn MedTracker."
+        title: Llwybr Archwilio
+        subtitle: Hanes cyflawn o bob newid a wnaed yn MedTracker.
         filter:
-          record_type: "Math o Gofnod"
-          all_types: "Pob Math"
-          event_type: "Math o Ddigwyddiad"
-          all_events: "Pob Digwyddiad"
-          filter_button: "Hidlo"
-          clear_filters: "Clirio hidlwyr"
+          record_type: Math o Gofnod
+          all_types: Pob Math
+          event_type: Math o Ddigwyddiad
+          all_events: Pob Digwyddiad
+          filter_button: Hidlo
+          clear_filters: Clirio hidlwyr
         table:
-          timestamp: "Amser"
-          activity: "Gweithgarwch"
-          record_type: "Math o Gofnod"
-          event: "Digwyddiad"
-          user: "Defnyddiwr"
-          ip_address: "Cyfeiriad IP"
-          actions: "Gweithredoedd"
-          view_details: "Gweld Manylion"
+          timestamp: Amser
+          activity: Gweithgarwch
+          record_type: Math o Gofnod
+          event: Digwyddiad
+          user: Defnyddiwr
+          ip_address: Cyfeiriad IP
+          actions: Gweithredoedd
+          view_details: Gweld Manylion
         empty:
-          no_logs: "Dim logiau archwilio wedi'u canfod"
-          adjust_filters: "Rhowch gynnig ar addasu eich hidlwyr"
+          no_logs: Dim logiau archwilio wedi'u canfod
+          adjust_filters: Rhowch gynnig ar addasu eich hidlwyr
         pagination:
-          showing: "Yn dangos"
-          to: "i"
-          of: "o"
-          results: "canlyniad"
-          previous: "Blaenorol"
-          next: "Nesaf"
-        system: "System"
+          showing: Yn dangos
+          to: i
+          of: o
+          results: canlyniad
+          previous: Blaenorol
+          next: Nesaf
+        system: System
       show:
-        title: "Manylion Log Archwilio"
+        title: Manylion Log Archwilio
         back: "← Yn ôl i Logiau Archwilio"
-        event_information: "Gwybodaeth Digwyddiad"
-        timestamp: "Amser"
-        record_type: "Math o Gofnod"
-        record_id: "ID Cofnod"
-        event_type: "Math o Ddigwyddiad"
-        user: "Defnyddiwr"
-        ip_address: "Cyfeiriad IP"
-        na: "Amh"
-        system: "System"
-        previous_state: "Cyflwr Blaenorol"
-        previous_state_description: "Cyflwr y cofnod cyn y newid hwn"
-        new_state: "Cyflwr Newydd"
-        new_state_create: "Cyflwr y cofnod pan gafodd ei greu"
-        new_state_update: "Cyflwr y cofnod ar ôl y newid hwn"
-        new_state_other: "Cyflwr cyfredol y cofnod"
-        changes: "Newidiadau maes"
-        field: "Maes"
-        previous: "Gwerth blaenorol"
-        new: "Gwerth newydd"
-        record: "Cofnod"
-        view_title: "Manylyn archwilio"
-        view_subtitle: "Manylion a gofnodwyd ar gyfer y digwyddiad hwn"
-        snapshot: "Ciplun gwrthrych"
-        snapshot_description: "Cyflwr llawn y cofnod ar y foment hon"
-        no_data: "Nid oes data wedi'i gofnodi ar gyfer y fersiwn hon"
+        event_information: Gwybodaeth Digwyddiad
+        timestamp: Amser
+        record_type: Math o Gofnod
+        record_id: ID Cofnod
+        event_type: Math o Ddigwyddiad
+        user: Defnyddiwr
+        ip_address: Cyfeiriad IP
+        na: Amh
+        system: System
+        previous_state: Cyflwr Blaenorol
+        previous_state_description: Cyflwr y cofnod cyn y newid hwn
+        new_state: Cyflwr Newydd
+        new_state_create: Cyflwr y cofnod pan gafodd ei greu
+        new_state_update: Cyflwr y cofnod ar ôl y newid hwn
+        new_state_other: Cyflwr cyfredol y cofnod
+        changes: Newidiadau maes
+        field: Maes
+        previous: Gwerth blaenorol
+        new: Gwerth newydd
+        record: Cofnod
+        view_title: Manylyn archwilio
+        view_subtitle: Manylion a gofnodwyd ar gyfer y digwyddiad hwn
+        snapshot: Ciplun gwrthrych
+        snapshot_description: Cyflwr llawn y cofnod ar y foment hon
+        no_data: Nid oes data wedi'i gofnodi ar gyfer y fersiwn hon
     dashboard:
-      title: "Dangosfwrdd gweinyddol"
+      title: Dangosfwrdd gweinyddol
       metrics:
-        total_users: "Cyfanswm defnyddwyr"
-        active_users: "Defnyddwyr gweithredol"
-        recent_signups: "Cofrestriadau diweddar"
-        total_people: "Cyfanswm pobl"
-        active_schedules: "Amserlenni gweithredol"
-        no_carers: "Dim gofalwyr"
+        total_users: Cyfanswm defnyddwyr
+        active_users: Defnyddwyr gweithredol
+        recent_signups: Cofrestriadau diweddar
+        total_people: Cyfanswm pobl
+        active_schedules: Amserlenni gweithredol
+        no_carers: Dim gofalwyr
       quick_actions:
-        title: "Camau cyflym"
-        manage_users_title: "Rheoli defnyddwyr"
-        manage_users_description: "Gweld a rheoli cyfrifon defnyddwyr"
-        invitations_title: "Gwahoddiadau"
-        invitations_description: "Gwahodd defnyddwyr newydd i ymuno"
-        manage_people_title: "Rheoli pobl"
-        manage_people_description: "Gweld a rheoli cofnodion pobl"
-        audit_trail_title: "Llwybr archwilio"
-        audit_trail_description: "Gweld logiau archwilio'r system"
-
+        title: Camau cyflym
+        manage_users_title: Rheoli defnyddwyr
+        manage_users_description: Gweld a rheoli cyfrifon defnyddwyr
+        invitations_title: Gwahoddiadau
+        invitations_description: Gwahodd defnyddwyr newydd i ymuno
+        manage_people_title: Rheoli pobl
+        manage_people_description: Gweld a rheoli cofnodion pobl
+        audit_trail_title: Llwybr archwilio
+        audit_trail_description: Gweld logiau archwilio'r system
+        import_dmd_description: Mewnforio data meddyginiaethau NHS dm+d.
+        import_dmd_title: Mewnforio dm+d
+    nhs_dmd_imports:
+      created: Mewnforiad dm+d wedi'i greu
+      form:
+        cancel: Canslo
+        help: Dewiswch ffeil ZIP rhyddhau NHS dm+d.
+        release_zip: Ffeil ZIP rhyddhau
+        submit: Dechrau mewnforio
+      latest_run:
+        awaiting_count: Aros am gyfanswm cofnodion...
+        breakdown_heading: Manylion mewnforio
+        created: Crëwyd
+        imported: Mewnforiwyd
+        log: Cofnodi mewnforio
+        no_log: Nid yw unrhyw gynnydd wedi'i gofnodi eto.
+        percentage: Canran
+        progress: Cynnydd
+        skipped: Hepgor
+        skipped_expired: Hepgor (wedi dod i ben)
+        skipped_heading: Wedi'u hepgor
+        skipped_invalid: Hepgor (annilys)
+        skipped_missing_name: Hepgor (enw ar goll)
+        title: Rhediad diweddaraf
+        unchanged: Di-newid
+        updated: Diweddarwyd
+      missing_file: Ffeil ar goll
+      started: Mewnforiad wedi dechrau
+      statuses:
+        completed: Wedi'i gwblhau
+        counting: Yn cyfrif
+        extracting: Yn tynnu allan
+        failed: Wedi methu
+        importing: Yn mewnforio
+        queued: Yn y ciw
+      subtitle: Mewnforio data meddyginiaethau NHS dm+d
+      title: Mewnforiadau dm+d
+    settings:
+      access:
+        invite_only:
+          hint: Dim ond defnyddwyr a gafodd wahoddiad allan gofrestru.
+          label: Cofrestru trwy wahoddiad yn unig
+        subtitle: Rheoli pwy all gael mynediad i'r ap.
+        title: Mynediad
+      env_override:
+        body: Mae'r gosodiadau mynediad yn cael eu rheoli gan newidynnau amgylchedd
+          ac ni ellir eu newid yma.
+        title: Gosodiadau amgylchedd
+      save: Cadw gosodiadau
+      subtitle: Ffurfweddu gosodiadau'r ap.
+      title: Gosodiadau
+      updated: Gosodiadau wedi'u diweddaru'n llwyddiannus.
   authentication:
-    login_required: "Mewngofnodwch i barhau"
-    session_expired: "Daeth eich sesiwn i ben. Mewngofnodwch eto."
-    two_factor_required: "Er mwy o ddiogelwch, gosodwch ddilysu dau ffactor ar gyfer eich cyfrif."
-
+    login_required: Mewngofnodwch i barhau
+    session_expired: Daeth eich sesiwn i ben. Mewngofnodwch eto.
+    two_factor_required: Er mwy o ddiogelwch, gosodwch ddilysu dau ffactor ar gyfer
+      eich cyfrif.
   invitation_mailer:
-    subject: "Gwahoddiad i ymuno â MedTracker"
+    subject: Gwahoddiad i ymuno â MedTracker
     invite:
-      title: "Fe'ch gwahoddwyd i MedTracker"
-      invited_as: "Fe'ch gwahoddwyd i ymuno â MedTracker fel %{role}."
-      invited_as_html: "Fe'ch gwahoddwyd i ymuno â MedTracker fel %{role}."
-      accept_invitation: "Derbyn gwahoddiad"
-      accept_invitation_label: "Derbyniwch eich gwahoddiad"
-      expiry_notice: "Bydd y ddolen wahodd hon yn dod i ben ar ôl ei defnyddio."
-
+      title: Fe'ch gwahoddwyd i MedTracker
+      invited_as: Fe'ch gwahoddwyd i ymuno â MedTracker fel %{role}.
+      invited_as_html: Fe'ch gwahoddwyd i ymuno â MedTracker fel %{role}.
+      accept_invitation: Derbyn gwahoddiad
+      accept_invitation_label: Derbyniwch eich gwahoddiad
+      expiry_notice: Bydd y ddolen wahodd hon yn dod i ben ar ôl ei defnyddio.
   locations:
-    created: "Crëwyd y lleoliad yn llwyddiannus."
-    updated: "Diweddarwyd y lleoliad yn llwyddiannus."
-    deleted: "Dilewyd y lleoliad yn llwyddiannus."
+    created: Crëwyd y lleoliad yn llwyddiannus.
+    updated: Diweddarwyd y lleoliad yn llwyddiannus.
+    deleted: Dilewyd y lleoliad yn llwyddiannus.
     form:
-      description_optional: "Disgrifiad (dewisol)"
-      save: "Cadw Lleoliad"
+      description_optional: Disgrifiad (dewisol)
+      save: Cadw Lleoliad
     index:
-      manage_locations: "Rheoli Lleoliadau"
-      title: "Lleoliadau"
-      add_location: "Ychwanegu Lleoliad"
-      members: "Aelodau"
-      view: "Gweld"
+      manage_locations: Rheoli Lleoliadau
+      title: Lleoliadau
+      add_location: Ychwanegu Lleoliad
+      members: Aelodau
+      view: Gweld
       delete_dialog:
-        title: "Dileu Lleoliad"
-        confirm: "Ydych chi'n siŵr eich bod am ddileu %{name}? Bydd hyn hefyd yn dileu pob meddyginiaeth yn y lleoliad hwn."
-        cancel: "Canslo"
-        submit: "Dileu"
+        title: Dileu Lleoliad
+        confirm: Ydych chi'n siŵr eich bod am ddileu %{name}? Bydd hyn hefyd yn dileu
+          pob meddyginiaeth yn y lleoliad hwn.
+        cancel: Canslo
+        submit: Dileu
     show:
-      location: "Lleoliad"
-      edit_location: "Golygu Lleoliad"
-      all_locations: "Pob Lleoliad"
-      medications_heading: "Meddyginiaethau yn y Lleoliad hwn"
-      no_medications: "Dim meddyginiaethau yn y lleoliad hwn eto."
-      members: "Aelodau"
-      no_members: "Dim aelodau wedi'u neilltuo."
-      details: "Manylion"
-      no_details: "Dim disgrifiad wedi'i ddarparu."
+      location: Lleoliad
+      edit_location: Golygu Lleoliad
+      all_locations: Pob Lleoliad
+      medications_heading: Meddyginiaethau yn y Lleoliad hwn
+      no_medications: Dim meddyginiaethau yn y lleoliad hwn eto.
+      members: Aelodau
+      no_members: Dim aelodau wedi'u neilltuo.
+      details: Manylion
+      no_details: Dim disgrifiad wedi'i ddarparu.
       add_member:
-        title: "Ychwanegu Aelod"
-        description: "Ychwanegu person at %{name}"
-        select_person: "Dewis Person"
-        placeholder: "Dewiswch berson..."
-        submit: "Ychwanegu Aelod"
-        all_assigned: "Mae pob defnyddiwr eisoes yn aelodau o'r lleoliad hwn."
+        title: Ychwanegu Aelod
+        description: Ychwanegu person at %{name}
+        select_person: Dewis Person
+        placeholder: Dewiswch berson...
+        submit: Ychwanegu Aelod
+        all_assigned: Mae pob defnyddiwr eisoes yn aelodau o'r lleoliad hwn.
       remove_member:
-        title: "Tynnu Aelod"
-        confirm: "Ydych chi'n sicr eich bod am dynnu %{name} o %{location}?"
-        cancel: "Canslo"
-        submit: "Tynnu"
-
+        title: Tynnu Aelod
+        confirm: Ydych chi'n sicr eich bod am dynnu %{name} o %{location}?
+        cancel: Canslo
+        submit: Tynnu
   location_memberships:
     create:
-      success: "Ychwanegwyd %{name} at %{location}"
-      failure: "Methwyd ag ychwanegu aelod"
+      success: Ychwanegwyd %{name} at %{location}
+      failure: Methwyd ag ychwanegu aelod
     destroy:
-      success: "Tynnwyd %{name} o %{location}"
-      failure: "Methwyd â thynnu aelod"
-
+      success: Tynnwyd %{name} o %{location}
+      failure: Methwyd â thynnu aelod
   medications:
     finder:
-      nhs_directory: "Cyfeiriadur GIG"
-      title: "Darganfyddwr Meddyginiaethau"
-      subtitle: "Chwiliwch Ddichonfa Meddyginiaethau a Dyfeisiau'r GIG (dm+d) yn ôl enw neu gynhwysyn gweithredol."
-      placeholder: "Chwilio yn ôl enw, categori, neu gynhwysyn gweithredol..."
-      search_button: "Chwilio"
-      idle_heading: "Yn barod i archwilio?"
-      idle_text: "Rhowch enw meddyginiaeth uchod i chwilio miloedd o gofnodion wedi'u gwirio yn gronfa ddata'r GIG."
-      loading: "Wrthi'n chwilio cronfa ddata dm+d y GIG..."
-      unavailable_title: "Chwiliad ddim ar gael"
-      unavailable_message: "Methu cysylltu â'r gronfa ddata meddyginiaethau. Rhowch gynnig arall."
-      no_results_title: "Ni chanfuwyd meddyginiaethau"
-      no_results_message: "Ceisiwch chwilio gyda thelerau gwahanol neu gwiriwch yr orgraff."
-      results_title: "Canlyniadau Chwilio"
-      source: "Ffynhonnell"
-      barcode: "Cod bar"
-      dmd_code: "Cod dm+d"
+      nhs_directory: Cyfeiriadur GIG
+      title: Darganfyddwr Meddyginiaethau
+      subtitle: Chwiliwch Ddichonfa Meddyginiaethau a Dyfeisiau'r GIG (dm+d) yn ôl
+        enw neu gynhwysyn gweithredol.
+      placeholder: Chwilio yn ôl enw, categori, neu gynhwysyn gweithredol...
+      search_button: Chwilio
+      idle_heading: Yn barod i archwilio?
+      idle_text: Rhowch enw meddyginiaeth uchod i chwilio miloedd o gofnodion wedi'u
+        gwirio yn gronfa ddata'r GIG.
+      loading: Wrthi'n chwilio cronfa ddata dm+d y GIG...
+      unavailable_title: Chwiliad ddim ar gael
+      unavailable_message: Methu cysylltu â'r gronfa ddata meddyginiaethau. Rhowch
+        gynnig arall.
+      no_results_title: Ni chanfuwyd meddyginiaethau
+      no_results_message: Ceisiwch chwilio gyda thelerau gwahanol neu gwiriwch yr
+        orgraff.
+      results_title: Canlyniadau Chwilio
+      source: Ffynhonnell
+      barcode: Cod bar
+      dmd_code: Cod dm+d
       result_count:
-        one: "%{count} canlyniad ar gyfer \"%{query}\""
-        other: "%{count} canlyniad ar gyfer \"%{query}\""
-      coming_soon: "Mae'r nodwedd hon yn dod yn fuan! Byddwn yn integreiddio â API cronfa ddata meddyginiaethau i ddarparu gwybodaeth fanwl am feddyginiaethau."
-    created: "Crëwyd y feddyginiaeth yn llwyddiannus."
-    updated: "Diweddarwyd y feddyginiaeth yn llwyddiannus."
-    deleted: "Dilëwyd y feddyginiaeth yn llwyddiannus."
-    refilled: "Ailstociwyd y rhestr stoc yn llwyddiannus."
-    ordered: "Marciwyd yr ailstoc fel wedi'i archebu."
-    received: "Marciwyd yr ailstoc fel wedi'i dderbyn."
-    refill_button: "Ail-llenwi"
+        one: '%{count} canlyniad ar gyfer "%{query}"'
+        other: '%{count} canlyniad ar gyfer "%{query}"'
+      coming_soon: Mae'r nodwedd hon yn dod yn fuan! Byddwn yn integreiddio â API
+        cronfa ddata meddyginiaethau i ddarparu gwybodaeth fanwl am feddyginiaethau.
+    created: Crëwyd y feddyginiaeth yn llwyddiannus.
+    updated: Diweddarwyd y feddyginiaeth yn llwyddiannus.
+    deleted: Dilëwyd y feddyginiaeth yn llwyddiannus.
+    refilled: Ailstociwyd y rhestr stoc yn llwyddiannus.
+    ordered: Marciwyd yr ailstoc fel wedi'i archebu.
+    received: Marciwyd yr ailstoc fel wedi'i dderbyn.
+    refill_button: Ail-llenwi
     take_action:
-      loading: "Wrthi'n cofnodi…"
-      choose_location: "Dewis lleoliad"
-      choose_location_description: "Dewiswch pa leoliad i ddidynnu'r dos hwn ohono."
-      untracked_inventory: "Heb ei olrhain"
+      loading: Wrthi'n cofnodi…
+      choose_location: Dewis lleoliad
+      choose_location_description: Dewiswch pa leoliad i ddidynnu'r dos hwn ohono.
+      untracked_inventory: Heb ei olrhain
+      description: Cadarnhewch y person, y feddyginiaeth, yr amser a'r ffynhonnell
+        stocrestr.
+      dose: Dos
+      medication: Meddyginiaeth
+      person: Person
+      stock_source: Ffynhonnell stoc
+      taken_at: Cymryd ar
+      title: Cofnodi dos
     prior_day_take_action:
-      menu_item: "Cofnodi dos blaenorol"
-      title: "Cofnodi dos o ddiwrnod blaenorol"
-      description: "Cofnodi dos a gymerwyd cyn heddiw."
-      taken_at: "Dyddiad ac amser"
-      submit: "Cofnodi dos hanesyddol"
+      menu_item: Cofnodi dos blaenorol
+      title: Cofnodi dos o ddiwrnod blaenorol
+      description: Cofnodi dos a gymerwyd cyn heddiw.
+      taken_at: Dyddiad ac amser
+      submit: Cofnodi dos hanesyddol
     card:
-      more_actions: "Rhagor o weithredoedd"
+      more_actions: Rhagor o weithredoedd
     reorder_statuses:
-      ordered: "Wedi archebu"
-      received: "Wedi derbyn"
+      ordered: Wedi archebu
+      received: Wedi derbyn
     administration:
-      title: "Cofnodi gweinyddu ar gyfer %{medication}"
-      subtitle: "Dewiswch y person a'r cynllun rydych am gofnodi'r dos hwn yn ei erbyn."
-      scheduled: "Cynllun wedi'i drefnu"
-      as_needed: "Meddyginiaeth yn ôl yr angen"
-      empty_title: "Dim cynlluniau meddyginiaeth gweithredol"
-      empty_description: "Nid yw'r eitem rhestr hon wedi'i chysylltu ar hyn o bryd â chofnod y gallwch ei weinyddu."
+      title: Cofnodi gweinyddu ar gyfer %{medication}
+      subtitle: Dewiswch y person a'r cynllun rydych am gofnodi'r dos hwn yn ei erbyn.
+      scheduled: Cynllun wedi'i drefnu
+      as_needed: Meddyginiaeth yn ôl yr angen
+      empty_title: Dim cynlluniau meddyginiaeth gweithredol
+      empty_description: Nid yw'r eitem rhestr hon wedi'i chysylltu ar hyn o bryd
+        â chofnod y gallwch ei weinyddu.
     refill_modal:
-      refill_inventory: "Ail-stocio"
-      title: "Ail-stocio %{medication}"
-      description: "Ychwanegu maint y stoc a chofnodi'r dyddiad ail-stocio."
-      quantity: "Nifer"
-      restock_date: "Dyddiad ail-stocio"
+      refill_inventory: Ail-stocio
+      title: Ail-stocio %{medication}
+      description: Ychwanegu maint y stoc a chofnodi'r dyddiad ail-stocio.
+      quantity: Nifer
+      restock_date: Dyddiad ail-stocio
     form:
-      new_title: "Ychwanegu Meddyginiaeth Newydd"
-      new_subtitle: "Cofnodi manylion stoc a gwybodaeth dos."
-      edit_title: "Golygu Meddyginiaeth"
-      edit_subtitle: "Diweddaru manylion %{name}."
+      new_title: Ychwanegu Meddyginiaeth Newydd
+      new_subtitle: Cofnodi manylion stoc a gwybodaeth dos.
+      edit_title: Golygu Meddyginiaeth
+      edit_subtitle: Diweddaru manylion %{name}.
     index:
-      your_inventory: "Eich Rhestr"
-      title: "Meddyginiaethau"
-      add_medication: "Ychwanegu Meddyginiaeth"
-      empty_title: "Dim meddyginiaethau eto"
-      empty_description: "Ychwanegwch eich meddyginiaeth gyntaf i ddechrau olrhain y rhestr a'r dos."
-      all: "Pob un"
-      view: "Gweld"
-      inventory_level: "Llefel Rhestr"
+      your_inventory: Eich Rhestr
+      title: Meddyginiaethau
+      add_medication: Ychwanegu Meddyginiaeth
+      empty_title: Dim meddyginiaethau eto
+      empty_description: Ychwanegwch eich meddyginiaeth gyntaf i ddechrau olrhain
+        y rhestr a'r dos.
+      all: Pob un
+      view: Gweld
+      inventory_level: Llefel Rhestr
       units:
-        one: "uned"
-        other: "unedau"
-      in_stock: "Mewn Stoc"
+        one: uned
+        other: unedau
+      in_stock: Mewn Stoc
       delete_dialog:
-        title: "Dileu Meddyginiaeth"
-        confirm: "Ydych chi'n sicr eich bod am ddileu %{name}? Ni ellir dadwneud y weithred hon."
-        submit: "Dileu"
-        cancel: "Canslo"
+        title: Dileu Meddyginiaeth
+        confirm: Ydych chi'n sicr eich bod am ddileu %{name}? Ni ellir dadwneud y
+          weithred hon.
+        submit: Dileu
+        cancel: Canslo
     show:
-      profile: "Proffil Meddyginiaeth"
-      edit_details: "Golygu Manylion"
-      inventory: "Rhestr Eiddo"
-      add_schedule: "Amserlen"
-      overview: "Trosolwg"
-      nhs_guidance_title: "Canllawiau meddyginiaeth y GIG"
-      nhs_guidance_link: "Gweld canllawiau llawn y GIG"
-      nhs_guidance_source: "Ffynhonnell: %{source}"
-      nhs_guidance_reviewed_on: "Adolygwyd ddiwethaf %{date}"
-      no_description: "Dim disgrifiad wedi'i ddarparu."
-      safety_warnings: "Rhybuddion Diogelwch"
-      inventory_status: "Statws Rhestr"
+      profile: Proffil Meddyginiaeth
+      edit_details: Golygu Manylion
+      inventory: Rhestr Eiddo
+      add_schedule: Amserlen
+      overview: Trosolwg
+      nhs_guidance_title: Canllawiau meddyginiaeth y GIG
+      nhs_guidance_link: Gweld canllawiau llawn y GIG
+      nhs_guidance_source: 'Ffynhonnell: %{source}'
+      nhs_guidance_reviewed_on: Adolygwyd ddiwethaf %{date}
+      no_description: Dim disgrifiad wedi'i ddarparu.
+      safety_warnings: Rhybuddion Diogelwch
+      inventory_status: Statws Rhestr
       remaining:
-        one: "uned yn weddill"
-        other: "unedau yn weddill"
-      supply_level: "Llefel Cyflenwad"
-      reorder_at: "ail-archebu am %{threshold}"
-      forecast_unavailable: "Rhagolwg ddim ar gael"
-      standard_dosage: "Dos"
-      no_dosage: "Dim dos safonol wedi'i nodi."
-      dosages_heading: "Dosau"
-      no_dosages: "Dim dosau wedi'u diffinio eto."
-      add_dosage: "Ychwanegu Dos"
-      edit_dosage: "Golygu"
-      mark_as_ordered: "Archebu"
-      mark_as_received: "Derbyn"
-      refill_inventory: "Ail-stocio"
-      complete_refill: "Ail-stocio"
-      reorder_at_label: "Ail-archebu am"
-      log_administration: "Logio Gweinyddu"
-      low_stock_alert: "Rhybudd Stoc Isel"
-      children: "Plant"
-      max_per_cycle: "Uchafswm %{count}/cylch"
-      min_hours_apart: "O leiaf %{hours} awr ar wahân"
+        one: uned yn weddill
+        other: unedau yn weddill
+      supply_level: Llefel Cyflenwad
+      reorder_at: ail-archebu am %{threshold}
+      forecast_unavailable: Rhagolwg ddim ar gael
+      standard_dosage: Dos
+      no_dosage: Dim dos safonol wedi'i nodi.
+      dosages_heading: Dosau
+      no_dosages: Dim dosau wedi'u diffinio eto.
+      add_dosage: Ychwanegu Dos
+      edit_dosage: Golygu
+      mark_as_ordered: Archebu
+      mark_as_received: Derbyn
+      refill_inventory: Ail-stocio
+      complete_refill: Ail-stocio
+      reorder_at_label: Ail-archebu am
+      log_administration: Logio Gweinyddu
+      low_stock_alert: Rhybudd Stoc Isel
+      children: Plant
+      max_per_cycle: Uchafswm %{count}/cylch
+      min_hours_apart: O leiaf %{hours} awr ar wahân
       forecast:
-        low_in_days: "Bydd y cyflenwad yn isel mewn %{days} diwrnod"
-        empty_in_days: "Bydd y cyflenwad yn wag mewn %{days} diwrnod"
-      location: "Lleoliad"
-
+        low_in_days: Bydd y cyflenwad yn isel mewn %{days} diwrnod
+        empty_in_days: Bydd y cyflenwad yn wag mewn %{days} diwrnod
+      location: Lleoliad
+      adjust_inventory: Addasu Stocrestr
+    adjust_inventory_modal:
+      adjust_inventory: Addasu Stocrestr
+      current_quantity: Nifer cyfredol
+      description: Gosod y nifer cywir presennol, er enghraifft wrth ymrestru pecyn
+        a ddefnyddiwyd yn rhannol.
+      new_quantity: Nifer newydd
+      reason: Rheswm (dewisol)
+      reason_placeholder: e.e. Pecyn a ddefnyddiwyd yn rhannol
+      submit: Cadw Addasiad
+      title: Addasu Stocrestr ar gyfer %{medication}
+      units: unedau
+    inventory_adjusted: Stocrestr wedi'i addasu'n llwyddiannus.
   passwords:
-    reset_sent: >-
-      Anfonwyd cyfarwyddiadau ailosod cyfrinair
-      (os oes defnyddiwr gyda'r cyfeiriad e-bost hwnnw).
-    reset_success: "Mae'r cyfrinair wedi'i ailosod."
-    mismatch: "Nid oedd y cyfrineiriau'n cyfateb."
-    invalid_token: "Mae'r ddolen ailosod cyfrinair yn annilys neu wedi dod i ben."
+    reset_sent: Anfonwyd cyfarwyddiadau ailosod cyfrinair (os oes defnyddiwr gyda'r
+      cyfeiriad e-bost hwnnw).
+    reset_success: Mae'r cyfrinair wedi'i ailosod.
+    mismatch: Nid oedd y cyfrineiriau'n cyfateb.
+    invalid_token: Mae'r ddolen ailosod cyfrinair yn annilys neu wedi dod i ben.
     mailer:
-      subject: "Ailosod eich cyfrinair"
-
+      subject: Ailosod eich cyfrinair
   people:
-    created: "Crëwyd y person yn llwyddiannus."
-    updated: "Diweddarwyd y person yn llwyddiannus."
-    deleted: "Dilëwyd y person yn llwyddiannus."
+    created: Crëwyd y person yn llwyddiannus.
+    updated: Diweddarwyd y person yn llwyddiannus.
+    deleted: Dilëwyd y person yn llwyddiannus.
     actions:
-      title: "Gweithredoedd Gofal"
-      subtitle: "Diweddaru cynlluniau meddyginiaeth ac amserlenni."
+      title: Gweithredoedd Gofal
+      subtitle: Diweddaru cynlluniau meddyginiaeth ac amserlenni.
     add_medication:
-      title: "Add Medication"
-      subtitle: "How is this medication taken?"
-      scheduled_title: "Prescribed / Scheduled"
-      scheduled_description: "Has a specific dosage, start date, and fixed schedule"
-      otc_title: "As needed"
-      otc_description: "Taken as needed without a fixed schedule"
+      title: Add Medication
+      subtitle: How is this medication taken?
+      scheduled_title: Prescribed / Scheduled
+      scheduled_description: Has a specific dosage, start date, and fixed schedule
+      otc_title: As needed
+      otc_description: Taken as needed without a fixed schedule
     show:
-      edit_person: "Golygu Person"
-      add_schedule: "Amserlen"
-      add_medication: "Ychwanegu Meddyginiaeth"
-      back: "Yn ôl"
-      born: "Ganwyd:"
-      age: "Oedran:"
-      schedules_heading: "Presgripsiynau"
-      medications_heading: "Meddyginiaethau"
-      no_schedules: "Dim presgripsiynau eto."
-      add_first_schedule: "Ychwanegu Presgripsiwn Cyntaf"
-      my_medications_heading: "Fy Meddyginiaethau"
-      no_medications: "Dim meddyginiaethau wedi'u hychwanegu eto."
-      medications_hint: "Ychwanegwch feddyginiaethau a gymerir yn ôl yr angen yma."
-      add_first_medication: "Ychwanegu Meddyginiaeth Gyntaf"
-      no_any_medications: "Dim meddyginiaethau eto."
-      add_first_any_medication: "Ychwanegu Meddyginiaeth"
-      mark_as_ordered: "Archebu"
-      mark_as_received: "Derbyniwyd"
-      refill_inventory: "Ail-stocio"
-      complete_refill: "Ail-stocio"
+      edit_person: Golygu Person
+      add_schedule: Amserlen
+      add_medication: Ychwanegu Meddyginiaeth
+      back: Yn ôl
+      born: 'Ganwyd:'
+      age: 'Oedran:'
+      schedules_heading: Presgripsiynau
+      medications_heading: Meddyginiaethau
+      no_schedules: Dim presgripsiynau eto.
+      add_first_schedule: Ychwanegu Presgripsiwn Cyntaf
+      my_medications_heading: Fy Meddyginiaethau
+      no_medications: Dim meddyginiaethau wedi'u hychwanegu eto.
+      medications_hint: Ychwanegwch feddyginiaethau a gymerir yn ôl yr angen yma.
+      add_first_medication: Ychwanegu Meddyginiaeth Gyntaf
+      no_any_medications: Dim meddyginiaethau eto.
+      add_first_any_medication: Ychwanegu Meddyginiaeth
+      mark_as_ordered: Archebu
+      mark_as_received: Derbyniwyd
+      refill_inventory: Ail-stocio
+      complete_refill: Ail-stocio
     form:
-      new_heading: "Person Newydd"
-      new_subheading: "Ychwanegu person newydd i olrhain meddyginiaethau ar ei gyfer"
-      edit_heading: "Golygu Person"
-      edit_subheading: "Diweddaru proffil ar gyfer %{name}"
-      location_title: "Lleoliad"
-      location_description: "Bydd y person hwn yn cael ei greu yn %{location}."
-      name: "Enw"
-      email: "E-bost"
-      date_of_birth: "Dyddiad Geni"
-      person_type: "Math o Berson"
-      select_person_type: "Dewis math o berson"
-      has_capacity: "Mae ganddo'r gallu i reoli ei feddyginiaeth ei hun"
-      note: "Nodyn:"
-      capacity_hint: "Rhaid i berson heb allu gael o leiaf un gofalwr wedi'i aseinio."
-      capacity_hint_assign_carer: "Aseinwch ofalwr cyn tynnu gallu."
-      save: "Cadw"
-      cancel: "Canslo"
-      create: "Creu Person"
-      update: "Diweddaru Person"
+      new_heading: Person Newydd
+      new_subheading: Ychwanegu person newydd i olrhain meddyginiaethau ar ei gyfer
+      edit_heading: Golygu Person
+      edit_subheading: Diweddaru proffil ar gyfer %{name}
+      location_title: Lleoliad
+      location_description: Bydd y person hwn yn cael ei greu yn %{location}.
+      name: Enw
+      email: E-bost
+      date_of_birth: Dyddiad Geni
+      person_type: Math o Berson
+      select_person_type: Dewis math o berson
+      has_capacity: Mae ganddo'r gallu i reoli ei feddyginiaeth ei hun
+      note: 'Nodyn:'
+      capacity_hint: Rhaid i berson heb allu gael o leiaf un gofalwr wedi'i aseinio.
+      capacity_hint_assign_carer: Aseinwch ofalwr cyn tynnu gallu.
+      save: Cadw
+      cancel: Canslo
+      create: Creu Person
+      update: Diweddaru Person
     card:
-      born: "Ganwyd:"
-      age: "Oedran:"
-      medications: "Meddyginiaethau:"
-      no_active_medications: "Dim meddyginiaethau gweithredol"
-      needs_carer: "Angen Gofalwr"
-      view_medications: "Gweld Meddyginiaethau"
-      add_medication: "Ychwanegu Meddyginiaeth"
-      assign_carer: "Aseinio Gofalwr"
+      born: 'Ganwyd:'
+      age: 'Oedran:'
+      medications: 'Meddyginiaethau:'
+      no_active_medications: Dim meddyginiaethau gweithredol
+      needs_carer: Angen Gofalwr
+      view_medications: Gweld Meddyginiaethau
+      add_medication: Ychwanegu Meddyginiaeth
+      assign_carer: Aseinio Gofalwr
     overview:
-      title: "Trosolwg Proffil"
-      dob: "Dyddiad Geni"
-      assigned_user: "Defnyddiwr wedi'i aseinio"
-      no_user: "Dim defnyddiwr wedi'i aseinio"
-      capacity: "Gallu"
-      has_capacity: "Mae ganddo allu"
-      dependent: "Dibynnydd"
-
+      title: Trosolwg Proffil
+      dob: Dyddiad Geni
+      assigned_user: Defnyddiwr wedi'i aseinio
+      no_user: Dim defnyddiwr wedi'i aseinio
+      capacity: Gallu
+      has_capacity: Mae ganddo allu
+      dependent: Dibynnydd
   person_medications:
-    created: "Ychwanegwyd y feddyginiaeth yn llwyddiannus."
-    updated: "Diweddarwyd y feddyginiaeth yn llwyddiannus."
-    deleted: "Tynnwyd y feddyginiaeth yn llwyddiannus."
-    medication_taken: "Cymerwyd y feddyginiaeth yn llwyddiannus."
-    invalid_dose_configured: "Dos annilys wedi'i ffurfweddu. Diweddarwch ddos y feddyginiaeth cyn cymryd."
+    created: Ychwanegwyd y feddyginiaeth yn llwyddiannus.
+    updated: Diweddarwyd y feddyginiaeth yn llwyddiannus.
+    deleted: Tynnwyd y feddyginiaeth yn llwyddiannus.
+    medication_taken: Cymerwyd y feddyginiaeth yn llwyddiannus.
+    invalid_dose_configured: Dos annilys wedi'i ffurfweddu. Diweddarwch ddos y feddyginiaeth
+      cyn cymryd.
     modal:
-      new_title: "Ychwanegu Meddyginiaeth ar gyfer %{person}"
-      edit_title: "Golygu Meddyginiaeth ar gyfer %{person}"
-      subtitle: "Ychwanegu meddyginiaeth reolaidd neu yn ôl yr angen"
+      new_title: Ychwanegu Meddyginiaeth ar gyfer %{person}
+      edit_title: Golygu Meddyginiaeth ar gyfer %{person}
+      subtitle: Ychwanegu meddyginiaeth reolaidd neu yn ôl yr angen
     card:
-      notes: "Nodiadau:"
-      timing_restrictions: "Cyfyngiadau Amseru:"
-      max_doses_per_day: "Uchafswm %{count} dos(au) y dydd"
-      wait_hours: "Aros o leia %{hours} awr rhwng dosau"
-      next_dose_available: "Dos nesaf ar gael mewn:"
-      todays_doses: "Dosau Heddiw"
-      no_doses_today: "Dim dosau wedi'u cymryd heddiw"
-      take: "Cymryd"
-      give: "Rhoi"
-      out_of_stock: "Allan o Stoc"
-      invalid_dose: "Dos Annilys Wedi'i Ffurfweddu"
-      move_up_aria_label: "Symud meddyginiaeth i fyny"
-      move_down_aria_label: "Symud meddyginiaeth i lawr"
-      delete_aria_label: "Dileu meddyginiaeth"
-      edit: "Golygu"
-      remove: "Tynnu"
-      remove_medication: "Tynnu Meddyginiaeth"
-      remove_confirmation: "Ydych chi'n sicr eich bod am dynnu %{medication}? Ni all y weithred hon gael ei dadwneud."
+      notes: 'Nodiadau:'
+      timing_restrictions: 'Cyfyngiadau Amseru:'
+      max_doses_per_day: Uchafswm %{count} dos(au) y dydd
+      wait_hours: Aros o leia %{hours} awr rhwng dosau
+      next_dose_available: 'Dos nesaf ar gael mewn:'
+      todays_doses: Dosau Heddiw
+      no_doses_today: Dim dosau wedi'u cymryd heddiw
+      take: Cymryd
+      give: Rhoi
+      out_of_stock: Allan o Stoc
+      invalid_dose: Dos Annilys Wedi'i Ffurfweddu
+      move_up_aria_label: Symud meddyginiaeth i fyny
+      move_down_aria_label: Symud meddyginiaeth i lawr
+      delete_aria_label: Dileu meddyginiaeth
+      edit: Golygu
+      remove: Tynnu
+      remove_medication: Tynnu Meddyginiaeth
+      remove_confirmation: Ydych chi'n sicr eich bod am dynnu %{medication}? Ni all
+        y weithred hon gael ei dadwneud.
     form:
-      add_medication: "Ychwanegu Meddyginiaeth"
-      add_medication_for: "Ychwanegu Meddyginiaeth ar gyfer %{person}"
-      edit_medication_for: "Golygu Meddyginiaeth ar gyfer %{person}"
+      add_medication: Ychwanegu Meddyginiaeth
+      add_medication_for: Ychwanegu Meddyginiaeth ar gyfer %{person}
+      edit_medication_for: Golygu Meddyginiaeth ar gyfer %{person}
       validation_errors:
-        one: "1 gwall wedi atal y feddyginiaeth hon rhag cael ei chadw:"
+        one: '1 gwall wedi atal y feddyginiaeth hon rhag cael ei chadw:'
         other: "%{count} gwall wedi atal y feddyginiaeth hon rhag cael ei chadw:"
-      cancel: "Canslo"
-      back: "Yn ôl"
-      add_medication_button: "Ychwanegu Meddyginiaeth"
-      medication: "Meddyginiaeth"
-      medication_hint: "Dewiswch feddyginiaeth o'r rhestr"
-      search_medications: "Chwilio meddyginiaethau…"
-      no_medications_found: "Ni chanfuwyd meddyginiaethau."
-      select_medication: "Dewis meddyginiaeth"
-      select_medication_first: "Dewiswch feddyginiaeth yn gyntaf"
-      dose: "Dos"
-      select_dose: "Dewis dos"
-      no_doses_available: "Dim dosau ar gael"
-      dose_hint: "Mae angen dos ar bob meddyginiaeth"
-      notes: "Nodiadau"
-      notes_placeholder: "Ychwanegwch unrhyw gyfarwyddiadau neu nodiadau arbennig"
-      notes_hint: "Ychwanegwch unrhyw gyfarwyddiadau neu nodiadau arbennig"
-      max_doses_per_cycle: "Uchafswm dosau / cylch"
-      max_doses_hint: "Uchafswm dosau a ganiateir fesul cylch"
-      min_hours_apart: "Lleiaf o oriau rhyngddynt"
-      min_hours_hint: "Isafswm amser rhwng dosau"
-      dose_cycle: "Cylch dos"
-      default_dose_cycle: "Dyddiol"
-      dose_cycle_hint: "Cyfnod ailosod cylch"
-      administration_kind: "Math o feddyginiaeth"
-      administration_kind_hint: "Mae tasgau rheolaidd yn cyfrif ar gyfer heddiw; dim ond pan ellir ei rhoi y dangosir meddyginiaeth yn ôl yr angen."
+      cancel: Canslo
+      back: Yn ôl
+      add_medication_button: Ychwanegu Meddyginiaeth
+      medication: Meddyginiaeth
+      medication_hint: Dewiswch feddyginiaeth o'r rhestr
+      search_medications: Chwilio meddyginiaethau…
+      no_medications_found: Ni chanfuwyd meddyginiaethau.
+      select_medication: Dewis meddyginiaeth
+      select_medication_first: Dewiswch feddyginiaeth yn gyntaf
+      dose: Dos
+      select_dose: Dewis dos
+      no_doses_available: Dim dosau ar gael
+      dose_hint: Mae angen dos ar bob meddyginiaeth
+      notes: Nodiadau
+      notes_placeholder: Ychwanegwch unrhyw gyfarwyddiadau neu nodiadau arbennig
+      notes_hint: Ychwanegwch unrhyw gyfarwyddiadau neu nodiadau arbennig
+      max_doses_per_cycle: Uchafswm dosau / cylch
+      max_doses_hint: Uchafswm dosau a ganiateir fesul cylch
+      min_hours_apart: Lleiaf o oriau rhyngddynt
+      min_hours_hint: Isafswm amser rhwng dosau
+      dose_cycle: Cylch dos
+      default_dose_cycle: Dyddiol
+      dose_cycle_hint: Cyfnod ailosod cylch
+      administration_kind: Math o feddyginiaeth
+      administration_kind_hint: Mae tasgau rheolaidd yn cyfrif ar gyfer heddiw; dim
+        ond pan ellir ei rhoi y dangosir meddyginiaeth yn ôl yr angen.
       administration_kinds:
         routine:
-          label: "Rheolaidd"
-          description: "Tasg ddyddiol i'w chwblhau pan fydd y cylch yn ailosod"
+          label: Rheolaidd
+          description: Tasg ddyddiol i'w chwblhau pan fydd y cylch yn ailosod
         as_needed:
-          label: "Yn ôl yr angen"
-          description: "Dim ond pan fydd symptomau neu gyfarwyddyd yn galw amdani y caiff ei defnyddio"
-      no_options: "Dim opsiynau."
-      optional: "Dewisol"
-      next: "Nesaf"
-      save_changes_button: "Cadw Newidiadau"
+          label: Yn ôl yr angen
+          description: Dim ond pan fydd symptomau neu gyfarwyddyd yn galw amdani y
+            caiff ei defnyddio
+      no_options: Dim opsiynau.
+      optional: Dewisol
+      next: Nesaf
+      save_changes_button: Cadw Newidiadau
       workflow:
-        choose_medication_title: "Dewiswch feddyginiaeth"
-        choose_medication_description: "Dechreuwch trwy ddewis y feddyginiaeth rydych am ei hychwanegu."
-        choose_dose_title: "Dewiswch y dos"
-        choose_dose_description: "Dewiswch y dos cyn i chi barhau."
-        add_guidance_title: "Ychwanegu arweiniad dewisol"
-        add_guidance_description: "Ychwanegwch unrhyw nodiadau neu derfynau dos yr hoffech eu holrhain gyda'r feddyginiaeth hon."
-
+        choose_medication_title: Dewiswch feddyginiaeth
+        choose_medication_description: Dechreuwch trwy ddewis y feddyginiaeth rydych
+          am ei hychwanegu.
+        choose_dose_title: Dewiswch y dos
+        choose_dose_description: Dewiswch y dos cyn i chi barhau.
+        add_guidance_title: Ychwanegu arweiniad dewisol
+        add_guidance_description: Ychwanegwch unrhyw nodiadau neu derfynau dos yr
+          hoffech eu holrhain gyda'r feddyginiaeth hon.
   medication_assignments:
     modal:
-      subtitle: "Ychwanegwch fanylion meddyginiaeth o'r rhagosodiadau sydd wedi'u cadw"
+      subtitle: Ychwanegwch fanylion meddyginiaeth o'r rhagosodiadau sydd wedi'u cadw
     form:
-      review_title: "Adolygu"
-      review_description: "Gwiriwch y dos a ddewiswyd a'r rhagosodiadau amserlen sydd wedi'u cadw."
-      frequency: "Amlder"
-      schedule_type: "Math o amserlen"
-      active_dates: "Dyddiadau gweithredol"
-      not_set: "Heb ei osod"
-
+      review_title: Adolygu
+      review_description: Gwiriwch y dos a ddewiswyd a'r rhagosodiadau amserlen sydd
+        wedi'u cadw.
+      frequency: Amlder
+      schedule_type: Math o amserlen
+      active_dates: Dyddiadau gweithredol
+      not_set: Heb ei osod
   dosages:
-    created: "Ychwanegwyd y dos yn llwyddiannus."
-    updated: "Diweddarwyd y dos yn llwyddiannus."
-    deleted: "Tynnwyd y dos yn llwyddiannus."
+    created: Ychwanegwyd y dos yn llwyddiannus.
+    updated: Diweddarwyd y dos yn llwyddiannus.
+    deleted: Tynnwyd y dos yn llwyddiannus.
     new:
-      title: "Ychwanegu Dos"
+      title: Ychwanegu Dos
     edit:
-      title: "Golygu Dos"
+      title: Golygu Dos
     form:
-      amount: "Swm"
-      unit: "Uned"
-      unit_placeholder: "mg, tabled, ml…"
-      frequency_label: "Label amlder"
-      frequency_placeholder: "Unwaith y dydd"
-      description: "Disgrifiad / nodiadau"
-      description_placeholder: "Dewisol"
-      scheduling_defaults: "Rhagosodiadau amserlennu (wedi'u llenwi'n awtomatig wrth greu amserlen)"
-      max_doses_per_cycle: "Uchafswm dosau / cylch"
-      max_doses_placeholder: "e.e., 4"
-      min_hours_apart: "Lleiaf o oriau rhyngddynt"
-      min_hours_placeholder: "e.e., 6"
-      dose_cycle: "Cylch dos"
-      default_for_adults: "Rhagosod ar gyfer oedolion"
-      default_for_children: "Rhagosod ar gyfer plant / dibynyddion"
-      cancel: "Canslo"
-      add: "Ychwanegu Dos"
-      update: "Diweddaru Dos"
-
+      amount: Swm
+      unit: Uned
+      unit_placeholder: mg, tabled, ml…
+      frequency_label: Label amlder
+      frequency_placeholder: Unwaith y dydd
+      description: Disgrifiad / nodiadau
+      description_placeholder: Dewisol
+      scheduling_defaults: Rhagosodiadau amserlennu (wedi'u llenwi'n awtomatig wrth
+        greu amserlen)
+      max_doses_per_cycle: Uchafswm dosau / cylch
+      max_doses_placeholder: e.e., 4
+      min_hours_apart: Lleiaf o oriau rhyngddynt
+      min_hours_placeholder: e.e., 6
+      dose_cycle: Cylch dos
+      default_for_adults: Rhagosod ar gyfer oedolion
+      default_for_children: Rhagosod ar gyfer plant / dibynyddion
+      cancel: Canslo
+      add: Ychwanegu Dos
+      update: Diweddaru Dos
   schedules:
-    created: "Crëwyd y presgripsiwn yn llwyddiannus."
-    updated: "Diweddarwyd y presgripsiwn yn llwyddiannus."
-    deleted: "Dilëwyd y presgripsiwn yn llwyddiannus."
-    medication_taken: "Cymerwyd y feddyginiaeth yn llwyddiannus."
-    invalid_dose_configured: "Dos annilys wedi'i ffurfweddu. Diweddarwch ddos y presgripsiwn cyn cymryd."
+    created: Crëwyd y presgripsiwn yn llwyddiannus.
+    updated: Diweddarwyd y presgripsiwn yn llwyddiannus.
+    deleted: Dilëwyd y presgripsiwn yn llwyddiannus.
+    medication_taken: Cymerwyd y feddyginiaeth yn llwyddiannus.
+    invalid_dose_configured: Dos annilys wedi'i ffurfweddu. Diweddarwch ddos y presgripsiwn
+      cyn cymryd.
     modal:
-      new_title: "Presgripsiwn Newydd ar gyfer %{person}"
-      edit_title: "Golygu Presgripsiwn ar gyfer %{person}"
-      subtitle: "Ychwanegu manylion meddyginiaeth ac amserlen"
+      new_title: Presgripsiwn Newydd ar gyfer %{person}
+      edit_title: Golygu Presgripsiwn ar gyfer %{person}
+      subtitle: Ychwanegu manylion meddyginiaeth ac amserlen
     card:
-      started: "Dechreuodd:"
-      ends: "Yn gorffen:"
-      notes: "Nodiadau:"
-      next_dose_available: "Dos nesaf ar gael mewn:"
-      todays_doses: "Dosau Heddiw"
-      no_doses_today: "Dim dosau wedi'u cymryd heddiw"
-      take: "Cymryd"
-      give: "Rhoi"
-      out_of_stock: "Allan o Stoc"
-      move_up_aria_label: "Symud meddyginiaeth i fyny"
-      move_down_aria_label: "Symud meddyginiaeth i lawr"
-      delete_aria_label: "Dileu meddyginiaeth"
-      ready_now: "Yn Barod Nawr"
-      waiting: "Yn Aros"
-      edit: "Golygu"
-      delete: "Dileu"
-      invalid_dose: "Dos Annilys Wedi'i Ffurfweddu"
+      started: 'Dechreuodd:'
+      ends: 'Yn gorffen:'
+      notes: 'Nodiadau:'
+      next_dose_available: 'Dos nesaf ar gael mewn:'
+      todays_doses: Dosau Heddiw
+      no_doses_today: Dim dosau wedi'u cymryd heddiw
+      take: Cymryd
+      give: Rhoi
+      out_of_stock: Allan o Stoc
+      move_up_aria_label: Symud meddyginiaeth i fyny
+      move_down_aria_label: Symud meddyginiaeth i lawr
+      delete_aria_label: Dileu meddyginiaeth
+      ready_now: Yn Barod Nawr
+      waiting: Yn Aros
+      edit: Golygu
+      delete: Dileu
+      invalid_dose: Dos Annilys Wedi'i Ffurfweddu
       delete_dialog:
-        title: "Dileu Presgripsiwn"
-        confirm: "Ydych chi'n sicr eich bod am ddileu presgripsiwn %{medication}? Ni all y weithred hon gael ei dadwneud."
-        cancel: "Canslo"
-        submit: "Dileu"
+        title: Dileu Presgripsiwn
+        confirm: Ydych chi'n sicr eich bod am ddileu presgripsiwn %{medication}? Ni
+          all y weithred hon gael ei dadwneud.
+        cancel: Canslo
+        submit: Dileu
     form:
-      choose_medication_title: "Dewiswch feddyginiaeth"
-      choose_medication_description: "Bydd dewis meddyginiaeth yn agor manylion y dos a'r amserlen."
-      medication: "Meddyginiaeth"
-      change: "Newid"
-      select_medication: "Dewis meddyginiaeth"
-      dose: "Dos"
-      dosage: "Dos"
-      choose_one_dose: "Dewiswch un dos cyn rhoi manylion yr amserlen."
-      no_dose_options: "Nid oes opsiynau dos ar gael ar gyfer y feddyginiaeth hon. Ychwanegwch ddos cyn creu amserlen."
-      schedule_details_title: "Manylion yr amserlen"
-      schedule_details_description: "Gosodwch amseru ac arweiniad diogelwch ar ôl dewis dos."
-      select_medication_first: "Dewiswch feddyginiaeth yn gyntaf"
-      select_dosage: "Dewis dos"
-      frequency: "Amlder"
-      frequency_placeholder: "e.e., Unwaith y dydd, Bob 4-6 awr"
-      start_date: "Dyddiad dechrau"
-      end_date: "Dyddiad gorffen"
-      select_date: "Dewis dyddiad"
-      max_doses_per_cycle: "Uchafswm dosau fesul cylch"
-      max_doses_hint: "Uchafswm nifer y dosau a ganiateir fesul cylch"
-      max_doses_placeholder: "e.e., 4"
-      min_hours_between_doses: "Isafswm oriau rhwng dosau"
-      min_hours_hint: "Isafswm amser a benodir rhwng dosau"
-      min_hours_placeholder: "e.e., 6"
-      dose_cycle: "Cylch dos"
-      dose_cycle_hint: "Pa mor aml y mae'r cylch dos yn ailosod (rhagosod: dyddiol)"
-      select_cycle: "Dewis cylch (rhagosod: dyddiol)"
-      notes: "Nodiadau"
-      notes_hint: "Cyfarwyddiadau neu wybodaeth ychwanegol"
-      notes_placeholder: "Rhowch unrhyw nodiadau neu gyfarwyddiadau ychwanegol..."
-      cancel: "Canslo"
-      add_plan: "Ychwanegu Cynllun"
-      update_plan: "Diweddaru Cynllun"
-      frequency_once_per_cycle: "Unwaith %{cycle}"
-      frequency_up_to_per_cycle: "Hyd at %{count} gwaith %{cycle}"
-      frequency_once: "Unwaith y cylch"
-      frequency_up_to: "Hyd at %{count} gwaith y cylch"
-      frequency_at_least_hours: "o leiaf %{hours} awr ar wahân"
+      choose_medication_title: Dewiswch feddyginiaeth
+      choose_medication_description: Bydd dewis meddyginiaeth yn agor manylion y dos
+        a'r amserlen.
+      medication: Meddyginiaeth
+      change: Newid
+      select_medication: Dewis meddyginiaeth
+      dose: Dos
+      dosage: Dos
+      choose_one_dose: Dewiswch un dos cyn rhoi manylion yr amserlen.
+      no_dose_options: Nid oes opsiynau dos ar gael ar gyfer y feddyginiaeth hon.
+        Ychwanegwch ddos cyn creu amserlen.
+      schedule_details_title: Manylion yr amserlen
+      schedule_details_description: Gosodwch amseru ac arweiniad diogelwch ar ôl dewis
+        dos.
+      select_medication_first: Dewiswch feddyginiaeth yn gyntaf
+      select_dosage: Dewis dos
+      frequency: Amlder
+      frequency_placeholder: e.e., Unwaith y dydd, Bob 4-6 awr
+      start_date: Dyddiad dechrau
+      end_date: Dyddiad gorffen
+      select_date: Dewis dyddiad
+      max_doses_per_cycle: Uchafswm dosau fesul cylch
+      max_doses_hint: Uchafswm nifer y dosau a ganiateir fesul cylch
+      max_doses_placeholder: e.e., 4
+      min_hours_between_doses: Isafswm oriau rhwng dosau
+      min_hours_hint: Isafswm amser a benodir rhwng dosau
+      min_hours_placeholder: e.e., 6
+      dose_cycle: Cylch dos
+      dose_cycle_hint: 'Pa mor aml y mae''r cylch dos yn ailosod (rhagosod: dyddiol)'
+      select_cycle: 'Dewis cylch (rhagosod: dyddiol)'
+      notes: Nodiadau
+      notes_hint: Cyfarwyddiadau neu wybodaeth ychwanegol
+      notes_placeholder: Rhowch unrhyw nodiadau neu gyfarwyddiadau ychwanegol...
+      cancel: Canslo
+      add_plan: Ychwanegu Cynllun
+      update_plan: Diweddaru Cynllun
+      frequency_once_per_cycle: Unwaith %{cycle}
+      frequency_up_to_per_cycle: Hyd at %{count} gwaith %{cycle}
+      frequency_once: Unwaith y cylch
+      frequency_up_to: Hyd at %{count} gwaith y cylch
+      frequency_at_least_hours: o leiaf %{hours} awr ar wahân
     workflow:
-      eyebrow: "Lif gwaith yr amserlen"
-      title: "Creu amserlen meddyginiaeth"
-      continue_button: "Parhau i fanylion yr amserlen"
-      schedule_type_label: "Math (OTC neu wedi'i ragnodi)"
-      schedule_type_placeholder: "Dewis math"
+      eyebrow: Lif gwaith yr amserlen
+      title: Creu amserlen meddyginiaeth
+      continue_button: Parhau i fanylion yr amserlen
+      schedule_type_label: Math (OTC neu wedi'i ragnodi)
+      schedule_type_placeholder: Dewis math
       schedule_type_options:
-        otc: "OTC"
-        prescribed: "Wedi'i ragnodi"
-      person_label: "Enw'r person"
-      person_placeholder: "Dewis person"
-      medication_label: "Enw'r feddyginiaeth"
-      medication_placeholder: "Dewis meddyginiaeth"
-      frequency_label: "Dos, amlder"
-      frequency_placeholder: "e.e. Unwaith y dydd"
-      summary_title: "Crynodeb yr amserlen"
+        otc: OTC
+        prescribed: Wedi'i ragnodi
+      person_label: Enw'r person
+      person_placeholder: Dewis person
+      medication_label: Enw'r feddyginiaeth
+      medication_placeholder: Dewis meddyginiaeth
+      frequency_label: Dos, amlder
+      frequency_placeholder: e.e. Unwaith y dydd
+      summary_title: Crynodeb yr amserlen
       none: "-"
     index:
-      title: "Amserlenni Gweithredol"
-      subtitle: "Amserlenni sy'n weithredol ar hyn o bryd ar gyfer pobl y gallwch eu cyrchu."
-      start_date: "Dyddiad Cychwyn"
-      empty: "Dim presgripsiynau gweithredol wedi'u canfod."
-      ongoing: "Yn parhau"
-
+      title: Amserlenni Gweithredol
+      subtitle: Amserlenni sy'n weithredol ar hyn o bryd ar gyfer pobl y gallwch eu
+        cyrchu.
+      start_date: Dyddiad Cychwyn
+      empty: Dim presgripsiynau gweithredol wedi'u canfod.
+      ongoing: Yn parhau
   sessions:
-    rate_limit: "Rhowch gynnig arall yn nes ymlaen."
-    signed_in: "Mewngofnodwyd yn llwyddiannus."
-    invalid_credentials: "Rhowch gynnig ar gyfeiriad e-bost neu gyfrinair arall."
-    signed_out: "Allgofnodwyd yn llwyddiannus."
+    rate_limit: Rhowch gynnig arall yn nes ymlaen.
+    signed_in: Mewngofnodwyd yn llwyddiannus.
+    invalid_credentials: Rhowch gynnig ar gyfeiriad e-bost neu gyfrinair arall.
+    signed_out: Allgofnodwyd yn llwyddiannus.
     login:
-      tagline: "Porth Lles"
-      heading: "Croeso yn ôl"
-      subheading: "Mewngofnodwch i'ch cyfrif i barhau"
-      email_label: "Cyfeiriad e-bost"
-      email_placeholder: "eich@ebost.com"
-      password_label: "Cyfrinair"
-      password_placeholder: "Rhowch eich cyfrinair"
-      forgot_password: "Wedi anghofio?"
-      remember_me: "Cofio fi"
-      submit: "Mewngofnodi i'r Dangosfwrdd"
-      medication_illustration_label: "Darlun o botel feddyginiaeth"
-      other_sign_in_options: "Opsiynau mewngofnodi eraill"
+      tagline: Porth Lles
+      heading: Croeso yn ôl
+      subheading: Mewngofnodwch i'ch cyfrif i barhau
+      email_label: Cyfeiriad e-bost
+      email_placeholder: eich@ebost.com
+      password_label: Cyfrinair
+      password_placeholder: Rhowch eich cyfrinair
+      forgot_password: Wedi anghofio?
+      remember_me: Cofio fi
+      submit: Mewngofnodi i'r Dangosfwrdd
+      medication_illustration_label: Darlun o botel feddyginiaeth
+      other_sign_in_options: Opsiynau mewngofnodi eraill
       benefits:
         stay_on_track:
-          title: "Arhoswch ar y trywydd iawn"
-          detail: "Peidiwch byth â cholli dos"
+          title: Arhoswch ar y trywydd iawn
+          detail: Peidiwch byth â cholli dos
         schedule:
-          title: "Eich amserlen"
-          detail: "Eich holl feddyginiaethau mewn un lle"
+          title: Eich amserlen
+          detail: Eich holl feddyginiaethau mewn un lle
         progress:
-          title: "Dilynwch eich cynnydd"
-          detail: "Arferion gwell, iechyd gwell"
+          title: Dilynwch eich cynnydd
+          detail: Arferion gwell, iechyd gwell
         insights:
-          title: "Mewnwelediadau sy'n helpu"
-          detail: "Deallwch eich iechyd"
-      passkey_label: "Passkey"
-      passkey_helper: "Defnyddiwch Face ID, Touch ID, Windows Hello, neu allwedd ddiogelwch."
-      passkey_cta: "Parhau gyda Phasskey"
-      passkey_not_supported: "Nid yw passkeys yn cael eu cefnogi yn y porwr hwn."
-      passkey_cancelled: "Cafodd mewngofnodi gyda phasskey ei ganslo. Ceisiwch eto neu defnyddiwch eich cyfrinair."
-      passkey_error: "Nid oedd modd eich mewngofnodi gyda'r passkey hwn. Ceisiwch eto neu defnyddiwch eich cyfrinair."
-      oauth_continue: "Parhau gyda %{provider}"
-      oauth_sso: "Mewngofnodi gyda %{provider} (SSO)"
-      oauth_divider: "neu"
-      invite_only_oidc_notice: "Mae mewngofnodi sengl wedi'i gadw ar gyfer cyfrifon gwahoddedig."
-      invite_only_oidc_cta: "Parhau gyda %{provider}"
-      need_account: "Angen cyfrif?"
-      create_account: "Creu un"
-      resend_verification: "Ailanfon e-bost dilysu"
-
+          title: Mewnwelediadau sy'n helpu
+          detail: Deallwch eich iechyd
+      passkey_label: Passkey
+      passkey_helper: Defnyddiwch Face ID, Touch ID, Windows Hello, neu allwedd ddiogelwch.
+      passkey_cta: Parhau gyda Phasskey
+      passkey_not_supported: Nid yw passkeys yn cael eu cefnogi yn y porwr hwn.
+      passkey_cancelled: Cafodd mewngofnodi gyda phasskey ei ganslo. Ceisiwch eto
+        neu defnyddiwch eich cyfrinair.
+      passkey_error: Nid oedd modd eich mewngofnodi gyda'r passkey hwn. Ceisiwch eto
+        neu defnyddiwch eich cyfrinair.
+      oauth_continue: Parhau gyda %{provider}
+      oauth_sso: Mewngofnodi gyda %{provider} (SSO)
+      oauth_divider: neu
+      invite_only_oidc_notice: Mae mewngofnodi sengl wedi'i gadw ar gyfer cyfrifon
+        gwahoddedig.
+      invite_only_oidc_cta: Parhau gyda %{provider}
+      need_account: Angen cyfrif?
+      create_account: Creu un
+      resend_verification: Ailanfon e-bost dilysu
   take_medications:
-    success: "Cofnodwyd cymryd y feddyginiaeth yn llwyddiannus."
-    failure: "Methwyd â chofnodi cymryd y feddyginiaeth."
-    json_success: "Cofnodwyd cymryd y feddyginiaeth yn llwyddiannus."
-    invalid_taken_at: "Dewiswch amser dos dilys."
-    future_taken_at: "Ni all amser y dos fod fwy nag awr yn y dyfodol."
-
+    success: Cofnodwyd cymryd y feddyginiaeth yn llwyddiannus.
+    failure: Methwyd â chofnodi cymryd y feddyginiaeth.
+    json_success: Cofnodwyd cymryd y feddyginiaeth yn llwyddiannus.
+    invalid_taken_at: Dewiswch amser dos dilys.
+    future_taken_at: Ni all amser y dos fod fwy nag awr yn y dyfodol.
   profiles:
-    updated: "Diweddarwyd y proffil yn llwyddiannus."
-    email_updated: "Diweddarwyd yr e-bost yn llwyddiannus."
-    no_changes: "Dim newidiadau i'w cadw."
-    profile_update_failed: "Methwyd â diweddaru'r proffil: %{errors}"
-    email_update_failed: "Methwyd â diweddaru'r e-bost: %{errors}"
+    updated: Diweddarwyd y proffil yn llwyddiannus.
+    email_updated: Diweddarwyd yr e-bost yn llwyddiannus.
+    no_changes: Dim newidiadau i'w cadw.
+    profile_update_failed: 'Methwyd â diweddaru''r proffil: %{errors}'
+    email_update_failed: 'Methwyd â diweddaru''r e-bost: %{errors}'
     appearance:
-      title: "Ymddangosiad"
-      description: "Dewiswch sut mae MedTracker yn edrych ar draws sgriniau wedi'u mewngofnodi ac allgofnodedig."
-      mode_label: "Modd"
+      title: Ymddangosiad
+      description: Dewiswch sut mae MedTracker yn edrych ar draws sgriniau wedi'u
+        mewngofnodi ac allgofnodedig.
+      mode_label: Modd
       modes:
-        light: "Golau"
-        dark: "Tywyll"
-        system: "System"
+        light: Golau
+        dark: Tywyll
+        system: System
     theme_picker:
-      title: "Palet Lliwiau"
-      description: "Paru eich gosodiad ymddangosiad â phalet sy'n cyd-fynd â'ch dewisiad."
+      title: Palet Lliwiau
+      description: Paru eich gosodiad ymddangosiad â phalet sy'n cyd-fynd â'ch dewisiad.
       themes:
-        default: "Canolfan Reoli"
-        serene_sage: "Saets Tawel"
-        modern_clinical: "Clinigol Fodern"
-        warm_earth: "Pridd Cynnes"
-        deep_lavender: "Lafant Dwfn"
-        forest_care: "Gofal Coedwig"
-        sunset_support: "Cefnogaeth Machlud"
-        tech_indigo: "Indigo Tech"
-        soft_rose: "Rhosyn Meddal"
-        minty_fresh: "Mint Ffres"
+        default: Canolfan Reoli
+        serene_sage: Saets Tawel
+        modern_clinical: Clinigol Fodern
+        warm_earth: Pridd Cynnes
+        deep_lavender: Lafant Dwfn
+        forest_care: Gofal Coedwig
+        sunset_support: Cefnogaeth Machlud
+        tech_indigo: Indigo Tech
+        soft_rose: Rhosyn Meddal
+        minty_fresh: Mint Ffres
     show:
-      eyebrow: "Atelier Cyfrif"
-      title: "Fy Mhroffil"
-      description: "Lluniwch eich cyfrif, eich dewisiadau diogelwch, a rhythm eich hysbysiadau o un ystafell reoli dawel."
-      not_set: "Heb ei osod"
+      eyebrow: Atelier Cyfrif
+      title: Fy Mhroffil
+      description: Lluniwch eich cyfrif, eich dewisiadau diogelwch, a rhythm eich
+        hysbysiadau o un ystafell reoli dawel.
+      not_set: Heb ei osod
       stats:
-        profile_name: "Enw proffil"
-        sign_in_email: "E-bost mewngofnodi"
+        profile_name: Enw proffil
+        sign_in_email: E-bost mewngofnodi
       personal_information:
-        title: "Gwybodaeth Bersonol"
-        description: "Eich gwybodaeth broffil sylfaenol"
+        title: Gwybodaeth Bersonol
+        description: Eich gwybodaeth broffil sylfaenol
     account_security:
-      title: "Diogelwch Cyfrif"
-      description: "Rheoli eich manylion mewngofnodi a'ch gosodiadau diogelwch"
-      change_email_title: "Newid cyfeiriad e-bost"
-      change_email_description: "Diweddaru'r cyfeiriad e-bost rydych yn ei ddefnyddio i fewngofnodi"
-      change_password_title: "Newid cyfrinair"
-      change_password_description: "Diweddaru eich cyfrinair i gadw eich cyfrif yn ddiogel"
-      change_button: "Newid"
+      title: Diogelwch Cyfrif
+      description: Rheoli eich manylion mewngofnodi a'ch gosodiadau diogelwch
+      change_email_title: Newid cyfeiriad e-bost
+      change_email_description: Diweddaru'r cyfeiriad e-bost rydych yn ei ddefnyddio
+        i fewngofnodi
+      change_password_title: Newid cyfrinair
+      change_password_description: Diweddaru eich cyfrinair i gadw eich cyfrif yn
+        ddiogel
+      change_button: Newid
     password_sheet:
-      change_button: "Newid"
-      title: "Newid Cyfrinair"
-      description: "Diweddaru eich cyfrinair i gadw eich cyfrif yn ddiogel."
-      current_password_label: "Cyfrinair Cyfredol"
-      current_password_placeholder: "Rhowch y cyfrinair cyfredol"
-      new_password_label: "Cyfrinair Newydd"
-      new_password_placeholder: "Rhowch gyfrinair newydd"
-      confirm_password_label: "Cadarnhau Cyfrinair Newydd"
-      confirm_password_placeholder: "Cadarnhewch gyfrinair newydd"
-      cancel: "Canslo"
-      submit: "Diweddaru Cyfrinair"
+      change_button: Newid
+      title: Newid Cyfrinair
+      description: Diweddaru eich cyfrinair i gadw eich cyfrif yn ddiogel.
+      current_password_label: Cyfrinair Cyfredol
+      current_password_placeholder: Rhowch y cyfrinair cyfredol
+      new_password_label: Cyfrinair Newydd
+      new_password_placeholder: Rhowch gyfrinair newydd
+      confirm_password_label: Cadarnhau Cyfrinair Newydd
+      confirm_password_placeholder: Cadarnhewch gyfrinair newydd
+      cancel: Canslo
+      submit: Diweddaru Cyfrinair
     notifications:
-      title: "Hysbysiadau"
-      description: "Rheoli eich atgofion meddyginiaeth a hysbysiadau porwr"
-      browser_title: "Hysbysiadau Porwr"
-      browser_description: "Caniatáu i'r ddyfais hon dderbyn atgofion meddyginiaeth"
-      checking_status: "Wrthi'n gwirio statws hysbysiadau..."
-      enable: "Galluogi"
-      disable: "Analluogi"
-      send_test_notification: "Anfon Hysbysiad Prawf"
-      save: "Cadw"
-      enable_reminders: "Galluogi atgoffa"
-      enable_reminders_description: "Anfon hysbysiadau ar yr amseroedd isod"
-      reminder_times_title: "Amseroedd atgoffa"
-      reminder_times_description: "Gosod pryd rydych am dderbyn atgoffa bob dydd"
+      title: Hysbysiadau
+      description: Rheoli eich atgofion meddyginiaeth a hysbysiadau porwr
+      browser_title: Hysbysiadau Porwr
+      browser_description: Caniatáu i'r ddyfais hon dderbyn atgofion meddyginiaeth
+      checking_status: Wrthi'n gwirio statws hysbysiadau...
+      enable: Galluogi
+      disable: Analluogi
+      send_test_notification: Anfon Hysbysiad Prawf
+      save: Cadw
+      enable_reminders: Galluogi atgoffa
+      enable_reminders_description: Anfon hysbysiadau ar yr amseroedd isod
+      reminder_times_title: Amseroedd atgoffa
+      reminder_times_description: Gosod pryd rydych am dderbyn atgoffa bob dydd
       periods:
-        morning: "Bore"
-        afternoon: "Prynhawn"
-        evening: "Noswaith"
-        night: "Nos"
+        morning: Bore
+        afternoon: Prynhawn
+        evening: Noswaith
+        night: Nos
     version_info:
-      title: "Gwybodaeth System"
-      description: "Fersiwn y rhaglen ac adnoddau"
-      app_version: "Fersiwn Ap"
-      worktree: "Coeden waith"
-      commit: "Commit"
-      release_notes: "Nodiadau Rhyddhau"
-      documentation: "Dogfennaeth"
-      view_docs: "Gweld Dogfennaeth"
+      title: Gwybodaeth System
+      description: Fersiwn y rhaglen ac adnoddau
+      app_version: Fersiwn Ap
+      worktree: Coeden waith
+      commit: Commit
+      release_notes: Nodiadau Rhyddhau
+      documentation: Dogfennaeth
+      view_docs: Gweld Dogfennaeth
     close_account:
-      title: "Cau Cyfrif"
-      description: "Dileu eich cyfrif a'r holl ddata cysylltiedig yn barhaol"
-      dialog_title: "Ydych chi'n hollol siŵr?"
-      dialog_description: "Ni ellir dadwneud y weithred hon. Bydd hyn yn dileu eich cyfrif yn barhaol ac yn tynnu'ch holl ddata o'n gweinyddwyr."
-      cancel_button: "Canslo"
-      confirm_button: "Ie, dilëwch fy nghyfrif"
-
+      title: Cau Cyfrif
+      description: Dileu eich cyfrif a'r holl ddata cysylltiedig yn barhaol
+      dialog_title: Ydych chi'n hollol siŵr?
+      dialog_description: Ni ellir dadwneud y weithred hon. Bydd hyn yn dileu eich
+        cyfrif yn barhaol ac yn tynnu'ch holl ddata o'n gweinyddwyr.
+      cancel_button: Canslo
+      confirm_button: Ie, dilëwch fy nghyfrif
   users:
-    welcome: "Croeso! Mae eich cyfrif wedi'i greu."
-    created: "Crëwyd y defnyddiwr yn llwyddiannus."
-    updated: "Diweddarwyd y defnyddiwr yn llwyddiannus."
-    deactivated: "Mae cyfrif y defnyddiwr wedi'i ddadactifadu."
-    activated: "Mae cyfrif y defnyddiwr wedi'i actifadu."
-    verified: "Mae cyfrif y defnyddiwr wedi'i wirio â llaw."
-    cannot_deactivate_self: "Ni allwch ddadactifadu eich cyfrif eich hun."
-
+    welcome: Croeso! Mae eich cyfrif wedi'i greu.
+    created: Crëwyd y defnyddiwr yn llwyddiannus.
+    updated: Diweddarwyd y defnyddiwr yn llwyddiannus.
+    deactivated: Mae cyfrif y defnyddiwr wedi'i ddadactifadu.
+    activated: Mae cyfrif y defnyddiwr wedi'i actifadu.
+    verified: Mae cyfrif y defnyddiwr wedi'i wirio â llaw.
+    cannot_deactivate_self: Ni allwch ddadactifadu eich cyfrif eich hun.
   webauthn:
-    passkey_removed: "Allwedd mynediad wedi'i dynnu'n llwyddiannus"
-    passkey_registered: "Allwedd mynediad wedi'i chofrestru'n llwyddiannus"
-
+    passkey_removed: Allwedd mynediad wedi'i dynnu'n llwyddiannus
+    passkey_registered: Allwedd mynediad wedi'i chofrestru'n llwyddiannus
   layouts:
     mailer:
-      footer_notice: "Anfonwyd yr e-bost hwn oherwydd bod gennych gyfrif gyda ni."
+      footer_notice: Anfonwyd yr e-bost hwn oherwydd bod gennych gyfrif gyda ni.
     navigation:
-      skip_to_content: "Neidio i'r cynnwys"
-      brand: "MedTracker"
-      login: "Mewngofnodi"
+      skip_to_content: Neidio i'r cynnwys
+      brand: MedTracker
+      login: Mewngofnodi
     desktop_nav:
-      medications: "Meddyginiaethau"
-      people: "Pobl"
-      medication_finder: "Darganfyddwr Meddyginiaethau"
+      medications: Meddyginiaethau
+      people: Pobl
+      medication_finder: Darganfyddwr Meddyginiaethau
     profile_menu:
-      my_account: "Fy Nghyfrif"
-      dashboard: "Bordd"
-      profile: "Proffil"
-      administration: "Gweinyddu"
-      logout: "Allgofnodi"
-      account: "Cyfrif"
+      my_account: Fy Nghyfrif
+      dashboard: Bordd
+      profile: Proffil
+      administration: Gweinyddu
+      logout: Allgofnodi
+      account: Cyfrif
     mobile_menu:
-      brand: "MedTracker"
-      open_menu: "Agor y ddewislen"
-      close_menu: "Cau y ddewislen"
-      medications: "Meddyginiaethau"
-      people: "Pobl"
-      medication_finder: "Darganfyddwr Meddyginiaethau"
-      profile: "Proffil"
-      administration: "Gweinyddu"
-      logout: "Allgofnodi"
+      brand: MedTracker
+      open_menu: Agor y ddewislen
+      close_menu: Cau y ddewislen
+      medications: Meddyginiaethau
+      people: Pobl
+      medication_finder: Darganfyddwr Meddyginiaethau
+      profile: Proffil
+      administration: Gweinyddu
+      logout: Allgofnodi
     sidebar:
-      dashboard: "Dangosfwrdd"
-      inventory: "Rhestr Eiddo"
-      locations: "Lleoliadau"
-      finder: "Darganfyddwr Meddyginiaethau"
-      people: "Pobl"
-      reports: "Adroddiadau"
-      administration: "Gweinyddu"
-      sign_out: "Allgofnodi"
-      user_fallback: "Defnyddiwr"
+      dashboard: Dangosfwrdd
+      inventory: Rhestr Eiddo
+      locations: Lleoliadau
+      finder: Darganfyddwr Meddyginiaethau
+      people: Pobl
+      reports: Adroddiadau
+      administration: Gweinyddu
+      sign_out: Allgofnodi
+      user_fallback: Defnyddiwr
+    floating_action_menu:
+      close: Cau gweithredoedd cyflym
+      open: Agor gweithredoedd cyflym
+    mobile_rail:
+      primary_navigation: Llywio cynradd
   forms:
     locations:
-      name_placeholder: "e.e. Cartref, Ysgol, Tŷ Mam-gu"
-      description_placeholder: "Disgrifiwch y lleoliad hwn..."
+      name_placeholder: e.e. Cartref, Ysgol, Tŷ Mam-gu
+      description_placeholder: Disgrifiwch y lleoliad hwn...
     people:
-      name_placeholder: "e.g., Jane Doe"
-      email_placeholder: "e.g., jane@example.com"
+      name_placeholder: e.g., Jane Doe
+      email_placeholder: e.g., jane@example.com
     medications:
-      inventory_management: "Rheoli Rhestr Eiddo"
-      dosage_and_supply: "Dos a Chyflenwad"
-      name: "Enw"
-      name_placeholder: "e.e., Parasetamol"
-      friendly_name: "Enw arddangos"
-      friendly_name_placeholder: "Gadewch yn wag i ddefnyddio enw llawn y feddyginiaeth"
-      friendly_name_hint: "Defnyddir mewn rhestrau, amserlenni a hanes. Cedwir yr enw mewnforio llawn er gwybodaeth."
-      description: "Disgrifiad"
-      description_placeholder: "Ar gyfer beth mae'r feddyginiaeth hon yn cael ei defnyddio?"
-      standard_dosage: "Dos"
-      unit: "Uned"
-      select_unit: "Dewis uned"
-      current_supply: "Cyflenwad sy'n weddill"
-      reorder_threshold: "Trothwy Yn ail-drefnu"
-      warnings: "Rhybuddion"
-      warnings_placeholder: "Unrhyw sgîl-effeithiau neu rybuddion defnyddio?"
-      save_medication: "Cadw Meddyginiaeth"
-      saving: "Yn cadw..."
-      back_to_medications: "Yn ôl i Feddyginiaethau"
-      back: "Yn ôl"
-      select_location: "Dewiswch leoliad..."
-      select_category: "Dewiswch gategori (dewisol)..."
-      filter_categories: "Teipiwch i hidlo categorïau..."
-      no_categories_found: "Ni chanfuwyd categorïau."
-      standard_dosage_placeholder: "e.g., 500"
-      current_supply_placeholder: "e.g., 30"
-      reorder_threshold_placeholder: "e.g., 5"
+      inventory_management: Rheoli Rhestr Eiddo
+      dosage_and_supply: Dos a Chyflenwad
+      name: Enw
+      name_placeholder: e.e., Parasetamol
+      friendly_name: Enw arddangos
+      friendly_name_placeholder: Gadewch yn wag i ddefnyddio enw llawn y feddyginiaeth
+      friendly_name_hint: Defnyddir mewn rhestrau, amserlenni a hanes. Cedwir yr enw
+        mewnforio llawn er gwybodaeth.
+      description: Disgrifiad
+      description_placeholder: Ar gyfer beth mae'r feddyginiaeth hon yn cael ei defnyddio?
+      standard_dosage: Dos
+      unit: Uned
+      select_unit: Dewis uned
+      current_supply: Cyflenwad sy'n weddill
+      reorder_threshold: Trothwy Yn ail-drefnu
+      warnings: Rhybuddion
+      warnings_placeholder: Unrhyw sgîl-effeithiau neu rybuddion defnyddio?
+      save_medication: Cadw Meddyginiaeth
+      saving: Yn cadw...
+      back_to_medications: Yn ôl i Feddyginiaethau
+      back: Yn ôl
+      select_location: Dewiswch leoliad...
+      select_category: Dewiswch gategori (dewisol)...
+      filter_categories: Teipiwch i hidlo categorïau...
+      no_categories_found: Ni chanfuwyd categorïau.
+      standard_dosage_placeholder: e.g., 500
+      current_supply_placeholder: e.g., 30
+      reorder_threshold_placeholder: e.g., 5
       wizard:
-        progress_label: "Cynnydd gosod meddyginiaeth"
-        continue: "Parhau"
+        progress_label: Cynnydd gosod meddyginiaeth
+        continue: Parhau
         steps:
-          details: "Manylion"
-          dose: "Dos"
-          supply: "Cyflenwad"
-          warnings: "Rhybuddion"
+          details: Manylion
+          dose: Dos
+          supply: Cyflenwad
+          warnings: Rhybuddion
         details:
-          title: "Manylion y feddyginiaeth"
-          description: "Dywedwch wrthym am y feddyginiaeth hon."
+          title: Manylion y feddyginiaeth
+          description: Dywedwch wrthym am y feddyginiaeth hon.
         dose:
-          title: "Amserlen dos"
-          description: "Adeiladwch yr amserlen gyntaf drwy ddewis pwy sy'n ei gymryd, y dos, a'r rhythm."
-          person_title: "Pwy fydd yn cymryd hwn?"
-          person_description: "Dewiswch y person neu'r dibynnydd mae'r amserlen hon ar ei gyfer."
+          title: Amserlen dos
+          description: Adeiladwch yr amserlen gyntaf drwy ddewis pwy sy'n ei gymryd,
+            y dos, a'r rhythm.
+          person_title: Pwy fydd yn cymryd hwn?
+          person_description: Dewiswch y person neu'r dibynnydd mae'r amserlen hon
+            ar ei gyfer.
           person_types:
-            adult: "Oedolyn"
-            minor: "Plentyn"
-            dependent_adult: "Oedolyn dibynnol"
-          amount: "Swm"
-          unit: "Uned"
-          schedule_type_title: "Pa mor aml caiff ei gymryd?"
+            adult: Oedolyn
+            minor: Plentyn
+            dependent_adult: Oedolyn dibynnol
+          amount: Swm
+          unit: Uned
+          schedule_type_title: Pa mor aml caiff ei gymryd?
           schedule_types:
             multiple_daily:
-              title: "Sawl gwaith y dydd"
-              description: "Sawl dos wedi'u cynllunio bob dydd"
+              title: Sawl gwaith y dydd
+              description: Sawl dos wedi'u cynllunio bob dydd
             daily:
-              title: "Bob dydd"
-              description: "Un dos ar yr un amser"
+              title: Bob dydd
+              description: Un dos ar yr un amser
             weekly:
-              title: "Wythnosol"
-              description: "Dos wythnosol ailadroddus"
+              title: Wythnosol
+              description: Dos wythnosol ailadroddus
             specific_dates:
-              title: "Dyddiadau penodol"
-              description: "Dim ond ar ddyddiadau dethol"
+              title: Dyddiadau penodol
+              description: Dim ond ar ddyddiadau dethol
             prn:
-              title: "Yn ôl yr angen"
-              description: "PRN gyda therfynau diogelwch"
+              title: Yn ôl yr angen
+              description: PRN gyda therfynau diogelwch
             tapering:
-              title: "Lleihau'n raddol"
-              description: "Cynllun dos sy'n newid"
-          doses_per_day: "Dosau y dydd"
-          hours_apart: "Oriau ar wahân"
-          first_dose: "Dos cyntaf"
-          second_dose: "Ail ddos"
-          dose_time: "Amser dos"
-          weekly_day: "Diwrnod"
-          specific_dates: "Dyddiadau"
-          specific_date_to_add: "Dyddiad i'w ychwanegu"
-          add_specific_date: "Ychwanegu dyddiad"
-          no_specific_dates: "Dim dyddiadau wedi'u dewis eto"
-          specific_dates_placeholder: "2026-04-24, 2026-04-25"
-          max_daily_doses: "Uchafswm dosau dyddiol"
-          min_hours_between: "Isafswm oriau rhwng dosau"
-          tapering_plan: "Cynllun lleihau"
-          tapering_placeholder: "Disgrifiwch newidiadau dos dros amser"
-          start_date: "Dyddiad dechrau"
-          end_date: "Dyddiad gorffen"
-          review_title: "Adolygiad mewn iaith glir"
-          review_placeholder: "Adolygwch yr amserlen dos cyn parhau."
-          review_button: "Adolygu amserlen dos"
-          review_required: "Adolygwch yr amserlen dos cyn parhau."
+              title: Lleihau'n raddol
+              description: Cynllun dos sy'n newid
+          doses_per_day: Dosau y dydd
+          hours_apart: Oriau ar wahân
+          first_dose: Dos cyntaf
+          second_dose: Ail ddos
+          dose_time: Amser dos
+          weekly_day: Diwrnod
+          specific_dates: Dyddiadau
+          specific_date_to_add: Dyddiad i'w ychwanegu
+          add_specific_date: Ychwanegu dyddiad
+          no_specific_dates: Dim dyddiadau wedi'u dewis eto
+          specific_dates_placeholder: 2026-04-24, 2026-04-25
+          max_daily_doses: Uchafswm dosau dyddiol
+          min_hours_between: Isafswm oriau rhwng dosau
+          tapering_plan: Cynllun lleihau
+          tapering_placeholder: Disgrifiwch newidiadau dos dros amser
+          start_date: Dyddiad dechrau
+          end_date: Dyddiad gorffen
+          review_title: Adolygiad mewn iaith glir
+          review_placeholder: Adolygwch yr amserlen dos cyn parhau.
+          review_button: Adolygu amserlen dos
+          review_required: Adolygwch yr amserlen dos cyn parhau.
         supply:
-          title: "Gosod cyflenwad"
-          description: "Traciwch faint sydd gennych yn y pecyn a phryd i ail-archebu."
+          title: Gosod cyflenwad
+          description: Traciwch faint sydd gennych yn y pecyn a phryd i ail-archebu.
       validation_errors:
-        one: "1 gwall wedi atal y meddyginiaeth hon rhag cael ei chadw:"
+        one: '1 gwall wedi atal y meddyginiaeth hon rhag cael ei chadw:'
         other: "%{count} wall wedi atal y meddyginiaeth hon rhag cael ei chadw:"
+      starting_supply: Nifer cychwynnol
   dashboard:
-    title: "Bwrdd Rheoli Teulu"
-    greeting_morning: "Bore da, %{name}"
-    greeting_afternoon: "Prynhawn da, %{name}"
-    greeting_evening: "Noswaith dda, %{name}"
-    subtitle: "Amserlen meddyginiaeth eich teulu am heddiw."
-    todays_schedule: "Amserlen Heddiw"
+    title: Bwrdd Rheoli Teulu
+    greeting_morning: Bore da, %{name}
+    greeting_afternoon: Prynhawn da, %{name}
+    greeting_evening: Noswaith dda, %{name}
+    subtitle: Amserlen meddyginiaeth eich teulu am heddiw.
+    todays_schedule: Amserlen Heddiw
     as_needed:
-      title: "Yn ôl yr angen"
-    overdue_alert: "Hwyr: %{medication} ar gyfer %{person} (wedi'i drefnu am %{time})"
-    out_of_stock_alert: "Allan o stoc: %{medication}. Ni ellir cofnodi dosau ar gyfer %{person}."
+      title: Yn ôl yr angen
+    overdue_alert: 'Hwyr: %{medication} ar gyfer %{person} (wedi''i drefnu am %{time})'
+    out_of_stock_alert: 'Allan o stoc: %{medication}. Ni ellir cofnodi dosau ar gyfer
+      %{person}.'
     insights:
-      title: "Mewnwelediadau Clyfar"
-      view_report: "Gweld yr adroddiad llawn"
+      title: Mewnwelediadau Clyfar
+      view_report: Gweld yr adroddiad llawn
     inventory:
-      title: "Rhestr Stoc"
+      title: Rhestr Stoc
       left: "%{count} ar ôl"
-      order_refills: "Archebu ail-lenwadau"
-    medication_schedule: "Amserlen Meddyginiaeth"
-    no_active_schedules: "Dim presgripsiynau gweithredol wedi'u canfod"
-    add_schedules_hint: "Ychwanegwch bresgripsiynau i'w gweld yma"
+      order_refills: Archebu ail-lenwadau
+    medication_schedule: Amserlen Meddyginiaeth
+    no_active_schedules: Dim presgripsiynau gweithredol wedi'u canfod
+    add_schedules_hint: Ychwanegwch bresgripsiynau i'w gweld yma
     dose_taken_at: "%{person} • Cymerwyd am %{time}"
-    empty_state: "Dim meddyginiaethau wedi'u trefnu ar gyfer heddiw."
+    empty_state: Dim meddyginiaethau wedi'u trefnu ar gyfer heddiw.
     routine:
-      anytime: "Unrhyw bryd"
-      done_short: "Wedi gorffen"
-      done_today: "Tasgau rheolaidd wedi'u cwblhau heddiw"
-      empty: "Dim tasgau rheolaidd i'w gwneud heddiw"
+      anytime: Unrhyw bryd
+      done_short: Wedi gorffen
+      done_today: Tasgau rheolaidd wedi'u cwblhau heddiw
+      empty: Dim tasgau rheolaidd i'w gwneud heddiw
       left_today:
-        one: "1 dasg reolaidd ar ôl heddiw"
+        one: 1 dasg reolaidd ar ôl heddiw
         other: "%{count} tasg reolaidd ar ôl heddiw"
     stats:
-      people: "Pobl"
-      active_schedules: "Presgripsiynau Gweithredol"
-      compliance: "Cydymffurfiaeth"
-      next_dose: "Dos nesaf"
-      due_today: "Heddiw"
-      no_upcoming_doses: "Dim un heddiw"
+      people: Pobl
+      active_schedules: Presgripsiynau Gweithredol
+      compliance: Cydymffurfiaeth
+      next_dose: Dos nesaf
+      due_today: Heddiw
+      no_upcoming_doses: Dim un heddiw
     statuses:
-      taken: "Wedi cymryd"
-      upcoming: "Ar ddod"
-      available_now: "Ar gael nawr"
-      available_at: "Ar gael am %{time}"
-      cooldown: "Aros"
-      missed: "Wedi colli"
-      max_reached: "Uchafswm dyddiol wedi'i gyrraedd"
-      out_of_stock: "Allan o Stoc"
+      taken: Wedi cymryd
+      upcoming: Ar ddod
+      available_now: Ar gael nawr
+      available_at: Ar gael am %{time}
+      cooldown: Aros
+      missed: Wedi colli
+      max_reached: Uchafswm dyddiol wedi'i gyrraedd
+      out_of_stock: Allan o Stoc
     table:
-      person: "Person"
-      medication: "Meddyginiaeth"
-      dosage: "Dos"
-      quantity: "Swm"
-      frequency: "Amlder"
-      end_date: "Dyddiad Gorffen"
-      actions: "Gweithredoedd"
+      person: Person
+      medication: Meddyginiaeth
+      dosage: Dos
+      quantity: Swm
+      frequency: Amlder
+      end_date: Dyddiad Gorffen
+      actions: Gweithredoedd
     person_schedule:
-      age: "Oedran"
-      dosage: "Dos"
-      frequency: "Amlder"
-      ends: "Yn gorffen"
-      out_of_stock: "Allan o Stoc"
-      on_cooldown: "Ar seibiant"
-      take_now: "Cymerwch Nawr"
-      delete_confirmation: "Ydych chi'n sicr eich bod am ddileu'r amserlen hon ar gyfer %{medication}? Ni all y weithred hon gael ei dadwneud."
+      age: Oedran
+      dosage: Dos
+      frequency: Amlder
+      ends: Yn gorffen
+      out_of_stock: Allan o Stoc
+      on_cooldown: Ar seibiant
+      take_now: Cymerwch Nawr
+      delete_confirmation: Ydych chi'n sicr eich bod am ddileu'r amserlen hon ar gyfer
+        %{medication}? Ni all y weithred hon gael ei dadwneud.
     schedule_card:
-      dosage: "Dos"
-      remaining_supply: "Cyflenwad sy'n weddill"
-      frequency: "Amlder"
-      ends: "Yn gorffen"
+      dosage: Dos
+      remaining_supply: Cyflenwad sy'n weddill
+      frequency: Amlder
+      ends: Yn gorffen
     quick_stats:
-      title: "Ystadegau Cyflym"
-      people: "Pobl"
-      active_schedules: "Amserlenni gweithredol"
+      title: Ystadegau Cyflym
+      people: Pobl
+      active_schedules: Amserlenni gweithredol
     delete_confirmation:
-      delete: "Dileu"
-      delete_schedule: "Dileu Trwyddedriad?"
-      are_you_sure: "Ydych chi'n sicr eich bod am dileu %{medication} ar gyfer %{person}? Ni all y weithred hon gael ei dadwneud."
-      cancel: "Canslo"
+      delete: Dileu
+      delete_schedule: Dileu Trwyddedriad?
+      are_you_sure: Ydych chi'n sicr eich bod am dileu %{medication} ar gyfer %{person}?
+        Ni all y weithred hon gael ei dadwneud.
+      cancel: Canslo
     quick_actions:
-      title: "Gweithredoedd Cyflym"
-      add_medication: "Ychwanegu Meddyginiaeth"
-      add_person: "Ychwanegu Person"
-
+      title: Gweithredoedd Cyflym
+      add_medication: Ychwanegu Meddyginiaeth
+      add_person: Ychwanegu Person
   barcode_scanner:
-    title: "Sganiwch God Bar"
-    start: "Cychwyn y Sganiwr"
-    stop: "Stopio'r Sganiwr"
+    title: Sganiwch God Bar
+    start: Cychwyn y Sganiwr
+    stop: Stopio'r Sganiwr
     manual:
-      label: "Neu nodwch y cod bar â llaw"
-      placeholder: "e.e. 5000158100138"
-      submit: "Cyflwyno"
+      label: Neu nodwch y cod bar â llaw
+      placeholder: e.e. 5000158100138
+      submit: Cyflwyno
     status:
-      requesting: "Wrthi'n gofyn am fynediad i'r camera…"
-      scanning: "Pwyntiwch eich camera at god bar"
-      decoded: "Cod bar wedi'i sganio'n llwyddiannus!"
-      denied: "Gwrthodwyd mynediad i'r camera. Defnyddiwch y cofnod â llaw isod."
-      unavailable: "Ni chanfuwyd camera. Defnyddiwch y cofnod â llaw isod."
-      error: "Gwall yn y sganiwr. Defnyddiwch y cofnod â llaw isod."
-
+      requesting: Wrthi'n gofyn am fynediad i'r camera…
+      scanning: Pwyntiwch eich camera at god bar
+      decoded: Cod bar wedi'i sganio'n llwyddiannus!
+      denied: Gwrthodwyd mynediad i'r camera. Defnyddiwch y cofnod â llaw isod.
+      unavailable: Ni chanfuwyd camera. Defnyddiwch y cofnod â llaw isod.
+      error: Gwall yn y sganiwr. Defnyddiwch y cofnod â llaw isod.
   notification_preferences:
-    updated: "Cedwir y gosodiadau hysbysiadau."
-    update_failed: "Methwyd â chadw'r gosodiadau hysbysiadau."
-
+    updated: Cedwir y gosodiadau hysbysiadau.
+    update_failed: Methwyd â chadw'r gosodiadau hysbysiadau.
   reports:
     index:
-      eyebrow: "Dadansoddeg Lles"
-      title: "Adroddiad Iechyd"
-      start_date_label: "O"
-      end_date_label: "I"
-      apply_filters_aria_label: "Defnyddio hidlwyr dyddiad"
+      eyebrow: Dadansoddeg Lles
+      title: Adroddiad Iechyd
+      start_date_label: O
+      end_date_label: I
+      apply_filters_aria_label: Defnyddio hidlwyr dyddiad
       summary:
-        overall_compliance: "Cydymffurfiaeth Gyffredinol"
-        total_doses_logged: "Cyfanswm dosau wedi'u cofnodi"
-        evidence_reviewed: "Tystiolaeth wedi'i hadolygu"
-        excellent: "Ardderchog"
-        needs_attention: "Angen sylw"
-        on_track: "Ar y trywydd iawn"
-        missed_doses: "Dosau wedi'u methu"
-        based_on_logs: "Yn seiliedig ar ddosau wedi'u cofnodi"
-      timeline_title: "Llinell Amser Cydymffurfiaeth"
-      download_pdf: "Lawrlwytho PDF"
+        overall_compliance: Cydymffurfiaeth Gyffredinol
+        total_doses_logged: Cyfanswm dosau wedi'u cofnodi
+        evidence_reviewed: Tystiolaeth wedi'i hadolygu
+        excellent: Ardderchog
+        needs_attention: Angen sylw
+        on_track: Ar y trywydd iawn
+        missed_doses: Dosau wedi'u methu
+        based_on_logs: Yn seiliedig ar ddosau wedi'u cofnodi
+      timeline_title: Llinell Amser Cydymffurfiaeth
+      download_pdf: Lawrlwytho PDF
       timeline_compliance: "%{percentage}% Cydymffurfiaeth"
       inventory_alert:
-        title: "Rhybudd Rhestr"
-        out_of_stock: "Allan o Stoc"
-        refill_pending: "Ail-lenwi ar y gweill"
-        description_zero: "Mae cyflenwad %{medication_name} wedi dod i ben. Archebwch ail-lenwi brys."
+        title: Rhybudd Rhestr
+        out_of_stock: Allan o Stoc
+        refill_pending: Ail-lenwi ar y gweill
+        description_zero: Mae cyflenwad %{medication_name} wedi dod i ben. Archebwch
+          ail-lenwi brys.
         description:
-          one: "Bydd cyflenwad %{medication_name} yn dod i ben mewn %{count} diwrnod. Rydym yn argymell archebu ail-lenwi y prynhawn yma."
-          other: "Bydd cyflenwad %{medication_name} yn dod i ben mewn %{count} diwrnod. Rydym yn argymell archebu ail-lenwi y prynhawn yma."
-      actionable_insight: "Mewnwelediad gweithredadwy"
+          one: Bydd cyflenwad %{medication_name} yn dod i ben mewn %{count} diwrnod.
+            Rydym yn argymell archebu ail-lenwi y prynhawn yma.
+          other: Bydd cyflenwad %{medication_name} yn dod i ben mewn %{count} diwrnod.
+            Rydym yn argymell archebu ail-lenwi y prynhawn yma.
+      actionable_insight: Mewnwelediad gweithredadwy
   smart_insights:
-    title: "Mewnwelediadau Clyfar"
+    title: Mewnwelediadau Clyfar
     evidence_summary:
       one: "%{days} diwrnod wedi'u hadolygu gyda %{events} digwyddiad meddyginiaeth"
       other: "%{days} diwrnod wedi'u hadolygu gyda %{events} digwyddiad meddyginiaeth"
     learning:
-      title: "Dysgu eich trefn"
-      summary: "Parhewch i gofnodi dosau fel y gall MedTracker weld patrymau go iawn."
-      detail: "Mae Smart Insights yn aros am ddigon o dystiolaeth cyn galw rhywbeth yn batrwm."
+      title: Dysgu eich trefn
+      summary: Parhewch i gofnodi dosau fel y gall MedTracker weld patrymau go iawn.
+      detail: Mae Smart Insights yn aros am ddigon o dystiolaeth cyn galw rhywbeth
+        yn batrwm.
     no_action:
-      title: "Nid oes patrwm angen sylw"
-      summary: "Nid oes dim anarferol yn sefyll allan yn y cyfnod adrodd hwn."
-      detail: "Mae eich adroddiad yn dal i ddangos hanes dosau a rhestr stoc fel y gallwch adolygu'r manylion."
+      title: Nid oes patrwm angen sylw
+      summary: Nid oes dim anarferol yn sefyll allan yn y cyfnod adrodd hwn.
+      detail: Mae eich adroddiad yn dal i ddangos hanes dosau a rhestr stoc fel y
+        gallwch adolygu'r manylion.
     detectors:
       adherence_streak:
-        title: "Stryd trefn gref"
+        title: Stryd trefn gref
         summary:
-          one: "Cofnodwyd pob dos disgwyliedig ddoe."
-          other: "Cofnodwyd pob dos disgwyliedig am %{count} diwrnod."
-        detail: "Mae'r cysondeb hwnnw'n rhoi rhythm cadarn i'ch trefn ofal."
-        metric_label: "Stryd gyfredol"
+          one: Cofnodwyd pob dos disgwyliedig ddoe.
+          other: Cofnodwyd pob dos disgwyliedig am %{count} diwrnod.
+        detail: Mae'r cysondeb hwnnw'n rhoi rhythm cadarn i'ch trefn ofal.
+        metric_label: Stryd gyfredol
         metric_value:
-          one: "1 diwrnod"
+          one: 1 diwrnod
           other: "%{count} diwrnod"
       missed_dose_pattern:
-        title: "Patrwm dosau wedi'u methu"
+        title: Patrwm dosau wedi'u methu
         summary:
-          one: "Methwyd dosau disgwyliedig ddoe."
-          other: "Methwyd dosau disgwyliedig am %{count} diwrnod yn olynol."
-        detail: "Adolygwch yr amserlen a'r atgoffwyr ar gyfer y cyfnod hwn."
-        metric_label: "Rhediad hiraf"
+          one: Methwyd dosau disgwyliedig ddoe.
+          other: Methwyd dosau disgwyliedig am %{count} diwrnod yn olynol.
+        detail: Adolygwch yr amserlen a'r atgoffwyr ar gyfer y cyfnod hwn.
+        metric_label: Rhediad hiraf
         metric_value:
-          one: "1 diwrnod"
+          one: 1 diwrnod
           other: "%{count} diwrnod"
       timing_consistency:
-        title: "Amseriad dosau cyson"
-        summary: "Roedd %{percentage}% o'r dosau wedi'u cofnodi yn agos at eu hamser trefnedig."
-        detail: "Mae eich amseriad wedi'i gofnodi wedi bod yn sefydlog yn y cyfnod adrodd hwn."
-        metric_label: "Cofnodion ar amser"
+        title: Amseriad dosau cyson
+        summary: Roedd %{percentage}% o'r dosau wedi'u cofnodi yn agos at eu hamser
+          trefnedig.
+        detail: Mae eich amseriad wedi'i gofnodi wedi bod yn sefydlog yn y cyfnod
+          adrodd hwn.
+        metric_label: Cofnodion ar amser
         metric_value:
-          one: "1 dos"
+          one: 1 dos
           other: "%{count} dos"
       inventory_risk:
-        title: "Mae angen sylw ar gyflenwad"
-        summary_zero: "Mae %{medication_name} yn ymddangos allan o stoc."
+        title: Mae angen sylw ar gyflenwad
+        summary_zero: Mae %{medication_name} yn ymddangos allan o stoc.
         summary:
-          one: "Mae gan %{medication_name} tua 1 diwrnod o gyflenwad ar ôl."
-          other: "Mae gan %{medication_name} tua %{count} diwrnod o gyflenwad ar ôl."
-        detail: "Gwiriwch gofnod stoc %{medication_name} a chynlluniwch yr ail-lenwi nesaf."
-        metric_label: "Cyflenwad ar ôl"
+          one: Mae gan %{medication_name} tua 1 diwrnod o gyflenwad ar ôl.
+          other: Mae gan %{medication_name} tua %{count} diwrnod o gyflenwad ar ôl.
+        detail: Gwiriwch gofnod stoc %{medication_name} a chynlluniwch yr ail-lenwi
+          nesaf.
+        metric_label: Cyflenwad ar ôl
         metric_value:
-          one: "1 diwrnod"
+          one: 1 diwrnod
           other: "%{count} diwrnod"
       prn_usage:
-        title: "Defnydd yn ôl yr angen wedi'i gofnodi"
+        title: Defnydd yn ôl yr angen wedi'i gofnodi
         summary:
-          one: "Cofnodwyd 1 dos yn ôl yr angen yn y cyfnod hwn."
-          other: "Cofnodwyd %{count} dos yn ôl yr angen yn y cyfnod hwn."
-        detail: "Adolygwch y cofnodion hyn ochr yn ochr â dosau rheolaidd i gadw'r darlun llawn yn glir."
-        metric_label: "Cofnodion PRN"
+          one: Cofnodwyd 1 dos yn ôl yr angen yn y cyfnod hwn.
+          other: Cofnodwyd %{count} dos yn ôl yr angen yn y cyfnod hwn.
+        detail: Adolygwch y cofnodion hyn ochr yn ochr â dosau rheolaidd i gadw'r
+          darlun llawn yn glir.
+        metric_label: Cofnodion PRN
         metric_value:
-          one: "1 dos"
+          one: 1 dos
           other: "%{count} dos"
       schedule_hygiene:
-        title: "Manylyn amserlen i'w adolygu"
-        summary: "Mae %{medication_name} wedi'i osod ar gyfer sawl dos dyddiol heb amseroedd penodol."
-        detail: "Gall ychwanegu amseroedd wneud atgoffwyr, adroddiadau a mewnwelediadau amseriad yn gliriach."
-        metric_label: "Adolygu"
-        metric_value: "Amserlen"
-
+        title: Manylyn amserlen i'w adolygu
+        summary: Mae %{medication_name} wedi'i osod ar gyfer sawl dos dyddiol heb
+          amseroedd penodol.
+        detail: Gall ychwanegu amseroedd wneud atgoffwyr, adroddiadau a mewnwelediadau
+          amseriad yn gliriach.
+        metric_label: Adolygu
+        metric_value: Amserlen
   notification_settings:
-    title: "Gosodiadau Hysbysiadau"
-    description: "Rheoli eich hysbysiadau atgoffa meddyginiaeth."
+    title: Gosodiadau Hysbysiadau
+    description: Rheoli eich hysbysiadau atgoffa meddyginiaeth.
     browser:
-      title: "Hysbysiadau Porwr"
-      status: "Wrthi'n gwirio statws hysbysiadau..."
-      enable: "Galluogi Hysbysiadau"
-      disable: "Analluogi Hysbysiadau"
-      test: "Anfon Hysbysiad Prawf"
+      title: Hysbysiadau Porwr
+      status: Wrthi'n gwirio statws hysbysiadau...
+      enable: Galluogi Hysbysiadau
+      disable: Analluogi Hysbysiadau
+      test: Anfon Hysbysiad Prawf
     reminders:
-      enable: "Galluogi Atgoffa"
-      description: "Anfon atgofion meddyginiaeth ar amseroedd a drefnwyd."
-      title: "Amseroedd Atgoffa"
+      enable: Galluogi Atgoffa
+      description: Anfon atgofion meddyginiaeth ar amseroedd a drefnwyd.
+      title: Amseroedd Atgoffa
     period_labels:
-      morning: "Bore"
-      afternoon: "Prynhawn"
-      evening: "Noswaith"
-      night: "Nos"
+      morning: Bore
+      afternoon: Prynhawn
+      evening: Noswaith
+      night: Nos
     actions:
-      cancel: "Canslo"
-      save: "Cadw Gosodiadau"
-
+      cancel: Canslo
+      save: Cadw Gosodiadau
   invitations:
     accept:
-      title: "Cwblhewch Eich Cyfrif"
-      description: "Llenwch eich manylion i dderbyn y gwahoddiad."
-      welcome: "Croeso! Fe'ch gwahoddwyd fel %{role}."
+      title: Cwblhewch Eich Cyfrif
+      description: Llenwch eich manylion i dderbyn y gwahoddiad.
+      welcome: Croeso! Fe'ch gwahoddwyd fel %{role}.
       form:
-        name: "Enw"
-        name_placeholder: "Rhowch eich enw llawn"
-        date_of_birth: "Dyddiad geni"
-        email: "E-bost"
-        password: "Cyfrinair"
-        password_confirmation: "Cadarnhau Cyfrinair"
-        submit: "Creu Cyfrif"
-
+        name: Enw
+        name_placeholder: Rhowch eich enw llawn
+        date_of_birth: Dyddiad geni
+        email: E-bost
+        password: Cyfrinair
+        password_confirmation: Cadarnhau Cyfrinair
+        submit: Creu Cyfrif
   home:
-    title: "Olrheiniwr Meddyginiaeth"
-    description: "Croeso i'ch rhaglen olrhain meddyginiaeth bersonol."
+    title: Olrheiniwr Meddyginiaeth
+    description: Croeso i'ch rhaglen olrhain meddyginiaeth bersonol.
     cards:
       medications:
-        title: "Meddyginiaethau"
-        description: "Rheoli eich rhestr feddyginiaeth, olrhain lefelau stoc, a gweld gwybodaeth dos"
+        title: Meddyginiaethau
+        description: Rheoli eich rhestr feddyginiaeth, olrhain lefelau stoc, a gweld
+          gwybodaeth dos
       people:
-        title: "Pobl"
-        description: "Rheoli pobl a'u hamserlenni, olrhain amserlenni meddyginiaeth"
-
+        title: Pobl
+        description: Rheoli pobl a'u hamserlenni, olrhain amserlenni meddyginiaeth
   medication_workflow:
     back: "← Yn ôl"
     person_selection:
-      title: "Ychwanegu Meddyginiaeth"
-      subtitle: "Ar gyfer pwy mae'r feddyginiaeth hon?"
-      search_placeholder: "Chwilio pobl…"
-      no_results: "Ni chanfuwyd pobl."
+      title: Ychwanegu Meddyginiaeth
+      subtitle: Ar gyfer pwy mae'r feddyginiaeth hon?
+      search_placeholder: Chwilio pobl…
+      no_results: Ni chanfuwyd pobl.
