@@ -22,6 +22,7 @@ module Components
               barcode: t('medications.finder.barcode'),
               dmdCode: t('medications.finder.dmd_code'),
               addMedication: t('medications.index.add_medication'),
+              updateStock: t('medications.finder.update_stock', default: 'Update stock'),
               resultCount: {
                 one: t('medications.finder.result_count.one'),
                 other: t('medications.finder.result_count.other')

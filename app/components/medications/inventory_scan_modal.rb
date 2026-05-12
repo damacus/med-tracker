@@ -28,6 +28,7 @@ module Components
               div(
                 data: {
                   controller: 'inventory-scan',
+                  inventory_scan_match_url_value: '/medications/scan_restock_match.json',
                   action: 'barcode-scanner:decoded->inventory-scan#barcodeDecoded'
                 },
                 class: 'space-y-4'
@@ -45,6 +46,7 @@ module Components
       def render_form
         form_with(url: scan_restock_medications_path, method: :post, class: 'space-y-4') do
           render_barcode_field
+          render_match_feedback
           render_quantity_field
           div(class: 'flex justify-end gap-3 pt-2') do
             m3_button(type: :submit, variant: :filled) { t('medications.inventory_scan_modal.submit') }
@@ -62,10 +64,48 @@ module Components
             type: 'text',
             name: 'inventory_scan[barcode]',
             required: true,
-            data: { inventory_scan_target: 'barcode' },
+            data: {
+              inventory_scan_target: 'barcode',
+              action: 'input->inventory-scan#barcodeChanged change->inventory-scan#barcodeChanged'
+            },
             class: 'w-full rounded-shape-sm border border-outline bg-background px-3 py-2 text-sm ' \
                    'focus:ring-2 focus:ring-primary/20 transition-all'
           )
+        end
+      end
+
+      def render_match_feedback
+        div(
+          hidden: true,
+          data: {
+            testid: 'inventory-scan-match',
+            inventory_scan_target: 'matchPanel'
+          },
+          class: 'rounded-shape-sm border border-primary/30 bg-primary-container/40 p-3 text-sm ' \
+                 'text-on-primary-container'
+        ) do
+          div(
+            data: { inventory_scan_target: 'matchName' },
+            class: 'font-semibold'
+          )
+          dl(class: 'mt-2 grid grid-cols-2 gap-x-3 gap-y-1') do
+            dt(class: 'text-on-surface-variant') { t('medications.show.location') }
+            dd(data: { inventory_scan_target: 'matchLocation' }, class: 'font-medium text-right')
+            dt(class: 'text-on-surface-variant') { t('forms.medications.current_supply', default: 'Current supply') }
+            dd(data: { inventory_scan_target: 'matchSupply' }, class: 'font-medium text-right')
+          end
+        end
+
+        div(
+          hidden: true,
+          role: 'status',
+          data: {
+            testid: 'inventory-scan-no-match',
+            inventory_scan_target: 'noMatchPanel'
+          },
+          class: 'rounded-shape-sm border border-outline bg-surface-container-low p-3 text-sm text-on-surface-variant'
+        ) do
+          t('medications.scan_restock_no_match')
         end
       end
 

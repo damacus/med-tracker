@@ -78,6 +78,42 @@ RSpec.describe 'Refill medication inventory' do
     expect(medication.reload.current_supply).to eq(30)
   end
 
+  it 'shows matching stock details after barcode entry' do
+    stub_inventory_scan_match(
+      matched: true,
+      medication: {
+        name: medication.display_name,
+        location: medication.location.name,
+        current_supply: '15 units'
+      }
+    )
+
+    visit medications_path
+    click_on 'Scan stock'
+    fill_in 'inventory_scan_barcode', with: '5012345678901'
+
+    expect(page).to have_css('[data-testid="inventory-scan-match"]')
+    within '[data-testid="inventory-scan-match"]' do
+      expect(page).to have_text(medication.display_name)
+      expect(page).to have_text(medication.location.name)
+      expect(page).to have_text('15 units')
+    end
+    expect(page.evaluate_script('window.lastInventoryScanMatchUrl')).to end_with(
+      '/medications/scan_restock_match.json?q=5012345678901'
+    )
+  end
+
+  it 'shows when a barcode has no matching stock' do
+    stub_inventory_scan_match(matched: false)
+
+    visit medications_path
+    click_on 'Scan stock'
+    fill_in 'inventory_scan_barcode', with: '5012345678901'
+
+    expect(page).to have_css('[data-testid="inventory-scan-no-match"]')
+    expect(page).to have_text('No medication matched that barcode.')
+  end
+
   it 'shows validation errors when refill quantity is invalid' do
     visit medication_path(medication)
 
@@ -88,5 +124,17 @@ RSpec.describe 'Refill medication inventory' do
     click_on 'Refill'
 
     expect(page).to have_css('#refill_quantity:invalid')
+  end
+
+  def stub_inventory_scan_match(response)
+    page.driver.with_playwright_page do |playwright_page|
+      playwright_page.add_init_script(
+        script: "window.inventoryScanMatchResponse = #{response.to_json};" \
+                'window.fetch = async (url) => {' \
+                'window.lastInventoryScanMatchUrl = url.toString();' \
+                'return { ok: true, json: async () => window.inventoryScanMatchResponse };' \
+                '};'
+      )
+    end
   end
 end

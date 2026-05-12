@@ -8,19 +8,62 @@ module Components
       include Wizard::FieldHelpers
 
       FREQUENCY_TEMPLATES = [
-        { label: 'Every morning', frequency: 'Every morning', max_doses: '1', min_hours: '24', dose_cycle: 'daily' },
-        { label: 'Every evening', frequency: 'Every evening', max_doses: '1', min_hours: '24', dose_cycle: 'daily' },
-        { label: 'Twice daily', frequency: 'Twice daily', max_doses: '2', min_hours: '12', dose_cycle: 'daily' },
+        {
+          label: 'Every morning',
+          frequency: 'Every morning',
+          max_doses: '1',
+          min_hours: '24',
+          dose_cycle: 'daily',
+          times: '08:00'
+        },
+        {
+          label: 'Every evening',
+          frequency: 'Every evening',
+          max_doses: '1',
+          min_hours: '24',
+          dose_cycle: 'daily',
+          times: '18:00'
+        },
+        {
+          label: 'Twice daily',
+          frequency: 'Twice daily',
+          max_doses: '2',
+          min_hours: '12',
+          dose_cycle: 'daily',
+          times: '08:00,20:00'
+        },
         {
           label: 'Three times daily',
           frequency: 'Three times daily',
           max_doses: '3',
           min_hours: '8',
-          dose_cycle: 'daily'
+          dose_cycle: 'daily',
+          times: '08:00,14:00,20:00'
         },
-        { label: 'Every 4 hours', frequency: 'Every 4 hours', max_doses: '6', min_hours: '4', dose_cycle: 'daily' },
-        { label: 'Every 4-6 hours', frequency: 'Every 4-6 hours', max_doses: '6', min_hours: '4', dose_cycle: 'daily' },
-        { label: 'Once weekly', frequency: 'Once weekly', max_doses: '1', min_hours: '168', dose_cycle: 'weekly' }
+        {
+          label: 'Every 4 hours',
+          frequency: 'Every 4 hours',
+          max_doses: '6',
+          min_hours: '4',
+          dose_cycle: 'daily',
+          times: '08:00,12:00,16:00,20:00'
+        },
+        {
+          label: 'Every 4-6 hours',
+          frequency: 'Every 4-6 hours',
+          max_doses: '6',
+          min_hours: '4',
+          dose_cycle: 'daily',
+          times: '08:00,14:00,20:00'
+        },
+        {
+          label: 'Once weekly',
+          frequency: 'Once weekly',
+          max_doses: '1',
+          min_hours: '168',
+          dose_cycle: 'weekly',
+          times: '08:00'
+        }
       ].freeze
 
       attr_reader :medication, :title, :subtitle, :locations, :return_to
@@ -44,13 +87,7 @@ module Components
       private
 
       def render_header
-        div(class: 'text-center mb-10 space-y-2') do
-          div(
-            class: 'mx-auto w-16 h-16 rounded-shape-xl bg-primary/10 flex items-center justify-center ' \
-                   'text-primary shadow-inner mb-6'
-          ) do
-            render Icons::Pill.new(size: 32)
-          end
+        div(class: 'text-center mb-6 space-y-1') do
           m3_text(variant: :label_medium, class: 'uppercase tracking-[0.2em] font-black opacity-40') do
             t('forms.medications.inventory_management')
           end
@@ -74,6 +111,8 @@ module Components
       def render_hidden_form_state
         render_hidden_input('return_to', return_to) if return_to.present?
         render_hidden_input('medication[barcode]', medication.barcode) if medication.barcode.present?
+        render_hidden_input('medication[default_schedule_type]', medication.default_schedule_type || 'multiple_daily')
+        render_hidden_input('medication[default_schedule_config]', medication.default_schedule_config.to_json)
         render_hidden_dmd_state
       end
 
@@ -104,10 +143,9 @@ module Components
 
             div(class: 'space-y-6') do
               m3_heading(variant: :title_large, level: 3, class: 'font-bold text-foreground') do
-                t('forms.medications.dosage_and_supply')
+                t('forms.medications.supply', default: 'Supply')
               end
               div(class: 'grid grid-cols-1 sm:grid-cols-2 gap-6') do
-                render_dosage_fields(form)
                 render_supply_fields(form)
               end
             end
@@ -310,82 +348,6 @@ module Components
         end
       end
 
-      def render_dosage_fields(_form)
-        render_dosage_amount_field
-        render_dosage_unit_field
-      end
-
-      def render_dosage_amount_field
-        div(class: 'space-y-2') do
-          render RubyUI::FormFieldLabel.new(
-            for: 'medication_dosage_amount',
-            class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
-          ) { t('forms.medications.standard_dosage') }
-          m3_input(
-            type: :number,
-            name: 'medication[dosage_amount]',
-            id: 'medication_dosage_amount',
-            value: medication.dosage_amount.to_i,
-            step: 'any',
-            min: '1',
-            placeholder: t('forms.medications.standard_dosage_placeholder', default: 'e.g., 500'),
-            class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 ' \
-                   'focus:ring-2 focus:ring-primary/10 ' \
-                   'focus:border-primary transition-all',
-            **field_error_attributes(medication, :dosage_amount, input_id: 'medication_dosage_amount')
-          )
-          render_field_error(medication, :dosage_amount, input_id: 'medication_dosage_amount')
-        end
-      end
-
-      def render_dosage_unit_field
-        div(class: 'space-y-2') do
-          render RubyUI::FormFieldLabel.new(
-            for: 'medication_dosage_unit_trigger',
-            class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
-          ) { t('forms.medications.unit') }
-          render RubyUI::Combobox.new(class: 'w-full') do
-            render RubyUI::ComboboxTrigger.new(
-              placeholder: medication.dosage_unit.presence || t('forms.medications.select_unit'),
-              class: "rounded-md #{field_error_class(medication, :dosage_unit)}"
-            )
-
-            render RubyUI::ComboboxPopover.new do
-              render RubyUI::ComboboxSearchInput.new(
-                placeholder: t('forms.medications.select_unit')
-              )
-
-              render RubyUI::ComboboxList.new do
-                render RubyUI::ComboboxEmptyState.new do
-                  'No units found.'
-                end
-
-                render RubyUI::ComboboxItem.new do
-                  render RubyUI::ComboboxRadio.new(
-                    name: 'medication[dosage_unit]',
-                    value: '',
-                    checked: medication.dosage_unit.blank?
-                  )
-                  span { t('forms.medications.select_unit') }
-                end
-
-                dosage_units.each do |unit|
-                  render RubyUI::ComboboxItem.new do
-                    render RubyUI::ComboboxRadio.new(
-                      name: 'medication[dosage_unit]',
-                      value: unit,
-                      checked: medication.dosage_unit == unit
-                    )
-                    span { unit }
-                  end
-                end
-              end
-            end
-          end
-          render_field_error(medication, :dosage_unit)
-        end
-      end
-
       def dosage_units
         Medication::DOSAGE_UNITS
       end
@@ -418,7 +380,6 @@ module Components
       def dosage_form_rows
         @dosage_form_rows ||= begin
           rows = medication.dosage_records.to_a.sort_by { |dosage| [dosage.amount.to_f, dosage.id || 0] }
-          rows << medication.dosage_records.build if rows.none?(&:new_record?)
           rows
         end
       end
@@ -519,7 +480,7 @@ module Components
 
       def render_frequency_field(dosage, index)
         render RubyUI::FormFieldLabel.new(for: "medication_dosage_records_attributes_#{index}_frequency") do
-          'Frequency label'
+          'Frequency'
         end
         render_frequency_template_buttons
         m3_input(
@@ -554,7 +515,8 @@ module Components
                 'frequency-suggestions-frequency-value': template.fetch(:frequency),
                 'frequency-suggestions-max-doses-value': template.fetch(:max_doses),
                 'frequency-suggestions-min-hours-value': template.fetch(:min_hours),
-                'frequency-suggestions-dose-cycle-value': template.fetch(:dose_cycle)
+                'frequency-suggestions-dose-cycle-value': template.fetch(:dose_cycle),
+                times: template.fetch(:times)
               },
               class: 'inline-flex shrink-0 items-center rounded-full border border-outline-variant/50 ' \
                      'bg-surface-container px-3 py-1 text-xs font-semibold ' \

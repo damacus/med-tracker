@@ -197,7 +197,17 @@ RSpec.describe 'Medication Lookup', type: :system do
   end
 
   it 'does not persist a non-GTIN numeric query as a barcode' do
-    stub_nhs_dmd_search(query: '1234567890', results: aspirin_results)
+    stub_nhs_dmd_search(
+      query: '1234567890',
+      results: [
+        {
+          code: '99999999999999999',
+          display: 'Cetirizine 10mg tablets',
+          system: 'https://dmd.nhs.uk',
+          concept_class: 'VMP'
+        }
+      ]
+    )
 
     sign_in(doctor)
     visit medication_finder_path
@@ -209,7 +219,7 @@ RSpec.describe 'Medication Lookup', type: :system do
     end
 
     expect(page).to have_current_path(%r{/medications/new})
-    expect(page).to have_field('medication_name', with: 'Aspirin 300mg tablets')
+    expect(page).to have_field('medication_name', with: 'Cetirizine 10mg tablets')
     expect(page).to have_no_field('medication[barcode]', type: :hidden)
   end
 

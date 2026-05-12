@@ -111,4 +111,53 @@ RSpec.describe 'Medications refill' do
       expect(flash[:alert]).to eq('No medication matched that barcode.')
     end
   end
+
+  describe 'GET /medications/scan_restock_match' do
+    it 'returns the matching medication for a direct barcode match' do
+      medication.update!(barcode: '5012345678901')
+
+      get scan_restock_match_medications_path(format: :json), params: { q: '5012345678901' }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body).to include('matched' => true)
+      expect(response.parsed_body.dig('medication', 'id')).to eq(medication.id)
+      expect(response.parsed_body.dig('medication', 'name')).to eq(medication.display_name)
+      expect(response.parsed_body.dig('medication', 'location')).to eq('Home')
+    end
+
+    it 'returns the matching medication from barcode metadata' do
+      movicol = medications(:movicol)
+      NhsDmdBarcode.create!(
+        gtin: '5012345678901',
+        code: '3366911000001108',
+        display: movicol.name,
+        system: 'https://dmd.nhs.uk',
+        concept_class: 'AMPP'
+      )
+
+      get scan_restock_match_medications_path(format: :json), params: { q: '5012345678901' }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body).to include('matched' => true)
+      expect(response.parsed_body.dig('medication', 'id')).to eq(movicol.id)
+    end
+
+    it 'returns no match for an unknown barcode' do
+      get scan_restock_match_medications_path(format: :json), params: { q: '5012345678901' }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body).to eq('matched' => false)
+    end
+
+    it 'does not expose inaccessible medication matches' do
+      foreign_location = Location.create!(name: 'Foreign')
+      create(:medication, barcode: '5012345678901', location: foreign_location)
+      sign_in(users(:carer))
+
+      get scan_restock_match_medications_path(format: :json), params: { q: '5012345678901' }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body).to eq('matched' => false)
+    end
+  end
 end

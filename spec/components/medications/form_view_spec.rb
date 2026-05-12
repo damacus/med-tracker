@@ -64,36 +64,48 @@ RSpec.describe Components::Medications::FormView, type: :component do
     end
   end
 
-  describe 'unit combobox accessibility' do
-    it 'associates unit label with the combobox trigger button' do
-      medication = Medication.new(name: 'Test Medication')
-      rendered = render_inline(described_class.new(medication: medication, title: 'Test Title'))
+  describe 'edit header' do
+    it 'renders without the decorative pill icon and uses compact spacing' do
+      medication = build(:medication)
+      rendered = render_inline(described_class.new(medication: medication, title: 'Edit Medication'))
+      html = rendered.to_html
 
-      expect(rendered.css("label[for='medication_dosage_unit_trigger']")).to be_present
-      expect(rendered.css("label[for='medication_dosage_unit']")).to be_empty
-    end
-
-    it 'renders RubyUI combobox controller and preselects the current dosage unit' do
-      medication = Medication.new(name: 'Test Medication', dosage_unit: 'mg')
-      rendered = render_inline(described_class.new(medication: medication, title: 'Test Title'))
-
-      expect(rendered.css("[data-controller='ruby-ui--combobox']")).to be_present
-      expect(rendered.css("input[type='radio'][name='medication[dosage_unit]'][value='mg'][checked]")).to be_present
+      expect(html).not_to include('w-16 h-16 rounded-shape-xl bg-primary/10')
+      expect(rendered.css('div.text-center.mb-6.space-y-1')).to be_present
     end
   end
 
-  describe 'dosage input constraints' do
-    it 'renders dosage amount input with minimum value of 1' do
-      medication = Medication.new(name: 'Test Medication', dosage_amount: 1)
-      rendered = render_inline(described_class.new(medication: medication, title: 'Test Title'))
+  describe 'supply fields' do
+    it 'renames the section to Supply and keeps supply tracking fields' do
+      medication = build(:medication, current_supply: 30, reorder_threshold: 5)
+      rendered = render_inline(described_class.new(medication: medication, title: 'Edit Medication'))
+      html = rendered.to_html
 
-      dosage_input = rendered.at_css("input#medication_dosage_amount[name='medication[dosage_amount]']")
-      expect(dosage_input).not_to be_nil
-      expect(dosage_input['min']).to eq('1')
+      expect(html).to include('Supply')
+      expect(html).not_to include('Dosage &amp; Supply')
+      expect(rendered.at_css("input#medication_current_supply[name='medication[current_supply]']")).not_to be_nil
+      expect(rendered.at_css("input#medication_reorder_threshold[name='medication[reorder_threshold]']")).not_to be_nil
+    end
+
+    it 'does not render top-level dose and unit inputs' do
+      medication = build(:medication, dosage_amount: 1, dosage_unit: 'mg')
+      rendered = render_inline(described_class.new(medication: medication, title: 'Edit Medication'))
+
+      expect(rendered.at_css("input#medication_dosage_amount[name='medication[dosage_amount]']")).to be_nil
+      expect(rendered.at_css("input[type='radio'][name='medication[dosage_unit]']")).to be_nil
+      expect(rendered.css("label[for='medication_dosage_unit_trigger']")).to be_empty
     end
   end
 
   describe 'dose options management' do
+    it 'does not render an empty first dose option card by default' do
+      medication = build(:medication)
+      rendered = render_inline(described_class.new(medication: medication, title: 'Test Title'))
+
+      expect(rendered.css("[data-dosage-options-target='option']")).to be_empty
+      expect(dosage_row_field(rendered, 0, 'amount')).to be_nil
+    end
+
     it 'renders nested medication-owned dosage fields' do
       medication = build(:medication)
       build_dose_option(medication)
@@ -142,6 +154,19 @@ RSpec.describe Components::Medications::FormView, type: :component do
       expect(morning_chip['data-frequency-suggestions-dose-cycle-value']).to eq('daily')
     end
 
+    it 'renders timing payloads for the frequency suggestion chips' do
+      medication = build(:medication)
+      build_dose_option(medication)
+
+      rendered = render_inline(described_class.new(medication: medication, title: 'Test Title'))
+
+      morning_chip = rendered.at_css("button[data-frequency='Every morning']")
+      expect(morning_chip['data-times']).to eq('08:00')
+
+      twice_daily_chip = rendered.at_css("button[data-frequency='Twice daily']")
+      expect(twice_daily_chip['data-times']).to eq('08:00,20:00')
+    end
+
     it 'marks timing defaults as required fields' do
       medication = build(:medication)
       build_dose_option(medication)
@@ -159,23 +184,27 @@ RSpec.describe Components::Medications::FormView, type: :component do
       expect(dose_cycle.attribute('required')).not_to be_nil
     end
 
-    it 'does not mark the auto-appended blank row as required' do
+    it 'does not append a blank dose option after persisted options' do
       medication = create(:medication, dosage_unit: 'ml')
       build_dose_option(medication, persisted: true, amount: 2.5, frequency: 'Every morning')
 
       rendered = render_inline(described_class.new(medication: medication, title: 'Test Title'))
 
-      blank_row_fields = [
-        dosage_row_field(rendered, 1, 'amount'),
-        dosage_row_field(rendered, 1, 'frequency'),
-        dosage_row_field(rendered, 1, 'default_max_daily_doses'),
-        dosage_row_field(rendered, 1, 'default_min_hours_between_doses'),
-        dosage_row_field(rendered, 1, 'default_dose_cycle', tag: 'select')
-      ]
+      expect(dosage_row_field(rendered, 1, 'amount')).to be_nil
+      expect(dosage_row_field(rendered, 1, 'frequency')).to be_nil
+      expect(dosage_row_field(rendered, 1, 'default_max_daily_doses')).to be_nil
+      expect(dosage_row_field(rendered, 1, 'default_min_hours_between_doses')).to be_nil
+      expect(dosage_row_field(rendered, 1, 'default_dose_cycle', tag: 'select')).to be_nil
+    end
 
-      blank_row_fields.each do |field|
-        expect(field.attribute('required')).to be_nil
-      end
+    it 'labels the frequency field as Frequency' do
+      medication = build(:medication)
+      build_dose_option(medication)
+
+      rendered = render_inline(described_class.new(medication: medication, title: 'Test Title'))
+
+      label = rendered.at_css("label[for='medication_dosage_records_attributes_0_frequency']")
+      expect(label.text).to eq('Frequency')
     end
 
     it 'renders destructive remove controls instead of a checkbox' do

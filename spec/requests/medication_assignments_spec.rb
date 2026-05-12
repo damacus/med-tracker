@@ -64,6 +64,14 @@ RSpec.describe 'Medication assignments' do
     it 'creates a non-PRN schedule when medication metadata is not as needed' do
       medication = medications(:ibuprofen)
       dosage = dosages(:ibuprofen_child)
+      medication.update!(
+        default_schedule_type: :multiple_daily,
+        default_schedule_config: {
+          'schedule_type' => 'multiple_daily',
+          'frequency' => 'Twice daily',
+          'times' => %w[07:15 19:45]
+        }
+      )
 
       expect do
         post person_medication_assignments_path(person),
@@ -79,6 +87,11 @@ RSpec.describe 'Medication assignments' do
 
       expect(schedule.schedule_type).to eq('multiple_daily')
       expect(schedule.schedule_config).not_to include('as_needed' => true)
+      expect(schedule.schedule_config).to include(
+        'schedule_type' => 'multiple_daily',
+        'frequency' => 'Every 6-8 hours',
+        'times' => %w[07:15 19:45]
+      )
       expect(schedule).to have_attributes(
         dose_amount: BigDecimal('200.0'),
         dose_unit: 'mg',

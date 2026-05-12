@@ -64,6 +64,7 @@ RSpec.describe 'Global search command palette' do
 
     expect(page).to have_css('body[data-global-search-connected="true"]', visible: :all)
     expect(page).to have_css('button[aria-label="Open global search"]')
+    wait_for_global_search_controller
     open_global_search_shortcut
     expect(page).to have_css('#global_search_panel[aria-hidden="false"]')
 
@@ -109,5 +110,17 @@ RSpec.describe 'Global search command palette' do
         new KeyboardEvent("keydown", { key: "k", #{modifier_key}: true, bubbles: true })
       )
     JS
+  end
+
+  def wait_for_global_search_controller
+    Timeout.timeout(Capybara.default_max_wait_time) do
+      loop do
+        break if page.evaluate_script(
+          'Boolean(window.Stimulus?.getControllerForElementAndIdentifier(document.body, "global-search"))'
+        )
+
+        sleep 0.05
+      end
+    end
   end
 end
