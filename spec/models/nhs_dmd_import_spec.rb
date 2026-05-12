@@ -3,6 +3,18 @@
 require 'rails_helper'
 
 RSpec.describe NhsDmdImport do
+  describe '#persist_archive!' do
+    let(:import) { described_class.new(uploaded_filename: 'nhsbsa_dmd_release.zip') }
+
+    it 'raises ArgumentError when uploaded file is nil' do
+      expect { import.persist_archive!(nil) }.to raise_error(ArgumentError, 'Import archive is missing.')
+    end
+
+    it 'raises ArgumentError when uploaded file is an empty string' do
+      expect { import.persist_archive!('') }.to raise_error(ArgumentError, 'Import archive is missing.')
+    end
+  end
+
   describe '#complete!' do
     it 'includes unchanged records in the fallback processed total' do
       import = described_class.create!(uploaded_filename: 'nhsbsa_dmd_release.zip')
