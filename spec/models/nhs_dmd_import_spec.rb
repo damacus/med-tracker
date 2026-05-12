@@ -3,6 +3,23 @@
 require 'rails_helper'
 
 RSpec.describe NhsDmdImport do
+  describe '#start!' do
+    it 'sets started_at to current time when blank' do
+      import = described_class.create!(uploaded_filename: 'release.zip')
+
+      freeze_time do
+        expect { import.start! }.to(change { import.reload.started_at }.from(nil).to(Time.current))
+      end
+    end
+
+    it 'does not update started_at when already present' do
+      existing_time = 1.day.ago.round
+      import = described_class.create!(uploaded_filename: 'release.zip', started_at: existing_time)
+
+      expect { import.start! }.not_to(change { import.reload.started_at })
+    end
+  end
+
   describe '#complete!' do
     it 'includes unchanged records in the fallback processed total' do
       import = described_class.create!(uploaded_filename: 'nhsbsa_dmd_release.zip')
