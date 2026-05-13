@@ -22,4 +22,17 @@ RSpec.describe Views::Profiles::Show, type: :component do
 
     expect(banned_classes.none? { |class_name| html.include?(class_name) }).to be(true)
   end
+
+  it 'renders an M3 identity header with the person avatar and profile metadata' do
+    component = described_class.new(person: person, account: account, user: user)
+    allow(component).to receive(:render_left_column) { component.send(:render_avatar_card) }
+    allow(component).to receive(:render_right_column)
+
+    rendered = render_inline(component)
+
+    expect(rendered.at_css('[data-testid="profile-hero"] [data-testid="person-avatar"]')).to be_present
+    expect(rendered.at_css('[data-testid="profile-avatar-card"]')).to be_present
+    expect(rendered.text).to include('Profile photo')
+    expect(rendered.text).to include('Use Gravatar')
+  end
 end

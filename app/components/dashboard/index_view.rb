@@ -131,12 +131,15 @@ module Components
       end
 
       def render_person_selector_avatar(option)
+        person = option.fetch(:person)
+        return render Components::Shared::PersonAvatar.new(person: person, size: :sm) if person
+
         span(
-          class: 'flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-container-high ' \
-                 'text-xs font-black text-on-surface'
-        ) do
-          option.fetch(:initials)
-        end
+          class: 'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-shape-full ' \
+                 'bg-secondary-container text-xs font-black text-on-secondary-container',
+          data: { testid: 'person-avatar' },
+          aria: { label: option.fetch(:label) }
+        ) { option.fetch(:initials) }
       end
 
       def render_mobile_person_selector_current

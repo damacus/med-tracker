@@ -108,12 +108,7 @@ module Components
                   class: 'flex items-center gap-3 rounded-full p-2 ' \
                          'transition-all no-underline group relative state-layer ' \
                          'bg-surface-container-high text-on-surface' do
-            div(
-              class: 'w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary ' \
-                     'font-bold text-xs overflow-hidden flex-shrink-0 z-10'
-            ) do
-              current_user_initials
-            end
+            render Components::Shared::PersonAvatar.new(person: current_user.person, size: :sm, class: 'z-10')
             div(class: 'hidden md:block overflow-hidden z-10') do
               p(class: 'text-xs font-bold truncate text-foreground') do
                 current_user_name || t('layouts.sidebar.user_fallback')

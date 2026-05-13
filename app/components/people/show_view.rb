@@ -42,12 +42,7 @@ module Components
                  'border-outline-variant/30'
         ) do
           div(class: 'flex items-center gap-6') do
-            div(
-              class: 'w-24 h-24 rounded-[2rem] bg-primary/10 flex items-center justify-center text-primary ' \
-                     'font-black text-3xl shadow-inner'
-            ) do
-              person.name.split.map(&:first).join.upcase
-            end
+            render Components::Shared::PersonAvatar.new(person: person, size: :xl)
             div(class: 'space-y-1') do
               div(class: 'flex items-center gap-3') do
                 m3_heading(variant: :display_small, level: 1, class: 'font-black tracking-tight') { person.name }

@@ -47,12 +47,7 @@ module Components
       end
 
       def render_person_avatar
-        div(
-          class: 'w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center ' \
-                 'text-on-secondary-container shadow-inner'
-        ) do
-          span(class: 'text-xs font-black') { person.name.first.upcase }
-        end
+        render Components::Shared::PersonAvatar.new(person: person, size: :sm)
       end
 
       def render_medication_info

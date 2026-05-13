@@ -124,6 +124,7 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
 
       expect(selected.text).to include('Parent Person')
       expect(selected.text).to include('PP')
+      expect(selected.at_css('[data-testid="person-avatar"]')).to be_present
     end
 
     it 'wraps selector controls instead of requiring horizontal scrolling' do

@@ -113,6 +113,15 @@ RSpec.describe 'Medications refill' do
   end
 
   describe 'GET /medications/scan_restock_match' do
+    it 'serves the .json path used by the scan-stock modal' do
+      medication.update!(barcode: '5012345678901')
+
+      get '/medications/scan_restock_match.json', params: { q: '5012345678901' }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body).to include('matched' => true)
+    end
+
     it 'returns the matching medication for a direct barcode match' do
       medication.update!(barcode: '5012345678901')
 

@@ -1145,6 +1145,17 @@ cy:
       personal_information:
         title: Gwybodaeth Bersonol
         description: Eich gwybodaeth broffil sylfaenol
+    avatar:
+      title: Llun proffil
+      description: Uwchlwythwch avatar ar gyfer y mannau lle mae eich enw'n ymddangos.
+      supported_formats: PNG, JPEG, neu WebP hyd at 5 MB.
+      upload_label: Uwchlwytho avatar personol
+      upload: Uwchlwytho avatar
+      remove: Tynnu avatar
+      removed: Tynnwyd y llun proffil.
+      gravatar_label: Defnyddio Gravatar
+      gravatar_description: Dangos eich Gravatar pan nad oes avatar personol wedi'i uwchlwytho.
+      save_gravatar: Cadw dewis Gravatar
     account_security:
       title: Diogelwch Cyfrif
       description: Rheoli eich manylion mewngofnodi a'ch gosodiadau diogelwch

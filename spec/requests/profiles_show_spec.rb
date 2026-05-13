@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'Profiles' do
-  fixtures :accounts, :people, :users
+  fixtures :accounts, :people, :users, :locations, :location_memberships
 
   let(:user) { users(:damacus) }
   let(:account) { user.person.account }
@@ -75,6 +75,72 @@ RSpec.describe 'Profiles' do
   end
 
   describe 'PATCH /profile' do
+    it 'uploads the signed-in person avatar' do
+      file = Tempfile.new(['avatar', '.png'])
+      file.write('avatar')
+      file.rewind
+
+      patch profile_path,
+            params: { person: { avatar: Rack::Test::UploadedFile.new(file.path, 'image/png') } }
+
+      expect(response).to redirect_to(profile_path)
+      expect(user.person.reload.avatar).to be_attached, flash[:alert]
+    ensure
+      file&.close
+      file&.unlink
+    end
+
+    it 'rejects invalid avatar uploads without attaching them' do
+      file = Tempfile.new(['avatar', '.txt'])
+      file.write('not an image')
+      file.rewind
+
+      patch profile_path,
+            params: { person: { avatar: Rack::Test::UploadedFile.new(file.path, 'text/plain') } }
+
+      expect(response).to redirect_to(profile_path)
+      expect(flash[:alert]).to include('must be a PNG, JPEG, or WebP image')
+      expect(user.person.reload.avatar).not_to be_attached
+    ensure
+      file&.close
+      file&.unlink
+    end
+
+    it 'keeps the existing avatar when an invalid replacement is uploaded' do
+      user.person.avatar.attach(io: StringIO.new('avatar'), filename: 'avatar.png', content_type: 'image/png')
+      original_blob = user.person.avatar.blob
+      file = Tempfile.new(['avatar', '.txt'])
+      file.write('not an image')
+      file.rewind
+
+      patch profile_path,
+            params: { person: { avatar: Rack::Test::UploadedFile.new(file.path, 'text/plain') } }
+
+      expect(response).to redirect_to(profile_path)
+      expect(flash[:alert]).to include('must be a PNG, JPEG, or WebP image')
+      expect(user.person.reload.avatar).to be_attached
+      expect(user.person.avatar.blob).to eq(original_blob)
+    ensure
+      file&.close
+      file&.unlink
+    end
+
+    it 'updates the Gravatar opt-in preference' do
+      patch profile_path, params: { user: { gravatar_enabled: '1' } }
+
+      expect(response).to redirect_to(profile_path)
+      expect(user.reload.gravatar_enabled?).to be(true)
+    end
+
+    it 'disables the Gravatar opt-in preference' do
+      user.update!(gravatar_enabled: '1')
+
+      patch profile_path, params: { user: { gravatar_enabled: '0' } }
+
+      expect(response).to redirect_to(profile_path)
+      expect(user.reload.gravatar_enabled?).to be(false)
+    end
+
     it 'returns turbo_stream and updates flash when no changes are submitted' do
       patch profile_path, headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
 
@@ -82,6 +148,28 @@ RSpec.describe 'Profiles' do
       expect(response.media_type).to eq('text/vnd.turbo-stream.html')
       expect(response.body).to include('target="flash"')
       expect(response.body).to include(I18n.t('profiles.no_changes'))
+    end
+  end
+
+  describe 'DELETE /profile/avatar' do
+    it 'removes the signed-in person avatar' do
+      user.person.avatar.attach(io: StringIO.new('avatar'), filename: 'avatar.png', content_type: 'image/png')
+
+      delete profile_avatar_path
+
+      expect(response).to redirect_to(profile_path)
+      expect(user.person.reload.avatar).not_to be_attached
+    end
+
+    it 'returns turbo_stream and refreshes the profile page shell' do
+      user.person.avatar.attach(io: StringIO.new('avatar'), filename: 'avatar.png', content_type: 'image/png')
+
+      delete profile_avatar_path, headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.media_type).to eq('text/vnd.turbo-stream.html')
+      expect(response.body).to include('target="main-content"')
+      expect(response.body).to include(I18n.t('profiles.avatar.removed'))
     end
   end
 end

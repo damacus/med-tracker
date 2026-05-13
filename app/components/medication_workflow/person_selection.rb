@@ -47,10 +47,7 @@ module Components
                      'hover:border-primary hover:bg-primary/5 active:bg-primary/10 ' \
                      'transition-all cursor-pointer no-underline'
             ) do
-              div(class: 'w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center ' \
-                         'text-primary font-bold text-sm flex-none') do
-                plain person.name.first.upcase
-              end
+              render Components::Shared::PersonAvatar.new(person: person, size: :md)
               div do
                 div(class: 'font-semibold text-sm text-foreground') { person.name }
                 div(class: 'text-on-surface-variant text-xs mt-0.5') { person.person_type.humanize }
@@ -74,6 +71,7 @@ module Components
 
                 people.each do |person|
                   render RubyUI::ComboboxItem.new do
+                    render Components::Shared::PersonAvatar.new(person: person, size: :sm)
                     render RubyUI::ComboboxRadio.new(
                       name: 'person_id',
                       id: "person_#{person.id}",

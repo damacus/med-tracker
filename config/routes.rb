@@ -60,6 +60,7 @@ Rails.application.routes.draw do
   resource :profile, only: %i[show update] do
     patch :experiments, on: :member
   end
+  delete 'profile/avatar', to: 'profiles#avatar', as: :profile_avatar
 
   # Reports
   resources :reports, only: %i[index]
@@ -74,12 +75,9 @@ Rails.application.routes.draw do
   end
 
   # Medication management
+  post 'medications/scan_restock', to: 'medications#scan_restock', as: :scan_restock_medications
+  get 'medications/scan_restock_match', to: 'medications#scan_restock_match', as: :scan_restock_match_medications
   resources :medications do
-    collection do
-      post :scan_restock
-      get :scan_restock_match
-    end
-
     member do
       get :administration
       get :nhs_guidance
