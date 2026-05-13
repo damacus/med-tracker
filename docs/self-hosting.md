@@ -63,5 +63,5 @@ Now, open your web browser (like Chrome or Safari) and go to:
 
 Now that the app is running, you can:
 
-- [**Add your first medicine**](adding-first-medicine.md)
-- [**Record a dose**](taking-first-dose.md)
+- [**Add your first medicine**](families/adding-first-medicine.md)
+- [**Record a dose**](families/taking-first-dose.md)

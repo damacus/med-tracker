@@ -1,43 +1,59 @@
 # Add Your First Medicine
 
-Once you've set up MedTracker, the next step is adding a medicine for
-one of your family members.
+This guide starts after someone has already set up MedTracker for your family or
+care group. You should have been given a MedTracker link and your own way to
+sign in.
 
-## Step 1: Log in
-Open [http://localhost:3000](http://localhost:3000) in your web browser.
+The quickest way to add a medicine is to scan the barcode on the box or bottle.
+Scanning helps MedTracker fill in the medicine details and can also spot when
+the same medicine is already in your inventory.
 
-**Use these login details to start:**
-- **Email:** `admin@example.com`
-- **Password:** `password`
+## 1. Sign in
 
-## Step 2: Open the Dashboard
-The **Dashboard** is the main page where you see your family. You'll see
-names like "John Doe" or "Jane Doe". Click on the name of the person you want
-to add a medicine for.
+Open the MedTracker link you were given and sign in with your own account.
 
-## Step 3: Add a new medicine
-On their profile page, look for the **"Add Medicine"** or **"Add Prescription"** button.
+If you were invited by email, use the same email address. If your family uses a
+shared sign-in service, choose that option on the login screen.
 
----
+## 2. Start from the Dashboard
 
-## 📅 Adding a Daily Prescription
-If this is a medicine that needs to be taken regularly (like an antibiotic or blood pressure pill):
-1.  **Name:** Enter the medicine name (e.g., "Amoxicillin").
-2.  **Dosage:** How much should be taken (e.g., "500mg").
-3.  **Frequency:** How often it's taken (e.g., "Twice a day").
-4.  **Instructions:** Any special notes (e.g., "Take with food").
+After signing in, you will land on the **Dashboard**. This is where you can see
+the people you help care for and any medicines that are due soon.
 
-## 💊 Adding an As-Needed Medicine
-If this is something taken only when needed (like Paracetamol for a fever):
-1.  **Name:** Enter the medicine name.
-2.  **Max Doses:** What is the maximum number of doses allowed in 24 hours? (e.g., "4").
-3.  **Wait Time:** How many hours must you wait between doses? (e.g., "4 hours").
+Use **Add Medication** or open **Medication Finder** from the navigation.
 
----
+## 3. Scan the medicine
 
-## 💾 Save your medicine
-Once you've filled in the details, click **"Save"**.
-You'll now see this medicine listed on the person's profile, ready to use!
+On **Medication Finder**, choose **Scan Barcode**, then **Start Scanner**.
 
-## What's next?
-- [**Record a dose**](taking-first-dose.md)
+Point your camera at the barcode on the medicine box or bottle. If your camera
+is not available, use the manual barcode field instead.
+
+When MedTracker finds the medicine, choose the matching result. If the result is
+already linked to medication in your household, MedTracker may offer **Update
+stock** instead of adding a duplicate.
+
+## 4. Check the details
+
+MedTracker will carry over the scanned medicine name where it can. Before saving,
+check the details against the medicine label or the instructions you were given.
+
+Fill in the practical details your household needs, such as:
+
+1. How much is in the pack.
+2. When to reorder or top up.
+3. How the medicine should be taken.
+4. Which person the medicine is for, if MedTracker asks.
+
+Use plain household notes if they help, for example "keep in kitchen cupboard"
+or "take after breakfast".
+
+## 5. Save the medicine
+
+Save the form once the details look right. The medicine will now appear in
+MedTracker and can be used when recording doses.
+
+## What next?
+
+- [Record the first dose](taking-first-dose.md)
+- [Top up a medicine by scanning](topping-up-medicine.md)

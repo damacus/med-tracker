@@ -1,44 +1,48 @@
 # Record a Dose
 
-Recording when someone takes their medicine is the core of MedTracker.
-This guide will show you how to do it safely and correctly.
+Once a medicine has been added, MedTracker helps you keep a simple record of
+when it was taken. This is useful when several people share caring
+responsibilities or when you need to look back later.
 
-## Step 1: Open the person's profile
-Log in to your **Dashboard** and click on the name of the person who is taking their medicine.
+## 1. Find the person and medicine
 
-## Step 2: Choose the medicine
-Look for the medicine they are taking. You'll see two sections:
--   **Regular Medicines:** these are prescriptions taken at specific times.
--   **As-needed Medicines:** like pain relief for a headache.
+Sign in and open the **Dashboard**. Find the person who is taking the medicine.
 
-## Step 3: Safety Checks
-MedTracker will automatically check if it's safe to give the medicine:
--   **Wait time:** Has enough time passed since the last dose? (e.g., 4 hours).
--   **Daily limit:** Has the maximum number of doses for today been reached?
+Their medicines may appear in today's schedule, on their person page, or in a
+medicine card. Look for the medicine name and the dose you are about to record.
 
-👉 **Note:** If it's too soon for another dose, the "Record Dose" button will be
-disabled, and you'll see a small message explaining why.
+## 2. Choose Take
 
----
+Use **Take** on the medicine or schedule item. MedTracker will open **Record
+dose**.
 
-## 🕒 How to record a dose
-1.  **Click "Record Dose":** This will open a simple form.
-2.  **Verify the time:** The time is automatically set to "now".
-3.  **Submit:** Click the **"Save Dose"** button.
+The form shows the person, medicine, dose, and time. The time is usually set to
+now, but you can adjust it if you are recording something that happened a little
+earlier.
 
----
+If MedTracker asks for a **Stock source**, choose where the medicine came from,
+such as the home supply or another saved location.
 
-## 📈 Verify your entry
-After you've saved the dose, you'll see it appear in the **Medication History**
-on the person's profile. This creates a safe record for you and your family.
+## 3. Record the dose
 
-## What if you make a mistake?
-If you record a dose by mistake or with the wrong time:
--   **Edit the entry:** Use the "Edit" button next to the dose in the history.
--   **Add a note:** Briefly explain the error (e.g., "Accidentally clicked twice").
+Check the details, then submit the form. MedTracker saves the dose and updates
+the medicine stock where stock is being tracked.
 
----
+After saving, the dose should appear in the person's history or dashboard
+timeline.
 
-## You're all set!
-You've now successfully set up MedTracker, added a medicine, and recorded
-a dose. Your family's medication history is now safe and auditable.
+## When MedTracker stops you
+
+Sometimes the **Take** button is unavailable, or MedTracker shows a message
+instead of recording the dose. Common reasons are:
+
+1. The medicine is out of stock in MedTracker.
+2. It is too soon after the last recorded dose.
+3. A stock location needs to be chosen first.
+
+Use the message on screen to decide what to do next. If the stock count is wrong,
+top it up before trying again.
+
+## What next?
+
+- [Top up a medicine by scanning](topping-up-medicine.md)
