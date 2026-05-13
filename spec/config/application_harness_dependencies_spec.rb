@@ -7,8 +7,6 @@ module ApplicationHarnessDependencies
 end
 
 RSpec.describe ApplicationHarnessDependencies do
-  let(:gemfile) { Rails.root.join('Gemfile').read }
-  let(:dockerfile) { Rails.root.join('Dockerfile').read }
   let(:package_json) { JSON.parse(Rails.root.join('package.json').read) }
 
   it 'keeps runtime-only gems out of development and test bundles' do
@@ -30,6 +28,22 @@ RSpec.describe ApplicationHarnessDependencies do
     expect(gemfile).not_to include("gem 'rails-controller-testing'")
   end
 
+  it 'keeps code quality tooling available in local bundles' do
+    expect(gemfile).to include("gem 'simplecov', require: false")
+    expect(gemfile).to include("gem 'rubycritic', require: false")
+    expect(taskfile).to include('rubycritic:')
+  end
+
+  it 'starts SimpleCov before Rails loads when coverage is enabled' do
+    expect(spec_helper.index("require 'simplecov'")).to be < spec_helper.index("require 'webmock/rspec'")
+    expect(Rails.root.join('.simplecov')).to exist
+  end
+
+  it 'enables SimpleCov during CI test runs' do
+    expect(ci_workflow).to include('COVERAGE: true')
+    expect(compose_yaml).to include('COVERAGE: ${COVERAGE:-false}')
+  end
+
   it 'does not install Lighthouse with the regular Node dependency set' do
     expect(package_json.fetch('devDependencies')).not_to include('lighthouse')
   end
@@ -37,5 +51,29 @@ RSpec.describe ApplicationHarnessDependencies do
   it 'installs target-specific bundle groups in Docker' do
     expect(dockerfile).to include('BUNDLE_WITHOUT')
     expect(dockerfile).to include('BUNDLE_WITH')
+  end
+
+  def gemfile
+    Rails.root.join('Gemfile').read
+  end
+
+  def dockerfile
+    Rails.root.join('Dockerfile').read
+  end
+
+  def compose_yaml
+    Rails.root.join('compose.yaml').read
+  end
+
+  def taskfile
+    Rails.root.join('Taskfile.yml').read
+  end
+
+  def spec_helper
+    Rails.root.join('spec/spec_helper.rb').read
+  end
+
+  def ci_workflow
+    Rails.root.join('.github/workflows/ci.yml').read
   end
 end

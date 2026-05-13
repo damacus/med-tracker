@@ -76,6 +76,8 @@ jobs:
       TEST_DATABASE_ADAPTER: postgresql
       DATABASE_URL: postgres://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/medtracker_test
       RAILS_ENV: test
+      COVERAGE: true
+      SIMPLECOV_COMMAND_NAME: rspec-non-system
 
     steps:
       - name: Checkout code
@@ -95,6 +97,14 @@ jobs:
 
       - name: Run non-browser tests
         run: bundle exec rspec --format RSpec::Github::Formatter --tag ~browser
+
+      - name: Upload SimpleCov coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: simplecov-non-system
+          path: coverage
+          if-no-files-found: ignore
 
   test_system:
     runs-on: [ubuntu-latest]
