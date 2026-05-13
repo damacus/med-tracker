@@ -13,7 +13,7 @@ RSpec.describe 'Optimistic UI updates for take medication buttons' do
     post '/login', params: { email: carer_account.email, password: 'password' }
   end
 
-  describe 'schedule card' do
+  describe 'dashboard timeline' do
     before do
       Schedule.create!(
         person: person,
@@ -28,26 +28,7 @@ RSpec.describe 'Optimistic UI updates for take medication buttons' do
     end
 
     it 'renders take button with optimistic-take controller data attributes' do
-      get person_path(person)
-
-      expect(response).to have_http_status(:ok)
-      expect(response.body).to include('data-controller="optimistic-take"')
-      expect(response.body).to include('data-optimistic-take-target="button"')
-    end
-  end
-
-  describe 'person medication card' do
-    before do
-      PersonMedication.create!(
-        person: person,
-        medication: medication,
-        max_daily_doses: 4,
-        min_hours_between_doses: 1
-      )
-    end
-
-    it 'renders take button with optimistic-take controller data attributes' do
-      get person_path(person)
+      get dashboard_path
 
       expect(response).to have_http_status(:ok)
       expect(response.body).to include('data-controller="optimistic-take"')

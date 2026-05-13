@@ -20,8 +20,9 @@ RSpec.describe 'Historical dose recording' do
       submitted_time = Time.zone.local(2026, 4, 27, 8, 30)
 
       visit person_path(person)
-      find("[data-testid='more-actions-schedule-#{schedule.id}']").click
-      find("[data-testid='log-past-dose-schedule-#{schedule.id}']").click
+      within("#schedule_#{schedule.id}") do
+        click_button 'Log a past dose'
+      end
 
       expect(page).to have_text('Record a dose from a previous day')
 

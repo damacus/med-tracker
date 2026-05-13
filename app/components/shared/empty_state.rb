@@ -5,7 +5,7 @@ module Components
     class EmptyState < Components::Base
       attr_reader :title, :description, :icon
 
-      def initialize(title:, description:, icon: :pill)
+      def initialize(title:, description:, icon: :medication)
         @title = title
         @description = description
         @icon = icon
@@ -35,7 +35,7 @@ module Components
         when :search
           render Icons::Search.new(size: 28)
         else
-          render Icons::Pill.new(size: 28)
+          render Icons::Medication.new(size: 28)
         end
       end
     end

@@ -74,7 +74,11 @@ module Components
       end
 
       def render_medication_icon
-        render Icons::Medication.new(size: 24, class: 'mt-1 shrink-0 text-on-surface-variant group-hover:text-primary')
+        render Components::Shared::MedicationIcon.new(
+          medication: medication,
+          size: 24,
+          class: 'mt-1 shrink-0 text-on-surface-variant group-hover:text-primary'
+        )
       end
 
       def render_actions

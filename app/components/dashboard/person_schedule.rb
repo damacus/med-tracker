@@ -50,7 +50,7 @@ module Components
       def render_schedule_card(schedule)
         m3_card(id: "schedule_#{schedule.id}", class: 'h-full flex flex-col') do
           CardHeader do
-            render_medication_icon
+            render_medication_icon(schedule)
             m3_text(
               size: '4',
               weight: 'semibold',
@@ -70,9 +70,9 @@ module Components
         end
       end
 
-      def render_medication_icon
+      def render_medication_icon(schedule)
         div(class: 'w-10 h-10 rounded-xl flex items-center justify-center bg-success-light text-success mb-2') do
-          render Icons::Pill.new(size: 20)
+          render Components::Shared::MedicationIcon.new(medication: schedule.medication, size: 20)
         end
       end
 

@@ -7,12 +7,11 @@ module Components
       include Phlex::Rails::Helpers::FormWith
       include Phlex::Rails::Helpers::ButtonTo
 
-      attr_reader :person_medication, :person, :todays_takes, :current_user
+      attr_reader :person_medication, :person, :current_user
 
-      def initialize(person_medication:, person:, todays_takes: nil, current_user: nil)
+      def initialize(person_medication:, person:, current_user: nil)
         @person_medication = person_medication
         @person = person
-        @todays_takes = todays_takes
         @current_user = current_user
         super()
       end
@@ -54,8 +53,6 @@ module Components
           div(class: 'pt-4 border-t border-border space-y-4') do
             render_notes if person_medication.notes.present?
             render_timing_restrictions if person_medication.timing_restrictions?
-            render_countdown_notice if !person_medication.can_take_now? && person_medication.countdown_display
-            render_takes_section
           end
         end
       end
@@ -80,7 +77,7 @@ module Components
                  'text-on-surface-variant ' \
                  'group-hover:text-primary group-hover:bg-primary/5 transition-all'
         ) do
-          render Icons::Pill.new(size: 24)
+          render Components::Shared::MedicationIcon.new(medication: person_medication.medication, size: 24)
         end
       end
 
@@ -126,200 +123,44 @@ module Components
         end
       end
 
-      def render_countdown_notice
-        div(class: 'p-4 bg-warning-container border border-warning/20 rounded-shape-xl') do
-          div(class: 'flex items-center gap-2 mb-1') do
-            render Icons::Clock.new(size: 14, class: 'text-on-warning-container')
-            m3_text(size: '1', weight: 'bold',
-                    class: 'font-black uppercase tracking-widest text-on-warning-container') do
-              t('person_medications.card.next_dose_available')
-            end
-          end
-          m3_text(size: '2', class: 'text-on-warning-container font-bold') { person_medication.countdown_display }
-        end
-      end
-
-      def render_takes_section
-        takes = todays_takes || fetch_todays_takes
-
-        div(class: 'space-y-4 pt-2') do
-          div(class: 'flex items-center justify-between') do
-            m3_text(size: '1', weight: 'bold', class: 'font-black uppercase tracking-widest text-on-surface-variant') do
-              t('person_medications.card.todays_doses')
-            end
-            render_dose_counter(takes) if person_medication.max_daily_doses.present?
-          end
-          render_todays_takes(takes)
-        end
-      end
-
-      def fetch_todays_takes
-        if person_medication.medication_takes.loaded?
-          person_medication.medication_takes
-                           .select { |t| t.taken_at >= Time.current.beginning_of_day }
-                           .sort_by(&:taken_at)
-                           .reverse
-        else
-          person_medication.medication_takes
-                           .where(taken_at: Time.current.beginning_of_day..)
-                           .order(taken_at: :desc)
-                           .load
-        end
-      end
-
-      def render_dose_counter(todays_takes)
-        todays_count = todays_takes.length
-        max_doses = person_medication.max_daily_doses
-
-        Badge(variant: :outlined, class: 'rounded-full text-[10px]') do
-          "#{todays_count}/#{max_doses}"
-        end
-      end
-
-      def render_todays_takes(todays_takes)
-        if todays_takes.any?
-          div(class: 'grid grid-cols-1 gap-2') do
-            todays_takes.each do |take|
-              render_take_item(take)
-            end
-          end
-        else
-          m3_text(size: '2', weight: 'medium', class: 'italic text-on-surface-variant px-1') do
-            t('person_medications.card.no_doses_today')
-          end
-        end
-      end
-
-      def render_take_item(take)
-        div(
-          class: 'flex items-center justify-between p-3 rounded-xl bg-secondary-container ' \
-                 'group/item transition-colors ' \
-                 'hover:bg-tertiary-container'
-        ) do
-          div(class: 'flex items-center gap-3') do
-            render Icons::CheckCircle.new(size: 16, class: 'text-on-success-container')
-            div(class: 'space-y-1') do
-              m3_text(size: '2', weight: 'bold', class: 'text-foreground') { take.taken_at.strftime('%l:%M %p').strip }
-              if take.inventory_location.present?
-                m3_text(size: '1', class: 'text-on-surface-variant') { take.inventory_location.name }
-              end
-            end
-          end
-          if take.dose_amount.present?
-            m3_text(size: '1', weight: 'bold',
-                    class: 'font-black text-on-surface-variant uppercase tracking-tighter') do
-              DoseAmount.new(take.dose_amount, take.dose_unit || person_medication.dose_unit).to_s
-            end
-          end
-        end
-      end
-
-      def render_take_medication_button
-        return unless view_context.policy(person_medication).take_medication?
-
-        label = if invalid_dose_configured?
-                  t('person_medications.card.invalid_dose')
-                else
-                  blocked_reason == :out_of_stock ? t('person_medications.card.out_of_stock') : take_label
-                end
-        render Components::Medications::TakeAction.new(
-          source: person_medication,
-          context: { person: person, current_user: current_user },
-          amount: person_medication.dose_amount,
-          button: {
-            label: take_label,
-            variant: :filled,
-            size: :lg,
-            icon: Icons::HandPackage,
-            class: 'w-full rounded-xl py-6 font-bold shadow-lg shadow-primary/20 hover:shadow-xl ' \
-                   'hover:shadow-primary/30',
-            testid: "take-person-medication-#{person_medication.id}",
-            form_class: 'flex-1'
-          },
-          state: {
-            disabled: invalid_dose_configured? || blocked_reason == :out_of_stock,
-            label: label,
-            icon: Icons::AlertCircle
-          }
-        )
-      end
-
-      def own_dose?
-        return true if current_user.nil?
-
-        current_user.person == person
-      end
-
-      def take_label
-        own_dose? ? t('person_medications.card.take') : t('person_medications.card.give')
-      end
-
-      def invalid_dose_configured?
-        person_medication.dose_amount.to_f <= 0
-      end
-
-      # Cache the resolved blocked reason per render so a nil result does not
-      # re-run stock resolution for both the disabled label and disabled state.
-      def blocked_reason
-        return @blocked_reason if instance_variable_defined?(:@blocked_reason)
-
-        @blocked_reason = stock_source_resolver.blocked_reason
-      end
-
-      def stock_source_resolver
-        @stock_source_resolver ||= MedicationStockSourceResolver.new(user: current_user, source: person_medication)
-      end
-
       def render_person_medication_actions
         div(class: 'flex items-center gap-2 w-full') do
           render_reorder_controls if view_context.policy(person_medication).update?
+          render_past_dose_button
           render_edit_button if view_context.policy(person_medication).update?
-
-          render_take_medication_button if view_context.policy(person_medication).take_medication?
-
-          render_overflow_menu if view_context.policy(person_medication).take_medication?
-
           render_delete_dialog if view_context.policy(person_medication).destroy?
         end
       end
 
-      def render_overflow_menu
-        render RubyUI::DropdownMenu.new do
-          render RubyUI::DropdownMenuTrigger.new do
-            m3_button(
-              variant: :text,
-              class: 'w-10 h-10 p-0 rounded-xl text-on-surface-variant hover:text-foreground',
-              data: { testid: "more-actions-person-medication-#{person_medication.id}" },
-              aria_label: t('medications.card.more_actions', default: 'More actions')
-            ) do
-              render Icons::MoreHorizontal.new(size: 18)
-            end
-          end
-          render RubyUI::DropdownMenuContent.new(class: 'w-56') do
-            render Components::Medications::PriorDayTakeAction.new(
-              source: person_medication,
-              context: { person: person, current_user: current_user },
-              amount: person_medication.dose_amount,
-              testid: "log-past-dose-person-medication-#{person_medication.id}"
-            )
-          end
-        end
+      def render_past_dose_button
+        render Components::Medications::PriorDayTakeAction.new(
+          source: person_medication,
+          context: { person: person, current_user: current_user },
+          amount: person_medication.dose_amount,
+          testid: "log-past-dose-person-medication-#{person_medication.id}",
+          button: {
+            variant: :outlined,
+            size: :lg,
+            class: 'flex-1 rounded-xl py-6 font-bold border-outline text-on-surface-variant ' \
+                   'hover:bg-tertiary-container transition-colors'
+          }
+        )
       end
 
       def render_edit_button
         a(
           href: edit_person_person_medication_path(person, person_medication),
           data: { turbo_frame: 'modal', testid: "edit-person-medication-#{person_medication.id}" },
-          class: 'inline-flex items-center justify-center w-10 h-10 rounded-xl text-on-surface-variant ' \
-                 'hover:text-foreground hover:bg-tertiary-container transition-colors',
+          class: 'inline-flex items-center justify-center w-12 h-12 rounded-xl text-on-surface-variant ' \
+                 'border border-outline hover:text-foreground hover:bg-tertiary-container transition-colors',
           aria_label: t('person_medications.card.edit')
         ) do
-          render Icons::Pencil.new(size: 16)
+          render Icons::Pencil.new(size: 20)
         end
       end
 
       def render_reorder_controls
-        div(class: 'flex items-center gap-1') do
+        div(class: 'flex flex-col gap-1') do
           form_with(
             url: reorder_person_person_medication_path(person, person_medication),
             method: :patch,
@@ -329,11 +170,11 @@ module Components
             m3_button(
               variant: :text,
               type: :submit,
-              class: 'w-10 h-10 p-0 rounded-xl text-on-surface-variant hover:text-foreground',
+              class: 'w-8 h-6 p-0 rounded-md text-on-surface-variant hover:text-foreground',
               data: { testid: "move-up-person-medication-#{person_medication.id}" },
               aria_label: t('person_medications.card.move_up_aria_label')
             ) do
-              render Icons::ArrowUp.new(size: 16)
+              render Icons::ArrowUp.new(size: 14)
             end
           end
 
@@ -346,11 +187,11 @@ module Components
             m3_button(
               variant: :text,
               type: :submit,
-              class: 'w-10 h-10 p-0 rounded-xl text-on-surface-variant hover:text-foreground',
+              class: 'w-8 h-6 p-0 rounded-md text-on-surface-variant hover:text-foreground',
               data: { testid: "move-down-person-medication-#{person_medication.id}" },
               aria_label: t('person_medications.card.move_down_aria_label')
             ) do
-              render Icons::ArrowDown.new(size: 16)
+              render Icons::ArrowDown.new(size: 14)
             end
           end
         end

@@ -42,95 +42,18 @@ RSpec.describe 'Person Medications', type: :system do
     end
   end
 
-  describe 'recording medication takes' do
+  describe 'editing an existing medication assignment' do
     let(:person_medication) { person_medications(:john_vitamin_d) }
 
-    it 'allows recording a medication take', :js do
-      person_medication.update!(max_daily_doses: 3, min_hours_between_doses: nil)
-      person_medication.medication_takes.delete_all
-
+    it 'opens the edit modal from the card', :js do
       visit person_path(person)
 
       within("#person_medication_#{person_medication.id}") do
-        click_button 'Take'
-      end
-      confirm_record_dose(person_medication)
-
-      expect(page).to have_text('Medication taken successfully')
-    end
-
-    it 'rejects the default dose time when max daily doses reached', :js do
-      person_medication.update!(max_daily_doses: 2, min_hours_between_doses: nil)
-      person_medication.medication_takes.delete_all
-      2.times do
-        MedicationTake.create!(
-          person_medication: person_medication,
-          taken_at: Time.current,
-          dose_amount: 5
-        )
+        find("[data-testid='edit-person-medication-#{person_medication.id}']").click
       end
 
-      visit person_path(person)
-
-      within("#person_medication_#{person_medication.id}") do
-        expect(page).to have_button('Take', disabled: false)
-        click_button 'Take'
-      end
-      expect do
-        confirm_record_dose(person_medication)
-        expect(page).to have_text('Cannot take medication')
-      end.not_to change(MedicationTake, :count)
-    end
-
-    it 'rejects the default dose time when minimum hours not passed', :js do
-      person_medication.update!(max_daily_doses: nil, min_hours_between_doses: 6)
-      person_medication.medication_takes.delete_all
-      MedicationTake.create!(
-        person_medication: person_medication,
-        taken_at: 2.hours.ago,
-        dose_amount: 5
-      )
-
-      visit person_path(person)
-
-      within("#person_medication_#{person_medication.id}") do
-        expect(page).to have_button('Take', disabled: false)
-        click_button 'Take'
-      end
-      expect do
-        confirm_record_dose(person_medication)
-        expect(page).to have_text('Cannot take medication')
-      end.not_to change(MedicationTake, :count)
-    end
-  end
-
-  describe 'viewing today\'s doses on card' do
-    let(:person_medication) { person_medications(:john_vitamin_d) }
-
-    let!(:take) do
-      MedicationTake.create!(
-        person_medication: person_medication,
-        taken_at: Time.current,
-        dose_amount: 5
-      )
-    end
-
-    it 'displays today\'s doses on the medication card' do
-      visit person_path(person)
-
-      within("#person_medication_#{person_medication.id}") do
-        expect(page).to have_text(/today's doses/i)
-        expect(page).to have_text(take.taken_at.strftime('%l:%M %p').strip)
-        expect(page).to have_text('5 IU')
-      end
-    end
-  end
-
-  def confirm_record_dose(person_medication)
-    path = take_medication_person_person_medication_path(person, person_medication)
-
-    within("form[action='#{path}']") do
-      click_button 'Take'
+      expect(page).to have_text(/edit medication/i)
+      expect(page).to have_css('div[data-state="open"]')
     end
   end
 end

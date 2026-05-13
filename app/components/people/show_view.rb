@@ -7,16 +7,12 @@ module Components
       include Phlex::Rails::Helpers::TurboFrameTag
       include Phlex::Rails::Helpers::FormWith
 
-      attr_reader :person, :schedules, :person_medications,
-                  :takes_by_schedule, :takes_by_person_medication, :current_user
+      attr_reader :person, :schedules, :person_medications, :current_user
 
       def initialize(person:, schedules:, person_medications: nil, **opts)
         @person = person
         @schedules = schedules
         @person_medications = person_medications || person.person_medications
-        preloaded_takes = opts.fetch(:preloaded_takes, {})
-        @takes_by_schedule = preloaded_takes.fetch(:schedules, {})
-        @takes_by_person_medication = preloaded_takes.fetch(:person_medications, {})
         @current_user = opts[:current_user]
         super()
       end
@@ -157,7 +153,6 @@ module Components
               render Components::Schedules::Card.new(
                 schedule: schedule,
                 person: person,
-                todays_takes: takes_by_schedule[schedule.id],
                 current_user: current_user
               )
             end
@@ -166,13 +161,12 @@ module Components
               render Components::PersonMedications::Card.new(
                 person_medication: person_medication,
                 person: person,
-                todays_takes: takes_by_person_medication[person_medication.id],
                 current_user: current_user
               )
             end
-
-            render_empty_state if schedules.none? && accessible_medications.none?
           end
+
+          render_empty_state if schedules.none? && accessible_medications.none?
         end
       end
 

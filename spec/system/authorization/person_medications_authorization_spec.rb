@@ -125,12 +125,10 @@ RSpec.describe 'Person Medications Authorization' do
 
     it 'allows carers to take medication for assigned patients', :js do
       login_as(carer)
-      visit person_path(assigned_patient)
+      visit dashboard_path
 
-      within("#person_medication_#{person_medication.id}") do
-        expect(page).to have_button('Give')
-        click_button 'Give'
-      end
+      as_needed_card_for(person_medication).find('summary').click
+      find("[data-testid='take-dose-personmedication_#{person_medication.id}']").click
       confirm_record_dose(person_medication)
 
       expect(page).to have_text('Medication taken successfully')
@@ -406,6 +404,12 @@ RSpec.describe 'Person Medications Authorization' do
 
     within("form[action='#{path}']") do
       click_button 'Give'
+    end
+  end
+
+  def as_needed_card_for(person_medication)
+    all('details[data-testid="dashboard-as-needed-person"]', visible: :all).find do |details|
+      details.has_css?("#timeline_person_medication_#{person_medication.id}", visible: :all)
     end
   end
 end

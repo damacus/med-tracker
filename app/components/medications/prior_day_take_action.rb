@@ -6,20 +6,21 @@ module Components
       include Phlex::Rails::Helpers::FormWith
       include DoseRecordingHelpers
 
-      attr_reader :source, :person, :current_user, :amount, :testid
+      attr_reader :source, :person, :current_user, :amount, :testid, :button_options
 
-      def initialize(source:, context:, amount:, testid:)
+      def initialize(source:, context:, amount:, testid:, button: nil)
         @source = source
         @person = context.fetch(:person)
         @current_user = context.fetch(:current_user)
         @amount = amount
         @testid = testid
+        @button_options = button
         super()
       end
 
       def view_template
-        Dialog(class: 'block w-full') do
-          DialogTrigger(class: 'block w-full') { render_menu_item_trigger }
+        Dialog(class: button_options ? nil : 'block w-full') do
+          DialogTrigger(class: button_options ? nil : 'block w-full') { render_trigger }
           DialogContent(size: :md) do
             DialogHeader do
               DialogTitle do
@@ -59,6 +60,29 @@ module Components
       end
 
       private
+
+      def render_trigger
+        if button_options
+          render_button_trigger
+        else
+          render_menu_item_trigger
+        end
+      end
+
+      def render_button_trigger
+        m3_button(
+          variant: button_options[:variant] || :outlined,
+          size: button_options[:size] || :md,
+          class: button_options[:class],
+          data: {
+            action: 'click->ruby-ui--dialog#open:prevent',
+            testid: testid
+          }
+        ) do
+          render Icons::Calendar.new(size: 16, aria_hidden: 'true', class: 'mr-2 shrink-0')
+          plain t('medications.prior_day_take_action.menu_item', default: 'Log a past dose')
+        end
+      end
 
       def render_menu_item_trigger
         render RubyUI::DropdownMenuItem.new(

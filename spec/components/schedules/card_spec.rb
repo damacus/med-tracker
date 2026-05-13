@@ -18,30 +18,6 @@ RSpec.describe Components::Schedules::Card, type: :component do
     )
   end
 
-  it 'displays dosage unit from schedule, not hardcoded ml' do
-    MedicationTake.create!(schedule: schedule, taken_at: Time.current, dose_amount: 400)
-    rendered = render_schedule_card
-
-    take_text = rendered.text
-    expect(take_text).to include('400 mg')
-    expect(take_text).not_to match(/400\s*ml/i)
-  end
-
-  it 'disables the take button when schedule dose is invalid' do
-    schedule.dose_amount = 0
-    rendered = render_schedule_card
-
-    button = rendered.at_css("button[data-testid='take-schedule-#{schedule.id}-disabled'][disabled]")
-    expect(button).not_to be_nil
-    expect(button.text).to include('Invalid Dose Configured')
-  end
-
-  it 'shows the recorded location for today takes' do
-    add_schedule_take_for('Schedule Alt Location')
-    rendered = render_schedule_card
-    expect(rendered.text).to include('Schedule Alt Location')
-  end
-
   it 'wraps full medication names inside the card header' do
     medication.update!(name: 'Calpol Six Plus 250mg/5ml oral suspension (McNeil Products Ltd)')
     rendered = render_schedule_card
@@ -51,15 +27,13 @@ RSpec.describe Components::Schedules::Card, type: :component do
     expect(heading['class']).to include('break-words')
   end
 
-  it 'renders an overflow menu with a Log a past dose item' do
+  it 'renders a Log a past dose button' do
     rendered = render_schedule_card
 
-    trigger = rendered.at_css("button[data-testid='more-actions-schedule-#{schedule.id}']")
-    item = rendered.at_css("[role='menuitem'][data-testid='log-past-dose-schedule-#{schedule.id}']")
+    button = rendered.at_css("button[data-testid='log-past-dose-schedule-#{schedule.id}']")
 
-    expect(trigger).not_to be_nil
-    expect(item).not_to be_nil
-    expect(item.text).to include('Log a past dose')
+    expect(button).not_to be_nil
+    expect(button.text).to include('Log a past dose')
   end
 
   def render_schedule_card
@@ -67,23 +41,5 @@ RSpec.describe Components::Schedules::Card, type: :component do
     vc.singleton_class.define_method(:current_user) { nil }
     html = vc.render(described_class.new(schedule: schedule, person: person))
     Nokogiri::HTML::DocumentFragment.parse(html)
-  end
-
-  def add_schedule_take_for(location_name)
-    alternate_location = create(:location, name: location_name)
-    alternate_medication = create(
-      :medication,
-      name: medication.name,
-      location: alternate_location,
-      dosage_amount: medication.dosage_amount,
-      dosage_unit: medication.dosage_unit
-    )
-    MedicationTake.create!(
-      schedule: schedule,
-      taken_at: Time.current,
-      dose_amount: 400,
-      taken_from_medication: alternate_medication,
-      taken_from_location: alternate_location
-    )
   end
 end

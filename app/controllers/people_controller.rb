@@ -19,7 +19,6 @@ class PeopleController < ApplicationController
       person: @person,
       schedules: show_data.schedules,
       person_medications: show_data.person_medications,
-      preloaded_takes: show_data.preloaded_takes,
       current_user: current_user
     )
   end
