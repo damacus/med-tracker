@@ -20,14 +20,14 @@ RSpec.describe 'Schedule dosage selection' do
 
     find_by_id('medication_trigger').click
     # Portaled content is in body
-    find('label', text: 'Ibuprofen', visible: :all, wait: 10).click
+    find('[role="option"]', text: 'Ibuprofen', wait: 10).click
 
     expect(page).to have_text('Change')
     sleep 1.0 # Wait for dosage cards to render after medication selection
 
     expect(page).to have_no_css('[name="schedule[dose_option_key]"]:checked', visible: :hidden)
     expect(page).to have_text('Add Plan') # Button might be disabled, have_content is safer
-    find('label', text: '400 mg', visible: :all, wait: 10).click
+    find('label', text: '400 mg', wait: 10).click
 
     fill_in 'Frequency', with: 'Once daily'
     fill_in 'Start date', with: Date.current.strftime('%Y-%m-%d')
@@ -49,7 +49,7 @@ RSpec.describe 'Schedule dosage selection' do
     visit new_person_schedule_path(person)
 
     find_by_id('medication_trigger').click
-    find('label', text: 'Dose-less medication', visible: :all, wait: 10).click
+    find('[role="option"]', text: 'Dose-less medication', wait: 10).click
 
     expect(page).to have_text('No dose options are available for this medication.')
   end

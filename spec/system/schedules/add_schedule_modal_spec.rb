@@ -20,10 +20,10 @@ RSpec.describe 'Add schedule modal flow' do
     expect(page).to have_text('Choose a medication')
 
     find_by_id('medication_trigger').click
-    find('label', text: 'Ibuprofen', visible: :all, wait: 10).click
+    find('[role="option"]', text: 'Ibuprofen', wait: 10).click
 
     sleep 1.0 # Wait for dosage cards to render
-    find('label', text: /Standard child dose \(6-12 years\)/, visible: :all, wait: 10).click
+    find('label', text: /Standard child dose \(6-12 years\)/, wait: 10).click
 
     fill_in 'Frequency', with: 'Twice daily'
     fill_in 'Start date', with: Date.current.strftime('%Y-%m-%d')
