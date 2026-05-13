@@ -4,7 +4,7 @@ Self-hosting MedTracker is for operators who are comfortable running web
 applications, databases, background jobs, secrets, backups, and upgrades.
 
 For local development commands, use the [Technical Quick Start](quick-start.md).
-This page is about running MedTracker for real users.
+This page is about running MedTracker for a household, family, or care group.
 
 ## Deployment options
 
@@ -41,8 +41,19 @@ will actually open.
 Do not rely on development seed users for a self-hosted service.
 
 Bootstrap the first administrator using the deployment mechanism for your
-environment, then invite the family members, carers, or support users who should
-have access.
+environment. After that, give access through the invitation flow:
+
+1. Send invitations from **Admin** -> **Invitations** (`/admin/invitations`).
+2. Or seed pending invitations from `db/seeds/users.yml` using `rails db:seed`
+   in the target environment.
+3. Each invited person accepts their invitation through the generated
+   `invitations/accept` link and creates their account.
+
+In environments where email delivery is not available, use the same invitation
+flow locally: create the invitation, retrieve the generated invitation link from
+the configured mail preview, mail queue, or logs, and complete the accept form
+for that account. This still exercises the invitation acceptance path instead of
+handing out development credentials.
 
 For Kubernetes deployments, use the
 [Kubernetes User Seeding Runbook](kubernetes-user-seeding.md). For OIDC or
@@ -52,8 +63,8 @@ passkeys, use:
 - [Passkey Setup](passkey-setup.md)
 - [Two-Factor Authentication](two-factor-authentication.md)
 
-After access is ready, send users the real MedTracker URL and their sign-in
-instructions. Their next step is [Add your first medicine](families/adding-first-medicine.md).
+After invitations are accepted, give household members the MedTracker URL for
+their deployment and point them to [Add your first medicine](families/adding-first-medicine.md).
 
 ## Medicine scanning
 
@@ -70,7 +81,7 @@ the family onboarding docs assume scanning is the easiest path when configured.
 
 ## Operations checklist
 
-Before inviting real users:
+Before inviting a household or care group:
 
 1. Confirm the app URL, TLS, mail delivery, and authentication flow.
 2. Run database migrations for the deployed release.
