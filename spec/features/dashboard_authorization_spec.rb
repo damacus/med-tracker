@@ -13,14 +13,9 @@ RSpec.describe 'Dashboard Authorization', type: :system do
         sign_in(admin)
 
         visit dashboard_path
-        open_person_overflow
 
         # Should see multiple people
-        expect(page).to have_text('John Doe')
-        expect(page).to have_text('Jane Doe')
-        expect(page).to have_text('Bob Smith')
-        expect(page).to have_text('Adult Patient')
-        expect(page).to have_text('Child Patient')
+        expect_person_selector_to_include('John Doe', 'Jane Doe', 'Bob Smith', 'Adult Patient', 'Child Patient')
       end
     end
 
@@ -31,13 +26,9 @@ RSpec.describe 'Dashboard Authorization', type: :system do
         sign_in(doctor)
 
         visit dashboard_path
-        open_person_overflow
 
         # Should see multiple people
-        expect(page).to have_text('John Doe')
-        expect(page).to have_text('Jane Doe')
-        expect(page).to have_text('Bob Smith')
-        expect(page).to have_text('Adult Patient')
+        expect_person_selector_to_include('John Doe', 'Jane Doe', 'Bob Smith', 'Adult Patient')
       end
     end
 
@@ -48,12 +39,9 @@ RSpec.describe 'Dashboard Authorization', type: :system do
         sign_in(nurse)
 
         visit dashboard_path
-        open_person_overflow
 
         # Should see multiple people
-        expect(page).to have_text('John Doe')
-        expect(page).to have_text('Jane Doe')
-        expect(page).to have_text('Bob Smith')
+        expect_person_selector_to_include('John Doe', 'Jane Doe', 'Bob Smith')
       end
     end
 
@@ -68,11 +56,13 @@ RSpec.describe 'Dashboard Authorization', type: :system do
         # Should see assigned patients
         expect(page).to have_text('Child Patient')
         expect(page).to have_text('Child User')
+        expect_person_selector_to_include('Child Patient', 'Child User')
 
         # Should NOT see unassigned patients
         expect(page).to have_no_text('Bob Smith')
         expect(page).to have_no_text('John Doe')
         expect(page).to have_no_text('Jane Doe')
+        expect_person_selector_to_exclude('Bob Smith', 'John Doe', 'Jane Doe')
       end
 
       it 'sees only schedules for assigned patients' do
@@ -99,12 +89,14 @@ RSpec.describe 'Dashboard Authorization', type: :system do
 
         # Should see their child
         expect(page).to have_text('Child User')
+        expect_person_selector_to_include('Child User')
 
         # Should NOT see other people
         expect(page).to have_no_text('Bob Smith')
         expect(page).to have_no_text('John Doe')
         expect(page).to have_no_text('Jane Doe')
         expect(page).to have_no_text('Adult Patient')
+        expect_person_selector_to_exclude('Bob Smith', 'John Doe', 'Jane Doe', 'Adult Patient')
       end
 
       it 'sees only schedules for their children' do
@@ -132,12 +124,14 @@ RSpec.describe 'Dashboard Authorization', type: :system do
 
         # Should see themselves
         expect(page).to have_text('Adult Patient')
+        expect_person_selector_to_include('Adult Patient')
 
         # Should NOT see other people
         expect(page).to have_no_text('Bob Smith')
         expect(page).to have_no_text('John Doe')
         expect(page).to have_no_text('Jane Doe')
         expect(page).to have_no_text('Child Patient')
+        expect_person_selector_to_exclude('Bob Smith', 'John Doe', 'Jane Doe', 'Child Patient')
       end
 
       it 'sees only their own schedules' do
@@ -160,7 +154,19 @@ RSpec.describe 'Dashboard Authorization', type: :system do
     page.all('details[data-testid="dashboard-as-needed-person"] summary').to_a.each(&:click)
   end
 
-  def open_person_overflow
-    find('[data-testid="dashboard-person-overflow"] button').click
+  def expect_person_selector_to_include(*names)
+    selector_text = find('[data-testid="dashboard-person-selector"]', visible: :all).text(:all)
+
+    names.each do |name|
+      expect(selector_text).to include(name)
+    end
+  end
+
+  def expect_person_selector_to_exclude(*names)
+    selector_text = find('[data-testid="dashboard-person-selector"]', visible: :all).text(:all)
+
+    names.each do |name|
+      expect(selector_text).not_to include(name)
+    end
   end
 end
