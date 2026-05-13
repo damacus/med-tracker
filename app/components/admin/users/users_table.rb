@@ -35,7 +35,7 @@ module Components
               m3_card(id: "mobile_user_#{user.id}",
                       class: 'rounded-[2rem] border border-outline-variant/40 bg-card p-5 ' \
                              "shadow-elevation-1 #{row_class}",
-                      data: { user_id: user.id }) do
+                      data: { user_card_id: user.id }) do
                 div(class: 'space-y-4') do
                   div(class: 'flex items-start justify-between gap-3') do
                     div(class: 'min-w-0') do

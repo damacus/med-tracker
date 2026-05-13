@@ -79,7 +79,7 @@ module Components
           row_class = relationship.active? ? '' : 'opacity-60'
           m3_card(id: "mobile_carer_relationship_#{relationship.id}",
                   class: "rounded-[2rem] border border-outline-variant/40 bg-card p-5 shadow-elevation-1 #{row_class}",
-                  data: { relationship_id: relationship.id }) do
+                  data: { relationship_card_id: relationship.id }) do
             div(class: 'space-y-4') do
               div(class: 'flex items-start justify-between gap-3') do
                 div(class: 'min-w-0') do
