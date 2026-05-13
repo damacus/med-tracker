@@ -68,6 +68,36 @@ products:
         default_dose_cycle: "daily"
         current_supply: 60
         reorder_threshold: 14
+  - gtin: "5031021971579"
+    display: "Tesco Health Paracetamol 500mg Tablets"
+    system: "Curated product catalog"
+    concept_class: "Analgesic"
+    category: "Analgesic"
+    description: "Paracetamol 500mg tablets for the relief of mild to moderate pain and fever. 16 tablets."
+    warnings: >-
+      Contains paracetamol. Do not take with any other paracetamol-containing products.
+      Do not exceed 8 tablets in 24 hours. Leave at least 4 hours between doses.
+      Do not use for more than 3 days without medical advice.
+      Keep out of the sight and reach of children.
+    suggested_doses:
+      - amount: 1
+        unit: "tablet"
+        frequency: "Every 4-6 hours as needed"
+        description: "Adults and children 12+ years (low dose)"
+        default_max_daily_doses: 8
+        default_min_hours_between_doses: 4
+        default_dose_cycle: "daily"
+        current_supply: 16
+        reorder_threshold: 4
+      - amount: 2
+        unit: "tablet"
+        frequency: "Every 4-6 hours as needed"
+        description: "Adults and children 12+ years (standard dose)"
+        default_max_daily_doses: 4
+        default_min_hours_between_doses: 4
+        default_dose_cycle: "daily"
+        current_supply: 16
+        reorder_threshold: 4
   - code: "316811000001106"
     display: "Calpol Six Plus 250mg/5ml oral suspension (McNeil Products Ltd)"
     system: "https://dmd.nhs.uk"
