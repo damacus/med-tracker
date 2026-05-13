@@ -1,10 +1,10 @@
 # Code Review - codex/restock-authorization-finder
 
 **Base Branch**: origin/main
-**Changed Files**: 30
-**Changed Ruby Files**: 18
+**Changed Files**: 39
+**Changed Ruby Files**: 20
 **Review Date**: 2026-05-13
-**Review Skills**: review-ruby-code, rubycritic availability check, simplecov availability check
+**Review Skills**: review-ruby-code, rubycritic, simplecov
 
 ---
 
@@ -61,34 +61,42 @@ Coverage gaps:
 - Add a system or JS-level spec for the unknown package quantity path in [MedicationSearchController#renderRestockModal](file:///Users/damacus/.codex/worktrees/950d/med-tracker/app/javascript/controllers/medication_search_controller.js#L204). The current system spec always sends [package_quantity: 30](file:///Users/damacus/.codex/worktrees/950d/med-tracker/spec/system/medication_finder_spec.rb#L78), so the required manual quantity field is not exercised.
 - Add a request spec that service-unavailable finder responses preserve permissions if you decide to make the JSON schema consistent. Existing error specs assert only [status and generic error text](file:///Users/damacus/.codex/worktrees/950d/med-tracker/spec/requests/medications_search_spec.rb#L140).
 
-Focused verification already run on this branch before review:
+Focused verification already run on this branch:
 
-- `task rubocop` passed: 975 files, no offenses.
-- `task test` passed after clean retry: 2383 examples, 0 failures, 2 pending.
+- `task test TEST_FILE=spec/config/application_harness_dependencies_spec.rb` passed: 8 examples, 0 failures.
+- `COVERAGE=true SIMPLECOV_COMMAND_NAME=rspec-harness task test TEST_FILE=spec/config/application_harness_dependencies_spec.rb` passed and generated `coverage/`.
+- `task rubycritic TARGET=app/services/medication_finder_search_responder.rb` passed.
+- `task rubocop` passed: 976 files, no offenses.
+- `task test` passed: 2386 examples, 0 failures, 2 pending.
 
 ## Tool Reports
 
 ### RubyCritic Summary
 
-RubyCritic metrics are unavailable in this worktree:
+RubyCritic is now available through the repo-native task wrapper:
 
-- `rubycritic` is not installed on `PATH`.
-- `task -l` exposes no RubyCritic task.
-- The repo's `scripts/check_quality.sh` would mutate `Gemfile` to install RubyCritic and uses Bash, so I did not run it during this Fish-only review pass.
+- Local tooling includes `gem 'rubycritic', require: false`.
+- `task rubycritic TARGET=app/services/medication_finder_search_responder.rb` completed successfully.
+- Focused result for `MedicationFinderSearchResponder`: rating B, churn 5, complexity 65.94, duplication 0, smells 13, score 83.52.
+- The highest-value follow-up is still the controller/service boundary noted above, rather than broad mechanical cleanup.
 
 ### SimpleCov Summary
 
-SimpleCov metrics are unavailable:
+SimpleCov is now configured for local and CI use:
 
-- No `simplecov` or `coverage` configuration was found in `Gemfile`, `Gemfile.lock`, `Taskfile.yml`, or `spec`.
-- No `coverage/` output directory exists in this worktree.
+- Local tooling includes `gem 'simplecov', require: false`.
+- `.simplecov` starts Rails coverage with branch coverage and application-layer groups.
+- `spec/spec_helper.rb` loads SimpleCov first when `COVERAGE=true`.
+- `compose.yaml` passes `COVERAGE` and `SIMPLECOV_COMMAND_NAME` into the test services.
+- CI enables `COVERAGE: true` for the non-system test job and uploads the `simplecov-non-system` coverage artifact.
+- Focused harness coverage run generated a report: line coverage 35.49% and branch coverage 0.70% for that limited spec file.
 
 ## Recommendations
 
 1. Replace the permissive `NoMethodError => true` fallbacks in `Components::Medications::ShowView` with explicit permission injection or strict policy calls.
 2. If finder JSON is a public-ish internal contract, include permissions in service-unavailable responses too.
 3. Add coverage for the unknown package quantity modal flow before relying on scanned products without pack metadata.
-4. Add repo-native `task` wrappers for RubyCritic/SimpleCov if those reports are mandatory review artifacts.
+4. Use the new `COVERAGE=true task test ...` path for future coverage-focused branch reviews.
 
 ## Positive Observations
 

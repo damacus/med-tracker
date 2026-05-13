@@ -71,6 +71,21 @@ tasks:
           SERVICE: tools-test
           COMMAND: 'bundle exec rubocop --force-exclusion {{ if eq .autocorrect "true" }}-A{{ end }}'
 
+  rubycritic:
+    desc: Run RubyCritic quality analysis
+    summary: |
+      Run RubyCritic against the app and spec directories, or a supplied target.
+      Usage: task rubycritic
+      Usage: task rubycritic TARGET=app/services/foo.rb
+    vars:
+      target: '{{ .TARGET | default "app spec" }}'
+    cmds:
+      - task: internal:run
+        vars:
+          ENVIRONMENT: test
+          SERVICE: tools-test
+          COMMAND: 'bundle exec rubycritic --format console --no-browser {{ .target }}'
+
   playwright:
     desc: Run local Playwright browser tests
     summary: |

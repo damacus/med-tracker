@@ -88,6 +88,7 @@ end
 group :test do
   # Clean database between tests
   gem 'database_cleaner-active_record'
+  gem 'simplecov', require: false
 
   # Playwright for end-to-end testing
   gem 'capybara'
@@ -119,6 +120,7 @@ group :tools do
   gem 'rubocop-rails'
   gem 'rubocop-rspec'
   gem 'rubocop-rspec_rails'
+  gem 'rubycritic', require: false
 end
 
 group :development do
