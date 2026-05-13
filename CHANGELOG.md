@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.58](https://github.com/damacus/med-tracker/compare/v0.3.57...v0.3.58) (2026-05-13)
+
+
+### Features
+
+* show PIL links in medication finder ([#1270](https://github.com/damacus/med-tracker/issues/1270)) ([348a69d](https://github.com/damacus/med-tracker/commit/348a69d8fb5a6f21dd7cf3603399e32ff6f14f61))
+
+
+### Bug Fixes
+
+* align medication restock permissions ([0c6867a](https://github.com/damacus/med-tracker/commit/0c6867aeb4a184f08af8b273315b2b257e43b4eb))
+
 ## [0.3.57](https://github.com/damacus/med-tracker/compare/v0.3.56...v0.3.57) (2026-05-12)
 
 
