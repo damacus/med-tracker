@@ -9,20 +9,9 @@ module OpenProductsFacts
 
     def lookup(barcode)
       product = @client.product(barcode)
-      unless product
-        audit(barcode, 'not_found')
-        return nil
-      end
+      return not_found(barcode) unless product
 
-      entry_attrs = ResultBuilder.catalog_entry_from_product(barcode, product)
-      if entry_attrs
-        persist(entry_attrs)
-        audit(barcode, 'success', 1)
-        entry_attrs
-      else
-        audit(barcode, 'not_found')
-        nil
-      end
+      process_product(barcode, product)
     rescue Client::ApiError => e
       Rails.logger.warn("OpenProductsFacts::BarcodeLookup failed: #{e.message}")
       audit(barcode, 'error')
@@ -34,6 +23,20 @@ module OpenProductsFacts
     end
 
     private
+
+    def process_product(barcode, product)
+      entry_attrs = ResultBuilder.catalog_entry_from_product(barcode, product)
+      return not_found(barcode) unless entry_attrs
+
+      persist(entry_attrs)
+      audit(barcode, 'success', 1)
+      entry_attrs
+    end
+
+    def not_found(barcode)
+      audit(barcode, 'not_found')
+      nil
+    end
 
     # Persists the result so subsequent scans are served from the local catalogue
     # without hitting the API again.

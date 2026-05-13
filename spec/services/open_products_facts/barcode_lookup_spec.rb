@@ -60,28 +60,29 @@ RSpec.describe OpenProductsFacts::BarcodeLookup do
 
   it 'returns nil and logs a warning on API error' do
     allow(client).to receive(:product).with(barcode).and_raise(OpenProductsFacts::Client::ApiError, 'timeout')
+    allow(Rails.logger).to receive(:warn)
 
-    expect(Rails.logger).to receive(:warn).with(/OpenProductsFacts::BarcodeLookup failed/)
     expect(lookup.lookup(barcode)).to be_nil
+    expect(Rails.logger).to have_received(:warn).with(/OpenProductsFacts::BarcodeLookup failed/)
   end
 
   it 'records an audit event on success' do
     allow(client).to receive(:product).with(barcode).and_return(ibuprofen_product)
 
-    expect(audit_logger).to receive(:record).with(
+    lookup.lookup(barcode)
+
+    expect(audit_logger).to have_received(:record).with(
       hash_including(source: 'open_products_facts', event: 'barcode_lookup', result_status: 'success')
     )
-
-    lookup.lookup(barcode)
   end
 
   it 'records an audit event on not found' do
     allow(client).to receive(:product).with(barcode).and_return(nil)
 
-    expect(audit_logger).to receive(:record).with(
+    lookup.lookup(barcode)
+
+    expect(audit_logger).to have_received(:record).with(
       hash_including(source: 'open_products_facts', result_status: 'not_found')
     )
-
-    lookup.lookup(barcode)
   end
 end

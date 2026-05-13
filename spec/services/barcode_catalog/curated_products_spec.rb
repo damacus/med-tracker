@@ -85,7 +85,7 @@ RSpec.describe BarcodeCatalog::CuratedProducts do
     it 'every product has at least one suggested dose' do
       products.each do |product|
         expect(product.suggested_doses).not_to be_empty,
-          "#{product.display_name} has no suggested doses"
+                                               "#{product.display_name} has no suggested doses"
       end
     end
 
@@ -93,7 +93,7 @@ RSpec.describe BarcodeCatalog::CuratedProducts do
       gtin_products = products.select(&:gtin)
       gtin_products.each do |product|
         expect(product.gtin).to match(/\A\d{13,14}\z/),
-          "#{product.display_name} has invalid GTIN: #{product.gtin}"
+                                "#{product.display_name} has invalid GTIN: #{product.gtin}"
       end
     end
 
@@ -103,8 +103,8 @@ RSpec.describe BarcodeCatalog::CuratedProducts do
 
       ibuprofen_products.each do |product|
         product.suggested_doses.each do |dose|
-          expect(dose.default_min_hours_between_doses).to be <= 4,
-            "#{product.display_name} has a dose interval > 4 hours which is incorrect for OTC ibuprofen"
+          msg = "#{product.display_name}: OTC ibuprofen requires <= 4 hours between doses"
+          expect(dose.default_min_hours_between_doses).to be <= 4, msg
         end
       end
     end
@@ -115,8 +115,8 @@ RSpec.describe BarcodeCatalog::CuratedProducts do
 
       paracetamol_products.each do |product|
         product.suggested_doses.each do |dose|
-          expect(dose.default_min_hours_between_doses).to be <= 4,
-            "#{product.display_name} has a dose interval > 4 hours which is incorrect for paracetamol"
+          msg = "#{product.display_name}: paracetamol requires <= 4 hours between doses"
+          expect(dose.default_min_hours_between_doses).to be <= 4, msg
         end
       end
     end

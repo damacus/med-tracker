@@ -97,9 +97,9 @@ RSpec.describe BarcodeCatalog::Lookup do
 
     it 'prefers dm+d over Open Products Facts' do
       create_local_entry(code: 'dmd-code', display: 'dm+d name')
-      expect(opf_lookup).not_to receive(:lookup)
 
       expect(lookup.lookup(gtin)).to include(source: 'nhs_dmd')
+      expect(opf_lookup).not_to have_received(:lookup)
     end
 
     it 'prefers imported dm+d data over curated barcode overrides' do
