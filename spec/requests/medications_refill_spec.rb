@@ -6,6 +6,7 @@ RSpec.describe 'Medications refill' do
   fixtures :accounts, :people, :users, :locations, :medications
 
   let(:admin) { users(:admin) }
+  let(:parent) { users(:parent) }
   let(:medication) { medications(:paracetamol) }
 
   before do
@@ -29,6 +30,15 @@ RSpec.describe 'Medications refill' do
       expect(version.event).to include('qty: 10')
       expect(version.event).to include(Date.current.iso8601)
       expect(version.whodunnit).to eq(admin.id.to_s)
+    end
+
+    it 'allows a parent to restock an accessible medication' do
+      sign_in(parent)
+
+      patch refill_medication_path(medication), params: { refill: { quantity: 10, restock_date: Date.current.to_s } }
+
+      expect(response).to redirect_to(medication_path(medication))
+      expect(medication.reload.current_supply).to eq(90)
     end
 
     it 'returns unprocessable content and does not update supply when quantity is invalid' do
@@ -72,6 +82,20 @@ RSpec.describe 'Medications refill' do
         post scan_restock_medications_path,
              params: { inventory_scan: { barcode: '5012345678901', quantity: 30 } }
       end.to change(PaperTrail::Version.where(item_type: 'Medication'), :count).by(1)
+
+      expect(response).to redirect_to(medication_path(medication))
+      expect(medication.reload).to have_attributes(
+        current_supply: 30,
+        supply_at_last_restock: 30
+      )
+    end
+
+    it 'allows a parent to add scanned stock to an accessible medication' do
+      sign_in(parent)
+      medication.update!(barcode: '5012345678901', current_supply: 0, supply_at_last_restock: 30)
+
+      post scan_restock_medications_path,
+           params: { inventory_scan: { barcode: '5012345678901', quantity: 30 } }
 
       expect(response).to redirect_to(medication_path(medication))
       expect(medication.reload).to have_attributes(
@@ -132,6 +156,17 @@ RSpec.describe 'Medications refill' do
       expect(response.parsed_body.dig('medication', 'id')).to eq(medication.id)
       expect(response.parsed_body.dig('medication', 'name')).to eq(medication.display_name)
       expect(response.parsed_body.dig('medication', 'location')).to eq('Home')
+    end
+
+    it 'returns the matching medication for a parent who can restock but cannot update details' do
+      sign_in(parent)
+      medication.update!(barcode: '5012345678901')
+
+      get scan_restock_match_medications_path(format: :json), params: { q: '5012345678901' }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body).to include('matched' => true)
+      expect(response.parsed_body.dig('medication', 'id')).to eq(medication.id)
     end
 
     it 'returns the matching medication from barcode metadata' do

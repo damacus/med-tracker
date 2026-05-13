@@ -55,7 +55,6 @@
         <%= yield %>
       </div>
     </main>
-    <%= render Components::Layouts::FloatingActionMenu.new(current_user: current_user) if current_user %>
     <%= render Components::GlobalSearch::Palette.new if current_user %>
     <turbo-frame id="modal"></turbo-frame>
   </body>

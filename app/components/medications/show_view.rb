@@ -70,14 +70,16 @@ module Components
           end
 
           div(class: 'flex gap-3') do
-            m3_link(
-              href: edit_medication_path(medication, return_to: medication_path(medication)),
-              variant: :outlined,
-              size: :lg,
-              class: 'bg-card shadow-sm hover:shadow-md transition-shadow'
-            ) do
-              render Icons::Pencil.new(size: 16, class: 'mr-2 text-primary')
-              plain t('medications.show.edit_details')
+            if can_update?
+              m3_link(
+                href: edit_medication_path(medication, return_to: medication_path(medication)),
+                variant: :outlined,
+                size: :lg,
+                class: 'bg-card shadow-sm hover:shadow-md transition-shadow'
+              ) do
+                render Icons::Pencil.new(size: 16, class: 'mr-2 text-primary')
+                plain t('medications.show.edit_details')
+              end
             end
             m3_link(
               href: medications_path,
@@ -143,9 +145,9 @@ module Components
             span { t('medications.show.log_administration') }
           end
 
-          render_reorder_actions
-          render_refill_modal
-          render_adjust_inventory_modal
+          render_reorder_actions if can_refill?
+          render_refill_modal if can_refill?
+          render_adjust_inventory_modal if can_update?
         end
       end
 
@@ -195,6 +197,18 @@ module Components
 
       def render_dosages_section
         render Components::Medications::DoseHistoryComponent.new(medication: medication)
+      end
+
+      def can_update?
+        view_context.policy(medication).update?
+      rescue NoMethodError
+        true
+      end
+
+      def can_refill?
+        view_context.policy(medication).refill?
+      rescue NoMethodError
+        true
       end
 
       def header_content_offset_class

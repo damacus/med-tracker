@@ -59,10 +59,10 @@ module Components
             end
           end
 
-          if view_context.policy(Medication).create? || view_context.policy(Medication).update?
+          if can_create_medication? || can_refill_medication?
             div(class: 'medications-index-actions') do
-              render Components::Medications::InventoryScanModal.new if view_context.policy(Medication).update?
-              if view_context.policy(Medication).create?
+              render Components::Medications::InventoryScanModal.new if can_refill_medication?
+              if can_create_medication?
                 Link(
                   href: add_medication_path,
                   variant: :outlined,
@@ -115,7 +115,9 @@ module Components
               render Components::Medications::ListItemComponent.new(
                 medication: medication,
                 inventory_query_params: inventory_query_params,
-                can_manage: manageable_medication?(medication)
+                can_update: updatable_medication?(medication),
+                can_refill: refillable_medication?(medication),
+                can_destroy: destroyable_medication?(medication)
               )
             end
           end
@@ -127,8 +129,24 @@ module Components
         end
       end
 
-      def manageable_medication?(medication)
+      def can_create_medication?
+        view_context.policy(Medication).create?
+      end
+
+      def can_refill_medication?
+        view_context.policy(Medication).refill?
+      end
+
+      def updatable_medication?(medication)
         view_context.policy(medication).update?
+      end
+
+      def refillable_medication?(medication)
+        view_context.policy(medication).refill?
+      end
+
+      def destroyable_medication?(medication)
+        view_context.policy(medication).destroy?
       end
 
       def header_content_offset_class

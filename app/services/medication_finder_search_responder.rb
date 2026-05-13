@@ -8,14 +8,14 @@ class MedicationFinderSearchResponder
     @stock_match_resolver = stock_match_resolver || MedicationStockMatchResolver.new(scope: medication_scope)
   end
 
-  def call(query:)
+  def call(query:, permissions: {})
     normalized_query = query.to_s.strip
-    return Result.new(body: { results: [] }, status: :ok) if normalized_query.blank?
+    return Result.new(body: { results: [], permissions: permissions }, status: :ok) if normalized_query.blank?
 
     result = @search.call(normalized_query)
     return unavailable_response unless result&.success?
 
-    successful_response(query: normalized_query, result: result)
+    successful_response(query: normalized_query, result: result, permissions: permissions)
   rescue StandardError => e
     Rails.logger.error("Medication finder search failed: #{e.class}: #{e.message}")
     unavailable_response
@@ -23,12 +23,13 @@ class MedicationFinderSearchResponder
 
   private
 
-  def successful_response(query:, result:)
+  def successful_response(query:, result:, permissions:)
     Result.new(
       body: {
         results: result.results.map { |search_result| result_payload(search_result, result.barcode) },
         query: result.resolved_query.presence || query,
-        barcode: result.barcode
+        barcode: result.barcode,
+        permissions: permissions
       },
       status: :ok
     )
@@ -65,7 +66,9 @@ class MedicationFinderSearchResponder
       id: medication.id,
       name: medication.display_name,
       location: medication.location.name,
-      path: Rails.application.routes.url_helpers.medication_path(medication)
+      path: Rails.application.routes.url_helpers.medication_path(medication),
+      refill_path: Rails.application.routes.url_helpers.refill_medication_path(medication),
+      current_supply: MedicationStockQuantityFormatter.format(medication.current_supply)
     }
   end
 end

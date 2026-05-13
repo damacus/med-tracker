@@ -5,6 +5,11 @@ require 'rails_helper'
 RSpec.describe Components::Medications::ShowView, type: :component do
   let(:medication) { create(:medication, name: 'Paracetamol', current_supply: 50) }
 
+  before do
+    policy_stub = Struct.new(:update?, :refill?, :destroy?).new(true, true, true)
+    view_context.singleton_class.define_method(:policy) { |_record| policy_stub }
+  end
+
   def fetch_action_element(rendered, selector, message)
     rendered.at_css(selector) || raise(message)
   end
@@ -116,6 +121,14 @@ RSpec.describe Components::Medications::ShowView, type: :component do
     expect(log_administration_link['data-turbo-frame']).to eq('modal')
   end
 
+  it 'renders restock but hides update-only actions for restock-only access' do
+    rendered = render_with_policy(Struct.new(:update?, :refill?, :destroy?).new(false, true, false))
+
+    expect(rendered.text).to include('Restock')
+    expect(rendered.text).not_to include('Edit Details')
+    expect(rendered.text).not_to include('Adjust Inventory')
+  end
+
   it 'renders safety warnings when present' do
     medication_with_warnings = create(:medication, warnings: 'Take with food')
     rendered = render_inline(described_class.new(medication: medication_with_warnings))
@@ -172,5 +185,12 @@ RSpec.describe Components::Medications::ShowView, type: :component do
 
       expect(rendered.text).to include('Forecast unavailable')
     end
+  end
+
+  def render_with_policy(policy_stub)
+    vc = view_context
+    vc.singleton_class.define_method(:policy) { |_record| policy_stub }
+    html = vc.render(described_class.new(medication: medication))
+    Nokogiri::HTML::DocumentFragment.parse(html)
   end
 end

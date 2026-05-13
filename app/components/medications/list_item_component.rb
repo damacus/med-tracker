@@ -5,12 +5,14 @@ module Components
     class ListItemComponent < Components::Base
       include Phlex::Rails::Helpers::FormWith
 
-      attr_reader :medication, :inventory_query_params, :can_manage
+      attr_reader :medication, :inventory_query_params, :can_update, :can_refill, :can_destroy
 
-      def initialize(medication:, inventory_query_params: {}, can_manage: false)
+      def initialize(medication:, inventory_query_params: {}, can_update: false, can_refill: false, can_destroy: false)
         @medication = medication
         @inventory_query_params = inventory_query_params
-        @can_manage = can_manage
+        @can_update = can_update
+        @can_refill = can_refill
+        @can_destroy = can_destroy
         super()
       end
 
@@ -93,18 +95,20 @@ module Components
           ) do
             t('medications.index.view')
           end
-          Link(
-            href: edit_medication_path(medication, return_to: medications_path(inventory_query_params)),
-            variant: :outlined,
-            size: :sm,
-            class: 'rounded-xl w-10 h-10 p-0 border-border bg-card ' \
-                   'hover:bg-card text-on-surface-variant',
-            data: { turbo_frame: '_top' },
-            aria_label: t('medications.index.edit', default: 'Edit medication')
-          ) do
-            render Icons::Pencil.new(size: 16)
+          if can_update
+            Link(
+              href: edit_medication_path(medication, return_to: medications_path(inventory_query_params)),
+              variant: :outlined,
+              size: :sm,
+              class: 'rounded-xl w-10 h-10 p-0 border-border bg-card ' \
+                     'hover:bg-card text-on-surface-variant',
+              data: { turbo_frame: '_top' },
+              aria_label: t('medications.index.edit', default: 'Edit medication')
+            ) do
+              render Icons::Pencil.new(size: 16)
+            end
           end
-          if can_manage
+          if can_refill
             refill_classes = if medication.reorder_received?
                                'flex items-center justify-center rounded-xl w-10 h-10 p-0'
                              else
@@ -120,7 +124,7 @@ module Components
               icon_only: true
             )
           end
-          render_delete_dialog
+          render_delete_dialog if can_destroy
         end
       end
 

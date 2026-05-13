@@ -123,7 +123,7 @@ module Components
             end
           end
 
-          if view_context.policy(medication).update?
+          if view_context.policy(medication).refill?
             div(class: 'pt-4') do
               render Components::Medications::RefillModal.new(
                 medication: medication,

@@ -28,7 +28,7 @@ RSpec.describe 'Mobile Navigation' do
           rail: visible(rail),
           sidebar: visible(sidebar),
           header: visible(document.querySelector('header')),
-          fab: visible(document.querySelector('[data-testid="floating-action-menu-toggle"]'))
+          fab: Boolean(document.querySelector('[data-testid="floating-action-menu-toggle"]'))
         }
       })()
     JS
@@ -87,7 +87,7 @@ RSpec.describe 'Mobile Navigation' do
       'rail' => true,
       'sidebar' => false,
       'header' => true,
-      'fab' => true
+      'fab' => false
     )
 
     page.current_window.resize_to(768, 844)
@@ -168,30 +168,13 @@ RSpec.describe 'Mobile Navigation' do
     expect(page).to have_css('[role="dialog"]')
   end
 
-  scenario 'opens and closes the floating action menu and launches the medication workflow' do
+  scenario 'does not render the floating action menu on mobile' do
     page.current_window.resize_to(375, 667)
     visit root_path
 
-    expect(page).to have_css('button[aria-label="Open quick actions"]')
-
-    find('button[aria-label="Open quick actions"]').click
-    expect(page).to have_css('button[aria-label="Close quick actions"]')
-    expect(page).to have_css('[data-testid="floating-action-menu-items"]', visible: :visible)
-    expect(page).to have_link('Add Medication', href: add_medication_path)
-
-    find('body').send_keys(:escape)
-    expect(page).to have_css('button[aria-label="Open quick actions"]')
-    expect(page).to have_no_css('[data-testid="floating-action-menu-items"]', visible: :visible)
-
-    find('button[aria-label="Open quick actions"]').click
-    find('[data-testid="floating-action-backdrop"]').click
-    expect(page).to have_css('button[aria-label="Open quick actions"]')
-
-    find('button[aria-label="Open quick actions"]').click
-    click_link 'Add Medication'
-
-    expect(page).to have_css('button[aria-label="Open quick actions"]', wait: 10)
-    expect(page).to have_text('Who is this medication for?', wait: 10)
+    expect(page).to have_css('aside[data-testid="mobile-rail"]')
+    expect(page).to have_no_css('[data-testid="floating-action-menu-toggle"]')
+    expect(page).to have_no_css('[data-testid="floating-action-menu-items"]')
   end
 
   def navigation_visibility

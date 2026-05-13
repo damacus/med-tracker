@@ -590,8 +590,8 @@ cy:
     finder:
       nhs_directory: Cyfeiriadur GIG
       title: Darganfyddwr Meddyginiaethau
-      subtitle: Chwiliwch Ddichonfa Meddyginiaethau a Dyfeisiau'r GIG (dm+d) yn ôl
-        enw neu gynhwysyn gweithredol.
+      subtitle: Chwiliwch GIG dm+d a ffynonellau cynnyrch a gefnogir i ychwanegu
+        meddyginiaeth neu ailstocio rhestr stoc bresennol.
       placeholder: Chwilio yn ôl enw, categori, neu gynhwysyn gweithredol...
       search_button: Chwilio
       idle_heading: Yn barod i archwilio?
@@ -609,6 +609,13 @@ cy:
       barcode: Cod bar
       dmd_code: Cod dm+d
       pil_link: Taflen wybodaeth i gleifion
+      update_stock: Diweddaru stoc
+      confirm_restock: Cadarnhewch eich bod am ychwanegu %{quantity} uned at %{medication}.
+      confirm_restock_without_quantity: Cadarnhewch faint o unedau rydych am eu hychwanegu
+        at %{medication}.
+      restock_quantity: Nifer i'w ychwanegu
+      restock_submit: Cadarnhau ailstocio
+      restock_cancel: Canslo
       result_count:
         one: '%{count} canlyniad ar gyfer "%{query}"'
         other: '%{count} canlyniad ar gyfer "%{query}"'
@@ -1264,9 +1271,6 @@ cy:
       administration: Gweinyddu
       sign_out: Allgofnodi
       user_fallback: Defnyddiwr
-    floating_action_menu:
-      close: Cau gweithredoedd cyflym
-      open: Agor gweithredoedd cyflym
     mobile_rail:
       primary_navigation: Llywio cynradd
   forms:

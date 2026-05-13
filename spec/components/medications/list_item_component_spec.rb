@@ -24,7 +24,7 @@ RSpec.describe Components::Medications::ListItemComponent, type: :component do
     medication = medications(:paracetamol)
     edit_medication_url = Rails.application.routes.url_helpers.edit_medication_path(medication)
 
-    rendered = render_inline(described_class.new(medication: medication))
+    rendered = render_inline(described_class.new(medication: medication, can_update: true))
     edit_medication_link = rendered.css('a').find do |link|
       href = link['href'].to_s.split(/[?#]/).first
       href == edit_medication_url

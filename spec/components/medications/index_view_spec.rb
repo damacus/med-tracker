@@ -5,9 +5,9 @@ require 'rails_helper'
 RSpec.describe Components::Medications::IndexView, type: :component do
   fixtures :accounts, :people, :users
 
-  def render_view(**args)
+  def render_view(policy_stub: nil, **args)
     view_context_helper = view_context
-    policy_stub = Struct.new(:create?, :update?).new(true, true)
+    policy_stub ||= Struct.new(:create?, :update?, :refill?, :destroy?).new(true, true, true, true)
     admin = users(:admin)
 
     view_context_helper.singleton_class.define_method(:policy) { |_record| policy_stub }
@@ -45,5 +45,29 @@ RSpec.describe Components::Medications::IndexView, type: :component do
     expect(add_schedule_link[:class]).to include('bg-card')
     expect(add_medication_link[:class]).to include('bg-primary')
     expect(add_medication_link[:class]).to include('text-primary-foreground')
+  end
+
+  it 'renders scan stock for users who can restock but cannot update medication details' do
+    rendered = render_view(
+      medications: [],
+      policy_stub: Struct.new(:create?, :update?, :refill?, :destroy?).new(false, false, true, false)
+    )
+
+    expect(rendered.text).to include('Scan stock')
+    expect(rendered.text).not_to include('Add Medication')
+  end
+
+  it 'renders restock but not edit or delete actions for restock-only medication access' do
+    medication = create(:medication)
+    rendered = render_view(
+      medications: [medication],
+      policy_stub: Struct.new(:create?, :update?, :refill?, :destroy?).new(false, false, true, false)
+    )
+
+    expect(rendered.css('button').map(&:text).join).to include('Restock')
+    edit_path = Rails.application.routes.url_helpers.edit_medication_path(medication)
+
+    expect(rendered.css("a[href^='#{edit_path}']")).to be_empty
+    expect(rendered.text).not_to include('Delete medication')
   end
 end

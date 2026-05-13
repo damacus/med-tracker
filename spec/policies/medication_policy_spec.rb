@@ -19,6 +19,7 @@ RSpec.describe MedicationPolicy, type: :policy do
         expect(policy.new?).to be true
         expect(policy.update?).to be true
         expect(policy.edit?).to be true
+        expect(policy.refill?).to be true
         expect(policy.destroy?).to be true
         expect(policy.finder?).to be true
       end
@@ -36,6 +37,7 @@ RSpec.describe MedicationPolicy, type: :policy do
         expect(policy.new?).to be true
         expect(policy.update?).to be true
         expect(policy.edit?).to be true
+        expect(policy.refill?).to be true
         expect(policy.destroy?).to be false
         expect(policy.finder?).to be true
       end
@@ -45,7 +47,7 @@ RSpec.describe MedicationPolicy, type: :policy do
   describe 'for nurse' do
     let(:current_user) { users(:nurse) }
 
-    it 'permits viewing only' do
+    it 'permits viewing, restocking, and finder access' do
       aggregate_failures do
         expect(policy.index?).to be true
         expect(policy.show?).to be true
@@ -53,8 +55,9 @@ RSpec.describe MedicationPolicy, type: :policy do
         expect(policy.new?).to be false
         expect(policy.update?).to be false
         expect(policy.edit?).to be false
+        expect(policy.refill?).to be true
         expect(policy.destroy?).to be false
-        expect(policy.finder?).to be false
+        expect(policy.finder?).to be true
       end
     end
   end
@@ -62,7 +65,7 @@ RSpec.describe MedicationPolicy, type: :policy do
   describe 'for carer' do
     let(:current_user) { users(:carer) }
 
-    it 'permits viewing but forbids write actions' do
+    it 'permits viewing, restocking, and finder access' do
       aggregate_failures do
         expect(policy.index?).to be true
         expect(policy.show?).to be true
@@ -70,8 +73,9 @@ RSpec.describe MedicationPolicy, type: :policy do
         expect(policy.new?).to be false
         expect(policy.update?).to be false
         expect(policy.edit?).to be false
+        expect(policy.refill?).to be true
         expect(policy.destroy?).to be false
-        expect(policy.finder?).to be false
+        expect(policy.finder?).to be true
       end
     end
   end
@@ -87,6 +91,7 @@ RSpec.describe MedicationPolicy, type: :policy do
         expect(policy.new?).to be true
         expect(policy.update?).to be false
         expect(policy.edit?).to be false
+        expect(policy.refill?).to be true
         expect(policy.destroy?).to be false
         expect(policy.finder?).to be true
       end
@@ -104,8 +109,9 @@ RSpec.describe MedicationPolicy, type: :policy do
         expect(policy.new?).to be false
         expect(policy.update?).to be false
         expect(policy.edit?).to be false
+        expect(policy.refill?).to be true
         expect(policy.destroy?).to be false
-        expect(policy.finder?).to be false
+        expect(policy.finder?).to be true
       end
     end
   end
@@ -121,6 +127,7 @@ RSpec.describe MedicationPolicy, type: :policy do
         expect(policy.new?).to be false
         expect(policy.update?).to be false
         expect(policy.edit?).to be false
+        expect(policy.refill?).to be false
         expect(policy.destroy?).to be false
         expect(policy.finder?).to be false
       end

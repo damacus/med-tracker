@@ -43,7 +43,9 @@ class MedicationPolicy < ApplicationPolicy
     admin?
   end
 
-  alias finder? create?
+  def finder?
+    create? || refill?
+  end
 
   class Scope < ApplicationPolicy::Scope
     def resolve
