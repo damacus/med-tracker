@@ -146,6 +146,7 @@ export default class extends Controller {
       : ''
 
     const identifier = this.renderIdentifier(result)
+    const pilLink = this.renderPilLink(result)
     const title = result.name || result.display
     const packageSize = result.package_size
       ? `<p class="text-xs text-on-surface-variant mt-0.5">Pack size: ${this.escapeHtml(result.package_size)}</p>`
@@ -158,6 +159,7 @@ export default class extends Controller {
             <p class="text-sm font-medium text-foreground truncate">${this.escapeHtml(title)}</p>
             ${packageSize}
             ${identifier}
+            ${pilLink}
           </div>
           <div class="flex flex-col items-end gap-1 shrink-0">
             ${matchReasonBadge}
@@ -216,9 +218,33 @@ export default class extends Controller {
     return ''
   }
 
+  renderPilLink(result) {
+    const url = this.safeExternalUrl(result.pil_url)
+    if (!url) return ''
+
+    return `
+      <a
+        href="${this.hrefAttribute(url)}"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="mt-2 inline-flex text-xs font-medium text-primary underline-offset-2 hover:underline"
+        data-testid="pil-link"
+      >${this.escapeHtml(this.t("pilLink"))}</a>
+    `
+  }
+
   barcodeQuery(query) {
     const normalized = String(query || "").trim().replace(/\D/g, "")
     return /^\d{13,14}$/.test(normalized) ? normalized : null
+  }
+
+  safeExternalUrl(url) {
+    try {
+      const parsed = new URL(String(url || ""))
+      return parsed.protocol === "https:" ? parsed.toString() : null
+    } catch (error) {
+      return null
+    }
   }
 
   escapeHtml(str) {

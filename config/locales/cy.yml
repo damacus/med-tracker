@@ -608,6 +608,7 @@ cy:
       source: Ffynhonnell
       barcode: Cod bar
       dmd_code: Cod dm+d
+      pil_link: Taflen wybodaeth i gleifion
       result_count:
         one: '%{count} canlyniad ar gyfer "%{query}"'
         other: '%{count} canlyniad ar gyfer "%{query}"'

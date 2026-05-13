@@ -27,7 +27,7 @@ RSpec.describe NhsDmd::Client do
         {
           'resourceType' => 'ValueSet',
           'expansion' => {
-            'total' => 2,
+            'total' => 3,
             'contains' => [
               {
                 'system' => 'https://dmd.nhs.uk',
@@ -37,6 +37,22 @@ RSpec.describe NhsDmd::Client do
                   {
                     'url' => 'http://hl7.org/fhir/StructureDefinition/valueset-concept-comments',
                     'valueString' => 'VMP'
+                  }
+                ],
+                'patientInformationLeafletUrl' => 'https://www.medicines.org.uk/emc/product/13866/pil'
+              },
+              {
+                'system' => 'https://dmd.nhs.uk',
+                'code' => '39720511000001103',
+                'display' => 'Aspirin 300mg dispersible tablets',
+                'extension' => [
+                  {
+                    'url' => 'http://hl7.org/fhir/StructureDefinition/valueset-concept-comments',
+                    'valueString' => 'VMP'
+                  },
+                  {
+                    'url' => 'https://medtracker.test/fhir/StructureDefinition/patient-information-leaflet',
+                    'valueUrl' => 'https://www.medicines.org.uk/emc/product/397205/pil'
                   }
                 ]
               },
@@ -60,7 +76,7 @@ RSpec.describe NhsDmd::Client do
         results = client.search('aspirin')
 
         expect(results).to be_an(Array)
-        expect(results.length).to eq(2)
+        expect(results.length).to eq(3)
         expect(results.first).to include(
           code: '39720311000001101',
           display: 'Aspirin 300mg tablets'
@@ -77,6 +93,24 @@ RSpec.describe NhsDmd::Client do
         results = client.search('aspirin')
 
         expect(results.last[:concept_class]).to be_nil
+      end
+
+      it 'maps a PIL URL from direct provider payload fields' do
+        results = client.search('aspirin')
+
+        expect(results.first[:pil_url]).to eq('https://www.medicines.org.uk/emc/product/13866/pil')
+      end
+
+      it 'maps a PIL URL from provider payload extensions' do
+        results = client.search('aspirin')
+
+        expect(results.second[:pil_url]).to eq('https://www.medicines.org.uk/emc/product/397205/pil')
+      end
+
+      it 'sets the PIL URL to nil when provider payload has no PIL data' do
+        results = client.search('aspirin')
+
+        expect(results.last[:pil_url]).to be_nil
       end
     end
 

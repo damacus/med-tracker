@@ -612,6 +612,7 @@ pt:
       source: Fonte
       barcode: Código de barras
       dmd_code: Código dm+d
+      pil_link: Folheto informativo do doente
       result_count:
         one: '%{count} resultado para "%{query}"'
         other: '%{count} resultados para "%{query}"'
