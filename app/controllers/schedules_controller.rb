@@ -8,6 +8,7 @@ class SchedulesController < ApplicationController
   include ScheduleResourceResolvable
   include MedicationWorkflowBackPathable
 
+  before_action :redirect_direct_new_schedule, only: :new
   before_action :set_person, except: %i[index workflow start_workflow]
   before_action :set_schedule, only: %i[edit update destroy take_medication]
 
@@ -79,6 +80,10 @@ class SchedulesController < ApplicationController
   end
 
   private
+
+  def redirect_direct_new_schedule
+    redirect_to schedules_workflow_path if params[:person_id].blank?
+  end
 
   def set_person
     @person = policy_scope(Person).find(params.expect(:person_id))

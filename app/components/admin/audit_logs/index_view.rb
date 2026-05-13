@@ -47,7 +47,7 @@ module Components
               form_with(
                 url: '/admin/audit_logs',
                 method: :get,
-                class: 'flex gap-4 items-end',
+                class: 'grid gap-4 sm:grid-cols-2 md:flex md:items-end',
                 data: { controller: 'filter-form' }
               ) do
                 render_item_type_filter
@@ -59,7 +59,7 @@ module Components
         end
 
         def render_item_type_filter
-          div(class: 'w-48') do
+          div(class: 'min-w-0 md:w-48') do
             render RubyUI::FormField.new do
               render RubyUI::FormFieldLabel.new(for: 'item_type') { t('admin.audit_logs.index.filter.record_type') }
               select(
@@ -80,7 +80,7 @@ module Components
         end
 
         def render_event_type_filter
-          div(class: 'w-48') do
+          div(class: 'min-w-0 md:w-48') do
             render RubyUI::FormField.new do
               render RubyUI::FormFieldLabel.new(for: 'event') { t('admin.audit_logs.index.filter.event_type') }
               select(
@@ -127,12 +127,58 @@ module Components
           if versions.empty?
             render_empty_state
           else
-            div(class: 'rounded-[2rem] border border-border bg-card shadow-sm overflow-x-auto p-4') do
-              Table(class: 'min-w-[800px]') do
-                render_table_header
-                render_table_body
+            render_mobile_versions
+            div(data: { testid: 'admin-audit-logs-desktop-table' }, class: 'hidden md:block') do
+              div(class: 'rounded-[2rem] border border-border bg-card shadow-sm overflow-x-auto p-4') do
+                Table(class: 'min-w-[800px]') do
+                  render_table_header
+                  render_table_body
+                end
               end
             end
+          end
+        end
+
+        def render_mobile_versions
+          div(class: 'space-y-4 md:hidden', data: { testid: 'admin-audit-logs-mobile-list' }) do
+            versions.each do |version|
+              m3_card(class: 'rounded-[2rem] border border-outline-variant/40 bg-card p-5 shadow-elevation-1',
+                      data: { version_id: version.id }) do
+                div(class: 'space-y-4') do
+                  div(class: 'flex items-start justify-between gap-3') do
+                    div(class: 'min-w-0') do
+                      m3_text(size: '2', weight: 'muted',
+                              class: 'uppercase tracking-widest font-bold') do
+                        t('admin.audit_logs.index.table.record_type')
+                      end
+                      m3_text(class: 'mt-1 break-words font-bold text-foreground') { version.item_type.titleize }
+                    end
+                    render_event_badge(version.event)
+                  end
+
+                  dl(class: 'grid grid-cols-2 gap-3 border-t border-outline-variant/30 pt-4 text-sm') do
+                    render_mobile_detail(t('admin.audit_logs.index.table.timestamp'),
+                                         version.created_at.strftime('%Y-%m-%d %H:%M:%S'))
+                    render_mobile_detail(t('admin.audit_logs.index.table.user'), render_user_info(version.whodunnit))
+                    render_mobile_detail(t('admin.audit_logs.index.table.ip_address'), version.ip || 'N/A')
+                  end
+
+                  Link(
+                    href: "/admin/audit_logs/#{version.id}",
+                    variant: :outlined,
+                    size: :sm,
+                    class: 'w-full rounded-xl'
+                  ) { t('admin.audit_logs.index.table.view_details') }
+                end
+              end
+            end
+          end
+        end
+
+        def render_mobile_detail(label, value)
+          div(class: 'min-w-0') do
+            dt(class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant') { label }
+            dd(class: 'mt-1 break-words font-semibold text-foreground') { value }
           end
         end
 

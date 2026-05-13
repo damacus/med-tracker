@@ -44,8 +44,7 @@ export default class extends Controller {
 
     this.inputTarget.value = ""
     this.resultsTarget.innerHTML = ""
-    this.setStatus("")
-    this.fetchResults("")
+    this.renderResults([])
     this.animatePanelOpen()
     requestAnimationFrame(() => this.inputTarget.focus({ preventScroll: true }))
   }

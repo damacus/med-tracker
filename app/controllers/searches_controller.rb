@@ -11,10 +11,12 @@ class SearchesController < ApplicationController
   private
 
   def search_results
+    return [] if search_query.blank?
+
     @search_results ||= GlobalSearchQuery.new(user: current_user, query: search_query).call
   end
 
   def search_query
-    params.expect(:q).to_s
+    params.fetch(:q, '').to_s.strip
   end
 end

@@ -11,7 +11,7 @@ module Components
             m3_button(
               variant: :elevated,
               size: :lg,
-              class: 'font-bold text-sm'
+              class: 'max-w-full justify-center font-bold text-sm'
             ) do
               render Icons::Camera.new(size: 20, class: 'mr-2 text-primary')
               span { t('medications.index.scan_stock') }
