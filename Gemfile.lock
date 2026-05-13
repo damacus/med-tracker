@@ -351,7 +351,7 @@ GEM
       opentelemetry-semantic_conventions
     opentelemetry-semantic_conventions (1.37.1)
       opentelemetry-api (~> 1.0)
-    pagy (43.5.3)
+    pagy (43.5.4)
       json
       uri
       yaml
