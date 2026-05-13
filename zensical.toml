@@ -17,7 +17,7 @@ nav = [
   ] },
   { "🛠️ For Developers" = [
     { "Quick Start" = "quick-start.md" },
-    { "Self-Hosting Setup" = "self-hosting.md" },
+    { "Self-Hosting" = "self-hosting.md" },
     { Deployment = "deployment.md" },
     { Testing = "testing.md" },
     { Design = "design.md" },
