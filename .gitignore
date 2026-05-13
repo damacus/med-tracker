@@ -57,5 +57,8 @@ vendor/**/*
 # Downloaded browser packages
 *.deb
 
+# Claude Code session cache
+.claude/session-cache/
+
 # Import Files
 *.zip
