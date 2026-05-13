@@ -2,6 +2,10 @@
 
 module BarcodeCatalog
   class Lookup
+    def initialize(opf_lookup: OpenProductsFacts::BarcodeLookup.new)
+      @opf_lookup = opf_lookup
+    end
+
     def lookup(barcode)
       barcode_candidates(barcode).each do |candidate|
         external = lookup_external(candidate)
@@ -9,6 +13,9 @@ module BarcodeCatalog
 
         local = lookup_local(candidate)
         return local if local
+
+        opf = lookup_open_products_facts(candidate)
+        return opf if opf
 
         curated = lookup_curated(candidate)
         return curated if curated
@@ -47,6 +54,10 @@ module BarcodeCatalog
         concept_class: record.concept_class,
         source: 'nhs_dmd'
       }
+    end
+
+    def lookup_open_products_facts(candidate)
+      @opf_lookup.lookup(candidate)
     end
 
     def lookup_curated(candidate)
