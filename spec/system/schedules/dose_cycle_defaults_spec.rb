@@ -33,10 +33,10 @@ RSpec.describe 'Schedule dose cycle defaults' do
     visit new_person_schedule_path(person)
 
     find_by_id('medication_trigger').click
-    find('label', text: medication.name, visible: :all, wait: 10).click
+    find('[role="option"]', text: medication.name, wait: 10).click
 
     expect(page).to have_text('Add Plan')
-    find('label', text: '1 capsule', visible: :all, wait: 10).click
+    find('label', text: '1 capsule', wait: 10).click
 
     expect(page).to have_css('input[name="schedule[dose_cycle]"][value="weekly"]:checked', visible: :hidden)
 
