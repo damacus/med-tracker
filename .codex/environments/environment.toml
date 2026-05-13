@@ -1,0 +1,96 @@
+version = 1
+name = "med-tracker"
+
+[setup]
+script = '''
+set -e
+mise trust
+
+for cmd in wt task; do
+  if ! command -v "$cmd" >/dev/null 2>&1; then
+    echo "Missing required CLI: $cmd"
+    exit 1
+  fi
+done
+
+for tool in ruby node; do
+  if ! mise which "$tool" >/dev/null 2>&1; then
+    echo "Missing required mise tool: $tool"
+    exit 1
+  fi
+done
+'''
+
+[cleanup]
+script = '''
+task stop-all || true
+if command -v wt >/dev/null 2>&1; then
+  wt status >/dev/null 2>&1 || true
+  wt list >/dev/null 2>&1 || true
+fi
+'''
+
+[[actions]]
+name = "dev:up"
+icon = "terminal"
+command = "task dev:up"
+
+[[actions]]
+name = "dev:open-ui"
+icon = "globe"
+command = "task dev:open-ui"
+
+[[actions]]
+name = "dev:stop"
+icon = "stop"
+command = "task dev:stop"
+
+[[actions]]
+name = "dev:port"
+icon = "network"
+command = "task dev:port"
+
+[[actions]]
+name = "test"
+icon = "play"
+command = "task test"
+
+[[actions]]
+name = "rubocop"
+icon = "wrench"
+command = "task rubocop"
+
+[[actions]]
+name = "playwright"
+icon = "play"
+command = "task playwright"
+
+[[actions]]
+name = "dev:seed"
+icon = "leaf"
+command = "task dev:seed"
+
+[[actions]]
+name = "dev:rebuild (destructive)"
+icon = "fire"
+command = "task dev:rebuild"
+
+[[actions]]
+name = "test:rebuild (destructive)"
+icon = "fire"
+command = "task test:rebuild"
+
+[[actions]]
+name = "test seed"
+icon = "leaf"
+command = "task test TEST_FILE=${TEST_FILE}"
+
+[[actions]]
+name = "wt status"
+icon = "terminal"
+command = "wt status"
+
+[[actions]]
+name = "wt list"
+icon = "terminal"
+command = "wt list"
