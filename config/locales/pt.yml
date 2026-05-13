@@ -595,8 +595,8 @@ pt:
     finder:
       nhs_directory: Diretório NHS
       title: Pesquisador de Medicamentos
-      subtitle: Pesquise no Dicionário de Medicamentos e Dispositivos do NHS (dm+d)
-        por nome ou ingrediente ativo.
+      subtitle: Pesquise no NHS dm+d e em fontes de produtos suportadas para adicionar
+        medicação ou reabastecer inventário existente.
       placeholder: Pesquisar por nome, categoria ou ingrediente ativo...
       search_button: Pesquisar
       idle_heading: Pronto para explorar?
@@ -613,6 +613,13 @@ pt:
       barcode: Código de barras
       dmd_code: Código dm+d
       pil_link: Folheto informativo do doente
+      update_stock: Atualizar stock
+      confirm_restock: Confirme que pretende adicionar %{quantity} unidades a %{medication}.
+      confirm_restock_without_quantity: Confirme quantas unidades pretende adicionar
+        a %{medication}.
+      restock_quantity: Quantidade a adicionar
+      restock_submit: Confirmar reabastecimento
+      restock_cancel: Cancelar
       result_count:
         one: '%{count} resultado para "%{query}"'
         other: '%{count} resultados para "%{query}"'
@@ -1361,9 +1368,6 @@ pt:
       administration: Administração
       sign_out: Terminar sessão
       user_fallback: Utilizador
-    floating_action_menu:
-      close: Fechar ações rápidas
-      open: Abrir ações rápidas
     mobile_rail:
       primary_navigation: Navegação principal
   notification_settings:

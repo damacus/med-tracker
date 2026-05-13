@@ -24,6 +24,12 @@ module Components
               pilLink: t('medications.finder.pil_link'),
               addMedication: t('medications.index.add_medication'),
               updateStock: t('medications.finder.update_stock', default: 'Update stock'),
+              confirmRestock: t('medications.finder.confirm_restock'),
+              confirmRestockWithoutQuantity: t('medications.finder.confirm_restock_without_quantity'),
+              restockQuantity: t('medications.finder.restock_quantity'),
+              restockSubmit: t('medications.finder.restock_submit'),
+              restockCancel: t('medications.finder.restock_cancel'),
+              currentSupply: t('forms.medications.current_supply', default: 'Current supply'),
               resultCount: {
                 one: t('medications.finder.result_count.one'),
                 other: t('medications.finder.result_count.other')

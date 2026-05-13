@@ -33,7 +33,7 @@ RSpec.describe Components::Locations::ShowView, type: :component do
 
   def render_location
     vc = view_context
-    policy_stub = Struct.new(:update?).new(false)
+    policy_stub = Struct.new(:update?, :refill?).new(false, false)
     vc.singleton_class.define_method(:policy) { |_record| policy_stub }
     html = vc.render(described_class.new(location: location))
     Nokogiri::HTML::DocumentFragment.parse(html)

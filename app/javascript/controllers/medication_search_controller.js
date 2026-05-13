@@ -39,7 +39,7 @@ export default class extends Controller {
       } else {
         const barcode = data.barcode || this.barcodeQuery(query)
         const displayQuery = barcode || query
-        this.showResults(displayQuery, data.results, barcode)
+        this.showResults(displayQuery, data.results, barcode, data.permissions || {})
       }
     } catch (error) {
       this.showError(this.t("unavailableMessage"))
@@ -81,7 +81,7 @@ export default class extends Controller {
     `
   }
 
-  showResults(query, results, barcode) {
+  showResults(query, results, barcode, permissions = {}) {
     if (results.length === 0) {
       this.resultsTarget.innerHTML = `
         <div class="text-center py-12 text-on-surface-variant" data-testid="no-results">
@@ -107,12 +107,12 @@ export default class extends Controller {
       </div>
     `
 
-    const items = results.map(result => this.renderResultCard(result, barcode)).join('')
+    const items = results.map(result => this.renderResultCard(result, barcode, permissions)).join('')
 
     this.resultsTarget.innerHTML = header + `<div class="space-y-2" data-testid="results-list">${items}</div>`
   }
 
-  renderResultCard(result, barcode) {
+  renderResultCard(result, barcode, permissions = {}) {
     const matchReasonBadge = result.match_reason_label
       ? `<span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-tertiary-container text-on-tertiary-container">${this.escapeHtml(result.match_reason_label)}</span>`
       : ''
@@ -130,20 +130,7 @@ export default class extends Controller {
       : ''
 
     const existingMedication = result.existing_medication
-    const actionUrl = existingMedication?.path || this.addMedicationUrl(result, barcode || result.barcode)
-    const actionLabel = existingMedication ? this.t("updateStock") : this.t("addMedication")
-    const actionTestId = existingMedication ? "update-stock-link" : "add-medication-link"
-    const addAction = (existingMedication || result.name || result.display)
-      ? `
-        <div class="mt-4 flex justify-end">
-          <a
-            href="${this.hrefAttribute(actionUrl)}"
-            class="inline-flex items-center rounded-full bg-primary px-4 py-2 text-sm font-medium text-on-primary shadow-sm transition-all hover:shadow-md"
-            data-testid="${actionTestId}"
-          >${this.escapeHtml(actionLabel)}</a>
-        </div>
-      `
-      : ''
+    const action = this.renderResultAction(result, barcode, permissions)
 
     const identifier = this.renderIdentifier(result)
     const pilLink = this.renderPilLink(result)
@@ -168,9 +155,140 @@ export default class extends Controller {
             ${label}
           </div>
         </div>
-        ${addAction}
+        ${action}
       </div>
     `
+  }
+
+  renderResultAction(result, barcode, permissions = {}) {
+    const existingMedication = result.existing_medication
+
+    if (existingMedication && permissions.can_restock) {
+      return this.renderRestockAction(result, existingMedication)
+    }
+
+    if (!existingMedication && permissions.can_create && (result.name || result.display)) {
+      const actionUrl = this.addMedicationUrl(result, barcode || result.barcode)
+
+      return `
+        <div class="mt-4 flex justify-end">
+          <a
+            href="${this.hrefAttribute(actionUrl)}"
+            class="inline-flex items-center rounded-full bg-primary px-4 py-2 text-sm font-medium text-on-primary shadow-sm transition-all hover:shadow-md"
+            data-testid="add-medication-link"
+          >${this.escapeHtml(this.t("addMedication"))}</a>
+        </div>
+      `
+    }
+
+    return ''
+  }
+
+  renderRestockAction(result, medication) {
+    const modalId = `restock-modal-${medication.id}-${Math.random().toString(36).slice(2)}`
+
+    return `
+      <div class="mt-4 flex justify-end">
+        <button
+          type="button"
+          class="inline-flex items-center rounded-full bg-primary px-4 py-2 text-sm font-medium text-on-primary shadow-sm transition-all hover:shadow-md"
+          data-action="medication-search#openRestockModal"
+          data-modal-id="${this.escapeHtml(modalId)}"
+          data-testid="update-stock-button"
+        >${this.escapeHtml(this.t("updateStock"))}</button>
+      </div>
+      ${this.renderRestockModal(result, medication, modalId)}
+    `
+  }
+
+  renderRestockModal(result, medication, modalId) {
+    const quantity = this.packageQuantity(result)
+    const quantityField = quantity
+      ? `<input type="hidden" name="refill[quantity]" value="${this.escapeHtml(quantity)}">`
+      : `
+        <label class="block space-y-2 text-sm font-medium">
+          <span>${this.escapeHtml(this.t("restockQuantity"))}</span>
+          <input
+            type="number"
+            name="refill[quantity]"
+            required
+            min="0.01"
+            step="0.01"
+            class="w-full rounded-shape-sm border border-outline bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary/20 transition-all"
+          >
+        </label>
+      `
+
+    return `
+      <div
+        id="${this.escapeHtml(modalId)}"
+        class="fixed inset-0 z-50 hidden items-center justify-center bg-foreground/40 p-4"
+        data-testid="finder-restock-modal"
+      >
+        <div class="w-full max-w-md rounded-shape-xl bg-background p-6 shadow-2xl">
+          <div class="space-y-2">
+            <h2 class="text-lg font-bold text-foreground">${this.escapeHtml(this.t("updateStock"))}</h2>
+            <p class="text-sm text-on-surface-variant">${this.escapeHtml(this.restockConfirmationText(result, medication, quantity))}</p>
+            ${this.currentSupplyText(medication)}
+          </div>
+          <form action="${this.hrefAttribute(medication.refill_path)}" method="post" class="mt-6 space-y-4" data-turbo="false">
+            <input type="hidden" name="authenticity_token" value="${this.escapeHtml(this.csrfToken)}">
+            <input type="hidden" name="_method" value="patch">
+            <input type="hidden" name="refill[restock_date]" value="${this.escapeHtml(this.today)}">
+            ${quantityField}
+            <div class="flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                class="rounded-full px-4 py-2 text-sm font-medium text-on-surface-variant hover:bg-surface-container"
+                data-action="medication-search#closeRestockModal"
+                data-modal-id="${this.escapeHtml(modalId)}"
+              >${this.escapeHtml(this.t("restockCancel"))}</button>
+              <button
+                type="submit"
+                class="rounded-full bg-primary px-4 py-2 text-sm font-medium text-on-primary shadow-sm"
+              >${this.escapeHtml(this.t("restockSubmit"))}</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    `
+  }
+
+  openRestockModal(event) {
+    const modal = document.getElementById(event.currentTarget.dataset.modalId)
+    if (!modal) return
+
+    modal.classList.remove("hidden")
+    modal.classList.add("flex")
+  }
+
+  closeRestockModal(event) {
+    const modal = document.getElementById(event.currentTarget.dataset.modalId)
+    if (!modal) return
+
+    modal.classList.add("hidden")
+    modal.classList.remove("flex")
+  }
+
+  restockConfirmationText(result, medication, quantity) {
+    const key = quantity ? "confirmRestock" : "confirmRestockWithoutQuantity"
+
+    return this.t(key)
+      .replace("%{quantity}", quantity || "")
+      .replace("%{medication}", medication.name || result.name || result.display || "")
+  }
+
+  currentSupplyText(medication) {
+    if (!medication.current_supply) return ''
+
+    return `<p class="text-xs text-on-surface-variant">${this.escapeHtml(this.t("currentSupply"))}: ${this.escapeHtml(medication.current_supply)}</p>`
+  }
+
+  packageQuantity(result) {
+    const quantity = result.package_quantity
+    if (quantity === null || quantity === undefined || quantity === "") return null
+
+    return String(quantity)
   }
 
   addMedicationUrl(result, barcode) {
@@ -257,6 +375,14 @@ export default class extends Controller {
     const link = document.createElement('a')
     link.setAttribute('href', String(url || ''))
     return link.getAttribute('href') || ''
+  }
+
+  get csrfToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.content || ''
+  }
+
+  get today() {
+    return new Date().toISOString().slice(0, 10)
   }
 
   t(key) {

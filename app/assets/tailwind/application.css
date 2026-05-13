@@ -12,8 +12,7 @@
   }
 
   .app-mobile-top-bar,
-  .app-mobile-rail,
-  .app-floating-action-menu {
+  .app-mobile-rail {
     display: none !important;
   }
 }
@@ -28,20 +27,6 @@
 
 .app-mobile-rail {
   display: flex;
-}
-
-.floating-action-menu-shell {
-  bottom: calc(1.5rem + env(safe-area-inset-bottom));
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  position: fixed;
-  right: calc(1rem + env(safe-area-inset-right));
-  z-index: 50;
-}
-
-.app-floating-action-menu {
-  display: block;
 }
 
 @media (min-width: 640px) {
@@ -1014,8 +999,7 @@
 
 	@media (min-width: 768px) {
 		[data-responsive-shell-role="mobile-rail"],
-		[data-responsive-shell-role="mobile-top-bar"],
-		[data-responsive-shell-role="floating-action-menu"] {
+		[data-responsive-shell-role="mobile-top-bar"] {
 			display: none;
 		}
 	}

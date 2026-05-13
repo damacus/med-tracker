@@ -72,7 +72,18 @@ RSpec.describe 'GET /medication-finder/search' do
           'id' => existing_medication.id,
           'name' => existing_medication.display_name,
           'location' => 'Home',
-          'path' => medication_path(existing_medication)
+          'path' => medication_path(existing_medication),
+          'refill_path' => refill_medication_path(existing_medication),
+          'current_supply' => '25'
+        )
+      end
+
+      it 'includes finder action permissions for the current user' do
+        get medication_finder_search_path(format: :json), params: { q: 'aspirin' }
+
+        expect(response.parsed_body['permissions']).to include(
+          'can_create' => true,
+          'can_restock' => true
         )
       end
     end
@@ -216,13 +227,35 @@ RSpec.describe 'GET /medication-finder/search' do
       end
     end
 
-    context 'when the user is a carer (not authorised)' do
-      before { login_as_carer }
+    context 'when the user is a carer who can restock' do
+      let(:search_results) do
+        [
+          NhsDmd::SearchResult.new(
+            code: '39720311000001101',
+            display: 'Aspirin 300mg tablets',
+            system: 'https://dmd.nhs.uk',
+            concept_class: 'VMP'
+          )
+        ]
+      end
 
-      it 'redirects with not authorized' do
+      before do
+        login_as_carer
+        search = instance_double(
+          NhsDmd::Search,
+          call: NhsDmd::Search::Result.new(results: search_results, error: nil)
+        )
+        allow(NhsDmd::Search).to receive(:new).and_return(search)
+      end
+
+      it 'returns search results with restock-only permissions' do
         get medication_finder_search_path(format: :json), params: { q: 'aspirin' }
 
-        expect(response).to redirect_to(root_path)
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body['permissions']).to include(
+          'can_create' => false,
+          'can_restock' => true
+        )
       end
     end
   end

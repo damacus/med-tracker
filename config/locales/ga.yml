@@ -594,8 +594,8 @@ ga:
     finder:
       nhs_directory: Eolaire NHS
       title: Aimsitheoir Leigheas
-      subtitle: Cuardaigh Foclóir Leigheasanna agus Gléasanna NHS (dm+d) de réir ainm
-        nó comhábhar gníomhach.
+      subtitle: Cuardaigh NHS dm+d agus foinsí táirgí tacaithe chun leigheas a chur
+        leis nó stoc atá ann cheana a athlíonadh.
       placeholder: Cuardaigh de réir ainm, chatagóir, nó comhábhair ghníomhaigh...
       search_button: Cuardaigh
       idle_heading: Réidh le taiscéaladh?
@@ -612,6 +612,13 @@ ga:
       barcode: Barrachód
       dmd_code: cód dm+d
       pil_link: Bileog eolais don othar
+      update_stock: Nuashonraigh stoc
+      confirm_restock: Deimhnigh gur mian leat %{quantity} aonad a chur le %{medication}.
+      confirm_restock_without_quantity: Deimhnigh cé mhéad aonad is mian leat a chur
+        le %{medication}.
+      restock_quantity: Cainníocht le cur leis
+      restock_submit: Deimhnigh athstocáil
+      restock_cancel: Cealaigh
       result_count:
         one: '%{count} toradh do "%{query}"'
         other: '%{count} torthaí do "%{query}"'
@@ -1242,9 +1249,6 @@ ga:
       administration: Riarachán
       sign_out: Sínigh Amach
       user_fallback: Úsáideoir
-    floating_action_menu:
-      close: Dún gníomhartha tapa
-      open: Oscail gníomhartha tapa
     mobile_rail:
       primary_navigation: Nascleanúint phríomha
   reports:

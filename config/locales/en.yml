@@ -589,8 +589,8 @@ en:
     finder:
       nhs_directory: NHS Directory
       title: Medication Finder
-      subtitle: Search the NHS Dictionary of Medications and Devices (dm+d) by name
-        or active ingredient.
+      subtitle: Search NHS dm+d and supported product sources to add medication or
+        restock existing inventory.
       placeholder: Search by name, category, or active ingredient...
       search_button: Search
       idle_heading: Ready to explore?
@@ -607,6 +607,13 @@ en:
       barcode: Barcode
       dmd_code: dm+d code
       pil_link: Patient information leaflet
+      update_stock: Update stock
+      confirm_restock: Confirm you wish to add %{quantity} units to %{medication}.
+      confirm_restock_without_quantity: Confirm how many units you wish to add to
+        %{medication}.
+      restock_quantity: Quantity to add
+      restock_submit: Confirm restock
+      restock_cancel: Cancel
       result_count:
         one: '%{count} result for "%{query}"'
         other: '%{count} results for "%{query}"'
@@ -1359,9 +1366,6 @@ en:
       logout: Logout
     mobile_rail:
       primary_navigation: Primary navigation
-    floating_action_menu:
-      open: Open quick actions
-      close: Close quick actions
     sidebar:
       dashboard: Dashboard
       inventory: Inventory

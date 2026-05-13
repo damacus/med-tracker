@@ -24,7 +24,6 @@ export default class extends Controller {
     this.toggleElement("sidebar", isDesktop, "flex")
     this.toggleElement("mobile-top-bar", !isDesktop, "block")
     this.toggleElement("mobile-rail", !isDesktop, "flex")
-    this.toggleFloatingActionMenu(!isDesktop)
   }
 
   toggleElement(role, visible, display) {
@@ -34,23 +33,4 @@ export default class extends Controller {
     element.style.display = visible ? display : "none"
   }
 
-  toggleFloatingActionMenu(visible) {
-    const element = this.element.querySelector('[data-responsive-shell-role="floating-action-menu"]')
-    const shell = this.element.querySelector(".floating-action-menu-shell")
-    if (!element) return
-
-    if (visible) {
-      element.style.display = "block"
-      shell.style.position = "fixed"
-      shell.style.right = "calc(1rem + env(safe-area-inset-right))"
-      shell.style.bottom = "calc(1.5rem + env(safe-area-inset-bottom))"
-      shell.style.zIndex = "60"
-      shell.style.display = "flex"
-      shell.style.flexDirection = "column"
-      shell.style.alignItems = "flex-end"
-      shell.style.gap = "0.75rem"
-    } else {
-      element.style.display = "none"
-    }
-  }
 }

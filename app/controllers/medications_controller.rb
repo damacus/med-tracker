@@ -110,7 +110,7 @@ class MedicationsController < ApplicationController
   end
 
   def refill
-    authorize @medication, :update?
+    authorize @medication, :refill?
 
     result = restock_medication
 
@@ -139,7 +139,7 @@ class MedicationsController < ApplicationController
     medication = scanned_restock_medication
     return redirect_to medications_path, alert: t('medications.scan_restock_no_match') unless medication
 
-    authorize medication, :update?
+    authorize medication, :refill?
     render_scan_restock_result(restock_scanned_medication(medication))
   end
 
@@ -147,7 +147,7 @@ class MedicationsController < ApplicationController
     authorize Medication, :index?
 
     medication = stock_match_resolver.call(barcode: params[:q])
-    return render json: { matched: false } unless medication && policy(medication).update?
+    return render json: { matched: false } unless medication && policy(medication).refill?
 
     render json: { matched: true, medication: stock_match_payload(medication) }
   end
@@ -159,7 +159,7 @@ class MedicationsController < ApplicationController
 
   def search
     authorize Medication, :finder?
-    response = medication_finder_search_responder.call(query: params[:q])
+    response = medication_finder_search_responder.call(query: params[:q], permissions: medication_finder_permissions)
 
     render json: response.body, status: response.status
   end
@@ -280,7 +280,16 @@ class MedicationsController < ApplicationController
       full_name: medication.name,
       location: medication.location.name,
       current_supply: MedicationStockQuantityFormatter.format(medication.current_supply),
-      path: medication_path(medication)
+      path: medication_path(medication),
+      refill_path: refill_medication_path(medication)
+    }
+  end
+
+  def medication_finder_permissions
+    policy = policy(Medication)
+    {
+      can_create: policy.create?,
+      can_restock: policy.refill?
     }
   end
 
@@ -342,7 +351,9 @@ class MedicationsController < ApplicationController
     Components::Medications::ListItemComponent.new(
       medication: medication,
       inventory_query_params: {},
-      can_manage: policy(medication).update?
+      can_update: policy(medication).update?,
+      can_refill: policy(medication).refill?,
+      can_destroy: policy(medication).destroy?
     )
   end
 
