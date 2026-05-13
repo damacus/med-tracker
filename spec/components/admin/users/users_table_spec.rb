@@ -16,6 +16,24 @@ RSpec.describe Components::Admin::Users::UsersTable, type: :component do
       expect(rendered.css('table')).to be_present
     end
 
+    it 'renders mobile cards and keeps the desktop table' do
+      rendered = render_inline(described_class.new(users: user_list, current_user: current_user))
+
+      expect(rendered.css('[data-testid="admin-users-mobile-list"]')).to be_present
+      expect(rendered.css('[data-testid="admin-users-desktop-table"] table')).to be_present
+      expect(rendered.css('[data-testid="admin-users-mobile-list"]').text).to include(target_user.email_address)
+    end
+
+    it 'keeps canonical row selectors unique when card representations render' do
+      rendered = render_inline(described_class.new(users: user_list, current_user: current_user))
+
+      expect(rendered.css("[data-user-id='#{target_user.id}']").length).to eq(1)
+      expect(rendered.css("[data-user-card-id='#{target_user.id}']")).to be_present
+      expect(rendered.css("[data-user-card-id='#{target_user.id}'] a").pluck('href')).to include(
+        "/admin/users/#{target_user.id}/edit"
+      )
+    end
+
     it 'renders table headers' do
       rendered = render_inline(described_class.new(users: user_list, current_user: current_user))
 

@@ -70,4 +70,28 @@ RSpec.describe Components::Medications::IndexView, type: :component do
     expect(rendered.css("a[href^='#{edit_path}']")).to be_empty
     expect(rendered.text).not_to include('Delete medication')
   end
+
+  it 'wraps header actions on mobile while preserving desktop inline layout' do
+    rendered = render_view(medications: [])
+
+    actions = rendered.at_css('.medications-index-actions')
+
+    expect(actions[:class]).to include('flex-wrap')
+    expect(actions[:class]).to include('md:flex-nowrap')
+    expect(actions[:class]).to include('w-full')
+    expect(actions[:class]).to include('md:w-auto')
+  end
+
+  it 'keeps header action controls compact while allowing wrapping' do
+    rendered = render_view(medications: [])
+    actions = rendered.at_css('.medications-index-actions')
+
+    scan_button = actions.at_css('button')
+    add_schedule_link = actions.css('a').find { |link| link.text.include?('Add Schedule') }
+    add_medication_link = actions.css('a').find { |link| link.text.include?('Add Medication') }
+    action_classes = [scan_button, add_schedule_link, add_medication_link].map { |element| element[:class].to_s }
+
+    expect(action_classes).to all(include('max-w-full'))
+    expect(action_classes.flat_map(&:split)).not_to include('w-full')
+  end
 end

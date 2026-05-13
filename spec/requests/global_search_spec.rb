@@ -25,6 +25,15 @@ RSpec.describe 'Global search' do
       )
     end
 
+    it 'returns an empty result set for a missing query' do
+      sign_in(users(:jane))
+
+      get search_path(format: :json)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body.fetch('results')).to eq([])
+    end
+
     it 'does not leak out-of-scope people through JSON search' do
       sign_in(users(:jane))
 
@@ -62,6 +71,17 @@ RSpec.describe 'Global search' do
 
       expect(response).to have_http_status(:ok)
       expect(response.parsed_body.fetch('results')).to be_empty
+    end
+  end
+
+  describe 'GET /search' do
+    it 'renders the search page for a missing query' do
+      sign_in(users(:jane))
+
+      get search_path
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include('No results')
     end
   end
 end

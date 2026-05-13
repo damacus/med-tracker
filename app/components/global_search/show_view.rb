@@ -25,7 +25,7 @@ module Components
       private
 
       def render_form
-        form(action: search_path, method: :get, class: 'flex gap-3') do
+        form(action: search_path, method: :get, class: 'flex flex-col gap-3 sm:flex-row') do
           label(class: 'sr-only', for: 'search_q') { t('global_search.input_label') }
           input(
             id: 'search_q',

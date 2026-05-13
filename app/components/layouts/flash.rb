@@ -11,7 +11,7 @@ module Components
       end
 
       def view_template
-        div(class: 'fixed inset-x-0 top-4 z-[60] pointer-events-none') do
+        div(class: 'fixed inset-x-0 top-20 z-[60] pointer-events-none md:top-4') do
           div(class: 'container mx-auto px-4') do
             render_notice if @notice
             render_warning if @warning
