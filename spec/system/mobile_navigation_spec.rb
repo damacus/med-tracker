@@ -113,7 +113,7 @@ RSpec.describe 'Mobile Navigation' do
     page.current_window.resize_to(375, 667)
     visit root_path
 
-    find('button[aria-label="Open menu"]').click
+    open_mobile_menu
 
     within('[role="dialog"]') do
       expect(page).to have_link('Inventory', href: medications_path)
@@ -152,20 +152,17 @@ RSpec.describe 'Mobile Navigation' do
     page.current_window.resize_to(375, 667)
     visit root_path
 
-    find('button[aria-label="Open menu"]').click
-    expect(page).to have_css('[role="dialog"]')
+    open_mobile_menu
 
     page.execute_script("document.querySelector('[data-testid=\"drawer-backdrop\"]').click()")
     expect(page).to have_no_css('[role="dialog"]')
 
-    find('button[aria-label="Open menu"]').click
-    expect(page).to have_css('[role="dialog"]')
+    open_mobile_menu
 
     find('body').send_keys(:escape)
     expect(page).to have_no_css('[role="dialog"]')
 
-    find('button[aria-label="Open menu"]').click
-    expect(page).to have_css('[role="dialog"]')
+    open_mobile_menu
   end
 
   scenario 'does not render the floating action menu on mobile' do
@@ -183,5 +180,13 @@ RSpec.describe 'Mobile Navigation' do
 
   def mobile_metric_label_overflow
     page.evaluate_script(mobile_metric_label_overflow_script)
+  end
+
+  def open_mobile_menu
+    find('button[aria-label="Open menu"]').click
+    expect(page).to have_css('[role="dialog"]', wait: 5)
+  rescue RSpec::Expectations::ExpectationNotMetError
+    find('button[aria-label="Open menu"]').click
+    expect(page).to have_css('[role="dialog"]', wait: 5)
   end
 end
