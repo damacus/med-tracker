@@ -18,13 +18,15 @@ RSpec.describe 'Mobile overflow handling' do
     expect(offscreen_header_actions).to be_empty
   end
 
-  it 'keeps the mobile quick action menu in the rail and outside page content', :js do
+  it 'keeps removed quick action chrome from causing mobile overflow', :js do
     page.current_window.resize_to(390, 844)
 
     visit dashboard_path
 
-    expect(fab_geometry.fetch('right')).to be <= fab_geometry.fetch('rail_right')
-    expect(fab_geometry.fetch('left')).to be < fab_geometry.fetch('main_left')
+    expect(page).to have_css('[data-testid="mobile-rail"]')
+    expect(page).to have_no_css('[data-testid="floating-action-menu-toggle"]')
+    expect(page).to have_no_css('[data-testid="floating-action-menu-items"]')
+    expect(page_horizontal_overflow).to be <= 1
   end
 
   it 'uses mobile cards without page-level overflow on dense table pages', :js do
@@ -79,22 +81,6 @@ RSpec.describe 'Mobile overflow handling' do
             return styles.display !== 'none' && rect.width > 0 && (rect.left < -1 || rect.right > viewportWidth + 1);
           })
           .map((element) => element.textContent.trim());
-      })()
-    JS
-  end
-
-  def fab_geometry
-    page.evaluate_script(<<~JS)
-      (() => {
-        const fab = document.querySelector('[data-testid="floating-action-menu-toggle"]');
-        const rail = document.querySelector('[data-testid="mobile-rail"]');
-        const main = document.querySelector('#main-content');
-        return {
-          left: fab.getBoundingClientRect().left,
-          right: fab.getBoundingClientRect().right,
-          rail_right: rail.getBoundingClientRect().right,
-          main_left: main.getBoundingClientRect().left
-        };
       })()
     JS
   end
