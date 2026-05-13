@@ -68,6 +68,126 @@ products:
         default_dose_cycle: "daily"
         current_supply: 60
         reorder_threshold: 14
+  - gtin: "5000436574637"
+    display: "Tesco Health Ibuprofen 200mg Pain Relief Tablets 16s"
+    system: "Curated product catalog"
+    concept_class: "Analgesic"
+    category: "Analgesic"
+    description: "Sugar-coated ibuprofen 200mg tablets for the relief of rheumatic and muscular pain, backache, neuralgia, headache, migraine, dental pain, period pain, fever, and symptoms of colds and flu. 16 tablets."
+    warnings: >-
+      Contains ibuprofen. Do not take with other ibuprofen-containing products, NSAIDs, or aspirin above
+      75mg daily. Take with or after food. Do not take if pregnant (especially third trimester) or
+      breastfeeding without medical advice. Not for prolonged use without medical supervision.
+      Do not use for more than 3 days without medical advice. Keep out of reach of children.
+    suggested_doses:
+      - amount: 1
+        unit: "tablet"
+        frequency: "Every 4-6 hours as needed"
+        description: "Adults and children 12+ years (low dose)"
+        default_max_daily_doses: 6
+        default_min_hours_between_doses: 4
+        default_dose_cycle: "daily"
+        current_supply: 16
+        reorder_threshold: 4
+      - amount: 2
+        unit: "tablet"
+        frequency: "Every 4-6 hours as needed"
+        description: "Adults and children 12+ years (standard dose)"
+        default_max_daily_doses: 3
+        default_min_hours_between_doses: 4
+        default_dose_cycle: "daily"
+        current_supply: 16
+        reorder_threshold: 4
+  - gtin: "5000358536010"
+    display: "Tesco Health Ibuprofen 200mg Liquid Capsules 16s"
+    system: "Curated product catalog"
+    concept_class: "Analgesic"
+    category: "Analgesic"
+    description: "Soft gelatin capsules containing ibuprofen 200mg for the relief of rheumatic and muscular pain, backache, neuralgia, dental pain, period pain, headache, migraine, fever, and symptoms of colds and flu. 16 capsules."
+    warnings: >-
+      Contains ibuprofen. Do not take with other ibuprofen-containing products, NSAIDs, or aspirin above
+      75mg daily. Take with or after food. Do not take if pregnant (especially third trimester) or
+      breastfeeding without medical advice. Not for prolonged use without medical supervision.
+      Do not use for more than 3 days without medical advice. Keep out of reach of children.
+    suggested_doses:
+      - amount: 1
+        unit: "capsule"
+        frequency: "Every 4-6 hours as needed"
+        description: "Adults and children 12+ years (low dose)"
+        default_max_daily_doses: 6
+        default_min_hours_between_doses: 4
+        default_dose_cycle: "daily"
+        current_supply: 16
+        reorder_threshold: 4
+      - amount: 2
+        unit: "capsule"
+        frequency: "Every 4-6 hours as needed"
+        description: "Adults and children 12+ years (standard dose)"
+        default_max_daily_doses: 3
+        default_min_hours_between_doses: 4
+        default_dose_cycle: "daily"
+        current_supply: 16
+        reorder_threshold: 4
+  - gtin: "5052003056763"
+    display: "Tesco Health Rapid Pain Relief Tablets - Ibuprofen Lysine 12s"
+    system: "Curated product catalog"
+    concept_class: "Analgesic"
+    category: "Analgesic"
+    description: "Fast-acting ibuprofen lysine 342mg tablets (equivalent to ibuprofen 200mg) for the rapid relief of rheumatic or muscular pain, backache, nerve pain, migraine, headache, dental pain, period pain, and fever. 12 tablets."
+    warnings: >-
+      Contains ibuprofen (as ibuprofen lysine). Do not take with other ibuprofen-containing products,
+      NSAIDs, or aspirin above 75mg daily. Take with or after food. Do not take if pregnant
+      (especially third trimester) or breastfeeding without medical advice.
+      Do not use for more than 3 days without medical advice. Keep out of reach of children.
+    suggested_doses:
+      - amount: 1
+        unit: "tablet"
+        frequency: "Every 4-6 hours as needed"
+        description: "Adults and children 12+ years (low dose)"
+        default_max_daily_doses: 6
+        default_min_hours_between_doses: 4
+        default_dose_cycle: "daily"
+        current_supply: 12
+        reorder_threshold: 3
+      - amount: 2
+        unit: "tablet"
+        frequency: "Every 4-6 hours as needed"
+        description: "Adults and children 12+ years (standard dose)"
+        default_max_daily_doses: 3
+        default_min_hours_between_doses: 4
+        default_dose_cycle: "daily"
+        current_supply: 12
+        reorder_threshold: 3
+  - gtin: "5051277362020"
+    display: "Tesco Health Migraine Relief Tablets - Ibuprofen Lysine 12s"
+    system: "Curated product catalog"
+    concept_class: "Analgesic"
+    category: "Analgesic"
+    description: "Ibuprofen lysine 342mg tablets (equivalent to ibuprofen 200mg) for the relief of migraine headache, tension headache, and associated symptoms. 12 tablets."
+    warnings: >-
+      Contains ibuprofen (as ibuprofen lysine). Do not take with other ibuprofen-containing products,
+      NSAIDs, or aspirin above 75mg daily. Take with or after food. Do not take if pregnant
+      (especially third trimester) or breastfeeding without medical advice.
+      Do not use for more than 3 days without medical advice. Keep out of reach of children.
+    suggested_doses:
+      - amount: 1
+        unit: "tablet"
+        frequency: "Every 4-6 hours as needed"
+        description: "Adults and children 12+ years (low dose)"
+        default_max_daily_doses: 6
+        default_min_hours_between_doses: 4
+        default_dose_cycle: "daily"
+        current_supply: 12
+        reorder_threshold: 3
+      - amount: 2
+        unit: "tablet"
+        frequency: "Every 4-6 hours as needed"
+        description: "Adults and children 12+ years (standard dose)"
+        default_max_daily_doses: 3
+        default_min_hours_between_doses: 4
+        default_dose_cycle: "daily"
+        current_supply: 12
+        reorder_threshold: 3
   - gtin: "5031021971579"
     display: "Tesco Health Paracetamol 500mg Tablets"
     system: "Curated product catalog"
