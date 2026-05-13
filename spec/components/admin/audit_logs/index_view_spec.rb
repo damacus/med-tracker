@@ -61,6 +61,16 @@ RSpec.describe Components::Admin::AuditLogs::IndexView, type: :component do
     end
   end
 
+  describe 'responsive rendering' do
+    it 'renders mobile audit cards and keeps the desktop table' do
+      rendered = render_inline(described_class.new(versions: versions))
+
+      expect(rendered.css('[data-testid="admin-audit-logs-mobile-list"]')).to be_present
+      expect(rendered.css('[data-testid="admin-audit-logs-desktop-table"] table')).to be_present
+      expect(rendered.css('[data-testid="admin-audit-logs-mobile-list"]').text).to include('Person')
+    end
+  end
+
   describe '#filters_active?' do
     subject(:view) { described_class.new(versions: versions, filter_params: filter_params) }
 

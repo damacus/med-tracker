@@ -4,6 +4,8 @@ module Components
   module Admin
     module CarerRelationships
       class IndexView < Components::Base
+        include Phlex::Rails::Helpers::FormWith
+
         attr_reader :relationships, :current_user, :pagy_obj
 
         def initialize(relationships:, current_user: nil, pagy: nil)
@@ -46,11 +48,67 @@ module Components
         end
 
         def render_relationships_table
-          div(class: 'rounded-xl border border-border bg-card shadow-sm overflow-hidden') do
-            render RubyUI::Table.new do
-              render_table_header
-              render_table_body
+          render_mobile_relationship_cards
+          div(data: { testid: 'admin-carer-relationships-desktop-table' }, class: 'hidden md:block') do
+            div(class: 'rounded-xl border border-border bg-card shadow-sm overflow-hidden') do
+              render RubyUI::Table.new do
+                render_table_header
+                render_table_body
+              end
             end
+          end
+        end
+
+        def render_mobile_relationship_cards
+          div(class: 'space-y-4 md:hidden', data: { testid: 'admin-carer-relationships-mobile-list' }) do
+            if relationships.empty?
+              m3_card(
+                class: 'rounded-[2rem] border border-outline-variant/40 bg-card p-6 text-center shadow-elevation-1'
+              ) do
+                m3_text(class: 'text-on-surface-variant') { t('admin.carer_relationships.index.empty') }
+              end
+            else
+              relationships.each do |relationship|
+                render_mobile_relationship_card(relationship)
+              end
+            end
+          end
+        end
+
+        def render_mobile_relationship_card(relationship)
+          row_class = relationship.active? ? '' : 'opacity-60'
+          m3_card(id: "mobile_carer_relationship_#{relationship.id}",
+                  class: "rounded-[2rem] border border-outline-variant/40 bg-card p-5 shadow-elevation-1 #{row_class}",
+                  data: { relationship_id: relationship.id }) do
+            div(class: 'space-y-4') do
+              div(class: 'flex items-start justify-between gap-3') do
+                div(class: 'min-w-0') do
+                  m3_text(size: '2', weight: 'muted',
+                          class: 'uppercase tracking-widest font-bold') do
+                    t('admin.carer_relationships.index.table.carer')
+                  end
+                  m3_text(class: 'mt-1 break-words font-bold text-foreground') { relationship.carer.name }
+                end
+                render_status_badge(relationship)
+              end
+
+              dl(class: 'grid grid-cols-2 gap-3 border-t border-outline-variant/30 pt-4 text-sm') do
+                render_mobile_detail(t('admin.carer_relationships.index.table.patient'), relationship.patient.name)
+                render_mobile_detail(t('admin.carer_relationships.index.table.type'),
+                                     relationship.relationship_type.to_s.humanize)
+              end
+
+              div(class: 'flex justify-end border-t border-outline-variant/30 pt-4') do
+                render_activation_button(relationship)
+              end
+            end
+          end
+        end
+
+        def render_mobile_detail(label, value)
+          div do
+            dt(class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant') { label }
+            dd(class: 'mt-1 break-words font-semibold text-foreground') { value }
           end
         end
 
@@ -84,6 +142,60 @@ module Components
 
         def render_relationship_row(relationship)
           render Row.new(relationship: relationship)
+        end
+
+        def render_status_badge(relationship)
+          if relationship.active?
+            render RubyUI::Badge.new(variant: :green) { t('admin.carer_relationships.index.active') }
+          else
+            render RubyUI::Badge.new(variant: :red) { t('admin.carer_relationships.index.inactive') }
+          end
+        end
+
+        def render_activation_button(relationship)
+          if relationship.active?
+            render_deactivate_dialog(relationship)
+          else
+            form_with(
+              url: "/admin/carer_relationships/#{relationship.id}/activate",
+              method: :post,
+              class: 'inline-block'
+            ) do
+              m3_button(
+                type: :submit,
+                variant: :success_outline,
+                size: :sm
+              ) { t('admin.carer_relationships.index.activate') }
+            end
+          end
+        end
+
+        def render_deactivate_dialog(relationship)
+          render RubyUI::AlertDialog.new do
+            render RubyUI::AlertDialogTrigger.new do
+              m3_button(variant: :destructive_outline, size: :sm) do
+                t('admin.carer_relationships.index.deactivate')
+              end
+            end
+            render RubyUI::AlertDialogContent.new do
+              render RubyUI::AlertDialogHeader.new do
+                render(RubyUI::AlertDialogTitle.new { t('admin.carer_relationships.index.deactivate_dialog.title') })
+                render RubyUI::AlertDialogDescription.new do
+                  t('admin.carer_relationships.index.deactivate_dialog.confirm',
+                    carer: relationship.carer.name,
+                    patient: relationship.patient.name)
+                end
+              end
+              render RubyUI::AlertDialogFooter.new do
+                render(RubyUI::AlertDialogCancel.new { t('admin.carer_relationships.index.deactivate_dialog.cancel') })
+                form_with(url: "/admin/carer_relationships/#{relationship.id}", method: :delete, class: 'inline') do
+                  m3_button(variant: :destructive, type: :submit) do
+                    t('admin.carer_relationships.index.deactivate_dialog.submit')
+                  end
+                end
+              end
+            end
+          end
         end
 
         def render_pagination

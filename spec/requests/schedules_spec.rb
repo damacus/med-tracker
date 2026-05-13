@@ -55,4 +55,16 @@ RSpec.describe 'Schedules' do
       end
     end
   end
+
+  describe 'GET /schedules/new' do
+    before do
+      sign_in(users(:admin))
+    end
+
+    it 'redirects direct schedule creation to the workflow' do
+      get new_schedule_path
+
+      expect(response).to redirect_to(schedules_workflow_path)
+    end
+  end
 end

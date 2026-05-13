@@ -83,6 +83,24 @@ RSpec.describe 'Global search command palette' do
     expect(page.evaluate_script('document.activeElement.id')).to eq('global_search_query')
   end
 
+  scenario 'does not request empty search results when opened' do
+    visit root_path
+    page.execute_script(<<~JS)
+      window.__searchFetches = [];
+      window.__originalFetch = window.fetch;
+      window.fetch = function(input, init) {
+        const url = typeof input === "string" ? input : input.url;
+        if (url.includes("/search.json")) window.__searchFetches.push(url);
+        return window.__originalFetch.call(window, input, init);
+      };
+    JS
+
+    find('button[aria-label="Open global search"]').click
+
+    expect(page).to have_css('#global_search_panel[aria-hidden="false"]')
+    expect(page.evaluate_script('window.__searchFetches')).to be_empty
+  end
+
   def global_search_geometry
     page.evaluate_script(<<~JS)
       (() => {
