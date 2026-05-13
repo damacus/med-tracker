@@ -1,65 +1,70 @@
-# Code Review - codex/medication-scan-stock-merge
+# Code Review - codex/restock-authorization-finder
 
 **Base Branch**: origin/main
-**Changed Files**: 5
-**Changed Ruby Files**: 5
-**Review Date**: 2026-05-08
-**Review Skills**: review-ruby-code, RubyCritic availability check, SimpleCov availability check
+**Changed Files**: 30
+**Changed Ruby Files**: 18
+**Review Date**: 2026-05-13
+**Review Skills**: review-ruby-code, rubycritic availability check, simplecov availability check
 
 ---
 
 ## Summary
 
-This branch updates medication creation so scanned stock can merge into an existing inventory item instead of creating a duplicate, while preserving separate inventory rows for different strengths such as 200mg and 400mg ibuprofen.
+This branch fixes the medication restock authorization path, removes the floating shortcut menu, and turns Medication Finder's existing-medication action into a restock modal. The core authorization shift is directionally correct: refill endpoints now authorize `refill?`, finder access allows add-or-restock users, and request/system specs cover the parent/carer restock paths.
 
-The authorization boundary is sound: matching is scoped through `policy_scope(Medication)`, and the new request specs cover the primary same-strength merge and different-strength split. I found one behavioral bug in the failure path for merged wizard submissions, plus design and coverage risks around the new matching service.
+I found no critical security issue. The main risk is a permissive fallback in the medication show component that can hide policy wiring mistakes by rendering privileged controls when policy lookup fails. There are also two smaller contract/test gaps around finder response consistency and the unknown package quantity modal path.
 
 ## Critical Issues
 
-High: [MedicationOnboardingCreateService#restock_existing_medication returns the existing medication even when schedule creation fails](file:///Users/damacus/.codex/worktrees/8c9c/med-tracker/app/services/medication_onboarding_create_service.rb#L144), while [schedule errors are copied onto the unsaved candidate medication](file:///Users/damacus/.codex/worktrees/8c9c/med-tracker/app/services/medication_onboarding_create_service.rb#L193). The controller then [replaces `@medication` with `result.medication`](file:///Users/damacus/.codex/worktrees/8c9c/med-tracker/app/controllers/medications_controller.rb#L79) before rendering failure, so a failed merged wizard submission can render the existing persisted medication without the validation errors that explain why the schedule failed. Keep the errored candidate as the failure result, copy errors to the returned object, or make `Result` carry a separate `form_record`.
+None found.
 
 ## Design & Architecture
 
 ### OOP Violations
 
-Warning: [MedicationInventoryMatcher is 167 lines and owns barcode matching, dm+d matching, name normalization, strength parsing, form parsing, and decimal normalization](file:///Users/damacus/.codex/worktrees/8c9c/med-tracker/app/services/medication_inventory_matcher.rb#L3). This exceeds the Sandi Metz 100-line class rule. The class is cohesive enough for the first version, but adding more medicine-name heuristics should be done by extracting small collaborators such as a `MedicationNameFingerprint` or `MedicationStrengthParser`.
+Medium: [Components::Medications::ShowView#can_update? rescues `NoMethodError` and returns `true`](file:///Users/damacus/.codex/worktrees/950d/med-tracker/app/components/medications/show_view.rb#L202), and [#can_refill? does the same](file:///Users/damacus/.codex/worktrees/950d/med-tracker/app/components/medications/show_view.rb#L208). That means a missing policy helper, a missing policy method, or a policy wiring regression falls back to showing edit/restock controls. This weakens the branch goal that users should not see buttons they cannot perform. Prefer explicit permission inputs on the component, or require the view context policy and update component specs to stub it directly.
 
-Warning: [MedicationOnboardingCreateService now handles normal creation, schedule creation, matching, aggregate restock, per-dose restock, and merge failure behavior](file:///Users/damacus/.codex/worktrees/8c9c/med-tracker/app/services/medication_onboarding_create_service.rb#L19). It was already a workflow service, but the new merge branch has pushed it toward multiple reasons to change. Consider extracting the merge operation if more scan/import behavior is added.
+Warning: [MedicationsController is now 378 lines](file:///Users/damacus/.codex/worktrees/950d/med-tracker/app/controllers/medications_controller.rb#L1). The new restock/finder changes are small and follow existing controller style, but the controller already owns creation, finder search, refill, adjustment, reorder, stream rendering, and scan workflows. If more finder/restock behavior lands, extract a finder presenter/responder boundary rather than growing the controller further.
 
 ### Rails Patterns
 
-No N+1 query found in the reviewed change. [MedicationInventoryMatcher preloads dosage records before scanning authorized medications in memory](file:///Users/damacus/.codex/worktrees/8c9c/med-tracker/app/services/medication_inventory_matcher.rb#L72).
+The authorization pattern is sound in the controller: [refill uses `authorize @medication, :refill?`](file:///Users/damacus/.codex/worktrees/950d/med-tracker/app/controllers/medications_controller.rb#L112), and [scan restock authorizes the matched medication before restocking](file:///Users/damacus/.codex/worktrees/950d/med-tracker/app/controllers/medications_controller.rb#L136).
 
-Performance note: the matcher uses Ruby-side `detect` across the full authorized medication scope for fallback name matching. That is acceptable for household inventory sizes, but it will not scale well if clinicians/admins scan against a large shared inventory. If that becomes a real path, prefilter by normalized terms or add a persisted/searchable fingerprint.
+The finder match path remains scoped through `MedicationStockMatchResolver` initialized from [policy-scoped medications](file:///Users/damacus/.codex/worktrees/950d/med-tracker/app/controllers/medications_controller.rb#L272), so inaccessible stock is not exposed in normal search/match responses.
 
-The controller integration follows existing patterns: [MedicationsController passes policy-scoped medications into the service](file:///Users/damacus/.codex/worktrees/8c9c/med-tracker/app/controllers/medications_controller.rb#L258), and [MedicationWizardSupport accepts a caller-supplied success notice without changing the response shape](file:///Users/damacus/.codex/worktrees/8c9c/med-tracker/app/controllers/concerns/medication_wizard_support.rb#L8).
+Low: [MedicationFinderSearchResponder#unavailable_response omits the `permissions` payload](file:///Users/damacus/.codex/worktrees/950d/med-tracker/app/services/medication_finder_search_responder.rb#L38), even though successful and blank responses include it. The current Stimulus controller ignores permissions when `error` is present, so this is not breaking today. Still, the branch contract says the finder response includes create/restock ability; passing `permissions` through error responses would keep the JSON schema stable for future clients.
 
 ## Security Concerns
 
-No new security issue found.
+No direct SQL injection, mass-assignment, or IDOR issue found in the changed Rails code.
 
-Positive observations:
+The highest security-adjacent concern is the permissive component fallback described above. Authorization still happens server-side for refill/update/destroy, so the fallback does not grant the action by itself, but it can reintroduce unauthorized UI affordances and confusion.
 
-- [Matching is bounded by `policy_scope(Medication)`](file:///Users/damacus/.codex/worktrees/8c9c/med-tracker/app/controllers/medications_controller.rb#L263), so inaccessible inventory is not silently merged.
-- The new matcher does not build SQL from user-controlled input in the fallback path; normalization and matching are Ruby-side.
-- Existing duplicate-barcode validation remains in place for inaccessible inventory collisions.
+Positive security observations:
+
+- [MedicationPolicy#finder? allows finder access only through `create? || refill?`](file:///Users/damacus/.codex/worktrees/950d/med-tracker/app/policies/medication_policy.rb#L46).
+- [Search results build existing medication metadata only from the scoped stock matcher](file:///Users/damacus/.codex/worktrees/950d/med-tracker/app/services/medication_finder_search_responder.rb#L45).
+- [Request coverage asserts inaccessible matches are not exposed](file:///Users/damacus/.codex/worktrees/950d/med-tracker/spec/requests/medications_refill_spec.rb#L196).
 
 ## Test Coverage
 
-The new request coverage is valuable and behavior-oriented:
+Strong coverage added:
 
-- [Same-strength scan restocks the existing ibuprofen item without increasing `Medication.count`](file:///Users/damacus/.codex/worktrees/8c9c/med-tracker/spec/requests/medications_create_scope_spec.rb#L264).
-- [Different-strength scan creates a separate ibuprofen inventory item](file:///Users/damacus/.codex/worktrees/8c9c/med-tracker/spec/requests/medications_create_scope_spec.rb#L294).
+- [Parent can restock through `PATCH /medications/:id/refill`](file:///Users/damacus/.codex/worktrees/950d/med-tracker/spec/requests/medications_refill_spec.rb#L35).
+- [Parent can scan-restock an accessible medication](file:///Users/damacus/.codex/worktrees/950d/med-tracker/spec/requests/medications_refill_spec.rb#L94).
+- [Carer finder access returns restock-only permissions](file:///Users/damacus/.codex/worktrees/950d/med-tracker/spec/requests/medications_search_spec.rb#L251).
+- [Medication Finder opens the known-quantity restock modal and submits it](file:///Users/damacus/.codex/worktrees/950d/med-tracker/spec/system/medication_finder_spec.rb#L30).
+- [Mobile navigation asserts the floating action menu is gone](file:///Users/damacus/.codex/worktrees/950d/med-tracker/spec/system/mobile_navigation_spec.rb#L171).
 
 Coverage gaps:
 
-- Add a request or service spec for the merged wizard failure path described in Critical Issues.
-- Add focused `MedicationInventoryMatcher` specs for name/strength parsing edge cases: `micrograms`, `250mg/5ml`, pack counts in names, form mismatch, and same dm+d code precedence. Request specs cover the main user outcome, but the matcher now contains enough parsing logic to deserve unit-level examples.
+- Add a system or JS-level spec for the unknown package quantity path in [MedicationSearchController#renderRestockModal](file:///Users/damacus/.codex/worktrees/950d/med-tracker/app/javascript/controllers/medication_search_controller.js#L204). The current system spec always sends [package_quantity: 30](file:///Users/damacus/.codex/worktrees/950d/med-tracker/spec/system/medication_finder_spec.rb#L78), so the required manual quantity field is not exercised.
+- Add a request spec that service-unavailable finder responses preserve permissions if you decide to make the JSON schema consistent. Existing error specs assert only [status and generic error text](file:///Users/damacus/.codex/worktrees/950d/med-tracker/spec/requests/medications_search_spec.rb#L140).
 
-Focused verification run during this review:
+Focused verification already run on this branch before review:
 
-- `env COVERAGE=true task test TEST_FILE=spec/requests/medications_create_scope_spec.rb`
-- 21 examples, 0 failures
+- `task rubocop` passed: 975 files, no offenses.
+- `task test` passed after clean retry: 2383 examples, 0 failures, 2 pending.
 
 ## Tool Reports
 
@@ -67,26 +72,27 @@ Focused verification run during this review:
 
 RubyCritic metrics are unavailable in this worktree:
 
-- `rubycritic --format json --no-browser ...` failed because `rubycritic` is not installed on `PATH`.
-- `task -l` does not expose a RubyCritic task.
+- `rubycritic` is not installed on `PATH`.
+- `task -l` exposes no RubyCritic task.
+- The repo's `scripts/check_quality.sh` would mutate `Gemfile` to install RubyCritic and uses Bash, so I did not run it during this Fish-only review pass.
 
 ### SimpleCov Summary
 
 SimpleCov metrics are unavailable:
 
-- No SimpleCov configuration or gem entry was found in `Gemfile`, `Gemfile.lock`, `spec`, or `config`.
-- Running the focused request spec with `COVERAGE=true` produced no `coverage/` directory.
+- No `simplecov` or `coverage` configuration was found in `Gemfile`, `Gemfile.lock`, `Taskfile.yml`, or `spec`.
+- No `coverage/` output directory exists in this worktree.
 
 ## Recommendations
 
-1. Fix the merged wizard failure path so validation errors are rendered on the object returned to the controller.
-2. Add unit specs for `MedicationInventoryMatcher` before extending matching heuristics.
-3. Extract name/strength parsing from `MedicationInventoryMatcher` if another medication-form or strength rule is added.
-4. If RubyCritic/SimpleCov reports are required for review workflows, add repo-native `task` wrappers so analysis can run consistently in the project container.
+1. Replace the permissive `NoMethodError => true` fallbacks in `Components::Medications::ShowView` with explicit permission injection or strict policy calls.
+2. If finder JSON is a public-ish internal contract, include permissions in service-unavailable responses too.
+3. Add coverage for the unknown package quantity modal flow before relying on scanned products without pack metadata.
+4. Add repo-native `task` wrappers for RubyCritic/SimpleCov if those reports are mandatory review artifacts.
 
 ## Positive Observations
 
-- The change preserves the safety requirement that different strengths remain separate.
-- Matching is kept out of the controller and follows the repo's service-object style.
-- The request specs cover both sides of the highest-risk behavioral boundary.
-- The branch kept quality gates green before review: RuboCop and the full suite passed post-rebase.
+- The branch keeps restock authorization server-side and policy-scoped.
+- UI permission splitting matches the intended `refill?`, `update?`, and `destroy?` boundaries on the main medication cards.
+- The finder modal posts to the existing refill endpoint instead of inventing a parallel restock path.
+- The removal of the floating shortcut menu is complete across layout, Stimulus, CSS, and specs.
