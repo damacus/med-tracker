@@ -2,13 +2,23 @@
 
 module BarcodeCatalog
   class Lookup
+    def initialize(opf_lookup: OpenProductsFacts::BarcodeLookup.new)
+      @opf_lookup = opf_lookup
+    end
+
     def lookup(barcode)
       barcode_candidates(barcode).each do |candidate|
-        external = lookup_external(candidate)
-        return external if external
+        imported = lookup_imported_catalog(candidate)
+        return imported if imported
 
         local = lookup_local(candidate)
         return local if local
+
+        cached_opf = lookup_cached_open_products_facts(candidate)
+        return cached_opf if cached_opf
+
+        opf = lookup_open_products_facts(candidate)
+        return opf if opf
 
         curated = lookup_curated(candidate)
         return curated if curated
@@ -23,8 +33,17 @@ module BarcodeCatalog
       NhsDmd::BarcodeLookup.candidates_for(barcode)
     end
 
-    def lookup_external(candidate)
-      record = BarcodeCatalogEntry.find_by(gtin: candidate)
+    def lookup_imported_catalog(candidate)
+      record = BarcodeCatalogEntry.where(gtin: candidate).where.not(source: 'open_products_facts').first
+      catalog_entry_attributes(record)
+    end
+
+    def lookup_cached_open_products_facts(candidate)
+      record = BarcodeCatalogEntry.find_by(gtin: candidate, source: 'open_products_facts')
+      catalog_entry_attributes(record)
+    end
+
+    def catalog_entry_attributes(record)
       return nil unless record
 
       {
@@ -47,6 +66,10 @@ module BarcodeCatalog
         concept_class: record.concept_class,
         source: 'nhs_dmd'
       }
+    end
+
+    def lookup_open_products_facts(candidate)
+      @opf_lookup.lookup(candidate)
     end
 
     def lookup_curated(candidate)

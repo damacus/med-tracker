@@ -4,7 +4,8 @@ require 'rails_helper'
 
 RSpec.describe BarcodeCatalog::Lookup do
   describe '#lookup' do
-    let(:lookup) { described_class.new }
+    let(:opf_lookup) { instance_double(OpenProductsFacts::BarcodeLookup, lookup: nil) }
+    let(:lookup) { described_class.new(opf_lookup: opf_lookup) }
     let(:gtin) { '3574661385488' }
 
     def create_external_entry
@@ -76,6 +77,57 @@ RSpec.describe BarcodeCatalog::Lookup do
         barcode: '5057753926137',
         source: 'curated'
       )
+    end
+
+    it 'falls back to Open Products Facts when external and dm+d lookups return nothing' do
+      opf_result = {
+        gtin: gtin,
+        display: 'Some OTC Medicine (Brand)',
+        source: 'open_products_facts',
+        system: OpenProductsFacts::Client::BASE_URL,
+        concept_class: 'OTC Medicine'
+      }
+      allow(opf_lookup).to receive(:lookup).with(gtin).and_return(opf_result)
+
+      expect(lookup.lookup(gtin)).to include(
+        display: 'Some OTC Medicine (Brand)',
+        source: 'open_products_facts'
+      )
+    end
+
+    it 'uses a cached Open Products Facts entry before curated identity fallback' do
+      BarcodeCatalogEntry.create!(
+        gtin: '5000436574637',
+        display: 'Ibuprofen 200mg Pain Relief Tablets (Tesco) 16 tablets',
+        source: 'open_products_facts',
+        system: OpenProductsFacts::Client::BASE_URL,
+        concept_class: 'OTC Medicine'
+      )
+
+      expect(lookup.lookup('5000436574637')).to include(
+        display: 'Ibuprofen 200mg Pain Relief Tablets (Tesco) 16 tablets',
+        source: 'open_products_facts'
+      )
+    end
+
+    it 'prefers dm+d over Open Products Facts' do
+      create_local_entry(code: 'dmd-code', display: 'dm+d name')
+
+      expect(lookup.lookup(gtin)).to include(source: 'nhs_dmd')
+      expect(opf_lookup).not_to have_received(:lookup)
+    end
+
+    it 'prefers dm+d over a cached Open Products Facts entry' do
+      BarcodeCatalogEntry.create!(
+        gtin: gtin,
+        display: 'Some OTC Medicine (Brand)',
+        source: 'open_products_facts',
+        system: OpenProductsFacts::Client::BASE_URL,
+        concept_class: 'OTC Medicine'
+      )
+      create_local_entry(code: 'dmd-code', display: 'dm+d name')
+
+      expect(lookup.lookup(gtin)).to include(source: 'nhs_dmd')
     end
 
     it 'prefers imported dm+d data over curated barcode overrides' do
