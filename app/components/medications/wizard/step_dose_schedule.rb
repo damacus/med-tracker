@@ -165,7 +165,7 @@ module Components
             end
             select(
               id: 'wizard_schedule_person',
-              class: 'flex h-14 min-h-[56px] w-full rounded-shape-xs border border-outline bg-transparent ' \
+              class: 'flex h-14 min-h-[56px] w-full rounded-shape-sm border border-outline bg-transparent ' \
                      'px-4 py-4 text-base transition-all focus-visible:outline-none focus-visible:ring-2 ' \
                      'focus-visible:ring-primary',
               data: {
@@ -215,7 +215,7 @@ module Components
               end
               select(
                 id: 'wizard_dose_unit',
-                class: 'flex h-14 min-h-[56px] w-full rounded-shape-xs border border-outline bg-transparent ' \
+                class: 'flex h-14 min-h-[56px] w-full rounded-shape-sm border border-outline bg-transparent ' \
                        'px-4 py-4 text-base transition-all focus-visible:outline-none focus-visible:ring-2 ' \
                        'focus-visible:ring-primary',
                 required: true,
@@ -323,7 +323,7 @@ module Components
                 end
                 select(
                   id: 'weekly_day',
-                  class: 'flex h-14 min-h-[56px] w-full rounded-shape-xs border border-outline ' \
+                  class: 'flex h-14 min-h-[56px] w-full rounded-shape-sm border border-outline ' \
                          'bg-transparent px-4 py-4',
                   data: {
                     action: 'change->medication-schedule-wizard#update',
@@ -360,7 +360,7 @@ module Components
                   m3_button(
                     type: :button,
                     variant: :outlined,
-                    class: 'h-14 w-full rounded-shape-xs px-4 sm:w-auto',
+                    class: 'h-14 w-full rounded-shape-sm px-4 sm:w-auto',
                     data: { action: 'click->medication-schedule-wizard#addSpecificDate' }
                   ) do
                     t('forms.medications.wizard.dose.add_specific_date')

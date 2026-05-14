@@ -20,7 +20,7 @@ module Components
               h-14
               min-h-[56px]
               w-full
-              rounded-shape-xs
+              rounded-shape-sm
               border
               bg-transparent
               px-4

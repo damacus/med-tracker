@@ -187,7 +187,7 @@ module Components
             render RubyUI::ComboboxTrigger.new(
               id: 'medication_trigger',
               placeholder: schedule.medication&.name || t('schedules.form.select_medication'),
-              class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all'
+              class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all'
             )
 
             render RubyUI::ComboboxPopover.new do
@@ -300,7 +300,7 @@ module Components
             SelectTrigger(
               disabled: schedule.medication.nil?,
               aria_disabled: schedule.medication.nil?,
-              class: 'rounded-md border-outline-variant bg-surface-container-lowest',
+              class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest',
               data: { testid: 'dosage-trigger', schedule_form_target: 'dosageTrigger' }
             ) do
               SelectValue(
@@ -337,7 +337,7 @@ module Components
             id: 'schedule_frequency',
             value: schedule.frequency,
             placeholder: t('schedules.form.frequency_placeholder'),
-            class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all',
+            class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all',
             data: {
               action: 'input->schedule-form#validate change->schedule-form#validate',
               schedule_form_target: 'frequencyInput'
@@ -362,7 +362,7 @@ module Components
             value: schedule.start_date&.to_fs(:db),
             required: true,
             placeholder: t('schedules.form.select_date'),
-            class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all',
+            class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all',
             data: {
               controller: 'ruby-ui--calendar-input',
               action: 'input->schedule-form#validate change->schedule-form#validate'
@@ -371,7 +371,7 @@ module Components
           Calendar(
             input_id: '#schedule_start_date',
             date_format: 'yyyy-MM-dd',
-            class: 'rounded-md border shadow-elevation-2 bg-surface-container-high'
+            class: 'rounded-shape-sm border shadow-elevation-2 bg-surface-container-high'
           )
         end
       end
@@ -388,13 +388,13 @@ module Components
             id: 'schedule_end_date',
             value: schedule.end_date&.to_fs(:db),
             placeholder: t('schedules.form.select_date'),
-            class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all',
+            class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all',
             data: { controller: 'ruby-ui--calendar-input' }
           )
           Calendar(
             input_id: '#schedule_end_date',
             date_format: 'yyyy-MM-dd',
-            class: 'rounded-md border shadow-elevation-2 bg-surface-container-high'
+            class: 'rounded-shape-sm border shadow-elevation-2 bg-surface-container-high'
           )
         end
       end
@@ -415,7 +415,7 @@ module Components
             value: schedule.max_daily_doses,
             placeholder: t('schedules.form.max_doses_placeholder'),
             min: 1,
-            class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all',
+            class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all',
             data: { schedule_form_target: 'maxDosesInput', action: 'input->schedule-form#generateFrequency' }
           )
         end
@@ -438,7 +438,7 @@ module Components
             placeholder: t('schedules.form.min_hours_placeholder'),
             min: 0,
             step: '0.5',
-            class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all',
+            class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all',
             data: { schedule_form_target: 'minHoursInput', action: 'input->schedule-form#generateFrequency' }
           )
         end
@@ -456,7 +456,7 @@ module Components
           render RubyUI::Combobox.new(class: 'w-full') do
             render RubyUI::ComboboxTrigger.new(
               placeholder: schedule.dose_cycle&.titleize || t('schedules.form.select_cycle'),
-              class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all'
+              class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all'
             )
 
             render RubyUI::ComboboxPopover.new do
@@ -494,7 +494,7 @@ module Components
             id: 'schedule_notes',
             placeholder: t('schedules.form.notes_placeholder'),
             value: schedule.notes,
-            class: 'rounded-md border-outline-variant bg-surface-container-lowest p-4 ' \
+            class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest p-4 ' \
                    'focus:ring-2 focus:ring-primary/10 ' \
                    'focus:border-primary transition-all resize-none'
           )

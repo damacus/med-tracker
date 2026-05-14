@@ -32,7 +32,7 @@ module Components
             name: 'q',
             type: 'search',
             value: query,
-            class: 'min-h-[44px] flex-1 rounded-md border border-outline-variant bg-surface-container-low px-4',
+            class: 'min-h-[44px] flex-1 rounded-shape-sm border border-outline-variant bg-surface-container-low px-4',
             placeholder: t('global_search.placeholder')
           )
           m3_button(type: :submit) { t('global_search.page_submit') }

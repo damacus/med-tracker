@@ -42,7 +42,7 @@ module Components
                 id: 'search',
                 value: search_params[:search],
                 placeholder: t('admin.users.search.search_placeholder'),
-                class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all',
+                class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all',
                 data: { action: 'input->filter-form#submit' }
               )
             end
@@ -57,7 +57,7 @@ module Components
                 render RubyUI::ComboboxTrigger.new(
                   id: 'role_trigger',
                   placeholder: search_params[:role].presence&.titleize || t('admin.users.search.all_roles'),
-                  class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all'
+                  class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all'
                 )
 
                 render RubyUI::ComboboxPopover.new do
@@ -104,7 +104,7 @@ module Components
                 render RubyUI::ComboboxTrigger.new(
                   id: 'status_trigger',
                   placeholder: search_params[:status].presence&.humanize || t('admin.users.search.all'),
-                  class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all'
+                  class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all'
                 )
 
                 render RubyUI::ComboboxPopover.new do

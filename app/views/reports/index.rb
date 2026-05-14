@@ -38,11 +38,11 @@ module Views
           form(action: view_context.reports_path, method: :get, class: 'flex items-end gap-3 rounded-[1.5rem] border border-border/70 bg-popover p-4 shadow-elevation-1') do
             div(class: 'flex flex-col gap-1') do
               label(for: 'start_date', class: 'text-xs font-semibold uppercase tracking-wider text-on-surface-variant') { t('reports.index.start_date_label') }
-              input(type: 'date', name: 'start_date', id: 'start_date', value: @start_date, class: 'form-input rounded-lg border-border bg-background text-sm text-foreground focus:border-primary focus:ring-primary')
+              input(type: 'date', name: 'start_date', id: 'start_date', value: @start_date, class: 'form-input rounded-shape-sm border-border bg-background text-sm text-foreground focus:border-primary focus:ring-primary')
             end
             div(class: 'flex flex-col gap-1') do
               label(for: 'end_date', class: 'text-xs font-semibold uppercase tracking-wider text-on-surface-variant') { t('reports.index.end_date_label') }
-              input(type: 'date', name: 'end_date', id: 'end_date', value: @end_date, class: 'form-input rounded-lg border-border bg-background text-sm text-foreground focus:border-primary focus:ring-primary')
+              input(type: 'date', name: 'end_date', id: 'end_date', value: @end_date, class: 'form-input rounded-shape-sm border-border bg-background text-sm text-foreground focus:border-primary focus:ring-primary')
             end
             m3_button(type: 'submit', class: 'rounded-xl shadow-elevation-1', 'aria-label': t('reports.index.apply_filters_aria_label')) do
               render Icons::ChevronRight.new(size: 20)
