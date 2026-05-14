@@ -1,13 +1,12 @@
 # frozen_string_literal: true
 
 class DoseAmount
-  PLURALIZABLE_UNITS = %w[tablet capsule spray drop sachet pad].freeze
-  IRREGULAR_PLURAL_UNITS = { 'gummy' => 'gummies' }.freeze
+  PLURALIZABLE_UNITS = %w[tablet capsule gummy spray drop sachet pad].freeze
 
   def self.pluralize_unit(amount, unit)
-    return unit unless PLURALIZABLE_UNITS.include?(unit) || IRREGULAR_PLURAL_UNITS.key?(unit)
+    return unit unless PLURALIZABLE_UNITS.include?(unit)
 
-    amount.to_d == 1 ? unit : IRREGULAR_PLURAL_UNITS.fetch(unit, "#{unit}s")
+    amount.to_d == 1 ? unit : unit.pluralize
   end
 
   def initialize(amount, unit)
