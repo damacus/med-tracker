@@ -40,10 +40,20 @@ RSpec.describe Components::PersonMedications::Card, type: :component do
     expect(button.text).to include('Log a past dose')
   end
 
-  def render_person_medication_card
+  it 'keeps the edit action from shrinking in the card footer' do
+    rendered = render_person_medication_card(update: true)
+
+    link = rendered.at_css("a[data-testid='edit-person-medication-#{person_medication.id}']")
+
+    expect(link).not_to be_nil
+    expect(link['class']).to include('shrink-0')
+    expect(link['class']).to include('min-w-12')
+  end
+
+  def render_person_medication_card(update: false, destroy: false)
     vc = view_context
     vc.singleton_class.define_method(:current_user) { nil }
-    policy_stub = Struct.new(:update?, :take_medication?, :destroy?, :show?).new(false, true, false, true)
+    policy_stub = Struct.new(:update?, :take_medication?, :destroy?, :show?).new(update, true, destroy, true)
     vc.singleton_class.define_method(:policy) { |_record| policy_stub }
     html = vc.render(described_class.new(person_medication: person_medication, person: person))
     Nokogiri::HTML::DocumentFragment.parse(html)
