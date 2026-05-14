@@ -33,7 +33,14 @@ RSpec.configure do |config|
 
   # Stub OPf to return not-found by default so tests that don't care about it
   # aren't broken by the new barcode lookup fallback.
+  # Covers both request and system (Playwright) specs — system tests run a live
+  # Rails server that makes server-side OPf calls intercepted by WebMock.
   config.before(:each, type: :request) do
+    Rails.cache.clear
+    stub_open_products_facts_not_found
+  end
+
+  config.before(:each, type: :system) do
     Rails.cache.clear
     stub_open_products_facts_not_found
   end
