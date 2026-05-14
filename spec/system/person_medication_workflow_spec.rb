@@ -55,14 +55,14 @@ RSpec.describe 'Person medication workflow' do
 
     click_button 'Add Medication'
 
-    expect(page).to have_text('Schedule was successfully created.')
+    expect(page).to have_text('Medication added successfully.')
     expect(page).to have_no_text("Add Medication for #{person.name}")
     expect(page).to have_text(person.name)
     expect(page).to have_text('Paracetamol')
 
-    created_schedule = person.schedules.order(:id).last
-    expect(created_schedule.schedule_type).to eq('prn')
-    expect(created_schedule.source_dosage_option).to eq(dosages(:paracetamol_child))
+    created_medication = person.person_medications.order(:id).last
+    expect(created_medication.administration_kind).to eq('as_needed')
+    expect(created_medication.source_dosage_option).to eq(dosages(:paracetamol_child))
   end
 
   it 'does not leave a blank page when cancelled' do

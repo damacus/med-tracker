@@ -3,6 +3,7 @@
   category: Analgesic
   dosage_amount: 500
   dosage_unit: mg
+  default_schedule_type: prn
   current_supply: 80
   reorder_threshold: 20
   description: >-
@@ -15,6 +16,7 @@
   category: Anti-Inflammatory
   dosage_amount: 200
   dosage_unit: mg
+  default_schedule_type: prn
   current_supply: 60
   reorder_threshold: 15
   description: >-

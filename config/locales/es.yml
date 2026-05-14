@@ -923,7 +923,7 @@ es:
       subtitle: Añade detalles del medicamento desde los valores guardados
     form:
       review_title: Revisar
-      review_description: Comprueba la dosis seleccionada y los valores de programación
+      review_description: Comprueba la dosis seleccionada y los valores del medicamento
         guardados.
       frequency: Frecuencia
       schedule_type: Tipo de programación

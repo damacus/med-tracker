@@ -37,7 +37,7 @@ RSpec.describe 'Person Medications', type: :system do
 
       click_button 'Add Medication'
 
-      expect(page).to have_text('Schedule was successfully created.')
+      expect(page).to have_text('Medication added successfully.')
       expect(page).to have_text(new_medication.name)
     end
   end

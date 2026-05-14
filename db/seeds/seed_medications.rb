@@ -14,6 +14,7 @@ medications_data.each do |attrs|
     category: attrs['category'],
     dosage_amount: attrs['dosage_amount'],
     dosage_unit: attrs['dosage_unit'],
+    default_schedule_type: attrs.fetch('default_schedule_type', medication.default_schedule_type),
     current_supply: attrs['current_supply'],
     supply_at_last_restock: attrs['current_supply'],
     reorder_threshold: attrs['reorder_threshold'],
