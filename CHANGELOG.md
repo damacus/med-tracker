@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.59](https://github.com/damacus/med-tracker/compare/v0.3.58...v0.3.59) (2026-05-14)
+
+
+### Features
+
+* add Open Products Facts medicine barcode lookup ([#1279](https://github.com/damacus/med-tracker/issues/1279)) ([eb4c172](https://github.com/damacus/med-tracker/commit/eb4c17250a4aac26a96c8dbc2630b4edb89c7f35))
+* add Tesco Health Paracetamol 500mg Tablets to curated products ([#1278](https://github.com/damacus/med-tracker/issues/1278)) ([86e439e](https://github.com/damacus/med-tracker/commit/86e439eb607bb4758f59511b6e6de249d9d2233c))
+
+
+### Bug Fixes
+
+* resolve mobile overflow ([#1273](https://github.com/damacus/med-tracker/issues/1273)) ([26b4dd6](https://github.com/damacus/med-tracker/commit/26b4dd63edced0dd52a1d35447b5e9cd5d19adf8))
+
 ## [0.3.58](https://github.com/damacus/med-tracker/compare/v0.3.57...v0.3.58) (2026-05-13)
 
 
