@@ -39,7 +39,7 @@ RSpec.describe 'Person Medications Authorization' do
       expect(page).to have_text('Review')
       click_button 'Add Medication'
 
-      expect(page).to have_text('Schedule was successfully created.')
+      expect(page).to have_text('Medication added successfully.')
     end
 
     it 'allows doctors to open the unified medication assignment flow', :js do
@@ -101,7 +101,7 @@ RSpec.describe 'Person Medications Authorization' do
       expect(page).to have_text('Review')
       click_button 'Add Medication'
 
-      expect(page).to have_text('Schedule was successfully created.')
+      expect(page).to have_text('Medication added successfully.')
       expect(page).to have_text(medication.name)
     end
 

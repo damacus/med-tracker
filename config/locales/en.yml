@@ -913,7 +913,7 @@ en:
       subtitle: Add medication details from saved defaults
     form:
       review_title: Review
-      review_description: Check the selected dose and saved schedule defaults.
+      review_description: Check the selected dose and saved medication defaults.
       frequency: Frequency
       schedule_type: Schedule type
       active_dates: Active dates

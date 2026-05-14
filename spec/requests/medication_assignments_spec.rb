@@ -25,10 +25,10 @@ RSpec.describe 'Medication assignments' do
   end
 
   describe 'POST /people/:person_id/medication_assignments' do
-    it 'creates a PRN schedule from medication metadata and the selected predefined dose' do
+    it 'creates an as-needed person medication from PRN medication metadata and the selected predefined dose' do
       medication = medications(:paracetamol)
       dosage = dosages(:paracetamol_child)
-      person_medication_count = PersonMedication.count
+      schedule_count = Schedule.count
 
       expect do
         post person_medication_assignments_path(person),
@@ -38,27 +38,55 @@ RSpec.describe 'Medication assignments' do
                  source_dosage_option_id: dosage.id
                }
              }
-      end.to change(Schedule, :count).by(1)
+      end.to change(PersonMedication, :count).by(1)
 
-      expect(PersonMedication.count).to eq(person_medication_count)
+      expect(Schedule.count).to eq(schedule_count)
       expect(response).to redirect_to(person_path(person))
-      schedule = Schedule.order(:id).last
+      person_medication = PersonMedication.order(:id).last
 
-      expect(schedule).to have_attributes(
+      expect(person_medication).to have_attributes(
         person: person,
         medication: medication,
         source_dosage_option: dosage,
         dose_amount: BigDecimal('250.0'),
         dose_unit: 'mg',
-        frequency: 'Every 4-6 hours',
         max_daily_doses: 4,
-        min_hours_between_doses: 4,
-        start_date: Time.zone.today,
-        end_date: 1.month.from_now.to_date
+        min_hours_between_doses: 4
       )
-      expect(schedule.dose_cycle).to eq('daily')
-      expect(schedule.schedule_type).to eq('prn')
-      expect(schedule.schedule_config).to include('as_needed' => true)
+      expect(person_medication.dose_cycle).to eq('daily')
+      expect(person_medication.administration_kind).to eq('as_needed')
+    end
+
+    it 'creates an as-needed person medication from ibuprofen PRN metadata' do
+      medication = medications(:ibuprofen)
+      dosage = dosages(:ibuprofen_child)
+      medication.update!(default_schedule_type: :prn)
+      schedule_count = Schedule.count
+
+      expect do
+        post person_medication_assignments_path(person),
+             params: {
+               medication_assignment: {
+                 medication_id: medication.id,
+                 source_dosage_option_id: dosage.id
+               }
+             }
+      end.to change(PersonMedication, :count).by(1)
+
+      expect(Schedule.count).to eq(schedule_count)
+      person_medication = PersonMedication.order(:id).last
+
+      expect(person_medication).to have_attributes(
+        person: person,
+        medication: medication,
+        source_dosage_option: dosage,
+        dose_amount: BigDecimal('200.0'),
+        dose_unit: 'mg',
+        max_daily_doses: 4,
+        min_hours_between_doses: 6
+      )
+      expect(person_medication.dose_cycle).to eq('daily')
+      expect(person_medication.administration_kind).to eq('as_needed')
     end
 
     it 'creates a non-PRN schedule when medication metadata is not as needed' do
@@ -101,8 +129,9 @@ RSpec.describe 'Medication assignments' do
       )
     end
 
-    it 'creates a schedule from a matching legacy dose fallback' do
+    it 'creates a routine person medication for a vitamin from a matching legacy dose fallback' do
       medication = medications(:vitamin_c)
+      schedule_count = Schedule.count
 
       expect do
         post person_medication_assignments_path(person),
@@ -113,22 +142,55 @@ RSpec.describe 'Medication assignments' do
                  dose_unit: 'mg'
                }
              }
-      end.to change(Schedule, :count).by(1)
+      end.to change(PersonMedication, :count).by(1)
 
-      schedule = Schedule.order(:id).last
+      expect(Schedule.count).to eq(schedule_count)
+      person_medication = PersonMedication.order(:id).last
 
-      expect(schedule).to have_attributes(
+      expect(person_medication).to have_attributes(
+        person: person,
         medication: medication,
         source_dosage_option: nil,
         dose_amount: BigDecimal('500.0'),
-        dose_unit: 'mg',
-        frequency: 'As directed'
+        dose_unit: 'mg'
       )
+      expect(person_medication.administration_kind).to eq('routine')
+    end
+
+    it 'creates a routine person medication for a vitamin with a selected predefined dose' do
+      medication = medications(:vitamin_d)
+      dosage = dosages(:vitamin_d_daily)
+      schedule_count = Schedule.count
+
+      expect do
+        post person_medication_assignments_path(person),
+             params: {
+               medication_assignment: {
+                 medication_id: medication.id,
+                 source_dosage_option_id: dosage.id
+               }
+             }
+      end.to change(PersonMedication, :count).by(1)
+
+      expect(Schedule.count).to eq(schedule_count)
+      person_medication = PersonMedication.order(:id).last
+
+      expect(person_medication).to have_attributes(
+        person: person,
+        medication: medication,
+        source_dosage_option: dosage,
+        dose_amount: BigDecimal('1000.0'),
+        dose_unit: 'IU',
+        max_daily_doses: 1
+      )
+      expect(person_medication.dose_cycle).to eq('daily')
+      expect(person_medication.administration_kind).to eq('routine')
     end
 
     it 'ignores submitted timing overrides and uses the selected dose defaults' do
       medication = medications(:ibuprofen)
       dosage = dosages(:ibuprofen_child)
+      medication.update!(default_schedule_type: :prn)
 
       post person_medication_assignments_path(person),
            params: {
@@ -141,11 +203,11 @@ RSpec.describe 'Medication assignments' do
              }
            }
 
-      schedule = Schedule.order(:id).last
+      person_medication = PersonMedication.order(:id).last
 
-      expect(schedule.max_daily_doses).to eq(4)
-      expect(schedule.min_hours_between_doses).to eq(6)
-      expect(schedule.dose_cycle).to eq('daily')
+      expect(person_medication.max_daily_doses).to eq(4)
+      expect(person_medication.min_hours_between_doses).to eq(6)
+      expect(person_medication.dose_cycle).to eq('daily')
     end
 
     it 'rejects a forged inaccessible medication id' do

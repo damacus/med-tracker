@@ -26,9 +26,9 @@ class MedicationAssignmentsController < ApplicationController
 
     if result.success
       respond_to do |format|
-        format.html { redirect_to person_path(@person), notice: t('schedules.created') }
+        format.html { redirect_to person_path(@person), notice: assignment_success_message(result) }
         format.turbo_stream do
-          flash.now[:notice] = t('schedules.created')
+          flash.now[:notice] = assignment_success_message(result)
           render turbo_stream: [
             turbo_stream.update('modal', ''),
             turbo_stream.replace("person_#{@person.id}", Components::People::PersonCard.new(person: @person.reload)),
@@ -118,5 +118,9 @@ class MedicationAssignmentsController < ApplicationController
         ), status: status
       end
     end
+  end
+
+  def assignment_success_message(result)
+    result.record.is_a?(PersonMedication) ? t('person_medications.created') : t('schedules.created')
   end
 end

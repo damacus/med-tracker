@@ -24,6 +24,7 @@ ibuprofen:
   category: Analgesic
   dosage_amount: 200
   dosage_unit: "mg"
+  default_schedule_type: 4
   current_supply: 30
   supply_at_last_restock: 30
   expiry_date: <%= 1.year.from_now.to_date %>

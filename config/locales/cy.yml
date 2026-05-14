@@ -923,7 +923,7 @@ cy:
       subtitle: Ychwanegwch fanylion meddyginiaeth o'r rhagosodiadau sydd wedi'u cadw
     form:
       review_title: Adolygu
-      review_description: Gwiriwch y dos a ddewiswyd a'r rhagosodiadau amserlen sydd
+      review_description: Gwiriwch y dos a ddewiswyd a'r rhagosodiadau meddyginiaeth sydd
         wedi'u cadw.
       frequency: Amlder
       schedule_type: Math o amserlen

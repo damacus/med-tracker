@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class MedicationAssignmentCreator
-  Result = Data.define(:success, :assignment, :schedule)
+  Result = Data.define(:success, :assignment, :record, :schedule)
 
   attr_reader :person, :medication_scope, :assignment
 
@@ -14,21 +14,35 @@ class MedicationAssignmentCreator
   def call
     return failure unless valid_assignment?
 
-    persist_schedule
+    persist_record
   end
 
   private
 
-  def persist_schedule
-    schedule = person.schedules.build(schedule_attributes)
-    return Result.new(success: true, assignment: assignment, schedule: schedule) if schedule.save
-
-    copy_schedule_errors(schedule)
-    Result.new(success: false, assignment: assignment, schedule: schedule)
+  def persist_record
+    direct_assignment? ? persist_person_medication : persist_schedule
   end
 
-  def copy_schedule_errors(schedule)
-    schedule.errors.full_messages.each { |message| assignment.errors.add(:base, message) }
+  def persist_person_medication
+    person_medication = person.person_medications.build(person_medication_attributes)
+    if person_medication.save
+      return Result.new(success: true, assignment: assignment, record: person_medication, schedule: nil)
+    end
+
+    copy_record_errors(person_medication)
+    Result.new(success: false, assignment: assignment, record: person_medication, schedule: nil)
+  end
+
+  def persist_schedule
+    schedule = person.schedules.build(schedule_attributes)
+    return Result.new(success: true, assignment: assignment, record: schedule, schedule: schedule) if schedule.save
+
+    copy_record_errors(schedule)
+    Result.new(success: false, assignment: assignment, record: schedule, schedule: schedule)
+  end
+
+  def copy_record_errors(record)
+    record.errors.full_messages.each { |message| assignment.errors.add(:base, message) }
   end
 
   def valid_assignment?
@@ -91,6 +105,19 @@ class MedicationAssignmentCreator
     schedule_dose_attributes.merge(schedule_timing_attributes)
   end
 
+  def person_medication_attributes
+    {
+      medication: medication,
+      source_dosage_option: selected_dosage_option,
+      dose_amount: selected_dose.amount,
+      dose_unit: selected_dose.unit,
+      administration_kind: person_medication_administration_kind,
+      max_daily_doses: selected_dose.default_max_daily_doses,
+      min_hours_between_doses: selected_dose.default_min_hours_between_doses,
+      dose_cycle: selected_dose.default_dose_cycle.presence || 'daily'
+    }
+  end
+
   def schedule_dose_attributes
     {
       medication: medication,
@@ -117,6 +144,18 @@ class MedicationAssignmentCreator
     medication.default_schedule_type.presence || 'multiple_daily'
   end
 
+  def person_medication_administration_kind
+    supplement_category? ? 'routine' : 'as_needed'
+  end
+
+  def direct_assignment?
+    supplement_category? || schedule_type == 'prn'
+  end
+
+  def supplement_category?
+    %w[vitamin supplement mineral].include?(medication.category.to_s.downcase)
+  end
+
   def schedule_config
     config = medication.default_schedule_config.to_h.deep_dup
     config['schedule_type'] = schedule_type
@@ -131,7 +170,7 @@ class MedicationAssignmentCreator
 
   def failure
     add_failure_errors
-    Result.new(success: false, assignment: assignment, schedule: nil)
+    Result.new(success: false, assignment: assignment, record: nil, schedule: nil)
   end
 
   def add_failure_errors

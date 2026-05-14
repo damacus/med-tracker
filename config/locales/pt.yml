@@ -922,7 +922,7 @@ pt:
       subtitle: Adicione detalhes do medicamento a partir das predefinições guardadas
     form:
       review_title: Rever
-      review_description: Confirme a dose selecionada e as predefinições da agenda
+      review_description: Confirme a dose selecionada e as predefinições do medicamento
         guardadas.
       frequency: Frequência
       schedule_type: Tipo de agenda
