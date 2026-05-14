@@ -151,7 +151,8 @@ module Components
         a(
           href: edit_person_person_medication_path(person, person_medication),
           data: { turbo_frame: 'modal', testid: "edit-person-medication-#{person_medication.id}" },
-          class: 'inline-flex items-center justify-center w-12 h-12 rounded-xl text-on-surface-variant ' \
+          class: 'inline-flex items-center justify-center w-12 min-w-12 h-12 shrink-0 rounded-xl ' \
+                 'text-on-surface-variant ' \
                  'border border-outline hover:text-foreground hover:bg-tertiary-container transition-colors',
           aria_label: t('person_medications.card.edit')
         ) do
@@ -202,7 +203,8 @@ module Components
           AlertDialogTrigger do
             m3_button(
               variant: :text,
-              class: 'w-12 h-12 p-0 rounded-xl text-on-surface-variant hover:text-destructive hover:bg-destructive/5',
+              class: 'w-12 min-w-12 h-12 shrink-0 p-0 rounded-xl text-on-surface-variant ' \
+                     'hover:text-destructive hover:bg-destructive/5',
               data: { testid: "delete-person-medication-#{person_medication.id}" },
               aria_label: t('person_medications.card.delete_aria_label')
             ) do
