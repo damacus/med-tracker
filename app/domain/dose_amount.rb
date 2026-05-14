@@ -14,15 +14,18 @@ class DoseAmount
     @unit = unit
   end
 
-  def to_s
-    return '' if @amount.blank? || @unit.blank?
+  def label
+    return nil if @amount.blank? || @unit.blank?
 
-    "#{formatted_value} #{self.class.pluralize_unit(@amount, @unit)}"
+    "#{formatted_amount} #{self.class.pluralize_unit(@amount, @unit)}"
   end
 
   private
 
-  def formatted_value
-    @amount.to_f.to_s.sub(/\.0$/, '')
+  def formatted_amount
+    value = BigDecimal(@amount.to_s)
+    return value.to_i.to_s if value.frac.zero?
+
+    value.to_s('F').sub(/0+\z/, '').sub(/\.\z/, '')
   end
 end

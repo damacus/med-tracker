@@ -20,7 +20,7 @@ MedicationDosage = Data.define(
   end
 
   def dose_display
-    DoseAmount.new(amount, unit).to_s.presence
+    DoseAmount.new(amount, unit).label
   end
 
   def selection_key
@@ -41,8 +41,6 @@ MedicationDosage = Data.define(
       default_dose_cycle: default_dose_cycle
     }
   end
-
-  delegate :to_s, to: :dose_display
 
   private
 

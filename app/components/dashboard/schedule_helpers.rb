@@ -8,7 +8,7 @@ module Components
         unit = schedule.dose_unit
         return '—' unless amount && unit
 
-        DoseAmount.new(amount, unit).to_s
+        DoseAmount.new(amount, unit).label
       end
 
       def format_quantity

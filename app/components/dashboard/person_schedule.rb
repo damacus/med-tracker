@@ -92,7 +92,7 @@ module Components
       end
 
       def format_dosage(schedule)
-        DoseAmount.new(schedule.dose_amount, schedule.dose_unit).to_s
+        DoseAmount.new(schedule.dose_amount, schedule.dose_unit).label
       end
 
       def format_end_date(schedule)

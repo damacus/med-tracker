@@ -112,7 +112,7 @@ module Components
 
       def medication_description(medication)
         parts = [medication.display_name]
-        dose = DoseAmount.new(medication.dosage_amount, medication.dosage_unit).to_s
+        dose = DoseAmount.new(medication.dosage_amount, medication.dosage_unit).label
         parts << dose if dose.present?
         parts.join(' • ')
       end
@@ -139,7 +139,7 @@ module Components
       end
 
       def dose_label
-        dose = DoseAmount.new(amount, source_dose_unit).to_s
+        dose = DoseAmount.new(amount, source_dose_unit).label
         dose.presence || formatted_amount
       end
 

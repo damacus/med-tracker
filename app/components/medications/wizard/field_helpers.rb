@@ -444,7 +444,7 @@ module Components
 
         def dosage_label(dosage)
           [
-            DoseAmount.new(dosage.amount, dosage.unit).to_s,
+            DoseAmount.new(dosage.amount, dosage.unit).label,
             dosage.frequency.presence
           ].compact.join(' • ')
         end

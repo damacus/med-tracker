@@ -49,7 +49,7 @@ RSpec.describe MedicationDosage do
     end
 
     it 'formats the amount and unit using DoseAmount semantics' do
-      expect(dosage.to_s).to eq('500 mg')
+      expect(dosage.dose_display).to eq('500 mg')
     end
 
     it 'derives a selection key from the dose content' do

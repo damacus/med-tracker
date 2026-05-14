@@ -65,7 +65,7 @@ module Components
 
       def medication_description
         parts = []
-        dose = DoseAmount.new(person_medication.dose_amount, person_medication.dose_unit).to_s
+        dose = DoseAmount.new(person_medication.dose_amount, person_medication.dose_unit).label
         parts << dose if dose.present?
         parts << t('people.add_medication.otc_title')
         parts.join(' • ')

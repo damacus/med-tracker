@@ -42,7 +42,7 @@ class PersonMedication < ApplicationRecord
   end
 
   def dose_display
-    DoseAmount.new(dose_amount, dose_unit).to_s.presence
+    DoseAmount.new(dose_amount, dose_unit).label
   end
 
   private

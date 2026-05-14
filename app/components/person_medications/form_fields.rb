@@ -306,7 +306,7 @@ module Components
       end
 
       def selected_dose_label
-        DoseAmount.new(person_medication.dose_amount, person_medication.dose_unit).to_s.presence
+        DoseAmount.new(person_medication.dose_amount, person_medication.dose_unit).label
       end
 
       def selection_summary_layout_classes(show_dose)

@@ -188,7 +188,7 @@ module Components
       end
 
       def dose_label(source)
-        source.dose_display.presence || DoseAmount.new(source.dose_amount, source.dose_unit).to_s
+        source.dose_display.presence || DoseAmount.new(source.dose_amount, source.dose_unit).label
       end
 
       def own_dose?

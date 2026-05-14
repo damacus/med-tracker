@@ -80,7 +80,7 @@ module Components
 
       def render_dosage_summary(dosage)
         div(class: 'flex items-center gap-2 flex-wrap') do
-          span(class: 'font-semibold text-sm') { DoseAmount.new(dosage.amount, dosage.unit).to_s }
+          span(class: 'font-semibold text-sm') { DoseAmount.new(dosage.amount, dosage.unit).label }
           span(class: 'text-on-surface-variant text-sm') { dosage.frequency }
           if dosage.default_for_adults?
             m3_badge(variant: :outlined, class: 'text-xs') { t('dosages.form.default_for_adults') }

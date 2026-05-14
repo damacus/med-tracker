@@ -98,7 +98,7 @@ class Schedule < ApplicationRecord
   end
 
   def dose_display
-    dose_snapshot&.to_s
+    dose_snapshot&.dose_display
   end
 
   def dose_snapshot
