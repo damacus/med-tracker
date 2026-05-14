@@ -40,6 +40,10 @@ RSpec.describe DoseAmount do
       expect(described_class.new(2, 'tablet').to_s).to eq('2 tablets')
     end
 
+    it 'pluralizes gummies for multiple doses' do
+      expect(described_class.new(2, 'gummy').to_s).to eq('2 gummies')
+    end
+
     it 'does not pluralize measurement abbreviations' do
       expect(described_class.new(2, 'mg').to_s).to eq('2 mg')
     end
