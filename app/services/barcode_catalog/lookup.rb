@@ -8,11 +8,14 @@ module BarcodeCatalog
 
     def lookup(barcode)
       barcode_candidates(barcode).each do |candidate|
-        external = lookup_external(candidate)
-        return external if external
+        imported = lookup_imported_catalog(candidate)
+        return imported if imported
 
         local = lookup_local(candidate)
         return local if local
+
+        cached_opf = lookup_cached_open_products_facts(candidate)
+        return cached_opf if cached_opf
 
         opf = lookup_open_products_facts(candidate)
         return opf if opf
@@ -30,8 +33,17 @@ module BarcodeCatalog
       NhsDmd::BarcodeLookup.candidates_for(barcode)
     end
 
-    def lookup_external(candidate)
-      record = BarcodeCatalogEntry.find_by(gtin: candidate)
+    def lookup_imported_catalog(candidate)
+      record = BarcodeCatalogEntry.where(gtin: candidate).where.not(source: 'open_products_facts').first
+      catalog_entry_attributes(record)
+    end
+
+    def lookup_cached_open_products_facts(candidate)
+      record = BarcodeCatalogEntry.find_by(gtin: candidate, source: 'open_products_facts')
+      catalog_entry_attributes(record)
+    end
+
+    def catalog_entry_attributes(record)
       return nil unless record
 
       {

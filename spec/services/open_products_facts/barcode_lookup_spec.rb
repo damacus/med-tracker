@@ -16,7 +16,21 @@ RSpec.describe OpenProductsFacts::BarcodeLookup do
       'product' => {
         'product_name' => 'Ibuprofen 200mg Pain Relief Tablets',
         'brands' => 'Tesco',
-        'quantity' => '16 tablets'
+        'quantity' => '16 tablets',
+        'categories_tags_en' => %w[Medicines Analgesics]
+      }
+    }
+  end
+
+  let(:non_medicine_product) do
+    {
+      'status' => 1,
+      'code' => barcode,
+      'product' => {
+        'product_name' => 'Laundry Detergent',
+        'brands' => 'Tesco',
+        'quantity' => '30 capsules',
+        'categories_tags_en' => ['Laundry detergents']
       }
     }
   end
@@ -56,6 +70,16 @@ RSpec.describe OpenProductsFacts::BarcodeLookup do
     allow(client).to receive(:product).with(barcode).and_return(nil)
 
     expect(lookup.lookup(barcode)).to be_nil
+  end
+
+  it 'returns nil and does not persist non-medicine products' do
+    allow(client).to receive(:product).with(barcode).and_return(non_medicine_product)
+
+    result = nil
+    expect { result = lookup.lookup(barcode) }
+      .not_to change(BarcodeCatalogEntry, :count)
+
+    expect(result).to be_nil
   end
 
   it 'returns nil and logs a warning on API error' do
