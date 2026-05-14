@@ -112,7 +112,7 @@ module Components
               id: 'user_person_attributes_name',
               value: user.person&.name,
               required: true,
-              class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 ' \
+              class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest py-4 px-4 ' \
                      "#{person_field_error_class(:name)}",
               **person_field_error_attributes(:name, input_id: 'user_person_attributes_name')
             )
@@ -136,7 +136,7 @@ module Components
               value: user.person&.date_of_birth&.to_fs(:db),
               required: true,
               placeholder: 'YYYY-MM-DD',
-              class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all',
+              class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all',
               data: {
                 controller: 'ruby-ui--calendar-input'
               },
@@ -145,7 +145,7 @@ module Components
             render RubyUI::Calendar.new(
               input_id: '#user_person_attributes_date_of_birth',
               date_format: 'yyyy-MM-dd',
-              class: 'rounded-md border shadow-elevation-2 bg-surface-container-high'
+              class: 'rounded-shape-sm border shadow-elevation-2 bg-surface-container-high'
             )
             render_person_field_error(:date_of_birth, input_id: 'user_person_attributes_date_of_birth')
           end
@@ -197,7 +197,7 @@ module Components
               value: user.email_address,
               required: true,
               placeholder: 'email@example.com',
-              class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 ' \
+              class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest py-4 px-4 ' \
                      "#{field_error_class(user, :email_address)}",
               **field_error_attributes(user, :email_address, input_id: 'user_email_address')
             )
@@ -227,7 +227,7 @@ module Components
               id: 'user_password',
               required: user.new_record?,
               placeholder: '••••••••',
-              class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 ' \
+              class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest py-4 px-4 ' \
                      "#{field_error_class(user, :password)}",
               **field_error_attributes(user, :password, input_id: 'user_password')
             )
@@ -249,7 +249,7 @@ module Components
               name: 'user[password_confirmation]',
               id: 'user_password_confirmation',
               placeholder: '••••••••',
-              class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all',
+              class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all',
               required: user.new_record?
             )
           end
@@ -268,7 +268,7 @@ module Components
               render RubyUI::ComboboxTrigger.new(
                 id: 'role_trigger',
                 placeholder: user.role.presence&.titleize || t('admin.users.form.select_role'),
-                class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all'
+                class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all'
               )
 
               render RubyUI::ComboboxPopover.new do

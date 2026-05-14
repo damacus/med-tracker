@@ -102,7 +102,7 @@ module Components
             value: location.name,
             required: true,
             placeholder: t('forms.locations.name_placeholder'),
-            class: 'rounded-md border-outline-variant bg-surface-container-lowest ' \
+            class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest ' \
                    'py-4 px-4 focus:ring-2 focus:ring-primary/10 ' \
                    'focus:border-primary transition-all ' \
                    "#{field_error_class(location, :name)}",
@@ -123,7 +123,7 @@ module Components
             id: 'location_description',
             rows: 3,
             placeholder: t('forms.locations.description_placeholder'),
-            class: 'rounded-md border-outline-variant bg-surface-container-lowest ' \
+            class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest ' \
                    'p-4 focus:ring-2 focus:ring-primary/10 ' \
                    'focus:border-primary transition-all resize-none'
           ) { location.description }

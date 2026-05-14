@@ -178,7 +178,7 @@ module Components
             name: 'dose_option',
             required: true,
             disabled: person_medication.medication_id.blank?,
-            class: 'w-full rounded-md border border-outline bg-background px-3 py-2 text-sm',
+            class: 'w-full rounded-shape-sm border border-outline bg-background px-3 py-2 text-sm',
             data: { person_medication_form_target: 'doseOptionInput',
                     action: 'change->person-medication-form#selectDose' }
           ) do

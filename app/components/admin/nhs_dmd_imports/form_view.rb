@@ -47,7 +47,8 @@ module Components
                   name: 'nhs_dmd_import[release_zip]',
                   accept: '.zip,application/zip',
                   required: true,
-                  class: 'block w-full rounded-md border border-outline-variant bg-surface-container-lowest px-4 py-4'
+                  class: 'block w-full rounded-shape-sm border border-outline-variant ' \
+                         'bg-surface-container-lowest px-4 py-4'
                 )
                 m3_text(variant: :body_medium, class: 'text-on-surface-variant') do
                   t('admin.nhs_dmd_imports.form.help')

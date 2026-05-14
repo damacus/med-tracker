@@ -206,7 +206,7 @@ module Components
           render RubyUI::Combobox.new(class: 'w-full') do
             render RubyUI::ComboboxTrigger.new(
               placeholder: selected_location_name || t('forms.medications.select_location'),
-              class: "rounded-md #{field_error_class(medication, :location)}"
+              class: "rounded-shape-sm #{field_error_class(medication, :location)}"
             )
 
             render RubyUI::ComboboxPopover.new do
@@ -252,7 +252,7 @@ module Components
             value: medication.name,
             required: true,
             placeholder: t('forms.medications.name_placeholder'),
-            class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 ' \
+            class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest py-4 px-4 ' \
                    'focus:ring-2 focus:ring-primary/10 ' \
                    "focus:border-primary transition-all #{field_error_class(medication, :name)}",
             **field_error_attributes(medication, :name, input_id: 'medication_name')
@@ -273,7 +273,7 @@ module Components
             id: 'medication_friendly_name',
             value: medication.friendly_name,
             placeholder: t('forms.medications.friendly_name_placeholder'),
-            class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 ' \
+            class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest py-4 px-4 ' \
                    'focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all'
           )
           m3_text(variant: :body_small, class: 'text-on-surface-variant ml-1') do
@@ -291,7 +291,7 @@ module Components
           render RubyUI::Combobox.new(class: 'w-full') do
             render RubyUI::ComboboxTrigger.new(
               placeholder: medication.category.presence || t('forms.medications.select_category'),
-              class: "rounded-md #{field_error_class(medication, :category)}"
+              class: "rounded-shape-sm #{field_error_class(medication, :category)}"
             )
 
             render RubyUI::ComboboxPopover.new do
@@ -341,7 +341,7 @@ module Components
             id: 'medication_description',
             rows: 3,
             placeholder: t('forms.medications.description_placeholder'),
-            class: 'rounded-md border-outline-variant bg-surface-container-lowest p-4 ' \
+            class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest p-4 ' \
                    'focus:ring-2 focus:ring-primary/10 ' \
                    'focus:border-primary transition-all resize-none'
           ) { medication.description }
@@ -580,7 +580,7 @@ module Components
           select(
             name: dosage_field_name(index, 'unit'),
             id: "medication_dosage_records_attributes_#{index}_unit",
-            class: 'flex h-9 w-full rounded-md border border-outline bg-transparent px-3 py-1 text-sm shadow-sm'
+            class: 'flex h-9 w-full rounded-shape-sm border border-outline bg-transparent px-3 py-1 text-sm shadow-sm'
           ) do
             option(value: '', selected: dosage.unit.blank?) { 'Select unit' }
             dosage_units.each do |unit|
@@ -642,7 +642,7 @@ module Components
           select(
             name: dosage_field_name(index, 'default_dose_cycle'),
             id: "medication_dosage_records_attributes_#{index}_default_dose_cycle",
-            class: 'flex h-9 w-full rounded-md border border-outline bg-transparent px-3 py-1 text-sm shadow-sm',
+            class: 'flex h-9 w-full rounded-shape-sm border border-outline bg-transparent px-3 py-1 text-sm shadow-sm',
             required: dosage_row_requires_input?(dosage),
             data: { 'frequency-suggestions-target': 'doseCycle' }
           ) do
@@ -717,7 +717,7 @@ module Components
             min: '0',
             step: '0.01',
             placeholder: t('forms.medications.current_supply_placeholder', default: 'e.g., 30'),
-            class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 ' \
+            class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest py-4 px-4 ' \
                    'focus:ring-2 focus:ring-primary/10 ' \
                    'focus:border-primary transition-all'
           )
@@ -738,7 +738,7 @@ module Components
             min: '0',
             step: '0.01',
             placeholder: t('forms.medications.reorder_threshold_placeholder', default: 'e.g., 5'),
-            class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 ' \
+            class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest py-4 px-4 ' \
                    'focus:ring-2 focus:ring-primary/10 ' \
                    'focus:border-primary transition-all'
           )

@@ -56,8 +56,11 @@ module Components
       def render_schedule_type_field
         FormField do
           render RubyUI::FormFieldLabel.new(for: 'schedule_type', class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1') { t('schedules.workflow.schedule_type_label') }
-          select(name: 'schedule_type', id: 'schedule_type',
-                 class: 'w-full rounded-md border border-outline bg-surface-container-lowest px-3 py-4 text-sm') do
+          select(
+            name: 'schedule_type',
+            id: 'schedule_type',
+            class: 'w-full rounded-shape-sm border border-outline bg-surface-container-lowest px-3 py-4 text-sm'
+          ) do
             option(value: '', selected: schedule_type.blank?) { t('schedules.workflow.schedule_type_placeholder') }
             option(value: 'otc', selected: schedule_type == 'otc') { t('schedules.workflow.schedule_type_options.otc') }
             option(value: 'prescribed', selected: schedule_type == 'prescribed') do
@@ -70,8 +73,12 @@ module Components
       def render_person_field
         FormField do
           render RubyUI::FormFieldLabel.new(for: 'person_id', class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1') { t('schedules.workflow.person_label') }
-          select(name: 'person_id', id: 'person_id', required: true,
-                 class: 'w-full rounded-md border border-outline bg-surface-container-lowest px-3 py-4 text-sm') do
+          select(
+            name: 'person_id',
+            id: 'person_id',
+            required: true,
+            class: 'w-full rounded-shape-sm border border-outline bg-surface-container-lowest px-3 py-4 text-sm'
+          ) do
             option(value: '') { t('schedules.workflow.person_placeholder') }
             people.each do |person|
               option(value: person.id, selected: person.id.to_s == selected_person_id.to_s) { person.name }
@@ -83,8 +90,12 @@ module Components
       def render_medication_field
         FormField do
           render RubyUI::FormFieldLabel.new(for: 'medication_id', class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1') { t('schedules.workflow.medication_label') }
-          select(name: 'medication_id', id: 'medication_id', required: true,
-                 class: 'w-full rounded-md border border-outline bg-surface-container-lowest px-3 py-4 text-sm') do
+          select(
+            name: 'medication_id',
+            id: 'medication_id',
+            required: true,
+            class: 'w-full rounded-shape-sm border border-outline bg-surface-container-lowest px-3 py-4 text-sm'
+          ) do
             option(value: '') { t('schedules.workflow.medication_placeholder') }
             medications.each do |medication|
               option(value: medication.id, selected: medication.id.to_s == selected_medication_id.to_s) do
@@ -104,7 +115,7 @@ module Components
             id: 'frequency',
             value: frequency,
             placeholder: t('schedules.workflow.frequency_placeholder'),
-            class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all'
+            class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all'
           )
         end
       end

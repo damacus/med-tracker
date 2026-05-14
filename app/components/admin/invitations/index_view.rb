@@ -75,7 +75,7 @@ module Components
               id: 'invitation_email',
               value: @invitation.email,
               required: true,
-              class: 'rounded-md border-border bg-card py-4 px-4 focus:ring-2 ' \
+              class: 'rounded-shape-sm border-border bg-card py-4 px-4 focus:ring-2 ' \
                      'focus:ring-primary/10 focus:border-primary transition-all'
             )
           end

@@ -25,7 +25,7 @@ module RubyUI
         spellcheck: 'false',
         placeholder: @placeholder,
         class: [
-          'flex h-9 w-full rounded-md bg-transparent py-3 text-sm outline-none border-none',
+          'flex h-9 w-full rounded-shape-sm bg-transparent py-3 text-sm outline-none border-none',
           'focus:ring-0',
           'placeholder:text-on-surface-variant',
           'disabled:cursor-not-allowed disabled:opacity-50',

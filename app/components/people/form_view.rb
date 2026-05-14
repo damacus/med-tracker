@@ -132,7 +132,7 @@ module Components
             value: person.name,
             required: true,
             placeholder: t('forms.people.name_placeholder', default: 'e.g., Jane Doe'),
-            class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 ' \
+            class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest py-4 px-4 ' \
                    "#{field_error_class(person, :name)}",
             **field_error_attributes(person, :name, input_id: 'person_name')
           )
@@ -152,7 +152,7 @@ module Components
             id: 'person_email',
             value: person.email,
             placeholder: t('forms.people.email_placeholder', default: 'e.g., jane@example.com'),
-            class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 ' \
+            class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest py-4 px-4 ' \
                    "#{field_error_class(person, :email)}",
             **field_error_attributes(person, :email, input_id: 'person_email')
           )
@@ -173,7 +173,7 @@ module Components
             value: person.date_of_birth&.to_fs(:db),
             required: true,
             placeholder: 'YYYY-MM-DD',
-            class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 ' \
+            class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest py-4 px-4 ' \
                    'transition-all ' \
                    "#{field_error_class(person, :date_of_birth)}",
             data: {
@@ -184,7 +184,7 @@ module Components
           render RubyUI::Calendar.new(
             input_id: '#person_date_of_birth',
             date_format: 'yyyy-MM-dd',
-            class: 'rounded-md border shadow-elevation-2 bg-surface-container-high'
+            class: 'rounded-shape-sm border shadow-elevation-2 bg-surface-container-high'
           )
           render_field_error(person, :date_of_birth, input_id: 'person_date_of_birth')
         end
@@ -199,7 +199,7 @@ module Components
           render RubyUI::Combobox.new(class: 'w-full') do
             render RubyUI::ComboboxTrigger.new(
               placeholder: selected_person_type&.humanize || t('people.form.select_person_type'),
-              class: 'rounded-md border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all'
+              class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all'
             )
 
             render RubyUI::ComboboxPopover.new do
