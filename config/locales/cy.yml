@@ -1492,9 +1492,15 @@ cy:
     index:
       eyebrow: Dadansoddeg Lles
       title: Adroddiad Iechyd
+      person_filter_label: Person
+      all_people: Pawb
       start_date_label: O
       end_date_label: I
       apply_filters_aria_label: Defnyddio hidlwyr dyddiad
+      today:
+        title: Heddiw
+        description: Meddyginiaethau a gymerwyd heddiw, wedi'u grwpio yn ôl person.
+        empty: Dim meddyginiaethau wedi'u cymryd heddiw.
       summary:
         overall_compliance: Cydymffurfiaeth Gyffredinol
         total_doses_logged: Cyfanswm dosau wedi'u cofnodi

@@ -8,8 +8,22 @@ RSpec.describe Views::Reports::Index do
       daily_data: daily_data,
       smart_insights: smart_insights,
       start_date: 7.days.ago.to_date,
-      end_date: Time.zone.today
+      end_date: Time.zone.today,
+      today_taken_medications: today_taken_medications,
+      people: people,
+      selected_person_id: selected_person_id
     )
+  end
+
+  let(:today_taken_medications) do
+    [
+      Reports::TodayTakenMedicationsQuery::PersonGroup.new(
+        person: person,
+        medications: [
+          Reports::TodayTakenMedicationsQuery::MedicationSummary.new(id: 1, name: 'Paracetamol')
+        ]
+      )
+    ]
   end
 
   let(:daily_data) do
@@ -49,6 +63,22 @@ RSpec.describe Views::Reports::Index do
     # rubocop:enable RSpec/SubjectStub
   end
 
+  def person
+    @person ||= build_stubbed(:person, id: 1, name: 'John Doe')
+  end
+
+  def other_person
+    @other_person ||= build_stubbed(:person, id: 2, name: 'Jane Doe')
+  end
+
+  def people
+    [person, other_person]
+  end
+
+  def selected_person_id
+    nil
+  end
+
   it 'renders the health report heading' do
     rendered = render report_view
     expect(rendered).to include('Health Report')
@@ -67,6 +97,33 @@ RSpec.describe Views::Reports::Index do
     expect(rendered).to include('Mon')
     expect(rendered).to include('Tue')
     expect(rendered).to include('Wed')
+  end
+
+  it 'renders the Today section and person filter' do
+    rendered = render report_view
+
+    expect(rendered).to include('Today')
+    expect(rendered).to include('All people')
+    expect(rendered).to include('John Doe')
+    expect(rendered).to include('Paracetamol')
+  end
+
+  it 'does not render timestamps in the Today section' do
+    rendered = render report_view
+
+    today_section = rendered.match(%r{<section id="today".*?</section>}m).to_s
+    expect(today_section).not_to include('08:00')
+    expect(today_section).not_to include('noon')
+  end
+
+  context 'when no medications have been taken today' do
+    let(:today_taken_medications) { [] }
+
+    it 'renders an empty state' do
+      rendered = render report_view
+
+      expect(rendered).to include('No medications taken today.')
+    end
   end
 
   it 'renders the smart insight with interpolated data' do

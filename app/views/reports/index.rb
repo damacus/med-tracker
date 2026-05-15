@@ -5,17 +5,21 @@ module Views
     InsightCard = Data.define(:title, :value, :description, :icon_class, :text_color, :icon_background_class)
 
     class Index < Views::Base
-      def initialize(daily_data:, smart_insights:, start_date:, end_date:)
+      def initialize(daily_data:, smart_insights:, start_date:, end_date:, **options)
         @daily_data = daily_data
         @smart_insights = smart_insights
         @start_date = start_date
         @end_date = end_date
+        @today_taken_medications = options.fetch(:today_taken_medications)
+        @people = options.fetch(:people)
+        @selected_person_id = options.fetch(:selected_person_id)
         super()
       end
 
       def view_template
         div(class: 'container mx-auto px-4 py-12 max-w-5xl space-y-12') do
           render_header
+          render_today_section
           render_summary_card
           render_compliance_section
           render_insights_grid
@@ -24,7 +28,6 @@ module Views
 
       private
 
-      # rubocop:disable Metrics/AbcSize
       def render_header
         div(class: 'mb-12 flex flex-col gap-6 md:flex-row md:items-end md:justify-between') do
           div(class: 'space-y-2 text-center md:text-left') do
@@ -35,22 +38,19 @@ module Views
             p(class: 'text-on-surface-variant') { "#{@start_date.strftime('%B %d')} — #{@end_date.strftime('%B %d, %Y')}" }
           end
 
-          form(action: view_context.reports_path, method: :get, class: 'flex items-end gap-3 rounded-[1.5rem] border border-border/70 bg-popover p-4 shadow-elevation-1') do
-            div(class: 'flex flex-col gap-1') do
-              label(for: 'start_date', class: 'text-xs font-semibold uppercase tracking-wider text-on-surface-variant') { t('reports.index.start_date_label') }
-              input(type: 'date', name: 'start_date', id: 'start_date', value: @start_date, class: 'form-input rounded-shape-sm border-border bg-background text-sm text-foreground focus:border-primary focus:ring-primary')
-            end
-            div(class: 'flex flex-col gap-1') do
-              label(for: 'end_date', class: 'text-xs font-semibold uppercase tracking-wider text-on-surface-variant') { t('reports.index.end_date_label') }
-              input(type: 'date', name: 'end_date', id: 'end_date', value: @end_date, class: 'form-input rounded-shape-sm border-border bg-background text-sm text-foreground focus:border-primary focus:ring-primary')
-            end
-            m3_button(type: 'submit', class: 'rounded-xl shadow-elevation-1', 'aria-label': t('reports.index.apply_filters_aria_label')) do
-              render Icons::ChevronRight.new(size: 20)
-            end
-          end
+          render Components::Reports::FilterForm.new(
+            action_path: view_context.reports_path,
+            people: @people,
+            selected_person_id: @selected_person_id,
+            start_date: @start_date,
+            end_date: @end_date
+          )
         end
       end
-      # rubocop:enable Metrics/AbcSize
+
+      def render_today_section
+        render Components::Reports::TodaySection.new(today_taken_medications: @today_taken_medications)
+      end
 
       # rubocop:disable Metrics/AbcSize
       def render_summary_card

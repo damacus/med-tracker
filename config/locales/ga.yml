@@ -1255,9 +1255,15 @@ ga:
     index:
       eyebrow: Anailís Folláine
       title: Tuarascáil Sláinte
+      person_filter_label: Duine
+      all_people: Gach duine
       start_date_label: Ó
       end_date_label: Go
       apply_filters_aria_label: Cuir scagairí dáta i bhfeidhm
+      today:
+        title: Inniu
+        description: Cógais a glacadh inniu, grúpáilte de réir duine.
+        empty: Níor glacadh aon chógas inniu.
       summary:
         overall_compliance: Cloí Iomlán
         total_doses_logged: Líon Iomlán Dáileoga Logáilte

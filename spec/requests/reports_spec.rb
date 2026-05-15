@@ -30,6 +30,26 @@ RSpec.describe 'Reports' do
         expect(response).to have_http_status(:success)
       end
 
+      it 'returns HTTP success and filters report content by accessible person' do
+        get reports_path, params: { person_id: people(:john).id }
+
+        expect(response).to have_http_status(:success)
+        expect(response.body).to include('John Doe')
+        expect(response.body).to include('Paracetamol')
+        expect(response.body).not_to include('Ibuprofen')
+      end
+
+      it 'does not expose inaccessible person data through the person filter' do
+        post '/logout'
+        post '/login', params: { email: users(:parent).email_address, password: 'password' }
+
+        get reports_path, params: { person_id: people(:john).id }
+
+        expect(response).to have_http_status(:success)
+        expect(response.body).not_to include('John Doe')
+        expect(response.body).not_to include('Paracetamol')
+      end
+
       it 'renders the Smart Insights anchor section' do
         get reports_path
 
