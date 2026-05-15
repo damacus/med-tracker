@@ -1119,9 +1119,15 @@ en:
     index:
       eyebrow: Wellness Analytics
       title: Health Report
+      person_filter_label: Person
+      all_people: All people
       start_date_label: From
       end_date_label: To
       apply_filters_aria_label: Apply date filters
+      today:
+        title: Today
+        description: Medications taken today, grouped by person.
+        empty: No medications taken today.
       summary:
         overall_compliance: Overall Compliance
         total_doses_logged: Total Doses Logged

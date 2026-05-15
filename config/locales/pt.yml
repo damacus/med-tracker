@@ -1106,9 +1106,15 @@ pt:
     index:
       eyebrow: Análises de Bem-estar
       title: Relatório de Saúde
+      person_filter_label: Pessoa
+      all_people: Todas as pessoas
       start_date_label: De
       end_date_label: Até
       apply_filters_aria_label: Aplicar filtros de data
+      today:
+        title: Hoje
+        description: Medicações tomadas hoje, agrupadas por pessoa.
+        empty: Nenhuma medicação tomada hoje.
       summary:
         overall_compliance: Cumprimento geral
         total_doses_logged: Total de doses registadas

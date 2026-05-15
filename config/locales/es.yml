@@ -1549,9 +1549,15 @@ es:
     index:
       eyebrow: Análisis de bienestar
       title: Informe de salud
+      person_filter_label: Persona
+      all_people: Todas las personas
       start_date_label: Desde
       end_date_label: Hasta
       apply_filters_aria_label: Aplicar filtros de fecha
+      today:
+        title: Hoy
+        description: Medicamentos tomados hoy, agrupados por persona.
+        empty: No se han tomado medicamentos hoy.
       summary:
         overall_compliance: Adherencia general
         total_doses_logged: Dosis registradas en total
