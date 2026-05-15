@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.60](https://github.com/damacus/med-tracker/compare/v0.3.59...v0.3.60) (2026-05-15)
+
+
+### Features
+
+* share non-prescribed medications directly ([#1282](https://github.com/damacus/med-tracker/issues/1282)) ([c6921a8](https://github.com/damacus/med-tracker/commit/c6921a826490a8ea2a62a44e05addcc002832054))
+
+
+### Bug Fixes
+
+* honor TZ for Rails time zone ([#1292](https://github.com/damacus/med-tracker/issues/1292)) ([c94626e](https://github.com/damacus/med-tracker/commit/c94626e72558044f2db868784a5afb049b88582c))
+
 ## [0.3.59](https://github.com/damacus/med-tracker/compare/v0.3.58...v0.3.59) (2026-05-14)
 
 
