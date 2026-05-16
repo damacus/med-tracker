@@ -17,6 +17,7 @@ RSpec.describe 'Profiles' do
       get profile_path
 
       expect(response).to have_http_status(:ok)
+      expect(response.body).to include('Profile settings')
       expect(response.body).to include('My Profile')
       expect(response.body).to include(user.name)
       expect(response.body).to include(account.email)

@@ -1136,7 +1136,7 @@ es:
       cancel: Cancelar
       submit: Actualizar contraseña
     show:
-      eyebrow: Atelier de la cuenta
+      eyebrow: Configuración del perfil
       title: Mi perfil
       description: Organiza tu cuenta, las preferencias de seguridad y el ritmo de
         notificaciones desde un solo panel.
