@@ -44,13 +44,22 @@ RSpec.describe Components::Medications::PriorDayTakeAction, type: :component do
     expect(trigger.at_css('svg.lucide-calendar')).not_to be_nil
   end
 
-  def render_component
+  it 'renders configured button triggers as block width wrappers' do
+    build_alternate_medication
+    rendered = render_component(button: { class: 'w-full' })
+
+    trigger = rendered.at_css("[data-action='click->ruby-ui--dialog#open']")
+    expect(trigger['class']).to include('block w-full')
+  end
+
+  def render_component(button: nil)
     html = view_context.render(
       described_class.new(
         source: source,
         context: { person: person, current_user: user },
         amount: source.dose_amount,
-        testid: "log-past-dose-schedule-#{source.id}"
+        testid: "log-past-dose-schedule-#{source.id}",
+        button: button
       )
     )
     Nokogiri::HTML::DocumentFragment.parse(html)

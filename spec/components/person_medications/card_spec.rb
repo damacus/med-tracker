@@ -50,6 +50,19 @@ RSpec.describe Components::PersonMedications::Card, type: :component do
     expect(link['class']).to include('min-w-12')
   end
 
+  it 'renders editable actions in a responsive action dock' do
+    rendered = render_person_medication_card(update: true, destroy: true)
+
+    expect(person_medication_action_dock_signature(rendered)).to eq(
+      shell: ['@container'],
+      dock: ['grid-cols-[minmax(0,1fr)_3rem]', '@[22rem]:grid-cols-[minmax(5.25rem,0.7fr)_minmax(0,1.4fr)_3rem]'],
+      log: %w[order-1 col-span-2 @[22rem]:order-2],
+      edit: %w[order-2 @[22rem]:order-1],
+      delete: %w[order-3],
+      actions: %i[log edit delete]
+    )
+  end
+
   def render_person_medication_card(update: false, destroy: false)
     vc = view_context
     vc.singleton_class.define_method(:current_user) { nil }
@@ -57,5 +70,36 @@ RSpec.describe Components::PersonMedications::Card, type: :component do
     vc.singleton_class.define_method(:policy) { |_record| policy_stub }
     html = vc.render(described_class.new(person_medication: person_medication, person: person))
     Nokogiri::HTML::DocumentFragment.parse(html)
+  end
+
+  def person_medication_action_dock_signature(rendered)
+    shell = rendered.at_css('[data-testid="person-medication-action-shell"]')
+    dock = rendered.at_css('[data-testid="person-medication-action-dock"]')
+    log_action = dock.at_css('[data-testid="person-medication-log-action"]')
+    edit_action = dock.at_css('[data-testid="person-medication-edit-action"]')
+    delete_action = dock.at_css('[data-testid="person-medication-delete-action"]')
+
+    {
+      shell: class_tokens(shell).intersection(['@container']),
+      dock: class_tokens(dock).intersection(
+        ['grid-cols-[minmax(0,1fr)_3rem]', '@[22rem]:grid-cols-[minmax(5.25rem,0.7fr)_minmax(0,1.4fr)_3rem]']
+      ),
+      log: class_tokens(log_action).intersection(%w[order-1 col-span-2 @[22rem]:order-2]),
+      edit: class_tokens(edit_action).intersection(%w[order-2 @[22rem]:order-1]),
+      delete: class_tokens(delete_action).intersection(%w[order-3]),
+      actions: person_medication_action_names(log_action, edit_action, delete_action)
+    }
+  end
+
+  def person_medication_action_names(log_action, edit_action, delete_action)
+    [
+      (:log if log_action.at_css("button[data-testid='log-past-dose-person-medication-#{person_medication.id}']")),
+      (:edit if edit_action.at_css("a[data-testid='edit-person-medication-#{person_medication.id}']")),
+      (:delete if delete_action.at_css("button[data-testid='delete-person-medication-#{person_medication.id}']"))
+    ].compact
+  end
+
+  def class_tokens(node)
+    node['class'].split
   end
 end

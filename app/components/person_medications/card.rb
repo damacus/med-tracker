@@ -124,12 +124,43 @@ module Components
       end
 
       def render_person_medication_actions
-        div(class: 'flex items-center gap-2 w-full') do
+        div(class: 'w-full space-y-2 @container', data: { testid: 'person-medication-action-shell' }) do
+          div(class: action_dock_classes, data: { testid: 'person-medication-action-dock' }) do
+            div(class: log_action_classes, data: { testid: 'person-medication-log-action' }) do
+              render_past_dose_button
+            end
+            if view_context.policy(person_medication).update?
+              div(class: edit_action_classes, data: { testid: 'person-medication-edit-action' }) do
+                render_edit_button
+              end
+            end
+            if view_context.policy(person_medication).destroy?
+              div(class: delete_action_classes, data: { testid: 'person-medication-delete-action' }) do
+                render_delete_dialog
+              end
+            end
+          end
+
           render_reorder_controls if view_context.policy(person_medication).update?
-          render_past_dose_button
-          render_edit_button if view_context.policy(person_medication).update?
-          render_delete_dialog if view_context.policy(person_medication).destroy?
         end
+      end
+
+      def action_dock_classes
+        'grid w-full grid-cols-[minmax(0,1fr)_3rem] items-center gap-2 rounded-[1.875rem] ' \
+          'bg-surface-container-high p-2 ' \
+          '@[22rem]:grid-cols-[minmax(5.25rem,0.7fr)_minmax(0,1.4fr)_3rem]'
+      end
+
+      def log_action_classes
+        'order-1 col-span-2 min-w-0 @[22rem]:order-2 @[22rem]:col-span-1'
+      end
+
+      def edit_action_classes
+        'order-2 min-w-0 @[22rem]:order-1'
+      end
+
+      def delete_action_classes
+        'order-3 flex justify-end'
       end
 
       def render_past_dose_button
@@ -139,10 +170,9 @@ module Components
           amount: person_medication.dose_amount,
           testid: "log-past-dose-person-medication-#{person_medication.id}",
           button: {
-            variant: :outlined,
+            variant: :filled,
             size: :lg,
-            class: 'flex-1 rounded-xl py-6 font-bold border-outline text-on-surface-variant ' \
-                   'hover:bg-tertiary-container transition-colors'
+            class: 'w-full min-h-14 rounded-3xl px-4 font-bold shadow-elevation-1'
           }
         )
       end
@@ -151,17 +181,18 @@ module Components
         a(
           href: edit_person_person_medication_path(person, person_medication),
           data: { turbo_frame: 'modal', testid: "edit-person-medication-#{person_medication.id}" },
-          class: 'inline-flex items-center justify-center w-12 min-w-12 h-12 shrink-0 rounded-xl ' \
-                 'text-on-surface-variant ' \
-                 'border border-outline hover:text-foreground hover:bg-tertiary-container transition-colors',
+          class: 'inline-flex h-12 min-w-12 w-full shrink-0 items-center justify-center gap-2 ' \
+                 'rounded-2xl border border-outline/70 bg-surface-container-low px-3 text-sm ' \
+                 'font-bold text-primary hover:bg-surface-container-high transition-colors',
           aria_label: t('person_medications.card.edit')
         ) do
           render Icons::Pencil.new(size: 20)
+          span { t('person_medications.card.edit') }
         end
       end
 
       def render_reorder_controls
-        div(class: 'flex flex-col gap-1') do
+        div(class: 'flex justify-center gap-1 rounded-2xl bg-surface-container-low p-1') do
           form_with(
             url: reorder_person_person_medication_path(person, person_medication),
             method: :patch,
@@ -171,7 +202,7 @@ module Components
             m3_button(
               variant: :text,
               type: :submit,
-              class: 'w-8 h-6 p-0 rounded-md text-on-surface-variant hover:text-foreground',
+              class: 'w-10 h-8 p-0 rounded-xl text-on-surface-variant hover:text-foreground',
               data: { testid: "move-up-person-medication-#{person_medication.id}" },
               aria_label: t('person_medications.card.move_up_aria_label')
             ) do
@@ -188,7 +219,7 @@ module Components
             m3_button(
               variant: :text,
               type: :submit,
-              class: 'w-8 h-6 p-0 rounded-md text-on-surface-variant hover:text-foreground',
+              class: 'w-10 h-8 p-0 rounded-xl text-on-surface-variant hover:text-foreground',
               data: { testid: "move-down-person-medication-#{person_medication.id}" },
               aria_label: t('person_medications.card.move_down_aria_label')
             ) do
@@ -203,8 +234,8 @@ module Components
           AlertDialogTrigger do
             m3_button(
               variant: :text,
-              class: 'w-12 min-w-12 h-12 shrink-0 p-0 rounded-xl text-on-surface-variant ' \
-                     'hover:text-destructive hover:bg-destructive/5',
+              class: 'w-12 min-w-12 h-12 shrink-0 p-0 rounded-2xl text-error ' \
+                     'hover:bg-error-container',
               data: { testid: "delete-person-medication-#{person_medication.id}" },
               aria_label: t('person_medications.card.delete_aria_label')
             ) do

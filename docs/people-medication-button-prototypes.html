@@ -1,0 +1,1224 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>People Medication Card Button Prototypes</title>
+    <link rel="icon" href="data:,">
+    <style>
+      :root {
+        --md-sys-color-primary: #1b4fb8;
+        --md-sys-color-on-primary: #ffffff;
+        --md-sys-color-primary-container: #dbe8ff;
+        --md-sys-color-on-primary-container: #102447;
+        --md-sys-color-secondary-container: #e8eef8;
+        --md-sys-color-on-secondary-container: #24324a;
+        --md-sys-color-surface: #fbfdff;
+        --md-sys-color-surface-container-lowest: #fbfdff;
+        --md-sys-color-surface-container-low: #f5f8fc;
+        --md-sys-color-surface-container: #edf2f8;
+        --md-sys-color-surface-container-high: #e5edf6;
+        --md-sys-color-surface-container-highest: #dce6f2;
+        --md-sys-color-on-surface: #15213a;
+        --md-sys-color-on-surface-variant: #5c6a82;
+        --md-sys-color-outline: #8492a8;
+        --md-sys-color-outline-variant: #c2cedf;
+        --md-sys-color-error: #ba1a1a;
+        --md-sys-color-error-container: #ffdad6;
+        --md-sys-color-on-error-container: #410002;
+        --md-sys-color-warning-container: #ffdcc2;
+        --md-sys-color-on-warning-container: #7c2d12;
+        --radius-xs: 4px;
+        --radius-sm: 8px;
+        --radius-md: 12px;
+        --radius-lg: 16px;
+        --radius-xl: 28px;
+        --radius-full: 999px;
+        --shadow-1: 0 2px 8px rgba(16, 36, 71, 0.07), 0 1px 2px rgba(16, 36, 71, 0.08);
+        --shadow-2: 0 12px 28px rgba(16, 36, 71, 0.12), 0 2px 6px rgba(16, 36, 71, 0.08);
+        --shadow-3: 0 24px 54px rgba(16, 36, 71, 0.14), 0 6px 18px rgba(16, 36, 71, 0.08);
+        color-scheme: light;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        background: var(--md-sys-color-surface-container);
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        color: var(--md-sys-color-on-surface);
+        background:
+          radial-gradient(circle at 12% 0%, rgba(219, 232, 255, 0.78), transparent 32rem),
+          radial-gradient(circle at 86% 6%, rgba(255, 220, 194, 0.52), transparent 28rem),
+          linear-gradient(180deg, #f1f6fd 0%, #edf2f8 44%, #f7f9fd 100%);
+        font-family: Aptos, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+      }
+
+      button {
+        font: inherit;
+      }
+
+      .prototype-shell {
+        width: min(1560px, calc(100vw - 40px));
+        margin: 0 auto;
+        padding: 32px 0 72px;
+      }
+
+      .prototype-header {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 24px;
+        padding: 0 2px 28px;
+      }
+
+      .prototype-kicker,
+      .variant-kicker,
+      .mock-label,
+      .metric-label,
+      .date-label {
+        margin: 0;
+        color: var(--md-sys-color-on-surface-variant);
+        font-size: 12px;
+        font-weight: 800;
+        line-height: 1.2;
+        text-transform: uppercase;
+        letter-spacing: 0;
+      }
+
+      .prototype-title {
+        margin: 8px 0 0;
+        max-width: 760px;
+        font-size: 42px;
+        line-height: 1.05;
+        letter-spacing: 0;
+      }
+
+      .prototype-summary {
+        max-width: 620px;
+        margin: 0;
+        color: var(--md-sys-color-on-surface-variant);
+        font-size: 16px;
+        line-height: 1.65;
+      }
+
+      .variant-list {
+        display: grid;
+        gap: 28px;
+      }
+
+      .variant {
+        padding: 22px;
+        border: 1px solid rgba(132, 146, 168, 0.28);
+        border-radius: 32px;
+        background: rgba(251, 253, 255, 0.76);
+        box-shadow: var(--shadow-2);
+        backdrop-filter: blur(20px);
+      }
+
+      .variant-header {
+        display: flex;
+        align-items: start;
+        justify-content: space-between;
+        gap: 18px;
+        padding: 2px 4px 18px;
+      }
+
+      .variant-title {
+        margin: 4px 0 0;
+        font-size: 24px;
+        line-height: 1.2;
+        letter-spacing: 0;
+      }
+
+      .variant-copy {
+        max-width: 820px;
+        margin: 8px 0 0;
+        color: var(--md-sys-color-on-surface-variant);
+        font-size: 14px;
+        line-height: 1.55;
+      }
+
+      .variant-chip {
+        flex: none;
+        display: inline-flex;
+        min-height: 32px;
+        align-items: center;
+        border-radius: var(--radius-full);
+        border: 1px solid rgba(27, 79, 184, 0.22);
+        background: var(--md-sys-color-primary-container);
+        color: var(--md-sys-color-on-primary-container);
+        padding: 6px 12px;
+        font-size: 12px;
+        font-weight: 800;
+        line-height: 1;
+      }
+
+      .screens {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 404px;
+        gap: 18px;
+        align-items: start;
+      }
+
+      .screen {
+        margin: 0;
+        min-width: 0;
+      }
+
+      .screen-caption {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin: 0 0 10px;
+        padding: 0 4px;
+      }
+
+      .screen-size {
+        color: var(--md-sys-color-on-surface-variant);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .desktop-frame,
+      .phone-frame {
+        overflow: hidden;
+        border: 1px solid rgba(132, 146, 168, 0.26);
+        background: var(--md-sys-color-surface-container-low);
+        box-shadow: var(--shadow-1);
+      }
+
+      .desktop-frame {
+        min-height: 600px;
+        border-radius: 28px;
+      }
+
+      .phone-frame {
+        width: 390px;
+        min-height: 724px;
+        border-radius: 36px;
+      }
+
+      .mock-page {
+        min-height: inherit;
+        padding: 32px;
+        background:
+          linear-gradient(180deg, rgba(251, 253, 255, 0.84), rgba(245, 248, 252, 0.92)),
+          var(--md-sys-color-surface-container-low);
+      }
+
+      .phone-frame .mock-page {
+        padding: 20px;
+      }
+
+      .person-header {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        padding-bottom: 26px;
+        border-bottom: 1px solid rgba(194, 206, 223, 0.72);
+      }
+
+      .person-header-actions {
+        margin-left: auto;
+        display: flex;
+        gap: 10px;
+      }
+
+      .person-avatar {
+        flex: none;
+        display: grid;
+        place-items: center;
+        width: 72px;
+        height: 72px;
+        border-radius: 24px;
+        background: var(--md-sys-color-primary-container);
+        color: var(--md-sys-color-on-primary-container);
+        font-size: 24px;
+        font-weight: 900;
+        box-shadow: inset 0 0 0 1px rgba(27, 79, 184, 0.08);
+      }
+
+      .phone-frame .person-avatar {
+        width: 44px;
+        height: 44px;
+        border-radius: 16px;
+        font-size: 15px;
+      }
+
+      .person-name {
+        margin: 0;
+        font-size: 34px;
+        line-height: 1.05;
+        font-weight: 900;
+        letter-spacing: 0;
+      }
+
+      .phone-frame .person-name {
+        font-size: 24px;
+      }
+
+      .person-meta {
+        margin: 7px 0 0;
+        color: var(--md-sys-color-on-surface-variant);
+        font-size: 15px;
+        font-weight: 700;
+      }
+
+      .desktop-content {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 270px;
+        gap: 28px;
+        padding-top: 28px;
+      }
+
+      .phone-frame .desktop-content {
+        display: block;
+        padding-top: 20px;
+      }
+
+      .section-heading-row {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        margin-bottom: 18px;
+      }
+
+      .section-title {
+        margin: 0;
+        font-size: 24px;
+        line-height: 1.2;
+        font-weight: 850;
+        letter-spacing: 0;
+      }
+
+      .section-line {
+        height: 4px;
+        flex: 1;
+        border-radius: var(--radius-full);
+        background: rgba(194, 206, 223, 0.45);
+      }
+
+      .phone-frame .section-line {
+        display: none;
+      }
+
+      .overview-card {
+        align-self: start;
+        padding: 22px;
+        border-radius: 28px;
+        background: var(--md-sys-color-surface);
+        box-shadow: var(--shadow-1);
+      }
+
+      .phone-frame .overview-card {
+        display: none;
+      }
+
+      .overview-title {
+        margin: 0 0 16px;
+        font-size: 18px;
+        line-height: 1.25;
+        font-weight: 850;
+      }
+
+      .metric-list {
+        display: grid;
+        gap: 14px;
+      }
+
+      .metric {
+        display: grid;
+        grid-template-columns: 40px 1fr;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .metric-icon {
+        display: grid;
+        place-items: center;
+        width: 40px;
+        height: 40px;
+        border-radius: 14px;
+        background: var(--md-sys-color-secondary-container);
+        color: var(--md-sys-color-on-secondary-container);
+      }
+
+      .metric-value {
+        margin: 3px 0 0;
+        font-size: 14px;
+        font-weight: 800;
+        line-height: 1.25;
+      }
+
+      .btn,
+      .icon-btn {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        min-height: 48px;
+        border: 0;
+        border-radius: var(--radius-full);
+        font-weight: 850;
+        line-height: 1;
+        text-decoration: none;
+        cursor: default;
+        transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+      }
+
+      .btn {
+        min-width: 48px;
+        padding: 0 20px;
+        font-size: 15px;
+        white-space: nowrap;
+      }
+
+      .icon-btn {
+        flex: none;
+        width: 48px;
+        height: 48px;
+        padding: 0;
+      }
+
+      .btn:focus-visible,
+      .icon-btn:focus-visible {
+        outline: 3px solid rgba(27, 79, 184, 0.24);
+        outline-offset: 3px;
+      }
+
+      .btn-filled {
+        background: var(--md-sys-color-primary);
+        color: var(--md-sys-color-on-primary);
+        box-shadow: 0 10px 24px rgba(27, 79, 184, 0.24);
+      }
+
+      .btn-filled-tonal {
+        background: var(--md-sys-color-primary-container);
+        color: var(--md-sys-color-on-primary-container);
+      }
+
+      .btn-outlined {
+        border: 1px solid rgba(132, 146, 168, 0.8);
+        background: transparent;
+        color: var(--md-sys-color-primary);
+      }
+
+      .btn-text {
+        background: transparent;
+        color: var(--md-sys-color-primary);
+      }
+
+      .btn-danger {
+        border: 1px solid rgba(186, 26, 26, 0.32);
+        background: var(--md-sys-color-error-container);
+        color: var(--md-sys-color-on-error-container);
+      }
+
+      .btn-utility {
+        border: 1px solid rgba(132, 146, 168, 0.46);
+        background: var(--md-sys-color-surface-container-low);
+        color: var(--md-sys-color-primary);
+      }
+
+      .icon-outline {
+        border: 1px solid rgba(132, 146, 168, 0.78);
+        background: transparent;
+        color: var(--md-sys-color-on-surface-variant);
+      }
+
+      .icon-tonal {
+        background: var(--md-sys-color-secondary-container);
+        color: var(--md-sys-color-on-secondary-container);
+      }
+
+      .icon-danger {
+        border: 1px solid rgba(186, 26, 26, 0.26);
+        background: rgba(255, 218, 214, 0.52);
+        color: var(--md-sys-color-error);
+      }
+
+      .mini-link {
+        min-height: 44px;
+        border-radius: var(--radius-full);
+        border: 1px solid rgba(132, 146, 168, 0.34);
+        background: var(--md-sys-color-surface-container-low);
+        color: var(--md-sys-color-on-surface);
+        padding: 0 16px;
+        font-size: 14px;
+        font-weight: 800;
+      }
+
+      .icon {
+        width: 22px;
+        height: 22px;
+        stroke: currentColor;
+        stroke-width: 2.2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        fill: none;
+      }
+
+      .icon-sm {
+        width: 18px;
+        height: 18px;
+      }
+
+      .med-card {
+        position: relative;
+        overflow: hidden;
+        width: min(100%, 520px);
+        min-height: 476px;
+        border: 1px solid rgba(194, 206, 223, 0.58);
+        border-radius: 40px;
+        background: rgba(251, 253, 255, 0.96);
+        box-shadow: var(--shadow-2);
+      }
+
+      .phone-frame .med-card {
+        width: 100%;
+        min-height: auto;
+        border-radius: 32px;
+      }
+
+      .card-inner {
+        display: flex;
+        min-height: inherit;
+        flex-direction: column;
+        padding: 38px;
+      }
+
+      .phone-frame .card-inner {
+        padding: 24px;
+      }
+
+      .card-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: start;
+        justify-content: space-between;
+        gap: 18px;
+        min-height: 96px;
+      }
+
+      .phone-frame .card-head {
+        min-height: 80px;
+        gap: 12px;
+      }
+
+      .med-icon {
+        flex: none;
+        display: grid;
+        place-items: center;
+        width: 96px;
+        height: 96px;
+        border-radius: 30px;
+        background: var(--md-sys-color-secondary-container);
+        color: var(--md-sys-color-on-secondary-container);
+      }
+
+      .phone-frame .med-icon {
+        width: 76px;
+        height: 76px;
+        border-radius: 24px;
+      }
+
+      .med-icon .icon {
+        width: 38px;
+        height: 38px;
+        color: #66738a;
+      }
+
+      .phone-frame .med-icon .icon {
+        width: 31px;
+        height: 31px;
+      }
+
+      .card-head-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+      }
+
+      .stock-badge {
+        display: inline-flex;
+        max-width: 100%;
+        min-height: 44px;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(255, 150, 67, 0.32);
+        border-radius: var(--radius-full);
+        background: rgba(255, 245, 234, 0.95);
+        color: var(--md-sys-color-on-warning-container);
+        padding: 0 16px;
+        font-size: 15px;
+        font-weight: 850;
+        line-height: 1;
+        white-space: nowrap;
+      }
+
+      .phone-frame .stock-badge {
+        min-height: 38px;
+        padding: 0 12px;
+        font-size: 13px;
+      }
+
+      .med-title {
+        margin: 34px 0 0;
+        color: var(--md-sys-color-on-surface);
+        font-size: 31px;
+        line-height: 1.16;
+        font-weight: 900;
+        letter-spacing: 0;
+      }
+
+      .phone-frame .med-title {
+        margin-top: 26px;
+        font-size: 27px;
+        line-height: 1.16;
+      }
+
+      .dose-line {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 12px 0 0;
+        color: var(--md-sys-color-on-surface-variant);
+        font-size: 17px;
+        font-weight: 850;
+        line-height: 1.3;
+        text-transform: uppercase;
+      }
+
+      .phone-frame .dose-line {
+        font-size: 14px;
+      }
+
+      .rule {
+        height: 2px;
+        margin: 28px 0 0;
+        border-radius: var(--radius-full);
+        background: rgba(194, 206, 223, 0.78);
+      }
+
+      .date-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 28px;
+        margin-top: 34px;
+      }
+
+      .phone-frame .date-grid {
+        gap: 18px;
+        margin-top: 26px;
+      }
+
+      .date-value {
+        margin: 12px 0 0;
+        color: var(--md-sys-color-on-surface-variant);
+        font-size: 24px;
+        line-height: 1.18;
+        font-weight: 850;
+      }
+
+      .phone-frame .date-value {
+        font-size: 20px;
+      }
+
+      .card-actions {
+        margin-top: auto;
+        padding-top: 34px;
+      }
+
+      .phone-frame .card-actions {
+        padding-top: 28px;
+      }
+
+      .card-a .card-actions {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 56px;
+        gap: 12px;
+      }
+
+      .card-a .btn {
+        min-height: 56px;
+        border-radius: 22px;
+        font-size: 17px;
+      }
+
+      .card-a .icon-btn {
+        width: 56px;
+        height: 56px;
+        border-radius: 20px;
+      }
+
+      .phone-frame .card-a .card-actions {
+        grid-template-columns: minmax(0, 1fr) 52px;
+      }
+
+      .phone-frame .card-a .btn,
+      .phone-frame .card-a .icon-btn {
+        min-height: 52px;
+      }
+
+      .phone-frame .card-a .icon-btn {
+        width: 52px;
+        height: 52px;
+      }
+
+      .card-b .card-head-actions {
+        align-items: start;
+      }
+
+      .card-b .card-actions .btn {
+        width: 100%;
+        min-height: 58px;
+        border-radius: 22px;
+        font-size: 17px;
+      }
+
+      .card-b .header-delete {
+        width: 44px;
+        height: 44px;
+      }
+
+      .phone-frame .card-b .card-head-actions {
+        flex-direction: column;
+        align-items: flex-end;
+      }
+
+      .card-c .card-actions {
+        display: grid;
+        gap: 10px;
+      }
+
+      .card-c .btn {
+        width: 100%;
+        min-height: 54px;
+      }
+
+      .card-c .utility-row {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .card-c .utility-row .btn {
+        min-height: 48px;
+        padding-inline: 12px;
+        border-radius: 20px;
+        font-size: 14px;
+      }
+
+      .card-d {
+        width: min(100%, 620px);
+      }
+
+      .card-d .card-inner {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 132px;
+        gap: 28px;
+        min-height: 476px;
+      }
+
+      .card-d .content-pane {
+        min-width: 0;
+      }
+
+      .card-d .action-rail {
+        display: grid;
+        align-content: stretch;
+        gap: 12px;
+        padding: 8px 0;
+      }
+
+      .card-d .action-rail .btn {
+        min-height: 100%;
+        white-space: normal;
+        line-height: 1.2;
+        padding: 16px;
+        border-radius: 28px;
+        text-align: center;
+      }
+
+      .card-d .action-rail .icon-btn {
+        width: 100%;
+        height: 72px;
+        border-radius: 24px;
+      }
+
+      .phone-frame .card-d .card-inner {
+        display: flex;
+        min-height: auto;
+        gap: 0;
+      }
+
+      .phone-frame .card-d .action-rail {
+        grid-template-columns: minmax(0, 1fr) 52px;
+        padding: 28px 0 0;
+      }
+
+      .phone-frame .card-d .action-rail .btn {
+        min-height: 52px;
+        white-space: nowrap;
+        padding: 0 16px;
+        border-radius: 20px;
+      }
+
+      .phone-frame .card-d .action-rail .icon-btn {
+        width: 52px;
+        height: 52px;
+        border-radius: 20px;
+      }
+
+      .card-e .card-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        align-items: stretch;
+      }
+
+      .card-e .primary-action {
+        grid-column: 1 / -1;
+      }
+
+      .card-e .btn,
+      .card-e .icon-btn {
+        min-height: 56px;
+        border-radius: 22px;
+      }
+
+      .card-e .icon-btn {
+        width: 100%;
+      }
+
+      .card-e .date-grid {
+        padding: 18px;
+        border-radius: 26px;
+        background: var(--md-sys-color-surface-container-low);
+      }
+
+      .phone-frame .card-e .card-actions {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .phone-frame .card-e .icon-btn {
+        width: 100%;
+      }
+
+      .card-f .card-inner {
+        padding-bottom: 24px;
+      }
+
+      .card-f .dock {
+        display: grid;
+        grid-template-columns: minmax(92px, 0.7fr) minmax(0, 1.4fr) 52px;
+        gap: 10px;
+        align-items: center;
+        min-height: 76px;
+        margin: 32px -14px 0;
+        padding: 10px;
+        border-radius: 30px;
+        background: var(--md-sys-color-surface-container-high);
+      }
+
+      .card-f .dock .btn {
+        min-height: 56px;
+        border-radius: 24px;
+      }
+
+      .card-f .dock .icon-btn {
+        width: 52px;
+        height: 52px;
+        border-radius: 20px;
+      }
+
+      .phone-frame .card-f .dock {
+        grid-template-columns: 74px minmax(0, 1fr) 52px;
+        margin: 28px -8px 0;
+      }
+
+      .phone-frame .card-f .dock .btn {
+        padding-inline: 10px;
+        font-size: 13px;
+      }
+
+      .med-grid-wide {
+        display: grid;
+        grid-template-columns: minmax(0, 520px);
+        gap: 18px;
+      }
+
+      .secondary-med {
+        min-height: 270px;
+        opacity: 0.92;
+      }
+
+      .secondary-med .card-inner {
+        min-height: 270px;
+        padding: 26px;
+      }
+
+      .secondary-med .med-icon {
+        width: 64px;
+        height: 64px;
+        border-radius: 20px;
+      }
+
+      .secondary-med .stock-badge {
+        min-height: 34px;
+        font-size: 12px;
+      }
+
+      .secondary-med .med-title {
+        margin-top: 20px;
+        font-size: 22px;
+      }
+
+      .secondary-med .dose-line {
+        font-size: 13px;
+      }
+
+      .secondary-med .rule,
+      .secondary-med .date-grid {
+        display: none;
+      }
+
+      .secondary-med .card-actions {
+        padding-top: 22px;
+      }
+
+      .phone-frame .secondary-med {
+        display: none;
+      }
+
+      @media (max-width: 1180px) {
+        .prototype-header {
+          display: block;
+        }
+
+        .prototype-summary {
+          margin-top: 14px;
+        }
+
+        .screens {
+          grid-template-columns: 1fr;
+        }
+
+        .phone-frame {
+          width: min(390px, 100%);
+        }
+      }
+
+      @media (max-width: 760px) {
+        .prototype-shell {
+          width: min(100%, calc(100vw - 24px));
+          padding-top: 20px;
+        }
+
+        .prototype-title {
+          font-size: 30px;
+        }
+
+        .variant {
+          padding: 14px;
+          border-radius: 24px;
+        }
+
+        .variant-header {
+          display: block;
+        }
+
+        .variant-chip {
+          margin-top: 12px;
+        }
+
+        .desktop-frame {
+          min-height: 760px;
+        }
+
+        .mock-page {
+          padding: 20px;
+        }
+
+        .person-header {
+          align-items: flex-start;
+        }
+
+        .person-header-actions {
+          display: none;
+        }
+
+        .desktop-content {
+          display: block;
+        }
+
+        .overview-card {
+          display: none;
+        }
+
+        .med-grid-wide {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <svg width="0" height="0" aria-hidden="true" focusable="false">
+      <symbol id="icon-pill" viewBox="0 0 24 24">
+        <path d="M10.5 20.5 3.5 13.5a4.95 4.95 0 0 1 7-7l7 7a4.95 4.95 0 0 1-7 7Z"></path>
+        <path d="m8 9 7 7"></path>
+        <path d="M14.5 3.5 20.5 9.5"></path>
+        <path d="M17.5 6.5 19 5"></path>
+      </symbol>
+      <symbol id="icon-calendar" viewBox="0 0 24 24">
+        <path d="M8 2v4"></path>
+        <path d="M16 2v4"></path>
+        <path d="M3 10h18"></path>
+        <rect x="4" y="5" width="16" height="17" rx="2"></rect>
+      </symbol>
+      <symbol id="icon-pencil" viewBox="0 0 24 24">
+        <path d="M12 20h9"></path>
+        <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
+      </symbol>
+      <symbol id="icon-trash" viewBox="0 0 24 24">
+        <path d="M3 6h18"></path>
+        <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        <path d="M19 6 18 20a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+        <path d="M10 11v6"></path>
+        <path d="M14 11v6"></path>
+      </symbol>
+      <symbol id="icon-more" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="1"></circle>
+        <circle cx="19" cy="12" r="1"></circle>
+        <circle cx="5" cy="12" r="1"></circle>
+      </symbol>
+      <symbol id="icon-user" viewBox="0 0 24 24">
+        <path d="M20 21a8 8 0 0 0-16 0"></path>
+        <circle cx="12" cy="7" r="4"></circle>
+      </symbol>
+      <symbol id="icon-check" viewBox="0 0 24 24">
+        <path d="m20 6-11 11-5-5"></path>
+      </symbol>
+      <symbol id="icon-key" viewBox="0 0 24 24">
+        <circle cx="7.5" cy="14.5" r="4.5"></circle>
+        <path d="M11 11 22 0"></path>
+        <path d="m15 7 2 2"></path>
+        <path d="m19 3 2 2"></path>
+      </symbol>
+      <symbol id="icon-plus" viewBox="0 0 24 24">
+        <path d="M12 5v14"></path>
+        <path d="M5 12h14"></path>
+      </symbol>
+    </svg>
+
+    <main class="prototype-shell">
+      <header class="prototype-header">
+        <div>
+          <p class="prototype-kicker">MedTracker people view</p>
+          <h1 class="prototype-title">Medication card action placement prototypes</h1>
+        </div>
+        <p class="prototype-summary">Three shortlisted Material You 3 directions for the medication-card buttons. Each keeps the medication icon, stock badge, title, dose, divider, dates, log action, edit action, and delete action visible while changing proximity and visual weight.</p>
+      </header>
+
+      <div class="variant-list">
+        <section class="variant">
+          <header class="variant-header">
+            <div>
+              <p class="variant-kicker">Design 03</p>
+              <h2 class="variant-title">Stacked primary with utility row</h2>
+              <p class="variant-copy">Log stays full-width and primary. Edit and Delete move into a visible secondary row, making Edit discoverable without giving Delete equal priority.</p>
+            </div>
+            <span class="variant-chip">Most explicit</span>
+          </header>
+
+          <div class="screens">
+            <figure class="screen">
+              <figcaption class="screen-caption"><span class="mock-label">Web mockup</span><span class="screen-size">People view card grid</span></figcaption>
+              <div class="desktop-frame">
+                <div class="mock-page">
+                  <header class="person-header"><div class="person-avatar">A</div><div><h3 class="person-name">Alex Morgan</h3><p class="person-meta">Age 8</p></div><div class="person-header-actions"><button class="btn mini-link" type="button">Edit person</button><button class="btn btn-text" type="button">Back</button></div></header>
+                  <div class="desktop-content">
+                    <section>
+                      <div class="section-heading-row"><h3 class="section-title">Medications</h3><span class="section-line"></span></div>
+                      <article class="med-card card-c">
+                        <div class="card-inner">
+                          <div class="card-head"><div class="med-icon"><svg class="icon"><use href="#icon-pill"></use></svg></div><div class="card-head-actions"><span class="stock-badge">Low Stock (2)</span></div></div>
+                          <h4 class="med-title">Multivitamins Strawberry Gummies</h4>
+                          <p class="dose-line"><span>2 gummy</span><span>•</span><span>Once daily</span></p>
+                          <div class="rule"></div>
+                          <div class="date-grid"><div><p class="date-label">Started:</p><p class="date-value">May 14, 2026</p></div><div><p class="date-label">Ends:</p><p class="date-value">Jun 14, 2026</p></div></div>
+                          <div class="card-actions">
+                            <button class="btn btn-filled-tonal" type="button"><svg class="icon"><use href="#icon-calendar"></use></svg>Log a past dose</button>
+                            <div class="utility-row">
+                              <button class="btn btn-utility" type="button"><svg class="icon icon-sm"><use href="#icon-pencil"></use></svg>Edit medication</button>
+                              <button class="btn btn-danger" type="button"><svg class="icon icon-sm"><use href="#icon-trash"></use></svg>Delete</button>
+                            </div>
+                          </div>
+                        </div>
+                      </article>
+                    </section>
+                    <aside class="overview-card"><h3 class="overview-title">Overview</h3><div class="metric-list"><div class="metric"><span class="metric-icon"><svg class="icon icon-sm"><use href="#icon-check"></use></svg></span><div><p class="metric-label">DOB</p><p class="metric-value">May 20, 2018</p></div></div><div class="metric"><span class="metric-icon"><svg class="icon icon-sm"><use href="#icon-user"></use></svg></span><div><p class="metric-label">Assigned</p><p class="metric-value">care@example.com</p></div></div><div class="metric"><span class="metric-icon"><svg class="icon icon-sm"><use href="#icon-key"></use></svg></span><div><p class="metric-label">Capacity</p><p class="metric-value">Dependent</p></div></div></div></aside>
+                  </div>
+                </div>
+              </div>
+            </figure>
+            <figure class="screen">
+              <figcaption class="screen-caption"><span class="mock-label">Mobile mockup</span><span class="screen-size">390 px frame</span></figcaption>
+              <div class="phone-frame">
+                <div class="mock-page">
+                  <header class="person-header"><div class="person-avatar">A</div><div><h3 class="person-name">Alex Morgan</h3><p class="person-meta">Age 8</p></div></header>
+                  <div class="desktop-content">
+                    <section>
+                      <div class="section-heading-row"><h3 class="section-title">Medications</h3><span class="section-line"></span></div>
+                      <article class="med-card card-c">
+                        <div class="card-inner">
+                          <div class="card-head"><div class="med-icon"><svg class="icon"><use href="#icon-pill"></use></svg></div><div class="card-head-actions"><span class="stock-badge">Low Stock (2)</span></div></div>
+                          <h4 class="med-title">Multivitamins Strawberry Gummies</h4>
+                          <p class="dose-line"><span>2 gummy</span><span>•</span><span>Once daily</span></p>
+                          <div class="rule"></div>
+                          <div class="date-grid"><div><p class="date-label">Started:</p><p class="date-value">May 14, 2026</p></div><div><p class="date-label">Ends:</p><p class="date-value">Jun 14, 2026</p></div></div>
+                          <div class="card-actions"><button class="btn btn-filled-tonal" type="button"><svg class="icon"><use href="#icon-calendar"></use></svg>Log a past dose</button><div class="utility-row"><button class="btn btn-utility" type="button"><svg class="icon icon-sm"><use href="#icon-pencil"></use></svg>Edit</button><button class="btn btn-danger" type="button"><svg class="icon icon-sm"><use href="#icon-trash"></use></svg>Delete</button></div></div>
+                        </div>
+                      </article>
+                    </section>
+                  </div>
+                </div>
+              </div>
+            </figure>
+          </div>
+        </section>
+
+        <section class="variant">
+          <header class="variant-header">
+            <div>
+              <p class="variant-kicker">Design 05</p>
+              <h2 class="variant-title">Grouped dates with three-action grid</h2>
+              <p class="variant-copy">Dates become a contained metadata cluster, then Log spans the action grid. Edit and Delete sit underneath as clearly visible secondary controls.</p>
+            </div>
+            <span class="variant-chip">Compact</span>
+          </header>
+
+          <div class="screens">
+            <figure class="screen">
+              <figcaption class="screen-caption"><span class="mock-label">Web mockup</span><span class="screen-size">People view card grid</span></figcaption>
+              <div class="desktop-frame">
+                <div class="mock-page">
+                  <header class="person-header"><div class="person-avatar">A</div><div><h3 class="person-name">Alex Morgan</h3><p class="person-meta">Age 8</p></div><div class="person-header-actions"><button class="btn mini-link" type="button">Edit person</button><button class="btn btn-text" type="button">Back</button></div></header>
+                  <div class="desktop-content">
+                    <section>
+                      <div class="section-heading-row"><h3 class="section-title">Medications</h3><span class="section-line"></span></div>
+                      <article class="med-card card-e">
+                        <div class="card-inner">
+                          <div class="card-head"><div class="med-icon"><svg class="icon"><use href="#icon-pill"></use></svg></div><div class="card-head-actions"><span class="stock-badge">Low Stock (2)</span></div></div>
+                          <h4 class="med-title">Multivitamins Strawberry Gummies</h4>
+                          <p class="dose-line"><span>2 gummy</span><span>•</span><span>Once daily</span></p>
+                          <div class="rule"></div>
+                          <div class="date-grid"><div><p class="date-label">Started:</p><p class="date-value">May 14, 2026</p></div><div><p class="date-label">Ends:</p><p class="date-value">Jun 14, 2026</p></div></div>
+                          <div class="card-actions"><button class="btn btn-filled-tonal primary-action" type="button"><svg class="icon"><use href="#icon-calendar"></use></svg>Log a past dose</button><button class="btn btn-utility" type="button"><svg class="icon icon-sm"><use href="#icon-pencil"></use></svg>Edit medication</button><button class="btn btn-danger" type="button"><svg class="icon icon-sm"><use href="#icon-trash"></use></svg>Delete</button></div>
+                        </div>
+                      </article>
+                    </section>
+                    <aside class="overview-card"><h3 class="overview-title">Overview</h3><div class="metric-list"><div class="metric"><span class="metric-icon"><svg class="icon icon-sm"><use href="#icon-check"></use></svg></span><div><p class="metric-label">DOB</p><p class="metric-value">May 20, 2018</p></div></div><div class="metric"><span class="metric-icon"><svg class="icon icon-sm"><use href="#icon-user"></use></svg></span><div><p class="metric-label">Assigned</p><p class="metric-value">care@example.com</p></div></div><div class="metric"><span class="metric-icon"><svg class="icon icon-sm"><use href="#icon-key"></use></svg></span><div><p class="metric-label">Capacity</p><p class="metric-value">Dependent</p></div></div></div></aside>
+                  </div>
+                </div>
+              </div>
+            </figure>
+            <figure class="screen">
+              <figcaption class="screen-caption"><span class="mock-label">Mobile mockup</span><span class="screen-size">390 px frame</span></figcaption>
+              <div class="phone-frame">
+                <div class="mock-page">
+                  <header class="person-header"><div class="person-avatar">A</div><div><h3 class="person-name">Alex Morgan</h3><p class="person-meta">Age 8</p></div></header>
+                  <div class="desktop-content">
+                    <section>
+                      <div class="section-heading-row"><h3 class="section-title">Medications</h3><span class="section-line"></span></div>
+                      <article class="med-card card-e">
+                        <div class="card-inner">
+                          <div class="card-head"><div class="med-icon"><svg class="icon"><use href="#icon-pill"></use></svg></div><div class="card-head-actions"><span class="stock-badge">Low Stock (2)</span></div></div>
+                          <h4 class="med-title">Multivitamins Strawberry Gummies</h4>
+                          <p class="dose-line"><span>2 gummy</span><span>•</span><span>Once daily</span></p>
+                          <div class="rule"></div>
+                          <div class="date-grid"><div><p class="date-label">Started:</p><p class="date-value">May 14, 2026</p></div><div><p class="date-label">Ends:</p><p class="date-value">Jun 14, 2026</p></div></div>
+                          <div class="card-actions"><button class="btn btn-filled-tonal primary-action" type="button"><svg class="icon"><use href="#icon-calendar"></use></svg>Log a past dose</button><button class="btn btn-utility" type="button"><svg class="icon icon-sm"><use href="#icon-pencil"></use></svg>Edit</button><button class="btn btn-danger" type="button"><svg class="icon icon-sm"><use href="#icon-trash"></use></svg>Delete</button></div>
+                        </div>
+                      </article>
+                    </section>
+                  </div>
+                </div>
+              </div>
+            </figure>
+          </div>
+        </section>
+
+        <section class="variant">
+          <header class="variant-header">
+            <div>
+              <p class="variant-kicker">Design 06</p>
+              <h2 class="variant-title">Bottom action dock</h2>
+              <p class="variant-copy">The footer becomes a Material-style dock: Edit leads, Log owns the center, and Delete stays in the trailing destructive slot.</p>
+            </div>
+            <span class="variant-chip">Most Material</span>
+          </header>
+
+          <div class="screens">
+            <figure class="screen">
+              <figcaption class="screen-caption"><span class="mock-label">Web mockup</span><span class="screen-size">People view card grid</span></figcaption>
+              <div class="desktop-frame">
+                <div class="mock-page">
+                  <header class="person-header"><div class="person-avatar">A</div><div><h3 class="person-name">Alex Morgan</h3><p class="person-meta">Age 8</p></div><div class="person-header-actions"><button class="btn mini-link" type="button">Edit person</button><button class="btn btn-text" type="button">Back</button></div></header>
+                  <div class="desktop-content">
+                    <section>
+                      <div class="section-heading-row"><h3 class="section-title">Medications</h3><span class="section-line"></span></div>
+                      <article class="med-card card-f">
+                        <div class="card-inner">
+                          <div class="card-head"><div class="med-icon"><svg class="icon"><use href="#icon-pill"></use></svg></div><div class="card-head-actions"><span class="stock-badge">Low Stock (2)</span></div></div>
+                          <h4 class="med-title">Multivitamins Strawberry Gummies</h4>
+                          <p class="dose-line"><span>2 gummy</span><span>•</span><span>Once daily</span></p>
+                          <div class="rule"></div>
+                          <div class="date-grid"><div><p class="date-label">Started:</p><p class="date-value">May 14, 2026</p></div><div><p class="date-label">Ends:</p><p class="date-value">Jun 14, 2026</p></div></div>
+                          <div class="dock"><button class="btn btn-utility" type="button"><svg class="icon icon-sm"><use href="#icon-pencil"></use></svg>Edit</button><button class="btn btn-filled" type="button"><svg class="icon"><use href="#icon-calendar"></use></svg>Log a past dose</button><button class="icon-btn icon-danger" type="button" aria-label="Delete medication"><svg class="icon"><use href="#icon-trash"></use></svg></button></div>
+                        </div>
+                      </article>
+                    </section>
+                    <aside class="overview-card"><h3 class="overview-title">Overview</h3><div class="metric-list"><div class="metric"><span class="metric-icon"><svg class="icon icon-sm"><use href="#icon-check"></use></svg></span><div><p class="metric-label">DOB</p><p class="metric-value">May 20, 2018</p></div></div><div class="metric"><span class="metric-icon"><svg class="icon icon-sm"><use href="#icon-user"></use></svg></span><div><p class="metric-label">Assigned</p><p class="metric-value">care@example.com</p></div></div><div class="metric"><span class="metric-icon"><svg class="icon icon-sm"><use href="#icon-key"></use></svg></span><div><p class="metric-label">Capacity</p><p class="metric-value">Dependent</p></div></div></div></aside>
+                  </div>
+                </div>
+              </div>
+            </figure>
+            <figure class="screen">
+              <figcaption class="screen-caption"><span class="mock-label">Mobile mockup</span><span class="screen-size">390 px frame</span></figcaption>
+              <div class="phone-frame">
+                <div class="mock-page">
+                  <header class="person-header"><div class="person-avatar">A</div><div><h3 class="person-name">Alex Morgan</h3><p class="person-meta">Age 8</p></div></header>
+                  <div class="desktop-content">
+                    <section>
+                      <div class="section-heading-row"><h3 class="section-title">Medications</h3><span class="section-line"></span></div>
+                      <article class="med-card card-f">
+                        <div class="card-inner">
+                          <div class="card-head"><div class="med-icon"><svg class="icon"><use href="#icon-pill"></use></svg></div><div class="card-head-actions"><span class="stock-badge">Low Stock (2)</span></div></div>
+                          <h4 class="med-title">Multivitamins Strawberry Gummies</h4>
+                          <p class="dose-line"><span>2 gummy</span><span>•</span><span>Once daily</span></p>
+                          <div class="rule"></div>
+                          <div class="date-grid"><div><p class="date-label">Started:</p><p class="date-value">May 14, 2026</p></div><div><p class="date-label">Ends:</p><p class="date-value">Jun 14, 2026</p></div></div>
+                          <div class="dock"><button class="btn btn-utility" type="button"><svg class="icon icon-sm"><use href="#icon-pencil"></use></svg>Edit</button><button class="btn btn-filled" type="button"><svg class="icon"><use href="#icon-calendar"></use></svg>Log dose</button><button class="icon-btn icon-danger" type="button" aria-label="Delete medication"><svg class="icon"><use href="#icon-trash"></use></svg></button></div>
+                        </div>
+                      </article>
+                    </section>
+                  </div>
+                </div>
+              </div>
+            </figure>
+          </div>
+        </section>
+      </div>
+    </main>
+  </body>
+</html>

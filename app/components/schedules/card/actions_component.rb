@@ -16,14 +16,40 @@ module Components
 
         def view_template
           CardFooter(class: 'px-8 pb-8 pt-2') do
-            div(class: 'flex items-center gap-2 w-full') do
-              render_past_dose_button
-              render_admin_actions if administrator?
+            div(class: 'w-full @container', data: { testid: 'schedule-action-shell' }) do
+              div(class: action_dock_classes, data: { testid: 'schedule-action-dock' }) do
+                div(class: log_action_classes, data: { testid: 'schedule-log-action' }) do
+                  render_past_dose_button
+                end
+                render_admin_actions if administrator?
+              end
             end
           end
         end
 
         private
+
+        def action_dock_classes
+          'grid w-full grid-cols-[minmax(0,1fr)_3rem] items-center gap-2 rounded-[1.875rem] ' \
+            'bg-surface-container-high p-2 ' \
+            '@[22rem]:grid-cols-[minmax(5.25rem,0.7fr)_minmax(0,1.4fr)_3rem]'
+        end
+
+        def log_action_classes
+          if administrator?
+            'order-1 col-span-2 min-w-0 @[22rem]:order-2 @[22rem]:col-span-1'
+          else
+            'col-span-2 @[22rem]:col-span-3'
+          end
+        end
+
+        def edit_action_classes
+          'order-2 min-w-0 @[22rem]:order-1'
+        end
+
+        def delete_action_classes
+          'order-3 flex justify-end'
+        end
 
         def render_past_dose_button
           render Components::Medications::PriorDayTakeAction.new(
@@ -32,27 +58,30 @@ module Components
             amount: schedule.dose_amount,
             testid: "log-past-dose-schedule-#{schedule.id}",
             button: {
-              variant: :outlined,
+              variant: :filled,
               size: :lg,
-              class: 'flex-1 rounded-xl py-6 font-bold border-outline text-on-surface-variant ' \
-                     'hover:bg-surface-container-high transition-all'
+              class: 'w-full min-h-14 rounded-3xl px-4 font-bold shadow-elevation-1'
             }
           )
         end
 
         def render_admin_actions
-          m3_link(
-            href: edit_person_schedule_path(person, schedule),
-            variant: :outlined,
-            size: :lg,
-            class: 'w-12 h-12 p-0 rounded-xl border-outline text-on-surface-variant ' \
-                   'hover:text-primary hover:border-primary/50 transition-all',
-            data: { turbo_frame: 'modal', testid: "edit-schedule-#{schedule.id}" }
-          ) do
-            span(class: 'sr-only') { t('schedules.card.edit', default: 'Edit schedule') }
-            render Icons::Pencil.new(size: 20)
+          div(class: edit_action_classes, data: { testid: 'schedule-edit-action' }) do
+            m3_link(
+              href: edit_person_schedule_path(person, schedule),
+              variant: :outlined,
+              size: :lg,
+              class: 'h-12 w-full rounded-2xl border-outline/70 bg-surface-container-low px-3 ' \
+                     'text-sm font-bold hover:bg-surface-container-high transition-all',
+              data: { turbo_frame: 'modal', testid: "edit-schedule-#{schedule.id}" }
+            ) do
+              render Icons::Pencil.new(size: 20, class: 'mr-2 shrink-0')
+              plain t('schedules.card.edit', default: 'Edit')
+            end
           end
-          render_delete_dialog
+          div(class: delete_action_classes, data: { testid: 'schedule-delete-action' }) do
+            render_delete_dialog
+          end
         end
 
         def administrator?
@@ -65,8 +94,7 @@ module Components
           AlertDialog do
             AlertDialogTrigger do
               m3_button(variant: :text,
-                        class: 'w-12 h-12 p-0 rounded-xl text-on-surface-variant ' \
-                               'hover:text-error hover:bg-error/5 transition-all',
+                        class: 'w-12 h-12 p-0 rounded-2xl text-error hover:bg-error-container transition-all',
                         data: { testid: "delete-schedule-#{schedule.id}" }) do
                 span(class: 'sr-only') { t('schedules.card.delete', default: 'Delete schedule') }
                 render Icons::Trash.new(size: 20)
