@@ -79,7 +79,7 @@ module Components
             testid: testid
           }
         ) do
-          render Icons::Calendar.new(size: 16, aria_hidden: 'true', class: 'mr-2 shrink-0')
+          render Icons::Calendar.new(size: 20, aria_hidden: 'true', class: 'mr-1 shrink-0')
           plain t('medications.prior_day_take_action.menu_item', default: 'Log a past dose')
         end
       end

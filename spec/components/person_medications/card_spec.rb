@@ -54,11 +54,14 @@ RSpec.describe Components::PersonMedications::Card, type: :component do
     rendered = render_person_medication_card(update: true, destroy: true)
 
     expect(person_medication_action_dock_signature(rendered)).to eq(
-      shell: ['@container'],
-      dock: ['grid-cols-[minmax(0,1fr)_3rem]', '@[22rem]:grid-cols-[minmax(5.25rem,0.7fr)_minmax(0,1.4fr)_3rem]'],
-      log: %w[order-1 col-span-2 @[22rem]:order-2],
-      edit: %w[order-2 @[22rem]:order-1],
+      dock: ['grid-cols-[minmax(0,1fr)_3rem]', 'gap-y-4', 'bg-surface-container-high', 'p-4'],
+      log: %w[col-span-2],
+      edit: %w[min-w-0],
       delete: %w[order-3],
+      log_button: %w[h-14 rounded-full shadow-elevation-2],
+      edit_button: %w[h-14 rounded-3xl bg-surface-container-lowest],
+      delete_button: %w[bg-transparent text-error],
+      reorder: %w[rounded-3xl bg-surface-container-low py-4],
       actions: %i[log edit delete]
     )
   end
@@ -73,29 +76,56 @@ RSpec.describe Components::PersonMedications::Card, type: :component do
   end
 
   def person_medication_action_dock_signature(rendered)
-    shell = rendered.at_css('[data-testid="person-medication-action-shell"]')
-    dock = rendered.at_css('[data-testid="person-medication-action-dock"]')
-    log_action = dock.at_css('[data-testid="person-medication-log-action"]')
-    edit_action = dock.at_css('[data-testid="person-medication-edit-action"]')
-    delete_action = dock.at_css('[data-testid="person-medication-delete-action"]')
+    nodes = person_medication_action_nodes(rendered)
 
+    person_medication_action_layout_signature(nodes).merge(
+      person_medication_button_signature(nodes, rendered),
+      actions: person_medication_action_names(nodes)
+    )
+  end
+
+  def person_medication_action_nodes(rendered)
+    dock = rendered.at_css('[data-testid="person-medication-action-dock"]')
     {
-      shell: class_tokens(shell).intersection(['@container']),
-      dock: class_tokens(dock).intersection(
-        ['grid-cols-[minmax(0,1fr)_3rem]', '@[22rem]:grid-cols-[minmax(5.25rem,0.7fr)_minmax(0,1.4fr)_3rem]']
-      ),
-      log: class_tokens(log_action).intersection(%w[order-1 col-span-2 @[22rem]:order-2]),
-      edit: class_tokens(edit_action).intersection(%w[order-2 @[22rem]:order-1]),
-      delete: class_tokens(delete_action).intersection(%w[order-3]),
-      actions: person_medication_action_names(log_action, edit_action, delete_action)
+      dock: dock,
+      log: dock.at_css('[data-testid="person-medication-log-action"]'),
+      edit: dock.at_css('[data-testid="person-medication-edit-action"]'),
+      delete: dock.at_css('[data-testid="person-medication-delete-action"]'),
+      log_button: dock.at_css("button[data-testid='log-past-dose-person-medication-#{person_medication.id}']"),
+      edit_button: dock.at_css("a[data-testid='edit-person-medication-#{person_medication.id}']"),
+      delete_button: dock.at_css("button[data-testid='delete-person-medication-#{person_medication.id}']")
     }
   end
 
-  def person_medication_action_names(log_action, edit_action, delete_action)
+  def person_medication_action_layout_signature(nodes)
+    {
+      dock: class_tokens(nodes[:dock]).intersection(
+        ['grid-cols-[minmax(0,1fr)_3rem]', 'gap-y-4', 'bg-surface-container-high', 'p-4']
+      ),
+      log: class_tokens(nodes[:log]).intersection(%w[col-span-2]),
+      edit: class_tokens(nodes[:edit]).intersection(%w[min-w-0]),
+      delete: class_tokens(nodes[:delete]).intersection(%w[order-3])
+    }
+  end
+
+  def person_medication_button_signature(nodes, rendered)
+    {
+      log_button: class_tokens(nodes[:log_button]).intersection(%w[h-14 rounded-full shadow-elevation-2]),
+      edit_button: class_tokens(nodes[:edit_button]).intersection(%w[h-14 rounded-3xl bg-surface-container-lowest]),
+      delete_button: class_tokens(nodes[:delete_button]).intersection(%w[text-error bg-transparent]),
+      reorder: class_tokens(reorder_controls(rendered)).intersection(%w[rounded-3xl bg-surface-container-low py-4])
+    }
+  end
+
+  def reorder_controls(rendered)
+    rendered.at_css("button[data-testid='move-up-person-medication-#{person_medication.id}']").parent.parent
+  end
+
+  def person_medication_action_names(nodes)
     [
-      (:log if log_action.at_css("button[data-testid='log-past-dose-person-medication-#{person_medication.id}']")),
-      (:edit if edit_action.at_css("a[data-testid='edit-person-medication-#{person_medication.id}']")),
-      (:delete if delete_action.at_css("button[data-testid='delete-person-medication-#{person_medication.id}']"))
+      (:log if nodes[:log_button]),
+      (:edit if nodes[:edit_button]),
+      (:delete if nodes[:delete_button])
     ].compact
   end
 

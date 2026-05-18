@@ -45,39 +45,63 @@ RSpec.describe Components::Schedules::Card::ActionsComponent, type: :component d
     )
 
     expect(schedule_action_dock_signature(rendered)).to eq(
-      shell: ['@container'],
-      dock: ['grid-cols-[minmax(0,1fr)_3rem]', '@[22rem]:grid-cols-[minmax(5.25rem,0.7fr)_minmax(0,1.4fr)_3rem]'],
-      log: %w[order-1 col-span-2 @[22rem]:order-2],
-      edit: %w[order-2 @[22rem]:order-1],
+      dock: ['grid-cols-[minmax(0,1fr)_3rem]', 'gap-y-4', 'bg-surface-container-high', 'p-4'],
+      log: %w[col-span-2],
+      edit: %w[min-w-0],
       delete: %w[order-3],
+      log_button: %w[h-14 rounded-full shadow-elevation-2],
+      edit_button: %w[h-14 rounded-3xl bg-surface-container-lowest],
+      delete_button: %w[bg-transparent text-error],
       actions: %i[log edit delete]
     )
   end
 
   def schedule_action_dock_signature(rendered)
-    shell = rendered.at_css('[data-testid="schedule-action-shell"]')
-    dock = rendered.at_css('[data-testid="schedule-action-dock"]')
-    log_action = dock.at_css('[data-testid="schedule-log-action"]')
-    edit_action = dock.at_css('[data-testid="schedule-edit-action"]')
-    delete_action = dock.at_css('[data-testid="schedule-delete-action"]')
+    nodes = schedule_action_nodes(rendered)
 
+    schedule_action_layout_signature(nodes).merge(
+      schedule_button_signature(nodes),
+      actions: schedule_action_names(nodes)
+    )
+  end
+
+  def schedule_action_nodes(rendered)
+    dock = rendered.at_css('[data-testid="schedule-action-dock"]')
     {
-      shell: class_tokens(shell).intersection(['@container']),
-      dock: class_tokens(dock).intersection(
-        ['grid-cols-[minmax(0,1fr)_3rem]', '@[22rem]:grid-cols-[minmax(5.25rem,0.7fr)_minmax(0,1.4fr)_3rem]']
-      ),
-      log: class_tokens(log_action).intersection(%w[order-1 col-span-2 @[22rem]:order-2]),
-      edit: class_tokens(edit_action).intersection(%w[order-2 @[22rem]:order-1]),
-      delete: class_tokens(delete_action).intersection(%w[order-3]),
-      actions: schedule_action_names(log_action, edit_action, delete_action)
+      dock: dock,
+      log: dock.at_css('[data-testid="schedule-log-action"]'),
+      edit: dock.at_css('[data-testid="schedule-edit-action"]'),
+      delete: dock.at_css('[data-testid="schedule-delete-action"]'),
+      log_button: dock.at_css("button[data-testid='log-past-dose-schedule-#{schedule.id}']"),
+      edit_button: dock.at_css("[data-testid='edit-schedule-#{schedule.id}']"),
+      delete_button: dock.at_css("button[data-testid='delete-schedule-#{schedule.id}']")
     }
   end
 
-  def schedule_action_names(log_action, edit_action, delete_action)
+  def schedule_action_layout_signature(nodes)
+    {
+      dock: class_tokens(nodes[:dock]).intersection(
+        ['grid-cols-[minmax(0,1fr)_3rem]', 'gap-y-4', 'bg-surface-container-high', 'p-4']
+      ),
+      log: class_tokens(nodes[:log]).intersection(%w[col-span-2]),
+      edit: class_tokens(nodes[:edit]).intersection(%w[min-w-0]),
+      delete: class_tokens(nodes[:delete]).intersection(%w[order-3])
+    }
+  end
+
+  def schedule_button_signature(nodes)
+    {
+      log_button: class_tokens(nodes[:log_button]).intersection(%w[h-14 rounded-full shadow-elevation-2]),
+      edit_button: class_tokens(nodes[:edit_button]).intersection(%w[h-14 rounded-3xl bg-surface-container-lowest]),
+      delete_button: class_tokens(nodes[:delete_button]).intersection(%w[text-error bg-transparent])
+    }
+  end
+
+  def schedule_action_names(nodes)
     [
-      (:log if log_action.at_css("button[data-testid='log-past-dose-schedule-#{schedule.id}']")),
-      (:edit if edit_action.at_css("[data-testid='edit-schedule-#{schedule.id}']")),
-      (:delete if delete_action.at_css("button[data-testid='delete-schedule-#{schedule.id}']"))
+      (:log if nodes[:log_button]),
+      (:edit if nodes[:edit_button]),
+      (:delete if nodes[:delete_button])
     ].compact
   end
 

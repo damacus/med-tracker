@@ -30,25 +30,24 @@ module Components
         private
 
         def action_dock_classes
-          'grid w-full grid-cols-[minmax(0,1fr)_3rem] items-center gap-2 rounded-[1.875rem] ' \
-            'bg-surface-container-high p-2 ' \
-            '@[22rem]:grid-cols-[minmax(5.25rem,0.7fr)_minmax(0,1.4fr)_3rem]'
+          'grid w-full grid-cols-[minmax(0,1fr)_3rem] items-center gap-x-4 gap-y-4 ' \
+            'bg-surface-container-high p-4'
         end
 
         def log_action_classes
           if administrator?
-            'order-1 col-span-2 min-w-0 @[22rem]:order-2 @[22rem]:col-span-1'
+            'order-1 col-span-2 min-w-0'
           else
-            'col-span-2 @[22rem]:col-span-3'
+            'col-span-2'
           end
         end
 
         def edit_action_classes
-          'order-2 min-w-0 @[22rem]:order-1'
+          'order-2 min-w-0'
         end
 
         def delete_action_classes
-          'order-3 flex justify-end'
+          'order-3 flex justify-center'
         end
 
         def render_past_dose_button
@@ -60,7 +59,7 @@ module Components
             button: {
               variant: :filled,
               size: :lg,
-              class: 'w-full min-h-14 rounded-3xl px-4 font-bold shadow-elevation-1'
+              class: 'h-14 w-full rounded-full px-5 text-lg font-bold shadow-elevation-2'
             }
           )
         end
@@ -71,8 +70,8 @@ module Components
               href: edit_person_schedule_path(person, schedule),
               variant: :outlined,
               size: :lg,
-              class: 'h-12 w-full rounded-2xl border-outline/70 bg-surface-container-low px-3 ' \
-                     'text-sm font-bold hover:bg-surface-container-high transition-all',
+              class: 'h-14 w-full rounded-3xl border-outline/50 bg-surface-container-lowest px-4 ' \
+                     'text-lg font-bold hover:bg-surface-container-high transition-all',
               data: { turbo_frame: 'modal', testid: "edit-schedule-#{schedule.id}" }
             ) do
               render Icons::Pencil.new(size: 20, class: 'mr-2 shrink-0')
@@ -94,7 +93,8 @@ module Components
           AlertDialog do
             AlertDialogTrigger do
               m3_button(variant: :text,
-                        class: 'w-12 h-12 p-0 rounded-2xl text-error hover:bg-error-container transition-all',
+                        class: 'h-14 w-14 rounded-full bg-transparent p-0 text-error ' \
+                               'hover:bg-error-container transition-all',
                         data: { testid: "delete-schedule-#{schedule.id}" }) do
                 span(class: 'sr-only') { t('schedules.card.delete', default: 'Delete schedule') }
                 render Icons::Trash.new(size: 20)

@@ -124,7 +124,7 @@ module Components
       end
 
       def render_person_medication_actions
-        div(class: 'w-full space-y-2 @container', data: { testid: 'person-medication-action-shell' }) do
+        div(class: 'w-full space-y-4', data: { testid: 'person-medication-action-shell' }) do
           div(class: action_dock_classes, data: { testid: 'person-medication-action-dock' }) do
             div(class: log_action_classes, data: { testid: 'person-medication-log-action' }) do
               render_past_dose_button
@@ -146,21 +146,20 @@ module Components
       end
 
       def action_dock_classes
-        'grid w-full grid-cols-[minmax(0,1fr)_3rem] items-center gap-2 rounded-[1.875rem] ' \
-          'bg-surface-container-high p-2 ' \
-          '@[22rem]:grid-cols-[minmax(5.25rem,0.7fr)_minmax(0,1.4fr)_3rem]'
+        'grid w-full grid-cols-[minmax(0,1fr)_3rem] items-center gap-x-4 gap-y-4 ' \
+          'bg-surface-container-high p-4'
       end
 
       def log_action_classes
-        'order-1 col-span-2 min-w-0 @[22rem]:order-2 @[22rem]:col-span-1'
+        'order-1 col-span-2 min-w-0'
       end
 
       def edit_action_classes
-        'order-2 min-w-0 @[22rem]:order-1'
+        'order-2 min-w-0'
       end
 
       def delete_action_classes
-        'order-3 flex justify-end'
+        'order-3 flex justify-center'
       end
 
       def render_past_dose_button
@@ -172,7 +171,7 @@ module Components
           button: {
             variant: :filled,
             size: :lg,
-            class: 'w-full min-h-14 rounded-3xl px-4 font-bold shadow-elevation-1'
+            class: 'h-14 w-full rounded-full px-5 text-lg font-bold shadow-elevation-2'
           }
         )
       end
@@ -181,8 +180,8 @@ module Components
         a(
           href: edit_person_person_medication_path(person, person_medication),
           data: { turbo_frame: 'modal', testid: "edit-person-medication-#{person_medication.id}" },
-          class: 'inline-flex h-12 min-w-12 w-full shrink-0 items-center justify-center gap-2 ' \
-                 'rounded-2xl border border-outline/70 bg-surface-container-low px-3 text-sm ' \
+          class: 'inline-flex h-14 min-w-12 w-full shrink-0 items-center justify-center gap-3 ' \
+                 'rounded-3xl border border-outline/50 bg-surface-container-lowest px-4 text-lg ' \
                  'font-bold text-primary hover:bg-surface-container-high transition-colors',
           aria_label: t('person_medications.card.edit')
         ) do
@@ -192,7 +191,7 @@ module Components
       end
 
       def render_reorder_controls
-        div(class: 'flex justify-center gap-1 rounded-2xl bg-surface-container-low p-1') do
+        div(class: 'flex justify-center gap-10 rounded-3xl bg-surface-container-low py-4') do
           form_with(
             url: reorder_person_person_medication_path(person, person_medication),
             method: :patch,
@@ -202,7 +201,7 @@ module Components
             m3_button(
               variant: :text,
               type: :submit,
-              class: 'w-10 h-8 p-0 rounded-xl text-on-surface-variant hover:text-foreground',
+              class: 'h-10 w-10 rounded-full p-0 text-on-surface-variant hover:text-foreground',
               data: { testid: "move-up-person-medication-#{person_medication.id}" },
               aria_label: t('person_medications.card.move_up_aria_label')
             ) do
@@ -219,7 +218,7 @@ module Components
             m3_button(
               variant: :text,
               type: :submit,
-              class: 'w-10 h-8 p-0 rounded-xl text-on-surface-variant hover:text-foreground',
+              class: 'h-10 w-10 rounded-full p-0 text-on-surface-variant hover:text-foreground',
               data: { testid: "move-down-person-medication-#{person_medication.id}" },
               aria_label: t('person_medications.card.move_down_aria_label')
             ) do
@@ -234,7 +233,7 @@ module Components
           AlertDialogTrigger do
             m3_button(
               variant: :text,
-              class: 'w-12 min-w-12 h-12 shrink-0 p-0 rounded-2xl text-error ' \
+              class: 'h-14 w-14 min-w-14 shrink-0 rounded-full bg-transparent p-0 text-error ' \
                      'hover:bg-error-container',
               data: { testid: "delete-person-medication-#{person_medication.id}" },
               aria_label: t('person_medications.card.delete_aria_label')
