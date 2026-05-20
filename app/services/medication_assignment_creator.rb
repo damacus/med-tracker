@@ -60,11 +60,14 @@ class MedicationAssignmentCreator
   end
 
   def selected_dosage_option
+    return @selected_dosage_option if instance_variable_defined?(:@selected_dosage_option)
+
+    @selected_dosage_option = nil
     return if assignment.source_dosage_option_id.blank?
 
-    dosage = medication&.dosage_records&.find_by(id: assignment.source_dosage_option_id)
-    assignment.errors.add(:source_dosage_option, 'Select a valid predefined dose') if dosage.blank?
-    dosage
+    @selected_dosage_option = medication&.dosage_records&.find_by(id: assignment.source_dosage_option_id)
+    assignment.errors.add(:source_dosage_option, 'Select a valid predefined dose') if @selected_dosage_option.blank?
+    @selected_dosage_option
   end
 
   def selected_legacy_dose
