@@ -6,7 +6,9 @@ class ScheduleDailyRemindersJob < ApplicationJob
   PERIODS = NotificationPreference::PERIODS
 
   def perform
-    NotificationPreference.where(enabled: true).includes(person: :account).find_each do |pref|
+    NotificationPreference.where(enabled: true)
+                          .includes(person: [:account, { schedules: %i[medication medication_takes] }])
+                          .find_each do |pref|
       next unless pref.person&.account
 
       enqueue_reminders_for(pref)
