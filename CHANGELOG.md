@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.61](https://github.com/damacus/med-tracker/compare/v0.3.60...v0.3.61) (2026-05-21)
+
+
+### Bug Fixes
+
+* add medication dosages separately ([#1298](https://github.com/damacus/med-tracker/issues/1298)) ([d8d00b8](https://github.com/damacus/med-tracker/commit/d8d00b8d9c55825fee38f8e89395a21df189f863))
+* trim production image packages ([#1299](https://github.com/damacus/med-tracker/issues/1299)) ([08c2869](https://github.com/damacus/med-tracker/commit/08c2869b5efef1ec0b0ff5ffadc426ad343eea7d))
+
 ## [0.3.60](https://github.com/damacus/med-tracker/compare/v0.3.59...v0.3.60) (2026-05-15)
 
 
