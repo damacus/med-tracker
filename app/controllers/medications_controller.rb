@@ -60,6 +60,7 @@ class MedicationsController < ApplicationController
   def edit
     authorize @medication
     @return_to = url_from(params[:return_to])
+    @medication.dosage_records.build if params[:add_dosage].present?
     render Components::Medications::FormView.new(
       medication: @medication,
       locations: available_locations,

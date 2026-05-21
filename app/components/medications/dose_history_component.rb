@@ -20,6 +20,7 @@ module Components
               m3_link(
                 href: view_context.edit_medication_path(
                   medication,
+                  add_dosage: true,
                   return_to: view_context.medication_path(medication)
                 ),
                 variant: :outlined,

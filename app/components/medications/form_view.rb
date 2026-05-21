@@ -379,7 +379,9 @@ module Components
 
       def dosage_form_rows
         @dosage_form_rows ||= begin
-          rows = medication.dosage_records.to_a.sort_by { |dosage| [dosage.amount.to_f, dosage.id || 0] }
+          rows = medication.dosage_records.to_a.sort_by do |dosage|
+            [dosage.persisted? ? 0 : 1, dosage.amount.to_f, dosage.id || 0]
+          end
           rows
         end
       end
