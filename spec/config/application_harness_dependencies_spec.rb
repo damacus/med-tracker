@@ -53,6 +53,14 @@ RSpec.describe ApplicationHarnessDependencies do
     expect(dockerfile).to include('BUNDLE_WITH')
   end
 
+  it 'keeps development database headers out of the production image stage' do
+    app_stage = dockerfile.split('FROM ruby:4.0.4-slim-trixie AS app').fetch(1)
+
+    expect(app_stage).to include('libpq5')
+    expect(app_stage).not_to include('libpq-dev')
+    expect(app_stage).not_to match(/apt-get install[^\n]+curl/)
+  end
+
   def gemfile
     Rails.root.join('Gemfile').read
   end
