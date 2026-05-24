@@ -44,9 +44,7 @@ class ScheduleDailyRemindersJob < ApplicationJob
   end
 
   def configured_times_for(person)
-    person.schedules.active.flat_map do |schedule|
-      Array(schedule.schedule_config.to_h['times']).compact_blank
-    end.uniq
+    MedicationReminderEligibilityQuery.new(person: person).configured_times
   end
 
   def build_send_time(time)

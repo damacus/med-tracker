@@ -38,7 +38,8 @@ RSpec.describe ScheduleDailyRemindersJob do
     create(:notification_preference, person: person, morning_time: nil, afternoon_time: nil,
                                      evening_time: nil, night_time: nil)
     create(:schedule, person: person, medication: medications(:vitamin_d), dosage: dosages(:vitamin_d_daily),
-                      schedule_type: :multiple_daily, schedule_config: { 'times' => %w[07:15 19:45] })
+                      frequency: 'Twice daily', schedule_type: :multiple_daily,
+                      schedule_config: { 'times' => %w[07:15 19:45] })
 
     expect do
       described_class.perform_now
@@ -50,10 +51,35 @@ RSpec.describe ScheduleDailyRemindersJob do
       .at(Time.zone.local(2026, 5, 12, 19, 45))
   end
 
+  it 'does not enqueue exact reminders for as-needed schedules' do
+    create(:notification_preference, person: person, morning_time: nil, afternoon_time: nil,
+                                     evening_time: nil, night_time: nil)
+    create(:schedule, person: person, medication: medications(:ibuprofen), dosage: dosages(:ibuprofen_adult),
+                      schedule_type: :prn, frequency: 'As needed', schedule_config: { 'times' => ['07:15'] })
+
+    expect do
+      described_class.perform_now
+    end.not_to have_enqueued_job(MedicationReminderJob)
+      .with(person.id, :scheduled, '07:15')
+  end
+
+  it 'does not enqueue exact reminders for schedules that do not apply today' do
+    create(:notification_preference, person: person, morning_time: nil, afternoon_time: nil,
+                                     evening_time: nil, night_time: nil)
+    create(:schedule, person: person, medication: medications(:vitamin_d), dosage: dosages(:vitamin_d_daily),
+                      frequency: 'Once weekly', schedule_type: :weekly,
+                      schedule_config: { 'weekdays' => ['wednesday'], 'times' => ['07:15'] })
+
+    expect do
+      described_class.perform_now
+    end.not_to have_enqueued_job(MedicationReminderJob)
+      .with(person.id, :scheduled, '07:15')
+  end
+
   it 'does not enqueue schedule-time reminders when notification preferences are disabled' do
     create(:notification_preference, person: person, enabled: false)
     create(:schedule, person: person, medication: medications(:vitamin_d), dosage: dosages(:vitamin_d_daily),
-                      schedule_type: :daily, schedule_config: { 'times' => ['07:15'] })
+                      frequency: 'Once daily', schedule_type: :daily, schedule_config: { 'times' => ['07:15'] })
 
     expect do
       described_class.perform_now

@@ -11,13 +11,13 @@ def main
   file_path = input_data.dig('tool_info', 'file_path') || ''
 
   # Check if the modified file is Gemfile
-  if file_path.include?('Gemfile') || file_path.end_with?('/Gemfile')
-    # Run bundle install
-    unless system('bundle install')
-      puts '❌ Bundle install failed'
-      exit 1
-    end
-  end
+  return unless file_path.include?('Gemfile') || file_path.end_with?('/Gemfile')
+
+  # Run bundle install
+  return if system('bundle install')
+
+  puts '❌ Bundle install failed'
+  exit 1
 rescue StandardError => e
   puts "Error in check_gemfile.rb: #{e.message}"
   exit 1
