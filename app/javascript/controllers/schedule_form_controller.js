@@ -6,7 +6,8 @@ export default class extends Controller {
     "submit", "dosageSelect", "medicationSelect", "dosageContent",
     "dosageValue", "dosageTrigger", "frequencyInput",
     "maxDosesInput", "minHoursInput",
-    "doseAmountInput", "doseUnitInput", "sourceDosageOptionIdInput"
+    "doseAmountInput", "doseUnitInput", "sourceDosageOptionIdInput",
+    "frequencyPreview"
   ]
 
   connect() {
@@ -60,6 +61,7 @@ export default class extends Controller {
         this.frequencyInputTarget.value = dosage.frequency
       }
       this.#fillSchedulingDefaults(dosage)
+      this.generateFrequency()
       this.validate()
       return
     }
@@ -73,21 +75,23 @@ export default class extends Controller {
         this.frequencyInputTarget.value = dosage.frequency
       }
       this.#fillSchedulingDefaults(dosage)
+      this.generateFrequency()
     }
     this.validate()
   }
 
-  async generateFrequency() {
+  generateFrequency() {
     const max = parseInt(this.hasMaxDosesInputTarget ? this.maxDosesInputTarget.value : '') || null
     const hours = parseFloat(this.hasMinHoursInputTarget ? this.minHoursInputTarget.value : '') || null
     const cycle = this.#selectedDoseCycleValue()
 
     if (!max && !hours) {
+      this.#clearFrequencyPreview()
       this.validate()
       return
     }
 
-    if (!this.hasFrequencyPreviewUrlValue) {
+    if (!this.hasFrequencyPreviewUrlValue || !this.hasFrequencyPreviewTarget) {
       this.validate()
       return
     }
@@ -97,18 +101,7 @@ export default class extends Controller {
     if (hours) url.searchParams.set('min_hours_between_doses', hours)
     if (cycle) url.searchParams.set('dose_cycle', cycle)
 
-    try {
-      const response = await fetch(url, { headers: { Accept: "text/plain" } })
-      if (!response.ok) return
-
-      const frequency = await response.text()
-      if (frequency && this.hasFrequencyInputTarget) {
-        this.frequencyInputTarget.value = frequency
-      }
-    } catch (error) {
-      console.error('Error loading frequency preview:', error)
-    }
-
+    this.frequencyPreviewTarget.src = url.toString()
     this.validate()
   }
 
@@ -266,6 +259,13 @@ export default class extends Controller {
     if (this.hasDoseAmountInputTarget) this.doseAmountInputTarget.value = ''
     if (this.hasDoseUnitInputTarget) this.doseUnitInputTarget.value = ''
     if (this.hasSourceDosageOptionIdInputTarget) this.sourceDosageOptionIdInputTarget.value = ''
+  }
+
+  #clearFrequencyPreview() {
+    if (!this.hasFrequencyPreviewTarget) return
+
+    this.frequencyPreviewTarget.removeAttribute('src')
+    this.frequencyPreviewTarget.innerHTML = ''
   }
 
   #selectedMedicationId() {

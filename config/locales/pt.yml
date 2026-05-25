@@ -1007,6 +1007,7 @@ pt:
       frequency_up_to: Até %{count} vezes por ciclo
       frequency_at_least_hours: com pelo menos %{hours}h de intervalo
     frequency_phrase:
+      preview_label: 'Isto significa:'
       cycles:
         day: dia
         week: semana

@@ -64,7 +64,7 @@ RSpec.describe 'Schedules workflow' do
   end
 
   describe 'GET /schedules/frequency_preview' do
-    it 'renders schedule frequency wording from Rails' do
+    it 'renders schedule frequency wording in a Turbo frame from Rails' do
       get schedules_frequency_preview_path, params: {
         max_daily_doses: 3,
         min_hours_between_doses: 12,
@@ -72,8 +72,11 @@ RSpec.describe 'Schedules workflow' do
       }
 
       expect(response).to have_http_status(:ok)
-      expect(response.media_type).to eq('text/plain')
-      expect(response.body).to eq('Up to 3 times per week, with at least 12 hours between doses')
+      expect(response.media_type).to eq('text/html')
+      frame = Nokogiri::HTML.fragment(response.body).at_css('turbo-frame#schedule_frequency_preview')
+      expect(frame).to be_present
+      expect(response.body).to include('This means:')
+      expect(response.body).to include('Up to 3 times per week, with at least 12 hours between doses')
     end
   end
 end

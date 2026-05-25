@@ -1035,6 +1035,7 @@ cy:
       frequency_up_to: Hyd at %{count} gwaith y cylch
       frequency_at_least_hours: o leiaf %{hours} awr ar wahân
     frequency_phrase:
+      preview_label: 'Mae hyn yn golygu:'
       cycles:
         day: diwrnod
         week: wythnos

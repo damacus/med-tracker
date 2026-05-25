@@ -1010,6 +1010,7 @@ ga:
       frequency_up_to: Suas le %{count} uair sa timthriall
       frequency_at_least_hours: ar a laghad %{hours}h óna chéile
     frequency_phrase:
+      preview_label: 'Ciallaíonn sé seo:'
       cycles:
         day: lá
         week: seachtain

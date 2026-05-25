@@ -1023,6 +1023,7 @@ en:
       frequency_up_to: Up to %{count} times per cycle
       frequency_at_least_hours: at least %{hours}h apart
     frequency_phrase:
+      preview_label: 'This means:'
       cycles:
         day: day
         week: week

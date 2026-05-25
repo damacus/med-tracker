@@ -1015,6 +1015,7 @@ es:
       frequency_up_to: Hasta %{count} veces por ciclo
       frequency_at_least_hours: al menos %{hours}h entre dosis
     frequency_phrase:
+      preview_label: 'Esto significa:'
       cycles:
         day: día
         week: semana

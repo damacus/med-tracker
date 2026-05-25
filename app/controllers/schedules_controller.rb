@@ -30,11 +30,11 @@ class SchedulesController < ApplicationController
 
   def frequency_preview
     authorize Schedule.new(person: current_user&.person || Person.new), :create?
-    render plain: ScheduleFrequencyPhrase.new(
+    render Components::Schedules::FrequencyPreview.new(
       max_daily_doses: params[:max_daily_doses],
       min_hours_between_doses: params[:min_hours_between_doses],
       dose_cycle: params[:dose_cycle]
-    ).to_s
+    ), layout: false
   end
 
   def new
