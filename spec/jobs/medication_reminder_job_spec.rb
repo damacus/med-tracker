@@ -53,6 +53,18 @@ RSpec.describe MedicationReminderJob do
     expect(PushNotificationService).not_to have_received(:send_to_account)
   end
 
+  it 'does not send scheduled-time reminders when the medication was taken today through a direct assignment' do
+    create_vitamin_schedule(time: '19:45')
+    person_medication = create_routine_vitamin
+    take_person_medication(person_medication)
+
+    travel_to Time.zone.today.beginning_of_day + 19.hours + 45.minutes do
+      described_class.perform_now(person.id, :scheduled, '19:45')
+    end
+
+    expect(PushNotificationService).not_to have_received(:send_to_account)
+  end
+
   it 'does not send scheduled-time reminders for as-needed schedules' do
     create(:schedule, person: person, medication: medications(:ibuprofen), dosage: dosages(:ibuprofen_adult),
                       schedule_type: :prn, frequency: 'As needed', schedule_config: { 'times' => ['07:15'] })
@@ -104,6 +116,18 @@ RSpec.describe MedicationReminderJob do
     expect(PushNotificationService).not_to have_received(:send_to_account)
   end
 
+  it 'does not send period reminders when a direct medication was taken today through a schedule' do
+    schedule = create_vitamin_schedule(time: '07:15')
+    create_routine_vitamin
+    take_schedule(schedule)
+
+    travel_to Time.zone.today.beginning_of_day + 14.hours do
+      described_class.perform_now(person.id, :afternoon)
+    end
+
+    expect(PushNotificationService).not_to have_received(:send_to_account)
+  end
+
   it 'does not send period reminders when routine medications have already been taken today' do
     schedule = create(:schedule, person: person, medication: medications(:vitamin_d), dosage: dosages(:vitamin_d_daily),
                                  frequency: 'Once daily', schedule_type: :daily,
@@ -114,5 +138,39 @@ RSpec.describe MedicationReminderJob do
     described_class.perform_now(person.id, :morning)
 
     expect(PushNotificationService).not_to have_received(:send_to_account)
+  end
+
+  def create_vitamin_schedule(time:)
+    create(:schedule, person: person, medication: medications(:vitamin_d), dosage: dosages(:vitamin_d_daily),
+                      frequency: 'Once daily', schedule_type: :daily,
+                      schedule_config: { 'times' => [time] })
+  end
+
+  def create_routine_vitamin
+    create(
+      :person_medication,
+      :routine,
+      person: person,
+      medication: medications(:vitamin_d),
+      dosage: dosages(:vitamin_d_daily)
+    )
+  end
+
+  def take_person_medication(person_medication)
+    create(
+      :medication_take,
+      :for_person_medication,
+      person_medication: person_medication,
+      taken_at: Time.zone.today.beginning_of_day + 8.hours
+    )
+  end
+
+  def take_schedule(schedule)
+    create(
+      :medication_take,
+      :for_schedule,
+      schedule: schedule,
+      taken_at: Time.zone.today.beginning_of_day + 8.hours
+    )
   end
 end

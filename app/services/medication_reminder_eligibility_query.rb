@@ -84,11 +84,53 @@ class MedicationReminderEligibilityQuery
 
   def taken_count_for_cycle(source)
     cycle = DoseCycle.new(source.respond_to?(:dose_cycle) ? source.dose_cycle : 'daily')
-    source.medication_takes.count { |take| cycle.range_for(now).cover?(take.taken_at) }
+    medication_takes_for(source).count { |take| cycle.range_for(now).cover?(take.taken_at) }
   end
 
   def taken_in_current_cycle?(source)
     taken_count_for_cycle(source).positive?
+  end
+
+  def medication_takes_for(source)
+    takes_by_medication_id.fetch(source.medication_id, [])
+  end
+
+  def takes_by_medication_id
+    @takes_by_medication_id ||= begin
+      medication_ids = reminder_source_medication_ids
+
+      if medication_ids.blank?
+        {}
+      else
+        (schedule_takes_for(medication_ids) + person_medication_takes_for(medication_ids)).group_by do |take|
+          take.schedule&.medication_id || take.person_medication&.medication_id
+        end
+      end
+    end
+  end
+
+  def reminder_source_medication_ids
+    (schedules + person_medications).map(&:medication_id).compact.uniq
+  end
+
+  def schedule_takes_for(medication_ids)
+    MedicationTake.joins(:schedule)
+                  .where(taken_at: medication_take_lookup_range,
+                         schedules: { person_id: person.id, medication_id: medication_ids })
+                  .includes(:schedule)
+                  .to_a
+  end
+
+  def person_medication_takes_for(medication_ids)
+    MedicationTake.joins(:person_medication)
+                  .where(taken_at: medication_take_lookup_range,
+                         person_medications: { person_id: person.id, medication_id: medication_ids })
+                  .includes(:person_medication)
+                  .to_a
+  end
+
+  def medication_take_lookup_range
+    (now - 1.month).beginning_of_day..now.end_of_day
   end
 
   def as_needed_schedule?(schedule)
