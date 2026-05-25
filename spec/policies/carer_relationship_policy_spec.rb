@@ -18,6 +18,10 @@ RSpec.describe CarerRelationshipPolicy do
         expect(policy.public_send("#{action}?")).to be true
       end
     end
+
+    it 'permits dependent assignment' do
+      expect(policy.assign_dependent?).to be true
+    end
   end
 
   context 'when user is a doctor' do
@@ -26,6 +30,10 @@ RSpec.describe CarerRelationshipPolicy do
     it 'permits viewing but not management' do
       %i[index show].each { |action| expect(policy.public_send("#{action}?")).to be true }
       %i[create new update edit destroy].each { |action| expect(policy.public_send("#{action}?")).to be false }
+    end
+
+    it 'forbids dependent assignment' do
+      expect(policy.assign_dependent?).to be false
     end
   end
 
@@ -36,13 +44,17 @@ RSpec.describe CarerRelationshipPolicy do
       %i[index show].each { |action| expect(policy.public_send("#{action}?")).to be true }
       %i[create new update edit destroy].each { |action| expect(policy.public_send("#{action}?")).to be false }
     end
+
+    it 'forbids dependent assignment' do
+      expect(policy.assign_dependent?).to be false
+    end
   end
 
   context 'when user is a carer' do
-    let(:current_user) { users(:jane) }
+    let(:current_user) { users(:carer) }
 
     context 'with their own carer relationship' do
-      let(:relationship) { carer_relationships(:jane_cares_for_child) }
+      let(:relationship) { carer_relationships(:carer_cares_for_patient) }
 
       it 'permits viewing only' do
         expect(policy.show?).to be true
@@ -51,7 +63,7 @@ RSpec.describe CarerRelationshipPolicy do
     end
 
     context 'with another carer relationship' do
-      let(:relationship) { carer_relationships(:nurse_cares_for_john) }
+      let(:relationship) { carer_relationships(:jane_cares_for_child) }
 
       it 'forbids viewing' do
         expect(policy.show?).to be false
@@ -64,6 +76,38 @@ RSpec.describe CarerRelationshipPolicy do
 
     it 'forbids creating relationships' do
       %i[create new].each { |action| expect(policy.public_send("#{action}?")).to be false }
+    end
+
+    it 'forbids dependent assignment' do
+      expect(policy.assign_dependent?).to be false
+    end
+  end
+
+  context 'when user is a parent' do
+    let(:current_user) { users(:parent) }
+
+    context 'with their own dependent child' do
+      let(:relationship) { CarerRelationship.new(patient: people(:child_user_person)) }
+
+      it 'permits dependent assignment' do
+        expect(policy.assign_dependent?).to be true
+      end
+    end
+
+    context 'with an unrelated dependent child' do
+      let(:relationship) { CarerRelationship.new(patient: people(:child_patient)) }
+
+      it 'forbids dependent assignment' do
+        expect(policy.assign_dependent?).to be false
+      end
+    end
+
+    context 'with a self-managing adult' do
+      let(:relationship) { CarerRelationship.new(patient: people(:john)) }
+
+      it 'forbids dependent assignment' do
+        expect(policy.assign_dependent?).to be false
+      end
     end
   end
 

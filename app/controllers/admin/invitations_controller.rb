@@ -65,7 +65,7 @@ module Admin
     private
 
     def invitation_params
-      params.expect(invitation: %i[email role])
+      params.expect(invitation: [:email, :role, { dependent_ids: [] }])
     end
 
     def render_index_turbo
@@ -81,8 +81,13 @@ module Admin
         invitation: invitation,
         invitations: result.invitations,
         resendable_invitation_ids: result.resendable_invitation_ids,
-        cancellable_invitation_ids: result.cancellable_invitation_ids
+        cancellable_invitation_ids: result.cancellable_invitation_ids,
+        dependents: load_dependents
       )
+    end
+
+    def load_dependents
+      @load_dependents ||= Person.where(person_type: %i[minor dependent_adult], has_capacity: false).order(:name).to_a
     end
 
     def redirect_with_invitation_notice(message)

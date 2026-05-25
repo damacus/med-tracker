@@ -2,6 +2,8 @@
 
 # User model for storing user information and authentication
 class User < ApplicationRecord
+  attr_accessor :dependent_ids
+
   # Audit trail for user account changes
   # Excludes password fields for security - passwords are never logged
   # Tracks: email changes, role changes, person associations

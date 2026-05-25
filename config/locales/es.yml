@@ -297,6 +297,9 @@ es:
         form:
           email: Correo electrónico
           role: Rol
+          dependents: Dependientes existentes
+          dependents_hint: Selecciona niños existentes o adultos dependientes que
+            este padre, madre o cuidador invitado debe gestionar.
           submit: Enviar invitación
         status:
           accepted: Aceptada
@@ -352,6 +355,7 @@ es:
         password_confirmation: Confirmación de contraseña
         role: Rol
         select_role: Selecciona un rol
+        dependents: Dependientes existentes
         cancel: Cancelar
         create_submit: Crear usuario
         update_submit: Actualizar usuario
@@ -780,6 +784,21 @@ es:
     actions:
       title: Acciones de Cuidado
       subtitle: Actualiza los planes y horarios de medicamentos.
+    carer_relationships:
+      created: Padre, madre o cuidador asignado.
+      invited: Invitación enviada con este dependiente adjunto.
+      invalid_role: Introduce una dirección de correo de una cuenta adulta de padre
+        o madre.
+      missing_carer: Selecciona un usuario adulto para asignar.
+      new_title: Gestionar padres
+      new_subtitle: Asigna otro padre, madre o cuidador a %{name}.
+      carer: Padre, madre o cuidador
+      select_carer: Selecciona un padre, madre o cuidador...
+      relationship_type: Tipo de relación
+      email: Email del padre o madre
+      email_placeholder: padre@example.com
+      cancel: Cancelar
+      submit: Guardar asignación
     card:
       born: 'Nacido:'
       age: 'Edad:'
@@ -793,6 +812,7 @@ es:
       edit_person: Editar Persona
       add_schedule: Agregar Receta
       add_medication: Agregar Medicamento
+      manage_parents: Gestionar padres
       back: Volver
       born: 'Nacido:'
       age: 'Edad:'

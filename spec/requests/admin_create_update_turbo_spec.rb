@@ -10,6 +10,15 @@ RSpec.describe 'Admin create and update turbo flows' do
   before { sign_in(admin) }
 
   describe 'POST /admin/invitations' do
+    it 'renders role-aware dependent assignment controls on the invitation form' do
+      get admin_invitations_path
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include('data-controller="dependent-assignment"')
+      expect(response.body).to include('data-dependent-assignment-target="field"')
+      expect(response.body).to include('name="invitation[dependent_ids][]"')
+    end
+
     it 'returns turbo_stream and updates invitations container and flash on success' do
       post admin_invitations_path,
            params: { invitation: { email: 'new.user@example.com', role: 'carer' } },
@@ -19,6 +28,38 @@ RSpec.describe 'Admin create and update turbo flows' do
       expect(response.media_type).to eq('text/vnd.turbo-stream.html')
       expect(response.body).to include('target="admin_invitations"')
       expect(response.body).to include('target="flash"')
+    end
+
+    it 'stores selected dependents for parent invitations' do
+      dependent = people(:child_patient)
+
+      post admin_invitations_path,
+           params: {
+             invitation: {
+               email: 'second.parent@example.com',
+               role: 'parent',
+               dependent_ids: [dependent.id]
+             }
+           }
+
+      invitation = Invitation.find_by!(email: 'second.parent@example.com')
+      expect(invitation.dependents).to contain_exactly(dependent)
+    end
+
+    it 'stores selected dependents for carer invitations' do
+      dependent = people(:child_user_person)
+
+      post admin_invitations_path,
+           params: {
+             invitation: {
+               email: 'invited.carer@example.com',
+               role: 'carer',
+               dependent_ids: [dependent.id]
+             }
+           }
+
+      invitation = Invitation.find_by!(email: 'invited.carer@example.com')
+      expect(invitation.dependents).to contain_exactly(dependent)
     end
 
     it 'returns unprocessable content when inviting a minor' do
@@ -83,6 +124,15 @@ RSpec.describe 'Admin create and update turbo flows' do
   end
 
   describe 'POST /admin/users' do
+    it 'renders role-aware dependent assignment controls on the user form' do
+      get new_admin_user_path
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include('data-controller="dependent-assignment"')
+      expect(response.body).to include('data-dependent-assignment-target="field"')
+      expect(response.body).to include('name="user[dependent_ids][]"')
+    end
+
     it 'returns turbo_stream and replaces users index and flash on success' do
       post admin_users_path,
            params: {
@@ -106,6 +156,60 @@ RSpec.describe 'Admin create and update turbo flows' do
       expect(response.body).to include('id="admin-users-frame"')
       expect(response.body).to include('target="flash"')
       expect(response.body).to include('Turbo New User')
+    end
+
+    it 'links a new parent to selected existing children' do
+      dependent = people(:child_patient)
+
+      expect do
+        post admin_users_path,
+             params: {
+               user: {
+                 email_address: 'linked.parent@example.com',
+                 password: 'password',
+                 password_confirmation: 'password',
+                 role: 'parent',
+                 dependent_ids: [dependent.id],
+                 person_attributes: {
+                   name: 'Linked Parent',
+                   date_of_birth: '1990-01-01',
+                   location_ids: [locations(:home).id]
+                 }
+               }
+             }
+      end.to change(CarerRelationship, :count).by(1)
+
+      parent = User.find_by!(email_address: 'linked.parent@example.com').person
+      relationship = CarerRelationship.find_by!(carer: parent, patient: dependent)
+      expect(relationship.relationship_type).to eq('parent')
+      expect(relationship.active).to be true
+    end
+
+    it 'links a new carer to selected existing children' do
+      dependent = people(:child_user_person)
+
+      expect do
+        post admin_users_path,
+             params: {
+               user: {
+                 email_address: 'linked.carer@example.com',
+                 password: 'password',
+                 password_confirmation: 'password',
+                 role: 'carer',
+                 dependent_ids: [dependent.id],
+                 person_attributes: {
+                   name: 'Linked Carer',
+                   date_of_birth: '1990-01-01',
+                   location_ids: [locations(:home).id]
+                 }
+               }
+             }
+      end.to change(CarerRelationship, :count).by(1)
+
+      carer = User.find_by!(email_address: 'linked.carer@example.com').person
+      relationship = CarerRelationship.find_by!(carer: carer, patient: dependent)
+      expect(relationship.relationship_type).to eq('professional_carer')
+      expect(relationship.active).to be true
     end
 
     it 'returns unprocessable content on validation failure' do
@@ -157,6 +261,32 @@ RSpec.describe 'Admin create and update turbo flows' do
       expect(response.body).to include('target="flash"')
       expect(response.body).to include('Jane Turbo Update')
       expect(users(:jane).person.reload.name).to eq('Jane Turbo Update')
+    end
+
+    it 'adds selected existing children to an existing parent' do
+      parent = users(:parent)
+      dependent = people(:child_patient)
+
+      expect do
+        patch admin_user_path(parent),
+              params: {
+                user: {
+                  email_address: parent.email_address,
+                  role: 'parent',
+                  dependent_ids: [dependent.id],
+                  person_attributes: {
+                    id: parent.person.id,
+                    name: parent.person.name,
+                    date_of_birth: parent.person.date_of_birth.to_s,
+                    location_ids: [locations(:home).id]
+                  }
+                }
+              }
+      end.to change(CarerRelationship, :count).by(1)
+
+      relationship = CarerRelationship.find_by!(carer: parent.person, patient: dependent)
+      expect(relationship.relationship_type).to eq('parent')
+      expect(relationship.active).to be true
     end
   end
 

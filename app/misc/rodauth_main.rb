@@ -343,10 +343,7 @@ class RodauthMain < Rodauth::Rails::Auth
       user_role = age >= 18 ? :parent : :minor
 
       # If created via invitation, use cached invitation and override role
-      if @invitation
-        user_role = @invitation.role
-        @invitation.update!(accepted_at: Time.current)
-      end
+      user_role = @invitation.role if @invitation
 
       # Create associated Person and User records atomically
       # Ensures both are created or both fail together
@@ -367,6 +364,15 @@ class RodauthMain < Rodauth::Rails::Auth
           role: user_role,
           active: true
         )
+
+        if @invitation
+          DependentRelationshipAssigner.new(
+            carer: person,
+            dependent_ids: @invitation.dependent_ids,
+            relationship_type: DependentRelationshipAssigner.relationship_type_for(@invitation.role)
+          ).call
+          @invitation.update!(accepted_at: Time.current)
+        end
       end
     end
 

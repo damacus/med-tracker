@@ -10,20 +10,25 @@ module Admin
         filters: search_params.to_h.symbolize_keys
       ).call
       @pagy, users = pagy(:offset, users)
-      render Components::Admin::Users::IndexView.new(users: users, search_params: search_params, current_user: current_user, pagy: @pagy)
+      render Components::Admin::Users::IndexView.new(
+        users: users,
+        search_params: search_params,
+        current_user: current_user,
+        pagy: @pagy
+      )
     end
 
     def new
       @user = User.new
       @user.build_person
       authorize @user
-      render Components::Admin::Users::FormView.new(user: @user, locations: load_locations)
+      render user_form_view
     end
 
     def edit
       @user = policy_scope(User).find(params.expect(:id))
       authorize @user
-      render Components::Admin::Users::FormView.new(user: @user, locations: load_locations)
+      render user_form_view
     end
 
     def create
@@ -56,16 +61,12 @@ module Admin
       authorize @user
 
       respond_to do |format|
-        if @user.update(user_params)
+        if update_user_with_dependents
           format.html { redirect_to admin_users_path, notice: t('users.updated') }
           format.turbo_stream { render_users_index_turbo(t('users.updated')) }
         else
-          format.html do
-            render Components::Admin::Users::FormView.new(user: @user, locations: load_locations), status: :unprocessable_content
-          end
-          format.turbo_stream do
-            render Components::Admin::Users::FormView.new(user: @user, locations: load_locations), status: :unprocessable_content
-          end
+          format.html { render_user_form_with_errors }
+          format.turbo_stream { render_user_form_with_errors }
         end
       end
     end
@@ -144,6 +145,11 @@ module Admin
       @load_locations ||= Location.all.to_a
     end
 
+    def load_dependents
+      @load_dependents ||=
+        Person.where(person_type: %i[minor dependent_adult], has_capacity: false).order(:name).to_a
+    end
+
     def account_already_exists?
       return false unless Account.exists?(email: @user.email_address)
 
@@ -160,6 +166,15 @@ module Admin
         )
         @user.person.account = account
         @user.save!
+        assign_dependents
+      end
+    end
+
+    def update_user_with_dependents
+      ActiveRecord::Base.transaction do
+        updated = @user.update(user_params)
+        assign_dependents if updated
+        updated
       end
     end
 
@@ -173,7 +188,15 @@ module Admin
     end
 
     def render_user_form_with_errors
-      render Components::Admin::Users::FormView.new(user: @user, locations: load_locations), status: :unprocessable_content
+      render user_form_view, status: :unprocessable_content
+    end
+
+    def user_form_view
+      Components::Admin::Users::FormView.new(
+        user: @user,
+        locations: load_locations,
+        dependents: load_dependents
+      )
     end
 
     def render_users_index_turbo(message)
@@ -190,7 +213,12 @@ module Admin
         filters: search_params.to_h.symbolize_keys
       ).call
       @pagy, users = pagy(:offset, users)
-      Components::Admin::Users::IndexView.new(users: users, search_params: search_params, current_user: current_user, pagy: @pagy)
+      Components::Admin::Users::IndexView.new(
+        users: users,
+        search_params: search_params,
+        current_user: current_user,
+        pagy: @pagy
+      )
     end
 
     def search_params
@@ -198,12 +226,36 @@ module Admin
     end
 
     def user_params
-      params.expect(user: [:email_address, :password, :password_confirmation, :role, { person_attributes: [:id, :name, :date_of_birth, { location_ids: [] }] }])
+      params.expect(
+        user: [
+          :email_address,
+          :password,
+          :password_confirmation,
+          :role,
+          {
+            dependent_ids: [],
+            person_attributes: [:id, :name, :date_of_birth, { location_ids: [] }]
+          }
+        ]
+      )
+    end
+
+    def assign_dependents
+      return unless DependentRelationshipAssigner.relationship_type_for(@user)
+
+      DependentRelationshipAssigner.new(
+        carer: @user.person,
+        dependent_ids: @user.dependent_ids,
+        relationship_type: DependentRelationshipAssigner.relationship_type_for(@user)
+      ).call
     end
 
     def user_row_streams(user)
       [
-        turbo_stream.replace("user_#{user.id}", Components::Admin::Users::UserRow.new(user: user.reload, current_user: current_user)),
+        turbo_stream.replace(
+          "user_#{user.id}",
+          Components::Admin::Users::UserRow.new(user: user.reload, current_user: current_user)
+        ),
         turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
       ]
     end
