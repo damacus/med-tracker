@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static values = { nextUrl: String, translations: Object, doseOptions: Object, frameId: String }
+  static values = { nextUrl: String, frequencyPreviewUrl: String, translations: Object, doseOptions: Object, frameId: String }
   static targets = [
     "submit", "dosageSelect", "medicationSelect", "dosageContent",
     "dosageValue", "dosageTrigger", "frequencyInput",
@@ -77,7 +77,7 @@ export default class extends Controller {
     this.validate()
   }
 
-  generateFrequency() {
+  async generateFrequency() {
     const max = parseInt(this.hasMaxDosesInputTarget ? this.maxDosesInputTarget.value : '') || null
     const hours = parseFloat(this.hasMinHoursInputTarget ? this.minHoursInputTarget.value : '') || null
     const cycle = this.#selectedDoseCycleValue()
@@ -87,17 +87,28 @@ export default class extends Controller {
       return
     }
 
-    const parts = []
-    if (max && cycle) {
-      parts.push(max === 1 ? this.t('frequencyOncePerCycle').replace('%{cycle}', cycle) : this.t('frequencyUpToPerCycle').replace('%{count}', max).replace('%{cycle}', cycle))
-    } else if (max) {
-      parts.push(max === 1 ? this.t('frequencyOnce') : this.t('frequencyUpTo').replace('%{count}', max))
+    if (!this.hasFrequencyPreviewUrlValue) {
+      this.validate()
+      return
     }
-    if (hours) parts.push(this.t('frequencyAtLeastHours').replace('%{hours}', hours))
 
-    if (parts.length && this.hasFrequencyInputTarget) {
-      this.frequencyInputTarget.value = parts.join(', ')
+    const url = new URL(this.frequencyPreviewUrlValue, window.location.origin)
+    if (max) url.searchParams.set('max_daily_doses', max)
+    if (hours) url.searchParams.set('min_hours_between_doses', hours)
+    if (cycle) url.searchParams.set('dose_cycle', cycle)
+
+    try {
+      const response = await fetch(url, { headers: { Accept: "text/plain" } })
+      if (!response.ok) return
+
+      const frequency = await response.text()
+      if (frequency && this.hasFrequencyInputTarget) {
+        this.frequencyInputTarget.value = frequency
+      }
+    } catch (error) {
+      console.error('Error loading frequency preview:', error)
     }
+
     this.validate()
   }
 

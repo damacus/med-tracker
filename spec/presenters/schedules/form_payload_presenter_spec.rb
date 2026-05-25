@@ -32,7 +32,8 @@ RSpec.describe Schedules::FormPayloadPresenter do
         turbo_stream: true,
         person_type: 'adult',
         schedule_form_frame_id_value: 'schedule_frame',
-        schedule_form_next_url_value: '/people/1/schedules/new'
+        schedule_form_next_url_value: '/people/1/schedules/new',
+        schedule_form_frequency_preview_url_value: '/schedules/frequency_preview'
       )
     end
 

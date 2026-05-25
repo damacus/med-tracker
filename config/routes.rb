@@ -97,6 +97,7 @@ Rails.application.routes.draw do
 
   get 'schedules/workflow', to: 'schedules#workflow', as: :schedules_workflow
   post 'schedules/workflow', to: 'schedules#start_workflow', as: :start_schedules_workflow
+  get 'schedules/frequency_preview', to: 'schedules#frequency_preview', as: :schedules_frequency_preview
   resources :schedules do
     resources :medication_takes, only: [:create]
   end

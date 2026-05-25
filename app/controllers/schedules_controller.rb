@@ -9,7 +9,7 @@ class SchedulesController < ApplicationController
   include MedicationWorkflowBackPathable
 
   before_action :redirect_direct_new_schedule, only: :new
-  before_action :set_person, except: %i[index workflow start_workflow]
+  before_action :set_person, except: %i[index workflow start_workflow frequency_preview]
   before_action :set_schedule, only: %i[edit update destroy take_medication]
 
   def index
@@ -26,6 +26,15 @@ class SchedulesController < ApplicationController
   def start_workflow
     authorize Schedule.new(person: current_user&.person || Person.new), :create?
     redirect_to selected_schedule_workflow_path
+  end
+
+  def frequency_preview
+    authorize Schedule.new(person: current_user&.person || Person.new), :create?
+    render plain: ScheduleFrequencyPhrase.new(
+      max_daily_doses: params[:max_daily_doses],
+      min_hours_between_doses: params[:min_hours_between_doses],
+      dose_cycle: params[:dose_cycle]
+    ).to_s
   end
 
   def new

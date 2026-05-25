@@ -1009,6 +1009,22 @@ ga:
       frequency_once: Uair amháin sa timthriall
       frequency_up_to: Suas le %{count} uair sa timthriall
       frequency_at_least_hours: ar a laghad %{hours}h óna chéile
+    frequency_phrase:
+      cycles:
+        day: lá
+        week: seachtain
+        month: mí
+      once_per_cycle: Uair amháin sa %{cycle}
+      up_to_per_cycle: Suas le %{count} uair sa %{cycle}
+      minimum_spacing: Ar a laghad %{duration} idir dáileoga
+      with_minimum_spacing: le %{duration} ar a laghad idir dáileoga
+      durations:
+        hours:
+          one: "%{count} uair an chloig"
+          other: "%{count} uair an chloig"
+        minutes:
+          one: "%{count} nóiméad"
+          other: "%{count} nóiméad"
     workflow:
       eyebrow: Sreabhadh oibre sceidealaithe
       title: Cruthaigh sceideal leigheas

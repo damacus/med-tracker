@@ -1022,6 +1022,22 @@ en:
       frequency_once: Once per cycle
       frequency_up_to: Up to %{count} times per cycle
       frequency_at_least_hours: at least %{hours}h apart
+    frequency_phrase:
+      cycles:
+        day: day
+        week: week
+        month: month
+      once_per_cycle: Once per %{cycle}
+      up_to_per_cycle: Up to %{count} times per %{cycle}
+      minimum_spacing: At least %{duration} between doses
+      with_minimum_spacing: with at least %{duration} between doses
+      durations:
+        hours:
+          one: "%{count} hour"
+          other: "%{count} hours"
+        minutes:
+          one: "%{count} minute"
+          other: "%{count} minutes"
     workflow:
       eyebrow: Schedule workflow
       title: Create a medication schedule

@@ -62,4 +62,18 @@ RSpec.describe 'Schedules workflow' do
       expect(response.body).to include('Twice daily')
     end
   end
+
+  describe 'GET /schedules/frequency_preview' do
+    it 'renders schedule frequency wording from Rails' do
+      get schedules_frequency_preview_path, params: {
+        max_daily_doses: 3,
+        min_hours_between_doses: 12,
+        dose_cycle: 'weekly'
+      }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.media_type).to eq('text/plain')
+      expect(response.body).to eq('Up to 3 times per week, with at least 12 hours between doses')
+    end
+  end
 end
