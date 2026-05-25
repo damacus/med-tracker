@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.3.63](https://github.com/damacus/med-tracker/compare/v0.3.62...v0.3.63) (2026-05-25)
+
+
+### Features
+
+* support medication plans ([#1313](https://github.com/damacus/med-tracker/issues/1313)) ([6e413f0](https://github.com/damacus/med-tracker/commit/6e413f0bc5a4ee657896a297826735c29fb1cee1))
+
+
+### Bug Fixes
+
+* render schedule frequency preview with turbo ([#1312](https://github.com/damacus/med-tracker/issues/1312)) ([d48d707](https://github.com/damacus/med-tracker/commit/d48d70770bbdf439231c92e59254018f68ef634f))
+* suppress reminders after medication taken ([#1310](https://github.com/damacus/med-tracker/issues/1310)) ([8c300e1](https://github.com/damacus/med-tracker/commit/8c300e124b3378d4c65b6acef4465cb2fceb1bc0))
+
+
+### Performance Improvements
+
+* preload reminder schedules ([#1297](https://github.com/damacus/med-tracker/issues/1297)) ([1837870](https://github.com/damacus/med-tracker/commit/1837870f5232076a8d3e92b70b7008e4e38335bc))
+
 ## [0.3.62](https://github.com/damacus/med-tracker/compare/v0.3.61...v0.3.62) (2026-05-25)
 
 
