@@ -44,6 +44,8 @@ class MedicationReminderEligibilityQuery
 
   def due_schedule?(schedule)
     return false if as_needed_schedule?(schedule)
+    return false if configured_times_for(schedule).blank?
+    return false if taken_in_current_cycle?(schedule)
     return false unless schedule.applies_on?(today)
 
     if scheduled_time.present?
@@ -54,6 +56,8 @@ class MedicationReminderEligibilityQuery
   end
 
   def due_person_medication?(person_medication)
+    return false if taken_in_current_cycle?(person_medication)
+
     taken_count_for_cycle(person_medication) < expected_person_medication_doses(person_medication)
   end
 
@@ -81,6 +85,10 @@ class MedicationReminderEligibilityQuery
   def taken_count_for_cycle(source)
     cycle = DoseCycle.new(source.respond_to?(:dose_cycle) ? source.dose_cycle : 'daily')
     source.medication_takes.count { |take| cycle.range_for(now).cover?(take.taken_at) }
+  end
+
+  def taken_in_current_cycle?(source)
+    taken_count_for_cycle(source).positive?
   end
 
   def as_needed_schedule?(schedule)
