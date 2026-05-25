@@ -406,7 +406,7 @@ GEM
     opentelemetry-semantic_conventions (1.37.1)
       opentelemetry-api (~> 1.0)
     ostruct (0.6.3)
-    pagy (43.5.4)
+    pagy (43.5.5)
       json
       uri
       yaml
