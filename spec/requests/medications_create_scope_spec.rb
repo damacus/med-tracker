@@ -49,7 +49,7 @@ RSpec.describe 'Medication creation scope' do
       expect(response.body).to include('data-medication-schedule-wizard-target="personSelect"')
       expect(response.body).to include('grid-cols-[minmax(0,1fr)_minmax(6.5rem,10rem)]')
       expect(response.body).to include('Add date')
-      expect(response.body).to include('Review dose schedule')
+      expect(response.body).to include('Review medication plan')
       expect(response.body).to include('name="medication[current_supply]"')
       expect(response.body).to include('name="medication[reorder_threshold]"')
       expect(response.body).to include('Supply setup')

@@ -30,7 +30,7 @@ RSpec.describe 'Medication wizard dose option follow-up' do
              },
              medication: {
                name: 'Wizard Medication',
-               category: 'Vitamin',
+               category: 'Analgesic',
                current_supply: '10',
                reorder_threshold: '1',
                location_id: locations(:home).id,
@@ -106,6 +106,128 @@ RSpec.describe 'Medication wizard dose option follow-up' do
     )
   end
 
+  it 'creates an ongoing medication plan for a vitamin without creating a schedule' do
+    sign_in(users(:admin))
+    schedule_count = Schedule.count
+
+    expect do
+      post medications_path,
+           params: {
+             wizard: 'true',
+             onboarding_schedule: {
+               person_id: people(:john).id,
+               schedule_type: 'daily',
+               frequency: 'Once daily',
+               start_date: Time.zone.today.to_s,
+               end_date: 1.month.from_now.to_date.to_s,
+               max_daily_doses: '1',
+               min_hours_between_doses: '24',
+               dose_cycle: 'daily',
+               schedule_config: JSON.generate(
+                 schedule_type: 'daily',
+                 frequency: 'Once daily',
+                 times: %w[08:00]
+               )
+             },
+             medication: {
+               name: 'Ongoing Vitamin D',
+               category: 'Vitamin',
+               current_supply: '10',
+               reorder_threshold: '1',
+               location_id: locations(:home).id,
+               dosage_records_attributes: {
+                 '0' => {
+                   amount: '1000',
+                   unit: 'IU',
+                   frequency: 'Once daily',
+                   default_for_adults: '1',
+                   default_for_children: '0',
+                   default_max_daily_doses: '1',
+                   default_min_hours_between_doses: '24',
+                   default_dose_cycle: 'daily'
+                 }
+               }
+             }
+           },
+           headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+    end.to change(PersonMedication, :count).by(1)
+
+    expect(Schedule.count).to eq(schedule_count)
+    medication = Medication.order(:id).last
+    dosage = medication.dosage_records.order(:id).last
+    person_medication = PersonMedication.order(:id).last
+
+    expect(person_medication).to have_attributes(
+      person: people(:john),
+      medication: medication,
+      source_dosage_option: dosage,
+      dose_amount: BigDecimal('1000.0'),
+      dose_unit: 'IU',
+      max_daily_doses: 1,
+      min_hours_between_doses: nil
+    )
+    expect(person_medication.administration_kind).to eq('routine')
+  end
+
+  it 'creates an as-needed medication plan for a PRN onboarding medication without creating a schedule' do
+    sign_in(users(:admin))
+    schedule_count = Schedule.count
+
+    expect do
+      post medications_path,
+           params: {
+             wizard: 'true',
+             onboarding_schedule: {
+               person_id: people(:john).id,
+               schedule_type: 'prn',
+               frequency: 'As needed',
+               start_date: Time.zone.today.to_s,
+               end_date: 1.month.from_now.to_date.to_s,
+               max_daily_doses: '4',
+               min_hours_between_doses: '4',
+               dose_cycle: 'daily',
+               schedule_config: JSON.generate(
+                 schedule_type: 'prn',
+                 frequency: 'As needed',
+                 as_needed: true
+               )
+             },
+             medication: {
+               name: 'PRN Paracetamol',
+               category: 'Analgesic',
+               current_supply: '10',
+               reorder_threshold: '1',
+               location_id: locations(:home).id,
+               dosage_records_attributes: {
+                 '0' => {
+                   amount: '500',
+                   unit: 'mg',
+                   frequency: 'As needed',
+                   default_for_adults: '1',
+                   default_for_children: '0',
+                   default_max_daily_doses: '4',
+                   default_min_hours_between_doses: '4',
+                   default_dose_cycle: 'daily'
+                 }
+               }
+             }
+           },
+           headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+    end.to change(PersonMedication, :count).by(1)
+
+    expect(Schedule.count).to eq(schedule_count)
+    person_medication = PersonMedication.order(:id).last
+
+    expect(person_medication).to have_attributes(
+      person: people(:john),
+      dose_amount: BigDecimal('500.0'),
+      dose_unit: 'mg',
+      max_daily_doses: 4,
+      min_hours_between_doses: 4
+    )
+    expect(person_medication.administration_kind).to eq('as_needed')
+  end
+
   it 'creates the initial child schedule from the edited primary dose when suggested adult doses are present' do
     sign_in(users(:admin))
 
@@ -129,7 +251,7 @@ RSpec.describe 'Medication wizard dose option follow-up' do
            },
            medication: {
              name: 'Child Wizard Medication',
-             category: 'Vitamin',
+             category: 'Analgesic',
              current_supply: '10',
              reorder_threshold: '1',
              location_id: locations(:home).id,
@@ -200,7 +322,7 @@ RSpec.describe 'Medication wizard dose option follow-up' do
            },
            medication: {
              name: 'Dependent Adult Wizard Medication',
-             category: 'Vitamin',
+             category: 'Analgesic',
              current_supply: '10',
              reorder_threshold: '1',
              location_id: locations(:home).id,
@@ -264,7 +386,7 @@ RSpec.describe 'Medication wizard dose option follow-up' do
            },
            medication: {
              name: 'Unauthorized Person Schedule Medication',
-             category: 'Vitamin',
+             category: 'Analgesic',
              current_supply: '10',
              reorder_threshold: '1',
              location_id: locations(:home).id,
@@ -310,7 +432,7 @@ RSpec.describe 'Medication wizard dose option follow-up' do
            },
            medication: {
              name: 'Invalid Person Schedule Medication',
-             category: 'Vitamin',
+             category: 'Analgesic',
              current_supply: '10',
              reorder_threshold: '1',
              location_id: locations(:home).id,
@@ -356,7 +478,7 @@ RSpec.describe 'Medication wizard dose option follow-up' do
              },
              medication: {
                name: 'Invalid Schedule Medication',
-               category: 'Vitamin',
+               category: 'Analgesic',
                current_supply: '10',
                reorder_threshold: '1',
                location_id: locations(:home).id,

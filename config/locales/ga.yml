@@ -946,7 +946,7 @@ ga:
       review_description: Seiceáil an dáileog roghnaithe agus na réamhshocruithe leighis
         sábháilte.
       frequency: Minicíocht
-      schedule_type: Cineál sceidil
+      plan_type: Cineál plean
       active_dates: Dátaí gníomhacha
       not_set: Gan socrú
   schedules:
@@ -1448,12 +1448,12 @@ ga:
           title: Sonraí an chógais
           description: Inis dúinn faoin gcógas seo.
         dose:
-          title: Sceideal dáileoige
-          description: Tóg an chéad sceideal trí roghnú cé a ghlacann é, an dáileog,
-            agus an rithim.
+          title: Dáileog agus plean
+          description: Tóg an chéad phlean cógais trí roghnú cé a ghlacann é, an
+            dáileog, agus an rithim.
           person_title: Cé a ghlacfaidh é seo?
           person_description: Roghnaigh an duine nó an cleithiúnaí lena mbaineann
-            an sceideal seo.
+            an plean seo.
           person_types:
             adult: Duine fásta
             minor: Mionaoiseach
@@ -1498,10 +1498,10 @@ ga:
           start_date: Dáta tosaithe
           end_date: Dáta deiridh
           review_title: Athbhreithniú i ngnáthchaint
-          review_placeholder: Athbhreithnigh an sceideal dáileoige sula leanann tú
+          review_placeholder: Athbhreithnigh an plean cógais sula leanann tú
             ar aghaidh.
-          review_button: Athbhreithnigh sceideal dáileoige
-          review_required: Athbhreithnigh an sceideal dáileoige sula leanann tú ar
+          review_button: Athbhreithnigh plean cógais
+          review_required: Athbhreithnigh an plean cógais sula leanann tú ar
             aghaidh.
         supply:
           title: Socrú soláthair

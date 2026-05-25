@@ -14,7 +14,7 @@ export default class extends Controller {
     "doseAmountInput", "doseUnitInput", "stepPanel", "stepIndicator",
     "prevButton", "nextButton", "submitButton", "selectedMedicationName",
     "selectedDoseName", "reviewFrequency", "reviewMaxDoses", "reviewMinHours",
-    "reviewDoseCycle", "reviewScheduleType", "reviewActiveDates"
+    "reviewDoseCycle", "reviewPlanType", "reviewActiveDates", "reviewActiveDatesItem"
   ]
 
   connect() {
@@ -258,8 +258,9 @@ export default class extends Controller {
     this.#setReviewText("reviewMaxDoses", dose?.default_max_daily_doses ?? this.t("notSet"))
     this.#setReviewText("reviewMinHours", dose?.default_min_hours_between_doses ?? this.t("notSet"))
     this.#setReviewText("reviewDoseCycle", dose?.default_dose_cycle ?? this.t("notSet"))
-    this.#setReviewText("reviewScheduleType", medication?.schedule_type_label ?? this.t("notSet"))
+    this.#setReviewText("reviewPlanType", medication?.plan_type_label ?? this.t("notSet"))
     this.#setReviewText("reviewActiveDates", `${this.startDateValue} to ${this.endDateValue}`)
+    this.#toggleReviewActiveDates(medication)
   }
 
   #setReviewText(targetName, value) {
@@ -267,6 +268,15 @@ export default class extends Controller {
     if (!targets) return
 
     targets.forEach((target) => { target.textContent = value })
+  }
+
+  #toggleReviewActiveDates(medication) {
+    if (!this.hasReviewActiveDatesItemTarget) return
+
+    const hidden = medication?.direct_plan === true
+    this.reviewActiveDatesItemTargets.forEach((target) => {
+      target.classList.toggle("hidden", hidden)
+    })
   }
 
   t(key) {

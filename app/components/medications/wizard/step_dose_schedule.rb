@@ -79,7 +79,7 @@ module Components
           input(
             type: 'hidden',
             name: 'onboarding_schedule[end_date]',
-            value: 1.month.from_now.to_date.to_s,
+            value: default_end_date,
             data: { 'medication-schedule-wizard-target': 'endDateField' }
           )
           input(
@@ -434,12 +434,14 @@ module Components
               Time.zone.today.to_s,
               'startDateInput'
             )
-            render_date_input(
-              'wizard_schedule_end_date',
-              t('forms.medications.wizard.dose.end_date'),
-              1.month.from_now.to_date.to_s,
-              'endDateInput'
-            )
+            div(data: { 'medication-schedule-wizard-target': 'endDateInputWrapper' }) do
+              render_date_input(
+                'wizard_schedule_end_date',
+                t('forms.medications.wizard.dose.end_date'),
+                default_end_date,
+                'endDateInput'
+              )
+            end
           end
         end
 
@@ -554,6 +556,10 @@ module Components
 
         def default_schedule_type
           'multiple_daily'
+        end
+
+        def default_end_date
+          1.month.from_now.to_date.to_s
         end
 
         def selectable_people

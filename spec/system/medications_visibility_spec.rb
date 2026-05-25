@@ -38,7 +38,7 @@ RSpec.describe 'MedicationsVisibility' do
     expect(page).to have_field('Amount')
     fill_in 'Amount', with: '500'
     select 'mg', from: 'Unit'
-    click_button 'Review dose schedule'
+    click_button 'Review medication plan'
 
     click_button 'Continue'
 

@@ -225,13 +225,20 @@ module Components
           render_review_item(t('schedules.form.max_doses_per_cycle'), 'reviewMaxDoses')
           render_review_item(t('schedules.form.min_hours_between_doses'), 'reviewMinHours')
           render_review_item(t('schedules.form.dose_cycle'), 'reviewDoseCycle')
-          render_review_item(t('medication_assignments.form.schedule_type'), 'reviewScheduleType')
-          render_review_item(t('medication_assignments.form.active_dates'), 'reviewActiveDates')
+          render_review_item(t('medication_assignments.form.plan_type'), 'reviewPlanType')
+          render_review_item(
+            t('medication_assignments.form.active_dates'),
+            'reviewActiveDates',
+            item_target: 'reviewActiveDatesItem'
+          )
         end
       end
 
-      def render_review_item(label, target)
-        div(class: 'rounded-shape-xl border border-outline-variant/60 bg-surface-container-low px-4 py-3') do
+      def render_review_item(label, target, item_target: nil)
+        options = { class: 'rounded-shape-xl border border-outline-variant/60 bg-surface-container-low px-4 py-3' }
+        options[:data] = { medication_assignment_form_target: item_target } if item_target
+
+        div(**options) do
           m3_text(size: '1', weight: 'medium',
                   class: 'uppercase tracking-[0.2em] text-on-surface-variant') { label }
           m3_text(size: '2', weight: 'semibold',
@@ -307,7 +314,8 @@ module Components
         {
           name: medication.display_name,
           default_schedule_type: medication.default_schedule_type,
-          schedule_type_label: schedule_type_label(medication.default_schedule_type),
+          direct_plan: plan_classifier(medication).direct?,
+          plan_type_label: plan_type_label(medication),
           dose_options: dose_options_for(medication)
         }
       end
@@ -328,10 +336,23 @@ module Components
         ]
       end
 
+      def plan_type_label(medication)
+        classifier = plan_classifier(medication)
+        if classifier.direct?
+          return t("person_medications.form.administration_kinds.#{classifier.administration_kind}.label")
+        end
+
+        schedule_type_label(classifier.schedule_type)
+      end
+
       def schedule_type_label(schedule_type)
         return t('forms.medications.wizard.dose.schedule_types.prn.title') if schedule_type == 'prn'
 
         schedule_type.to_s.humanize
+      end
+
+      def plan_classifier(medication)
+        MedicationPlanClassifier.new(medication: medication)
       end
 
       def translations_payload

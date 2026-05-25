@@ -141,19 +141,19 @@ class MedicationAssignmentCreator
   end
 
   def schedule_type
-    medication.default_schedule_type.presence || 'multiple_daily'
+    plan_classifier.schedule_type
   end
 
   def person_medication_administration_kind
-    supplement_category? ? 'routine' : 'as_needed'
+    plan_classifier.administration_kind
   end
 
   def direct_assignment?
-    supplement_category? || schedule_type == 'prn'
+    plan_classifier.direct?
   end
 
-  def supplement_category?
-    %w[vitamin supplement mineral].include?(medication.category.to_s.downcase)
+  def plan_classifier
+    @plan_classifier ||= MedicationPlanClassifier.new(medication: medication)
   end
 
   def schedule_config
