@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.62](https://github.com/damacus/med-tracker/compare/v0.3.61...v0.3.62) (2026-05-25)
+
+
+### Bug Fixes
+
+* limit medication reminders to due doses ([#1303](https://github.com/damacus/med-tracker/issues/1303)) ([d90f6fa](https://github.com/damacus/med-tracker/commit/d90f6fa3a707f7fbe68f0c70bc4d0a938848d5df))
+
 ## [0.3.61](https://github.com/damacus/med-tracker/compare/v0.3.60...v0.3.61) (2026-05-21)
 
 
