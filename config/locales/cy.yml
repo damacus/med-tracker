@@ -1053,6 +1053,23 @@ cy:
       frequency_once: Unwaith y cylch
       frequency_up_to: Hyd at %{count} gwaith y cylch
       frequency_at_least_hours: o leiaf %{hours} awr ar wahân
+    frequency_phrase:
+      preview_label: 'Mae hyn yn golygu:'
+      cycles:
+        day: diwrnod
+        week: wythnos
+        month: mis
+      once_per_cycle: Unwaith bob %{cycle}
+      up_to_per_cycle: Hyd at %{count} gwaith bob %{cycle}
+      minimum_spacing: O leiaf %{duration} rhwng dosau
+      with_minimum_spacing: gydag o leiaf %{duration} rhwng dosau
+      durations:
+        hours:
+          one: "%{count} awr"
+          other: "%{count} awr"
+        minutes:
+          one: "%{count} munud"
+          other: "%{count} munud"
     workflow:
       eyebrow: Lif gwaith yr amserlen
       title: Creu amserlen meddyginiaeth

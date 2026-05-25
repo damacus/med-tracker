@@ -67,6 +67,7 @@ module Components
               render_min_hours_field(f)
               render_dose_cycle_field(f)
             end
+            render_frequency_preview
             render_notes_field(f)
           end
         end
@@ -120,6 +121,7 @@ module Components
               render_min_hours_field(nil)
               render_dose_cycle_field(nil)
             end
+            render_frequency_preview
             render_notes_field(nil)
           end
         end
@@ -497,6 +499,16 @@ module Components
             class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest p-4 ' \
                    'focus:ring-2 focus:ring-primary/10 ' \
                    'focus:border-primary transition-all resize-none'
+          )
+        end
+      end
+
+      def render_frequency_preview
+        div(class: 'md:col-span-2') do
+          render Components::Schedules::FrequencyPreview.new(
+            max_daily_doses: schedule.max_daily_doses,
+            min_hours_between_doses: schedule.min_hours_between_doses,
+            dose_cycle: schedule.dose_cycle
           )
         end
       end

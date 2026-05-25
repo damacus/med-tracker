@@ -1025,6 +1025,23 @@ pt:
       frequency_once: Uma vez por ciclo
       frequency_up_to: Até %{count} vezes por ciclo
       frequency_at_least_hours: com pelo menos %{hours}h de intervalo
+    frequency_phrase:
+      preview_label: 'Isto significa:'
+      cycles:
+        day: dia
+        week: semana
+        month: mês
+      once_per_cycle: Uma vez por %{cycle}
+      up_to_per_cycle: Até %{count} vezes por %{cycle}
+      minimum_spacing: Pelo menos %{duration} entre doses
+      with_minimum_spacing: com pelo menos %{duration} entre doses
+      durations:
+        hours:
+          one: "%{count} hora"
+          other: "%{count} horas"
+        minutes:
+          one: "%{count} minuto"
+          other: "%{count} minutos"
     workflow:
       eyebrow: Fluxo de trabalho da receita
       title: Criar uma receita de medicação

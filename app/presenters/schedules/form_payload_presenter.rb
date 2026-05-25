@@ -22,8 +22,15 @@ module Schedules
         ).to_h.to_json,
         schedule_form_frame_id_value: frame_id,
         schedule_form_next_url_value: next_url,
+        schedule_form_frequency_preview_url_value: frequency_preview_url,
         schedule_form_translations_value: translations.to_json
       }
+    end
+
+    private
+
+    def frequency_preview_url
+      Rails.application.routes.url_helpers.schedules_frequency_preview_path
     end
   end
 end

@@ -42,7 +42,9 @@ RSpec.describe 'Schedule dose cycle defaults' do
 
     fill_in 'Max doses per cycle', with: '3'
 
-    expect(find_field('Frequency').value).to include('weekly')
-    expect(find_field('Frequency').value).to include('12h')
+    expect(page).to have_css(
+      '[data-testid="schedule-frequency-preview"]',
+      text: 'This means: Up to 3 times per week, with at least 12 hours between doses'
+    )
   end
 end

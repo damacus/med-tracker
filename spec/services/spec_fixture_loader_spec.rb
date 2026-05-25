@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe SpecFixtureLoader do
+  self.use_transactional_tests = false
+
   describe '.load' do
     # This test needs to run outside of transactional fixtures because
     # SpecFixtureLoader is designed for seeding, not for use within tests.

@@ -1,12 +1,13 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static values = { nextUrl: String, translations: Object, doseOptions: Object, frameId: String }
+  static values = { nextUrl: String, frequencyPreviewUrl: String, translations: Object, doseOptions: Object, frameId: String }
   static targets = [
     "submit", "dosageSelect", "medicationSelect", "dosageContent",
     "dosageValue", "dosageTrigger", "frequencyInput",
     "maxDosesInput", "minHoursInput",
-    "doseAmountInput", "doseUnitInput", "sourceDosageOptionIdInput"
+    "doseAmountInput", "doseUnitInput", "sourceDosageOptionIdInput",
+    "frequencyPreview"
   ]
 
   connect() {
@@ -60,6 +61,7 @@ export default class extends Controller {
         this.frequencyInputTarget.value = dosage.frequency
       }
       this.#fillSchedulingDefaults(dosage)
+      this.generateFrequency()
       this.validate()
       return
     }
@@ -73,6 +75,7 @@ export default class extends Controller {
         this.frequencyInputTarget.value = dosage.frequency
       }
       this.#fillSchedulingDefaults(dosage)
+      this.generateFrequency()
     }
     this.validate()
   }
@@ -83,21 +86,22 @@ export default class extends Controller {
     const cycle = this.#selectedDoseCycleValue()
 
     if (!max && !hours) {
+      this.#clearFrequencyPreview()
       this.validate()
       return
     }
 
-    const parts = []
-    if (max && cycle) {
-      parts.push(max === 1 ? this.t('frequencyOncePerCycle').replace('%{cycle}', cycle) : this.t('frequencyUpToPerCycle').replace('%{count}', max).replace('%{cycle}', cycle))
-    } else if (max) {
-      parts.push(max === 1 ? this.t('frequencyOnce') : this.t('frequencyUpTo').replace('%{count}', max))
+    if (!this.hasFrequencyPreviewUrlValue || !this.hasFrequencyPreviewTarget) {
+      this.validate()
+      return
     }
-    if (hours) parts.push(this.t('frequencyAtLeastHours').replace('%{hours}', hours))
 
-    if (parts.length && this.hasFrequencyInputTarget) {
-      this.frequencyInputTarget.value = parts.join(', ')
-    }
+    const url = new URL(this.frequencyPreviewUrlValue, window.location.origin)
+    if (max) url.searchParams.set('max_daily_doses', max)
+    if (hours) url.searchParams.set('min_hours_between_doses', hours)
+    if (cycle) url.searchParams.set('dose_cycle', cycle)
+
+    this.frequencyPreviewTarget.src = url.toString()
     this.validate()
   }
 
@@ -255,6 +259,13 @@ export default class extends Controller {
     if (this.hasDoseAmountInputTarget) this.doseAmountInputTarget.value = ''
     if (this.hasDoseUnitInputTarget) this.doseUnitInputTarget.value = ''
     if (this.hasSourceDosageOptionIdInputTarget) this.sourceDosageOptionIdInputTarget.value = ''
+  }
+
+  #clearFrequencyPreview() {
+    if (!this.hasFrequencyPreviewTarget) return
+
+    this.frequencyPreviewTarget.removeAttribute('src')
+    this.frequencyPreviewTarget.innerHTML = ''
   }
 
   #selectedMedicationId() {
