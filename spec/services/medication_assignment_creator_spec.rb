@@ -54,9 +54,31 @@ RSpec.describe MedicationAssignmentCreator do
       assert_schedule_attributes(medication, dosage)
     end
 
+    it 'looks up the selected predefined dose once' do
+      medication = create(:medication, category: 'Vitamin', default_schedule_type: :daily)
+      dosage = create(:dosage, medication: medication, amount: 1000, unit: 'IU', default_max_daily_doses: 1,
+                               default_min_hours_between_doses: 24)
+
+      expect(count_dosage_option_queries { call_creator(medication, dosage) }).to eq(1)
+    end
+
     def call_creator(medication, dosage)
       assignment = MedicationAssignment.new(medication_id: medication.id, source_dosage_option_id: dosage.id)
       described_class.new(person: person, medication_scope: Medication.all, assignment: assignment).call
+    end
+
+    def count_dosage_option_queries(&)
+      count = 0
+
+      subscriber = lambda do |_name, _start, _finish, _id, payload|
+        sql = payload[:sql]
+        next if payload[:cached] || payload[:name] == 'SCHEMA'
+
+        count += 1 if sql.include?('FROM "dosages"') && sql.include?('"dosages"."id"')
+      end
+
+      ActiveSupport::Notifications.subscribed(subscriber, 'sql.active_record', &)
+      count
     end
 
     def assert_person_medication_result(result, kind)

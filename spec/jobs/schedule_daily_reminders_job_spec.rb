@@ -23,6 +23,20 @@ RSpec.describe ScheduleDailyRemindersJob do
     travel_to Time.zone.local(2026, 5, 12, 6, 0)
   end
 
+  def count_schedule_queries(&)
+    count = 0
+
+    subscriber = lambda do |_name, _start, _finish, _id, payload|
+      sql = payload[:sql]
+      next if payload[:cached] || payload[:name] == 'SCHEMA'
+
+      count += 1 if sql.include?('FROM "schedules"') && sql.include?('"schedules"."person_id"')
+    end
+
+    ActiveSupport::Notifications.subscribed(subscriber, 'sql.active_record', &)
+    count
+  end
+
   it 'preserves period reminders from enabled notification preferences' do
     create(:notification_preference, person: person, morning_time: '08:00:00', afternoon_time: nil,
                                      evening_time: nil, night_time: nil)
@@ -74,6 +88,19 @@ RSpec.describe ScheduleDailyRemindersJob do
       described_class.perform_now
     end.not_to have_enqueued_job(MedicationReminderJob)
       .with(person.id, :scheduled, '07:15')
+  end
+
+  it 'loads schedule times once for enabled notification preferences' do
+    create(:notification_preference, person: people(:john), morning_time: nil, afternoon_time: nil,
+                                     evening_time: nil, night_time: nil)
+    create(:notification_preference, person: people(:jane), morning_time: nil, afternoon_time: nil,
+                                     evening_time: nil, night_time: nil)
+    create(:schedule, person: people(:john), medication: medications(:vitamin_d), dosage: dosages(:vitamin_d_daily),
+                      schedule_type: :daily, schedule_config: { 'times' => ['07:15'] })
+    create(:schedule, person: people(:jane), medication: medications(:vitamin_d), dosage: dosages(:vitamin_d_daily),
+                      schedule_type: :daily, schedule_config: { 'times' => ['07:45'] })
+
+    expect(count_schedule_queries { described_class.perform_now }).to eq(1)
   end
 
   it 'does not enqueue schedule-time reminders when notification preferences are disabled' do

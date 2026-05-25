@@ -35,7 +35,17 @@ class MedicationReminderEligibilityQuery
   end
 
   def schedules
-    @schedules ||= person.schedules.active.includes(:medication, :medication_takes).to_a
+    @schedules ||= if person.schedules.loaded?
+                     loaded_active_schedules
+                   else
+                     person.schedules.active.includes(:medication, :medication_takes).to_a
+                   end
+  end
+
+  def loaded_active_schedules
+    person.schedules.select(&:active?).tap do |schedules|
+      ActiveRecord::Associations::Preloader.new(records: schedules, associations: %i[medication medication_takes]).call
+    end
   end
 
   def person_medications
