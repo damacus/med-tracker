@@ -292,6 +292,9 @@ cy:
         form:
           email: E-bost
           role: Rôl
+          dependents: Dibynyddion presennol
+          dependents_hint: Dewiswch blant presennol neu oedolion dibynnol y dylai'r
+            rhiant neu'r gofalwr gwahoddedig hwn eu rheoli.
           submit: Anfon gwahoddiad
         status:
           accepted: Wedi'i dderbyn
@@ -346,6 +349,7 @@ cy:
         password_confirmation: Cadarnhad cyfrinair
         role: Rôl
         select_role: Dewis rôl
+        dependents: Dibynyddion presennol
         cancel: Canslo
         create_submit: Creu defnyddiwr
         update_submit: Diweddaru defnyddiwr
@@ -779,6 +783,7 @@ cy:
       edit_person: Golygu Person
       add_schedule: Amserlen
       add_medication: Ychwanegu Meddyginiaeth
+      manage_parents: Rheoli rhieni
       back: Yn ôl
       born: 'Ganwyd:'
       age: 'Oedran:'
@@ -796,6 +801,20 @@ cy:
       mark_as_received: Derbyniwyd
       refill_inventory: Ail-stocio
       complete_refill: Ail-stocio
+    carer_relationships:
+      created: Rhiant neu ofalwr wedi'i aseinio.
+      invited: Anfonwyd gwahoddiad gyda'r dibynnydd hwn wedi'i atodi.
+      invalid_role: Rhowch gyfeiriad e-bost ar gyfer cyfrif rhiant sy'n oedolyn.
+      missing_carer: Dewiswch ddefnyddiwr sy'n oedolyn i'w aseinio.
+      new_title: Rheoli rhieni
+      new_subtitle: Aseinio rhiant neu ofalwr arall i %{name}.
+      carer: Rhiant neu ofalwr
+      select_carer: Dewis rhiant neu ofalwr...
+      relationship_type: Math o berthynas
+      email: E-bost rhiant
+      email_placeholder: rhiant@example.com
+      cancel: Canslo
+      submit: Cadw aseiniad
     form:
       new_heading: Person Newydd
       new_subheading: Ychwanegu person newydd i olrhain meddyginiaethau ar ei gyfer

@@ -26,7 +26,9 @@ RSpec.describe Components::People::ShowView, type: :component do
 
   def stub_view_context_helpers(view_context_helper)
     admin = users(:admin)
-    policy_stub = Struct.new(:update?, :create?, :show?, :take_medication?, :destroy?).new(true, true, true, true, true)
+    policy_stub = Struct
+                  .new(:update?, :create?, :show?, :take_medication?, :destroy?, :assign_dependent?)
+                  .new(true, true, true, true, true, false)
     view_context_helper.singleton_class.define_method(:policy) { |_record| policy_stub }
     view_context_helper.singleton_class.define_method(:current_user) { admin }
     view_context_helper.singleton_class.define_method(:pundit_user) { admin }

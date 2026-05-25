@@ -106,6 +106,8 @@ en:
         form:
           email: Email
           role: Role
+          dependents: Existing dependents
+          dependents_hint: Select existing children or dependent adults this invited parent or carer should manage.
           submit: Send invitation
         status:
           accepted: Accepted
@@ -176,6 +178,7 @@ en:
         password_confirmation: Confirm Password
         role: Role
         select_role: Select role
+        dependents: Existing dependents
         cancel: Cancel
         create_submit: Create User
         update_submit: Update User
@@ -771,6 +774,7 @@ en:
     show:
       edit_person: Edit Person
       add_medication: Add Medication
+      manage_parents: Manage parents
       back: Back
       born: 'Born:'
       age: 'Age:'
@@ -795,6 +799,20 @@ en:
     actions:
       title: Care Actions
       subtitle: Update medication plans and schedules.
+    carer_relationships:
+      created: Parent or carer assigned.
+      invited: Invitation sent with this dependent attached.
+      invalid_role: Enter an email address for an adult parent account.
+      missing_carer: Select an adult user to assign.
+      new_title: Manage parents
+      new_subtitle: Assign another parent or carer to %{name}.
+      carer: Parent or carer
+      select_carer: Select a parent or carer...
+      relationship_type: Relationship type
+      email: Parent email
+      email_placeholder: parent@example.com
+      cancel: Cancel
+      submit: Save assignment
     form:
       new_heading: New Person
       new_subheading: Add a new person to track medications for

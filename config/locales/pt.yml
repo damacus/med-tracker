@@ -297,6 +297,9 @@ pt:
         form:
           email: Email
           role: Função
+          dependents: Dependentes existentes
+          dependents_hint: Selecione crianças existentes ou adultos dependentes que
+            este pai/mãe ou cuidador convidado deve gerir.
           submit: Enviar convite
         status:
           accepted: Aceite
@@ -351,6 +354,7 @@ pt:
         password_confirmation: Confirmação da palavra-passe
         role: Função
         select_role: Selecione uma função
+        dependents: Dependentes existentes
         cancel: Cancelar
         create_submit: Criar utilizador
         update_submit: Atualizar utilizador
@@ -780,6 +784,7 @@ pt:
       edit_person: Editar Pessoa
       add_schedule: Adicionar Receita
       add_medication: Adicionar Medicamento
+      manage_parents: Gerir pais
       back: Voltar
       born: 'Nascido:'
       age: 'Idade:'
@@ -804,6 +809,20 @@ pt:
     actions:
       title: Ações de Cuidado
       subtitle: Atualize planos e horários de medicação.
+    carer_relationships:
+      created: Pai/mãe ou cuidador atribuído.
+      invited: Convite enviado com este dependente associado.
+      invalid_role: Introduza o email de uma conta adulta de pai/mãe.
+      missing_carer: Selecione um utilizador adulto para atribuir.
+      new_title: Gerir pais
+      new_subtitle: Atribuir outro pai/mãe ou cuidador a %{name}.
+      carer: Pai/mãe ou cuidador
+      select_carer: Selecione um pai/mãe ou cuidador...
+      relationship_type: Tipo de relação
+      email: Email do pai/mãe
+      email_placeholder: pai@example.com
+      cancel: Cancelar
+      submit: Guardar atribuição
     form:
       new_heading: Nova Pessoa
       new_subheading: Adicione uma nova pessoa para acompanhar a medicação

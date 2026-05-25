@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_12_160000) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_25_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -240,6 +240,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_12_160000) do
     t.string "token_digest"
     t.datetime "updated_at", null: false
     t.index ["token_digest"], name: "index_invitations_on_token_digest", unique: true
+  end
+
+  create_table "invitation_dependents", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "dependent_id", null: false
+    t.bigint "invitation_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["dependent_id"], name: "index_invitation_dependents_on_dependent_id"
+    t.index ["invitation_id", "dependent_id"], name: "index_invitation_dependents_on_invitation_id_and_dependent_id", unique: true
+    t.index ["invitation_id"], name: "index_invitation_dependents_on_invitation_id"
   end
 
   create_table "location_memberships", force: :cascade do |t|
@@ -496,6 +506,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_12_160000) do
   add_foreign_key "carer_relationships", "people", column: "carer_id", deferrable: :deferred
   add_foreign_key "carer_relationships", "people", column: "patient_id", deferrable: :deferred
   add_foreign_key "dosages", "medications", deferrable: :deferred
+  add_foreign_key "invitation_dependents", "invitations"
+  add_foreign_key "invitation_dependents", "people", column: "dependent_id"
   add_foreign_key "location_memberships", "locations", deferrable: :deferred
   add_foreign_key "location_memberships", "people", deferrable: :deferred
   add_foreign_key "medication_takes", "locations", column: "taken_from_location_id"

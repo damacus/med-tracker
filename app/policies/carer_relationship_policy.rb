@@ -29,10 +29,27 @@ class CarerRelationshipPolicy < ApplicationPolicy
     admin?
   end
 
+  def assign_dependent?
+    dependent_patient? && (admin? || parent_owns_dependent?)
+  end
+
   private
 
   def carer_owns_relationship?
     (user&.person && record.carer_id == user.person.id) || false
+  end
+
+  def parent_owns_dependent?
+    return false unless user&.parent? && user.person_id && record.patient_id
+
+    active_patient_relationships
+      .joins(:patient)
+      .where(patient_id: record.patient_id)
+      .exists?(people: { person_type: %i[minor dependent_adult], has_capacity: false })
+  end
+
+  def dependent_patient?
+    record.patient&.person_type.in?(%w[minor dependent_adult]) && record.patient.has_capacity == false
   end
 
   class Scope < ApplicationPolicy::Scope

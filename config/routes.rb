@@ -118,6 +118,7 @@ Rails.application.routes.draw do
         post :take_medication
       end
     end
+    resources :carer_relationships, only: %i[new create], controller: 'people/carer_relationships'
     resources :medication_assignments, only: %i[new create]
   end
 

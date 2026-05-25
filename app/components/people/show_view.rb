@@ -132,6 +132,14 @@ module Components
                   data: { turbo_frame: 'modal' }
                 ) { t('people.show.add_medication') }
               end
+              if can_assign_carer?
+                m3_link(
+                  href: new_person_carer_relationship_path(person),
+                  variant: :tonal,
+                  size: :lg,
+                  class: 'w-full py-6 rounded-xl font-bold shadow-elevation-1 transition-all'
+                ) { t('people.show.manage_parents') }
+              end
             end
           end
         end
@@ -197,6 +205,10 @@ module Components
 
       def can_add_medication?
         can_create_schedule? || view_context.policy(PersonMedication.new(person: person)).create?
+      end
+
+      def can_assign_carer?
+        view_context.policy(CarerRelationship.new(patient: person)).assign_dependent?
       end
     end
   end

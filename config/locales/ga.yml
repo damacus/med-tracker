@@ -106,6 +106,9 @@ ga:
         form:
           email: Ríomhphost
           role: Ról
+          dependents: Cleithiúnaithe reatha
+          dependents_hint: Roghnaigh leanaí reatha nó daoine fásta cleithiúnacha
+            ar cheart don tuismitheoir nó cúramóir cuireadh seo iad a bhainistiú.
           submit: Seol cuireadh
         status:
           accepted: Glactha
@@ -160,6 +163,7 @@ ga:
         password_confirmation: Deimhniú focail faire
         role: Ról
         select_role: Roghnaigh ról
+        dependents: Cleithiúnaithe reatha
         cancel: Cealaigh
         create_submit: Cruthaigh úsáideoir
         update_submit: Nuashonraigh úsáideoir
@@ -781,6 +785,7 @@ ga:
       edit_person: Cuir Duine in Eagar
       add_schedule: Cuir Oideas Leigheasanna Leis
       add_medication: Cuir Leigheas Leis
+      manage_parents: Bainistigh tuismitheoirí
       back: Ar Ais
       born: 'Rugtha:'
       age: 'Aois:'
@@ -805,6 +810,20 @@ ga:
     actions:
       title: Gníomhartha Cúraim
       subtitle: Nuashonraigh pleananna leigheasanna agus oideas leigheasanna.
+    carer_relationships:
+      created: Sannadh tuismitheoir nó cúramóir.
+      invited: Seoladh cuireadh leis an gcleithiúnaí seo ceangailte.
+      invalid_role: Cuir isteach seoladh ríomhphoist do chuntas tuismitheora fásta.
+      missing_carer: Roghnaigh úsáideoir fásta le sannadh.
+      new_title: Bainistigh tuismitheoirí
+      new_subtitle: Sann tuismitheoir nó cúramóir eile do %{name}.
+      carer: Tuismitheoir nó cúramóir
+      select_carer: Roghnaigh tuismitheoir nó cúramóir...
+      relationship_type: Cineál caidrimh
+      email: Ríomhphost tuismitheora
+      email_placeholder: tuismitheoir@example.com
+      cancel: Cealaigh
+      submit: Sábháil sannadh
     form:
       new_heading: Duine Nua
       new_subheading: Cuir duine nua leis chun leigheasanna a rianú dó

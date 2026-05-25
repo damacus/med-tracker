@@ -7,11 +7,12 @@ module Components
         include Phlex::Rails::Helpers::FormWith
         include Phlex::Rails::Helpers::Pluralize
 
-        attr_reader :user, :locations
+        attr_reader :user, :locations, :dependents
 
-        def initialize(user:, locations: Location.none)
+        def initialize(user:, locations: Location.none, dependents: Person.none)
           @user = user
           @locations = locations
+          @dependents = dependents
           super()
         end
 
@@ -46,7 +47,12 @@ module Components
           form_with(
             model: [:admin, user],
             class: 'space-y-8',
-            data: { testid: 'user-form' }
+            data: {
+              testid: 'user-form',
+              controller: 'dependent-assignment',
+              action: 'change->dependent-assignment#sync',
+              dependent_assignment_roles_value: %w[parent carer].to_json
+            }
           ) do |form|
             render_errors if user.errors.any?
             render_form_fields(form)
@@ -83,6 +89,7 @@ module Components
               render_password_fields(form)
               div(class: 'h-px bg-outline-variant w-full opacity-50')
               render_role_field(form)
+              render_dependents_field(form)
             end
           end
         end
@@ -297,6 +304,44 @@ module Components
           end
         end
 
+        def render_dependents_field(_form)
+          return if dependents.empty?
+
+          div(
+            class: 'space-y-3',
+            hidden: !dependent_assignment_role?,
+            data: { dependent_assignment_target: 'field' }
+          ) do
+            render RubyUI::FormFieldLabel.new(
+              for: 'user_dependent_ids',
+              class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
+            ) do
+              plain t('admin.users.form.dependents')
+            end
+            div(class: 'grid grid-cols-1 sm:grid-cols-2 gap-3') do
+              dependents.each do |dependent|
+                label(
+                  class: 'flex items-center gap-3 p-4 rounded-xl border border-outline-variant ' \
+                         'bg-surface-container-low hover:bg-surface-container-high cursor-pointer ' \
+                         'transition-all state-layer relative'
+                ) do
+                  input(
+                    type: 'checkbox',
+                    name: 'user[dependent_ids][]',
+                    value: dependent.id,
+                    id: "user_dependent_#{dependent.id}",
+                    checked: selected_dependent_ids.include?(dependent.id),
+                    disabled: !dependent_assignment_role?,
+                    class: "z-10 #{checkbox_classes}"
+                  )
+                  span(class: 'z-10 font-bold text-foreground') { dependent.name }
+                end
+              end
+            end
+            input(type: 'hidden', name: 'user[dependent_ids][]', value: '', disabled: !dependent_assignment_role?)
+          end
+        end
+
         def render_form_actions
           div(
             class: 'px-10 py-6 bg-surface-container-low border-t border-outline-variant/30 ' \
@@ -332,6 +377,15 @@ module Components
           return unless person
 
           render_field_error(person, field, input_id: input_id)
+        end
+
+        def selected_dependent_ids
+          selected = user.dependent_ids.presence || user.person&.patient_ids
+          Array(selected).map(&:to_i)
+        end
+
+        def dependent_assignment_role?
+          user.parent? || user.carer?
         end
       end
     end

@@ -12,12 +12,14 @@ module Components
           invitation: Invitation.new,
           invitations: Invitation.order(created_at: :desc),
           resendable_invitation_ids: [],
-          cancellable_invitation_ids: []
+          cancellable_invitation_ids: [],
+          dependents: Person.none
         )
           @invitation = invitation
           @invitations = invitations
           @resendable_invitation_ids = resendable_invitation_ids
           @cancellable_invitation_ids = cancellable_invitation_ids
+          @dependents = dependents
         end
 
         def view_template
@@ -54,10 +56,20 @@ module Components
         end
 
         def render_form
-          form_with(url: admin_invitations_path, method: :post, class: 'space-y-8') do
+          form_with(
+            url: admin_invitations_path,
+            method: :post,
+            class: 'space-y-8',
+            data: {
+              controller: 'dependent-assignment',
+              action: 'change->dependent-assignment#sync',
+              dependent_assignment_roles_value: %w[parent carer].to_json
+            }
+          ) do
             div(class: 'space-y-6') do
               render_email_field
               render_role_field
+              render_dependents_field
             end
             render_actions
           end
@@ -92,6 +104,43 @@ module Components
                 option(value: role, selected: @invitation.role == role) { role.titleize }
               end
             end
+          end
+        end
+
+        def render_dependents_field
+          return if @dependents.empty?
+
+          FormField(
+            class: 'space-y-3',
+            hidden: !dependent_assignment_role?,
+            data: { dependent_assignment_target: 'field' }
+          ) do
+            FormFieldLabel(for: 'invitation_dependent_ids',
+                           class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1') do
+              t('admin.invitations.index.form.dependents')
+            end
+            p(class: 'text-sm text-on-surface-variant') { t('admin.invitations.index.form.dependents_hint') }
+            div(class: 'grid grid-cols-1 sm:grid-cols-2 gap-3') do
+              @dependents.each do |dependent|
+                label(
+                  class: 'flex items-center gap-3 p-4 rounded-xl border border-outline-variant ' \
+                         'bg-surface-container-low hover:bg-surface-container-high cursor-pointer ' \
+                         'transition-all state-layer relative'
+                ) do
+                  input(
+                    type: 'checkbox',
+                    name: 'invitation[dependent_ids][]',
+                    value: dependent.id,
+                    id: "invitation_dependent_#{dependent.id}",
+                    checked: selected_dependent_ids.include?(dependent.id),
+                    disabled: !dependent_assignment_role?,
+                    class: "z-10 #{checkbox_classes}"
+                  )
+                  span(class: 'z-10 font-bold text-foreground') { dependent.name }
+                end
+              end
+            end
+            input(type: 'hidden', name: 'invitation[dependent_ids][]', value: '', disabled: !dependent_assignment_role?)
           end
         end
 
@@ -183,6 +232,14 @@ module Components
           else
             t('admin.invitations.index.metadata.expires', time: view_context.time_ago_in_words(invitation.expires_at))
           end
+        end
+
+        def selected_dependent_ids
+          @selected_dependent_ids ||= @invitation.dependent_ids.map(&:to_i)
+        end
+
+        def dependent_assignment_role?
+          @invitation.parent? || @invitation.carer?
         end
 
         def render_errors

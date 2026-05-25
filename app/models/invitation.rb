@@ -7,6 +7,9 @@ class Invitation < ApplicationRecord
 
   has_paper_trail ignore: %i[token_digest]
 
+  has_many :invitation_dependents, dependent: :destroy
+  has_many :dependents, through: :invitation_dependents, source: :dependent
+
   before_create :assign_token_digest
   before_create :set_expires_at
 
@@ -15,6 +18,9 @@ class Invitation < ApplicationRecord
                     uniqueness: { case_sensitive: false, conditions: -> { pending } }
   validates :role, presence: true
   validate :role_cannot_be_minor
+  validate :dependents_require_assignable_role
+
+  normalizes :email, with: ->(email) { email.to_s.strip.downcase.presence }
 
   enum :role, { administrator: 0, doctor: 1, nurse: 2, carer: 3, parent: 4, minor: 5 }, validate: true
 
@@ -79,5 +85,11 @@ class Invitation < ApplicationRecord
 
   def role_cannot_be_minor
     errors.add(:role, 'Children must be added by a parent or carer.') if minor?
+  end
+
+  def dependents_require_assignable_role
+    return if dependents.empty? || parent? || carer?
+
+    errors.add(:base, 'Dependents can only be attached to parent or carer invitations')
   end
 end
