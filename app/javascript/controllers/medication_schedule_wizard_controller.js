@@ -23,6 +23,7 @@ export default class extends Controller {
     "taperingPlanInput",
     "startDateInput",
     "endDateInput",
+    "endDateInputWrapper",
     "amountField",
     "unitField",
     "dosageFrequencyField",
@@ -52,6 +53,7 @@ export default class extends Controller {
     this.updateSpecificDatesList()
     this.updateHiddenFields()
     this.updateVisiblePanels()
+    this.updateDateFields()
   }
 
   selectPerson(event) {
@@ -71,12 +73,14 @@ export default class extends Controller {
     this.scheduleTypeValue = event.currentTarget.dataset.scheduleType
     this.updateCardSelection(this.scheduleTypeCardTargets, event.currentTarget)
     this.updateVisiblePanels()
+    this.updateDateFields()
     this.clearReview()
     this.updateHiddenFields()
   }
 
   update() {
     this.clearReview()
+    this.updateDateFields()
     this.updateHiddenFields()
   }
 
@@ -144,7 +148,7 @@ export default class extends Controller {
     this.scheduleTypeFieldTarget.value = this.scheduleTypeValue
     this.frequencyFieldTarget.value = timing.frequency
     this.startDateFieldTarget.value = this.valueFor("startDateInput")
-    this.endDateFieldTarget.value = this.valueFor("endDateInput")
+    this.endDateFieldTarget.value = this.directMedicationPlan() ? "" : this.valueFor("endDateInput")
     this.maxDailyDosesFieldTarget.value = timing.maxDailyDoses
     this.minHoursBetweenDosesFieldTarget.value = timing.minHoursBetweenDoses
     this.doseCycleFieldTarget.value = timing.doseCycle
@@ -155,6 +159,12 @@ export default class extends Controller {
     this.schedulePanelTargets.forEach((panel) => {
       panel.classList.toggle("hidden", panel.dataset.scheduleType !== this.scheduleTypeValue)
     })
+  }
+
+  updateDateFields() {
+    if (!this.hasEndDateInputWrapperTarget) return
+
+    this.endDateInputWrapperTarget.classList.toggle("hidden", this.directMedicationPlan())
   }
 
   updateCardSelection(cards, selectedCard) {
@@ -238,9 +248,21 @@ export default class extends Controller {
     const timing = this.timingDefaults()
     const dose = [this.valueFor("amountInput"), this.valueFor("unitInput")].filter(Boolean).join(" ")
     const person = this.selectedPersonName()
-    const dates = [this.valueFor("startDateInput"), this.valueFor("endDateInput")].filter(Boolean).join(" to ")
+    const dates = this.directMedicationPlan() ? this.valueFor("startDateInput") :
+      [this.valueFor("startDateInput"), this.valueFor("endDateInput")].filter(Boolean).join(" to ")
 
     return `${dose}, ${timing.frequency} for ${person}${dates ? ` from ${dates}` : ""}.`
+  }
+
+  directMedicationPlan() {
+    return this.scheduleTypeValue === "prn" || this.supplementCategorySelected()
+  }
+
+  supplementCategorySelected() {
+    const form = this.element.closest("form")
+    const category = form?.querySelector("input[name='medication[category]']:checked")?.value || ""
+
+    return ["vitamin", "mineral", "supplement"].includes(category.toLowerCase())
   }
 
   multipleDailyFrequency() {

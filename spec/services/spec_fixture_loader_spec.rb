@@ -17,5 +17,11 @@ RSpec.describe SpecFixtureLoader do
       expect(user.person).to be_present
       expect(user.authenticate('password')).to eq(user)
     end
+
+    it 'loads account fixtures when dependent OTP keys already exist' do
+      ActiveRecord::FixtureSet.create_fixtures(Rails.root.join('spec/fixtures'), %w[accounts account_otp_keys])
+
+      expect { described_class.load(:accounts, :people, :users) }.not_to raise_error
+    end
   end
 end

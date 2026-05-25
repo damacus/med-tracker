@@ -46,7 +46,7 @@ RSpec.describe 'MedicationNewLayout' do
       click_button 'Continue'
       expect(page).to have_text('Who will take this?')
       expect(page).to have_no_field('Starting Supply')
-      click_button 'Review dose schedule'
+      click_button 'Review medication plan'
       expect(page).to have_text('200 mg, Twice daily')
       expect(page).to have_field('medication_schedule_review_complete', with: 'reviewed', visible: :all)
       fill_in 'Hours apart', with: 12
@@ -54,7 +54,7 @@ RSpec.describe 'MedicationNewLayout' do
       click_button 'Continue'
       expect(page).to have_text('Who will take this?')
       expect(page).to have_no_field('Starting Supply')
-      click_button 'Review dose schedule'
+      click_button 'Review medication plan'
       expect(page).to have_field('medication_schedule_review_complete', with: 'reviewed', visible: :all)
       click_button 'Continue'
 
@@ -109,7 +109,7 @@ RSpec.describe 'MedicationNewLayout' do
       fill_in 'Second dose', with: '14:00'
       fill_in 'Start date', with: Time.zone.today.to_s
       fill_in 'End date', with: 1.month.from_now.to_date.to_s
-      click_button 'Review dose schedule'
+      click_button 'Review medication plan'
       expect(page).to have_field('medication_schedule_review_complete', with: 'reviewed', visible: :all)
       schedule_config = JSON.parse(find("input[name='onboarding_schedule[schedule_config]']", visible: :all).value)
       expect(schedule_config).to include('times' => %w[08:00 14:00 20:00])
@@ -145,7 +145,7 @@ RSpec.describe 'MedicationNewLayout' do
       click_button 'Add date'
       fill_in 'Start date', with: Time.zone.today.to_s
       fill_in 'End date', with: 1.month.from_now.to_date.to_s
-      click_button 'Review dose schedule'
+      click_button 'Review medication plan'
       expect(page).to have_field('medication_schedule_review_complete', with: 'reviewed', visible: :all)
       schedule_config = JSON.parse(find("input[name='onboarding_schedule[schedule_config]']", visible: :all).value)
       expect(schedule_config).to include('dates' => [Time.zone.today.to_s, 2.days.from_now.to_date.to_s])
@@ -160,5 +160,29 @@ RSpec.describe 'MedicationNewLayout' do
     expect(page).to have_text('Selected Dates Medicine created!')
     expect(page).to have_text('1 tablet')
     expect(page).to have_text('Specific dates')
+  end
+
+  it 'omits the end date from as-needed medication plan review' do
+    sign_in(users(:john))
+
+    visit new_medication_path
+
+    within('[data-testid="medication-wizard-form"]') do
+      fill_in 'Name', with: 'As Needed Pain Relief'
+      click_button 'Continue'
+
+      select 'John Doe', from: 'Who will take this?'
+      fill_in 'Amount', with: 500
+      select 'mg', from: 'Unit'
+      click_button 'As needed'
+
+      expect(page).to have_field('Start date')
+      expect(page).to have_no_field('End date')
+
+      click_button 'Review medication plan'
+
+      expect(page).to have_text('500 mg, As needed for John Doe')
+      expect(page).to have_no_text(1.month.from_now.to_date.to_s)
+    end
   end
 end

@@ -915,7 +915,7 @@ en:
       review_title: Review
       review_description: Check the selected dose and saved medication defaults.
       frequency: Frequency
-      schedule_type: Schedule type
+      plan_type: Plan type
       active_dates: Active dates
       not_set: Not set
   dosages:
@@ -1476,11 +1476,11 @@ en:
           title: Medication details
           description: Tell us about this medication.
         dose:
-          title: Dose schedule
-          description: Build the first schedule by choosing who takes it, the dose,
-            and the rhythm.
+          title: Dose and plan
+          description: Build the first medication plan by choosing who takes it, the
+            dose, and the rhythm.
           person_title: Who will take this?
-          person_description: Select the person or dependent this schedule belongs
+          person_description: Select the person or dependent this plan belongs
             to.
           person_types:
             adult: Adult
@@ -1526,9 +1526,9 @@ en:
           start_date: Start date
           end_date: End date
           review_title: Plain-English review
-          review_placeholder: Review the dose schedule before continuing.
-          review_button: Review dose schedule
-          review_required: Tap "Review dose schedule" before continuing.
+          review_placeholder: Review the medication plan before continuing.
+          review_button: Review medication plan
+          review_required: Tap "Review medication plan" before continuing.
         supply:
           title: Supply setup
           description: Track how much you have in the pack and when to reorder.

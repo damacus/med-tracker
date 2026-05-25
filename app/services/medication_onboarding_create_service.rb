@@ -41,7 +41,7 @@ class MedicationOnboardingCreateService
 
     return save_medication unless schedule_requested?
 
-    save_medication_with_schedule
+    save_medication_with_plan
   end
 
   private
@@ -51,28 +51,28 @@ class MedicationOnboardingCreateService
     Result.new(success: medication.save, medication: medication, schedule: nil, restocked: false)
   end
 
-  def save_medication_with_schedule
-    schedule = nil
+  def save_medication_with_plan
+    record = nil
     success = false
 
     ActiveRecord::Base.transaction do
-      schedule, success = persist_medication_with_schedule
+      record, success = persist_medication_with_plan
     end
 
     reset_rolled_back_records unless success
 
-    Result.new(success: success, medication: medication, schedule: schedule, restocked: false)
+    Result.new(success: success, medication: medication, schedule: schedule_result(record), restocked: false)
   end
 
-  def persist_medication_with_schedule
+  def persist_medication_with_plan
     assign_medication_schedule_defaults
     medication.paper_trail_event = 'create'
     raise ActiveRecord::Rollback unless medication.save
 
-    schedule = build_schedule(medication)
-    return [schedule, true] if schedule.save
+    record = build_plan_record(medication)
+    return [record, true] if record.save
 
-    copy_schedule_errors(schedule)
+    copy_record_errors(record)
     raise ActiveRecord::Rollback
   end
 
@@ -80,10 +80,14 @@ class MedicationOnboardingCreateService
     schedule_attributes.present? && people_scope.present?
   end
 
-  def build_schedule(schedule_medication)
-    schedule_person.schedules.build(
-      schedule_attributes_for(schedule_medication, primary_dosage_option(schedule_medication))
-    )
+  def build_plan_record(plan_medication)
+    MedicationOnboardingPlanBuilder.new(
+      person: schedule_person,
+      medication: plan_medication,
+      dosage: primary_dosage_option(plan_medication),
+      schedule_attributes: schedule_attributes,
+      schedule_config: normalized_schedule_config
+    ).record
   end
 
   def assign_medication_schedule_defaults
@@ -111,32 +115,6 @@ class MedicationOnboardingCreateService
     @schedule_person ||= people_scope.find(schedule_attributes.fetch(:person_id))
   end
 
-  def schedule_attributes_for(schedule_medication, dosage)
-    schedule_dose_attributes(schedule_medication, dosage).merge(schedule_timing_attributes(dosage))
-  end
-
-  def schedule_dose_attributes(schedule_medication, dosage)
-    {
-      medication: schedule_medication,
-      source_dosage_option: dosage,
-      dose_amount: dosage.amount,
-      dose_unit: dosage.unit,
-      frequency: schedule_attributes[:frequency].presence || dosage.frequency
-    }
-  end
-
-  def schedule_timing_attributes(_dosage)
-    {
-      start_date: schedule_attributes[:start_date],
-      end_date: schedule_attributes[:end_date],
-      max_daily_doses: schedule_attributes[:max_daily_doses],
-      min_hours_between_doses: schedule_attributes[:min_hours_between_doses],
-      dose_cycle: schedule_attributes[:dose_cycle],
-      schedule_type: schedule_attributes[:schedule_type],
-      schedule_config: normalized_schedule_config
-    }
-  end
-
   def matching_existing_medication
     return nil unless medication_scope
     return nil unless stock_merge_candidate?
@@ -149,22 +127,22 @@ class MedicationOnboardingCreateService
   end
 
   def restock_existing_medication(existing_medication)
-    schedule = nil
+    record = nil
     success = false
 
     ActiveRecord::Base.transaction do
       merge_stock_into_existing_medication(existing_medication)
-      schedule = build_schedule(existing_medication) if schedule_requested?
+      record = build_plan_record(existing_medication) if schedule_requested?
 
-      if schedule.blank? || schedule.save
+      if record.blank? || record.save
         success = true
       else
-        copy_schedule_errors(schedule)
+        copy_record_errors(record)
         raise ActiveRecord::Rollback
       end
     end
 
-    Result.new(success: success, medication: existing_medication, schedule: schedule, restocked: true)
+    Result.new(success: success, medication: existing_medication, schedule: schedule_result(record), restocked: true)
   end
 
   def merge_stock_into_existing_medication(existing_medication)
@@ -213,8 +191,12 @@ class MedicationOnboardingCreateService
     {}
   end
 
-  def copy_schedule_errors(schedule)
-    schedule.errors.full_messages.each do |message|
+  def schedule_result(record)
+    record if record.is_a?(Schedule)
+  end
+
+  def copy_record_errors(record)
+    record.errors.full_messages.each do |message|
       medication.errors.add(:base, message)
     end
   end

@@ -925,7 +925,7 @@ pt:
       review_description: Confirme a dose selecionada e as predefinições do medicamento
         guardadas.
       frequency: Frequência
-      schedule_type: Tipo de agenda
+      plan_type: Tipo de plano
       active_dates: Datas ativas
       not_set: Não definido
   schedules:
@@ -1505,10 +1505,11 @@ pt:
           title: Detalhes do medicamento
           description: Conte-nos sobre este medicamento.
         dose:
-          title: Horário da dose
-          description: Crie o primeiro horário escolhendo quem toma, a dose e o ritmo.
+          title: Dose e plano
+          description: Crie o primeiro plano de medicação escolhendo quem toma, a
+            dose e o ritmo.
           person_title: Quem vai tomar isto?
-          person_description: Selecione a pessoa ou dependente a que este horário
+          person_description: Selecione a pessoa ou dependente a que este plano
             pertence.
           person_types:
             adult: Adulto
@@ -1554,9 +1555,9 @@ pt:
           start_date: Data de início
           end_date: Data de fim
           review_title: Revisão em linguagem simples
-          review_placeholder: Reveja o horário da dose antes de continuar.
-          review_button: Rever horário da dose
-          review_required: Reveja o horário da dose antes de continuar.
+          review_placeholder: Reveja o plano de medicação antes de continuar.
+          review_button: Rever plano de medicação
+          review_required: Reveja o plano de medicação antes de continuar.
         supply:
           title: Configuração de fornecimento
           description: Controle quanto existe na embalagem e quando deve reordenar.
