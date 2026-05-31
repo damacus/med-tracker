@@ -3,8 +3,8 @@
   "short_name": "MedTrack",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#FFFFFF",
-  "theme_color": "#007BFF",
+  "background_color": "#102447",
+  "theme_color": "#102447",
   "icons": [
     {
       "src": "/favicon.svg",

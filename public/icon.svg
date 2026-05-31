@@ -1,3 +1,38 @@
-<svg width="512" height="512" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="256" cy="256" r="256" fill="red"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="MedTracker">
+  <defs>
+    <linearGradient id="med-tracker-icon-bg" x1="92" y1="44" x2="424" y2="474" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#17233B"/>
+      <stop offset="54%" stop-color="#102447"/>
+      <stop offset="100%" stop-color="#0B5F71"/>
+    </linearGradient>
+    <linearGradient id="med-tracker-icon-surface" x1="108" y1="86" x2="402" y2="408" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="med-tracker-icon-teal" x1="126" y1="126" x2="320" y2="382" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#78D0C4"/>
+      <stop offset="100%" stop-color="#0C978E"/>
+    </linearGradient>
+    <linearGradient id="med-tracker-icon-blue" x1="270" y1="78" x2="356" y2="260" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3278D5"/>
+      <stop offset="100%" stop-color="#205CA8"/>
+    </linearGradient>
+    <linearGradient id="med-tracker-icon-badge" x1="260" y1="246" x2="396" y2="392" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#7EE2D4"/>
+      <stop offset="100%" stop-color="#0C978E"/>
+    </linearGradient>
+    <filter id="med-tracker-icon-shadow" x="58" y="60" width="396" height="392" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="16" flood-color="#061225" flood-opacity="0.28" stdDeviation="18"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#med-tracker-icon-bg)"/>
+  <path d="M74 106C112 58 166 34 236 34H400C443 34 478 69 478 112V278C392 257 312 218 238 161C186 121 131 102 74 106Z" fill="url(#med-tracker-icon-surface)"/>
+  <g filter="url(#med-tracker-icon-shadow)">
+    <rect x="118" y="204" width="68" height="158" rx="34" fill="url(#med-tracker-icon-teal)"/>
+    <rect x="208" y="142" width="68" height="220" rx="34" fill="url(#med-tracker-icon-teal)"/>
+    <path d="M298 120C298 101.2 313.2 86 332 86C350.8 86 366 101.2 366 120V266H298V120Z" fill="url(#med-tracker-icon-blue)"/>
+    <circle cx="324" cy="320" r="76" fill="url(#med-tracker-icon-badge)"/>
+    <path d="M289 319L315 345L363 290" fill="none" stroke="#FFFFFF" stroke-linecap="round" stroke-linejoin="round" stroke-width="18"/>
+  </g>
+  <rect x="16" y="16" width="480" height="480" rx="96" fill="none" stroke="#FFFFFF" stroke-opacity="0.16" stroke-width="2"/>
 </svg>

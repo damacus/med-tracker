@@ -15,6 +15,8 @@ RSpec.describe 'PWA' do
       manifest = JSON.parse(response.parsed_body)
       expect(manifest['name']).to eq('MedTracker')
       expect(manifest['short_name']).to eq('MedTracker')
+      expect(manifest['background_color']).to eq('#102447')
+      expect(manifest['theme_color']).to eq('#102447')
       expect(manifest['icons']).to contain_exactly(
         include(
           'src' => '/icons/icon-192.png',
@@ -27,6 +29,19 @@ RSpec.describe 'PWA' do
           'type' => 'image/png'
         )
       )
+    end
+  end
+
+  describe 'app icon assets' do
+    it 'ships the branded app icon instead of placeholder artwork' do
+      icon = Rails.public_path.join('icon.svg').read
+
+      expect(icon).to include('med-tracker-icon-bg')
+      expect(icon).to include('#78D0C4')
+      expect(icon).to include('#3278D5')
+      expect(icon).to include('#102447')
+      expect(icon).not_to include('fill="red"')
+      expect(icon).not_to include('#007BFF')
     end
   end
 
