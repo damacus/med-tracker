@@ -70,7 +70,7 @@ module MedicationFormContext
         reorder_threshold
         _destroy
       ]
-    ).tap { |permitted| normalize_default_schedule_config(permitted) }
+    ).tap { |permitted| MedicationParamsNormalizer.call(permitted, schedule_config_keys: SCHEDULE_CONFIG_KEYS) }
   end
 
   def onboarding_schedule_params
@@ -86,22 +86,6 @@ module MedicationFormContext
       :schedule_config,
       schedule_config: SCHEDULE_CONFIG_KEYS
     )
-  end
-
-  def normalize_default_schedule_config(permitted)
-    return unless permitted.key?(:default_schedule_config)
-
-    permitted[:default_schedule_config] = normalized_schedule_config_value(permitted[:default_schedule_config])
-  end
-
-  def normalized_schedule_config_value(raw)
-    return {} if raw.blank?
-    return raw.permit(*SCHEDULE_CONFIG_KEYS).to_h if raw.respond_to?(:permit)
-    return raw.to_h if raw.respond_to?(:to_h)
-
-    JSON.parse(raw.to_s)
-  rescue JSON::ParserError
-    {}
   end
 
   def onboarding_builder
