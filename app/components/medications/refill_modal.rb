@@ -28,7 +28,7 @@ module Components
         Dialog do
           DialogTrigger do
             button_args = { variant: button_variant, size: button_size, class: button_class }
-            button_args[:aria_label] = button_label || t('medications.refill_modal.refill_inventory') if icon_only
+            button_args[:aria_label] = button_label || t('medications.refill_modal.refill_inventory')
 
             m3_button(**button_args) do
               if icon_only
