@@ -47,10 +47,10 @@ module Components
             size: :lg,
             class: 'w-12 h-12 p-0 rounded-xl border-outline text-on-surface-variant ' \
                    'hover:text-primary hover:border-primary/50 transition-all',
-            data: { turbo_frame: 'modal', testid: "edit-schedule-#{schedule.id}" }
+            data: { turbo_frame: 'modal', testid: "edit-schedule-#{schedule.id}" },
+            aria_label: t('schedules.card.edit', default: 'Edit schedule')
           ) do
-            span(class: 'sr-only') { t('schedules.card.edit', default: 'Edit schedule') }
-            render Icons::Pencil.new(size: 20)
+            render Icons::Pencil.new(size: 20, aria_hidden: 'true')
           end
           render_delete_dialog
         end
@@ -67,9 +67,9 @@ module Components
               m3_button(variant: :text,
                         class: 'w-12 h-12 p-0 rounded-xl text-on-surface-variant ' \
                                'hover:text-error hover:bg-error/5 transition-all',
-                        data: { testid: "delete-schedule-#{schedule.id}" }) do
-                span(class: 'sr-only') { t('schedules.card.delete', default: 'Delete schedule') }
-                render Icons::Trash.new(size: 20)
+                        data: { testid: "delete-schedule-#{schedule.id}" },
+                        aria_label: t('schedules.card.delete', default: 'Delete schedule')) do
+                render Icons::Trash.new(size: 20, aria_hidden: 'true')
               end
             end
             AlertDialogContent(class: 'rounded-[2rem] border-none shadow-elevation-5 bg-surface-container-high') do
