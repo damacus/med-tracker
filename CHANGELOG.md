@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.64](https://github.com/damacus/med-tracker/compare/v0.3.63...v0.3.64) (2026-06-01)
+
+
+### Features
+
+* refresh app icon branding ([#1320](https://github.com/damacus/med-tracker/issues/1320)) ([ded0fe6](https://github.com/damacus/med-tracker/commit/ded0fe653b396d6555d5a7a62caafabbcac6e6eb))
+
+
+### Bug Fixes
+
+* handle dose default handoff ([#1316](https://github.com/damacus/med-tracker/issues/1316)) ([eb3e36a](https://github.com/damacus/med-tracker/commit/eb3e36a8031b809696acde821dd57d5f497cf314))
+
 ## [0.3.63](https://github.com/damacus/med-tracker/compare/v0.3.62...v0.3.63) (2026-05-25)
 
 
