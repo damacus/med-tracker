@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.65](https://github.com/damacus/med-tracker/compare/v0.3.64...v0.3.65) (2026-06-02)
+
+
+### Performance Improvements
+
+* memoize person card carer state ([#1321](https://github.com/damacus/med-tracker/issues/1321)) ([a974f15](https://github.com/damacus/med-tracker/commit/a974f1590bc701ba78d8ee4cdafeadbcb480b6bf))
+
 ## [0.3.64](https://github.com/damacus/med-tracker/compare/v0.3.63...v0.3.64) (2026-06-01)
 
 
