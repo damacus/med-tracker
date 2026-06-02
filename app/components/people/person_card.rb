@@ -25,7 +25,7 @@ module Components
         m3_card_header(class: 'pb-4 pt-8 px-8') do
           div(class: 'flex items-start justify-between') do
             render_person_icon
-            render_needs_carer_badge if person.needs_carer?
+            render_needs_carer_badge if needs_carer?
           end
           div(class: 'space-y-1 mt-6') do
             m3_link(
@@ -122,7 +122,7 @@ module Components
               ) { t('people.card.view_medications') }
             end
 
-            render_assign_carer_link if person.needs_carer? && can_create?(CarerRelationship)
+            render_assign_carer_link if needs_carer? && can_create?(CarerRelationship)
           end
         end
       end
@@ -139,6 +139,12 @@ module Components
       def can_add_medication?
         can_create?(Schedule.new(person: person)) ||
           can_create?(PersonMedication.new(person: person))
+      end
+
+      def needs_carer?
+        return @needs_carer if instance_variable_defined?(:@needs_carer)
+
+        @needs_carer = person.needs_carer?
       end
 
       def render_assign_carer_link
