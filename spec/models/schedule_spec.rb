@@ -91,6 +91,13 @@ RSpec.describe Schedule do
       schedule.update(active: true)
       expect(schedule.active).to be true
     end
+
+    it 'is not active when disabled' do
+      schedule.update!(active: false)
+
+      expect(schedule).not_to be_active
+      expect(described_class.active).not_to include(schedule)
+    end
   end
 
   describe 'validations' do
@@ -129,6 +136,44 @@ RSpec.describe Schedule do
     it 'is invalid if end_date is before start_date' do
       schedule.end_date = schedule.start_date - 1.day
       expect(schedule).not_to be_valid
+    end
+
+    it 'rejects an overlapping enabled schedule for the same person and medication' do
+      create_existing_schedule
+      duplicate_schedule = build_overlapping_schedule
+
+      expect(duplicate_schedule).not_to be_valid
+      expect(duplicate_schedule.errors[:medication]).to include('already has an enabled plan for this person')
+    end
+
+    it 'allows an inactive overlapping schedule for the same person and medication' do
+      create_existing_schedule
+      duplicate_schedule = build_overlapping_schedule(active: false)
+
+      expect(duplicate_schedule).to be_valid
+    end
+
+    def create_existing_schedule
+      create(
+        :schedule,
+        person: person,
+        medication: medication,
+        dosage: dosage,
+        start_date: Time.zone.today,
+        end_date: 1.month.from_now.to_date
+      )
+    end
+
+    def build_overlapping_schedule(active: true)
+      build(
+        :schedule,
+        person: person,
+        medication: medication,
+        dosage: dosage,
+        active: active,
+        start_date: 1.week.from_now.to_date,
+        end_date: 2.months.from_now.to_date
+      )
     end
   end
 
@@ -400,7 +445,8 @@ RSpec.describe Schedule do
   end
 
   describe '#frequency vs #dose_cycle' do
-    let(:medication) { medications(:paracetamol) }
+    let(:person) { create(:person) }
+    let(:medication) { create(:medication) }
     let(:dosage) do
       Dosage.create!(
         medication: medication,
@@ -414,7 +460,7 @@ RSpec.describe Schedule do
     end
     let(:schedule) do
       described_class.create!(
-        person: people(:john),
+        person: person,
         medication: medication,
         dose_amount: dosage.amount,
         dose_unit: dosage.unit,

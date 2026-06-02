@@ -102,10 +102,11 @@ RSpec.describe Reports::IndexQuery do
 
     it 'uses schedule expected doses for compliance calculations' do
       report_date = Date.new(2026, 4, 21)
-      medication = create(:medication)
-      create_report_schedule(person: people(:john), medication: medication, report_date: report_date,
+      prn_medication = create(:medication)
+      routine_medication = create(:medication)
+      create_report_schedule(person: people(:john), medication: prn_medication, report_date: report_date,
                              schedule_type: :prn)
-      create_report_schedule(person: people(:john), medication: medication, report_date: report_date,
+      create_report_schedule(person: people(:john), medication: routine_medication, report_date: report_date,
                              schedule_type: :multiple_daily, schedule_config: { 'times' => %w[08:00 20:00] })
 
       result = described_class.new(

@@ -113,6 +113,39 @@ RSpec.describe TakeMedicationService do
       end
     end
 
+    context 'when a duplicate source already logged the same medication for the person' do
+      let(:person_medication) do
+        build(
+          :person_medication,
+          person: schedule.person,
+          medication: schedule.medication,
+          dose_amount: schedule.dose_amount,
+          dose_unit: schedule.dose_unit,
+          max_daily_doses: schedule.max_daily_doses,
+          min_hours_between_doses: schedule.min_hours_between_doses,
+          position: 1
+        )
+      end
+
+      before do
+        person_medication.save!(validate: false)
+        person_medication.medication_takes.create!(
+          taken_at: 1.minute.ago,
+          dose_amount: person_medication.default_dose_amount,
+          taken_from_medication: person_medication.medication,
+          taken_from_location: person_medication.medication.location
+        )
+      end
+
+      it 'returns :cooldown error' do
+        expect(call_service(source: schedule).error).to eq(:cooldown)
+      end
+
+      it 'does not create a MedicationTake' do
+        expect { call_service(source: schedule) }.not_to change(MedicationTake, :count)
+      end
+    end
+
     context 'when the resolved dose amount is nil' do
       before { allow(schedule).to receive(:effective_dose_amount).and_return(nil) }
 

@@ -20,7 +20,7 @@ RSpec.describe 'Add schedule modal flow' do
     expect(page).to have_text('Choose a medication')
 
     find_by_id('medication_trigger').click
-    find('[role="option"]', text: 'Ibuprofen', wait: 10).click
+    find('[role="option"]', text: 'Paracetamol', wait: 10).click
 
     sleep 1.0 # Wait for dosage cards to render
     find('label', text: /Standard child dose \(6-12 years\)/, wait: 10).click
@@ -34,7 +34,7 @@ RSpec.describe 'Add schedule modal flow' do
 
     expect(page).to have_text('Schedule was successfully created.')
     expect(page).to have_no_text("New Schedule for #{person.name}")
-    expect(page).to have_text('Ibuprofen')
+    expect(page).to have_text('Paracetamol')
   end
 
   it 'closes the add medication assignment cleanly when cancelled' do

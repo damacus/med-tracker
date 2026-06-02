@@ -167,7 +167,7 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
       let!(:schedule) do
         Schedule.create!(
           person: people(:john),
-          medication: medications(:paracetamol),
+          medication: create_dashboard_medication,
           dose_amount: 1000,
           dose_unit: 'mg',
           start_date: Time.zone.today,
@@ -221,7 +221,7 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
       let!(:schedule) do
         Schedule.create!(
           person: people(:john),
-          medication: medications(:paracetamol),
+          medication: create_dashboard_medication,
           dose_amount: 1000,
           dose_unit: 'mg',
           start_date: Time.zone.today,
@@ -296,7 +296,7 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
   def create_prn_schedule(max_daily_doses: 4, min_hours_between_doses: 4)
     Schedule.create!(
       person: people(:john),
-      medication: medications(:paracetamol),
+      medication: create_dashboard_medication,
       dose_amount: 1000,
       dose_unit: 'mg',
       start_date: Time.zone.today,
@@ -305,6 +305,17 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
       schedule_type: :prn,
       max_daily_doses: max_daily_doses,
       min_hours_between_doses: min_hours_between_doses
+    )
+  end
+
+  def create_dashboard_medication
+    create(
+      :medication,
+      location: locations(:home),
+      dosage_amount: 500,
+      dosage_unit: 'mg',
+      current_supply: 80,
+      supply_at_last_restock: 80
     )
   end
 

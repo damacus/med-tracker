@@ -169,7 +169,7 @@ RSpec.describe DashboardPresenter do
     end
 
     it 'excludes schedules whose start_date is in the future' do
-      future_schedule = schedules(:john_paracetamol)
+      future_schedule = create(:schedule)
       future_schedule.update!(start_date: 1.year.from_now.to_date, end_date: 2.years.from_now.to_date)
       presenter = described_class.new(current_user: admin_user)
       expect(presenter.active_schedules).not_to include(future_schedule)

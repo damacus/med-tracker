@@ -7,7 +7,8 @@ RSpec.describe 'Medication stock sources' do
 
   let(:admin) { users(:admin) }
   let(:person) { people(:jane) }
-  let(:source_medication) { medications(:ibuprofen) }
+  let(:source_medication) { medications(:aspirin) }
+  let(:source_dosage) { dosages(:aspirin_adult) }
 
   before do
     sign_in(admin)
@@ -26,7 +27,7 @@ RSpec.describe 'Medication stock sources' do
       take = MedicationTake.order(:id).last
       expect(take.taken_from_medication).to eq(alternate_medication)
       expect(take.inventory_location).to eq(locations(:school))
-      expect(source_medication.reload.current_supply).to eq(30)
+      expect(source_medication.reload.current_supply).to eq(25)
       expect(alternate_medication.reload.current_supply).to eq(6)
     end
 
@@ -153,7 +154,7 @@ RSpec.describe 'Medication stock sources' do
     Schedule.create!(
       person: person,
       medication: source_medication,
-      dosage: dosages(:ibuprofen_adult),
+      dosage: source_dosage,
       start_date: Time.zone.today,
       end_date: Time.zone.today + 30.days
     )

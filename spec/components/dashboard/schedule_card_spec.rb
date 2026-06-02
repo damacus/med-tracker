@@ -5,8 +5,20 @@ require 'rails_helper'
 RSpec.describe Components::Dashboard::ScheduleCard, type: :component do
   fixtures :accounts, :people, :users, :locations, :medications, :dosages, :schedules
 
-  let(:person) { people(:john) }
-  let(:schedule) { schedules(:active_schedule) }
+  let(:person) { create(:person) }
+  let(:current_user) { users(:admin) }
+  let(:medication) { create(:medication) }
+  let(:schedule) do
+    Schedule.create!(
+      person: person,
+      medication: medication,
+      start_date: Time.zone.today,
+      end_date: Time.zone.today + 30.days,
+      dose_amount: medication.dosage_amount,
+      dose_unit: medication.dosage_unit,
+      frequency: 'As needed'
+    )
+  end
 
   describe 'rendering' do
     it 'renders the person name' do
@@ -34,7 +46,7 @@ RSpec.describe Components::Dashboard::ScheduleCard, type: :component do
     end
 
     it 'renders the take action with a hand package icon' do
-      rendered = render_inline(described_class.new(person: person, schedule: schedule))
+      rendered = render_inline(described_class.new(person: person, schedule: schedule, current_user: current_user))
       selector = "button[data-testid='take-medication-#{schedule.id}'] svg.material-symbol-hand-package"
 
       expect(rendered.css(selector)).to be_present

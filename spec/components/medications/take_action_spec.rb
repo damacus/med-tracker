@@ -5,9 +5,9 @@ require 'rails_helper'
 RSpec.describe Components::Medications::TakeAction, type: :component do
   fixtures :accounts, :locations, :medications, :people, :users
 
-  let(:person) { people(:jane) }
+  let(:person) { create(:person) }
   let(:user) { users(:admin) }
-  let(:medication) { medications(:ibuprofen) }
+  let(:medication) { create(:medication) }
   let(:source) do
     Schedule.create!(
       person: person,

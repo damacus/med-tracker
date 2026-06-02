@@ -3,6 +3,7 @@
 # Schedule model
 class Schedule < ApplicationRecord
   include TimingRestrictions
+  include ScheduleMedicationPlanConflict
 
   WEEKDAY_INDEXES = Date::DAYNAMES.each_with_index.with_object({}) do |(name, index), indexes|
     indexes[name.downcase] = index
@@ -31,7 +32,7 @@ class Schedule < ApplicationRecord
   has_many :medication_takes, dependent: :destroy
 
   scope :active, lambda {
-    where('start_date <= ? AND end_date >= ?', Time.zone.today, Time.zone.today)
+    where(active: true).where('start_date <= ? AND end_date >= ?', Time.zone.today, Time.zone.today)
   }
 
   validates :start_date, presence: true
@@ -91,7 +92,7 @@ class Schedule < ApplicationRecord
       min_hours_between_doses
   end
 
-  def active? = start_date.present? && end_date.present? && Time.zone.today.between?(start_date, end_date)
+  def active? = active && start_date.present? && end_date.present? && Time.zone.today.between?(start_date, end_date)
 
   def cycle_period
     DoseCycle.new(dose_cycle).period
