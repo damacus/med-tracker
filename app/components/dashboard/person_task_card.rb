@@ -85,6 +85,7 @@ module Components
                 row[:source].medication.display_name
               end
               m3_text(variant: :body_small, class: 'text-on-surface-variant font-medium') { dose_label(row[:source]) }
+              render_dose_progress(row)
             end
           end
           div(class: 'flex shrink-0 items-center gap-2 sm:justify-end') do
@@ -169,6 +170,33 @@ module Components
         when :out_of_stock then t('dashboard.statuses.out_of_stock')
         else t("dashboard.statuses.#{row[:status]}")
         end
+      end
+
+      def render_dose_progress(row)
+        return if row[:daily_dose_limit].blank?
+
+        limit = row[:daily_dose_limit].to_i
+        div(class: 'mt-2 flex flex-wrap items-center gap-1.5') do
+          limit.times do |index|
+            span(
+              class: dose_pip_classes(index < row[:daily_dose_count].to_i),
+              data: { testid: 'dashboard-dose-pip' },
+              aria: { hidden: 'true' }
+            )
+          end
+          span(class: 'ml-1 text-[11px] font-black uppercase tracking-wide text-on-surface-variant') do
+            t('dashboard.dose_progress.today',
+              count: row[:daily_dose_count].to_i,
+              limit: limit)
+          end
+        end
+      end
+
+      def dose_pip_classes(filled)
+        base = 'inline-block h-2.5 w-2.5 rounded-shape-full border'
+        color = filled ? 'border-primary bg-primary' : 'border-outline-variant bg-surface-container-low'
+
+        "#{base} #{color}"
       end
 
       def cooldown_label(row)

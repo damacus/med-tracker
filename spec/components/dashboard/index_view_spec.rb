@@ -308,6 +308,39 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
 
       expect(routine_task.text).not_to include('Upcoming')
     end
+
+    it 'renders dose progress pips for routine tasks with daily limits' do
+      rendered = render_inline(described_class.new(presenter: person_task_presenter))
+      routine_task = rendered.at_css('[data-testid="dashboard-routine-task"]')
+
+      expect(routine_task.text).to include('0/1 doses today')
+      expect(routine_task.css('[data-testid="dashboard-dose-pip"]').count).to eq(1)
+    end
+
+    it 'renders dose progress pips for as-needed items with daily limits' do
+      rendered = render_inline(described_class.new(presenter: person_task_presenter))
+      as_needed_task = rendered.at_css('[data-testid="dashboard-as-needed-task"]')
+
+      expect(as_needed_task.text).to include('1/4 doses today')
+      expect(as_needed_task.css('[data-testid="dashboard-dose-pip"]').count).to eq(4)
+    end
+  end
+
+  describe 'today dose history' do
+    it 'renders previous doses grouped by person before Smart Insights' do
+      presenter = person_task_presenter
+
+      rendered = render_inline(described_class.new(presenter: presenter))
+      history = rendered.at_css('[data-testid="dashboard-today-dose-history"]')
+      html = rendered.to_html
+
+      expect(history).to be_present
+      expect(history.text).to include('Previous Doses Today')
+      expect(history.text).to include('John Doe')
+      expect(history.text).to include('Paracetamol')
+      expect(history.text).to include('09:15')
+      expect(html.index('Previous Doses Today')).to be < html.index('Smart Insights')
+    end
   end
 
   describe 'dashboard density' do
@@ -392,17 +425,31 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       source: person_medications(:john_vitamin_d),
       scheduled_at: nil,
       taken_at: nil,
-      status: status
+      status: status,
+      daily_dose_count: 0,
+      daily_dose_limit: 1,
+      today_takes: []
     }
   end
 
   def as_needed_dashboard_row(person)
+    today_take = instance_double(
+      MedicationTake,
+      taken_at: Time.zone.parse('2026-05-05 09:15:00'),
+      medication: medications(:paracetamol),
+      dose_amount: 1000,
+      dose_unit: 'mg'
+    )
+
     {
       person: person,
       source: schedules(:john_paracetamol),
       scheduled_at: Time.current,
       taken_at: nil,
-      status: :available
+      status: :available,
+      daily_dose_count: 1,
+      daily_dose_limit: 4,
+      today_takes: [today_take]
     }
   end
 end

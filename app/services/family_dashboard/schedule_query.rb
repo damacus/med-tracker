@@ -154,20 +154,21 @@ module FamilyDashboard
         scheduled_at: routine_scheduled_at(source, takes.length),
         taken_at: nil,
         status: MedicationStockSourceResolver.new(user: current_user, source: source).blocked_reason || :upcoming
-      }
+      }.merge(dose_progress_for(takes, expected_routine_doses_for(source)))
     end
 
     def generate_as_needed_rows_for(source, person)
       return [] unless as_needed_source?(source)
 
       status = as_needed_status_for(source)
+      takes = todays_takes(source)
       [{
         person: person,
         source: source,
         scheduled_at: as_needed_scheduled_at(source, status),
         taken_at: nil,
         status: status
-      }]
+      }.merge(dose_progress_for(takes, daily_dose_limit_for(source)))]
     end
 
     def generate_taken_doses(takes, source, person)
@@ -179,8 +180,16 @@ module FamilyDashboard
           taken_at: take.taken_at,
           status: :taken,
           taken_from_location_name: take.inventory_location&.name
-        }
+        }.merge(dose_progress_for(takes, expected_routine_doses_for(source)))
       end
+    end
+
+    def dose_progress_for(takes, limit)
+      {
+        daily_dose_count: takes.size,
+        daily_dose_limit: limit,
+        today_takes: takes.sort_by(&:taken_at)
+      }
     end
 
     def expected_routine_doses_for(source)
@@ -225,6 +234,12 @@ module FamilyDashboard
         cycle: source_cycle(source),
         check_time: Time.current
       )
+    end
+
+    def daily_dose_limit_for(source)
+      return source.effective_max_daily_doses(Date.current) if source.is_a?(Schedule)
+
+      source.max_daily_doses
     end
 
     def source_cycle(source)

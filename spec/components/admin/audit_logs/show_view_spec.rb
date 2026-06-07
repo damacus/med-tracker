@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe Components::Admin::AuditLogs::ShowView, type: :component do
-  fixtures :accounts, :people, :users, :locations, :location_memberships
+  fixtures :accounts, :people, :users, :locations, :location_memberships, :medications, :dosages, :schedules
 
   let(:admin) { users(:admin) }
   let(:person) { people(:john) }
@@ -161,6 +161,34 @@ RSpec.describe Components::Admin::AuditLogs::ShowView, type: :component do
           ['Matched URL', 'https://www.nhs.uk/medicines/paracetamol-for-adults/']
         )
       end
+    end
+  end
+
+  describe 'medication take summary' do
+    it 'promotes medication, patient, administered time, and logger details' do
+      schedule = schedules(:john_paracetamol)
+      schedule.medication.update!(current_supply: 100)
+      PaperTrail.request.whodunnit = admin.id
+      take = MedicationTake.create!(
+        schedule: schedule,
+        taken_at: Time.zone.parse('2026-06-07 12:10:00'),
+        dose_amount: schedule.dose_amount,
+        dose_unit: schedule.dose_unit
+      )
+      version = PaperTrail::Version.where(item_type: 'MedicationTake', item_id: take.id).last
+
+      rendered = render_inline(described_class.new(version: version))
+      summary = rendered.at_css('[data-testid="audit-log-medication-take-summary"]')
+
+      expect(summary).to be_present
+      expect(summary.text).to include('Medication')
+      expect(summary.text).to include(schedule.medication.display_name)
+      expect(summary.text).to include('Patient')
+      expect(summary.text).to include(schedule.person.name)
+      expect(summary.text).to include('Administered at')
+      expect(summary.text).to include('12:10')
+      expect(summary.text).to include('Logged by')
+      expect(summary.text).to include(admin.name)
     end
   end
 end

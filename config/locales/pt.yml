@@ -441,6 +441,12 @@ pt:
         matches: Correspondências
         matched_guidance: Orientação correspondente
         matched_url: URL correspondente
+        medication: Medicamento
+        patient: Paciente
+        dose: Dose
+        administered_at: Administrado às
+        logged_by: Registado por
+        stock_source: Origem do stock
         audit_payload: Dados de auditoria
         audit_payload_description: Os detalhes estruturados da pesquisa registados para este evento
         na: N/D
@@ -1623,6 +1629,10 @@ pt:
     add_schedules_hint: Adicione prescrições para vê-las aqui
     dose_taken_at: "%{person} • Tomado às %{time}"
     empty_state: Nenhum medicamento agendado para hoje.
+    dose_progress:
+      today: "%{count}/%{limit} doses hoje"
+    dose_history:
+      title: Doses anteriores de hoje
     routine:
       anytime: A qualquer momento
       done_short: Feito

@@ -78,7 +78,8 @@ module Components
         end
 
         def render_event_summary
-          section(class: 'rounded-lg border border-outline-variant bg-surface-container-low p-4') do
+          section(class: 'rounded-lg border border-outline-variant bg-surface-container-low p-4',
+                  data: { testid: event_summary_testid }) do
             h3(class: 'text-sm font-semibold text-foreground') { t('admin.audit_logs.show.event_summary') }
             dl(class: 'mt-4 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2') do
               event_summary_items.each do |label, value|
@@ -86,6 +87,10 @@ module Components
               end
             end
           end
+        end
+
+        def event_summary_testid
+          version.item_type == 'MedicationTake' ? 'audit-log-medication-take-summary' : 'audit-log-event-summary'
         end
 
         def render_detail_item(label, value)
@@ -159,6 +164,7 @@ module Components
         end
 
         def event_summary_items
+          return medication_take_summary_items if medication_take_summary_items.any?
           return [] unless external_lookup_data
 
           {
@@ -168,6 +174,28 @@ module Components
             I18n.t('admin.audit_logs.show.matched_guidance') => external_lookup_data['matched_title'],
             I18n.t('admin.audit_logs.show.matched_url') => external_lookup_data['matched_url']
           }.filter_map { |label, value| [label, value] if value.present? }
+        end
+
+        def medication_take_summary_items
+          take = medication_take_record
+          return [] unless take
+
+          {
+            I18n.t('admin.audit_logs.show.medication') => take.medication&.display_name,
+            I18n.t('admin.audit_logs.show.patient') => take.person&.name,
+            I18n.t('admin.audit_logs.show.dose') => DoseAmount.new(take.dose_amount, take.dose_unit).to_s,
+            I18n.t('admin.audit_logs.show.administered_at') => take.taken_at&.strftime('%Y-%m-%d %H:%M %Z'),
+            I18n.t('admin.audit_logs.show.logged_by') => user_name,
+            I18n.t('admin.audit_logs.show.stock_source') => take.inventory_medication&.display_name
+          }.filter_map { |label, value| [label, value] if value.present? }
+        end
+
+        def medication_take_record
+          return unless version.item_type == 'MedicationTake' && version.item_id.present?
+
+          MedicationTake.includes(:taken_from_medication, :taken_from_location,
+                                  schedule: %i[medication person],
+                                  person_medication: %i[medication person]).find_by(id: version.item_id)
         end
 
         def external_lookup?
