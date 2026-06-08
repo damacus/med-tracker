@@ -146,7 +146,7 @@ module Views
       def render_passkey_item(passkey)
         div(class: 'flex items-center justify-between rounded-lg border border-border bg-card/70 p-3') do
           div(class: 'flex items-center gap-3 flex-1') do
-            render Components::Icons::Key.new(size: 20, class: 'text-on-surface-variant')
+            render Components::Icons::Passkey.new(size: 20, class: 'text-on-surface-variant')
             div do
               p(class: 'text-sm font-medium text-foreground') { passkey.nickname }
               p(class: 'text-xs text-on-surface-variant') do

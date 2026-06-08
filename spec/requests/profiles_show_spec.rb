@@ -68,6 +68,7 @@ RSpec.describe 'Profiles' do
       get profile_path
 
       expect(response).to have_http_status(:ok)
+      expect(response.parsed_body.at_css('svg.material-symbol-passkey')).to be_present
       expect(response.body).to include('Authenticator app is active')
       expect(response.body).to include('Disable')
       expect(response.body).to include('Recovery codes generated')

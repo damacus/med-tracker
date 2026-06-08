@@ -16,8 +16,12 @@ module Views
       private
 
       def form_section
-        render_auth_card(title: rodauth.recovery_auth_page_title) do
+        render_auth_card(
+          title: t('rodauth.views.recovery_auth.card_title'),
+          subtitle: t('rodauth.views.recovery_auth.card_description')
+        ) do
           flash_section
+          recovery_code_panel
           recovery_auth_form
         end
       end
@@ -30,6 +34,24 @@ module Views
 
       def flash_message
         view_context.flash[:alert] || view_context.rodauth.field_error(rodauth.recovery_codes_param)
+      end
+
+      def recovery_code_panel
+        div(class: 'rounded-2xl border border-outline-variant/40 bg-secondary-container/30 p-5') do
+          div(class: 'flex items-start gap-3') do
+            div(class: 'flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary/12 text-primary') do
+              render Icons::FileText.new(size: 20)
+            end
+            div(class: 'space-y-1') do
+              m3_heading(variant: :title_small, class: 'font-bold text-foreground') do
+                t('rodauth.views.recovery_auth.info_title')
+              end
+              m3_text(variant: :body_small, class: 'text-on-surface-variant font-medium') do
+                t('rodauth.views.recovery_auth.info_description')
+              end
+            end
+          end
+        end
       end
 
       def recovery_auth_form

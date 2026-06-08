@@ -238,6 +238,34 @@ cy:
           recovery_codes_description: Codau wrth gefn pan fyddwch yn colli mynediad
             i'ch dyfais.
           recovery_codes_setup: Gweld codau adfer
+      recovery_codes:
+        page_title: Codau adfer
+        page_subtitle: Cadwch fynediad wrth gefn ar gael os nad yw eich dilysydd neu
+          passkey ar gael.
+        card_title: Gweld codau adfer
+        card_description: Cadarnhewch eich cyfrinair i weld neu gynhyrchu codau wrth
+          gefn.
+        safety_title: Mynediad wrth gefn
+        safety_description: Mae codau adfer yn allweddi wrth gefn untro. Storiwch
+          nhw mewn rheolwr cyfrineiriau neu le diogel arall.
+        password_placeholder: Rhowch eich cyfrinair
+      add_recovery_codes:
+        page_title: Codau adfer
+        page_subtitle: Cadwch y codau hyn cyn cau'r dudalen hon.
+        card_title: Eich codau adfer
+        card_description: Defnyddiwch un cod pan na allwch ddefnyddio eich dull dau
+          ffactor arferol.
+        notice_title: Storiwch y codau hyn rywle diogel.
+        notice_description: Mae pob cod yn gweithio unwaith. Gall unrhyw un sydd â
+          chod gwblhau mewngofnodi ar gyfer eich cyfrif.
+        copy_to_clipboard: Copïo i'r clipfwrdd
+        password_placeholder: Rhowch eich cyfrinair i ychwanegu codau newydd
+      recovery_auth:
+        card_title: Cod adfer
+        card_description: Rhowch god wrth gefn i gwblhau mewngofnodi.
+        info_title: Dilysiad wrth gefn
+        info_description: Defnyddiwch un o'ch codau adfer wedi'u cadw. Dim ond unwaith
+          y gellir defnyddio pob cod.
       webauthn_auth:
         page_title: Defnyddiwch eich passkey
         page_subtitle: Cadarnhewch gyda biometrig eich dyfais neu allwedd ddiogelwch.
@@ -254,6 +282,9 @@ cy:
         info_description: Mae passkeys yn ddisodliad diogel ar gyfer cyfrineiriau.
           Maent yn defnyddio diogelwch adeiledig eich dyfais (fel Face ID, Touch ID,
           neu Windows Hello) i wirio eich hunaniaeth.
+        nickname_label: Enw'r passkey
+        nickname_placeholder: e.e. iPhone, gliniadur gwaith, YubiKey
+        nickname_hint: Defnyddiwch enw sy'n dweud lle mae'r passkey hwn wedi'i storio.
         current_password_label: Cyfrinair Presennol
         current_password_placeholder: Rhowch eich cyfrinair i gadarnhau
         current_password_hint: Angenrheidiol i wirio eich hunaniaeth cyn ychwanegu

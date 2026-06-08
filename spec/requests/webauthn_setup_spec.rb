@@ -22,10 +22,13 @@ RSpec.describe 'WebAuthn setup' do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include('webauthn-setup-form')
     expect(response.body).to include('Register a Passkey')
+    expect(response.body).to include('Passkey name')
+    nickname_input = response.parsed_body.at_css('input[name="nickname"]')
+    expect(nickname_input['placeholder']).to eq('e.g. iPhone, Work laptop, YubiKey')
     expect(response.body).not_to include('Unable to initialize passkey registration')
   end
 
-  it 'registers a passkey from a valid WebAuthn credential' do
+  it 'registers a named passkey from a valid WebAuthn credential' do
     get '/webauthn-setup'
 
     document = response.parsed_body
@@ -37,13 +40,14 @@ RSpec.describe 'WebAuthn setup' do
       post '/webauthn-setup',
            params: {
              password: 'password',
+             nickname: 'Work laptop',
              webauthn_setup: credential.to_json,
              webauthn_setup_challenge: challenge,
              webauthn_setup_challenge_hmac: challenge_hmac
            }
     end.to change { account.account_webauthn_keys.reload.count }.by(1)
 
-    expect(account.account_webauthn_keys.last.nickname).to eq('Passkey 1')
+    expect(account.account_webauthn_keys.last.nickname).to eq('Work laptop')
   end
 
   def webauthn_origin

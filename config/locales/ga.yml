@@ -564,6 +564,35 @@ ga:
           recovery_codes_description: Cóid chúltaca nuair a chailleann tú rochtain
             ar do ghléas.
           recovery_codes_setup: Féach cóid aisghabhála
+      recovery_codes:
+        page_title: Cóid aisghabhála
+        page_subtitle: Coinnigh rochtain chúltaca ar fáil mura bhfuil d’fhíordheimhnitheoir
+          nó passkey ar fáil.
+        card_title: Féach cóid aisghabhála
+        card_description: Dearbhaigh d’fhocal faire chun cóid chúltaca a fheiceáil
+          nó a ghiniúint.
+        safety_title: Rochtain chúltaca
+        safety_description: Is eochracha cúltaca aonúsáide iad cóid aisghabhála. Stóráil
+          iad i mbainisteoir focal faire nó in áit shlán eile.
+        password_placeholder: Cuir d’fhocal faire isteach
+      add_recovery_codes:
+        page_title: Cóid aisghabhála
+        page_subtitle: Sábháil na cóid seo sula ndúnann tú an leathanach seo.
+        card_title: Do chóid aisghabhála
+        card_description: Úsáid cód amháin nuair nach féidir leat do ghnáthmhodh dhá
+          fhachtóir a úsáid.
+        notice_title: Stóráil na cóid seo áit éigin slán.
+        notice_description: Oibríonn gach cód uair amháin. Is féidir le haon duine
+          a bhfuil cód aige síniú isteach a chríochnú do do chuntas.
+        copy_to_clipboard: Cóipeáil chuig an ngearrthaisce
+        password_placeholder: Cuir d’fhocal faire isteach chun cóid athsholáthair
+          a chur leis
+      recovery_auth:
+        card_title: Cód aisghabhála
+        card_description: Cuir cód cúltaca isteach chun síniú isteach a chríochnú.
+        info_title: Fíorú cúltaca
+        info_description: Úsáid ceann de do chóid aisghabhála sábháilte. Ní féidir
+          gach cód a úsáid ach uair amháin.
       webauthn_auth:
         page_title: Úsáid do passkey
         page_subtitle: Dearbhaigh le bithmhéadracht do ghléis nó eochair shlándála.
@@ -580,6 +609,9 @@ ga:
         info_description: Is ionad slán iad passkeys do phasfhocail. Úsáideann siad
           slándáil ionsuite do ghléis (mar Face ID, Touch ID, nó Windows Hello) chun
           d’aitheantas a fhíorú.
+        nickname_label: Ainm na passkey
+        nickname_placeholder: m.sh. iPhone, ríomhaire glúine oibre, YubiKey
+        nickname_hint: Úsáid ainm a insíonn duit cá bhfuil an passkey seo stóráilte.
         current_password_label: Focal Faire Reatha
         current_password_placeholder: Cuir do fhocal faire isteach chun deimhniú
         current_password_hint: Teastaíonn sé seo chun d’aitheantas a fhíorú sula gcuirtear
