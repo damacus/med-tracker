@@ -158,6 +158,24 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
       end
     end
 
+    it 'preloads medication sources for today take history' do
+      travel_to Time.zone.parse('2026-05-05 12:00:00') do
+        routine_medication = create_routine_person_medication
+        prn_schedule = create_prn_schedule(max_daily_doses: 4)
+        MedicationTake.create!(person_medication: routine_medication, taken_at: 1.hour.ago, dose_amount: 500,
+                               dose_unit: 'mg')
+        MedicationTake.create!(schedule: prn_schedule, taken_at: 2.hours.ago, dose_amount: 1000, dose_unit: 'mg')
+
+        query = described_class.new([people(:john)])
+        query.call
+        rows = query.routine_tasks_by_person.fetch(people(:john)) +
+               query.as_needed_by_person.fetch(people(:john))
+        takes = rows.flat_map { |row| row[:today_takes] }
+
+        expect(takes).to all(satisfy { |take| medication_source_preloaded?(take) })
+      end
+    end
+
     it 'returns doses sorted by scheduled_at' do
       results = query.call
       times = results.pluck(:scheduled_at).compact
@@ -356,5 +374,13 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
       min_hours_between_doses: 24,
       dose_cycle: :daily
     )
+  end
+
+  def medication_source_preloaded?(take)
+    if take.schedule_id.present?
+      take.association(:schedule).loaded? && take.schedule.association(:medication).loaded?
+    else
+      take.association(:person_medication).loaded? && take.person_medication.association(:medication).loaded?
+    end
   end
 end

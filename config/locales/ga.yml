@@ -1540,6 +1540,13 @@ ga:
     empty_state: Gan leigheasanna sceidealta inniu.
     dose_progress:
       complete: Críochnaithe inniu
+      aria_given:
+        zero: Níor tugadh aon dáileog inniu
+        one: Tugadh 1 dáileog inniu
+        other: Tugadh %{count} dáileog inniu
+      aria_slots:
+        one: 1 sliotán dáileoige inniu
+        other: "%{count} sliotán dáileoige inniu"
       remaining:
         one: 1 ar fáil inniu
         other: "%{count} ar fáil inniu"

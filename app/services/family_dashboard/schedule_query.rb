@@ -90,7 +90,8 @@ module FamilyDashboard
 
       MedicationTake.where(taken_at: range, schedule_id: schedule_ids)
                     .or(MedicationTake.where(taken_at: range, person_medication_id: pm_ids))
-                    .includes(:taken_from_location, :taken_from_medication)
+                    .includes(:taken_from_location, :taken_from_medication,
+                              schedule: :medication, person_medication: :medication)
                     .to_a
     end
 

@@ -342,6 +342,21 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       expect(meter.at_css('[data-testid="dashboard-dose-segment"]')['class']).to include('h-1')
       expect(meter.css('[data-testid="dashboard-dose-segment"]').count).to eq(4)
     end
+
+    it 'localizes dose meter aria labels', :aggregate_failures do
+      I18n.with_locale(:es) do
+        rendered = render_inline(described_class.new(presenter: person_task_presenter))
+        routine_task = rendered.at_css('[data-testid="dashboard-routine-task"]')
+        as_needed_task = rendered.at_css('[data-testid="dashboard-as-needed-task"]')
+
+        expect(routine_task.at_css('[data-testid="dashboard-dose-meter"]')['aria-label']).to(
+          eq('No se han administrado dosis hoy. 1 espacio de dosis hoy.')
+        )
+        expect(as_needed_task.at_css('[data-testid="dashboard-dose-meter"]')['aria-label']).to(
+          eq('1 dosis administrada hoy. 4 espacios de dosis hoy.')
+        )
+      end
+    end
   end
 
   describe 'today dose history' do

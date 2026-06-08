@@ -1631,6 +1631,13 @@ pt:
     empty_state: Nenhum medicamento agendado para hoje.
     dose_progress:
       complete: Completo hoje
+      aria_given:
+        zero: Nenhuma dose administrada hoje
+        one: 1 dose administrada hoje
+        other: "%{count} doses administradas hoje"
+      aria_slots:
+        one: 1 espaço de dose hoje
+        other: "%{count} espaços de dose hoje"
       remaining:
         one: 1 disponível hoje
         other: "%{count} disponíveis hoje"

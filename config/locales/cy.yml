@@ -1454,6 +1454,13 @@ cy:
     empty_state: Dim meddyginiaethau wedi'u trefnu ar gyfer heddiw.
     dose_progress:
       complete: Wedi cwblhau heddiw
+      aria_given:
+        zero: Dim dosau wedi'u rhoi heddiw
+        one: 1 dos wedi'i roi heddiw
+        other: "%{count} dos wedi'u rhoi heddiw"
+      aria_slots:
+        one: 1 slot dos heddiw
+        other: "%{count} slot dos heddiw"
       remaining:
         one: 1 ar agor heddiw
         other: "%{count} ar agor heddiw"

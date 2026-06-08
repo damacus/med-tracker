@@ -1598,6 +1598,13 @@ en:
     empty_state: No medications scheduled for today.
     dose_progress:
       complete: Complete today
+      aria_given:
+        zero: No doses given today
+        one: 1 dose given today
+        other: "%{count} doses given today"
+      aria_slots:
+        one: 1 dose slot today
+        other: "%{count} dose slots today"
       remaining:
         one: 1 open today
         other: "%{count} open today"

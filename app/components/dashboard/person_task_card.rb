@@ -210,8 +210,8 @@ module Components
 
       def dose_progress_aria_label(row, limit)
         count = row[:daily_dose_count].to_i
-        given = count.zero? ? 'No doses given today' : "#{count} #{'dose'.pluralize(count)} given today"
-        slots = "#{limit} #{'dose slot'.pluralize(limit)} today"
+        given = t('dashboard.dose_progress.aria_given', count: count)
+        slots = t('dashboard.dose_progress.aria_slots', count: limit)
 
         "#{given}. #{slots}."
       end
