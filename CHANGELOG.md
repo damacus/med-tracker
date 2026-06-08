@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.68](https://github.com/damacus/med-tracker/compare/v0.3.67...v0.3.68) (2026-06-08)
+
+
+### Features
+
+* improve auth recovery UI ([#1340](https://github.com/damacus/med-tracker/issues/1340)) ([a088e8b](https://github.com/damacus/med-tracker/commit/a088e8b5b540be4d87383dc05ec2045275fd8f00))
+
 ## [0.3.67](https://github.com/damacus/med-tracker/compare/v0.3.66...v0.3.67) (2026-06-08)
 
 
