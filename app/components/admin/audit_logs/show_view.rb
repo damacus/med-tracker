@@ -151,8 +151,8 @@ module Components
         end
 
         def raw_payload_classes
-          'max-h-[28rem] overflow-auto rounded-lg bg-surface-container p-4 text-xs font-mono leading-relaxed ' \
-            'text-foreground'
+          'max-h-[28rem] overflow-auto rounded-lg border border-outline-variant bg-surface-container-low ' \
+            'p-4 text-xs font-mono leading-relaxed text-foreground shadow-inner'
         end
 
         def object_section_description
@@ -276,7 +276,7 @@ module Components
             format_object(state)
           when Hash
             # Hash from current record
-            JSON.pretty_generate(state)
+            formatted_payload(state)
           else
             state.to_s
           end
@@ -290,7 +290,7 @@ module Components
         def format_object(object_yaml)
           parsed = YAML.safe_load(object_yaml, permitted_classes: ActiveRecord.yaml_column_permitted_classes)
           filtered = filter_sensitive_fields(parsed)
-          JSON.pretty_generate(filtered)
+          formatted_payload(filtered)
         rescue StandardError => e
           # If YAML parsing fails, return original string
           # This can happen with corrupted data or schema changes
@@ -305,6 +305,72 @@ module Components
           return data unless data.is_a?(Hash)
 
           data.except(*SENSITIVE_FIELDS)
+        end
+
+        def formatted_payload(data)
+          JSON.pretty_generate(enriched_audit_payload(data))
+        end
+
+        def enriched_audit_payload(data)
+          return data unless version.item_type == 'MedicationTake' && data.is_a?(Hash)
+
+          string_data = data.stringify_keys
+          medication_take_payload_context(string_data).merge(string_data)
+        end
+
+        def medication_take_payload_context(data)
+          context = {
+            'medication_name' => medication_take_payload_medication(data)&.display_name,
+            'patient_name' => medication_take_payload_person(data)&.name,
+            'source' => medication_take_payload_source(data),
+            'stock_source_name' => medication_take_payload_stock_source(data)&.display_name,
+            'stock_location_name' => medication_take_payload_stock_location(data)&.name,
+            'logged_by_name' => user_name
+          }
+
+          context.compact
+        end
+
+        def medication_take_payload_medication(data)
+          medication_take_record&.medication || medication_take_payload_source_record(data)&.medication
+        end
+
+        def medication_take_payload_person(data)
+          medication_take_record&.person || medication_take_payload_source_record(data)&.person
+        end
+
+        def medication_take_payload_source(data)
+          source = medication_take_payload_source_record(data)
+          return unless source
+
+          {
+            'id' => source.id,
+            'type' => source.class.name,
+            'medication' => source.medication&.display_name,
+            'person' => source.person&.name
+          }.compact
+        end
+
+        def medication_take_payload_source_record(data)
+          return medication_take_record.source if medication_take_record&.source
+
+          schedule_id = data['schedule_id'].presence
+          return Schedule.includes(:medication, :person).find_by(id: schedule_id) if schedule_id
+
+          person_medication_id = data['person_medication_id'].presence
+          return unless person_medication_id
+
+          PersonMedication.includes(:medication, :person).find_by(id: person_medication_id)
+        end
+
+        def medication_take_payload_stock_source(data)
+          medication_take_record&.inventory_medication ||
+            Medication.find_by(id: data['taken_from_medication_id'].presence)
+        end
+
+        def medication_take_payload_stock_location(data)
+          medication_take_record&.inventory_location ||
+            Location.find_by(id: data['taken_from_location_id'].presence)
         end
       end
     end
