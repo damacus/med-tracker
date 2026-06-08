@@ -108,6 +108,32 @@ RSpec.describe 'Two-Factor Authentication Management', type: :system do
                                        event: 'auth_token/recovery_codes/created',
                                        item_id: account.id)).to exist
     end
+
+    it 'removes recovery codes when disabling the last primary MFA method' do
+      setup_totp
+
+      visit '/recovery-codes'
+      fill_in 'Password', with: 'password'
+      click_button 'View Authentication Recovery Codes'
+
+      fill_in 'Password', with: 'password'
+      click_button 'Add Authentication Recovery Codes'
+
+      expect(AccountRecoveryCode.where(id: account.id).count).to be_positive
+
+      visit profile_path
+      click_link 'Disable'
+      fill_in 'password', with: 'password'
+      click_button 'Disable TOTP Authentication'
+
+      expect(AccountOtpKey.exists?(id: account.id)).to be false
+      expect(AccountRecoveryCode.where(id: account.id).count).to eq(0)
+
+      rodauth_logout
+      rodauth_login(user.email_address)
+
+      expect(page).to have_current_path('/dashboard')
+    end
   end
 
   def setup_totp

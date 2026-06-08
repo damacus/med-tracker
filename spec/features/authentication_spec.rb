@@ -14,6 +14,24 @@ RSpec.describe 'Authentication Features', type: :system do
 
       expect(page).to have_current_path('/otp-auth')
     end
+
+    it 'does not require MFA when only orphaned recovery codes remain' do
+      user = users(:damacus)
+      account = user.person.account
+      AccountOtpKey.where(id: account.id).delete_all
+      AccountRecoveryCode.where(id: account.id).delete_all
+      account.account_webauthn_keys.destroy_all
+
+      code = 'orphaned-recovery-code'
+      AccountRecoveryCode.new(id: [account.id, code], code:).save!
+
+      visit login_path
+      fill_in 'Email address', with: user.email_address
+      fill_in 'Password', with: 'password'
+      click_on 'Sign In'
+
+      expect(page).to have_current_path('/dashboard')
+    end
   end
 
   describe 'AUTH-007: Email verification grace period configuration' do

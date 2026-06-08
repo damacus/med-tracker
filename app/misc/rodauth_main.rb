@@ -144,6 +144,13 @@ class RodauthMain < Rodauth::Rails::Auth
         "Passkey #{index}"
       end
 
+      def possible_authentication_methods
+        methods = super
+        return methods if methods.intersect?(%w[totp webauthn sms_code])
+
+        methods - ['recovery_code']
+      end
+
       def invite_only_registration_required?
         AppSettings.invite_only?
       end
@@ -206,6 +213,7 @@ class RodauthMain < Rodauth::Rails::Auth
     # ==> Two-Factor Authentication (OTP) Configuration
     # TOTP issuer name shown in authenticator apps
     otp_issuer 'MedTracker'
+    auto_remove_recovery_codes? true
 
     # ==> WebAuthn (Passkey) Configuration
     webauthn_rp_name 'MedTracker'
