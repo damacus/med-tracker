@@ -1,0 +1,892 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MedTracker Administration Five Rights Mockup</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #17201b;
+        --muted: #68746e;
+        --quiet: #8d9892;
+        --paper: #f3f1e8;
+        --panel: #fffefa;
+        --panel-cool: #eef5f3;
+        --panel-warm: #f8efe0;
+        --line: #d5ddd5;
+        --line-dark: #aebaae;
+        --green: #116b4a;
+        --green-deep: #0c3f2f;
+        --green-soft: #dbeee5;
+        --blue: #285d7b;
+        --blue-soft: #dceaf0;
+        --amber: #996015;
+        --amber-soft: #f3e4c9;
+        --red: #9a3333;
+        --red-soft: #efd6d4;
+        --black: #101713;
+        --shadow: 0 24px 80px rgba(23, 32, 27, 0.16);
+        --shadow-tight: 0 10px 28px rgba(23, 32, 27, 0.12);
+        --radius: 8px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        min-height: 100%;
+        background:
+          linear-gradient(90deg, rgba(17, 107, 74, 0.07) 1px, transparent 1px),
+          linear-gradient(180deg, rgba(17, 107, 74, 0.05) 1px, transparent 1px),
+          radial-gradient(circle at 12% 8%, rgba(40, 93, 123, 0.13), transparent 25rem),
+          radial-gradient(circle at 92% 18%, rgba(153, 96, 21, 0.12), transparent 26rem),
+          var(--paper);
+        background-size: 34px 34px, 34px 34px, auto, auto, auto;
+      }
+
+      body {
+        margin: 0;
+        color: var(--ink);
+        font-family: "Avenir Next", "Gill Sans", sans-serif;
+        letter-spacing: 0;
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      .shell {
+        width: min(1240px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 34px 0 60px;
+      }
+
+      .modal-frame {
+        overflow: hidden;
+        border: 1px solid var(--line-dark);
+        border-radius: var(--radius);
+        background: rgba(255, 254, 250, 0.92);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(16px);
+      }
+
+      .topbar {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 24px;
+        align-items: start;
+        padding: 24px 26px;
+        border-bottom: 1px solid var(--line);
+        background:
+          linear-gradient(90deg, rgba(17, 107, 74, 0.12), transparent 54%),
+          var(--panel);
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        min-height: 26px;
+        align-items: center;
+        border: 1px solid rgba(17, 107, 74, 0.28);
+        border-radius: 999px;
+        padding: 0 10px;
+        background: var(--green-soft);
+        color: var(--green-deep);
+        font-size: 10px;
+        font-weight: 900;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
+      }
+
+      h1 {
+        margin-top: 12px;
+        font-family: "Iowan Old Style", Georgia, serif;
+        font-size: clamp(34px, 5vw, 58px);
+        line-height: 0.96;
+        font-weight: 800;
+      }
+
+      .subtitle {
+        max-width: 690px;
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 15px;
+        font-weight: 700;
+        line-height: 1.48;
+      }
+
+      .drug-tile {
+        display: grid;
+        min-width: 210px;
+        gap: 8px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 14px;
+        background: var(--black);
+        color: white;
+      }
+
+      .drug-tile span {
+        color: rgba(255, 255, 255, 0.62);
+        font-size: 10px;
+        font-weight: 900;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+      }
+
+      .drug-tile strong {
+        font-size: 22px;
+        line-height: 1;
+      }
+
+      .drug-tile small {
+        color: rgba(255, 255, 255, 0.72);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .workbench {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 390px;
+        min-height: 690px;
+      }
+
+      .option-column {
+        padding: 22px;
+        border-right: 1px solid var(--line);
+      }
+
+      .column-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        margin-bottom: 14px;
+      }
+
+      .column-head h2,
+      .verify-panel h2 {
+        font-family: "Iowan Old Style", Georgia, serif;
+        font-size: 24px;
+        line-height: 1.1;
+      }
+
+      .filter-pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+      }
+
+      .pill {
+        min-height: 34px;
+        border: 1px solid var(--line-dark);
+        border-radius: 999px;
+        padding: 0 12px;
+        background: transparent;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 900;
+      }
+
+      .pill[aria-pressed="true"] {
+        border-color: var(--black);
+        background: var(--black);
+        color: white;
+      }
+
+      .option-grid {
+        display: grid;
+        gap: 12px;
+      }
+
+      .admin-card {
+        position: relative;
+        display: grid;
+        grid-template-columns: 58px minmax(0, 1fr) auto;
+        gap: 14px;
+        align-items: stretch;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 14px;
+        background: var(--panel);
+        box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset;
+        transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease, background 160ms ease;
+      }
+
+      .admin-card::before {
+        content: "";
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 7px;
+        border-radius: var(--radius) 0 0 var(--radius);
+        background: var(--green);
+      }
+
+      .admin-card.is-selected {
+        border-color: var(--green);
+        background: #fbfffb;
+        box-shadow: var(--shadow-tight);
+        transform: translateY(-1px);
+      }
+
+      .admin-card.is-blocked::before {
+        background: var(--amber);
+      }
+
+      .admin-card.is-low::before {
+        background: var(--red);
+      }
+
+      .admin-card.is-complete {
+        opacity: 0.55;
+      }
+
+      .person-mark {
+        display: grid;
+        width: 46px;
+        height: 46px;
+        align-self: start;
+        place-items: center;
+        border: 1px solid rgba(255, 255, 255, 0.7);
+        border-radius: 50%;
+        background: var(--blue-soft);
+        color: var(--blue);
+        font-size: 12px;
+        font-weight: 900;
+      }
+
+      .person-mark.green {
+        background: var(--green-soft);
+        color: var(--green-deep);
+      }
+
+      .person-mark.amber {
+        background: var(--amber-soft);
+        color: var(--amber);
+      }
+
+      .card-main {
+        min-width: 0;
+      }
+
+      .meta-line {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 8px;
+      }
+
+      .badge {
+        display: inline-flex;
+        min-height: 24px;
+        align-items: center;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 0 9px;
+        background: var(--panel-cool);
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 900;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+
+      .badge.due {
+        border-color: rgba(17, 107, 74, 0.26);
+        background: var(--green-soft);
+        color: var(--green-deep);
+      }
+
+      .badge.wait {
+        border-color: rgba(153, 96, 21, 0.28);
+        background: var(--amber-soft);
+        color: var(--amber);
+      }
+
+      .badge.low {
+        border-color: rgba(154, 51, 51, 0.28);
+        background: var(--red-soft);
+        color: var(--red);
+      }
+
+      .card-main h3 {
+        overflow: hidden;
+        font-size: 19px;
+        font-weight: 900;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .card-main p {
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 700;
+        line-height: 1.4;
+      }
+
+      .rights-strip {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 5px;
+        margin-top: 13px;
+      }
+
+      .right-chip {
+        display: grid;
+        min-height: 42px;
+        align-content: center;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        padding: 7px;
+        background: #f7faf6;
+      }
+
+      .right-chip span {
+        color: var(--quiet);
+        font-size: 9px;
+        font-weight: 900;
+        letter-spacing: 0.11em;
+        text-transform: uppercase;
+      }
+
+      .right-chip strong {
+        overflow: hidden;
+        margin-top: 2px;
+        font-size: 12px;
+        line-height: 1.1;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .card-actions {
+        display: grid;
+        align-content: center;
+        gap: 8px;
+        min-width: 118px;
+      }
+
+      .button {
+        display: inline-flex;
+        min-height: 42px;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        border: 1px solid var(--line-dark);
+        border-radius: var(--radius);
+        padding: 0 14px;
+        background: var(--panel);
+        color: var(--ink);
+        font-size: 12px;
+        font-weight: 900;
+        text-decoration: none;
+        transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease, border-color 160ms ease;
+      }
+
+      .button:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-tight);
+      }
+
+      .button.primary {
+        border-color: var(--green);
+        background: var(--green);
+        color: white;
+      }
+
+      .button.warning {
+        border-color: var(--amber);
+        background: var(--amber-soft);
+        color: var(--amber);
+      }
+
+      .button.ghost {
+        min-height: 36px;
+        background: transparent;
+      }
+
+      .button:disabled {
+        cursor: default;
+        opacity: 0.7;
+        transform: none;
+        box-shadow: none;
+      }
+
+      .verify-panel {
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        background: #f8faf5;
+      }
+
+      .verify-head {
+        padding: 22px;
+        border-bottom: 1px solid var(--line);
+        background:
+          linear-gradient(135deg, rgba(17, 107, 74, 0.12), transparent 58%),
+          var(--panel);
+      }
+
+      .verify-head p {
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 700;
+        line-height: 1.45;
+      }
+
+      .verify-body {
+        display: grid;
+        align-content: start;
+        gap: 12px;
+        padding: 18px 22px;
+      }
+
+      .verify-row {
+        display: grid;
+        grid-template-columns: 28px minmax(0, 1fr);
+        gap: 11px;
+        align-items: start;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 12px;
+        background: var(--panel);
+      }
+
+      .check {
+        display: grid;
+        width: 28px;
+        height: 28px;
+        place-items: center;
+        border-radius: 50%;
+        background: var(--green-soft);
+        color: var(--green-deep);
+        font-size: 15px;
+        font-weight: 900;
+      }
+
+      .verify-row span {
+        color: var(--quiet);
+        font-size: 10px;
+        font-weight: 900;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .verify-row strong {
+        display: block;
+        margin-top: 3px;
+        font-size: 15px;
+        line-height: 1.25;
+      }
+
+      .verify-row small {
+        display: block;
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1.35;
+      }
+
+      .time-card {
+        display: grid;
+        gap: 9px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 14px;
+        background: var(--panel-warm);
+      }
+
+      .time-card label {
+        color: var(--amber);
+        font-size: 10px;
+        font-weight: 900;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .time-card input {
+        width: 100%;
+        min-height: 44px;
+        border: 1px solid rgba(153, 96, 21, 0.28);
+        border-radius: var(--radius);
+        padding: 0 12px;
+        background: white;
+        color: var(--ink);
+        font-size: 18px;
+        font-weight: 900;
+      }
+
+      .verify-foot {
+        display: grid;
+        gap: 10px;
+        padding: 18px 22px 22px;
+        border-top: 1px solid var(--line);
+        background: var(--panel);
+      }
+
+      .verify-foot .button {
+        width: 100%;
+        min-height: 50px;
+        font-size: 14px;
+      }
+
+      .note {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1.4;
+        text-align: center;
+      }
+
+      .toast {
+        position: fixed;
+        right: 20px;
+        bottom: 20px;
+        z-index: 20;
+        max-width: 340px;
+        transform: translateY(12px);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        border-radius: var(--radius);
+        padding: 14px 16px;
+        background: var(--black);
+        color: white;
+        box-shadow: var(--shadow);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 160ms ease, transform 160ms ease;
+      }
+
+      .toast.is-visible {
+        transform: translateY(0);
+        opacity: 1;
+      }
+
+      .toast strong {
+        display: block;
+        margin-bottom: 3px;
+        font-size: 13px;
+      }
+
+      .toast span {
+        color: rgba(255, 255, 255, 0.72);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      @media (max-width: 1040px) {
+        .workbench,
+        .topbar {
+          grid-template-columns: 1fr;
+        }
+
+        .option-column {
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+        }
+
+        .verify-panel {
+          min-height: auto;
+        }
+
+        .drug-tile {
+          min-width: 0;
+        }
+      }
+
+      @media (max-width: 760px) {
+        .shell {
+          width: min(100% - 20px, 1240px);
+          padding-top: 18px;
+        }
+
+        .topbar,
+        .option-column,
+        .verify-head,
+        .verify-body,
+        .verify-foot {
+          padding-left: 14px;
+          padding-right: 14px;
+        }
+
+        .column-head {
+          align-items: start;
+          flex-direction: column;
+        }
+
+        .admin-card {
+          grid-template-columns: 44px minmax(0, 1fr);
+        }
+
+        .card-actions {
+          grid-column: 1 / -1;
+          min-width: 0;
+        }
+
+        .rights-strip {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .person-mark {
+          width: 38px;
+          height: 38px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="modal-frame" aria-labelledby="mockup-title">
+        <header class="topbar">
+          <div>
+            <span class="eyebrow">Medication administration</span>
+            <h1 id="mockup-title">Log administration for Paracetamol</h1>
+            <p class="subtitle">Choose the person and plan, then verify the five rights before recording the dose.</p>
+          </div>
+          <aside class="drug-tile" aria-label="Selected medication">
+            <span>Inventory item</span>
+            <strong>Paracetamol</strong>
+            <small>500 mg tablets - 18 units left</small>
+          </aside>
+        </header>
+
+        <div class="workbench">
+          <section class="option-column" aria-labelledby="option-title">
+            <div class="column-head">
+              <h2 id="option-title">Administration options</h2>
+              <div class="filter-pills" aria-label="Option filters">
+                <button class="pill" type="button" data-filter="all" aria-pressed="true">All</button>
+                <button class="pill" type="button" data-filter="due" aria-pressed="false">Due now</button>
+                <button class="pill" type="button" data-filter="routine" aria-pressed="false">Scheduled</button>
+                <button class="pill" type="button" data-filter="prn" aria-pressed="false">As needed</button>
+              </div>
+            </div>
+
+            <div class="option-grid">
+              <article class="admin-card is-selected" data-kind="due routine" data-person="John Doe" data-initials="JD" data-medication="Paracetamol" data-dose="1000 mg" data-time="Due now" data-plan="Scheduled plan - twice daily" data-stock="Home cabinet - 18 units left" data-action="Take">
+                <span class="person-mark green">JD</span>
+                <div class="card-main">
+                  <div class="meta-line">
+                    <span class="badge due">Due now</span>
+                    <span class="badge">Scheduled</span>
+                    <span class="badge">2 of 4 today</span>
+                  </div>
+                  <h3>John Doe</h3>
+                  <p>Paracetamol - 1000 mg - scheduled plan, twice daily.</p>
+                  <div class="rights-strip" aria-label="Five rights preview">
+                    <span class="right-chip"><span>Person</span><strong>John</strong></span>
+                    <span class="right-chip"><span>Drug</span><strong>Para</strong></span>
+                    <span class="right-chip"><span>Dose</span><strong>1000 mg</strong></span>
+                    <span class="right-chip"><span>Time</span><strong>Now</strong></span>
+                    <span class="right-chip"><span>Stock</span><strong>18 left</strong></span>
+                  </div>
+                </div>
+                <div class="card-actions">
+                  <button class="button primary" type="button" data-select>Verify</button>
+                </div>
+              </article>
+
+              <article class="admin-card" data-kind="routine" data-person="Mia King" data-initials="MK" data-medication="Paracetamol" data-dose="250 mg" data-time="Due at 12:30" data-plan="Scheduled plan - lunch dose" data-stock="School office - 9 units left" data-action="Give">
+                <span class="person-mark">MK</span>
+                <div class="card-main">
+                  <div class="meta-line">
+                    <span class="badge">Scheduled</span>
+                    <span class="badge">Due 12:30</span>
+                    <span class="badge">0 of 2 today</span>
+                  </div>
+                  <h3>Mia King</h3>
+                  <p>Paracetamol - 250 mg - lunch dose from school stock.</p>
+                  <div class="rights-strip" aria-label="Five rights preview">
+                    <span class="right-chip"><span>Person</span><strong>Mia</strong></span>
+                    <span class="right-chip"><span>Drug</span><strong>Para</strong></span>
+                    <span class="right-chip"><span>Dose</span><strong>250 mg</strong></span>
+                    <span class="right-chip"><span>Time</span><strong>12:30</strong></span>
+                    <span class="right-chip"><span>Stock</span><strong>9 left</strong></span>
+                  </div>
+                </div>
+                <div class="card-actions">
+                  <button class="button" type="button" data-select>Verify</button>
+                </div>
+              </article>
+
+              <article class="admin-card is-low" data-kind="due prn" data-person="Rose Patel" data-initials="RP" data-medication="Paracetamol" data-dose="500 mg" data-time="Available now" data-plan="As-needed medication" data-stock="Travel pouch - 2 units left" data-action="Give">
+                <span class="person-mark amber">RP</span>
+                <div class="card-main">
+                  <div class="meta-line">
+                    <span class="badge due">Available</span>
+                    <span class="badge">As needed</span>
+                    <span class="badge low">Low stock</span>
+                  </div>
+                  <h3>Rose Patel</h3>
+                  <p>Paracetamol - 500 mg - as-needed dose with low travel stock.</p>
+                  <div class="rights-strip" aria-label="Five rights preview">
+                    <span class="right-chip"><span>Person</span><strong>Rose</strong></span>
+                    <span class="right-chip"><span>Drug</span><strong>Para</strong></span>
+                    <span class="right-chip"><span>Dose</span><strong>500 mg</strong></span>
+                    <span class="right-chip"><span>Time</span><strong>Now</strong></span>
+                    <span class="right-chip"><span>Stock</span><strong>2 left</strong></span>
+                  </div>
+                </div>
+                <div class="card-actions">
+                  <button class="button" type="button" data-select>Verify</button>
+                </div>
+              </article>
+
+              <article class="admin-card is-blocked" data-kind="prn" data-person="John Doe" data-initials="JD" data-medication="Paracetamol" data-dose="500 mg" data-time="Available at 14:00" data-plan="As-needed medication - cooldown active" data-stock="Home cabinet - 18 units left" data-action="Review">
+                <span class="person-mark green">JD</span>
+                <div class="card-main">
+                  <div class="meta-line">
+                    <span class="badge wait">Cooldown</span>
+                    <span class="badge">As needed</span>
+                    <span class="badge">Available 14:00</span>
+                  </div>
+                  <h3>John Doe</h3>
+                  <p>Paracetamol - 500 mg - blocked by minimum spacing.</p>
+                  <div class="rights-strip" aria-label="Five rights preview">
+                    <span class="right-chip"><span>Person</span><strong>John</strong></span>
+                    <span class="right-chip"><span>Drug</span><strong>Para</strong></span>
+                    <span class="right-chip"><span>Dose</span><strong>500 mg</strong></span>
+                    <span class="right-chip"><span>Time</span><strong>14:00</strong></span>
+                    <span class="right-chip"><span>Stock</span><strong>18 left</strong></span>
+                  </div>
+                </div>
+                <div class="card-actions">
+                  <button class="button warning" type="button" data-select>Review</button>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <aside class="verify-panel" aria-labelledby="verify-title">
+            <header class="verify-head">
+              <span class="eyebrow">Verification sheet</span>
+              <h2 id="verify-title">Five rights check</h2>
+              <p>The selected option becomes a compact safety sheet before the final dose record is submitted.</p>
+            </header>
+
+            <div class="verify-body">
+              <div class="verify-row">
+                <span class="check" aria-hidden="true">1</span>
+                <div><span>Right person</span><strong data-field="person">John Doe</strong><small data-field="plan">Scheduled plan - twice daily</small></div>
+              </div>
+              <div class="verify-row">
+                <span class="check" aria-hidden="true">2</span>
+                <div><span>Right medication</span><strong data-field="medication">Paracetamol</strong><small>Matches the selected inventory item.</small></div>
+              </div>
+              <div class="verify-row">
+                <span class="check" aria-hidden="true">3</span>
+                <div><span>Right dose</span><strong data-field="dose">1000 mg</strong><small>Copied from the linked plan.</small></div>
+              </div>
+              <div class="verify-row">
+                <span class="check" aria-hidden="true">4</span>
+                <div><span>Right time</span><strong data-field="time">Due now</strong><small>Adjust only if recording a recent dose.</small></div>
+              </div>
+              <div class="verify-row">
+                <span class="check" aria-hidden="true">5</span>
+                <div><span>Right stock</span><strong data-field="stock">Home cabinet - 18 units left</strong><small>Dose will be deducted from this source.</small></div>
+              </div>
+
+              <div class="time-card">
+                <label for="taken-at">Taken at</label>
+                <input id="taken-at" type="time" value="08:12">
+              </div>
+            </div>
+
+            <footer class="verify-foot">
+              <button class="button primary" type="button" data-log>Take dose</button>
+              <button class="button ghost" type="button">Cancel</button>
+              <p class="note">This mockup keeps the current two-step safety model, but makes the verification content visible before the final action.</p>
+            </footer>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <div class="toast" role="status" aria-live="polite" aria-atomic="true">
+      <strong>Dose recorded</strong>
+      <span>The selected administration option has moved to recorded state.</span>
+    </div>
+
+    <script>
+      const cards = document.querySelectorAll(".admin-card");
+      const filters = document.querySelectorAll("[data-filter]");
+      const fields = document.querySelectorAll("[data-field]");
+      const logButton = document.querySelector("[data-log]");
+      const toast = document.querySelector(".toast");
+      let selectedCard = document.querySelector(".admin-card.is-selected");
+
+      function showToast(title, body) {
+        toast.querySelector("strong").textContent = title;
+        toast.querySelector("span").textContent = body;
+        toast.classList.add("is-visible");
+        window.clearTimeout(showToast.timer);
+        showToast.timer = window.setTimeout(() => toast.classList.remove("is-visible"), 2600);
+      }
+
+      function selectCard(card) {
+        cards.forEach((item) => item.classList.remove("is-selected"));
+        card.classList.add("is-selected");
+        selectedCard = card;
+
+        fields.forEach((field) => {
+          field.textContent = card.dataset[field.dataset.field];
+        });
+
+        logButton.textContent = card.dataset.action === "Review" ? "Review timing" : `${card.dataset.action} dose`;
+        logButton.classList.toggle("warning", card.dataset.action === "Review");
+        logButton.classList.toggle("primary", card.dataset.action !== "Review");
+      }
+
+      function applyFilter(filter) {
+        filters.forEach((button) => {
+          button.setAttribute("aria-pressed", String(button.dataset.filter === filter));
+        });
+
+        cards.forEach((card) => {
+          card.hidden = filter !== "all" && !card.dataset.kind.split(" ").includes(filter);
+        });
+
+        if (selectedCard.hidden) {
+          const nextCard = Array.from(cards).find((card) => !card.hidden);
+          if (nextCard) selectCard(nextCard);
+        }
+      }
+
+      cards.forEach((card) => {
+        card.querySelector("[data-select]").addEventListener("click", () => selectCard(card));
+      });
+
+      filters.forEach((button) => {
+        button.addEventListener("click", () => applyFilter(button.dataset.filter));
+      });
+
+      logButton.addEventListener("click", () => {
+        if (!selectedCard) return;
+
+        if (selectedCard.dataset.action === "Review") {
+          showToast("Timing review needed", `${selectedCard.dataset.person} cannot receive this dose until ${selectedCard.dataset.time.toLowerCase()}.`);
+          return;
+        }
+
+        selectedCard.classList.add("is-complete");
+        selectedCard.querySelector("[data-select]").textContent = "Recorded";
+        selectedCard.querySelector("[data-select]").disabled = true;
+        showToast("Dose recorded", `${selectedCard.dataset.medication} ${selectedCard.dataset.dose} for ${selectedCard.dataset.person}.`);
+      });
+    </script>
+  </body>
+</html>
