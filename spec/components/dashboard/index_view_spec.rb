@@ -319,10 +319,9 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       expect(routine_task.text).not_to include('0/1 doses today')
       expect(metadata['class']).to include('mt-1.5 flex flex-col items-start gap-1.5')
       expect(meter['aria-label']).to eq('No doses given today. 1 dose slot today.')
-      expect(meter['class']).not_to include('border')
-      expect(meter['class']).not_to include('shadow')
-      expect(meter['style']).to include('width: min(28px, 100%)')
-      expect(meter.at_css('[data-testid="dashboard-dose-segment"]')['class']).to include('h-1')
+      expect_dense_meter(meter, width: 32)
+      segment = meter.at_css('[data-testid="dashboard-dose-segment"]')
+      expect_dose_segment(segment, background: 'var(--outline-variant)')
       expect(meter.css('[data-testid="dashboard-dose-segment"]').count).to eq(1)
     end
 
@@ -336,11 +335,11 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       expect(as_needed_task.text).not_to include('1/4 doses today')
       expect(metadata['class']).to include('mt-1.5 flex flex-col items-start gap-1.5')
       expect(meter['aria-label']).to eq('1 dose given today. 4 dose slots today.')
-      expect(meter['class']).not_to include('border')
-      expect(meter['class']).not_to include('shadow')
-      expect(meter['style']).to include('width: min(76px, 100%)')
-      expect(meter.at_css('[data-testid="dashboard-dose-segment"]')['class']).to include('h-1')
-      expect(meter.css('[data-testid="dashboard-dose-segment"]').count).to eq(4)
+      expect_dense_meter(meter, width: 84)
+      segments = meter.css('[data-testid="dashboard-dose-segment"]')
+      expect(segments.count).to eq(4)
+      expect_dose_segment(segments.first, background: 'var(--primary)')
+      expect_dose_segment(segments.last, background: 'var(--outline-variant)')
     end
 
     it 'localizes dose meter aria labels', :aggregate_failures do
@@ -486,5 +485,30 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       dose_amount: 1000,
       dose_unit: 'mg'
     )
+  end
+
+  def expect_dense_meter(meter, width:)
+    expect_meter_classes(meter)
+    expect_meter_style(meter, width:)
+  end
+
+  def expect_meter_classes(meter)
+    expect(meter['class']).to include('grid')
+    expect(meter['class']).not_to include('border')
+    expect(meter['class']).not_to include('shadow')
+  end
+
+  def expect_meter_style(meter, width:)
+    expect(meter['style']).to include("width: #{width}px")
+    expect(meter['style']).to include('max-width: 100%')
+    expect(meter['style']).to include('gap: 4px')
+    expect(meter['style']).to include('align-self: flex-start')
+  end
+
+  def expect_dose_segment(segment, background:)
+    expect(segment['style']).to include('height: 6px')
+    expect(segment['style']).to include("background-color: #{background}")
+    expect(segment['class']).not_to include('h-1')
+    expect(segment['class']).not_to include('bg-outline-variant/70')
   end
 end
