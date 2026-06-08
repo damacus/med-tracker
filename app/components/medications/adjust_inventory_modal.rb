@@ -20,7 +20,7 @@ module Components
         Dialog do
           DialogTrigger do
             m3_button(variant: button_variant, size: button_size, class: button_class) do
-              render Icons::Pencil.new(size: 18, class: 'mr-2 text-primary')
+              render Icons::Pencil.new(size: 18, class: 'mr-2 text-primary', aria_hidden: 'true')
               span { button_label || t('medications.adjust_inventory_modal.adjust_inventory') }
             end
           end
