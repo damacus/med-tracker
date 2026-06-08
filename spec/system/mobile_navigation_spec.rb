@@ -80,7 +80,7 @@ RSpec.describe 'Mobile Navigation' do
   end
 
   scenario 'uses one navigation system at the md breakpoint' do
-    page.current_window.resize_to(767, 844)
+    page.current_window.resize_to(760, 844)
     visit root_path
 
     expect(navigation_visibility).to include(
