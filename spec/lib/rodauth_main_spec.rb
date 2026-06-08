@@ -40,4 +40,12 @@ RSpec.describe RodauthMain do
       expect(auth).to have_received(:redirect).with(auth.login_path)
     end
   end
+
+  describe '#two_factor_auth_return_to_requested_location?' do
+    it 'returns users to the protected action after additional authentication' do
+      auth = RodauthApp.rodauth.allocate
+
+      expect(auth.two_factor_auth_return_to_requested_location?).to be true
+    end
+  end
 end
