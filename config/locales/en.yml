@@ -1597,7 +1597,10 @@ en:
     dose_taken_at: "%{person} • Taken at %{time}"
     empty_state: No medications scheduled for today.
     dose_progress:
-      today: "%{count}/%{limit} doses today"
+      complete: Complete today
+      remaining:
+        one: 1 open today
+        other: "%{count} open today"
     dose_history:
       title: Previous Doses Today
     routine:

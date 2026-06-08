@@ -177,25 +177,42 @@ module Components
         end
 
         def medication_take_summary_items
-          take = medication_take_record
-          return [] unless take
+          return [] unless medication_take_record
 
+          medication_take_summary_values.filter_map { |label, value| [label, value] if value.present? }
+        end
+
+        def medication_take_summary_values
           {
-            I18n.t('admin.audit_logs.show.medication') => take.medication&.display_name,
-            I18n.t('admin.audit_logs.show.patient') => take.person&.name,
-            I18n.t('admin.audit_logs.show.dose') => DoseAmount.new(take.dose_amount, take.dose_unit).to_s,
-            I18n.t('admin.audit_logs.show.administered_at') => take.taken_at&.strftime('%Y-%m-%d %H:%M %Z'),
+            I18n.t('admin.audit_logs.show.medication') => medication_take_record.medication&.display_name,
+            I18n.t('admin.audit_logs.show.patient') => medication_take_record.person&.name,
+            I18n.t('admin.audit_logs.show.dose') => medication_take_dose,
+            I18n.t('admin.audit_logs.show.administered_at') => medication_take_administered_at,
             I18n.t('admin.audit_logs.show.logged_by') => user_name,
-            I18n.t('admin.audit_logs.show.stock_source') => take.inventory_medication&.display_name
-          }.filter_map { |label, value| [label, value] if value.present? }
+            I18n.t('admin.audit_logs.show.stock_source') => medication_take_record.inventory_medication&.display_name
+          }
+        end
+
+        def medication_take_dose
+          DoseAmount.new(medication_take_record.dose_amount, medication_take_record.dose_unit).to_s
+        end
+
+        def medication_take_administered_at
+          medication_take_record.taken_at&.strftime('%Y-%m-%d %H:%M %Z')
         end
 
         def medication_take_record
-          return unless version.item_type == 'MedicationTake' && version.item_id.present?
+          return @medication_take_record if defined?(@medication_take_record)
 
+          @medication_take_record = if version.item_type == 'MedicationTake' && version.item_id.present?
+                                      medication_take_relation.find_by(id: version.item_id)
+                                    end
+        end
+
+        def medication_take_relation
           MedicationTake.includes(:taken_from_medication, :taken_from_location,
                                   schedule: %i[medication person],
-                                  person_medication: %i[medication person]).find_by(id: version.item_id)
+                                  person_medication: %i[medication person])
         end
 
         def external_lookup?

@@ -1539,7 +1539,10 @@ ga:
     dose_taken_at: "%{person} • Tógtha ag %{time}"
     empty_state: Gan leigheasanna sceidealta inniu.
     dose_progress:
-      today: "%{count}/%{limit} dáileog inniu"
+      complete: Críochnaithe inniu
+      remaining:
+        one: 1 ar fáil inniu
+        other: "%{count} ar fáil inniu"
     dose_history:
       title: Dáileoga roimhe seo inniu
     routine:

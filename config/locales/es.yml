@@ -1424,7 +1424,10 @@ es:
       %{person}.'
     empty_state: No hay medicamentos programados para hoy.
     dose_progress:
-      today: "%{count}/%{limit} dosis hoy"
+      complete: Completo hoy
+      remaining:
+        one: 1 disponible hoy
+        other: "%{count} disponibles hoy"
     dose_history:
       title: Dosis anteriores de hoy
     routine:

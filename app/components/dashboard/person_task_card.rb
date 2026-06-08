@@ -176,7 +176,9 @@ module Components
         return if row[:daily_dose_limit].blank?
 
         limit = row[:daily_dose_limit].to_i
-        div(class: 'mt-2 flex flex-wrap items-center gap-1.5') do
+        div(
+          class: 'mt-2 inline-flex max-w-full items-center gap-2 rounded-shape-full bg-surface-container px-2.5 py-1'
+        ) do
           limit.times do |index|
             span(
               class: dose_pip_classes(index < row[:daily_dose_count].to_i),
@@ -184,16 +186,21 @@ module Components
               aria: { hidden: 'true' }
             )
           end
-          span(class: 'ml-1 text-[11px] font-black uppercase tracking-wide text-on-surface-variant') do
-            t('dashboard.dose_progress.today',
-              count: row[:daily_dose_count].to_i,
-              limit: limit)
+          span(class: 'text-[11px] font-black uppercase tracking-wide text-on-surface-variant') do
+            dose_progress_label(row, limit)
           end
         end
       end
 
+      def dose_progress_label(row, limit)
+        remaining = [limit - row[:daily_dose_count].to_i, 0].max
+        return t('dashboard.dose_progress.complete') if remaining.zero?
+
+        t('dashboard.dose_progress.remaining', count: remaining)
+      end
+
       def dose_pip_classes(filled)
-        base = 'inline-block h-2.5 w-2.5 rounded-shape-full border'
+        base = 'inline-block h-2 w-2 rounded-shape-full border'
         color = filled ? 'border-primary bg-primary' : 'border-outline-variant bg-surface-container-low'
 
         "#{base} #{color}"

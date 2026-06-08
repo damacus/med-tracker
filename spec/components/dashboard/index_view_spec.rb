@@ -313,7 +313,8 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       rendered = render_inline(described_class.new(presenter: person_task_presenter))
       routine_task = rendered.at_css('[data-testid="dashboard-routine-task"]')
 
-      expect(routine_task.text).to include('0/1 doses today')
+      expect(routine_task.text).to include('1 open today')
+      expect(routine_task.text).not_to include('0/1 doses today')
       expect(routine_task.css('[data-testid="dashboard-dose-pip"]').count).to eq(1)
     end
 
@@ -321,13 +322,14 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       rendered = render_inline(described_class.new(presenter: person_task_presenter))
       as_needed_task = rendered.at_css('[data-testid="dashboard-as-needed-task"]')
 
-      expect(as_needed_task.text).to include('1/4 doses today')
+      expect(as_needed_task.text).to include('3 open today')
+      expect(as_needed_task.text).not_to include('1/4 doses today')
       expect(as_needed_task.css('[data-testid="dashboard-dose-pip"]').count).to eq(4)
     end
   end
 
   describe 'today dose history' do
-    it 'renders previous doses grouped by person before Smart Insights' do
+    it 'renders previous doses grouped by person before Smart Insights', :aggregate_failures do
       presenter = person_task_presenter
 
       rendered = render_inline(described_class.new(presenter: presenter))
@@ -433,14 +435,6 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
   end
 
   def as_needed_dashboard_row(person)
-    today_take = instance_double(
-      MedicationTake,
-      taken_at: Time.zone.parse('2026-05-05 09:15:00'),
-      medication: medications(:paracetamol),
-      dose_amount: 1000,
-      dose_unit: 'mg'
-    )
-
     {
       person: person,
       source: schedules(:john_paracetamol),
@@ -449,7 +443,17 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       status: :available,
       daily_dose_count: 1,
       daily_dose_limit: 4,
-      today_takes: [today_take]
+      today_takes: [dashboard_today_take]
     }
+  end
+
+  def dashboard_today_take
+    instance_double(
+      MedicationTake,
+      taken_at: Time.zone.parse('2026-05-05 09:15:00'),
+      medication: medications(:paracetamol),
+      dose_amount: 1000,
+      dose_unit: 'mg'
+    )
   end
 end

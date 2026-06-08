@@ -1453,7 +1453,10 @@ cy:
     dose_taken_at: "%{person} • Cymerwyd am %{time}"
     empty_state: Dim meddyginiaethau wedi'u trefnu ar gyfer heddiw.
     dose_progress:
-      today: "%{count}/%{limit} dos heddiw"
+      complete: Wedi cwblhau heddiw
+      remaining:
+        one: 1 ar agor heddiw
+        other: "%{count} ar agor heddiw"
     dose_history:
       title: Dosau blaenorol heddiw
     routine:

@@ -165,30 +165,38 @@ RSpec.describe Components::Admin::AuditLogs::ShowView, type: :component do
   end
 
   describe 'medication take summary' do
-    it 'promotes medication, patient, administered time, and logger details' do
-      schedule = schedules(:john_paracetamol)
-      schedule.medication.update!(current_supply: 100)
+    let(:medication_take_schedule) { schedules(:john_paracetamol) }
+    let(:medication_take_version) do
+      medication_take_schedule.medication.update!(current_supply: 100)
       PaperTrail.request.whodunnit = admin.id
       take = MedicationTake.create!(
-        schedule: schedule,
+        schedule: medication_take_schedule,
         taken_at: Time.zone.parse('2026-06-07 12:10:00'),
-        dose_amount: schedule.dose_amount,
-        dose_unit: schedule.dose_unit
+        dose_amount: medication_take_schedule.dose_amount,
+        dose_unit: medication_take_schedule.dose_unit
       )
-      version = PaperTrail::Version.where(item_type: 'MedicationTake', item_id: take.id).last
+      PaperTrail::Version.where(item_type: 'MedicationTake', item_id: take.id).last
+    end
 
-      rendered = render_inline(described_class.new(version: version))
-      summary = rendered.at_css('[data-testid="audit-log-medication-take-summary"]')
+    it 'promotes medication and patient details', :aggregate_failures do
+      expect(medication_take_summary).to be_present
+      expect(medication_take_summary.text).to include('Medication')
+      expect(medication_take_summary.text).to include(medication_take_schedule.medication.display_name)
+      expect(medication_take_summary.text).to include('Patient')
+      expect(medication_take_summary.text).to include(medication_take_schedule.person.name)
+    end
 
-      expect(summary).to be_present
-      expect(summary.text).to include('Medication')
-      expect(summary.text).to include(schedule.medication.display_name)
-      expect(summary.text).to include('Patient')
-      expect(summary.text).to include(schedule.person.name)
-      expect(summary.text).to include('Administered at')
-      expect(summary.text).to include('12:10')
-      expect(summary.text).to include('Logged by')
-      expect(summary.text).to include(admin.name)
+    it 'promotes administered time and logger details', :aggregate_failures do
+      expect(medication_take_summary.text).to include('Administered at')
+      expect(medication_take_summary.text).to include('12:10')
+      expect(medication_take_summary.text).to include('Logged by')
+      expect(medication_take_summary.text).to include(admin.name)
+    end
+
+    def medication_take_summary
+      rendered = render_inline(described_class.new(version: medication_take_version))
+
+      rendered.at_css('[data-testid="audit-log-medication-take-summary"]')
     end
   end
 end

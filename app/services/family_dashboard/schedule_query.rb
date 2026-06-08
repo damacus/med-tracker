@@ -138,9 +138,7 @@ module FamilyDashboard
       doses
     end
 
-    def todays_takes(source)
-      source.medication_takes.select { |take| Time.current.all_day.cover?(take.taken_at) }
-    end
+    def todays_takes(source) = source.medication_takes.select { |take| Time.current.all_day.cover?(take.taken_at) }
 
     def upcoming_routine_row?(source)
       expected_doses = expected_routine_doses_for(source)
@@ -185,17 +183,11 @@ module FamilyDashboard
     end
 
     def dose_progress_for(takes, limit)
-      {
-        daily_dose_count: takes.size,
-        daily_dose_limit: limit,
-        today_takes: takes.sort_by(&:taken_at)
-      }
+      { daily_dose_count: takes.size, daily_dose_limit: limit, today_takes: takes.sort_by(&:taken_at) }
     end
 
     def expected_routine_doses_for(source)
-      return expected_schedule_doses_for(source) if source.is_a?(Schedule)
-
-      source.max_daily_doses.presence || 1
+      source.is_a?(Schedule) ? expected_schedule_doses_for(source) : source.max_daily_doses.presence || 1
     end
 
     def expected_schedule_doses_for(schedule)
@@ -237,20 +229,12 @@ module FamilyDashboard
     end
 
     def daily_dose_limit_for(source)
-      return source.effective_max_daily_doses(Date.current) if source.is_a?(Schedule)
-
-      source.max_daily_doses
+      source.is_a?(Schedule) ? source.effective_max_daily_doses(Date.current) : source.max_daily_doses
     end
 
-    def source_cycle(source)
-      DoseCycle.new(source.respond_to?(:dose_cycle) ? source.dose_cycle : 'daily')
-    end
+    def source_cycle(source) = DoseCycle.new(source.respond_to?(:dose_cycle) ? source.dose_cycle : 'daily')
 
-    def as_needed_source?(source)
-      return schedule_as_needed?(source) if source.is_a?(Schedule)
-
-      source.as_needed?
-    end
+    def as_needed_source?(source) = source.is_a?(Schedule) ? schedule_as_needed?(source) : source.as_needed?
 
     def schedule_as_needed?(schedule)
       schedule.schedule_type_prn? || schedule_config_as_needed?(schedule) || frequency_as_needed?(schedule)

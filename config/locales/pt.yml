@@ -1630,7 +1630,10 @@ pt:
     dose_taken_at: "%{person} • Tomado às %{time}"
     empty_state: Nenhum medicamento agendado para hoje.
     dose_progress:
-      today: "%{count}/%{limit} doses hoje"
+      complete: Completo hoje
+      remaining:
+        one: 1 disponível hoje
+        other: "%{count} disponíveis hoje"
     dose_history:
       title: Doses anteriores de hoje
     routine:
