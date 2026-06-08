@@ -193,10 +193,29 @@ RSpec.describe Components::Admin::AuditLogs::ShowView, type: :component do
       expect(medication_take_summary.text).to include(admin.name)
     end
 
+    it 'enriches the state payload with readable medication context', :aggregate_failures do
+      payload = medication_take_payload
+
+      expect(payload['medication_name']).to eq(medication_take_schedule.medication.display_name)
+      expect(payload['patient_name']).to eq(medication_take_schedule.person.name)
+      expect(payload['source']).to eq(
+        'id' => medication_take_schedule.id,
+        'type' => 'Schedule',
+        'medication' => medication_take_schedule.medication.display_name,
+        'person' => medication_take_schedule.person.name
+      )
+      expect(payload['logged_by_name']).to eq(admin.name)
+    end
+
     def medication_take_summary
       rendered = render_inline(described_class.new(version: medication_take_version))
 
       rendered.at_css('[data-testid="audit-log-medication-take-summary"]')
+    end
+
+    def medication_take_payload
+      rendered = render_inline(described_class.new(version: medication_take_version))
+      JSON.parse(rendered.css('pre code').last.text)
     end
   end
 end
