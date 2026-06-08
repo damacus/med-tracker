@@ -133,10 +133,21 @@ class RodauthMain < Rodauth::Rails::Auth
 
       def webauthn_key_insert_hash(webauthn_credential)
         super.merge(
-          nickname: next_webauthn_key_nickname,
+          nickname: submitted_webauthn_key_nickname,
           created_at: Time.current,
           updated_at: Time.current
         )
+      end
+
+      def submitted_webauthn_key_nickname
+        nickname = webauthn_key_nickname_param
+        nickname.presence&.slice(0, 255) || next_webauthn_key_nickname
+      end
+
+      def webauthn_key_nickname_param
+        param_or_nil('nickname').to_s.strip
+      rescue NoMethodError
+        ''
       end
 
       def next_webauthn_key_nickname

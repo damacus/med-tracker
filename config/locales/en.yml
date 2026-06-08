@@ -512,6 +512,33 @@ en:
           recovery_codes_description: Backup codes for when you lose access to your
             device.
           recovery_codes_setup: View recovery codes
+      recovery_codes:
+        page_title: Recovery codes
+        page_subtitle: Keep backup access available if your authenticator or passkey
+          is unavailable.
+        card_title: View recovery codes
+        card_description: Confirm your password to view or generate backup codes.
+        safety_title: Backup access
+        safety_description: Recovery codes are single-use backup keys. Store them
+          in a password manager or another secure place.
+        password_placeholder: Enter your password
+      add_recovery_codes:
+        page_title: Recovery codes
+        page_subtitle: Save these codes before closing this page.
+        card_title: Your recovery codes
+        card_description: Use one code when you cannot access your usual two-factor
+          method.
+        notice_title: Store these codes somewhere safe.
+        notice_description: Each code works once. Anyone with a code can complete
+          sign-in for your account.
+        copy_to_clipboard: Copy to clipboard
+        password_placeholder: Enter your password to add replacement codes
+      recovery_auth:
+        card_title: Recovery code
+        card_description: Enter a backup code to finish signing in.
+        info_title: Backup verification
+        info_description: Use one of your saved recovery codes. Each code can only
+          be used once.
       webauthn_auth:
         page_title: Use your passkey
         page_subtitle: Confirm with your device biometric or security key.
@@ -527,6 +554,9 @@ en:
         info_description: Passkeys are a secure replacement for passwords. They use
           your device's built-in security (like Face ID, Touch ID, or Windows Hello)
           to verify your identity.
+        nickname_label: Passkey name
+        nickname_placeholder: e.g. iPhone, Work laptop, YubiKey
+        nickname_hint: Use a name that tells you where this passkey is stored.
         current_password_label: Current Password
         current_password_placeholder: Enter your password to confirm
         current_password_hint: Required to verify your identity before adding a passkey

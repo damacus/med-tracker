@@ -117,7 +117,7 @@ module Views
       end
 
       def render_passkey_icon(icon_class)
-        render Icons::Fingerprint.new(size: 28, class: icon_class)
+        render Icons::Passkey.new(size: 28, class: icon_class)
       end
 
       def render_totp_icon(icon_class)

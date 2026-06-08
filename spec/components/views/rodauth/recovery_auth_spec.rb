@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe Views::Rodauth::RecoveryAuth, type: :component do
-  it 'renders the recovery code authentication form' do
+  it 'renders the recovery code authentication form', :aggregate_failures do
     rodauth = recovery_auth
     controller.request.env['rodauth'] = rodauth
     allow(view_context).to receive_messages(rodauth: rodauth, form_authenticity_token: 'token', flash: {})
@@ -12,6 +12,7 @@ RSpec.describe Views::Rodauth::RecoveryAuth, type: :component do
 
     expect(rendered.text).to include('Additional authentication required')
     expect(rendered.text).to include('Recovery Code')
+    expect(rendered.text).to include('Use one of your saved recovery codes.')
     expect(rendered.to_html).to include('/recovery-auth')
     expect(rendered.to_html).to include('recovery-code')
     expect(rendered.to_html).to include('min-h-screen')

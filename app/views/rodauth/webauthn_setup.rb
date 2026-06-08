@@ -75,6 +75,7 @@ module Views
           safe(additional_tags) if additional_tags.present?
           authenticity_token_field
           hidden_webauthn_fields(credential_options)
+          nickname_field
           password_field
           submit_button
         end
@@ -84,6 +85,23 @@ module Views
         input(type: 'hidden', id: 'webauthn-setup', name: view_context.rodauth.webauthn_setup_param, value: '')
         input(type: 'hidden', name: view_context.rodauth.webauthn_setup_challenge_param, value: credential_options.challenge)
         input(type: 'hidden', name: view_context.rodauth.webauthn_setup_challenge_hmac_param, value: view_context.rodauth.compute_hmac(credential_options.challenge))
+      end
+
+      def nickname_field
+        render_m3_form_field(
+          label: t('rodauth.views.webauthn_setup.nickname_label'),
+          input_attrs: {
+            type: :text,
+            name: 'nickname',
+            id: 'nickname',
+            required: true,
+            maxlength: 255,
+            autocomplete: 'off',
+            placeholder: t('rodauth.views.webauthn_setup.nickname_placeholder')
+          }
+        ) do
+          p(class: 'mt-1 px-1 text-xs text-on-surface-variant font-medium') { t('rodauth.views.webauthn_setup.nickname_hint') }
+        end
       end
 
       def password_field

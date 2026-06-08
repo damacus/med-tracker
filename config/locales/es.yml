@@ -242,6 +242,34 @@ es:
           recovery_codes_description: Códigos de respaldo para cuando pierdas acceso
             a tu dispositivo.
           recovery_codes_setup: Ver códigos de recuperación
+      recovery_codes:
+        page_title: Códigos de recuperación
+        page_subtitle: Mantén disponible un acceso de respaldo si tu autenticador
+          o passkey no está disponible.
+        card_title: Ver códigos de recuperación
+        card_description: Confirma tu contraseña para ver o generar códigos de respaldo.
+        safety_title: Acceso de respaldo
+        safety_description: Los códigos de recuperación son claves de respaldo de
+          un solo uso. Guárdalos en un gestor de contraseñas u otro lugar seguro.
+        password_placeholder: Introduce tu contraseña
+      add_recovery_codes:
+        page_title: Códigos de recuperación
+        page_subtitle: Guarda estos códigos antes de cerrar esta página.
+        card_title: Tus códigos de recuperación
+        card_description: Usa un código cuando no puedas acceder a tu método habitual
+          de dos factores.
+        notice_title: Guarda estos códigos en un lugar seguro.
+        notice_description: Cada código funciona una sola vez. Cualquier persona con
+          un código puede completar el inicio de sesión de tu cuenta.
+        copy_to_clipboard: Copiar al portapapeles
+        password_placeholder: Introduce tu contraseña para añadir códigos de reemplazo
+      recovery_auth:
+        card_title: Código de recuperación
+        card_description: Introduce un código de respaldo para terminar de iniciar
+          sesión.
+        info_title: Verificación de respaldo
+        info_description: Usa uno de tus códigos de recuperación guardados. Cada código
+          solo se puede usar una vez.
       webauthn_auth:
         page_title: Usa tu passkey
         page_subtitle: Confirma con la biometría de tu dispositivo o una llave de
@@ -259,6 +287,9 @@ es:
         info_description: Las passkeys son una alternativa segura a las contraseñas.
           Usan la seguridad integrada de tu dispositivo (como Face ID, Touch ID o
           Windows Hello) para verificar tu identidad.
+        nickname_label: Nombre de la passkey
+        nickname_placeholder: p. ej., iPhone, portátil del trabajo, YubiKey
+        nickname_hint: Usa un nombre que indique dónde está guardada esta passkey.
         current_password_label: Contraseña actual
         current_password_placeholder: Introduce tu contraseña para confirmar
         current_password_hint: Necesario para verificar tu identidad antes de añadir
