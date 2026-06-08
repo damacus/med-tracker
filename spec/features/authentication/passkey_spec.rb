@@ -63,4 +63,19 @@ RSpec.describe 'PASSKEY-001: WebAuthn/Passkey configuration' do
       'userVerification' => 'required'
     )
   end
+
+  scenario 'passkey keys are scoped to the Rails account id column' do
+    auth = RodauthApp.rodauth.allocate
+
+    expect(auth.webauthn_keys_account_id_column).to eq(:account_id)
+  end
+
+  scenario 'registered passkeys receive a default display name' do
+    auth = RodauthApp.rodauth.allocate
+    credential = Struct.new(:id, :public_key, :sign_count).new('credential-id', 'public-key', 0)
+
+    allow(auth).to receive(:webauthn_account_id).and_return(accounts(:damacus).id)
+
+    expect(auth.send(:webauthn_key_insert_hash, credential)).to include(nickname: 'Passkey 1')
+  end
 end

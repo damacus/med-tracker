@@ -42,6 +42,9 @@ RSpec.describe 'Profiles' do
       expect(response.body).to include('Generate recovery codes')
       expect(response.body).to include('No passkeys registered')
       expect(response.body).to include('Add a passkey')
+
+      add_passkey_link = response.parsed_body.at_css('a[href="/webauthn-setup"]')
+      expect(add_passkey_link['class']).to include('border-outline')
     end
 
     it 'renders configured two-factor states without a browser round-trip' do
