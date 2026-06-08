@@ -312,26 +312,34 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
     it 'renders a dense dose meter for routine tasks with daily limits', :aggregate_failures do
       rendered = render_inline(described_class.new(presenter: person_task_presenter))
       routine_task = rendered.at_css('[data-testid="dashboard-routine-task"]')
+      metadata = routine_task.at_css('[data-testid="dashboard-dose-metadata"]')
       meter = routine_task.at_css('[data-testid="dashboard-dose-meter"]')
 
       expect(routine_task.text).not_to include('open today')
       expect(routine_task.text).not_to include('0/1 doses today')
+      expect(metadata['class']).to include('mt-1.5 flex flex-col items-start gap-1.5')
       expect(meter['aria-label']).to eq('No doses given today. 1 dose slot today.')
-      expect(meter['style']).to include('width: min(56px, 100%)')
-      expect(meter.at_css('[data-testid="dashboard-dose-segment"]')['class']).to include('h-1.5')
+      expect(meter['class']).not_to include('border')
+      expect(meter['class']).not_to include('shadow')
+      expect(meter['style']).to include('width: min(28px, 100%)')
+      expect(meter.at_css('[data-testid="dashboard-dose-segment"]')['class']).to include('h-1')
       expect(meter.css('[data-testid="dashboard-dose-segment"]').count).to eq(1)
     end
 
     it 'renders a dense dose meter for as-needed items with daily limits', :aggregate_failures do
       rendered = render_inline(described_class.new(presenter: person_task_presenter))
       as_needed_task = rendered.at_css('[data-testid="dashboard-as-needed-task"]')
+      metadata = as_needed_task.at_css('[data-testid="dashboard-dose-metadata"]')
       meter = as_needed_task.at_css('[data-testid="dashboard-dose-meter"]')
 
       expect(as_needed_task.text).not_to include('open today')
       expect(as_needed_task.text).not_to include('1/4 doses today')
+      expect(metadata['class']).to include('mt-1.5 flex flex-col items-start gap-1.5')
       expect(meter['aria-label']).to eq('1 dose given today. 4 dose slots today.')
-      expect(meter['style']).to include('width: min(105px, 100%)')
-      expect(meter.at_css('[data-testid="dashboard-dose-segment"]')['class']).to include('h-1.5')
+      expect(meter['class']).not_to include('border')
+      expect(meter['class']).not_to include('shadow')
+      expect(meter['style']).to include('width: min(76px, 100%)')
+      expect(meter.at_css('[data-testid="dashboard-dose-segment"]')['class']).to include('h-1')
       expect(meter.css('[data-testid="dashboard-dose-segment"]').count).to eq(4)
     end
   end

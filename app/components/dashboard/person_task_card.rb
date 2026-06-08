@@ -84,8 +84,7 @@ module Components
               m3_text(variant: :title_medium, class: 'font-bold tracking-tight break-words') do
                 row[:source].medication.display_name
               end
-              m3_text(variant: :body_small, class: 'text-on-surface-variant font-medium') { dose_label(row[:source]) }
-              render_dose_progress(row)
+              render_dose_metadata(row)
             end
           end
           div(class: 'flex shrink-0 items-center gap-2 sm:justify-end') do
@@ -172,13 +171,22 @@ module Components
         end
       end
 
+      def render_dose_metadata(row)
+        div(class: 'mt-1.5 flex flex-col items-start gap-1.5',
+            data: { testid: 'dashboard-dose-metadata' }) do
+          m3_text(variant: :body_small, class: 'text-on-surface-variant font-medium leading-none') do
+            dose_label(row[:source])
+          end
+          render_dose_progress(row)
+        end
+      end
+
       def render_dose_progress(row)
         return if row[:daily_dose_limit].blank?
 
         limit = row[:daily_dose_limit].to_i
         div(
-          class: 'mt-1.5 grid max-w-full gap-1 rounded-shape-full border border-outline-variant/80 ' \
-                 'bg-surface-container-low p-1 shadow-sm',
+          class: 'grid max-w-full shrink-0 gap-1 self-center',
           style: dose_meter_style(limit),
           role: 'img',
           data: { testid: 'dashboard-dose-meter' },
@@ -195,7 +203,7 @@ module Components
       end
 
       def dose_meter_style(limit)
-        width = ((limit * 22) + ((limit - 1) * 3) + 8).clamp(56, 148)
+        width = ((limit * 16) + ((limit - 1) * 4)).clamp(28, 96)
 
         "grid-template-columns: repeat(#{limit}, minmax(0, 1fr)); width: min(#{width}px, 100%);"
       end
@@ -209,7 +217,7 @@ module Components
       end
 
       def dose_segment_classes(filled)
-        base = 'h-1.5 min-w-0 rounded-shape-full'
+        base = 'h-1 min-w-0 rounded-shape-full'
         color = filled ? 'bg-primary' : 'bg-outline-variant/70'
 
         "#{base} #{color}"
