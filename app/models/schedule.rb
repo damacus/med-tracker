@@ -31,7 +31,8 @@ class Schedule < ApplicationRecord
   has_many :medication_takes, dependent: :destroy
 
   scope :active, lambda {
-    where('start_date <= ? AND end_date >= ?', Time.zone.today, Time.zone.today)
+    where(active: true, stopped_on: nil)
+      .where('start_date <= ? AND end_date >= ?', Time.zone.today, Time.zone.today)
   }
 
   validates :start_date, presence: true
@@ -91,7 +92,9 @@ class Schedule < ApplicationRecord
       min_hours_between_doses
   end
 
-  def active? = start_date.present? && end_date.present? && Time.zone.today.between?(start_date, end_date)
+  def active? = active && stopped_on.blank? && within_schedule_range?(Time.zone.today)
+
+  def stop!(on: Time.zone.today) = update!(active: false, stopped_on: on)
 
   def cycle_period
     DoseCycle.new(dose_cycle).period

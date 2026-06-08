@@ -743,6 +743,7 @@ ga:
       edit_details: Cuir Sonraí in Eagar
       inventory: Inventár
       add_schedule: Sceideal
+      add_schedule_plan: Cuir sceideal leis
       overview: Forbhreathnú
       nhs_guidance_title: Treoir an NHS faoin leigheas
       nhs_guidance_link: Féach treoir iomlán an NHS
@@ -759,6 +760,15 @@ ga:
       forecast_unavailable: Réamhaisnéis dho-fhaighte
       standard_dosage: Dáileog
       no_dosage: Níl aon dáileog chaighdeánach sonraithe.
+      schedules_heading: Sceidil
+      schedules_description: Bainistigh pleananna sceidil a úsáideann an mhír fardail seo.
+      no_schedules: Níl aon sceidil ag úsáid an leighis seo fós.
+      schedule_dates: "%{start_date} go %{end_date}"
+      schedule_status:
+        active: Gníomhach
+        future: Amach anseo
+        ended: Críochnaithe
+        stopped: Stoptha
       dosages_heading: Dáileoga
       no_dosages: Níl aon dáileoga sainithe fós.
       add_dosage: Cuir Dáileog Leis
@@ -991,6 +1001,7 @@ ga:
     created: Cruthaíodh an sceideal go rathúil.
     updated: Nuashonraíodh an sceideal go rathúil.
     deleted: Scriosadh an sceideal go rathúil.
+    stopped: Stopadh an sceideal.
     medication_taken: Tógadh an leigheas go rathúil.
     invalid_dose_configured: Tá dáileog neamhbhailí cumraithe. Nuashonraigh dáileog
       an sceidil sula dtógtar í.
@@ -1016,6 +1027,7 @@ ga:
       waiting: Ag Fanacht
       edit: Cuir in Eagar
       delete: Scrios
+      stop: Stop sceideal
       delete_dialog:
         title: Scrios Sceideal
         confirm: An bhfuil tú cinnte gur mhaith leat an sceideal %{medication} a scrios?

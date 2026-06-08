@@ -10,7 +10,7 @@ class SchedulesController < ApplicationController
 
   before_action :redirect_direct_new_schedule, only: :new
   before_action :set_person, except: %i[index workflow start_workflow frequency_preview]
-  before_action :set_schedule, only: %i[edit update destroy take_medication]
+  before_action :set_schedule, only: %i[edit update destroy stop take_medication]
 
   def index
     authorize Schedule.new(person: schedule_index_person), :index?
@@ -77,6 +77,12 @@ class SchedulesController < ApplicationController
     render_schedule_destroy_success
   end
 
+  def stop
+    authorize @schedule.medication, :update?
+    @schedule.stop!
+    render_schedule_stop_success
+  end
+
   def take_medication
     authorize @schedule, :take_medication?
     taken_at = medication_taken_at_or_respond(scope: 'schedules')
@@ -125,7 +131,8 @@ class SchedulesController < ApplicationController
       selected_person_id: @selected_person_id,
       selected_medication_id: @selected_medication_id,
       schedule_type: @schedule_type,
-      frequency: @frequency
+      frequency: @frequency,
+      return_to: schedule_return_to
     )
   end
 
@@ -139,7 +146,8 @@ class SchedulesController < ApplicationController
       selection.person,
       medication_id: selection.medication.id,
       frequency: params.expect(:frequency).to_s,
-      schedule_type: params.expect(:schedule_type).to_s
+      schedule_type: params.expect(:schedule_type).to_s,
+      return_to: schedule_return_to
     )
   end
 
@@ -155,6 +163,7 @@ class SchedulesController < ApplicationController
       medications: @medications,
       title: t('schedules.modal.new_title', person: @person.name),
       back_path: modal_back_path(@person),
+      return_to: schedule_return_to,
       status: status
     )
   end
@@ -165,6 +174,7 @@ class SchedulesController < ApplicationController
       medications: @medications,
       title: t('schedules.modal.edit_title', person: @person.name),
       editing: true,
+      return_to: schedule_return_to,
       status: status
     )
   end
@@ -172,48 +182,53 @@ class SchedulesController < ApplicationController
   def render_schedule_form(schedule:, medications:, title:, **options)
     editing = options.fetch(:editing, false)
     back_path = options[:back_path]
+    return_to = options[:return_to]
     status = options.fetch(:status, :ok)
     is_modal = request.headers['Turbo-Frame'] == 'modal'
 
     respond_to do |format|
       format.html do
         if is_modal
-          render schedule_modal_component(schedule:, medications:, title:, editing:, back_path:), layout: false, status: status
+          render schedule_modal_component(schedule:, medications:, title:, editing:, back_path:, return_to:),
+                 layout: false, status: status
         else
-          render schedule_form_view(schedule:, medications:, editing:), status: status
+          render schedule_form_view(schedule:, medications:, editing:, return_to:), status: status
         end
       end
       format.turbo_stream do
         render turbo_stream: turbo_stream.replace(
           'modal',
-          schedule_modal_component(schedule:, medications:, title:, editing:, back_path:)
+          schedule_modal_component(schedule:, medications:, title:, editing:, back_path:, return_to:)
         ), status: status
       end
     end
   end
 
-  def schedule_modal_component(schedule:, medications:, title:, editing: false, back_path: nil)
+  def schedule_modal_component(schedule:, medications:, title:, **options)
     Components::Schedules::Modal.new(
       schedule: schedule,
       person: @person,
       medications: medications,
       title: title,
-      editing: editing,
-      back_path: back_path
+      editing: options.fetch(:editing, false),
+      back_path: options[:back_path],
+      return_to: options[:return_to]
     )
   end
 
-  def schedule_form_view(schedule:, medications:, editing: false)
+  def schedule_form_view(schedule:, medications:, editing: false, return_to: nil)
     if editing
-      Components::Schedules::EditView.new(schedule: schedule, person: @person, medications: medications)
+      Components::Schedules::EditView.new(schedule: schedule, person: @person, medications: medications,
+                                          return_to: return_to)
     else
-      Components::Schedules::NewView.new(schedule: schedule, person: @person, medications: medications)
+      Components::Schedules::NewView.new(schedule: schedule, person: @person, medications: medications,
+                                         return_to: return_to)
     end
   end
 
   def render_schedule_create_success
     respond_to do |format|
-      format.html { redirect_to person_path(@person), notice: t('schedules.created') }
+      format.html { redirect_to schedule_return_to || person_path(@person), notice: t('schedules.created') }
       format.turbo_stream do
         flash.now[:notice] = t('schedules.created')
         render turbo_stream: schedule_create_streams
@@ -226,8 +241,9 @@ class SchedulesController < ApplicationController
       turbo_stream.update('modal', ''),
       turbo_stream.replace("person_#{@person.id}", Components::People::PersonCard.new(person: @person.reload)),
       turbo_stream.replace("person_show_#{@person.id}", person_show_view(@person.reload)),
+      medication_show_stream(@schedule.medication),
       turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
-    ]
+    ].compact
   end
 
   def render_schedule_create_failure
@@ -237,7 +253,7 @@ class SchedulesController < ApplicationController
 
   def render_schedule_update_success
     respond_to do |format|
-      format.html { redirect_to person_path(@person), notice: t('schedules.updated') }
+      format.html { redirect_to schedule_return_to || person_path(@person), notice: t('schedules.updated') }
       format.turbo_stream do
         flash.now[:notice] = t('schedules.updated')
         render turbo_stream: schedule_update_streams
@@ -249,8 +265,9 @@ class SchedulesController < ApplicationController
     [
       turbo_stream.update('modal', ''),
       turbo_stream.replace("person_show_#{@person.id}", person_show_view(@person.reload)),
+      medication_show_stream(@schedule.medication),
       turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
-    ]
+    ].compact
   end
 
   def render_schedule_update_failure
@@ -269,6 +286,37 @@ class SchedulesController < ApplicationController
         ]
       end
     end
+  end
+
+  def render_schedule_stop_success
+    respond_to do |format|
+      format.html { redirect_to schedule_return_to || person_path(@person), notice: t('schedules.stopped') }
+      format.turbo_stream do
+        flash.now[:notice] = t('schedules.stopped')
+        render turbo_stream: [
+          turbo_stream.replace("person_show_#{@person.id}", person_show_view(@person.reload)),
+          medication_show_stream(@schedule.medication),
+          turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
+        ].compact
+      end
+    end
+  end
+
+  def schedule_return_to
+    safe_redirect_path(params[:return_to])
+  end
+
+  def medication_show_stream(medication)
+    return unless schedule_return_to == medication_path(medication)
+
+    turbo_stream.replace(
+      "medication_show_#{medication.id}",
+      Components::Medications::ShowView.new(medication: medication.reload, schedules: medication_schedules(medication))
+    )
+  end
+
+  def medication_schedules(medication)
+    policy_scope(Schedule).where(medication: medication).includes(:person, :medication).order(:start_date, :id)
   end
 
   def take_schedule(taken_at)

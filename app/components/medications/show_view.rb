@@ -3,12 +3,13 @@
 module Components
   module Medications
     class ShowView < Components::Base
-      attr_reader :medication, :notice
+      attr_reader :medication, :notice, :schedules
 
-      def initialize(medication:, notice: nil, nhs_guidance: nil)
+      def initialize(medication:, notice: nil, nhs_guidance: nil, schedules: nil)
         @medication = medication
         @notice = notice
         @nhs_guidance = nhs_guidance
+        @schedules = schedules || medication.schedules.includes(:person, :medication).order(:start_date, :id)
         super()
       end
 
@@ -23,6 +24,7 @@ module Components
               render_description_section
               render_nhs_guidance_frame
               render_warnings_section if medication.warnings.present?
+              render_schedules_section
               render_dosages_section
             end
 
@@ -124,14 +126,17 @@ module Components
 
       def render_actions_card
         div(class: 'grid grid-cols-2 gap-3') do
-          m3_link(
-            href: add_medication_path(medication_id: medication.id),
-            variant: :filled,
-            size: :lg,
-            class: 'w-full justify-center'
-          ) do
-            render Icons::PlusCircle.new(size: 18, class: 'mr-2')
-            span { t('medications.show.add_schedule') }
+          if can_update?
+            m3_link(
+              href: schedules_workflow_path(medication_id: medication.id, return_to: medication_path(medication)),
+              variant: :filled,
+              size: :lg,
+              class: 'w-full justify-center',
+              data: { testid: 'add-medication-schedule-action' }
+            ) do
+              render Icons::PlusCircle.new(size: 18, class: 'mr-2')
+              span { t('medications.show.add_schedule') }
+            end
           end
 
           m3_link(
@@ -197,6 +202,10 @@ module Components
 
       def render_dosages_section
         render Components::Medications::DoseHistoryComponent.new(medication: medication)
+      end
+
+      def render_schedules_section
+        render Components::Medications::SchedulesSection.new(medication: medication, schedules: schedules)
       end
 
       def can_update?

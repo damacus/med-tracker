@@ -436,6 +436,17 @@ RSpec.describe Medication do
       end
     end
 
+    context 'with stopped schedules' do
+      before do
+        dosage = create(:dosage, medication: medication)
+        create(:schedule, medication: medication, dosage: dosage, max_daily_doses: 4, stopped_on: Time.zone.today)
+      end
+
+      it 'excludes stopped schedules' do
+        expect(medication.estimated_daily_consumption).to eq(0.0)
+      end
+    end
+
     context 'with person_medications' do
       before do
         create(:person_medication, medication: medication, max_daily_doses: 2)

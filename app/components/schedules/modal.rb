@@ -7,7 +7,7 @@ module Components
       include Phlex::Rails::Helpers::TurboFrameTag
       include RubyUI
 
-      attr_reader :schedule, :person, :medications, :title, :back_path, :editing
+      attr_reader :schedule, :person, :medications, :title, :back_path, :editing, :return_to
 
       def initialize(schedule:, person:, medications:, **options)
         @schedule = schedule
@@ -16,9 +16,11 @@ module Components
         title = options[:title]
         back_path = options[:back_path]
         editing = options.fetch(:editing, false)
+        return_to = options[:return_to]
         @title = title || "New Schedule for #{person.name}"
         @back_path = back_path
         @editing = editing
+        @return_to = return_to
         super()
       end
 
@@ -41,7 +43,13 @@ module Components
                 DialogDescription { t('schedules.modal.subtitle') }
               end
               DialogMiddle do
-                render Form.new(schedule: schedule, person: person, medications: medications, frame_id: 'modal')
+                render Form.new(
+                  schedule: schedule,
+                  person: person,
+                  medications: medications,
+                  frame_id: 'modal',
+                  return_to: return_to
+                )
               end
             end
           end

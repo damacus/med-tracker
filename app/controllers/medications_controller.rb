@@ -19,6 +19,7 @@ class MedicationsController < ApplicationController
     authorize @medication
     render Components::Medications::ShowView.new(
       medication: @medication,
+      schedules: medication_schedules,
       notice: flash[:notice]
     )
   end
@@ -203,6 +204,10 @@ class MedicationsController < ApplicationController
       category: @current_category,
       location_id: @current_location_id
     )
+  end
+
+  def medication_schedules
+    policy_scope(Schedule).where(medication: @medication).includes(:person, :medication).order(:start_date, :id)
   end
 
   def destroy_medication

@@ -61,7 +61,11 @@ RSpec.describe Components::Medications::ShowView, type: :component do
     let(:rendered) { render_inline(described_class.new(medication: medication)) }
 
     it 'uses action button utility tokens for add schedule' do
-      add_schedule_link = fetch_action_element(rendered, "a[href*='/add_medication']", 'Add Schedule link not found')
+      add_schedule_link = fetch_action_element(
+        rendered,
+        "a[href*='/schedules/workflow']",
+        'Add Schedule link not found'
+      )
 
       expect(add_schedule_link[:class]).to include('rounded-shape-full')
     end

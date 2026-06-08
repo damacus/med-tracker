@@ -747,6 +747,7 @@ cy:
       edit_details: Golygu Manylion
       inventory: Rhestr Eiddo
       add_schedule: Amserlen
+      add_schedule_plan: Ychwanegu amserlen
       overview: Trosolwg
       nhs_guidance_title: Canllawiau meddyginiaeth y GIG
       nhs_guidance_link: Gweld canllawiau llawn y GIG
@@ -763,6 +764,15 @@ cy:
       forecast_unavailable: Rhagolwg ddim ar gael
       standard_dosage: Dos
       no_dosage: Dim dos safonol wedi'i nodi.
+      schedules_heading: Amserlenni
+      schedules_description: Rheoli cynlluniau amserlen sy'n defnyddio'r eitem stoc hon.
+      no_schedules: Nid oes unrhyw amserlenni'n defnyddio'r feddyginiaeth hon eto.
+      schedule_dates: "%{start_date} i %{end_date}"
+      schedule_status:
+        active: Gweithredol
+        future: Yn y dyfodol
+        ended: Wedi dod i ben
+        stopped: Wedi stopio
       dosages_heading: Dosau
       no_dosages: Dim dosau wedi'u diffinio eto.
       add_dosage: Ychwanegu Dos
@@ -1017,6 +1027,7 @@ cy:
     created: Crëwyd y presgripsiwn yn llwyddiannus.
     updated: Diweddarwyd y presgripsiwn yn llwyddiannus.
     deleted: Dilëwyd y presgripsiwn yn llwyddiannus.
+    stopped: Stopiwyd yr amserlen.
     medication_taken: Cymerwyd y feddyginiaeth yn llwyddiannus.
     invalid_dose_configured: Dos annilys wedi'i ffurfweddu. Diweddarwch ddos y presgripsiwn
       cyn cymryd.
@@ -1041,6 +1052,7 @@ cy:
       waiting: Yn Aros
       edit: Golygu
       delete: Dileu
+      stop: Stopio amserlen
       invalid_dose: Dos Annilys Wedi'i Ffurfweddu
       delete_dialog:
         title: Dileu Presgripsiwn

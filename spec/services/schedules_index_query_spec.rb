@@ -9,12 +9,14 @@ RSpec.describe SchedulesIndexQuery do
       first_same_day = create(:schedule, start_date: Date.new(2026, 4, 1))
       second_same_day = create(:schedule, start_date: Date.new(2026, 4, 1))
       expired_schedule = create(:schedule, :expired)
+      stopped_schedule = create(:schedule, stopped_on: Time.zone.today)
       schedule_ids = [later_schedule.id, first_same_day.id, second_same_day.id]
 
-      result = described_class.new(scope: Schedule.where(id: schedule_ids)).call
+      result = described_class.new(scope: Schedule.where(id: schedule_ids + [stopped_schedule.id])).call
 
       expect(result).to eq([first_same_day, second_same_day, later_schedule])
       expect(result.map(&:id)).not_to include(expired_schedule.id)
+      expect(result.map(&:id)).not_to include(stopped_schedule.id)
       expect(result.first.association(:person)).to be_loaded
       expect(result.first.association(:medication)).to be_loaded
     end

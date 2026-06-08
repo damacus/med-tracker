@@ -6,13 +6,14 @@ module Components
     class Form < Components::Base
       include Phlex::Rails::Helpers::FormWith
 
-      attr_reader :schedule, :person, :medications, :frame_id
+      attr_reader :schedule, :person, :medications, :frame_id, :return_to
 
-      def initialize(schedule:, person:, medications:, frame_id: nil)
+      def initialize(schedule:, person:, medications:, frame_id: nil, return_to: nil)
         @schedule = schedule
         @person = person
         @medications = medications
         @frame_id = frame_id
+        @return_to = return_to
         super()
       end
 
@@ -22,6 +23,7 @@ module Components
           class: 'space-y-6',
           data: form_payload
         ) do |f|
+          input(type: :hidden, name: 'return_to', value: return_to) if return_to.present?
           render_errors if schedule.errors.any?
           render_dose_snapshot_inputs
           render_form_fields(f)

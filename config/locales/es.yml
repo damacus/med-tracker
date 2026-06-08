@@ -752,6 +752,7 @@ es:
       edit_details: Editar Detalles
       inventory: Inventario
       add_schedule: Programar
+      add_schedule_plan: Añadir programación
       nhs_guidance_title: Guía del NHS sobre el medicamento
       nhs_guidance_link: Ver la guía completa del NHS
       nhs_guidance_source: 'Fuente: %{source}'
@@ -772,6 +773,15 @@ es:
       forecast_unavailable: Pronóstico no disponible
       standard_dosage: Dosis
       no_dosage: No se ha especificado una dosis estándar.
+      schedules_heading: Programaciones
+      schedules_description: Gestiona los planes programados que usan este artículo de inventario.
+      no_schedules: Aún no hay programaciones que usen este medicamento.
+      schedule_dates: "%{start_date} a %{end_date}"
+      schedule_status:
+        active: Activa
+        future: Futura
+        ended: Finalizada
+        stopped: Detenida
       dosages_heading: Dosis
       no_dosages: Todavía no se han definido dosis.
       add_dosage: Añadir dosis
@@ -990,6 +1000,7 @@ es:
     created: Receta creada correctamente.
     updated: Receta actualizada correctamente.
     deleted: Receta eliminada correctamente.
+    stopped: Programación detenida.
     medication_taken: Medicamento tomado correctamente.
     invalid_dose_configured: La dosis configurada no es válida. Actualiza la dosis
       de la receta antes de tomarla.
@@ -1016,6 +1027,7 @@ es:
       waiting: Esperando
       edit: Editar
       delete: Eliminar
+      stop: Detener programación
       delete_dialog:
         title: Eliminar Receta
         confirm: "¿Está seguro de que desea eliminar la receta de %{medication}? Esta

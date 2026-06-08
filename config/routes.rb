@@ -109,6 +109,7 @@ Rails.application.routes.draw do
 
     resources :schedules, except: [:index] do
       member do
+        patch :stop
         post :take_medication
       end
     end

@@ -753,6 +753,7 @@ pt:
       edit_details: Editar Detalhes
       inventory: Inventário
       add_schedule: Agendar
+      add_schedule_plan: Adicionar agendamento
       overview: Visão Geral
       nhs_guidance_title: Orientação do NHS sobre o medicamento
       nhs_guidance_link: Ver orientação completa do NHS
@@ -769,6 +770,15 @@ pt:
       forecast_unavailable: Previsão indisponível
       standard_dosage: Dose
       no_dosage: Nenhuma dosagem padrão especificada.
+      schedules_heading: Agendamentos
+      schedules_description: Gerir planos de agendamento que usam este item de inventário.
+      no_schedules: Ainda não há agendamentos a usar este medicamento.
+      schedule_dates: "%{start_date} a %{end_date}"
+      schedule_status:
+        active: Ativo
+        future: Futuro
+        ended: Terminado
+        stopped: Parado
       dosages_heading: Doses
       no_dosages: Ainda não existem doses definidas.
       add_dosage: Adicionar Dose
@@ -990,6 +1000,7 @@ pt:
     created: Receita criada com sucesso.
     updated: Receita atualizada com sucesso.
     deleted: Receita eliminada com sucesso.
+    stopped: Agendamento parado.
     medication_taken: Medicamento tomado com sucesso.
     invalid_dose_configured: Dose inválida configurada. Atualize a dose da receita
       antes de administrar.
@@ -1014,6 +1025,7 @@ pt:
       waiting: A aguardar
       edit: Editar
       delete: Eliminar
+      stop: Parar agendamento
       invalid_dose: Dose inválida configurada
       delete_dialog:
         title: Eliminar Receita

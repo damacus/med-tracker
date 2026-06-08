@@ -753,6 +753,7 @@ en:
       edit_details: Edit Details
       inventory: Inventory
       add_schedule: Schedule
+      add_schedule_plan: Add schedule
       overview: Overview
       nhs_guidance_title: NHS medicine guidance
       nhs_guidance_link: View full NHS guidance
@@ -769,6 +770,15 @@ en:
       forecast_unavailable: Forecast unavailable
       standard_dosage: Dose
       no_dosage: No standard dosage specified.
+      schedules_heading: Schedules
+      schedules_description: Manage schedule plans that use this inventory item.
+      no_schedules: No schedules use this medication yet.
+      schedule_dates: "%{start_date} to %{end_date}"
+      schedule_status:
+        active: Active
+        future: Future
+        ended: Ended
+        stopped: Stopped
       dosages_heading: Dosages
       no_dosages: No dosages defined yet.
       add_dosage: Add Dosage
@@ -1028,12 +1038,14 @@ en:
       waiting: Waiting
       edit: Edit
       delete: Delete
+      stop: Stop schedule
       delete_dialog:
         title: Delete Schedule
         confirm: Are you sure you want to delete the %{medication} schedule? This
           action cannot be undone.
         cancel: Cancel
         submit: Delete
+    stopped: Schedule stopped
     form:
       choose_medication_title: Choose a medication
       choose_medication_description: Selecting a medication will open the dose and

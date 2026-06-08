@@ -67,4 +67,29 @@ RSpec.describe 'Schedules' do
       expect(response).to redirect_to(schedules_workflow_path)
     end
   end
+
+  describe 'PATCH /people/:person_id/schedules/:id/stop' do
+    before do
+      sign_in(users(:admin))
+    end
+
+    it 'stops the schedule without deleting historical medication takes' do
+      schedule = schedules(:john_paracetamol)
+      MedicationTake.create!(
+        schedule: schedule,
+        taken_at: 1.day.ago,
+        dose_amount: schedule.dose_amount,
+        dose_unit: schedule.dose_unit
+      )
+
+      expect do
+        patch stop_person_schedule_path(schedule.person, schedule),
+              params: { return_to: medication_path(schedule.medication) }
+      end.not_to change(MedicationTake, :count)
+
+      expect(schedule.reload.stopped_on).to eq(Time.zone.today)
+      expect(response).to redirect_to(medication_path(schedule.medication))
+      expect(flash[:notice]).to eq('Schedule stopped')
+    end
+  end
 end

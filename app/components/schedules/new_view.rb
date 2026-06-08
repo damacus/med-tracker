@@ -4,19 +4,20 @@ module Components
   module Schedules
     # New schedule view component
     class NewView < Components::Base
-      attr_reader :schedule, :person, :medications
+      attr_reader :schedule, :person, :medications, :return_to
 
-      def initialize(schedule:, person:, medications:)
+      def initialize(schedule:, person:, medications:, return_to: nil)
         @schedule = schedule
         @person = person
         @medications = medications
+        @return_to = return_to
         super()
       end
 
       def view_template
         div(class: 'container mx-auto px-4 py-8 max-w-4xl') do
           render_header
-          render Form.new(schedule: schedule, person: person, medications: medications)
+          render Form.new(schedule: schedule, person: person, medications: medications, return_to: return_to)
         end
       end
 

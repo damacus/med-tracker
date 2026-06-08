@@ -5,7 +5,8 @@ module Components
     class WorkflowView < Components::Base
       include Phlex::Rails::Helpers::FormWith
 
-      attr_reader :people, :medications, :selected_person_id, :selected_medication_id, :schedule_type, :frequency
+      attr_reader :people, :medications, :selected_person_id, :selected_medication_id, :schedule_type, :frequency,
+                  :return_to
 
       def initialize(people:, medications:, **selection)
         @people = people
@@ -14,6 +15,7 @@ module Components
         @selected_medication_id = selection[:selected_medication_id]
         @schedule_type = selection[:schedule_type]
         @frequency = selection[:frequency]
+        @return_to = selection[:return_to]
         super()
       end
 
@@ -40,6 +42,8 @@ module Components
 
       def render_form
         form_with(url: start_schedules_workflow_path, method: :post, class: 'space-y-6') do
+          input(type: :hidden, name: 'return_to', value: return_to) if return_to.present?
+
           div(class: 'grid grid-cols-1 md:grid-cols-2 gap-6') do
             render_schedule_type_field
             render_person_field

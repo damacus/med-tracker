@@ -262,6 +262,43 @@ RSpec.describe Schedule do
         expect(schedule.active?).to be false
       end
     end
+
+    context 'when schedule has been stopped' do
+      let(:schedule) do
+        described_class.new(
+          start_date: Time.zone.today,
+          end_date: Time.zone.today + 30.days,
+          stopped_on: Time.zone.today
+        )
+      end
+
+      it 'returns false' do
+        expect(schedule.active?).to be false
+      end
+    end
+  end
+
+  describe '.active' do
+    it 'excludes stopped schedules' do
+      active_schedule = create(:schedule)
+      stopped_schedule = create(:schedule, stopped_on: Time.zone.today)
+
+      expect(described_class.active).to include(active_schedule)
+      expect(described_class.active).not_to include(stopped_schedule)
+    end
+  end
+
+  describe '#stop!' do
+    it 'sets stopped_on without deleting historical takes' do
+      schedule = create(:schedule)
+      create(:medication_take, :for_schedule, schedule: schedule)
+
+      expect do
+        schedule.stop!(on: Time.zone.today)
+      end.not_to change(MedicationTake, :count)
+
+      expect(schedule.reload.stopped_on).to eq(Time.zone.today)
+    end
   end
 
   describe 'associations' do
