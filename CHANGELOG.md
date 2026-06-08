@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.66](https://github.com/damacus/med-tracker/compare/v0.3.65...v0.3.66) (2026-06-08)
+
+
+### Features
+
+* Add dose progress and audit context ([#1332](https://github.com/damacus/med-tracker/issues/1332)) ([dd03b7f](https://github.com/damacus/med-tracker/commit/dd03b7fb92476d7337c8cc4a85bc837483d30959))
+* Implement passkey registration ([#1334](https://github.com/damacus/med-tracker/issues/1334)) ([58d091c](https://github.com/damacus/med-tracker/commit/58d091ca2a8ff7f8689a9d42e16629c86e5df000))
+
+
+### Bug Fixes
+
+* Fix passkey removal MFA return flow ([#1336](https://github.com/damacus/med-tracker/issues/1336)) ([22ff115](https://github.com/damacus/med-tracker/commit/22ff1157f2014d45fb857f2d8a917a513eac9580))
+
 ## [0.3.65](https://github.com/damacus/med-tracker/compare/v0.3.64...v0.3.65) (2026-06-02)
 
 
