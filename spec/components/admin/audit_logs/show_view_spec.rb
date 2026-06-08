@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe Components::Admin::AuditLogs::ShowView, type: :component do
-  fixtures :accounts, :people, :users, :locations, :location_memberships
+  fixtures :accounts, :people, :users, :locations, :location_memberships, :medications, :dosages, :schedules
 
   let(:admin) { users(:admin) }
   let(:person) { people(:john) }
@@ -161,6 +161,42 @@ RSpec.describe Components::Admin::AuditLogs::ShowView, type: :component do
           ['Matched URL', 'https://www.nhs.uk/medicines/paracetamol-for-adults/']
         )
       end
+    end
+  end
+
+  describe 'medication take summary' do
+    let(:medication_take_schedule) { schedules(:john_paracetamol) }
+    let(:medication_take_version) do
+      medication_take_schedule.medication.update!(current_supply: 100)
+      PaperTrail.request.whodunnit = admin.id
+      take = MedicationTake.create!(
+        schedule: medication_take_schedule,
+        taken_at: Time.zone.parse('2026-06-07 12:10:00'),
+        dose_amount: medication_take_schedule.dose_amount,
+        dose_unit: medication_take_schedule.dose_unit
+      )
+      PaperTrail::Version.where(item_type: 'MedicationTake', item_id: take.id).last
+    end
+
+    it 'promotes medication and patient details', :aggregate_failures do
+      expect(medication_take_summary).to be_present
+      expect(medication_take_summary.text).to include('Medication')
+      expect(medication_take_summary.text).to include(medication_take_schedule.medication.display_name)
+      expect(medication_take_summary.text).to include('Patient')
+      expect(medication_take_summary.text).to include(medication_take_schedule.person.name)
+    end
+
+    it 'promotes administered time and logger details', :aggregate_failures do
+      expect(medication_take_summary.text).to include('Administered at')
+      expect(medication_take_summary.text).to include('12:10')
+      expect(medication_take_summary.text).to include('Logged by')
+      expect(medication_take_summary.text).to include(admin.name)
+    end
+
+    def medication_take_summary
+      rendered = render_inline(described_class.new(version: medication_take_version))
+
+      rendered.at_css('[data-testid="audit-log-medication-take-summary"]')
     end
   end
 end

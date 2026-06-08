@@ -27,6 +27,7 @@ module Components
               render_supply_levels
             end
             div(class: 'lg:col-span-2') do
+              render_today_dose_history
               render_health_insights
             end
           end
@@ -326,6 +327,73 @@ module Components
             end
           end
         end
+      end
+
+      def render_today_dose_history
+        history = today_dose_history_by_person
+        return if history.empty?
+
+        section(class: 'space-y-4 pt-4', data: { testid: 'dashboard-today-dose-history' }) do
+          m3_heading(variant: :title_large, level: 2, class: 'font-bold tracking-tight') do
+            t('dashboard.dose_history.title')
+          end
+          div(class: 'space-y-3') do
+            history.each do |person, takes|
+              render_person_dose_history(person, takes)
+            end
+          end
+        end
+      end
+
+      def render_person_dose_history(person, takes)
+        m3_card(
+          variant: :elevated,
+          class: 'rounded-[2rem] border-none bg-surface-container-low p-5 shadow-elevation-1'
+        ) do
+          div(class: 'mb-4 flex items-center gap-3') do
+            render Components::Shared::PersonAvatar.new(person: person, size: :sm)
+            m3_heading(variant: :title_medium, level: 3, class: 'font-black tracking-tight') { person.name }
+          end
+          div(class: 'space-y-2') do
+            takes.each { |take| render_dose_history_row(take) }
+          end
+        end
+      end
+
+      def render_dose_history_row(take)
+        div(class: 'flex items-center justify-between gap-3 rounded-shape-xl bg-surface-container px-4 py-3') do
+          div(class: 'min-w-0') do
+            m3_text(variant: :body_medium, class: 'truncate font-bold text-foreground') do
+              take.medication.display_name
+            end
+            m3_text(variant: :body_small, class: 'text-on-surface-variant font-medium') do
+              DoseAmount.new(take.dose_amount, take.dose_unit).to_s
+            end
+          end
+          span(class: 'shrink-0 text-sm font-black tabular-nums text-primary') do
+            take.taken_at.strftime('%H:%M')
+          end
+        end
+      end
+
+      def today_dose_history_by_person
+        people.each_with_object({}) do |person, history|
+          takes = today_takes_for_person(person)
+          history[person] = takes if takes.any?
+        end
+      end
+
+      def today_takes_for_person(person)
+        rows = routine_tasks_by_person.fetch(person, []) + as_needed_by_person.fetch(person, [])
+        rows.flat_map { |row| row[:today_takes].to_a }
+            .uniq { |take| dose_history_key(take) }
+            .sort_by(&:taken_at)
+      end
+
+      def dose_history_key(take)
+        return [take.class.name, take.id] if take.is_a?(ApplicationRecord) && take.id.present?
+
+        take.object_id
       end
 
       def render_dashboard_insight_content

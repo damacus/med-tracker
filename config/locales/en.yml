@@ -265,6 +265,12 @@ en:
         matches: Matches
         matched_guidance: Matched guidance
         matched_url: Matched URL
+        medication: Medication
+        patient: Patient
+        dose: Dose
+        administered_at: Administered at
+        logged_by: Logged by
+        stock_source: Stock source
         audit_payload: Audit Payload
         audit_payload_description: The structured lookup details recorded for this event
         na: N/A
@@ -1590,6 +1596,20 @@ en:
     add_schedules_hint: Add schedules to see them here
     dose_taken_at: "%{person} • Taken at %{time}"
     empty_state: No medications scheduled for today.
+    dose_progress:
+      complete: Complete today
+      aria_given:
+        zero: No doses given today
+        one: 1 dose given today
+        other: "%{count} doses given today"
+      aria_slots:
+        one: 1 dose slot today
+        other: "%{count} dose slots today"
+      remaining:
+        one: 1 open today
+        other: "%{count} open today"
+    dose_history:
+      title: Previous Doses Today
     routine:
       anytime: Anytime
       done_short: Done

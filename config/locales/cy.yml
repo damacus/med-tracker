@@ -436,6 +436,12 @@ cy:
         matches: Cyfatebiadau
         matched_guidance: Canllaw cyfatebol
         matched_url: URL cyfatebol
+        medication: Meddyginiaeth
+        patient: Claf
+        dose: Dos
+        administered_at: Gweinyddwyd am
+        logged_by: Cofnodwyd gan
+        stock_source: Ffynhonnell stoc
         audit_payload: Llwyth archwilio
         audit_payload_description: Y manylion chwilio strwythuredig a gofnodwyd ar gyfer y digwyddiad hwn
         na: Amh
@@ -1446,6 +1452,20 @@ cy:
     add_schedules_hint: Ychwanegwch bresgripsiynau i'w gweld yma
     dose_taken_at: "%{person} • Cymerwyd am %{time}"
     empty_state: Dim meddyginiaethau wedi'u trefnu ar gyfer heddiw.
+    dose_progress:
+      complete: Wedi cwblhau heddiw
+      aria_given:
+        zero: Dim dosau wedi'u rhoi heddiw
+        one: 1 dos wedi'i roi heddiw
+        other: "%{count} dos wedi'u rhoi heddiw"
+      aria_slots:
+        one: 1 slot dos heddiw
+        other: "%{count} slot dos heddiw"
+      remaining:
+        one: 1 ar agor heddiw
+        other: "%{count} ar agor heddiw"
+    dose_history:
+      title: Dosau blaenorol heddiw
     routine:
       anytime: Unrhyw bryd
       done_short: Wedi gorffen

@@ -442,6 +442,12 @@ es:
         matches: Coincidencias
         matched_guidance: Guía coincidente
         matched_url: URL coincidente
+        medication: Medicamento
+        patient: Paciente
+        dose: Dosis
+        administered_at: Administrado a las
+        logged_by: Registrado por
+        stock_source: Origen del stock
         audit_payload: Datos de auditoría
         audit_payload_description: Los detalles estructurados de búsqueda registrados para este evento
         na: N/D
@@ -1417,6 +1423,20 @@ es:
     out_of_stock_alert: 'Sin stock: %{medication}. No se pueden registrar dosis para
       %{person}.'
     empty_state: No hay medicamentos programados para hoy.
+    dose_progress:
+      complete: Completo hoy
+      aria_given:
+        zero: No se han administrado dosis hoy
+        one: 1 dosis administrada hoy
+        other: "%{count} dosis administradas hoy"
+      aria_slots:
+        one: 1 espacio de dosis hoy
+        other: "%{count} espacios de dosis hoy"
+      remaining:
+        one: 1 disponible hoy
+        other: "%{count} disponibles hoy"
+    dose_history:
+      title: Dosis anteriores de hoy
     routine:
       anytime: En cualquier momento
       done_short: Hecho
