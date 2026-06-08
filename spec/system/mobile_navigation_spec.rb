@@ -53,6 +53,22 @@ RSpec.describe 'Mobile Navigation' do
       })()
     JS
   end
+  let(:mobile_shell_overlap_script) do
+    <<~JS
+      (() => {
+        const rail = document.querySelector('[data-testid="mobile-rail"]')
+        const content = document.querySelector('#main-content')
+        const railBounds = rail.getBoundingClientRect()
+        const contentBounds = content.getBoundingClientRect()
+
+        return {
+          railRight: railBounds.right,
+          contentLeft: contentBounds.left,
+          overlaps: contentBounds.left < railBounds.right
+        }
+      })()
+    JS
+  end
 
   before do
     login_as(user)
@@ -107,6 +123,17 @@ RSpec.describe 'Mobile Navigation' do
     overflowing_labels = mobile_metric_label_overflow.select { |label| label['overflows'] }
 
     expect(overflowing_labels).to be_empty
+  end
+
+  scenario 'keeps dashboard content clear of the mobile rail' do
+    page.current_window.resize_to(390, 844)
+    visit dashboard_path
+
+    shell_overlap = mobile_shell_overlap
+    failure_message = "expected content left #{shell_overlap['contentLeft']} " \
+                      "to be >= rail right #{shell_overlap['railRight']}"
+
+    expect(shell_overlap['overlaps']).to be(false), failure_message
   end
 
   scenario 'opens a left-side drawer with navigation and accessible sizing' do
@@ -180,6 +207,10 @@ RSpec.describe 'Mobile Navigation' do
 
   def mobile_metric_label_overflow
     page.evaluate_script(mobile_metric_label_overflow_script)
+  end
+
+  def mobile_shell_overlap
+    page.evaluate_script(mobile_shell_overlap_script)
   end
 
   def open_mobile_menu

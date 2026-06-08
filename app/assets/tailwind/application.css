@@ -913,6 +913,18 @@
 }
 
 @layer components {
+	.app-authenticated-shell-main {
+		margin-left: 4rem;
+		padding-bottom: 7rem;
+	}
+
+	@media (min-width: 768px) {
+		.app-authenticated-shell-main {
+			margin-left: 16rem;
+			padding-bottom: 0;
+		}
+	}
+
 	.login-med-illustration {
 		position: relative;
 		width: min(100%, 18rem);
