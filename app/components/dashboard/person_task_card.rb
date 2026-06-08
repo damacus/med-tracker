@@ -177,8 +177,8 @@ module Components
 
         limit = row[:daily_dose_limit].to_i
         div(
-          class: 'mt-1.5 grid max-w-full gap-[3px] rounded-shape-full border border-outline-variant/80 ' \
-                 'bg-surface-container-low p-[3px]',
+          class: 'mt-1.5 grid max-w-full gap-1 rounded-shape-full border border-outline-variant/80 ' \
+                 'bg-surface-container-low p-1 shadow-sm',
           style: dose_meter_style(limit),
           role: 'img',
           data: { testid: 'dashboard-dose-meter' },
@@ -195,7 +195,7 @@ module Components
       end
 
       def dose_meter_style(limit)
-        width = ((limit * 18) + ((limit - 1) * 3) + 8).clamp(40, 132)
+        width = ((limit * 22) + ((limit - 1) * 3) + 8).clamp(56, 148)
 
         "grid-template-columns: repeat(#{limit}, minmax(0, 1fr)); width: min(#{width}px, 100%);"
       end
@@ -209,7 +209,7 @@ module Components
       end
 
       def dose_segment_classes(filled)
-        base = 'h-[5px] min-w-0 rounded-shape-full'
+        base = 'h-1.5 min-w-0 rounded-shape-full'
         color = filled ? 'bg-primary' : 'bg-outline-variant/70'
 
         "#{base} #{color}"
