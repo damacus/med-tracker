@@ -200,7 +200,7 @@ module Views
             p(class: 'text-sm text-on-surface-variant') { status_text }
           end
           render RubyUI::Link.new(
-            variant: :default,
+            variant: :outlined,
             size: :sm,
             href: setup_path
           ) { setup_text }

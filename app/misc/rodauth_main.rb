@@ -131,6 +131,19 @@ class RodauthMain < Rodauth::Rails::Auth
         end
       end
 
+      def webauthn_key_insert_hash(webauthn_credential)
+        super.merge(
+          nickname: next_webauthn_key_nickname,
+          created_at: Time.current,
+          updated_at: Time.current
+        )
+      end
+
+      def next_webauthn_key_nickname
+        index = AccountWebauthnKey.where(account_id: webauthn_account_id).count + 1
+        "Passkey #{index}"
+      end
+
       def invite_only_registration_required?
         AppSettings.invite_only?
       end
@@ -218,6 +231,7 @@ class RodauthMain < Rodauth::Rails::Auth
     webauthn_invalid_webauthn_id_message { I18n.t('sessions.login.passkey_error') }
 
     # Configure WebAuthn table column mappings for Rails conventions
+    webauthn_keys_account_id_column :account_id
     webauthn_user_ids_account_id_column :account_id
 
     # Allow WebAuthn setup without requiring existing MFA
