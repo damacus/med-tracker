@@ -309,22 +309,26 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       expect(routine_task.text).not_to include('Upcoming')
     end
 
-    it 'renders dose progress pips for routine tasks with daily limits' do
+    it 'renders a dense dose meter for routine tasks with daily limits' do
       rendered = render_inline(described_class.new(presenter: person_task_presenter))
       routine_task = rendered.at_css('[data-testid="dashboard-routine-task"]')
+      meter = routine_task.at_css('[data-testid="dashboard-dose-meter"]')
 
-      expect(routine_task.text).to include('1 open today')
+      expect(routine_task.text).not_to include('open today')
       expect(routine_task.text).not_to include('0/1 doses today')
-      expect(routine_task.css('[data-testid="dashboard-dose-pip"]').count).to eq(1)
+      expect(meter['aria-label']).to eq('No doses given today. 1 dose slot today.')
+      expect(meter.css('[data-testid="dashboard-dose-segment"]').count).to eq(1)
     end
 
-    it 'renders dose progress pips for as-needed items with daily limits' do
+    it 'renders a dense dose meter for as-needed items with daily limits' do
       rendered = render_inline(described_class.new(presenter: person_task_presenter))
       as_needed_task = rendered.at_css('[data-testid="dashboard-as-needed-task"]')
+      meter = as_needed_task.at_css('[data-testid="dashboard-dose-meter"]')
 
-      expect(as_needed_task.text).to include('3 open today')
+      expect(as_needed_task.text).not_to include('open today')
       expect(as_needed_task.text).not_to include('1/4 doses today')
-      expect(as_needed_task.css('[data-testid="dashboard-dose-pip"]').count).to eq(4)
+      expect(meter['aria-label']).to eq('1 dose given today. 4 dose slots today.')
+      expect(meter.css('[data-testid="dashboard-dose-segment"]').count).to eq(4)
     end
   end
 

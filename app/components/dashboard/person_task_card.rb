@@ -177,31 +177,40 @@ module Components
 
         limit = row[:daily_dose_limit].to_i
         div(
-          class: 'mt-2 inline-flex max-w-full items-center gap-2 rounded-shape-full bg-surface-container px-2.5 py-1'
+          class: 'mt-1.5 grid max-w-full gap-[3px] rounded-shape-full border border-outline-variant/80 ' \
+                 'bg-surface-container-low p-[3px]',
+          style: dose_meter_style(limit),
+          role: 'img',
+          data: { testid: 'dashboard-dose-meter' },
+          aria: { label: dose_progress_aria_label(row, limit) }
         ) do
           limit.times do |index|
             span(
-              class: dose_pip_classes(index < row[:daily_dose_count].to_i),
-              data: { testid: 'dashboard-dose-pip' },
+              class: dose_segment_classes(index < row[:daily_dose_count].to_i),
+              data: { testid: 'dashboard-dose-segment' },
               aria: { hidden: 'true' }
             )
-          end
-          span(class: 'text-[11px] font-black uppercase tracking-wide text-on-surface-variant') do
-            dose_progress_label(row, limit)
           end
         end
       end
 
-      def dose_progress_label(row, limit)
-        remaining = [limit - row[:daily_dose_count].to_i, 0].max
-        return t('dashboard.dose_progress.complete') if remaining.zero?
+      def dose_meter_style(limit)
+        width = ((limit * 18) + ((limit - 1) * 3) + 8).clamp(40, 132)
 
-        t('dashboard.dose_progress.remaining', count: remaining)
+        "grid-template-columns: repeat(#{limit}, minmax(0, 1fr)); width: min(#{width}px, 100%);"
       end
 
-      def dose_pip_classes(filled)
-        base = 'inline-block h-2 w-2 rounded-shape-full border'
-        color = filled ? 'border-primary bg-primary' : 'border-outline-variant bg-surface-container-low'
+      def dose_progress_aria_label(row, limit)
+        count = row[:daily_dose_count].to_i
+        given = count.zero? ? 'No doses given today' : "#{count} #{'dose'.pluralize(count)} given today"
+        slots = "#{limit} #{'dose slot'.pluralize(limit)} today"
+
+        "#{given}. #{slots}."
+      end
+
+      def dose_segment_classes(filled)
+        base = 'h-[5px] min-w-0 rounded-shape-full'
+        color = filled ? 'bg-primary' : 'bg-outline-variant/70'
 
         "#{base} #{color}"
       end
