@@ -28,7 +28,12 @@ module Components
         Dialog do
           DialogTrigger do
             if icon_only
-              m3_button(variant: button_variant, size: button_size, class: button_class, aria_label: t('medications.refill_modal.refill_inventory')) do
+              m3_button(
+                variant: button_variant,
+                size: button_size,
+                class: button_class,
+                aria_label: t('medications.refill_modal.refill_inventory')
+              ) do
                 render Icons::RefreshCw.new(size: 16, aria_hidden: 'true')
               end
             else
