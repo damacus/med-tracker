@@ -90,7 +90,8 @@ module FamilyDashboard
 
       MedicationTake.where(taken_at: range, schedule_id: schedule_ids)
                     .or(MedicationTake.where(taken_at: range, person_medication_id: pm_ids))
-                    .includes(:taken_from_location, :taken_from_medication)
+                    .includes(:taken_from_location, :taken_from_medication,
+                              schedule: :medication, person_medication: :medication)
                     .to_a
     end
 
@@ -138,9 +139,7 @@ module FamilyDashboard
       doses
     end
 
-    def todays_takes(source)
-      source.medication_takes.select { |take| Time.current.all_day.cover?(take.taken_at) }
-    end
+    def todays_takes(source) = source.medication_takes.select { |take| Time.current.all_day.cover?(take.taken_at) }
 
     def upcoming_routine_row?(source)
       expected_doses = expected_routine_doses_for(source)
@@ -154,20 +153,21 @@ module FamilyDashboard
         scheduled_at: routine_scheduled_at(source, takes.length),
         taken_at: nil,
         status: MedicationStockSourceResolver.new(user: current_user, source: source).blocked_reason || :upcoming
-      }
+      }.merge(dose_progress_for(takes, expected_routine_doses_for(source)))
     end
 
     def generate_as_needed_rows_for(source, person)
       return [] unless as_needed_source?(source)
 
       status = as_needed_status_for(source)
+      takes = todays_takes(source)
       [{
         person: person,
         source: source,
         scheduled_at: as_needed_scheduled_at(source, status),
         taken_at: nil,
         status: status
-      }]
+      }.merge(dose_progress_for(takes, daily_dose_limit_for(source)))]
     end
 
     def generate_taken_doses(takes, source, person)
@@ -179,14 +179,16 @@ module FamilyDashboard
           taken_at: take.taken_at,
           status: :taken,
           taken_from_location_name: take.inventory_location&.name
-        }
+        }.merge(dose_progress_for(takes, expected_routine_doses_for(source)))
       end
     end
 
-    def expected_routine_doses_for(source)
-      return expected_schedule_doses_for(source) if source.is_a?(Schedule)
+    def dose_progress_for(takes, limit)
+      { daily_dose_count: takes.size, daily_dose_limit: limit, today_takes: takes.sort_by(&:taken_at) }
+    end
 
-      source.max_daily_doses.presence || 1
+    def expected_routine_doses_for(source)
+      source.is_a?(Schedule) ? expected_schedule_doses_for(source) : source.max_daily_doses.presence || 1
     end
 
     def expected_schedule_doses_for(schedule)
@@ -227,15 +229,13 @@ module FamilyDashboard
       )
     end
 
-    def source_cycle(source)
-      DoseCycle.new(source.respond_to?(:dose_cycle) ? source.dose_cycle : 'daily')
+    def daily_dose_limit_for(source)
+      source.is_a?(Schedule) ? source.effective_max_daily_doses(Date.current) : source.max_daily_doses
     end
 
-    def as_needed_source?(source)
-      return schedule_as_needed?(source) if source.is_a?(Schedule)
+    def source_cycle(source) = DoseCycle.new(source.respond_to?(:dose_cycle) ? source.dose_cycle : 'daily')
 
-      source.as_needed?
-    end
+    def as_needed_source?(source) = source.is_a?(Schedule) ? schedule_as_needed?(source) : source.as_needed?
 
     def schedule_as_needed?(schedule)
       schedule.schedule_type_prn? || schedule_config_as_needed?(schedule) || frequency_as_needed?(schedule)

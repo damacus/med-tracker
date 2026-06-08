@@ -30,8 +30,12 @@ module NhsDmd
       normalized = NhsDmdBarcode.normalize_gtin(barcode)
 
       candidates = [normalized]
-      candidates << normalized.rjust(14, '0') if normalized.length == 13
-      candidates << normalized.delete_prefix('0') if normalized.length == 14 && normalized.start_with?('0')
+      case normalized.length
+      when 13
+        candidates << normalized.rjust(14, '0')
+      when 14
+        candidates << normalized.delete_prefix('0') if normalized.start_with?('0')
+      end
       candidates.uniq
     end
 

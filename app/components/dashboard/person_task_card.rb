@@ -84,7 +84,7 @@ module Components
               m3_text(variant: :title_medium, class: 'font-bold tracking-tight break-words') do
                 row[:source].medication.display_name
               end
-              m3_text(variant: :body_small, class: 'text-on-surface-variant font-medium') { dose_label(row[:source]) }
+              render_dose_metadata(row)
             end
           end
           div(class: 'flex shrink-0 items-center gap-2 sm:justify-end') do
@@ -169,6 +169,58 @@ module Components
         when :out_of_stock then t('dashboard.statuses.out_of_stock')
         else t("dashboard.statuses.#{row[:status]}")
         end
+      end
+
+      def render_dose_metadata(row)
+        div(class: 'mt-1.5 flex flex-col items-start gap-1.5',
+            data: { testid: 'dashboard-dose-metadata' }) do
+          m3_text(variant: :body_small, class: 'text-on-surface-variant font-medium leading-none') do
+            dose_label(row[:source])
+          end
+          render_dose_progress(row)
+        end
+      end
+
+      def render_dose_progress(row)
+        return if row[:daily_dose_limit].blank?
+
+        limit = row[:daily_dose_limit].to_i
+        div(
+          class: 'grid max-w-full shrink-0 gap-1 self-center',
+          style: dose_meter_style(limit),
+          role: 'img',
+          data: { testid: 'dashboard-dose-meter' },
+          aria: { label: dose_progress_aria_label(row, limit) }
+        ) do
+          limit.times do |index|
+            span(
+              class: dose_segment_classes(index < row[:daily_dose_count].to_i),
+              data: { testid: 'dashboard-dose-segment' },
+              aria: { hidden: 'true' }
+            )
+          end
+        end
+      end
+
+      def dose_meter_style(limit)
+        width = ((limit * 16) + ((limit - 1) * 4)).clamp(28, 96)
+
+        "grid-template-columns: repeat(#{limit}, minmax(0, 1fr)); width: min(#{width}px, 100%);"
+      end
+
+      def dose_progress_aria_label(row, limit)
+        count = row[:daily_dose_count].to_i
+        given = t('dashboard.dose_progress.aria_given', count: count)
+        slots = t('dashboard.dose_progress.aria_slots', count: limit)
+
+        "#{given}. #{slots}."
+      end
+
+      def dose_segment_classes(filled)
+        base = 'h-1 min-w-0 rounded-shape-full'
+        color = filled ? 'bg-primary' : 'bg-outline-variant/70'
+
+        "#{base} #{color}"
       end
 
       def cooldown_label(row)

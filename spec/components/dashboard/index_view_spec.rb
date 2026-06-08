@@ -308,6 +308,72 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
 
       expect(routine_task.text).not_to include('Upcoming')
     end
+
+    it 'renders a dense dose meter for routine tasks with daily limits', :aggregate_failures do
+      rendered = render_inline(described_class.new(presenter: person_task_presenter))
+      routine_task = rendered.at_css('[data-testid="dashboard-routine-task"]')
+      metadata = routine_task.at_css('[data-testid="dashboard-dose-metadata"]')
+      meter = routine_task.at_css('[data-testid="dashboard-dose-meter"]')
+
+      expect(routine_task.text).not_to include('open today')
+      expect(routine_task.text).not_to include('0/1 doses today')
+      expect(metadata['class']).to include('mt-1.5 flex flex-col items-start gap-1.5')
+      expect(meter['aria-label']).to eq('No doses given today. 1 dose slot today.')
+      expect(meter['class']).not_to include('border')
+      expect(meter['class']).not_to include('shadow')
+      expect(meter['style']).to include('width: min(28px, 100%)')
+      expect(meter.at_css('[data-testid="dashboard-dose-segment"]')['class']).to include('h-1')
+      expect(meter.css('[data-testid="dashboard-dose-segment"]').count).to eq(1)
+    end
+
+    it 'renders a dense dose meter for as-needed items with daily limits', :aggregate_failures do
+      rendered = render_inline(described_class.new(presenter: person_task_presenter))
+      as_needed_task = rendered.at_css('[data-testid="dashboard-as-needed-task"]')
+      metadata = as_needed_task.at_css('[data-testid="dashboard-dose-metadata"]')
+      meter = as_needed_task.at_css('[data-testid="dashboard-dose-meter"]')
+
+      expect(as_needed_task.text).not_to include('open today')
+      expect(as_needed_task.text).not_to include('1/4 doses today')
+      expect(metadata['class']).to include('mt-1.5 flex flex-col items-start gap-1.5')
+      expect(meter['aria-label']).to eq('1 dose given today. 4 dose slots today.')
+      expect(meter['class']).not_to include('border')
+      expect(meter['class']).not_to include('shadow')
+      expect(meter['style']).to include('width: min(76px, 100%)')
+      expect(meter.at_css('[data-testid="dashboard-dose-segment"]')['class']).to include('h-1')
+      expect(meter.css('[data-testid="dashboard-dose-segment"]').count).to eq(4)
+    end
+
+    it 'localizes dose meter aria labels', :aggregate_failures do
+      I18n.with_locale(:es) do
+        rendered = render_inline(described_class.new(presenter: person_task_presenter))
+        routine_task = rendered.at_css('[data-testid="dashboard-routine-task"]')
+        as_needed_task = rendered.at_css('[data-testid="dashboard-as-needed-task"]')
+
+        expect(routine_task.at_css('[data-testid="dashboard-dose-meter"]')['aria-label']).to(
+          eq('No se han administrado dosis hoy. 1 espacio de dosis hoy.')
+        )
+        expect(as_needed_task.at_css('[data-testid="dashboard-dose-meter"]')['aria-label']).to(
+          eq('1 dosis administrada hoy. 4 espacios de dosis hoy.')
+        )
+      end
+    end
+  end
+
+  describe 'today dose history' do
+    it 'renders previous doses grouped by person before Smart Insights', :aggregate_failures do
+      presenter = person_task_presenter
+
+      rendered = render_inline(described_class.new(presenter: presenter))
+      history = rendered.at_css('[data-testid="dashboard-today-dose-history"]')
+      html = rendered.to_html
+
+      expect(history).to be_present
+      expect(history.text).to include('Previous Doses Today')
+      expect(history.text).to include('John Doe')
+      expect(history.text).to include('Paracetamol')
+      expect(history.text).to include('09:15')
+      expect(html.index('Previous Doses Today')).to be < html.index('Smart Insights')
+    end
   end
 
   describe 'dashboard density' do
@@ -392,7 +458,10 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       source: person_medications(:john_vitamin_d),
       scheduled_at: nil,
       taken_at: nil,
-      status: status
+      status: status,
+      daily_dose_count: 0,
+      daily_dose_limit: 1,
+      today_takes: []
     }
   end
 
@@ -402,7 +471,20 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       source: schedules(:john_paracetamol),
       scheduled_at: Time.current,
       taken_at: nil,
-      status: :available
+      status: :available,
+      daily_dose_count: 1,
+      daily_dose_limit: 4,
+      today_takes: [dashboard_today_take]
     }
+  end
+
+  def dashboard_today_take
+    instance_double(
+      MedicationTake,
+      taken_at: Time.zone.parse('2026-05-05 09:15:00'),
+      medication: medications(:paracetamol),
+      dose_amount: 1000,
+      dose_unit: 'mg'
+    )
   end
 end

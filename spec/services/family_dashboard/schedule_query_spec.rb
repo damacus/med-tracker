@@ -127,6 +127,55 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
       expect(rows.pluck(:status)).to eq([:max_reached])
     end
 
+    it 'adds daily dose progress to routine and as-needed rows' do
+      travel_to Time.zone.parse('2026-05-05 12:00:00') do
+        routine_medication = create_routine_person_medication
+        prn_schedule = create_prn_schedule(max_daily_doses: 4)
+        MedicationTake.create!(person_medication: routine_medication, taken_at: 1.hour.ago, dose_amount: 500,
+                               dose_unit: 'mg')
+        MedicationTake.create!(schedule: prn_schedule, taken_at: 2.hours.ago, dose_amount: 1000, dose_unit: 'mg')
+
+        query = described_class.new([people(:john)])
+        routine_rows = query.call.select { |row| row[:source] == routine_medication }
+        prn_rows = query.as_needed_by_person.fetch(people(:john)).select { |row| row[:source] == prn_schedule }
+
+        expect(routine_rows.first).to include(daily_dose_count: 1, daily_dose_limit: 1)
+        expect(prn_rows.first).to include(daily_dose_count: 1, daily_dose_limit: 4)
+      end
+    end
+
+    it 'exposes today take history for each source row' do
+      travel_to Time.zone.parse('2026-05-05 12:00:00') do
+        prn_schedule = create_prn_schedule(max_daily_doses: 4)
+        take = MedicationTake.create!(schedule: prn_schedule, taken_at: Time.zone.parse('2026-05-05 09:15:00'),
+                                      dose_amount: 1000, dose_unit: 'mg')
+
+        query = described_class.new([people(:john)])
+        query.call
+        row = query.as_needed_by_person.fetch(people(:john)).find { |candidate| candidate[:source] == prn_schedule }
+
+        expect(row[:today_takes]).to contain_exactly(take)
+      end
+    end
+
+    it 'preloads medication sources for today take history' do
+      travel_to Time.zone.parse('2026-05-05 12:00:00') do
+        routine_medication = create_routine_person_medication
+        prn_schedule = create_prn_schedule(max_daily_doses: 4)
+        MedicationTake.create!(person_medication: routine_medication, taken_at: 1.hour.ago, dose_amount: 500,
+                               dose_unit: 'mg')
+        MedicationTake.create!(schedule: prn_schedule, taken_at: 2.hours.ago, dose_amount: 1000, dose_unit: 'mg')
+
+        query = described_class.new([people(:john)])
+        query.call
+        rows = query.routine_tasks_by_person.fetch(people(:john)) +
+               query.as_needed_by_person.fetch(people(:john))
+        takes = rows.flat_map { |row| row[:today_takes] }
+
+        expect(takes).to all(satisfy { |take| medication_source_preloaded?(take) })
+      end
+    end
+
     it 'returns doses sorted by scheduled_at' do
       results = query.call
       times = results.pluck(:scheduled_at).compact
@@ -325,5 +374,13 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
       min_hours_between_doses: 24,
       dose_cycle: :daily
     )
+  end
+
+  def medication_source_preloaded?(take)
+    if take.schedule_id.present?
+      take.association(:schedule).loaded? && take.schedule.association(:medication).loaded?
+    else
+      take.association(:person_medication).loaded? && take.person_medication.association(:medication).loaded?
+    end
   end
 end
