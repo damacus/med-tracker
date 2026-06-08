@@ -186,15 +186,17 @@ module Components
 
         limit = row[:daily_dose_limit].to_i
         div(
-          class: 'grid max-w-full shrink-0 gap-1 self-center',
+          class: 'grid max-w-full shrink-0',
           style: dose_meter_style(limit),
           role: 'img',
           data: { testid: 'dashboard-dose-meter' },
           aria: { label: dose_progress_aria_label(row, limit) }
         ) do
           limit.times do |index|
+            filled = index < row[:daily_dose_count].to_i
             span(
-              class: dose_segment_classes(index < row[:daily_dose_count].to_i),
+              class: dose_segment_classes,
+              style: dose_segment_style(filled),
               data: { testid: 'dashboard-dose-segment' },
               aria: { hidden: 'true' }
             )
@@ -203,9 +205,15 @@ module Components
       end
 
       def dose_meter_style(limit)
-        width = ((limit * 16) + ((limit - 1) * 4)).clamp(28, 96)
+        width = ((limit * 18) + ((limit - 1) * 4)).clamp(32, 112)
 
-        "grid-template-columns: repeat(#{limit}, minmax(0, 1fr)); width: min(#{width}px, 100%);"
+        [
+          "grid-template-columns: repeat(#{limit}, minmax(0, 1fr))",
+          "width: #{width}px",
+          'max-width: 100%',
+          'gap: 4px',
+          'align-self: flex-start'
+        ].join('; ')
       end
 
       def dose_progress_aria_label(row, limit)
@@ -216,11 +224,14 @@ module Components
         "#{given}. #{slots}."
       end
 
-      def dose_segment_classes(filled)
-        base = 'h-1 min-w-0 rounded-shape-full'
-        color = filled ? 'bg-primary' : 'bg-outline-variant/70'
+      def dose_segment_classes
+        'min-w-0 rounded-shape-full'
+      end
 
-        "#{base} #{color}"
+      def dose_segment_style(filled)
+        color = filled ? 'var(--primary)' : 'var(--outline-variant)'
+
+        "height: 6px; background-color: #{color};"
       end
 
       def cooldown_label(row)
