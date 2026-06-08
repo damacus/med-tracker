@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.67](https://github.com/damacus/med-tracker/compare/v0.3.66...v0.3.67) (2026-06-08)
+
+
+### Bug Fixes
+
+* clear orphaned MFA recovery state ([#1338](https://github.com/damacus/med-tracker/issues/1338)) ([5598142](https://github.com/damacus/med-tracker/commit/5598142f90a3bd595a91a66e35191cedafc5bb66))
+
 ## [0.3.66](https://github.com/damacus/med-tracker/compare/v0.3.65...v0.3.66) (2026-06-08)
 
 
