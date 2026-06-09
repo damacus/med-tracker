@@ -2,11 +2,11 @@
 
 class AppSettingsPolicy < ApplicationPolicy
   def show?
-    user&.administrator?
+    admin?
   end
 
   def update?
-    user&.administrator?
+    admin?
   end
 
   class Scope < ApplicationPolicy::Scope

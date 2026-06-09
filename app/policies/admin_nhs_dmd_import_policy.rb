@@ -2,10 +2,10 @@
 
 class AdminNhsDmdImportPolicy < ApplicationPolicy
   def new?
-    user&.administrator?
+    admin?
   end
 
   def create?
-    user&.administrator?
+    admin?
   end
 end
