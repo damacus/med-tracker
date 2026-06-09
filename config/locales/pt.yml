@@ -1522,6 +1522,20 @@ pt:
       enable: Ativar lembretes
       description: Enviar lembretes de medicação nos horários agendados.
       title: Horários dos lembretes
+    categories:
+      title: Categorias de Notificação
+      dose_due_enabled:
+        title: Lembretes de dose programada
+        description: Receba uma notificação quando for a hora de uma dose.
+      missed_dose_enabled:
+        title: Lembretes de dose esquecida
+        description: Receba uma notificação quando uma dose estiver em atraso.
+      low_stock_enabled:
+        title: Avisos de stock baixo
+        description: Receba uma notificação quando o nível de um medicamento estiver baixo.
+      private_text_enabled:
+        title: Conteúdo de Notificação Privado
+        description: Ocultar informações sensíveis como nomes de medicamentos nas notificações.
     period_labels:
       morning: Manhã
       afternoon: Tarde

@@ -1683,6 +1683,20 @@ es:
       enable: Activar recordatorios
       description: Enviar recordatorios de medicamentos en los horarios programados.
       title: Horarios de recordatorio
+    categories:
+      title: Categorías de notificaciones
+      dose_due_enabled:
+        title: Recordatorios de dosis programadas
+        description: Recibe una notificación cuando sea la hora de una dosis.
+      missed_dose_enabled:
+        title: Recordatorios de dosis omitidas
+        description: Recibe una notificación cuando una dosis esté atrasada.
+      low_stock_enabled:
+        title: Avisos de bajo stock
+        description: Recibe una notificación cuando el nivel de medicamento sea bajo.
+      private_text_enabled:
+        title: Contenido privado en notificaciones
+        description: Oculta información sensible como nombres de medicamentos en las notificaciones.
     period_labels:
       morning: Mañana
       afternoon: Tarde
