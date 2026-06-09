@@ -101,10 +101,15 @@ module Components
         end
 
         def user_name
-          return I18n.t('admin.audit_logs.show.system') if version.whodunnit.blank?
+          return @user_name if defined?(@user_name)
 
-          user = User.find_by(id: version.whodunnit)
-          user ? user.name : "User ##{version.whodunnit}"
+          @user_name = if version.whodunnit.blank?
+                         I18n.t('admin.audit_logs.show.system')
+                       else
+                         user = User.find_by(id: version.whodunnit)
+
+                         user ? user.name : "User ##{version.whodunnit}"
+                       end
         end
 
         def render_changes_section
