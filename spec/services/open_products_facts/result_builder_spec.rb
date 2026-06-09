@@ -111,9 +111,9 @@ RSpec.describe OpenProductsFacts::ResultBuilder do
       expect(described_class.medicine_product?(payload)).to be true
     end
 
-    it 'does not match partial words (no false positives for embedded substrings)' do
-      # "medicines" contains "medicine" but should still match because it's a keyword entry itself
-      expect(described_class.medicine_product?('categories_tags_en' => ['medicines'])).to be true
+    it 'does not match category tokens that contain keywords as substrings only (word boundary enforcement)' do
+      # "nonmedicines" or "paramedicine" should NOT match "medicine" as a whole word
+      expect(described_class.medicine_product?('categories_tags_en' => ['nonmedicinal products'])).to be false
     end
   end
 
