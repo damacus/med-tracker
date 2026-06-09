@@ -11,12 +11,16 @@ RSpec.describe SmartInsights::Detectors::AdherenceStreak do
     expect(described_class.new(context_with(data)).call).to eq([])
   end
 
-  it 'emits a positive adherence insight for a trailing streak of exactly 3' do
+  it 'emits a positive adherence insight (key/family/severity) for a trailing streak of exactly 3' do
     data = Array.new(3) { day(expected: 1, actual: 1) }
     insights = described_class.new(context_with(data)).call
     expect(insights.size).to eq(1)
-    insight = insights.first
-    expect(insight).to have_attributes(key: :adherence_streak, family: :adherence, severity: :positive)
+    expect(insights.first).to have_attributes(key: :adherence_streak, family: :adherence, severity: :positive)
+  end
+
+  it 'sets correct I18n fields on the adherence_streak insight' do
+    data = Array.new(3) { day(expected: 1, actual: 1) }
+    insight = described_class.new(context_with(data)).call.first
     expect(insight.title).to eq(I18n.t('smart_insights.detectors.adherence_streak.title'))
     expect(insight.summary).to eq(I18n.t('smart_insights.detectors.adherence_streak.summary', count: 3))
     expect(insight.detail).to eq(I18n.t('smart_insights.detectors.adherence_streak.detail'))

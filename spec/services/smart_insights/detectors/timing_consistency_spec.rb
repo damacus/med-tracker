@@ -3,8 +3,6 @@
 require 'rails_helper'
 
 RSpec.describe SmartInsights::Detectors::TimingConsistency do
-  WINDOW = SmartInsights::Detectors::TimingConsistency::WINDOW_MINUTES
-
   # Build a Schedule double with a single configured time and always 1 expected dose per day.
   def schedule_double(id:, time:, start_date:, end_date:)
     sched = instance_double(
@@ -71,7 +69,7 @@ RSpec.describe SmartInsights::Detectors::TimingConsistency do
     def takes_for_all_days(on_time: true)
       (start_date..end_date).map do |date|
         base = expected_time(date, time_str)
-        offset = on_time ? 0.minutes : (WINDOW + 1).minutes
+        offset = on_time ? 0.minutes : (described_class::WINDOW_MINUTES + 1).minutes
         take_at(schedule_id: 42, taken_at: base + offset, schedule: sched)
       end
     end
@@ -80,7 +78,7 @@ RSpec.describe SmartInsights::Detectors::TimingConsistency do
       # Only 1 of 5 takes is on-time → ratio = 0.2
       takes = (start_date..end_date).map.with_index do |date, i|
         base = expected_time(date, time_str)
-        offset = i.zero? ? 0.minutes : (WINDOW + 1).minutes
+        offset = i.zero? ? 0.minutes : (described_class::WINDOW_MINUTES + 1).minutes
         take_at(schedule_id: 42, taken_at: base + offset, schedule: sched)
       end
       ctx = context_with(schedules: [sched], takes: takes, start_date: start_date, end_date: end_date)
@@ -91,7 +89,7 @@ RSpec.describe SmartInsights::Detectors::TimingConsistency do
       # 3 of 5 on-time → ratio = 0.6 → silent
       takes = (start_date..end_date).map.with_index do |date, i|
         base = expected_time(date, time_str)
-        offset = i < 3 ? 0.minutes : (WINDOW + 1).minutes
+        offset = i < 3 ? 0.minutes : (described_class::WINDOW_MINUTES + 1).minutes
         take_at(schedule_id: 42, taken_at: base + offset, schedule: sched)
       end
       ctx = context_with(schedules: [sched], takes: takes, start_date: start_date, end_date: end_date)
@@ -102,17 +100,20 @@ RSpec.describe SmartInsights::Detectors::TimingConsistency do
       # 4 of 5 on-time → ratio = 0.8 → emits insight, summary shows 80%
       takes = (start_date..end_date).map.with_index do |date, i|
         base = expected_time(date, time_str)
-        offset = i < 4 ? 0.minutes : (WINDOW + 1).minutes
+        offset = i < 4 ? 0.minutes : (described_class::WINDOW_MINUTES + 1).minutes
         take_at(schedule_id: 42, taken_at: base + offset, schedule: sched)
       end
       ctx = context_with(schedules: [sched], takes: takes, start_date: start_date, end_date: end_date)
       insights = described_class.new(ctx).call
+      insight = insights.first
       expect(insights.size).to eq(1)
-      expect(insights.first.summary).to eq(I18n.t('smart_insights.detectors.timing_consistency.summary', percentage: 80))
-      expect(insights.first.metric_value).to eq(I18n.t('smart_insights.detectors.timing_consistency.metric_value', count: 4))
+      summary_key = 'smart_insights.detectors.timing_consistency.summary'
+      metric_key  = 'smart_insights.detectors.timing_consistency.metric_value'
+      expect(insight.summary).to eq(I18n.t(summary_key, percentage: 80))
+      expect(insight.metric_value).to eq(I18n.t(metric_key, count: 4))
     end
 
-    it 'emits a positive timing_consistency insight when on-time ratio is >= 0.8' do
+    it 'emits a positive timing_consistency insight (key/family/severity) when all takes are on-time' do
       # All 5 takes are exactly on time → ratio = 1.0
       ctx = context_with(
         schedules: [sched],
@@ -120,19 +121,29 @@ RSpec.describe SmartInsights::Detectors::TimingConsistency do
         start_date: start_date,
         end_date: end_date
       )
-      insights = described_class.new(ctx).call
-      expect(insights.size).to eq(1)
-      insight = insights.first
+      insight = described_class.new(ctx).call.first
       expect(insight).to have_attributes(key: :timing_consistency, family: :timing, severity: :positive)
-      expect(insight.title).to eq(I18n.t('smart_insights.detectors.timing_consistency.title'))
-      expect(insight.summary).to eq(I18n.t('smart_insights.detectors.timing_consistency.summary', percentage: 100))
-      expect(insight.detail).to eq(I18n.t('smart_insights.detectors.timing_consistency.detail'))
-      expect(insight.metric_label).to eq(I18n.t('smart_insights.detectors.timing_consistency.metric_label'))
-      expect(insight.metric_value).to eq(I18n.t('smart_insights.detectors.timing_consistency.metric_value', count: 5))
     end
 
-    it 'does not count a take outside the 90-minute window as on-time' do
-      # All takes are 91 minutes outside window → ratio = 0.0
+    it 'sets correct I18n fields on the timing_consistency insight' do
+      ctx = context_with(
+        schedules: [sched],
+        takes: takes_for_all_days(on_time: true),
+        start_date: start_date,
+        end_date: end_date
+      )
+      insight = described_class.new(ctx).call.first
+      summary_key  = 'smart_insights.detectors.timing_consistency.summary'
+      metric_key   = 'smart_insights.detectors.timing_consistency.metric_value'
+      expect(insight.title).to eq(I18n.t('smart_insights.detectors.timing_consistency.title'))
+      expect(insight.summary).to eq(I18n.t(summary_key, percentage: 100))
+      expect(insight.detail).to eq(I18n.t('smart_insights.detectors.timing_consistency.detail'))
+      expect(insight.metric_label).to eq(I18n.t('smart_insights.detectors.timing_consistency.metric_label'))
+      expect(insight.metric_value).to eq(I18n.t(metric_key, count: 5))
+    end
+
+    it 'does not count a take outside the 90-minute described_class::WINDOW_MINUTES as on-time' do
+      # All takes are 91 minutes outside described_class::WINDOW_MINUTES → ratio = 0.0
       ctx = context_with(
         schedules: [sched],
         takes: takes_for_all_days(on_time: false),
@@ -142,10 +153,10 @@ RSpec.describe SmartInsights::Detectors::TimingConsistency do
       expect(described_class.new(ctx).call).to eq([])
     end
 
-    it 'counts a take exactly at the window boundary (90 min) as on-time' do
+    it 'counts a take exactly at the described_class::WINDOW_MINUTES boundary (90 min) as on-time' do
       # Takes land exactly 90 minutes from expected → still on-time (abs <= 90 min)
       takes = (start_date..end_date).map do |date|
-        take_at(schedule_id: 42, taken_at: expected_time(date, time_str) + WINDOW.minutes, schedule: sched)
+        take_at(schedule_id: 42, taken_at: expected_time(date, time_str) + described_class::WINDOW_MINUTES.minutes, schedule: sched)
       end
       ctx = context_with(schedules: [sched], takes: takes, start_date: start_date, end_date: end_date)
       insights = described_class.new(ctx).call

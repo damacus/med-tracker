@@ -15,10 +15,15 @@ RSpec.describe SmartInsights::Detectors::PrnUsage do
     expect(described_class.new(context_with(prn_sources: [Object.new], prn_takes: [])).call).to eq([])
   end
 
-  it 'emits an info insight when there are PRN sources and takes' do
+  it 'emits an info insight (key/family/severity) when there are PRN sources and takes' do
     prn_takes = [Object.new, Object.new]
     insight = described_class.new(context_with(prn_sources: [Object.new], prn_takes: prn_takes)).call.first
     expect(insight).to have_attributes(key: :prn_usage, family: :as_needed, severity: :info)
+  end
+
+  it 'sets correct I18n fields on the prn_usage insight' do
+    prn_takes = [Object.new, Object.new]
+    insight = described_class.new(context_with(prn_sources: [Object.new], prn_takes: prn_takes)).call.first
     expect(insight.title).to eq(I18n.t('smart_insights.detectors.prn_usage.title'))
     expect(insight.summary).to eq(I18n.t('smart_insights.detectors.prn_usage.summary', count: 2))
     expect(insight.detail).to eq(I18n.t('smart_insights.detectors.prn_usage.detail'))
