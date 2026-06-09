@@ -2,7 +2,7 @@
 
 class AdminDashboardPolicy < ApplicationPolicy
   def index?
-    user&.administrator?
+    admin?
   end
 
   class Scope < ApplicationPolicy::Scope
