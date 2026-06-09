@@ -5,6 +5,12 @@ SimpleCov.command_name ENV.fetch('SIMPLECOV_COMMAND_NAME', 'rspec')
 SimpleCov.start 'rails' do
   enable_coverage :branch
 
+  # Enforced ratchet (fails the build below threshold). Measured non-system
+  # baseline 2026-06-09: line 89.76% / branch 73.75%, rounded down for a small
+  # variance margin. Raise these as coverage improves; never lower without a
+  # recorded reason. Only enforced when COVERAGE=true (CI's non-system job).
+  minimum_coverage line: 89, branch: 73
+
   add_filter '/spec/'
   add_filter '/config/'
   add_filter '/vendor/'
