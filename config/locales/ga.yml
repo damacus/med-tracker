@@ -285,6 +285,48 @@ ga:
         total_people: Líon iomlán daoine
         active_schedules: Sceidil ghníomhacha
         no_carers: Gan chúramóirí
+      metrics_extra:
+        pending_invitations: Cuirí ar feitheamh
+        recent_audit_events: Athruithe (24u)
+      status:
+        all_clear: Gach rud soiléir
+        needs_attention:
+          one: Teastaíonn aird ó %{count} mhír
+          other: Teastaíonn aird ó %{count} mír
+      attention:
+        title: Scuaine aire
+        empty_title: Níl aon obair riaracháin phráinneach
+        empty_detail: Tá gach rud sláintiúil faoi láthair.
+        actions:
+          view: Féach
+          review: Athbhreithnigh
+          open: Oscail
+        no_carers:
+          title: Othair gan chúramóirí
+          detail:
+            one: "%{count} othar ag fanacht le cúramóir a shannadh"
+            other: "%{count} othar ag fanacht le cúramóir a shannadh"
+        expired_invitations:
+          title: Cuirí imithe in éag
+          detail:
+            one: Tá %{count} imithe in éag agus caithfear é a athsheoladh
+            other: Tá %{count} imithe in éag agus caithfear iad a athsheoladh
+        dmd_failed:
+          title: Theip ar iompórtáil dm+d
+          detail: Theip %{when} ó shin
+        dmd_stalled:
+          title: Iompórtáil dm+d ar siúl
+          detail: Ar siúl le %{when}
+      sections:
+        user_access: Rochtain úsáideoirí
+        operations: Oibríochtaí
+      recent_activity:
+        title: Gníomhaíocht le déanaí
+        empty: Níl aon ghníomhaíocht le déanaí
+        events:
+          create: chruthaigh
+          update: nuashonraigh
+          destroy: scrios
       quick_actions:
         title: Gníomhartha tapa
         manage_users_title: Bainistigh úsáideoirí
@@ -297,6 +339,16 @@ ga:
         audit_trail_description: Féach logaí iniúchta an chórais
         import_dmd_description: Iompórtáil sonraí cógais NHS dm+d.
         import_dmd_title: Iompórtáil dm+d
+    people:
+      index:
+        title: Othair a dteastaíonn cúramóirí uathu
+        subtitle: Daoine gan chumas nach bhfuil cúramóir gníomhach sannta acu
+        empty: Níl aon othair gan chúramóir faoi láthair
+        table:
+          name: Ainm
+          type: Cineál
+          actions: Gníomhartha
+          view: Féach
     nhs_dmd_imports:
       created: 'Scaoileadh NHS dm+d iompórtáilte: %{imported} taifead iompórtáilte,
         %{skipped} scipeáilte.'

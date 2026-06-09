@@ -502,6 +502,48 @@ cy:
         total_people: Cyfanswm pobl
         active_schedules: Amserlenni gweithredol
         no_carers: Dim gofalwyr
+      metrics_extra:
+        pending_invitations: Gwahoddiadau ar y gweill
+        recent_audit_events: Newidiadau (24a)
+      status:
+        all_clear: Popeth yn iawn
+        needs_attention:
+          one: Mae angen sylw ar %{count} eitem
+          other: Mae angen sylw ar %{count} eitem
+      attention:
+        title: Ciw sylw
+        empty_title: Dim gwaith gweinyddol brys
+        empty_detail: Mae popeth yn edrych yn iach ar hyn o bryd.
+        actions:
+          view: Gweld
+          review: Adolygu
+          open: Agor
+        no_carers:
+          title: Cleifion heb ofalwyr
+          detail:
+            one: "%{count} claf yn aros am aseinio gofalwr"
+            other: "%{count} claf yn aros am aseinio gofalwr"
+        expired_invitations:
+          title: Gwahoddiadau wedi dod i ben
+          detail:
+            one: Mae %{count} wedi dod i ben ac mae angen ei ail-anfon
+            other: Mae %{count} wedi dod i ben ac mae angen eu hail-anfon
+        dmd_failed:
+          title: Methodd mewnforio dm+d
+          detail: Wedi methu %{when} yn ôl
+        dmd_stalled:
+          title: Mewnforio dm+d ar waith
+          detail: Yn rhedeg ers %{when}
+      sections:
+        user_access: Mynediad defnyddwyr
+        operations: Gweithrediadau
+      recent_activity:
+        title: Gweithgarwch diweddar
+        empty: Dim gweithgarwch diweddar
+        events:
+          create: creodd
+          update: diweddarodd
+          destroy: dileodd
       quick_actions:
         title: Camau cyflym
         manage_users_title: Rheoli defnyddwyr
@@ -514,6 +556,16 @@ cy:
         audit_trail_description: Gweld logiau archwilio'r system
         import_dmd_description: Mewnforio data meddyginiaethau NHS dm+d.
         import_dmd_title: Mewnforio dm+d
+    people:
+      index:
+        title: Cleifion sydd angen gofalwyr
+        subtitle: Pobl heb gapasiti nad oes ganddynt ofalwr gweithredol wedi'i aseinio
+        empty: Nid oes unrhyw gleifion heb ofalwr ar hyn o bryd
+        table:
+          name: Enw
+          type: Math
+          actions: Camau
+          view: Gweld
     nhs_dmd_imports:
       created: 'Rhyddhad NHS dm+d wedi''i fewnforio: %{imported} cofnod wedi''i fewnforio,
         %{skipped} wedi''u hepgor.'

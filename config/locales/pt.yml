@@ -509,6 +509,48 @@ pt:
         total_people: Total de pessoas
         active_schedules: Planos ativos
         no_carers: Sem cuidadores
+      metrics_extra:
+        pending_invitations: Convites pendentes
+        recent_audit_events: Alterações (24h)
+      status:
+        all_clear: Tudo em ordem
+        needs_attention:
+          one: "%{count} item precisa de atenção"
+          other: "%{count} itens precisam de atenção"
+      attention:
+        title: Fila de atenção
+        empty_title: Sem trabalho administrativo urgente
+        empty_detail: Tudo parece saudável neste momento.
+        actions:
+          view: Ver
+          review: Rever
+          open: Abrir
+        no_carers:
+          title: Pacientes sem cuidadores
+          detail:
+            one: "%{count} paciente aguarda atribuição de cuidador"
+            other: "%{count} pacientes aguardam atribuição de cuidador"
+        expired_invitations:
+          title: Convites expirados
+          detail:
+            one: "%{count} expirou e precisa de ser reenviado"
+            other: "%{count} expiraram e precisam de ser reenviados"
+        dmd_failed:
+          title: Falha na importação dm+d
+          detail: Falhou há %{when}
+        dmd_stalled:
+          title: Importação dm+d em curso
+          detail: Em execução há %{when}
+      sections:
+        user_access: Acesso de utilizadores
+        operations: Operações
+      recent_activity:
+        title: Atividade recente
+        empty: Sem atividade recente
+        events:
+          create: criou
+          update: atualizou
+          destroy: eliminou
       quick_actions:
         title: Ações rápidas
         manage_users_title: Gerir utilizadores
@@ -521,6 +563,16 @@ pt:
         audit_trail_description: Ver os registos de auditoria do sistema
         import_dmd_description: Importar dados de medicamentos do NHS dm+d.
         import_dmd_title: Importar dm+d
+    people:
+      index:
+        title: Pacientes que precisam de cuidador
+        subtitle: Pessoas sem capacidade que não têm cuidador ativo atribuído
+        empty: Nenhum paciente está atualmente sem cuidador
+        table:
+          name: Nome
+          type: Tipo
+          actions: Ações
+          view: Ver
     nhs_dmd_imports:
       created: 'Versão NHS dm+d importada: %{imported} registos importados, %{skipped}
         ignorados.'
