@@ -8,7 +8,7 @@ RSpec.describe AdminDashboardPolicy, type: :policy do
   it 'permits index? only for administrators' do
     expect(described_class.new(users(:admin), :dashboard).index?).to be(true)
     expect(described_class.new(users(:doctor), :dashboard).index?).to be(false)
-    expect(described_class.new(nil, :dashboard).index?).to be_falsey
+    expect(described_class.new(nil, :dashboard).index?).to be_nil
   end
 
   describe AdminDashboardPolicy::Scope do

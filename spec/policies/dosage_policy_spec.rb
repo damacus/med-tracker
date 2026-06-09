@@ -5,10 +5,11 @@ require 'rails_helper'
 RSpec.describe DosagePolicy, type: :policy do
   fixtures :all
 
-  let(:dosage) { dosages(:paracetamol_adult) }
   subject(:policy) { described_class.new(user, dosage) }
 
-  context 'as a doctor (can update medications, cannot destroy them)' do
+  let(:dosage) { dosages(:paracetamol_adult) }
+
+  context 'when the user is a doctor (can update medications, cannot destroy them)' do
     let(:user) { users(:doctor) }
 
     it 'mirrors MedicationPolicy#update? for write actions (destroy? via update?)' do
@@ -23,7 +24,7 @@ RSpec.describe DosagePolicy, type: :policy do
     end
   end
 
-  context 'as a nurse (read-only on medications)' do
+  context 'when the user is a nurse (read-only on medications)' do
     let(:user) { users(:nurse) }
 
     it 'denies create/update/edit/destroy but allows show' do
@@ -38,7 +39,7 @@ RSpec.describe DosagePolicy, type: :policy do
     end
   end
 
-  context 'as nil user' do
+  context 'without a user' do
     let(:user) { nil }
 
     it 'denies all actions' do
