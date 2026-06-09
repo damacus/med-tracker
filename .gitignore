@@ -62,3 +62,6 @@ vendor/**/*
 
 # Import Files
 *.zip
+
+# Mutant incremental result cache
+.mutant/

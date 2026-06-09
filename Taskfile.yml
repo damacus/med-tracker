@@ -106,3 +106,32 @@ tasks:
       Usage: task translator:hook
     cmds:
       - ./scripts/translator_hook.fish
+
+  mutation:
+    desc: Run mutation testing on a subject (SUBJECT=ClassName)
+    summary: |
+      Run mutant against a subject match expression inside the test container.
+      Requires the test database — run `task test:up` first.
+      Usage: task mutation SUBJECT=MedicationFriendlyName
+      Usage: task mutation SUBJECT='GlobalSearch::ResultBuilder*'
+    requires:
+      vars: [SUBJECT]
+    cmds:
+      - task: internal:run
+        vars:
+          ENVIRONMENT: test
+          COMMAND: 'env RAILS_ENV=test bundle exec mutant run -- "{{ .SUBJECT }}"'
+
+  mutation:since:
+    desc: Mutation-test only subjects changed since a git ref (REF, default origin/main)
+    summary: |
+      Incremental mutation run — mutates only subjects touched since REF.
+      Usage: task mutation:since
+      Usage: task mutation:since REF=HEAD~3
+    vars:
+      ref: '{{ .REF | default "origin/main" }}'
+    cmds:
+      - task: internal:run
+        vars:
+          ENVIRONMENT: test
+          COMMAND: 'env RAILS_ENV=test bundle exec mutant run --since {{ .ref }}'
