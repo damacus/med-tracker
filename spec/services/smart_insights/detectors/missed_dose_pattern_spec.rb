@@ -33,7 +33,10 @@ RSpec.describe SmartInsights::Detectors::MissedDosePattern do
   end
 
   it 'tracks the longest streak, not the most recent' do
-    data = [day(expected: 1, actual: 0), day(expected: 1, actual: 0), day(expected: 1, actual: 1), day(expected: 1, actual: 0)]
+    data = [
+      day(expected: 1, actual: 0), day(expected: 1, actual: 0),
+      day(expected: 1, actual: 1), day(expected: 1, actual: 0)
+    ]
     expect(described_class.new(context_with(data)).call.size).to eq(1)
   end
 end
