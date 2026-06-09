@@ -131,6 +131,10 @@ RSpec.describe MedicationOnboardingPlanBuilder do
       expect(record.start_date).to eq(Date.today)
     end
 
+    it 'carries end_date from schedule_attributes' do
+      expect(record.end_date).to eq(1.month.from_now.to_date)
+    end
+
     it 'sets schedule_type to multiple_daily' do
       expect(record.schedule_type).to eq('multiple_daily')
     end
@@ -138,18 +142,34 @@ RSpec.describe MedicationOnboardingPlanBuilder do
     it 'carries schedule_config' do
       expect(record.schedule_config).to eq('times' => %w[08:00 20:00])
     end
+
+    it 'carries max_daily_doses from schedule_attributes' do
+      expect(record.max_daily_doses).to eq(4)
+    end
+
+    it 'carries min_hours_between_doses from schedule_attributes' do
+      expect(record.min_hours_between_doses).to eq(4)
+    end
+
+    it 'carries dose_cycle from schedule_attributes' do
+      expect(record.dose_cycle).to eq('daily')
+    end
   end
 
   describe '#record frequency fallback to dosage frequency' do
-    subject(:record) do
-      build_record(
-        schedule_type: 'multiple_daily',
-        extra_schedule_attrs: { frequency: nil }
-      )
+    it 'falls back to the dosage frequency when schedule frequency is nil' do
+      record = build_record(schedule_type: 'multiple_daily', extra_schedule_attrs: { frequency: nil })
+      expect(record.frequency).to eq(dosage.frequency)
     end
 
-    it 'falls back to the dosage frequency when schedule frequency is blank' do
+    it 'falls back to the dosage frequency when schedule frequency is an empty string' do
+      record = build_record(schedule_type: 'multiple_daily', extra_schedule_attrs: { frequency: '' })
       expect(record.frequency).to eq(dosage.frequency)
+    end
+
+    it 'uses the explicit frequency when present' do
+      record = build_record(schedule_type: 'multiple_daily', extra_schedule_attrs: { frequency: 'Once daily' })
+      expect(record.frequency).to eq('Once daily')
     end
   end
 end
