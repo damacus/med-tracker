@@ -28,7 +28,10 @@ class NotificationPreferencesController < ApplicationController
   private
 
   def preference_params
-    params.expect(notification_preference: %i[enabled morning_time afternoon_time evening_time night_time])
+    params.expect(notification_preference: %i[
+                    enabled morning_time afternoon_time evening_time night_time
+                    dose_due_enabled missed_dose_enabled low_stock_enabled private_text_enabled
+                  ])
   end
 
   def notification_preference_streams

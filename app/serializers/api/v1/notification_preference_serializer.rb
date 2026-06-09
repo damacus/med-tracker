@@ -8,17 +8,25 @@ module Api
       end
 
       def as_json(*)
-        {
-          id: preference.id,
-          person_id: preference.person_id,
-          enabled: preference.enabled,
-          updated_at: preference.updated_at.iso8601
-        }.merge(period_times)
+        base_attributes.merge(period_times)
       end
 
       private
 
       attr_reader :preference
+
+      def base_attributes
+        {
+          id: preference.id,
+          person_id: preference.person_id,
+          enabled: preference.enabled,
+          dose_due_enabled: preference.dose_due_enabled,
+          missed_dose_enabled: preference.missed_dose_enabled,
+          low_stock_enabled: preference.low_stock_enabled,
+          private_text_enabled: preference.private_text_enabled,
+          updated_at: preference.updated_at.iso8601
+        }
+      end
 
       def period_times
         {
