@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.72](https://github.com/damacus/med-tracker/compare/v0.3.71...v0.3.72) (2026-06-09)
+
+
+### Features
+
+* implement notification preferences and private-by-default push content (Fixes [#1290](https://github.com/damacus/med-tracker/issues/1290)) ([ee4d035](https://github.com/damacus/med-tracker/commit/ee4d035cb8e74f9b1f707fd09fde912d3e2a492c))
+
 ## [0.3.71](https://github.com/damacus/med-tracker/compare/v0.3.70...v0.3.71) (2026-06-09)
 
 
