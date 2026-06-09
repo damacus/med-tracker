@@ -1776,6 +1776,20 @@ cy:
       enable: Galluogi Atgoffa
       description: Anfon atgofion meddyginiaeth ar amseroedd a drefnwyd.
       title: Amseroedd Atgoffa
+    categories:
+      title: Categorïau Hysbysiadau
+      dose_due_enabled:
+        title: Atgoffwyr Dos Disgwyliedig
+        description: Derbyn hysbysiad pan fydd dos yn ddisgwyliedig.
+      missed_dose_enabled:
+        title: Atgoffwyr Dos a Gollwyd
+        description: Derbyn hysbysiad pan fydd dos yn hwyr.
+      low_stock_enabled:
+        title: Rhybuddion Stoc Isel
+        description: Derbyn hysbysiad pan fydd stoc meddyginiaeth yn isel.
+      private_text_enabled:
+        title: Cynnwys Hysbysiad Preifat
+        description: Cuddio gwybodaeth sensitif fel enwau meddyginiaethau mewn hysbysiadau.
     period_labels:
       morning: Bore
       afternoon: Prynhawn
