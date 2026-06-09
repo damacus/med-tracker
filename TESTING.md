@@ -212,3 +212,52 @@ Fixtures are loaded via `config.fixture_paths` and used with transactional tests
 5. **Add spec/support/** helpers (capybara.rb, authentication_helpers.rb)
 6. **Set up Taskfile** for `task test` command
 7. **Split CI jobs** into system vs non-system for faster feedback
+
+---
+
+## Coverage Gate
+
+SimpleCov runs with branch coverage enabled (`.simplecov`) and an **enforced
+ratchet**: `minimum_coverage line: 89, branch: 73`. It only fires when
+`COVERAGE=true` (CI's non-system job), so local single-file runs are unaffected.
+If coverage drops below the threshold the build fails. Raise the numbers as
+coverage improves; never lower them without a recorded reason.
+
+```bash
+# Measure coverage locally (non-system suite):
+task test:exec CMD='env COVERAGE=true bundle exec rspec --tag ~browser'
+task test:exec CMD='cat coverage/.last_run.json'
+```
+
+---
+
+## Mutation Testing
+
+We use [mutant](https://github.com/mbj/mutant) (`usage: opensource` — free for
+this public repo, **no licence/token**; config in `config/mutant.yml`). Mutant
+mutates the source and checks your specs actually fail — surviving mutants are
+assertions you're missing.
+
+**Requirement:** specs must `RSpec.describe TheConstant` (the class constant, not
+a string) so mutant can auto-select the covering specs.
+
+```bash
+task test:up                                   # ensure the test DB is running
+task mutation SUBJECT=MedicationFriendlyName   # mutate one subject
+task mutation SUBJECT='GlobalSearch::ResultBuilder*'   # quote :: and *
+task mutation:since                            # only subjects changed since origin/main
+task mutation:since REF=HEAD~3
+```
+
+Notes:
+- **Day-to-day, use `task mutation:since`** (or the advisory CI `mutation` job) —
+  it only mutates changed subjects, so it's fast. Full per-class runs are a
+  one-off baseline activity, and DB-backed subjects (policies/models) are slow
+  (every mutation hits PostgreSQL).
+- Mutant exits non-zero when any mutant survives — read the `Coverage:`/`Alive:`
+  figures rather than the exit code.
+- **Equivalent mutants** (no test can distinguish them without changing app code)
+  are expected; document them in the commit rather than chasing 100%. Mutant's
+  `ignore:` is method-level (too coarse), so don't use it to fake coverage.
+- The `.mutant/` directory is an incremental result cache (gitignored).
+- CI runs a non-blocking `mutation` job (`mutant run --since origin/main`).
