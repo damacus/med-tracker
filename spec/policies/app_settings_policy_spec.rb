@@ -8,13 +8,13 @@ RSpec.describe AppSettingsPolicy, type: :policy do
   it 'permits show? only for administrators' do
     expect(described_class.new(users(:admin), :settings).show?).to be(true)
     expect(described_class.new(users(:doctor), :settings).show?).to be(false)
-    expect(described_class.new(nil, :settings).show?).to be_falsey
+    expect(described_class.new(nil, :settings).show?).to be_nil
   end
 
   it 'permits update? only for administrators' do
     expect(described_class.new(users(:admin), :settings).update?).to be(true)
     expect(described_class.new(users(:nurse), :settings).update?).to be(false)
-    expect(described_class.new(nil, :settings).update?).to be_falsey
+    expect(described_class.new(nil, :settings).update?).to be_nil
   end
 
   describe AppSettingsPolicy::Scope do
