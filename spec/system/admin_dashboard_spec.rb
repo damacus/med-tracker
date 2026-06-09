@@ -13,12 +13,16 @@ RSpec.describe 'Admin Dashboard' do
 
       within '[data-testid="admin-dashboard"]' do
         expect(page).to have_text('Admin Dashboard')
+        expect(page).to have_css('[data-testid="dashboard-status"]')
+        expect(page).to have_css('[data-testid="attention-queue"]')
 
         # Check for metric cards
         expect(page).to have_css('[data-testid="metric-total-users"]')
         expect(page).to have_css('[data-testid="metric-total-people"]')
         expect(page).to have_css('[data-testid="metric-active-schedules"]')
         expect(page).to have_css('[data-testid="metric-patients-without-carers"]')
+        expect(page).to have_css('[data-testid="metric-pending-invitations"]')
+        expect(page).to have_css('[data-testid="metric-recent-audit-events"]')
       end
     end
 
@@ -40,6 +44,9 @@ RSpec.describe 'Admin Dashboard' do
 
       expect(page).to have_link('Manage Users', href: admin_users_path)
       expect(page).to have_link('Manage People', href: people_path)
+      expect(page).to have_link('Audit Trail', href: admin_audit_logs_path)
+      expect(page).to have_text('User Access')
+      expect(page).to have_text('Operations')
     end
   end
 
