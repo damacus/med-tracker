@@ -207,6 +207,12 @@ RSpec.describe Components::Admin::AuditLogs::ShowView, type: :component do
       expect(payload['logged_by_name']).to eq(admin.name)
     end
 
+    it 'looks up the logged-by user once per render' do
+      version = medication_take_version
+
+      expect(count_user_queries { render_inline(described_class.new(version: version)) }).to eq(1)
+    end
+
     def medication_take_summary
       rendered = render_inline(described_class.new(version: medication_take_version))
 
@@ -216,6 +222,20 @@ RSpec.describe Components::Admin::AuditLogs::ShowView, type: :component do
     def medication_take_payload
       rendered = render_inline(described_class.new(version: medication_take_version))
       JSON.parse(rendered.css('pre code').last.text)
+    end
+
+    def count_user_queries(&)
+      count = 0
+
+      subscriber = lambda do |_name, _start, _finish, _id, payload|
+        sql = payload[:sql]
+        next if payload[:cached] || payload[:name] == 'SCHEMA'
+
+        count += 1 if sql.include?('"users"') && sql.include?('"users"."id"')
+      end
+
+      ActiveSupport::Notifications.subscribed(subscriber, 'sql.active_record', &)
+      count
     end
   end
 end
