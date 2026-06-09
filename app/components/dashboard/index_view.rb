@@ -40,7 +40,7 @@ module Components
       delegate :people, :active_schedules, :upcoming_schedules,
                :current_user, :doses, :next_dose_time, :routine_tasks_due?,
                :routine_tasks_by_person, :as_needed_by_person,
-               :dashboard_person_options, to: :presenter
+               :dashboard_person_options, :dashboard_people, to: :presenter
 
       def next_dose_value
         time = next_dose_time
@@ -307,9 +307,7 @@ module Components
       end
 
       def people_with_dashboard_items
-        people.select do |person|
-          routine_tasks_by_person.fetch(person, []).any? || as_needed_by_person.fetch(person, []).any?
-        end
+        dashboard_people
       end
 
       def render_health_insights

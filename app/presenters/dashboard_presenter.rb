@@ -4,7 +4,7 @@
 class DashboardPresenter
   ALL_FAMILY_PERSON_ID = 'all'
 
-  delegate :routine_tasks_by_person, :as_needed_by_person, to: :dashboard_schedule
+  delegate :routine_tasks_by_person, :as_needed_by_person, :dashboard_people, to: :dashboard_schedule
 
   attr_reader :current_user, :selected_person_id
 

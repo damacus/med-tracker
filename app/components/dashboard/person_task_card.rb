@@ -133,9 +133,9 @@ module Components
 
       def row_classes(row)
         case row[:status]
-        when :taken then 'border-success/30 bg-success-container/30'
+        when :taken, :max_reached then 'border-outline-variant/60 bg-surface-container opacity-70'
         when :upcoming, :available then 'border-primary/30 bg-surface-container-high'
-        when :cooldown, :max_reached then 'border-warning/30 bg-warning-container/30'
+        when :cooldown then 'border-warning/30 bg-warning-container/30'
         when :out_of_stock then 'border-error/30 bg-error-container/30'
         else 'border-border bg-surface-container-high'
         end

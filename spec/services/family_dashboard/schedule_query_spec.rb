@@ -176,10 +176,64 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
       end
     end
 
-    it 'returns doses sorted by scheduled_at' do
-      results = query.call
-      times = results.pluck(:scheduled_at).compact
-      expect(times).to eq(times.sort)
+    it 'orders actionable routine rows before already taken rows' do
+      travel_to Time.zone.parse('2026-05-05 12:00:00') do
+        schedule = create_multiple_daily_scheduled_medication
+        MedicationTake.create!(
+          schedule: schedule,
+          taken_at: Time.zone.parse('2026-05-05 08:00:00'),
+          dose_amount: 1,
+          dose_unit: 'tablet'
+        )
+
+        rows = described_class.new([people(:john)]).call.select { |row| row[:source] == schedule }
+
+        expect(rows.pluck(:status)).to eq(%i[upcoming taken])
+      end
+    end
+
+    it 'orders cooldown rows by next available time' do
+      travel_to Time.zone.parse('2026-05-05 12:00:00') do
+        sooner = create_interval_scheduled_medication
+        later = create_interval_scheduled_medication
+        MedicationTake.create!(schedule: later, taken_at: 1.hour.ago, dose_amount: 1, dose_unit: 'tablet')
+        MedicationTake.create!(schedule: sooner, taken_at: 2.hours.ago, dose_amount: 1, dose_unit: 'tablet')
+
+        rows = described_class.new([people(:john)]).call.select do |row|
+          [sooner, later].include?(row[:source]) && row[:status] == :cooldown
+        end
+
+        expect(rows.pluck(:source)).to eq([sooner, later])
+        expect(rows.pluck(:status)).to all(eq(:cooldown))
+      end
+    end
+
+    it 'orders completed and exhausted rows after blocked rows' do
+      travel_to Time.zone.parse('2026-05-05 12:00:00') do
+        taken_schedule, exhausted_schedule, out_of_stock_schedule = create_completed_priority_sources
+
+        query = described_class.new([people(:john)])
+        query.call
+        rows = dashboard_rows_for(query, [taken_schedule, exhausted_schedule, out_of_stock_schedule])
+
+        expect(rows.pluck(:source)).to eq([out_of_stock_schedule, taken_schedule, exhausted_schedule])
+        expect(rows.pluck(:status)).to eq(%i[out_of_stock taken max_reached])
+      end
+    end
+
+    it 'uses deterministic person and source tie-breakers for same-priority rows' do
+      travel_to Time.zone.parse('2026-05-05 12:00:00') do
+        lower_person = people(:john)
+        higher_person = people(:jane)
+        higher_person_schedule = create_daily_scheduled_medication(person: higher_person)
+        lower_person_schedule = create_daily_scheduled_medication(person: lower_person)
+
+        rows = described_class.new([higher_person, lower_person]).call.select do |row|
+          [higher_person_schedule, lower_person_schedule].include?(row[:source])
+        end
+
+        expect(rows.pluck(:source)).to eq([lower_person_schedule, higher_person_schedule])
+      end
     end
 
     it 'correctly identifies doses already taken today' do
@@ -357,12 +411,12 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
     )
   end
 
-  def create_daily_scheduled_medication
+  def create_daily_scheduled_medication(person: people(:john))
     medication = medications(:vitamin_c).tap { |candidate| candidate.update!(current_supply: 30) }
 
     create(
       :schedule,
-      person: people(:john),
+      person: person,
       medication: medication,
       dosage: nil,
       dose_amount: 1,
@@ -374,6 +428,79 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
       min_hours_between_doses: 24,
       dose_cycle: :daily
     )
+  end
+
+  def create_multiple_daily_scheduled_medication
+    create(
+      :schedule,
+      person: people(:john),
+      medication: create(:medication, current_supply: 30),
+      dosage: nil,
+      dose_amount: 1,
+      dose_unit: 'tablet',
+      frequency: 'Twice daily',
+      schedule_type: :multiple_daily,
+      schedule_config: { 'times' => %w[08:00 18:00] },
+      max_daily_doses: 2,
+      min_hours_between_doses: nil,
+      dose_cycle: :daily
+    )
+  end
+
+  def create_interval_scheduled_medication
+    create(
+      :schedule,
+      person: people(:john),
+      medication: create(:medication, current_supply: 30),
+      dosage: nil,
+      dose_amount: 1,
+      dose_unit: 'tablet',
+      frequency: 'Every 4 hours',
+      schedule_type: :daily,
+      schedule_config: {},
+      max_daily_doses: nil,
+      min_hours_between_doses: 4,
+      dose_cycle: :daily
+    )
+  end
+
+  def create_out_of_stock_scheduled_medication
+    create(
+      :schedule,
+      person: people(:john),
+      medication: create(:medication, current_supply: 0, reorder_threshold: 2),
+      dosage: nil,
+      dose_amount: 1,
+      dose_unit: 'tablet',
+      frequency: 'Daily',
+      schedule_type: :daily,
+      schedule_config: {},
+      max_daily_doses: 1,
+      min_hours_between_doses: nil,
+      dose_cycle: :daily
+    )
+  end
+
+  def create_completed_priority_sources
+    taken_schedule = create_daily_scheduled_medication
+    exhausted_schedule = create_prn_schedule(max_daily_doses: 1)
+    out_of_stock_schedule = create_out_of_stock_scheduled_medication
+
+    record_schedule_take(taken_schedule, taken_at: Time.zone.parse('2026-05-05 08:00:00'), amount: 1, unit: 'tablet')
+    record_schedule_take(exhausted_schedule, taken_at: Time.current, amount: 1000, unit: 'mg')
+
+    [taken_schedule, exhausted_schedule, out_of_stock_schedule]
+  end
+
+  def record_schedule_take(schedule, taken_at:, amount:, unit:)
+    MedicationTake.create!(schedule: schedule, taken_at: taken_at, dose_amount: amount, dose_unit: unit)
+  end
+
+  def dashboard_rows_for(query, sources)
+    (
+      query.routine_tasks_by_person.fetch(people(:john)) +
+      query.as_needed_by_person.fetch(people(:john))
+    ).select { |row| sources.include?(row[:source]) }
   end
 
   def medication_source_preloaded?(take)

@@ -3,9 +3,9 @@
 module FamilyDashboard
   # Query object to fetch a 24-hour medication schedule for a person and their dependents
   class ScheduleQuery
-    Result = Data.define(:routine_tasks, :routine_tasks_by_person, :as_needed_by_person)
+    Result = Data.define(:routine_tasks, :routine_tasks_by_person, :as_needed_by_person, :dashboard_people)
 
-    delegate :routine_tasks, :routine_tasks_by_person, :as_needed_by_person, to: :result
+    delegate :routine_tasks, :routine_tasks_by_person, :as_needed_by_person, :dashboard_people, to: :result
 
     attr_reader :current_user
 
@@ -35,14 +35,15 @@ module FamilyDashboard
       preload_takes
 
       # 3. Aggregate all doses
-      routine_tasks = sort_rows(aggregate_family_doses)
-      as_needed_items = sort_rows(aggregate_family_as_needed_items)
+      routine_tasks = task_priority.sort_rows(aggregate_family_doses)
+      as_needed_items = task_priority.sort_rows(aggregate_family_as_needed_items)
 
       # 4. Sort by time and return
       Result.new(
         routine_tasks: routine_tasks,
         routine_tasks_by_person: group_rows_by_person(routine_tasks),
-        as_needed_by_person: group_rows_by_person(as_needed_items)
+        as_needed_by_person: group_rows_by_person(as_needed_items),
+        dashboard_people: task_priority.sort_people(@people, routine_tasks + as_needed_items)
       )
     end
 
@@ -267,8 +268,8 @@ module FamilyDashboard
       Time.zone.local(date.year, date.month, date.day, hour, minute)
     end
 
-    def sort_rows(rows)
-      rows.sort_by { |row| [row[:scheduled_at] || Time.current.end_of_day, row[:source].id] }
+    def task_priority
+      @task_priority ||= TaskPriority.new
     end
 
     def group_rows_by_person(rows)

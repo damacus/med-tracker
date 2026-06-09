@@ -356,6 +356,33 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
         )
       end
     end
+
+    it 'renders person task cards in presenter priority order' do
+      rendered = render_inline(described_class.new(presenter: ordered_person_task_presenter))
+      html = rendered.to_html
+
+      expect(html.index('Jane Doe')).to be < html.index('John Doe')
+    end
+
+    it 'uses muted styling for taken routine rows', :aggregate_failures do
+      rendered = render_inline(described_class.new(presenter: person_task_presenter(routine_status: :taken)))
+      routine_task = rendered.at_css('[data-testid="dashboard-routine-task"]')
+
+      expect(routine_task['class']).to include('border-outline-variant/60')
+      expect(routine_task['class']).to include('bg-surface-container')
+      expect(routine_task['class']).to include('opacity-70')
+      expect(routine_task['class']).not_to include('bg-success-container/30')
+    end
+
+    it 'uses muted styling for max-reached as-needed rows', :aggregate_failures do
+      rendered = render_inline(described_class.new(presenter: person_task_presenter(as_needed_status: :max_reached)))
+      as_needed_task = rendered.at_css('[data-testid="dashboard-as-needed-task"]')
+
+      expect(as_needed_task['class']).to include('border-outline-variant/60')
+      expect(as_needed_task['class']).to include('bg-surface-container')
+      expect(as_needed_task['class']).to include('opacity-70')
+      expect(as_needed_task['class']).not_to include('bg-warning-container/30')
+    end
   end
 
   describe 'today dose history' do
@@ -400,11 +427,52 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
     end
   end
 
-  def person_task_presenter(routine_status: :upcoming, insight_result: nil, can_view_reports: true)
+  def person_task_presenter(routine_status: :upcoming, as_needed_status: :available, insight_result: nil,
+                            can_view_reports: true)
     person = people(:john)
     instance_double(
       DashboardPresenter,
-      people: [person],
+      dashboard_presenter_options(
+        people: [person],
+        dashboard_people: [person],
+        rows: {
+          routine: { person => [routine_dashboard_row(person, status: routine_status)] },
+          as_needed: { person => [as_needed_dashboard_row(person, status: as_needed_status)] }
+        },
+        insight_result: insight_result,
+        can_view_reports: can_view_reports
+      )
+    )
+  end
+
+  def ordered_person_task_presenter
+    john = people(:john)
+    jane = people(:jane)
+
+    instance_double(
+      DashboardPresenter,
+      dashboard_presenter_options(
+        people: [john, jane],
+        dashboard_people: [jane, john],
+        rows: ordered_person_task_rows(john, jane)
+      )
+    )
+  end
+
+  def ordered_person_task_rows(john, jane)
+    {
+      routine: {
+        john => [routine_dashboard_row(john)],
+        jane => [routine_dashboard_row(jane)]
+      },
+      as_needed: { john => [], jane => [] }
+    }
+  end
+
+  def dashboard_presenter_options(people:, dashboard_people:, rows:, insight_result: nil, can_view_reports: true)
+    {
+      people: people,
+      dashboard_people: dashboard_people,
       active_schedules: [],
       current_user: admin_user,
       next_dose_time: nil,
@@ -412,9 +480,9 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       can_view_reports?: can_view_reports,
       dashboard_person_options: [],
       routine_tasks_due?: true,
-      routine_tasks_by_person: { person => [routine_dashboard_row(person, status: routine_status)] },
-      as_needed_by_person: { person => [as_needed_dashboard_row(person)] }
-    )
+      routine_tasks_by_person: rows.fetch(:routine),
+      as_needed_by_person: rows.fetch(:as_needed)
+    }
   end
 
   def learning_insight_result
@@ -464,13 +532,13 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
     }
   end
 
-  def as_needed_dashboard_row(person)
+  def as_needed_dashboard_row(person, status: :available)
     {
       person: person,
       source: schedules(:john_paracetamol),
       scheduled_at: Time.current,
       taken_at: nil,
-      status: :available,
+      status: status,
       daily_dose_count: 1,
       daily_dose_limit: 4,
       today_takes: [dashboard_today_take]
