@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe MedicationTakeStockMutation do
+  subject(:mutation) { described_class.new(take, decrementer: decrementer) }
+
   let(:inventory) { instance_double(Medication) }
   let(:take) do
     instance_double(MedicationTake, inventory_medication: inventory)
@@ -14,8 +16,6 @@ RSpec.describe MedicationTakeStockMutation do
     allow(MedicationTakeStockSource).to receive(:new).and_return(stock_source)
   end
 
-  subject(:mutation) { described_class.new(take, decrementer: decrementer) }
-
   describe '#decrement' do
     context 'when stock is not tracked' do
       before { allow(stock_source).to receive(:tracked?).and_return(false) }
@@ -26,11 +26,10 @@ RSpec.describe MedicationTakeStockMutation do
     end
 
     context 'when stock is tracked' do
-      let(:stock_row) { double('stock_row') }
+      let(:stock_row) { instance_double(Object) }
 
       before do
-        allow(stock_source).to receive(:tracked?).and_return(true)
-        allow(stock_source).to receive(:inventory).and_return(inventory)
+        allow(stock_source).to receive_messages(tracked?: true, inventory: inventory)
         allow(decrementer).to receive(:call).with(stock_source).and_return(stock_row)
       end
 
