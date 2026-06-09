@@ -91,7 +91,7 @@ RSpec.describe AdjustMedicationInventoryService do
       end
     end
 
-    context 'result object' do
+    context 'with result object' do
       it 'exposes success?, medication, and error' do
         result = service.call(medication: medication, new_quantity: '30')
         expect(result).to respond_to(:success?, :medication, :error)
