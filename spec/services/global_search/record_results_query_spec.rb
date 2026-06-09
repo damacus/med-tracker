@@ -30,7 +30,9 @@ RSpec.describe GlobalSearch::RecordResultsQuery do
       # jane is a parent — she can only see locations linked to herself or her dependents
       jane = users(:jane)
       jane_builder = GlobalSearch::ResultBuilder.new(query: 'school')
-      jane_query = GlobalSearch::LocationsResultsQuery.new(user: jane, query: 'school', limit: 10, builder: jane_builder)
+      jane_query = GlobalSearch::LocationsResultsQuery.new(
+        user: jane, query: 'school', limit: 10, builder: jane_builder
+      )
 
       # jane_school membership exists so Jane can see the School location
       expect(jane_query.call.map(&:title)).to include('School')

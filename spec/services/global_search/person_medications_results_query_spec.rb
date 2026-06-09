@@ -6,11 +6,11 @@ RSpec.describe GlobalSearch::PersonMedicationsResultsQuery do
   fixtures :accounts, :people, :users, :locations, :location_memberships,
            :medications, :person_medications, :carer_relationships
 
+  subject(:results) { described_class.new(user: user, query: query, limit: limit, builder: builder).call }
+
   let(:user) { users(:damacus) }
   let(:limit) { 10 }
   let(:builder) { GlobalSearch::ResultBuilder.new(query: query) }
-
-  subject(:results) { described_class.new(user: user, query: query, limit: limit, builder: builder).call }
 
   describe '#call' do
     context 'when the query matches a medication name' do
@@ -62,7 +62,7 @@ RSpec.describe GlobalSearch::PersonMedicationsResultsQuery do
       end
     end
 
-    context 'ordering' do
+    context 'when ordering results' do
       let(:query) { 'vitamin' }
 
       it 'orders by medication name then person name' do
