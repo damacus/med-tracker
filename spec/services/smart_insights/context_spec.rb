@@ -3,13 +3,13 @@
 require 'rails_helper'
 
 RSpec.describe SmartInsights::Context do
-  let(:person)     { create(:person) }
-  let(:start_date) { 14.days.ago.to_date }
-  let(:end_date)   { Date.today }
-
   subject(:context) do
     described_class.new(people: [person], start_date: start_date, end_date: end_date)
   end
+
+  let(:person)     { create(:person) }
+  let(:start_date) { 14.days.ago.to_date }
+  let(:end_date)   { Time.zone.today }
 
   describe '#initialize' do
     it 'stores people, start_date, and end_date' do
@@ -21,7 +21,9 @@ RSpec.describe SmartInsights::Context do
 
   describe '#evidence_days' do
     it 'counts the number of days in the date range (inclusive)' do
-      ctx = described_class.new(people: [person], start_date: Date.today - 6, end_date: Date.today)
+      ctx = described_class.new(people: [person],
+                                start_date: Time.zone.today - 6,
+                                end_date: Time.zone.today)
       expect(ctx.evidence_days).to eq(7)
     end
   end
@@ -51,9 +53,11 @@ RSpec.describe SmartInsights::Context do
     end
 
     it 'is memoized' do
-      2.times { context.schedules }
-      expect(Schedule).not_to receive(:where)
+      # Warm the cache, then verify no additional DB call is made
       context.schedules
+      allow(Schedule).to receive(:where).and_call_original
+      context.schedules
+      expect(Schedule).not_to have_received(:where)
     end
   end
 
@@ -99,7 +103,9 @@ RSpec.describe SmartInsights::Context do
 
   describe '#enough_evidence?' do
     it 'returns false when the window is shorter than MINIMUM_EVIDENCE_DAYS' do
-      ctx = described_class.new(people: [person], start_date: Date.today - 3, end_date: Date.today)
+      ctx = described_class.new(people: [person],
+                                start_date: Time.zone.today - 3,
+                                end_date: Time.zone.today)
       expect(ctx.enough_evidence?).to be(false)
     end
   end

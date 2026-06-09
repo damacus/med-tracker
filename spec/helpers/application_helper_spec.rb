@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe ApplicationHelper, type: :helper do
+RSpec.describe ApplicationHelper do
   it 'is a module that mixes into the helper context' do
     expect(described_class).to be_a(Module)
   end
