@@ -192,6 +192,52 @@ jobs:
             echo "No files for this shard"
           fi
 
+  mutation:
+    runs-on: [ubuntu-latest]
+    name: Mutation Testing (advisory, changed subjects)
+    timeout-minutes: 20
+    continue-on-error: true # advisory until the signal is trusted
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: medtracker_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      TEST_DATABASE_ADAPTER: postgresql
+      DATABASE_URL: postgres://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/medtracker_test
+      RAILS_ENV: test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0 # mutant --since needs history + the base ref
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "4.0.4"
+          bundler-cache: true
+
+      - name: Set up database
+        run: bundle exec rails db:migrate
+
+      - name: Ensure base ref is available
+        run: git fetch --no-tags --depth=1 origin main
+
+      # Only mutates subjects changed since main (mutant --since), so a typical
+      # PR is fast. usage: opensource (config/mutant.yml) means no licence/token.
+      - name: Mutation test changed subjects (advisory)
+        run: bundle exec mutant run --since origin/main
+
   # lighthouse:
   #   runs-on: [ubuntu-latest]
   #   name: Lighthouse Mobile Audit
