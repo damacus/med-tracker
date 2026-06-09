@@ -67,6 +67,14 @@ RSpec.describe Components::Admin::Dashboard::IndexView, type: :component do
     expect(rendered.at_css("a[href='/admin/people']")).to be_present
   end
 
+  it 'labels the review section without using queue language' do
+    rendered = render_inline(described_class.new(metrics: { attention_items: [] }))
+
+    expect(rendered.at_css('[data-testid="attention-queue"]').text)
+      .to include(I18n.t('admin.dashboard.attention.title'))
+    expect(rendered.text).not_to include('Attention Queue')
+  end
+
   it 'renders the positive empty row when the queue is clear' do
     rendered = render_inline(described_class.new(metrics: { attention_items: [] }))
 

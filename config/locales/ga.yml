@@ -294,7 +294,7 @@ ga:
           one: Teastaíonn aird ó %{count} mhír
           other: Teastaíonn aird ó %{count} mír
       attention:
-        title: Scuaine aire
+        title: Le hathbhreithniú
         empty_title: Níl aon obair riaracháin phráinneach
         empty_detail: Tá gach rud sláintiúil faoi láthair.
         actions:
@@ -317,6 +317,12 @@ ga:
         dmd_stalled:
           title: Iompórtáil dm+d ar siúl
           detail: Ar siúl le %{when}
+        dmd_missing:
+          title: NHS dm+d gan iompórtáil
+          detail: Iompórtáil an scaoileadh is déanaí chun sonraí cuardaigh cógas a choinneáil cothrom le dáta.
+        dmd_stale:
+          title: Sonraí NHS dm+d as dáta
+          detail: Críochnaíodh an t-iompórtáil dheireanach %{when} ó shin
       sections:
         user_access: Rochtain úsáideoirí
         operations: Oibríochtaí

@@ -152,7 +152,7 @@
       }
 
       .section {
-        margin-top: 30px;
+        margin-top: 24px;
       }
 
       .section-head {
@@ -172,13 +172,25 @@
         display: grid;
         grid-template-columns: 92px minmax(0, 1fr) auto;
         align-items: center;
-        gap: 18px;
+        gap: 14px;
         border: 1px solid var(--line);
         border-left-width: 6px;
         border-radius: var(--radius);
         background: var(--card);
-        padding: 16px 18px;
+        padding: 14px 16px;
         box-shadow: var(--shadow);
+      }
+
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
       }
 
       .queue-row.high {
@@ -383,9 +395,7 @@
         </header>
 
         <section class="section" aria-labelledby="attention-title">
-          <div class="section-head">
-            <h2 id="attention-title">Attention Queue</h2>
-          </div>
+          <h2 id="attention-title" class="sr-only">Needs Review</h2>
           <div class="queue">
             <a class="queue-row high" href="#">
               <span class="severity high">High</span>
@@ -406,8 +416,8 @@
             <a class="queue-row high" href="#">
               <span class="severity high">High</span>
               <span class="row-title">
-                <strong>dm+d import failed</strong>
-                <span>Failed 3 hours ago</span>
+                <strong>NHS dm+d not imported</strong>
+                <span>Import the latest release so medication lookup data is current</span>
               </span>
               <span class="action">Open</span>
             </a>

@@ -511,7 +511,7 @@ cy:
           one: Mae angen sylw ar %{count} eitem
           other: Mae angen sylw ar %{count} eitem
       attention:
-        title: Ciw sylw
+        title: Angen adolygiad
         empty_title: Dim gwaith gweinyddol brys
         empty_detail: Mae popeth yn edrych yn iach ar hyn o bryd.
         actions:
@@ -534,6 +534,12 @@ cy:
         dmd_stalled:
           title: Mewnforio dm+d ar waith
           detail: Yn rhedeg ers %{when}
+        dmd_missing:
+          title: NHS dm+d heb ei fewnforio
+          detail: Mewnforiwch y rhyddhad diweddaraf i gadw data chwilio meddyginiaethau'n gyfredol.
+        dmd_stale:
+          title: Data NHS dm+d wedi dyddio
+          detail: Cwblhawyd y mewnforiad diwethaf %{when} yn ôl
       sections:
         user_access: Mynediad defnyddwyr
         operations: Gweithrediadau

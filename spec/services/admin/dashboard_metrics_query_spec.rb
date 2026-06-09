@@ -114,6 +114,17 @@ RSpec.describe Admin::DashboardMetricsQuery do
       expect(hrefs).not_to include('/admin/invitations')
     end
 
+    it 'adds a high dm+d item when there has never been a release import' do
+      item = described_class.new.call[:attention_items].find do |attention_item|
+        attention_item[:icon_type] == 'refresh_cw'
+      end
+
+      expect(item).to include(
+        severity: :high,
+        title: I18n.t('admin.dashboard.attention.dmd_missing.title')
+      )
+    end
+
     it 'escalates a failed dm+d import to high severity' do
       NhsDmdImport.create!(uploaded_filename: 'release.zip', status: :failed, completed_at: 3.hours.ago)
 
@@ -139,7 +150,20 @@ RSpec.describe Admin::DashboardMetricsQuery do
       expect(item).to include(severity: :medium)
     end
 
-    it 'does not add an item for a completed dm+d import' do
+    it 'adds a medium dm+d item when the latest completed import is stale' do
+      NhsDmdImport.create!(uploaded_filename: 'release.zip', status: :completed, completed_at: 40.days.ago)
+
+      item = described_class.new.call[:attention_items].find do |attention_item|
+        attention_item[:icon_type] == 'refresh_cw'
+      end
+
+      expect(item).to include(
+        severity: :medium,
+        title: I18n.t('admin.dashboard.attention.dmd_stale.title')
+      )
+    end
+
+    it 'does not add an item for a recent completed dm+d import' do
       NhsDmdImport.create!(uploaded_filename: 'release.zip', status: :completed, completed_at: 1.hour.ago)
 
       icons = described_class.new.call[:attention_items].pluck(:icon_type)
@@ -148,6 +172,8 @@ RSpec.describe Admin::DashboardMetricsQuery do
     end
 
     it 'returns an empty attention list when nothing is actionable' do
+      NhsDmdImport.create!(uploaded_filename: 'release.zip', status: :completed, completed_at: 1.hour.ago)
+
       expect(described_class.new.call[:attention_items]).to eq([])
     end
   end

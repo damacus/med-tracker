@@ -309,7 +309,7 @@ en:
           one: "%{count} item needs attention"
           other: "%{count} items need attention"
       attention:
-        title: Attention Queue
+        title: Needs Review
         empty_title: No urgent admin work
         empty_detail: Everything looks healthy right now.
         actions:
@@ -332,6 +332,12 @@ en:
         dmd_stalled:
           title: dm+d import in progress
           detail: Running for %{when}
+        dmd_missing:
+          title: NHS dm+d not imported
+          detail: Import the latest release so medication lookup data is current.
+        dmd_stale:
+          title: NHS dm+d data out of date
+          detail: Last completed import was %{when} ago
       sections:
         user_access: User Access
         operations: Operations

@@ -14,7 +14,7 @@ module Components
 
         def view_template
           div(data: { testid: 'admin-dashboard' },
-              class: 'container mx-auto px-4 py-8 pb-24 md:pb-8 max-w-6xl space-y-10') do
+              class: 'container mx-auto px-4 py-5 pb-24 md:py-6 md:pb-8 max-w-7xl space-y-6') do
             render_header
             render_attention_queue
             render_metrics_grid
@@ -26,7 +26,7 @@ module Components
         private
 
         def render_header
-          div(class: 'flex flex-col md:flex-row md:items-end justify-between gap-4') do
+          div(class: 'flex flex-col md:flex-row md:items-center justify-between gap-3') do
             div do
               m3_text(size: '2', weight: 'muted', class: 'uppercase tracking-widest mb-1 block font-bold') do
                 Time.current.strftime('%A, %b %d')
@@ -60,8 +60,8 @@ module Components
         end
 
         def render_attention_queue
-          section(data: { testid: 'attention-queue' }, class: 'space-y-3') do
-            m3_heading(level: 2, size: '5', class: 'font-bold') { t('admin.dashboard.attention.title') }
+          section(data: { testid: 'attention-queue' }, class: 'space-y-2') do
+            m3_heading(level: 2, size: '4', class: 'sr-only') { t('admin.dashboard.attention.title') }
             if attention_items.any?
               attention_items.each { |item| render_attention_row(item) }
             else
@@ -73,10 +73,10 @@ module Components
         def render_attention_row(item)
           a(
             href: item[:href],
-            class: 'flex items-center gap-4 rounded-2xl border border-border bg-card p-4 no-underline ' \
+            class: 'flex items-center gap-3 rounded-xl border border-border bg-card p-3 no-underline ' \
                    "shadow-sm transition-all hover:shadow-md #{severity_accent(item[:severity])}"
           ) do
-            div(class: 'w-10 h-10 rounded-xl bg-secondary-container flex items-center ' \
+            div(class: 'w-9 h-9 rounded-lg bg-secondary-container flex items-center ' \
                        'justify-center text-on-surface-variant shrink-0') do
               render attention_icon(item[:icon_type])
             end
@@ -89,9 +89,9 @@ module Components
         end
 
         def render_attention_empty
-          div(class: 'flex items-center gap-4 rounded-2xl border border-border bg-card p-4 ' \
+          div(class: 'flex items-center gap-3 rounded-xl border border-border bg-card p-3 ' \
                      'shadow-sm border-l-4 border-l-success') do
-            div(class: 'w-10 h-10 rounded-xl bg-success-container flex items-center justify-center ' \
+            div(class: 'w-9 h-9 rounded-lg bg-success-container flex items-center justify-center ' \
                        'text-on-success-container shrink-0') do
               render Icons::Check.new(size: 20)
             end
@@ -126,7 +126,7 @@ module Components
         end
 
         def render_metrics_grid
-          div(class: 'grid grid-cols-2 lg:grid-cols-4 auto-rows-fr gap-4') do
+          div(class: 'grid grid-cols-2 lg:grid-cols-4 auto-rows-fr gap-3') do
             render_metric_card(title_key: 'admin.dashboard.metrics.total_users',
                                metric_key: :total_users,
                                testid: 'metric-total-users',
@@ -181,7 +181,7 @@ module Components
         end
 
         def render_quick_actions
-          div(class: 'grid gap-6 md:grid-cols-2') do
+          div(class: 'grid gap-4 md:grid-cols-2') do
             render_action_group(
               t('admin.dashboard.sections.user_access'),
               [
@@ -201,7 +201,7 @@ module Components
         end
 
         def render_action_group(heading, actions)
-          div(class: 'space-y-3') do
+          div(class: 'space-y-2') do
             m3_heading(level: 2, size: '4', class: 'font-bold') { heading }
             div(class: 'grid gap-3') do
               actions.each { |key, href, icon_class| render_action_card(key: key, href: href, icon_class: icon_class) }
@@ -212,11 +212,11 @@ module Components
         def render_action_card(key:, href:, icon_class:)
           a(
             href: href,
-            class: 'flex items-center gap-3 rounded-2xl bg-card p-4 border border-border shadow-sm ' \
+            class: 'flex items-center gap-3 rounded-xl bg-card p-3 border border-border shadow-sm ' \
                    'transition-all hover:shadow-md no-underline min-w-0'
           ) do
             div(
-              class: 'w-10 h-10 rounded-xl bg-secondary-container flex items-center ' \
+              class: 'w-9 h-9 rounded-lg bg-secondary-container flex items-center ' \
                      'justify-center text-on-surface-variant shrink-0'
             ) do
               render icon_class.new(size: 24)
@@ -234,10 +234,10 @@ module Components
 
         def render_recent_activity
           versions = metrics[:recent_activity] || []
-          section(data: { testid: 'dashboard-activity' }, class: 'space-y-3') do
-            m3_heading(level: 2, size: '5', class: 'font-bold') { t('admin.dashboard.recent_activity.title') }
+          section(data: { testid: 'dashboard-activity' }, class: 'space-y-2') do
+            m3_heading(level: 2, size: '4', class: 'font-bold') { t('admin.dashboard.recent_activity.title') }
             if versions.any?
-              div(class: 'rounded-2xl border border-border bg-card divide-y divide-border') do
+              div(class: 'rounded-xl border border-border bg-card divide-y divide-border') do
                 versions.each { |version| render_activity_row(version) }
               end
             else
@@ -249,11 +249,11 @@ module Components
         def render_activity_row(version)
           if version.id
             a(href: "/admin/audit_logs/#{version.id}",
-              class: 'flex items-center gap-4 p-4 no-underline hover:bg-tertiary-container') do
+              class: 'flex items-center gap-3 p-3 no-underline hover:bg-tertiary-container') do
               render_activity_row_content(version)
             end
           else
-            div(class: 'flex items-center gap-4 p-4') { render_activity_row_content(version) }
+            div(class: 'flex items-center gap-3 p-3') { render_activity_row_content(version) }
           end
         end
 

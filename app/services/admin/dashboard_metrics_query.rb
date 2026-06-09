@@ -3,6 +3,7 @@
 module Admin
   class DashboardMetricsQuery
     STALLED_IMPORT_THRESHOLD = 1.hour
+    STALE_IMPORT_THRESHOLD = 35.days
 
     def call
       user_metrics
@@ -100,13 +101,9 @@ module Admin
 
     def dmd_item
       import = latest_dmd_import
-      return if import.blank?
+      return dmd_static_attention(:high, 'dmd_missing') if import.blank?
 
-      if import.failed?
-        dmd_attention(:high, 'dmd_failed', import.completed_at || import.created_at)
-      elsif import.active? && import.created_at <= STALLED_IMPORT_THRESHOLD.ago
-        dmd_attention(:medium, 'dmd_stalled', import.started_at || import.created_at)
-      end
+      dmd_failed_item(import) || dmd_stalled_item(import) || dmd_stale_item(import)
     end
 
     def latest_dmd_import
@@ -127,6 +124,41 @@ module Admin
         action_label: I18n.t('admin.dashboard.attention.actions.open'),
         icon_type: 'refresh_cw'
       }
+    end
+
+    def dmd_failed_item(import)
+      return unless import.failed?
+
+      dmd_attention(:high, 'dmd_failed', import.completed_at || import.created_at)
+    end
+
+    def dmd_stalled_item(import)
+      return unless import.active?
+      return unless import.created_at <= STALLED_IMPORT_THRESHOLD.ago
+
+      dmd_attention(:medium, 'dmd_stalled', import.started_at || import.created_at)
+    end
+
+    def dmd_stale_item(import)
+      return unless import.completed?
+      return unless dmd_import_stale?(import)
+
+      dmd_attention(:medium, 'dmd_stale', import.completed_at || import.updated_at)
+    end
+
+    def dmd_static_attention(severity, key)
+      {
+        severity: severity,
+        title: I18n.t("admin.dashboard.attention.#{key}.title"),
+        detail: I18n.t("admin.dashboard.attention.#{key}.detail"),
+        href: '/admin/nhs_dmd_import/new',
+        action_label: I18n.t('admin.dashboard.attention.actions.open'),
+        icon_type: 'refresh_cw'
+      }
+    end
+
+    def dmd_import_stale?(import)
+      (import.completed_at || import.updated_at) <= STALE_IMPORT_THRESHOLD.ago
     end
   end
 end

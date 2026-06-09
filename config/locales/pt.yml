@@ -518,7 +518,7 @@ pt:
           one: "%{count} item precisa de atenção"
           other: "%{count} itens precisam de atenção"
       attention:
-        title: Fila de atenção
+        title: Requer revisão
         empty_title: Sem trabalho administrativo urgente
         empty_detail: Tudo parece saudável neste momento.
         actions:
@@ -541,6 +541,12 @@ pt:
         dmd_stalled:
           title: Importação dm+d em curso
           detail: Em execução há %{when}
+        dmd_missing:
+          title: NHS dm+d não importado
+          detail: Importe a versão mais recente para manter os dados de pesquisa de medicamentos atualizados.
+        dmd_stale:
+          title: Dados NHS dm+d desatualizados
+          detail: A última importação concluída foi há %{when}
       sections:
         user_access: Acesso de utilizadores
         operations: Operações
