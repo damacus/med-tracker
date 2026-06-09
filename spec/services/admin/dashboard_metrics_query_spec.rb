@@ -49,12 +49,12 @@ RSpec.describe Admin::DashboardMetricsQuery do
       Invitation.delete_all
       NhsDmdImport.delete_all
       PaperTrail::Version.delete_all
-      Person.update_all(has_capacity: true)
+      Person.find_each { |person| person.update!(has_capacity: true) }
     end
 
     it 'returns pending and expired invitation counts' do
-      create(:invitation).update_column(:expires_at, 2.days.from_now)
-      create(:invitation).update_column(:expires_at, 1.day.ago)
+      create(:invitation, expires_at: 2.days.from_now)
+      create(:invitation, expires_at: 1.day.ago)
 
       result = described_class.new.call
 
@@ -83,9 +83,12 @@ RSpec.describe Admin::DashboardMetricsQuery do
 
     it 'builds a high carer attention item linking to admin people' do
       patient = create(:person)
-      patient.update_column(:has_capacity, false)
+      patient.has_capacity = false
+      patient.save!(validate: false)
 
-      item = described_class.new.call[:attention_items].find { |attention_item| attention_item[:href] == '/admin/people' }
+      item = described_class.new.call[:attention_items].find do |attention_item|
+        attention_item[:href] == '/admin/people'
+      end
 
       expect(item).to include(
         severity: :high,
@@ -94,7 +97,7 @@ RSpec.describe Admin::DashboardMetricsQuery do
     end
 
     it 'builds a medium expired-invitations item linking to admin invitations' do
-      create(:invitation).update_column(:expires_at, 1.day.ago)
+      create(:invitation, expires_at: 1.day.ago)
 
       item = described_class.new.call[:attention_items].find do |attention_item|
         attention_item[:href] == '/admin/invitations'
@@ -104,9 +107,9 @@ RSpec.describe Admin::DashboardMetricsQuery do
     end
 
     it 'does not add an item for normal pending invitations' do
-      create(:invitation).update_column(:expires_at, 2.days.from_now)
+      create(:invitation, expires_at: 2.days.from_now)
 
-      hrefs = described_class.new.call[:attention_items].map { |item| item[:href] }
+      hrefs = described_class.new.call[:attention_items].pluck(:href)
 
       expect(hrefs).not_to include('/admin/invitations')
     end
@@ -114,7 +117,9 @@ RSpec.describe Admin::DashboardMetricsQuery do
     it 'escalates a failed dm+d import to high severity' do
       NhsDmdImport.create!(uploaded_filename: 'release.zip', status: :failed, completed_at: 3.hours.ago)
 
-      item = described_class.new.call[:attention_items].find { |attention_item| attention_item[:icon_type] == 'refresh_cw' }
+      item = described_class.new.call[:attention_items].find do |attention_item|
+        attention_item[:icon_type] == 'refresh_cw'
+      end
 
       expect(item).to include(severity: :high)
     end
@@ -127,7 +132,9 @@ RSpec.describe Admin::DashboardMetricsQuery do
         created_at: 2.hours.ago
       )
 
-      item = described_class.new.call[:attention_items].find { |attention_item| attention_item[:icon_type] == 'refresh_cw' }
+      item = described_class.new.call[:attention_items].find do |attention_item|
+        attention_item[:icon_type] == 'refresh_cw'
+      end
 
       expect(item).to include(severity: :medium)
     end
@@ -135,7 +142,7 @@ RSpec.describe Admin::DashboardMetricsQuery do
     it 'does not add an item for a completed dm+d import' do
       NhsDmdImport.create!(uploaded_filename: 'release.zip', status: :completed, completed_at: 1.hour.ago)
 
-      icons = described_class.new.call[:attention_items].map { |item| item[:icon_type] }
+      icons = described_class.new.call[:attention_items].pluck(:icon_type)
 
       expect(icons).not_to include('refresh_cw')
     end

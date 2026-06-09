@@ -5,24 +5,52 @@ module Admin
     STALLED_IMPORT_THRESHOLD = 1.hour
 
     def call
+      user_metrics
+        .merge(people_metrics)
+        .merge(schedule_metrics)
+        .merge(invitation_metrics)
+        .merge(activity_metrics)
+        .merge(attention_items: attention_items)
+    end
+
+    private
+
+    def user_metrics
       {
         total_users: User.count,
         active_users: User.active.count,
         recent_signups: User.where(created_at: 7.days.ago..).count,
-        users_by_role: User.group(:role).count,
-        total_people: Person.count,
-        people_by_type: Person.group(:person_type).count,
-        active_schedules: Schedule.where(active: true).count,
-        patients_without_carers: needing_carer_count,
-        pending_invitations: Invitation.pending.count,
-        expired_invitations: expired_invitations_count,
-        recent_audit_events: recent_audit_events_count,
-        recent_activity: recent_activity,
-        attention_items: attention_items
+        users_by_role: User.group(:role).count
       }
     end
 
-    private
+    def people_metrics
+      {
+        total_people: Person.count,
+        people_by_type: Person.group(:person_type).count,
+        patients_without_carers: needing_carer_count
+      }
+    end
+
+    def schedule_metrics
+      {
+        active_schedules: Schedule.where(active: true).count
+      }
+    end
+
+    def invitation_metrics
+      {
+        pending_invitations: Invitation.pending.count,
+        expired_invitations: expired_invitations_count
+      }
+    end
+
+    def activity_metrics
+      {
+        recent_audit_events: recent_audit_events_count,
+        recent_activity: recent_activity
+      }
+    end
 
     def needing_carer_count
       @needing_carer_count ||= Person.needing_carer_assignment.count

@@ -67,22 +67,19 @@ RSpec.describe Invitation do
 
     describe '.expired' do
       it 'includes unaccepted invitations past their expiry' do
-        invitation = create(:invitation)
-        invitation.update_column(:expires_at, 1.day.ago)
+        invitation = create(:invitation, expires_at: 1.day.ago)
 
         expect(described_class.expired).to include(invitation)
       end
 
       it 'excludes pending invitations' do
-        invitation = create(:invitation)
-        invitation.update_column(:expires_at, 1.day.from_now)
+        invitation = create(:invitation, expires_at: 1.day.from_now)
 
         expect(described_class.expired).not_to include(invitation)
       end
 
       it 'excludes accepted invitations even if past expiry' do
-        invitation = create(:invitation, :accepted)
-        invitation.update_columns(expires_at: 1.day.ago, accepted_at: 2.days.ago)
+        invitation = create(:invitation, :accepted, expires_at: 1.day.ago, accepted_at: 2.days.ago)
 
         expect(described_class.expired).not_to include(invitation)
       end

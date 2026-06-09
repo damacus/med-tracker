@@ -9,7 +9,7 @@ RSpec.describe 'Admin::People' do
   let(:regular_user) { users(:jane) }
 
   describe 'GET /admin/people' do
-    context 'as an administrator' do
+    context 'when signed in as an administrator' do
       before { sign_in(admin) }
 
       it 'returns success' do
@@ -20,7 +20,8 @@ RSpec.describe 'Admin::People' do
 
       it 'lists a patient who needs a carer' do
         patient = create(:person, name: 'Needs A Carer')
-        patient.update_column(:has_capacity, false)
+        patient.has_capacity = false
+        patient.save!(validate: false)
 
         get admin_people_path
 
@@ -28,7 +29,7 @@ RSpec.describe 'Admin::People' do
       end
     end
 
-    context 'as a non-administrator' do
+    context 'when signed in as a non-administrator' do
       before { sign_in(regular_user) }
 
       it 'denies access' do

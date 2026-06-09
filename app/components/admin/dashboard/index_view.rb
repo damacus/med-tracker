@@ -46,7 +46,12 @@ module Components
                   else
                     t('admin.dashboard.status.needs_attention', count: attention_items.size)
                   end
-          classes = clear ? 'bg-success-container text-on-success-container' : 'bg-warning-container text-on-warning-container'
+          classes =
+            if clear
+              'bg-success-container text-on-success-container'
+            else
+              'bg-warning-container text-on-warning-container'
+            end
 
           span(
             data: { testid: 'dashboard-status' },
@@ -68,7 +73,7 @@ module Components
         def render_attention_row(item)
           a(
             href: item[:href],
-            class: "flex items-center gap-4 rounded-2xl border border-border bg-card p-4 no-underline " \
+            class: 'flex items-center gap-4 rounded-2xl border border-border bg-card p-4 no-underline ' \
                    "shadow-sm transition-all hover:shadow-md #{severity_accent(item[:severity])}"
           ) do
             div(class: 'w-10 h-10 rounded-xl bg-secondary-container flex items-center ' \
