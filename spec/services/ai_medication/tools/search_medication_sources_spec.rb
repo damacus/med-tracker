@@ -3,19 +3,16 @@
 require 'rails_helper'
 
 RSpec.describe AiMedication::Tools::SearchMedicationSources do
-  let(:allowlist) { instance_double(AiMedication::TrustedSourceAllowlist) }
-
   subject(:tool) { described_class.new(allowlist: allowlist) }
 
+  let(:allowlist) { instance_double(AiMedication::TrustedSourceAllowlist) }
   let(:calpol_url) { 'https://www.calpol.co.uk/our-products/calpol-sixplus-oral-suspension-paracetamol' }
   let(:medicines_url) { 'https://www.medicines.org.uk/emc/product/13866/pil' }
-
   let(:calpol_source) do
-    { 'url' => calpol_url, 'title' => 'CALPOL SixPlus', 'keywords' => ['calpol', 'paracetamol', 'sixplus'] }
+    { 'url' => calpol_url, 'title' => 'CALPOL SixPlus', 'keywords' => %w[calpol paracetamol sixplus] }
   end
-
   let(:medicines_source) do
-    { 'url' => medicines_url, 'title' => 'Medicines.org.uk — Ibuprofen', 'keywords' => ['ibuprofen', 'nurofen'] }
+    { 'url' => medicines_url, 'title' => 'Medicines.org.uk — Ibuprofen', 'keywords' => %w[ibuprofen nurofen] }
   end
 
   before do
@@ -70,7 +67,7 @@ RSpec.describe AiMedication::Tools::SearchMedicationSources do
     it 'returns multiple matches when the query spans multiple sources' do
       results = tool.execute(query: 'paracetamol ibuprofen')
 
-      expect(results.map { |r| r[:url] }).to contain_exactly(calpol_url, medicines_url)
+      expect(results.pluck(:url)).to contain_exactly(calpol_url, medicines_url)
     end
 
     it 'returns the url, title, and matched_keywords keys in each result' do

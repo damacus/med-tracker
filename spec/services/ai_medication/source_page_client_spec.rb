@@ -6,7 +6,9 @@ RSpec.describe AiMedication::SourcePageClient do
   subject(:client) { described_class.new }
 
   let(:valid_url) { 'https://www.calpol.co.uk/our-products/calpol-sixplus' }
-  let(:html_body) { '<html><head><title>CALPOL SixPlus</title></head><body><p>Children 6-8 years 5ml</p></body></html>' }
+  let(:html_body) do
+    '<html><head><title>CALPOL SixPlus</title></head><body><p>Children 6-8 years 5ml</p></body></html>'
+  end
 
   describe '#fetch' do
     context 'with a successful response' do
