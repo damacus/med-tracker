@@ -5,10 +5,8 @@ require 'rails_helper'
 RSpec.describe NhsDmd::VmpResolver do
   subject(:resolver) { described_class.new(client) }
 
-  let(:client) { instance_double(NhsDmd::Client, configured?: true) }
-
+  let(:client)     { instance_double(NhsDmd::Client, configured?: true) }
   let(:ampp_match) { { code: '123', display: 'Aspirin 300mg tablets (Brand Ltd)', concept_class: 'AMPP' } }
-  let(:amp_match)  { { code: '456', display: 'Aspirin 300mg tablets (Brand Ltd)', concept_class: 'AMP' } }
   let(:vmp_result) { { code: '789', display: 'Aspirin 300mg tablets', concept_class: 'VMP' } }
   let(:amp_result) { { code: '111', display: 'Aspirin 300mg tablets (Brand Ltd)', concept_class: 'AMP' } }
 
@@ -63,7 +61,8 @@ RSpec.describe NhsDmd::VmpResolver do
 
     context 'when the barcode match is AMP with a branded display' do
       it 'returns the first VMP result' do
-        result = resolver.resolve('Aspirin 300mg tablets (Brand Ltd)', amp_match)
+        result = resolver.resolve('Aspirin 300mg tablets (Brand Ltd)',
+                                  { code: '456', display: 'Aspirin 300mg tablets (Brand Ltd)', concept_class: 'AMP' })
 
         expect(result).to eq(vmp_result)
       end
