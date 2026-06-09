@@ -62,14 +62,8 @@ class Person < ApplicationRecord
 
   scope :without_carers, -> { where.missing(:carer_relationships) }
   scope :needing_carer_assignment, lambda {
-    without_capacity = where(has_capacity: false)
-
-    without_capacity.where.missing(:carer_relationships)
-                    .or(
-                      without_capacity.left_joins(:carer_relationships)
-                                      .where(carer_relationships: { active: false })
-                    )
-                    .distinct
+    where(has_capacity: false)
+      .where.not(id: CarerRelationship.active.select(:patient_id))
   }
 
   def age(reference_date = Time.zone.today)

@@ -31,4 +31,12 @@ RSpec.describe AuditActorResolver do
 
     expect(User).to have_received(:find_by).once
   end
+
+  it 'caches unknown ids so repeated misses hit the database once' do
+    allow(User).to receive(:find_by).and_call_original
+
+    2.times { resolver.name_for('999999') }
+
+    expect(User).to have_received(:find_by).once
+  end
 end

@@ -175,6 +175,18 @@ RSpec.describe Person do
       expect(described_class.needing_carer_assignment).not_to include(patient)
     end
 
+    it 'excludes no-capacity people with both active and inactive carers' do
+      patient = create(:person)
+      active_carer = create(:person)
+      inactive_carer = create(:person)
+      patient.has_capacity = false
+      patient.save!(validate: false)
+      create(:carer_relationship, patient: patient, carer: active_carer, active: true)
+      create(:carer_relationship, patient: patient, carer: inactive_carer, active: false)
+
+      expect(described_class.needing_carer_assignment).not_to include(patient)
+    end
+
     it 'excludes people who have capacity' do
       person_with_capacity = create(:person)
       person_with_capacity.update!(has_capacity: true)
