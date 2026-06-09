@@ -237,7 +237,7 @@ module Components
           section(data: { testid: 'dashboard-activity' }, class: 'space-y-2') do
             m3_heading(level: 2, size: '4', class: 'font-bold') { t('admin.dashboard.recent_activity.title') }
             if versions.any?
-              div(class: 'rounded-xl border border-border bg-card divide-y divide-border') do
+              div(class: 'grid gap-3') do
                 versions.each { |version| render_activity_row(version) }
               end
             else
@@ -249,11 +249,14 @@ module Components
         def render_activity_row(version)
           if version.id
             a(href: "/admin/audit_logs/#{version.id}",
-              class: 'flex items-center gap-3 p-3 no-underline hover:bg-tertiary-container') do
+              class: 'flex items-center gap-3 rounded-xl bg-card p-3 border border-border shadow-sm ' \
+                     'transition-all hover:shadow-md no-underline min-w-0') do
               render_activity_row_content(version)
             end
           else
-            div(class: 'flex items-center gap-3 p-3') { render_activity_row_content(version) }
+            div(class: 'flex items-center gap-3 rounded-xl bg-card p-3 border border-border shadow-sm min-w-0') do
+              render_activity_row_content(version)
+            end
           end
         end
 

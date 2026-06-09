@@ -98,4 +98,16 @@ RSpec.describe Components::Admin::Dashboard::IndexView, type: :component do
     expect(rendered.at_css('[data-testid="dashboard-activity"]')).to be_present
     expect(rendered.text).to include(users(:admin).name)
   end
+
+  it 'renders recent activity rows with stable card hover styling' do
+    PaperTrail.request.whodunnit = users(:admin).id
+    PaperTrail.request(enabled: true) { people(:john).update!(name: 'Stable Hover') }
+    version = PaperTrail::Version.order(created_at: :desc).first
+
+    rendered = render_inline(described_class.new(metrics: { recent_activity: [version].compact }))
+    row = rendered.at_css("a[href='/admin/audit_logs/#{version.id}']")
+
+    expect(row[:class]).to include('rounded-xl', 'border', 'shadow-sm', 'hover:shadow-md')
+    expect(row[:class]).not_to include('hover:bg-tertiary-container')
+  end
 end
