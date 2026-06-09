@@ -5,10 +5,10 @@ require 'rails_helper'
 RSpec.describe GlobalSearch::PeopleResultsQuery do
   fixtures :accounts, :people, :users, :locations, :location_memberships, :carer_relationships
 
+  subject(:results) { described_class.new(user: user, query: query, limit: limit, builder: builder).call }
+
   let(:limit) { 10 }
   let(:builder) { GlobalSearch::ResultBuilder.new(query: query) }
-
-  subject(:results) { described_class.new(user: user, query: query, limit: limit, builder: builder).call }
 
   describe '#call' do
     context 'when the query matches a person name' do

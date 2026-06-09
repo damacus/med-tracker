@@ -5,11 +5,11 @@ require 'rails_helper'
 RSpec.describe GlobalSearch::MedicationsResultsQuery do
   fixtures :accounts, :people, :users, :locations, :location_memberships, :medications
 
+  subject(:results) { described_class.new(user: user, query: query, limit: limit, builder: builder).call }
+
   let(:user) { users(:damacus) }
   let(:limit) { 10 }
   let(:builder) { GlobalSearch::ResultBuilder.new(query: query) }
-
-  subject(:results) { described_class.new(user: user, query: query, limit: limit, builder: builder).call }
 
   describe '#call' do
     context 'when the query matches a medication name' do
@@ -65,7 +65,7 @@ RSpec.describe GlobalSearch::MedicationsResultsQuery do
       end
     end
 
-    context 'subtitle building' do
+    context 'when building the subtitle' do
       let(:query) { 'Vitamin D' }
 
       it 'includes category and location name in the subtitle when both are present' do
@@ -107,7 +107,7 @@ RSpec.describe GlobalSearch::MedicationsResultsQuery do
       end
     end
 
-    context 'ordering' do
+    context 'when ordering results' do
       let(:query) { 'a' }
 
       it 'returns results ordered alphabetically by medication name' do
