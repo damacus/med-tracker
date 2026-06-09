@@ -63,32 +63,46 @@ RSpec.describe NhsDmd::ReleaseImportCounts do
   end
 
   describe '#build_result' do
-    it 'maps count keys into a Result value object' do
-      counts = {
-        created: 3, updated: 2, unchanged: 1,
-        skipped_expired: 1, skipped_missing_name: 0, skipped_invalid: 1
-      }
+    subject(:result) { host.build_result(counts) }
 
-      result = host.build_result(counts)
+    let(:counts) do
+      { created: 3, updated: 2, unchanged: 1, skipped_expired: 1, skipped_missing_name: 0, skipped_invalid: 1 }
+    end
 
+    it 'sets created_count' do
       expect(result.created_count).to eq(3)
+    end
+
+    it 'sets updated_count' do
       expect(result.updated_count).to eq(2)
+    end
+
+    it 'sets unchanged_count' do
       expect(result.unchanged_count).to eq(1)
+    end
+
+    it 'sets skipped_expired_count' do
       expect(result.skipped_expired_count).to eq(1)
+    end
+
+    it 'sets skipped_missing_name_count' do
       expect(result.skipped_missing_name_count).to eq(0)
+    end
+
+    it 'sets skipped_invalid_count' do
       expect(result.skipped_invalid_count).to eq(1)
     end
   end
 
   describe '#breakdown_payload' do
+    subject(:payload) { host.breakdown_payload(counts) }
+
     let(:counts) do
       {
         created: 4, updated: 3, unchanged: 2,
         skipped_expired: 1, skipped_missing_name: 2, skipped_invalid: 3
       }
     end
-
-    subject(:payload) { host.breakdown_payload(counts) }
 
     it 'calculates imported_count as created + updated' do
       expect(payload[:imported_count]).to eq(7)

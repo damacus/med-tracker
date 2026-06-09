@@ -70,11 +70,8 @@ RSpec.describe NhsDmd::ReleaseImportProgress do
 
   describe '#emit_progress' do
     context 'when there is no callback' do
-      it 'does nothing' do
-        host.emit_progress(base_counts, nil, message: 'test')
-
-        # No error means success — no callback to verify
-        expect(true).to be true
+      it 'does not raise an error' do
+        expect { host.emit_progress(base_counts, nil, message: 'test') }.not_to raise_error
       end
     end
 
