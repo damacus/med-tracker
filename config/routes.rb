@@ -44,6 +44,7 @@ Rails.application.routes.draw do
         post :activate
       end
     end
+    resources :people, only: %i[index]
     resources :audit_logs, only: %i[index show]
     resource :settings, only: %i[show update]
   end

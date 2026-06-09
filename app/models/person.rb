@@ -61,6 +61,10 @@ class Person < ApplicationRecord
   validate :avatar_must_be_smaller_than_five_megabytes
 
   scope :without_carers, -> { where.missing(:carer_relationships) }
+  scope :needing_carer_assignment, lambda {
+    where(has_capacity: false)
+      .where.not(id: CarerRelationship.active.select(:patient_id))
+  }
 
   def age(reference_date = Time.zone.today)
     return nil unless date_of_birth

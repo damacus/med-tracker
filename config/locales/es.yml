@@ -508,6 +508,54 @@ es:
         total_people: Personas totales
         active_schedules: Planes activos
         no_carers: Sin cuidadores
+      metrics_extra:
+        pending_invitations: Invitaciones pendientes
+        recent_audit_events: Cambios (24 h)
+      status:
+        all_clear: Todo en orden
+        needs_attention:
+          one: "%{count} elemento necesita atención"
+          other: "%{count} elementos necesitan atención"
+      attention:
+        title: Requiere revisión
+        empty_title: No hay trabajo administrativo urgente
+        empty_detail: Todo parece estar correcto ahora mismo.
+        actions:
+          view: Ver
+          review: Revisar
+          open: Abrir
+        no_carers:
+          title: Pacientes sin cuidadores
+          detail:
+            one: "%{count} paciente pendiente de asignación de cuidador"
+            other: "%{count} pacientes pendientes de asignación de cuidador"
+        expired_invitations:
+          title: Invitaciones caducadas
+          detail:
+            one: "%{count} caducada y necesita reenviarse"
+            other: "%{count} caducadas y necesitan reenviarse"
+        dmd_failed:
+          title: Error al importar dm+d
+          detail: Falló hace %{when}
+        dmd_stalled:
+          title: Importación dm+d en curso
+          detail: En ejecución desde hace %{when}
+        dmd_missing:
+          title: NHS dm+d no importado
+          detail: Importa la versión más reciente para mantener actualizados los datos de búsqueda de medicamentos.
+        dmd_stale:
+          title: Datos NHS dm+d desactualizados
+          detail: La última importación completada fue hace %{when}
+      sections:
+        user_access: Acceso de usuarios
+        operations: Operaciones
+      recent_activity:
+        title: Actividad reciente
+        empty: No hay actividad reciente
+        events:
+          create: creó
+          update: actualizó
+          destroy: eliminó
       quick_actions:
         title: Acciones rápidas
         manage_users_title: Gestionar usuarios
@@ -520,6 +568,16 @@ es:
         audit_trail_description: Ver los registros de auditoría del sistema
         import_dmd_description: Importar datos de medicamentos de NHS dm+d.
         import_dmd_title: Importar dm+d
+    people:
+      index:
+        title: Pacientes que necesitan cuidador
+        subtitle: Personas sin capacidad que no tienen un cuidador activo asignado
+        empty: Ningún paciente carece de cuidador en este momento
+        table:
+          name: Nombre
+          type: Tipo
+          actions: Acciones
+          view: Ver
     nhs_dmd_imports:
       created: 'Publicación NHS dm+d importada: %{imported} registros importados,
         %{skipped} omitidos.'

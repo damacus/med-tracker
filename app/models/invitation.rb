@@ -25,6 +25,7 @@ class Invitation < ApplicationRecord
   enum :role, { administrator: 0, doctor: 1, nurse: 2, carer: 3, parent: 4, minor: 5 }, validate: true
 
   scope :pending, -> { where(accepted_at: nil).where('expires_at > ?', Time.current) }
+  scope :expired, -> { where(accepted_at: nil).where(expires_at: ..Time.current) }
 
   def self.assignable_roles
     roles.except('minor')

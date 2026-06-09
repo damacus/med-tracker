@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Admin Operations Console Mockup</title>
+    <style>
+      :root {
+        --page: #eaf0f8;
+        --shell: #f7faff;
+        --card: #ffffff;
+        --ink: #13213a;
+        --muted: #6a7790;
+        --line: #d7e0ee;
+        --blue: #1f5cbf;
+        --blue-soft: #e6eefc;
+        --green: #0b7a45;
+        --green-soft: #def3e8;
+        --amber: #9a620f;
+        --amber-soft: #f6e9cf;
+        --red: #a43b3b;
+        --red-soft: #f4dddd;
+        --shadow: 0 18px 42px rgba(31, 63, 108, 0.12);
+        --radius: 18px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        min-height: 100vh;
+        margin: 0;
+        background: var(--page);
+        color: var(--ink);
+        font-family: "Avenir Next", "Segoe UI", sans-serif;
+        letter-spacing: 0;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .app {
+        display: grid;
+        grid-template-columns: 232px minmax(0, 1fr);
+        min-height: 100vh;
+      }
+
+      .sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+        border-right: 1px solid var(--line);
+        background: var(--shell);
+        padding: 28px 14px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0 10px 22px;
+        font-weight: 900;
+        font-size: 19px;
+      }
+
+      .mark {
+        display: grid;
+        width: 36px;
+        height: 36px;
+        place-items: center;
+        border-radius: 12px;
+        background: var(--blue);
+        color: white;
+        font-weight: 900;
+      }
+
+      .nav {
+        display: grid;
+        gap: 8px;
+      }
+
+      .nav a {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 44px;
+        border-radius: 14px;
+        padding: 0 14px;
+        color: var(--muted);
+        font-size: 14px;
+        font-weight: 800;
+      }
+
+      .nav a.active {
+        background: var(--blue-soft);
+        color: #17447f;
+      }
+
+      .main {
+        width: min(1080px, 100%);
+        padding: 44px 48px 72px;
+      }
+
+      .header {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 24px;
+        margin-bottom: 28px;
+      }
+
+      .eyebrow {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 900;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
+      }
+
+      h1 {
+        margin-top: 6px;
+        font-size: clamp(34px, 5vw, 56px);
+        line-height: 1;
+        font-weight: 900;
+      }
+
+      h2 {
+        font-size: 22px;
+        font-weight: 900;
+      }
+
+      .status {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: 9px 16px;
+        background: var(--amber-soft);
+        color: var(--amber);
+        font-size: 14px;
+        font-weight: 900;
+        white-space: nowrap;
+      }
+
+      .section {
+        margin-top: 24px;
+      }
+
+      .section-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 12px;
+      }
+
+      .queue {
+        display: grid;
+        gap: 10px;
+      }
+
+      .queue-row {
+        display: grid;
+        grid-template-columns: 92px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 14px;
+        border: 1px solid var(--line);
+        border-left-width: 6px;
+        border-radius: var(--radius);
+        background: var(--card);
+        padding: 14px 16px;
+        box-shadow: var(--shadow);
+      }
+
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+
+      .queue-row.high {
+        border-left-color: var(--red);
+      }
+
+      .queue-row.medium {
+        border-left-color: var(--amber);
+      }
+
+      .severity {
+        display: inline-flex;
+        min-height: 28px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        padding: 0 10px;
+        font-size: 11px;
+        font-weight: 900;
+        text-transform: uppercase;
+      }
+
+      .severity.high {
+        background: var(--red-soft);
+        color: var(--red);
+      }
+
+      .severity.medium {
+        background: var(--amber-soft);
+        color: var(--amber);
+      }
+
+      .row-title {
+        min-width: 0;
+      }
+
+      .row-title strong {
+        display: block;
+        font-size: 16px;
+        font-weight: 900;
+      }
+
+      .row-title span {
+        display: block;
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .action {
+        color: var(--blue);
+        font-size: 14px;
+        font-weight: 900;
+      }
+
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .metric {
+        min-height: 116px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--card);
+        padding: 18px;
+        box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset;
+      }
+
+      .metric span {
+        display: block;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .metric strong {
+        display: block;
+        margin-top: 18px;
+        color: var(--blue);
+        font-size: 34px;
+        line-height: 1;
+        font-weight: 900;
+      }
+
+      .quick-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 20px;
+      }
+
+      .group {
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: rgba(255, 255, 255, 0.72);
+        padding: 18px;
+      }
+
+      .group h2 {
+        margin-bottom: 12px;
+      }
+
+      .quick-link {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        min-height: 58px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: white;
+        padding: 0 16px;
+        font-weight: 900;
+      }
+
+      .quick-link + .quick-link {
+        margin-top: 10px;
+      }
+
+      .activity {
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: white;
+      }
+
+      .activity-row {
+        display: flex;
+        gap: 16px;
+        align-items: center;
+        padding: 14px 18px;
+        border-top: 1px solid var(--line);
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .activity-row:first-child {
+        border-top: 0;
+      }
+
+      .activity-row time {
+        color: var(--muted);
+        font-family: ui-monospace, "SFMono-Regular", monospace;
+        font-weight: 900;
+      }
+
+      @media (max-width: 900px) {
+        .app {
+          grid-template-columns: 1fr;
+        }
+
+        .sidebar {
+          display: none;
+        }
+
+        .main {
+          padding: 28px 18px 48px;
+        }
+
+        .header,
+        .section-head {
+          align-items: start;
+          flex-direction: column;
+        }
+
+        .queue-row {
+          grid-template-columns: 1fr;
+          align-items: start;
+        }
+
+        .metrics,
+        .quick-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar" aria-label="Primary navigation">
+        <div class="brand"><span class="mark">M</span>MedTracker</div>
+        <nav class="nav">
+          <a href="#">Dashboard</a>
+          <a href="#">Inventory</a>
+          <a href="#">People</a>
+          <a href="#">Reports</a>
+          <a class="active" href="#">Administration</a>
+        </nav>
+      </aside>
+
+      <main class="main">
+        <header class="header">
+          <div>
+            <div class="eyebrow">Tuesday, Jun 09</div>
+            <h1>Admin Dashboard</h1>
+          </div>
+          <span class="status">2 items need attention</span>
+        </header>
+
+        <section class="section" aria-labelledby="attention-title">
+          <h2 id="attention-title" class="sr-only">Needs Review</h2>
+          <div class="queue">
+            <a class="queue-row high" href="#">
+              <span class="severity high">High</span>
+              <span class="row-title">
+                <strong>Patients without carers</strong>
+                <span>2 patients awaiting carer assignment</span>
+              </span>
+              <span class="action">View</span>
+            </a>
+            <a class="queue-row medium" href="#">
+              <span class="severity medium">Medium</span>
+              <span class="row-title">
+                <strong>Expired invitations</strong>
+                <span>1 expired and needs resending</span>
+              </span>
+              <span class="action">Review</span>
+            </a>
+            <a class="queue-row high" href="#">
+              <span class="severity high">High</span>
+              <span class="row-title">
+                <strong>NHS dm+d not imported</strong>
+                <span>Import the latest release so medication lookup data is current</span>
+              </span>
+              <span class="action">Open</span>
+            </a>
+          </div>
+        </section>
+
+        <section class="section metrics" aria-label="Operational metrics">
+          <article class="metric"><span>Users</span><strong>4</strong></article>
+          <article class="metric"><span>Active</span><strong>4</strong></article>
+          <article class="metric"><span>People</span><strong>6</strong></article>
+          <article class="metric"><span>Schedules</span><strong>7</strong></article>
+          <article class="metric"><span>No carers</span><strong>2</strong></article>
+          <article class="metric"><span>Pending invites</span><strong>2</strong></article>
+          <article class="metric"><span>Changes (24h)</span><strong>8</strong></article>
+          <article class="metric"><span>Signups</span><strong>0</strong></article>
+        </section>
+
+        <section class="section quick-grid" aria-label="Quick actions">
+          <div class="group">
+            <h2>User Access</h2>
+            <a class="quick-link" href="#">Manage users <span class="action">Open</span></a>
+            <a class="quick-link" href="#">Invitations <span class="action">Open</span></a>
+          </div>
+          <div class="group">
+            <h2>Operations</h2>
+            <a class="quick-link" href="#">Manage people <span class="action">Open</span></a>
+            <a class="quick-link" href="#">Audit trail <span class="action">Open</span></a>
+            <a class="quick-link" href="#">Import dm+d release <span class="action">Open</span></a>
+          </div>
+        </section>
+
+        <section class="section" aria-labelledby="activity-title">
+          <div class="section-head">
+            <h2 id="activity-title">Recent Activity</h2>
+          </div>
+          <div class="activity">
+            <div class="activity-row"><time>07:54</time><span>Dan updated User #4</span></div>
+            <div class="activity-row"><time>07:22</time><span>System updated NhsDmdImport #3</span></div>
+            <div class="activity-row"><time>06:10</time><span>Dan created Invitation #9</span></div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

@@ -16,7 +16,7 @@ module Components
           @current_page = pagination.fetch(:current_page, 1)
           @total_count = pagination.fetch(:total_count, 0)
           @per_page = pagination.fetch(:per_page, 50)
-          @user_cache = {}
+          @actor_resolver = AuditActorResolver.new
           super()
         end
 
@@ -254,13 +254,7 @@ module Components
         # @param whodunnit [String, nil] User ID from PaperTrail
         # @return [String] User name, "System", or "User #ID"
         def render_user_info(whodunnit)
-          return I18n.t('admin.audit_logs.index.system') if whodunnit.blank?
-
-          # Cache user lookups to prevent N+1 queries when rendering multiple rows
-          @user_cache[whodunnit] ||= User.find_by(id: whodunnit)
-          user = @user_cache[whodunnit]
-
-          user ? user.name : "User ##{whodunnit}"
+          @actor_resolver.name_for(whodunnit)
         end
 
         # Pagination helpers

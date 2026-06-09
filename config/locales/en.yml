@@ -300,6 +300,54 @@ en:
         total_people: Total People
         active_schedules: Active Schedules
         no_carers: No Carers
+      metrics_extra:
+        pending_invitations: Pending Invitations
+        recent_audit_events: Changes (24h)
+      status:
+        all_clear: All clear
+        needs_attention:
+          one: "%{count} item needs attention"
+          other: "%{count} items need attention"
+      attention:
+        title: Needs Review
+        empty_title: No urgent admin work
+        empty_detail: Everything looks healthy right now.
+        actions:
+          view: View
+          review: Review
+          open: Open
+        no_carers:
+          title: Patients without carers
+          detail:
+            one: "%{count} patient awaiting carer assignment"
+            other: "%{count} patients awaiting carer assignment"
+        expired_invitations:
+          title: Expired invitations
+          detail:
+            one: "%{count} expired and needs resending"
+            other: "%{count} expired and need resending"
+        dmd_failed:
+          title: dm+d import failed
+          detail: Failed %{when} ago
+        dmd_stalled:
+          title: dm+d import in progress
+          detail: Running for %{when}
+        dmd_missing:
+          title: NHS dm+d not imported
+          detail: Import the latest release so medication lookup data is current.
+        dmd_stale:
+          title: NHS dm+d data out of date
+          detail: Last completed import was %{when} ago
+      sections:
+        user_access: User Access
+        operations: Operations
+      recent_activity:
+        title: Recent Activity
+        empty: No recent activity
+        events:
+          create: created
+          update: updated
+          destroy: deleted
       quick_actions:
         title: Quick Actions
         manage_users_title: Manage Users
@@ -312,6 +360,16 @@ en:
         audit_trail_description: View system audit logs
         import_dmd_title: Import dm+d release
         import_dmd_description: Upload and import the latest NHS dm+d ZIP
+    people:
+      index:
+        title: Patients needing carers
+        subtitle: People without capacity who have no active carer assigned
+        empty: No patients are currently missing a carer
+        table:
+          name: Name
+          type: Type
+          actions: Actions
+          view: View
     nhs_dmd_imports:
       title: Import NHS dm+d release
       subtitle: Upload the latest NHS dm+d ZIP and import AMPP names with GTIN barcode
