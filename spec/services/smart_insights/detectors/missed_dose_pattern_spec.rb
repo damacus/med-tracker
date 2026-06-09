@@ -11,10 +11,15 @@ RSpec.describe SmartInsights::Detectors::MissedDosePattern do
     expect(described_class.new(context_with(data)).call).to eq([])
   end
 
-  it 'warns when two consecutive days are missed' do
+  it 'warns (key/family/severity) when two consecutive days are missed' do
     data = [day(expected: 1, actual: 0), day(expected: 1, actual: 0), day(expected: 1, actual: 1)]
     insight = described_class.new(context_with(data)).call.first
     expect(insight).to have_attributes(key: :missed_dose_pattern, family: :adherence, severity: :warning)
+  end
+
+  it 'sets correct I18n fields on the missed_dose_pattern insight' do
+    data = [day(expected: 1, actual: 0), day(expected: 1, actual: 0), day(expected: 1, actual: 1)]
+    insight = described_class.new(context_with(data)).call.first
     expect(insight.title).to eq(I18n.t('smart_insights.detectors.missed_dose_pattern.title'))
     expect(insight.summary).to eq(I18n.t('smart_insights.detectors.missed_dose_pattern.summary', count: 2))
     expect(insight.detail).to eq(I18n.t('smart_insights.detectors.missed_dose_pattern.detail'))
@@ -23,7 +28,8 @@ RSpec.describe SmartInsights::Detectors::MissedDosePattern do
   end
 
   it 'does not count a day with zero expected as missed' do
-    expect(described_class.new(context_with([day(expected: 0, actual: 0), day(expected: 0, actual: 0)])).call).to eq([])
+    data = [day(expected: 0, actual: 0), day(expected: 0, actual: 0)]
+    expect(described_class.new(context_with(data)).call).to eq([])
   end
 
   it 'tracks the longest streak, not the most recent' do
