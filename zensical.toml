@@ -12,11 +12,12 @@ nav = [
   { "🏠 For Families" = [
     { "Add your first medicine" = "families/adding-first-medicine.md" },
     { "Record a dose" = "families/taking-first-dose.md" },
+    { "Top up by scanning" = "families/topping-up-medicine.md" },
     { "Managing Your Family" = "user-management.md" }
   ] },
   { "🛠️ For Developers" = [
     { "Quick Start" = "quick-start.md" },
-    { "Self-Hosting Setup" = "self-hosting.md" },
+    { "Self-Hosting" = "self-hosting.md" },
     { Deployment = "deployment.md" },
     { Testing = "testing.md" },
     { Design = "design.md" },
