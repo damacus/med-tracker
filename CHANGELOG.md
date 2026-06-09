@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.70](https://github.com/damacus/med-tracker/compare/v0.3.69...v0.3.70) (2026-06-09)
+
+
+### Bug Fixes
+
+* rubocop offenses + document module_function mutation limitation ([e2a665c](https://github.com/damacus/med-tracker/commit/e2a665c0ffa15c97a27cbbbfef038f275e42e900))
+
 ## [0.3.69](https://github.com/damacus/med-tracker/compare/v0.3.68...v0.3.69) (2026-06-09)
 
 
