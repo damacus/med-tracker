@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.69](https://github.com/damacus/med-tracker/compare/v0.3.68...v0.3.69) (2026-06-09)
+
+
+### Features
+
+* redesign admin operations console ([#1346](https://github.com/damacus/med-tracker/issues/1346)) ([8dfa1cc](https://github.com/damacus/med-tracker/commit/8dfa1cc15f5b522fafc5ae8706a1ff1f8e99d583))
+
+
+### Bug Fixes
+
+* stabilize dose meter styling ([#1342](https://github.com/damacus/med-tracker/issues/1342)) ([4085dc3](https://github.com/damacus/med-tracker/commit/4085dc36c06f3acee3ecf76182bba9cbcbd0cfab))
+
 ## [0.3.68](https://github.com/damacus/med-tracker/compare/v0.3.67...v0.3.68) (2026-06-08)
 
 
