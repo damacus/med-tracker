@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe MedicationTakeStockSource do
+  subject(:stock_source) { described_class.new(take: take, inventory: inventory) }
+
   let(:take) do
     instance_double(
       MedicationTake,
@@ -19,8 +21,6 @@ RSpec.describe MedicationTakeStockSource do
     allow(InventoryDosageOptionResolver).to receive(:new).and_return(resolver)
   end
 
-  subject(:stock_source) { described_class.new(take: take, inventory: inventory) }
-
   describe '#tracked?' do
     context 'when inventory is blank' do
       let(:inventory) { nil }
@@ -30,7 +30,7 @@ RSpec.describe MedicationTakeStockSource do
 
     context 'when inventory is present but has no current_supply and no dosage_option' do
       before do
-        allow(inventory).to receive(:current_supply).and_return(nil)
+        allow(inventory).to receive_messages(current_supply: nil)
         allow(resolver).to receive(:call).and_return(nil)
       end
 
@@ -66,9 +66,7 @@ RSpec.describe MedicationTakeStockSource do
 
     context 'when inventory is tracked by dosage records but resolver returns nothing' do
       before do
-        allow(inventory).to receive(:current_supply).and_return(nil)
-        allow(resolver).to receive(:tracked_inventory?).and_return(true)
-        allow(resolver).to receive(:call).and_return(nil)
+        allow(resolver).to receive_messages(tracked_inventory?: true, call: nil)
       end
 
       it { is_expected.not_to be_selected_dose }
@@ -86,8 +84,7 @@ RSpec.describe MedicationTakeStockSource do
       let(:dosage_option) { instance_double(Dosage) }
 
       before do
-        allow(resolver).to receive(:tracked_inventory?).and_return(true)
-        allow(resolver).to receive(:call).and_return(dosage_option)
+        allow(resolver).to receive_messages(tracked_inventory?: true, call: dosage_option)
       end
 
       it { is_expected.to be_selected_dose }
@@ -104,8 +101,7 @@ RSpec.describe MedicationTakeStockSource do
     context 'when tracked dosage inventory but dosage_option missing (missing tracked dose)' do
       before do
         allow(inventory).to receive(:current_supply).and_return(nil)
-        allow(resolver).to receive(:tracked_inventory?).and_return(true)
-        allow(resolver).to receive(:call).and_return(nil)
+        allow(resolver).to receive_messages(tracked_inventory?: true, call: nil)
       end
 
       it { is_expected.to be_in_stock }
@@ -115,8 +111,7 @@ RSpec.describe MedicationTakeStockSource do
       let(:dosage_option) { instance_double(Dosage, current_supply: 5, unit: 'tablet') }
 
       before do
-        allow(resolver).to receive(:tracked_inventory?).and_return(true)
-        allow(resolver).to receive(:call).and_return(dosage_option)
+        allow(resolver).to receive_messages(tracked_inventory?: true, call: dosage_option)
         allow(MedicationStockConsumption).to receive(:sufficient?).and_return(true)
       end
 
@@ -127,8 +122,7 @@ RSpec.describe MedicationTakeStockSource do
       let(:dosage_option) { instance_double(Dosage, current_supply: 5, unit: 'tablet') }
 
       before do
-        allow(resolver).to receive(:tracked_inventory?).and_return(true)
-        allow(resolver).to receive(:call).and_return(dosage_option)
+        allow(resolver).to receive_messages(tracked_inventory?: true, call: dosage_option)
         allow(MedicationStockConsumption).to receive(:sufficient?).and_return(false)
       end
 
@@ -138,8 +132,7 @@ RSpec.describe MedicationTakeStockSource do
     context 'when no dosage_option but inventory.current_supply is blank' do
       before do
         allow(inventory).to receive(:current_supply).and_return(nil)
-        allow(resolver).to receive(:tracked_inventory?).and_return(false)
-        allow(resolver).to receive(:call).and_return(nil)
+        allow(resolver).to receive_messages(tracked_inventory?: false, call: nil)
       end
 
       it { is_expected.to be_in_stock }
@@ -148,8 +141,7 @@ RSpec.describe MedicationTakeStockSource do
     context 'when no dosage_option and inventory.current_supply is present but insufficient' do
       before do
         allow(inventory).to receive(:current_supply).and_return(1)
-        allow(resolver).to receive(:tracked_inventory?).and_return(false)
-        allow(resolver).to receive(:call).and_return(nil)
+        allow(resolver).to receive_messages(tracked_inventory?: false, call: nil)
         allow(MedicationStockConsumption).to receive(:sufficient?).and_return(false)
       end
 

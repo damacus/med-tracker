@@ -3,11 +3,16 @@
 require 'rails_helper'
 
 RSpec.describe MedicationDailyConsumption do
+  subject(:consumption) { described_class.new(medication) }
+
+  let(:schedules_proxy) { instance_double(ActiveRecord::Associations::CollectionProxy) }
   let(:medication) do
-    instance_double(Medication, schedules: double('schedules', select: []), person_medications: [])
+    instance_double(Medication, schedules: schedules_proxy, person_medications: [])
   end
 
-  subject(:consumption) { described_class.new(medication) }
+  before do
+    allow(schedules_proxy).to receive(:select).and_return([])
+  end
 
   describe '#call' do
     context 'when there are no active schedules and no person_medications' do
@@ -22,14 +27,12 @@ RSpec.describe MedicationDailyConsumption do
           Schedule,
           active?: true,
           max_daily_doses: 2,
-          cycle_period: 1.day,
-          effective_dose_amount: 1,
-          effective_dose_unit: 'tablet'
+          cycle_period: 1.day
         )
       end
 
       before do
-        allow(medication).to receive_message_chain(:schedules, :select).and_return([schedule])
+        allow(schedules_proxy).to receive(:select).and_yield(schedule).and_return([schedule])
         allow(schedule).to receive(:effective_dose_amount).with(Time.zone.today).and_return(1)
         allow(schedule).to receive(:effective_dose_unit).with(Time.zone.today).and_return('tablet')
         allow(MedicationStockConsumption).to receive(:quantity_for)
@@ -48,7 +51,7 @@ RSpec.describe MedicationDailyConsumption do
       end
 
       before do
-        allow(medication).to receive_message_chain(:schedules, :select).and_return([schedule])
+        allow(schedules_proxy).to receive(:select).and_return([schedule])
       end
 
       it 'skips schedules with no max_daily_doses' do
