@@ -22,6 +22,16 @@ RSpec.describe 'Admin turbo actions' do
       expect(response.body).to include('target="flash"')
       expect(user.reload).to be_active
     end
+
+    it 'reactivates a deactivated user and redirects with a notice (HTML)' do
+      user = users(:jane)
+      user.deactivate!
+
+      post activate_admin_user_path(user)
+
+      expect(response).to redirect_to(admin_users_path)
+      expect(user.reload).to be_active
+    end
   end
 
   describe 'DELETE /admin/users/:id' do
@@ -35,6 +45,23 @@ RSpec.describe 'Admin turbo actions' do
       expect(response.body).to include("target=\"user_#{user.id}\"")
       expect(response.body).to include('target="flash"')
       expect(user.reload).not_to be_active
+    end
+
+    context 'when targeting the currently signed-in admin' do
+      it 'refuses to deactivate self and returns unprocessable content (turbo)' do
+        delete admin_user_path(admin), headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.body).to include('target="flash"')
+        expect(admin.reload).to be_active
+      end
+
+      it 'refuses to deactivate self and redirects with an alert (HTML)' do
+        delete admin_user_path(admin)
+
+        expect(response).to redirect_to(admin_users_path)
+        expect(admin.reload).to be_active
+      end
     end
   end
 
@@ -50,6 +77,18 @@ RSpec.describe 'Admin turbo actions' do
       expect(response.body).to include("target=\"user_#{user.id}\"")
       expect(response.body).to include('target="flash"')
       expect(user.person.account.reload).to be_verified
+    end
+
+    context 'when the user has no account' do
+      it 'returns unprocessable content and a missing-account alert (turbo)' do
+        user = users(:jane)
+        user.person.update!(account: nil)
+
+        post verify_admin_user_path(user), headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.body).to include('target="flash"')
+      end
     end
   end
 
