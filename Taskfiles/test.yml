@@ -25,6 +25,21 @@ tasks:
       - task: :internal:up-db
         vars: { ENVIRONMENT: test }
 
+  exec:
+    desc: Run an arbitrary command in the ephemeral test web container (CMD=...)
+    summary: |
+      Run an arbitrary command inside a one-off test web container.
+      Useful for bundle install, coverage inspection, and mutation tooling setup.
+      Usage: task test:exec CMD='bundle install'
+      Usage: task test:exec CMD='cat coverage/.last_run.json'
+    requires:
+      vars: [CMD]
+    cmds:
+      - task: :internal:run
+        vars:
+          ENVIRONMENT: test
+          COMMAND: '{{ .CMD }}'
+
   portless:
     desc: Start test server and register a Portless OIDC URL
     summary: |

@@ -1,0 +1,18 @@
+---
+# Mutant configuration. See: https://github.com/mbj/mutant
+# Run via: task mutation SUBJECT=SomeClass   (requires `task test:up` first)
+#
+# `usage: opensource` is free for public OSS projects (mutant 0.16+ dropped the
+# license gem). Valid here because this repository is public and MIT-licensed.
+usage: opensource
+integration:
+  name: rspec
+includes:
+  - app
+requires:
+  - ./config/environment
+# Subjects we deliberately do not mutate yet (add with a reason — never leave a
+# survivor silently alive; see the plan's Subject Loop Protocol).
+# matcher:
+#   ignore:
+#     - 'SomeClass#equivalent_method'
