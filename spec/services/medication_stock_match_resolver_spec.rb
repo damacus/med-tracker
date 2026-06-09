@@ -5,7 +5,9 @@ require 'rails_helper'
 RSpec.describe MedicationStockMatchResolver do
   subject(:resolver) { described_class.new(scope: scope, barcode_lookup: barcode_lookup) }
 
-  let(:medication) { create(:medication, name: 'Paracetamol 500 mg Tablets', dosage_unit: 'tablet', dosage_amount: nil) }
+  let(:medication) do
+    create(:medication, name: 'Paracetamol 500 mg Tablets', dosage_unit: 'tablet', dosage_amount: nil)
+  end
   let(:scope) { Medication.where(id: medication.id) }
   let(:barcode_lookup) { instance_double(BarcodeCatalog::Lookup, lookup: nil) }
 
@@ -84,7 +86,9 @@ RSpec.describe MedicationStockMatchResolver do
     end
 
     context 'with package_unit attribute' do
-      let(:liquid_med) { create(:medication, name: 'Vitamin D 3000IU/ml Solution', dosage_unit: 'ml', dosage_amount: nil) }
+      let(:liquid_med) do
+        create(:medication, name: 'Vitamin D 3000IU/ml Solution', dosage_unit: 'ml', dosage_amount: nil)
+      end
       let(:scope) { Medication.where(id: liquid_med.id) }
 
       it 'passes package_unit to the candidate for form matching' do

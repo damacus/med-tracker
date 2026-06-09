@@ -159,6 +159,8 @@ RSpec.describe MedicationStockSourceResolver do
 
       it 'returns true when no id provided (admin user sees all scope)' do
         # john is an admin — MedicationPolicy::Scope returns scope.all
+        # second_medication is in scope alongside the primary medication
+        expect(second_medication).to be_persisted
         user = users(:john)
         source = build_source(medication)
         resolver = described_class.new(user: user, source: source, taken_at: taken_at)

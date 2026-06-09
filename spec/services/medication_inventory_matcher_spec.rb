@@ -17,15 +17,25 @@ RSpec.describe MedicationInventoryMatcher do
     )
   end
 
-  let(:paracetamol_500mg) { create(:medication, name: 'Paracetamol 500 mg Tablets', dosage_unit: 'tablet', dosage_amount: nil) }
-  let(:paracetamol_250mg) { create(:medication, name: 'Paracetamol 250 mg Tablets', dosage_unit: 'tablet', dosage_amount: nil) }
-  let(:amoxicillin) { create(:medication, name: 'Amoxicillin 500 mg Capsules', dosage_unit: 'capsule', dosage_amount: nil) }
-  let(:vitamin_d_liquid) { create(:medication, name: 'Vitamin D Oral Solution 3000IU/ml', dosage_unit: 'ml', dosage_amount: nil) }
+  let(:paracetamol_500mg) do
+    create(:medication, name: 'Paracetamol 500 mg Tablets', dosage_unit: 'tablet', dosage_amount: nil)
+  end
+  let(:paracetamol_250mg) do
+    create(:medication, name: 'Paracetamol 250 mg Tablets', dosage_unit: 'tablet', dosage_amount: nil)
+  end
+  let(:amoxicillin) do
+    create(:medication, name: 'Amoxicillin 500 mg Capsules', dosage_unit: 'capsule', dosage_amount: nil)
+  end
+  let(:vitamin_d_liquid) do
+    create(:medication, name: 'Vitamin D Oral Solution 3000IU/ml', dosage_unit: 'ml', dosage_amount: nil)
+  end
 
-  let(:scope) { Medication.where(id: [paracetamol_500mg, paracetamol_250mg, amoxicillin, vitamin_d_liquid].map(&:id)) }
+  let(:scope) do
+    Medication.where(id: [paracetamol_500mg, paracetamol_250mg, amoxicillin, vitamin_d_liquid].map(&:id))
+  end
 
   describe '#call' do
-    context 'exact barcode match' do
+    context 'when matching by exact barcode' do
       before { paracetamol_500mg.update!(barcode: '5000168511017') }
 
       it 'returns the medication matching by barcode' do
@@ -40,7 +50,7 @@ RSpec.describe MedicationInventoryMatcher do
       end
     end
 
-    context 'exact dmd_code match' do
+    context 'when matching by exact dmd_code' do
       before { paracetamol_500mg.update!(dmd_code: 'DMD001', dmd_system: 'snomed') }
 
       it 'returns the medication matching by dmd_code' do
@@ -49,7 +59,7 @@ RSpec.describe MedicationInventoryMatcher do
       end
     end
 
-    context 'compatible name match' do
+    context 'when matching by compatible name' do
       it 'matches paracetamol by name and strength' do
         candidate = med(name: 'Paracetamol 500 mg Tablets')
         expect(matcher.call(candidate)).to eq(paracetamol_500mg)
@@ -72,7 +82,7 @@ RSpec.describe MedicationInventoryMatcher do
 
       it 'does not match across different drug names' do
         candidate = med(name: 'Amoxicillin 500 mg Tablets')
-        # Amoxicillin is in scope but as capsule, candidate is tablet — forms differ
+        # Amoxicillin is in scope as capsule, candidate is tablet — forms differ
         expect(matcher.call(candidate)).to be_nil
       end
 
@@ -82,7 +92,7 @@ RSpec.describe MedicationInventoryMatcher do
       end
     end
 
-    context 'candidate with no barcode, dmd_code, or recognizable name' do
+    context 'when candidate has no barcode, dmd_code, or recognizable name' do
       it 'returns nil' do
         candidate = med(name: '')
         expect(matcher.call(candidate)).to be_nil
@@ -99,29 +109,27 @@ RSpec.describe MedicationInventoryMatcher do
     end
   end
 
-  describe 'strength normalisation' do
-    let(:mcg_med) { create(:medication, name: 'Levothyroxine 25 micrograms Tablets', dosage_unit: 'tablet', dosage_amount: nil) }
-    let(:scope) { Medication.where(id: mcg_med.id) }
-
-    it 'normalises "micrograms" to "mcg" for matching' do
-      candidate = med(name: 'Levothyroxine 25mcg Tablets')
-      expect(matcher.call(candidate)).to eq(mcg_med)
-    end
+  it 'normalises "micrograms" to "mcg" when matching strength' do
+    mcg_med = create(:medication, name: 'Levothyroxine 25 micrograms Tablets',
+                                  dosage_unit: 'tablet', dosage_amount: nil)
+    scoped_matcher = described_class.new(scope: Medication.where(id: mcg_med.id))
+    candidate = med(name: 'Levothyroxine 25mcg Tablets')
+    expect(scoped_matcher.call(candidate)).to eq(mcg_med)
   end
 
-  describe 'form compatibility' do
-    let(:tablet_med) { create(:medication, name: 'Ibuprofen 400 mg', dosage_unit: 'tablet', dosage_amount: nil) }
-    let(:capsule_med) { create(:medication, name: 'Ibuprofen 400 mg', dosage_unit: 'capsule', dosage_amount: nil) }
-    let(:scope) { Medication.where(id: [tablet_med, capsule_med].map(&:id)) }
+  it 'returns the tablet form when candidate specifies tablet' do
+    tablet_med = create(:medication, name: 'Ibuprofen 400 mg', dosage_unit: 'tablet', dosage_amount: nil)
+    capsule_med = create(:medication, name: 'Ibuprofen 400 mg', dosage_unit: 'capsule', dosage_amount: nil)
+    scoped_matcher = described_class.new(scope: Medication.where(id: [tablet_med, capsule_med].map(&:id)))
+    candidate = med(name: 'Ibuprofen 400 mg Tablets')
+    expect(scoped_matcher.call(candidate)).to eq(tablet_med)
+  end
 
-    it 'returns the tablet form when candidate form is tablet' do
-      candidate = med(name: 'Ibuprofen 400 mg Tablets')
-      expect(matcher.call(candidate)).to eq(tablet_med)
-    end
-
-    it 'returns the capsule form when candidate form is capsule' do
-      candidate = med(name: 'Ibuprofen 400 mg Capsules')
-      expect(matcher.call(candidate)).to eq(capsule_med)
-    end
+  it 'returns the capsule form when candidate specifies capsule' do
+    tablet_med = create(:medication, name: 'Ibuprofen 400 mg', dosage_unit: 'tablet', dosage_amount: nil)
+    capsule_med = create(:medication, name: 'Ibuprofen 400 mg', dosage_unit: 'capsule', dosage_amount: nil)
+    scoped_matcher = described_class.new(scope: Medication.where(id: [tablet_med, capsule_med].map(&:id)))
+    candidate = med(name: 'Ibuprofen 400 mg Capsules')
+    expect(scoped_matcher.call(candidate)).to eq(capsule_med)
   end
 end
