@@ -3,9 +3,9 @@
 require 'rails_helper'
 
 RSpec.describe MedicationOnboardingPlanBuilder do
-  let(:person)   { create(:person) }
+  let(:person) { create(:person) }
   let(:medication) { create(:medication) }
-  let(:dosage)   { create(:dosage, medication: medication, amount: 500, unit: 'mg', frequency: 'As needed') }
+  let(:dosage) { create(:dosage, medication: medication, amount: 500, unit: 'mg', frequency: 'As needed') }
 
   def build_record(schedule_type:, extra_schedule_attrs: {}, schedule_config: {})
     schedule_attrs = {
@@ -69,9 +69,9 @@ RSpec.describe MedicationOnboardingPlanBuilder do
   end
 
   describe '#record for a supplement (Vitamin) direct plan' do
-    let(:medication) { create(:medication, :vitamin, category: 'Vitamin') }
-
     subject(:record) { build_record(schedule_type: 'daily') }
+
+    let(:medication) { create(:medication, :vitamin, category: 'Vitamin') }
 
     it 'builds a PersonMedication for supplement category' do
       expect(record).to be_a(PersonMedication)
@@ -87,7 +87,7 @@ RSpec.describe MedicationOnboardingPlanBuilder do
       build_record(
         schedule_type: 'multiple_daily',
         extra_schedule_attrs: {
-          start_date: Date.today,
+          start_date: Time.zone.today,
           end_date: 1.month.from_now.to_date,
           frequency: 'Twice daily'
         },
@@ -128,7 +128,7 @@ RSpec.describe MedicationOnboardingPlanBuilder do
     end
 
     it 'carries start_date from schedule_attributes' do
-      expect(record.start_date).to eq(Date.today)
+      expect(record.start_date).to eq(Time.zone.today)
     end
 
     it 'carries end_date from schedule_attributes' do
