@@ -7,6 +7,14 @@ RSpec.describe NhsDmdBarcode do
     it 'keeps only digits' do
       expect(described_class.normalize_gtin('  05012-345 ')).to eq('05012345')
     end
+
+    it 'returns an empty string for nil' do
+      expect(described_class.normalize_gtin(nil)).to eq('')
+    end
+
+    it 'returns an empty string when given a non-string object with no digits' do
+      expect(described_class.normalize_gtin(123)).to eq('123')
+    end
   end
 
   describe 'validations' do
