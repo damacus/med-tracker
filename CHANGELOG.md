@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.71](https://github.com/damacus/med-tracker/compare/v0.3.70...v0.3.71) (2026-06-09)
+
+
+### Performance Improvements
+
+* memoize audit log user label ([#1344](https://github.com/damacus/med-tracker/issues/1344)) ([dfed7ca](https://github.com/damacus/med-tracker/commit/dfed7ca65b2ddb7fc8215454a9e2e89955cbc174))
+
 ## [0.3.70](https://github.com/damacus/med-tracker/compare/v0.3.69...v0.3.70) (2026-06-09)
 
 
