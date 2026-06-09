@@ -19,8 +19,9 @@ RSpec.describe MedicationFinderSearchResponder do
       display: 'Paracetamol 500mg Tablets',
       package_unit: 'tablet'
     }
-    double('SearchResult', defaults.merge(attrs)).tap do |sr|
-      allow(sr).to receive(:to_h).and_return(defaults.merge(attrs))
+    merged = defaults.merge(attrs)
+    instance_double(NhsDmd::SearchResult, **merged).tap do |sr|
+      allow(sr).to receive(:to_h).and_return(merged)
     end
   end
 

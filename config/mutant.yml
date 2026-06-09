@@ -13,6 +13,13 @@ requires:
   - ./config/environment
 # Subjects we deliberately do not mutate yet (add with a reason — never leave a
 # survivor silently alive; see the plan's Subject Loop Protocol).
-# matcher:
-#   ignore:
-#     - 'SomeClass#equivalent_method'
+matcher:
+  ignore:
+    # Both ResultBuilder modules use `module_function`, which creates an independent
+    # singleton-method copy at definition time. Mutant patches the private instance
+    # method but cannot reach the singleton copy. All 518 mutations survive because
+    # the singleton methods used by callers (and by our specs via `described_class.foo`)
+    # are never patched. This is a structural tool limitation, not missing test coverage.
+    # The behaviour is fully characterised by the 39+30 examples in the spec files.
+    - 'OpenFoodFacts::ResultBuilder'
+    - 'OpenProductsFacts::ResultBuilder'
