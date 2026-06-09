@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe Schedules::CardPresenter do
+  subject(:presenter) { described_class.new(schedule: schedule, current_user: current_user, person: person) }
+
   let(:schedule) do
     instance_double(Schedule,
                     dose_amount: 500,
@@ -11,8 +13,6 @@ RSpec.describe Schedules::CardPresenter do
   end
   let(:person) { instance_double(Person) }
   let(:current_user) { instance_double(User) }
-
-  subject(:presenter) { described_class.new(schedule: schedule, current_user: current_user, person: person) }
 
   describe '#dose_description' do
     it 'combines dose text and frequency with a bullet separator' do
@@ -25,16 +25,14 @@ RSpec.describe Schedules::CardPresenter do
     end
 
     it 'works for non-mg units' do
-      allow(schedule).to receive(:dose_amount).and_return(5)
-      allow(schedule).to receive(:dose_unit).and_return('ml')
-      allow(schedule).to receive(:frequency).and_return('Once daily')
+      allow(schedule).to receive_messages(dose_amount: 5, dose_unit: 'ml', frequency: 'Once daily')
 
       expect(presenter.dose_description).to eq('5ml • Once daily')
     end
   end
 
   describe '#dose_description (dose_text detail)' do
-    it 'uses to_i so a float dose like 2.9 shows as 2 (floor, not round)' do
+    it 'uses to_i so a float dose like 2.9 shows as 2 (truncates, not rounds)' do
       allow(schedule).to receive(:dose_amount).and_return(2.9)
       # to_i truncates toward zero — 2.9.to_i == 2
       expect(presenter.dose_description).to start_with('2mg')
@@ -75,12 +73,12 @@ RSpec.describe Schedules::CardPresenter do
     end
 
     context 'when current_user.person matches person' do
-      let(:matching_person) { instance_double(Person) }
-      let(:matching_user)   { instance_double(User, person: matching_person) }
-
       subject(:presenter) do
         described_class.new(schedule: schedule, current_user: matching_user, person: matching_person)
       end
+
+      let(:matching_person) { instance_double(Person) }
+      let(:matching_user)   { instance_double(User, person: matching_person) }
 
       it 'returns true' do
         expect(own_dose?(presenter)).to be(true)

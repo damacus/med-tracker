@@ -3,9 +3,9 @@
 require 'rails_helper'
 
 RSpec.describe SmartInsights::Detectors::Base do
-  let(:context) { instance_double(SmartInsights::Context) }
-
   subject(:detector) { described_class.new(context) }
+
+  let(:context) { instance_double(SmartInsights::Context) }
 
   describe '#initialize / #context' do
     it 'stores the context' do
@@ -32,6 +32,8 @@ RSpec.describe SmartInsights::Detectors::Base do
   end
 
   describe 'private #insight helper' do
+    subject(:instance) { subclass.new(context) }
+
     # Exercise the private insight factory through a thin subclass
     let(:subclass) do
       Class.new(described_class) do
@@ -40,8 +42,6 @@ RSpec.describe SmartInsights::Detectors::Base do
         end
       end
     end
-
-    subject(:instance) { subclass.new(context) }
 
     it 'defaults cta_path to nil when not provided' do
       result = instance.build_insight(
