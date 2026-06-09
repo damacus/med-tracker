@@ -6,10 +6,10 @@ SimpleCov.start 'rails' do
   enable_coverage :branch
 
   # Enforced ratchet (fails the build below threshold). Measured non-system
-  # baseline 2026-06-09: line 89.76% / branch 73.75%, rounded down for a small
-  # variance margin. Raise these as coverage improves; never lower without a
-  # recorded reason. Only enforced when COVERAGE=true (CI's non-system job).
-  minimum_coverage line: 89, branch: 73
+  # baseline 2026-06-09 after the coverage+mutation pass: line 90.3% /
+  # branch 75.24%, rounded down. Raise these as coverage improves; never lower
+  # without a recorded reason. Only enforced when COVERAGE=true (CI's non-system job).
+  minimum_coverage line: 90, branch: 75
 
   add_filter '/spec/'
   add_filter '/config/'
