@@ -156,7 +156,8 @@ RSpec.describe SmartInsights::Detectors::TimingConsistency do
     it 'counts a take exactly at the described_class::WINDOW_MINUTES boundary (90 min) as on-time' do
       # Takes land exactly 90 minutes from expected → still on-time (abs <= 90 min)
       takes = (start_date..end_date).map do |date|
-        take_at(schedule_id: 42, taken_at: expected_time(date, time_str) + described_class::WINDOW_MINUTES.minutes, schedule: sched)
+        offset = described_class::WINDOW_MINUTES.minutes
+        take_at(schedule_id: 42, taken_at: expected_time(date, time_str) + offset, schedule: sched)
       end
       ctx = context_with(schedules: [sched], takes: takes, start_date: start_date, end_date: end_date)
       insights = described_class.new(ctx).call
