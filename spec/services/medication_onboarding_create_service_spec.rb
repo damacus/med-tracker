@@ -13,6 +13,14 @@ RSpec.describe MedicationOnboardingCreateService do
     create(:medication, location: location, **attrs)
   end
 
+  def medication_with_dosage(attrs = {})
+    med = build_medication(attrs)
+    med.dosage_records.build(amount: 500, unit: 'mg', frequency: 'As needed',
+                             default_max_daily_doses: 2, default_min_hours_between_doses: 8,
+                             default_dose_cycle: 'daily', default_for_adults: true)
+    med
+  end
+
   def call_service(medication:, schedule_attributes: nil, people_scope: nil, medication_scope: nil)
     described_class.new(
       medication: medication,
@@ -69,8 +77,9 @@ RSpec.describe MedicationOnboardingCreateService do
 
     it 'sets the paper_trail_event to create' do
       medication = build_medication
-      expect(medication).to receive(:paper_trail_event=).with('create').and_call_original
+      allow(medication).to receive(:paper_trail_event=).with('create').and_call_original
       call_service(medication: medication)
+      expect(medication).to have_received(:paper_trail_event=).with('create')
     end
 
     context 'when the medication fails validation' do
@@ -92,23 +101,13 @@ RSpec.describe MedicationOnboardingCreateService do
     let(:person) { create(:person) }
     let(:people_scope) { Person.where(id: person.id) }
 
-    # Build an unsaved medication that already has a persisted dosage record
-    # attached (via in-memory association) so the plan builder can find it.
-    def medication_with_dosage(attrs = {})
-      med = build_medication(attrs)
-      med.dosage_records.build(amount: 500, unit: 'mg', frequency: 'As needed',
-                               default_max_daily_doses: 2, default_min_hours_between_doses: 8,
-                               default_dose_cycle: 'daily', default_for_adults: true)
-      med
-    end
-
     def schedule_attrs(type: 'multiple_daily', extra: {})
       {
         person_id: person.id,
         schedule_type: type,
         max_daily_doses: 2,
         min_hours_between_doses: 8,
-        start_date: Date.today,
+        start_date: Time.zone.today,
         end_date: 1.month.from_now.to_date
       }.merge(extra)
     end
@@ -140,13 +139,8 @@ RSpec.describe MedicationOnboardingCreateService do
 
     it 'assigns default_schedule_type from schedule_attributes' do
       medication = medication_with_dosage
-      call_service(medication: medication, schedule_attributes: schedule_attrs(type: 'multiple_daily'), people_scope: people_scope)
-      expect(medication.default_schedule_type).to eq('multiple_daily')
-    end
-
-    it 'sets default_schedule_type on the medication from schedule_attributes' do
-      medication = medication_with_dosage
-      call_service(medication: medication, schedule_attributes: schedule_attrs(type: 'multiple_daily'), people_scope: people_scope)
+      attrs = schedule_attrs(type: 'multiple_daily')
+      call_service(medication: medication, schedule_attributes: attrs, people_scope: people_scope)
       expect(medication.default_schedule_type).to eq('multiple_daily')
     end
 
@@ -174,11 +168,9 @@ RSpec.describe MedicationOnboardingCreateService do
         medication = medication_with_dosage
         bad_attrs = schedule_attrs.merge(person_id: -1)
         expect do
-          begin
-            call_service(medication: medication, schedule_attributes: bad_attrs, people_scope: people_scope)
-          rescue ActiveRecord::RecordNotFound
-            nil
-          end
+          call_service(medication: medication, schedule_attributes: bad_attrs, people_scope: people_scope)
+        rescue ActiveRecord::RecordNotFound
+          nil
         end.not_to change(Medication, :count)
       end
     end
@@ -321,24 +313,22 @@ RSpec.describe MedicationOnboardingCreateService do
     let(:person) { create(:person) }
     let(:people_scope) { Person.where(id: person.id) }
 
+    def schedule_config_attrs(config)
+      {
+        person_id: person.id,
+        schedule_type: 'multiple_daily',
+        max_daily_doses: 1,
+        min_hours_between_doses: 24,
+        start_date: Time.zone.today,
+        end_date: 1.month.from_now.to_date,
+        schedule_config: config
+      }
+    end
+
     def call_with_config(config)
-      medication = build_medication
-      medication.dosage_records.build(amount: 500, unit: 'mg', frequency: 'As needed',
-                                      default_max_daily_doses: 1, default_min_hours_between_doses: 24,
-                                      default_dose_cycle: 'daily', default_for_adults: true)
-      call_service(
-        medication: medication,
-        schedule_attributes: {
-          person_id: person.id,
-          schedule_type: 'multiple_daily',
-          max_daily_doses: 1,
-          min_hours_between_doses: 24,
-          start_date: Date.today,
-          end_date: 1.month.from_now.to_date,
-          schedule_config: config
-        },
-        people_scope: people_scope
-      )
+      medication = medication_with_dosage
+      call_service(medication: medication, schedule_attributes: schedule_config_attrs(config),
+                   people_scope: people_scope)
       medication
     end
 
