@@ -8,3 +8,6 @@
 ## 2024-03-05 - Add Descriptive Placeholders for Better Guidance
 **Learning:** Form fields lacking `placeholder` attributes (such as the Medication form inputs) can cause user friction since it’s not immediately clear what expected format or type of data to provide, especially on larger, empty textareas like `warnings` or `description`. Adding placeholder text does not break existing test locators compared to changing ARIA labels.
 **Action:** When working with forms or input fields via `RubyUI::Input` or `RubyUI::Textarea`, add a corresponding translated placeholder where appropriate to guide users effectively without cluttering the UI with additional helper text.
+## 2024-05-18 - Component icon-only `aria-label` conventions
+**Learning:** When adding `aria_label` to buttons containing icons, the inner icon component must still receive `aria_hidden: 'true'` to prevent the screen reader from announcing "Graphic" or a generic icon name after reading the custom label.
+**Action:** When working with `<Button>` or `<Link>`, default to setting `aria_label` directly on the component rather than nesting an `sr-only` span, AND always pass `aria_hidden: 'true'` to the embedded icon class.

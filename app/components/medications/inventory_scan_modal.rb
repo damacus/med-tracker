@@ -13,7 +13,7 @@ module Components
               size: :lg,
               class: 'max-w-full justify-center font-bold text-sm'
             ) do
-              render Icons::Camera.new(size: 20, class: 'mr-2 text-primary')
+              render Icons::Camera.new(size: 20, class: 'mr-2 text-primary', aria_hidden: 'true')
               span { t('medications.index.scan_stock') }
             end
           end
