@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_08_090000) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_09_210800) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -180,8 +180,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_08_090000) do
   end
 
   create_table "app_settings", force: :cascade do |t|
-    t.boolean "invite_only", default: false, null: false
     t.datetime "created_at", null: false
+    t.boolean "invite_only", default: false, null: false
     t.datetime "updated_at", null: false
   end
 
@@ -231,6 +231,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_08_090000) do
     t.index ["medication_id"], name: "index_dosages_one_child_default", unique: true, where: "(default_for_children = true)"
   end
 
+  create_table "invitation_dependents", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "dependent_id", null: false
+    t.bigint "invitation_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["dependent_id"], name: "index_invitation_dependents_on_dependent_id"
+    t.index ["invitation_id", "dependent_id"], name: "index_invitation_dependents_on_invitation_id_and_dependent_id", unique: true
+    t.index ["invitation_id"], name: "index_invitation_dependents_on_invitation_id"
+  end
+
   create_table "invitations", force: :cascade do |t|
     t.datetime "accepted_at"
     t.datetime "created_at", null: false
@@ -240,16 +250,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_08_090000) do
     t.string "token_digest"
     t.datetime "updated_at", null: false
     t.index ["token_digest"], name: "index_invitations_on_token_digest", unique: true
-  end
-
-  create_table "invitation_dependents", force: :cascade do |t|
-    t.datetime "created_at", null: false
-    t.bigint "dependent_id", null: false
-    t.bigint "invitation_id", null: false
-    t.datetime "updated_at", null: false
-    t.index ["dependent_id"], name: "index_invitation_dependents_on_dependent_id"
-    t.index ["invitation_id", "dependent_id"], name: "index_invitation_dependents_on_invitation_id_and_dependent_id", unique: true
-    t.index ["invitation_id"], name: "index_invitation_dependents_on_invitation_id"
   end
 
   create_table "location_memberships", force: :cascade do |t|
@@ -272,10 +272,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_08_090000) do
   end
 
   create_table "medication_takes", force: :cascade do |t|
-    t.decimal "dose_amount", precision: 10, scale: 2
-    t.string "dose_unit"
     t.string "client_uuid"
     t.datetime "created_at", null: false
+    t.decimal "dose_amount", precision: 10, scale: 2
+    t.string "dose_unit"
     t.bigint "person_medication_id"
     t.bigint "schedule_id"
     t.datetime "taken_at"
@@ -295,9 +295,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_08_090000) do
     t.string "category"
     t.datetime "created_at", null: false
     t.decimal "current_supply", precision: 10, scale: 2
-    t.text "description"
     t.jsonb "default_schedule_config", default: {}, null: false
     t.integer "default_schedule_type", default: 1, null: false
+    t.text "description"
     t.string "dmd_code"
     t.string "dmd_concept_class"
     t.string "dmd_system"
@@ -315,9 +315,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_08_090000) do
     t.datetime "updated_at", null: false
     t.text "warnings"
     t.index ["barcode"], name: "index_medications_on_barcode", unique: true, where: "((barcode IS NOT NULL) AND ((barcode)::text <> ''::text))"
-    t.index ["default_schedule_type"], name: "index_medications_on_default_schedule_type"
     t.index ["barcode"], name: "index_medications_on_barcode_trigram", opclass: :gin_trgm_ops, using: :gin
     t.index ["category"], name: "index_medications_on_category_trigram", opclass: :gin_trgm_ops, using: :gin
+    t.index ["default_schedule_type"], name: "index_medications_on_default_schedule_type"
     t.index ["dmd_code"], name: "index_medications_on_dmd_code"
     t.index ["dmd_code"], name: "index_medications_on_dmd_code_trigram", opclass: :gin_trgm_ops, using: :gin
     t.index ["location_id"], name: "index_medications_on_location_id"
@@ -374,11 +374,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_08_090000) do
   create_table "notification_preferences", force: :cascade do |t|
     t.time "afternoon_time", default: "2000-01-01 14:00:00"
     t.datetime "created_at", null: false
+    t.boolean "dose_due_enabled", default: true, null: false
     t.boolean "enabled", default: true, null: false
     t.time "evening_time", default: "2000-01-01 18:00:00"
+    t.boolean "low_stock_enabled", default: true, null: false
+    t.boolean "missed_dose_enabled", default: true, null: false
     t.time "morning_time", default: "2000-01-01 08:00:00"
     t.time "night_time", default: "2000-01-01 22:00:00"
     t.bigint "person_id", null: false
+    t.boolean "private_text_enabled", default: true, null: false
     t.datetime "updated_at", null: false
     t.index ["person_id"], name: "index_notification_preferences_on_person_id", unique: true
   end
