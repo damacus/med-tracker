@@ -226,21 +226,24 @@ module Admin
     end
 
     def user_params
-      params.expect(
-        user: [
-          :email_address,
-          :password,
-          :password_confirmation,
-          :role,
-          {
-            dependent_ids: [],
-            person_attributes: [:id, :name, :date_of_birth, { location_ids: [] }]
-          }
-        ]
-      )
+      params.expect(user: permitted_user_attributes)
+    end
+
+    def permitted_user_attributes
+      attributes = %i[email_address password password_confirmation]
+      attributes << :role if current_user.administrator?
+      attributes << dependent_assignment_attributes
+      attributes
+    end
+
+    def dependent_assignment_attributes
+      attributes = { person_attributes: [:id, :name, :date_of_birth, { location_ids: [] }] }
+      attributes[:dependent_ids] = [] if current_user.administrator?
+      attributes
     end
 
     def assign_dependents
+      return unless current_user.administrator?
       return unless DependentRelationshipAssigner.relationship_type_for(@user)
 
       DependentRelationshipAssigner.new(
