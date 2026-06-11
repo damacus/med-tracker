@@ -288,6 +288,32 @@ RSpec.describe 'Admin create and update turbo flows' do
       expect(relationship.relationship_type).to eq('parent')
       expect(relationship.active).to be true
     end
+
+    it 'does not allow non-admin self-updates to assign arbitrary dependents or change role' do
+      parent = users(:parent)
+      dependent = people(:child_patient)
+      sign_in(parent)
+
+      expect do
+        patch admin_user_path(parent),
+              params: {
+                user: {
+                  email_address: parent.email_address,
+                  role: 'administrator',
+                  dependent_ids: [dependent.id],
+                  person_attributes: {
+                    id: parent.person.id,
+                    name: parent.person.name,
+                    date_of_birth: parent.person.date_of_birth.to_s,
+                    location_ids: [locations(:home).id]
+                  }
+                }
+              }
+      end.not_to change(CarerRelationship, :count)
+
+      expect(CarerRelationship.find_by(carer: parent.person, patient: dependent)).to be_nil
+      expect(parent.reload.role).to eq('parent')
+    end
   end
 
   describe 'POST /admin/carer_relationships' do
