@@ -45,7 +45,12 @@ module TimelineRefreshable
   end
 
   def other_timeline_streams(taken_source, medication)
-    related_sources = MedicationTimelineQuery.new(medication: medication, excluding: taken_source).call
+    related_sources = MedicationTimelineQuery.new(
+      medication: medication,
+      excluding: taken_source,
+      schedules_scope: policy_scope(Schedule),
+      person_medications_scope: policy_scope(PersonMedication)
+    ).call
     streams = []
 
     related_sources.schedules.each do |p|
