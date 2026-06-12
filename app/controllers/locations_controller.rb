@@ -4,6 +4,7 @@ class LocationsController < ApplicationController
   before_action :set_location, only: %i[show edit update destroy]
 
   def index
+    authorize Location
     render locations_index_view
   end
 

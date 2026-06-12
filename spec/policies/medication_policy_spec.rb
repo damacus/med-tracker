@@ -96,6 +96,13 @@ RSpec.describe MedicationPolicy, type: :policy do
         expect(policy.finder?).to be true
       end
     end
+
+    it 'forbids creating medication at an inaccessible location' do
+      foreign_location = Location.create!(name: 'Foreign Parent Policy Location')
+      foreign_medication = Medication.new(name: 'Foreign Stock', location: foreign_location)
+
+      expect(described_class.new(current_user, foreign_medication).create?).to be false
+    end
   end
 
   describe 'for patient (carer role managing own care)' do
