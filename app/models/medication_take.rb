@@ -109,47 +109,15 @@ class MedicationTake < ApplicationRecord
     errors.add(:taken_from_medication, 'must be in stock')
   end
 
-  # Custom OpenTelemetry span attributes for medication tracking
+  # Custom OpenTelemetry span attributes for medication tracking.
+  # Keep medication administration spans intentionally coarse: dose timing,
+  # quantities, units, and related record identifiers can reveal PHI when traces
+  # leave the application boundary.
   def otel_span_attributes(operation)
-    attrs = otel_base_span_attributes(operation)
-
-    # Add source-specific attributes
-    attrs.merge(otel_source_span_attributes).merge(taken_from_span_attributes)
-  end
-
-  def otel_base_span_attributes(operation)
     {
       'model.name' => self.class.name,
-      'model.id' => id.to_s,
-      'model.operation' => operation,
-      'medication_take.taken_at' => taken_at&.iso8601,
-      'medication_take.dose_amount' => dose_amount&.to_s,
-      'medication_take.dose_unit' => dose_unit
+      'model.operation' => operation
     }
-  end
-
-  def otel_source_span_attributes
-    if schedule_id
-      {
-        'medication_take.source_type' => 'schedule',
-        'medication_take.schedule_id' => schedule_id.to_s
-      }
-    elsif person_medication_id
-      {
-        'medication_take.source_type' => 'person_medication',
-        'medication_take.person_medication_id' => person_medication_id.to_s
-      }
-    else
-      {}
-    end
-  end
-
-  def taken_from_span_attributes
-    return {} unless taken_from_medication_id
-
-    attrs = { 'medication_take.taken_from_medication_id' => taken_from_medication_id.to_s }
-    attrs['medication_take.taken_from_location_id'] = taken_from_location_id.to_s if taken_from_location_id
-    attrs
   end
 
   def remember_low_stock_threshold_crossing(inventory:, stock_row:)

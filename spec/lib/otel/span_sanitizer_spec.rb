@@ -101,6 +101,24 @@ RSpec.describe Otel::SpanSanitizer do
       expect(result['db.password']).to eq('[REDACTED]')
     end
 
+    it 'redacts raw database statements and medication administration attributes by key' do
+      attrs = {
+        'db.statement' => "SELECT * FROM accounts WHERE email = 'person@example.com'",
+        'medication_take.taken_at' => '2026-01-02T03:04:05Z',
+        'medication_take.schedule_id' => '123',
+        'medication_take.dose_amount' => '10',
+        'model.operation' => 'create'
+      }
+
+      result = sanitizer.sanitize_attributes(attrs)
+
+      expect(result['db.statement']).to eq('[REDACTED]')
+      expect(result['medication_take.taken_at']).to eq('[REDACTED]')
+      expect(result['medication_take.schedule_id']).to eq('[REDACTED]')
+      expect(result['medication_take.dose_amount']).to eq('[REDACTED]')
+      expect(result['model.operation']).to eq('create')
+    end
+
     it 'does not modify the original hash' do
       attrs = { 'user.email' => 'test@example.com' }
       sanitizer.sanitize_attributes(attrs)

@@ -39,15 +39,24 @@ RSpec.describe OtelInstrumented do
     end
   end
 
-  describe '#otel_span_attributes (default implementation)' do
-    it 'returns a hash containing model.name, model.id, and model.operation' do
+  describe '#otel_span_attributes' do
+    it 'returns only non-sensitive model metadata for medication takes' do
       take  = create(:medication_take, :for_schedule, schedule: schedule)
       attrs = take.send(:otel_span_attributes, 'create')
 
-      expect(attrs).to include(
+      expect(attrs).to eq(
         'model.name' => 'MedicationTake',
-        'model.id' => take.id.to_s,
         'model.operation' => 'create'
+      )
+      expect(attrs.keys).not_to include(
+        'model.id',
+        'medication_take.taken_at',
+        'medication_take.dose_amount',
+        'medication_take.dose_unit',
+        'medication_take.schedule_id',
+        'medication_take.person_medication_id',
+        'medication_take.taken_from_medication_id',
+        'medication_take.taken_from_location_id'
       )
     end
   end
