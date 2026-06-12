@@ -170,9 +170,30 @@ class RodauthMain < Rodauth::Rails::Auth
         I18n.t('authentication.invite_only',
                default: 'Registration is by invitation only. Please contact an administrator.')
       end
+
+      def account_active?
+        account_record = Account.find_by(id: account&.[](:id))
+        user = account_record&.person&.user
+
+        account_record.nil? || user.nil? || user.active?
+      end
+
+      def inactive_account_message
+        I18n.t('authentication.inactive_account',
+               default: 'Your account has been deactivated. Please contact an administrator.')
+      end
+    end
+
+    before_login do
+      throw_error(login_param, inactive_account_message) unless account_active?
     end
 
     after_login do
+      unless account_active?
+        clear_session
+        throw_error(login_param, inactive_account_message)
+      end
+
       if param_or_nil('remember')
         remember_login
         audit_auth_token('remember_key', 'created')
