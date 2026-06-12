@@ -14,7 +14,9 @@ module Otel
       /secret/i,
       /token/i,
       /\bdate_of_birth\b/i,
-      /\bdob\b/i
+      /\bdob\b/i,
+      /\bdb\.statement\b/i,
+      /\bmedication_take\.(?:taken_at|dose_amount|dose_unit|source_type|.*_id)\b/i
     ].freeze
 
     PII_KEY_PATTERNS = [

@@ -9,6 +9,24 @@ module Otel
     end
 
     def on_start(span, _parent_context)
+      sanitize_span_attributes(span)
+    end
+
+    def on_finish(span)
+      sanitize_span_attributes(span)
+    end
+
+    def force_flush(**_)
+      OpenTelemetry::SDK::Trace::Export::SUCCESS
+    end
+
+    def shutdown(**_)
+      OpenTelemetry::SDK::Trace::Export::SUCCESS
+    end
+
+    private
+
+    def sanitize_span_attributes(span)
       return unless span.respond_to?(:attributes) && span.attributes
 
       sanitized = @sanitizer.sanitize_attributes(span.attributes)
@@ -17,16 +35,6 @@ module Otel
       end
     rescue StandardError => e
       Rails.logger.warn "[OpenTelemetry] SpanSanitizingProcessor error: #{e.message}"
-    end
-
-    def on_finish(_span); end
-
-    def force_flush(**_)
-      OpenTelemetry::SDK::Trace::Export::SUCCESS
-    end
-
-    def shutdown(**_)
-      OpenTelemetry::SDK::Trace::Export::SUCCESS
     end
   end
 end

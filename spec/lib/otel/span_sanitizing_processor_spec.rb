@@ -58,6 +58,14 @@ RSpec.describe Otel::SpanSanitizingProcessor do
         expect(span.attributes['client.address']).to eq('[IP REDACTED]')
       end
     end
+
+    it 'sanitizes attributes added after span start before finish' do
+      tracer.in_span('db.query') do |span|
+        span.set_attribute('db.statement', "SELECT * FROM accounts WHERE email = 'person@example.com'")
+        processor.on_finish(span)
+        expect(span.attributes['db.statement']).to eq('[REDACTED]')
+      end
+    end
   end
 
   describe '#on_finish' do
