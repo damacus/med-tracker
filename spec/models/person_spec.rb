@@ -130,6 +130,21 @@ RSpec.describe Person do
   describe 'default location assignment' do
     let(:school_location) { Location.create!(name: 'Spec School', description: 'School') }
 
+
+    it 'creates an isolated personal home when no primary location is provided' do
+      carer = described_class.create!(name: 'Default Location Carer', date_of_birth: 40.years.ago, person_type: :adult)
+      child = described_class.new(
+        name: 'Default Location Child',
+        date_of_birth: 8.years.ago,
+        person_type: :minor
+      )
+      child.carer_relationships.build(carer: carer, relationship_type: 'parent')
+
+      child.save!
+
+      expect(child.locations.map(&:name)).to contain_exactly("Default Location Child's Home")
+    end
+
     it 'assigns primary location when provided' do
       person_with_primary_location = described_class.new(
         name: 'Primary Location Child',

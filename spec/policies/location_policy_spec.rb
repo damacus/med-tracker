@@ -78,10 +78,10 @@ RSpec.describe LocationPolicy, type: :policy do
   describe 'for carer' do
     let(:current_user) { users(:carer) }
 
-    it 'permits viewing only' do
+    it 'forbids direct location pages' do
       aggregate_failures do
-        expect(policy.index?).to be true
-        expect(policy.show?).to be true
+        expect(policy.index?).to be false
+        expect(policy.show?).to be false
         expect(policy.create?).to be false
         expect(policy.destroy?).to be false
       end
@@ -107,16 +107,16 @@ RSpec.describe LocationPolicy, type: :policy do
   describe 'for parent' do
     let(:current_user) { users(:parent) }
 
-    it 'permits viewing only' do
+    it 'forbids direct location pages' do
       aggregate_failures do
-        expect(policy.index?).to be true
-        expect(policy.show?).to be true
+        expect(policy.index?).to be false
+        expect(policy.show?).to be false
         expect(policy.create?).to be false
         expect(policy.destroy?).to be false
       end
     end
 
-    it 'permits viewing a dependent adult patient location' do
+    it 'forbids direct viewing of a dependent adult patient location' do
       dependent_adult = Person.new(
         name: 'Dependent Adult',
         date_of_birth: 70.years.ago.to_date,
@@ -127,7 +127,7 @@ RSpec.describe LocationPolicy, type: :policy do
       dependent_adult.carer_relationships.build(carer: current_user.person, relationship_type: :parent, active: true)
       dependent_adult.save!
 
-      expect(described_class.new(current_user, locations(:school)).show?).to be true
+      expect(described_class.new(current_user, locations(:school)).show?).to be false
     end
   end
 

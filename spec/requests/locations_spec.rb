@@ -30,21 +30,9 @@ RSpec.describe 'Locations' do
 
       before { post '/login', params: { email: carer.email_address, password: 'password' } }
 
-      it 'returns success with empty list' do
+      it 'redirects away from direct location index access' do
         get locations_path
-        expect(response).to have_http_status(:success)
-      end
-    end
-
-    context 'when authenticated as carer with household locations' do
-      let(:carer) { users(:carer) }
-
-      before { post '/login', params: { email: carer.email_address, password: 'password' } }
-
-      it 'renders only accessible locations' do
-        get locations_path
-        expect(response.body).to include('Home')
-        expect(response.body).not_to include('School')
+        expect(response).to redirect_to(root_path)
       end
     end
   end
@@ -68,9 +56,9 @@ RSpec.describe 'Locations' do
 
       before { post '/login', params: { email: carer.email_address, password: 'password' } }
 
-      it 'returns HTTP success' do
+      it 'redirects away from direct location detail access' do
         get location_path(location)
-        expect(response).to have_http_status(:success)
+        expect(response).to redirect_to(root_path)
       end
     end
 

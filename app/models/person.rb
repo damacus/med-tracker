@@ -107,10 +107,27 @@ class Person < ApplicationRecord
       return
     end
 
-    home = Location.find_or_create_by!(name: 'Home') do |l|
-      l.description = 'Primary home location'
+    location_memberships.build(location: default_personal_location)
+  end
+
+  def default_personal_location
+    Location.create!(
+      name: unique_default_location_name,
+      description: 'Primary home location'
+    )
+  end
+
+  def unique_default_location_name
+    base_name = "#{name}'s Home"
+    candidate = base_name
+    suffix = 2
+
+    while Location.where('lower(name) = ?', candidate.downcase).exists?
+      candidate = "#{base_name} #{suffix}"
+      suffix += 1
     end
-    location_memberships.build(location: home)
+
+    candidate
   end
 
   def set_capacity_from_person_type
