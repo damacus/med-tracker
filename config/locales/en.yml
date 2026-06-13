@@ -1524,6 +1524,20 @@ en:
       enable: Enable Reminders
       description: Send medication reminders at scheduled times.
       title: Reminder Times
+    categories:
+      title: Notification Categories
+      dose_due_enabled:
+        title: Dose Due Reminders
+        description: Receive a notification when a dose is due.
+      missed_dose_enabled:
+        title: Missed Dose Reminders
+        description: Receive a notification when a dose is overdue.
+      low_stock_enabled:
+        title: Low Stock Warnings
+        description: Receive a notification when medication stock is running low.
+      private_text_enabled:
+        title: Private Notification Content
+        description: Hide sensitive information like medication names in notifications.
     period_labels:
       morning: Morning
       afternoon: Afternoon

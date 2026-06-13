@@ -10,6 +10,7 @@ RSpec.describe MedicationReminderJob do
   before do
     person.schedules.destroy_all
     person.person_medications.destroy_all
+    person.create_notification_preference!(enabled: true, dose_due_enabled: true, private_text_enabled: false)
     allow(PushNotificationService).to receive(:send_to_account)
   end
 
@@ -136,6 +137,31 @@ RSpec.describe MedicationReminderJob do
     create(:medication_take, :for_schedule, schedule: schedule, taken_at: Time.zone.today.noon)
 
     described_class.perform_now(person.id, :morning)
+
+    expect(PushNotificationService).not_to have_received(:send_to_account)
+  end
+
+  it 'sends private text when private_text_enabled is true' do
+    person.notification_preference.update!(private_text_enabled: true)
+    create(:schedule, person: person, medication: medications(:vitamin_d), dosage: dosages(:vitamin_d_daily),
+                      frequency: 'Once daily', schedule_type: :daily, schedule_config: { 'times' => ['07:15'] })
+
+    described_class.perform_now(person.id, :scheduled, '07:15')
+
+    expect(PushNotificationService).to have_received(:send_to_account).with(
+      person.account,
+      title: 'Medication reminder',
+      body: 'A dose is due.',
+      path: '/'
+    )
+  end
+
+  it 'does not send anything when dose_due_enabled is false' do
+    person.notification_preference.update!(dose_due_enabled: false)
+    create(:schedule, person: person, medication: medications(:vitamin_d), dosage: dosages(:vitamin_d_daily),
+                      frequency: 'Once daily', schedule_type: :daily, schedule_config: { 'times' => ['07:15'] })
+
+    described_class.perform_now(person.id, :scheduled, '07:15')
 
     expect(PushNotificationService).not_to have_received(:send_to_account)
   end

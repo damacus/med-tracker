@@ -102,6 +102,7 @@ module Components
       def render_form
         form_with(model: preference, url: notification_preference_path, method: :patch, class: 'space-y-6') do |f|
           render_enabled_toggle(f)
+          render_categories_toggles(f)
           render_time_slots(f)
           render_actions
         end
@@ -125,6 +126,36 @@ module Components
               checked: preference.enabled,
               class: 'h-5 w-5 rounded border-border text-primary focus:ring-primary'
             )
+          end
+        end
+      end
+
+      def render_categories_toggles(_f)
+        div(class: 'p-6 rounded-2xl border border-border space-y-4') do
+          h2(class: 'font-bold text-foreground mb-4') { t('notification_settings.categories.title') }
+
+          %i[dose_due_enabled missed_dose_enabled low_stock_enabled private_text_enabled].each do |cat|
+            div(class: 'flex items-center justify-between gap-4') do
+              div do
+                label(class: 'font-medium text-sm text-foreground', for: "notification_preference_#{cat}") do
+                  t("notification_settings.categories.#{cat}.title")
+                end
+                p(class: 'text-xs text-on-surface-variant mt-1') do
+                  t("notification_settings.categories.#{cat}.description")
+                end
+              end
+              div(class: 'shrink-0') do
+                input(type: 'hidden', name: "notification_preference[#{cat}]", value: '0')
+                input(
+                  type: 'checkbox',
+                  name: "notification_preference[#{cat}]",
+                  id: "notification_preference_#{cat}",
+                  value: '1',
+                  checked: preference.public_send(cat),
+                  class: 'h-5 w-5 rounded border-border text-primary focus:ring-primary'
+                )
+              end
+            end
           end
         end
       end
