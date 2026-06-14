@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_08_090000) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_11_230000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -209,6 +209,24 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_08_090000) do
     t.index ["carer_id", "patient_id"], name: "index_carer_relationships_on_carer_id_and_patient_id", unique: true
     t.index ["carer_id"], name: "index_carer_relationships_on_carer_id"
     t.index ["patient_id"], name: "index_carer_relationships_on_patient_id"
+  end
+
+  create_table "dependent_access_requests", force: :cascade do |t|
+    t.bigint "carer_id", null: false
+    t.datetime "created_at", null: false
+    t.bigint "patient_id", null: false
+    t.integer "status", default: 0, null: false
+    t.string "relationship_type", default: "parent", null: false
+    t.datetime "reviewed_at"
+    t.bigint "reviewer_id"
+    t.bigint "requester_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["carer_id", "patient_id"], name: "index_dependent_access_requests_on_pending_pair", unique: true, where: "(status = 0)"
+    t.index ["carer_id"], name: "index_dependent_access_requests_on_carer_id"
+    t.index ["patient_id"], name: "index_dependent_access_requests_on_patient_id"
+    t.index ["requester_id"], name: "index_dependent_access_requests_on_requester_id"
+    t.index ["reviewer_id"], name: "index_dependent_access_requests_on_reviewer_id"
+    t.index ["status"], name: "index_dependent_access_requests_on_status"
   end
 
   create_table "dosages", force: :cascade do |t|
@@ -505,6 +523,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_08_090000) do
   add_foreign_key "api_sessions", "accounts"
   add_foreign_key "carer_relationships", "people", column: "carer_id", deferrable: :deferred
   add_foreign_key "carer_relationships", "people", column: "patient_id", deferrable: :deferred
+  add_foreign_key "dependent_access_requests", "people", column: "carer_id"
+  add_foreign_key "dependent_access_requests", "people", column: "patient_id"
+  add_foreign_key "dependent_access_requests", "users", column: "requester_id"
+  add_foreign_key "dependent_access_requests", "users", column: "reviewer_id"
   add_foreign_key "dosages", "medications", deferrable: :deferred
   add_foreign_key "invitation_dependents", "invitations"
   add_foreign_key "invitation_dependents", "people", column: "dependent_id"

@@ -44,6 +44,12 @@ Rails.application.routes.draw do
         post :activate
       end
     end
+    resources :dependent_access_requests, only: %i[index] do
+      member do
+        post :approve
+        post :reject
+      end
+    end
     resources :people, only: %i[index]
     resources :audit_logs, only: %i[index show]
     resource :settings, only: %i[show update]
@@ -121,6 +127,7 @@ Rails.application.routes.draw do
       end
     end
     resources :carer_relationships, only: %i[new create], controller: 'people/carer_relationships'
+    resources :dependent_access_requests, only: %i[create], controller: 'people/dependent_access_requests'
     resources :medication_assignments, only: %i[new create]
   end
 
