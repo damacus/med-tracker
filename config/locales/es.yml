@@ -1332,6 +1332,7 @@ es:
       reminder_times_title: Horarios de recordatorio
       reminder_times_description: Configura cuándo quieres recibir recordatorios cada
         día
+      categories_description: Elige qué tipos de notificaciones quieres recibir
       periods:
         morning: Mañana
         afternoon: Tarde

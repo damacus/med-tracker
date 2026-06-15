@@ -1347,6 +1347,7 @@ cy:
       enable_reminders_description: Anfon hysbysiadau ar yr amseroedd isod
       reminder_times_title: Amseroedd atgoffa
       reminder_times_description: Gosod pryd rydych am dderbyn atgoffa bob dydd
+      categories_description: Dewiswch pa fathau o hysbysiadau i'w derbyn
       periods:
         morning: Bore
         afternoon: Prynhawn

@@ -465,7 +465,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_29_120000) do
     t.time "morning_time", default: "2000-01-01 08:00:00"
     t.time "night_time", default: "2000-01-01 22:00:00"
     t.bigint "person_id", null: false
-    t.boolean "private_text_enabled", default: true, null: false
+    t.boolean "private_text_enabled", default: false, null: false
     t.datetime "updated_at", null: false
     t.index ["household_id"], name: "index_notification_preferences_on_household_id"
     t.index ["id", "household_id"], name: "index_notification_preferences_on_id_and_household_id", unique: true

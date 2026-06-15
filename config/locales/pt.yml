@@ -1452,6 +1452,7 @@ pt:
       enable_reminders_description: Enviar notificações nos horários abaixo
       reminder_times_title: Horários dos lembretes
       reminder_times_description: Defina quando quer receber lembretes todos os dias
+      categories_description: Escolha que tipos de notificação quer receber
       periods:
         morning: Manhã
         afternoon: Tarde
