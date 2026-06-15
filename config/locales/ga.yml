@@ -1310,6 +1310,7 @@ ga:
       reminder_times_title: Amanna meabhrúcháin
       reminder_times_description: Socraigh cathain is mian leat meabhrúcháin a fháil
         gach lá
+      categories_description: Roghnaigh na cineálacha fógraí is mian leat a fháil
       periods:
         morning: Maidin
         afternoon: Tráthnóna

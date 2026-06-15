@@ -1438,6 +1438,7 @@ en:
       enable_reminders_description: Send notifications at the times below
       reminder_times_title: Reminder times
       reminder_times_description: Set when you want to receive reminders each day
+      categories_description: Choose which notification types to receive
       periods:
         morning: Morning
         afternoon: Afternoon

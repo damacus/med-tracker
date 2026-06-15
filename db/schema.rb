@@ -382,7 +382,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_09_210800) do
     t.time "morning_time", default: "2000-01-01 08:00:00"
     t.time "night_time", default: "2000-01-01 22:00:00"
     t.bigint "person_id", null: false
-    t.boolean "private_text_enabled", default: true, null: false
+    t.boolean "private_text_enabled", default: false, null: false
     t.datetime "updated_at", null: false
     t.index ["person_id"], name: "index_notification_preferences_on_person_id", unique: true
   end
