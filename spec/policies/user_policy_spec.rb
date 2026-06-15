@@ -77,25 +77,20 @@ RSpec.describe UserPolicy do
     end
 
     it 'forbids administrative actions' do
-      expect(policy.index?).to be false
-      expect(policy.create?).to be false
-      expect(policy.destroy?).to be false
-      expect(policy.verify?).to be false
+      %i[index create destroy verify].each { |action| expect(policy.public_send("#{action}?")).to be false }
     end
 
     context 'when viewing own profile' do
       let(:user) { current_user }
 
       it 'permits viewing and updating' do
-        expect(policy.show?).to be true
-        expect(policy.update?).to be true
+        %i[show update].each { |action| expect(policy.public_send("#{action}?")).to be true }
       end
     end
 
     context 'when viewing another user' do
       it 'forbids viewing and updating' do
-        expect(policy.show?).to be false
-        expect(policy.update?).to be false
+        %i[show update].each { |action| expect(policy.public_send("#{action}?")).to be false }
       end
     end
   end
@@ -106,25 +101,20 @@ RSpec.describe UserPolicy do
     end
 
     it 'forbids administrative actions' do
-      expect(policy.index?).to be false
-      expect(policy.create?).to be false
-      expect(policy.destroy?).to be false
-      expect(policy.verify?).to be false
+      %i[index create destroy verify].each { |action| expect(policy.public_send("#{action}?")).to be false }
     end
 
     context 'when viewing own profile' do
       let(:user) { current_user }
 
       it 'permits viewing and updating' do
-        expect(policy.show?).to be true
-        expect(policy.update?).to be true
+        %i[show update].each { |action| expect(policy.public_send("#{action}?")).to be true }
       end
     end
 
     context 'when viewing another user' do
       it 'forbids viewing and updating' do
-        expect(policy.show?).to be false
-        expect(policy.update?).to be false
+        %i[show update].each { |action| expect(policy.public_send("#{action}?")).to be false }
       end
     end
   end
