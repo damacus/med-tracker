@@ -30,16 +30,36 @@ module Authentication
   end
 
   def authenticated?
-    rodauth.authenticated?
+    rodauth.authenticated? && active_current_user?
   end
 
   def require_authentication
     rodauth.require_authentication
+    return unless rodauth.logged_in?
+    return if active_current_user?
+
+    reset_inactive_session
   end
 
   def request_authentication
     session[:return_to_after_authenticating] = request.url
     redirect_to rodauth.login_path
+  end
+
+  def active_current_user?
+    current_user&.active?
+  end
+
+  def reset_inactive_session
+    reset_session
+    @current_account = nil
+    @current_user = nil
+
+    redirect_to rodauth.login_path, alert: inactive_account_message, status: :see_other
+  end
+
+  def inactive_account_message
+    t('authentication.inactive_account', default: 'Your account has been deactivated. Please contact an administrator.')
   end
 
   def after_authentication_url
