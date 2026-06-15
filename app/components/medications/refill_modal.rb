@@ -27,14 +27,13 @@ module Components
       def view_template
         Dialog do
           DialogTrigger do
-            m3_button(variant: button_variant, size: button_size, class: button_class) do
+            m3_button(variant: button_variant, size: button_size, class: button_class, **(icon_only ? { "aria-label": t('medications.refill_modal.refill_inventory') } : {})) do
               if icon_only
-                render Icons::RefreshCw.new(size: 16)
-                span(class: 'sr-only') { t('medications.refill_modal.refill_inventory') }
+                render Icons::RefreshCw.new(size: 16, aria_hidden: 'true')
               else
                 if icon
                   icon_class = button_variant == :outlined ? 'mr-2 text-primary' : 'mr-2'
-                  render icon.new(size: 18, class: icon_class)
+                  render icon.new(size: 18, class: icon_class, aria_hidden: 'true')
                 end
                 span { button_label || t('medications.refill_modal.refill_inventory') }
               end
