@@ -100,7 +100,6 @@ export default class extends Controller {
     const registration = await navigator.serviceWorker.ready
     const subscription = await registration.pushManager.getSubscription()
 
-
     if (permission === "denied") {
       this.updateStatus("Notifications are blocked in your browser settings.")
       this.showButton("none")

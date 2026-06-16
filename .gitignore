@@ -47,6 +47,7 @@ __pycache__/
 db/*.sqlite3-*
 claude-progress.txt
 feedback.txt
+pr_description.md
 
 # Lighthouse reports
 lighthouse-*
