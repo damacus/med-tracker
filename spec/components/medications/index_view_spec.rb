@@ -64,7 +64,7 @@ RSpec.describe Components::Medications::IndexView, type: :component do
       policy_stub: Struct.new(:create?, :update?, :refill?, :destroy?).new(false, false, true, false)
     )
 
-    expect(rendered.css('button').map(&:text).join).to include('Restock')
+    expect(rendered.css("button[aria-label='Restock']")).not_to be_empty
     edit_path = Rails.application.routes.url_helpers.edit_medication_path(medication)
 
     expect(rendered.css("a[href^='#{edit_path}']")).to be_empty
