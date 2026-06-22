@@ -1310,6 +1310,7 @@ ga:
       reminder_times_title: Amanna meabhrúcháin
       reminder_times_description: Socraigh cathain is mian leat meabhrúcháin a fháil
         gach lá
+      categories_description: Roghnaigh na cineálacha fógraí is mian leat a fháil
       periods:
         morning: Maidin
         afternoon: Tráthnóna
@@ -1799,6 +1800,20 @@ ga:
       enable: Cumasaigh Meabhrúcháin
       description: Seol meabhrúcháin leigheasanna ag amanna sceidealta.
       title: Amanna Meabhrúcháin
+    categories:
+      title: Catagóirí Fógraí
+      dose_due_enabled:
+        title: Meabhrúcháin Dáilte atá Dlite
+        description: Faigh fógra nuair atá dáileog dlite.
+      missed_dose_enabled:
+        title: Meabhrúcháin Dáilte a Cailleadh
+        description: Faigh fógra nuair atá dáileog thar am.
+      low_stock_enabled:
+        title: Rabhaidh Stoc Íseal
+        description: Faigh fógra nuair atá stoc leigheasanna ag rith íseal.
+      private_text_enabled:
+        title: Ábhar Fógra Príobháideach
+        description: Folaigh faisnéis íogair ar nós ainmneacha leigheasanna i bhfógraí.
     period_labels:
       morning: Maidin
       afternoon: Tráthnóna

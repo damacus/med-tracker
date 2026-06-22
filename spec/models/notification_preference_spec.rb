@@ -15,6 +15,14 @@ RSpec.describe NotificationPreference do
     end
   end
 
+  describe 'defaults' do
+    it 'keeps notification text visible by default' do
+      preference = create(:notification_preference)
+
+      expect(preference.private_text_enabled).to be(false)
+    end
+  end
+
   describe '#time_for_period' do
     let(:preference) do
       build(:notification_preference,
