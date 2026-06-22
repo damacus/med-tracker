@@ -83,10 +83,7 @@ export default class extends Controller {
   }
 
   #handleKeydown(e) {
-    // return if no menu items (one line fix for)
-    if (this.menuItemTargets.length === 0) {
-      return;
-    }
+    if (!this.hasMenuItemTarget) return;
 
     if (e.key === "ArrowDown") {
       e.preventDefault();
