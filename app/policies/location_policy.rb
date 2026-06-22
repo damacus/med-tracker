@@ -2,13 +2,11 @@
 
 class LocationPolicy < ApplicationPolicy
   def index?
-    user.present?
+    admin_or_clinician?
   end
 
   def show?
-    return false unless user
-
-    admin_or_clinician? || accessible_location_ids.include?(record.id)
+    admin_or_clinician?
   end
 
   def create?
