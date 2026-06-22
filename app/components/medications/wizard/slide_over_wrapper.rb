@@ -56,10 +56,10 @@ module Components
                    'rounded-full border border-outline-variant/30 ' \
                    'bg-surface-container-highest/90 text-on-surface-variant ' \
                    'shadow-elevation-1 transition-all hover:bg-secondary-container hover:text-on-secondary-container',
-            data: { turbo_frame: '_top' }
+            data: { turbo_frame: '_top' },
+            "aria-label": 'Close'
           ) do
-            render Icons::X.new(size: 18)
-            span(class: 'sr-only') { 'Close' }
+            render Icons::X.new(size: 18, aria_hidden: 'true')
           end
         end
 

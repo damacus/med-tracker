@@ -124,7 +124,7 @@ RSpec.describe Components::Medications::ShowView, type: :component do
   it 'renders restock but hides update-only actions for restock-only access' do
     rendered = render_with_policy(Struct.new(:update?, :refill?, :destroy?).new(false, true, false))
 
-    expect(rendered.text).to include('Restock')
+    expect(rendered.css('button').map { |b| b['aria-label'] || b.text }.join).to include('Restock')
     expect(rendered.text).not_to include('Edit Details')
     expect(rendered.text).not_to include('Adjust Inventory')
   end

@@ -35,7 +35,7 @@ RSpec.describe 'Medication reorder workflow' do
 
     # Check for Restock button within content area
     within "[data-testid='medication-content']" do
-      expect(page).to have_text('Restock')
+      expect(page).to have_button('Restock')
     end
 
     click_on 'Restock'
