@@ -164,9 +164,10 @@ export default class extends Controller {
 
       // Build RubyUI SelectItem markup
       const items = dosages.map((dosage) => {
-        const text = `${dosage.amount} ${dosage.unit} - ${dosage.description}`
-        const optionValue = String(dosage.option_value || dosage.selection_key)
-        const isSelected = dosageInput && dosageInput.value === optionValue
+        const text = this.escapeHtml(`${dosage.amount} ${dosage.unit} - ${dosage.description}`)
+        const rawOptionValue = String(dosage.option_value || dosage.selection_key)
+        const optionValue = this.escapeHtml(rawOptionValue)
+        const isSelected = dosageInput && dosageInput.value === rawOptionValue
         return `
           <div
             role="option"
@@ -299,6 +300,15 @@ export default class extends Controller {
 
     const input = this.element.querySelector(`[name="${fieldName}"]`)
     return !!(input && input.value.trim() !== '')
+  }
+
+  escapeHtml(str) {
+    return String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;')
   }
 
   t(key) {
