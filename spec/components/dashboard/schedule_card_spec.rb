@@ -39,6 +39,12 @@ RSpec.describe Components::Dashboard::ScheduleCard, type: :component do
 
       expect(rendered.css(selector)).to be_present
     end
+
+    it 'does not repeat the blocked-state stock lookup when a schedule is not blocked' do
+      expect(count_stock_source_queries do
+        render_inline(described_class.new(person: person, schedule: schedule))
+      end).to eq(2)
+    end
   end
 
   describe 'card structure' do
@@ -60,5 +66,18 @@ RSpec.describe Components::Dashboard::ScheduleCard, type: :component do
 
       expect(rendered.text).to include('Ends')
     end
+  end
+
+  def count_stock_source_queries(&)
+    count = 0
+    subscriber = lambda do |_name, _started, _finished, _unique_id, payload|
+      sql = payload[:sql]
+      count += 1 if sql.include?('FROM "medications"') &&
+                    sql.include?('"medications"."name"') &&
+                    sql.include?('"medications"."dosage_amount"')
+    end
+
+    ActiveSupport::Notifications.subscribed(subscriber, 'sql.active_record', &)
+    count
   end
 end
