@@ -18,7 +18,10 @@ module ApplicationCable
       account = Account.find_by(id: account_id)
       return unless account
 
-      self.current_user = account.person&.user
+      user = account.person&.user
+      return unless user&.active?
+
+      self.current_user = user
     end
   end
 end

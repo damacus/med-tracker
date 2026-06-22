@@ -175,9 +175,11 @@ module Components
 
       def blocked_reason_for(schedule)
         @blocked_reasons ||= {}
-        @blocked_reasons[schedule.id] ||= MedicationStockSourceResolver
-                                          .new(user: current_user, source: schedule)
-                                          .blocked_reason
+        return @blocked_reasons[schedule.id] if @blocked_reasons.key?(schedule.id)
+
+        @blocked_reasons[schedule.id] = MedicationStockSourceResolver
+                                        .new(user: current_user, source: schedule)
+                                        .blocked_reason
       end
     end
   end

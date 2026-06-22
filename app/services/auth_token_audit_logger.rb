@@ -50,10 +50,13 @@ class AuthTokenAuditLogger
   end
 
   def paper_trail_context
+    request = PaperTrail.request
+    controller_info = request.controller_info
+
     {
-      whodunnit: PaperTrail.request.whodunnit,
-      ip: PaperTrail.request.controller_info&.dig(:ip),
-      request_id: PaperTrail.request.controller_info&.dig(:request_id)
+      whodunnit: request.whodunnit,
+      ip: controller_info&.dig(:ip),
+      request_id: controller_info&.dig(:request_id)
     }
   end
 

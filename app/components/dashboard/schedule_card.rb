@@ -125,7 +125,9 @@ module Components
       end
 
       def blocked_reason
-        @blocked_reason ||= MedicationStockSourceResolver.new(user: current_user, source: schedule).blocked_reason
+        return @blocked_reason if instance_variable_defined?(:@blocked_reason)
+
+        @blocked_reason = MedicationStockSourceResolver.new(user: current_user, source: schedule).blocked_reason
       end
 
       def render_delete_button
