@@ -318,7 +318,7 @@ RSpec.describe 'Admin Audit Logs', type: :system do
 
       within('tbody') do
         expect(page).to have_text('Medication')
-        expect(page).to have_text('Restock')
+        expect(page).to have_text('Restock') # Ensure this works for logs where it is literally text, if the error is here we might need to be specific.
       end
 
       click_link 'View', match: :first
