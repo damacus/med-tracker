@@ -348,8 +348,22 @@ export default class extends Controller {
   }
 
   hrefAttribute(url) {
-    const link = document.createElement("a")
-    link.setAttribute("href", String(url || ""))
-    return link.getAttribute("href") || ""
+    const stringUrl = String(url || "").trim()
+    if (!stringUrl) return ""
+
+    try {
+      const parsedUrl = new URL(stringUrl, window.location.origin)
+      const protocol = parsedUrl.protocol.toLowerCase()
+
+      if (!["http:", "https:", "mailto:", "tel:"].includes(protocol)) {
+        return "#"
+      }
+
+      const link = document.createElement("a")
+      link.setAttribute("href", stringUrl)
+      return link.getAttribute("href") || ""
+    } catch (error) {
+      return "#"
+    }
   }
 }
