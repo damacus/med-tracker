@@ -6,41 +6,41 @@
   "automerge": false,
   "lockFileMaintenance": {
     "enabled": true,
-    "automerge": true,
+    "automerge": false,
     "automergeType": "pr",
     "ignoreTests": false
   },
   "packageRules": [
     {
-      "description": "Auto-merge GitHub Actions non-major updates after checks pass",
+      "description": "Require review for GitHub Actions non-major updates",
       "matchManagers": ["github-actions"],
       "matchUpdateTypes": ["minor", "patch", "digest"],
-      "automerge": true,
+      "automerge": false,
       "automergeType": "pr",
       "ignoreTests": false
     },
     {
-      "description": "Auto-merge npm development dependency non-major updates after checks pass",
+      "description": "Require review for npm development dependency non-major updates",
       "matchManagers": ["npm"],
       "matchDepTypes": ["devDependencies"],
       "matchUpdateTypes": ["minor", "patch"],
-      "automerge": true,
+      "automerge": false,
       "automergeType": "pr",
       "ignoreTests": false
     },
     {
-      "description": "Auto-merge Bundler patch updates after checks pass",
+      "description": "Require review for Bundler patch updates",
       "matchManagers": ["bundler"],
       "matchUpdateTypes": ["patch"],
-      "automerge": true,
+      "automerge": false,
       "automergeType": "pr",
       "ignoreTests": false
     },
     {
-      "description": "Auto-merge Docker patch and digest updates after checks pass",
+      "description": "Require review for Docker patch and digest updates",
       "matchManagers": ["dockerfile", "docker-compose"],
       "matchUpdateTypes": ["patch", "digest"],
-      "automerge": true,
+      "automerge": false,
       "automergeType": "pr",
       "ignoreTests": false
     },
