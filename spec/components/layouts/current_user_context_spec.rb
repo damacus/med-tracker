@@ -5,7 +5,7 @@ require 'rails_helper'
 RSpec.describe Components::Layouts::CurrentUserContext do
   subject(:component) { component_class.new(current_user: current_user) }
 
-  let(:current_user) { build_user(name: 'Admin Doe', administrator: true) }
+  let(:current_user) { build_user(name: 'Admin Doe') }
   let(:component_class) do
     Class.new(Components::Base) do
       include Components::Layouts::CurrentUserContext
@@ -27,16 +27,36 @@ RSpec.describe Components::Layouts::CurrentUserContext do
   end
 
   describe '#user_is_admin?' do
-    it 'is true for administrators' do
+    after { Current.reset }
+
+    it 'is true for household owners' do
+      Current.membership = build_membership(owner: true, administrator: false)
+
       expect(component.send(:user_is_admin?)).to be(true)
     end
 
-    context 'when current_user is not an administrator' do
-      let(:current_user) { build_user(name: 'Carer Person', administrator: false) }
+    context 'when current membership is not a household manager' do
+      before { Current.membership = build_membership(owner: false, administrator: false) }
+
+      let(:current_user) { build_user(name: 'Carer Person') }
 
       it 'is false' do
         expect(component.send(:user_is_admin?)).to be(false)
       end
+    end
+  end
+
+  describe '#current_membership_role_name' do
+    after { Current.reset }
+
+    it 'returns the active household membership role' do
+      Current.membership = instance_double(HouseholdMembership, role: 'administrator')
+
+      expect(component.send(:current_membership_role_name)).to eq('Administrator')
+    end
+
+    it 'falls back to member when tenant context is missing' do
+      expect(component.send(:current_membership_role_name)).to eq('Member')
     end
   end
 
@@ -54,18 +74,17 @@ RSpec.describe Components::Layouts::CurrentUserContext do
     end
   end
 
-  def build_user(name:, administrator:)
+  def build_user(name:)
     Class.new do
       attr_reader :name
 
-      def initialize(name:, administrator:)
+      def initialize(name:)
         @name = name
-        @administrator = administrator
       end
+    end.new(name: name)
+  end
 
-      def administrator?
-        @administrator
-      end
-    end.new(name: name, administrator: administrator)
+  def build_membership(owner:, administrator:)
+    instance_double(HouseholdMembership, owner?: owner, administrator?: administrator)
   end
 end

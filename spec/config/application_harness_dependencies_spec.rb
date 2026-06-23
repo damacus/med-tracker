@@ -36,6 +36,9 @@ RSpec.describe ApplicationHarnessDependencies do
 
   it 'starts SimpleCov before Rails loads when coverage is enabled' do
     expect(spec_helper.index("require 'simplecov'")).to be < spec_helper.index("require 'webmock/rspec'")
+    expect(spec_helper.index('SimpleCov.start')).to be < spec_helper.index("require 'webmock/rspec'")
+    expect(simplecov_config).to include('SimpleCov.configure')
+    expect(simplecov_config).not_to include('SimpleCov.start')
     expect(Rails.root.join('.simplecov')).to exist
   end
 
@@ -79,6 +82,10 @@ RSpec.describe ApplicationHarnessDependencies do
 
   def spec_helper
     Rails.root.join('spec/spec_helper.rb').read
+  end
+
+  def simplecov_config
+    Rails.root.join('.simplecov').read
   end
 
   def ci_workflow

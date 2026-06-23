@@ -25,6 +25,6 @@ RSpec.describe 'Profile Experiments' do
   it 'defaults to fullpage variant' do
     visit profile_path
 
-    expect(page).to have_field('user[wizard_variant]', with: 'fullpage', checked: true)
+    expect(page).to have_field('account[wizard_variant]', with: 'fullpage', checked: true)
   end
 end

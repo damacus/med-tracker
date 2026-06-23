@@ -1,12 +1,14 @@
-# Initial users to invite on first boot.
+# Initial users to invite after a household owner exists.
 # Replace these placeholder emails with real addresses before running in production.
-# Roles: administrator, doctor, nurse, carer, parent
+# Membership roles: administrator, member
 #
 # This file is intentionally kept in the repository so it can be mounted as a
 # k8s ConfigMap volume at /app/db/seeds/users.yml to override defaults.
 #
-# Running `rails db:seed` is idempotent: users with an existing Account or a
-# pending invitation are skipped automatically.
+# Running `rails db:seed` is idempotent: users with an existing Account or a pending
+# invitation in the selected household are skipped automatically.
+# Set HOUSEHOLD_ID or HOUSEHOLD_SLUG to choose the household; otherwise the first
+# household is used.
 ---
 - email: admin@yourdomain.example
-  role: administrator
+  membership_role: administrator

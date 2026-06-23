@@ -140,7 +140,7 @@ module Components
             if modal
               m3_button(variant: :text, data: { action: 'click->ruby-ui--dialog#dismiss' }) { 'Cancel' }
             else
-              Link(href: '/admin/carer_relationships', variant: :link) { 'Cancel' }
+              Link(href: admin_carer_relationships_path, variant: :link) { 'Cancel' }
             end
           end
         end

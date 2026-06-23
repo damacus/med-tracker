@@ -5,7 +5,7 @@ module Api
     class BaseController < ActionController::API
       include Pundit::Authorization
 
-      before_action :authenticate_api_request!
+      around_action :with_api_request_context
 
       class InvalidFilterValue < StandardError; end
 
@@ -13,9 +13,22 @@ module Api
       rescue_from InvalidFilterValue, with: :render_invalid_filter
       rescue_from Pundit::NotAuthorizedError, with: :render_forbidden
 
-      attr_reader :current_api_session
+      attr_reader :current_api_session, :current_household, :current_membership
 
       private
+
+      def with_api_request_context
+        authenticate_api_request!
+        return if performed?
+
+        TenantContext.with(account: current_account, household: nil, request_id: request.request_id) do
+          bind_api_session_context!
+          bind_api_household_context! unless performed?
+          yield unless performed?
+        end
+      ensure
+        Current.reset
+      end
 
       def current_account
         current_api_session&.account
@@ -25,20 +38,53 @@ module Api
         current_account&.person&.user
       end
 
+      def pundit_user
+        AuthorizationContext.current || current_user
+      end
+
       def authenticate_api_request!
         @current_api_session = ApiSession.lookup_by_access_token(bearer_token)
         return render_unauthorized('Authentication required') unless valid_session?
         return render_unauthorized('Authentication required') unless valid_account_and_user?
 
+        Current.account = current_account
+        Current.request_id = request.request_id
         @current_api_session.touch_last_used!
       end
 
       def valid_session?
-        @current_api_session.present? && @current_api_session.revoked_at.nil? && @current_api_session.access_expires_at&.future?
+        @current_api_session.present? &&
+          @current_api_session.revoked_at.nil? &&
+          @current_api_session.access_expires_at&.future?
       end
 
       def valid_account_and_user?
         current_account.present? && current_account.verified? && current_user.present? && current_user.active?
+      end
+
+      def bind_api_household_context!
+        return if params[:household_id].blank?
+
+        @current_household = Household.find(params.expect(:household_id))
+        @current_membership = @current_api_session.household_membership
+        return render_forbidden unless @current_membership&.active?
+        return render_forbidden unless @current_membership.household_id == @current_household.id
+
+        Current.household = @current_household
+        Current.membership = @current_membership
+        TenantContext.set_household!(@current_household)
+        TenantContext.set_membership!(@current_membership)
+      end
+
+      def bind_api_session_context!
+        @current_membership = @current_api_session.household_membership
+        return render_unauthorized('Authentication required') unless @current_api_session.active_for_membership?
+
+        @current_household = @current_membership&.household
+        Current.household = @current_household
+        Current.membership = @current_membership
+        TenantContext.set_household!(@current_household)
+        TenantContext.set_membership!(@current_membership)
       end
 
       def bearer_token

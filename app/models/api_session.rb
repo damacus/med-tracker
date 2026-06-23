@@ -5,17 +5,26 @@ class ApiSession < ApplicationRecord
   REFRESH_TOKEN_TTL = 30.days
 
   belongs_to :account
+  belongs_to :household_membership, optional: true
 
   validates :access_token_digest, :refresh_token_digest, :access_expires_at,
             :refresh_expires_at, :last_used_at, presence: true
+  validates :household_membership, presence: true
+  validate :household_membership_must_belong_to_account
 
   scope :active, -> { where(revoked_at: nil) }
 
   class << self
-    def issue_for(account:, device_name: nil, user_agent: nil, audit_context: nil)
+    def issue_for(account:, household_membership:, device_name: nil, user_agent: nil, audit_context: nil)
       access_token = build_token
       refresh_token = build_token
-      session = create_session(account:, device_name:, user_agent:, access_token:, refresh_token:)
+      session = create_session(
+        account: account,
+        household_membership: household_membership,
+        device_name: device_name,
+        user_agent: user_agent,
+        tokens: { access: access_token, refresh: refresh_token }
+      )
 
       record_audit(session, 'created', audit_context)
 
@@ -40,24 +49,26 @@ class ApiSession < ApplicationRecord
         token_type: 'api_session',
         action: action,
         metadata: session.send(:audit_metadata),
-        context: audit_context
+        context: audit_context_with_tenant(session, audit_context)
       )
     end
 
     private
 
-    def create_session(account:, device_name:, user_agent:, access_token:, refresh_token:)
+    def create_session(account:, household_membership:, device_name:, user_agent:, tokens:)
       now = Time.current
 
       create!(
         account: account,
+        household_membership: household_membership,
+        permissions_version: household_membership.permissions_version,
         device_name: device_name,
         user_agent: user_agent,
         last_used_at: now,
         access_expires_at: now + ACCESS_TOKEN_TTL,
         refresh_expires_at: now + REFRESH_TOKEN_TTL,
-        access_token_digest: digest(access_token),
-        refresh_token_digest: digest(refresh_token)
+        access_token_digest: digest(tokens.fetch(:access)),
+        refresh_token_digest: digest(tokens.fetch(:refresh))
       )
     end
 
@@ -68,10 +79,23 @@ class ApiSession < ApplicationRecord
     def audit_logger
       AuthTokenAuditLogger.new
     end
+
+    def audit_context_with_tenant(session, audit_context)
+      {
+        household_id: session.household_membership&.household_id,
+        actor_membership_id: session.household_membership_id
+      }.merge(audit_context.to_h).compact
+    end
   end
 
   def active_refresh_token?
-    revoked_at.nil? && refresh_expires_at.future?
+    revoked_at.nil? && refresh_expires_at.future? && active_for_membership?
+  end
+
+  def active_for_membership?
+    return false if household_membership.blank?
+
+    household_membership.active? && permissions_version == household_membership.permissions_version
   end
 
   def rotate_tokens!(audit_context: nil)
@@ -96,8 +120,16 @@ class ApiSession < ApplicationRecord
     {
       device_name: device_name,
       user_agent: user_agent,
-      expires_at: refresh_expires_at
+      expires_at: refresh_expires_at,
+      household_membership_id: household_membership_id,
+      permissions_version: permissions_version
     }
+  end
+
+  def household_membership_must_belong_to_account
+    return if household_membership.blank? || household_membership.account_id == account_id
+
+    errors.add(:household_membership, 'must belong to the account')
   end
 
   def rotate_token_values!

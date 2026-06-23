@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
-require 'simplecov' if ENV['COVERAGE'] == 'true'
+if ENV['COVERAGE'] == 'true'
+  require 'simplecov'
+  SimpleCov.start
+end
 
 require 'webmock/rspec'
 

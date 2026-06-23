@@ -9,7 +9,7 @@ RSpec.describe 'GET /medication-finder/search via Open Food Facts' do
   let(:doctor_account) { accounts(:dr_jones) }
 
   def login_as_doctor
-    post '/login', params: { email: doctor_account.email, password: 'password' }
+    sign_in(doctor)
   end
 
   it 'returns a supplement result when the barcode is not in dm+d' do

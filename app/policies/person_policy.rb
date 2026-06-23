@@ -2,43 +2,41 @@
 
 class PersonPolicy < ApplicationPolicy
   def index?
-    admin? || medical_staff? || carer_or_parent?
+    active_membership?
   end
 
   def show?
-    admin? || medical_staff? || owns_record? || carer_with_patient? || parent_with_dependent_patient?
+    person_grant_allows?(record, :view)
   end
 
   def new?
-    carer_or_parent?
+    household_manager? || any_person_grant_allows?(:manage)
   end
 
   def create?
-    return false unless carer_or_parent?
+    return false unless household_manager? || any_person_grant_allows?(:manage)
 
-    %w[minor dependent_adult].include?(record.person_type)
+    new_record_belongs_to_current_household?
   end
 
   def update?
-    admin?
+    person_grant_allows?(record, :manage)
   end
 
   alias edit? update?
 
   def destroy?
-    admin?
+    person_grant_allows?(record, :manage)
   end
 
   def add_medication?
-    # User can add medication if they can create either a Schedule or a PersonMedication for this person
-    SchedulePolicy.new(user, Schedule.new(person: record)).create? ||
-      PersonMedicationPolicy.new(user, PersonMedication.new(person: record)).create?
+    person_grant_allows?(record, :manage)
   end
 
   private
 
-  def owns_record?
-    user&.person == record
+  def new_record_belongs_to_current_household?
+    record.household_id.blank? || record.household_id == household.id
   end
 
   def person_id_for_authorization
@@ -47,19 +45,20 @@ class PersonPolicy < ApplicationPolicy
 
   class Scope < ApplicationPolicy::Scope
     def resolve
-      return scope.none unless user
-      return scope.all if admin_or_clinician?
-      return scope.none unless carer_or_parent? || user.parent?
-
-      scope.where(id: accessible_person_ids)
+      household_person_grant_scope
     end
 
     private
 
-    def accessible_person_ids
-      ids = [user.person_id].compact
-      ids.concat(Array(user.person&.patient_ids))
-      ids.uniq
+    def household_person_grant_scope
+      return scope.none unless active_membership?
+
+      scope.where(
+        household: household,
+        id: PersonAccessGrant.active
+                             .where(household: household, household_membership: membership)
+                             .select(:person_id)
+      )
     end
   end
 end

@@ -29,13 +29,26 @@ RSpec.describe 'OTEL-014: Sensitive data scrubbed from traces' do # rubocop:disa
     end
   end
 
-  describe 'SpanSanitizer processor' do
-    it 'is registered as a span processor' do
+  describe 'final exporter allowlist' do
+    it 'does not register the old span-mutating sanitizer processor' do
       processors = OpenTelemetry.tracer_provider.instance_variable_get(:@span_processors)
       sanitizer_present = processors.any?(Otel::SpanSanitizingProcessor)
 
-      expect(sanitizer_present).to be(true),
-                                   'SpanSanitizingProcessor should be registered as a span processor'
+      expect(sanitizer_present).to be(false)
+    end
+
+    it 'does not allow tenant identifiers, record identifiers, or medication take payload fields' do
+      safe_keys = Otel::AllowlistedSpanExporter::SAFE_ATTRIBUTE_KEYS
+
+      expect(safe_keys).not_to include(
+        'model.id',
+        'account.id',
+        'household.id',
+        'person.id',
+        'medication_take.dose_amount',
+        'medication_take.taken_at',
+        'db.statement'
+      )
     end
   end
 end

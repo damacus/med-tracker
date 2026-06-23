@@ -25,7 +25,7 @@ RSpec.describe GlobalSearch::PeopleResultsQuery do
         expect(result).to have_attributes(
           type: 'person',
           subtitle: I18n.t('global_search.types.person'),
-          path: Rails.application.routes.url_helpers.person_path(people(:john)),
+          path: Rails.application.routes.url_helpers.person_path('test-household', people(:john)),
           score: a_kind_of(Integer)
         )
       end

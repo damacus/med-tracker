@@ -21,7 +21,6 @@ RSpec.describe Admin::UsersIndexQuery do
     User.create!(
       person: person,
       email_address: 'soft.deleted@example.com',
-      role: :parent,
       active: true
     )
   end
@@ -34,16 +33,64 @@ RSpec.describe Admin::UsersIndexQuery do
       expect(result).not_to include(users(:bob))
     end
 
-    it 'filters by role' do
-      result = described_class.new(scope: scope, filters: { role: 'doctor' }).call
+    it 'filters by household membership role without using the user role' do
+      household = Household.create!(name: 'Query Household', slug: 'query-household')
+      attach_user_to_household(users(:jane), household, :administrator)
+      attach_user_to_household(users(:doctor), household, :member)
 
-      expect(result).to contain_exactly(users(:doctor))
+      result = described_class.new(
+        scope: scope.where(id: [users(:jane).id, users(:doctor).id]),
+        filters: { membership_role: 'administrator' },
+        household: household
+      ).call
+
+      expect(result).to contain_exactly(users(:jane))
     end
 
     it 'filters soft deleted users' do
       result = described_class.new(scope: scope, filters: { status: 'soft_deleted' }).call
 
       expect(result).to contain_exactly(soft_deleted_user)
+    end
+
+    it 'filters active users' do
+      users(:bob).update!(active: false)
+
+      result = described_class.new(
+        scope: scope.where(id: [users(:jane).id, users(:bob).id]),
+        filters: { status: 'active' }
+      ).call
+
+      expect(result).to contain_exactly(users(:jane))
+    end
+
+    it 'filters inactive users' do
+      users(:bob).update!(active: false)
+
+      result = described_class.new(
+        scope: scope.where(id: [users(:jane).id, users(:bob).id]),
+        filters: { status: 'inactive' }
+      ).call
+
+      expect(result).to contain_exactly(users(:bob))
+    end
+
+    it 'leaves the scope unchanged for unknown status filters' do
+      result = described_class.new(
+        scope: scope.where(id: [users(:jane).id, users(:bob).id]),
+        filters: { status: 'unknown' }
+      ).call
+
+      expect(result).to contain_exactly(users(:jane), users(:bob))
+    end
+
+    it 'returns no users when filtering by membership role without a household' do
+      result = described_class.new(
+        scope: scope.where(id: users(:jane).id),
+        filters: { membership_role: 'member' }
+      ).call
+
+      expect(result).to be_empty
     end
 
     it 'sorts by associated person name' do
@@ -63,5 +110,29 @@ RSpec.describe Admin::UsersIndexQuery do
 
       expect(result.map(&:email_address)).to eq(['jane.doe@example.com', 'bob.smith@example.com'])
     end
+
+    it 'sorts by household membership role when requested' do
+      household = Household.create!(name: 'Sorted Household', slug: 'sorted-household')
+      attach_user_to_household(users(:jane), household, :member)
+      attach_user_to_household(users(:doctor), household, :administrator)
+
+      result = described_class.new(
+        scope: scope.where(id: [users(:jane).id, users(:doctor).id]),
+        filters: { sort: 'membership_role', direction: 'asc' },
+        household: household
+      ).call
+
+      expect(result.map(&:email_address)).to eq(['dr.jones@example.com', 'jane.doe@example.com'])
+    end
+  end
+
+  def attach_user_to_household(user, household, role)
+    user.person.update!(household: household)
+    household.household_memberships.create!(
+      account: user.person.account,
+      person: user.person,
+      role: role,
+      status: :active
+    )
   end
 end

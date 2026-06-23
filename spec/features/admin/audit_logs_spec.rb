@@ -8,6 +8,11 @@ RSpec.describe 'Admin Audit Logs', type: :system do
   let(:admin) { users(:admin) }
   let(:regular_user) { users(:jane) }
 
+  after do
+    PaperTrail.request.controller_info = {}
+    PaperTrail.request.whodunnit = nil
+  end
+
   describe 'access control' do
     it 'allows administrators to view audit logs' do
       sign_in(admin)
@@ -32,7 +37,7 @@ RSpec.describe 'Admin Audit Logs', type: :system do
   end
 
   describe 'navigation' do
-    before { sign_in(admin) }
+    before { sign_in_with_audit_context(admin) }
 
     it 'shows audit trail link on admin dashboard' do
       visit admin_root_path
@@ -45,7 +50,7 @@ RSpec.describe 'Admin Audit Logs', type: :system do
   end
 
   describe 'audit log list' do
-    before { sign_in(admin) }
+    before { sign_in_with_audit_context(admin) }
 
     it 'displays the audit log page with headers' do
       visit admin_audit_logs_path
@@ -71,7 +76,7 @@ RSpec.describe 'Admin Audit Logs', type: :system do
   end
 
   describe 'filtering' do
-    before { sign_in(admin) }
+    before { sign_in_with_audit_context(admin) }
 
     it 'has filter form with Stimulus controller' do
       visit admin_audit_logs_path
@@ -103,13 +108,13 @@ RSpec.describe 'Admin Audit Logs', type: :system do
   end
 
   describe 'audit log details' do
-    before { sign_in(admin) }
+    before { sign_in_with_audit_context(admin) }
 
     it 'shows detail page when clicking View link' do
       # Create a test audit entry
       PaperTrail.request.whodunnit = admin.id
       PaperTrail.request(enabled: true) do
-        users(:jane).update!(role: :nurse)
+        users(:jane).update!(active: false)
       end
 
       visit admin_audit_logs_path
@@ -125,13 +130,13 @@ RSpec.describe 'Admin Audit Logs', type: :system do
 
   # AUDIT-013: Complete audit trail review workflow
   describe 'complete audit trail review workflow (AUDIT-013)' do
-    before { sign_in(admin) }
+    before { sign_in_with_audit_context(admin) }
 
     it 'displays list of audit entries with required columns' do
       # Create audit entries
       PaperTrail.request.whodunnit = admin.id
       PaperTrail.request(enabled: true) do
-        users(:jane).update!(role: :nurse)
+        users(:jane).update!(active: false)
       end
 
       visit admin_audit_logs_path
@@ -152,7 +157,7 @@ RSpec.describe 'Admin Audit Logs', type: :system do
       # Create an update audit entry
       PaperTrail.request.whodunnit = admin.id
       PaperTrail.request(enabled: true) do
-        users(:jane).update!(role: :nurse)
+        users(:jane).update!(active: false)
       end
 
       visit admin_audit_logs_path
@@ -172,7 +177,7 @@ RSpec.describe 'Admin Audit Logs', type: :system do
     it 'allows navigation back to list' do
       PaperTrail.request.whodunnit = admin.id
       PaperTrail.request(enabled: true) do
-        users(:jane).update!(role: :nurse)
+        users(:jane).update!(active: false)
       end
 
       visit admin_audit_logs_path
@@ -188,7 +193,7 @@ RSpec.describe 'Admin Audit Logs', type: :system do
       # Create different types of audit entries
       PaperTrail.request.whodunnit = admin.id
       PaperTrail.request(enabled: true) do
-        users(:jane).update!(role: :nurse)
+        users(:jane).update!(active: false)
         people(:john).update!(name: 'John Updated')
       end
 
@@ -208,7 +213,7 @@ RSpec.describe 'Admin Audit Logs', type: :system do
       # Create different event types
       PaperTrail.request.whodunnit = admin.id
       PaperTrail.request(enabled: true) do
-        users(:jane).update!(role: :nurse)
+        users(:jane).update!(active: false)
       end
 
       visit admin_audit_logs_path
@@ -225,7 +230,7 @@ RSpec.describe 'Admin Audit Logs', type: :system do
     it 'clears all filters and shows all entries again' do
       PaperTrail.request.whodunnit = admin.id
       PaperTrail.request(enabled: true) do
-        users(:jane).update!(role: :nurse)
+        users(:jane).update!(active: false)
       end
 
       visit admin_audit_logs_path(item_type: 'User')
@@ -246,12 +251,12 @@ RSpec.describe 'Admin Audit Logs', type: :system do
     let(:carer) { users(:bob) }
     let(:schedule) { schedules(:john_paracetamol) }
 
-    before { sign_in(admin) }
+    before { sign_in_with_audit_context(admin) }
 
     it 'logs medication take creation with all required fields' do
       # Create a medication take as carer
       PaperTrail.request.whodunnit = carer.id
-      PaperTrail.request.controller_info = { ip: '192.168.1.100' }
+      set_audit_context(carer, ip: '192.168.1.100')
       PaperTrail.request(enabled: true) do
         MedicationTake.create!(
           schedule: schedule,
@@ -284,7 +289,7 @@ RSpec.describe 'Admin Audit Logs', type: :system do
       # Create an actual MedicationTake with IP tracking enabled
       # This tests the end-to-end audit trail functionality
       PaperTrail.request.whodunnit = carer.id
-      PaperTrail.request.controller_info = { ip: '192.168.1.100' }
+      set_audit_context(carer, ip: '192.168.1.100')
       PaperTrail.request(enabled: true) do
         MedicationTake.create!(
           schedule: schedule,
@@ -305,7 +310,7 @@ RSpec.describe 'Admin Audit Logs', type: :system do
   describe 'medication restock audit trail' do
     let(:medication) { medications(:paracetamol) }
 
-    before { sign_in(admin) }
+    before { sign_in_with_audit_context(admin) }
 
     it 'shows restock entries for medications in the audit log' do
       PaperTrail.request.whodunnit = admin.id
@@ -330,7 +335,7 @@ RSpec.describe 'Admin Audit Logs', type: :system do
   end
 
   describe 'pagination' do
-    before { sign_in(admin) }
+    before { sign_in_with_audit_context(admin) }
 
     it 'shows pagination controls when there are many entries' do
       # Create more than 50 audit entries to trigger pagination.
@@ -342,6 +347,8 @@ RSpec.describe 'Admin Audit Logs', type: :system do
       PaperTrail.request(enabled: true) do
         55.times do |i|
           PaperTrail::Version.create!(
+            household_id: current_audit_household.id,
+            actor_membership_id: current_audit_membership&.id,
             item_type: 'User',
             item_id: i + 1000,
             event: 'update',
@@ -367,6 +374,8 @@ RSpec.describe 'Admin Audit Logs', type: :system do
       PaperTrail.request(enabled: true) do
         55.times do |i|
           PaperTrail::Version.create!(
+            household_id: current_audit_household.id,
+            actor_membership_id: current_audit_membership&.id,
             item_type: 'User',
             item_id: i + 1000,
             event: 'update',
@@ -383,5 +392,27 @@ RSpec.describe 'Admin Audit Logs', type: :system do
 
       expect(page).to have_current_path(/page=2/)
     end
+  end
+
+  def sign_in_with_audit_context(user)
+    sign_in(user)
+    set_audit_context(user)
+  end
+
+  def set_audit_context(user, ip: nil)
+    PaperTrail.request.controller_info = {
+      household_id: current_audit_household(user).id,
+      actor_membership_id: current_audit_membership(user)&.id,
+      ip: ip
+    }.compact
+  end
+
+  def current_audit_household(user = admin)
+    ensure_api_household_for(user)
+  end
+
+  def current_audit_membership(user = admin)
+    account = Account.find_by(email: user.email_address)
+    current_audit_household(user).household_memberships.find_by(account: account)
   end
 end

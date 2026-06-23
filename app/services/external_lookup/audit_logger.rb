@@ -26,6 +26,8 @@ module ExternalLookup
         whodunnit: PaperTrail.request.whodunnit,
         ip: PaperTrail.request.controller_info&.dig(:ip),
         request_id: PaperTrail.request.controller_info&.dig(:request_id),
+        household_id: household_id,
+        actor_membership_id: actor_membership_id,
         created_at: Time.current
       }
     end
@@ -37,6 +39,14 @@ module ExternalLookup
         result_status: result_status,
         result_count: details.fetch(:result_count, 0)
       }.merge(details.fetch(:metadata, {}))
+    end
+
+    def household_id
+      PaperTrail.request.controller_info&.dig(:household_id) || Current.household&.id
+    end
+
+    def actor_membership_id
+      PaperTrail.request.controller_info&.dig(:actor_membership_id) || Current.membership&.id
     end
   end
 end

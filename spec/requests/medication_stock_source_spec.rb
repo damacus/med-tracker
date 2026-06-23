@@ -6,8 +6,9 @@ RSpec.describe 'Medication stock sources' do
   fixtures :accounts, :people, :locations, :medications, :users, :dosages, :location_memberships
 
   let(:admin) { users(:admin) }
-  let(:person) { people(:jane) }
-  let(:source_medication) { medications(:ibuprofen) }
+  let(:person) { household_person(people(:jane)) }
+  let(:source_medication) { household_medication(medications(:ibuprofen)) }
+  let(:school_location) { household_location(locations(:school)) }
 
   before do
     sign_in(admin)
@@ -25,7 +26,7 @@ RSpec.describe 'Medication stock sources' do
 
       take = MedicationTake.order(:id).last
       expect(take.taken_from_medication).to eq(alternate_medication)
-      expect(take.inventory_location).to eq(locations(:school))
+      expect(take.inventory_location).to eq(school_location)
       expect(source_medication.reload.current_supply).to eq(30)
       expect(alternate_medication.reload.current_supply).to eq(6)
     end
@@ -50,7 +51,7 @@ RSpec.describe 'Medication stock sources' do
       take = MedicationTake.order(:id).last
       expect(take.taken_at).to be_within(1.second).of(submitted_time)
       expect(take.taken_from_medication).to eq(alternate_medication)
-      expect(take.inventory_location).to eq(locations(:school))
+      expect(take.inventory_location).to eq(school_location)
       expect(alternate_medication.reload.current_supply).to eq(6)
     end
 
@@ -92,7 +93,7 @@ RSpec.describe 'Medication stock sources' do
 
       take = MedicationTake.order(:id).last
       expect(take.taken_from_medication).to eq(alternate_medication)
-      expect(take.inventory_location).to eq(locations(:school))
+      expect(take.inventory_location).to eq(school_location)
       expect(alternate_medication.reload.current_supply).to eq(6)
     end
 
@@ -116,7 +117,7 @@ RSpec.describe 'Medication stock sources' do
       take = MedicationTake.order(:id).last
       expect(take.taken_at).to be_within(1.second).of(submitted_time)
       expect(take.taken_from_medication).to eq(alternate_medication)
-      expect(take.inventory_location).to eq(locations(:school))
+      expect(take.inventory_location).to eq(school_location)
       expect(alternate_medication.reload.current_supply).to eq(6)
     end
 
@@ -171,7 +172,7 @@ RSpec.describe 'Medication stock sources' do
   def build_alternate_medication
     Medication.create!(
       name: source_medication.name,
-      location: locations(:school),
+      location: school_location,
       category: source_medication.category,
       dosage_amount: source_medication.dosage_amount,
       dosage_unit: source_medication.dosage_unit,
@@ -183,7 +184,7 @@ RSpec.describe 'Medication stock sources' do
   def build_incompatible_medication
     Medication.create!(
       name: source_medication.name,
-      location: locations(:school),
+      location: school_location,
       category: source_medication.category,
       dosage_amount: source_medication.dosage_amount + 100,
       dosage_unit: source_medication.dosage_unit,

@@ -151,7 +151,6 @@ RSpec.describe Views::Rodauth::Login, type: :component do
     allow(Rails.application.credentials).to receive(:dig).and_call_original
     allow(Rails.application.credentials).to receive(:dig).with(:oidc, :client_id).and_return('test-client-id')
     allow(Rails.application.credentials).to receive(:dig).with(:oidc, :issuer_url).and_return('https://issuer.example.com')
-    allow(User).to receive(:administrator).and_return(instance_double(ActiveRecord::Relation, exists?: false))
 
     rendered = render_inline(described_class.new)
 

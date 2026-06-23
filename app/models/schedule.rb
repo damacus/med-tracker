@@ -3,6 +3,7 @@
 # Schedule model
 class Schedule < ApplicationRecord
   include TimingRestrictions
+  include HouseholdAssignable
 
   WEEKDAY_INDEXES = Date::DAYNAMES.each_with_index.with_object({}) do |(name, index), indexes|
     indexes[name.downcase] = index
@@ -13,6 +14,7 @@ class Schedule < ApplicationRecord
 
   attr_accessor :dosage
 
+  belongs_to :household, optional: true
   belongs_to :person
   belongs_to :medication
   belongs_to :source_dosage_option, class_name: 'MedicationDosageOption', optional: true
@@ -41,6 +43,7 @@ class Schedule < ApplicationRecord
   validate :source_dosage_option_matches_medication
   validate :source_dosage_option_matches_snapshot
   validate :end_date_after_start_date
+  before_validation :assign_household
   before_validation :assign_source_dosage_option
   before_validation :assign_dose_snapshot_from_dosage
 

@@ -22,7 +22,7 @@ RSpec.describe 'Location memberships turbo streams' do
 
       expect(response).to have_http_status(:ok)
       expect(response.media_type).to eq('text/vnd.turbo-stream.html')
-      expect(response.body).to include("target=\"location_show_#{location.id}\"")
+      expect(response.body).to include("target=\"#{household_dom_target("location_show_#{location.id}")}\"")
       expect(response.body).to include(person.name)
       expect(response.body).to include('target="flash"')
     end
@@ -39,7 +39,7 @@ RSpec.describe 'Location memberships turbo streams' do
 
       expect(response).to have_http_status(:ok)
       expect(response.media_type).to eq('text/vnd.turbo-stream.html')
-      expect(response.body).to include("target=\"location_show_#{location.id}\"")
+      expect(response.body).to include("target=\"#{household_dom_target("location_show_#{location.id}")}\"")
       expect(response.body).to include('target="flash"')
     end
   end

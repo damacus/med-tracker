@@ -127,10 +127,10 @@ RSpec.describe Person do
     end
   end
 
-  describe 'default location assignment' do
+  describe 'location assignment' do
     let(:school_location) { Location.create!(name: 'Spec School', description: 'School') }
 
-    it 'assigns primary location when provided' do
+    it 'persists primary location membership as metadata' do
       person_with_primary_location = described_class.new(
         name: 'Primary Location Child',
         date_of_birth: 8.years.ago,
@@ -143,6 +143,16 @@ RSpec.describe Person do
       person_with_primary_location.save!
 
       expect(person_with_primary_location.locations).to contain_exactly(school_location)
+    end
+
+    it 'does not create a default Home location without a household' do
+      person = nil
+
+      expect do
+        person = described_class.create!(name: 'Unassigned Location Person', date_of_birth: 30.years.ago.to_date)
+      end.not_to(change { Location.where(name: 'Home', household_id: nil).count })
+
+      expect(person.location_memberships).to be_empty
     end
   end
 

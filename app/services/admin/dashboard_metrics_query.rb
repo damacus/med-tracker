@@ -2,6 +2,8 @@
 
 module Admin
   class DashboardMetricsQuery
+    include Rails.application.routes.url_helpers
+
     STALLED_IMPORT_THRESHOLD = 1.hour
     STALE_IMPORT_THRESHOLD = 35.days
 
@@ -18,30 +20,30 @@ module Admin
 
     def user_metrics
       {
-        total_users: User.count,
-        active_users: User.active.count,
-        recent_signups: User.where(created_at: 7.days.ago..).count,
-        users_by_role: User.group(:role).count
+        total_users: household_users.count,
+        active_users: household_users.active.count,
+        recent_signups: household_users.where(created_at: 7.days.ago..).count,
+        users_by_role: household_memberships.group(:role).count
       }
     end
 
     def people_metrics
       {
-        total_people: Person.count,
-        people_by_type: Person.group(:person_type).count,
+        total_people: household_people.count,
+        people_by_type: household_people.group(:person_type).count,
         patients_without_carers: needing_carer_count
       }
     end
 
     def schedule_metrics
       {
-        active_schedules: Schedule.where(active: true).count
+        active_schedules: household_schedules.where(active: true).count
       }
     end
 
     def invitation_metrics
       {
-        pending_invitations: Invitation.pending.count,
+        pending_invitations: household_invitations.pending.count,
         expired_invitations: expired_invitations_count
       }
     end
@@ -54,19 +56,46 @@ module Admin
     end
 
     def needing_carer_count
-      @needing_carer_count ||= Person.needing_carer_assignment.count
+      @needing_carer_count ||= household_people.needing_carer_assignment.count
     end
 
     def expired_invitations_count
-      @expired_invitations_count ||= Invitation.expired.count
+      @expired_invitations_count ||= household_invitations.expired.count
+    end
+
+    def household_users
+      @household_users ||=
+        User.joins(person: { account: :household_memberships })
+            .where(household_memberships: { household: Current.household })
+            .distinct
+    end
+
+    def household_memberships
+      @household_memberships ||= Current.household.household_memberships.active
+    end
+
+    def household_invitations
+      @household_invitations ||= Current.household.household_invitations
     end
 
     def recent_audit_events_count
-      PaperTrail::Version.where(created_at: 24.hours.ago..).count
+      audit_versions.where(created_at: 24.hours.ago..).count
     end
 
     def recent_activity
-      PaperTrail::Version.order(created_at: :desc).limit(3).to_a
+      audit_versions.order(created_at: :desc).limit(3).to_a
+    end
+
+    def household_people
+      @household_people ||= Current.household.people
+    end
+
+    def household_schedules
+      @household_schedules ||= Current.household.schedules
+    end
+
+    def audit_versions
+      @audit_versions ||= PaperTrail::Version.where(household_id: Current.household.id)
     end
 
     def attention_items
@@ -80,7 +109,7 @@ module Admin
         severity: :high,
         title: I18n.t('admin.dashboard.attention.no_carers.title'),
         detail: I18n.t('admin.dashboard.attention.no_carers.detail', count: needing_carer_count),
-        href: '/admin/people',
+        href: admin_people_path(route_options),
         action_label: I18n.t('admin.dashboard.attention.actions.view'),
         icon_type: 'activity'
       }
@@ -93,7 +122,7 @@ module Admin
         severity: :medium,
         title: I18n.t('admin.dashboard.attention.expired_invitations.title'),
         detail: I18n.t('admin.dashboard.attention.expired_invitations.detail', count: expired_invitations_count),
-        href: '/admin/invitations',
+        href: admin_invitations_path(route_options),
         action_label: I18n.t('admin.dashboard.attention.actions.review'),
         icon_type: 'clock'
       }
@@ -120,7 +149,7 @@ module Admin
           "admin.dashboard.attention.#{key}.detail",
           when: ActionController::Base.helpers.time_ago_in_words(timestamp)
         ),
-        href: '/admin/nhs_dmd_import/new',
+        href: new_admin_nhs_dmd_import_path(route_options),
         action_label: I18n.t('admin.dashboard.attention.actions.open'),
         icon_type: 'refresh_cw'
       }
@@ -151,7 +180,7 @@ module Admin
         severity: severity,
         title: I18n.t("admin.dashboard.attention.#{key}.title"),
         detail: I18n.t("admin.dashboard.attention.#{key}.detail"),
-        href: '/admin/nhs_dmd_import/new',
+        href: new_admin_nhs_dmd_import_path(route_options),
         action_label: I18n.t('admin.dashboard.attention.actions.open'),
         icon_type: 'refresh_cw'
       }
@@ -159,6 +188,10 @@ module Admin
 
     def dmd_import_stale?(import)
       (import.completed_at || import.updated_at) <= STALE_IMPORT_THRESHOLD.ago
+    end
+
+    def route_options
+      { household_slug: Current.household.slug }
     end
   end
 end

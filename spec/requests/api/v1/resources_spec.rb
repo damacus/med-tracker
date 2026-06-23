@@ -20,8 +20,9 @@ RSpec.describe 'API v1 resources' do
 
   it 'returns the current user profile' do
     login_data = api_login(user)
+    household_id = login_data.dig('household', 'id')
 
-    get api_v1_me_path, headers: api_auth_headers(login_data.fetch('access_token')), as: :json
+    get api_v1_household_me_path(household_id), headers: api_auth_headers(login_data.fetch('access_token')), as: :json
 
     expect(response).to have_http_status(:ok)
     expect(response.parsed_body.dig('data', 'email_address')).to eq(user.email_address)
@@ -30,18 +31,19 @@ RSpec.describe 'API v1 resources' do
 
   it 'returns the core read-only collections' do
     login_data = api_login(user)
+    household_id = login_data.dig('household', 'id')
     headers = api_auth_headers(login_data.fetch('access_token'))
 
     {
-      api_v1_locations_path => locations(:home).id,
-      api_v1_medications_path => medications(:paracetamol).id,
-      api_v1_schedules_path => schedules(:john_paracetamol).id,
-      api_v1_person_medications_path => person_medications(:john_vitamin_d).id,
-      api_v1_medication_takes_path => medication_takes(:john_morning_paracetamol).id
+      api_v1_household_locations_path(household_id) => locations(:home).id,
+      api_v1_household_medications_path(household_id) => medications(:paracetamol).id,
+      api_v1_household_schedules_path(household_id) => schedules(:john_paracetamol).id,
+      api_v1_household_person_medications_path(household_id) => person_medications(:john_vitamin_d).id,
+      api_v1_household_medication_takes_path(household_id) => medication_takes(:john_morning_paracetamol).id
     }.each do |path, expected_id|
       get path, headers: headers, as: :json
 
-      expect(response).to have_http_status(:ok)
+      expect(response.status).to eq(200), response.parsed_body.merge('path' => path).inspect
       expect(response.parsed_body.fetch('data').map { |row| row.fetch('id') }).to include(expected_id)
       expect(response.parsed_body.fetch('meta')).to include('page' => 1)
     end
@@ -49,8 +51,9 @@ RSpec.describe 'API v1 resources' do
 
   it 'returns the signed-in users notification preference' do
     login_data = api_login(user)
+    household_id = login_data.dig('household', 'id')
 
-    get api_v1_notification_preference_path,
+    get api_v1_household_notification_preference_path(household_id),
         headers: api_auth_headers(login_data.fetch('access_token')),
         as: :json
 
@@ -61,8 +64,9 @@ RSpec.describe 'API v1 resources' do
 
   it 'serializes schedule dose snapshot fields instead of dosage identity' do
     login_data = api_login(user)
+    household_id = login_data.dig('household', 'id')
 
-    get api_v1_schedules_path,
+    get api_v1_household_schedules_path(household_id),
         headers: api_auth_headers(login_data.fetch('access_token')),
         as: :json
 
@@ -77,8 +81,9 @@ RSpec.describe 'API v1 resources' do
 
   it 'serializes person medication administration kind' do
     login_data = api_login(user)
+    household_id = login_data.dig('household', 'id')
 
-    get api_v1_person_medications_path,
+    get api_v1_household_person_medications_path(household_id),
         headers: api_auth_headers(login_data.fetch('access_token')),
         as: :json
 
@@ -87,5 +92,99 @@ RSpec.describe 'API v1 resources' do
     end
 
     expect(person_medication).to include('administration_kind' => 'routine')
+  end
+
+  it 'scopes household resource collections to explicitly granted people' do
+    account = user.person.account
+    household = Household.create!(name: 'Resource Household', slug: 'resource-household')
+    other_household = Household.create!(name: 'Other Resource Household', slug: 'other-resource-household')
+    people(:admin).update!(household: household)
+
+    membership = household.household_memberships.create!(
+      account: account,
+      person: people(:admin),
+      role: :member,
+      status: :active
+    )
+    visible_person = create(:person, household: household, name: 'Alex Resource')
+    hidden_person = create(:person, household: household, name: 'Alex Hidden Resource')
+    other_person = create(:person, household: other_household, name: 'Alex Other Resource')
+
+    household.person_access_grants.create!(
+      household_membership: membership,
+      person: visible_person,
+      access_level: :view,
+      relationship_type: :family_member,
+      granted_by_membership: membership
+    )
+
+    visible_location = create(:location, household: household, name: 'Resource Home')
+    hidden_location = create(:location, household: household, name: 'Surgery')
+    other_location = create(:location, household: other_household, name: 'Resource Home')
+    visible_medication = create(:medication, household: household, location: visible_location, name: 'Paracetamol')
+    hidden_medication = create(:medication, household: household, location: hidden_location, name: 'Paracetamol')
+    other_medication = create(:medication, household: other_household, location: other_location, name: 'Paracetamol')
+    visible_dosage = create(:dosage, household: household, medication: visible_medication)
+    hidden_dosage = create(:dosage, household: household, medication: hidden_medication)
+    other_dosage = create(:dosage, household: other_household, medication: other_medication)
+    visible_schedule = create(
+      :schedule,
+      household: household,
+      person: visible_person,
+      medication: visible_medication,
+      dosage: visible_dosage
+    )
+    hidden_schedule = create(
+      :schedule,
+      household: household,
+      person: hidden_person,
+      medication: hidden_medication,
+      dosage: hidden_dosage
+    )
+    other_schedule = create(
+      :schedule,
+      household: other_household,
+      person: other_person,
+      medication: other_medication,
+      dosage: other_dosage
+    )
+    visible_person_medication = create(
+      :person_medication,
+      household: household,
+      person: visible_person,
+      medication: visible_medication,
+      dosage: visible_dosage
+    )
+    hidden_person_medication = create(
+      :person_medication,
+      household: household,
+      person: hidden_person,
+      medication: hidden_medication,
+      dosage: hidden_dosage
+    )
+    visible_take = create(:medication_take, :for_schedule, household: household, schedule: visible_schedule)
+    hidden_take = create(:medication_take, :for_schedule, household: household, schedule: hidden_schedule)
+    other_take = create(:medication_take, :for_schedule, household: other_household, schedule: other_schedule)
+
+    login_data = api_login(user, household_id: household.id)
+    headers = api_auth_headers(login_data.fetch('access_token'))
+
+    {
+      "/api/v1/households/#{household.id}/medications" => [visible_medication.id, hidden_medication.id,
+                                                           other_medication.id],
+      "/api/v1/households/#{household.id}/schedules" => [visible_schedule.id, hidden_schedule.id, other_schedule.id],
+      "/api/v1/households/#{household.id}/person_medications" => [
+        visible_person_medication.id,
+        hidden_person_medication.id
+      ],
+      "/api/v1/households/#{household.id}/medication_takes" => [visible_take.id, hidden_take.id, other_take.id]
+    }.each do |path, ids|
+      get path, headers: headers, as: :json
+
+      expect(response.status).to eq(200), response.parsed_body.merge('path' => path).inspect
+      returned_ids = response.parsed_body.fetch('data').map { |row| row.fetch('id') }
+      expect(returned_ids).to include(ids.first)
+      expect(returned_ids).not_to include(*ids.drop(1))
+    end
   end
 end

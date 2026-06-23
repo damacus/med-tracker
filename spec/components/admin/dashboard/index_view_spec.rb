@@ -37,7 +37,7 @@ RSpec.describe Components::Admin::Dashboard::IndexView, type: :component do
         severity: :high,
         title: 'Patients without carers',
         detail: '2 awaiting assignment',
-        href: '/admin/people',
+        href: Rails.application.routes.url_helpers.admin_people_path(household_slug: 'test-household'),
         action_label: 'View',
         icon_type: 'activity'
       }
@@ -55,7 +55,7 @@ RSpec.describe Components::Admin::Dashboard::IndexView, type: :component do
         severity: :high,
         title: 'Patients without carers',
         detail: '2 awaiting assignment',
-        href: '/admin/people',
+        href: Rails.application.routes.url_helpers.admin_people_path(household_slug: 'test-household'),
         action_label: 'View',
         icon_type: 'activity'
       }
@@ -64,7 +64,7 @@ RSpec.describe Components::Admin::Dashboard::IndexView, type: :component do
     rendered = render_inline(described_class.new(metrics: { attention_items: items }))
 
     expect(rendered.text).to include('Patients without carers')
-    expect(rendered.at_css("a[href='/admin/people']")).to be_present
+    expect(rendered.at_css("a[href='/households/test-household/admin/people']")).to be_present
   end
 
   it 'labels the review section without using queue language' do
@@ -105,7 +105,7 @@ RSpec.describe Components::Admin::Dashboard::IndexView, type: :component do
     version = PaperTrail::Version.order(created_at: :desc).first
 
     rendered = render_inline(described_class.new(metrics: { recent_activity: [version].compact }))
-    row = rendered.at_css("a[href='/admin/audit_logs/#{version.id}']")
+    row = rendered.at_css("a[href='/households/test-household/admin/audit_logs/#{version.id}']")
 
     expect(row[:class]).to include('rounded-xl', 'border', 'shadow-sm', 'hover:shadow-md')
     expect(row[:class]).not_to include('hover:bg-tertiary-container')

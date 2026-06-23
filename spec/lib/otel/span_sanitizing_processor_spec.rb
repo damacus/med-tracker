@@ -6,36 +6,36 @@ require 'otel/span_sanitizing_processor'
 RSpec.describe Otel::SpanSanitizingProcessor do
   subject(:processor) { described_class.new }
 
-  let(:tracer) do
-    OpenTelemetry.tracer_provider.tracer('test-tracer', '1.0.0')
-  end
+  let(:fake_span_class) do
+    Class.new do
+      attr_reader :attributes
 
-  let(:exporter) { OpenTelemetry::SDK::Trace::Export::InMemorySpanExporter.new }
-  let(:simple_processor) { OpenTelemetry::SDK::Trace::Export::SimpleSpanProcessor.new(exporter) }
+      def initialize(attributes)
+        @attributes = attributes
+      end
 
-  before do
-    OpenTelemetry.tracer_provider.add_span_processor(simple_processor)
-  end
-
-  after do
-    OpenTelemetry.tracer_provider.force_flush
-    exporter.reset
+      def set_attribute(key, value)
+        attributes[key] = value
+      end
+    end
   end
 
   describe '#on_start' do
     it 'sanitizes email addresses in span attributes' do
-      tracer.in_span('test.operation', attributes: { 'user.email' => 'john@example.com' }) do |span|
-        processor.on_start(span, OpenTelemetry::Context.current)
-        expect(span.attributes['user.email']).to eq('[REDACTED]')
-      end
+      span = fake_span_class.new({ 'user.email' => 'john@example.com' })
+
+      processor.on_start(span, OpenTelemetry::Context.current)
+
+      expect(span.attributes['user.email']).to eq('[REDACTED]')
     end
 
     it 'sanitizes sensitive header attributes' do
       attrs = { 'http.request.header.authorization' => 'Bearer secret-token-123' }
-      tracer.in_span('http.request', attributes: attrs) do |span|
-        processor.on_start(span, OpenTelemetry::Context.current)
-        expect(span.attributes['http.request.header.authorization']).to eq('[REDACTED]')
-      end
+      span = fake_span_class.new(attrs)
+
+      processor.on_start(span, OpenTelemetry::Context.current)
+
+      expect(span.attributes['http.request.header.authorization']).to eq('[REDACTED]')
     end
 
     it 'preserves non-sensitive attributes' do
@@ -44,19 +44,21 @@ RSpec.describe Otel::SpanSanitizingProcessor do
         'model.id' => '42',
         'model.operation' => 'create'
       }
-      tracer.in_span('medication_take.create', attributes: attrs) do |span|
-        processor.on_start(span, OpenTelemetry::Context.current)
-        expect(span.attributes['model.name']).to eq('MedicationTake')
-        expect(span.attributes['model.id']).to eq('42')
-        expect(span.attributes['model.operation']).to eq('create')
-      end
+      span = fake_span_class.new(attrs)
+
+      processor.on_start(span, OpenTelemetry::Context.current)
+
+      expect(span.attributes['model.name']).to eq('MedicationTake')
+      expect(span.attributes['model.id']).to eq('42')
+      expect(span.attributes['model.operation']).to eq('create')
     end
 
     it 'redacts IP addresses in attribute values' do
-      tracer.in_span('test', attributes: { 'client.address' => '192.168.1.100' }) do |span|
-        processor.on_start(span, OpenTelemetry::Context.current)
-        expect(span.attributes['client.address']).to eq('[IP REDACTED]')
-      end
+      span = fake_span_class.new({ 'client.address' => '192.168.1.100' })
+
+      processor.on_start(span, OpenTelemetry::Context.current)
+
+      expect(span.attributes['client.address']).to eq('[IP REDACTED]')
     end
   end
 

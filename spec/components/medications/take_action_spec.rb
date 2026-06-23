@@ -84,7 +84,11 @@ RSpec.describe Components::Medications::TakeAction, type: :component do
   end
 
   def take_path
-    Rails.application.routes.url_helpers.take_medication_person_schedule_path(person, source)
+    Rails.application.routes.url_helpers.take_medication_person_schedule_path(
+      household_slug: 'test-household',
+      person_id: person,
+      id: source
+    )
   end
 
   def build_alternate_medication

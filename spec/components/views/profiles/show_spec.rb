@@ -5,12 +5,11 @@ require 'rails_helper'
 RSpec.describe Views::Profiles::Show, type: :component do
   fixtures :accounts, :people, :users
 
-  let(:user) { users(:damacus) }
   let(:account) { accounts(:damacus) }
   let(:person) { people(:damacus) }
 
   it 'uses token-driven shell surfaces instead of literal gradients and white overlays' do
-    component = described_class.new(person: person, account: account, user: user)
+    component = described_class.new(person: person, account: account)
     allow(component).to receive(:render_left_column) { component.send(:render_personal_info_card) }
     allow(component).to receive(:render_right_column)
 
@@ -24,7 +23,7 @@ RSpec.describe Views::Profiles::Show, type: :component do
   end
 
   it 'renders an M3 identity header with the person avatar and profile metadata' do
-    component = described_class.new(person: person, account: account, user: user)
+    component = described_class.new(person: person, account: account)
     allow(component).to receive(:render_left_column) { component.send(:render_avatar_card) }
     allow(component).to receive(:render_right_column)
 

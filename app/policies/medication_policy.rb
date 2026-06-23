@@ -2,33 +2,29 @@
 
 class MedicationPolicy < ApplicationPolicy
   def index?
-    admin? || doctor? || nurse? || carer_or_parent?
+    active_membership?
   end
 
   def show?
-    admin? || doctor? || nurse? || carer_or_parent?
+    medication_visible_in_household?
   end
 
   alias dosages? show?
 
   def create?
-    return true if admin? || doctor?
-    return false unless user&.parent?
-    return true if record.is_a?(Class) || record.location_id.blank?
-
-    authorized_location_scope.exists?(id: record.location_id)
+    medication_create_allowed_in_household?
   end
 
   alias new? create?
 
   def update?
-    admin? || doctor?
+    household_manager? && same_household?(record)
   end
 
   alias edit? update?
 
   def refill?
-    update? || nurse? || carer_or_parent?
+    can_refill_in_household?
   end
 
   def mark_as_ordered?
@@ -40,7 +36,7 @@ class MedicationPolicy < ApplicationPolicy
   end
 
   def destroy?
-    admin?
+    household_manager? && same_household?(record)
   end
 
   def finder?
@@ -49,27 +45,41 @@ class MedicationPolicy < ApplicationPolicy
 
   class Scope < ApplicationPolicy::Scope
     def resolve
-      return scope.none unless user
-      return scope.all if admin? || doctor? || nurse?
-      return scope.none unless carer_or_parent?
-
-      scope_by_location
+      household_medication_scope
     end
 
     private
 
-    def scope_by_location
-      scope.where(location_id: authorized_location_scope.select(:id))
-    end
+    def household_medication_scope
+      return scope.none unless active_membership?
 
-    def authorized_location_scope
-      LocationPolicy::Scope.new(user, Location.all).resolve
+      household_scope = scope.where(household: household)
+      return household_scope if household_manager? || any_person_grant_allows?(:manage)
+
+      household_scope.where(id: granted_medication_ids_for(:view))
     end
   end
 
   private
 
-  def authorized_location_scope
-    LocationPolicy::Scope.new(user, Location.all).resolve
+  def medication_visible_in_household?
+    return false unless active_membership? && same_household?(record)
+    return true if household_manager?
+
+    granted_medication_ids_for(:view).include?(record.id)
+  end
+
+  def can_refill_in_household?
+    return false unless active_membership?
+    return household_manager? || any_person_grant_allows?(:view) if record.is_a?(Class)
+
+    medication_visible_in_household?
+  end
+
+  def medication_create_allowed_in_household?
+    return false unless household_manager? || any_person_grant_allows?(:manage)
+    return true if record.is_a?(Class) || record.location_id.blank?
+
+    same_household?(record.location)
   end
 end

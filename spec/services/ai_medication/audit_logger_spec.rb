@@ -42,6 +42,26 @@ RSpec.describe AiMedication::AuditLogger do
       expect(version.request_id).to eq('req-ai-001')
     end
 
+    it 'partitions manual audit versions by household context' do
+      household = Household.create!(name: 'AI Audit Household')
+      membership = household.household_memberships.create!(
+        account: user.person.account,
+        role: :owner,
+        status: :active
+      )
+      PaperTrail.request.controller_info = {
+        ip: '10.0.0.1',
+        request_id: 'req-ai-001',
+        household_id: household.id,
+        actor_membership_id: membership.id
+      }
+
+      audit_logger.record(user: user, medication_identity: medication_identity, suggestion: found_suggestion)
+
+      expect(PaperTrail::Version.where(item_type: 'AiMedicationSuggestion').last)
+        .to have_attributes(household_id: household.id, actor_membership_id: membership.id)
+    end
+
     it 'stores a SHA256 identity hash and counts in object JSON' do
       audit_logger.record(user: user, medication_identity: medication_identity, suggestion: found_suggestion)
 

@@ -7,11 +7,12 @@ module Components
       class UserRow < Components::Base
         include Phlex::Rails::Helpers::FormWith
 
-        attr_reader :user, :current_user
+        attr_reader :user, :current_user, :household
 
-        def initialize(user:, current_user: nil)
+        def initialize(user:, current_user: nil, household: nil)
           @user = user
           @current_user = current_user
+          @household = household || Current.household
           super()
         end
 
@@ -20,13 +21,13 @@ module Components
           render RubyUI::TableRow.new(id: "user_#{user.id}", class: row_class, data: { user_id: user.id }) do
             render RubyUI::TableCell.new(class: 'font-medium') { user.name }
             render(RubyUI::TableCell.new { user.email_address })
-            render RubyUI::TableCell.new(class: 'capitalize') { user.role }
+            render RubyUI::TableCell.new(class: 'capitalize') { membership_role }
             render(RubyUI::TableCell.new { render_status_badge })
             render(RubyUI::TableCell.new { render_verification_button })
             render RubyUI::TableCell.new(class: 'text-center') do
               div(class: 'flex gap-2 justify-center') do
                 render RubyUI::Link.new(
-                  href: "/admin/users/#{user.id}/edit",
+                  href: edit_admin_user_path(user),
                   variant: :outlined,
                   size: :sm,
                   data: { turbo_frame: '_top' }
@@ -38,6 +39,18 @@ module Components
         end
 
         private
+
+        def membership_role
+          account = user.person&.account
+          return no_membership_label unless household && account
+
+          membership = household.household_memberships.active.find_by(account: account)
+          membership&.role&.titleize || no_membership_label
+        end
+
+        def no_membership_label
+          t('admin.users.form.no_membership', default: 'No membership')
+        end
 
         def render_status_badge
           if user.soft_deleted?
@@ -67,7 +80,7 @@ module Components
 
         def render_activate_button
           form_with(
-            url: "/admin/users/#{user.id}/activate",
+            url: activate_admin_user_path(user),
             method: :post,
             class: 'inline-block'
           ) do
@@ -84,7 +97,7 @@ module Components
           return render_verified_button if user.person&.account&.verified?
 
           form_with(
-            url: "/admin/users/#{user.id}/verify",
+            url: verify_admin_user_path(user),
             method: :post,
             class: 'inline-block'
           ) do
@@ -130,7 +143,7 @@ module Components
               end
               render RubyUI::AlertDialogFooter.new do
                 render(RubyUI::AlertDialogCancel.new { t('admin.users.user_row.deactivate_dialog.cancel') })
-                form_with(url: "/admin/users/#{user.id}", method: :delete, class: 'inline') do
+                form_with(url: admin_user_path(user), method: :delete, class: 'inline') do
                   m3_button(variant: :destructive, type: :submit) { t('admin.users.user_row.deactivate_dialog.submit') }
                 end
               end

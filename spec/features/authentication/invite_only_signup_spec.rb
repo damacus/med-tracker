@@ -5,7 +5,7 @@ require 'rails_helper'
 RSpec.describe 'Invite-only sign-up', type: :system do
   fixtures :accounts, :people, :users
 
-  describe 'when an administrator exists' do
+  describe 'when a household owner exists' do
     before { AppSettings.instance.update!(invite_only: true) }
 
     it 'redirects to login when visiting create-account without an invitation token' do
@@ -23,7 +23,7 @@ RSpec.describe 'Invite-only sign-up', type: :system do
     end
 
     it 'allows visiting create-account with a valid invitation token' do
-      invitation = Invitation.create!(email: 'newuser@example.org', role: :nurse)
+      invitation = create(:household_invitation, email: 'newuser@example.org', membership_role: :member)
 
       visit "#{create_account_path}?invitation_token=#{invitation.token}"
 
@@ -31,10 +31,10 @@ RSpec.describe 'Invite-only sign-up', type: :system do
     end
   end
 
-  describe 'when no administrator exists' do
+  describe 'when no household owner exists' do
     before do
       AppSettings.instance.update!(invite_only: false)
-      User.administrator.delete_all
+      HouseholdMembership.owner.delete_all
     end
 
     it 'allows visiting create-account without an invitation token' do

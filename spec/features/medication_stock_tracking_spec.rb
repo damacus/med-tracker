@@ -24,7 +24,7 @@ RSpec.describe 'Medication Stock Tracking', type: :system do
   it 'displays current stock on the person profile' do
     visit person_path(person)
 
-    within "#schedule_#{schedule.id}" do
+    within "##{tenant_dom_id(schedule)}" do
       # Badge doesn't show when adequately stocked (only for low/out of stock)
       expect(page).to have_no_text('In Stock')
       expect(page).to have_text('10')
@@ -35,7 +35,7 @@ RSpec.describe 'Medication Stock Tracking', type: :system do
     medication.update!(current_supply: 5)
     visit person_path(person)
 
-    within "#schedule_#{schedule.id}" do
+    within "##{tenant_dom_id(schedule)}" do
       expect(page).to have_text('Low Stock')
       expect(page).to have_text('5')
     end
@@ -45,7 +45,7 @@ RSpec.describe 'Medication Stock Tracking', type: :system do
     medication.update!(current_supply: 0)
     visit person_path(person)
 
-    within "#schedule_#{schedule.id}" do
+    within "##{tenant_dom_id(schedule)}" do
       expect(page).to have_text('Out of Stock')
       expect(page).to have_text('0')
     end
@@ -65,7 +65,7 @@ RSpec.describe 'Medication Stock Tracking', type: :system do
 
     # Verify stock reduction on the person profile page
     visit person_path(person)
-    within "#schedule_#{schedule.id}" do
+    within "##{tenant_dom_id(schedule)}" do
       expect(page).to have_text('9 left')
     end
   end
@@ -78,7 +78,7 @@ RSpec.describe 'Medication Stock Tracking', type: :system do
 
   def as_needed_card_for(schedule)
     all('details[data-testid="dashboard-as-needed-person"]', visible: :all).find do |details|
-      details.has_css?("#timeline_schedule_#{schedule.id}", visible: :all)
+      details.has_css?("##{tenant_dom_id(schedule, :timeline)}", visible: :all)
     end
   end
 end

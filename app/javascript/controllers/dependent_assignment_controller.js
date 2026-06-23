@@ -19,8 +19,14 @@ export default class extends Controller {
   }
 
   selectedRole() {
+    const checkedRelationship = this.element.querySelector("input[name='user[dependent_relationship_type]']:checked")
+    if (checkedRelationship) return checkedRelationship.value
+
     const checkedRole = this.element.querySelector("input[name='user[role]']:checked")
     if (checkedRole) return checkedRole.value
+
+    const invitationRelationshipType = this.element.querySelector("select[name='invitation[relationship_type]']")?.value
+    if (invitationRelationshipType) return invitationRelationshipType
 
     return this.element.querySelector("select[name='invitation[role]']")?.value
   }

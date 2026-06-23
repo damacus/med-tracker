@@ -11,6 +11,7 @@ services:
       POSTGRES_MULTIPLE_DATABASES: medtracker_queue
     volumes:
       - medtracker_dev_postgres:/var/lib/postgresql
+      - ./compose/init-roles.sql:/docker-entrypoint-initdb.d/001-init-roles.sql:ro
       - ./compose/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh:ro
 
   mail-dev:
@@ -43,6 +44,7 @@ services:
       RAILS_ENV: development
       RAILS_FORCE_SSL: "false"
       DATABASE_URL: postgresql://medtracker:medtracker_password@db-dev:5432/medtracker
+      DATABASE_ROLE: ${DEV_MIGRATION_DATABASE_ROLE:-}
       SOLID_QUEUE_DATABASE_URL: postgresql://medtracker:medtracker_password@db-dev:5432/medtracker_queue
       NHS_DMD_CLIENT_ID: ${NHS_DMD_CLIENT_ID:-}
       NHS_DMD_CLIENT_SECRET: ${NHS_DMD_CLIENT_SECRET:-}
@@ -78,6 +80,7 @@ services:
         condition: service_completed_successfully
     environment:
       <<: *rails_env_dev
+      DATABASE_ROLE: ${DEV_DATABASE_ROLE:-}
       SOLID_QUEUE_IN_PUMA: "true"
     volumes:
       - .:/app
@@ -108,6 +111,8 @@ services:
       service: postgres
     profiles: [test]
     networks: [test]
+    volumes:
+      - ./compose/init-roles.sql:/docker-entrypoint-initdb.d/001-init-roles.sql:ro
     healthcheck:
       interval: 5s
       timeout: 3s
@@ -128,6 +133,7 @@ services:
     environment: &rails_env_test
       RAILS_ENV: test
       DATABASE_URL: postgresql://medtracker:medtracker_password@db-test:5432/medtracker
+      DATABASE_ROLE: ${TEST_MIGRATION_DATABASE_ROLE:-}
       SMTP_ADDRESS: mail-test
       APP_URL: ${TEST_APP_URL:-http://localhost:3000}
       OIDC_CLIENT_ID: ${TEST_OIDC_CLIENT_ID:-}
@@ -158,7 +164,9 @@ services:
         condition: service_started
       migrate-test:
         condition: service_completed_successfully
-    environment: *rails_env_test
+    environment:
+      <<: *rails_env_test
+      DATABASE_ROLE: ${TEST_DATABASE_ROLE:-}
     volumes:
       - .:/app
       - ${MEDTRACKER_GIT_COMMON_DIR:-.git}:${MEDTRACKER_GIT_COMMON_DIR:-.git}:ro
@@ -205,6 +213,7 @@ services:
       POSTGRES_MULTIPLE_DATABASES: medtracker_production_queue,medtracker_production_cache,medtracker_production_cable
     volumes:
       - medtracker_prod_postgres:/var/lib/postgresql
+      - ./compose/init-roles.sql:/docker-entrypoint-initdb.d/001-init-roles.sql:ro
       - ./compose/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh:ro
 
   migrate-prod:
@@ -220,6 +229,7 @@ services:
     environment: &rails_env_prod
       RAILS_ENV: production
       DATABASE_URL: postgresql://medtracker:medtracker_password@db-prod:5432/medtracker
+      DATABASE_ROLE: ${MIGRATION_DATABASE_ROLE:-med_tracker_owner}
       SECRET_KEY_BASE: ${SECRET_KEY_BASE:-local-prod-testing-only-not-for-real-use}
       SOLID_QUEUE_DATABASE_URL: postgresql://medtracker:medtracker_password@db-prod:5432/medtracker_production_queue
       SOLID_CACHE_DATABASE_URL: postgresql://medtracker:medtracker_password@db-prod:5432/medtracker_production_cache
@@ -242,6 +252,7 @@ services:
         condition: service_completed_successfully
     environment:
       <<: *rails_env_prod
+      DATABASE_ROLE: ${DATABASE_ROLE:-med_tracker_app}
       SOLID_QUEUE_IN_PUMA: "true"
     ports:
       - "80"

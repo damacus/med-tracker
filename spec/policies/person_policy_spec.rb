@@ -1,174 +1,58 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
-require 'pundit/rspec'
 
-RSpec.describe PersonPolicy do
-  fixtures :all
+RSpec.describe PersonPolicy, type: :policy do
+  let(:member) { household_policy_member(role: :member) }
+  let(:household) { member.fetch(:household) }
+  let(:person) { household_policy_person(household) }
+  let(:other_person) { household_policy_person(household_policy_member(role: :owner).fetch(:household)) }
 
-  subject(:policy) { described_class.new(current_user, person) }
+  it 'uses explicit person grants for reads and writes' do
+    expect(policy_results(%i[show?], person)).to eq(show?: false)
 
-  let(:person) { people(:john) }
+    grant_policy_person_access(member, person, access_level: :view)
 
-  context 'when user is an administrator' do
-    let(:current_user) { users(:admin) }
+    expect(policy_results(%i[show? update?], person)).to eq(show?: true, update?: false)
 
-    it 'permits viewing and management actions except create' do
-      %i[index show update edit destroy].each do |action|
-        expect(policy.public_send("#{action}?")).to be true
-      end
-    end
+    person.person_access_grants.find_by!(household_membership: member.fetch(:membership)).update!(access_level: :manage)
 
-    it 'forbids creating people' do
-      expect(policy.create?).to be false
-      expect(policy.new?).to be false
-    end
+    expect(policy_results(%i[update? destroy? add_medication?], person)).to eq(
+      update?: true,
+      destroy?: true,
+      add_medication?: true
+    )
+    expect(policy_results(%i[show?], other_person)).to eq(show?: false)
   end
 
-  context 'when user is a doctor' do
-    let(:current_user) { users(:doctor) }
+  it 'allows managers or members with manage grants to create people in their household' do
+    owner = household_policy_member(role: :owner, household: household)
+    new_person = household.people.build(name: 'New Person', date_of_birth: 5.years.ago.to_date, person_type: :minor)
 
-    it 'permits viewing but not management actions' do
-      %i[index show].each { |action| expect(policy.public_send("#{action}?")).to be true }
-      %i[create new update edit destroy].each { |action| expect(policy.public_send("#{action}?")).to be false }
-    end
+    expect(described_class.new(owner.fetch(:context), new_person).create?).to be(true)
+    expect(described_class.new(member.fetch(:context), new_person).create?).to be(false)
+
+    grant_policy_person_access(member, person, access_level: :manage)
+
+    expect(described_class.new(member.fetch(:context), new_person).create?).to be(true)
+    expect(described_class.new(member.fetch(:context), other_person).create?).to be(false)
   end
 
-  context 'when user is a nurse' do
-    let(:current_user) { users(:nurse) }
+  it 'scopes people to active grants in the household' do
+    person
+    other_person
+    grant_policy_person_access(member, person, access_level: :view)
 
-    it 'permits viewing but not management actions' do
-      %i[index show].each { |action| expect(policy.public_send("#{action}?")).to be true }
-      %i[create new update edit destroy].each { |action| expect(policy.public_send("#{action}?")).to be false }
-    end
+    resolved = described_class::Scope.new(member.fetch(:context), Person.all).resolve
+
+    expect(resolved).to contain_exactly(person)
   end
 
-  context 'when user is a parent/carer' do
-    let(:current_user) { users(:jane) }
-
-    context 'with their own record' do
-      let(:person) { current_user.person }
-
-      it 'permits viewing only' do
-        expect(policy.show?).to be true
-        %i[update edit destroy].each { |action| expect(policy.public_send("#{action}?")).to be false }
-      end
-    end
-
-    context 'with an assigned patient' do
-      let(:person) { people(:child_patient) }
-
-      it 'permits viewing only' do
-        expect(policy.show?).to be true
-        %i[update edit destroy].each { |action| expect(policy.public_send("#{action}?")).to be false }
-      end
-    end
-
-    context 'with an unrelated person' do
-      let(:person) { people(:john) }
-
-      it 'forbids viewing' do
-        expect(policy.show?).to be false
-      end
-    end
-
-    it 'allows accessing index (but scope limits to assigned people)' do
-      expect(policy.index?).to be true
-    end
-
-    context 'when creating a minor' do
-      let(:person) { Person.new(person_type: :minor, date_of_birth: 5.years.ago) }
-
-      it { expect(policy.create?).to be true }
-    end
-
-    context 'when creating a dependent adult' do
-      let(:person) { Person.new(person_type: :dependent_adult, date_of_birth: 70.years.ago) }
-
-      it { expect(policy.create?).to be true }
-    end
-
-    context 'when creating an adult' do
-      let(:person) { Person.new(person_type: :adult, date_of_birth: 30.years.ago) }
-
-      it { expect(policy.create?).to be false }
-    end
-
-    context 'when creating a new person (no type yet)' do
-      let(:person) { Person.new }
-
-      it { expect(policy.new?).to be true }
-    end
+  it 'does not authorize legacy users' do
+    expect(described_class.new(User.new, person).index?).to be(false)
   end
 
-  context 'when user is a carer' do
-    let(:current_user) { users(:carer) }
-
-    context 'when creating a minor' do
-      let(:person) { Person.new(person_type: :minor, date_of_birth: 5.years.ago) }
-
-      it { expect(policy.create?).to be true }
-    end
-
-    context 'when creating an adult' do
-      let(:person) { Person.new(person_type: :adult, date_of_birth: 30.years.ago) }
-
-      it { expect(policy.create?).to be false }
-    end
-  end
-
-  context 'when user is nil' do
-    let(:current_user) { nil }
-
-    it 'forbids all actions' do
-      %i[index show create new update edit destroy].each do |action|
-        expect(policy.public_send("#{action}?")).to be false
-      end
-    end
-  end
-
-  describe 'Scope' do
-    subject(:scope) { described_class::Scope.new(current_user, Person.all).resolve }
-
-    context 'when user is an administrator' do
-      let(:current_user) { users(:admin) }
-
-      it 'returns all people' do
-        expect(scope).to match_array(Person.all)
-      end
-    end
-
-    context 'when user is a doctor' do
-      let(:current_user) { users(:doctor) }
-
-      it 'returns all people' do
-        expect(scope).to match_array(Person.all)
-      end
-    end
-
-    context 'when user is a nurse' do
-      let(:current_user) { users(:nurse) }
-
-      it 'returns all people' do
-        expect(scope).to match_array(Person.all)
-      end
-    end
-
-    context 'when user is a parent/carer' do
-      let(:current_user) { users(:jane) }
-
-      it 'returns only their person and assigned patients' do
-        expected_people = [current_user.person, people(:child_patient)]
-        expect(scope).to match_array(expected_people)
-      end
-    end
-
-    context 'when user is nil' do
-      let(:current_user) { nil }
-
-      it 'returns no records' do
-        expect(scope).to be_empty
-      end
-    end
+  def policy_results(actions, record)
+    actions.index_with { |action| described_class.new(member.fetch(:context), record).public_send(action) }
   end
 end

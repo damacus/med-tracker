@@ -11,7 +11,7 @@ RSpec.describe Admin::AuditLogsQuery do
   before do
     PaperTrail.request.whodunnit = admin.id
     PaperTrail.request(enabled: true) do
-      users(:jane).update!(role: :nurse)
+      users(:jane).update!(active: false)
       people(:john).update!(name: 'John Updated')
     end
   end

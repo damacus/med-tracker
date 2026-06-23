@@ -1,11 +1,16 @@
 ---
 # Database configuration for MedTracker
 # All environments use DATABASE_URL environment variable
+<% primary_database_role = ENV["DATABASE_ROLE"].to_s.strip %>
 
 development:
   primary:
     adapter: postgresql
     url: <%= ENV['DATABASE_URL'] %>
+<% if primary_database_role != "" %>
+    variables:
+      role: <%= primary_database_role %>
+<% end %>
   queue:
     adapter: postgresql
     url: <%= ENV.fetch('SOLID_QUEUE_DATABASE_URL') { ENV['DATABASE_URL']&.gsub(/\/[^\/]+$/, '/medtracker_queue') } %>
@@ -14,11 +19,19 @@ development:
 test:
   adapter: postgresql
   url: <%= ENV['DATABASE_URL'] %>
+<% if primary_database_role != "" %>
+  variables:
+    role: <%= primary_database_role %>
+<% end %>
 
 production:
   primary:
     adapter: postgresql
     url: <%= ENV['DATABASE_URL'] %>
+<% if primary_database_role != "" %>
+    variables:
+      role: <%= primary_database_role %>
+<% end %>
   cache:
     adapter: postgresql
     url: <%= ENV.fetch('SOLID_CACHE_DATABASE_URL') { ENV['DATABASE_URL']&.gsub(/\/[^\/]+$/, '/medtracker_production_cache') } %>

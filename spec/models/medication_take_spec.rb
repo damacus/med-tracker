@@ -80,6 +80,18 @@ RSpec.describe MedicationTake do
     end
   end
 
+  describe 'household assignment' do
+    it 'falls back to the person medication household when a present schedule has none' do
+      household = Household.create!(name: 'Medication Take Source Household')
+      take = described_class.new(
+        schedule: Schedule.new,
+        person_medication: PersonMedication.new(household: household)
+      )
+
+      expect(take.send(:source_household)).to eq(household)
+    end
+  end
+
   describe 'source validation' do
     context 'when neither schedule nor person_medication is set' do
       subject(:medication_take) { described_class.new(taken_at: Time.current, dose_amount: 10.0, dose_unit: 'mg') }

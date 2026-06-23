@@ -7,6 +7,7 @@ RSpec.describe ScheduleDailyRemindersJob do
 
   fixtures :accounts, :people, :locations, :medications, :dosages
 
+  let(:household) { Household.create!(name: 'Daily Reminder Household', slug: 'daily-reminder-household') }
   let(:person) { people(:john) }
 
   around do |example|
@@ -21,6 +22,11 @@ RSpec.describe ScheduleDailyRemindersJob do
 
   before do
     travel_to Time.zone.local(2026, 5, 12, 6, 0)
+    person.update!(household: household)
+    people(:jane).update!(household: household)
+    Location.find_each { |record| record.update!(household: household) }
+    Medication.find_each { |record| record.update!(household: household) }
+    MedicationDosageOption.find_each { |record| record.update!(household: household) }
   end
 
   def count_schedule_queries(&)
@@ -44,7 +50,7 @@ RSpec.describe ScheduleDailyRemindersJob do
     expect do
       described_class.perform_now
     end.to have_enqueued_job(MedicationReminderJob)
-      .with(person.id, :morning)
+      .with(household.id, person.id, :morning)
       .at(Time.zone.local(2026, 5, 12, 8, 0))
   end
 
@@ -58,10 +64,10 @@ RSpec.describe ScheduleDailyRemindersJob do
     expect do
       described_class.perform_now
     end.to have_enqueued_job(MedicationReminderJob)
-      .with(person.id, :scheduled, '07:15')
+      .with(household.id, person.id, :scheduled, '07:15')
       .at(Time.zone.local(2026, 5, 12, 7, 15))
       .and have_enqueued_job(MedicationReminderJob)
-      .with(person.id, :scheduled, '19:45')
+      .with(household.id, person.id, :scheduled, '19:45')
       .at(Time.zone.local(2026, 5, 12, 19, 45))
   end
 
@@ -74,7 +80,7 @@ RSpec.describe ScheduleDailyRemindersJob do
     expect do
       described_class.perform_now
     end.not_to have_enqueued_job(MedicationReminderJob)
-      .with(person.id, :scheduled, '07:15')
+      .with(household.id, person.id, :scheduled, '07:15')
   end
 
   it 'does not enqueue exact reminders for schedules that do not apply today' do
@@ -87,7 +93,7 @@ RSpec.describe ScheduleDailyRemindersJob do
     expect do
       described_class.perform_now
     end.not_to have_enqueued_job(MedicationReminderJob)
-      .with(person.id, :scheduled, '07:15')
+      .with(household.id, person.id, :scheduled, '07:15')
   end
 
   it 'loads schedule times once for enabled notification preferences' do

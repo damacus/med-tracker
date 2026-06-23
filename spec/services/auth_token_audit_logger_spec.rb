@@ -10,6 +10,7 @@ RSpec.describe AuthTokenAuditLogger do
   let(:account) { accounts(:jane_doe) }
   let(:user) { users(:jane) }
   let(:version) { PaperTrail::Version.where(item_type: 'AuthenticationToken').last }
+  let(:security_event) { SecurityAuditEvent.order(:created_at).last }
   let(:sensitive_metadata) do
     {
       endpoint: 'https://example.com/push/subscriptions/raw-endpoint',
@@ -41,6 +42,62 @@ RSpec.describe AuthTokenAuditLogger do
       expect do
         audit_logger.record(account: account, token_type: 'api_session', action: 'created')
       end.to change { PaperTrail::Version.where(item_type: 'AuthenticationToken').count }.by(1)
+    end
+
+    it 'creates a tenant-partitioned security audit event', :aggregate_failures do
+      expect do
+        record_security_audit_event
+      end.to change(SecurityAuditEvent, :count).by(1)
+
+      expect_tenant_security_event
+    end
+
+    def record_security_audit_event
+      audit_logger.record(
+        account: account,
+        token_type: 'api_session',
+        action: 'created',
+        context: security_audit_context
+      )
+    end
+
+    def security_audit_context
+      {
+        whodunnit: user.id,
+        ip: '10.0.0.2',
+        request_id: 'req-security-001',
+        household_id: security_household.id,
+        actor_membership_id: security_membership.id
+      }
+    end
+
+    def expect_tenant_security_event
+      expect(security_event).to have_attributes(
+        household_id: security_household.id,
+        actor_account_id: account.id,
+        actor_membership_id: security_membership.id,
+        event_type: 'auth_token/api_session/created',
+        ip: '10.0.0.2',
+        request_id: 'req-security-001'
+      )
+      expect(security_event.metadata).to include(
+        'account_id' => account.id,
+        'token_type' => 'api_session',
+        'action' => 'created'
+      )
+    end
+
+    def security_household
+      @security_household ||= Household.create!(name: 'Security Audit Household', slug: 'security-audit-household')
+    end
+
+    def security_membership
+      @security_membership ||= security_household.household_memberships.create!(
+        account: account,
+        role: :owner,
+        status: :active,
+        joined_at: Time.current
+      )
     end
 
     it 'persists the event, account id, whodunnit, ip, and request_id', :aggregate_failures do

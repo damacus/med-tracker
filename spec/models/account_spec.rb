@@ -11,6 +11,10 @@ RSpec.describe Account do
 
   describe 'enum' do
     it { is_expected.to define_enum_for(:status).with_values(unverified: 1, verified: 2, closed: 3) }
+
+    it 'does not expose subscription plans as an account authorization attribute' do
+      expect(described_class.defined_enums).not_to have_key('subscription_plan')
+    end
   end
 
   describe 'versioning' do

@@ -3,10 +3,18 @@
 require 'rails_helper'
 
 RSpec.describe Components::Schedules::Card::ActionsComponent, type: :component do
-  let(:person) { create(:person) }
-  let(:medication) { create(:medication, name: 'Ibuprofen', current_supply: 1000, supply_at_last_restock: 1000) }
-  let(:schedule) do
-    Schedule.create!(
+  before do
+    @person = create(:person)
+    @medication = create(:medication, name: 'Ibuprofen', current_supply: 1000, supply_at_last_restock: 1000)
+    @household = Household.create!(name: 'Schedule Actions Household', slug: 'schedule-actions-household')
+    @account = Account.create!(email: 'schedule-actions-owner@example.test', status: :verified)
+    person.update!(household: household, account: account)
+    medication.location.update!(household: household)
+    medication.update!(household: household)
+    @membership = household.household_memberships.create!(account: account, person: person, role: :owner,
+                                                          status: :active)
+    @schedule = Schedule.create!(
+      household: household,
       person: person,
       medication: medication,
       dose_amount: 400.0,
@@ -15,8 +23,25 @@ RSpec.describe Components::Schedules::Card::ActionsComponent, type: :component d
       start_date: 1.month.ago,
       end_date: 1.month.from_now
     )
+
+    household.person_access_grants.create!(
+      household_membership: membership,
+      person: person,
+      access_level: :manage,
+      relationship_type: :self,
+      granted_by_membership: membership
+    )
   end
-  let(:presenter) { Schedules::CardPresenter.new(schedule: schedule, current_user: nil, person: person) }
+
+  after do
+    Current.reset
+  end
+
+  attr_reader :account, :household, :medication, :membership, :person, :schedule
+
+  def presenter
+    Schedules::CardPresenter.new(schedule: schedule, current_user: nil, person: person)
+  end
 
   it 'renders the log past dose action' do
     rendered = render_inline(
@@ -27,10 +52,12 @@ RSpec.describe Components::Schedules::Card::ActionsComponent, type: :component d
   end
 
   it 'renders the edit and delete links' do
-    admin = instance_double(User, administrator?: true)
+    Current.account = account
+    Current.household = household
+    Current.membership = membership
 
     rendered = render_inline(
-      described_class.new(schedule: schedule, person: person, presenter: presenter, current_user: admin)
+      described_class.new(schedule: schedule, person: person, presenter: presenter, current_user: nil)
     )
 
     expect(rendered.css("[data-testid='edit-schedule-#{schedule.id}']")).to be_present

@@ -162,6 +162,87 @@ class RodauthMain < Rodauth::Rails::Auth
         methods - ['recovery_code']
       end
 
+      def create_household_for_account!(account_record, person)
+        household = create_owned_household(account_record, person)
+        person.update!(household: household)
+        membership = create_owner_membership(household, account_record, person)
+        create_owner_person_grant(household, membership, person)
+      end
+
+      def create_owned_household(account_record, person)
+        Household.create!(
+          name: "#{person.name} Household",
+          created_by_account: account_record
+        )
+      end
+
+      def create_owner_membership(household, account_record, person)
+        household.household_memberships.create!(
+          account: account_record,
+          person: person,
+          role: :owner,
+          status: :active
+        )
+      end
+
+      def create_owner_person_grant(household, membership, person)
+        household.person_access_grants.create!(
+          household_membership: membership,
+          person: person,
+          access_level: :manage,
+          relationship_type: :self,
+          granted_by_membership: membership
+        )
+      end
+
+      def accept_household_invitation!(account_record, person, invitation)
+        membership = invitation.household.household_memberships.create!(
+          account: account_record,
+          person: person,
+          role: invitation.membership_role,
+          status: :active
+        )
+        create_owner_person_grant(invitation.household, membership, person)
+        apply_household_invitation_grants!(membership, person, invitation)
+      end
+
+      def apply_household_invitation_grants!(membership, person, invitation)
+        invitation.household_invitation_grants.find_each do |grant|
+          invitation.household.person_access_grants.create!(
+            household_membership: membership,
+            person: grant.person,
+            access_level: grant.access_level,
+            relationship_type: grant.relationship_type,
+            expires_at: grant.expires_at,
+            granted_by_membership: invitation.invited_by_membership
+          )
+          assign_invited_dependent_relationship!(person, grant)
+        end
+      end
+
+      def assign_invited_dependent_relationship!(person, grant)
+        relationship_type = carer_relationship_type_for_invitation_grant(grant.relationship_type)
+        return unless relationship_type
+
+        DependentRelationshipAssigner.new(
+          carer: person,
+          dependent_ids: [grant.person_id],
+          relationship_type: relationship_type,
+          scope: grant.household.people
+        ).call
+      end
+
+      def carer_relationship_type_for_invitation_grant(relationship_type)
+        case relationship_type.to_s
+        when 'parent'
+          'parent'
+        when 'family_member'
+          'family_member'
+        when 'carer', 'professional'
+          'professional_carer'
+        end
+      end
+
       def invite_only_registration_required?
         AppSettings.invite_only?
       end
@@ -209,13 +290,9 @@ class RodauthMain < Rodauth::Rails::Auth
       amr = Array(omniauth_auth.dig('extra', 'raw_info', 'amr'))
       session[:oidc_mfa_verified] = amr.intersect?(%w[mfa otp u2f hwk swk])
 
-      user = Account.find_by(id: account_id)&.person&.user
-      if user
-        new_role = zitadel_role_for(omniauth_auth)
-        if new_role && user.role.to_sym != new_role && !user.update(role: new_role)
-          Rails.logger.warn("[OIDC] Role sync failed for #{account_id}: #{user.errors.full_messages.join(', ')}")
-        end
-      end
+      account_record = Account.find_by(id: account_id)
+      person = account_record&.person
+      sync_zitadel_professional_title!(person, omniauth_auth) if person
     end
 
     # Extend user's remember period when remembered via a cookie
@@ -365,8 +442,8 @@ class RodauthMain < Rodauth::Rails::Auth
 
       # Validate invitation token if present and lock down email
       if (token = param_or_nil('invitation_token'))
-        digest = Invitation.digest(token)
-        @invitation = Invitation.pending.where.not(role: Invitation.roles[:minor]).find_by(token_digest: digest)
+        digest = HouseholdInvitation.digest(token)
+        @invitation = HouseholdInvitation.pending.find_by(token_digest: digest)
         throw_error_status(422, 'invitation_token', 'is invalid or expired') unless @invitation
         request.params[login_param] = @invitation.email
       end
@@ -388,46 +465,38 @@ class RodauthMain < Rodauth::Rails::Auth
     after_create_account do
       date_of_birth = Date.parse(param('date_of_birth'))
 
-      # Determine person_type and role based on age
+      # Determine person_type based on age
       # Use Person's age calculation to avoid duplication
       temp_person = Person.new(date_of_birth: date_of_birth)
       age = temp_person.age
       person_type = age >= 18 ? :adult : :minor
 
-      # Determine role based on age when not created via invitation
-      user_role = age >= 18 ? :parent : :minor
-
-      # If created via invitation, use cached invitation and override role
-      user_role = @invitation.role if @invitation
-
       # Create associated Person and User records atomically
       # Ensures both are created or both fail together
       ActiveRecord::Base.transaction do
+        account_record = Account.find(account_id)
         person = Person.create!(
-          account_id: account_id,
+          account: account_record,
           name: param('name'),
           date_of_birth: date_of_birth,
           email: account[:email],
-          person_type: person_type
+          person_type: person_type,
+          household: @invitation&.household
         )
 
-        # Create associated User record for authorization
-        # New users default to 'parent' role (or 'minor' if under 18)
         User.create!(
           person: person,
           email_address: account[:email],
-          role: user_role,
           active: true
         )
 
         if @invitation
-          DependentRelationshipAssigner.new(
-            carer: person,
-            dependent_ids: @invitation.dependent_ids,
-            relationship_type: DependentRelationshipAssigner.relationship_type_for(@invitation.role)
-          ).call
-          @invitation.update!(accepted_at: Time.current)
+          accept_household_invitation!(account_record, person, @invitation)
+        else
+          create_household_for_account!(account_record, person)
         end
+
+        @invitation&.update!(accepted_at: Time.current)
       end
     end
 
@@ -442,8 +511,9 @@ class RodauthMain < Rodauth::Rails::Auth
       # Use a sentinel DOB (100 years ago) to indicate missing data
       # Users should be prompted to update their profile with actual DOB
       ActiveRecord::Base.transaction do
+        account_record = Account.find(account_id)
         person = Person.create!(
-          account_id: account_id,
+          account: account_record,
           name: name,
           email: email,
           person_type: :adult,
@@ -453,9 +523,10 @@ class RodauthMain < Rodauth::Rails::Auth
         User.create!(
           person: person,
           email_address: email,
-          role: zitadel_role_for(omniauth_auth) || :parent,
           active: true
         )
+
+        create_household_for_account!(account_record, person)
       end
     end
 
@@ -546,13 +617,26 @@ class RodauthMain < Rodauth::Rails::Auth
           .first
       end
 
-      def zitadel_role_for(auth_data)
-        raw_info = auth_data.dig('extra', 'raw_info') || {}
-        return nil unless raw_info.key?('urn:zitadel:iam:org:project:roles')
+      def sync_zitadel_professional_title!(person, auth_data)
+        professional_title = zitadel_professional_title_for(auth_data)
+        return unless professional_title && person.professional_title != professional_title
 
-        zitadel_roles = raw_info['urn:zitadel:iam:org:project:roles'].keys
-        valid_roles = User.roles.keys & zitadel_roles
-        valid_roles.first&.to_sym
+        return if person.update(professional_title: professional_title)
+
+        Rails.logger.warn(
+          "[OIDC] Professional title sync failed for #{person.id}: #{person.errors.full_messages.join(', ')}"
+        )
+      end
+
+      def zitadel_professional_title_for(auth_data)
+        zitadel_role_names(auth_data).find { |role| role.in?(%w[doctor nurse]) }
+      end
+
+      def zitadel_role_names(auth_data)
+        raw_info = auth_data.dig('extra', 'raw_info') || {}
+        return [] unless raw_info.key?('urn:zitadel:iam:org:project:roles')
+
+        raw_info['urn:zitadel:iam:org:project:roles'].keys
       end
     end
 
@@ -560,7 +644,10 @@ class RodauthMain < Rodauth::Rails::Auth
     # Current.user is set in ApplicationController before_action instead of here
 
     # Redirect to dashboard after successful login
-    login_redirect '/dashboard'
+    login_redirect do
+      household = Account.find_by(id: account_id)&.first_active_household
+      household ? "/households/#{household.slug}/dashboard" : '/'
+    end
 
     # Redirect to dashboard after account creation (since autologin is enabled)
     create_account_redirect { login_redirect }

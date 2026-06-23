@@ -9,7 +9,7 @@ RSpec.describe Authentication do
   let(:controller) do
     Class.new(ApplicationController) do
       allow_unauthenticated_access
-      public :oidc_authenticated?, :should_setup_two_factor?, :two_factor_configured?
+      public :current_user, :oidc_authenticated?, :should_setup_two_factor?, :two_factor_configured?
     end.new
   end
 
@@ -28,6 +28,20 @@ RSpec.describe Authentication do
   def stub_rodauth(logged_in: true)
     dbl = instance_double(RodauthMain, logged_in?: logged_in)
     allow(controller).to receive(:rodauth).and_return(dbl)
+  end
+
+  describe '#current_user' do
+    let(:account) { accounts(:admin) }
+    let(:household_person) { instance_double(Person, user: nil) }
+
+    before do
+      stub_account(account)
+      allow(account).to receive(:person).and_return(household_person)
+    end
+
+    it 'finds the legacy user when the account person association resolves to a household-only person' do
+      expect(controller.current_user).to eq(users(:admin))
+    end
   end
 
   describe '#oidc_authenticated?' do
@@ -64,8 +78,11 @@ RSpec.describe Authentication do
       stub_rodauth
       stub_user(doctor_user)
       stub_account(doctor_account)
+      Current.membership = instance_double(HouseholdMembership, owner?: false, administrator?: true)
       allow(controller).to receive(:two_factor_configured?).and_return(false)
     end
+
+    after { Current.reset }
 
     context 'when doctor signed in via Zitadel with MFA (amr claim present)' do
       before { stub_session('oidc_mfa_verified' => true) }
@@ -91,10 +108,11 @@ RSpec.describe Authentication do
       end
     end
 
-    context 'when a non-privileged role (parent) signs in via password' do
+    context 'when a household member signs in via password' do
       before do
         stub_user(users(:parent))
         stub_account(accounts(:parent))
+        Current.membership = instance_double(HouseholdMembership, owner?: false, administrator?: false)
         stub_session({})
       end
 
@@ -104,60 +122,53 @@ RSpec.describe Authentication do
     end
   end
 
-  describe 'Zitadel role mapping logic (zitadel_role_for)' do
-    # Replicates the zitadel_role_for logic defined in auth_class_eval.
-    # Returns nil for all "no valid role" cases — callers supply their own default.
-    def role_from_zitadel_claims(role_names)
+  describe 'Zitadel professional claim mapping logic' do
+    # Replicates the household mapping logic defined in auth_class_eval.
+    # Returns nil for all "no valid role" cases.
+    def professional_title_from_zitadel_claims(role_names)
       raw_info = { 'urn:zitadel:iam:org:project:roles' => role_names.index_with { {} } }
       return nil unless raw_info.key?('urn:zitadel:iam:org:project:roles')
 
-      zitadel_roles = raw_info['urn:zitadel:iam:org:project:roles'].keys
-      valid_roles = User.roles.keys & zitadel_roles
-      valid_roles.first&.to_sym
+      raw_info['urn:zitadel:iam:org:project:roles'].keys.find { |role| role.in?(%w[doctor nurse]) }
     end
 
-    def role_from_absent_claim
+    def professional_title_from_absent_claim
       raw_info = {}
       return nil unless raw_info.key?('urn:zitadel:iam:org:project:roles')
 
       nil
     end
 
-    it 'returns nil when the roles claim is entirely absent (preserves existing role)' do
-      expect(role_from_absent_claim).to be_nil
+    it 'returns nil when the roles claim is entirely absent' do
+      expect(professional_title_from_absent_claim).to be_nil
     end
 
-    it 'maps doctor claim to :doctor role' do
-      expect(role_from_zitadel_claims(['doctor'])).to eq(:doctor)
+    it 'maps doctor claim to a professional title' do
+      expect(professional_title_from_zitadel_claims(['doctor'])).to eq('doctor')
     end
 
-    it 'maps administrator claim to :administrator role' do
-      expect(role_from_zitadel_claims(['administrator'])).to eq(:administrator)
+    it 'does not map administrator claim to a professional title' do
+      expect(professional_title_from_zitadel_claims(['administrator'])).to be_nil
     end
 
-    it 'maps nurse claim to :nurse role' do
-      expect(role_from_zitadel_claims(['nurse'])).to eq(:nurse)
+    it 'maps nurse claim to a professional title' do
+      expect(professional_title_from_zitadel_claims(['nurse'])).to eq('nurse')
     end
 
-    it 'maps carer claim to :carer role' do
-      expect(role_from_zitadel_claims(['carer'])).to eq(:carer)
+    it 'does not map member claim to a professional title' do
+      expect(professional_title_from_zitadel_claims(['member'])).to be_nil
     end
 
-    it 'returns nil when claim is present but no role matches (caller supplies default)' do
-      expect(role_from_zitadel_claims(['unknown_role'])).to be_nil
+    it 'returns nil when claim is present but no household role matches' do
+      expect(professional_title_from_zitadel_claims(['unknown_role'])).to be_nil
     end
 
-    it 'returns nil when claim is present but empty (caller supplies default)' do
-      expect(role_from_zitadel_claims([])).to be_nil
+    it 'returns nil when claim is present but empty' do
+      expect(professional_title_from_zitadel_claims([])).to be_nil
     end
 
-    it 'uses the first valid role when multiple roles are present' do
-      result = role_from_zitadel_claims(User.roles.keys)
-      expect(User.roles.keys).to include(result.to_s)
-    end
-
-    it 'ignores unknown roles even when mixed with valid ones' do
-      expect(role_from_zitadel_claims(%w[unknown nurse])).to eq(:nurse)
+    it 'ignores unknown roles when mapping professional titles' do
+      expect(professional_title_from_zitadel_claims(%w[unknown nurse])).to eq('nurse')
     end
   end
 end

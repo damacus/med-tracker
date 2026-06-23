@@ -16,8 +16,6 @@ class PwaController < ApplicationController
     response.headers['Content-Type'] = 'application/javascript'
   end
 
-  private
-
   BASE_MANIFEST_PAYLOAD = {
     name: 'MedTracker',
     short_name: 'MedTracker',
@@ -41,6 +39,8 @@ class PwaController < ApplicationController
       type: 'image/png'
     }
   ].freeze
+
+  private
 
   def manifest_payload
     BASE_MANIFEST_PAYLOAD.merge(icons: MANIFEST_ICONS)

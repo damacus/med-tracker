@@ -25,7 +25,7 @@ class PaidFeature
     return false if flag.blank?
     return false unless global_flag_enabled?(flag)
 
-    account_entitled?(feature)
+    household_entitled?(feature)
   end
 
   private
@@ -36,10 +36,18 @@ class PaidFeature
     TRUE_VALUES.include?(ENV.fetch(flag, 'false').to_s.downcase)
   end
 
-  def account_entitled?(feature)
-    account = user&.person&.account
-    return false unless account
+  def household_entitled?(feature)
+    plan = Current.household&.subscription_plan || user_household_subscription_plan
+    return false unless plan
 
-    PLAN_FEATURES.fetch(account.subscription_plan, []).include?(feature)
+    PLAN_FEATURES.fetch(plan, []).include?(feature)
+  end
+
+  def user_household_subscription_plan
+    person = user&.person
+    return person.household.subscription_plan if person&.household
+
+    account = person&.account
+    account&.first_active_household&.subscription_plan
   end
 end

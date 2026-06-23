@@ -1,275 +1,48 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
-require 'pundit/rspec'
 
 RSpec.describe SchedulePolicy, type: :policy do
-  fixtures :all
+  let(:member) { household_policy_member(role: :member) }
+  let(:household) { member.fetch(:household) }
+  let(:person) { household_policy_person(household) }
+  let(:schedule) { household_policy_schedule(household, person: person) }
 
-  subject(:policy) { described_class.new(current_user, schedule) }
+  it 'uses grant levels for schedule reads, records, and management' do
+    expect(policy_results(%i[show?])).to eq(show?: false)
 
-  let(:schedule) { schedules(:adult_patient_schedule) }
+    grant_policy_person_access(member, person, access_level: :view)
 
-  describe 'for administrator' do
-    let(:current_user) { users(:admin) }
+    expect(policy_results(%i[show? take_medication?])).to eq(show?: true, take_medication?: false)
 
-    it 'permits all actions' do
-      aggregate_failures do
-        expect(policy.index?).to be true
-        expect(policy.show?).to be true
-        expect(policy.create?).to be true
-        expect(policy.new?).to be true
-        expect(policy.update?).to be true
-        expect(policy.edit?).to be true
-        expect(policy.destroy?).to be true
-        expect(policy.take_medication?).to be true
-      end
-    end
+    person.person_access_grants.find_by!(household_membership: member.fetch(:membership)).update!(access_level: :record)
+
+    expect(policy_results(%i[take_medication? update?])).to eq(take_medication?: true, update?: false)
+
+    person.person_access_grants.find_by!(household_membership: member.fetch(:membership)).update!(access_level: :manage)
+
+    expect(policy_results(%i[update? destroy?])).to eq(update?: true, destroy?: true)
   end
 
-  describe 'for doctor' do
-    let(:current_user) { users(:doctor) }
+  it 'allows managers to create schedules without a target record' do
+    owner = household_policy_member(role: :owner, household: household)
 
-    it 'permits all actions' do
-      aggregate_failures do
-        expect(policy.index?).to be true
-        expect(policy.show?).to be true
-        expect(policy.create?).to be true
-        expect(policy.new?).to be true
-        expect(policy.update?).to be true
-        expect(policy.edit?).to be true
-        expect(policy.destroy?).to be true
-        expect(policy.take_medication?).to be true
-      end
-    end
+    expect(described_class.new(owner.fetch(:context), Schedule).create?).to be(true)
+    expect(described_class.new(member.fetch(:context), Schedule).create?).to be(false)
   end
 
-  describe 'for nurse' do
-    let(:current_user) { users(:nurse) }
+  it 'scopes schedules to granted people' do
+    schedule
+    other_schedule = household_policy_schedule(household, person: household_policy_person(household))
+    grant_policy_person_access(member, person, access_level: :view)
 
-    it 'permits viewing and administering only' do
-      aggregate_failures do
-        expect(policy.index?).to be true
-        expect(policy.show?).to be true
-        expect(policy.create?).to be false
-        expect(policy.new?).to be false
-        expect(policy.update?).to be false
-        expect(policy.edit?).to be false
-        expect(policy.destroy?).to be false
-        expect(policy.take_medication?).to be true
-      end
-    end
+    resolved = described_class::Scope.new(member.fetch(:context), Schedule.all).resolve
+
+    expect(resolved).to contain_exactly(schedule)
+    expect(resolved).not_to include(other_schedule)
   end
 
-  describe 'for carer with assigned patient' do
-    let(:current_user) { users(:carer) }
-    let(:schedule) { schedules(:patient_schedule) }
-
-    it 'permits viewing and administering' do
-      aggregate_failures do
-        expect(policy.index?).to be true
-        expect(policy.show?).to be true
-        expect(policy.create?).to be false
-        expect(policy.new?).to be false
-        expect(policy.update?).to be false
-        expect(policy.edit?).to be false
-        expect(policy.destroy?).to be false
-        expect(policy.take_medication?).to be true
-      end
-    end
-  end
-
-  describe 'for carer without assigned patient' do
-    let(:current_user) { users(:carer) }
-    let(:schedule) { schedules(:adult_patient_schedule) }
-
-    it 'forbids all actions' do
-      expect(policy.index?).to be false
-      expect(policy.show?).to be false
-      expect(policy.take_medication?).to be false
-    end
-  end
-
-  describe 'for carer after relationship removal' do
-    let(:current_user) { users(:carer) }
-    let(:schedule) { schedules(:patient_schedule) }
-
-    before do
-      current_user.person.patients.load
-      carer_relationships(:carer_cares_for_patient).destroy!
-    end
-
-    it 'forbids viewing and administering' do
-      expect(policy.show?).to be false
-      expect(policy.take_medication?).to be false
-    end
-  end
-
-  describe 'for carer who is also a patient' do
-    let(:current_user) { users(:carer) }
-    let(:schedule) do
-      Schedule.create!(
-        person: current_user.person,
-        medication: medications(:vitamin_d),
-        dose_amount: 1000,
-        dose_unit: 'IU',
-        frequency: 'Daily',
-        start_date: Date.current,
-        end_date: 1.year.from_now.to_date,
-        max_daily_doses: 1,
-        dose_cycle: :daily
-      )
-    end
-
-    it 'does not grant access to unrelated patient schedules' do
-      other_schedule = schedules(:adult_patient_schedule)
-
-      expect(described_class.new(current_user, schedule).show?).to be true
-      expect(described_class.new(current_user, other_schedule).show?).to be false
-    end
-  end
-
-  describe 'for parent with child' do
-    let(:current_user) { users(:parent) }
-    let(:schedule) { schedules(:child_schedule) }
-
-    it 'permits viewing and administering' do
-      aggregate_failures do
-        expect(policy.index?).to be true
-        expect(policy.show?).to be true
-        expect(policy.create?).to be false
-        expect(policy.new?).to be false
-        expect(policy.update?).to be false
-        expect(policy.edit?).to be false
-        expect(policy.destroy?).to be false
-        expect(policy.take_medication?).to be true
-      end
-    end
-  end
-
-  describe 'for parent without child' do
-    let(:current_user) { users(:parent) }
-    let(:schedule) { schedules(:adult_patient_schedule) }
-
-    it 'forbids access' do
-      expect(policy.show?).to be false
-      expect(policy.take_medication?).to be false
-    end
-  end
-
-  describe 'for parent after child becomes a self-managing adult' do
-    let(:current_user) { users(:parent) }
-    let(:schedule) { schedules(:child_schedule) }
-
-    before do
-      schedule.person.update!(person_type: :adult, has_capacity: true)
-    end
-
-    it 'forbids viewing and administering' do
-      expect(policy.show?).to be false
-      expect(policy.take_medication?).to be false
-    end
-  end
-
-  describe 'for adult patient with own schedule' do
-    let(:current_user) { users(:adult_patient) }
-    let(:schedule) { schedules(:adult_patient_schedule) }
-
-    it 'permits viewing and taking own medication' do
-      expect(policy.show?).to be true
-      expect(policy.take_medication?).to be true
-      expect(policy.create?).to be false
-      expect(policy.update?).to be false
-      expect(policy.destroy?).to be false
-    end
-  end
-
-  describe 'for minor with own schedule' do
-    let(:current_user) { users(:child_user) }
-    let(:schedule) { schedules(:child_schedule) }
-
-    it 'allows viewing own schedule' do
-      expect(policy.show?).to be true
-    end
-
-    it 'does not allow taking medication without parent/carer' do
-      expect(policy.take_medication?).to be false
-    end
-
-    it 'forbids management actions' do
-      expect(policy.create?).to be false
-      expect(policy.update?).to be false
-      expect(policy.destroy?).to be false
-    end
-  end
-
-  describe 'for nil user' do
-    let(:current_user) { nil }
-
-    it 'forbids all actions' do
-      %i[index show create new update edit destroy take_medication].each do |action|
-        expect(policy.public_send("#{action}?")).to be false
-      end
-    end
-  end
-
-  describe 'Scope' do
-    subject(:scope) { described_class::Scope.new(current_user, Schedule.all).resolve }
-
-    context 'when user is an administrator' do
-      let(:current_user) { users(:admin) }
-
-      it 'returns all schedules for administrators' do
-        expect(scope).to match_array(Schedule.all)
-      end
-    end
-
-    context 'when user is a doctor' do
-      let(:current_user) { users(:doctor) }
-
-      it 'returns all schedules for doctors' do
-        expect(scope).to match_array(Schedule.all)
-      end
-    end
-
-    context 'when user is an adult patient' do
-      let(:current_user) { users(:adult_patient) }
-
-      it 'returns only their own schedules' do
-        expect(scope).to contain_exactly(schedules(:adult_patient_schedule))
-      end
-    end
-
-    context 'when user is a carer' do
-      let(:current_user) { users(:carer) }
-
-      it 'returns schedules for assigned patients' do
-        expect(scope).to include(schedules(:patient_schedule))
-        expect(scope).not_to include(schedules(:adult_patient_schedule))
-      end
-    end
-
-    context 'when user is a parent' do
-      let(:current_user) { users(:parent) }
-
-      it 'returns schedules for their children only' do
-        expect(scope).to include(schedules(:child_schedule))
-        expect(scope).not_to include(schedules(:adult_patient_schedule))
-      end
-
-      it 'excludes former child patients after they become self-managing adults' do
-        schedules(:child_schedule).person.update!(person_type: :adult, has_capacity: true)
-
-        expect(scope).not_to include(schedules(:child_schedule))
-      end
-    end
-
-    context 'when user is nil' do
-      let(:current_user) { nil }
-
-      it 'returns no schedules' do
-        expect(scope).to be_empty
-      end
-    end
+  def policy_results(actions)
+    actions.index_with { |action| described_class.new(member.fetch(:context), schedule).public_send(action) }
   end
 end

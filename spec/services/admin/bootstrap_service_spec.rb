@@ -5,7 +5,7 @@ require 'rails_helper'
 RSpec.describe Admin::BootstrapService do
   describe '.call' do
     before do
-      User.administrator.destroy_all
+      HouseholdMembership.owner.delete_all
     end
 
     let(:params) do
@@ -18,31 +18,38 @@ RSpec.describe Admin::BootstrapService do
     end
 
     def create_existing_admin!(email: 'existing.admin@example.com')
-      account = Account.create!(
+      account = create_existing_admin_account(email)
+      household = Household.create_with_owner!(
+        name: 'Existing Admin Household',
+        owner_account: account,
+        owner_person_attributes: existing_admin_person_attributes(account)
+      )
+      person = household.household_memberships.sole.person
+      User.create!(person: person, email_address: account.email, active: true)
+    end
+
+    def create_existing_admin_account(email)
+      Account.create!(
         email: email,
         password_hash: BCrypt::Password.create('SecureP@ssword123!'),
         status: :verified
       )
-      person = Person.create!(
-        account: account,
-        name: 'Existing Admin',
-        date_of_birth: Date.new(1980, 1, 1),
-        email: account.email,
-        person_type: :adult
-      )
-
-      User.create!(person: person, email_address: account.email, role: :administrator, active: true)
     end
 
-    it 'creates account, person, and administrator user when no admin exists' do
+    def existing_admin_person_attributes(account)
+      { name: 'Existing Admin', date_of_birth: Date.new(1980, 1, 1), email: account.email, person_type: :adult }
+    end
+
+    it 'creates account, person, household, and owner user when no owner exists' do
       expect do
         result = described_class.call(**params)
 
         expect(result).to be_success
-        expect(result.user).to be_administrator
+        expect(result.user.person.account.household_memberships.sole).to be_owner
       end.to change(Account, :count).by(1)
                                     .and change(Person, :count).by(1)
-                                                               .and change(User, :count).by(1)
+                                    .and change(Household, :count).by(1)
+                                    .and change(User, :count).by(1)
     end
 
     it 'creates an active adult administrator linked to a verified account' do
@@ -59,12 +66,12 @@ RSpec.describe Admin::BootstrapService do
       result = described_class.call(**params)
       person = result.user.person
 
-      home_location = Location.find_by(name: 'Home')
+      home_location = Location.find_by(household: person.household, name: 'Home')
       expect(home_location).to be_present
       expect(person.locations).to include(home_location)
     end
 
-    it 'refuses to bootstrap when an administrator already exists' do
+    it 'refuses to bootstrap when an owner already exists' do
       create_existing_admin!
 
       result = nil

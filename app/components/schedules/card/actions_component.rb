@@ -58,7 +58,7 @@ module Components
         def administrator?
           admin_candidate = current_user
           admin_candidate ||= view_context.current_user if view_context.respond_to?(:current_user)
-          admin_candidate&.administrator?
+          SchedulePolicy.new(policy_context(admin_candidate), schedule).update?
         end
 
         def render_delete_dialog

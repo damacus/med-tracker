@@ -27,6 +27,14 @@ RSpec.describe YAML do
     )
   end
 
+  it 'bootstraps database runtime roles before Rails containers connect' do
+    %w[db-dev db-test db-prod].each do |service_name|
+      expect(compose_config.dig('services', service_name, 'volumes')).to include(
+        './compose/init-roles.sql:/docker-entrypoint-initdb.d/001-init-roles.sql:ro'
+      )
+    end
+  end
+
   it 'builds the development migrate container from the development image target' do
     expect(compose_config.dig('services', 'migrate-dev', 'image')).to eq('med-tracker-web-dev')
     expect(compose_config.dig('services', 'migrate-dev', 'build', 'target')).to eq('development')
@@ -54,6 +62,22 @@ RSpec.describe YAML do
       expect(compose_config.dig('services', 'migrate-test', 'environment')).to include(key)
       expect(compose_config.dig('services', 'web-test', 'environment')).to include(key)
     end
+  end
+
+  it 'uses separate database roles for migration and runtime containers' do
+    services = %w[migrate-dev web-dev migrate-test web-test migrate-prod web-prod]
+    database_roles = services.index_with do |service|
+      compose_config.dig('services', service, 'environment', 'DATABASE_ROLE')
+    end
+
+    expect(database_roles).to eq(
+      'migrate-dev' => '${DEV_MIGRATION_DATABASE_ROLE:-}',
+      'web-dev' => '${DEV_DATABASE_ROLE:-}',
+      'migrate-test' => '${TEST_MIGRATION_DATABASE_ROLE:-}',
+      'web-test' => '${TEST_DATABASE_ROLE:-}',
+      'migrate-prod' => '${MIGRATION_DATABASE_ROLE:-med_tracker_owner}',
+      'web-prod' => '${DATABASE_ROLE:-med_tracker_app}'
+    )
   end
 
   it 'keeps normal test runs isolated from local development OIDC credentials' do

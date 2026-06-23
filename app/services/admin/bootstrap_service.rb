@@ -51,20 +51,21 @@ module Admin
 
     def precondition_error
       return "Missing required fields: #{missing_fields.join(', ')}" if missing_fields.any?
-      return 'An administrator already exists' if administrator_exists?
+      return 'A household owner already exists' if owner_membership_exists?
       return 'Email is already taken' if email_already_exists?
 
       nil
     end
 
-    def administrator_exists?
-      User.administrator.exists?
+    def owner_membership_exists?
+      HouseholdMembership.owner.active.exists?
     end
 
     def create_admin!
       ActiveRecord::Base.transaction do
         account = create_account!
-        person = create_person!(account)
+        household = create_household!(account)
+        person = household.household_memberships.sole.person
         create_user!(person)
       end
     end
@@ -73,18 +74,21 @@ module Admin
       Account.create!(email: email, password_hash: BCrypt::Password.create(password), status: :verified)
     end
 
-    def create_person!(account)
-      Person.create!(
-        account: account,
-        name: name,
-        date_of_birth: parsed_date_of_birth,
-        email: email,
-        person_type: :adult
+    def create_household!(account)
+      Household.create_with_owner!(
+        name: "#{name}'s Household",
+        owner_account: account,
+        owner_person_attributes: {
+          name: name,
+          date_of_birth: parsed_date_of_birth,
+          email: email,
+          person_type: :adult
+        }
       )
     end
 
     def create_user!(person)
-      User.create!(person: person, email_address: email, role: :administrator, active: true)
+      User.create!(person: person, email_address: email, active: true)
     end
 
     def parsed_date_of_birth

@@ -25,7 +25,7 @@ RSpec.describe GlobalSearch::LocationsResultsQuery do
         expect(result).to have_attributes(
           type: 'location',
           subtitle: I18n.t('global_search.types.location'),
-          path: Rails.application.routes.url_helpers.location_path(locations(:home)),
+          path: Rails.application.routes.url_helpers.location_path('test-household', locations(:home)),
           score: a_kind_of(Integer)
         )
       end

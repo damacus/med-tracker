@@ -2,62 +2,64 @@
 
 class CarerRelationshipPolicy < ApplicationPolicy
   def index?
-    admin_or_clinician?
+    household_manager?
   end
 
   def show?
-    admin_or_clinician? || carer_owns_relationship?
+    household_manager? || person_grant_allows?(record.patient, :view)
   end
 
   def create?
-    admin?
+    return true if household_manager?
+
+    assign_dependent?
   end
 
   alias new? create?
 
   def update?
-    admin?
+    household_manager? && relationship_in_household?
   end
 
   alias edit? update?
 
   def destroy?
-    admin?
+    household_manager? && relationship_in_household?
   end
 
   def activate?
-    admin?
+    household_manager? && relationship_in_household?
   end
 
   def assign_dependent?
-    dependent_patient? && (admin? || parent_owns_dependent?)
+    dependent_patient? && (household_manager? || person_grant_allows?(record.patient, :manage))
   end
 
   private
 
-  def carer_owns_relationship?
-    (user&.person && record.carer_id == user.person.id) || false
-  end
-
-  def parent_owns_dependent?
-    return false unless user&.parent? && user.person_id && record.patient_id
-
-    active_patient_relationships
-      .joins(:patient)
-      .where(patient_id: record.patient_id)
-      .exists?(people: { person_type: %i[minor dependent_adult], has_capacity: false })
-  end
-
   def dependent_patient?
+    return false unless record.respond_to?(:patient)
+
     record.patient&.person_type.in?(%w[minor dependent_adult]) && record.patient.has_capacity == false
+  end
+
+  def relationship_in_household?
+    household.present? && record.patient&.household_id == household.id && record.carer&.household_id == household.id
   end
 
   class Scope < ApplicationPolicy::Scope
     def resolve
-      return scope.none unless user
-      return scope.all if admin_or_clinician?
+      return scope.none unless active_membership?
+      return household_relationship_scope if household_manager?
 
-      scope.where(carer_id: user.person_id)
+      household_relationship_scope.where(patient_id: granted_person_ids_for(:view))
+    end
+
+    private
+
+    def household_relationship_scope
+      person_ids = Person.where(household: household).select(:id)
+      scope.where(patient_id: person_ids, carer_id: person_ids)
     end
   end
 end

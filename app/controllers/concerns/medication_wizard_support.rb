@@ -20,7 +20,7 @@ module MedicationWizardSupport
   end
 
   def wizard_wrapper_class
-    case current_user.wizard_variant
+    case current_account.wizard_variant
     when 'modal'     then Components::Medications::Wizard::ModalWrapper
     when 'slideover' then Components::Medications::Wizard::SlideOverWrapper
     else                  Components::Medications::Wizard::FullPageWrapper

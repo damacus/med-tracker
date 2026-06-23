@@ -3,52 +3,36 @@
 require 'rails_helper'
 
 RSpec.describe DosagePolicy, type: :policy do
-  fixtures :all
-
-  subject(:policy) { described_class.new(user, dosage) }
-
-  let(:dosage) { dosages(:paracetamol_adult) }
-
-  context 'when the user is a doctor (can update medications, cannot destroy them)' do
-    let(:user) { users(:doctor) }
-
-    it 'mirrors MedicationPolicy#update? for write actions (destroy? via update?)' do
-      aggregate_failures do
-        expect(policy.show?).to be(true)
-        expect(policy.create?).to be(true)
-        expect(policy.new?).to be(true)
-        expect(policy.update?).to be(true)
-        expect(policy.edit?).to be(true)
-        expect(policy.destroy?).to be(true)
-      end
-    end
+  let(:owner) { household_policy_member(role: :owner) }
+  let(:household) { owner.fetch(:household) }
+  let(:member) { household_policy_member(role: :member, household: household) }
+  let(:person) { household_policy_person(household) }
+  let(:medication) { household_policy_medication(household) }
+  let(:dosage) do
+    MedicationDosageOption.create!(
+      medication: medication,
+      amount: 500,
+      unit: 'mg',
+      frequency: 'Daily',
+      default_max_daily_doses: 1,
+      default_min_hours_between_doses: 24,
+      default_dose_cycle: :daily
+    )
   end
 
-  context 'when the user is a nurse (read-only on medications)' do
-    let(:user) { users(:nurse) }
+  it 'mirrors medication visibility for reads' do
+    expect(described_class.new(member.fetch(:context), dosage).show?).to be(false)
 
-    it 'denies create/update/edit/destroy but allows show' do
-      aggregate_failures do
-        expect(policy.create?).to be(false)
-        expect(policy.new?).to be(false)
-        expect(policy.update?).to be(false)
-        expect(policy.edit?).to be(false)
-        expect(policy.destroy?).to be(false)
-        expect(policy.show?).to be(true)
-      end
-    end
+    household_policy_schedule(household, person: person, medication: medication)
+    grant_policy_person_access(member, person, access_level: :view)
+
+    expect(described_class.new(member.fetch(:context), dosage).show?).to be(true)
   end
 
-  context 'without a user' do
-    let(:user) { nil }
-
-    it 'denies all actions' do
-      aggregate_failures do
-        expect(policy.show?).to be(false)
-        expect(policy.create?).to be(false)
-        expect(policy.update?).to be(false)
-        expect(policy.destroy?).to be(false)
-      end
-    end
+  it 'mirrors medication manager permissions for writes' do
+    expect(described_class.new(owner.fetch(:context), dosage).create?).to be(true)
+    expect(described_class.new(owner.fetch(:context), dosage).update?).to be(true)
+    expect(described_class.new(owner.fetch(:context), dosage).destroy?).to be(true)
+    expect(described_class.new(member.fetch(:context), dosage).update?).to be(false)
   end
 end

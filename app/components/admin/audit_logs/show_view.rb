@@ -37,7 +37,7 @@ module Components
               m3_heading(level: 1) { t('admin.audit_logs.show.title') }
               m3_text(weight: 'muted') { event_heading }
             end
-            Link(href: '/admin/audit_logs', variant: :outlined, class: 'shrink-0 self-start') do
+            Link(href: admin_audit_logs_path, variant: :outlined, class: 'shrink-0 self-start') do
               t('admin.audit_logs.show.back')
             end
           end

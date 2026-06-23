@@ -8,7 +8,7 @@ RSpec.describe Components::Medications::InventoryScanModal, type: :component do
   it 'posts scanned stock to the scan restock endpoint' do
     form = rendered.at_css('form')
 
-    expect(form['action']).to eq('/medications/scan_restock')
+    expect(form['action']).to eq('/households/test-household/medications/scan_restock')
     expect(form['method']).to eq('post')
   end
 
@@ -16,7 +16,8 @@ RSpec.describe Components::Medications::InventoryScanModal, type: :component do
     controller = rendered.at_css('[data-controller="inventory-scan"]')
     barcode = rendered.at_css('#inventory_scan_barcode')
 
-    expect(controller['data-inventory-scan-match-url-value']).to eq('/medications/scan_restock_match.json')
+    expect(controller['data-inventory-scan-match-url-value'])
+      .to eq('/households/test-household/medications/scan_restock_match.json')
     expect(barcode['data-action']).to include('input->inventory-scan#barcodeChanged')
     expect(barcode['data-action']).to include('change->inventory-scan#barcodeChanged')
   end

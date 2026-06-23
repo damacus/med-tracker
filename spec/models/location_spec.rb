@@ -7,10 +7,30 @@ RSpec.describe Location do
 
   describe 'validations' do
     it { is_expected.to validate_presence_of(:name) }
-    it { is_expected.to validate_uniqueness_of(:name).case_insensitive }
+
+    it 'rejects duplicate names within the same household' do
+      household = Household.create!(name: 'Shared household', slug: 'shared-household')
+      create(:location, name: 'Home', household: household)
+
+      location = build(:location, name: 'home', household: household)
+
+      expect(location).not_to be_valid
+      expect(location.errors[:name]).to include('has already been taken')
+    end
+
+    it 'allows the same name in different households' do
+      first_household = Household.create!(name: 'First household', slug: 'first-household')
+      second_household = Household.create!(name: 'Second household', slug: 'second-household')
+      create(:location, name: 'Home', household: first_household)
+
+      location = build(:location, name: 'Home', household: second_household)
+
+      expect(location).to be_valid
+    end
   end
 
   describe 'associations' do
+    it { is_expected.to belong_to(:household).optional }
     it { is_expected.to have_many(:medications).dependent(:destroy) }
     it { is_expected.to have_many(:location_memberships).dependent(:destroy) }
     it { is_expected.to have_many(:members).through(:location_memberships).source(:person) }

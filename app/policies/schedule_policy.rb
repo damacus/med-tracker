@@ -2,77 +2,60 @@
 
 class SchedulePolicy < ApplicationPolicy
   def index?
-    admin? || doctor? || nurse? || carer_with_patient? || parent_with_dependent_patient?
+    household_schedule_index_access?
   end
 
   def show?
-    can_take_own_medication? || minor_with_own_schedule? || schedule_access?
+    person_grant_allows?(record.person, :view)
   end
 
   def create?
-    admin? || doctor?
+    schedule_person_grant_allows?(:manage)
   end
 
   alias new? create?
 
   def update?
-    admin? || doctor?
+    schedule_person_grant_allows?(:manage)
   end
 
   alias edit? update?
 
   def destroy?
-    admin? || doctor?
+    schedule_person_grant_allows?(:manage)
   end
 
   def take_medication?
-    can_take_own_medication? || minor_with_supervision? || medical_staff_or_carer?
+    schedule_person_grant_allows?(:record)
   end
 
   private
 
-  def schedule_access?
-    admin? || doctor? || nurse? || carer_with_patient? || parent_with_dependent_patient?
-  end
-
-  def minor_with_supervision?
-    minor_with_own_schedule? && supervisor?
-  end
-
-  def supervisor?
-    parent_with_dependent_patient? || carer_with_patient?
-  end
-
-  def medical_staff_or_carer?
-    medical_staff? || supervisor?
-  end
-
-  def medical_staff?
-    admin? || doctor? || nurse?
-  end
-
-  def can_take_own_medication?
-    return false unless user&.person
-
-    user.person.id == record.person_id && user.person.adult?
-  end
-
-  def minor_with_own_schedule?
-    return false unless user&.person
-
-    user.person.id == record.person_id && user.person.minor?
+  def household_schedule_index_access?
+    active_membership? && membership.person&.adult?
   end
 
   def person_id_for_authorization
     record.person_id
   end
 
+  def schedule_person_grant_allows?(access_level)
+    return household_manager? if record.is_a?(Class)
+
+    person_grant_allows?(record.person, access_level)
+  end
+
   class Scope < ApplicationPolicy::Scope
     def resolve
-      return scope.none unless user
-      return scope.all if admin_or_clinician?
+      household_schedule_scope
+    end
 
-      scope.where(person_id: accessible_person_ids)
+    private
+
+    def household_schedule_scope
+      return scope.none unless active_membership?
+
+      scope.where(household: household, person_id: granted_person_ids_for(:view))
     end
   end
 end

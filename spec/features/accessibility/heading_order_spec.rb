@@ -64,7 +64,7 @@ RSpec.describe 'Heading Order Accessibility', type: :system do
   describe 'Admin Dashboard page' do
     before do
       sign_in(admin_user)
-      visit '/admin'
+      visit admin_root_path
     end
 
     it 'has proper heading hierarchy' do
@@ -120,7 +120,7 @@ RSpec.describe 'Heading Order Accessibility', type: :system do
   describe 'Admin Users index page' do
     before do
       sign_in(admin_user)
-      visit '/admin/users'
+      visit admin_users_path
     end
 
     it 'has proper heading hierarchy' do

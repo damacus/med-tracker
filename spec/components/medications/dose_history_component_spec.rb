@@ -25,9 +25,13 @@ RSpec.describe Components::Medications::DoseHistoryComponent, type: :component d
 
   it 'links dose management back to the medication editor' do
     expected_href = Rails.application.routes.url_helpers.edit_medication_path(
-      medication,
+      household_slug: 'test-household',
+      id: medication,
       add_dosage: true,
-      return_to: Rails.application.routes.url_helpers.medication_path(medication)
+      return_to: Rails.application.routes.url_helpers.medication_path(
+        household_slug: 'test-household',
+        id: medication
+      )
     )
     component = described_class.new(medication: medication)
     allow(component).to receive(:can_manage?).and_return(true)

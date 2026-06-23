@@ -3,8 +3,7 @@
 module Authentication
   extend ActiveSupport::Concern
 
-  # Roles that should have 2FA enabled for security
-  ROLES_REQUIRING_2FA = %w[administrator doctor nurse].freeze
+  # Household managers should have 2FA enabled for security
 
   included do
     before_action :require_authentication
@@ -21,7 +20,10 @@ module Authentication
 
   # Get current user via Rodauth account
   def current_user
-    @current_user ||= current_account&.person&.user
+    return nil unless current_account
+
+    @current_user ||= current_account.person&.user ||
+                      User.joins(:person).find_by(people: { account_id: current_account.id })
   end
 
   # Get current Rodauth account
@@ -30,11 +32,11 @@ module Authentication
   end
 
   def authenticated?
-    rodauth.authenticated? && active_current_user?
+    rodauth.logged_in? && active_current_user?
   end
 
   def require_authentication
-    rodauth.require_authentication
+    rodauth.require_login
     return unless rodauth.logged_in?
     return if active_current_user?
 
@@ -70,19 +72,23 @@ module Authentication
   # Does NOT block access - just reminds them to set it up
   def check_two_factor_setup
     return unless should_setup_two_factor?
-    return if flash.any? # Don't overwrite existing flash messages
+    return if flash[:warning].present?
 
     flash.now[:warning] = I18n.t('authentication.two_factor_required')
   end
 
-  # Check if current user should have 2FA set up
+  # Check if current account should have 2FA set up
   def should_setup_two_factor?
     return false unless rodauth.logged_in?
     return false unless current_user
     return false if two_factor_configured?
     return false if oidc_authenticated?
 
-    ROLES_REQUIRING_2FA.include?(current_user.role)
+    household_manager_requires_two_factor?
+  end
+
+  def household_manager_requires_two_factor?
+    Current.membership&.owner? || Current.membership&.administrator? || false
   end
 
   def oidc_authenticated?

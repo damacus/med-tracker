@@ -17,11 +17,15 @@ module Components
       end
 
       def user_is_admin?
-        current_user&.administrator? || false
+        Current.membership&.owner? || Current.membership&.administrator? || false
       end
 
       def current_user_name
         current_user&.name
+      end
+
+      def current_membership_role_name
+        (Current.membership&.role.presence || 'member').to_s.humanize
       end
     end
   end

@@ -6,11 +6,13 @@ class DashboardPresenter
 
   delegate :routine_tasks_by_person, :as_needed_by_person, to: :dashboard_schedule
 
-  attr_reader :current_user, :selected_person_id
+  attr_reader :current_user, :selected_person_id, :base_people_scope, :household
 
-  def initialize(current_user:, selected_person_id: nil)
+  def initialize(current_user:, selected_person_id: nil, people_scope: nil, household: nil)
     @current_user = current_user
     @selected_person_id = selected_person_id.presence
+    @base_people_scope = people_scope
+    @household = household
   end
 
   def people
@@ -45,10 +47,10 @@ class DashboardPresenter
   end
 
   def active_schedules
-    @active_schedules ||= Schedule.active
-                                  .where(person_id: people.map(&:id))
-                                  .includes(person: :user, medication: [])
-                                  .to_a
+    @active_schedules ||= active_schedule_scope
+                          .where(person_id: people.map(&:id))
+                          .includes(person: :user, medication: [])
+                          .to_a
   end
 
   def upcoming_schedules
@@ -77,17 +79,23 @@ class DashboardPresenter
   end
 
   def can_view_reports?
-    ReportPolicy.new(current_user, :report).index?
+    ReportPolicy.new(policy_context, :report).index?
   end
 
   private
 
   def load_people
     return Person.none if current_user.nil?
+    return Person.none unless base_people_scope
 
-    return people_scope(Person.all) if full_access?
+    people_scope(base_people_scope)
+  end
 
-    current_person_scope
+  def active_schedule_scope
+    scope = Schedule.active
+    return scope unless household
+
+    scope.where(household: household)
   end
 
   def scoped_people
@@ -136,28 +144,8 @@ class DashboardPresenter
     current_user.person
   end
 
-  def current_person_scope
-    return Person.none if current_person.nil?
-    return people_scope(current_person.patients) if carer?
-    return people_scope(parent_people_ids) if parent?
-
-    people_scope(current_person.id)
-  end
-
-  def parent_people_ids
-    [current_person.id] + current_person.patients.where(person_type: :minor).pluck(:id)
-  end
-
-  def carer?
-    current_user.carer?
-  end
-
-  def parent?
-    current_user.parent?
-  end
-
-  def full_access?
-    current_user.administrator? || current_user.doctor? || current_user.nurse?
+  def policy_context
+    AuthorizationContext.current || current_user
   end
 
   def dashboard_schedule

@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
   static targets = ["input", "results", "idle", "submitButton"]
-  static values = { translations: Object }
+  static values = { translations: Object, searchUrl: String, newMedicationUrl: String }
 
   barcodeDecoded(event) {
     const barcode = event.detail.barcode
@@ -47,7 +47,11 @@ export default class extends Controller {
   }
 
   get searchUrl() {
-    return "/medication-finder/search"
+    return this.hasSearchUrlValue ? this.searchUrlValue : "/medication-finder/search"
+  }
+
+  get newMedicationUrl() {
+    return this.hasNewMedicationUrlValue ? this.newMedicationUrlValue : "/medications/new"
   }
 
   showLoading() {
@@ -292,7 +296,7 @@ export default class extends Controller {
   }
 
   addMedicationUrl(result, barcode) {
-    const url = new URL("/medications/new", window.location.origin)
+    const url = new URL(this.newMedicationUrl, window.location.origin)
     url.searchParams.set("name", result.name || result.display || "")
 
     if (result.category) {

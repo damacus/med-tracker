@@ -50,6 +50,7 @@ module Admin
 
       respond_to do |format|
         if @relationship.save
+          grant_relationship_access(@relationship)
           format.html { redirect_to admin_carer_relationships_path, notice: t('admin.carer_relationships.created') }
           format.turbo_stream do
             flash.now[:notice] = t('admin.carer_relationships.created')
@@ -91,6 +92,7 @@ module Admin
       authorize @relationship
 
       @relationship.deactivate!
+      revoke_relationship_access(@relationship)
       respond_to do |format|
         format.html { redirect_to admin_carer_relationships_path, notice: t('admin.carer_relationships.deactivated') }
         format.turbo_stream do
@@ -105,6 +107,7 @@ module Admin
       authorize @relationship
 
       @relationship.activate!
+      grant_relationship_access(@relationship)
       respond_to do |format|
         format.html { redirect_to admin_carer_relationships_path, notice: t('admin.carer_relationships.activated') }
         format.turbo_stream do
@@ -132,6 +135,73 @@ module Admin
         ),
         turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
       ]
+    end
+
+    def grant_relationship_access(relationship)
+      household = admin_household
+      return unless household && relationship.carer.account
+
+      relationship.carer.update!(household: household) if relationship.carer.household_id.blank?
+      return unless relationship.carer.household_id == household.id
+
+      membership = household.household_memberships.find_or_initialize_by(account: relationship.carer.account)
+      membership.person = relationship.carer
+      membership.role ||= :member
+      membership.status = :active
+      membership.save!
+
+      grant_access(household, membership, relationship.carer, :manage, :self)
+      grant_access(
+        household,
+        membership,
+        relationship.patient,
+        access_level_for(relationship.relationship_type),
+        grant_relationship_type_for(relationship.relationship_type)
+      )
+    end
+
+    def revoke_relationship_access(relationship)
+      household = admin_household
+      return unless household && relationship.carer.account
+
+      membership = household.household_memberships.find_by(account: relationship.carer.account)
+      return unless membership
+
+      household.person_access_grants.active.find_by(
+        household_membership: membership,
+        person: relationship.patient
+      )&.update!(revoked_at: Time.current)
+    end
+
+    def grant_access(household, membership, person, access_level, relationship_type)
+      grant = household.person_access_grants.find_or_initialize_by(
+        household_membership: membership,
+        person: person
+      )
+      grant.access_level = access_level
+      grant.relationship_type = relationship_type
+      grant.granted_by_membership = current_membership || admin_membership_for(household) || membership
+      grant.revoked_at = nil
+      grant.save!
+    end
+
+    def admin_household
+      current_household || current_account&.first_active_household
+    end
+
+    def admin_membership_for(household)
+      current_membership || current_account&.active_household_membership_for(household)
+    end
+
+    def access_level_for(relationship_type)
+      relationship_type == 'professional_carer' ? :record : :manage
+    end
+
+    def grant_relationship_type_for(relationship_type)
+      return :professional if relationship_type == 'professional_carer'
+      return :parent if relationship_type == 'parent'
+
+      :family_member
     end
   end
 end

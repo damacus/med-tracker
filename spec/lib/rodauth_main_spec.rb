@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe RodauthMain do
+  fixtures :people
+
   describe '#set_redirect_error_flash' do
     it 'does not set flash for the routine login-required redirect' do
       auth = RodauthApp.rodauth.allocate
@@ -47,5 +49,86 @@ RSpec.describe RodauthMain do
 
       expect(auth.two_factor_auth_return_to_requested_location?).to be true
     end
+  end
+
+  describe 'Zitadel professional title helpers' do
+    it 'returns an empty role list when Zitadel roles are absent' do
+      auth = RodauthApp.rodauth.allocate
+
+      expect(auth.send(:zitadel_role_names, { 'extra' => { 'raw_info' => {} } })).to eq([])
+    end
+
+    it 'returns an empty role list when raw OIDC info is absent' do
+      auth = RodauthApp.rodauth.allocate
+
+      expect(auth.send(:zitadel_role_names, { 'extra' => {} })).to eq([])
+    end
+
+    it 'maps doctor and nurse roles to professional titles' do
+      auth = RodauthApp.rodauth.allocate
+
+      expect(auth.send(:zitadel_professional_title_for, zitadel_auth_data(%w[administrator doctor]))).to eq('doctor')
+      expect(auth.send(:zitadel_professional_title_for, zitadel_auth_data(%w[member nurse]))).to eq('nurse')
+    end
+
+    it 'returns nil when no professional role is present' do
+      auth = RodauthApp.rodauth.allocate
+
+      expect(auth.send(:zitadel_professional_title_for, zitadel_auth_data(%w[administrator member]))).to be_nil
+    end
+
+    it 'updates a changed professional title' do
+      auth = RodauthApp.rodauth.allocate
+      person = people(:doctor_jones)
+      person.update!(professional_title: nil)
+
+      auth.send(:sync_zitadel_professional_title!, person, zitadel_auth_data(['doctor']))
+
+      expect(person.reload.professional_title).to eq('doctor')
+    end
+
+    it 'does nothing when no professional title is present' do
+      auth = RodauthApp.rodauth.allocate
+      person = people(:doctor_jones)
+      person.update!(professional_title: nil)
+
+      auth.send(:sync_zitadel_professional_title!, person, zitadel_auth_data(['member']))
+
+      expect(person.reload.professional_title).to be_nil
+    end
+
+    it 'does nothing when the professional title already matches' do
+      auth = RodauthApp.rodauth.allocate
+      person = people(:doctor_jones)
+      allow(person).to receive(:update)
+
+      auth.send(:sync_zitadel_professional_title!, person, zitadel_auth_data(['doctor']))
+
+      expect(person).not_to have_received(:update)
+    end
+
+    it 'logs failed professional title updates without raising' do
+      auth = RodauthApp.rodauth.allocate
+      errors = instance_double(ActiveModel::Errors, full_messages: ['Professional title is invalid'])
+      person = instance_double(Person, id: 123, professional_title: nil, errors: errors)
+      allow(person).to receive(:update).and_return(false)
+      allow(Rails.logger).to receive(:warn)
+
+      auth.send(:sync_zitadel_professional_title!, person, zitadel_auth_data(['doctor']))
+
+      expect(Rails.logger).to have_received(:warn).with(
+        '[OIDC] Professional title sync failed for 123: Professional title is invalid'
+      )
+    end
+  end
+
+  def zitadel_auth_data(role_names)
+    {
+      'extra' => {
+        'raw_info' => {
+          'urn:zitadel:iam:org:project:roles' => role_names.index_with { {} }
+        }
+      }
+    }
   end
 end

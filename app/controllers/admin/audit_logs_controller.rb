@@ -13,7 +13,7 @@ module Admin
     # Lists all audit log entries with optional filtering
     def index
       result = Admin::AuditLogsQuery.new(
-        scope: PaperTrail::Version.all,
+        scope: policy_scope(PaperTrail::Version.all, policy_scope_class: AuditLogPolicy::Scope),
         filters: params.permit(:item_type, :event, :whodunnit).to_h.symbolize_keys,
         page: params[:page],
         per_page: AUDIT_LOGS_PER_PAGE
@@ -36,7 +36,7 @@ module Admin
     # GET /admin/audit_logs/:id
     # Shows detailed information about a specific audit log entry
     def show
-      @version = PaperTrail::Version.find(params.expect(:id))
+      @version = policy_scope(PaperTrail::Version.all, policy_scope_class: AuditLogPolicy::Scope).find(params.expect(:id))
       authorize @version, policy_class: AuditLogPolicy
 
       render Components::Admin::AuditLogs::ShowView.new(version: @version)

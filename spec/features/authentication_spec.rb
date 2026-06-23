@@ -5,18 +5,29 @@ require 'rails_helper'
 RSpec.describe 'Authentication Features', type: :system do
   fixtures :accounts, :people, :users, :account_otp_keys
 
+  before do
+    driven_by(:rack_test)
+    Capybara.reset_sessions!
+  end
+
   describe 'AUTH-019: Additional factor required for 2FA accounts' do
-    it 'redirects to TOTP authentication after password login' do
+    it 'allows login with soft enforcement when TOTP is configured' do
+      user = users(:damacus)
+      ensure_api_household_for(user)
+      AccountOtpKey.where(id: user.person.account.id).delete_all
+      AccountOtpKey.create!(id: user.person.account.id, key: 'jbswy3dpehpk3pxp')
+
       visit login_path
       fill_in 'Email address', with: 'damacus@example.com'
       fill_in 'Password', with: 'password'
       click_on 'Sign In'
 
-      expect(page).to have_current_path('/otp-auth')
+      expect(page).to have_current_path(expected_dashboard_path_for(user.email_address))
     end
 
     it 'does not require MFA when only orphaned recovery codes remain' do
       user = users(:damacus)
+      ensure_api_household_for(user)
       account = user.person.account
       AccountOtpKey.where(id: account.id).delete_all
       AccountRecoveryCode.where(id: account.id).delete_all
@@ -30,7 +41,7 @@ RSpec.describe 'Authentication Features', type: :system do
       fill_in 'Password', with: 'password'
       click_on 'Sign In'
 
-      expect(page).to have_current_path('/dashboard')
+      expect(page).to have_current_path(expected_dashboard_path_for(user.email_address))
     end
   end
 
@@ -117,9 +128,9 @@ RSpec.describe 'Authentication Features', type: :system do
       User.create!(
         person: person,
         email_address: 'remember@example.com',
-        role: :parent,
         active: true
       )
+      ensure_api_household_for(person.user)
     end
 
     it 'shows remember me checkbox on login form' do
@@ -139,7 +150,7 @@ RSpec.describe 'Authentication Features', type: :system do
                                   event: 'auth_token/remember_key/created').count
       }.by(1)
 
-      expect(page).to have_current_path('/dashboard')
+      expect(page).to have_current_path(expected_dashboard_path_for(account.email))
       # Verify remember key was created in account_remember_keys table
       remember_key_exists = ActiveRecord::Base.connection.execute(
         "SELECT COUNT(*) FROM account_remember_keys WHERE account_id = #{account.id}"

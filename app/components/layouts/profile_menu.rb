@@ -5,6 +5,7 @@ module Components
     # Profile dropdown menu for authenticated users
     class ProfileMenu < Components::Base
       include Components::Layouts::CurrentUserContext
+      include Components::Layouts::NavigationItems
       include Phlex::Rails::Helpers::LinkTo
 
       def view_template
@@ -20,8 +21,10 @@ module Components
           render RubyUI::DropdownMenuContent.new do
             render(RubyUI::DropdownMenuLabel.new { t('layouts.profile_menu.my_account') })
             render RubyUI::DropdownMenuSeparator.new
-            render RubyUI::DropdownMenuItem.new(href: root_path) { t('layouts.profile_menu.dashboard') }
-            render RubyUI::DropdownMenuItem.new(href: profile_path) { t('layouts.profile_menu.profile') }
+            render RubyUI::DropdownMenuItem.new(href: household_navigation_path(:dashboard_path)) do
+              t('layouts.profile_menu.dashboard')
+            end
+            render RubyUI::DropdownMenuItem.new(href: profile_navigation_item[:path]) { t('layouts.profile_menu.profile') }
             render_admin_menu_item if user_is_admin?
             render RubyUI::DropdownMenuSeparator.new
             render_logout_menu_item

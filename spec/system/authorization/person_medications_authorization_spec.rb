@@ -42,8 +42,9 @@ RSpec.describe 'Person Medications Authorization' do
       expect(page).to have_text('Medication added successfully.')
     end
 
-    it 'allows doctors to open the unified medication assignment flow', :js do
+    it 'allows professionals with manage grants to open the unified medication assignment flow', :js do
       login_as(doctor)
+      grant_browser_access(assigned_patient, access_level: :manage)
       visit person_path(assigned_patient)
 
       expect(page).to have_text('Medications')
@@ -126,6 +127,7 @@ RSpec.describe 'Person Medications Authorization' do
     it 'allows carers to take medication for assigned patients', :js do
       login_as(carer)
       visit dashboard_path
+      click_on assigned_patient.name
 
       as_needed_card_for(person_medication).find('summary').click
       find("[data-testid='take-dose-personmedication_#{person_medication.id}']").click
@@ -138,7 +140,7 @@ RSpec.describe 'Person Medications Authorization' do
       login_as(doctor)
       visit person_path(assigned_patient)
 
-      within("#person_medication_#{person_medication.id}") do
+      within("##{tenant_dom_id(person_medication)}") do
         expect(page).to have_no_button('Give')
       end
     end
@@ -147,7 +149,7 @@ RSpec.describe 'Person Medications Authorization' do
       login_as(nurse)
       visit person_path(assigned_patient)
 
-      within("#person_medication_#{person_medication.id}") do
+      within("##{tenant_dom_id(person_medication)}") do
         expect(page).to have_no_button('Give')
       end
     end
@@ -182,7 +184,7 @@ RSpec.describe 'Person Medications Authorization' do
       login_as(admin)
       visit person_path(assigned_patient)
 
-      within("#person_medication_#{person_medication.id}") do
+      within("##{tenant_dom_id(person_medication)}") do
         # Trigger is an icon button
         delete_button = find("[data-testid='delete-person-medication-#{person_medication.id}']")
         expect(delete_button).to have_css('svg')
@@ -197,7 +199,7 @@ RSpec.describe 'Person Medications Authorization' do
       login_as(doctor)
       visit person_path(assigned_patient)
 
-      within("#person_medication_#{person_medication.id}") do
+      within("##{tenant_dom_id(person_medication)}") do
         expect(page).to have_no_css("[data-testid='delete-person-medication-#{person_medication.id}']")
       end
     end
@@ -206,7 +208,7 @@ RSpec.describe 'Person Medications Authorization' do
       login_as(nurse)
       visit person_path(assigned_patient)
 
-      within("#person_medication_#{person_medication.id}") do
+      within("##{tenant_dom_id(person_medication)}") do
         expect(page).to have_no_css("[data-testid='delete-person-medication-#{person_medication.id}']")
       end
     end
@@ -215,7 +217,7 @@ RSpec.describe 'Person Medications Authorization' do
       login_as(carer)
       visit person_path(assigned_patient)
 
-      within("#person_medication_#{person_medication.id}") do
+      within("##{tenant_dom_id(person_medication)}") do
         expect(page).to have_no_css("[data-testid='delete-person-medication-#{person_medication.id}']")
       end
     end
@@ -285,7 +287,7 @@ RSpec.describe 'Person Medications Authorization' do
       login_as(parent)
       visit person_path(linked_child)
 
-      within("#person_medication_#{person_medication.id}") do
+      within("##{tenant_dom_id(person_medication)}") do
         find("[data-testid='edit-person-medication-#{person_medication.id}']").click
       end
 
@@ -302,7 +304,7 @@ RSpec.describe 'Person Medications Authorization' do
       login_as(admin)
       visit person_path(linked_child)
 
-      within("#person_medication_#{person_medication.id}") do
+      within("##{tenant_dom_id(person_medication)}") do
         find("[data-testid='edit-person-medication-#{person_medication.id}']").click
       end
 
@@ -319,7 +321,7 @@ RSpec.describe 'Person Medications Authorization' do
       login_as(carer)
       visit person_path(assigned_patient)
 
-      within("#person_medication_#{carer_medication.id}") do
+      within("##{tenant_dom_id(carer_medication)}") do
         expect(page).to have_no_css("[data-testid='edit-person-medication-#{carer_medication.id}']")
       end
     end
@@ -409,7 +411,7 @@ RSpec.describe 'Person Medications Authorization' do
 
   def as_needed_card_for(person_medication)
     all('details[data-testid="dashboard-as-needed-person"]', visible: :all).find do |details|
-      details.has_css?("#timeline_person_medication_#{person_medication.id}", visible: :all)
+      details.has_css?("##{tenant_dom_id(person_medication, :timeline)}", visible: :all)
     end
   end
 end

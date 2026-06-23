@@ -285,6 +285,40 @@ RSpec.describe Schedule do
     end
   end
 
+  describe 'household assignment' do
+    let(:assignment_household) { Household.create!(name: 'Schedule Assignment Household') }
+    let(:assignment_location) { Location.create!(name: 'Schedule Assignment Home', household: assignment_household) }
+    let(:assignment_medication) do
+      Medication.create!(
+        name: 'Schedule Assignment Medication',
+        location: assignment_location,
+        current_supply: 50,
+        reorder_threshold: 10
+      )
+    end
+    let(:assignment_dosage) do
+      create(:dosage, medication: assignment_medication, amount: 10, unit: 'mg', frequency: 'daily')
+    end
+    let(:unassigned_person) do
+      Person.create!(name: 'Schedule Unassigned Person', date_of_birth: 30.years.ago.to_date)
+    end
+
+    it 'falls back to the medication household when the person has none' do
+      schedule = described_class.new(
+        person: unassigned_person,
+        medication: assignment_medication,
+        source_dosage_option: assignment_dosage,
+        dose_amount: assignment_dosage.amount,
+        dose_unit: assignment_dosage.unit,
+        start_date: Time.zone.today,
+        end_date: 1.week.from_now.to_date
+      )
+      schedule.valid?
+
+      expect(schedule.household).to eq(assignment_household)
+    end
+  end
+
   describe 'schedule configuration' do
     let(:monday) { Date.new(2026, 4, 20) }
     let(:taper_steps) do

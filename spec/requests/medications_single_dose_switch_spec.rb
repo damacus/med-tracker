@@ -12,9 +12,18 @@ RSpec.describe 'Medication single-dose switching' do
   end
 
   it 'renders a validation error instead of crashing when schedules still use dosage options' do
-    medication = create(:medication, dosage_amount: nil, dosage_unit: nil)
-    dosage = create(:dosage, medication: medication, amount: 10, unit: 'mg')
-    create(:schedule, medication: medication, dose_amount: dosage.amount, dose_unit: dosage.unit)
+    household = Household.find_by!(slug: default_request_household_slug)
+    location = create(:location, household: household)
+    medication = create(:medication, household: household, location: location, dosage_amount: nil, dosage_unit: nil)
+    dosage = create(:dosage, household: household, medication: medication, amount: 10, unit: 'mg')
+    create(
+      :schedule,
+      household: household,
+      person: admin.person,
+      medication: medication,
+      dose_amount: dosage.amount,
+      dose_unit: dosage.unit
+    )
 
     patch medication_path(medication), params: {
       medication: {

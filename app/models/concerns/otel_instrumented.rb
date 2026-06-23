@@ -50,7 +50,6 @@ module OtelInstrumented
   def otel_span_attributes(operation)
     {
       'model.name' => self.class.name,
-      'model.id' => id.to_s,
       'model.operation' => operation
     }
   end

@@ -7,17 +7,22 @@ RSpec.describe 'GET /medication-finder/search' do
 
   let(:doctor) { users(:doctor) }
   let(:doctor_account) { accounts(:dr_jones) }
+  let(:admin) { users(:admin) }
+
+  def login_as_admin
+    sign_in(admin)
+  end
 
   def login_as_doctor
-    post '/login', params: { email: doctor_account.email, password: 'password' }
+    sign_in(doctor)
   end
 
   def login_as_carer
-    post '/login', params: { email: accounts(:carer).email, password: 'password' }
+    sign_in(users(:carer))
   end
 
   def login_as_parent
-    post '/login', params: { email: accounts(:parent).email, password: 'password' }
+    sign_in(users(:parent))
   end
 
   describe 'GET /medication-finder/search.json' do
@@ -36,7 +41,7 @@ RSpec.describe 'GET /medication-finder/search' do
       let(:search_outcome) { NhsDmd::Search::Result.new(results: search_results, error: nil) }
 
       before do
-        login_as_doctor
+        login_as_admin
         search = instance_double(NhsDmd::Search, call: search_outcome)
         allow(NhsDmd::Search).to receive(:new).and_return(search)
       end
@@ -92,8 +97,8 @@ RSpec.describe 'GET /medication-finder/search' do
       let(:search_results) do
         [
           NhsDmd::SearchResult.new(
-            code: '39720311000001101',
-            display: 'Aspirin 300mg tablets',
+            code: '99999911000001109',
+            display: 'Foreign Search Only 123mg tablets',
             system: 'https://dmd.nhs.uk',
             concept_class: 'VMP'
           )
@@ -103,10 +108,17 @@ RSpec.describe 'GET /medication-finder/search' do
 
       before do
         login_as_parent
-        foreign_location = Location.create!(name: 'Foreign')
-        medications(:aspirin).update!(
+        foreign_household = Household.create!(name: 'Foreign Search Household', slug: 'foreign-search-household')
+        foreign_location = Location.create!(name: 'Foreign', household: foreign_household)
+        Medication.create!(
+          name: 'Foreign Search Only',
           location: foreign_location,
-          dmd_code: '39720311000001101',
+          household: foreign_household,
+          dosage_amount: 123,
+          dosage_unit: 'mg',
+          current_supply: 12,
+          reorder_threshold: 2,
+          dmd_code: '99999911000001109',
           dmd_system: 'https://dmd.nhs.uk',
           dmd_concept_class: 'VMP'
         )
@@ -115,7 +127,7 @@ RSpec.describe 'GET /medication-finder/search' do
       end
 
       it 'does not expose existing medication metadata' do
-        get medication_finder_search_path(format: :json), params: { q: 'aspirin' }
+        get medication_finder_search_path(format: :json), params: { q: 'foreign search only' }
 
         expect(response).to have_http_status(:ok)
         expect(response.parsed_body['results'].first).not_to have_key('existing_medication')

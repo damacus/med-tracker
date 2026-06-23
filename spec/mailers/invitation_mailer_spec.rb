@@ -6,7 +6,8 @@ RSpec.describe InvitationMailer do
   describe '#invite' do
     let(:token) { 'test-token-123' }
     let(:invitation) do
-      Invitation.new(email: 'invitee@example.com', role: :carer, token_digest: Invitation.digest(token))
+      build(:household_invitation, email: 'invitee@example.com', membership_role: :member,
+                                   token_digest: HouseholdInvitation.digest(token))
     end
     let(:mail) { described_class.with(invitation: invitation, token: token).invite }
 
@@ -27,7 +28,7 @@ RSpec.describe InvitationMailer do
     end
 
     it 'includes the role in the body' do
-      expect(mail.body.encoded).to include('Carer')
+      expect(mail.body.encoded).to include('Member')
     end
 
     it 'is a multipart email with HTML and plain text parts' do

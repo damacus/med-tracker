@@ -10,6 +10,8 @@ module Components
             testid: 'medication-finder',
             controller: 'medication-search',
             action: 'barcode-scanner:decoded->medication-search#barcodeDecoded',
+            medication_search_search_url_value: medication_finder_search_path,
+            medication_search_new_medication_url_value: new_medication_path,
             medication_search_translations_value: {
               loading: t('medications.finder.loading'),
               idleText: t('medications.finder.idle_text'),

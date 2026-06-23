@@ -1,168 +1,62 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
-require 'pundit/rspec'
 
-RSpec.describe CarerRelationshipPolicy do
-  fixtures :accounts, :people, :users, :carer_relationships, :person_medications, :medication_takes
-
-  subject(:policy) { described_class.new(current_user, relationship) }
-
-  let(:relationship) { carer_relationships(:jane_cares_for_child) }
-
-  context 'when user is an administrator' do
-    let(:current_user) { users(:admin) }
-
-    it 'permits all actions' do
-      %i[index show create new update edit destroy].each do |action|
-        expect(policy.public_send("#{action}?")).to be true
-      end
-    end
-
-    it 'permits dependent assignment' do
-      expect(policy.assign_dependent?).to be true
-    end
+RSpec.describe CarerRelationshipPolicy, type: :policy do
+  let(:owner) { household_policy_member(role: :owner) }
+  let(:household) { owner.fetch(:household) }
+  let(:member) { household_policy_member(role: :member, household: household) }
+  let(:patient) { household_policy_person(household, person_type: :minor, has_capacity: false) }
+  let(:carer) { household_policy_person(household, name: 'Policy Carer') }
+  let(:relationship) do
+    CarerRelationship.create!(patient: patient, carer: carer, relationship_type: :carer)
   end
 
-  context 'when user is a doctor' do
-    let(:current_user) { users(:doctor) }
-
-    it 'permits viewing but not management' do
-      %i[index show].each { |action| expect(policy.public_send("#{action}?")).to be true }
-      %i[create new update edit destroy].each { |action| expect(policy.public_send("#{action}?")).to be false }
-    end
-
-    it 'forbids dependent assignment' do
-      expect(policy.assign_dependent?).to be false
-    end
+  it 'allows household managers to administer relationships in their household' do
+    expect(policy_results(owner.fetch(:context), relationship,
+                          %i[index? show? update? destroy? activate? assign_dependent?])).to eq(
+                            index?: true,
+                            show?: true,
+                            update?: true,
+                            destroy?: true,
+                            activate?: true,
+                            assign_dependent?: true
+                          )
   end
 
-  context 'when user is a nurse' do
-    let(:current_user) { users(:nurse) }
+  it 'allows granted members to view and assign dependent relationships without admin actions' do
+    expect(described_class.new(member.fetch(:context), relationship).show?).to be(false)
 
-    it 'permits viewing but not management' do
-      %i[index show].each { |action| expect(policy.public_send("#{action}?")).to be true }
-      %i[create new update edit destroy].each { |action| expect(policy.public_send("#{action}?")).to be false }
-    end
+    grant_policy_person_access(member, patient, access_level: :view)
 
-    it 'forbids dependent assignment' do
-      expect(policy.assign_dependent?).to be false
-    end
+    expect(described_class.new(member.fetch(:context), relationship).show?).to be(true)
+    expect(described_class.new(member.fetch(:context), relationship).assign_dependent?).to be(false)
+
+    patient.person_access_grants
+           .find_by!(household_membership: member.fetch(:membership))
+           .update!(access_level: :manage)
+
+    expect(described_class.new(member.fetch(:context), relationship).assign_dependent?).to be(true)
+    expect(described_class.new(member.fetch(:context), relationship).destroy?).to be(false)
   end
 
-  context 'when user is a carer' do
-    let(:current_user) { users(:carer) }
+  it 'scopes relationships to managers or granted patients' do
+    relationship
+    other = CarerRelationship.create!(
+      patient: household_policy_person(household, person_type: :minor, has_capacity: false),
+      carer: carer,
+      relationship_type: :carer
+    )
+    grant_policy_person_access(member, patient, access_level: :view)
 
-    context 'with their own carer relationship' do
-      let(:relationship) { carer_relationships(:carer_cares_for_patient) }
+    manager_scope = described_class::Scope.new(owner.fetch(:context), CarerRelationship.all).resolve
+    member_scope = described_class::Scope.new(member.fetch(:context), CarerRelationship.all).resolve
 
-      it 'permits viewing only' do
-        expect(policy.show?).to be true
-        %i[update edit destroy].each { |action| expect(policy.public_send("#{action}?")).to be false }
-      end
-    end
-
-    context 'with another carer relationship' do
-      let(:relationship) { carer_relationships(:jane_cares_for_child) }
-
-      it 'forbids viewing' do
-        expect(policy.show?).to be false
-      end
-    end
-
-    it 'forbids listing all relationships' do
-      expect(policy.index?).to be false
-    end
-
-    it 'forbids creating relationships' do
-      %i[create new].each { |action| expect(policy.public_send("#{action}?")).to be false }
-    end
-
-    it 'forbids dependent assignment' do
-      expect(policy.assign_dependent?).to be false
-    end
+    expect(manager_scope).to include(relationship, other)
+    expect(member_scope).to contain_exactly(relationship)
   end
 
-  context 'when user is a parent' do
-    let(:current_user) { users(:parent) }
-
-    context 'with their own dependent child' do
-      let(:relationship) { CarerRelationship.new(patient: people(:child_user_person)) }
-
-      it 'permits dependent assignment' do
-        expect(policy.assign_dependent?).to be true
-      end
-    end
-
-    context 'with an unrelated dependent child' do
-      let(:relationship) { CarerRelationship.new(patient: people(:child_patient)) }
-
-      it 'forbids dependent assignment' do
-        expect(policy.assign_dependent?).to be false
-      end
-    end
-
-    context 'with a self-managing adult' do
-      let(:relationship) { CarerRelationship.new(patient: people(:john)) }
-
-      it 'forbids dependent assignment' do
-        expect(policy.assign_dependent?).to be false
-      end
-    end
-  end
-
-  context 'when user is nil' do
-    let(:current_user) { nil }
-
-    it 'forbids all actions' do
-      %i[index show create new update edit destroy].each do |action|
-        expect(policy.public_send("#{action}?")).to be false
-      end
-    end
-  end
-
-  describe 'Scope' do
-    subject(:scope) { described_class::Scope.new(current_user, CarerRelationship.all).resolve }
-
-    context 'when user is an administrator' do
-      let(:current_user) { users(:admin) }
-
-      it 'returns all relationships for administrators' do
-        expect(scope).to match_array(CarerRelationship.all)
-      end
-    end
-
-    context 'when user is a doctor' do
-      let(:current_user) { users(:doctor) }
-
-      it 'returns all relationships for doctors' do
-        expect(scope).to match_array(CarerRelationship.all)
-      end
-    end
-
-    context 'when user is a nurse' do
-      let(:current_user) { users(:nurse) }
-
-      it 'returns all relationships for nurses' do
-        expect(scope).to match_array(CarerRelationship.all)
-      end
-    end
-
-    context 'when user is a carer' do
-      let(:current_user) { users(:jane) }
-
-      it 'returns only their carer relationships' do
-        expected = CarerRelationship.where(carer: current_user.person)
-        expect(scope).to match_array(expected)
-      end
-    end
-
-    context 'when user is nil' do
-      let(:current_user) { nil }
-
-      it 'returns no records' do
-        expect(scope).to be_empty
-      end
-    end
+  def policy_results(context, record, actions)
+    actions.index_with { |action| described_class.new(context, record).public_send(action) }
   end
 end

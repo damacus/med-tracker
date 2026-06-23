@@ -11,12 +11,17 @@ module Components
     include Phlex::Rails::Helpers::FormWith
     include Phlex::Rails::Helpers::Pluralize
     include Components::FormHelpers
+    include TenantDomTargetsHelper
 
     if Rails.env.development?
       def before_template
         comment { "Before #{self.class.name}" }
         super
       end
+    end
+
+    def policy_context(fallback = nil)
+      AuthorizationContext.current || fallback
     end
   end
 end

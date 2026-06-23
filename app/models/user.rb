@@ -2,26 +2,13 @@
 
 # User model for storing user information and authentication
 class User < ApplicationRecord
-  attr_accessor :dependent_ids
+  attr_accessor :dependent_ids, :membership_role, :dependent_access_level, :dependent_relationship_type
 
   # Audit trail for user account changes
   # Excludes password fields for security - passwords are never logged
   # Tracks: email changes, role changes, person associations
   # @see docs/audit-trail.md
   has_paper_trail ignore: %i[password_digest recovery_password_digest]
-
-  WIZARD_VARIANTS = %w[fullpage modal slideover].freeze
-
-  store_accessor :preferences, :wizard_variant, :gravatar_enabled
-
-  def wizard_variant
-    v = super
-    WIZARD_VARIANTS.include?(v) ? v : 'fullpage'
-  end
-
-  def gravatar_enabled?
-    !!ActiveModel::Type::Boolean.new.cast(gravatar_enabled)
-  end
 
   belongs_to :person, inverse_of: :user
 
@@ -37,8 +24,6 @@ class User < ApplicationRecord
                             uniqueness: { case_sensitive: false },
                             format: { with: /\A[\w+\-.]+@[a-z\d\-.]+\.[a-z]+\z/i }
   validates :password, length: { minimum: 8 }, allow_nil: true, if: -> { password.present? }
-
-  enum :role, { administrator: 0, doctor: 1, nurse: 2, carer: 3, parent: 4, minor: 5 }, validate: true
 
   scope :active, -> { where(active: true) }
   scope :inactive, -> { where(active: false) }

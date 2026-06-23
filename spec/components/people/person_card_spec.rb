@@ -19,6 +19,17 @@ RSpec.describe Components::People::PersonCard, type: :component do
                               'Expected badge to use M3 badge tokens'
   end
 
+  it 'prefixes the card id with the current household identity' do
+    household = Household.create!(name: 'Component DOM Household', slug: 'component-dom-household')
+    Current.household = household
+
+    rendered = render_inline(described_class.new(person: person))
+
+    expect(rendered.at_css("#household_#{household.id}_person_1")).to be_present
+  ensure
+    Current.reset
+  end
+
   it 'checks carer relationship state once per render' do
     needs_carer = people(:one)
     needs_carer.association(:carers).reset

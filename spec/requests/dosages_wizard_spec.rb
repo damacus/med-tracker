@@ -295,11 +295,21 @@ RSpec.describe 'Medication wizard dose option follow-up' do
 
   it 'creates the initial dependent adult schedule from the dependent default dose' do
     sign_in(users(:admin))
+    household = Household.find_by!(slug: default_request_household_slug)
+    membership = household.household_memberships.find_by!(account: users(:admin).person.account)
     dependent = Person.create!(
       name: 'Dependent Adult Patient',
       date_of_birth: 50.years.ago.to_date,
       person_type: :dependent_adult,
-      has_capacity: true
+      has_capacity: true,
+      household: household
+    )
+    household.person_access_grants.create!(
+      household_membership: membership,
+      person: dependent,
+      access_level: :manage,
+      relationship_type: :family_member,
+      granted_by_membership: membership
     )
 
     post medications_path,
@@ -389,7 +399,7 @@ RSpec.describe 'Medication wizard dose option follow-up' do
              category: 'Analgesic',
              current_supply: '10',
              reorder_threshold: '1',
-             location_id: locations(:home).id,
+             location_id: household_location(locations(:home)).id,
              dosage_records_attributes: {
                '0' => {
                  amount: '5',

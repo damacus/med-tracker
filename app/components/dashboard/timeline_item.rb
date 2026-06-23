@@ -12,7 +12,7 @@ module Components
       end
 
       def view_template
-        card_id = "timeline_#{dose[:source].class.name.underscore}_#{dose[:source].id}"
+        card_id = tenant_dom_target("timeline_#{dose[:source].class.name.underscore}_#{dose[:source].id}")
         render M3::Card.new(
           variant: :elevated,
           class: "border-none border-l-4 #{status_border_class} transition-all duration-300 " \

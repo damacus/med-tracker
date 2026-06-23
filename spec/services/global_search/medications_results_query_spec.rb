@@ -24,7 +24,7 @@ RSpec.describe GlobalSearch::MedicationsResultsQuery do
 
         expect(result).to have_attributes(
           type: 'medication',
-          path: Rails.application.routes.url_helpers.medication_path(medications(:vitamin_d)),
+          path: Rails.application.routes.url_helpers.medication_path('test-household', medications(:vitamin_d)),
           score: a_kind_of(Integer)
         )
       end

@@ -2,18 +2,20 @@
 
 class NotificationPreferencePolicy < ApplicationPolicy
   def show?
-    return false unless user&.person
-
-    admin_or_clinician? || record.person_id == user.person_id
+    person_grant_allows?(record.person, :view)
   end
 
   class Scope < ApplicationPolicy::Scope
     def resolve
-      return scope.none unless user
-      return scope.all if admin_or_clinician?
-      return scope.none unless user.person_id
+      household_notification_preference_scope
+    end
 
-      scope.where(person_id: user.person_id)
+    private
+
+    def household_notification_preference_scope
+      return scope.none unless active_membership?
+
+      scope.where(household: household, person_id: granted_person_ids_for(:view))
     end
   end
 end

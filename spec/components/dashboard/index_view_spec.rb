@@ -10,7 +10,7 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
     described_class.new(presenter: presenter)
   end
 
-  let(:active_schedules_icon_path) do
+  def active_schedules_icon_path
     [
       'M200-640h560v-80H200v80Zm0 0v-80 80Zm0 560q-33 0-56.5-23.5T120-160v-560q0-33 ',
       '23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v227q-19-9-39-15t-41-9v-43H200v400h252q7 ',
@@ -21,7 +21,13 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
   end
 
   let(:admin_user) { users(:admin) }
-  let(:presenter) { DashboardPresenter.new(current_user: admin_user) }
+  let(:presenter) { dashboard_presenter(admin_user, people_scope: Person.all) }
+
+  def people_path = '/households/test-household/people'
+
+  def schedules_path = '/households/test-household/schedules'
+
+  def reports_insights_path = '/households/test-household/reports#insights'
 
   describe 'greetings' do
     it 'renders Good morning in the morning' do
@@ -63,7 +69,7 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
     end
 
     it 'renders all-family people count including self' do
-      parent_presenter = DashboardPresenter.new(current_user: users(:parent), selected_person_id: 'all')
+      parent_presenter = parent_dashboard_presenter(selected_person_id: 'all')
       parent_view = described_class.new(presenter: parent_presenter)
       expected_count = users(:parent).person.patients.where(person_type: :minor).count + 1
 
@@ -75,13 +81,13 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
     it 'links People stat card to people page' do
       rendered = render_inline(dashboard_view)
 
-      expect(rendered.css("a[href='/people']")).to be_present
+      expect(rendered.css("a[href='#{people_path}']")).to be_present
     end
 
     it 'links Active Schedules stat card to schedules page' do
       rendered = render_inline(dashboard_view)
 
-      expect(rendered.css("a[href='/schedules']")).to be_present
+      expect(rendered.css("a[href='#{schedules_path}']")).to be_present
     end
 
     it 'renders the dashboard summary row with operational metric cards' do
@@ -90,13 +96,13 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       labels = rendered.css('p').map { |label| label.text.strip }
 
       expect(labels).to include('People', 'Active Schedules', 'Next Dose')
-      expect(rendered.css("a[href='/people']")).to be_present
-      expect(rendered.css("a[href='/schedules']")).to be_present
+      expect(rendered.css("a[href='#{people_path}']")).to be_present
+      expect(rendered.css("a[href='#{schedules_path}']")).to be_present
     end
 
     it 'renders the active schedules icon on the active schedules stat card' do
       rendered = render_inline(dashboard_view)
-      card = rendered.at_css("a[href='/schedules']")
+      card = rendered.at_css("a[href='#{schedules_path}']")
 
       expect(card.at_css("path[d='#{active_schedules_icon_path}']")).to be_present
     end
@@ -104,7 +110,7 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
 
   describe 'person selector' do
     it 'renders above the dashboard stats section with individual people and all family' do
-      presenter = DashboardPresenter.new(current_user: users(:parent))
+      presenter = parent_dashboard_presenter
 
       rendered = render_inline(described_class.new(presenter: presenter))
       selector = rendered.at_css('[data-testid="dashboard-person-selector"]')
@@ -117,7 +123,7 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
     end
 
     it 'marks the selected person with aria-current and initials fallback' do
-      presenter = DashboardPresenter.new(current_user: users(:parent))
+      presenter = parent_dashboard_presenter
 
       rendered = render_inline(described_class.new(presenter: presenter))
       selected = rendered.at_css('[data-testid="dashboard-person-option"][aria-current="true"]')
@@ -128,7 +134,7 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
     end
 
     it 'wraps selector controls instead of requiring horizontal scrolling' do
-      presenter = DashboardPresenter.new(current_user: users(:parent))
+      presenter = parent_dashboard_presenter
 
       rendered = render_inline(described_class.new(presenter: presenter))
       selector = rendered.at_css('[data-testid="dashboard-person-selector"]')
@@ -138,7 +144,7 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
     end
 
     it 'renders the first five people as pills and puts remaining options in a dropdown' do
-      presenter = DashboardPresenter.new(current_user: admin_user)
+      presenter = dashboard_presenter(admin_user, people_scope: Person.all)
 
       rendered = render_inline(described_class.new(presenter: presenter))
       direct_options = rendered.css('[data-testid="dashboard-person-option"]')
@@ -152,7 +158,7 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
     end
 
     it 'renders only the current selection plus a dropdown for other people on mobile' do
-      presenter = DashboardPresenter.new(current_user: admin_user)
+      presenter = dashboard_presenter(admin_user, people_scope: Person.all)
 
       rendered = render_inline(described_class.new(presenter: presenter))
       current = rendered.at_css('[data-testid="dashboard-person-mobile-current"]')
@@ -225,14 +231,14 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
 
       rendered = render_inline(described_class.new(presenter: presenter))
 
-      expect(rendered.css("a[href='/reports#insights']")).to be_present
+      expect(rendered.css("a[href='#{reports_insights_path}']")).to be_present
     end
 
     it 'renders the reports insights link with visible link affordance', :aggregate_failures do
       presenter = person_task_presenter(insight_result: detected_insight_result, can_view_reports: true)
 
       rendered = render_inline(described_class.new(presenter: presenter))
-      link = rendered.at_css("a[href='/reports#insights']")
+      link = rendered.at_css("a[href='#{reports_insights_path}']")
 
       expect(link.text).to include('View Full Report')
       expect(link['class']).to include('bg-surface-container-low')
@@ -248,7 +254,7 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
 
       rendered = render_inline(described_class.new(presenter: presenter))
 
-      expect(rendered.css("a[href='/reports#insights']")).not_to be_present
+      expect(rendered.css("a[href='#{reports_insights_path}']")).not_to be_present
     end
 
     it 'renders Stock Inventory' do
@@ -447,7 +453,7 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       detail: 'Every expected dose was logged in this report window.',
       metric_label: 'Current streak',
       metric_value: '7 days',
-      cta_path: '/reports#insights'
+      cta_path: '/households/test-household/reports#insights'
     )
   end
 
@@ -510,5 +516,18 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
     expect(segment['style']).to include("background-color: #{background}")
     expect(segment['class']).not_to include('h-1')
     expect(segment['class']).not_to include('bg-outline-variant/70')
+  end
+
+  def dashboard_presenter(user, people_scope:, selected_person_id: nil)
+    DashboardPresenter.new(current_user: user, selected_person_id: selected_person_id, people_scope: people_scope)
+  end
+
+  def parent_dashboard_presenter(selected_person_id: nil)
+    user = users(:parent)
+    person = user.person
+    child_ids = person.patients.where(person_type: :minor).pluck(:id)
+
+    dashboard_presenter(user, selected_person_id: selected_person_id,
+                              people_scope: Person.where(id: [person.id] + child_ids))
   end
 end

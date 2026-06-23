@@ -19,6 +19,13 @@
     <% if vapid_public_key %>
       <meta name="vapid-public-key" content="<%= vapid_public_key %>">
     <% end %>
+    <% if Current.household %>
+      <meta name="med-tracker-household-id" content="<%= Current.household.id %>">
+      <meta name="med-tracker-household-slug" content="<%= Current.household.slug %>">
+    <% end %>
+    <% if Current.membership %>
+      <meta name="med-tracker-membership-id" content="<%= Current.membership.id %>">
+    <% end %>
 
     <%= yield :head %>
 

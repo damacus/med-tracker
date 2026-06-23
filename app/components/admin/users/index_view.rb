@@ -54,7 +54,7 @@ module Components
               end
             end
             render RubyUI::Link.new(
-              href: '/admin/users/new',
+              href: new_admin_user_path,
               variant: :primary,
               size: :lg,
               class: 'rounded-2xl shadow-lg shadow-primary/20',

@@ -7,7 +7,32 @@ RSpec.describe Components::Admin::Users::UsersTable, type: :component do
 
   let(:user_list) { User.all }
   let(:current_user) { users(:admin) }
-  let(:target_user) { users(:john) }
+  let(:target_user) { users(:jane) }
+  let(:household) do
+    Household.find_or_create_by!(slug: 'test-household') do |record|
+      record.name = 'Test Household'
+    end
+  end
+
+  before do
+    Current.household = household
+    current_user.person.update!(household: household)
+    target_user.person.update!(household: household)
+    household.household_memberships.find_or_initialize_by(account: current_user.person.account).tap do |membership|
+      membership.person = current_user.person
+      membership.role = :owner
+      membership.status = :active
+      membership.save!
+    end
+    household.household_memberships.find_or_initialize_by(account: target_user.person.account).tap do |membership|
+      membership.person = target_user.person
+      membership.role = :administrator
+      membership.status = :active
+      membership.save!
+    end
+  end
+
+  after { Current.reset }
 
   describe 'rendering' do
     it 'renders a table' do
@@ -30,7 +55,7 @@ RSpec.describe Components::Admin::Users::UsersTable, type: :component do
       expect(rendered.css("[data-user-id='#{target_user.id}']").length).to eq(1)
       expect(rendered.css("[data-user-card-id='#{target_user.id}']")).to be_present
       expect(rendered.css("[data-user-card-id='#{target_user.id}'] a").pluck('href')).to include(
-        "/admin/users/#{target_user.id}/edit"
+        "/households/test-household/admin/users/#{target_user.id}/edit"
       )
     end
 
@@ -53,8 +78,15 @@ RSpec.describe Components::Admin::Users::UsersTable, type: :component do
 
       row = rendered.css("[data-user-id='#{target_user.id}']").first
       edit_link = row.css('a').find { |link| link.text.include?('Edit') }
-      expect(edit_link['href']).to include("/admin/users/#{target_user.id}/edit")
+      expect(edit_link['href']).to include("/households/test-household/admin/users/#{target_user.id}/edit")
       expect(edit_link['class']).to include('border')
+    end
+
+    it 'renders the household membership role instead of the legacy user role' do
+      rendered = render_inline(described_class.new(users: [target_user], current_user: current_user))
+
+      expect(rendered.text).to include('Administrator')
+      expect(User.column_names).not_to include('role')
     end
   end
 

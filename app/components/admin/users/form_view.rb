@@ -51,7 +51,7 @@ module Components
               testid: 'user-form',
               controller: 'dependent-assignment',
               action: 'change->dependent-assignment#sync',
-              dependent_assignment_roles_value: %w[parent carer].to_json
+              dependent_assignment_roles_value: %w[parent carer family_member professional].to_json
             }
           ) do |form|
             render_errors if user.errors.any?
@@ -88,7 +88,8 @@ module Components
               div(class: 'h-px bg-outline-variant w-full opacity-50')
               render_password_fields(form)
               div(class: 'h-px bg-outline-variant w-full opacity-50')
-              render_role_field(form)
+              render_membership_role_field(form)
+              render_dependent_grant_fields(form)
               render_dependents_field(form)
             end
           end
@@ -262,10 +263,10 @@ module Components
           end
         end
 
-        def render_role_field(_form)
+        def render_membership_role_field(_form)
           div(class: 'space-y-2') do
             render RubyUI::FormFieldLabel.new(
-              for: 'user_role_trigger',
+              for: 'user_membership_role_trigger',
               class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
             ) do
               plain t('admin.users.form.role')
@@ -273,8 +274,8 @@ module Components
             end
             render RubyUI::Combobox.new(class: 'w-full') do
               render RubyUI::ComboboxTrigger.new(
-                id: 'role_trigger',
-                placeholder: user.role.presence&.titleize || t('admin.users.form.select_role'),
+                id: 'membership_role_trigger',
+                placeholder: selected_membership_role.titleize || t('admin.users.form.select_role'),
                 class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all'
               )
 
@@ -286,16 +287,104 @@ module Components
                 render RubyUI::ComboboxList.new do
                   render(RubyUI::ComboboxEmptyState.new { t('admin.users.form.select_role') })
 
-                  User.roles.each_key do |role|
+                  HouseholdMembership.roles.each_key do |role|
                     render RubyUI::ComboboxItem.new do
                       render RubyUI::ComboboxRadio.new(
-                        name: 'user[role]',
-                        id: "user_role_#{role}",
+                        name: 'user[membership_role]',
+                        id: "user_membership_role_#{role}",
                         value: role,
-                        checked: user.role == role,
+                        checked: selected_membership_role == role,
                         required: true
                       )
                       span { role.titleize }
+                    end
+                  end
+                end
+              end
+            end
+          end
+        end
+
+        def render_dependent_grant_fields(_form)
+          div(class: 'grid grid-cols-1 sm:grid-cols-2 gap-6') do
+            render_dependent_relationship_type_field
+            render_dependent_access_level_field
+          end
+        end
+
+        def render_dependent_relationship_type_field
+          div(class: 'space-y-2') do
+            render RubyUI::FormFieldLabel.new(
+              for: 'user_dependent_relationship_type_trigger',
+              class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
+            ) { t('admin.users.form.dependent_relationship_type', default: 'Dependent relationship') }
+            render RubyUI::Combobox.new(class: 'w-full') do
+              render RubyUI::ComboboxTrigger.new(
+                id: 'dependent_relationship_type_trigger',
+                placeholder: selected_dependent_relationship_type.presence&.titleize ||
+                  t('admin.users.form.select_dependent_relationship_type', default: 'Select relationship'),
+                class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all'
+              )
+
+              render RubyUI::ComboboxPopover.new do
+                render RubyUI::ComboboxSearchInput.new(
+                  placeholder: t('admin.users.form.select_dependent_relationship_type', default: 'Select relationship')
+                )
+
+                render RubyUI::ComboboxList.new do
+                  render(RubyUI::ComboboxEmptyState.new do
+                    t('admin.users.form.select_dependent_relationship_type', default: 'Select relationship')
+                  end)
+
+                  %w[parent carer family_member professional].each do |relationship_type|
+                    render RubyUI::ComboboxItem.new do
+                      render RubyUI::ComboboxRadio.new(
+                        name: 'user[dependent_relationship_type]',
+                        id: "user_dependent_relationship_type_#{relationship_type}",
+                        value: relationship_type,
+                        checked: selected_dependent_relationship_type == relationship_type
+                      )
+                      span { relationship_type.titleize }
+                    end
+                  end
+                end
+              end
+            end
+          end
+        end
+
+        def render_dependent_access_level_field
+          div(class: 'space-y-2') do
+            render RubyUI::FormFieldLabel.new(
+              for: 'user_dependent_access_level_trigger',
+              class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1'
+            ) { t('admin.users.form.dependent_access_level', default: 'Dependent access') }
+            render RubyUI::Combobox.new(class: 'w-full') do
+              render RubyUI::ComboboxTrigger.new(
+                id: 'dependent_access_level_trigger',
+                placeholder: selected_dependent_access_level.titleize,
+                class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all'
+              )
+
+              render RubyUI::ComboboxPopover.new do
+                render RubyUI::ComboboxSearchInput.new(
+                  placeholder: t('admin.users.form.select_dependent_access_level', default: 'Select access level')
+                )
+
+                render RubyUI::ComboboxList.new do
+                  render(RubyUI::ComboboxEmptyState.new do
+                    t('admin.users.form.select_dependent_access_level', default: 'Select access level')
+                  end)
+
+                  PersonAccessGrant.access_levels.each_key do |access_level|
+                    render RubyUI::ComboboxItem.new do
+                      render RubyUI::ComboboxRadio.new(
+                        name: 'user[dependent_access_level]',
+                        id: "user_dependent_access_level_#{access_level}",
+                        value: access_level,
+                        checked: selected_dependent_access_level == access_level
+                      )
+                      span { access_level.titleize }
                     end
                   end
                 end
@@ -385,7 +474,19 @@ module Components
         end
 
         def dependent_assignment_role?
-          user.parent? || user.carer?
+          %w[parent carer family_member professional].include?(selected_dependent_relationship_type)
+        end
+
+        def selected_membership_role
+          user.membership_role.presence || 'member'
+        end
+
+        def selected_dependent_relationship_type
+          user.dependent_relationship_type.to_s
+        end
+
+        def selected_dependent_access_level
+          user.dependent_access_level.presence || 'record'
         end
       end
     end
