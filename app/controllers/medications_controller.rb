@@ -364,7 +364,8 @@ class MedicationsController < ApplicationController
       medication: @medication,
       schedule_attributes: onboarding_schedule_params_for_create,
       people_scope: policy_scope(Person),
-      medication_scope: policy_scope(Medication)
+      medication_scope: policy_scope(Medication),
+      plan_authorizer: ->(record) { authorize(record, :create?) }
     ).call
   end
 

@@ -23,7 +23,10 @@ class OfflineController < ApplicationController
 
     if client_uuid.present?
       existing_take = policy_scope(MedicationTake).find_by(client_uuid: client_uuid)
-      return render_synced_take(existing_take, status: :ok) if existing_take
+      if existing_take
+        authorize existing_take, :create?
+        return render_synced_take(existing_take, status: :ok)
+      end
     end
 
     source = offline_take_source(source_type, source_id)
@@ -47,7 +50,10 @@ class OfflineController < ApplicationController
     return render_take_failure(result.error) unless result.success
 
     render_synced_take(result.take, status: :created)
-  rescue ActiveRecord::RecordNotFound, Pundit::NotAuthorizedError
+  rescue ActiveRecord::RecordNotFound
+    skip_authorization
+    render_unprocessable(t('.source_unavailable', default: 'Queued dose source is no longer available.'))
+  rescue Pundit::NotAuthorizedError
     render_unprocessable(t('.source_unavailable', default: 'Queued dose source is no longer available.'))
   end
 

@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class MedicationOnboardingCreateService
+  class MissingPlanAuthorizer < StandardError; end
+
   Result = Data.define(:success, :medication, :schedule, :restocked) do
     def restocked?
       restocked
@@ -26,13 +28,14 @@ class MedicationOnboardingCreateService
     ] }
   ].freeze
 
-  attr_reader :medication, :schedule_attributes, :people_scope, :medication_scope
+  attr_reader :medication, :schedule_attributes, :people_scope, :medication_scope, :plan_authorizer
 
-  def initialize(medication:, schedule_attributes: nil, people_scope: nil, medication_scope: nil)
+  def initialize(medication:, schedule_attributes: nil, people_scope: nil, medication_scope: nil, plan_authorizer: nil)
     @medication = medication
     @schedule_attributes = schedule_attributes
     @people_scope = people_scope
     @medication_scope = medication_scope
+    @plan_authorizer = plan_authorizer
   end
 
   def call
@@ -72,6 +75,7 @@ class MedicationOnboardingCreateService
     raise ActiveRecord::Rollback unless medication.save
 
     record = build_plan_record(medication)
+    authorize_plan_record!(record)
     return [record, true] if record.save
 
     copy_record_errors(record)
@@ -107,6 +111,12 @@ class MedicationOnboardingCreateService
       schedule_attributes: schedule_attributes,
       schedule_config: normalized_schedule_config
     ).record
+  end
+
+  def authorize_plan_record!(record)
+    raise MissingPlanAuthorizer unless plan_authorizer
+
+    plan_authorizer.call(record)
   end
 
   def assign_medication_schedule_defaults
@@ -152,6 +162,7 @@ class MedicationOnboardingCreateService
     ActiveRecord::Base.transaction do
       merge_stock_into_existing_medication(existing_medication)
       record = build_plan_record(existing_medication) if schedule_requested?
+      authorize_plan_record!(record) if record
 
       if record.blank? || record.save
         success = true

@@ -82,8 +82,9 @@ module Components
 
       def uploaded_avatar_url
         return unless person.avatar.attached?
+        return unless person.household
 
-        view_context.url_for(person.avatar)
+        view_context.person_avatar_path(household_slug: person.household.slug, person_id: person.id)
       end
 
       def gravatar_url

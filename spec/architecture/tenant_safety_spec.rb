@@ -87,6 +87,44 @@ RSpec.describe 'tenant safety architecture' do
     expect(offenders).to be_empty
   end
 
+  it 'keeps default Active Storage routes disabled for tenant-owned attachments' do
+    expect(Rails.application.config.active_storage.draw_routes).to be(false)
+    expect(route_paths).not_to include('/rails/active_storage/direct_uploads(.:format)')
+  end
+
+  it 'serves avatars through an application-owned household route' do
+    expect(route_paths).to include('/households/:household_slug/people/:person_id/avatar(.:format)')
+    expect(Rails.root.join('app/components/shared/person_avatar.rb').read).not_to include('url_for(person.avatar)')
+  end
+
+  it 'requires onboarding services to authorize derived plan records before saving' do
+    source = Rails.root.join('app/services/medication_onboarding_create_service.rb').read
+
+    expect(source).to include('plan_authorizer:')
+    expect(source).to include('authorize_plan_record!(record)')
+    expect(source.index('authorize_plan_record!(record)')).to be < source.index('record.save')
+    expect(Rails.root.join('app/controllers/medications_controller.rb').read).to include(
+      'plan_authorizer: ->(record) { authorize(record, :create?) }'
+    )
+  end
+
+  it 'keeps unsafe Pundit verification skips out of mutating app controllers' do
+    skipped_controllers = Rails.root.glob('app/controllers/**/*.rb').filter_map do |path|
+      next unless path.read.include?('skip_after_action :verify_pundit_authorization')
+
+      path.relative_path_from(Rails.root).to_s
+    end
+
+    expect(skipped_controllers).to match_array(
+      %w[
+        app/controllers/household_redirects_controller.rb
+        app/controllers/invitations_controller.rb
+        app/controllers/pwa_controller.rb
+        app/controllers/rodauth_controller.rb
+      ]
+    )
+  end
+
   it 'keeps Pundit policies off legacy User role predicates' do
     offenders = Rails.root.glob('app/policies/**/*.rb').filter_map do |path|
       relative_path = path.relative_path_from(Rails.root).to_s
@@ -115,6 +153,10 @@ RSpec.describe 'tenant safety architecture' do
 
   def connection_column_names(table_name)
     ActiveRecord::Base.connection.columns(table_name).map(&:name)
+  end
+
+  def route_paths
+    Rails.application.routes.routes.map { |route| route.path.spec.to_s }
   end
 
   def unsafe_turbo_target_pattern

@@ -4,6 +4,7 @@
 class PwaController < ApplicationController
   layout false
   allow_unauthenticated_access only: %i[manifest service_worker]
+  skip_after_action :verify_pundit_authorization
 
   def manifest
     render body: manifest_payload.to_json

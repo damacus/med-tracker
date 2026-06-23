@@ -4,6 +4,8 @@ class NotificationPreferencesController < ApplicationController
   def update
     @preference = current_user.person.notification_preference ||
                   current_user.person.build_notification_preference
+    authorize @preference
+
     if @preference.update(preference_params)
       respond_to do |format|
         format.html { redirect_to profile_path, notice: t('notification_preferences.updated') }

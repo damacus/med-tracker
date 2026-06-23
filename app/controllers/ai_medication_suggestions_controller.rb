@@ -2,10 +2,10 @@
 
 class AiMedicationSuggestionsController < ApplicationController
   def create
+    authorize Medication, :finder?
+
     head :not_found unless PaidFeature.enabled?(:ai_medication_help, user: current_user)
     return if performed?
-
-    authorize Medication, :finder?
 
     suggestion = AiMedication::SuggestionService.new.call(
       medication_identity: medication_identity_params.to_h.deep_symbolize_keys,

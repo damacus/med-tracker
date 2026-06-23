@@ -31,6 +31,7 @@ module MedTracker
     # not contain `.rb` files, or that should not be reloaded or eager loaded.
     # Common ones are `templates`, `generators`, or `middleware`, for example.
     config.autoload_lib(ignore: %w[assets tasks med_tracker])
+    config.active_storage.draw_routes = false
 
     # Configure Phlex autoloading
     Rails.autoloaders.main.push_dir(

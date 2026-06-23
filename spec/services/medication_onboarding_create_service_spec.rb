@@ -21,12 +21,19 @@ RSpec.describe MedicationOnboardingCreateService do
     med
   end
 
-  def call_service(medication:, schedule_attributes: nil, people_scope: nil, medication_scope: nil)
+  def call_service(
+    medication:,
+    schedule_attributes: nil,
+    people_scope: nil,
+    medication_scope: nil,
+    plan_authorizer: ->(_record) {}
+  )
     described_class.new(
       medication: medication,
       schedule_attributes: schedule_attributes,
       people_scope: people_scope,
-      medication_scope: medication_scope
+      medication_scope: medication_scope,
+      plan_authorizer: plan_authorizer
     ).call
   end
 
@@ -124,6 +131,24 @@ RSpec.describe MedicationOnboardingCreateService do
         .to change(Schedule, :count).by(1)
     end
 
+    it 'requires a plan authorizer before saving a Schedule record' do
+      medication = medication_with_dosage
+      captured_error = nil
+
+      expect do
+        call_service(
+          medication: medication,
+          schedule_attributes: schedule_attrs,
+          people_scope: people_scope,
+          plan_authorizer: nil
+        )
+      rescue StandardError => e
+        captured_error = e
+      end.not_to change(Schedule, :count)
+
+      expect(captured_error.class.name).to eq('MedicationOnboardingCreateService::MissingPlanAuthorizer')
+    end
+
     it 'returns success: true' do
       medication = medication_with_dosage
       result = call_service(medication: medication, schedule_attributes: schedule_attrs, people_scope: people_scope)
@@ -219,6 +244,24 @@ RSpec.describe MedicationOnboardingCreateService do
             people_scope: people_scope
           )
         end.to change(PersonMedication, :count).by(1)
+      end
+
+      it 'requires a plan authorizer before saving a PersonMedication record' do
+        medication = medication_with_dosage(category: 'Analgesic')
+        captured_error = nil
+
+        expect do
+          call_service(
+            medication: medication,
+            schedule_attributes: schedule_attrs(type: 'prn'),
+            people_scope: people_scope,
+            plan_authorizer: nil
+          )
+        rescue StandardError => e
+          captured_error = e
+        end.not_to change(PersonMedication, :count)
+
+        expect(captured_error.class.name).to eq('MedicationOnboardingCreateService::MissingPlanAuthorizer')
       end
 
       it 'returns nil for schedule in the result (PersonMedication is not a Schedule)' do

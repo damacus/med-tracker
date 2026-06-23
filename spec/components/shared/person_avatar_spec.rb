@@ -42,11 +42,13 @@ RSpec.describe Components::Shared::PersonAvatar, type: :component do
 
   it 'prefers uploaded avatars over Gravatar' do
     person.account.update!(gravatar_enabled: '1')
+    person.update!(household: Household.create!(name: 'Avatar Component Household'))
     person.avatar.attach(io: StringIO.new('avatar'), filename: 'avatar.png', content_type: 'image/png')
 
     rendered = render_inline(described_class.new(person: person))
 
     expect(rendered.at_css("img[alt='Damacus User']")).to be_present
+    expect(rendered.at_css("img[src*='/households/#{person.household.slug}/people/#{person.id}/avatar']")).to be_present
     expect(rendered.to_html).not_to include('gravatar.com/avatar')
   end
 

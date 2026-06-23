@@ -21,6 +21,7 @@ module RequestHelpers
     native_device_tokens_path native_device_token_path
     notification_preference_path offline_path offline_snapshot_path offline_medication_takes_path
     people_path person_path new_person_path edit_person_path add_medication_person_path
+    person_avatar_path
     person_carer_relationships_path person_carer_relationship_path
     person_medication_assignments_path new_person_medication_assignment_path
     person_person_medications_path person_person_medication_path new_person_person_medication_path

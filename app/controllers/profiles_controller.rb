@@ -8,6 +8,7 @@ class ProfilesController < ApplicationController
   def show
     @person = current_user.person
     @account = current_account
+    authorize @person, :show?
 
     respond_to do |format|
       format.html do
@@ -19,6 +20,7 @@ class ProfilesController < ApplicationController
   def update
     @person = current_user.person
     @account = current_account
+    authorize @person, :update?
 
     attributes = person_params
     return update_person_profile(attributes) if attributes.present?
@@ -30,6 +32,7 @@ class ProfilesController < ApplicationController
   end
 
   def avatar
+    authorize current_user.person, :update?
     current_user.person.avatar.purge
     @person = current_user.person
     @account = current_account
@@ -47,6 +50,7 @@ class ProfilesController < ApplicationController
   end
 
   def experiments
+    authorize current_user.person, :update?
     variant = params.dig(:account, :wizard_variant).to_s
     variant = 'fullpage' unless Account::WIZARD_VARIANTS.include?(variant)
 

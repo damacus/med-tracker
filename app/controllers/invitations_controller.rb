@@ -3,6 +3,7 @@
 class InvitationsController < ApplicationController
   allow_unauthenticated_access
   layout false
+  skip_after_action :verify_pundit_authorization
 
   def accept
     token_value = params.expect(:token).to_s

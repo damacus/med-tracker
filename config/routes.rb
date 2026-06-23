@@ -69,6 +69,7 @@ Rails.application.routes.draw do
       resources :medication_takes, only: [:create]
     end
 
+    get 'people/:person_id/avatar', to: 'people/avatars#show', as: :person_avatar
     resources :people do
       member do
         get :add_medication
