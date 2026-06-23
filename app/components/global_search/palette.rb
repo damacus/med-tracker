@@ -29,14 +29,14 @@ module Components
       def panel_data
         {
           global_search_target: 'panel',
-          search_url: search_path(format: :json),
+          search_url: household_search_path(format: :json),
           translations: translations.to_json,
           open: 'false'
         }
       end
 
       def render_search_form
-        form(action: search_path, method: :get, class: 'border-b border-outline-variant p-2',
+        form(action: household_search_path, method: :get, class: 'border-b border-outline-variant p-2',
              data: { action: 'submit->global-search#submit' }) do
           label(class: 'sr-only', for: 'global_search_query') { t('global_search.input_label') }
           div(class: 'flex items-center gap-3 rounded-lg bg-surface-container-low px-3 py-2') do
@@ -92,6 +92,19 @@ module Components
             location: t('global_search.types.location')
           }
         }
+      end
+
+      def household_search_path(**options)
+        return root_path if household_route_options.blank?
+
+        search_path(household_route_options.merge(options))
+      end
+
+      def household_route_options
+        @household_route_options ||= begin
+          household = Current.household || Current.account&.first_active_household
+          household ? { household_slug: household.slug } : {}
+        end
       end
     end
   end

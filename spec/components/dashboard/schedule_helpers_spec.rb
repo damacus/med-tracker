@@ -29,7 +29,7 @@ RSpec.describe Components::Dashboard::ScheduleHelpers do
     )
   end
 
-  let(:user) { instance_double(User, email_address: 'test@example.com', role: :administrator) }
+  let(:user) { instance_double(User, email_address: 'test@example.com') }
   let(:instance) { test_class.new(schedule: schedule, current_user: user) }
 
   describe '#format_dosage' do

@@ -2,7 +2,7 @@
 
 class DashboardPolicy < ApplicationPolicy
   def index?
-    user.present?
+    active_membership?
   end
 
   class Scope < ApplicationPolicy::Scope

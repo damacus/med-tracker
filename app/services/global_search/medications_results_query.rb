@@ -18,7 +18,7 @@ module GlobalSearch
         type: 'medication',
         title: medication.display_name,
         subtitle: subtitle_for(medication),
-        path: medication_path(medication),
+        path: medication_path(*tenant_route_args(medication)),
         secondary_values: [medication.name, medication.category, medication.barcode, medication.dmd_code]
       )
     end

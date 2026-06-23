@@ -36,6 +36,8 @@ class MedicationOnboardingCreateService
   end
 
   def call
+    return invalid_schedule_result if schedule_requested? && invalid_schedule_date_range?
+
     existing_medication = matching_existing_medication
     return restock_existing_medication(existing_medication) if existing_medication
 
@@ -78,6 +80,23 @@ class MedicationOnboardingCreateService
 
   def schedule_requested?
     schedule_attributes.present? && people_scope.present?
+  end
+
+  def invalid_schedule_date_range?
+    start_date = cast_schedule_date(schedule_attributes[:start_date])
+    end_date = cast_schedule_date(schedule_attributes[:end_date])
+    return false if start_date.blank? || end_date.blank?
+
+    end_date < start_date
+  end
+
+  def invalid_schedule_result
+    medication.errors.add(:end_date, 'must be after the start date')
+    Result.new(success: false, medication: medication, schedule: nil, restocked: false)
+  end
+
+  def cast_schedule_date(value)
+    ActiveRecord::Type::Date.new.cast(value)
   end
 
   def build_plan_record(plan_medication)

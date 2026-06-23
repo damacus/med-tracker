@@ -45,7 +45,7 @@ module Components
           Card do
             CardContent(class: 'pt-6') do
               form_with(
-                url: '/admin/audit_logs',
+                url: admin_audit_logs_path,
                 method: :get,
                 class: 'grid gap-4 sm:grid-cols-2 md:flex md:items-end',
                 data: { controller: 'filter-form' }
@@ -115,7 +115,7 @@ module Components
 
         def render_clear_button
           Link(
-            href: '/admin/audit_logs',
+            href: admin_audit_logs_path,
             variant: :link,
             class: 'inline-flex items-center justify-center rounded-md font-medium transition-colors ' \
                    'px-4 py-2 h-10 text-sm border border-outline bg-background hover:bg-tertiary-container ' \
@@ -164,7 +164,7 @@ module Components
                   end
 
                   Link(
-                    href: "/admin/audit_logs/#{version.id}",
+                    href: admin_audit_log_path(version),
                     variant: :outlined,
                     size: :sm,
                     class: 'w-full rounded-xl'
@@ -225,7 +225,7 @@ module Components
             TableCell(class: 'text-on-surface-variant font-mono') { version.ip || 'N/A' }
             TableCell(class: 'text-right') do
               Link(
-                href: "/admin/audit_logs/#{version.id}",
+                href: admin_audit_log_path(version),
                 variant: :link,
                 class: 'text-primary hover:text-primary/80 font-medium'
               ) { t('admin.audit_logs.index.table.view_details') }

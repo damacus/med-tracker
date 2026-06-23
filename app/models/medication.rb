@@ -46,6 +46,7 @@ class Medication < ApplicationRecord # :nodoc:
 
   has_paper_trail if: proc { |medication| medication.paper_trail_event.present? }
 
+  belongs_to :household, optional: true
   belongs_to :location
 
   has_many :dosage_records, class_name: 'MedicationDosageOption', dependent: :destroy, inverse_of: :medication
@@ -58,6 +59,7 @@ class Medication < ApplicationRecord # :nodoc:
 
   validate :single_dose_switch_requires_no_schedules
   validate :nested_dosage_records_are_valid
+  before_validation :assign_household
   after_commit :sync_dosages, on: :update
 
   enum :reorder_status, { ordered: 1, received: 2 }, prefix: :reorder
@@ -192,6 +194,10 @@ class Medication < ApplicationRecord # :nodoc:
   alias dosage_for_person_type default_dosage_for_person_type
 
   private
+
+  def assign_household
+    self.household ||= location&.household
+  end
 
   def default_dosage(predicate)
     loaded = dosages.to_a

@@ -6,7 +6,7 @@ class InvitationMailer < ApplicationMailer
     @token = params[:token] || @invitation&.plain_token
     raise ArgumentError, 'Invitation token missing' if @token.blank?
 
-    @role = I18n.t("activerecord.attributes.invitation.roles.#{@invitation.role}", default: @invitation.role.humanize)
+    @role = @invitation.membership_role.humanize
 
     mail(to: @invitation.email, subject: I18n.t('invitation_mailer.subject'))
   end

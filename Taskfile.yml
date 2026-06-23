@@ -42,6 +42,20 @@ tasks:
           COMMAND: 'bundle exec rspec --profile 20 --format documentation {{ .TEST_FILE | default "spec" }}'
           TEST_FILE: '{{ .TEST_FILE | default "spec" }}'
 
+  households:migrate_local:
+    desc: Migrate the local pre-household database into one household
+    summary: |
+      Deterministically migrate local pre-household data into one household.
+      Usage: task households:migrate_local OWNER_EMAIL=dan@example.com HOUSEHOLD_NAME="Dan's household" DRY_RUN=1
+      Usage: task households:migrate_local OWNER_EMAIL=dan@example.com HOUSEHOLD_NAME="Dan's household" APPLY=1
+    requires:
+      vars: [OWNER_EMAIL, HOUSEHOLD_NAME]
+    cmds:
+      - task: internal:run
+        vars:
+          ENVIRONMENT: dev
+          COMMAND: 'OWNER_EMAIL="{{ .OWNER_EMAIL }}" HOUSEHOLD_NAME="{{ .HOUSEHOLD_NAME }}" DRY_RUN="{{ .DRY_RUN }}" APPLY="{{ .APPLY }}" rails households:migrate_local'
+
   stop-all:
     desc: Stop all services for this worktree (dev, test, prod)
     summary: |
@@ -70,6 +84,18 @@ tasks:
           ENVIRONMENT: test
           SERVICE: tools-test
           COMMAND: 'bundle exec rubocop --force-exclusion {{ if eq .autocorrect "true" }}-A{{ end }}'
+
+  brakeman:
+    desc: Run Brakeman security scanner
+    summary: |
+      Run Brakeman in the tools container, matching CI's Ruby Security Scan.
+      Usage: task brakeman
+    cmds:
+      - task: internal:run
+        vars:
+          ENVIRONMENT: test
+          SERVICE: tools-test
+          COMMAND: 'bin/brakeman --no-pager'
 
   rubycritic:
     desc: Run RubyCritic quality analysis

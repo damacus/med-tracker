@@ -2,6 +2,12 @@
 
 class ReportPolicy < ApplicationPolicy
   def index?
-    admin? || medical_staff? || carer_or_parent? || user.person.adult?
+    household_report_access?
+  end
+
+  private
+
+  def household_report_access?
+    active_membership? && (household_manager? || membership.person&.adult?)
   end
 end

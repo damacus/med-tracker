@@ -144,7 +144,7 @@ module Components
 
         def page_url(page)
           params = search_params.to_h.merge(page: page)
-          "/admin/users?#{params.to_query}"
+          admin_users_path(params)
         end
 
         def nav_button_class(extra = '')

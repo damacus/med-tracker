@@ -17,7 +17,7 @@ module GlobalSearch
         type: 'person',
         title: person.name,
         subtitle: I18n.t('global_search.types.person'),
-        path: person_path(person)
+        path: person_path(*tenant_route_args(person))
       )
     end
   end

@@ -17,7 +17,7 @@ module Components
       end
 
       def view_template
-        TableRow(id: "schedule_#{schedule.id}") do
+        TableRow(id: tenant_dom_id(schedule)) do
           render_person_cell
           render_medication_cell
           TableCell { format_dosage }

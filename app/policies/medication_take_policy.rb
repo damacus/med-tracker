@@ -2,7 +2,7 @@
 
 class MedicationTakePolicy < ApplicationPolicy
   def create?
-    admin? || medical_staff? || carer_with_patient? || parent_with_dependent_patient? || adult_with_own_medication?
+    person_grant_allows?(record.person, :record)
   end
 
   def new?
@@ -11,50 +11,29 @@ class MedicationTakePolicy < ApplicationPolicy
 
   private
 
-  def adult_with_own_medication?
-    return false unless user&.person
-
-    user.person.id == record.person&.id && user.person.adult?
-  end
-
   def person_id_for_authorization
     record.person&.id
   end
 
   class Scope < ApplicationPolicy::Scope
     def resolve
-      return scope.none unless user
-      return scope.all if full_access?
-      return carer_parent_scope if care_relationships?
-      return own_takes_scope if owns_record?
-
-      scope.none
+      household_medication_take_scope
     end
 
     private
 
-    def full_access?
-      admin? || medical_staff?
-    end
+    def household_medication_take_scope
+      return scope.none unless active_membership?
 
-    def care_relationships?
-      accessible_patient_ids.any?
-    end
+      household_scope = scope.where(household: household)
+      return household_scope if household_manager?
 
-    def carer_parent_scope
-      ids = accessible_patient_ids
-      scope.left_joins(:schedule, :person_medication)
-           .where('schedules.person_id IN (:ids) OR person_medications.person_id IN (:ids)', ids: ids)
-    end
+      joined_scope = household_scope.left_joins(:schedule, :person_medication)
+      granted_person_ids = granted_person_ids_for(:view)
 
-    def own_takes_scope
-      person_id = user.person.id
-      scope.left_joins(:schedule, :person_medication)
-           .where('schedules.person_id = :id OR person_medications.person_id = :id', id: person_id)
-    end
-
-    def owns_record?
-      user&.person
+      joined_scope
+        .where(schedules: { person_id: granted_person_ids })
+        .or(joined_scope.where(person_medications: { person_id: granted_person_ids }))
     end
   end
 end

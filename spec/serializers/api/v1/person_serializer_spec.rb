@@ -21,7 +21,8 @@ RSpec.describe Api::V1::PersonSerializer do
 
   it 'returns location_ids as an array containing the default location' do
     # Person always gets a default location (Home) on creation via callback
-    person = create(:person)
+    household = Household.create!(name: 'Person Serializer Household')
+    person = create(:person, household: household)
     json = described_class.new(person).as_json
     expect(json[:location_ids]).to be_an(Array)
     expect(json[:location_ids]).not_to be_empty

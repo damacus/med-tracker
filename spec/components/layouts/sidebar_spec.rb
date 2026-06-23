@@ -7,6 +7,25 @@ RSpec.describe Components::Layouts::Sidebar, type: :component do
 
   let(:admin_user) { users(:admin) }
   let(:carer_user) { users(:carer) }
+  let(:household_slug) { 'test-household' }
+  let(:household) { Household.find_or_create_by!(slug: household_slug) { |record| record.name = 'Test Household' } }
+  let(:membership) do
+    admin_user.person.update!(household: household)
+    household.household_memberships.find_or_create_by!(account: admin_user.person.account) do |record|
+      record.person = admin_user.person
+      record.role = :owner
+      record.status = :active
+    end
+  end
+
+  before do
+    Current.household = household
+    Current.membership = membership
+  end
+
+  after do
+    Current.reset
+  end
 
   def render_sidebar(user: nil, path: '/')
     vc = view_context
@@ -28,13 +47,13 @@ RSpec.describe Components::Layouts::Sidebar, type: :component do
         'Reports',
         'Administration',
         admin_user.person.name,
-        'Administrator',
+        'Owner',
         'Sign Out'
       )
     end
 
     it 'uses a readable active state for the highlighted link' do
-      inventory_path = Rails.application.routes.url_helpers.medications_path
+      inventory_path = Rails.application.routes.url_helpers.medications_path(household_slug: household_slug)
       rendered = render_sidebar(user: admin_user, path: inventory_path)
       inventory_link = rendered.at_css(%(a[href="#{inventory_path}"]))
 
@@ -44,7 +63,8 @@ RSpec.describe Components::Layouts::Sidebar, type: :component do
 
     it 'renders the shared person avatar in the profile navigation item' do
       rendered = render_sidebar(user: admin_user)
-      profile_link = rendered.at_css(%(a[href="#{Rails.application.routes.url_helpers.profile_path}"]))
+      profile_path = Rails.application.routes.url_helpers.profile_path(household_slug: household_slug)
+      profile_link = rendered.at_css(%(a[href="#{profile_path}"]))
 
       expect(profile_link.at_css('[data-testid="person-avatar"]')).to be_present
     end
@@ -52,6 +72,13 @@ RSpec.describe Components::Layouts::Sidebar, type: :component do
 
   context 'when user is not an administrator' do
     it 'does not render Administration link' do
+      carer_user.person.update!(household: household)
+      Current.membership = household.household_memberships.create!(
+        account: carer_user.person.account,
+        person: carer_user.person,
+        role: :member,
+        status: :active
+      )
       rendered = render_sidebar(user: carer_user)
 
       expect(rendered.text).not_to include('Administration')

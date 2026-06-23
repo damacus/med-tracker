@@ -13,9 +13,9 @@ RSpec.describe 'Seeds' do
     expect(user.authenticate(password)).to be_truthy
   end
 
-  it 'loads an admin user' do
+  it 'does not rely on a user role for authorization' do
     user = User.find_by(email_address: email_address)
-    expect(user).to be_administrator
+    expect(user).not_to respond_to(:administrator?)
   end
 
   it 'has the damacus person associated with the user' do

@@ -6,7 +6,7 @@ RSpec.describe 'GET /medication-finder' do
   fixtures :accounts, :people, :users
 
   def login_as_admin
-    post '/login', params: { email: accounts(:john_doe).email, password: 'password' }
+    sign_in(users(:admin))
   end
 
   it 'allows camera access via the global Permissions-Policy header' do

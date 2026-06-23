@@ -51,25 +51,27 @@ class PeopleController < ApplicationController
 
   def create
     @person = Person.new(person_params)
+    @person.household = current_household if current_household
     authorize @person
     @person.primary_location = primary_location
 
-    if current_user.parent? || current_user.carer?
+    if auto_assign_created_person_carer_relationship?
       @person.carer_relationships.build(
-        carer: current_user.person,
-        relationship_type: current_user.role,
+        carer: current_membership.person,
+        relationship_type: :family_member,
         active: true
       )
     end
 
     respond_to do |format|
       if @person.save
+        grant_created_person_access
         format.html { redirect_to @person, notice: t('people.created') }
         format.turbo_stream do
           flash.now[:notice] = t('people.created')
           render turbo_stream: [
             turbo_stream.update('modal', ''),
-            turbo_stream.prepend('people', Components::People::PersonCard.new(person: @person.reload)),
+            turbo_stream.prepend(tenant_dom_target('people'), Components::People::PersonCard.new(person: @person.reload)),
             turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
           ]
         end
@@ -97,8 +99,8 @@ class PeopleController < ApplicationController
           flash.now[:notice] = t('people.updated')
           render turbo_stream: [
             turbo_stream.update('modal', ''),
-            turbo_stream.replace("person_#{@person.id}", Components::People::PersonCard.new(person: @person.reload)),
-            turbo_stream.replace("person_show_#{@person.id}", person_show_view(@person.reload)),
+            turbo_stream.replace(tenant_dom_id(@person), Components::People::PersonCard.new(person: @person.reload)),
+            turbo_stream.replace(tenant_dom_target("person_show_#{@person.id}"), person_show_view(@person.reload)),
             turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
           ]
         end
@@ -150,5 +152,22 @@ class PeopleController < ApplicationController
 
   def primary_location
     PrimaryLocationQuery.new(person: current_user&.person).call
+  end
+
+  def grant_created_person_access
+    return unless current_household && current_membership
+
+    current_household.person_access_grants.find_or_create_by!(
+      household_membership: current_membership,
+      person: @person
+    ) do |grant|
+      grant.access_level = :manage
+      grant.relationship_type = :family_member
+      grant.granted_by_membership = current_membership
+    end
+  end
+
+  def auto_assign_created_person_carer_relationship?
+    current_membership&.person.present? && (@person.minor? || @person.dependent_adult?)
   end
 end

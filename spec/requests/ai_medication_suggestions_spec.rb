@@ -8,7 +8,7 @@ RSpec.describe 'AI medication suggestions' do
   before { sign_in(users(:admin)) }
 
   it 'is unavailable when the environment flag is disabled' do
-    users(:admin).person.account.update!(subscription_plan: 'family_plus')
+    Household.find_by!(slug: default_request_household_slug).update!(subscription_plan: 'family_plus')
     allow(ENV).to receive(:fetch).with('MEDTRACKER_AI_MEDICATION_HELP_ENABLED', 'false').and_return('false')
 
     post ai_medication_suggestions_path, params: { medication: { name: 'Calpol Six Plus' } }
@@ -51,7 +51,7 @@ RSpec.describe 'AI medication suggestions' do
     )
     service = instance_double(AiMedication::SuggestionService, call: suggestion)
 
-    users(:admin).person.account.update!(subscription_plan: 'family_plus')
+    Household.find_by!(slug: default_request_household_slug).update!(subscription_plan: 'family_plus')
     allow(ENV).to receive(:fetch).with('MEDTRACKER_AI_MEDICATION_HELP_ENABLED', 'false').and_return('true')
     allow(AiMedication::SuggestionService).to receive(:new).and_return(service)
 

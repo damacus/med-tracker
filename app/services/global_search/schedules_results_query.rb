@@ -19,7 +19,7 @@ module GlobalSearch
         type: 'schedule',
         title: I18n.t('global_search.result_titles.schedule', medication: schedule.medication.display_name),
         subtitle: subtitle_for(schedule),
-        path: person_path(schedule.person, anchor: "schedule_#{schedule.id}"),
+        path: person_path(*tenant_route_args(schedule.person), anchor: "schedule_#{schedule.id}"),
         secondary_values: [schedule.person.name]
       )
     end

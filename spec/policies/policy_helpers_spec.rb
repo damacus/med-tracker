@@ -3,71 +3,57 @@
 require 'rails_helper'
 
 RSpec.describe PolicyHelpers, type: :policy do
-  fixtures :all
-
   let(:host_class) do
     Class.new(ApplicationPolicy) do
+      def active_membership_public? = active_membership?
+      def household_owner_public? = household_owner?
+      def household_administrator_public? = household_administrator?
+      def household_manager_public? = household_manager?
       def admin_public? = admin?
-      def admin_or_clinician_public? = admin_or_clinician?
-      def medical_staff_public? = medical_staff?
-      def carer_or_parent_public? = carer_or_parent?
-      def doctor_public? = doctor?
-      def nurse_public? = nurse?
     end
   end
 
   def policy_for(user) = host_class.new(user, :record)
 
-  it 'admin? is true only for administrators' do
-    expect(policy_for(users(:admin)).admin_public?).to be(true)
-    expect(policy_for(users(:doctor)).admin_public?).to be(false)
+  it 'detects active household owners as managers' do
+    household = household_policy_member(role: :owner).fetch(:household)
+    owner = household.household_memberships.owner.sole
+    owner_context = AuthorizationContext.new(account: owner.account, household: household, membership: owner)
+
+    expect(helper_results(owner_context, %i[
+                            active_membership_public? household_owner_public? household_manager_public? admin_public?
+                          ])).to eq(
+                            active_membership_public?: true,
+                            household_owner_public?: true,
+                            household_manager_public?: true,
+                            admin_public?: true
+                          )
   end
 
-  it 'admin_or_clinician? covers admin, doctor and nurse' do
-    aggregate_failures do
-      expect(policy_for(users(:admin)).admin_or_clinician_public?).to be(true)
-      expect(policy_for(users(:doctor)).admin_or_clinician_public?).to be(true)
-      expect(policy_for(users(:nurse)).admin_or_clinician_public?).to be(true)
-      expect(policy_for(users(:carer)).admin_or_clinician_public?).to be(false)
-    end
+  it 'detects active household administrators as managers' do
+    household = household_policy_member(role: :owner).fetch(:household)
+    administrator = household_policy_member(role: :administrator, household: household).fetch(:context)
+
+    expect(helper_results(administrator, %i[
+                            household_administrator_public? household_manager_public?
+                          ])).to eq(
+                            household_administrator_public?: true,
+                            household_manager_public?: true
+                          )
   end
 
-  it 'medical_staff? covers doctor and nurse only' do
-    aggregate_failures do
-      expect(policy_for(users(:doctor)).medical_staff_public?).to be(true)
-      expect(policy_for(users(:nurse)).medical_staff_public?).to be(true)
-      expect(policy_for(users(:admin)).medical_staff_public?).to be(false)
-    end
+  it 'does not treat plain household members or legacy users as managers' do
+    member = household_policy_member(role: :member).fetch(:context)
+    legacy_admin = User.new
+
+    expect(policy_for(member).active_membership_public?).to be(true)
+    expect(policy_for(member).household_manager_public?).to be(false)
+    expect(policy_for(legacy_admin).active_membership_public?).to be(false)
+    expect(policy_for(legacy_admin).admin_public?).to be(false)
+    expect(policy_for(nil).admin_public?).to be(false)
   end
 
-  it 'carer_or_parent? covers carer and parent only' do
-    aggregate_failures do
-      expect(policy_for(users(:carer)).carer_or_parent_public?).to be(true)
-      expect(policy_for(users(:parent)).carer_or_parent_public?).to be(true)
-      expect(policy_for(users(:admin)).carer_or_parent_public?).to be(false)
-    end
-  end
-
-  it 'doctor? is true only for doctors' do
-    expect(policy_for(users(:doctor)).doctor_public?).to be(true)
-    expect(policy_for(users(:nurse)).doctor_public?).to be(false)
-    expect(policy_for(users(:admin)).doctor_public?).to be(false)
-  end
-
-  it 'nurse? is true only for nurses' do
-    expect(policy_for(users(:nurse)).nurse_public?).to be(true)
-    expect(policy_for(users(:doctor)).nurse_public?).to be(false)
-    expect(policy_for(users(:admin)).nurse_public?).to be(false)
-  end
-
-  it 'returns false (not nil) when there is no user' do
-    aggregate_failures do
-      expect(policy_for(nil).admin_public?).to be(false)
-      expect(policy_for(nil).admin_or_clinician_public?).to be(false)
-      expect(policy_for(nil).medical_staff_public?).to be(false)
-      expect(policy_for(nil).carer_or_parent_public?).to be(false)
-      expect(policy_for(nil).doctor_public?).to be(false)
-      expect(policy_for(nil).nurse_public?).to be(false)
-    end
+  def helper_results(user, helpers)
+    helpers.index_with { |helper| policy_for(user).public_send(helper) }
   end
 end

@@ -6,7 +6,17 @@ class ScheduleDailyRemindersJob < ApplicationJob
   PERIODS = NotificationPreference::PERIODS
 
   def perform
-    NotificationPreference.where(enabled: true)
+    Household.active.find_each do |household|
+      TenantContext.with(account: nil, household: household) do
+        schedule_household_reminders(household)
+      end
+    end
+  end
+
+  private
+
+  def schedule_household_reminders(household)
+    NotificationPreference.where(household: household, enabled: true)
                           .includes(person: [:account, { schedules: %i[medication medication_takes] }])
                           .find_each do |pref|
       next unless pref.person&.account
@@ -16,8 +26,6 @@ class ScheduleDailyRemindersJob < ApplicationJob
       Rails.logger.error("Failed to schedule reminders for preference #{pref.id}: #{e.class}: #{e.message}")
     end
   end
-
-  private
 
   def enqueue_reminders_for(pref)
     enqueue_period_reminders_for(pref)
@@ -32,7 +40,7 @@ class ScheduleDailyRemindersJob < ApplicationJob
       send_at = build_send_time(time)
       next if send_at < Time.current
 
-      MedicationReminderJob.set(wait_until: send_at).perform_later(pref.person_id, period)
+      MedicationReminderJob.set(wait_until: send_at).perform_later(pref.household_id, pref.person_id, period)
     end
   end
 
@@ -41,7 +49,7 @@ class ScheduleDailyRemindersJob < ApplicationJob
       send_at = build_send_time_from_configured_time(time)
       next if send_at.blank? || send_at < Time.current
 
-      MedicationReminderJob.set(wait_until: send_at).perform_later(pref.person_id, :scheduled, time)
+      MedicationReminderJob.set(wait_until: send_at).perform_later(pref.household_id, pref.person_id, :scheduled, time)
     end
   end
 

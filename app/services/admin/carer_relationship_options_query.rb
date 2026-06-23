@@ -12,7 +12,7 @@ module Admin
 
     def call
       Result.new(
-        carers: scope.joins(:user).where.not(users: { role: :minor }).order(:name),
+        carers: scope.where(has_capacity: true).order(:name),
         patients: scope.order(:name)
       )
     end

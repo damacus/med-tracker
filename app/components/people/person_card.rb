@@ -12,7 +12,7 @@ module Components
       end
 
       def view_template
-        m3_card(id: "person_#{person.id}", class: 'h-full flex flex-col') do
+        m3_card(id: tenant_dom_id(person), class: 'h-full flex flex-col') do
           render_card_header
           render_card_content
           render_card_footer

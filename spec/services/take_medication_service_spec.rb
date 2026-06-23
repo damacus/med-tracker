@@ -10,6 +10,8 @@ RSpec.describe TakeMedicationService do
 
   let(:user) { users(:john) }
 
+  before { FixtureHouseholdSetup.apply! }
+
   # Shared helper to invoke the service
   def call_service(source:, amount_override: nil, taken_from_medication_id: nil)
     service.call(
@@ -508,7 +510,7 @@ RSpec.describe TakeMedicationService do
       schedule = schedules(:john_paracetamol)
       create_matching_medication(
         medication: schedule.medication,
-        location: Location.create!(name: 'Selection Required Home')
+        location: Location.create!(name: 'Selection Required Home', household: fixture_household)
       )
 
       payloads = captured_event_payloads('dose_taken.med_tracker') do
@@ -533,10 +535,15 @@ RSpec.describe TakeMedicationService do
     Medication.create!(
       name: medication.name,
       location: location,
+      household: medication.household,
       dosage_amount: medication.dosage_amount,
       dosage_unit: medication.dosage_unit,
       current_supply: 12,
       reorder_threshold: 2
     )
+  end
+
+  def fixture_household
+    user.person.account.first_active_household_membership.household
   end
 end

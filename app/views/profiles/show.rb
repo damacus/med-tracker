@@ -8,13 +8,12 @@ module Views
       include Phlex::Rails::Helpers::FormWith
       include Phlex::Rails::Helpers::ButtonTo
 
-      attr_reader :person, :account, :user
+      attr_reader :person, :account
 
-      def initialize(person:, account:, user:)
+      def initialize(person:, account:)
         super()
         @person = person
         @account = account
-        @user = user
       end
 
       def view_template
@@ -80,7 +79,7 @@ module Views
         div(class: 'space-y-6') do
           render AccountSecurityCard.new(account: account)
           render NotificationsCard.new(person: person)
-          render ExperimentsCard.new(user: user)
+          render ExperimentsCard.new(account: account)
           render DangerZoneCard.new
           render VersionInfo.new
         end
@@ -162,16 +161,16 @@ module Views
         div(class: 'rounded-shape-xl border border-outline-variant/70 bg-surface-container p-4') do
           form_with(url: profile_path, method: :patch, class: 'flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between') do
             div(class: 'flex items-start gap-3') do
-              input(type: 'hidden', name: 'user[gravatar_enabled]', value: '0')
+              input(type: 'hidden', name: 'account[gravatar_enabled]', value: '0')
               input(
-                id: 'user_gravatar_enabled',
+                id: 'account_gravatar_enabled',
                 type: 'checkbox',
-                name: 'user[gravatar_enabled]',
+                name: 'account[gravatar_enabled]',
                 value: '1',
-                checked: user.gravatar_enabled?,
+                checked: account.gravatar_enabled?,
                 class: 'mt-1 h-4 w-4 rounded border-outline text-primary focus:ring-primary'
               )
-              label(class: 'space-y-1', for: 'user_gravatar_enabled') do
+              label(class: 'space-y-1', for: 'account_gravatar_enabled') do
                 span(class: 'block text-sm font-bold text-foreground') { t('profiles.avatar.gravatar_label') }
                 span(class: 'block text-sm text-on-surface-variant') { t('profiles.avatar.gravatar_description') }
               end

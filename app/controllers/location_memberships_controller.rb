@@ -59,7 +59,8 @@ class LocationMembershipsController < ApplicationController
 
   def location_show_streams
     [
-      turbo_stream.replace("location_show_#{@location.id}", Components::Locations::ShowView.new(location: @location.reload)),
+      turbo_stream.replace(tenant_dom_target("location_show_#{@location.id}"),
+                           Components::Locations::ShowView.new(location: @location.reload)),
       turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
     ]
   end

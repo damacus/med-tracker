@@ -48,7 +48,7 @@ module Components
       end
 
       def render_schedule_card(schedule)
-        m3_card(id: "schedule_#{schedule.id}", class: 'h-full flex flex-col') do
+        m3_card(id: tenant_dom_id(schedule), class: 'h-full flex flex-col') do
           CardHeader do
             render_medication_icon(schedule)
             m3_text(
@@ -169,7 +169,7 @@ module Components
       def can_delete_schedule?(schedule)
         return false unless current_user
 
-        policy = SchedulePolicy.new(current_user, schedule)
+        policy = SchedulePolicy.new(policy_context(current_user), schedule)
         policy.destroy?
       end
 

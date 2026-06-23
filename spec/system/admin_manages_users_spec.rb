@@ -14,7 +14,7 @@ RSpec.describe 'AdminManagesUsers' do
                               status: 'verified')
     person = Person.create!(name: 'Carer User', date_of_birth: '1990-01-01', account: account)
     User.create!(person: person, email_address: 'test_carer@example.com',
-                 password: 'password', password_confirmation: 'password', role: :carer)
+                 password: 'password', password_confirmation: 'password')
   end
   let(:unverified_user) do
     account = Account.create!(email: 'unverified_user@example.com',
@@ -25,11 +25,13 @@ RSpec.describe 'AdminManagesUsers' do
     )
     person = Person.create!(name: 'Unverified User', date_of_birth: '1992-02-02', account: account)
     User.create!(person: person, email_address: 'unverified_user@example.com',
-                 password: 'password', password_confirmation: 'password', role: :parent)
+                 password: 'password', password_confirmation: 'password')
   end
 
   before do |example|
     driven_by(example.metadata[:js] ? :playwright : :rack_test)
+    attach_user_to_admin_household(carer)
+    attach_user_to_admin_household(unverified_user)
   end
 
   context 'when user is logged in as an admin' do
@@ -60,14 +62,14 @@ RSpec.describe 'AdminManagesUsers' do
       fill_in 'user_password_confirmation', with: 'password123'
 
       # Interact with Combobox for Role
-      find_by_id('role_trigger').click
-      all('label', text: 'Doctor', visible: :all).last.click
+      find_by_id('membership_role_trigger').click
+      all('label', text: 'Administrator', visible: :all).last.click
 
       click_on 'Create User'
 
       expect(page).to have_text('User was successfully created')
       expect(page).to have_text('newuser@example.com')
-      expect(page).to have_text('Doctor')
+      expect(page).to have_text('Administrator')
     end
 
     it 'shows validation errors when creating user with invalid data', :js do
@@ -81,8 +83,8 @@ RSpec.describe 'AdminManagesUsers' do
       fill_in 'user_password', with: 'password123'
       fill_in 'user_password_confirmation', with: 'password123'
 
-      find_by_id('role_trigger').click
-      all('label', text: 'Doctor', visible: :all).last.click
+      find_by_id('membership_role_trigger').click
+      all('label', text: 'Administrator', visible: :all).last.click
 
       # Clear email field and submit
       fill_in 'Email address', with: ''
@@ -105,8 +107,8 @@ RSpec.describe 'AdminManagesUsers' do
       fill_in 'user_password', with: 'password123'
       fill_in 'user_password_confirmation', with: 'password123'
 
-      find_by_id('role_trigger').click
-      all('label', text: 'Doctor', visible: :all).last.click
+      find_by_id('membership_role_trigger').click
+      all('label', text: 'Administrator', visible: :all).last.click
 
       click_on 'Create User'
 
@@ -123,9 +125,6 @@ RSpec.describe 'AdminManagesUsers' do
       fill_in 'Email address', with: 'loginable@example.com'
       fill_in 'user_password', with: 'SecureP@ssword123!'
       fill_in 'user_password_confirmation', with: 'SecureP@ssword123!'
-
-      find_by_id('role_trigger').click
-      all('label', text: 'Carer', visible: :all).last.click
 
       click_on 'Create User'
 
@@ -161,14 +160,14 @@ RSpec.describe 'AdminManagesUsers' do
 
       fill_in 'Email address', with: 'updated_carer@example.com'
 
-      click_on 'Carer'
-      all('label', text: 'Nurse', visible: :all).last.click
+      find_by_id('membership_role_trigger').click
+      all('label', text: 'Administrator', visible: :all).last.click
 
       click_on 'Update User'
 
       expect(page).to have_text('User was successfully updated')
       expect(page).to have_text('updated_carer@example.com')
-      expect(page).to have_text('Nurse')
+      expect(page).to have_text('Administrator')
     end
 
     it 'shows validation errors when updating user with invalid data', :js do
@@ -292,10 +291,10 @@ RSpec.describe 'AdminManagesUsers' do
 
       visit admin_users_path
 
-      fill_in 'Search', with: 'carer@example.com'
+      fill_in 'Search', with: 'test_carer@example.com'
       click_button 'Search'
 
-      expect(page).to have_text('carer@example.com')
+      expect(page).to have_text('test_carer@example.com')
       expect(page).to have_no_text(admin.email_address)
     end
 
@@ -305,7 +304,7 @@ RSpec.describe 'AdminManagesUsers' do
       visit admin_users_path
 
       find_by_id('role_trigger').click
-      all('label', text: 'Carer', visible: :all).last.click
+      all('label', text: 'Member', visible: :all).last.click
 
       expect(page).to have_text('test_carer@example.com')
       expect(page).to have_no_text(admin.email_address)
@@ -360,7 +359,7 @@ RSpec.describe 'AdminManagesUsers' do
       sleep 0.5 # Small delay to ensure any frame replacement has finished
 
       find_by_id('role_trigger').click
-      all('label', text: 'Carer', visible: :all).last.click
+      all('label', text: 'Member', visible: :all).last.click
 
       within '[data-testid="admin-users"]' do
         expect(page).to have_text('Carer User')
@@ -398,6 +397,16 @@ RSpec.describe 'AdminManagesUsers' do
       visit new_admin_user_path
 
       expect(page).to have_css('#flash', text: 'You are not authorized to perform this action.')
+    end
+  end
+
+  def attach_user_to_admin_household(user)
+    household = ensure_api_household_for(admin)
+    user.person.update!(household: household)
+    household.household_memberships.find_or_create_by!(account: user.person.account) do |membership|
+      membership.person = user.person
+      membership.role = :member
+      membership.status = :active
     end
   end
 end

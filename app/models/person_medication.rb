@@ -5,7 +5,9 @@
 # and over-the-counter medications.
 class PersonMedication < ApplicationRecord
   include TimingRestrictions
+  include HouseholdAssignable
 
+  belongs_to :household, optional: true
   belongs_to :person
   belongs_to :medication
   belongs_to :source_dosage_option, class_name: 'MedicationDosageOption', optional: true
@@ -21,6 +23,7 @@ class PersonMedication < ApplicationRecord
 
   scope :ordered, -> { order(:position, :id) }
 
+  before_validation :assign_household
   before_validation :assign_default_dose
   before_validation :clear_routine_default_interval
   before_validation :assign_position, on: :create

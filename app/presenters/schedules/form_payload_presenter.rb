@@ -2,13 +2,13 @@
 
 module Schedules
   class FormPayloadPresenter
-    attr_reader :person, :medications, :frame_id, :next_url, :translations
+    attr_reader :person, :medications, :frame_id, :urls, :translations
 
-    def initialize(person:, medications:, frame_id:, next_url:, translations:)
+    def initialize(person:, medications:, frame_id:, urls:, translations:)
       @person = person
       @medications = medications
       @frame_id = frame_id
-      @next_url = next_url
+      @urls = urls
       @translations = translations
     end
 
@@ -21,16 +21,10 @@ module Schedules
           medications: medications
         ).to_h.to_json,
         schedule_form_frame_id_value: frame_id,
-        schedule_form_next_url_value: next_url,
-        schedule_form_frequency_preview_url_value: frequency_preview_url,
+        schedule_form_next_url_value: urls.fetch(:next),
+        schedule_form_frequency_preview_url_value: urls.fetch(:frequency_preview),
         schedule_form_translations_value: translations.to_json
       }
-    end
-
-    private
-
-    def frequency_preview_url
-      Rails.application.routes.url_helpers.schedules_frequency_preview_path
     end
   end
 end

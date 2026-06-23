@@ -26,6 +26,8 @@ RSpec.describe 'Person medication reordering' do
     end
 
     it 'denies parents from reordering medications for unlinked children' do
+      request_household = Household.find_by!(slug: default_request_household_slug)
+      unlinked_child.update!(household: request_household)
       unlinked_first = PersonMedication.create!(person: unlinked_child, medication: medications(:ibuprofen))
       unlinked_second = PersonMedication.create!(person: unlinked_child, medication: medications(:aspirin))
       original_order = unlinked_child.person_medications.order(:position, :id).pluck(:id)
@@ -49,7 +51,7 @@ RSpec.describe 'Person medication reordering' do
 
       expect(response).to have_http_status(:ok)
       expect(response.media_type).to eq('text/vnd.turbo-stream.html')
-      expect(response.body).to include("target=\"person_show_#{linked_child.id}\"")
+      expect(response.body).to include("target=\"#{household_dom_target("person_show_#{linked_child.id}")}\"")
       expect(linked_child.person_medications.order(:position,
                                                    :id).pluck(:id)).to eq([linked_second.id, linked_first.id])
     end

@@ -56,8 +56,8 @@ RSpec.describe 'Medications refill' do
 
       expect(response).to have_http_status(:ok)
       expect(response.media_type).to eq('text/vnd.turbo-stream.html')
-      expect(response.body).to include("target=\"medication_show_#{medication.id}\"")
-      expect(response.body).to include("target=\"medication_#{medication.id}\"")
+      expect(response.body).to include("target=\"#{household_dom_target("medication_show_#{medication.id}")}\"")
+      expect(response.body).to include("target=\"#{household_dom_target("medication_#{medication.id}")}\"")
       expect(response.body).to include('target="flash"')
     end
 
@@ -68,8 +68,8 @@ RSpec.describe 'Medications refill' do
 
       expect(response).to have_http_status(:unprocessable_content)
       expect(response.media_type).to eq('text/vnd.turbo-stream.html')
-      expect(response.body).to include("target=\"medication_show_#{medication.id}\"")
-      expect(response.body).to include("target=\"medication_#{medication.id}\"")
+      expect(response.body).to include("target=\"#{household_dom_target("medication_show_#{medication.id}")}\"")
+      expect(response.body).to include("target=\"#{household_dom_target("medication_#{medication.id}")}\"")
       expect(response.body).to include('target="flash"')
     end
   end
@@ -140,7 +140,7 @@ RSpec.describe 'Medications refill' do
     it 'serves the .json path used by the scan-stock modal' do
       medication.update!(barcode: '5012345678901')
 
-      get '/medications/scan_restock_match.json', params: { q: '5012345678901' }
+      get scan_restock_match_medications_path(format: :json), params: { q: '5012345678901' }
 
       expect(response).to have_http_status(:ok)
       expect(response.parsed_body).to include('matched' => true)

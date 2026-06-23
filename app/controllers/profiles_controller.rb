@@ -11,7 +11,7 @@ class ProfilesController < ApplicationController
 
     respond_to do |format|
       format.html do
-        render Views::Profiles::Show.new(person: @person, account: @account, user: current_user)
+        render Views::Profiles::Show.new(person: @person, account: @account)
       end
     end
   end
@@ -22,9 +22,6 @@ class ProfilesController < ApplicationController
 
     attributes = person_params
     return update_person_profile(attributes) if attributes.present?
-
-    attributes = user_params
-    return update_user_profile(attributes) if attributes.present?
 
     attributes = account_params
     return update_account_profile(attributes) if attributes.present?
@@ -43,23 +40,23 @@ class ProfilesController < ApplicationController
         flash.now[:notice] = t('.removed')
         render turbo_stream: [
           turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice])),
-          turbo_stream.replace('main-content', Views::Profiles::Show.new(person: @person, account: @account, user: current_user))
+          turbo_stream.replace('main-content', Views::Profiles::Show.new(person: @person, account: @account))
         ]
       end
     end
   end
 
   def experiments
-    variant = params.dig(:user, :wizard_variant).to_s
-    variant = 'fullpage' unless User::WIZARD_VARIANTS.include?(variant)
+    variant = params.dig(:account, :wizard_variant).to_s
+    variant = 'fullpage' unless Account::WIZARD_VARIANTS.include?(variant)
 
-    if current_user.update(wizard_variant: variant)
+    if current_account.update(wizard_variant: variant)
       respond_to do |format|
         format.turbo_stream do
           render turbo_stream: [
             turbo_stream.replace(
               'experiments-card',
-              Views::Profiles::ExperimentsCard.new(user: current_user)
+              Views::Profiles::ExperimentsCard.new(account: current_account)
             )
           ]
         end
@@ -83,19 +80,11 @@ class ProfilesController < ApplicationController
     end
   end
 
-  def update_user_profile(attributes)
-    if current_user.update(attributes)
-      respond_profile_updated(person: @person, account: @account)
-    else
-      respond_profile_failed(current_user)
-    end
-  end
-
   def update_account_profile(attributes)
     if @account.update(attributes)
-      respond_email_updated
+      attributes.key?(:email) ? respond_email_updated : respond_profile_updated(person: @person, account: @account)
     else
-      respond_email_failed
+      attributes.key?(:email) ? respond_email_failed : respond_profile_failed(@account)
     end
   end
 
@@ -106,7 +95,7 @@ class ProfilesController < ApplicationController
         flash.now[:notice] = t('profiles.updated')
         streams = [turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice]))]
         streams.unshift(turbo_stream.update('modal', '')) if close_modal
-        streams << turbo_stream.replace('main-content', Views::Profiles::Show.new(person: person, account: account, user: current_user))
+        streams << turbo_stream.replace('main-content', Views::Profiles::Show.new(person: person, account: account))
         render turbo_stream: streams
       end
     end
@@ -131,7 +120,7 @@ class ProfilesController < ApplicationController
         render turbo_stream: [
           turbo_stream.update('modal', ''),
           turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice])),
-          turbo_stream.replace('main-content', Views::Profiles::Show.new(person: @person, account: @account.reload, user: current_user))
+          turbo_stream.replace('main-content', Views::Profiles::Show.new(person: @person, account: @account.reload))
         ]
       end
     end
@@ -163,10 +152,6 @@ class ProfilesController < ApplicationController
   end
 
   def account_params
-    params.expect(account: [:email]) if params[:account]
-  end
-
-  def user_params
-    params.expect(user: [:gravatar_enabled]) if params[:user]
+    params.expect(account: %i[email gravatar_enabled]) if params[:account]
   end
 end

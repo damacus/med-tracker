@@ -7,8 +7,9 @@ module Components
         div(
           data: {
             controller: 'offline-shell',
-            offline_shell_snapshot_url_value: '/offline/snapshot',
-            offline_shell_sync_url_value: '/offline/medication_takes'
+            offline_shell_snapshot_url_value: "#{route_prefix}/offline/snapshot",
+            offline_shell_sync_url_value: "#{route_prefix}/offline/medication_takes",
+            offline_shell_tenant_key_value: tenant_key
           },
           class: 'min-h-screen bg-background text-foreground'
         ) do
@@ -21,6 +22,20 @@ module Components
       end
 
       private
+
+      def route_prefix
+        return '' unless Current.household
+
+        "/households/#{Current.household.slug}"
+      end
+
+      def tenant_key
+        return 'global' unless Current.household
+
+        key = "household:#{Current.household.id}"
+        key += ":membership:#{Current.membership.id}" if Current.membership
+        key
+      end
 
       def render_header
         header(class: 'flex flex-col gap-4 border-b border-border pb-6 md:flex-row md:items-end md:justify-between') do

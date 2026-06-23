@@ -28,6 +28,11 @@ RSpec.describe 'Admin::AuditLogs Rate Limiting' do
     sign_in(admin)
   end
 
+  after do
+    PaperTrail.request.controller_info = {}
+    PaperTrail.request.whodunnit = nil
+  end
+
   describe 'IP-based rate limiting on GET /admin/audit_logs' do
     it 'allows requests under the limit' do
       3.times { get admin_audit_logs_path }
@@ -64,8 +69,9 @@ RSpec.describe 'Admin::AuditLogs Rate Limiting' do
   describe 'IP-based rate limiting on GET /admin/audit_logs/:id' do
     let!(:version) do
       PaperTrail.request.whodunnit = admin.id
+      PaperTrail.request.controller_info = paper_trail_info_for(admin)
       PaperTrail.request(enabled: true) do
-        users(:jane).update!(role: :nurse)
+        users(:jane).update!(active: false)
       end
       PaperTrail::Version.last
     end
@@ -104,5 +110,12 @@ RSpec.describe 'Admin::AuditLogs Rate Limiting' do
       get admin_audit_logs_path
       expect(response).to have_http_status(:too_many_requests)
     end
+  end
+
+  def paper_trail_info_for(user)
+    household = ensure_api_household_for(user)
+    account = Account.find_by(email: user.email_address)
+    membership = household.household_memberships.find_by(account: account)
+    { household_id: household.id, actor_membership_id: membership&.id }.compact
   end
 end

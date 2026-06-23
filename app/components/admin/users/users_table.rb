@@ -7,12 +7,13 @@ module Components
       class UsersTable < Components::Base
         include Phlex::Rails::Helpers::FormWith
 
-        attr_reader :users, :search_params, :current_user
+        attr_reader :users, :search_params, :current_user, :household
 
-        def initialize(users:, search_params: {}, current_user: nil)
+        def initialize(users:, search_params: {}, current_user: nil, household: nil)
           @users = users
           @search_params = search_params
           @current_user = current_user
+          @household = household || Current.household
           super()
         end
 
@@ -53,7 +54,7 @@ module Components
                   end
 
                   dl(class: 'grid grid-cols-2 gap-3 border-t border-outline-variant/30 pt-4 text-sm') do
-                    render_mobile_detail(t('admin.users.form.role'), user.role.to_s.capitalize)
+                    render_mobile_detail(t('admin.users.form.role'), membership_role_for(user))
                     div do
                       dt(class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant') do
                         t('admin.users.table.verification')
@@ -64,7 +65,7 @@ module Components
 
                   div(class: 'flex flex-wrap gap-2 border-t border-outline-variant/30 pt-4') do
                     render RubyUI::Link.new(
-                      href: "/admin/users/#{user.id}/edit",
+                      href: edit_admin_user_path(user),
                       variant: :outlined,
                       size: :sm,
                       class: 'flex-1 rounded-xl',
@@ -90,7 +91,7 @@ module Components
             render RubyUI::TableRow.new do
               render(RubyUI::TableHead.new { render_sortable_header(t('admin.users.form.name'), 'name') })
               render(RubyUI::TableHead.new { render_sortable_header(t('admin.users.form.email_address'), 'email') })
-              render(RubyUI::TableHead.new { render_sortable_header(t('admin.users.form.role'), 'role') })
+              render(RubyUI::TableHead.new { render_sortable_header(t('admin.users.form.role'), 'membership_role') })
               render(RubyUI::TableHead.new { t('admin.users.table.activation') })
               render(RubyUI::TableHead.new { t('admin.users.table.verification') })
               render RubyUI::TableHead.new(class: 'text-center') { t('admin.users.table.actions') }
@@ -107,7 +108,7 @@ module Components
           sort_params = search_params.to_h.merge(sort: column, direction: new_direction)
 
           Link(
-            href: "/admin/users?#{sort_params.to_query}",
+            href: admin_users_path(sort_params),
             variant: :link,
             class: sortable_header_class(is_active),
             data: { turbo_frame: 'admin-users-frame' }
@@ -133,9 +134,21 @@ module Components
         def render_table_body
           render RubyUI::TableBody.new do
             users.each do |user|
-              render Components::Admin::Users::UserRow.new(user: user, current_user: current_user)
+              render Components::Admin::Users::UserRow.new(user: user, current_user: current_user, household: household)
             end
           end
+        end
+
+        def membership_role_for(user)
+          account = user.person&.account
+          return no_membership_label unless household && account
+
+          membership = household.household_memberships.active.find_by(account: account)
+          membership&.role&.titleize || no_membership_label
+        end
+
+        def no_membership_label
+          t('admin.users.form.no_membership', default: 'No membership')
         end
 
         def render_status_badge(user)
@@ -165,7 +178,7 @@ module Components
 
         def render_activate_button(user)
           form_with(
-            url: "/admin/users/#{user.id}/activate",
+            url: activate_admin_user_path(user),
             method: :post,
             class: 'flex-1'
           ) do
@@ -183,7 +196,7 @@ module Components
           return render_verified_button if user.person&.account&.verified?
 
           form_with(
-            url: "/admin/users/#{user.id}/verify",
+            url: verify_admin_user_path(user),
             method: :post,
             class: 'inline-block'
           ) do
@@ -229,7 +242,7 @@ module Components
               end
               render RubyUI::AlertDialogFooter.new do
                 render(RubyUI::AlertDialogCancel.new { t('admin.users.user_row.deactivate_dialog.cancel') })
-                form_with(url: "/admin/users/#{user.id}", method: :delete, class: 'inline') do
+                form_with(url: admin_user_path(user), method: :delete, class: 'inline') do
                   m3_button(variant: :destructive, type: :submit) { t('admin.users.user_row.deactivate_dialog.submit') }
                 end
               end

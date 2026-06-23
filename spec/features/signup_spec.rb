@@ -6,7 +6,7 @@ RSpec.describe 'User Signup', type: :system do
   describe 'creating a new account' do
     before do
       driven_by(:rack_test)
-      User.administrator.destroy_all
+      HouseholdMembership.owner.delete_all
     end
 
     it 'creates both an Account and a Person with valid details' do
@@ -22,9 +22,12 @@ RSpec.describe 'User Signup', type: :system do
         click_button 'Create Account'
       end.to change(Account, :count).by(1)
                                     .and change(Person, :count).by(1)
+                                    .and change(Household, :count).by(1)
 
       # After signup, user is redirected to dashboard or verify-account-resend if email verification is pending
-      expect(page).to have_current_path('/dashboard').or have_current_path('/verify-account-resend')
+      expect(page).to(
+        have_current_path(%r{\A/households/[^/]+/dashboard\z}).or(have_current_path('/verify-account-resend'))
+      )
 
       # Verify the account was created with correct email
       account = Account.find_by(email: 'newuser@example.com')
@@ -33,6 +36,7 @@ RSpec.describe 'User Signup', type: :system do
       # Verify the person was created and linked to the account
       person = account.person
       expect(person).to be_present
+      expect(person.household).to be_present
       expect(person.name).to eq('New Test User')
       expect(person.date_of_birth).to eq(Date.new(1990, 1, 15))
       expect(person.email).to eq('newuser@example.com')

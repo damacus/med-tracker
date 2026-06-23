@@ -3,17 +3,22 @@
 require 'rails_helper'
 
 RSpec.describe MedicationStockSourceResolver do
+  fixtures :accounts, :people, :users
+
   let(:taken_at) { Time.current }
-  let(:location) { create(:location) }
+  let(:location) { create(:location, household: fixture_household) }
   let(:medication) do
     create(:medication,
            name: 'Paracetamol',
            dosage_amount: 500,
            dosage_unit: 'mg',
            location: location,
+           household: fixture_household,
            current_supply: 20,
            supply_at_last_restock: 20)
   end
+
+  before { FixtureHouseholdSetup.apply! }
 
   # Build a source double pointing at `medication`
   def build_source(med, can_take: true)
@@ -144,15 +149,14 @@ RSpec.describe MedicationStockSourceResolver do
     end
 
     context 'when there are multiple available matching medications' do
-      fixtures :accounts, :people, :users
-
-      let(:location2) { create(:location) }
+      let(:location2) { create(:location, household: fixture_household) }
       let!(:second_medication) do
         create(:medication,
                name: medication.name,
                dosage_amount: medication.dosage_amount,
                dosage_unit: medication.dosage_unit,
                location: location2,
+               household: fixture_household,
                current_supply: 10,
                supply_at_last_restock: 10)
       end
@@ -161,12 +165,15 @@ RSpec.describe MedicationStockSourceResolver do
         # john is an admin — MedicationPolicy::Scope returns scope.all
         # second_medication is in scope alongside the primary medication
         expect(second_medication).to be_persisted
-        user = users(:john)
         source = build_source(medication)
-        resolver = described_class.new(user: user, source: source, taken_at: taken_at)
+        resolver = described_class.new(user: users(:john), source: source, taken_at: taken_at)
 
         expect(resolver.selection_required?(nil)).to be true
       end
     end
+  end
+
+  def fixture_household
+    users(:john).person.account.first_active_household_membership.household
   end
 end

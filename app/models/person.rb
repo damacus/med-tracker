@@ -11,8 +11,11 @@ class Person < ApplicationRecord
   has_paper_trail
 
   belongs_to :account, optional: true
+  belongs_to :household, optional: true
   has_one_attached :avatar
   has_one :user, inverse_of: :person, dependent: :destroy
+  has_one :household_membership, dependent: :nullify
+  has_many :person_access_grants, dependent: :destroy
   has_many :schedules, dependent: :destroy
   has_many :medications, through: :schedules
   has_many :person_medications, dependent: :destroy
@@ -49,14 +52,12 @@ class Person < ApplicationRecord
 
   before_validation :set_capacity_from_person_type
   before_validation :assign_default_location, on: :create
-
   validates :date_of_birth, presence: true
   validates :name, presence: true
   validates :email, allow_blank: true,
                     format: { with: URI::MailTo::EMAIL_REGEXP, allow_blank: true },
                     uniqueness: { allow_blank: true }
   validate :carer_required_when_lacking_capacity
-  validate :must_have_at_least_one_location
   validate :avatar_must_be_supported_image
   validate :avatar_must_be_smaller_than_five_megabytes
 
@@ -102,15 +103,17 @@ class Person < ApplicationRecord
   def assign_default_location
     return if locations.any? || location_memberships.any?
 
-    if primary_location.present?
-      location_memberships.build(location: primary_location)
-      return
-    end
+    location = primary_location.presence
+    location ||= default_home_location if household.present?
+    return if location.blank?
 
-    home = Location.find_or_create_by!(name: 'Home') do |l|
-      l.description = 'Primary home location'
+    location_memberships.build(location: location)
+  end
+
+  def default_home_location
+    Location.find_or_create_by!(name: 'Home', household: household) do |location|
+      location.description = 'Primary home location'
     end
-    location_memberships.build(location: home)
   end
 
   def set_capacity_from_person_type
@@ -140,12 +143,6 @@ class Person < ApplicationRecord
       # ⚡ Bolt Optimization: Use `.any?` instead of `.exists?`
       # This avoids a redundant query if `active_carer_relationships` is already loaded in memory
       active_carer_relationships.any?
-  end
-
-  def must_have_at_least_one_location
-    return if locations.any? || location_memberships.any?
-
-    errors.add(:base, 'A person must belong to at least one location')
   end
 
   def avatar_must_be_supported_image

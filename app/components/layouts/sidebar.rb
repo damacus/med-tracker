@@ -114,7 +114,7 @@ module Components
                 current_user_name || t('layouts.sidebar.user_fallback')
               end
               p(class: 'text-[10px] font-medium text-on-surface-variant') do
-                t("activerecord.attributes.user.roles.#{current_user.role}", default: current_user.role.to_s.humanize)
+                current_membership_role_name
               end
             end
           end

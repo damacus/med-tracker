@@ -154,12 +154,12 @@ RSpec.describe Components::Admin::AuditLogs::IndexView, type: :component do
 
     before do
       allow(view).to receive(:view_context).and_return(
-        double(admin_audit_logs_path: '/admin/audit_logs')
+        double(admin_audit_logs_path: '/households/test-household/admin/audit_logs')
       )
     end
 
     it 'generates URL with page parameter' do
-      expect(view.send(:pagination_url, 2)).to eq('/admin/audit_logs')
+      expect(view.send(:pagination_url, 2)).to eq('/households/test-household/admin/audit_logs')
       expect(view).to have_received(:view_context)
     end
 
@@ -173,7 +173,7 @@ RSpec.describe Components::Admin::AuditLogs::IndexView, type: :component do
       )
       # rubocop:disable RSpec/AnyInstance
       allow_any_instance_of(described_class).to receive(:view_context).and_return(
-        double(admin_audit_logs_path: '/admin/audit_logs?item_type=User&page=2')
+        double(admin_audit_logs_path: '/households/test-household/admin/audit_logs?item_type=User&page=2')
       )
       # rubocop:enable RSpec/AnyInstance
 

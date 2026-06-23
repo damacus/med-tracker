@@ -5,6 +5,7 @@ require 'rails_helper'
 RSpec.describe 'Medication Lookup', type: :system do
   fixtures :accounts, :people, :locations, :medications, :users
 
+  let(:admin) { users(:admin) }
   let(:doctor) { users(:doctor) }
 
   let(:aspirin_results) do
@@ -45,19 +46,36 @@ RSpec.describe 'Medication Lookup', type: :system do
     }
   end
 
-  before do
-    # Set credentials for NhsDmd::Client
-    allow(ENV).to receive(:fetch).and_call_original
-    allow(ENV).to receive(:fetch).with('NHS_DMD_CLIENT_ID', nil).and_return('test-id')
-    allow(ENV).to receive(:fetch).with('NHS_DMD_CLIENT_SECRET', nil).and_return('test-secret')
+  around do |example|
+    previous_client_id = ENV.fetch('NHS_DMD_CLIENT_ID', nil)
+    previous_client_secret = ENV.fetch('NHS_DMD_CLIENT_SECRET', nil)
+    ENV['NHS_DMD_CLIENT_ID'] = 'test-id'
+    ENV['NHS_DMD_CLIENT_SECRET'] = 'test-secret'
+    Rails.cache.clear
+    example.run
+  ensure
+    if previous_client_id.nil?
+      ENV.delete('NHS_DMD_CLIENT_ID')
+    else
+      ENV['NHS_DMD_CLIENT_ID'] = previous_client_id
+    end
 
+    if previous_client_secret.nil?
+      ENV.delete('NHS_DMD_CLIENT_SECRET')
+    else
+      ENV['NHS_DMD_CLIENT_SECRET'] = previous_client_secret
+    end
+    Rails.cache.clear
+  end
+
+  before do
     stub_nhs_dmd_token
   end
 
   it 'User searches for a medication and sees results' do
     stub_nhs_dmd_search(query: 'Aspirin', results: aspirin_results)
 
-    sign_in(doctor)
+    sign_in(admin)
     visit medication_finder_path
 
     expect(page).to have_text('Medication Finder')
@@ -82,7 +100,7 @@ RSpec.describe 'Medication Lookup', type: :system do
   it 'Search returns no results' do
     stub_nhs_dmd_search(query: 'NonExistentMedication12345', results: [])
 
-    sign_in(doctor)
+    sign_in(admin)
     visit medication_finder_path
 
     fill_in 'medication-search-input', with: 'NonExistentMedication12345'
@@ -97,7 +115,7 @@ RSpec.describe 'Medication Lookup', type: :system do
     stub_request(:get, %r{#{NhsDmd::Client::BASE_URL}/ValueSet/\$expand})
       .to_return(status: 503, body: 'Service Unavailable')
 
-    sign_in(doctor)
+    sign_in(admin)
     visit medication_finder_path
 
     fill_in 'medication-search-input', with: 'Aspirin'
@@ -109,7 +127,7 @@ RSpec.describe 'Medication Lookup', type: :system do
   it 'allows selecting a search result and prefill a new inventory item' do
     stub_nhs_dmd_search(query: '5016298210989', results: barcode_results)
 
-    sign_in(doctor)
+    sign_in(admin)
     visit medication_finder_path
 
     fill_in 'medication-search-input', with: '5016298210989'
@@ -138,7 +156,7 @@ RSpec.describe 'Medication Lookup', type: :system do
                   system: 'https://dmd.nhs.uk', concept_class: 'VMP' }]
     )
 
-    sign_in(doctor)
+    sign_in(admin)
     visit medication_finder_path
 
     fill_in 'medication-search-input', with: '5016298210989'
@@ -191,7 +209,7 @@ RSpec.describe 'Medication Lookup', type: :system do
       ]
     )
 
-    sign_in(doctor)
+    sign_in(admin)
     visit medication_finder_path
 
     fill_in 'medication-search-input', with: '5000123456789'
@@ -216,7 +234,7 @@ RSpec.describe 'Medication Lookup', type: :system do
       ]
     )
 
-    sign_in(doctor)
+    sign_in(admin)
     visit medication_finder_path
 
     fill_in 'medication-search-input', with: '1234567890'

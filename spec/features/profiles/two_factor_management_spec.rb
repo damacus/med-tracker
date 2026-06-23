@@ -31,32 +31,32 @@ RSpec.describe 'Two-Factor Authentication Management', type: :system do
         )
       end
 
-      it 'redirects to the 2FA method chooser when starting TOTP setup' do
+      it 'requires passkey authentication when starting TOTP setup' do
         visit profile_path
         click_link 'Set up authenticator app'
 
-        expect(page).to have_current_path('/multifactor-manage')
+        expect(page).to have_current_path('/webauthn-auth')
       end
 
-      it 'redirects to the 2FA method chooser when viewing recovery codes' do
+      it 'requires passkey authentication when viewing recovery codes' do
         visit profile_path
         click_link 'Generate recovery codes'
 
-        expect(page).to have_current_path('/multifactor-manage')
+        expect(page).to have_current_path('/webauthn-auth')
       end
 
-      it 'redirects to the 2FA method chooser when adding another passkey' do
+      it 'requires passkey authentication when adding another passkey' do
         visit profile_path
         click_link 'Add a passkey'
 
-        expect(page).to have_current_path('/multifactor-manage')
+        expect(page).to have_current_path('/webauthn-auth')
       end
 
-      it 'redirects to the 2FA method chooser when removing a passkey' do
+      it 'requires passkey authentication when removing a passkey' do
         visit profile_path
         click_link 'Remove'
 
-        expect(page).to have_current_path('/multifactor-manage')
+        expect(page).to have_current_path('/webauthn-auth')
         expect(account.account_webauthn_keys.count).to eq(1)
       end
     end
@@ -132,7 +132,7 @@ RSpec.describe 'Two-Factor Authentication Management', type: :system do
       rodauth_logout
       rodauth_login(user.email_address)
 
-      expect(page).to have_current_path('/dashboard')
+      expect(page).to have_current_path(expected_dashboard_path_for(user.email_address))
     end
   end
 

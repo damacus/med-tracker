@@ -20,7 +20,7 @@ class MedicationAssignmentsController < ApplicationController
 
     result = MedicationAssignmentCreator.new(
       person: @person,
-      medication_scope: policy_scope(Medication),
+      medication_scope: assignment_medication_scope,
       assignment: @assignment
     ).call
 
@@ -31,8 +31,8 @@ class MedicationAssignmentsController < ApplicationController
           flash.now[:notice] = assignment_success_message(result)
           render turbo_stream: [
             turbo_stream.update('modal', ''),
-            turbo_stream.replace("person_#{@person.id}", Components::People::PersonCard.new(person: @person.reload)),
-            turbo_stream.replace("person_show_#{@person.id}", person_show_view(@person.reload)),
+            turbo_stream.replace(tenant_dom_id(@person), Components::People::PersonCard.new(person: @person.reload)),
+            turbo_stream.replace(tenant_dom_target("person_show_#{@person.id}"), person_show_view(@person.reload)),
             turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
           ]
         end
@@ -82,7 +82,13 @@ class MedicationAssignmentsController < ApplicationController
   end
 
   def medication_options_query
-    @medication_options_query ||= MedicationOptionsQuery.new(scope: policy_scope(Medication))
+    @medication_options_query ||= MedicationOptionsQuery.new(scope: assignment_medication_scope)
+  end
+
+  def assignment_medication_scope
+    return policy_scope(Medication) unless Current.household
+
+    Medication.where(household: Current.household)
   end
 
   def render_assignment_form(status: :ok)

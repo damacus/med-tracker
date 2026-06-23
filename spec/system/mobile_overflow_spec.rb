@@ -6,7 +6,14 @@ RSpec.describe 'Mobile overflow handling' do
   fixtures :all
 
   before do
-    login_as(users(:admin))
+    admin = users(:admin)
+    login_as(admin)
+    create_household_audit_version(admin)
+  end
+
+  after do
+    PaperTrail.request.controller_info = {}
+    PaperTrail.request.whodunnit = nil
   end
 
   it 'keeps medication header actions inside the mobile viewport', :js do
@@ -83,5 +90,17 @@ RSpec.describe 'Mobile overflow handling' do
           .map((element) => element.textContent.trim());
       })()
     JS
+  end
+
+  def create_household_audit_version(admin)
+    PaperTrail::Version.create!(
+      household_id: browser_household.id,
+      actor_membership_id: browser_membership&.id,
+      item_type: 'User',
+      item_id: admin.id,
+      event: 'update',
+      whodunnit: admin.id.to_s,
+      created_at: Time.current
+    )
   end
 end

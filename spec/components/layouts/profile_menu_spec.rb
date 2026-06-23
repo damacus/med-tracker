@@ -8,6 +8,10 @@ RSpec.describe Components::Layouts::ProfileMenu, type: :component do
   let(:admin_user) { users(:admin) }
   let(:carer_user) { users(:carer) }
 
+  after do
+    Current.reset
+  end
+
   describe 'rendering' do
     it 'renders the dropdown shell and account label' do
       rendered = render_inline(described_class.new(current_user: admin_user))
@@ -27,12 +31,14 @@ RSpec.describe Components::Layouts::ProfileMenu, type: :component do
 
   describe 'admin menu item' do
     it 'renders Administration link for admin users' do
+      Current.membership = instance_double(HouseholdMembership, owner?: true, administrator?: false, role: 'owner')
       rendered = render_inline(described_class.new(current_user: admin_user))
 
       expect(rendered.text).to include('Administration')
     end
 
     it 'does not render Administration link for non-admin users' do
+      Current.membership = instance_double(HouseholdMembership, owner?: false, administrator?: false, role: 'member')
       rendered = render_inline(described_class.new(current_user: carer_user))
 
       expect(rendered.text).not_to include('Administration')

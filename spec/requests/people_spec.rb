@@ -9,13 +9,13 @@ RSpec.describe 'People' do
     context 'when signed in as a parent' do
       before { sign_in(users(:jane)) }
 
-      it 'renders dependent person types only' do
+      it 'renders household person types' do
         get new_person_path
 
         expect(response).to have_http_status(:ok)
+        expect(response.body).to include('value="adult"')
         expect(response.body).to include('value="minor"')
         expect(response.body).to include('value="dependent_adult"')
-        expect(response.body).not_to include('value="adult"')
       end
 
       it 'shows the primary location where the dependent will be created' do
@@ -29,11 +29,69 @@ RSpec.describe 'People' do
     context 'when signed in as an admin' do
       before { sign_in(users(:admin)) }
 
-      it 'rejects access' do
+      it 'renders the household person form' do
         get new_person_path
 
-        expect(response).to redirect_to(root_path)
+        expect(response).to have_http_status(:ok)
       end
+    end
+  end
+
+  describe 'GET /households/:household_slug/people' do
+    it 'renders only people granted to the current membership' do
+      user = users(:jane)
+      household = ensure_api_household_for(user)
+      membership = household.household_memberships.find_by!(account: user.person.account)
+      visible_person = create(:person, household: household, name: 'Visible Web Alex')
+      hidden_person = create(:person, household: household, name: 'Hidden Web Alex')
+      household.person_access_grants.create!(
+        household_membership: membership,
+        person: visible_person,
+        access_level: :view,
+        relationship_type: :family_member,
+        granted_by_membership: membership
+      )
+      sign_in(user)
+
+      allow(TenantContext).to receive(:with).and_call_original
+      allow(TenantContext).to receive(:set_membership!).and_call_original
+
+      get "/households/#{household.slug}/people"
+
+      expect(TenantContext).to have_received(:with).with(
+        account: user.person.account,
+        household: household,
+        request_id: kind_of(String)
+      )
+      expect(TenantContext).to have_received(:set_membership!).with(membership)
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include(visible_person.name)
+      expect(response.body).not_to include(hidden_person.name)
+    end
+  end
+
+  describe 'PATCH /households/:household_slug/people/:id' do
+    it 'partitions PaperTrail versions by household and actor membership' do
+      user = users(:jane)
+      household = ensure_api_household_for(user)
+      membership = household.household_memberships.find_by!(account: user.person.account)
+      membership.update!(role: :owner, status: :active)
+      target = create(:person, household: household, name: 'Versioned Person')
+      household.person_access_grants.create!(
+        household_membership: membership,
+        person: target,
+        access_level: :manage,
+        relationship_type: :family_member,
+        granted_by_membership: membership
+      )
+      sign_in(user)
+
+      patch "/households/#{household.slug}/people/#{target.id}",
+            params: { person: { name: 'Versioned Person Updated' } }
+
+      version = PaperTrail::Version.where(item_type: 'Person', item_id: target.id, event: 'update').last
+      expect(version.household_id).to eq(household.id)
+      expect(version.actor_membership_id).to eq(membership.id)
     end
   end
 
@@ -56,13 +114,17 @@ RSpec.describe 'People' do
 
         created_person = Person.last
         expect(created_person.name).to eq('New Child')
+        expect(created_person.household.slug).to eq(default_url_options.fetch(:household_slug))
         expect(created_person.has_capacity).to be false
         expect(created_person.user).to be_nil
 
         relationship = created_person.carer_relationships.first
         expect(relationship.carer).to eq(parent_user.person)
-        expect(relationship.relationship_type).to eq('parent')
+        expect(relationship.relationship_type).to eq('family_member')
         expect(relationship.active).to be true
+        grant = created_person.person_access_grants.find_by(household_membership: current_membership)
+
+        expect(grant.access_level).to eq('manage')
       end
 
       it 'creates a dependent adult and auto-links carer relationship' do
@@ -106,7 +168,7 @@ RSpec.describe 'People' do
         expect(created_people.map(&:email)).to all(be_blank)
       end
 
-      it 'creates dependents at the parent primary location' do
+      it 'persists the parent primary location as dependent metadata' do
         parent_user.person.location_memberships.delete_all
         parent_user.person.location_memberships.create!(location: locations(:school))
 
@@ -120,10 +182,10 @@ RSpec.describe 'People' do
         }
 
         created_person = Person.order(:id).last
-        expect(created_person.locations.pluck(:name)).to contain_exactly('School')
+        expect(created_person.locations).to contain_exactly(locations(:school))
       end
 
-      it 'rejects creating an adult person' do
+      it 'creates an adult person in the household' do
         expect do
           post people_path, params: {
             person: {
@@ -132,16 +194,16 @@ RSpec.describe 'People' do
               person_type: 'adult'
             }
           }
-        end.not_to change(Person, :count)
+        end.to change(Person, :count).by(1)
 
-        expect(response).to redirect_to(root_path)
+        expect(Person.last.household.slug).to eq(default_url_options.fetch(:household_slug))
       end
     end
 
     context 'when signed in as an admin' do
       before { sign_in(users(:admin)) }
 
-      it 'rejects creating people' do
+      it 'creates household people' do
         expect do
           post people_path, params: {
             person: {
@@ -150,9 +212,9 @@ RSpec.describe 'People' do
               person_type: 'minor'
             }
           }
-        end.not_to change(Person, :count)
+        end.to change(Person, :count).by(1)
 
-        expect(response).to redirect_to(root_path)
+        expect(Person.last.household.slug).to eq(default_url_options.fetch(:household_slug))
       end
     end
   end
@@ -174,7 +236,7 @@ RSpec.describe 'People' do
       expect(response).to have_http_status(:ok)
       expect(response.media_type).to eq('text/vnd.turbo-stream.html')
       expect(response.body).to include('target="modal"')
-      expect(response.body).to include('target="people"')
+      expect(response.body).to include(%(target="#{household_target('people')}"))
       expect(response.body).to include('target="flash"')
     end
 
@@ -212,7 +274,7 @@ RSpec.describe 'People' do
            headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include('target="people"')
+      expect(response.body).to include(%(target="#{household_target('people')}"))
       expect(response.body).to include('Turbo Child One')
 
       post people_path,
@@ -227,7 +289,7 @@ RSpec.describe 'People' do
            headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include('target="people"')
+      expect(response.body).to include(%(target="#{household_target('people')}"))
       expect(response.body).to include('Turbo Child Two')
     end
   end
@@ -244,8 +306,8 @@ RSpec.describe 'People' do
 
       expect(response).to have_http_status(:ok)
       expect(response.media_type).to eq('text/vnd.turbo-stream.html')
-      expect(response.body).to include("target=\"person_#{person.id}\"")
-      expect(response.body).to include("target=\"person_show_#{person.id}\"")
+      expect(response.body).to include(%(target="#{household_target("person_#{person.id}")}"))
+      expect(response.body).to include(%(target="#{household_target("person_show_#{person.id}")}"))
       expect(response.body).to include('target="flash"')
       expect(person.reload.name).to eq('Turbo Updated Name')
     end
@@ -262,5 +324,17 @@ RSpec.describe 'People' do
       expect(response.body).to include('target="modal"')
       expect(response.body).to include('person_form')
     end
+  end
+
+  def household_target(target)
+    household = Household.find_by!(slug: default_url_options.fetch(:household_slug))
+
+    "household_#{household.id}_#{target}"
+  end
+
+  def current_membership
+    household = Household.find_by!(slug: default_url_options.fetch(:household_slug))
+
+    household.household_memberships.find_by!(account: Account.find_by!(email: users(:jane).email_address))
   end
 end

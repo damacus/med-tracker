@@ -3,6 +3,7 @@
 FactoryBot.define do
   factory :notification_preference do
     person
+    household { person&.household }
     enabled { true }
     morning_time { '08:00:00' }
     afternoon_time { '14:00:00' }

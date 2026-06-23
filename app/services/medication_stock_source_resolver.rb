@@ -55,8 +55,21 @@ class MedicationStockSourceResolver
   end
 
   def resolved_scope
-    return Medication.where(id: source.medication_id) if user.blank?
+    context = authorization_context
+    return Medication.where(id: source.medication_id) unless context
 
-    MedicationPolicy::Scope.new(user, Medication.all).resolve
+    MedicationPolicy::Scope.new(context, Medication.all).resolve
+  end
+
+  def authorization_context
+    return user if user.is_a?(AuthorizationContext)
+    return AuthorizationContext.current if AuthorizationContext.current
+    return unless user.respond_to?(:person)
+
+    account = user.person&.account
+    membership = account&.first_active_household_membership
+    return unless membership
+
+    AuthorizationContext.new(account: account, household: membership.household, membership: membership)
   end
 end

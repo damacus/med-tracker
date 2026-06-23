@@ -66,8 +66,6 @@ Metrics/MethodLength:
   Max: 15
   Exclude:
     - "test/system/playwright/**/*"
-    - "app/controllers/pwa_controller.rb"
-    - "manifest_icons"
     - "db/migrate/**/*"
     - "app/views/**/*"
     - "app/components/**/*"
@@ -84,6 +82,13 @@ Metrics/AbcSize:
 Metrics/CyclomaticComplexity:
   Exclude:
     - "app/components/ruby_ui/**/*"
+
+RSpec/DescribeClass:
+  Exclude:
+    - "spec/features/**/*"
+    - "spec/requests/**/*"
+    - "spec/system/**/*"
+    - "spec/architecture/**/*"
 
 # Disable documentation requirement - not always necessary for Rails apps
 Style/Documentation:
@@ -119,27 +124,3 @@ Naming/VariableNumber:
 Naming/MethodParameterName:
   Exclude:
     - "app/components/**/*"
-
-# Allow useless constant scoping in PWA controller for clarity
-Lint/UselessConstantScoping:
-  Exclude:
-    - "app/controllers/pwa_controller.rb"
-
-# Ignore boolean column constraint in existing migrations
-Rails/ThreeStateBooleanColumn:
-  Exclude:
-    - "db/migrate/20250625135502_add_active_to_presciptions.rb"
-
-# Allow non-reversible migrations when intentional (cleanup migrations)
-Rails/ReversibleMigration:
-  Exclude:
-    - "db/migrate/20250930220140_create_carer_relationships.rb"
-
-# Standard Rails test boilerplate uses abort for safety checks
-Rails/Exit:
-  Exclude:
-    - "spec/rails_helper.rb"
-
-Rails/StrongParametersExpect:
-  Exclude:
-    - "app/controllers/concerns/medication_form_context.rb"

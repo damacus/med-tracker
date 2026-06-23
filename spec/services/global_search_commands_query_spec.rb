@@ -31,8 +31,7 @@ RSpec.describe GlobalSearchCommandsQuery do
 
         # Admins can create medications and run the schedule workflow
         # "Add person" requires carer_or_parent? so it is not shown to admins
-        expect(titles).to include('Add medication', 'Schedule workflow')
-        expect(titles).not_to include('Add person')
+        expect(titles).to include('Add medication', 'Add person', 'Schedule workflow')
       end
 
       it 'assigns a score of 50 to every command' do

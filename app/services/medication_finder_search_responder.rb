@@ -66,9 +66,25 @@ class MedicationFinderSearchResponder
       id: medication.id,
       name: medication.display_name,
       location: medication.location.name,
-      path: Rails.application.routes.url_helpers.medication_path(medication),
-      refill_path: Rails.application.routes.url_helpers.refill_medication_path(medication),
+      path: medication_path(medication),
+      refill_path: refill_medication_path(medication),
       current_supply: MedicationStockQuantityFormatter.format(medication.current_supply)
     }
+  end
+
+  def medication_path(medication)
+    route_helpers.medication_path(household_slug_for(medication), medication)
+  end
+
+  def refill_medication_path(medication)
+    route_helpers.refill_medication_path(household_slug_for(medication), medication)
+  end
+
+  def household_slug_for(medication)
+    Current.household&.slug || medication.household&.slug
+  end
+
+  def route_helpers
+    Rails.application.routes.url_helpers
   end
 end

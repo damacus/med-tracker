@@ -38,7 +38,7 @@ module Components
               m3_text(weight: 'muted', class: 'mt-2 block') { t('admin.carer_relationships.index.subtitle') }
             end
             render RubyUI::Link.new(
-              href: '/admin/carer_relationships/new',
+              href: new_admin_carer_relationship_path,
               variant: :filled,
               size: :lg,
               class: 'rounded-2xl shadow-lg shadow-primary/20',
@@ -157,7 +157,7 @@ module Components
             render_deactivate_dialog(relationship)
           else
             form_with(
-              url: "/admin/carer_relationships/#{relationship.id}/activate",
+              url: activate_admin_carer_relationship_path(relationship),
               method: :post,
               class: 'inline-block'
             ) do
@@ -188,7 +188,7 @@ module Components
               end
               render RubyUI::AlertDialogFooter.new do
                 render(RubyUI::AlertDialogCancel.new { t('admin.carer_relationships.index.deactivate_dialog.cancel') })
-                form_with(url: "/admin/carer_relationships/#{relationship.id}", method: :delete, class: 'inline') do
+                form_with(url: admin_carer_relationship_path(relationship), method: :delete, class: 'inline') do
                   m3_button(variant: :destructive, type: :submit) do
                     t('admin.carer_relationships.index.deactivate_dialog.submit')
                   end

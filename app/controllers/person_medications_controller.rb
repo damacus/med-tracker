@@ -10,8 +10,8 @@ class PersonMedicationsController < ApplicationController
   before_action :set_person_medication, only: %i[edit update destroy take_medication reorder]
 
   def new
-    authorize PersonMedication
     prepare_new_person_medication
+    authorize @person_medication
     render_person_medication_form(
       title: t('person_medications.modal.new_title', person: @person.name),
       back_path: modal_back_path(@person)
@@ -169,8 +169,8 @@ class PersonMedicationsController < ApplicationController
   def person_medication_create_streams
     [
       turbo_stream.update('modal', ''),
-      turbo_stream.replace("person_#{@person.id}", Components::People::PersonCard.new(person: @person.reload)),
-      turbo_stream.replace("person_show_#{@person.id}", person_show_view(@person.reload)),
+      turbo_stream.replace(tenant_dom_id(@person), Components::People::PersonCard.new(person: @person.reload)),
+      turbo_stream.replace(tenant_dom_target("person_show_#{@person.id}"), person_show_view(@person.reload)),
       turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
     ]
   end
@@ -188,7 +188,7 @@ class PersonMedicationsController < ApplicationController
   def person_medication_update_streams
     [
       turbo_stream.update('modal', ''),
-      turbo_stream.replace("person_show_#{@person.id}", person_show_view(@person.reload)),
+      turbo_stream.replace(tenant_dom_target("person_show_#{@person.id}"), person_show_view(@person.reload)),
       turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
     ]
   end
@@ -199,7 +199,7 @@ class PersonMedicationsController < ApplicationController
       format.turbo_stream do
         flash.now[:notice] = t('person_medications.deleted')
         render turbo_stream: [
-          turbo_stream.replace("person_show_#{@person.id}", person_show_view(@person.reload)),
+          turbo_stream.replace(tenant_dom_target("person_show_#{@person.id}"), person_show_view(@person.reload)),
           turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
         ]
       end
@@ -210,7 +210,10 @@ class PersonMedicationsController < ApplicationController
     respond_to do |format|
       format.html { redirect_back_or_to person_path(@person) }
       format.turbo_stream do
-        render turbo_stream: turbo_stream.replace("person_show_#{@person.id}", person_show_view(@person.reload))
+        render turbo_stream: turbo_stream.replace(
+          tenant_dom_target("person_show_#{@person.id}"),
+          person_show_view(@person.reload)
+        )
       end
     end
   end
@@ -282,7 +285,13 @@ class PersonMedicationsController < ApplicationController
   end
 
   def medication_options_query
-    @medication_options_query ||= MedicationOptionsQuery.new(scope: policy_scope(Medication))
+    @medication_options_query ||= MedicationOptionsQuery.new(scope: person_medication_inventory_scope)
+  end
+
+  def person_medication_inventory_scope
+    return policy_scope(Medication) unless Current.household
+
+    Medication.where(household: Current.household)
   end
 
   def explicit_dose_submitted?

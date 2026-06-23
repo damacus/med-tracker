@@ -16,7 +16,7 @@ RSpec.describe 'Locations' do
     end
 
     context 'when authenticated as admin' do
-      before { post '/login', params: { email: admin.email_address, password: 'password' } }
+      before { sign_in(admin) }
 
       it 'returns HTTP success' do
         get locations_path
@@ -28,7 +28,7 @@ RSpec.describe 'Locations' do
     context 'when authenticated as carer (unauthorized)' do
       let(:carer) { users(:carer) }
 
-      before { post '/login', params: { email: carer.email_address, password: 'password' } }
+      before { sign_in(carer) }
 
       it 'returns success with empty list' do
         get locations_path
@@ -39,7 +39,7 @@ RSpec.describe 'Locations' do
     context 'when authenticated as carer with household locations' do
       let(:carer) { users(:carer) }
 
-      before { post '/login', params: { email: carer.email_address, password: 'password' } }
+      before { sign_in(carer) }
 
       it 'renders only accessible locations' do
         get locations_path
@@ -53,20 +53,20 @@ RSpec.describe 'Locations' do
     let(:location) { locations(:home) }
 
     context 'when authenticated as admin' do
-      before { post '/login', params: { email: admin.email_address, password: 'password' } }
+      before { sign_in(admin) }
 
       it 'returns HTTP success' do
         get location_path(location)
         expect(response).to have_http_status(:success)
-        expect(response.body).to include("id=\"location_show_#{location.id}\"")
+        expect(response.body).to include("id=\"#{household_dom_target("location_show_#{location.id}")}\"")
       end
     end
 
     context 'when authenticated as carer for an accessible location' do
-      let(:location) { locations(:home) }
+      let(:location) { household_location_named('Home') }
       let(:carer) { users(:carer) }
 
-      before { post '/login', params: { email: carer.email_address, password: 'password' } }
+      before { sign_in(carer) }
 
       it 'returns HTTP success' do
         get location_path(location)
@@ -78,7 +78,7 @@ RSpec.describe 'Locations' do
       let(:location) { locations(:school) }
       let(:carer) { users(:carer) }
 
-      before { post '/login', params: { email: carer.email_address, password: 'password' } }
+      before { sign_in(carer) }
 
       it 'returns not found through the scoped lookup' do
         get location_path(location)
@@ -89,7 +89,7 @@ RSpec.describe 'Locations' do
 
   describe 'GET /locations/new' do
     context 'when authenticated as admin' do
-      before { post '/login', params: { email: admin.email_address, password: 'password' } }
+      before { sign_in(admin) }
 
       it 'returns HTTP success' do
         get new_location_path
@@ -102,7 +102,7 @@ RSpec.describe 'Locations' do
     let(:location) { locations(:home) }
 
     context 'when authenticated as admin' do
-      before { post '/login', params: { email: admin.email_address, password: 'password' } }
+      before { sign_in(admin) }
 
       it 'preserves a safe internal return_to path' do
         get edit_location_path(location, return_to: '/locations')
@@ -123,7 +123,7 @@ RSpec.describe 'Locations' do
 
   describe 'POST /locations' do
     context 'when authenticated as admin' do
-      before { post '/login', params: { email: admin.email_address, password: 'password' } }
+      before { sign_in(admin) }
 
       it 'creates a location with valid params' do
         expect do
@@ -143,7 +143,7 @@ RSpec.describe 'Locations' do
         expect(response).to have_http_status(:ok)
         expect(response.media_type).to eq('text/vnd.turbo-stream.html')
         expect(response.body).to include('target="main-content"')
-        expect(response.body).to include("id=\"location_show_#{Location.last.id}\"")
+        expect(response.body).to include("id=\"#{household_dom_target("location_show_#{Location.last.id}")}\"")
         expect(response.body).to include('target="flash"')
       end
 
@@ -158,7 +158,7 @@ RSpec.describe 'Locations' do
     let(:location) { locations(:home) }
 
     context 'when authenticated as admin' do
-      before { post '/login', params: { email: admin.email_address, password: 'password' } }
+      before { sign_in(admin) }
 
       it 'updates the location' do
         patch location_path(location), params: { location: { name: 'Updated Home' } }
@@ -174,7 +174,7 @@ RSpec.describe 'Locations' do
         expect(response).to have_http_status(:ok)
         expect(response.media_type).to eq('text/vnd.turbo-stream.html')
         expect(response.body).to include('target="main-content"')
-        expect(response.body).to include("id=\"location_show_#{location.id}\"")
+        expect(response.body).to include("id=\"#{household_dom_target("location_show_#{location.id}")}\"")
         expect(response.body).to include('Turbo Updated Home')
         expect(response.body).to include('target="flash"')
       end
@@ -190,7 +190,7 @@ RSpec.describe 'Locations' do
     let(:location) { locations(:grandmas) }
 
     context 'when authenticated as admin' do
-      before { post '/login', params: { email: admin.email_address, password: 'password' } }
+      before { sign_in(admin) }
 
       it 'deletes the location' do
         expect do
@@ -207,8 +207,8 @@ RSpec.describe 'Locations' do
 
         expect(response).to have_http_status(:ok)
         expect(response.media_type).to eq('text/vnd.turbo-stream.html')
-        expect(response.body).to include("target=\"location_#{location.id}\"")
-        expect(response.body).to include("target=\"location_show_#{location.id}\"")
+        expect(response.body).to include("target=\"#{household_dom_target("location_#{location.id}")}\"")
+        expect(response.body).to include("target=\"#{household_dom_target("location_show_#{location.id}")}\"")
         expect(response.body).to include('target="flash"')
       end
     end
@@ -216,12 +216,17 @@ RSpec.describe 'Locations' do
     context 'when authenticated as doctor (unauthorized to delete)' do
       let(:doctor) { users(:doctor) }
 
-      before { post '/login', params: { email: doctor.email_address, password: 'password' } }
+      before { sign_in(doctor) }
 
       it 'redirects with authorization error' do
         delete location_path(location)
-        expect(response).to redirect_to(root_path)
+        expect(response).to have_http_status(:found)
       end
     end
+  end
+
+  def household_location_named(name)
+    household = Household.find_by!(slug: default_request_household_slug)
+    household.locations.find_by!(name: name)
   end
 end

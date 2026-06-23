@@ -19,7 +19,10 @@ module GlobalSearch
         type: 'person_medication',
         title: person_medication.medication.display_name,
         subtitle: I18n.t('global_search.subtitles.person_medication', person: person_medication.person.name),
-        path: person_path(person_medication.person, anchor: "person_medication_#{person_medication.id}"),
+        path: person_path(
+          *tenant_route_args(person_medication.person),
+          anchor: "person_medication_#{person_medication.id}"
+        ),
         secondary_values: [person_medication.person.name]
       )
     end

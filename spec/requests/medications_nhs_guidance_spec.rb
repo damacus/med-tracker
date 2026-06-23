@@ -15,7 +15,7 @@ RSpec.describe 'Medication NHS guidance' do
     get medication_path(medication)
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("src=\"/medications/#{medication.id}/nhs_guidance\"")
+    expect(response.body).to include("src=\"#{nhs_guidance_medication_path(medication)}\"")
     expect(response.body).not_to include('NHS medicine guidance')
     expect(NhsWebsiteContent::MedicineGuidanceLookup).not_to have_received(:new)
   end

@@ -64,6 +64,8 @@ RSpec.describe 'Profiles' do
         sign_count: 0,
         nickname: 'Test Passkey'
       )
+      session[:authenticated_by] = %w[password totp]
+      session['authenticated_by'] = %w[password totp]
 
       get profile_path
 
@@ -131,19 +133,34 @@ RSpec.describe 'Profiles' do
     end
 
     it 'updates the Gravatar opt-in preference' do
-      patch profile_path, params: { user: { gravatar_enabled: '1' } }
+      patch profile_path, params: { account: { gravatar_enabled: '1' } }
 
       expect(response).to redirect_to(profile_path)
-      expect(user.reload.gravatar_enabled?).to be(true)
+      expect(account.reload.gravatar_enabled?).to be(true)
     end
 
     it 'disables the Gravatar opt-in preference' do
-      user.update!(gravatar_enabled: '1')
+      account.update!(gravatar_enabled: '1')
 
-      patch profile_path, params: { user: { gravatar_enabled: '0' } }
+      patch profile_path, params: { account: { gravatar_enabled: '0' } }
 
       expect(response).to redirect_to(profile_path)
-      expect(user.reload.gravatar_enabled?).to be(false)
+      expect(account.reload.gravatar_enabled?).to be(false)
+    end
+
+    it 'rejects a blank account email' do
+      patch profile_path, params: { account: { email: '' } }
+
+      expect(response).to redirect_to(profile_path)
+      expect(flash[:alert]).to include("Email can't be blank")
+      expect(account.reload.email).to be_present
+    end
+
+    it 'updates the account email' do
+      patch profile_path, params: { account: { email: 'updated@example.test' } }
+
+      expect(response).to redirect_to(profile_path)
+      expect(account.reload.email).to eq('updated@example.test')
     end
 
     it 'returns turbo_stream and updates flash when no changes are submitted' do
@@ -153,6 +170,53 @@ RSpec.describe 'Profiles' do
       expect(response.media_type).to eq('text/vnd.turbo-stream.html')
       expect(response.body).to include('target="flash"')
       expect(response.body).to include(I18n.t('profiles.no_changes'))
+    end
+
+    it 'returns turbo_stream when profile changes are invalid' do
+      file = Tempfile.new(['avatar', '.txt'])
+      file.write('not an image')
+      file.rewind
+
+      patch profile_path,
+            params: { person: { avatar: Rack::Test::UploadedFile.new(file.path, 'text/plain') } },
+            headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.media_type).to eq('text/vnd.turbo-stream.html')
+      expect(response.body).to include('target="flash"')
+      expect(user.person.reload.avatar).not_to be_attached
+    ensure
+      file&.close
+      file&.unlink
+    end
+  end
+
+  describe 'PATCH /profile/experiments' do
+    it 'updates the wizard variant preference' do
+      patch experiments_profile_path, params: { account: { wizard_variant: 'modal' } }
+
+      expect(response).to redirect_to(profile_path)
+      expect(account.reload.wizard_variant).to eq('modal')
+    end
+
+    it 'falls back to fullpage for invalid wizard variants' do
+      account.update!(wizard_variant: 'modal')
+
+      patch experiments_profile_path, params: { account: { wizard_variant: 'invalid' } }
+
+      expect(response).to redirect_to(profile_path)
+      expect(account.reload.wizard_variant).to eq('fullpage')
+    end
+
+    it 'updates the experiments card over turbo_stream' do
+      patch experiments_profile_path,
+            params: { account: { wizard_variant: 'slideover' } },
+            headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.media_type).to eq('text/vnd.turbo-stream.html')
+      expect(response.body).to include('target="experiments-card"')
+      expect(account.reload.wizard_variant).to eq('slideover')
     end
   end
 

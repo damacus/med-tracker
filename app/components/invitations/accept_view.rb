@@ -25,7 +25,7 @@ module Components
         div(class: 'mx-auto max-w-xl text-center space-y-3') do
           m3_heading(level: 1, class: 'text-4xl font-bold tracking-tight text-foreground sm:text-5xl') { t('app.name') }
           m3_text(size: 'lg', class: 'text-on-surface-variant sm:text-xl') do
-            t('invitations.accept.welcome', role: t("activerecord.attributes.invitation.roles.#{@invitation.role}"))
+            t('invitations.accept.welcome', role: @invitation.membership_role.humanize)
           end
         end
       end

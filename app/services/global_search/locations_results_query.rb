@@ -17,7 +17,7 @@ module GlobalSearch
         type: 'location',
         title: location.name,
         subtitle: I18n.t('global_search.types.location'),
-        path: location_path(location)
+        path: location_path(*tenant_route_args(location))
       )
     end
   end

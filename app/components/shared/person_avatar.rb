@@ -96,7 +96,7 @@ module Components
       end
 
       def gravatar_enabled?
-        person.user&.gravatar_enabled?
+        person.account&.gravatar_enabled?
       end
 
       def avatar_email

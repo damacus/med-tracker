@@ -4,6 +4,7 @@
 class MedicationTake < ApplicationRecord
   include OtelInstrumented
 
+  belongs_to :household, optional: true
   belongs_to :schedule, optional: true
   belongs_to :person_medication, optional: true
   belongs_to :taken_from_medication, class_name: 'Medication', optional: true
@@ -26,6 +27,7 @@ class MedicationTake < ApplicationRecord
   validate :taken_from_location_matches_medication
   validate :taken_from_medication_is_in_stock
 
+  before_validation :assign_household
   before_validation :assign_taken_from_location
   before_validation :assign_dose_snapshot
   after_create :decrement_medication_stock
@@ -61,6 +63,18 @@ class MedicationTake < ApplicationRecord
   end
 
   private
+
+  def assign_household
+    self.household ||= source_household || inventory_household
+  end
+
+  def source_household
+    schedule&.household || person_medication&.household
+  end
+
+  def inventory_household
+    taken_from_medication&.household || taken_from_location&.household
+  end
 
   def decrement_medication_stock
     stock_change = stock_mutation.decrement
@@ -120,24 +134,18 @@ class MedicationTake < ApplicationRecord
   def otel_base_span_attributes(operation)
     {
       'model.name' => self.class.name,
-      'model.id' => id.to_s,
-      'model.operation' => operation,
-      'medication_take.taken_at' => taken_at&.iso8601,
-      'medication_take.dose_amount' => dose_amount&.to_s,
-      'medication_take.dose_unit' => dose_unit
+      'model.operation' => operation
     }
   end
 
   def otel_source_span_attributes
     if schedule_id
       {
-        'medication_take.source_type' => 'schedule',
-        'medication_take.schedule_id' => schedule_id.to_s
+        'medication_take.source_type' => 'schedule'
       }
     elsif person_medication_id
       {
-        'medication_take.source_type' => 'person_medication',
-        'medication_take.person_medication_id' => person_medication_id.to_s
+        'medication_take.source_type' => 'person_medication'
       }
     else
       {}
@@ -145,11 +153,7 @@ class MedicationTake < ApplicationRecord
   end
 
   def taken_from_span_attributes
-    return {} unless taken_from_medication_id
-
-    attrs = { 'medication_take.taken_from_medication_id' => taken_from_medication_id.to_s }
-    attrs['medication_take.taken_from_location_id'] = taken_from_location_id.to_s if taken_from_location_id
-    attrs
+    {}
   end
 
   def remember_low_stock_threshold_crossing(inventory:, stock_row:)

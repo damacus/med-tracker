@@ -2,7 +2,7 @@
 
 class AdminDashboardPolicy < ApplicationPolicy
   def index?
-    admin?
+    household_manager?
   end
 
   class Scope < ApplicationPolicy::Scope

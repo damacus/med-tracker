@@ -2,11 +2,12 @@
 
 module Admin
   class UsersIndexQuery
-    attr_reader :scope, :filters
+    attr_reader :scope, :filters, :household
 
-    def initialize(scope:, filters:)
+    def initialize(scope:, filters:, household: nil)
       @scope = scope
       @filters = filters
+      @household = household
     end
 
     def call
@@ -21,8 +22,8 @@ module Admin
         relation.left_joins(:person).order(Person.arel_table[:name].public_send(direction_symbol))
       when 'email'
         relation.order(email_address: direction_symbol)
-      when 'role'
-        relation.order(role: direction_symbol)
+      when 'membership_role'
+        order_by_membership_role(relation)
       else
         relation.order(created_at: direction_symbol)
       end
@@ -31,7 +32,7 @@ module Admin
     def filtered_scope
       relation = scope.includes(:person)
       relation = apply_search(relation) if search.present?
-      relation = relation.where(role: role) if role.present?
+      relation = apply_membership_role_filter(relation) if membership_role.present?
       relation = apply_status_filter(relation) if status.present?
       relation
     end
@@ -40,8 +41,8 @@ module Admin
       filters[:search].to_s.presence
     end
 
-    def role
-      filters[:role].to_s.presence
+    def membership_role
+      filters[:membership_role].to_s.presence
     end
 
     def status
@@ -79,8 +80,27 @@ module Admin
       account_join.where(accounts: { id: nil }).or(account_join.where(accounts: { status: Account.statuses[:closed] }))
     end
 
+    def apply_membership_role_filter(relation)
+      return relation.none if household.blank?
+
+      household_membership_join(relation).where(
+        household_memberships: {
+          household_id: household.id,
+          role: membership_role
+        }
+      )
+    end
+
+    def household_membership_join(relation)
+      relation.left_joins(person: { account: :household_memberships })
+    end
+
+    def order_by_membership_role(relation)
+      household_membership_join(relation).order(HouseholdMembership.arel_table[:role].public_send(direction_symbol))
+    end
+
     def sort_column
-      sort.presence_in(%w[name email created_at role]) || 'created_at'
+      sort.presence_in(%w[name email created_at membership_role]) || 'created_at'
     end
 
     def direction_symbol

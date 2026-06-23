@@ -6,8 +6,8 @@ class InvitationsController < ApplicationController
 
   def accept
     token_value = params.expect(:token).to_s
-    digest = Invitation.digest(token_value)
-    @invitation = Invitation.pending.where.not(role: Invitation.roles[:minor]).find_by(token_digest: digest)
+    digest = HouseholdInvitation.digest(token_value)
+    @invitation = HouseholdInvitation.pending.find_by(token_digest: digest)
 
     unless @invitation
       render plain: 'This invitation link is invalid or has expired.', status: :not_found

@@ -29,7 +29,7 @@ module PhlexTestingSupport
       controller.instance_variable_set(:@_routes, Rails.application.routes)
       controller.singleton_class.include(Rails.application.routes.url_helpers)
       controller.singleton_class.define_method(:default_url_options) do
-        { host: 'test.host' }
+        { host: 'test.host', household_slug: Current.household&.slug || 'test-household' }
       end
     end
   end

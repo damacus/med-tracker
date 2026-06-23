@@ -14,7 +14,7 @@ RSpec.describe 'Signup verification email', type: :system do
   end
 
   describe 'after account creation via invitation' do
-    let!(:invitation) { Invitation.create!(email: new_user_email, role: :nurse) }
+    let!(:invitation) { create(:household_invitation, email: new_user_email, membership_role: :member) }
 
     before do
       visit accept_invitation_path(token: invitation.token)

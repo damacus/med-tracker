@@ -23,6 +23,8 @@ module AiMedication
         whodunnit: user&.id&.to_s,
         ip: PaperTrail.request.controller_info&.dig(:ip),
         request_id: PaperTrail.request.controller_info&.dig(:request_id),
+        household_id: household_id,
+        actor_membership_id: actor_membership_id,
         created_at: Time.current
       }
     end
@@ -43,6 +45,14 @@ module AiMedication
 
     def result_status(suggestion)
       suggestion.errors.any? ? 'error' : 'found'
+    end
+
+    def household_id
+      PaperTrail.request.controller_info&.dig(:household_id) || Current.household&.id
+    end
+
+    def actor_membership_id
+      PaperTrail.request.controller_info&.dig(:actor_membership_id) || Current.membership&.id
     end
   end
 end

@@ -3,189 +3,58 @@
 require 'rails_helper'
 
 RSpec.describe MedicationPolicy, type: :policy do
-  fixtures :all
-  subject(:policy) { described_class.new(current_user, medication) }
+  let(:owner) { household_policy_member(role: :owner) }
+  let(:household) { owner.fetch(:household) }
+  let(:member) { household_policy_member(role: :member, household: household) }
+  let(:person) { household_policy_person(household) }
+  let(:medication) { household_policy_medication(household) }
+  let(:other_medication) { household_policy_medication(household_policy_member(role: :owner).fetch(:household)) }
 
-  let(:medication) { medications(:ibuprofen) }
-
-  describe 'for admin' do
-    let(:current_user) { users(:admin) }
-
-    it 'permits all actions' do
-      aggregate_failures do
-        expect(policy.index?).to be true
-        expect(policy.show?).to be true
-        expect(policy.create?).to be true
-        expect(policy.new?).to be true
-        expect(policy.update?).to be true
-        expect(policy.edit?).to be true
-        expect(policy.refill?).to be true
-        expect(policy.destroy?).to be true
-        expect(policy.finder?).to be true
-      end
-    end
+  it 'allows active household members to reach the medication index' do
+    expect(described_class.new(member.fetch(:context), Medication).index?).to be(true)
   end
 
-  describe 'for doctor' do
-    let(:current_user) { users(:doctor) }
+  it 'shows medication only through household management or explicit person grants' do
+    expect(described_class.new(owner.fetch(:context), medication).show?).to be(true)
+    expect(described_class.new(member.fetch(:context), medication).show?).to be(false)
 
-    it 'permits most actions except deletion' do
-      aggregate_failures do
-        expect(policy.index?).to be true
-        expect(policy.show?).to be true
-        expect(policy.create?).to be true
-        expect(policy.new?).to be true
-        expect(policy.update?).to be true
-        expect(policy.edit?).to be true
-        expect(policy.refill?).to be true
-        expect(policy.destroy?).to be false
-        expect(policy.finder?).to be true
-      end
-    end
+    household_policy_schedule(household, person: person, medication: medication)
+    grant_policy_person_access(member, person, access_level: :view)
+
+    expect(described_class.new(member.fetch(:context), medication).show?).to be(true)
+    expect(described_class.new(member.fetch(:context), other_medication).show?).to be(false)
   end
 
-  describe 'for nurse' do
-    let(:current_user) { users(:nurse) }
-
-    it 'permits viewing, restocking, and finder access' do
-      aggregate_failures do
-        expect(policy.index?).to be true
-        expect(policy.show?).to be true
-        expect(policy.create?).to be false
-        expect(policy.new?).to be false
-        expect(policy.update?).to be false
-        expect(policy.edit?).to be false
-        expect(policy.refill?).to be true
-        expect(policy.destroy?).to be false
-        expect(policy.finder?).to be true
-      end
-    end
+  it 'allows managers to update and destroy household medications' do
+    expect(described_class.new(owner.fetch(:context), medication).update?).to be(true)
+    expect(described_class.new(owner.fetch(:context), medication).destroy?).to be(true)
+    expect(described_class.new(owner.fetch(:context), other_medication).update?).to be(false)
+    expect(described_class.new(member.fetch(:context), medication).update?).to be(false)
   end
 
-  describe 'for carer' do
-    let(:current_user) { users(:carer) }
+  it 'allows creation for managers or members with manage grants' do
+    location = household_policy_location(household)
 
-    it 'permits viewing, restocking, and finder access' do
-      aggregate_failures do
-        expect(policy.index?).to be true
-        expect(policy.show?).to be true
-        expect(policy.create?).to be false
-        expect(policy.new?).to be false
-        expect(policy.update?).to be false
-        expect(policy.edit?).to be false
-        expect(policy.refill?).to be true
-        expect(policy.destroy?).to be false
-        expect(policy.finder?).to be true
-      end
-    end
+    expect(described_class.new(owner.fetch(:context), Medication.new(location: location)).create?).to be(true)
+    expect(described_class.new(member.fetch(:context), Medication.new(location: location)).create?).to be(false)
+
+    grant_policy_person_access(member, person, access_level: :manage)
+
+    expect(described_class.new(member.fetch(:context), Medication.new(location: location)).create?).to be(true)
   end
 
-  describe 'for parent' do
-    let(:current_user) { users(:parent) }
+  it 'scopes medications to household managers or granted people' do
+    medication
+    other_medication
+    granted_medication = household_policy_medication(household)
+    household_policy_person_medication(household, person: person, medication: granted_medication)
+    grant_policy_person_access(member, person, access_level: :view)
 
-    it 'permits viewing and creating but forbids edit/removal actions' do
-      aggregate_failures do
-        expect(policy.index?).to be true
-        expect(policy.show?).to be true
-        expect(policy.create?).to be true
-        expect(policy.new?).to be true
-        expect(policy.update?).to be false
-        expect(policy.edit?).to be false
-        expect(policy.refill?).to be true
-        expect(policy.destroy?).to be false
-        expect(policy.finder?).to be true
-      end
-    end
-  end
+    manager_scope = described_class::Scope.new(owner.fetch(:context), Medication.all).resolve
+    member_scope = described_class::Scope.new(member.fetch(:context), Medication.all).resolve
 
-  describe 'for patient (carer role managing own care)' do
-    let(:current_user) { users(:adult_patient) }
-
-    it 'permits viewing but forbids write actions' do
-      aggregate_failures do
-        expect(policy.index?).to be true
-        expect(policy.show?).to be true
-        expect(policy.create?).to be false
-        expect(policy.new?).to be false
-        expect(policy.update?).to be false
-        expect(policy.edit?).to be false
-        expect(policy.refill?).to be true
-        expect(policy.destroy?).to be false
-        expect(policy.finder?).to be true
-      end
-    end
-  end
-
-  describe 'for nil user' do
-    let(:current_user) { nil }
-
-    it 'forbids all actions' do
-      aggregate_failures do
-        expect(policy.index?).to be false
-        expect(policy.show?).to be false
-        expect(policy.create?).to be false
-        expect(policy.new?).to be false
-        expect(policy.update?).to be false
-        expect(policy.edit?).to be false
-        expect(policy.refill?).to be false
-        expect(policy.destroy?).to be false
-        expect(policy.finder?).to be false
-      end
-    end
-  end
-
-  describe 'Scope' do
-    subject(:scope) { MedicationPolicy::Scope.new(current_user, Medication.all).resolve }
-
-    describe 'for admin' do
-      let(:current_user) { users(:admin) }
-
-      it 'returns all medications' do
-        expect(scope).to include(medications(:ibuprofen))
-      end
-    end
-
-    describe 'for doctor' do
-      let(:current_user) { users(:doctor) }
-
-      it 'returns all medications' do
-        expect(scope).to include(medications(:ibuprofen))
-      end
-    end
-
-    describe 'for nurse' do
-      let(:current_user) { users(:nurse) }
-
-      it 'returns all medications' do
-        expect(scope).to include(medications(:ibuprofen))
-      end
-    end
-
-    describe 'for carer' do
-      let(:current_user) { users(:carer) }
-
-      it 'returns medications at their locations' do
-        # Carer has relationship with Adult Patient and Child Patient at Grandma's House
-        # Medications ibuprofen and paracetamol are at Grandma's House
-        expect(scope).to include(medications(:ibuprofen))
-      end
-    end
-
-    describe 'for parent' do
-      let(:current_user) { users(:parent) }
-
-      it 'returns medications at their locations' do
-        # Parent is at Home, Child Patient is also at Home
-        expect(scope).to include(medications(:paracetamol))
-      end
-    end
-
-    describe 'for unauthenticated user' do
-      let(:current_user) { nil }
-
-      it 'returns no medications' do
-        expect(scope).to be_empty
-      end
-    end
+    expect(manager_scope).to include(medication, granted_medication)
+    expect(manager_scope).not_to include(other_medication)
+    expect(member_scope).to contain_exactly(granted_medication)
   end
 end

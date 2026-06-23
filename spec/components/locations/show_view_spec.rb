@@ -12,7 +12,7 @@ RSpec.describe Components::Locations::ShowView, type: :component do
   it 'keeps long medication names and supply badges within the medication card layout' do
     rendered = render_location
 
-    name_link = rendered.at_css("a[href='/medications/#{medication.id}']")
+    name_link = rendered.at_css("a[href='/households/test-household/medications/#{medication.id}']")
     expect(name_link.text).to include(medication_name)
     expect(name_link['class']).to include('break-words')
 

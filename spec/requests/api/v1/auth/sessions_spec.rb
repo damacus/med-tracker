@@ -8,7 +8,21 @@ RSpec.describe 'API v1 auth sessions' do
   let(:user) { users(:jane) }
 
   describe 'POST /api/v1/auth/login' do
+    def create_api_household_for(user)
+      household = Household.create!(name: "API Auth #{SecureRandom.hex(4)}", slug: "api-auth-#{SecureRandom.hex(4)}")
+      user.person.update!(household: household)
+      household.household_memberships.create!(
+        account: user.person.account,
+        person: user.person,
+        role: :owner,
+        status: :active
+      )
+      household
+    end
+
     it 'returns access and refresh tokens with the current user payload' do
+      create_api_household_for(user)
+
       post api_v1_auth_login_path,
            params: {
              email: user.email_address,
@@ -27,7 +41,53 @@ RSpec.describe 'API v1 auth sessions' do
       expect(api_session.device_name).to eq('RSpec iPhone')
     end
 
+    it 'binds login to the sole active household membership when household_id is omitted' do
+      household = create_api_household_for(user)
+
+      post api_v1_auth_login_path,
+           params: {
+             email: user.email_address,
+             password: 'password',
+             device_name: 'RSpec iPhone'
+           },
+           as: :json
+
+      api_session = ApiSession.order(:id).last
+      expect(response).to have_http_status(:created)
+      expect(api_session.household_membership).to eq(household.household_memberships.sole)
+      expect(response.parsed_body.dig('data', 'household', 'id')).to eq(household.id)
+    end
+
+    it 'binds sessions to the requested active household membership' do
+      household = Household.create!(name: 'API Family', slug: 'api-family')
+      people(:jane).update!(household: household)
+      membership = household.household_memberships.create!(
+        account: user.person.account,
+        person: people(:jane),
+        role: :owner,
+        status: :active
+      )
+
+      post api_v1_auth_login_path,
+           params: {
+             email: user.email_address,
+             password: 'password',
+             household_id: household.id,
+             device_name: 'RSpec iPhone'
+           },
+           as: :json
+
+      expect(response).to have_http_status(:created)
+      expect(response.parsed_body.dig('data', 'household', 'id')).to eq(household.id)
+
+      api_session = ApiSession.order(:id).last
+      expect(api_session.household_membership).to eq(membership)
+      expect(api_session.permissions_version).to eq(membership.permissions_version)
+    end
+
     it 'records a redacted session creation audit event' do
+      create_api_household_for(user)
+
       expect do
         post api_v1_auth_login_path,
              params: {
@@ -127,12 +187,13 @@ RSpec.describe 'API v1 auth sessions' do
     it 'revokes the current access token' do
       login_data = api_login(user)
       headers = api_auth_headers(login_data.fetch('access_token'))
+      household_id = login_data.dig('household', 'id')
 
       delete api_v1_auth_logout_path, headers: headers, as: :json
 
       expect(response).to have_http_status(:no_content)
 
-      get api_v1_me_path, headers: headers, as: :json
+      get api_v1_household_me_path(household_id), headers: headers, as: :json
 
       expect(response).to have_http_status(:unauthorized)
       expect(response.parsed_body.dig('error', 'code')).to eq('unauthorized')

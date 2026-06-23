@@ -2,10 +2,10 @@
 
 class LocationMembershipPolicy < ApplicationPolicy
   def create?
-    admin?
+    household_manager?
   end
 
   def destroy?
-    admin?
+    household_manager? && same_household?(record)
   end
 end

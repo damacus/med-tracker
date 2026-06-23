@@ -11,10 +11,10 @@ module Admin
     def create
       authorize :invitation, :create?
 
-      @invitation = Invitation.new(invitation_params)
+      @invitation = build_household_invitation
 
       respond_to do |format|
-        if @invitation.save
+        if create_household_invitation
           InvitationMailer.with(invitation: @invitation, token: @invitation.plain_token).invite.deliver_later
           format.html { redirect_to admin_invitations_path, notice: t('admin.invitations.created') }
           format.turbo_stream do
@@ -36,7 +36,7 @@ module Admin
     end
 
     def resend
-      @invitation = Invitation.find(params.expect(:id))
+      @invitation = current_household.household_invitations.find(params.expect(:id))
       authorize @invitation, :resend?
 
       if @invitation.resendable?
@@ -51,7 +51,7 @@ module Admin
     end
 
     def destroy
-      @invitation = Invitation.find(params.expect(:id))
+      @invitation = current_household.household_invitations.find(params.expect(:id))
       authorize @invitation, :destroy?
 
       if @invitation.cancellable?
@@ -65,7 +65,67 @@ module Admin
     private
 
     def invitation_params
-      params.expect(invitation: [:email, :role, { dependent_ids: [] }])
+      params.expect(invitation: [:email, :membership_role, :access_level, :relationship_type, { dependent_ids: [] }])
+    end
+
+    def build_household_invitation
+      invitation = current_household.household_invitations.new(
+        email: invitation_params[:email],
+        membership_role: invitation_params[:membership_role],
+        invited_by_membership: current_membership
+      )
+      invitation.access_level = invitation_params[:access_level]
+      invitation.relationship_type = invitation_params[:relationship_type]
+      invitation.dependent_ids = invitation_params[:dependent_ids]
+      invitation
+    end
+
+    def create_household_invitation
+      ActiveRecord::Base.transaction do
+        @invitation.save!
+        create_invitation_grants!
+      end
+      true
+    rescue ActiveRecord::RecordInvalid => e
+      @invitation = e.record if e.record.is_a?(HouseholdInvitation)
+      false
+    end
+
+    def create_invitation_grants!
+      selected_dependents.find_each do |dependent|
+        @invitation.household_invitation_grants.create!(
+          household: current_household,
+          person: dependent,
+          access_level: invitation_access_level,
+          relationship_type: invitation_relationship_type
+        )
+      end
+    end
+
+    def selected_dependents
+      current_household.people.where(id: selected_dependent_ids, person_type: %i[minor dependent_adult], has_capacity: false)
+    end
+
+    def selected_dependent_ids
+      Array(invitation_params[:dependent_ids]).filter_map do |id|
+        id.to_i if id.to_s.match?(/\A\d+\z/)
+      end.uniq
+    end
+
+    def invitation_access_level
+      access_level = invitation_params[:access_level].presence
+      return access_level if HouseholdInvitationGrant.access_levels.key?(access_level)
+
+      invitation_relationship_type == 'parent' ? :manage : :record
+    end
+
+    def invitation_relationship_type
+      relationship_type = invitation_params[:relationship_type].presence
+      if HouseholdInvitationGrant.relationship_types.key?(relationship_type) && relationship_type != 'self'
+        return relationship_type
+      end
+
+      :professional
     end
 
     def render_index_turbo
@@ -75,8 +135,8 @@ module Admin
       ]
     end
 
-    def invitation_index_view(invitation: Invitation.new)
-      result = Admin::InvitationsIndexQuery.new(scope: Invitation.all).call
+    def invitation_index_view(invitation: HouseholdInvitation.new(membership_role: :member, access_level: :record))
+      result = Admin::InvitationsIndexQuery.new(scope: current_household.household_invitations).call
       Components::Admin::Invitations::IndexView.new(
         invitation: invitation,
         invitations: result.invitations,
@@ -87,7 +147,8 @@ module Admin
     end
 
     def load_dependents
-      @load_dependents ||= Person.where(person_type: %i[minor dependent_adult], has_capacity: false).order(:name).to_a
+      @load_dependents ||=
+        current_household.people.where(person_type: %i[minor dependent_adult], has_capacity: false).order(:name).to_a
     end
 
     def redirect_with_invitation_notice(message)

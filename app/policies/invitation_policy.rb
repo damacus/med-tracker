@@ -2,18 +2,18 @@
 
 class InvitationPolicy < ApplicationPolicy
   def index?
-    admin?
+    household_manager?
   end
 
   def create?
-    admin?
+    household_manager?
   end
 
   def resend?
-    admin?
+    household_manager?
   end
 
   def destroy?
-    admin?
+    household_manager?
   end
 end

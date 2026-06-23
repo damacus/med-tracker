@@ -208,8 +208,12 @@ RSpec.describe 'Passkey login', :js do
 
     visit login_path
 
+    user = users(:carer)
+    account = user.person.account
+    ensure_api_household_for(user)
+
     origin = configured_webauthn_origin
-    client, user_id, key = create_passkey_for(accounts(:carer), origin)
+    client, user_id, key = create_passkey_for(account, origin)
     assertion = client.get(challenge: challenge_value, user_verified: true, user_handle: user_id)
     assertion_credential = WebAuthn::Credential.from_get(assertion, relying_party: relying_party_for(origin))
 
@@ -221,7 +225,7 @@ RSpec.describe 'Passkey login', :js do
 
     click_button 'Continue with Passkey'
 
-    expect(page).to have_current_path('/dashboard')
+    expect(page).to have_current_path(expected_dashboard_path_for(account.email))
   end
 
   it 'shows a helpful message when explicit passkey sign-in is cancelled' do

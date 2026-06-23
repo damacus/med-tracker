@@ -28,7 +28,7 @@ module Components
               div(
                 data: {
                   controller: 'inventory-scan',
-                  inventory_scan_match_url_value: '/medications/scan_restock_match.json',
+                  inventory_scan_match_url_value: scan_restock_match_medications_path(format: :json),
                   action: 'barcode-scanner:decoded->inventory-scan#barcodeDecoded'
                 },
                 class: 'space-y-4'

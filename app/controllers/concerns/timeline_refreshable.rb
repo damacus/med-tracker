@@ -33,12 +33,12 @@ module TimelineRefreshable
   def update_medication_card_stream(source)
     if source.is_a?(Schedule)
       turbo_stream.replace(
-        "schedule_#{source.id}",
+        tenant_dom_id(source),
         Components::Schedules::Card.new(schedule: source, person: source.person, current_user: current_user)
       )
     else
       turbo_stream.replace(
-        "person_medication_#{source.id}",
+        tenant_dom_id(source),
         Components::PersonMedications::Card.new(person_medication: source, person: source.person, current_user: current_user)
       )
     end
@@ -80,6 +80,6 @@ module TimelineRefreshable
   end
 
   def timeline_dom_id(source)
-    "timeline_#{source.class.name.underscore}_#{source.id}"
+    tenant_dom_target("timeline_#{source.class.name.underscore}_#{source.id}")
   end
 end

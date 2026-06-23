@@ -56,7 +56,9 @@ RSpec.describe GlobalSearchQuery do
     scoped = described_class.new(user: users(:jane), query: 'John', limit: 10).call
 
     expect(scoped.map(&:title)).not_to include('John Doe')
-    expect(scoped.map(&:path)).not_to include(Rails.application.routes.url_helpers.person_path(people(:john)))
+    expect(scoped.map(&:path)).not_to include(
+      Rails.application.routes.url_helpers.person_path('test-household', people(:john))
+    )
   end
 
   it 'returns authorized command shortcuts when the query is blank' do
