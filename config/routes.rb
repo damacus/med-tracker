@@ -22,6 +22,93 @@ Rails.application.routes.draw do
     end
   end
 
+  scope ActiveStorage.routes_prefix do
+    get '/blobs/redirect/:signed_id/*filename',
+        to: 'active_storage/blobs/redirect#show', as: :rails_service_blob
+    get '/blobs/proxy/:signed_id/*filename',
+        to: 'active_storage/blobs/proxy#show', as: :rails_service_blob_proxy
+    get '/blobs/:signed_id/*filename', to: 'active_storage/blobs/redirect#show'
+    get '/representations/redirect/:signed_blob_id/:variation_key/*filename',
+        to: 'active_storage/representations/redirect#show', as: :rails_blob_representation
+    get '/representations/proxy/:signed_blob_id/:variation_key/*filename',
+        to: 'active_storage/representations/proxy#show', as: :rails_blob_representation_proxy
+    get '/representations/:signed_blob_id/:variation_key/*filename',
+        to: 'active_storage/representations/redirect#show'
+    get '/disk/:encoded_key/*filename', to: 'active_storage/disk#show', as: :rails_disk_service
+  end
+
+  direct :rails_representation do |representation, options|
+    route_for(ActiveStorage.resolve_model_to_route, representation, options)
+  end
+
+  resolve('ActiveStorage::Variant') do |variant, options|
+    route_for(ActiveStorage.resolve_model_to_route, variant, options)
+  end
+
+  resolve('ActiveStorage::VariantWithRecord') do |variant, options|
+    route_for(ActiveStorage.resolve_model_to_route, variant, options)
+  end
+
+  resolve('ActiveStorage::Preview') do |preview, options|
+    route_for(ActiveStorage.resolve_model_to_route, preview, options)
+  end
+
+  direct :rails_blob do |blob, options|
+    route_for(ActiveStorage.resolve_model_to_route, blob, options)
+  end
+
+  resolve('ActiveStorage::Blob') do |blob, options|
+    route_for(ActiveStorage.resolve_model_to_route, blob, options)
+  end
+
+  resolve('ActiveStorage::Attachment') do |attachment, options|
+    route_for(ActiveStorage.resolve_model_to_route, attachment.blob, options)
+  end
+
+  direct :rails_storage_proxy do |model, options|
+    expires_in = options.delete(:expires_in) { ActiveStorage.urls_expire_in }
+    expires_at = options.delete(:expires_at)
+
+    if model.respond_to?(:signed_id)
+      route_for(
+        :rails_service_blob_proxy,
+        model.signed_id(expires_in:, expires_at:),
+        model.filename,
+        options
+      )
+    else
+      route_for(
+        :rails_blob_representation_proxy,
+        model.blob.signed_id(expires_in:, expires_at:),
+        model.variation.key,
+        model.blob.filename,
+        options
+      )
+    end
+  end
+
+  direct :rails_storage_redirect do |model, options|
+    expires_in = options.delete(:expires_in) { ActiveStorage.urls_expire_in }
+    expires_at = options.delete(:expires_at)
+
+    if model.respond_to?(:signed_id)
+      route_for(
+        :rails_service_blob,
+        model.signed_id(expires_in:, expires_at:),
+        model.filename,
+        options
+      )
+    else
+      route_for(
+        :rails_blob_representation,
+        model.blob.signed_id(expires_in:, expires_at:),
+        model.variation.key,
+        model.blob.filename,
+        options
+      )
+    end
+  end
+
   # Defines the root path route ("/")
   root 'household_redirects#show'
 
