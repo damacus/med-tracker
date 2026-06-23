@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.4.0](https://github.com/damacus/med-tracker/compare/v0.3.71...v0.4.0) (2026-06-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* **households:** global routes, legacy User role authorization, old invitations, old API session binding, account subscription plans, and tenantless person/location assumptions are replaced by household-scoped routes, memberships, explicit person grants, and forced PostgreSQL RLS.
+
+### Features
+
+* **households:** replace global auth with household tenancy ([#1380](https://github.com/damacus/med-tracker/issues/1380)) ([7c8b84d](https://github.com/damacus/med-tracker/commit/7c8b84d290fdcb4e86e2119c3df4727798123dc8))
+
+
+### Bug Fixes
+
+* 🛡️ Sentinel: High Fix DOM-based Stored XSS in Schedule Form ([#1372](https://github.com/damacus/med-tracker/issues/1372)) ([921354a](https://github.com/damacus/med-tracker/commit/921354a7db28cfc6c9b29211179f05aaf4d61a6c))
+* 🛡️ Sentinel: Medium Fix XSS vulnerability in global search ([#1371](https://github.com/damacus/med-tracker/issues/1371)) ([c6c6351](https://github.com/damacus/med-tracker/commit/c6c6351a319251a1bd31086e24e19f19a90e27d7))
+* block deactivated user authentication ([#1356](https://github.com/damacus/med-tracker/issues/1356)) ([615509b](https://github.com/damacus/med-tracker/commit/615509b49566e5f9809ad4512d64601e106085e7))
+* use hasMenuItemTarget for empty check ([#1368](https://github.com/damacus/med-tracker/issues/1368)) ([60ef344](https://github.com/damacus/med-tracker/commit/60ef3442788d475828c81f99154c6dcc8b37e9f8))
+
+
+### Performance Improvements
+
+* Memoize dashboard blocked reasons ([#1373](https://github.com/damacus/med-tracker/issues/1373)) ([66368b2](https://github.com/damacus/med-tracker/commit/66368b2ef76e9828e5a44405953b0b62b5365be0))
+
 ## [0.3.71](https://github.com/damacus/med-tracker/compare/v0.3.70...v0.3.71) (2026-06-09)
 
 
