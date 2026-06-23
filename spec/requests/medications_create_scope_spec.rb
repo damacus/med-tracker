@@ -577,6 +577,51 @@ RSpec.describe 'Medication creation scope' do
       expect(response.body).not_to include('has already been taken')
     end
 
+    it 'rejects onboarding direct plans that fail PersonMedication authorization' do
+      adult_patient = people(:adult_patient_person)
+      CarerRelationship.create!(
+        carer: parent_user.person,
+        patient: adult_patient,
+        relationship_type: 'parent',
+        active: true
+      )
+
+      expect do
+        post medications_path, params: {
+          wizard: 'true',
+          medication: {
+            name: 'Unauthorized PRN Plan',
+            category: 'Analgesic',
+            dosage_records_attributes: {
+              '0' => {
+                amount: '1',
+                unit: 'tablet',
+                frequency: 'As needed',
+                default_for_adults: '1',
+                default_max_daily_doses: '2',
+                default_min_hours_between_doses: '8',
+                default_dose_cycle: 'daily'
+              }
+            },
+            current_supply: 10,
+            reorder_threshold: 1,
+            location_id: locations(:home).id
+          },
+          onboarding_schedule: {
+            person_id: adult_patient.id,
+            schedule_type: 'prn',
+            max_daily_doses: '2',
+            min_hours_between_doses: '8',
+            start_date: Time.zone.today.to_s,
+            end_date: 1.month.from_now.to_date.to_s
+          }
+        }
+      end.not_to change(PersonMedication, :count)
+
+      expect(Medication.find_by(name: 'Unauthorized PRN Plan')).to be_nil
+      expect(response).to redirect_to(root_path)
+    end
+
     it 'rejects a forged foreign location_id' do
       expect do
         post medications_path, params: {

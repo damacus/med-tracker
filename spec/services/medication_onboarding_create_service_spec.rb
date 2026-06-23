@@ -224,13 +224,16 @@ RSpec.describe MedicationOnboardingCreateService do
     end
 
     context 'with a PRN schedule type (results in PersonMedication)' do
+      let(:plan_authorizer) { ->(_record) {} }
+
       it 'does NOT create a Schedule' do
         medication = medication_with_dosage(category: 'Analgesic')
         schedule_count = Schedule.count
         call_service(
           medication: medication,
           schedule_attributes: schedule_attrs(type: 'prn'),
-          people_scope: people_scope
+          people_scope: people_scope,
+          plan_authorizer: plan_authorizer
         )
         expect(Schedule.count).to eq(schedule_count)
       end
@@ -241,9 +244,24 @@ RSpec.describe MedicationOnboardingCreateService do
           call_service(
             medication: medication,
             schedule_attributes: schedule_attrs(type: 'prn'),
-            people_scope: people_scope
+            people_scope: people_scope,
+            plan_authorizer: plan_authorizer
           )
         end.to change(PersonMedication, :count).by(1)
+      end
+
+      it 'authorizes the PersonMedication before saving' do
+        medication = medication_with_dosage(category: 'Analgesic')
+        authorized_records = []
+
+        call_service(
+          medication: medication,
+          schedule_attributes: schedule_attrs(type: 'prn'),
+          people_scope: people_scope,
+          plan_authorizer: ->(record) { authorized_records << record }
+        )
+
+        expect(authorized_records).to contain_exactly(PersonMedication.last)
       end
 
       it 'requires a plan authorizer before saving a PersonMedication record' do
@@ -269,7 +287,8 @@ RSpec.describe MedicationOnboardingCreateService do
         result = call_service(
           medication: medication,
           schedule_attributes: schedule_attrs(type: 'prn'),
-          people_scope: people_scope
+          people_scope: people_scope,
+          plan_authorizer: plan_authorizer
         )
         expect(result.schedule).to be_nil
       end
