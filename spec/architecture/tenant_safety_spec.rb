@@ -108,6 +108,20 @@ RSpec.describe 'tenant safety architecture' do
     )
   end
 
+  it 'keeps API password verification behind the shared auth state boundary' do
+    source = Rails.root.join('app/controllers/api/v1/auth/sessions_controller.rb').read
+
+    expect(source).not_to include('BCrypt::Password')
+    expect(source).to include('ApiAuthState')
+  end
+
+  it 'requires API bearer authentication to reject locked accounts and support app tokens' do
+    source = Rails.root.join('app/controllers/api/v1/base_controller.rb').read
+
+    expect(source).to include('ApiAppToken.lookup_by_token')
+    expect(source).to include('ApiAuthState.locked_out?')
+  end
+
   it 'keeps unsafe Pundit verification skips out of mutating app controllers' do
     skipped_controllers = Rails.root.glob('app/controllers/**/*.rb').filter_map do |path|
       next unless path.read.include?('skip_after_action :verify_pundit_authorization')

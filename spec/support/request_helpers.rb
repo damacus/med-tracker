@@ -30,6 +30,7 @@ module RequestHelpers
     person_schedules_path person_schedule_path new_person_schedule_path edit_person_schedule_path
     take_medication_person_schedule_path
     profile_path profile_avatar_path push_subscription_path reports_path
+    profile_api_tokens_path profile_api_token_path
     schedules_path schedule_path schedules_workflow_path start_schedules_workflow_path
     schedules_frequency_preview_path schedule_medication_takes_path
     search_path
