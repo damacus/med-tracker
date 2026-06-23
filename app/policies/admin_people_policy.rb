@@ -2,7 +2,7 @@
 
 class AdminPeoplePolicy < ApplicationPolicy
   def index?
-    user&.administrator? || false
+    household_manager?
   end
 
   class Scope < ApplicationPolicy::Scope

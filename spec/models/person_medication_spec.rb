@@ -44,6 +44,40 @@ RSpec.describe PersonMedication do
     end
   end
 
+  describe 'household assignment' do
+    let(:assignment_household) { Household.create!(name: 'Person Medication Assignment Household') }
+    let(:assignment_location) do
+      Location.create!(name: 'Person Medication Assignment Home', household: assignment_household)
+    end
+    let(:assignment_medication) do
+      Medication.create!(
+        name: 'Person Medication Assignment Medication',
+        location: assignment_location,
+        current_supply: 50,
+        reorder_threshold: 10
+      )
+    end
+    let(:assignment_dosage) do
+      create(:dosage, medication: assignment_medication, amount: 10, unit: 'mg', frequency: 'daily')
+    end
+    let(:unassigned_person) do
+      Person.create!(name: 'Person Medication Unassigned Person', date_of_birth: 30.years.ago.to_date)
+    end
+
+    it 'falls back to the medication household when the person has none' do
+      person_medication = described_class.new(
+        person: unassigned_person,
+        medication: assignment_medication,
+        source_dosage_option: assignment_dosage,
+        dose_amount: assignment_dosage.amount,
+        dose_unit: assignment_dosage.unit
+      )
+      person_medication.valid?
+
+      expect(person_medication.household).to eq(assignment_household)
+    end
+  end
+
   describe 'dose validations' do
     it 'does not assign a mismatched default dosage option for an explicit custom dose' do
       medication = create(:medication, dosage_amount: nil, dosage_unit: nil)

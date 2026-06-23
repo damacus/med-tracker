@@ -185,16 +185,16 @@ module Components
             render_action_group(
               t('admin.dashboard.sections.user_access'),
               [
-                ['manage_users', '/admin/users', Icons::Users],
-                ['invitations', '/admin/invitations', Icons::User]
+                ['manage_users', admin_users_path, Icons::Users],
+                ['invitations', admin_invitations_path, Icons::User]
               ]
             )
             render_action_group(
               t('admin.dashboard.sections.operations'),
               [
-                ['manage_people', '/people', Icons::Users],
-                ['audit_trail', '/admin/audit_logs', Icons::Activity],
-                ['import_dmd', '/admin/nhs_dmd_import/new', Icons::RefreshCw]
+                ['manage_people', people_path, Icons::Users],
+                ['audit_trail', admin_audit_logs_path, Icons::Activity],
+                ['import_dmd', new_admin_nhs_dmd_import_path, Icons::RefreshCw]
               ]
             )
           end
@@ -248,7 +248,7 @@ module Components
 
         def render_activity_row(version)
           if version.id
-            a(href: "/admin/audit_logs/#{version.id}",
+            a(href: admin_audit_log_path(version),
               class: 'flex items-center gap-3 rounded-xl bg-card p-3 border border-border shadow-sm ' \
                      'transition-all hover:shadow-md no-underline min-w-0') do
               render_activity_row_content(version)

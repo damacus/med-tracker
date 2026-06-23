@@ -7,10 +7,12 @@ RSpec.describe ApiSession do
 
   describe '.issue_for' do
     let(:account) { accounts(:jane_doe) }
+    let(:membership) { api_membership_for(account) }
     let(:issued_at) { Time.zone.parse('2026-04-21 10:00:00') }
     let(:expected_attributes) do
       {
         account: account,
+        household_membership: membership,
         device_name: 'RSpec iPhone',
         user_agent: 'RSpec',
         last_used_at: issued_at,
@@ -20,22 +22,10 @@ RSpec.describe ApiSession do
     end
 
     it 'creates a session with digested tokens and expiry timestamps' do
-      travel_to(issued_at) do
-        session, access_token, refresh_token = described_class.issue_for(
-          account: account,
-          device_name: 'RSpec iPhone',
-          user_agent: 'RSpec'
-        )
+      session, access_token, refresh_token = issue_session_at_issued_time
 
-        expect(session).to have_attributes(
-          expected_attributes.merge(
-            id: be_present,
-            access_token_digest: described_class.digest(access_token),
-            refresh_token_digest: described_class.digest(refresh_token)
-          )
-        )
-        expect([access_token, refresh_token]).to all(start_with('mt_'))
-      end
+      expect(session).to have_attributes(expected_persisted_attributes(access_token, refresh_token))
+      expect([access_token, refresh_token]).to all(start_with('mt_'))
     end
 
     it 'creates a redacted audit event without token material', :aggregate_failures do
@@ -55,7 +45,7 @@ RSpec.describe ApiSession do
     let(:account) { accounts(:jane_doe) }
 
     it 'creates a redacted rotation audit event without token material', :aggregate_failures do
-      session, = described_class.issue_for(account: account)
+      session, = described_class.issue_for(account: account, household_membership: api_membership_for(account))
       rotated_tokens = nil
 
       expect do
@@ -77,7 +67,7 @@ RSpec.describe ApiSession do
     let(:account) { accounts(:jane_doe) }
 
     it 'creates a revoked audit event' do
-      session, = described_class.issue_for(account: account)
+      session, = described_class.issue_for(account: account, household_membership: api_membership_for(account))
 
       expect do
         session.revoke!
@@ -91,11 +81,60 @@ RSpec.describe ApiSession do
   end
 
   def issue_session_tokens
+    account = accounts(:jane_doe)
     described_class.issue_for(
-      account: accounts(:jane_doe),
+      account: account,
+      household_membership: api_membership_for(account),
       device_name: 'RSpec iPhone',
       user_agent: 'RSpec'
     ).last(2)
+  end
+
+  def issue_session_at_issued_time
+    travel_to(issued_at) do
+      described_class.issue_for(
+        account: account,
+        household_membership: membership,
+        device_name: 'RSpec iPhone',
+        user_agent: 'RSpec'
+      )
+    end
+  end
+
+  def expected_persisted_attributes(access_token, refresh_token)
+    expected_attributes.merge(
+      id: be_present,
+      access_token_digest: described_class.digest(access_token),
+      refresh_token_digest: described_class.digest(refresh_token)
+    )
+  end
+
+  def api_membership_for(account)
+    household = api_household
+    person = api_person_for(account, household)
+
+    household.household_memberships.create!(
+      account: account,
+      person: person,
+      role: :owner,
+      status: :active
+    )
+  end
+
+  def api_household
+    Household.create!(name: "API Session Spec #{SecureRandom.hex(4)}",
+                      slug: "api-session-spec-#{SecureRandom.hex(4)}")
+  end
+
+  def api_person_for(account, household)
+    Person.create!(
+      household: household,
+      account: account,
+      name: 'API Session Person',
+      date_of_birth: 30.years.ago.to_date,
+      person_type: :adult,
+      has_capacity: true
+    )
   end
 
   def latest_auth_token_version

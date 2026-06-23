@@ -57,7 +57,7 @@ RSpec.describe 'Admin Dashboard' do
       visit admin_root_path
 
       expect(page).to have_text('You are not authorized')
-      expect(page).to have_current_path(root_path)
+      expect(page).to have_current_path(dashboard_path)
     end
   end
 

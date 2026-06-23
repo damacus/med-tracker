@@ -27,7 +27,7 @@ RSpec.describe 'Refill medication inventory' do
   it 'opens medication details from inventory card view action at the top level' do
     visit medications_path
 
-    within "#medication_#{medication.id}" do
+    within "##{tenant_dom_id(medication)}" do
       click_link 'View'
     end
 

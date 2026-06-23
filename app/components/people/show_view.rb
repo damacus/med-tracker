@@ -18,7 +18,10 @@ module Components
       end
 
       def view_template
-        div(id: "person_show_#{person.id}", class: 'container mx-auto px-4 py-12 max-w-6xl space-y-12') do
+        div(
+          id: tenant_dom_target("person_show_#{person.id}"),
+          class: 'container mx-auto px-4 py-12 max-w-6xl space-y-12'
+        ) do
           render_person_header
 
           div(class: 'grid grid-cols-1 lg:grid-cols-3 gap-12') do

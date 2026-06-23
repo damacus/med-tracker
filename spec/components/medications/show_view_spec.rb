@@ -110,7 +110,8 @@ RSpec.describe Components::Medications::ShowView, type: :component do
 
     log_administration_link = rendered.css('a').find { |link| link.text.include?('Log') }
 
-    expect(log_administration_link[:href]).to eq("/medications/#{medication.id}/administration")
+    expect(log_administration_link[:href])
+      .to eq("/households/test-household/medications/#{medication.id}/administration")
   end
 
   it 'renders log administration as a modal link' do

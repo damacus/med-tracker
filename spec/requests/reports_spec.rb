@@ -17,7 +17,7 @@ RSpec.describe 'Reports' do
 
     context 'when user is authenticated and authorized' do
       before do
-        post '/login', params: { email: user.email_address, password: 'password' }
+        sign_in(user)
       end
 
       it 'returns HTTP success' do
@@ -41,7 +41,7 @@ RSpec.describe 'Reports' do
 
       it 'does not expose inaccessible person data through the person filter' do
         post '/logout'
-        post '/login', params: { email: users(:parent).email_address, password: 'password' }
+        sign_in(users(:parent))
 
         get reports_path, params: { person_id: people(:john).id }
 
@@ -88,7 +88,7 @@ RSpec.describe 'Reports' do
       let(:user) { users(:minor_patient_user) } # minor
 
       before do
-        post '/login', params: { email: user.email_address, password: 'password' }
+        sign_in(user)
       end
 
       it 'redirects to root path' do

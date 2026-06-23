@@ -25,6 +25,13 @@ class GlobalSearchCommandsQuery
 
   private
 
+  def default_url_options
+    household = policy_household
+    return {} unless household
+
+    { household_slug: household.slug }
+  end
+
   def command_definitions
     navigation_command_definitions + creation_command_definitions
   end
@@ -58,8 +65,37 @@ class GlobalSearchCommandsQuery
   end
 
   def command_allowed?(command)
-    Pundit.policy!(user, command.fetch(:record)).public_send(command.fetch(:action))
+    Pundit.policy!(policy_user, command.fetch(:record)).public_send(command.fetch(:action))
   rescue Pundit::NotDefinedError
     false
+  end
+
+  def policy_user
+    AuthorizationContext.current || derived_authorization_context || user
+  end
+
+  def derived_authorization_context
+    membership = user_account&.first_active_household_membership
+    return unless membership
+
+    AuthorizationContext.new(account: user_account, household: membership.household, membership: membership)
+  end
+
+  def policy_household
+    household_candidates.compact.first
+  end
+
+  def household_candidates
+    [
+      Current.household,
+      AuthorizationContext.current&.household,
+      derived_authorization_context&.household,
+      user.person&.household,
+      user_account&.first_active_household
+    ]
+  end
+
+  def user_account
+    user.person&.account
   end
 end

@@ -1,14 +1,9 @@
 # frozen_string_literal: true
 
 class DependentRelationshipAssigner
-  RELATIONSHIP_TYPES_BY_ROLE = {
-    'parent' => 'parent',
-    'carer' => 'professional_carer'
-  }.freeze
-
   attr_reader :carer, :dependent_ids, :relationship_type, :scope
 
-  def initialize(carer:, dependent_ids:, relationship_type: nil, scope: Person.all)
+  def initialize(carer:, dependent_ids:, relationship_type:, scope:)
     @carer = carer
     @dependent_ids = dependent_ids
     @relationship_type = relationship_type
@@ -19,11 +14,6 @@ class DependentRelationshipAssigner
     return [] if carer.blank?
 
     dependents.map { |dependent| assign(dependent) }
-  end
-
-  def self.relationship_type_for(user_or_role)
-    role = user_or_role.respond_to?(:role) ? user_or_role.role : user_or_role.to_s
-    RELATIONSHIP_TYPES_BY_ROLE[role]
   end
 
   private
@@ -47,6 +37,6 @@ class DependentRelationshipAssigner
   end
 
   def resolved_relationship_type
-    relationship_type.presence || DependentRelationshipAssigner.relationship_type_for(carer.user)
+    relationship_type
   end
 end

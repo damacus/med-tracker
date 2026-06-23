@@ -16,8 +16,8 @@ RSpec.describe 'Medications reorder status with turbo_stream' do
 
       expect(response).to have_http_status(:ok)
       expect(response.media_type).to eq('text/vnd.turbo-stream.html')
-      expect(response.body).to include("target=\"medication_show_#{medication.id}\"")
-      expect(response.body).to include("target=\"medication_#{medication.id}\"")
+      expect(response.body).to include("target=\"#{household_dom_target("medication_show_#{medication.id}")}\"")
+      expect(response.body).to include("target=\"#{household_dom_target("medication_#{medication.id}")}\"")
       expect(response.body).to include('target="flash"')
       expect(medication.reload.reorder_status).to eq('ordered')
     end
@@ -31,8 +31,8 @@ RSpec.describe 'Medications reorder status with turbo_stream' do
 
       expect(response).to have_http_status(:ok)
       expect(response.media_type).to eq('text/vnd.turbo-stream.html')
-      expect(response.body).to include("target=\"medication_show_#{medication.id}\"")
-      expect(response.body).to include("target=\"medication_#{medication.id}\"")
+      expect(response.body).to include("target=\"#{household_dom_target("medication_show_#{medication.id}")}\"")
+      expect(response.body).to include("target=\"#{household_dom_target("medication_#{medication.id}")}\"")
       expect(response.body).to include('target="flash"')
       expect(medication.reload.reorder_status).to eq('received')
     end

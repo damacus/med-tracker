@@ -5,8 +5,11 @@ class ApplicationController < ActionController::Base
   include Pundit::Authorization
   include Pagy::Method
   include TurboNativeDetectable
+  include TenantDomTargetsHelper
 
   before_action :set_paper_trail_whodunnit
+  around_action :with_current_context
+  helper_method :current_household, :current_membership
 
   rescue_from ActionController::InvalidAuthenticityToken, with: :handle_invalid_authenticity_token
   rescue_from Pundit::NotAuthorizedError, with: :user_not_authorized
@@ -14,14 +17,67 @@ class ApplicationController < ActionController::Base
   # Only allow modern browsers supporting webp images, web push, badges, import maps, CSS nesting, and CSS :has.
   allow_browser versions: :modern
 
+  def default_url_options
+    options = super
+    household = Current.household || default_household_for_urls
+    return options unless household
+
+    options.merge(household_slug: household.slug)
+  end
+
   private
+
+  attr_reader :current_household, :current_membership
+
+  def pundit_user
+    AuthorizationContext.current || current_user
+  end
+
+  def with_current_context
+    Current.account = current_account
+    Current.request_id = request.request_id
+    household_slug = request.path_parameters[:household_slug]
+    return yield if household_slug.blank?
+
+    @current_household = Household.find_by!(slug: household_slug)
+    TenantContext.with(account: current_account, household: @current_household, request_id: request.request_id) do
+      @current_membership = active_household_membership
+
+      if @current_membership
+        TenantContext.set_membership!(@current_membership)
+        PaperTrail.request.controller_info = info_for_paper_trail
+        yield
+      else
+        user_not_authorized
+      end
+    end
+  ensure
+    Current.reset
+  end
+
+  def active_household_membership
+    return unless current_account
+
+    current_account.household_memberships.active.find_by(household: @current_household)
+  end
+
+  def default_household_for_urls
+    return @default_household_for_urls if defined?(@default_household_for_urls)
+
+    @default_household_for_urls = current_account&.first_active_household
+  end
 
   def user_for_paper_trail
     current_user&.id
   end
 
   def info_for_paper_trail
-    { ip: request.remote_ip, request_id: request.request_id }
+    {
+      ip: request.remote_ip,
+      request_id: request.request_id,
+      household_id: Current.household&.id,
+      actor_membership_id: Current.membership&.id
+    }
   end
 
   def safe_redirect_path(path)

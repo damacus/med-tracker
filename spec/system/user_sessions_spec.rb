@@ -54,7 +54,7 @@ RSpec.describe 'User Sessions', :js do
       login_as(user)
 
       using_wait_time(5) do
-        expect(page).to have_current_path('/dashboard')
+        expect(page).to have_current_path(dashboard_path)
         expect(page).to have_text('You have been logged in')
       end
 

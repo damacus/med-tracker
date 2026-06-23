@@ -83,6 +83,9 @@ RSpec.describe 'Clinician Access Authorization' do
   end
 
   def login_as(user, password: 'password')
+    household = ensure_api_household_for(user)
+    @browser_household = household
+    @browser_membership = browser_membership_for(user, household)
     clear_2fa_for_user(user)
     perform_login(user, password)
   end

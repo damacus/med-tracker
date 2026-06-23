@@ -2,69 +2,63 @@
 
 class PersonMedicationPolicy < ApplicationPolicy
   def index?
-    show?
+    active_membership?
   end
 
   def show?
-    admin_or_clinician? || self_or_dependent? || carer_with_patient? || parent_with_dependent_patient?
+    person_medication_person_grant_allows?(:view)
   end
 
   def create?
-    return false unless create_person_permitted?
-    return true if record.is_a?(Class) || record.medication_id.blank?
-
-    permitted_medications.exists?(id: record.medication_id)
+    person_medication_create_allowed_in_household?
   end
 
   alias new? create?
 
   def update?
-    admin? || self_or_dependent? || parent_with_dependent_patient?
+    person_medication_person_grant_allows?(:manage)
   end
 
   alias edit? update?
 
   def destroy?
-    admin? || self_or_dependent? || parent_with_dependent_patient?
+    person_medication_person_grant_allows?(:manage)
   end
 
   def take_medication?
-    admin? || self_or_dependent? || carer_with_patient? || parent_with_dependent_patient?
+    person_medication_person_grant_allows?(:record)
   end
 
   private
-
-  def create_person_permitted?
-    admin? || self_or_dependent? || parent_with_dependent_patient?
-  end
-
-  def permitted_medications
-    return Medication.all if admin?
-
-    MedicationPolicy::Scope.new(user, Medication.all).resolve
-  end
-
-  def self_or_dependent?
-    return false unless user&.person
-
-    person = record.is_a?(Class) ? nil : record.person
-    return true if person.nil? # For new? action with PersonMedication class - actual authorization happens in create?
-    return true if person.id == user.person_id # Self
-
-    false
-  end
 
   def person_id_for_authorization
     record.respond_to?(:person) && record.person ? record.person.id : nil
   end
 
+  def person_medication_person_grant_allows?(access_level)
+    return household_manager? if record.is_a?(Class)
+
+    person_grant_allows?(record.person, access_level)
+  end
+
+  def person_medication_create_allowed_in_household?
+    return false unless person_medication_person_grant_allows?(:manage)
+    return true if record.is_a?(Class) || record.medication_id.blank?
+
+    same_household?(record.medication)
+  end
+
   class Scope < ApplicationPolicy::Scope
     def resolve
-      return scope.none unless user
-      return scope.all if admin_or_clinician?
+      household_person_medication_scope
+    end
 
-      # Users can see their own person medications and those of their dependents
-      scope.where(person_id: accessible_person_ids)
+    private
+
+    def household_person_medication_scope
+      return scope.none unless active_membership?
+
+      scope.where(household: household, person_id: granted_person_ids_for(:view))
     end
   end
 end

@@ -19,7 +19,8 @@ RSpec.describe 'Admin invites users' do
     click_link 'Invitations'
 
     fill_in 'Email', with: 'invited_parent@example.com'
-    select 'Parent', from: 'Role'
+    select 'Member', from: 'Role'
+    select 'Parent', from: 'Dependent relationship'
 
     click_button 'Send invitation'
 
@@ -46,7 +47,8 @@ RSpec.describe 'Admin invites users' do
     click_link 'Invitations'
 
     fill_in 'Email', with: 'invited_parent@example.com'
-    select 'Parent', from: 'Role'
+    select 'Member', from: 'Role'
+    select 'Parent', from: 'Dependent relationship'
 
     click_button 'Send invitation'
 
@@ -66,12 +68,12 @@ RSpec.describe 'Admin invites users' do
 
     click_button 'Create Account'
 
-    expect(page).to have_current_path('/dashboard')
+    expect(page).to have_current_path(%r{\A/households/[^/]+/dashboard\z})
 
     # Verify sidebar shows new user info
     within 'aside:not([data-testid="mobile-rail"])' do
       expect(page).to have_text('Invited Parent')
-      expect(page).to have_text('Parent')
+      expect(page).to have_text('Member')
     end
   end
 
@@ -82,7 +84,8 @@ RSpec.describe 'Admin invites users' do
     click_link 'Invitations'
 
     fill_in 'Email', with: 'invited_child@example.com'
-    select 'Parent', from: 'Role'
+    select 'Member', from: 'Role'
+    select 'Parent', from: 'Dependent relationship'
     click_button 'Send invitation'
 
     invitation_url = ActionMailer::Base.deliveries.last.body.encoded.match(%r{https?://\S+})[0]
@@ -103,7 +106,13 @@ RSpec.describe 'Admin invites users' do
 
   it 'allows an admin to resend an invitation and invalidates the old token' do
     login_as(admin)
-    invitation = create(:invitation, email: 'resend.me@example.com', role: :parent, expires_at: 1.day.ago)
+    invitation = create(
+      :household_invitation,
+      household: browser_household,
+      invited_by_membership: browser_household.household_memberships.owner.sole,
+      email: 'resend.me@example.com',
+      expires_at: 1.day.ago
+    )
     original_token = invitation.token
 
     visit admin_invitations_path
@@ -123,12 +132,12 @@ RSpec.describe 'Admin invites users' do
     new_token = Rack::Utils.parse_query(URI.parse(new_invitation_url).query)['token']
 
     invitation.reload
-    expect(invitation.token_digest).not_to eq(Invitation.digest(original_token))
+    expect(invitation.token_digest).not_to eq(HouseholdInvitation.digest(original_token))
 
     visit accept_invitation_path(token: original_token)
     expect(page).to have_text('This invitation link is invalid or has expired.')
 
     visit accept_invitation_path(token: new_token)
-    expect(page).to have_text("You've been invited as a Parent.")
+    expect(page).to have_text("You've been invited as a Member.")
   end
 end

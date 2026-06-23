@@ -7,6 +7,7 @@ RSpec.describe 'Medication creation scope' do
 
   let(:parent_user) { users(:jane) }
   let!(:foreign_location) { locations(:grandmas) }
+  let(:home_location) { household_location(locations(:home)) }
   let(:movicol_dmd_name) do
     'Movicol Paediatric Plain oral powder 6.9g sachets (Norgine Pharmaceuticals Ltd) 30 sachet 15 x 2 sachets'
   end
@@ -58,7 +59,7 @@ RSpec.describe 'Medication creation scope' do
     end
 
     it 'shows the AI medication help action when the paid feature is enabled' do
-      parent_user.person.account.update!(subscription_plan: 'family_plus')
+      Household.find_by!(slug: default_request_household_slug).update!(subscription_plan: 'family_plus')
       allow(ENV).to receive(:fetch).with('MEDTRACKER_AI_MEDICATION_HELP_ENABLED', 'false').and_return('true')
 
       get new_medication_path
@@ -244,13 +245,13 @@ RSpec.describe 'Medication creation scope' do
             dosage_unit: 'ml',
             current_supply: 10,
             reorder_threshold: 1,
-            location_id: locations(:home).id
+            location_id: home_location.id
           }
         }
       end.to change(Medication, :count).by(1)
 
       expect(response).to redirect_to(medication_path(Medication.last))
-      expect(Medication.last.location).to eq(locations(:home))
+      expect(Medication.last.location).to eq(home_location)
     end
 
     it 'persists a barcode selected from the finder flow' do
@@ -267,7 +268,7 @@ RSpec.describe 'Medication creation scope' do
             dosage_unit: 'sachet',
             current_supply: 30,
             reorder_threshold: 5,
-            location_id: locations(:home).id
+            location_id: home_location.id
           }
         }
       end.to change(Medication, :count).by(1)
@@ -288,7 +289,7 @@ RSpec.describe 'Medication creation scope' do
             dosage_unit: 'drop',
             current_supply: 30,
             reorder_threshold: 5,
-            location_id: locations(:home).id,
+            location_id: home_location.id,
             default_schedule_type: 'multiple_daily',
             default_schedule_config: JSON.generate(
               schedule_type: 'multiple_daily',
@@ -322,7 +323,7 @@ RSpec.describe 'Medication creation scope' do
             dosage_unit: 'sachet',
             current_supply: 0,
             reorder_threshold: 5,
-            location_id: locations(:home).id
+            location_id: home_location.id
           }
         }
       end.to change(Medication, :count).by(1)
@@ -332,7 +333,7 @@ RSpec.describe 'Medication creation scope' do
     end
 
     it 'adds scanned stock to an existing matching medication instead of creating a duplicate' do
-      existing_medication = medications(:ibuprofen)
+      existing_medication = household_medication(medications(:ibuprofen))
       existing_medication.update!(current_supply: 20, supply_at_last_restock: 20)
 
       expect do
@@ -348,7 +349,7 @@ RSpec.describe 'Medication creation scope' do
             dosage_unit: 'tablet',
             current_supply: 16,
             reorder_threshold: 4,
-            location_id: locations(:home).id
+            location_id: home_location.id
           }
         }
       end.not_to change(Medication, :count)
@@ -362,7 +363,7 @@ RSpec.describe 'Medication creation scope' do
     end
 
     it 'creates a separate item when a scanned medication has a different strength' do
-      existing_medication = medications(:ibuprofen)
+      existing_medication = household_medication(medications(:ibuprofen))
       existing_medication.update!(current_supply: 20, supply_at_last_restock: 20)
 
       expect do
@@ -378,7 +379,7 @@ RSpec.describe 'Medication creation scope' do
             dosage_unit: 'tablet',
             current_supply: 16,
             reorder_threshold: 4,
-            location_id: locations(:home).id
+            location_id: home_location.id
           }
         }
       end.to change(Medication, :count).by(1)
@@ -397,7 +398,7 @@ RSpec.describe 'Medication creation scope' do
             dmd_code: '35394411000001103',
             dmd_system: 'https://dmd.nhs.uk',
             dmd_concept_class: 'AMPP',
-            location_id: locations(:home).id
+            location_id: home_location.id
           }
         }
       end.to change(Medication, :count).by(1)
@@ -425,7 +426,7 @@ RSpec.describe 'Medication creation scope' do
             name: 'Calpol Vapour Plug & Nightlight + 3 Refill Pads',
             barcode: '3574661646435',
             category: 'Supplement',
-            location_id: locations(:home).id
+            location_id: home_location.id
           }
         }
       end.to change(Medication, :count).by(1)
@@ -455,7 +456,7 @@ RSpec.describe 'Medication creation scope' do
             dmd_code: '316811000001106',
             dmd_system: 'https://dmd.nhs.uk',
             dmd_concept_class: 'AMP',
-            location_id: locations(:home).id
+            location_id: home_location.id
           }
         }
       end.to change(Medication, :count).by(1)
@@ -498,7 +499,7 @@ RSpec.describe 'Medication creation scope' do
             dmd_concept_class: 'AMPP',
             current_supply: 100,
             reorder_threshold: 30,
-            location_id: locations(:home).id
+            location_id: home_location.id
           }
         }
       end.to change(Medication, :count).by(1)
@@ -522,7 +523,7 @@ RSpec.describe 'Medication creation scope' do
             dosage_unit: 'sachet',
             current_supply: 30,
             reorder_threshold: 5,
-            location_id: locations(:home).id
+            location_id: home_location.id
           }
         }
       end.not_to change(Medication, :count)
@@ -557,7 +558,7 @@ RSpec.describe 'Medication creation scope' do
           medication: {
             name: 'Calpol Six Plus 250mg/5ml oral suspension (McNeil Products Ltd)',
             category: 'Analgesic',
-            location_id: locations(:home).id,
+            location_id: home_location.id,
             dosage_records_attributes: {
               '0' => {
                 amount: '5',

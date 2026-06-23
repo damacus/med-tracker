@@ -17,7 +17,7 @@ RSpec.describe 'Schedule Card', type: :system do
   it 'opens the edit modal from the schedule card' do
     visit person_path(person)
 
-    within("#schedule_#{schedule.id}") do
+    within("##{tenant_dom_id(schedule)}") do
       find("[data-testid='edit-schedule-#{schedule.id}']").click
     end
 
@@ -28,7 +28,7 @@ RSpec.describe 'Schedule Card', type: :system do
   it 'updates the persisted dose when changing the selected dose in the edit modal' do
     visit person_path(person)
 
-    within("#schedule_#{schedule.id}") do
+    within("##{tenant_dom_id(schedule)}") do
       find("[data-testid='edit-schedule-#{schedule.id}']").click
     end
 

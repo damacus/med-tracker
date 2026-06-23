@@ -17,11 +17,12 @@ RSpec.describe 'Admin users index' do
       date_of_birth: '1990-01-01',
       account: account
     )
-    person.update!(account: nil)
+    household = Household.find_by!(slug: default_url_options.fetch(:household_slug))
+    person.update!(household: household)
+    household.household_memberships.create!(account: account, person: person, role: :member, status: :active)
     User.create!(
       person: person,
       email_address: 'soft.deleted@example.com',
-      role: :parent,
       active: true
     )
   end

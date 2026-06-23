@@ -48,7 +48,7 @@ RSpec.describe 'Person Medications', type: :system do
     it 'opens the edit modal from the card', :js do
       visit person_path(person)
 
-      within("#person_medication_#{person_medication.id}") do
+      within("##{tenant_dom_id(person_medication)}") do
         find("[data-testid='edit-person-medication-#{person_medication.id}']").click
       end
 

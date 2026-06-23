@@ -16,7 +16,7 @@ RSpec.describe 'People show card actions with turbo_stream' do
 
       expect(response).to have_http_status(:ok)
       expect(response.media_type).to eq('text/vnd.turbo-stream.html')
-      expect(response.body).to include("target=\"person_show_#{person.id}\"")
+      expect(response.body).to include("target=\"#{household_dom_target("person_show_#{person.id}")}\"")
       expect(response.body).to include('target="flash"')
       expect(Schedule.exists?(schedule.id)).to be(false)
     end
@@ -32,7 +32,7 @@ RSpec.describe 'People show card actions with turbo_stream' do
 
       expect(response).to have_http_status(:ok)
       expect(response.media_type).to eq('text/vnd.turbo-stream.html')
-      expect(response.body).to include("target=\"person_show_#{person.id}\"")
+      expect(response.body).to include("target=\"#{household_dom_target("person_show_#{person.id}")}\"")
       expect(response.body).to include('target="flash"')
       expect(PersonMedication.exists?(person_medication.id)).to be(false)
     end

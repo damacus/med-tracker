@@ -10,7 +10,11 @@ RSpec.describe 'Timeline refresh after taking medication' do
   let(:medication) { medications(:paracetamol) }
 
   before do
-    post '/login', params: { email: carer_account.email, password: 'password' }
+    sign_in(users(:carer))
+    household = person.reload.household
+    medication.location.update!(household: household)
+    medication.update!(household: household)
+    medication.dosage_records.find_each { |dosage| dosage.update!(household: household) }
   end
 
   describe 'POST take_medication for a schedule (turbo_stream)' do

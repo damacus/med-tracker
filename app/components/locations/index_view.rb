@@ -45,7 +45,7 @@ module Components
       end
 
       def render_locations_grid
-        div(class: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8', id: 'locations') do
+        div(class: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8', id: tenant_dom_target('locations')) do
           locations.each do |location|
             render_location_card(location)
           end
@@ -54,7 +54,7 @@ module Components
 
       def render_location_card(location)
         m3_card(
-          id: "location_#{location.id}",
+          id: tenant_dom_id(location),
           class: 'h-full flex flex-col border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card ' \
                  'rounded-[2.5rem] transition-all duration-300 hover:scale-[1.02] hover:shadow-xl ' \
                  'group overflow-hidden'

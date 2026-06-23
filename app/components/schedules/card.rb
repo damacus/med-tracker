@@ -15,7 +15,7 @@ module Components
 
       def view_template
         render M3::Card.new(
-          id: "schedule_#{schedule.id}",
+          id: tenant_dom_id(schedule),
           class: 'h-full flex flex-col border-none ' \
                  'shadow-[0_15px_40px_rgba(0,0,0,0.08)] bg-card rounded-[2rem] transition-all ' \
                  'duration-300 hover:scale-[1.02] hover:shadow-2xl group overflow-hidden'

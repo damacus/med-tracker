@@ -12,8 +12,8 @@ RSpec.describe 'People edit return_to sanitization' do
 
   describe 'GET /people/:id/edit' do
     it 'preserves a safe internal return_to path' do
-      get edit_person_path(person, return_to: '/people')
-      expect(response.body).to include('href="/people"')
+      get edit_person_path(person, return_to: people_path)
+      expect(response.body).to include(%(href="#{people_path}"))
     end
 
     it 'strips an external return_to url from rendered links' do

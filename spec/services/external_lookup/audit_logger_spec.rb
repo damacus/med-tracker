@@ -35,6 +35,24 @@ RSpec.describe ExternalLookup::AuditLogger do
       expect(version.request_id).to eq('req-abc-123')
     end
 
+    it 'partitions manual audit versions by household context' do
+      household = Household.create!(name: 'Lookup Audit Household')
+      account = Account.create!(email: 'lookup-audit@example.test', status: :verified)
+      membership = household.household_memberships.create!(account: account, role: :owner, status: :active)
+      PaperTrail.request.controller_info = {
+        ip: '10.0.0.1',
+        request_id: 'req-abc-123',
+        household_id: household.id,
+        actor_membership_id: membership.id
+      }
+
+      audit_logger.record(source: 'nhs_dmd', event: 'search', query: 'Aspirin', result_status: 'success')
+
+      version = PaperTrail::Version.where(item_type: 'ExternalMedicineLookup').last
+      expect(version.household_id).to eq(household.id)
+      expect(version.actor_membership_id).to eq(membership.id)
+    end
+
     it 'stores the readable query, SHA256 query hash, and metadata in object JSON' do
       audit_logger.record(source: 'nhs_dmd', event: 'search', query: 'Aspirin 300mg',
                           result_status: 'success', result_count: 3)

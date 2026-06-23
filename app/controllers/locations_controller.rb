@@ -86,8 +86,8 @@ class LocationsController < ApplicationController
       format.turbo_stream do
         flash.now[:notice] = t('locations.deleted')
         render turbo_stream: [
-          turbo_stream.remove("location_#{location_id}"),
-          turbo_stream.remove("location_show_#{location_id}"),
+          turbo_stream.remove(tenant_dom_target("location_#{location_id}")),
+          turbo_stream.remove(tenant_dom_target("location_show_#{location_id}")),
           turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
         ]
       end

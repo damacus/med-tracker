@@ -10,7 +10,7 @@ RSpec.describe 'Medication log administration' do
   it 'renders a modal with active administration options for the medication' do
     medication = medications(:paracetamol)
 
-    get "/medications/#{medication.id}/administration", headers: { 'Turbo-Frame' => 'modal' }
+    get administration_medication_path(medication), headers: { 'Turbo-Frame' => 'modal' }
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include('Log administration for Paracetamol')

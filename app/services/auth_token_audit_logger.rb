@@ -8,6 +8,7 @@ class AuthTokenAuditLogger
     # rubocop:disable Rails/SkipsModelValidations
     PaperTrail::Version.insert(version_attrs(account:, token_type:, action:, metadata:, context:))
     # rubocop:enable Rails/SkipsModelValidations
+    SecurityAuditEvent.create!(security_event_attrs(account:, token_type:, action:, metadata:, context:))
   rescue StandardError => e
     Rails.logger.error("AuthTokenAuditLogger failed: #{e.class}: #{e.message}")
   end
@@ -18,13 +19,31 @@ class AuthTokenAuditLogger
     {
       item_type: ITEM_TYPE,
       item_id: account.id,
-      event: "auth_token/#{token_type}/#{action}",
+      event: event_type(token_type:, action:),
       object: version_object(account:, token_type:, action:, metadata:).to_json,
       whodunnit: context_value(context, :whodunnit)&.to_s,
       ip: context_value(context, :ip),
       request_id: context_value(context, :request_id),
+      household_id: context_value(context, :household_id),
+      actor_membership_id: context_value(context, :actor_membership_id),
       created_at: Time.current
     }
+  end
+
+  def security_event_attrs(account:, token_type:, action:, metadata:, context:)
+    {
+      household_id: context_value(context, :household_id),
+      actor_account: account,
+      actor_membership_id: context_value(context, :actor_membership_id),
+      event_type: event_type(token_type:, action:),
+      metadata: version_object(account:, token_type:, action:, metadata:),
+      ip: context_value(context, :ip),
+      request_id: context_value(context, :request_id)
+    }
+  end
+
+  def event_type(token_type:, action:)
+    "auth_token/#{token_type}/#{action}"
   end
 
   def version_object(account:, token_type:, action:, metadata:)
@@ -56,7 +75,9 @@ class AuthTokenAuditLogger
     {
       whodunnit: request.whodunnit,
       ip: controller_info&.dig(:ip),
-      request_id: controller_info&.dig(:request_id)
+      request_id: controller_info&.dig(:request_id),
+      household_id: controller_info&.dig(:household_id) || Current.household&.id,
+      actor_membership_id: controller_info&.dig(:actor_membership_id) || Current.membership&.id
     }
   end
 

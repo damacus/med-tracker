@@ -2,11 +2,11 @@
 
 class AppSettingsPolicy < ApplicationPolicy
   def show?
-    admin?
+    household_manager?
   end
 
   def update?
-    admin?
+    household_manager?
   end
 
   class Scope < ApplicationPolicy::Scope

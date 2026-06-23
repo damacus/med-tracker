@@ -36,20 +36,20 @@ RSpec.describe Components::Admin::Users::SearchForm, type: :component do
     end
   end
 
-  describe 'role filter' do
-    it 'renders all user roles as options' do
+  describe 'membership role filter' do
+    it 'renders all household membership roles as options' do
       rendered = render_inline(described_class.new)
 
       expect(rendered.text).to include('All Roles')
-      User.roles.each_key do |role|
+      HouseholdMembership.roles.each_key do |role|
         expect(rendered.text).to include(role.titleize)
       end
     end
 
-    it 'pre-selects the current role filter' do
-      rendered = render_inline(described_class.new(search_params: { role: 'administrator' }))
+    it 'pre-selects the current membership role filter' do
+      rendered = render_inline(described_class.new(search_params: { membership_role: 'administrator' }))
 
-      expect(rendered.css('input[name="role"][value="administrator"][checked]')).to be_present
+      expect(rendered.css('input[name="membership_role"][value="administrator"][checked]')).to be_present
     end
   end
 

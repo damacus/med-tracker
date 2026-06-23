@@ -14,7 +14,7 @@ RSpec.describe 'Medication Timing Restrictions' do
 
   before do
     # Login as carer (doesn't require 2FA)
-    post '/login', params: { email: carer_account.email, password: 'password' }
+    sign_in(users(:carer))
   end
 
   describe 'POST /people/:person_id/schedules/:id/take_medication' do

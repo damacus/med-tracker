@@ -65,7 +65,10 @@ RSpec.describe Components::Medications::IndexView, type: :component do
     )
 
     expect(rendered.css('button').map(&:text).join).to include('Restock')
-    edit_path = Rails.application.routes.url_helpers.edit_medication_path(medication)
+    edit_path = Rails.application.routes.url_helpers.edit_medication_path(
+      household_slug: 'test-household',
+      id: medication
+    )
 
     expect(rendered.css("a[href^='#{edit_path}']")).to be_empty
     expect(rendered.text).not_to include('Delete medication')

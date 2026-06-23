@@ -5,6 +5,8 @@ require 'rails_helper'
 RSpec.describe DependentRelationshipAssigner do
   fixtures :accounts, :people, :users, :locations, :location_memberships, :carer_relationships
 
+  before { FixtureHouseholdSetup.apply! }
+
   describe '#call' do
     it 'does not create duplicate relationships for active assignments' do
       carer = users(:jane).person
@@ -14,7 +16,8 @@ RSpec.describe DependentRelationshipAssigner do
         described_class.new(
           carer: carer,
           dependent_ids: [dependent.id],
-          relationship_type: 'parent'
+          relationship_type: 'parent',
+          scope: carer.household.people
         ).call
       end.not_to change(CarerRelationship, :count)
     end
@@ -28,7 +31,8 @@ RSpec.describe DependentRelationshipAssigner do
         described_class.new(
           carer: carer,
           dependent_ids: [dependent.id],
-          relationship_type: 'parent'
+          relationship_type: 'parent',
+          scope: carer.household.people
         ).call
       end.not_to change(CarerRelationship, :count)
 
@@ -45,7 +49,8 @@ RSpec.describe DependentRelationshipAssigner do
         described_class.new(
           carer: carer,
           dependent_ids: [people(:john).id, nil, ''],
-          relationship_type: 'parent'
+          relationship_type: 'parent',
+          scope: carer.household.people
         ).call
       end.not_to change(CarerRelationship, :count)
     end
@@ -57,9 +62,20 @@ RSpec.describe DependentRelationshipAssigner do
         described_class.new(
           carer: carer,
           dependent_ids: ['not-an-id'],
-          relationship_type: 'parent'
+          relationship_type: 'parent',
+          scope: carer.household.people
         ).call
       end.not_to change(CarerRelationship, :count)
+    end
+
+    it 'requires callers to provide an explicit dependent scope' do
+      expect do
+        described_class.new(
+          carer: users(:parent).person,
+          dependent_ids: [people(:child_patient).id],
+          relationship_type: 'parent'
+        )
+      end.to raise_error(ArgumentError, /scope/)
     end
   end
 

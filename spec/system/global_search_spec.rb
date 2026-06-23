@@ -14,8 +14,8 @@ RSpec.describe 'Global search command palette' do
     visit root_path
     sleep 0.5
 
-    page.execute_script('document.querySelector("a[href=\"/people\"]").focus()')
-    expect(page.evaluate_script('document.activeElement.getAttribute("href")')).to eq('/people')
+    page.execute_script("document.querySelector('a[href=\"#{people_path}\"]').focus()")
+    expect(page.evaluate_script('document.activeElement.getAttribute("href")')).to eq(people_path)
 
     open_global_search_shortcut
 
@@ -28,7 +28,7 @@ RSpec.describe 'Global search command palette' do
 
     find_by_id('global_search_query').send_keys(:escape)
     expect(page).to have_css('#global_search_panel[hidden]', visible: :all)
-    expect(page.evaluate_script('document.activeElement.getAttribute("href")')).to eq('/people')
+    expect(page.evaluate_script('document.activeElement.getAttribute("href")')).to eq(people_path)
 
     open_global_search_shortcut
     find_by_id('global_search_query').send_keys(:escape)
@@ -37,14 +37,14 @@ RSpec.describe 'Global search command palette' do
     sleep 0.2
     expect(page).to have_css('#global_search_panel[aria-hidden="false"]')
     find_by_id('global_search_query').send_keys(:escape)
-    page.execute_script('document.querySelector("a[href=\"/people\"]").focus()')
+    page.execute_script("document.querySelector('a[href=\"#{people_path}\"]').focus()")
 
     open_global_search_shortcut(modifier: :meta)
     expect(page).to have_css('#global_search_panel[aria-hidden="false"]')
 
     find_by_id('global_search_query').send_keys(:escape)
     expect(page).to have_css('#global_search_panel[hidden]', visible: :all)
-    expect(page.evaluate_script('document.activeElement.getAttribute("href")')).to eq('/people')
+    expect(page.evaluate_script('document.activeElement.getAttribute("href")')).to eq(people_path)
 
     open_global_search_shortcut
     expect(page).to have_css('#global_search_panel[aria-hidden="false"]')

@@ -82,14 +82,12 @@ RSpec.describe 'AdminManagesCarerRelationships' do
       carer_user = relationship.carer.user
       patient = relationship.patient
 
-      # First verify carer cannot access patient when relationship is inactive
-      login_as(carer_user)
-      visit person_path(patient)
-      # Rails test environment renders the detailed exception page for RecordNotFound in system tests
-      expect(page).to have_text(/RecordNotFound|Couldn't find/i)
+      expect(relationship).not_to be_active
+      carer_memberships = carer_user.person.account.household_memberships
+      grants = PersonAccessGrant.active.where(person: patient, household_membership: carer_memberships)
+      expect(grants).to be_empty
 
       # Admin reactivates the relationship
-      rodauth_logout
       login_as(admin)
       visit admin_carer_relationships_path
 

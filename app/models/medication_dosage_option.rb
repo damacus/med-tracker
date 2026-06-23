@@ -5,8 +5,10 @@ class MedicationDosageOption < ApplicationRecord
 
   has_paper_trail
 
+  belongs_to :household, optional: true
   belongs_to :medication
 
+  before_validation :assign_household
   after_create :sync_medication_dosage
   after_commit :sync_medication_inventory, on: %i[create update destroy]
   after_commit :reset_inventory_sync_suppression, on: %i[create update destroy]
@@ -77,6 +79,10 @@ class MedicationDosageOption < ApplicationRecord
   end
 
   private
+
+  def assign_household
+    self.household ||= medication&.household
+  end
 
   def sync_medication_dosage
     stmt = 'UPDATE medications SET dosage_amount = NULL WHERE id = $1'

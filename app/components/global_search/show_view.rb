@@ -25,7 +25,7 @@ module Components
       private
 
       def render_form
-        form(action: search_path, method: :get, class: 'flex flex-col gap-3 sm:flex-row') do
+        form(action: household_search_path, method: :get, class: 'flex flex-col gap-3 sm:flex-row') do
           label(class: 'sr-only', for: 'search_q') { t('global_search.input_label') }
           input(
             id: 'search_q',
@@ -37,6 +37,12 @@ module Components
           )
           m3_button(type: :submit) { t('global_search.page_submit') }
         end
+      end
+
+      def household_search_path
+        return root_path unless Current.household
+
+        search_path(household_slug: Current.household.slug)
       end
 
       def render_results

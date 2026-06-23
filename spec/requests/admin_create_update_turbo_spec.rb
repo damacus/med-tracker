@@ -6,8 +6,12 @@ RSpec.describe 'Admin create and update turbo flows' do
   fixtures :accounts, :people, :users, :locations, :carer_relationships
 
   let(:admin) { users(:admin) }
+  let(:household) { Household.find_by!(slug: default_url_options.fetch(:household_slug)) }
 
-  before { sign_in(admin) }
+  before do
+    sign_in(admin)
+    attach_fixture_users_to_household
+  end
 
   describe 'POST /admin/invitations' do
     it 'renders role-aware dependent assignment controls on the invitation form' do
@@ -21,7 +25,14 @@ RSpec.describe 'Admin create and update turbo flows' do
 
     it 'returns turbo_stream and updates invitations container and flash on success' do
       post admin_invitations_path,
-           params: { invitation: { email: 'new.user@example.com', role: 'carer' } },
+           params: {
+             invitation: {
+               email: 'new.user@example.com',
+               membership_role: 'member',
+               access_level: 'record',
+               relationship_type: 'professional'
+             }
+           },
            headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
 
       expect(response).to have_http_status(:ok)
@@ -37,13 +48,16 @@ RSpec.describe 'Admin create and update turbo flows' do
            params: {
              invitation: {
                email: 'second.parent@example.com',
-               role: 'parent',
+               membership_role: 'member',
+               access_level: 'manage',
+               relationship_type: 'parent',
                dependent_ids: [dependent.id]
              }
            }
 
-      invitation = Invitation.find_by!(email: 'second.parent@example.com')
-      expect(invitation.dependents).to contain_exactly(dependent)
+      invitation = HouseholdInvitation.find_by!(email: 'second.parent@example.com')
+      grant = invitation.household_invitation_grants.sole
+      expect(grant).to have_attributes(person: dependent, access_level: 'manage', relationship_type: 'parent')
     end
 
     it 'stores selected dependents for carer invitations' do
@@ -53,27 +67,38 @@ RSpec.describe 'Admin create and update turbo flows' do
            params: {
              invitation: {
                email: 'invited.carer@example.com',
-               role: 'carer',
+               membership_role: 'member',
+               access_level: 'record',
+               relationship_type: 'professional',
                dependent_ids: [dependent.id]
              }
            }
 
-      invitation = Invitation.find_by!(email: 'invited.carer@example.com')
-      expect(invitation.dependents).to contain_exactly(dependent)
+      invitation = HouseholdInvitation.find_by!(email: 'invited.carer@example.com')
+      grant = invitation.household_invitation_grants.sole
+      expect(grant).to have_attributes(person: dependent, access_level: 'record', relationship_type: 'professional')
     end
 
-    it 'returns unprocessable content when inviting a minor' do
+    it 'returns unprocessable content when inviting an owner' do
       post admin_invitations_path,
-           params: { invitation: { email: 'minor.user@example.com', role: 'minor' } },
+           params: { invitation: { email: 'owner.user@example.com', membership_role: 'owner' } },
            headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
 
       expect(response).to have_http_status(:unprocessable_content)
-      expect(response.body).to include('Children must be added by a parent or carer.')
+      expect(response.body).to include('Membership role')
     end
   end
 
   describe 'POST /admin/invitations/:id/resend' do
-    let!(:invitation) { create(:invitation, email: 'existing.user@example.com', role: :carer, expires_at: 1.day.ago) }
+    let!(:invitation) do
+      create(
+        :household_invitation,
+        household: household,
+        invited_by_membership: household.household_memberships.owner.sole,
+        email: 'existing.user@example.com',
+        expires_at: 1.day.ago
+      )
+    end
 
     it 'returns turbo_stream, rotates the token, records an audit event, and updates flash on success' do
       original_digest = invitation.token_digest
@@ -91,7 +116,13 @@ RSpec.describe 'Admin create and update turbo flows' do
     end
 
     it 'returns an alert and leaves accepted invitations unchanged' do
-      accepted_invitation = create(:invitation, :accepted, email: 'accepted.user@example.com', role: :carer)
+      accepted_invitation = create(
+        :household_invitation,
+        :accepted,
+        household: household,
+        invited_by_membership: household.household_memberships.owner.sole,
+        email: 'accepted.user@example.com'
+      )
 
       post resend_admin_invitation_path(accepted_invitation),
            headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
@@ -103,13 +134,18 @@ RSpec.describe 'Admin create and update turbo flows' do
       expect(accepted_invitation.reload.versions.last.event).not_to eq('resend')
     end
 
-    it 'returns an alert and leaves the invitation unchanged when a newer pending invitation exists' do
-      conflicting_invitation = create(:invitation, :expired, email: 'duplicate.user@example.com', role: :carer)
-      create(:invitation, email: 'duplicate.user@example.com', role: :carer)
-      original_digest = conflicting_invitation.token_digest
-      original_expires_at = conflicting_invitation.expires_at
+    it 'returns an alert and leaves the invitation unchanged when it has been revoked' do
+      revoked_invitation = create(
+        :household_invitation,
+        household: household,
+        invited_by_membership: household.household_memberships.owner.sole,
+        email: 'revoked.user@example.com',
+        revoked_at: Time.current
+      )
+      original_digest = revoked_invitation.token_digest
+      original_expires_at = revoked_invitation.expires_at
 
-      post resend_admin_invitation_path(conflicting_invitation),
+      post resend_admin_invitation_path(revoked_invitation),
            headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
 
       expect(response).to have_http_status(:ok)
@@ -117,9 +153,9 @@ RSpec.describe 'Admin create and update turbo flows' do
       expect(response.body).to include(
         'This invitation could not be resent. A pending invitation for this email may already exist.'
       )
-      conflicting_invitation.reload
-      expect(conflicting_invitation.token_digest).to eq(original_digest)
-      expect(conflicting_invitation.expires_at.to_i).to eq(original_expires_at.to_i)
+      revoked_invitation.reload
+      expect(revoked_invitation.token_digest).to eq(original_digest)
+      expect(revoked_invitation.expires_at.to_i).to eq(original_expires_at.to_i)
     end
   end
 
@@ -140,7 +176,9 @@ RSpec.describe 'Admin create and update turbo flows' do
                email_address: 'turbo.new.user@example.com',
                password: 'password',
                password_confirmation: 'password',
-               role: 'carer',
+               membership_role: 'member',
+               dependent_access_level: 'record',
+               dependent_relationship_type: 'professional',
                person_attributes: {
                  name: 'Turbo New User',
                  date_of_birth: '1990-01-01',
@@ -168,7 +206,9 @@ RSpec.describe 'Admin create and update turbo flows' do
                  email_address: 'linked.parent@example.com',
                  password: 'password',
                  password_confirmation: 'password',
-                 role: 'parent',
+                 membership_role: 'member',
+                 dependent_access_level: 'manage',
+                 dependent_relationship_type: 'parent',
                  dependent_ids: [dependent.id],
                  person_attributes: {
                    name: 'Linked Parent',
@@ -183,6 +223,9 @@ RSpec.describe 'Admin create and update turbo flows' do
       relationship = CarerRelationship.find_by!(carer: parent, patient: dependent)
       expect(relationship.relationship_type).to eq('parent')
       expect(relationship.active).to be true
+      grant = PersonAccessGrant.find_by!(person: dependent,
+                                         household_membership: parent.account.household_memberships.sole)
+      expect(grant).to have_attributes(access_level: 'manage', relationship_type: 'parent')
     end
 
     it 'links a new carer to selected existing children' do
@@ -195,7 +238,9 @@ RSpec.describe 'Admin create and update turbo flows' do
                  email_address: 'linked.carer@example.com',
                  password: 'password',
                  password_confirmation: 'password',
-                 role: 'carer',
+                 membership_role: 'member',
+                 dependent_access_level: 'record',
+                 dependent_relationship_type: 'professional',
                  dependent_ids: [dependent.id],
                  person_attributes: {
                    name: 'Linked Carer',
@@ -210,6 +255,9 @@ RSpec.describe 'Admin create and update turbo flows' do
       relationship = CarerRelationship.find_by!(carer: carer, patient: dependent)
       expect(relationship.relationship_type).to eq('professional_carer')
       expect(relationship.active).to be true
+      grant = PersonAccessGrant.find_by!(person: dependent,
+                                         household_membership: carer.account.household_memberships.sole)
+      expect(grant).to have_attributes(access_level: 'record', relationship_type: 'professional')
     end
 
     it 'returns unprocessable content on validation failure' do
@@ -219,7 +267,9 @@ RSpec.describe 'Admin create and update turbo flows' do
                email_address: users(:jane).email_address,
                password: 'password',
                password_confirmation: 'password',
-               role: 'carer',
+               membership_role: 'member',
+               dependent_access_level: 'record',
+               dependent_relationship_type: 'professional',
                person_attributes: {
                  name: 'Duplicate Email User',
                  date_of_birth: '1990-01-01',
@@ -243,7 +293,9 @@ RSpec.describe 'Admin create and update turbo flows' do
             params: {
               user: {
                 email_address: users(:jane).email_address,
-                role: 'parent',
+                membership_role: 'member',
+                dependent_access_level: 'manage',
+                dependent_relationship_type: 'parent',
                 person_attributes: {
                   id: users(:jane).person.id,
                   name: 'Jane Turbo Update',
@@ -272,7 +324,9 @@ RSpec.describe 'Admin create and update turbo flows' do
               params: {
                 user: {
                   email_address: parent.email_address,
-                  role: 'parent',
+                  membership_role: 'member',
+                  dependent_access_level: 'manage',
+                  dependent_relationship_type: 'parent',
                   dependent_ids: [dependent.id],
                   person_attributes: {
                     id: parent.person.id,
@@ -287,6 +341,43 @@ RSpec.describe 'Admin create and update turbo flows' do
       relationship = CarerRelationship.find_by!(carer: parent.person, patient: dependent)
       expect(relationship.relationship_type).to eq('parent')
       expect(relationship.active).to be true
+    end
+
+    it 'reactivates revoked dependent access grants when updating selected dependents' do
+      parent = users(:parent)
+      dependent = people(:child_patient)
+      membership = household.household_memberships.find_by!(account: parent.person.account)
+      grant = household.person_access_grants.create!(
+        household_membership: membership,
+        person: dependent,
+        access_level: :view,
+        relationship_type: :parent,
+        granted_by_membership: household.household_memberships.owner.sole,
+        revoked_at: 1.day.ago
+      )
+
+      patch admin_user_path(parent),
+            params: {
+              user: {
+                email_address: parent.email_address,
+                membership_role: 'member',
+                dependent_access_level: 'manage',
+                dependent_relationship_type: 'parent',
+                dependent_ids: [dependent.id],
+                person_attributes: {
+                  id: parent.person.id,
+                  name: parent.person.name,
+                  date_of_birth: parent.person.date_of_birth.to_s,
+                  location_ids: [locations(:home).id]
+                }
+              }
+            }
+
+      expect(grant.reload).to have_attributes(
+        revoked_at: nil,
+        access_level: 'manage',
+        relationship_type: 'parent'
+      )
     end
   end
 
@@ -308,6 +399,26 @@ RSpec.describe 'Admin create and update turbo flows' do
       expect(response.body).to include('target="carer_relationships_rows"')
       expect(response.body).to include('target="flash"')
     end
+
+    it 'keeps membership role separate from relationship access grants' do
+      doctor = users(:doctor)
+      patient = people(:child_patient)
+
+      post admin_carer_relationships_path,
+           params: {
+             carer_relationship: {
+               carer_id: doctor.person.id,
+               patient_id: patient.id,
+               relationship_type: 'professional_carer'
+             }
+           },
+           headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+      membership = household.household_memberships.find_by!(account: doctor.person.account)
+      grant = household.person_access_grants.find_by!(household_membership: membership, person: patient)
+      expect(membership.role).to eq('member')
+      expect(grant).to have_attributes(access_level: 'record', relationship_type: 'professional')
+    end
   end
 
   describe 'GET /admin/carer_relationships/new' do
@@ -319,6 +430,40 @@ RSpec.describe 'Admin create and update turbo flows' do
       expect(response.media_type).to eq('text/vnd.turbo-stream.html')
       expect(response.body).to include('target="modal"')
       expect(response.body).to include('carer_relationship_carer_id')
+    end
+  end
+
+  def attach_fixture_users_to_household
+    attach_admin_to_household
+
+    User.where.not(id: admin.id).includes(person: :account).find_each do |user|
+      attach_member_to_household(user)
+    end
+  end
+
+  def attach_admin_to_household
+    attach_person_to_household(admin.person)
+    upsert_household_membership(admin.person, :owner)
+  end
+
+  def attach_member_to_household(user)
+    return unless user.person&.account
+
+    attach_person_to_household(user.person)
+    upsert_household_membership(user.person, :member)
+  end
+
+  def attach_person_to_household(person)
+    person.household = household
+    person.save!(validate: false)
+  end
+
+  def upsert_household_membership(person, role)
+    household.household_memberships.find_or_initialize_by(account: person.account).tap do |membership|
+      membership.person = person
+      membership.role = role
+      membership.status = :active
+      membership.save!
     end
   end
 end

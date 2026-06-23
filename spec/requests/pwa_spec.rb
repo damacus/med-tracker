@@ -69,7 +69,11 @@ RSpec.describe 'PWA' do
 
       expect(source).to include('refreshSnapshot')
       expect(source).to include('syncQueuedTakes')
+      expect(source).to include('offlineTenantKey')
+      expect(source).to include('offlineBasePath')
       expect(source).to include('window.addEventListener(\'online\', runOfflineSync)')
+      expect(source).to include("if (!basePath) return window.location.pathname === '/'")
+      expect(source).not_to include("'/dashboard'")
     end
   end
 

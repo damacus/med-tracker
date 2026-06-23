@@ -63,7 +63,7 @@ module Components
                 ) do
                   t('admin.nhs_dmd_imports.form.submit')
                 end
-                m3_link(href: '/admin', variant: :text, size: :lg, class: 'font-bold') do
+                m3_link(href: admin_root_path, variant: :text, size: :lg, class: 'font-bold') do
                   t('admin.nhs_dmd_imports.form.cancel')
                 end
               end

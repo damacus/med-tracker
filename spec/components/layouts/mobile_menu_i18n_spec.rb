@@ -5,7 +5,7 @@ require 'rails_helper'
 RSpec.describe Components::Layouts::MobileMenu, type: :component do
   describe 'i18n translations' do
     it 'renders mobile menu with default locale translations' do
-      user = instance_double(User, administrator?: false, name: 'Test User')
+      user = instance_double(User, name: 'Test User')
       component = described_class.new(current_user: user)
 
       rendered = render_inline(component)

@@ -21,7 +21,10 @@ RSpec.describe Schedules::FormPayloadPresenter do
         person: person,
         medications: [medication],
         frame_id: 'schedule_frame',
-        next_url: '/people/1/schedules/new',
+        urls: {
+          next: '/households/test-household/people/1/schedules/new',
+          frequency_preview: '/households/test-household/schedules/frequency_preview'
+        },
         translations: translations
       )
     end
@@ -32,8 +35,8 @@ RSpec.describe Schedules::FormPayloadPresenter do
         turbo_stream: true,
         person_type: 'adult',
         schedule_form_frame_id_value: 'schedule_frame',
-        schedule_form_next_url_value: '/people/1/schedules/new',
-        schedule_form_frequency_preview_url_value: '/schedules/frequency_preview'
+        schedule_form_next_url_value: '/households/test-household/people/1/schedules/new',
+        schedule_form_frequency_preview_url_value: '/households/test-household/schedules/frequency_preview'
       )
     end
 

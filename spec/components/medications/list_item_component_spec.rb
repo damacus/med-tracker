@@ -7,7 +7,10 @@ RSpec.describe Components::Medications::ListItemComponent, type: :component do
 
   it 'renders the view link with a top-level frame target' do
     medication = medications(:paracetamol)
-    medication_url = Rails.application.routes.url_helpers.medication_path(medication)
+    medication_url = Rails.application.routes.url_helpers.medication_path(
+      household_slug: 'test-household',
+      id: medication
+    )
 
     rendered = render_inline(described_class.new(medication: medication))
     medication_link = rendered.css('a').find do |link|
@@ -22,7 +25,10 @@ RSpec.describe Components::Medications::ListItemComponent, type: :component do
 
   it 'renders the edit link with a top-level frame target' do
     medication = medications(:paracetamol)
-    edit_medication_url = Rails.application.routes.url_helpers.edit_medication_path(medication)
+    edit_medication_url = Rails.application.routes.url_helpers.edit_medication_path(
+      household_slug: 'test-household',
+      id: medication
+    )
 
     rendered = render_inline(described_class.new(medication: medication, can_update: true))
     edit_medication_link = rendered.css('a').find do |link|

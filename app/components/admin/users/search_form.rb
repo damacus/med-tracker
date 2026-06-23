@@ -16,13 +16,13 @@ module Components
           m3_card(variant: :elevated, class: 'bg-surface-container-low border-none shadow-elevation-1') do
             m3_card_content(class: 'pt-8') do
               render RubyUI::Form.new(
-                action: '/admin/users',
+                action: admin_users_path,
                 method: :get,
                 class: 'flex flex-col md:flex-row gap-6 items-end',
                 data: { controller: 'filter-form', turbo_frame: 'admin-users-frame' }
               ) do
                 render_search_field
-                render_role_filter
+                render_membership_role_filter
                 render_status_filter
                 render_actions
               end
@@ -49,14 +49,14 @@ module Components
           end
         end
 
-        def render_role_filter
+        def render_membership_role_filter
           div(class: 'w-full md:w-56') do
             div(class: 'space-y-2') do
               render RubyUI::FormFieldLabel.new(for: 'role_trigger', class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1') { t('admin.users.search.role') }
               render RubyUI::Combobox.new(class: 'w-full') do
                 render RubyUI::ComboboxTrigger.new(
                   id: 'role_trigger',
-                  placeholder: search_params[:role].presence&.titleize || t('admin.users.search.all_roles'),
+                  placeholder: membership_role_filter.presence&.titleize || t('admin.users.search.all_roles'),
                   class: 'rounded-shape-sm border-outline-variant bg-surface-container-lowest py-4 px-4 transition-all'
                 )
 
@@ -68,22 +68,22 @@ module Components
                   render RubyUI::ComboboxList.new do
                     render RubyUI::ComboboxItem.new do
                       render RubyUI::ComboboxRadio.new(
-                        name: 'role',
+                        name: 'membership_role',
                         id: 'role_all',
                         value: '',
-                        checked: search_params[:role].blank?,
+                        checked: membership_role_filter.blank?,
                         data: { action: 'change->filter-form#submit' }
                       )
                       span { t('admin.users.search.all_roles') }
                     end
 
-                    User.roles.each_key do |role|
+                    HouseholdMembership.roles.each_key do |role|
                       render RubyUI::ComboboxItem.new do
                         render RubyUI::ComboboxRadio.new(
-                          name: 'role',
+                          name: 'membership_role',
                           id: "role_#{role}",
                           value: role,
-                          checked: search_params[:role] == role,
+                          checked: membership_role_filter == role,
                           data: { action: 'change->filter-form#submit' }
                         )
                         span { role.titleize }
@@ -94,6 +94,10 @@ module Components
               end
             end
           end
+        end
+
+        def membership_role_filter
+          search_params[:membership_role].presence || search_params[:role].presence
         end
 
         def render_status_filter
@@ -148,7 +152,7 @@ module Components
             m3_button(type: :submit, variant: :filled, class: 'hidden') { t('admin.users.search.search') }
             if active_filters?
               m3_link(
-                href: '/admin/users',
+                href: admin_users_path,
                 variant: :text,
                 size: :sm,
                 class: 'font-bold text-on-surface-variant hover:text-foreground transition-all',
@@ -159,7 +163,7 @@ module Components
         end
 
         def active_filters?
-          search_params[:search].present? || search_params[:role].present? || search_params[:status].present?
+          search_params[:search].present? || membership_role_filter.present? || search_params[:status].present?
         end
       end
     end

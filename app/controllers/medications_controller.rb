@@ -223,8 +223,8 @@ class MedicationsController < ApplicationController
 
   def destroy_medication_streams(medication_id)
     [
-      turbo_stream.remove("medication_#{medication_id}"),
-      turbo_stream.remove("medication_show_#{medication_id}"),
+      turbo_stream.remove(tenant_dom_target("medication_#{medication_id}")),
+      turbo_stream.remove(tenant_dom_target("medication_show_#{medication_id}")),
       turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
     ]
   end
@@ -342,8 +342,9 @@ class MedicationsController < ApplicationController
   def medication_streams
     medication = @medication.reload
     [
-      turbo_stream.replace("medication_show_#{medication.id}", Components::Medications::ShowView.new(medication: medication)),
-      turbo_stream.replace("medication_#{medication.id}", medication_list_item(medication)),
+      turbo_stream.replace(tenant_dom_target("medication_show_#{medication.id}"),
+                           Components::Medications::ShowView.new(medication: medication)),
+      turbo_stream.replace(tenant_dom_id(medication), medication_list_item(medication)),
       turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
     ]
   end

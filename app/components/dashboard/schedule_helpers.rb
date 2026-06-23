@@ -25,7 +25,7 @@ module Components
       def can_delete?
         return false unless current_user
 
-        SchedulePolicy.new(current_user, schedule).destroy?
+        SchedulePolicy.new(AuthorizationContext.current || current_user, schedule).destroy?
       end
     end
   end

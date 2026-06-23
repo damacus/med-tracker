@@ -2,10 +2,10 @@
 
 class AdminNhsDmdImportPolicy < ApplicationPolicy
   def new?
-    admin?
+    household_manager?
   end
 
   def create?
-    admin?
+    household_manager?
   end
 end

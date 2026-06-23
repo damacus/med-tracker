@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
-SimpleCov.command_name ENV.fetch('SIMPLECOV_COMMAND_NAME', 'rspec')
+SimpleCov.configure do
+  load_profile 'rails'
 
-SimpleCov.start 'rails' do
+  command_name ENV.fetch('SIMPLECOV_COMMAND_NAME', 'rspec')
   enable_coverage :branch
 
   # Enforced ratchet (fails the build below threshold). Measured non-system

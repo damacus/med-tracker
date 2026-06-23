@@ -10,7 +10,7 @@ RSpec.describe 'Toast notifications for async actions' do
   let(:medication) { medications(:paracetamol) }
 
   before do
-    post '/login', params: { email: carer_account.email, password: 'password' }
+    sign_in(users(:carer))
   end
 
   describe 'POST /people/:person_id/schedules/:id/take_medication' do

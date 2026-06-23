@@ -36,27 +36,31 @@ RSpec.describe 'Zitadel OIDC Enhancements' do # rubocop:disable RSpec/DescribeCl
     end
   end
 
-  describe 'Zitadel role mapping' do
+  describe 'Zitadel claim mapping' do
     it 'reads urn:zitadel:iam:org:project:roles claim from the ID token' do
       expect(rodauth_source).to include("'urn:zitadel:iam:org:project:roles'")
     end
 
-    it 'defines zitadel_role_for helper method' do
-      expect(rodauth_source).to include('def zitadel_role_for(auth_data)')
+    it 'defines professional title helper methods without household membership authority sync' do
+      expect(rodauth_source).to include('def zitadel_professional_title_for(auth_data)')
+      expect(rodauth_source).not_to include('def zitadel_membership_role_for(auth_data)')
+      expect(rodauth_source).not_to include('sync_zitadel_membership!')
     end
 
-    it 'returns nil (not a default) when no valid role found — caller supplies default' do
-      expect(rodauth_source).to include('valid_roles.first&.to_sym')
-      expect(rodauth_source).not_to match(/valid_roles\.first.*\|\| :parent/)
+    it 'does not write OIDC roles into the legacy user role column' do
+      expect(rodauth_source).not_to include('role: zitadel')
+      expect(rodauth_source).not_to include('user.update(role:')
+      expect(rodauth_source).not_to include('membership.update(role:')
     end
 
-    it 'applies :parent as the system default on account creation' do
-      expect(rodauth_source).to include('role: zitadel_role_for(omniauth_auth) || :parent')
+    it 'creates OIDC users without assigning an authorization role' do
+      expect(rodauth_source).to include('User.create!')
+      expect(rodauth_source).to include('create_household_for_account!(account_record, person)')
     end
 
-    it 'logs a warning when role sync fails instead of raising' do
+    it 'logs a warning when professional title sync fails instead of raising' do
       expect(rodauth_source).to include('Rails.logger.warn')
-      expect(rodauth_source).to include('Role sync failed')
+      expect(rodauth_source).to include('Professional title sync failed')
     end
 
     it 'uses find_by to avoid raising on missing account' do
@@ -78,10 +82,10 @@ RSpec.describe 'Zitadel OIDC Enhancements' do # rubocop:disable RSpec/DescribeCl
       expect(authentication_source).to include('session[:oidc_mfa_verified] == true')
     end
 
-    it 'guards should_setup_two_factor? with oidc_authenticated? before the role check' do
+    it 'guards should_setup_two_factor? with oidc_authenticated? before the household manager check' do
       oidc_guard_pos = authentication_source.index('return false if oidc_authenticated?')
-      roles_check_pos = authentication_source.index('ROLES_REQUIRING_2FA.include?')
-      expect(oidc_guard_pos).to be < roles_check_pos
+      manager_check_pos = authentication_source.index('household_manager_requires_two_factor?')
+      expect(oidc_guard_pos).to be < manager_check_pos
     end
   end
 end

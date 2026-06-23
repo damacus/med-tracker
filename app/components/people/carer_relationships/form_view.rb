@@ -7,14 +7,15 @@ module Components
         include Phlex::Rails::Helpers::FormWith
         include Components::FormHelpers
 
-        attr_reader :relationship, :patient, :carers, :current_user, :email
+        attr_reader :relationship, :patient, :carers, :current_user, :household_manager, :email
 
-        def initialize(relationship:, patient:, carers:, current_user:, email: nil)
+        def initialize(relationship:, patient:, carers:, current_user:, options: {})
           @relationship = relationship
           @patient = patient
           @carers = carers
           @current_user = current_user
-          @email = email
+          @household_manager = options.fetch(:household_manager, false)
+          @email = options[:email]
           super()
         end
 
@@ -41,7 +42,7 @@ module Components
         def render_form
           form_with(url: person_carer_relationships_path(patient), method: :post, class: 'space-y-6') do
             render_errors if relationship.errors.any?
-            if current_user.administrator?
+            if household_manager
               render_admin_fields
             else
               render_parent_fields

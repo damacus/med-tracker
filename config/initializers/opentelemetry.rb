@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'opentelemetry-api'
-require 'otel/span_sanitizing_processor'
+require 'otel/allowlisted_span_exporter'
 
 OpenTelemetry.logger = Logger.new($stdout, level: Rails.env.test? ? Logger::WARN : Logger::ERROR)
 
@@ -46,8 +46,6 @@ if Rails.env.test?
       peer_service: 'postgresql'
     )
 
-    c.add_span_processor(Otel::SpanSanitizingProcessor.new)
-
     c.resource = OpenTelemetry::SDK::Resources::Resource.create(
       'service.name' => 'medtracker-test',
       'service.namespace' => 'medtracker',
@@ -80,6 +78,7 @@ elsif Rails.env.production? || ENV['OTEL_EXPORTER_OTLP_ENDPOINT'].present?
         headers: OpenTelemetryConfig.parse_otlp_headers(otlp_headers),
         timeout: otlp_timeout
       )
+      span_exporter = Otel::AllowlistedSpanExporter.new(span_exporter)
 
       c.add_span_processor(
         OpenTelemetry::SDK::Trace::Export::BatchSpanProcessor.new(
@@ -107,8 +106,6 @@ elsif Rails.env.production? || ENV['OTEL_EXPORTER_OTLP_ENDPOINT'].present?
       'OpenTelemetry::Instrumentation::Net::HTTP',
       untraced_hosts: ['127.0.0.1', 'localhost']
     )
-
-    c.add_span_processor(Otel::SpanSanitizingProcessor.new)
 
     c.resource = OpenTelemetry::SDK::Resources::Resource.create(
       'service.name' => 'medtracker',

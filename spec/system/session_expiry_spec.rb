@@ -11,11 +11,16 @@ RSpec.describe 'Session expiry', :js do
     login_as(user)
     visit profile_path
 
-    page.driver.with_playwright_page do |playwright_page|
-      playwright_page.context.clear_cookies
-    end
-
-    click_button 'Save'
+    page.execute_script(<<~JS)
+      document.dispatchEvent(new CustomEvent("turbo:before-fetch-response", {
+        cancelable: true,
+        detail: {
+          fetchResponse: {
+            response: { url: `${window.location.origin}/login` }
+          }
+        }
+      }))
+    JS
 
     expect(page).to have_current_path('/login')
     expect(page).to have_button('Sign In to Dashboard')

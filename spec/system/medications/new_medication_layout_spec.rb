@@ -87,7 +87,7 @@ RSpec.describe 'MedicationNewLayout' do
 
     checked_location = find("input[name='medication[location_id]'][checked]", visible: :all)
 
-    expect(checked_location.value).to eq(locations(:home).id.to_s)
+    expect(checked_location.value).to eq(household_location(locations(:home)).id.to_s)
   end
 
   it 'stores one configured time for each multiple-daily dose' do

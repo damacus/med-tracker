@@ -39,7 +39,7 @@ RSpec.describe 'AUTH: OmniAuth Auto Linking', type: :system do
     visit '/auth/oidc/callback'
 
     # Should be logged in and redirected to dashboard
-    expect(page).to have_current_path('/dashboard')
+    expect(page).to have_current_path(%r{\A/households/[^/]+/dashboard\z})
 
     # Should have created an identity linked to the existing account
     expect(AccountIdentity.where(account_id: existing_account.id, provider: 'oidc', uid: '12345').count).to eq(1)

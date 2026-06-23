@@ -18,7 +18,7 @@ module Components
 
       def view_template
         m3_card(variant: :elevated, class: 'p-6 bg-surface-container-low shadow-elevation-1',
-                id: "schedule_#{schedule.id}") do
+                id: tenant_dom_id(schedule)) do
           render_card_content
           render_card_actions
         end

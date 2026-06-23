@@ -43,7 +43,7 @@ module InventoryLocationFilterable
       categories: medication_query.categories,
       locations: locations,
       current_location_id: @current_location_id,
-      wizard_variant: current_user.wizard_variant,
+      wizard_variant: current_account.wizard_variant,
       frame_only: frame_only
     ), layout: !frame_only
   end

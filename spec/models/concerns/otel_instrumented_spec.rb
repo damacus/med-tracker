@@ -40,15 +40,15 @@ RSpec.describe OtelInstrumented do
   end
 
   describe '#otel_span_attributes (default implementation)' do
-    it 'returns a hash containing model.name, model.id, and model.operation' do
+    it 'returns a hash containing model.name and model.operation' do
       take  = create(:medication_take, :for_schedule, schedule: schedule)
       attrs = take.send(:otel_span_attributes, 'create')
 
       expect(attrs).to include(
         'model.name' => 'MedicationTake',
-        'model.id' => take.id.to_s,
         'model.operation' => 'create'
       )
+      expect(attrs).not_to have_key('model.id')
     end
   end
 

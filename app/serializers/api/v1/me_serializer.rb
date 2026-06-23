@@ -11,7 +11,7 @@ module Api
         {
           id: user.id,
           email_address: user.email_address,
-          role: user.role,
+          membership_role: Current.membership&.role,
           active: user.active
         }.merge(person_data).merge(account_data)
       end

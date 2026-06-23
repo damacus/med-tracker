@@ -9,8 +9,8 @@ module Components
         include Components::FormHelpers
 
         def initialize(
-          invitation: Invitation.new,
-          invitations: Invitation.order(created_at: :desc),
+          invitation: HouseholdInvitation.new,
+          invitations: HouseholdInvitation.order(created_at: :desc),
           resendable_invitation_ids: [],
           cancellable_invitation_ids: [],
           dependents: Person.none
@@ -63,12 +63,14 @@ module Components
             data: {
               controller: 'dependent-assignment',
               action: 'change->dependent-assignment#sync',
-              dependent_assignment_roles_value: %w[parent carer].to_json
+              dependent_assignment_roles_value: %w[parent carer family_member professional].to_json
             }
           ) do
             div(class: 'space-y-6') do
               render_email_field
-              render_role_field
+              render_membership_role_field
+              render_relationship_type_field
+              render_access_level_field
               render_dependents_field
             end
             render_actions
@@ -93,15 +95,49 @@ module Components
           end
         end
 
-        def render_role_field
+        def render_membership_role_field
           FormField(class: 'space-y-2') do
-            FormFieldLabel(for: 'invitation_role',
+            FormFieldLabel(for: 'invitation_membership_role',
                            class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1') do
               t('admin.invitations.index.form.role')
             end
-            select(name: 'invitation[role]', id: 'invitation_role', class: select_classes, required: true) do
-              Invitation.assignable_roles.each_key do |role|
-                option(value: role, selected: @invitation.role == role) { role.titleize }
+            select(name: 'invitation[membership_role]', id: 'invitation_membership_role', class: select_classes,
+                   required: true) do
+              HouseholdInvitation.membership_roles.each_key do |role|
+                option(value: role, selected: selected_membership_role == role) { role.titleize }
+              end
+            end
+          end
+        end
+
+        def render_relationship_type_field
+          FormField(class: 'space-y-2') do
+            FormFieldLabel(for: 'invitation_relationship_type',
+                           class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1') do
+              t('admin.invitations.index.form.relationship_type', default: 'Dependent relationship')
+            end
+            select(name: 'invitation[relationship_type]', id: 'invitation_relationship_type', class: select_classes) do
+              option(value: '', selected: selected_relationship_type.blank?) do
+                t('admin.invitations.index.form.select_relationship_type', default: 'Select relationship')
+              end
+              %w[parent carer family_member professional].each do |relationship_type|
+                option(value: relationship_type, selected: selected_relationship_type == relationship_type) do
+                  relationship_type.titleize
+                end
+              end
+            end
+          end
+        end
+
+        def render_access_level_field
+          FormField(class: 'space-y-2') do
+            FormFieldLabel(for: 'invitation_access_level',
+                           class: 'text-[10px] font-black uppercase tracking-widest text-on-surface-variant ml-1') do
+              t('admin.invitations.index.form.access_level', default: 'Dependent access')
+            end
+            select(name: 'invitation[access_level]', id: 'invitation_access_level', class: select_classes) do
+              HouseholdInvitationGrant.access_levels.each_key do |access_level|
+                option(value: access_level, selected: selected_access_level == access_level) { access_level.titleize }
               end
             end
           end
@@ -178,7 +214,7 @@ module Components
             div(class: 'space-y-1') do
               p(class: 'text-sm font-semibold text-foreground') { invitation.email }
               p(class: 'text-sm text-on-surface-variant') do
-                plain "#{invitation.role.titleize} • #{invitation_status_label(invitation)}"
+                plain "#{invitation.membership_role.titleize} • #{invitation_status_label(invitation)}"
               end
               p(class: 'text-xs text-on-surface-variant') { invitation_metadata(invitation) }
             end
@@ -235,11 +271,25 @@ module Components
         end
 
         def selected_dependent_ids
-          @selected_dependent_ids ||= @invitation.dependent_ids.map(&:to_i)
+          @selected_dependent_ids ||=
+            Array(@invitation.dependent_ids).presence&.map(&:to_i) ||
+            @invitation.household_invitation_grants.map(&:person_id)
         end
 
         def dependent_assignment_role?
-          @invitation.parent? || @invitation.carer?
+          %w[parent carer family_member professional].include?(selected_relationship_type)
+        end
+
+        def selected_membership_role
+          @invitation.membership_role.presence || 'member'
+        end
+
+        def selected_relationship_type
+          @invitation.relationship_type.to_s
+        end
+
+        def selected_access_level
+          @invitation.access_level.presence || 'record'
         end
 
         def render_errors

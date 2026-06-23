@@ -23,10 +23,10 @@ module Views
         }
       ].freeze
 
-      attr_reader :user
+      attr_reader :account
 
-      def initialize(user:)
-        @user = user
+      def initialize(account:)
+        @account = account
         super()
       end
 
@@ -70,7 +70,7 @@ module Views
       end
 
       def render_option(option)
-        selected = user.wizard_variant == option[:value]
+        selected = account.wizard_variant == option[:value]
         border_class = selected ? 'border-primary ring-2 ring-primary/20 shadow-elevation-2' : 'border-border/70'
 
         label(
@@ -79,7 +79,7 @@ module Views
         ) do
           input(
             type: 'radio',
-            name: 'user[wizard_variant]',
+            name: 'account[wizard_variant]',
             value: option[:value],
             checked: selected,
             class: 'sr-only',

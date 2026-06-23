@@ -15,14 +15,14 @@ RSpec.describe DashboardPresenter do
   describe '#people' do
     context 'when user is an administrator' do
       it 'returns all people' do
-        presenter = described_class.new(current_user: admin_user, selected_person_id: 'all')
+        presenter = presenter_for(admin_user, selected_person_id: 'all', people_scope: Person.all)
         expect(presenter.people).to eq(Person.all)
       end
     end
 
     context 'when user is a carer' do
       it 'returns patients of the carer' do
-        presenter = described_class.new(current_user: carer_user, selected_person_id: 'all')
+        presenter = presenter_for(carer_user, selected_person_id: 'all', people_scope: carer_user.person.patients)
         expect(presenter.people).to eq(carer_user.person.patients)
       end
 
@@ -35,9 +35,9 @@ RSpec.describe DashboardPresenter do
 
     context 'when user is a parent' do
       it 'returns the parent and their minor patients' do
-        presenter = described_class.new(current_user: parent_user, selected_person_id: 'all')
         parent_minor_ids = parent_user.person.patients.where(person_type: :minor).pluck(:id)
         expected_people = Person.where(id: [parent_user.person.id] + parent_minor_ids)
+        presenter = presenter_for(parent_user, selected_person_id: 'all', people_scope: expected_people)
         expect(presenter.people).to eq(expected_people)
       end
 
@@ -50,7 +50,7 @@ RSpec.describe DashboardPresenter do
 
     context 'when user is a minor (no special access)' do
       it 'returns only their own person record' do
-        presenter = described_class.new(current_user: minor_user)
+        presenter = presenter_for(minor_user, people_scope: Person.where(id: minor_user.person.id))
         expect(presenter.people).to eq(Person.where(id: minor_user.person.id))
       end
 
@@ -95,21 +95,21 @@ RSpec.describe DashboardPresenter do
 
   describe 'dashboard person selection' do
     it 'defaults to the logged-in user when they are selectable' do
-      presenter = described_class.new(current_user: parent_user)
+      presenter = parent_presenter
 
       expect(presenter.selected_person).to eq(parent_user.person)
       expect(presenter.people).to eq([parent_user.person])
     end
 
     it 'defaults to the first available person when the logged-in user is not selectable' do
-      presenter = described_class.new(current_user: carer_user)
+      presenter = presenter_for(carer_user, people_scope: carer_user.person.patients)
 
       expect(presenter.selected_person).to eq(people(:child_patient))
       expect(presenter.people).to eq([people(:child_patient)])
     end
 
     it 'uses the all-family scope when requested' do
-      presenter = described_class.new(current_user: parent_user, selected_person_id: 'all')
+      presenter = parent_presenter(selected_person_id: 'all')
 
       expected_people = [parent_user.person] + parent_user.person.patients.where(person_type: :minor).to_a
       expect(presenter.selected_person).to be_nil
@@ -117,7 +117,7 @@ RSpec.describe DashboardPresenter do
     end
 
     it 'filters active schedules to the selected person only' do
-      presenter = described_class.new(current_user: parent_user, selected_person_id: people(:child_user_person).id)
+      presenter = parent_presenter(selected_person_id: people(:child_user_person).id)
 
       expect(presenter.people).to eq([people(:child_user_person)])
       expect(presenter.active_schedules).to include(schedules(:child_schedule))
@@ -125,14 +125,14 @@ RSpec.describe DashboardPresenter do
     end
 
     it 'keeps all selectable people available for the selector while the dashboard is filtered' do
-      presenter = described_class.new(current_user: parent_user, selected_person_id: people(:child_user_person).id)
+      presenter = parent_presenter(selected_person_id: people(:child_user_person).id)
 
       expect(presenter.selectable_people).to include(parent_user.person, people(:child_user_person))
       expect(presenter.people).to eq([people(:child_user_person)])
     end
 
     it 'exposes individual people plus all-family selector options' do
-      presenter = described_class.new(current_user: parent_user)
+      presenter = parent_presenter
 
       labels = presenter.dashboard_person_options.map { |option| option.fetch(:label) }
       expect(labels).to include(parent_user.person.name, people(:child_user_person).name, 'All Family')
@@ -141,7 +141,7 @@ RSpec.describe DashboardPresenter do
 
   describe 'private people scope assembly' do
     it 'builds an eager-loaded scope for explicit person ids' do
-      presenter = described_class.new(current_user: parent_user)
+      presenter = parent_presenter
 
       scoped_people = presenter.send(:people_scope, [parent_user.person.id, parent_user.person.id]).to_a
 
@@ -154,7 +154,7 @@ RSpec.describe DashboardPresenter do
 
   describe '#active_schedules' do
     it 'returns date-active schedules for scoped people' do
-      presenter = described_class.new(current_user: admin_user)
+      presenter = presenter_for(admin_user, people_scope: Person.all)
       today = Time.zone.today
       expect(presenter.active_schedules).to all(
         satisfy { |p| today.between?(p.start_date, p.end_date) }
@@ -164,21 +164,21 @@ RSpec.describe DashboardPresenter do
     it 'excludes schedules whose end_date is in the past' do
       past_schedule = schedules(:john_paracetamol)
       past_schedule.update!(start_date: 2.years.ago.to_date, end_date: 1.year.ago.to_date)
-      presenter = described_class.new(current_user: admin_user)
+      presenter = presenter_for(admin_user, people_scope: Person.all)
       expect(presenter.active_schedules).not_to include(past_schedule)
     end
 
     it 'excludes schedules whose start_date is in the future' do
       future_schedule = schedules(:john_paracetamol)
       future_schedule.update!(start_date: 1.year.from_now.to_date, end_date: 2.years.from_now.to_date)
-      presenter = described_class.new(current_user: admin_user)
+      presenter = presenter_for(admin_user, people_scope: Person.all)
       expect(presenter.active_schedules).not_to include(future_schedule)
     end
   end
 
   describe '#upcoming_schedules' do
     it 'groups schedules by person' do
-      presenter = described_class.new(current_user: admin_user)
+      presenter = presenter_for(admin_user, people_scope: Person.all)
       expect(presenter.upcoming_schedules).to be_a(Hash)
       expect(presenter.upcoming_schedules.keys).to all(be_a(Person))
     end
@@ -186,21 +186,25 @@ RSpec.describe DashboardPresenter do
 
   describe '#doses' do
     it 'delegates to FamilyDashboard::ScheduleQuery' do
-      presenter = described_class.new(current_user: admin_user)
+      presenter = presenter_for(admin_user, people_scope: Person.all)
       expect(presenter.doses).to be_an(Array)
     end
   end
 
   describe '#smart_insights' do
     it 'bulk loads dashboard insight sources for scoped people' do
-      baseline_counts = count_insight_source_queries { described_class.new(current_user: admin_user).smart_insights }
+      baseline_counts = count_insight_source_queries do
+        presenter_for(admin_user, people_scope: Person.all).smart_insights
+      end
 
       create_list(:person, 2).each do |person|
         medication = create(:medication, current_supply: 500, supply_at_last_restock: 500)
         create(:schedule, person: person, medication: medication)
       end
 
-      expanded_counts = count_insight_source_queries { described_class.new(current_user: admin_user).smart_insights }
+      expanded_counts = count_insight_source_queries do
+        presenter_for(admin_user, people_scope: Person.all).smart_insights
+      end
 
       expect(expanded_counts[:schedules]).to eq(baseline_counts[:schedules])
       expect(expanded_counts[:person_medications]).to eq(baseline_counts[:person_medications])
@@ -224,5 +228,17 @@ RSpec.describe DashboardPresenter do
       ActiveSupport::Notifications.subscribed(subscriber, 'sql.active_record', &)
     end
     counts
+  end
+
+  def presenter_for(user, selected_person_id: nil, people_scope: nil)
+    described_class.new(current_user: user, selected_person_id: selected_person_id, people_scope: people_scope)
+  end
+
+  def parent_presenter(selected_person_id: nil)
+    person = parent_user.person
+    child_ids = person.patients.where(person_type: :minor).pluck(:id)
+
+    presenter_for(parent_user, selected_person_id: selected_person_id,
+                               people_scope: Person.where(id: [person.id] + child_ids))
   end
 end

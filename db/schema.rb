@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_08_090000) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_22_001300) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -127,19 +127,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_08_090000) do
     t.datetime "created_at", null: false
     t.citext "email", null: false
     t.string "password_hash"
+    t.jsonb "preferences", default: {}, null: false
     t.integer "status", default: 1, null: false
-    t.string "subscription_plan", default: "free", null: false
     t.datetime "updated_at", null: false
     t.index ["email"], name: "index_accounts_on_email", unique: true, where: "(status = ANY (ARRAY[1, 2]))"
+    t.index ["preferences"], name: "index_accounts_on_preferences", using: :gin
   end
 
   create_table "active_storage_attachments", force: :cascade do |t|
     t.bigint "blob_id", null: false
     t.datetime "created_at", null: false
+    t.bigint "household_id"
     t.string "name", null: false
     t.bigint "record_id", null: false
     t.string "record_type", null: false
     t.index ["blob_id"], name: "index_active_storage_attachments_on_blob_id"
+    t.index ["household_id"], name: "index_active_storage_attachments_on_household_id"
+    t.index ["id", "household_id"], name: "index_active_storage_attachments_on_id_and_household_id", unique: true
     t.index ["record_type", "record_id", "name", "blob_id"], name: "index_active_storage_attachments_uniqueness", unique: true
   end
 
@@ -167,7 +171,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_08_090000) do
     t.bigint "account_id", null: false
     t.datetime "created_at", null: false
     t.string "device_name"
+    t.bigint "household_membership_id"
     t.datetime "last_used_at", null: false
+    t.integer "permissions_version", default: 1, null: false
     t.datetime "refresh_expires_at", null: false
     t.string "refresh_token_digest", null: false
     t.datetime "revoked_at"
@@ -175,13 +181,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_08_090000) do
     t.string "user_agent"
     t.index ["access_token_digest"], name: "index_api_sessions_on_access_token_digest", unique: true
     t.index ["account_id"], name: "index_api_sessions_on_account_id"
+    t.index ["household_membership_id", "revoked_at"], name: "index_api_sessions_on_membership_and_revoked_at"
+    t.index ["household_membership_id"], name: "index_api_sessions_on_household_membership_id"
     t.index ["refresh_token_digest"], name: "index_api_sessions_on_refresh_token_digest", unique: true
     t.index ["revoked_at"], name: "index_api_sessions_on_revoked_at"
   end
 
   create_table "app_settings", force: :cascade do |t|
-    t.boolean "invite_only", default: false, null: false
     t.datetime "created_at", null: false
+    t.boolean "invite_only", default: false, null: false
     t.datetime "updated_at", null: false
   end
 
@@ -222,41 +230,90 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_08_090000) do
     t.decimal "default_min_hours_between_doses", precision: 4, scale: 1
     t.string "description"
     t.string "frequency"
+    t.bigint "household_id"
     t.bigint "medication_id", null: false
     t.decimal "reorder_threshold", precision: 10, scale: 2
     t.string "unit"
     t.datetime "updated_at", null: false
+    t.index ["household_id"], name: "index_dosages_on_household_id"
+    t.index ["id", "household_id"], name: "index_dosages_on_id_and_household_id", unique: true
     t.index ["medication_id"], name: "index_dosages_on_medication_id"
     t.index ["medication_id"], name: "index_dosages_one_adult_default", unique: true, where: "(default_for_adults = true)"
     t.index ["medication_id"], name: "index_dosages_one_child_default", unique: true, where: "(default_for_children = true)"
   end
 
-  create_table "invitations", force: :cascade do |t|
-    t.datetime "accepted_at"
+  create_table "household_invitation_grants", force: :cascade do |t|
+    t.string "access_level", null: false
     t.datetime "created_at", null: false
-    t.string "email"
     t.datetime "expires_at"
-    t.integer "role"
-    t.string "token_digest"
+    t.bigint "household_id", null: false
+    t.bigint "household_invitation_id", null: false
+    t.bigint "person_id", null: false
+    t.string "relationship_type", null: false
     t.datetime "updated_at", null: false
-    t.index ["token_digest"], name: "index_invitations_on_token_digest", unique: true
+    t.index ["household_id"], name: "index_household_invitation_grants_on_household_id"
+    t.index ["household_invitation_id"], name: "index_household_invitation_grants_on_household_invitation_id"
+    t.index ["id", "household_id"], name: "index_household_invitation_grants_on_id_and_household_id", unique: true
+    t.index ["person_id"], name: "index_household_invitation_grants_on_person_id"
   end
 
-  create_table "invitation_dependents", force: :cascade do |t|
+  create_table "household_invitations", force: :cascade do |t|
+    t.datetime "accepted_at"
     t.datetime "created_at", null: false
-    t.bigint "dependent_id", null: false
-    t.bigint "invitation_id", null: false
+    t.citext "email", null: false
+    t.datetime "expires_at", null: false
+    t.bigint "household_id", null: false
+    t.bigint "invited_by_membership_id", null: false
+    t.string "membership_role", null: false
+    t.datetime "revoked_at"
+    t.string "token_digest", null: false
     t.datetime "updated_at", null: false
-    t.index ["dependent_id"], name: "index_invitation_dependents_on_dependent_id"
-    t.index ["invitation_id", "dependent_id"], name: "index_invitation_dependents_on_invitation_id_and_dependent_id", unique: true
-    t.index ["invitation_id"], name: "index_invitation_dependents_on_invitation_id"
+    t.index ["household_id", "email"], name: "index_household_invitations_on_household_id_and_email", unique: true, where: "((accepted_at IS NULL) AND (revoked_at IS NULL))"
+    t.index ["household_id"], name: "index_household_invitations_on_household_id"
+    t.index ["id", "household_id"], name: "index_household_invitations_on_id_and_household_id", unique: true
+    t.index ["invited_by_membership_id"], name: "index_household_invitations_on_invited_by_membership_id"
+    t.index ["token_digest"], name: "index_household_invitations_on_token_digest", unique: true
+  end
+
+  create_table "household_memberships", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.datetime "created_at", null: false
+    t.bigint "household_id", null: false
+    t.datetime "joined_at", null: false
+    t.integer "permissions_version", default: 1, null: false
+    t.bigint "person_id"
+    t.datetime "revoked_at"
+    t.string "role", default: "member", null: false
+    t.string "status", default: "active", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_household_memberships_on_account_id"
+    t.index ["household_id", "account_id"], name: "index_household_memberships_on_household_id_and_account_id", unique: true
+    t.index ["household_id"], name: "index_household_memberships_on_household_id"
+    t.index ["id", "household_id"], name: "index_household_memberships_on_id_and_household_id", unique: true
+    t.index ["person_id"], name: "index_household_memberships_on_person_id", unique: true, where: "(person_id IS NOT NULL)"
+  end
+
+  create_table "households", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "created_by_account_id"
+    t.string "name", null: false
+    t.string "slug", null: false
+    t.string "status", default: "active", null: false
+    t.string "subscription_plan", default: "free", null: false
+    t.string "timezone", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_by_account_id"], name: "index_households_on_created_by_account_id"
+    t.index ["slug"], name: "index_households_on_slug", unique: true
   end
 
   create_table "location_memberships", force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.bigint "household_id"
     t.bigint "location_id", null: false
     t.bigint "person_id", null: false
     t.datetime "updated_at", null: false
+    t.index ["household_id"], name: "index_location_memberships_on_household_id"
+    t.index ["id", "household_id"], name: "index_location_memberships_on_id_and_household_id", unique: true
     t.index ["location_id"], name: "index_location_memberships_on_location_id"
     t.index ["person_id", "location_id"], name: "index_location_memberships_on_person_id_and_location_id", unique: true
     t.index ["person_id"], name: "index_location_memberships_on_person_id"
@@ -265,17 +322,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_08_090000) do
   create_table "locations", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.text "description"
+    t.bigint "household_id"
     t.string "name", null: false
     t.datetime "updated_at", null: false
-    t.index ["name"], name: "index_locations_on_name", unique: true
+    t.index "household_id, lower((name)::text)", name: "index_locations_on_household_id_and_lower_name", unique: true, where: "(household_id IS NOT NULL)"
+    t.index ["household_id"], name: "index_locations_on_household_id"
+    t.index ["id", "household_id"], name: "index_locations_on_id_and_household_id", unique: true
     t.index ["name"], name: "index_locations_on_name_trigram", opclass: :gin_trgm_ops, using: :gin
   end
 
   create_table "medication_takes", force: :cascade do |t|
-    t.decimal "dose_amount", precision: 10, scale: 2
-    t.string "dose_unit"
     t.string "client_uuid"
     t.datetime "created_at", null: false
+    t.decimal "dose_amount", precision: 10, scale: 2
+    t.string "dose_unit"
+    t.bigint "household_id"
     t.bigint "person_medication_id"
     t.bigint "schedule_id"
     t.datetime "taken_at"
@@ -283,6 +344,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_08_090000) do
     t.bigint "taken_from_medication_id"
     t.datetime "updated_at", null: false
     t.index ["client_uuid"], name: "index_medication_takes_on_client_uuid", unique: true, where: "(client_uuid IS NOT NULL)"
+    t.index ["household_id"], name: "index_medication_takes_on_household_id"
+    t.index ["id", "household_id"], name: "index_medication_takes_on_id_and_household_id", unique: true
     t.index ["person_medication_id"], name: "index_medication_takes_on_person_medication_id"
     t.index ["schedule_id"], name: "index_medication_takes_on_schedule_id"
     t.index ["taken_at"], name: "index_medication_takes_on_taken_at"
@@ -295,9 +358,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_08_090000) do
     t.string "category"
     t.datetime "created_at", null: false
     t.decimal "current_supply", precision: 10, scale: 2
-    t.text "description"
     t.jsonb "default_schedule_config", default: {}, null: false
     t.integer "default_schedule_type", default: 1, null: false
+    t.text "description"
     t.string "dmd_code"
     t.string "dmd_concept_class"
     t.string "dmd_system"
@@ -305,6 +368,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_08_090000) do
     t.string "dosage_unit"
     t.date "expiry_date"
     t.string "friendly_name"
+    t.bigint "household_id"
     t.bigint "location_id", null: false
     t.string "name"
     t.datetime "ordered_at"
@@ -315,11 +379,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_08_090000) do
     t.datetime "updated_at", null: false
     t.text "warnings"
     t.index ["barcode"], name: "index_medications_on_barcode", unique: true, where: "((barcode IS NOT NULL) AND ((barcode)::text <> ''::text))"
-    t.index ["default_schedule_type"], name: "index_medications_on_default_schedule_type"
     t.index ["barcode"], name: "index_medications_on_barcode_trigram", opclass: :gin_trgm_ops, using: :gin
     t.index ["category"], name: "index_medications_on_category_trigram", opclass: :gin_trgm_ops, using: :gin
+    t.index ["default_schedule_type"], name: "index_medications_on_default_schedule_type"
     t.index ["dmd_code"], name: "index_medications_on_dmd_code"
     t.index ["dmd_code"], name: "index_medications_on_dmd_code_trigram", opclass: :gin_trgm_ops, using: :gin
+    t.index ["household_id"], name: "index_medications_on_household_id"
+    t.index ["id", "household_id"], name: "index_medications_on_id_and_household_id", unique: true
     t.index ["location_id"], name: "index_medications_on_location_id"
     t.index ["name"], name: "index_medications_on_name_trigram", opclass: :gin_trgm_ops, using: :gin
   end
@@ -376,10 +442,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_08_090000) do
     t.datetime "created_at", null: false
     t.boolean "enabled", default: true, null: false
     t.time "evening_time", default: "2000-01-01 18:00:00"
+    t.bigint "household_id"
     t.time "morning_time", default: "2000-01-01 08:00:00"
     t.time "night_time", default: "2000-01-01 22:00:00"
     t.bigint "person_id", null: false
     t.datetime "updated_at", null: false
+    t.index ["household_id"], name: "index_notification_preferences_on_household_id"
+    t.index ["id", "household_id"], name: "index_notification_preferences_on_id_and_household_id", unique: true
     t.index ["person_id"], name: "index_notification_preferences_on_person_id", unique: true
   end
 
@@ -389,13 +458,37 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_08_090000) do
     t.date "date_of_birth"
     t.string "email"
     t.boolean "has_capacity", default: true, null: false
+    t.bigint "household_id"
     t.string "name", null: false
     t.integer "person_type", default: 0, null: false
+    t.string "professional_title"
     t.datetime "updated_at", null: false
     t.index ["account_id"], name: "index_people_on_account_id"
     t.index ["email"], name: "index_people_on_email_present_unique", unique: true, where: "((email IS NOT NULL) AND (btrim((email)::text) <> ''::text))"
+    t.index ["household_id", "account_id"], name: "index_people_on_household_id_and_account_id", unique: true, where: "((household_id IS NOT NULL) AND (account_id IS NOT NULL))"
+    t.index ["household_id"], name: "index_people_on_household_id"
+    t.index ["id", "household_id"], name: "index_people_on_id_and_household_id", unique: true
     t.index ["name"], name: "index_people_on_name_trigram", opclass: :gin_trgm_ops, using: :gin
     t.index ["person_type"], name: "index_people_on_person_type"
+  end
+
+  create_table "person_access_grants", force: :cascade do |t|
+    t.string "access_level", null: false
+    t.datetime "created_at", null: false
+    t.datetime "expires_at"
+    t.bigint "granted_by_membership_id"
+    t.bigint "household_id", null: false
+    t.bigint "household_membership_id", null: false
+    t.bigint "person_id", null: false
+    t.string "relationship_type", null: false
+    t.datetime "revoked_at"
+    t.datetime "updated_at", null: false
+    t.index ["granted_by_membership_id"], name: "index_person_access_grants_on_granted_by_membership_id"
+    t.index ["household_id"], name: "index_person_access_grants_on_household_id"
+    t.index ["household_membership_id", "person_id"], name: "idx_on_household_membership_id_person_id_6ddc5a2882", unique: true, where: "(revoked_at IS NULL)"
+    t.index ["household_membership_id"], name: "index_person_access_grants_on_household_membership_id"
+    t.index ["id", "household_id"], name: "index_person_access_grants_on_id_and_household_id", unique: true
+    t.index ["person_id"], name: "index_person_access_grants_on_person_id"
   end
 
   create_table "person_medications", force: :cascade do |t|
@@ -404,6 +497,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_08_090000) do
     t.decimal "dose_amount", precision: 10, scale: 2
     t.integer "dose_cycle"
     t.string "dose_unit"
+    t.bigint "household_id"
     t.integer "max_daily_doses"
     t.bigint "medication_id", null: false
     t.integer "min_hours_between_doses"
@@ -413,6 +507,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_08_090000) do
     t.bigint "source_dosage_option_id"
     t.datetime "updated_at", null: false
     t.index ["administration_kind"], name: "index_person_medications_on_administration_kind"
+    t.index ["household_id"], name: "index_person_medications_on_household_id"
+    t.index ["id", "household_id"], name: "index_person_medications_on_id_and_household_id", unique: true
     t.index ["medication_id"], name: "index_person_medications_on_medication_id"
     t.index ["person_id", "medication_id"], name: "index_person_medications_on_person_id_and_medication_id", unique: true
     t.index ["person_id", "position"], name: "index_person_medications_on_person_id_and_position"
@@ -440,6 +536,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_08_090000) do
     t.string "dose_unit"
     t.date "end_date"
     t.string "frequency"
+    t.bigint "household_id"
     t.integer "max_daily_doses", default: 4
     t.bigint "medication_id", null: false
     t.integer "min_hours_between_doses"
@@ -451,11 +548,31 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_08_090000) do
     t.date "start_date"
     t.datetime "updated_at", null: false
     t.index ["active"], name: "index_schedules_on_active"
+    t.index ["household_id"], name: "index_schedules_on_household_id"
+    t.index ["id", "household_id"], name: "index_schedules_on_id_and_household_id", unique: true
     t.index ["medication_id"], name: "index_schedules_on_medication_id"
     t.index ["person_id"], name: "index_schedules_on_person_id"
     t.index ["schedule_config"], name: "index_schedules_on_schedule_config", using: :gin
     t.index ["schedule_type"], name: "index_schedules_on_schedule_type"
     t.index ["source_dosage_option_id"], name: "index_schedules_on_source_dosage_option_id"
+  end
+
+  create_table "security_audit_events", force: :cascade do |t|
+    t.bigint "actor_account_id"
+    t.bigint "actor_membership_id"
+    t.datetime "created_at", null: false
+    t.string "event_type", null: false
+    t.bigint "household_id"
+    t.string "ip"
+    t.jsonb "metadata", default: {}, null: false
+    t.string "request_id"
+    t.datetime "updated_at", null: false
+    t.index ["actor_account_id"], name: "index_security_audit_events_on_actor_account_id"
+    t.index ["actor_membership_id"], name: "index_security_audit_events_on_actor_membership_id"
+    t.index ["event_type"], name: "index_security_audit_events_on_event_type"
+    t.index ["household_id", "created_at"], name: "index_security_audit_events_on_household_id_and_created_at"
+    t.index ["household_id"], name: "index_security_audit_events_on_household_id"
+    t.index ["id", "household_id"], name: "index_security_audit_events_on_id_and_household_id", unique: true
   end
 
   create_table "users", force: :cascade do |t|
@@ -464,25 +581,26 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_08_090000) do
     t.string "email_address", null: false
     t.string "password_digest"
     t.bigint "person_id", null: false
-    t.jsonb "preferences", default: {}, null: false
-    t.integer "role", default: 4, null: false
     t.datetime "updated_at", null: false
     t.index ["email_address"], name: "index_users_on_email_address", unique: true
     t.index ["person_id"], name: "index_users_on_person_id", unique: true
-    t.index ["preferences"], name: "index_users_on_preferences", using: :gin
   end
 
   create_table "versions", force: :cascade do |t|
+    t.bigint "actor_membership_id"
     t.datetime "created_at"
     t.string "event", null: false
+    t.bigint "household_id"
     t.string "ip"
     t.bigint "item_id", null: false
     t.string "item_type", null: false
     t.text "object"
     t.string "request_id"
     t.string "whodunnit"
+    t.index ["actor_membership_id"], name: "index_versions_on_actor_membership_id"
     t.index ["created_at"], name: "index_versions_on_created_at"
     t.index ["event"], name: "index_versions_on_event"
+    t.index ["household_id"], name: "index_versions_on_household_id"
     t.index ["item_type", "item_id"], name: "index_versions_on_item_type_and_item_id"
     t.index ["request_id"], name: "index_versions_on_request_id"
     t.index ["whodunnit"], name: "index_versions_on_whodunnit"
@@ -501,29 +619,77 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_08_090000) do
   add_foreign_key "account_webauthn_keys", "accounts", on_delete: :cascade
   add_foreign_key "account_webauthn_user_ids", "accounts", on_delete: :cascade
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "active_storage_attachments", "households"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "api_sessions", "accounts"
+  add_foreign_key "api_sessions", "household_memberships"
   add_foreign_key "carer_relationships", "people", column: "carer_id", deferrable: :deferred
   add_foreign_key "carer_relationships", "people", column: "patient_id", deferrable: :deferred
+  add_foreign_key "dosages", "households"
+  add_foreign_key "dosages", "medications", column: ["medication_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_dosages_medication_id_household"
   add_foreign_key "dosages", "medications", deferrable: :deferred
-  add_foreign_key "invitation_dependents", "invitations"
-  add_foreign_key "invitation_dependents", "people", column: "dependent_id"
+  add_foreign_key "household_invitation_grants", "household_invitations"
+  add_foreign_key "household_invitation_grants", "household_invitations", column: ["household_invitation_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_household_invitation_grants_invitation_household"
+  add_foreign_key "household_invitation_grants", "households"
+  add_foreign_key "household_invitation_grants", "people"
+  add_foreign_key "household_invitation_grants", "people", column: ["person_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_household_invitation_grants_person_household"
+  add_foreign_key "household_invitations", "household_memberships", column: "invited_by_membership_id"
+  add_foreign_key "household_invitations", "households"
+  add_foreign_key "household_memberships", "accounts"
+  add_foreign_key "household_memberships", "households"
+  add_foreign_key "household_memberships", "people"
+  add_foreign_key "household_memberships", "people", column: ["person_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_household_memberships_person_id_household"
+  add_foreign_key "households", "accounts", column: "created_by_account_id"
+  add_foreign_key "location_memberships", "households"
+  add_foreign_key "location_memberships", "locations", column: ["location_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_location_memberships_location_id_household"
   add_foreign_key "location_memberships", "locations", deferrable: :deferred
+  add_foreign_key "location_memberships", "people", column: ["person_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_location_memberships_person_id_household"
   add_foreign_key "location_memberships", "people", deferrable: :deferred
+  add_foreign_key "locations", "households"
+  add_foreign_key "medication_takes", "households"
   add_foreign_key "medication_takes", "locations", column: "taken_from_location_id"
+  add_foreign_key "medication_takes", "locations", column: ["taken_from_location_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_medication_takes_taken_from_location_id_household"
   add_foreign_key "medication_takes", "medications", column: "taken_from_medication_id"
+  add_foreign_key "medication_takes", "medications", column: ["taken_from_medication_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_medication_takes_taken_from_medication_id_household"
+  add_foreign_key "medication_takes", "person_medications", column: ["person_medication_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_medication_takes_person_medication_id_household"
   add_foreign_key "medication_takes", "person_medications", deferrable: :deferred
+  add_foreign_key "medication_takes", "schedules", column: ["schedule_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_medication_takes_schedule_id_household"
   add_foreign_key "medication_takes", "schedules", deferrable: :deferred
+  add_foreign_key "medications", "households"
+  add_foreign_key "medications", "locations", column: ["location_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_medications_location_id_household"
   add_foreign_key "medications", "locations", deferrable: :deferred
   add_foreign_key "native_device_tokens", "accounts"
+  add_foreign_key "notification_preferences", "households"
+  add_foreign_key "notification_preferences", "people", column: ["person_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_notification_preferences_person_id_household"
   add_foreign_key "notification_preferences", "people", deferrable: :deferred
   add_foreign_key "people", "accounts", deferrable: :deferred
+  add_foreign_key "people", "households"
+  add_foreign_key "person_access_grants", "household_memberships"
+  add_foreign_key "person_access_grants", "household_memberships", column: "granted_by_membership_id"
+  add_foreign_key "person_access_grants", "household_memberships", column: ["granted_by_membership_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_person_access_grants_granted_by_membership_id_household"
+  add_foreign_key "person_access_grants", "household_memberships", column: ["household_membership_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_person_access_grants_household_membership_id_household"
+  add_foreign_key "person_access_grants", "households"
+  add_foreign_key "person_access_grants", "people"
+  add_foreign_key "person_access_grants", "people", column: ["person_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_person_access_grants_person_id_household"
   add_foreign_key "person_medications", "dosages", column: "source_dosage_option_id"
+  add_foreign_key "person_medications", "dosages", column: ["source_dosage_option_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_person_medications_source_dosage_option_id_household"
+  add_foreign_key "person_medications", "households"
+  add_foreign_key "person_medications", "medications", column: ["medication_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_person_medications_medication_id_household"
   add_foreign_key "person_medications", "medications", deferrable: :deferred
+  add_foreign_key "person_medications", "people", column: ["person_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_person_medications_person_id_household"
   add_foreign_key "person_medications", "people", deferrable: :deferred
   add_foreign_key "push_subscriptions", "accounts", deferrable: :deferred
   add_foreign_key "schedules", "dosages", column: "source_dosage_option_id"
+  add_foreign_key "schedules", "dosages", column: ["source_dosage_option_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_schedules_source_dosage_option_id_household"
+  add_foreign_key "schedules", "households"
+  add_foreign_key "schedules", "medications", column: ["medication_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_schedules_medication_id_household"
   add_foreign_key "schedules", "medications", deferrable: :deferred
+  add_foreign_key "schedules", "people", column: ["person_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_schedules_person_id_household"
   add_foreign_key "schedules", "people", deferrable: :deferred
+  add_foreign_key "security_audit_events", "accounts", column: "actor_account_id"
+  add_foreign_key "security_audit_events", "household_memberships", column: "actor_membership_id"
+  add_foreign_key "security_audit_events", "households"
   add_foreign_key "users", "people", deferrable: :deferred
+  add_foreign_key "versions", "household_memberships", column: "actor_membership_id"
+  add_foreign_key "versions", "households"
 end

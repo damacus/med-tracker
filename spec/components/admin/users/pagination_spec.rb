@@ -123,7 +123,7 @@ RSpec.describe Components::Admin::Users::Pagination, type: :component do
     it 'includes search params in page links' do
       rendered = render_inline(described_class.new(
                                  pagy: pagy,
-                                 search_params: { search: 'test', role: 'admin' }
+                                 search_params: { search: 'test', membership_role: 'administrator' }
                                ))
 
       page_links = rendered.css('a[href*="admin/users"]')

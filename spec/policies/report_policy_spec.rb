@@ -3,44 +3,34 @@
 require 'rails_helper'
 require 'pundit/rspec'
 
-RSpec.describe ReportPolicy do
-  fixtures :all
-
+RSpec.describe ReportPolicy, type: :policy do
   subject(:policy) { described_class.new(user, :report) }
 
-  context 'when user is an administrator' do
-    let(:user) { users(:admin) }
+  context 'with a household manager context' do
+    let(:user) { household_policy_member(role: :owner).fetch(:context) }
 
     it { is_expected.to permit_action(:index) }
   end
 
-  context 'when user is a doctor' do
-    let(:user) { users(:doctor) }
+  context 'with an adult household member context' do
+    let(:user) { household_policy_member(role: :member).fetch(:context) }
 
     it { is_expected.to permit_action(:index) }
   end
 
-  context 'when user is a carer' do
-    let(:user) { users(:carer) }
+  context 'with a revoked household membership context' do
+    let(:member) { household_policy_member(role: :member) }
+    let(:user) do
+      member.fetch(:membership).update!(status: :revoked)
+      member.fetch(:context)
+    end
 
-    it { is_expected.to permit_action(:index) }
+    it { is_expected.not_to permit_action(:index) }
   end
 
-  context 'when user is a parent' do
-    let(:user) { users(:parent) }
+  context 'with a legacy user' do
+    let(:user) { User.new }
 
-    it { is_expected.to permit_action(:index) }
-  end
-
-  context 'when user is an adult patient' do
-    let(:user) { users(:adult_patient) }
-
-    it { is_expected.to permit_action(:index) }
-  end
-
-  context 'when user is a minor patient' do
-    let(:user) { users(:minor_patient_user) }
-
-    it { is_expected.to forbid_action(:index) }
+    it { is_expected.not_to permit_action(:index) }
   end
 end

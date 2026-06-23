@@ -11,7 +11,7 @@ RSpec.describe 'Two-factor soft enforcement' do
   end
 
   describe 'GET /profile' do
-    it 'shows the warning for administrators without 2FA' do
+    it 'shows the warning for household owners without 2FA' do
       user = users(:damacus)
       clear_2fa_for(user.person.account)
       sign_in(user)
@@ -21,38 +21,19 @@ RSpec.describe 'Two-factor soft enforcement' do
       expect(response.body).to include('For enhanced security, please set up two-factor authentication')
     end
 
-    it 'shows the warning for doctors without 2FA' do
-      user = users(:doctor)
-      clear_2fa_for(user.person.account)
-      sign_in(user)
-
-      get profile_path
-
-      expect(response.body).to include('For enhanced security, please set up two-factor authentication')
-    end
-
-    it 'shows the warning for nurses without 2FA' do
-      user = users(:nurse)
-      clear_2fa_for(user.person.account)
-      sign_in(user)
-
-      get profile_path
-
-      expect(response.body).to include('For enhanced security, please set up two-factor authentication')
-    end
-
-    it 'does not show the warning for parents without 2FA' do
+    it 'shows the warning for household administrators without 2FA' do
       user = users(:jane)
       clear_2fa_for(user.person.account)
       sign_in(user)
+      current_membership_for(user).update!(role: :administrator)
 
       get profile_path
 
-      expect(response.body).not_to include('For enhanced security, please set up two-factor authentication')
+      expect(response.body).to include('For enhanced security, please set up two-factor authentication')
     end
 
-    it 'does not show the warning for carers without 2FA' do
-      user = users(:bob)
+    it 'does not show the warning for household members without 2FA' do
+      user = users(:jane)
       clear_2fa_for(user.person.account)
       sign_in(user)
 
@@ -98,5 +79,11 @@ RSpec.describe 'Two-factor soft enforcement' do
 
       expect(response.body).not_to include('For enhanced security, please set up two-factor authentication')
     end
+  end
+
+  def current_membership_for(user)
+    Household.find_by!(slug: default_url_options.fetch(:household_slug))
+             .household_memberships
+             .find_by!(account: user.person.account)
   end
 end

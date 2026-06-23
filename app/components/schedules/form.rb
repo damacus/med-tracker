@@ -551,7 +551,10 @@ module Components
           person: person,
           medications: medications,
           frame_id: frame_id,
-          next_url: new_person_schedule_path(person),
+          urls: {
+            next: new_person_schedule_path(person),
+            frequency_preview: schedules_frequency_preview_path
+          },
           translations: form_translations
         ).data
       end

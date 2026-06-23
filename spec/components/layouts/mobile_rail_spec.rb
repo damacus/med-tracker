@@ -6,6 +6,16 @@ RSpec.describe Components::Layouts::MobileRail, type: :component do
   fixtures :accounts, :people, :users
 
   let(:admin_user) { users(:admin) }
+  let(:household_slug) { 'test-household' }
+  let(:household) { Household.find_or_create_by!(slug: household_slug) { |record| record.name = 'Test Household' } }
+
+  before do
+    Current.household = household
+  end
+
+  after do
+    Current.reset
+  end
 
   def render_rail(user:, path: '/')
     vc = view_context
@@ -33,14 +43,20 @@ RSpec.describe Components::Layouts::MobileRail, type: :component do
   end
 
   it 'marks the active rail item with aria-current' do
-    rendered = render_rail(user: admin_user, path: Rails.application.routes.url_helpers.medications_path)
+    rendered = render_rail(
+      user: admin_user,
+      path: Rails.application.routes.url_helpers.medications_path(household_slug: household_slug)
+    )
     inventory_link = rendered.at_css(%(a[aria-label="Inventory"]))
 
     expect(inventory_link['aria-current']).to eq('page')
   end
 
   it 'marks Dashboard active on the dashboard alias route' do
-    rendered = render_rail(user: admin_user, path: Rails.application.routes.url_helpers.dashboard_path)
+    rendered = render_rail(
+      user: admin_user,
+      path: Rails.application.routes.url_helpers.dashboard_path(household_slug: household_slug)
+    )
     dashboard_link = rendered.at_css(%(a[aria-label="Dashboard"]))
 
     expect(dashboard_link['aria-current']).to eq('page')

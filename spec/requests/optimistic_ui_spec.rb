@@ -10,7 +10,11 @@ RSpec.describe 'Optimistic UI updates for take medication buttons' do
   let(:medication) { medications(:paracetamol) }
 
   before do
-    post '/login', params: { email: carer_account.email, password: 'password' }
+    sign_in(users(:carer))
+    household = person.reload.household
+    medication.location.update!(household: household)
+    medication.update!(household: household)
+    medication.dosage_records.find_each { |dosage| dosage.update!(household: household) }
   end
 
   describe 'dashboard timeline' do
@@ -28,7 +32,7 @@ RSpec.describe 'Optimistic UI updates for take medication buttons' do
     end
 
     it 'renders take button with optimistic-take controller data attributes' do
-      get dashboard_path
+      get dashboard_path(dashboard_person_id: person.id)
 
       expect(response).to have_http_status(:ok)
       expect(response.body).to include('data-controller="optimistic-take"')

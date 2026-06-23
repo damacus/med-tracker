@@ -14,7 +14,7 @@ RSpec.describe 'MedicationsVisibility' do
     driven_by(:playwright)
   end
 
-  it 'allows a parent at the same Home location to see a medicine added by the admin' do
+  it 'allows a household manager to see a medicine added by another household manager' do
     # Step 1: Admin logs in and adds a new medication at Home
     login_as(admin)
 
@@ -63,6 +63,8 @@ RSpec.describe 'MedicationsVisibility' do
 
     # Step 2: Jane (parent, also at Home) logs in and should see the medication
     login_as(jane)
+    browser_membership.update!(role: :administrator)
+    grant_browser_access(jane.person, access_level: :manage)
 
     visit medications_path
 

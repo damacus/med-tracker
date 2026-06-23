@@ -15,7 +15,7 @@ module People
       @relationship = CarerRelationship.new(patient: @patient)
       authorize @relationship, :assign_dependent?
 
-      if current_user.administrator?
+      if household_manager?
         create_admin_assignment
       else
         create_parent_assignment
@@ -25,7 +25,7 @@ module People
     private
 
     def set_patient
-      @patient = Person.find(params.expect(:person_id))
+      @patient = policy_scope(Person).find(params.expect(:person_id))
     end
 
     def create_admin_assignment
@@ -35,11 +35,13 @@ module People
         return
       end
 
-      DependentRelationshipAssigner.new(
+      relationships = DependentRelationshipAssigner.new(
         carer: carer,
         dependent_ids: [@patient.id],
-        relationship_type: admin_assignment_params[:relationship_type]
+        relationship_type: admin_assignment_params[:relationship_type],
+        scope: @patient.household.people
       ).call
+      grant_assignment_access(carer.user, relationships, admin_assignment_params[:relationship_type])
       redirect_to @patient, notice: t('people.carer_relationships.created')
     end
 
@@ -56,27 +58,33 @@ module People
     end
 
     def assign_existing_user(user)
-      DependentRelationshipAssigner.new(
+      relationships = DependentRelationshipAssigner.new(
         carer: user.person,
         dependent_ids: [@patient.id],
-        relationship_type: DependentRelationshipAssigner.relationship_type_for(user)
+        relationship_type: 'parent',
+        scope: @patient.household.people
       ).call
+      grant_assignment_access(user, relationships, 'parent')
       redirect_to @patient, notice: t('people.carer_relationships.created')
     end
 
     def invite_parent
-      invitation = pending_invitation_for_parent_email || Invitation.new(email: parent_assignment_email)
-      invitation.role = :parent if invitation.new_record?
+      invitation = pending_invitation_for_parent_email || current_household.household_invitations.new(
+        email: parent_assignment_email,
+        membership_role: :member,
+        invited_by_membership: current_membership
+      )
+      invitation.relationship_type = :parent
+      invitation.access_level = :manage
 
-      unless invitation.parent?
+      unless parent_invitation?(invitation)
         render_invalid_assignment(t('people.carer_relationships.invalid_role'))
         return
       end
 
-      invitation.dependents << @patient unless invitation.dependents.include?(@patient)
-
-      if invitation.save
-        deliver_invitation(invitation) if invitation.previous_changes.key?('id')
+      was_new_record = invitation.new_record?
+      if save_parent_invitation(invitation)
+        deliver_invitation(invitation) if was_new_record
         redirect_to @patient, notice: t('people.carer_relationships.invited')
       else
         @relationship.errors.merge!(invitation.errors)
@@ -99,18 +107,106 @@ module People
         patient: @patient,
         carers: assignable_carers,
         current_user: current_user,
-        email: parent_assignment_email
+        options: {
+          household_manager: household_manager?,
+          email: parent_assignment_email
+        }
       ), status: status
     end
 
     def assignable_carers
-      return Person.none unless current_user.administrator?
+      return Person.none unless household_manager?
 
-      Person.joins(:user).where(person_type: :adult, has_capacity: true).order(:name)
+      policy_scope(Person).joins(:user).where(person_type: :adult, has_capacity: true).order(:name)
     end
 
     def assignable_parent_user?(user)
-      user&.parent? && user.person&.person_type == 'adult' && user.person&.has_capacity?
+      user&.person&.person_type == 'adult' &&
+        user.person&.has_capacity? &&
+        user.person.professional_title.blank? &&
+        !self_managing_adult?(user.person)
+    end
+
+    def self_managing_adult?(person)
+      person.adult? &&
+        person.has_capacity? &&
+        CarerRelationship.active.exists?(carer: person, patient: person, relationship_type: %w[self 0])
+    end
+
+    def parent_invitation?(invitation)
+      invitation.new_record? ||
+        invitation.household_invitation_grants.empty? ||
+        invitation.household_invitation_grants.any? { |grant| grant.relationship_type == 'parent' }
+    end
+
+    def save_parent_invitation(invitation)
+      ActiveRecord::Base.transaction do
+        invitation.save!
+        invitation.household_invitation_grants.find_or_create_by!(household: current_household, person: @patient) do |grant|
+          grant.access_level = :manage
+          grant.relationship_type = :parent
+        end
+      end
+      true
+    rescue ActiveRecord::RecordInvalid => e
+      invitation.errors.merge!(e.record.errors) unless e.record == invitation
+      false
+    end
+
+    def grant_assignment_access(user, relationships, legacy_relationship_type)
+      person = assignment_person_for(user)
+      return unless person
+
+      membership = assignment_membership_for(user, person)
+      grant_access(membership, person, :manage, :self)
+      relationships.each do |relationship|
+        grant_access(
+          membership,
+          relationship.patient,
+          access_level_for(legacy_relationship_type),
+          grant_relationship_type_for(legacy_relationship_type)
+        )
+      end
+    end
+
+    def assignment_person_for(user)
+      return unless current_household && user&.person&.account
+
+      person = user.person
+      person.update!(household: current_household) if person.household_id.blank?
+      person if person.household_id == current_household.id
+    end
+
+    def assignment_membership_for(_user, person)
+      membership = current_household.household_memberships.find_or_initialize_by(account: person.account)
+      membership.person = person
+      membership.role = :member if membership.new_record?
+      membership.status = :active
+      membership.save!
+      membership
+    end
+
+    def grant_access(membership, person, access_level, relationship_type)
+      grant = current_household.person_access_grants.find_or_initialize_by(
+        household_membership: membership,
+        person: person
+      )
+      grant.access_level = access_level
+      grant.relationship_type = relationship_type
+      grant.granted_by_membership = current_membership || membership
+      grant.revoked_at = nil
+      grant.save!
+    end
+
+    def access_level_for(legacy_relationship_type)
+      legacy_relationship_type == 'professional_carer' ? :record : :manage
+    end
+
+    def grant_relationship_type_for(legacy_relationship_type)
+      return :professional if legacy_relationship_type == 'professional_carer'
+      return :parent if legacy_relationship_type == 'parent'
+
+      :family_member
     end
 
     def parent_user_by_email
@@ -118,7 +214,7 @@ module People
     end
 
     def pending_invitation_for_parent_email
-      Invitation.pending.find_by('LOWER(email) = ?', parent_assignment_email)
+      current_household.household_invitations.pending.find_by('LOWER(email) = ?', parent_assignment_email)
     end
 
     def admin_assignment_params
@@ -127,6 +223,10 @@ module People
 
     def parent_assignment_email
       params.dig(:carer_relationship, :email).to_s.strip.downcase
+    end
+
+    def household_manager?
+      current_membership&.owner? || current_membership&.administrator?
     end
   end
 end

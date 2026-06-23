@@ -12,24 +12,61 @@ RSpec.describe PaidFeature do
       expect(described_class.enabled?(:ai_medication_help, user: users(:admin))).to be(false)
     end
 
-    it 'keeps AI medication help disabled for free accounts when the environment flag is true' do
+    it 'keeps AI medication help disabled for free households when the environment flag is true' do
+      Current.household = Household.create!(name: 'Free Household', slug: 'free-household', subscription_plan: :free)
       allow(ENV).to receive(:fetch).with('MEDTRACKER_AI_MEDICATION_HELP_ENABLED', 'false').and_return('true')
 
       expect(described_class.enabled?(:ai_medication_help, user: users(:admin))).to be(false)
+    ensure
+      Current.reset
     end
 
-    it 'enables AI medication help when the environment flag is true and the account plan includes it' do
-      users(:admin).person.account.update!(subscription_plan: 'family_plus')
+    it 'enables AI medication help when the environment flag is true and the household plan includes it' do
+      Current.household = Household.create!(name: 'Paid Household', slug: 'paid-household',
+                                            subscription_plan: :family_plus)
+      allow(ENV).to receive(:fetch).with('MEDTRACKER_AI_MEDICATION_HELP_ENABLED', 'false').and_return('true')
+
+      expect(described_class.enabled?(:ai_medication_help, user: users(:admin))).to be(true)
+    ensure
+      Current.reset
+    end
+
+    it 'uses the user membership household when no current household is set' do
+      person = users(:admin).person
+      household = Household.create!(name: 'Member Paid Household', slug: 'member-paid-household',
+                                    subscription_plan: :family_plus)
+      person.update!(household: household)
+      household.household_memberships.create!(account: person.account, person: person, role: :owner, status: :active)
       allow(ENV).to receive(:fetch).with('MEDTRACKER_AI_MEDICATION_HELP_ENABLED', 'false').and_return('true')
 
       expect(described_class.enabled?(:ai_medication_help, user: users(:admin))).to be(true)
     end
 
-    it 'keeps AI medication help disabled for entitled accounts when the environment flag is false' do
-      users(:admin).person.account.update!(subscription_plan: 'family_plus')
+    it 'uses the account active household when the user person is not tenant-bound' do
+      person = users(:admin).person
+      person.update!(household: nil)
+      household = Household.create!(name: 'Account Paid Household', slug: 'account-paid-household',
+                                    subscription_plan: :family_plus)
+      household.household_memberships.create!(account: person.account, role: :owner, status: :active)
+      allow(ENV).to receive(:fetch).with('MEDTRACKER_AI_MEDICATION_HELP_ENABLED', 'false').and_return('true')
+
+      expect(described_class.enabled?(:ai_medication_help, user: users(:admin))).to be(true)
+    end
+
+    it 'keeps AI medication help disabled without a resolvable household' do
+      allow(ENV).to receive(:fetch).with('MEDTRACKER_AI_MEDICATION_HELP_ENABLED', 'false').and_return('true')
+
+      expect(described_class.enabled?(:ai_medication_help, user: nil)).to be(false)
+    end
+
+    it 'keeps AI medication help disabled for entitled households when the environment flag is false' do
+      Current.household = Household.create!(name: 'Flag Disabled Household', slug: 'flag-disabled-household',
+                                            subscription_plan: :family_plus)
       allow(ENV).to receive(:fetch).with('MEDTRACKER_AI_MEDICATION_HELP_ENABLED', 'false').and_return('false')
 
       expect(described_class.enabled?(:ai_medication_help, user: users(:admin))).to be(false)
+    ensure
+      Current.reset
     end
 
     it 'disables unknown paid features' do

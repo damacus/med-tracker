@@ -10,7 +10,7 @@ import {
 
 export default class extends Controller {
   static targets = ["connection", "snapshotAge", "pendingCount", "failedCount", "today", "people", "failures"]
-  static values = { snapshotUrl: String, syncUrl: String }
+  static values = { snapshotUrl: String, syncUrl: String, tenantKey: String }
 
   async connect() {
     this.renderConnection()
@@ -49,7 +49,7 @@ export default class extends Controller {
     if (!navigator.onLine) return
 
     try {
-      await refreshSnapshot(this.snapshotUrlValue)
+      await refreshSnapshot(this.snapshotUrlValue, this.tenantKeyValue)
     } catch (_) {
       await this.render()
     }
@@ -58,7 +58,7 @@ export default class extends Controller {
   async sync() {
     if (!navigator.onLine) return
 
-    const result = await syncQueuedTakes(this.syncUrlValue)
+    const result = await syncQueuedTakes(this.syncUrlValue, this.tenantKeyValue)
     if (result.synced.length > 0) await this.refreshSnapshot()
   }
 
@@ -68,7 +68,7 @@ export default class extends Controller {
     const sourceId = Number(button.dataset.sourceId)
     const doseAmount = button.dataset.doseAmount
     const doseUnit = button.dataset.doseUnit
-    const snapshot = await getSnapshot()
+    const snapshot = await getSnapshot(this.tenantKeyValue)
     const data = snapshot?.payload?.data || {}
     const source = this.sourceFor(data, sourceType, sourceId)
     const medication = this.medicationForSource(data, source)
@@ -83,15 +83,15 @@ export default class extends Controller {
       dose_unit: doseUnit,
       taken_at: new Date().toISOString(),
       taken_from_medication_id: inventory?.id || medication.id
-    })
+    }, this.tenantKeyValue)
 
     window.dispatchEvent(new CustomEvent("medtracker:offline-take-queued", { detail: { take } }))
   }
 
   async render() {
-    const snapshot = await getSnapshot()
-    const queued = await getQueuedTakes()
-    const failed = await getFailedTakes()
+    const snapshot = await getSnapshot(this.tenantKeyValue)
+    const queued = await getQueuedTakes(this.tenantKeyValue)
+    const failed = await getFailedTakes(this.tenantKeyValue)
     const data = snapshot?.payload?.data || {}
 
     this.snapshotAgeTarget.textContent = snapshot ? this.relativeAge(snapshot.cached_at) : "Not cached"

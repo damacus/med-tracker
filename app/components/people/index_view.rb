@@ -34,7 +34,7 @@ module Components
       end
 
       def render_people_grid
-        div(class: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6', id: 'people') do
+        div(class: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6', id: tenant_dom_target('people')) do
           people.each do |person|
             render PersonCard.new(person: person)
           end

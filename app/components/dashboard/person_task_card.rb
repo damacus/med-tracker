@@ -269,7 +269,7 @@ module Components
       end
 
       def timeline_dom_id(source)
-        "timeline_#{source.class.name.underscore}_#{source.id}"
+        tenant_dom_target("timeline_#{source.class.name.underscore}_#{source.id}")
       end
     end
   end

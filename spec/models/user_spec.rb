@@ -55,50 +55,6 @@ RSpec.describe User do
     it { is_expected.to have_secure_password }
   end
 
-  describe 'roles' do
-    it {
-      expect(user).to define_enum_for(:role)
-        .with_values(administrator: 0, doctor: 1, nurse: 2, carer: 3, parent: 4, minor: 5)
-        .backed_by_column_of_type(:integer)
-    }
-
-    it 'can be an administrator' do
-      user.person = person
-      user.role = :administrator
-      expect(user.administrator?).to be true
-    end
-
-    it 'can be a doctor' do
-      user.person = person
-      user.role = :doctor
-      expect(user.doctor?).to be true
-    end
-
-    it 'can be a nurse' do
-      user.person = person
-      user.role = :nurse
-      expect(user.nurse?).to be true
-    end
-
-    it 'can be a carer' do
-      user.person = person
-      user.role = :carer
-      expect(user.carer?).to be true
-    end
-
-    it 'can be a parent' do
-      user.person = person
-      user.role = :parent
-      expect(user.parent?).to be true
-    end
-
-    it 'can be a minor' do
-      user.person = person
-      user.role = :minor
-      expect(user.minor?).to be true
-    end
-  end
-
   describe 'normalization' do
     it 'downcases the email address before saving' do
       user = described_class.create(email_address: 'TEST@EXAMPLE.COM', password: 'password', person: person)

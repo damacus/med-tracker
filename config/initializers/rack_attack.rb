@@ -39,11 +39,11 @@ module Rack
     end
 
     throttle('admin/audit_logs/ip', limit: 100, period: 1.minute) do |req|
-      req.ip if req.path.start_with?('/admin/audit_logs')
+      req.ip if req.path.match?(%r{\A/households/[^/]+/admin/audit_logs})
     end
 
     throttle('admin/audit_logs/user', limit: 200, period: 1.minute) do |req|
-      if req.path.start_with?('/admin/audit_logs')
+      if req.path.match?(%r{\A/households/[^/]+/admin/audit_logs})
         session = req.env['rack.session']
         session && session['account_id']
       end

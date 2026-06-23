@@ -18,7 +18,7 @@ module Components
 
       def view_template
         m3_card(
-          id: "medication_#{medication.id}",
+          id: tenant_dom_id(medication),
           class: 'h-full flex flex-col border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card ' \
                  'rounded-[2.5rem] transition-all duration-300 hover:scale-[1.02] hover:shadow-xl ' \
                  'group overflow-hidden'

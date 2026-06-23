@@ -71,6 +71,7 @@ child_patient:
 nurse_smith:
   name: Nurse Smith
   email: nurse.smith@example.com
+  professional_title: nurse
   date_of_birth: 1985-03-15
   person_type: 0  # adult
   has_capacity: true
@@ -81,6 +82,7 @@ nurse_smith:
 doctor_jones:
   name: Dr. Jones
   email: dr.jones@example.com
+  professional_title: doctor
   date_of_birth: 1975-07-20
   person_type: 0  # adult
   has_capacity: true

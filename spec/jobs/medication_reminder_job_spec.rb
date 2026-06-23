@@ -5,9 +5,14 @@ require 'rails_helper'
 RSpec.describe MedicationReminderJob do
   fixtures :accounts, :people, :locations, :medications, :dosages
 
+  let(:household) { Household.create!(name: 'Reminder Household', slug: 'reminder-household') }
   let(:person) { people(:john) }
 
   before do
+    Location.find_each { |location| location.update!(household: household) }
+    Medication.find_each { |medication| medication.update!(household: household) }
+    MedicationDosageOption.find_each { |dosage| dosage.update!(household: household) }
+    person.update!(household: household)
     person.schedules.destroy_all
     person.person_medications.destroy_all
     allow(PushNotificationService).to receive(:send_to_account)
@@ -19,13 +24,13 @@ RSpec.describe MedicationReminderJob do
     create(:schedule, person: person, medication: medications(:ibuprofen), dosage: dosages(:ibuprofen_adult),
                       frequency: 'Once daily', schedule_type: :daily, schedule_config: { 'times' => ['19:45'] })
 
-    described_class.perform_now(person.id, :scheduled, '07:15')
+    described_class.perform_now(household.id, person.id, :scheduled, '07:15')
 
     expect(PushNotificationService).to have_received(:send_to_account).with(
       person.account,
       title: 'Medication Reminder',
       body: '07:15 medications: Vitamin D',
-      path: '/'
+      path: "/households/#{household.slug}/dashboard"
     )
   end
 
@@ -35,7 +40,7 @@ RSpec.describe MedicationReminderJob do
                                  schedule_config: { 'times' => ['07:15'] })
     create(:medication_take, :for_schedule, schedule: schedule, taken_at: Time.zone.today.noon)
 
-    described_class.perform_now(person.id, :scheduled, '07:15')
+    described_class.perform_now(household.id, person.id, :scheduled, '07:15')
 
     expect(PushNotificationService).not_to have_received(:send_to_account)
   end
@@ -47,7 +52,7 @@ RSpec.describe MedicationReminderJob do
     create(:medication_take, :for_schedule, schedule: schedule, taken_at: Time.zone.today.beginning_of_day + 8.hours)
 
     travel_to Time.zone.today.beginning_of_day + 19.hours + 45.minutes do
-      described_class.perform_now(person.id, :scheduled, '19:45')
+      described_class.perform_now(household.id, person.id, :scheduled, '19:45')
     end
 
     expect(PushNotificationService).not_to have_received(:send_to_account)
@@ -59,7 +64,7 @@ RSpec.describe MedicationReminderJob do
     take_person_medication(person_medication)
 
     travel_to Time.zone.today.beginning_of_day + 19.hours + 45.minutes do
-      described_class.perform_now(person.id, :scheduled, '19:45')
+      described_class.perform_now(household.id, person.id, :scheduled, '19:45')
     end
 
     expect(PushNotificationService).not_to have_received(:send_to_account)
@@ -69,7 +74,7 @@ RSpec.describe MedicationReminderJob do
     create(:schedule, person: person, medication: medications(:ibuprofen), dosage: dosages(:ibuprofen_adult),
                       schedule_type: :prn, frequency: 'As needed', schedule_config: { 'times' => ['07:15'] })
 
-    described_class.perform_now(person.id, :scheduled, '07:15')
+    described_class.perform_now(household.id, person.id, :scheduled, '07:15')
 
     expect(PushNotificationService).not_to have_received(:send_to_account)
   end
@@ -79,7 +84,7 @@ RSpec.describe MedicationReminderJob do
                       frequency: 'Every 6-8 hours', schedule_type: :daily, schedule_config: {},
                       max_daily_doses: 3, min_hours_between_doses: 6)
 
-    described_class.perform_now(person.id, :afternoon)
+    described_class.perform_now(household.id, person.id, :afternoon)
 
     expect(PushNotificationService).not_to have_received(:send_to_account)
   end
@@ -92,7 +97,7 @@ RSpec.describe MedicationReminderJob do
     create(:person_medication, :as_needed, person: person, medication: medications(:paracetamol),
                                            dosage: dosages(:paracetamol_adult))
 
-    described_class.perform_now(person.id, :morning)
+    described_class.perform_now(household.id, person.id, :morning)
 
     expect(PushNotificationService).to have_received(:send_to_account) do |_account, payload|
       expect(payload[:body]).to include('Morning medications:')
@@ -110,7 +115,7 @@ RSpec.describe MedicationReminderJob do
     create(:medication_take, :for_schedule, schedule: schedule, taken_at: Time.zone.today.beginning_of_day + 8.hours)
 
     travel_to Time.zone.today.beginning_of_day + 14.hours do
-      described_class.perform_now(person.id, :afternoon)
+      described_class.perform_now(household.id, person.id, :afternoon)
     end
 
     expect(PushNotificationService).not_to have_received(:send_to_account)
@@ -122,7 +127,7 @@ RSpec.describe MedicationReminderJob do
     take_schedule(schedule)
 
     travel_to Time.zone.today.beginning_of_day + 14.hours do
-      described_class.perform_now(person.id, :afternoon)
+      described_class.perform_now(household.id, person.id, :afternoon)
     end
 
     expect(PushNotificationService).not_to have_received(:send_to_account)
@@ -135,7 +140,7 @@ RSpec.describe MedicationReminderJob do
                                  max_daily_doses: 1)
     create(:medication_take, :for_schedule, schedule: schedule, taken_at: Time.zone.today.noon)
 
-    described_class.perform_now(person.id, :morning)
+    described_class.perform_now(household.id, person.id, :morning)
 
     expect(PushNotificationService).not_to have_received(:send_to_account)
   end

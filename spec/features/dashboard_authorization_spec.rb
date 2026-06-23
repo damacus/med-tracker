@@ -69,6 +69,7 @@ RSpec.describe 'Dashboard Authorization', type: :system do
         sign_in(carer)
 
         visit dashboard_path
+        click_link 'Child Patient'
 
         # Should see schedules for assigned patients
         # child_patient has ibuprofen schedule
