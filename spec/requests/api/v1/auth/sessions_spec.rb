@@ -148,9 +148,17 @@ RSpec.describe 'API v1 auth sessions' do
       expect(response.parsed_body.dig('error', 'code')).to eq('invalid_credentials')
     end
 
-    it 'requires an app token instead of password-only login when TOTP is configured' do
+    it 'returns the generic invalid credentials response when TOTP is configured' do
       create_api_household_for(user)
       AccountOtpKey.create!(id: account.id, key: 'test_otp_key_secret')
+
+      post api_v1_auth_login_path,
+           params: {
+             email: user.email_address,
+             password: 'wrong-password'
+           },
+           as: :json
+      invalid_credentials_response = [response.status, response.parsed_body]
 
       expect do
         post api_v1_auth_login_path,
@@ -161,11 +169,10 @@ RSpec.describe 'API v1 auth sessions' do
              as: :json
       end.not_to change(ApiSession, :count)
 
-      expect(response).to have_http_status(:unauthorized)
-      expect(response.parsed_body.dig('error', 'code')).to eq('mfa_required')
+      expect([response.status, response.parsed_body]).to eq(invalid_credentials_response)
     end
 
-    it 'requires an app token instead of password-only login when WebAuthn is configured' do
+    it 'returns the generic invalid credentials response when WebAuthn is configured' do
       create_api_household_for(user)
       account.account_webauthn_keys.create!(
         webauthn_id: 'api-login-passkey',
@@ -174,6 +181,14 @@ RSpec.describe 'API v1 auth sessions' do
         nickname: 'API Login Passkey'
       )
 
+      post api_v1_auth_login_path,
+           params: {
+             email: user.email_address,
+             password: 'wrong-password'
+           },
+           as: :json
+      invalid_credentials_response = [response.status, response.parsed_body]
+
       expect do
         post api_v1_auth_login_path,
              params: {
@@ -183,8 +198,7 @@ RSpec.describe 'API v1 auth sessions' do
              as: :json
       end.not_to change(ApiSession, :count)
 
-      expect(response).to have_http_status(:unauthorized)
-      expect(response.parsed_body.dig('error', 'code')).to eq('mfa_required')
+      expect([response.status, response.parsed_body]).to eq(invalid_credentials_response)
     end
   end
 

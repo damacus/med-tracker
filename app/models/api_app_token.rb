@@ -2,6 +2,7 @@
 
 class ApiAppToken < ApplicationRecord
   TOKEN_PREFIX = 'mt_app_'
+  LAST_USED_TOUCH_INTERVAL = 5.minutes
 
   belongs_to :account
   belongs_to :household_membership
@@ -77,6 +78,8 @@ class ApiAppToken < ApplicationRecord
   end
 
   def touch_last_used!
+    return if last_used_at.present? && last_used_at >= LAST_USED_TOUCH_INTERVAL.ago
+
     update!(last_used_at: Time.current)
   end
 

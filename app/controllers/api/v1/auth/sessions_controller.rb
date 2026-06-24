@@ -13,10 +13,6 @@ module Api
             render_invalid_credentials
             return
           end
-          if ApiAuthState.mfa_configured?(account)
-            render_mfa_required
-            return
-          end
 
           api_session, access_token, refresh_token = ApiSession.issue_for(
             account: account,
@@ -91,6 +87,7 @@ module Api
         def login_permitted?(account, household_membership, password)
           ApiAuthState.password_authenticated?(account, password) &&
             !ApiAuthState.locked_out?(account) &&
+            !ApiAuthState.mfa_configured?(account) &&
             account.person&.user&.active? &&
             household_membership.present?
         end
@@ -159,11 +156,6 @@ module Api
 
         def render_invalid_credentials
           render json: { error: { code: 'invalid_credentials', message: 'Email or password is invalid' } },
-                 status: :unauthorized
-        end
-
-        def render_mfa_required
-          render json: { error: { code: 'mfa_required', message: 'Use an app token for API access.' } },
                  status: :unauthorized
         end
 
