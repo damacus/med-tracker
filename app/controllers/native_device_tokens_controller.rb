@@ -5,6 +5,7 @@ class NativeDeviceTokensController < ApplicationController
     token = current_account.native_device_tokens.find_or_initialize_by(device_token: params[:device_token])
     new_token = token.new_record?
     token.assign_attributes(platform: params[:platform], user_agent: request.user_agent)
+    authorize token, :create?
 
     if token.save
       record_auth_token_event('created', token) if new_token
@@ -17,7 +18,12 @@ class NativeDeviceTokensController < ApplicationController
 
   def destroy
     token = current_account.native_device_tokens.find_by(device_token: params[:id])
-    return head :no_content unless token
+    unless token
+      authorize NativeDeviceToken.new(account: current_account), :destroy?
+      return head :no_content
+    end
+
+    authorize token, :destroy?
 
     if token.destroy
       record_auth_token_event('revoked', token)

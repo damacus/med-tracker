@@ -21,6 +21,7 @@ module RequestHelpers
     native_device_tokens_path native_device_token_path
     notification_preference_path offline_path offline_snapshot_path offline_medication_takes_path
     people_path person_path new_person_path edit_person_path add_medication_person_path
+    person_avatar_path
     person_carer_relationships_path person_carer_relationship_path
     person_medication_assignments_path new_person_medication_assignment_path
     person_person_medications_path person_person_medication_path new_person_person_medication_path
@@ -29,6 +30,7 @@ module RequestHelpers
     person_schedules_path person_schedule_path new_person_schedule_path edit_person_schedule_path
     take_medication_person_schedule_path
     profile_path profile_avatar_path push_subscription_path reports_path
+    profile_api_tokens_path profile_api_token_path
     schedules_path schedule_path schedules_workflow_path start_schedules_workflow_path
     schedules_frequency_preview_path schedule_medication_takes_path
     search_path

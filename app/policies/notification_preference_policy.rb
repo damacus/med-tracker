@@ -5,6 +5,10 @@ class NotificationPreferencePolicy < ApplicationPolicy
     person_grant_allows?(record.person, :view)
   end
 
+  def update?
+    person_grant_allows?(record.person, :manage)
+  end
+
   class Scope < ApplicationPolicy::Scope
     def resolve
       household_notification_preference_scope

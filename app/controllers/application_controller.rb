@@ -9,6 +9,7 @@ class ApplicationController < ActionController::Base
 
   before_action :set_paper_trail_whodunnit
   around_action :with_current_context
+  after_action :verify_pundit_authorization, if: :pundit_verification_required?
   helper_method :current_household, :current_membership
 
   rescue_from ActionController::InvalidAuthenticityToken, with: :handle_invalid_authenticity_token
@@ -31,6 +32,14 @@ class ApplicationController < ActionController::Base
 
   def pundit_user
     AuthorizationContext.current || current_user
+  end
+
+  def verify_pundit_authorization
+    verify_authorized
+  end
+
+  def pundit_verification_required?
+    !request.get? && !request.head?
   end
 
   def with_current_context

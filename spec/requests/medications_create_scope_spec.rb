@@ -235,6 +235,50 @@ RSpec.describe 'Medication creation scope' do
   end
 
   describe 'POST /medications' do
+    it 'does not create a direct plan for a person the actor cannot manage' do
+      target_person = household_person(people(:child_patient))
+      limited_user = create_member_with_access(target_person, access_level: :view)
+      sign_in(limited_user)
+
+      expect do
+        post medications_path, params: onboarding_medication_params(
+          target_person: target_person,
+          schedule_type: 'prn',
+          medication_name: 'Scoped PRN Plan'
+        )
+      end.not_to change(PersonMedication, :count)
+
+      expect(response).to redirect_to(root_path)
+    end
+
+    it 'creates a direct plan for a person the actor can manage' do
+      target_person = household_person(people(:child_patient))
+
+      expect do
+        post medications_path, params: onboarding_medication_params(
+          target_person: target_person,
+          schedule_type: 'prn',
+          medication_name: 'Managed PRN Plan'
+        )
+      end.to change(PersonMedication, :count).by(1)
+
+      expect(PersonMedication.last.person).to eq(target_person)
+    end
+
+    it 'creates a scheduled plan for a person the actor can manage' do
+      target_person = household_person(people(:child_patient))
+
+      expect do
+        post medications_path, params: onboarding_medication_params(
+          target_person: target_person,
+          schedule_type: 'multiple_daily',
+          medication_name: 'Managed Scheduled Plan'
+        )
+      end.to change(Schedule, :count).by(1)
+
+      expect(Schedule.last.person).to eq(target_person)
+    end
+
     it 'creates a medication in an authorized location' do
       expect do
         post medications_path, params: {
@@ -578,5 +622,99 @@ RSpec.describe 'Medication creation scope' do
         'Check AI suggestions against the packet, leaflet, or linked guidance before saving.'
       )
     end
+  end
+
+  def onboarding_medication_params(target_person:, schedule_type:, medication_name:)
+    {
+      wizard: 'true',
+      medication: onboarding_medication_payload(medication_name),
+      onboarding_schedule: onboarding_schedule_payload(target_person, schedule_type)
+    }
+  end
+
+  def onboarding_medication_payload(medication_name)
+    {
+      name: medication_name,
+      category: 'Analgesic',
+      dosage_amount: 5,
+      dosage_unit: 'ml',
+      current_supply: 10,
+      reorder_threshold: 1,
+      location_id: home_location.id,
+      dosage_records_attributes: { '0' => onboarding_dosage_payload }
+    }
+  end
+
+  def onboarding_dosage_payload
+    {
+      amount: '5',
+      unit: 'ml',
+      frequency: 'As needed',
+      default_for_adults: '1',
+      default_for_children: '1',
+      default_max_daily_doses: '4',
+      default_min_hours_between_doses: '4',
+      default_dose_cycle: 'daily'
+    }
+  end
+
+  def onboarding_schedule_payload(target_person, schedule_type)
+    {
+      person_id: target_person.id,
+      schedule_type: schedule_type,
+      frequency: 'As needed',
+      start_date: Time.zone.today,
+      end_date: 1.month.from_now.to_date,
+      max_daily_doses: '4',
+      min_hours_between_doses: '4',
+      dose_cycle: 'daily'
+    }
+  end
+
+  def create_member_with_access(target_person, access_level:)
+    account = create_limited_account
+    person = create_limited_person(account)
+    membership = create_limited_membership(account, person)
+    grant_person_access(membership, person, :manage, :self)
+    grant_person_access(membership, target_person, access_level, :family_member)
+
+    User.create!(person: person, email_address: account.email, password: 'password')
+  end
+
+  def create_limited_account
+    Account.create!(
+      email: "limited-member-#{SecureRandom.hex(4)}@example.test",
+      password_hash: RodauthApp.rodauth.allocate.password_hash('password'),
+      status: :verified
+    )
+  end
+
+  def create_limited_person(account)
+    active_spec_household.people.create!(
+      name: 'Limited Member',
+      date_of_birth: 30.years.ago.to_date,
+      person_type: :adult,
+      has_capacity: true,
+      account: account
+    )
+  end
+
+  def create_limited_membership(account, person)
+    active_spec_household.household_memberships.create!(
+      account: account,
+      person: person,
+      role: :member,
+      status: :active
+    )
+  end
+
+  def grant_person_access(membership, person, access_level, relationship_type)
+    active_spec_household.person_access_grants.create!(
+      household_membership: membership,
+      person: person,
+      access_level: access_level,
+      relationship_type: relationship_type,
+      granted_by_membership: membership
+    )
   end
 end

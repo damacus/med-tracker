@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_22_001300) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_23_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
   enable_extension "pg_catalog.plpgsql"
@@ -163,6 +163,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_22_001300) do
     t.bigint "blob_id", null: false
     t.string "variation_digest", null: false
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+  end
+
+  create_table "api_app_tokens", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.datetime "created_at", null: false
+    t.bigint "household_membership_id", null: false
+    t.datetime "last_used_at", null: false
+    t.string "name", null: false
+    t.integer "permissions_version", default: 1, null: false
+    t.datetime "revoked_at"
+    t.string "token_digest", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_api_app_tokens_on_account_id"
+    t.index ["household_membership_id", "revoked_at"], name: "index_api_app_tokens_on_membership_and_revoked_at"
+    t.index ["household_membership_id"], name: "index_api_app_tokens_on_household_membership_id"
+    t.index ["token_digest"], name: "index_api_app_tokens_on_token_digest", unique: true
   end
 
   create_table "api_sessions", force: :cascade do |t|
@@ -621,6 +637,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_22_001300) do
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_attachments", "households"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "api_app_tokens", "accounts"
+  add_foreign_key "api_app_tokens", "household_memberships"
   add_foreign_key "api_sessions", "accounts"
   add_foreign_key "api_sessions", "household_memberships"
   add_foreign_key "carer_relationships", "people", column: "carer_id", deferrable: :deferred

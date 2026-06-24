@@ -7,8 +7,9 @@ module Api
         def create
           account = Account.find_by(email: params.expect(:email).to_s.strip.downcase)
           household_membership = requested_household_membership(account)
+          password = params.expect(:password).to_s
 
-          unless login_permitted?(account, household_membership)
+          unless login_permitted?(account, household_membership, password)
             render_invalid_credentials
             return
           end
@@ -46,8 +47,8 @@ module Api
 
         def destroy
           token = request.headers['Authorization'].to_s.split(' ', 2).last
-          api_session = ApiSession.lookup_by_access_token(token)
-          api_session&.revoke!(audit_context: audit_context(api_session.account))
+          api_credential = ApiSession.lookup_by_access_token(token) || ApiAppToken.lookup_by_token(token)
+          api_credential&.revoke!(audit_context: audit_context(api_credential.account))
 
           head :no_content
         end
@@ -83,17 +84,10 @@ module Api
           )
         end
 
-        def authenticated_account?(account, password)
-          return false if account.blank? || password.blank?
-          return false unless account.verified?
-
-          BCrypt::Password.new(account.password_hash).is_password?(password)
-        rescue BCrypt::Errors::InvalidHash
-          false
-        end
-
-        def login_permitted?(account, household_membership)
-          authenticated_account?(account, params.expect(:password).to_s) &&
+        def login_permitted?(account, household_membership, password)
+          ApiAuthState.password_authenticated?(account, password) &&
+            !ApiAuthState.locked_out?(account) &&
+            !ApiAuthState.mfa_configured?(account) &&
             account.person&.user&.active? &&
             household_membership.present?
         end
@@ -101,7 +95,8 @@ module Api
         def refresh_permitted?(api_session)
           api_session&.active_refresh_token? &&
             api_session.account.verified? &&
-            api_session.account.person&.user&.active?
+            api_session.account.person&.user&.active? &&
+            !ApiAuthState.locked_out?(api_session.account)
         end
 
         def household_requested?

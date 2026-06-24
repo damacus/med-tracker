@@ -29,6 +29,20 @@ RSpec.describe 'API v1 resources' do
     expect(response.parsed_body.dig('data', 'account', 'status')).to eq('verified')
   end
 
+  it 'rejects an existing API session bearer token while the account is locked' do
+    login_data = api_login(user)
+    household_id = login_data.dig('household', 'id')
+    AccountLockout.create!(
+      account_id: user.person.account.id,
+      key: SecureRandom.hex(16),
+      deadline: 30.minutes.from_now
+    )
+
+    get api_v1_household_me_path(household_id), headers: api_auth_headers(login_data.fetch('access_token')), as: :json
+
+    expect(response).to have_http_status(:unauthorized)
+  end
+
   it 'returns the core read-only collections' do
     login_data = api_login(user)
     household_id = login_data.dig('household', 'id')

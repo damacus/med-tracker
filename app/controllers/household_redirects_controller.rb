@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class HouseholdRedirectsController < ApplicationController
+  skip_after_action :verify_pundit_authorization
+
   def show
     membership = current_account&.first_active_household_membership
 

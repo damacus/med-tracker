@@ -3,6 +3,7 @@
 class RodauthController < ApplicationController
   # Skip authentication for Rodauth routes to prevent redirect loops
   allow_unauthenticated_access
+  skip_after_action :verify_pundit_authorization
 
   # Used by Rodauth for rendering views, CSRF protection, running any
   # registered action callbacks and rescue handlers, instrumentation etc.

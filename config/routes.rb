@@ -33,6 +33,7 @@ Rails.application.routes.draw do
 
     resource :profile, only: %i[show update] do
       patch :experiments, on: :member
+      resources :api_tokens, only: %i[create destroy], controller: 'profiles/api_tokens'
     end
     delete 'profile/avatar', to: 'profiles#avatar', as: :profile_avatar
 
@@ -69,6 +70,7 @@ Rails.application.routes.draw do
       resources :medication_takes, only: [:create]
     end
 
+    get 'people/:person_id/avatar', to: 'people/avatars#show', as: :person_avatar
     resources :people do
       member do
         get :add_medication

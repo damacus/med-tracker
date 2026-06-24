@@ -8,12 +8,14 @@ module Views
       include Phlex::Rails::Helpers::FormWith
       include Phlex::Rails::Helpers::ButtonTo
 
-      attr_reader :person, :account
+      attr_reader :person, :account, :api_app_tokens, :new_api_app_token
 
-      def initialize(person:, account:)
+      def initialize(person:, account:, api_app_tokens: nil, new_api_app_token: nil)
         super()
         @person = person
         @account = account
+        @api_app_tokens = api_app_tokens || account.api_app_tokens.active.order(created_at: :desc).to_a
+        @new_api_app_token = new_api_app_token
       end
 
       def view_template
@@ -78,11 +80,20 @@ module Views
       def render_right_column
         div(class: 'space-y-6') do
           render AccountSecurityCard.new(account: account)
+          render_api_tokens_card
           render NotificationsCard.new(person: person)
           render ExperimentsCard.new(account: account)
           render DangerZoneCard.new
           render VersionInfo.new
         end
+      end
+
+      def render_api_tokens_card
+        render ApiTokensCard.new(
+          account: account,
+          api_app_tokens: api_app_tokens,
+          new_api_app_token: new_api_app_token
+        )
       end
 
       def render_personal_info_card

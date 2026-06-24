@@ -6,6 +6,8 @@ class PushSubscriptionsController < ApplicationController
     new_subscription = sub.new_record?
     sub.assign_attributes(p256dh: params.dig(:keys, :p256dh), auth: params.dig(:keys, :auth),
                           user_agent: request.user_agent)
+    authorize sub, :create?
+
     if sub.save
       record_auth_token_event('created', sub) if new_subscription
       head :created
@@ -17,7 +19,12 @@ class PushSubscriptionsController < ApplicationController
 
   def destroy
     sub = current_account.push_subscriptions.find_by(endpoint: params[:endpoint])
-    return head :no_content unless sub
+    unless sub
+      authorize PushSubscription.new(account: current_account), :destroy?
+      return head :no_content
+    end
+
+    authorize sub, :destroy?
 
     if sub.destroy
       record_auth_token_event('revoked', sub)
@@ -29,6 +36,8 @@ class PushSubscriptionsController < ApplicationController
   end
 
   def test
+    authorize PushSubscription.new(account: current_account), :test?
+
     PushNotificationService.send_to_account(
       current_account,
       title: 'MedTracker Test',

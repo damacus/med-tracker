@@ -43,9 +43,10 @@ module Api
       end
 
       def authenticate_api_request!
-        @current_api_session = ApiSession.lookup_by_access_token(bearer_token)
+        @current_api_session = lookup_api_credential
         return render_unauthorized('Authentication required') unless valid_session?
         return render_unauthorized('Authentication required') unless valid_account_and_user?
+        return render_unauthorized('Authentication required') if ApiAuthState.locked_out?(current_account)
 
         Current.account = current_account
         Current.request_id = request.request_id
@@ -53,9 +54,10 @@ module Api
       end
 
       def valid_session?
-        @current_api_session.present? &&
-          @current_api_session.revoked_at.nil? &&
-          @current_api_session.access_expires_at&.future?
+        return false if @current_api_session.blank? || @current_api_session.revoked_at.present?
+        return @current_api_session.access_expires_at.future? if @current_api_session.is_a?(ApiSession)
+
+        @current_api_session.is_a?(ApiAppToken)
       end
 
       def valid_account_and_user?
@@ -93,6 +95,11 @@ module Api
         return nil unless scheme == 'Bearer'
 
         token
+      end
+
+      def lookup_api_credential
+        token = bearer_token
+        ApiSession.lookup_by_access_token(token) || ApiAppToken.lookup_by_token(token)
       end
 
       def render_collection(scope, serializer:, includes: nil)

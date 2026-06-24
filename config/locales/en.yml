@@ -1412,6 +1412,18 @@ en:
       change_password_title: Change Password
       change_password_description: Update your password to keep your account secure
       change_button: Change
+    api_tokens:
+      title: API Tokens
+      description: Create revocable tokens for scripts and trusted integrations.
+      created_title: Copy this token now. It will not be shown again.
+      name_label: Token name
+      create: Create token
+      empty: No API tokens yet.
+      last_used_at: 'Last used: %{time}'
+      revoke: Revoke
+      revoked: API token revoked.
+      locked: Your account is locked. API tokens cannot be changed right now.
+      mfa_required: Complete two-factor authentication before creating an API token.
     password_sheet:
       change_button: Change
       title: Change Password

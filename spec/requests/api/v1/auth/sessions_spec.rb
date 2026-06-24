@@ -6,8 +6,14 @@ RSpec.describe 'API v1 auth sessions' do
   fixtures :accounts, :people, :users, :locations, :location_memberships
 
   let(:user) { users(:jane) }
+  let(:account) { user.person.account }
 
   describe 'POST /api/v1/auth/login' do
+    before do
+      clear_2fa_for_account(account)
+      AccountLockout.where(account_id: account.id).delete_all if defined?(AccountLockout)
+    end
+
     def create_api_household_for(user)
       household = Household.create!(name: "API Auth #{SecureRandom.hex(4)}", slug: "api-auth-#{SecureRandom.hex(4)}")
       user.person.update!(household: household)
@@ -124,9 +130,84 @@ RSpec.describe 'API v1 auth sessions' do
       expect(response).to have_http_status(:unauthorized)
       expect(response.parsed_body.dig('error', 'code')).to eq('invalid_credentials')
     end
+
+    it 'rejects a locked account without creating an API session' do
+      create_api_household_for(user)
+      lock_account!(account)
+
+      expect do
+        post api_v1_auth_login_path,
+             params: {
+               email: user.email_address,
+               password: 'password'
+             },
+             as: :json
+      end.not_to change(ApiSession, :count)
+
+      expect(response).to have_http_status(:unauthorized)
+      expect(response.parsed_body.dig('error', 'code')).to eq('invalid_credentials')
+    end
+
+    it 'returns the generic invalid credentials response when TOTP is configured' do
+      create_api_household_for(user)
+      AccountOtpKey.create!(id: account.id, key: 'test_otp_key_secret')
+
+      post api_v1_auth_login_path,
+           params: {
+             email: user.email_address,
+             password: 'wrong-password'
+           },
+           as: :json
+      invalid_credentials_response = [response.status, response.parsed_body]
+
+      expect do
+        post api_v1_auth_login_path,
+             params: {
+               email: user.email_address,
+               password: 'password'
+             },
+             as: :json
+      end.not_to change(ApiSession, :count)
+
+      expect([response.status, response.parsed_body]).to eq(invalid_credentials_response)
+    end
+
+    it 'returns the generic invalid credentials response when WebAuthn is configured' do
+      create_api_household_for(user)
+      account.account_webauthn_keys.create!(
+        webauthn_id: 'api-login-passkey',
+        public_key: 'api-login-public-key',
+        sign_count: 0,
+        nickname: 'API Login Passkey'
+      )
+
+      post api_v1_auth_login_path,
+           params: {
+             email: user.email_address,
+             password: 'wrong-password'
+           },
+           as: :json
+      invalid_credentials_response = [response.status, response.parsed_body]
+
+      expect do
+        post api_v1_auth_login_path,
+             params: {
+               email: user.email_address,
+               password: 'password'
+             },
+             as: :json
+      end.not_to change(ApiSession, :count)
+
+      expect([response.status, response.parsed_body]).to eq(invalid_credentials_response)
+    end
   end
 
   describe 'POST /api/v1/auth/refresh' do
+    before do
+      clear_2fa_for_account(account)
+      AccountLockout.where(account_id: account.id).delete_all if defined?(AccountLockout)
+    end
+
     it 'rotates refresh tokens and invalidates the old refresh token' do
       login_data = api_login(user)
 
@@ -181,9 +262,26 @@ RSpec.describe 'API v1 auth sessions' do
 
       expect(response).to have_http_status(:unauthorized)
     end
+
+    it 'rejects refresh tokens while the account is locked' do
+      login_data = api_login(user)
+      lock_account!(account)
+
+      post api_v1_auth_refresh_path,
+           params: { refresh_token: login_data.fetch('refresh_token') },
+           as: :json
+
+      expect(response).to have_http_status(:unauthorized)
+      expect(response.parsed_body.dig('error', 'code')).to eq('invalid_refresh_token')
+    end
   end
 
   describe 'DELETE /api/v1/auth/logout' do
+    before do
+      clear_2fa_for_account(account)
+      AccountLockout.where(account_id: account.id).delete_all if defined?(AccountLockout)
+    end
+
     it 'revokes the current access token' do
       login_data = api_login(user)
       headers = api_auth_headers(login_data.fetch('access_token'))
@@ -210,5 +308,13 @@ RSpec.describe 'API v1 auth sessions' do
                                   event: 'auth_token/api_session/revoked').count
       }.by(1)
     end
+  end
+
+  def lock_account!(account)
+    AccountLockout.create!(
+      account_id: account.id,
+      key: SecureRandom.hex(16),
+      deadline: 30.minutes.from_now
+    )
   end
 end
