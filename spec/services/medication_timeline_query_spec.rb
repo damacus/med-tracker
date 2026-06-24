@@ -14,6 +14,27 @@ RSpec.describe MedicationTimelineQuery do
       expect(result.schedules).to contain_exactly(timeline_data[:other_schedule])
       expect(result.person_medications).to contain_exactly(timeline_data[:person_medication])
     end
+
+    it 'limits results to provided authorization scopes' do
+      medication = create(:medication)
+      authorized_person = create(:person)
+      unauthorized_person = create(:person)
+      authorized_schedule = create(:schedule, person: authorized_person, medication: medication)
+      unauthorized_schedule = create(:schedule, person: unauthorized_person, medication: medication)
+      authorized_person_medication = create(:person_medication, person: authorized_person, medication: medication)
+      unauthorized_person_medication = create(:person_medication, person: unauthorized_person, medication: medication)
+
+      result = described_class.new(
+        medication: medication,
+        schedules_scope: Schedule.where(person: authorized_person),
+        person_medications_scope: PersonMedication.where(person: authorized_person)
+      ).call
+
+      expect(result.schedules).to contain_exactly(authorized_schedule)
+      expect(result.person_medications).to contain_exactly(authorized_person_medication)
+      expect(result.schedules).not_to include(unauthorized_schedule)
+      expect(result.person_medications).not_to include(unauthorized_person_medication)
+    end
   end
 
   def create_timeline_data_for(medication:, other_medication:)
