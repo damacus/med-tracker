@@ -6,20 +6,20 @@ RSpec.describe AppSettings do
   describe '.instance' do
     before { described_class.delete_all }
 
-    it 'defaults invite-only mode on when an administrator already exists' do
-      allow(User).to receive(:administrator).and_return(instance_double(ActiveRecord::Relation, exists?: true))
+    it 'defaults invite-only mode on when a household owner already exists' do
+      create_household_with_owner
 
       expect(described_class.instance).to be_invite_only
     end
 
-    it 'defaults invite-only mode off when no administrator exists' do
-      allow(User).to receive(:administrator).and_return(instance_double(ActiveRecord::Relation, exists?: false))
+    it 'defaults invite-only mode off when no household owner exists' do
+      HouseholdMembership.owner.delete_all
 
       expect(described_class.instance).not_to be_invite_only
     end
 
     it 'honors an explicit INVITE_ONLY override when creating the settings row' do
-      allow(User).to receive(:administrator).and_return(instance_double(ActiveRecord::Relation, exists?: true))
+      create_household_with_owner(email: 'env-owner@example.test', name: 'Env Family')
 
       original_invite_only = ENV.fetch('INVITE_ONLY', nil)
       ENV['INVITE_ONLY'] = 'false'
@@ -32,6 +32,20 @@ RSpec.describe AppSettings do
         ENV['INVITE_ONLY'] = original_invite_only
       end
     end
+  end
+
+  def create_household_with_owner(email: 'settings-owner@example.test', name: 'Settings Family')
+    account = Account.create!(email: email, status: :verified)
+    Household.create_with_owner!(
+      name: name,
+      owner_account: account,
+      owner_person_attributes: {
+        name: 'Owner',
+        date_of_birth: 30.years.ago.to_date,
+        person_type: :adult,
+        has_capacity: true
+      }
+    )
   end
 
   describe 'versioning' do

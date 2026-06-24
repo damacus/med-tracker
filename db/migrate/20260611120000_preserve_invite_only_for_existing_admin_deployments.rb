@@ -4,8 +4,8 @@ class PreserveInviteOnlyForExistingAdminDeployments < ActiveRecord::Migration[8.
   def up
     return if ENV.key?('INVITE_ONLY')
     return unless table_exists?(:app_settings)
-    return unless table_exists?(:users)
-    return unless existing_administrators?
+    return unless table_exists?(:household_memberships)
+    return unless existing_household_owners?
 
     if app_settings_empty?
       create_default_invite_only_settings
@@ -16,13 +16,17 @@ class PreserveInviteOnlyForExistingAdminDeployments < ActiveRecord::Migration[8.
 
   def down
     # Deliberately irreversible: this migration preserves the secure legacy
-    # invite-only posture for existing administrator deployments.
+    # invite-only posture for existing household owner deployments.
   end
 
   private
 
-  def existing_administrators?
-    select_value("SELECT 1 FROM users WHERE role = 0 LIMIT 1").present?
+  def existing_household_owners?
+    select_value(<<~SQL.squish).present?
+      SELECT 1 FROM household_memberships
+      WHERE role = 'owner' AND status = 'active'
+      LIMIT 1
+    SQL
   end
 
   def app_settings_empty?

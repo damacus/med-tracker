@@ -9,12 +9,12 @@ class AppSettings < ApplicationRecord
   end
 
   # Preserve the pre-settings safety behavior for deployments that have not
-  # created the singleton row yet: once an administrator exists, registration
-  # starts locked down unless an operator/admin explicitly changes it later.
+  # created the singleton row yet: once a household owner exists, registration
+  # starts locked down unless an operator explicitly changes it later.
   def self.default_invite_only?
     return ActiveModel::Type::Boolean.new.cast(ENV.fetch('INVITE_ONLY')) if ENV.key?('INVITE_ONLY')
 
-    User.administrator.exists?
+    HouseholdMembership.owner.active.exists?
   end
 
   # INVITE_ONLY env var takes precedence when set, letting ops pin the value
