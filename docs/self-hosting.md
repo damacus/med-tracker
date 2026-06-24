@@ -1,6 +1,6 @@
 # Self-Hosting Setup
 
-This guide walks through running MedTracker on your own computer or server.
+This guide walks through running MedTracker on your own computer for local evaluation only.
 
 ## 🏁 Before you begin
 
@@ -30,6 +30,12 @@ cd med-tracker
 
 ## 2. Start the App
 
+> **Local evaluation only:** `task dev:up` starts the development stack. Do not run
+> this stack on a public or shared network, and do not use it as a production
+> server for real medication or person records. For a reachable server, use a
+> production deployment and create your first administrator through the
+> bootstrap/invitation flow instead of loading development fixtures.
+
 Now, let's start the app's services:
 
 ```bash
@@ -40,7 +46,9 @@ task dev:up
 
 ## 3. Add Some Example Data
 
-To make it easier to see how it works, we'll add some "dummy" data (like example people and medicines):
+To make it easier to see how it works, you can add local-only "dummy" data
+(like example people and medicines). These fixtures include sample accounts and
+known passwords, so only run this command on a private development machine:
 
 ```bash
 task dev:seed
@@ -52,10 +60,10 @@ Now, open your web browser (like Chrome or Safari) and go to:
 
 👉 **[http://localhost:3000](http://localhost:3000)**
 
-**You can log in with:**
-
-- **Email:** `admin@example.com`
-- **Password:** `password`
+Sign in with a local demo account from the seed output, or use the account your
+administrator invited for a production deployment. If you loaded fixture data,
+change or remove any sample accounts before exposing the app beyond your own
+computer.
 
 ---
 
@@ -63,5 +71,5 @@ Now, open your web browser (like Chrome or Safari) and go to:
 
 Now that the app is running, you can:
 
-- [**Add your first medicine**](adding-first-medicine.md)
-- [**Record a dose**](taking-first-dose.md)
+- [**Add your first medicine**](families/adding-first-medicine.md)
+- [**Record a dose**](families/taking-first-dose.md)

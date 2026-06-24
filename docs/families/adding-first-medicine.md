@@ -6,9 +6,9 @@ one of your family members.
 ## Step 1: Log in
 Open [http://localhost:3000](http://localhost:3000) in your web browser.
 
-**Use these login details to start:**
-- **Email:** `admin@example.com`
-- **Password:** `password`
+Sign in with the local demo account you selected during setup, or with the
+account your administrator invited. Do not use development fixture accounts on
+a public or shared server.
 
 ## Step 2: Open the Dashboard
 The **Dashboard** is the main page where you see your family. You'll see

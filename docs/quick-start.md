@@ -37,7 +37,9 @@ To quickly populate the database with example users, people, and medicines:
 task dev:seed
 ```
 
-*The default password for all example users (e.g., `admin@example.com`) is `password`.*
+> **Local development only:** fixture data includes sample accounts with known
+> passwords. Do not expose a seeded development stack to a public or shared
+> network, and remove or reset sample accounts before using any real records.
 
 ## 4. Open the app
 
