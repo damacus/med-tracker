@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.4.1](https://github.com/damacus/med-tracker/compare/v0.4.0...v0.4.1) (2026-06-24)
+
+
+### Bug Fixes
+
+* authorize direct medication onboarding plans ([#1385](https://github.com/damacus/med-tracker/issues/1385)) ([6890a2c](https://github.com/damacus/med-tracker/commit/6890a2c3a5176f2c262a6941b92e85257ad90560))
+* disable active storage direct uploads ([#1381](https://github.com/damacus/med-tracker/issues/1381)) ([63698b4](https://github.com/damacus/med-tracker/commit/63698b4a22e5ebff0baf6742c698ca3380513269))
+* preserve invite-only default for household owner deployments ([#1382](https://github.com/damacus/med-tracker/issues/1382)) ([44e18c0](https://github.com/damacus/med-tracker/commit/44e18c09476cc04f9cd7459c20e131650b6fc5e3))
+* remove seeded admin credentials from docs ([#1383](https://github.com/damacus/med-tracker/issues/1383)) ([f26c6dd](https://github.com/damacus/med-tracker/commit/f26c6ddb7b30a728d11b6829856e315625f93528))
+* secure mutation and API auth boundaries ([#1389](https://github.com/damacus/med-tracker/issues/1389)) ([19b5a53](https://github.com/damacus/med-tracker/commit/19b5a5326bce2ca6388426ab78b40dfd18cf78d3))
+
 ## [0.4.0](https://github.com/damacus/med-tracker/compare/v0.3.71...v0.4.0) (2026-06-23)
 
 
