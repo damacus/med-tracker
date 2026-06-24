@@ -5,7 +5,16 @@ class AppSettings < ApplicationRecord
 
   # Always a single row. Access via AppSettings.instance, never instantiate directly.
   def self.instance
-    first_or_create!(invite_only: false)
+    first || create!(invite_only: default_invite_only?)
+  end
+
+  # Preserve the pre-settings safety behavior for deployments that have not
+  # created the singleton row yet: once a household owner exists, registration
+  # starts locked down unless an operator explicitly changes it later.
+  def self.default_invite_only?
+    return ActiveModel::Type::Boolean.new.cast(ENV.fetch('INVITE_ONLY')) if ENV.key?('INVITE_ONLY')
+
+    HouseholdMembership.owner.active.exists?
   end
 
   # INVITE_ONLY env var takes precedence when set, letting ops pin the value
