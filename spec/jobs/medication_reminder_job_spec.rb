@@ -5,14 +5,10 @@ require 'rails_helper'
 RSpec.describe MedicationReminderJob do
   fixtures :accounts, :people, :locations, :medications, :dosages
 
-  let(:household) { Household.create!(name: 'Reminder Household', slug: 'reminder-household') }
   let(:person) { people(:john) }
+  let(:household) { person.household }
 
   before do
-    Location.find_each { |location| location.update!(household: household) }
-    Medication.find_each { |medication| medication.update!(household: household) }
-    MedicationDosageOption.find_each { |dosage| dosage.update!(household: household) }
-    person.update!(household: household)
     person.schedules.destroy_all
     person.person_medications.destroy_all
     allow(PushNotificationService).to receive(:send_to_account)

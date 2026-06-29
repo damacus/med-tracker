@@ -29,7 +29,12 @@ RSpec.describe SchemaInventory do
       expect(columns.fetch(:severity)).to be_present, "#{requirement} severity is blank"
       expect(columns.fetch(:owner_issue)).to match(/\AHMT-\d{3}\z/), "#{requirement} owner issue is invalid"
       expect(columns.fetch(:tests)).to be_present, "#{requirement} tests are blank"
-      expect(columns.fetch(:beta_status)).to eq('NO-GO'), "#{requirement} beta status must remain NO-GO"
+      if tenant_foundation_requirement?(requirement)
+        expect(columns.fetch(:gap)).to eq('Closed.'), "#{requirement} gap must be closed"
+        expect(columns.fetch(:beta_status)).to eq('GO'), "#{requirement} beta status must be GO"
+      else
+        expect(columns.fetch(:beta_status)).to eq('NO-GO'), "#{requirement} beta status must remain NO-GO"
+      end
     end
   end
 
@@ -51,6 +56,10 @@ RSpec.describe SchemaInventory do
 
   def expected_requirements
     (1..18).map { |number| "FR#{number}" } + (1..4).map { |number| "NFR#{number}" }
+  end
+
+  def tenant_foundation_requirement?(requirement)
+    %w[FR1 FR2 FR3 FR4].include?(requirement)
   end
 
   def requirement_rows

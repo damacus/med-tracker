@@ -6,11 +6,9 @@ RSpec.describe Components::Schedules::Card::ActionsComponent, type: :component d
   before do
     @person = create(:person)
     @medication = create(:medication, name: 'Ibuprofen', current_supply: 1000, supply_at_last_restock: 1000)
-    @household = Household.create!(name: 'Schedule Actions Household', slug: 'schedule-actions-household')
+    @household = person.household
     @account = Account.create!(email: 'schedule-actions-owner@example.test', status: :verified)
-    person.update!(household: household, account: account)
-    medication.location.update!(household: household)
-    medication.update!(household: household)
+    person.update!(account: account)
     @membership = household.household_memberships.create!(account: account, person: person, role: :owner,
                                                           status: :active)
     @schedule = Schedule.create!(

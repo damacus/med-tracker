@@ -194,8 +194,9 @@ RSpec.describe 'Medications refill' do
     end
 
     it 'does not expose inaccessible medication matches' do
-      foreign_location = Location.create!(name: 'Foreign')
-      create(:medication, barcode: '5012345678901', location: foreign_location)
+      foreign_household = Household.create!(name: 'Foreign Refill Household', slug: 'foreign-refill-household')
+      foreign_location = foreign_household.locations.create!(name: 'Foreign')
+      create(:medication, household: foreign_household, barcode: '5012345678901', location: foreign_location)
       sign_in(users(:carer))
 
       get scan_restock_match_medications_path(format: :json), params: { q: '5012345678901' }

@@ -53,10 +53,9 @@ RSpec.describe 'API v1 people' do
   describe 'GET /api/v1/households/:household_id/people household grants' do
     it 'returns only people granted to the session membership inside the routed household' do
       account = user.person.account
-      household = Household.create!(name: 'API Household', slug: 'api-household')
+      household = user.person.household
       other_household = Household.create!(name: 'Other API Household', slug: 'other-api-household')
 
-      people(:jane).update!(household: household)
       granted_person = Person.create!(
         household: household,
         name: 'Granted Alex',
@@ -75,12 +74,13 @@ RSpec.describe 'API v1 people' do
         date_of_birth: 10.years.ago.to_date,
         person_type: :minor
       )
-      membership = household.household_memberships.create!(
+      membership = household.household_memberships.find_or_create_by!(
         account: account,
-        person: people(:jane),
-        role: :owner,
-        status: :active
-      )
+        person: people(:jane)
+      ) do |record|
+        record.role = :owner
+        record.status = :active
+      end
       household.person_access_grants.create!(
         household_membership: membership,
         person: people(:jane),
@@ -119,15 +119,12 @@ RSpec.describe 'API v1 people' do
 
     it 'rejects a token used against a different household route' do
       account = user.person.account
-      household = Household.create!(name: 'Primary API Household', slug: 'primary-api-household')
+      household = user.person.household
       other_household = Household.create!(name: 'Secondary API Household', slug: 'secondary-api-household')
-      people(:jane).update!(household: household)
-      household.household_memberships.create!(
-        account: account,
-        person: people(:jane),
-        role: :owner,
-        status: :active
-      )
+      household.household_memberships.find_or_create_by!(account: account, person: people(:jane)) do |record|
+        record.role = :owner
+        record.status = :active
+      end
 
       login_data = api_login(user, household_id: household.id)
 

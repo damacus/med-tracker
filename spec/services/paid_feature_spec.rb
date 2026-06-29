@@ -33,21 +33,27 @@ RSpec.describe PaidFeature do
 
     it 'uses the user membership household when no current household is set' do
       person = users(:admin).person
-      household = Household.create!(name: 'Member Paid Household', slug: 'member-paid-household',
-                                    subscription_plan: :family_plus)
-      person.update!(household: household)
-      household.household_memberships.create!(account: person.account, person: person, role: :owner, status: :active)
+      household = person.household
+      household.update!(subscription_plan: :family_plus)
+      household.household_memberships.find_or_create_by!(account: person.account, person: person) do |membership|
+        membership.role = :owner
+        membership.status = :active
+      end
+      Current.household = nil
       allow(ENV).to receive(:fetch).with('MEDTRACKER_AI_MEDICATION_HELP_ENABLED', 'false').and_return('true')
 
       expect(described_class.enabled?(:ai_medication_help, user: users(:admin))).to be(true)
     end
 
-    it 'uses the account active household when the user person is not tenant-bound' do
+    it 'uses the account active household plan when the membership points at the user tenant' do
       person = users(:admin).person
-      person.update!(household: nil)
-      household = Household.create!(name: 'Account Paid Household', slug: 'account-paid-household',
-                                    subscription_plan: :family_plus)
-      household.household_memberships.create!(account: person.account, role: :owner, status: :active)
+      household = person.household
+      household.update!(subscription_plan: :family_plus)
+      household.household_memberships.find_or_create_by!(account: person.account) do |membership|
+        membership.role = :owner
+        membership.status = :active
+      end
+      Current.household = nil
       allow(ENV).to receive(:fetch).with('MEDTRACKER_AI_MEDICATION_HELP_ENABLED', 'false').and_return('true')
 
       expect(described_class.enabled?(:ai_medication_help, user: users(:admin))).to be(true)

@@ -5,7 +5,16 @@
 
 Rails.logger.debug 'Seeding default locations...'
 
-Location.find_or_create_by!(name: 'Home') do |location|
+household_slug = Rails.env.local? ? 'fixture-household' : 'seed-household'
+household = Household.find_or_initialize_by(slug: household_slug)
+household.id ||= ActiveRecord::FixtureSet.identify(:fixture_household) if Rails.env.local?
+household.name ||= Rails.env.local? ? 'Fixture Household' : 'Seed Household'
+household.status ||= 'active'
+household.timezone ||= Time.zone.name
+household.subscription_plan ||= 'free'
+household.save!
+
+household.locations.find_or_create_by!(name: 'Home') do |location|
   location.description = 'Primary home location'
 end
 

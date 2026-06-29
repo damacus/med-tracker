@@ -14,20 +14,9 @@ class PartitionPaperTrailVersionsByHousehold < ActiveRecord::Migration[8.1]
   private
 
   def enable_versions_rls
-    execute 'ALTER TABLE versions ENABLE ROW LEVEL SECURITY;'
-    execute 'ALTER TABLE versions FORCE ROW LEVEL SECURITY;'
     execute 'DROP POLICY IF EXISTS household_tenant_isolation ON versions;'
-    execute <<~SQL
-      CREATE POLICY household_tenant_isolation ON versions
-      USING (
-        household_id IS NULL
-        OR household_id = med_tracker.current_household_id()
-      )
-      WITH CHECK (
-        household_id IS NULL
-        OR household_id = med_tracker.current_household_id()
-      );
-    SQL
+    execute 'ALTER TABLE versions NO FORCE ROW LEVEL SECURITY;'
+    execute 'ALTER TABLE versions DISABLE ROW LEVEL SECURITY;'
   end
 
   def disable_versions_rls

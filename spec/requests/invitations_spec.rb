@@ -107,9 +107,8 @@ RSpec.describe 'Invitations' do
     end
 
     it 'links accepted parent invitations to selected existing dependents' do
-      dependent = people(:child_patient)
       household, membership = household_bundle(email: 'parent-owner@example.test', name: 'Parent Invitation')
-      dependent.update!(household: household)
+      dependent = create_dependent(household: household, name: 'Parent Invitation Child', carer: membership.person)
       invitation = create_household_invitation_with_grant(
         household: household,
         membership: membership,
@@ -142,9 +141,8 @@ RSpec.describe 'Invitations' do
     end
 
     it 'links accepted carer invitations to selected existing dependents' do
-      dependent = people(:child_user_person)
       household, membership = household_bundle(email: 'carer-owner@example.test', name: 'Carer Invitation')
-      dependent.update!(household: household)
+      dependent = create_dependent(household: household, name: 'Carer Invitation Child', carer: membership.person)
       invitation = create_household_invitation_with_grant(
         household: household,
         membership: membership,
@@ -206,5 +204,22 @@ RSpec.describe 'Invitations' do
       relationship_type: grant.fetch(:relationship_type)
     )
     invitation
+  end
+
+  def create_dependent(household:, name:, carer:)
+    dependent = Person.create!(
+      household: household,
+      name: name,
+      date_of_birth: 8.years.ago.to_date,
+      person_type: :minor,
+      has_capacity: true
+    )
+    CarerRelationship.create!(
+      carer: carer,
+      patient: dependent,
+      relationship_type: :parent
+    )
+    dependent.update!(has_capacity: false)
+    dependent
   end
 end

@@ -1,12 +1,15 @@
 ---
 home:
+  household: fixture_household
   name: Home
   description: Primary home location
 
 school:
+  household: fixture_household
   name: School
   description: School location
 
 grandmas:
+  household: fixture_household
   name: "Grandma's House"
   description: Grandparent's home

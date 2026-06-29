@@ -80,7 +80,10 @@ module Api
               user_agent: api_session.user_agent,
               expires_at: api_session.refresh_expires_at
             },
-            context: audit_context(api_session.account)
+            context: audit_context(api_session.account).merge(
+              household_id: api_session.household_membership&.household_id,
+              actor_membership_id: api_session.household_membership_id
+            ).compact
           )
         end
 

@@ -5,7 +5,7 @@ require 'rails_helper'
 RSpec.describe Admin::DashboardMetricsQuery do
   fixtures :accounts, :people, :users, :schedules, :medications, :locations, :location_memberships, :carer_relationships
 
-  let(:household) { Household.create!(name: 'Admin Metrics Family', slug: 'admin-metrics-family') }
+  let(:household) { users(:admin).person.household }
 
   around do |example|
     Current.household = household
@@ -227,12 +227,10 @@ RSpec.describe Admin::DashboardMetricsQuery do
   end
 
   def attach_metrics_user(user, role)
-    user.person.update!(household: household)
-    household.household_memberships.find_or_create_by!(account: user.person.account) do |membership|
+    membership = household.household_memberships.find_or_create_by!(account: user.person.account) do |membership|
       membership.person = user.person
-      membership.role = role
-      membership.status = :active
     end
+    membership.update!(person: user.person, role: role, status: :active)
   end
 
   def create_metrics_invitation(expires_at:)

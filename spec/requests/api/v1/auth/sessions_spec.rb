@@ -15,8 +15,7 @@ RSpec.describe 'API v1 auth sessions' do
     end
 
     def create_api_household_for(user)
-      household = Household.create!(name: "API Auth #{SecureRandom.hex(4)}", slug: "api-auth-#{SecureRandom.hex(4)}")
-      user.person.update!(household: household)
+      household = user.person.household
       household.household_memberships.create!(
         account: user.person.account,
         person: user.person,
@@ -65,8 +64,7 @@ RSpec.describe 'API v1 auth sessions' do
     end
 
     it 'binds sessions to the requested active household membership' do
-      household = Household.create!(name: 'API Family', slug: 'api-family')
-      people(:jane).update!(household: household)
+      household = people(:jane).household
       membership = household.household_memberships.create!(
         account: user.person.account,
         person: people(:jane),

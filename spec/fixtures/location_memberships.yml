@@ -1,56 +1,70 @@
 ---
 john_home:
+  household: fixture_household
   location: home
   person: john
 
 jane_home:
+  household: fixture_household
   location: home
   person: jane
 
 bob_home:
+  household: fixture_household
   location: home
   person: bob
 
 child_home:
+  household: fixture_household
   location: home
   person: child_patient
 
 jane_school:
+  household: fixture_household
   location: school
   person: jane
 
 one_home:
+  household: fixture_household
   location: home
   person: one
 
 damacus_home:
+  household: fixture_household
   location: home
   person: damacus
 
 admin_home:
+  household: fixture_household
   location: home
   person: admin
 
 nurse_home:
+  household: fixture_household
   location: home
   person: nurse_smith
 
 doctor_home:
+  household: fixture_household
   location: home
   person: doctor_jones
 
 parent_home:
+  household: fixture_household
   location: home
   person: parent_person
 
 adult_patient_home:
+  household: fixture_household
   location: home
   person: adult_patient_person
 
 child_user_home:
+  household: fixture_household
   location: home
   person: child_user_person
 
 carer_home:
+  household: fixture_household
   location: home
   person: carer_person

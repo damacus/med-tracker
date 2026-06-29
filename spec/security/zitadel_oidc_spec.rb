@@ -55,7 +55,7 @@ RSpec.describe 'Zitadel OIDC Enhancements' do # rubocop:disable RSpec/DescribeCl
 
     it 'creates OIDC users without assigning an authorization role' do
       expect(rodauth_source).to include('User.create!')
-      expect(rodauth_source).to include('create_household_for_account!(account_record, person)')
+      expect(rodauth_source).to include('create_household_for_account!(account_record, person, household: household)')
     end
 
     it 'logs a warning when professional title sync fails instead of raising' do

@@ -1,5 +1,6 @@
 ---
 one:
+  household: fixture_household
   name: One of Five
   email: test@example.com
   date_of_birth: 2025-01-01
@@ -10,6 +11,7 @@ one:
   updated_at: <%= Time.current %>
 
 john:
+  household: fixture_household
   name: John Doe
   email: john.doe@example.com
   date_of_birth: 1980-01-01
@@ -20,6 +22,7 @@ john:
   updated_at: <%= Time.current %>
 
 jane:
+  household: fixture_household
   name: Jane Doe
   email: jane.doe@example.com
   date_of_birth: 1980-01-02
@@ -30,6 +33,7 @@ jane:
   updated_at: <%= Time.current %>
 
 damacus:
+  household: fixture_household
   name: Damacus User
   email: damacus@example.com
   date_of_birth: 1985-05-15
@@ -40,6 +44,7 @@ damacus:
   updated_at: <%= Time.current %>
 
 admin:
+  household: fixture_household
   name: Admin Doe
   email: admin@example.com
   date_of_birth: 1980-01-01
@@ -50,6 +55,7 @@ admin:
   updated_at: <%= Time.current %>
 
 bob:
+  household: fixture_household
   name: Bob Smith
   email: bob.smith@example.com
   date_of_birth: 1980-01-01
@@ -60,6 +66,7 @@ bob:
   updated_at: <%= Time.current %>
 
 child_patient:
+  household: fixture_household
   name: Child Patient
   date_of_birth: <%= 5.years.ago.to_date %>
   person_type: 1  # minor
@@ -69,6 +76,7 @@ child_patient:
   updated_at: <%= Time.current %>
 
 nurse_smith:
+  household: fixture_household
   name: Nurse Smith
   email: nurse.smith@example.com
   professional_title: nurse
@@ -80,6 +88,7 @@ nurse_smith:
   updated_at: <%= Time.current %>
 
 doctor_jones:
+  household: fixture_household
   name: Dr. Jones
   email: dr.jones@example.com
   professional_title: doctor
@@ -91,6 +100,7 @@ doctor_jones:
   updated_at: <%= Time.current %>
 
 parent_person:
+  household: fixture_household
   name: Parent Person
   email: parent@example.com
   date_of_birth: 1985-06-10
@@ -101,6 +111,7 @@ parent_person:
   updated_at: <%= Time.current %>
 
 adult_patient_person:
+  household: fixture_household
   name: Adult Patient
   email: adult.patient@example.com
   date_of_birth: 1990-03-20
@@ -111,6 +122,7 @@ adult_patient_person:
   updated_at: <%= Time.current %>
 
 child_user_person:
+  household: fixture_household
   name: Child User
   date_of_birth: <%= 10.years.ago.to_date %>
   person_type: 1  # minor
@@ -120,6 +132,7 @@ child_user_person:
   updated_at: <%= Time.current %>
 
 carer_person:
+  household: fixture_household
   name: Carer Person
   email: carer@example.com
   date_of_birth: 1982-08-25

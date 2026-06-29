@@ -1,6 +1,7 @@
 ---
 # Paracetamol dosages
 paracetamol_adult:
+  household: fixture_household
   amount: 1000
   unit: mg
   description: Standard adult dose
@@ -11,6 +12,7 @@ paracetamol_adult:
   medication: paracetamol
 
 paracetamol_light:
+  household: fixture_household
   amount: 500
   unit: mg
   description: Light adult dose
@@ -22,6 +24,7 @@ paracetamol_light:
 
 # Ibuprofen dosages
 ibuprofen_adult:
+  household: fixture_household
   amount: 400
   unit: mg
   description: Standard adult dose
@@ -32,6 +35,7 @@ ibuprofen_adult:
   medication: ibuprofen
 
 ibuprofen_light:
+  household: fixture_household
   amount: 200
   unit: mg
   description: Light adult dose
@@ -43,6 +47,7 @@ ibuprofen_light:
 
 # Aspirin dosages
 aspirin_adult:
+  household: fixture_household
   amount: 300
   unit: mg
   description: Standard adult dose
@@ -53,6 +58,7 @@ aspirin_adult:
   medication: aspirin
 
 aspirin_light:
+  household: fixture_household
   amount: 75
   unit: mg
   description: Low dose for heart health
@@ -63,6 +69,7 @@ aspirin_light:
   medication: aspirin
 
 vitamin_d_daily:
+  household: fixture_household
   amount: 1000
   unit: IU
   description: Daily Vitamin D supplement
@@ -74,6 +81,7 @@ vitamin_d_daily:
 
 # Calpol dosages
 calpol_child:
+  household: fixture_household
   amount: 2.5
   unit: ml
   description: Standard child dose
@@ -84,6 +92,7 @@ calpol_child:
   medication: calpol
 
 calpol_infant:
+  household: fixture_household
   amount: 5
   unit: ml
   description: Standard infant dose
@@ -95,6 +104,7 @@ calpol_infant:
 
 # Child dosages for paracetamol
 paracetamol_child:
+  household: fixture_household
   amount: 250
   unit: mg
   description: Standard child dose (6-12 years)
@@ -106,6 +116,7 @@ paracetamol_child:
 
 # Child dosages for ibuprofen
 ibuprofen_child:
+  household: fixture_household
   amount: 200
   unit: mg
   description: Standard child dose (6-12 years)

@@ -20,7 +20,7 @@ RSpec.describe 'Dashboard home rendering' do
     it 'renders granted household records and excludes colliding records from another household' do
       household, membership = household_membership_for(users(:jane))
       other_household = Household.create!(name: 'Other Dashboard Household', slug: 'other-dashboard-household')
-      home = household.locations.create!(name: 'Home')
+      home = household.locations.find_or_create_by!(name: 'Home')
       other_home = other_household.locations.create!(name: 'Home')
       jane = grant_person(household, membership, users(:jane).person, access_level: :manage)
       child = grant_person(
@@ -58,20 +58,14 @@ RSpec.describe 'Dashboard home rendering' do
   end
 
   def household_membership_for(user)
-    household = Household.create!(name: "Dashboard #{user.id}", slug: "dashboard-#{user.id}")
-    user.person.update!(household: household)
-    membership = household.household_memberships.create!(
-      account: user.person.account,
-      person: user.person,
-      role: :member,
-      status: :active
-    )
+    household = user.person.household
+    membership = household.household_memberships.find_or_create_by!(account: user.person.account, person: user.person)
+    membership.update!(role: :member, status: :active)
 
     [household, membership]
   end
 
   def grant_person(household, membership, person, access_level: :view)
-    person.update!(household: household)
     household.person_access_grants.create!(
       household_membership: membership,
       person: person,

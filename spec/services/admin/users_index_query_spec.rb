@@ -13,6 +13,7 @@ RSpec.describe Admin::UsersIndexQuery do
       status: :closed
     )
     person = Person.create!(
+      household: Household.first,
       name: 'Soft Deleted User',
       date_of_birth: '1990-01-01',
       account: account
@@ -34,7 +35,7 @@ RSpec.describe Admin::UsersIndexQuery do
     end
 
     it 'filters by household membership role without using the user role' do
-      household = Household.create!(name: 'Query Household', slug: 'query-household')
+      household = users(:jane).person.household
       attach_user_to_household(users(:jane), household, :administrator)
       attach_user_to_household(users(:doctor), household, :member)
 
@@ -112,7 +113,7 @@ RSpec.describe Admin::UsersIndexQuery do
     end
 
     it 'sorts by household membership role when requested' do
-      household = Household.create!(name: 'Sorted Household', slug: 'sorted-household')
+      household = users(:jane).person.household
       attach_user_to_household(users(:jane), household, :member)
       attach_user_to_household(users(:doctor), household, :administrator)
 
@@ -127,12 +128,7 @@ RSpec.describe Admin::UsersIndexQuery do
   end
 
   def attach_user_to_household(user, household, role)
-    user.person.update!(household: household)
-    household.household_memberships.create!(
-      account: user.person.account,
-      person: user.person,
-      role: role,
-      status: :active
-    )
+    membership = household.household_memberships.find_or_create_by!(account: user.person.account, person: user.person)
+    membership.update!(role: role, status: :active)
   end
 end

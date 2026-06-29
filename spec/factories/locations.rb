@@ -2,6 +2,7 @@
 
 FactoryBot.define do
   factory :location do
+    household { Current.household || Household.first || association(:household) }
     sequence(:name) { |n| "Location #{n}" }
     description { 'A test location' }
 

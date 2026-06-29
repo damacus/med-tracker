@@ -7,8 +7,8 @@ RSpec.describe ScheduleDailyRemindersJob do
 
   fixtures :accounts, :people, :locations, :medications, :dosages
 
-  let(:household) { Household.create!(name: 'Daily Reminder Household', slug: 'daily-reminder-household') }
   let(:person) { people(:john) }
+  let(:household) { person.household }
 
   around do |example|
     original_queue_adapter = ActiveJob::Base.queue_adapter
@@ -22,11 +22,6 @@ RSpec.describe ScheduleDailyRemindersJob do
 
   before do
     travel_to Time.zone.local(2026, 5, 12, 6, 0)
-    person.update!(household: household)
-    people(:jane).update!(household: household)
-    Location.find_each { |record| record.update!(household: household) }
-    Medication.find_each { |record| record.update!(household: household) }
-    MedicationDosageOption.find_each { |record| record.update!(household: household) }
   end
 
   def count_schedule_queries(&)

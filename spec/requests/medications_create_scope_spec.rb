@@ -6,7 +6,13 @@ RSpec.describe 'Medication creation scope' do
   fixtures :accounts, :people, :users, :locations, :location_memberships, :medications, :carer_relationships
 
   let(:parent_user) { users(:jane) }
-  let!(:foreign_location) { locations(:grandmas) }
+  let!(:foreign_location) do
+    household = Household.create!(
+      name: 'Foreign Medication Create Household',
+      slug: 'foreign-medication-create-household'
+    )
+    household.locations.create!(name: 'Foreign Medication Create Location')
+  end
   let(:home_location) { household_location(locations(:home)) }
   let(:movicol_dmd_name) do
     'Movicol Paediatric Plain oral powder 6.9g sachets (Norgine Pharmaceuticals Ltd) 30 sachet 15 x 2 sachets'
@@ -555,7 +561,7 @@ RSpec.describe 'Medication creation scope' do
     end
 
     it 'shows a friendly error when the barcode is already used in another inaccessible inventory item' do
-      create(:medication, barcode: '5016298210989', location: foreign_location)
+      create(:medication, household: foreign_location.household, barcode: '5016298210989', location: foreign_location)
 
       expect do
         post medications_path, params: {
@@ -619,7 +625,7 @@ RSpec.describe 'Medication creation scope' do
       end.not_to change(PersonMedication, :count)
 
       expect(Medication.find_by(name: 'Unauthorized PRN Plan')).to be_nil
-      expect(response).to redirect_to(root_path)
+      expect(response).to have_http_status(:not_found)
     end
 
     it 'rejects a forged foreign location_id' do

@@ -8,6 +8,14 @@ class Location < ApplicationRecord
   has_many :location_memberships, dependent: :destroy
   has_many :members, through: :location_memberships, source: :person
 
+  before_validation :assign_household
+
   validates :name, presence: true
   validates :name, uniqueness: { scope: :household_id, case_sensitive: false }, if: :household_id?
+
+  private
+
+  def assign_household
+    self.household ||= Current.household
+  end
 end

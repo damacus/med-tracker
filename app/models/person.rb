@@ -51,6 +51,7 @@ class Person < ApplicationRecord
   }
 
   before_validation :set_capacity_from_person_type
+  before_validation :assign_household
   before_validation :assign_default_location, on: :create
   validates :date_of_birth, presence: true
   validates :name, presence: true
@@ -108,6 +109,10 @@ class Person < ApplicationRecord
     return if location.blank?
 
     location_memberships.build(location: location)
+  end
+
+  def assign_household
+    self.household ||= Current.household
   end
 
   def default_home_location

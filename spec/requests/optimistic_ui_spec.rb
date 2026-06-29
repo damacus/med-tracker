@@ -11,10 +11,6 @@ RSpec.describe 'Optimistic UI updates for take medication buttons' do
 
   before do
     sign_in(users(:carer))
-    household = person.reload.household
-    medication.location.update!(household: household)
-    medication.update!(household: household)
-    medication.dosage_records.find_each { |dosage| dosage.update!(household: household) }
   end
 
   describe 'dashboard timeline' do

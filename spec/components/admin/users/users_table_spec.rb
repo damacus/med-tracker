@@ -8,16 +8,10 @@ RSpec.describe Components::Admin::Users::UsersTable, type: :component do
   let(:user_list) { User.all }
   let(:current_user) { users(:admin) }
   let(:target_user) { users(:jane) }
-  let(:household) do
-    Household.find_or_create_by!(slug: 'test-household') do |record|
-      record.name = 'Test Household'
-    end
-  end
+  let(:household) { current_user.person.household }
 
   before do
     Current.household = household
-    current_user.person.update!(household: household)
-    target_user.person.update!(household: household)
     household.household_memberships.find_or_initialize_by(account: current_user.person.account).tap do |membership|
       membership.person = current_user.person
       membership.role = :owner
@@ -55,7 +49,7 @@ RSpec.describe Components::Admin::Users::UsersTable, type: :component do
       expect(rendered.css("[data-user-id='#{target_user.id}']").length).to eq(1)
       expect(rendered.css("[data-user-card-id='#{target_user.id}']")).to be_present
       expect(rendered.css("[data-user-card-id='#{target_user.id}'] a").pluck('href')).to include(
-        "/households/test-household/admin/users/#{target_user.id}/edit"
+        "/households/#{household.slug}/admin/users/#{target_user.id}/edit"
       )
     end
 
@@ -78,7 +72,7 @@ RSpec.describe Components::Admin::Users::UsersTable, type: :component do
 
       row = rendered.css("[data-user-id='#{target_user.id}']").first
       edit_link = row.css('a').find { |link| link.text.include?('Edit') }
-      expect(edit_link['href']).to include("/households/test-household/admin/users/#{target_user.id}/edit")
+      expect(edit_link['href']).to include("/households/#{household.slug}/admin/users/#{target_user.id}/edit")
       expect(edit_link['class']).to include('border')
     end
 

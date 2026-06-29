@@ -1,5 +1,6 @@
 ---
 john_vitamin_d:
+  household: fixture_household
   person: john
   medication: vitamin_d
   dose_amount: 1000
@@ -10,6 +11,7 @@ john_vitamin_d:
   max_daily_doses: 1
 
 jane_vitamin_d:
+  household: fixture_household
   person: jane
   medication: vitamin_d
   dose_amount: 1000
@@ -20,6 +22,7 @@ jane_vitamin_d:
   min_hours_between_doses: 12
 
 bob_vitamin_c:
+  household: fixture_household
   person: bob
   medication: vitamin_c
   dose_amount: 500

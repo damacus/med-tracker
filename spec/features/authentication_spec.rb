@@ -119,6 +119,7 @@ RSpec.describe 'Authentication Features', type: :system do
 
     before do
       person = Person.create!(
+        household: Household.first,
         account: account,
         name: 'Remember User',
         email: 'remember@example.com',

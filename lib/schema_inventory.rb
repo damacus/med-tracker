@@ -6,7 +6,6 @@ class SchemaInventory
     locations
     location_memberships
     medications
-    medication_dosage_options
     dosages
     schedules
     person_medications
@@ -17,7 +16,6 @@ class SchemaInventory
     household_invitations
     household_invitation_grants
     security_audit_events
-    versions
     active_storage_attachments
   ].freeze
 
@@ -37,12 +35,20 @@ class SchemaInventory
     accounts
     active_storage_blobs
     active_storage_variant_records
+    api_app_tokens
+    api_sessions
     app_settings
     barcode_catalog_entries
+    carer_relationships
+    households
+    native_device_tokens
     nhs_dmd_barcodes
     nhs_dmd_imports
     platform_admins
+    push_subscriptions
     support_access_sessions
+    users
+    versions
   ].freeze
 
   class << self

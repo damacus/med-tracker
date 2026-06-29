@@ -71,13 +71,8 @@ RSpec.describe 'People carer relationships' do
       household = Household.find_by!(slug: default_request_household_slug)
       parent_membership = household.household_memberships.find_by!(account: users(:parent).person.account)
       jane = users(:jane).person
-      jane.update!(household: household)
-      jane_membership = household.household_memberships.create!(
-        account: jane.account,
-        person: jane,
-        role: :member,
-        status: :active
-      )
+      jane_membership = household.household_memberships.find_or_create_by!(account: jane.account, person: jane)
+      jane_membership.update!(role: :member, status: :active)
       grant = household.person_access_grants.create!(
         household_membership: jane_membership,
         person: people(:child_user_person),

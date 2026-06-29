@@ -7,10 +7,9 @@ RSpec.describe Components::Layouts::Sidebar, type: :component do
 
   let(:admin_user) { users(:admin) }
   let(:carer_user) { users(:carer) }
-  let(:household_slug) { 'test-household' }
-  let(:household) { Household.find_or_create_by!(slug: household_slug) { |record| record.name = 'Test Household' } }
+  let(:household) { admin_user.person.household }
+  let(:household_slug) { household.slug }
   let(:membership) do
-    admin_user.person.update!(household: household)
     household.household_memberships.find_or_create_by!(account: admin_user.person.account) do |record|
       record.person = admin_user.person
       record.role = :owner
@@ -72,13 +71,13 @@ RSpec.describe Components::Layouts::Sidebar, type: :component do
 
   context 'when user is not an administrator' do
     it 'does not render Administration link' do
-      carer_user.person.update!(household: household)
-      Current.membership = household.household_memberships.create!(
-        account: carer_user.person.account,
-        person: carer_user.person,
-        role: :member,
-        status: :active
-      )
+      Current.membership = household.household_memberships.find_or_create_by!(
+        account: carer_user.person.account
+      ) do |record|
+        record.person = carer_user.person
+        record.role = :member
+        record.status = :active
+      end
       rendered = render_sidebar(user: carer_user)
 
       expect(rendered.text).not_to include('Administration')

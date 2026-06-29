@@ -137,7 +137,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_29_120000) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.bigint "blob_id", null: false
     t.datetime "created_at", null: false
-    t.bigint "household_id"
+    t.bigint "household_id", null: false
     t.string "name", null: false
     t.bigint "record_id", null: false
     t.string "record_type", null: false
@@ -246,7 +246,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_29_120000) do
     t.decimal "default_min_hours_between_doses", precision: 4, scale: 1
     t.string "description"
     t.string "frequency"
-    t.bigint "household_id"
+    t.bigint "household_id", null: false
     t.bigint "medication_id", null: false
     t.decimal "reorder_threshold", precision: 10, scale: 2
     t.string "unit"
@@ -324,7 +324,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_29_120000) do
 
   create_table "location_memberships", force: :cascade do |t|
     t.datetime "created_at", null: false
-    t.bigint "household_id"
+    t.bigint "household_id", null: false
     t.bigint "location_id", null: false
     t.bigint "person_id", null: false
     t.datetime "updated_at", null: false
@@ -338,7 +338,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_29_120000) do
   create_table "locations", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.text "description"
-    t.bigint "household_id"
+    t.bigint "household_id", null: false
     t.string "name", null: false
     t.datetime "updated_at", null: false
     t.index "household_id, lower((name)::text)", name: "index_locations_on_household_id_and_lower_name", unique: true, where: "(household_id IS NOT NULL)"
@@ -352,7 +352,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_29_120000) do
     t.datetime "created_at", null: false
     t.decimal "dose_amount", precision: 10, scale: 2
     t.string "dose_unit"
-    t.bigint "household_id"
+    t.bigint "household_id", null: false
     t.bigint "person_medication_id"
     t.bigint "schedule_id"
     t.datetime "taken_at"
@@ -384,7 +384,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_29_120000) do
     t.string "dosage_unit"
     t.date "expiry_date"
     t.string "friendly_name"
-    t.bigint "household_id"
+    t.bigint "household_id", null: false
     t.bigint "location_id", null: false
     t.string "name"
     t.datetime "ordered_at"
@@ -458,7 +458,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_29_120000) do
     t.datetime "created_at", null: false
     t.boolean "enabled", default: true, null: false
     t.time "evening_time", default: "2000-01-01 18:00:00"
-    t.bigint "household_id"
+    t.bigint "household_id", null: false
     t.time "morning_time", default: "2000-01-01 08:00:00"
     t.time "night_time", default: "2000-01-01 22:00:00"
     t.bigint "person_id", null: false
@@ -474,7 +474,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_29_120000) do
     t.date "date_of_birth"
     t.string "email"
     t.boolean "has_capacity", default: true, null: false
-    t.bigint "household_id"
+    t.bigint "household_id", null: false
     t.string "name", null: false
     t.integer "person_type", default: 0, null: false
     t.string "professional_title"
@@ -514,7 +514,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_29_120000) do
     t.decimal "dose_amount", precision: 10, scale: 2
     t.integer "dose_cycle"
     t.string "dose_unit"
-    t.bigint "household_id"
+    t.bigint "household_id", null: false
     t.integer "max_daily_doses"
     t.bigint "medication_id", null: false
     t.integer "min_hours_between_doses"
@@ -562,7 +562,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_29_120000) do
     t.string "dose_unit"
     t.date "end_date"
     t.string "frequency"
-    t.bigint "household_id"
+    t.bigint "household_id", null: false
     t.integer "max_daily_doses", default: 4
     t.bigint "medication_id", null: false
     t.integer "min_hours_between_doses"
@@ -588,7 +588,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_29_120000) do
     t.bigint "actor_membership_id"
     t.datetime "created_at", null: false
     t.string "event_type", null: false
-    t.bigint "household_id"
+    t.bigint "household_id", null: false
     t.string "ip"
     t.jsonb "metadata", default: {}, null: false
     t.string "request_id"
@@ -741,4 +741,76 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_29_120000) do
   add_foreign_key "users", "people", deferrable: :deferred
   add_foreign_key "versions", "household_memberships", column: "actor_membership_id"
   add_foreign_key "versions", "households"
+
+  execute <<~SQL
+    CREATE SCHEMA IF NOT EXISTS med_tracker;
+
+    CREATE OR REPLACE FUNCTION med_tracker.current_account_id()
+    RETURNS bigint
+    LANGUAGE sql
+    STABLE
+    AS $$
+      SELECT NULLIF(current_setting('med_tracker.current_account_id', true), '')::bigint;
+    $$;
+
+    CREATE OR REPLACE FUNCTION med_tracker.current_household_id()
+    RETURNS bigint
+    LANGUAGE sql
+    STABLE
+    AS $$
+      SELECT NULLIF(current_setting('med_tracker.current_household_id', true), '')::bigint;
+    $$;
+
+    CREATE OR REPLACE FUNCTION med_tracker.current_membership_id()
+    RETURNS bigint
+    LANGUAGE sql
+    STABLE
+    AS $$
+      SELECT NULLIF(current_setting('med_tracker.current_membership_id', true), '')::bigint;
+    $$;
+  SQL
+
+  %w[
+    people
+    locations
+    location_memberships
+    medications
+    dosages
+    schedules
+    person_medications
+    medication_takes
+    notification_preferences
+    household_memberships
+    person_access_grants
+    household_invitations
+    household_invitation_grants
+    security_audit_events
+    active_storage_attachments
+  ].each do |table_name|
+    quoted_table = quote_table_name(table_name)
+    execute "ALTER TABLE #{quoted_table} ENABLE ROW LEVEL SECURITY;"
+    execute "ALTER TABLE #{quoted_table} FORCE ROW LEVEL SECURITY;"
+    execute "DROP POLICY IF EXISTS household_tenant_isolation ON #{quoted_table};"
+
+    if table_name == 'household_memberships'
+      execute <<~SQL
+        CREATE POLICY household_tenant_isolation ON #{quoted_table}
+        USING (
+          household_id = med_tracker.current_household_id()
+          OR account_id = med_tracker.current_account_id()
+        )
+        WITH CHECK (household_id = med_tracker.current_household_id());
+      SQL
+    else
+      execute <<~SQL
+        CREATE POLICY household_tenant_isolation ON #{quoted_table}
+        USING (household_id = med_tracker.current_household_id())
+        WITH CHECK (household_id = med_tracker.current_household_id());
+      SQL
+    end
+  end
+
+  execute 'DROP POLICY IF EXISTS household_tenant_isolation ON versions;'
+  execute 'ALTER TABLE versions NO FORCE ROW LEVEL SECURITY;'
+  execute 'ALTER TABLE versions DISABLE ROW LEVEL SECURITY;'
 end

@@ -70,6 +70,18 @@ RSpec.describe Household do
     expect(login_has_owner_role).to be(true)
   end
 
+  it 'keeps the runtime role separate from owner-capable migration privileges' do
+    runtime_inherits_owner = connection.select_value(<<~SQL.squish)
+      SELECT pg_has_role('med_tracker_app', 'med_tracker_owner', 'member')
+    SQL
+    runtime_can_create_public_objects = connection.select_value(<<~SQL.squish)
+      SELECT has_schema_privilege('med_tracker_app', 'public', 'CREATE')
+    SQL
+
+    expect(runtime_inherits_owner).to be(false)
+    expect(runtime_can_create_public_objects).to be(false)
+  end
+
   it 'forces row-level security on every household-owned table' do
     missing = SchemaInventory.household_owned_tables.filter_map do |table_name|
       next unless connection.table_exists?(table_name)
@@ -83,6 +95,21 @@ RSpec.describe Household do
     end
 
     expect(missing).to be_empty
+  end
+
+  it 'does not expose null-tenant rows through household RLS policies' do
+    null_visible_policies = connection.select_values(<<~SQL.squish)
+      SELECT tablename
+      FROM pg_policies
+      WHERE schemaname = 'public'
+        AND (
+          lower(COALESCE(qual, '')) LIKE '%household_id is null%'
+          OR lower(COALESCE(with_check, '')) LIKE '%household_id is null%'
+        )
+      ORDER BY tablename
+    SQL
+
+    expect(null_visible_policies).to be_empty
   end
 
   it 'default-denies household rows for the runtime role without tenant context' do

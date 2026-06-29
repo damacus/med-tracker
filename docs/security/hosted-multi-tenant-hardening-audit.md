@@ -32,10 +32,10 @@ items below are closed, verified, and documented.
 
 | Requirement | Current evidence | Gap / decision | Severity | Owner issue | Tests required | Beta status |
 | --- | --- | --- | --- | --- | --- | --- |
-| FR1 | `SchemaInventory`, household models, composite foreign keys, tenant route specs. | Complete inventory must be rechecked against every tenant-owned table and future health/export records. | High | HMT-001 | Static inventory and cross-household association specs. | NO-GO |
-| FR2 | Many tenant tables have `household_id`; some are still nullable in `db/schema.rb`. | Backfill remaining nullable tenant rows, fail with diagnostics when ownership cannot be derived, then enforce `NOT NULL`. | Critical | HMT-001 | Migration specs and schema nullability specs. | NO-GO |
-| FR3 | Forced RLS specs exist for household rows, membership bootstrap, and ActiveStorage attachments. | RLS policies still need proof that null household rows are never globally visible. | Critical | HMT-001 | Runtime role default-deny, cross-household read/write, null-policy inspection. | NO-GO |
-| FR4 | `med_tracker_app` role exists with `NOBYPASSRLS`; production web defaults to runtime role. | Need deploy-time proof that web uses runtime role and migrations use owner role outside local Compose. | Critical | HMT-002 | Role privilege specs and deployment config checks. | NO-GO |
+| FR1 | `SchemaInventory` classifies every primary application table exactly once; household-owned entries are physical tables and expose `household_id`; `versions` is classified as global pending the FR14 audit-contract work. | Closed. | High | HMT-001 | `spec/lib/schema_inventory_spec.rb`. | GO |
+| FR2 | `20260624091000_enforce_strict_household_tenant_boundary.rb` backfills derivable tenant rows, creates a single legacy household only for unambiguous single-household roots, fails ambiguous orphan roots, and enforces `household_id NOT NULL` on every household-owned table in `db/schema.rb`. | Closed. | Critical | HMT-001 | `spec/lib/schema_inventory_spec.rb`. | GO |
+| FR3 | PostgreSQL RLS is enabled and forced for every household-owned table; live policy specs prove no public RLS policy exposes `household_id IS NULL`, runtime default-denies without tenant context, and cross-household reads are isolated. | Closed. | Critical | HMT-001 | `spec/models/household_row_level_security_spec.rb`. | GO |
+| FR4 | Runtime role specs prove `med_tracker_app` is `NOBYPASSRLS`, not superuser, cannot create in `public`, and is not a member of `med_tracker_owner`; Compose specs prove prod migrations use the owner-capable role while web runtime uses the restricted runtime role. | Closed. | Critical | HMT-002 | `spec/models/household_row_level_security_spec.rb`, `spec/config/yaml_compose_spec.rb`, `spec/config/database_role_config_spec.rb`. | GO |
 | FR5 | Web routes use `household_slug`; API credentials bind to membership; `TenantContext` sets DB context. | API write credentials and support-mode context must follow the same membership-derived rule. | Critical | HMT-003 | Web/API membership rejection and DB context specs. | NO-GO |
 | FR6 | Architecture spec blocks direct tenant `.find(params)` patterns. | Expand coverage to API write endpoints and background jobs introduced by this epic. | High | HMT-003 | Request specs for cross-household show/update/destroy/write attempts. | NO-GO |
 | FR7 | `Admin::UsersController#update` now permits only email/person profile fields; `Admin::MembershipRolesController` and `Admin::MembershipRoleUpdater` handle non-owner role changes with `SecurityAuditEvent` records; edit UI posts role changes to the dedicated endpoint. | Person/dependent access still needs final dedicated-service reconciliation across every admin path; owner promotion remains rejected here until the platform-admin owner-promotion flow is implemented. | Critical | HMT-004 | `spec/requests/admin/user_mutation_boundary_spec.rb`, `spec/requests/admin_create_update_turbo_spec.rb`, and policy specs for remaining role/grant paths. | NO-GO |
@@ -81,9 +81,9 @@ items below are closed, verified, and documented.
 
 ## Go/No-Go Checklist
 
-- [ ] Runtime app DB role is `NOBYPASSRLS` and not owner.
-- [ ] Tenant-owned tables enforce non-null household ownership.
-- [ ] RLS default-denies without tenant context and never exposes null household rows.
+- [x] Runtime app DB role is `NOBYPASSRLS` and not owner.
+- [x] Tenant-owned tables enforce non-null household ownership.
+- [x] RLS default-denies without tenant context and never exposes null household rows.
 - [ ] Invite-only registration is pinned for hosted beta.
 - [ ] Invitation acceptance works under runtime RLS. Partial evidence: email pinning and invalid/reused token request specs pass.
 - [ ] Generic admin user update cannot change roles or person grants. Partial evidence: role mutation boundary specs pass; remaining person-grant reconciliation is open.

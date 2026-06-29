@@ -8,14 +8,12 @@ RSpec.describe 'Offline mode' do
 
   let(:user) { users(:admin) }
   let(:medication) { medications(:gabapentin) }
-  let(:household) { Household.create!(name: 'Offline Household', slug: 'offline-household') }
+  let(:household) { user.person.household }
   let(:membership) do
-    household.household_memberships.create!(
-      account: user.person.account,
-      person: user.person,
-      role: :owner,
-      status: :active
-    )
+    household.household_memberships.find_or_create_by!(account: user.person.account, person: user.person) do |record|
+      record.role = :owner
+      record.status = :active
+    end
   end
   let(:schedule) do
     Schedule.create!(
@@ -33,9 +31,6 @@ RSpec.describe 'Offline mode' do
   end
 
   before do
-    user.person.update!(household: household)
-    medication.location.update!(household: household)
-    medication.update!(household: household)
     membership
     household.person_access_grants.create!(
       household_membership: membership,

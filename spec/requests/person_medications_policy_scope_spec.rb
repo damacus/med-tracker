@@ -10,9 +10,15 @@ RSpec.describe 'PersonMedicationsController medication options' do
   let(:admin_user) { users(:admin) }
   let(:admin_person) { people(:admin) }
   let!(:foreign_medication) do
+    household = Household.create!(
+      name: 'Foreign Person Medication Household',
+      slug: 'foreign-person-medication-household'
+    )
+    location = household.locations.create!(name: 'Foreign Person Medication Location')
     Medication.create!(
+      household: household,
       name: 'Foreign Household Medication',
-      location: locations(:grandmas),
+      location: location,
       category: 'Analgesic',
       dosage_amount: 250,
       dosage_unit: 'mg',
@@ -42,7 +48,7 @@ RSpec.describe 'PersonMedicationsController medication options' do
 
         expect(response).to have_http_status(:ok)
         expect(response.body).to include(medications(:vitamin_d).name)
-        expect(response.body).to include(foreign_medication.name)
+        expect(response.body).not_to include(foreign_medication.name)
       end
     end
   end

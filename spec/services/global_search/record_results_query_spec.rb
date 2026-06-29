@@ -87,14 +87,8 @@ RSpec.describe GlobalSearch::RecordResultsQuery do
       Current.household = nil
       household = household_for('Account Search Household')
       account = Account.create!(email: 'search-account@example.test', status: :verified)
-      person = Person.create!(
-        account: account,
-        name: 'Search Account Person',
-        date_of_birth: 30.years.ago.to_date,
-        person_type: :adult,
-        has_capacity: true
-      )
       household.household_memberships.create!(account: account, role: :member, status: :active)
+      person = Struct.new(:household, :account).new(nil, account)
       search_user = Struct.new(:person).new(person)
 
       expect(helper_query(user: search_user).default_url_options).to eq(household_slug: household.slug)

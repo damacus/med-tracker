@@ -22,14 +22,8 @@ class PartitionActiveStorageAttachmentsByHousehold < ActiveRecord::Migration[8.1
     execute 'DROP POLICY IF EXISTS household_tenant_isolation ON active_storage_attachments;'
     execute <<~SQL
       CREATE POLICY household_tenant_isolation ON active_storage_attachments
-      USING (
-        household_id IS NULL
-        OR household_id = med_tracker.current_household_id()
-      )
-      WITH CHECK (
-        household_id IS NULL
-        OR household_id = med_tracker.current_household_id()
-      );
+      USING (household_id = med_tracker.current_household_id())
+      WITH CHECK (household_id = med_tracker.current_household_id());
     SQL
   end
 

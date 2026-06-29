@@ -17,6 +17,79 @@ Before onboarding another household, verify:
 - Backup and Restore test evidence exists for the current deployment.
 - Support access is only available through the audited Platform admin flow.
 
+## Tenant/RLS foundation verification
+
+Run these checks against the deployed primary database before enabling hosted
+multi-household traffic:
+
+```sql
+SELECT rolname, rolsuper, rolbypassrls
+FROM pg_roles
+WHERE rolname IN ('med_tracker_app', 'med_tracker_owner');
+
+SELECT pg_has_role('med_tracker_app', 'med_tracker_owner', 'member') AS app_inherits_owner,
+       has_schema_privilege('med_tracker_app', 'public', 'CREATE') AS app_can_create_public;
+
+SELECT relname
+FROM pg_class
+WHERE oid = ANY (ARRAY[
+  'people'::regclass,
+  'locations'::regclass,
+  'location_memberships'::regclass,
+  'medications'::regclass,
+  'dosages'::regclass,
+  'schedules'::regclass,
+  'person_medications'::regclass,
+  'medication_takes'::regclass,
+  'notification_preferences'::regclass,
+  'household_memberships'::regclass,
+  'person_access_grants'::regclass,
+  'household_invitations'::regclass,
+  'household_invitation_grants'::regclass,
+  'security_audit_events'::regclass,
+  'active_storage_attachments'::regclass
+])
+AND NOT (relrowsecurity AND relforcerowsecurity);
+
+SELECT table_name
+FROM information_schema.columns
+WHERE table_schema = 'public'
+  AND column_name = 'household_id'
+  AND table_name IN (
+    'people',
+    'locations',
+    'location_memberships',
+    'medications',
+    'dosages',
+    'schedules',
+    'person_medications',
+    'medication_takes',
+    'notification_preferences',
+    'household_memberships',
+    'person_access_grants',
+    'household_invitations',
+    'household_invitation_grants',
+    'security_audit_events',
+    'active_storage_attachments'
+  )
+  AND is_nullable <> 'NO';
+
+SELECT tablename
+FROM pg_policies
+WHERE schemaname = 'public'
+  AND (
+    lower(COALESCE(qual, '')) LIKE '%household_id is null%'
+    OR lower(COALESCE(with_check, '')) LIKE '%household_id is null%'
+  );
+```
+
+The role membership/create checks must return `false`; the forced-RLS,
+nullable-column, and null-policy queries must return no rows. Release verification
+also runs `task test TEST_FILE=spec/lib/schema_inventory_spec.rb`,
+`task test TEST_FILE=spec/models/household_row_level_security_spec.rb`,
+`task test TEST_FILE=spec/config/yaml_compose_spec.rb`, and
+`task test TEST_FILE=spec/config/database_role_config_spec.rb`.
+
 ## Onboarding
 
 1. Confirm the release branch has passed the go/no-go checklist.

@@ -329,7 +329,8 @@ RSpec.describe Schedule do
       create(:dosage, medication: assignment_medication, amount: 10, unit: 'mg', frequency: 'daily')
     end
     let(:unassigned_person) do
-      Person.create!(name: 'Schedule Unassigned Person', date_of_birth: 30.years.ago.to_date)
+      Current.household = nil
+      Person.new(name: 'Schedule Unassigned Person', date_of_birth: 30.years.ago.to_date)
     end
 
     it 'falls back to the medication household when the person has none' do
