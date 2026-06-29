@@ -39,16 +39,32 @@ RSpec.describe OtelInstrumented do
     end
   end
 
-  describe '#otel_span_attributes (default implementation)' do
-    it 'returns a hash containing model.name and model.operation' do
+  describe '#otel_span_attributes' do
+    let(:sensitive_attribute_keys) do
+      %w[
+        model.id
+        medication_take.taken_at
+        medication_take.dose_amount
+        medication_take.dose_unit
+        medication_take.schedule_id
+        medication_take.person_medication_id
+        medication_take.taken_from_medication_id
+        medication_take.taken_from_location_id
+      ]
+    end
+
+    it 'returns non-sensitive model metadata with a stable record correlation hash' do
       take  = create(:medication_take, :for_schedule, schedule: schedule)
       attrs = take.send(:otel_span_attributes, 'create')
 
       expect(attrs).to include(
         'model.name' => 'MedicationTake',
-        'model.operation' => 'create'
+        'model.operation' => 'create',
+        'model.id_hash' => match(/\A\h{64}\z/)
       )
-      expect(attrs).not_to have_key('model.id')
+      expect(attrs['model.id_hash']).to eq(take.send(:otel_span_attributes, 'update')['model.id_hash'])
+      expect(attrs['model.id_hash']).not_to eq(take.id.to_s)
+      expect(attrs.keys).not_to include(*sensitive_attribute_keys)
     end
   end
 

@@ -10,6 +10,7 @@ module Otel
         http.request.method
         http.response.status_code
         http.route
+        model.id_hash
         model.name
         model.operation
         network.protocol.name
