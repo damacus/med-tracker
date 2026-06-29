@@ -149,8 +149,6 @@ module Components
       end
 
       def render_medications_section
-        accessible_medications = person_medications.select { |pm| view_context.policy(pm).show? }
-
         div(class: 'space-y-8') do
           div(class: 'flex items-center justify-between px-2') do
             m3_heading(variant: :title_large, level: 2, class: 'font-bold tracking-tight') do
@@ -160,24 +158,36 @@ module Components
           end
 
           div(id: 'medications', class: 'grid grid-cols-1 md:grid-cols-2 gap-6') do
-            schedules.each do |schedule|
-              render Components::Schedules::Card.new(
-                schedule: schedule,
-                person: person,
-                current_user: current_user
-              )
-            end
-
-            accessible_medications.each do |person_medication|
-              render Components::PersonMedications::Card.new(
-                person_medication: person_medication,
-                person: person,
-                current_user: current_user
-              )
-            end
+            medication_sources.each { |source| render_medication_source(source) }
           end
 
-          render_empty_state if schedules.none? && accessible_medications.none?
+          render_empty_state if medication_sources.none?
+        end
+      end
+
+      def medication_sources
+        @medication_sources ||= (schedules.to_a + accessible_person_medications).sort_by do |source|
+          source.paused? ? 1 : 0
+        end
+      end
+
+      def accessible_person_medications
+        @accessible_person_medications ||= person_medications.select { |pm| view_context.policy(pm).show? }
+      end
+
+      def render_medication_source(source)
+        if source.is_a?(Schedule)
+          render Components::Schedules::Card.new(
+            schedule: source,
+            person: person,
+            current_user: current_user
+          )
+        else
+          render Components::PersonMedications::Card.new(
+            person_medication: source,
+            person: person,
+            current_user: current_user
+          )
         end
       end
 

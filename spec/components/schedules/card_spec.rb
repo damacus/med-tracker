@@ -36,9 +36,27 @@ RSpec.describe Components::Schedules::Card, type: :component do
     expect(button.text).to include('Log a past dose')
   end
 
-  def render_schedule_card
+  it 'renders pause action for manageable active schedules' do
+    rendered = render_schedule_card(manage: true)
+
+    expect(rendered.at_css("button[data-testid='pause-schedule-#{schedule.id}']")).to be_present
+  end
+
+  it 'renders paused state without dose actions' do
+    schedule.update!(active: false)
+
+    rendered = render_schedule_card(manage: true)
+
+    expect(rendered.text).to include('Paused')
+    expect(rendered.at_css("button[data-testid='log-past-dose-schedule-#{schedule.id}']")).to be_nil
+    expect(rendered.at_css("button[data-testid='resume-schedule-#{schedule.id}']")).to be_present
+  end
+
+  def render_schedule_card(manage: false)
     vc = view_context
     vc.singleton_class.define_method(:current_user) { nil }
+    policy_stub = Struct.new(:update?).new(manage)
+    allow(SchedulePolicy).to receive(:new).and_return(policy_stub)
     html = vc.render(described_class.new(schedule: schedule, person: person))
     Nokogiri::HTML::DocumentFragment.parse(html)
   end

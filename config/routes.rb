@@ -165,12 +165,16 @@ Rails.application.routes.draw do
 
       resources :schedules, except: [:index] do
         member do
+          patch :pause
+          patch :resume
           post :take_medication
         end
       end
 
       resources :person_medications, except: [:index] do
         member do
+          patch :pause
+          patch :resume
           patch :reorder
           post :take_medication
         end

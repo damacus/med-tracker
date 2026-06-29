@@ -96,6 +96,19 @@ RSpec.describe ScheduleDailyRemindersJob do
       .with(household.id, person.id, :scheduled, '07:15')
   end
 
+  it 'does not enqueue exact reminders for paused schedules' do
+    create(:notification_preference, person: person, morning_time: nil, afternoon_time: nil,
+                                     evening_time: nil, night_time: nil)
+    create(:schedule, person: person, medication: medications(:vitamin_d), dosage: dosages(:vitamin_d_daily),
+                      active: false, frequency: 'Once daily', schedule_type: :daily,
+                      schedule_config: { 'times' => ['07:15'] })
+
+    expect do
+      described_class.perform_now
+    end.not_to have_enqueued_job(MedicationReminderJob)
+      .with(household.id, person.id, :scheduled, '07:15')
+  end
+
   it 'loads schedule times once for enabled notification preferences' do
     create(:notification_preference, person: people(:john), morning_time: nil, afternoon_time: nil,
                                      evening_time: nil, night_time: nil)

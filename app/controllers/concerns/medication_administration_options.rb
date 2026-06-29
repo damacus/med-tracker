@@ -16,6 +16,7 @@ module MedicationAdministrationOptions
 
   def administration_person_medications
     policy_scope(PersonMedication)
+      .active
       .includes(:person, :medication)
       .where(medication: @medication)
       .select { |person_medication| policy(person_medication).take_medication? }

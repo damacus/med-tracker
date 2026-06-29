@@ -940,6 +940,8 @@ en:
     created: Medication added successfully.
     updated: Medication updated successfully.
     deleted: Medication removed successfully.
+    paused: Medication paused.
+    resumed: Medication resumed.
     medication_taken: Medication taken successfully.
     invalid_dose_configured: Invalid dose configured. Update the medication dose before
       taking.
@@ -948,6 +950,7 @@ en:
       edit_title: Edit Medication for %{person}
       subtitle: Add a routine or as-needed medication
     card:
+      paused: Paused
       notes: 'Notes:'
       timing_restrictions: 'Timing Restrictions:'
       max_doses_per_day: Maximum %{count} dose(s) per day
@@ -963,6 +966,8 @@ en:
       move_down_aria_label: Move medication down in list
       delete_aria_label: Delete medication
       edit: Edit
+      pause: Pause medication
+      resume: Resume medication
       remove: Remove
       remove_medication: Remove Medication
       remove_confirmation: Are you sure you want to remove %{medication}? This action
@@ -1061,6 +1066,8 @@ en:
     created: Schedule was successfully created.
     updated: Schedule was successfully updated.
     deleted: Schedule was successfully deleted.
+    paused: Schedule paused.
+    resumed: Schedule resumed.
     medication_taken: Medication taken successfully.
     invalid_dose_configured: Invalid dose configured. Update the schedule dose before
       taking.
@@ -1069,6 +1076,7 @@ en:
       edit_title: Edit Schedule for %{person}
       subtitle: Add medication details and schedule
     card:
+      paused: Paused
       started: 'Started:'
       ends: 'Ends:'
       notes: 'Notes:'
@@ -1086,6 +1094,8 @@ en:
       waiting: Waiting
       edit: Edit
       delete: Delete
+      pause: Pause schedule
+      resume: Resume schedule
       delete_dialog:
         title: Delete Schedule
         confirm: Are you sure you want to delete the %{medication} schedule? This
@@ -1226,6 +1236,7 @@ en:
     json_success: Medication taken successfully.
     invalid_taken_at: Choose a valid dose time.
     future_taken_at: Dose time cannot be more than an hour in the future.
+    paused: 'Cannot take medication: paused'
   barcode_scanner:
     title: Scan Barcode
     start: Start Scanner

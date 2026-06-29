@@ -31,6 +31,8 @@ module Api
 
       def schedule_data
         {
+          active: person_medication.active?,
+          paused: person_medication.paused?,
           dose_cycle: person_medication.dose_cycle,
           administration_kind: person_medication.administration_kind,
           notes: person_medication.notes,

@@ -8,7 +8,7 @@ RSpec.describe Api::V1::ScheduleSerializer do
     json = described_class.new(schedule).as_json
     expect(json).to include(
       id: schedule.id, person_id: schedule.person_id, medication_id: schedule.medication_id,
-      frequency: schedule.frequency, dose_cycle: schedule.dose_cycle, active: schedule.active?,
+      frequency: schedule.frequency, dose_cycle: schedule.dose_cycle, active: schedule.active?, paused: false,
       max_daily_doses: schedule.max_daily_doses, min_hours_between_doses: schedule.min_hours_between_doses
     )
     expect(json[:start_date]).to eq(schedule.start_date&.iso8601)
@@ -37,5 +37,13 @@ RSpec.describe Api::V1::ScheduleSerializer do
     schedule = create(:schedule, :expired)
     json = described_class.new(schedule).as_json
     expect(json[:active]).to be false
+  end
+
+  it 'serialises paused schedules with paused true and active false' do
+    schedule = create(:schedule, active: false)
+    json = described_class.new(schedule).as_json
+
+    expect(json[:active]).to be false
+    expect(json[:paused]).to be true
   end
 end

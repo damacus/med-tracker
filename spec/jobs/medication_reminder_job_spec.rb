@@ -79,6 +79,16 @@ RSpec.describe MedicationReminderJob do
     expect(PushNotificationService).not_to have_received(:send_to_account)
   end
 
+  it 'does not send scheduled-time reminders for paused schedules' do
+    create(:schedule, person: person, medication: medications(:vitamin_d), dosage: dosages(:vitamin_d_daily),
+                      active: false, frequency: 'Once daily', schedule_type: :daily,
+                      schedule_config: { 'times' => ['07:15'] })
+
+    described_class.perform_now(household.id, person.id, :scheduled, '07:15')
+
+    expect(PushNotificationService).not_to have_received(:send_to_account)
+  end
+
   it 'does not send period reminders for schedules without configured times' do
     create(:schedule, person: person, medication: medications(:ibuprofen), dosage: dosages(:ibuprofen_adult),
                       frequency: 'Every 6-8 hours', schedule_type: :daily, schedule_config: {},
@@ -139,6 +149,15 @@ RSpec.describe MedicationReminderJob do
                                  schedule_config: { 'times' => ['07:15'] },
                                  max_daily_doses: 1)
     create(:medication_take, :for_schedule, schedule: schedule, taken_at: Time.zone.today.noon)
+
+    described_class.perform_now(household.id, person.id, :morning)
+
+    expect(PushNotificationService).not_to have_received(:send_to_account)
+  end
+
+  it 'does not send period reminders for paused routine medications' do
+    create(:person_medication, :routine, person: person, medication: medications(:vitamin_d),
+                                         dosage: dosages(:vitamin_d_daily), active: false)
 
     described_class.perform_now(household.id, person.id, :morning)
 

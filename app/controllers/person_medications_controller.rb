@@ -7,7 +7,7 @@ class PersonMedicationsController < ApplicationController
   include MedicationWorkflowBackPathable
 
   before_action :set_person
-  before_action :set_person_medication, only: %i[edit update destroy take_medication reorder]
+  before_action :set_person_medication, only: %i[edit update destroy pause resume take_medication reorder]
 
   def new
     prepare_new_person_medication
@@ -54,6 +54,18 @@ class PersonMedicationsController < ApplicationController
     authorize @person_medication
     @person_medication.destroy
     render_person_medication_destroy_success
+  end
+
+  def pause
+    authorize @person_medication, :update?
+    @person_medication.pause!
+    render_person_medication_pause_success
+  end
+
+  def resume
+    authorize @person_medication, :update?
+    @person_medication.resume!
+    render_person_medication_resume_success
   end
 
   def reorder
@@ -214,6 +226,27 @@ class PersonMedicationsController < ApplicationController
           tenant_dom_target("person_show_#{@person.id}"),
           person_show_view(@person.reload)
         )
+      end
+    end
+  end
+
+  def render_person_medication_pause_success
+    render_person_medication_active_state_success(t('person_medications.paused'))
+  end
+
+  def render_person_medication_resume_success
+    render_person_medication_active_state_success(t('person_medications.resumed'))
+  end
+
+  def render_person_medication_active_state_success(notice)
+    respond_to do |format|
+      format.html { redirect_to person_path(@person), notice: notice }
+      format.turbo_stream do
+        flash.now[:notice] = notice
+        render turbo_stream: [
+          turbo_stream.replace(tenant_dom_target("person_show_#{@person.id}"), person_show_view(@person.reload)),
+          turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
+        ]
       end
     end
   end

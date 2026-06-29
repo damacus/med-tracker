@@ -57,4 +57,15 @@ RSpec.describe Components::People::ShowView, type: :component do
     rendered = render_view
     expect(rendered.text).to include('Medications')
   end
+
+  it 'orders active medications before paused medications' do
+    paused_schedule = Schedule.find_by!(person: person, medication: medications(:ibuprofen))
+    paused_schedule.pause!
+    active_person_medication = PersonMedication.find_by!(person: person, medication: medications(:vitamin_d))
+
+    rendered = render_view
+
+    expect(rendered.to_html.index("person_medication_#{active_person_medication.id}"))
+      .to be < rendered.to_html.index("schedule_#{paused_schedule.id}")
+  end
 end

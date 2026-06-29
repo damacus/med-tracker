@@ -36,6 +36,7 @@ module Api
           start_date: schedule.start_date&.iso8601,
           end_date: schedule.end_date&.iso8601,
           active: schedule.active?,
+          paused: schedule.paused?,
           notes: schedule.notes,
           updated_at: schedule.updated_at.iso8601
         }

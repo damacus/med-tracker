@@ -17,7 +17,7 @@ module Components
         def view_template
           CardFooter(class: 'px-8 pb-8 pt-2') do
             div(class: 'flex items-center gap-2 w-full') do
-              render_past_dose_button
+              render_past_dose_button unless schedule.paused?
               render_admin_actions if administrator?
             end
           end
@@ -41,6 +41,7 @@ module Components
         end
 
         def render_admin_actions
+          render_active_state_action
           m3_link(
             href: edit_person_schedule_path(person, schedule),
             variant: :outlined,
@@ -53,6 +54,50 @@ module Components
             render Icons::Pencil.new(size: 20)
           end
           render_delete_dialog
+        end
+
+        def render_active_state_action
+          form_with(
+            url: active_state_path,
+            method: :patch,
+            class: 'inline'
+          ) do
+            m3_button(
+              variant: :outlined,
+              type: :submit,
+              class: 'w-12 h-12 p-0 rounded-xl border-outline text-on-surface-variant ' \
+                     'hover:text-primary hover:border-primary/50 transition-all',
+              data: { testid: active_state_testid },
+              aria_label: active_state_label
+            ) do
+              span(class: 'sr-only') { active_state_label }
+              render active_state_icon.new(size: 20)
+            end
+          end
+        end
+
+        def active_state_path
+          if schedule.paused?
+            resume_person_schedule_path(person, schedule)
+          else
+            pause_person_schedule_path(person, schedule)
+          end
+        end
+
+        def active_state_label
+          if schedule.paused?
+            t('schedules.card.resume')
+          else
+            t('schedules.card.pause')
+          end
+        end
+
+        def active_state_testid
+          "#{schedule.paused? ? 'resume' : 'pause'}-schedule-#{schedule.id}"
+        end
+
+        def active_state_icon
+          schedule.paused? ? Icons::RefreshCw : Icons::Clock
         end
 
         def administrator?

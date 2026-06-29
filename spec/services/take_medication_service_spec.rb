@@ -95,6 +95,18 @@ RSpec.describe TakeMedicationService do
       end
     end
 
+    context 'when the schedule is paused' do
+      before { schedule.pause! }
+
+      it 'returns :paused error' do
+        expect(call_service(source: schedule).error).to eq(:paused)
+      end
+
+      it 'does not create a MedicationTake' do
+        expect { call_service(source: schedule) }.not_to change(MedicationTake, :count)
+      end
+    end
+
     context 'when timing restrictions prevent the dose' do
       before do
         # Create a recent take to trigger the cooldown

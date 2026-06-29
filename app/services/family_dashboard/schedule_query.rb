@@ -57,7 +57,8 @@ module FamilyDashboard
     end
 
     def fetch_person_medications
-      person_medications_by_person_id = PersonMedication.where(person_id: @person_ids)
+      person_medications_by_person_id = PersonMedication.active
+                                                        .where(person_id: @person_ids)
                                                         .includes(:medication)
                                                         .to_a
                                                         .group_by(&:person_id)

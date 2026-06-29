@@ -21,12 +21,13 @@ RSpec.describe MedicationStockSourceResolver do
   before { FixtureHouseholdSetup.apply! }
 
   # Build a source double pointing at `medication`
-  def build_source(med, can_take: true)
+  def build_source(med, can_take: true, paused: false)
     instance_double(
       PersonMedication,
       medication_id: med.id,
       medication: med,
-      can_take_at?: can_take
+      can_take_at?: can_take,
+      paused?: paused
     )
   end
 
@@ -58,6 +59,15 @@ RSpec.describe MedicationStockSourceResolver do
         resolver = described_class.new(user: nil, source: source, taken_at: taken_at)
 
         expect(resolver.blocked_reason).to eq(:out_of_stock)
+      end
+    end
+
+    context 'when the source is paused' do
+      it 'returns :paused' do
+        source = build_source(medication, paused: true)
+        resolver = described_class.new(user: nil, source: source, taken_at: taken_at)
+
+        expect(resolver.blocked_reason).to eq(:paused)
       end
     end
 

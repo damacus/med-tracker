@@ -6,6 +6,7 @@
 class PersonMedication < ApplicationRecord
   include TimingRestrictions
   include HouseholdAssignable
+  include Pausable
 
   belongs_to :household, optional: true
   belongs_to :person
@@ -21,6 +22,7 @@ class PersonMedication < ApplicationRecord
   # @see docs/audit-trail.md
   has_paper_trail
 
+  scope :active, -> { where(active: true) }
   scope :ordered, -> { order(:position, :id) }
 
   before_validation :assign_household

@@ -121,6 +121,8 @@ class OfflineController < ApplicationController
       t('take_medications.out_of_stock', default: 'Cannot take medication: out of stock')
     when :cooldown
       t('take_medications.cooldown', default: 'Cannot take medication: timing restrictions not met')
+    when :paused
+      t('take_medications.paused', default: 'Cannot take medication: paused')
     when :selection_required
       t('take_medications.location_required', default: 'Choose a location to record this dose.')
     when :invalid_source

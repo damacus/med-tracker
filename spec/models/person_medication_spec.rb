@@ -44,6 +44,30 @@ RSpec.describe PersonMedication do
     end
   end
 
+  describe 'active state' do
+    it 'is active by default' do
+      person_medication = create(:person_medication)
+
+      expect(person_medication).to be_active
+      expect(person_medication).not_to be_paused
+    end
+
+    it 'excludes paused assignments from the active scope' do
+      active_assignment = create(:person_medication)
+      paused_assignment = create(:person_medication, active: false)
+
+      expect(described_class.active).to include(active_assignment)
+      expect(described_class.active).not_to include(paused_assignment)
+    end
+
+    it 'pauses and resumes an assignment' do
+      person_medication = create(:person_medication)
+
+      expect { person_medication.pause! }.to change { person_medication.reload.active }.from(true).to(false)
+      expect { person_medication.resume! }.to change { person_medication.reload.active }.from(false).to(true)
+    end
+  end
+
   describe 'household assignment' do
     let(:assignment_household) { Household.create!(name: 'Person Medication Assignment Household') }
     let(:assignment_location) do

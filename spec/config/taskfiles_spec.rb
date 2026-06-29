@@ -9,6 +9,9 @@ RSpec.describe 'Taskfiles' do
   let(:test_taskfile) do
     YAML.safe_load(Rails.root.join('Taskfiles/test.yml').read, aliases: true, permitted_classes: [Symbol])
   end
+  let(:internal_taskfile) do
+    YAML.safe_load(Rails.root.join('Taskfiles/internal.yml').read, aliases: true, permitted_classes: [Symbol])
+  end
   let(:portless_script) { Rails.root.join('scripts/portless_oidc.fish').read }
 
   it 'defines opt-in Portless tasks for dev and test' do
@@ -39,5 +42,12 @@ RSpec.describe 'Taskfiles' do
     expect(portless_script).to include('set -lx TEST_APP_URL $base_url')
     expect(portless_script).to include('set -lx TEST_OIDC_CLIENT_ID $OIDC_CLIENT_ID')
     expect(portless_script).to include('set -lx TEST_OIDC_REDIRECT_URI $callback_url')
+  end
+
+  it 'uses a worktree-specific Docker Compose project name' do
+    compose_project = internal_taskfile.dig('vars', 'COMPOSE_PROJECT', 'sh')
+
+    expect(compose_project).to include('git rev-parse --path-format=absolute --git-common-dir')
+    expect(compose_project).to include('git hash-object --stdin')
   end
 end
