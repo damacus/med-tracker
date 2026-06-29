@@ -29,7 +29,7 @@ RSpec.describe MedicationReminderJob do
     expect(PushNotificationService).to have_received(:send_to_account).with(
       person.account,
       title: 'Medication Reminder',
-      body: '07:15 medications: Vitamin D',
+      body: '07:15 medication reminder. Open MedTracker for details.',
       path: "/households/#{household.slug}/dashboard"
     )
   end
@@ -110,8 +110,7 @@ RSpec.describe MedicationReminderJob do
     described_class.perform_now(household.id, person.id, :morning)
 
     expect(PushNotificationService).to have_received(:send_to_account) do |_account, payload|
-      expect(payload[:body]).to include('Morning medications:')
-      expect(payload[:body]).to include('Vitamin D')
+      expect(payload[:body]).to eq('Morning medication reminder. Open MedTracker for details.')
       expect(payload[:body]).not_to include('Ibuprofen')
       expect(payload[:body]).not_to include('Paracetamol')
     end

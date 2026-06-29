@@ -534,6 +534,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_29_120000) do
     t.index ["source_dosage_option_id"], name: "index_person_medications_on_source_dosage_option_id"
   end
 
+  create_table "platform_admins", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.datetime "created_at", null: false
+    t.string "status", default: "active", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_platform_admins_on_account_id", unique: true
+  end
+
   create_table "push_subscriptions", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.string "auth", null: false
@@ -591,6 +599,24 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_29_120000) do
     t.index ["household_id", "created_at"], name: "index_security_audit_events_on_household_id_and_created_at"
     t.index ["household_id"], name: "index_security_audit_events_on_household_id"
     t.index ["id", "household_id"], name: "index_security_audit_events_on_id_and_household_id", unique: true
+  end
+
+  create_table "support_access_sessions", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "ended_at"
+    t.datetime "expires_at", null: false
+    t.bigint "household_id", null: false
+    t.string "ip"
+    t.datetime "mfa_verified_at", null: false
+    t.bigint "platform_admin_id", null: false
+    t.text "reason", null: false
+    t.string "request_id"
+    t.datetime "starts_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["household_id", "expires_at"], name: "index_support_access_sessions_on_household_id_and_expires_at"
+    t.index ["household_id"], name: "index_support_access_sessions_on_household_id"
+    t.index ["platform_admin_id", "ended_at"], name: "idx_on_platform_admin_id_ended_at_0c69293a2c"
+    t.index ["platform_admin_id"], name: "index_support_access_sessions_on_platform_admin_id"
   end
 
   create_table "users", force: :cascade do |t|
@@ -698,6 +724,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_29_120000) do
   add_foreign_key "person_medications", "medications", deferrable: :deferred
   add_foreign_key "person_medications", "people", column: ["person_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_person_medications_person_id_household"
   add_foreign_key "person_medications", "people", deferrable: :deferred
+  add_foreign_key "platform_admins", "accounts"
   add_foreign_key "push_subscriptions", "accounts", deferrable: :deferred
   add_foreign_key "schedules", "dosages", column: "source_dosage_option_id"
   add_foreign_key "schedules", "dosages", column: ["source_dosage_option_id", "household_id"], primary_key: ["id", "household_id"], name: "fk_schedules_source_dosage_option_id_household"
@@ -709,6 +736,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_29_120000) do
   add_foreign_key "security_audit_events", "accounts", column: "actor_account_id"
   add_foreign_key "security_audit_events", "household_memberships", column: "actor_membership_id"
   add_foreign_key "security_audit_events", "households"
+  add_foreign_key "support_access_sessions", "households"
+  add_foreign_key "support_access_sessions", "platform_admins"
   add_foreign_key "users", "people", deferrable: :deferred
   add_foreign_key "versions", "household_memberships", column: "actor_membership_id"
   add_foreign_key "versions", "households"

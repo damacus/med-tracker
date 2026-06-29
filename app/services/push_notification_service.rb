@@ -16,14 +16,14 @@ class PushNotificationService
   end
   private_class_method :send_web_push_to_account
 
-  def self.send_native_push_to_account(account, title:, body:, path: '/')
+  def self.send_native_push_to_account(account, path: '/', **_notification_content)
     tokens = account.native_device_tokens
     return if tokens.none?
 
     tokens.each do |token|
       Rails.logger.info(
         "[PushNotificationService] Native push queued: platform=#{token.platform} " \
-        "token=#{token.device_token.first(8)}… title=#{title.inspect} body=#{body.inspect} path=#{path.inspect}"
+        "token_id=#{token.id} path=#{path.inspect}"
       )
     end
   end

@@ -41,6 +41,8 @@ class SchemaInventory
     barcode_catalog_entries
     nhs_dmd_barcodes
     nhs_dmd_imports
+    platform_admins
+    support_access_sessions
   ].freeze
 
   class << self

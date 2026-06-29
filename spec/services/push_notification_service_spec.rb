@@ -59,5 +59,27 @@ RSpec.describe PushNotificationService do
       expect(PushSubscription.exists?(first_subscription.id)).to be(false)
       expect(PushSubscription.exists?(second_subscription.id)).to be(true)
     end
+
+    it 'does not write notification title or body content to native push logs' do
+      create_native_device_token
+      allow(WebPush).to receive(:payload_send)
+      allow(Rails.logger).to receive(:info)
+
+      described_class.send_to_account(account, title: 'Medication Reminder', body: 'Take aspirin at 07:15')
+
+      expect(Rails.logger).to have_received(:info) do |message|
+        expect(message).to include('Native push queued')
+        expect(message).not_to include('Medication Reminder')
+        expect(message).not_to include('Take aspirin')
+      end
+    end
+  end
+
+  def create_native_device_token
+    NativeDeviceToken.create!(
+      account: account,
+      platform: 'ios',
+      device_token: 'native-token-for-privacy-test'
+    )
   end
 end

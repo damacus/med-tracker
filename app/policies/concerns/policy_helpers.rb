@@ -37,6 +37,10 @@ module PolicyHelpers
     household_owner? || household_administrator?
   end
 
+  def platform_admin?
+    account&.platform_admin&.active? || false
+  end
+
   def same_household?(record)
     household.present? && record.respond_to?(:household_id) && record.household_id == household.id
   end

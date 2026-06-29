@@ -20,6 +20,7 @@ class Account < ApplicationRecord
   has_many :native_device_tokens, dependent: :destroy
   has_many :account_webauthn_keys, dependent: :destroy
   has_many :account_webauthn_user_ids, dependent: :destroy
+  has_one :platform_admin, dependent: :destroy
 
   validates :email, presence: true, uniqueness: true
 
