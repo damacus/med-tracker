@@ -3,6 +3,7 @@
 FactoryBot.define do
   factory :dosage, class: 'MedicationDosageOption' do
     medication
+    household { medication.household }
     amount { 500 }
     unit { 'mg' }
     frequency { 'As needed' }

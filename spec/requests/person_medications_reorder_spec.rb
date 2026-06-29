@@ -26,8 +26,6 @@ RSpec.describe 'Person medication reordering' do
     end
 
     it 'denies parents from reordering medications for unlinked children' do
-      request_household = Household.find_by!(slug: default_request_household_slug)
-      unlinked_child.update!(household: request_household)
       unlinked_first = PersonMedication.create!(person: unlinked_child, medication: medications(:ibuprofen))
       unlinked_second = PersonMedication.create!(person: unlinked_child, medication: medications(:aspirin))
       original_order = unlinked_child.person_medications.order(:position, :id).pluck(:id)

@@ -2,7 +2,8 @@
 
 FactoryBot.define do
   factory :location_membership do
-    location
-    person
+    household { location.household }
+    location { association(:location, household: Current.household || Household.first || association(:household)) }
+    person { association(:person, household: location.household) }
   end
 end

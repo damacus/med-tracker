@@ -211,15 +211,7 @@ RSpec.describe 'Medication assignments' do
     end
 
     it 'rejects a forged inaccessible medication id' do
-      foreign_medication = Medication.create!(
-        name: 'Foreign Household Medication',
-        location: locations(:grandmas),
-        category: 'Analgesic',
-        dosage_amount: 250,
-        dosage_unit: 'mg',
-        current_supply: 10,
-        reorder_threshold: 1
-      )
+      foreign_medication = create_foreign_medication
 
       expect do
         post person_medication_assignments_path(person),
@@ -231,6 +223,21 @@ RSpec.describe 'Medication assignments' do
       end.not_to change(Schedule, :count)
 
       expect(response).to redirect_to(root_path)
+    end
+
+    def create_foreign_medication
+      household = Household.create!(name: 'Foreign Assignment Household', slug: 'foreign-assignment-household')
+      location = household.locations.create!(name: 'Foreign Assignment Location')
+      Medication.create!(
+        household: household,
+        name: 'Foreign Household Medication',
+        location: location,
+        category: 'Analgesic',
+        dosage_amount: 250,
+        dosage_unit: 'mg',
+        current_supply: 10,
+        reorder_threshold: 1
+      )
     end
 
     it 'rejects a forged dose option from another medication' do

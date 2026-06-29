@@ -110,16 +110,16 @@ RSpec.describe 'API v1 resources' do
 
   it 'scopes household resource collections to explicitly granted people' do
     account = user.person.account
-    household = Household.create!(name: 'Resource Household', slug: 'resource-household')
+    household = user.person.household
     other_household = Household.create!(name: 'Other Resource Household', slug: 'other-resource-household')
-    people(:admin).update!(household: household)
 
-    membership = household.household_memberships.create!(
+    membership = household.household_memberships.find_or_create_by!(
       account: account,
-      person: people(:admin),
-      role: :member,
-      status: :active
-    )
+      person: people(:admin)
+    ) do |record|
+      record.role = :member
+      record.status = :active
+    end
     visible_person = create(:person, household: household, name: 'Alex Resource')
     hidden_person = create(:person, household: household, name: 'Alex Hidden Resource')
     other_person = create(:person, household: other_household, name: 'Alex Other Resource')

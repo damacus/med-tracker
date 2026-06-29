@@ -42,9 +42,11 @@ RSpec.describe 'Locations' do
       before { sign_in(carer) }
 
       it 'renders only accessible locations' do
+        foreign_location
+
         get locations_path
         expect(response.body).to include('Home')
-        expect(response.body).not_to include('School')
+        expect(response.body).not_to include('Foreign School')
       end
     end
   end
@@ -75,7 +77,7 @@ RSpec.describe 'Locations' do
     end
 
     context 'when authenticated as carer for a foreign location' do
-      let(:location) { locations(:school) }
+      let(:location) { foreign_location }
       let(:carer) { users(:carer) }
 
       before { sign_in(carer) }
@@ -85,6 +87,11 @@ RSpec.describe 'Locations' do
         expect(response).to have_http_status(:not_found)
       end
     end
+  end
+
+  def foreign_location
+    household = Household.create!(name: 'Foreign Location Household', slug: 'foreign-location-household')
+    household.locations.create!(name: 'Foreign School', description: 'Foreign school location')
   end
 
   describe 'GET /locations/new' do

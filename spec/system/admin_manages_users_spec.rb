@@ -12,7 +12,12 @@ RSpec.describe 'AdminManagesUsers' do
     account = Account.create!(email: 'test_carer@example.com',
                               password_hash: RodauthApp.rodauth.allocate.password_hash('password'),
                               status: 'verified')
-    person = Person.create!(name: 'Carer User', date_of_birth: '1990-01-01', account: account)
+    person = Person.create!(
+      household: admin.person.household,
+      name: 'Carer User',
+      date_of_birth: '1990-01-01',
+      account: account
+    )
     User.create!(person: person, email_address: 'test_carer@example.com',
                  password: 'password', password_confirmation: 'password')
   end
@@ -23,7 +28,12 @@ RSpec.describe 'AdminManagesUsers' do
     ActiveRecord::Base.connection.execute(
       "INSERT INTO account_verification_keys (account_id, key) VALUES (#{account.id}, 'manual-verify-key')"
     )
-    person = Person.create!(name: 'Unverified User', date_of_birth: '1992-02-02', account: account)
+    person = Person.create!(
+      household: admin.person.household,
+      name: 'Unverified User',
+      date_of_birth: '1992-02-02',
+      account: account
+    )
     User.create!(person: person, email_address: 'unverified_user@example.com',
                  password: 'password', password_confirmation: 'password')
   end
@@ -160,12 +170,21 @@ RSpec.describe 'AdminManagesUsers' do
 
       fill_in 'Email address', with: 'updated_carer@example.com'
 
-      find_by_id('membership_role_trigger').click
-      all('label', text: 'Administrator', visible: :all).last.click
-
       click_on 'Update User'
 
       expect(page).to have_text('User was successfully updated')
+      expect(page).to have_text('updated_carer@example.com')
+
+      within "[data-user-id='#{carer.id}']" do
+        click_on 'Edit'
+      end
+
+      find_by_id('membership_role_trigger').click
+      all('label', text: 'Administrator', visible: :all).last.click
+
+      click_on 'Update Role'
+
+      expect(page).to have_text('Membership role updated')
       expect(page).to have_text('updated_carer@example.com')
       expect(page).to have_text('Administrator')
     end
@@ -402,11 +421,9 @@ RSpec.describe 'AdminManagesUsers' do
 
   def attach_user_to_admin_household(user)
     household = ensure_api_household_for(admin)
-    user.person.update!(household: household)
-    household.household_memberships.find_or_create_by!(account: user.person.account) do |membership|
+    membership = household.household_memberships.find_or_create_by!(account: user.person.account) do |membership|
       membership.person = user.person
-      membership.role = :member
-      membership.status = :active
     end
+    membership.update!(person: user.person, role: :member, status: :active)
   end
 end

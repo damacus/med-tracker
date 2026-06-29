@@ -157,6 +157,24 @@ RSpec.describe AuthTokenAuditLogger do
       end.not_to raise_error
     end
 
+    it 'keeps the PaperTrail event and skips tenant audit when no household exists' do
+      PaperTrail.request.whodunnit = nil
+      PaperTrail.request.controller_info = {}
+      Current.household = nil
+      pre_tenant_account = Account.create!(
+        email: 'pre-tenant-token@example.com',
+        password_hash: RodauthApp.rodauth.allocate.password_hash('password'),
+        status: 'verified'
+      )
+
+      security_audit_event_count = SecurityAuditEvent.count
+
+      expect do
+        audit_logger.record(account: pre_tenant_account, token_type: 'verification_key', action: 'created')
+      end.to change { PaperTrail::Version.where(item_type: 'AuthenticationToken').count }.by(1)
+      expect(SecurityAuditEvent.count).to eq(security_audit_event_count)
+    end
+
     it 'silently rescues errors and logs them' do
       allow(PaperTrail::Version).to receive(:insert).and_raise(ActiveRecord::StatementInvalid)
       allow(Rails.logger).to receive(:error)

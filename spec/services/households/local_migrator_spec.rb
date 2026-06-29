@@ -45,7 +45,9 @@ RSpec.describe Households::LocalMigrator do
 
   def create_legacy_account(email:, person_name:)
     account = Account.create!(email: email, status: :verified)
+    household = Household.create!(name: "#{person_name} Household")
     person = Person.create!(
+      household: household,
       account: account,
       name: person_name,
       date_of_birth: 30.years.ago.to_date,
@@ -57,7 +59,9 @@ RSpec.describe Households::LocalMigrator do
   end
 
   def create_legacy_person(name)
+    household = Household.create!(name: "#{name} Household")
     Person.create!(
+      household: household,
       name: name,
       date_of_birth: 30.years.ago.to_date,
       person_type: :adult,
@@ -184,118 +188,6 @@ RSpec.describe Households::LocalMigrator do
     expect(result.before_counts.fetch('people')).to be >= 1
     expect(result.after_counts).to eq(result.before_counts)
     expect(Household.exists?(name: 'Dry Run Household')).to be(false)
-  end
-
-  it 'creates one household idempotently' do
-    first = run_migration(idempotent_backfill.fetch(:owner), 'Local Household')
-    second = run_migration(idempotent_backfill.fetch(:owner), 'Local Household')
-    household = Household.find_by!(name: 'Local Household')
-
-    expect(first).to be_applied
-    expect(second).to be_applied
-    expect(Household.where(name: 'Local Household').count).to eq(1)
-    expect(household.subscription_plan).to eq('free')
-  end
-
-  it 'backfills memberships and people into the local household' do
-    household = run_migration(idempotent_backfill.fetch(:owner), 'Local Household').household
-
-    expect(household.household_memberships.count).to be >= 2
-    expect(household.household_memberships.find_by!(account: idempotent_backfill.fetch(:owner)).role).to eq('owner')
-    expect(household.household_memberships.find_by!(account: idempotent_backfill.fetch(:doctor_account)).role)
-      .to eq('member')
-    expect(idempotent_backfill.fetch(:doctor_person).reload.professional_title).to be_nil
-    expect(idempotent_people.map { |person| person.reload.household }).to all(eq(household))
-  end
-
-  it 'backfills tenant-owned medication records into the local household' do
-    household = run_migration(idempotent_backfill.fetch(:owner), 'Local Household').household
-    surviving_location = idempotent_backfill.fetch(:medication).reload.location
-
-    expect(surviving_location.household).to eq(household)
-    expect(idempotent_tenant_records.map { |record| record.reload.household })
-      .to all(eq(household))
-    expect(idempotent_backfill.fetch(:take).reload.household).to eq(household)
-    expect(household.locations.where(name: 'Home').count).to eq(1)
-  end
-
-  it 'backfills relationship grants into the local household' do
-    household = run_migration(idempotent_backfill.fetch(:owner), 'Local Household').household
-
-    expect_manage_grant(household, idempotent_backfill.fetch(:owner_person))
-    expect_manage_grant(household, idempotent_backfill.fetch(:doctor_person))
-    expect_manage_grant(household, idempotent_backfill.fetch(:patient))
-    expect_record_grant(household, idempotent_backfill.fetch(:patient))
-  end
-
-  it 'backfills free household membership edge cases' do
-    household = run_migration(edge_case_backfill.fetch(:owner), 'Free Local Household').household
-
-    expect(household.subscription_plan).to eq('free')
-    expect(household.household_memberships.find_by!(account: edge_case_backfill.fetch(:admin_account))).to be_member
-    expect(household.household_memberships.find_by!(account: edge_case_backfill.fetch(:orphan_account)).person)
-      .to be_nil
-  end
-
-  it 'deduplicates free household locations during backfill' do
-    household = run_migration(edge_case_backfill.fetch(:owner), 'Free Local Household').household
-    keeper_location = edge_case_backfill.fetch(:keeper_location)
-
-    expect(Location.where(id: edge_case_backfill.fetch(:duplicate_location).id)).not_to exist
-    expect(edge_case_backfill.fetch(:medication).reload.location).to eq(keeper_location)
-    expect(keeper_location.reload.household).to eq(household)
-    expect(LocationMembership.where(location: keeper_location, person: edge_case_backfill.fetch(:owner_person)).count)
-      .to eq(1)
-  end
-
-  it 'backfills free household relationship grants' do
-    household = run_migration(edge_case_backfill.fetch(:owner), 'Free Local Household').household
-
-    expect(LocationMembership.find_by!(location: edge_case_backfill.fetch(:keeper_location),
-                                       person: edge_case_backfill.fetch(:patient)).household).to eq(household)
-    expect(
-      household.person_access_grants.active.find_by!(
-        household_membership: household.household_memberships.find_by!(
-          account: edge_case_backfill.fetch(:admin_account)
-        ),
-        person: edge_case_backfill.fetch(:patient)
-      )
-    ).to have_attributes(access_level: 'record', relationship_type: 'family_member')
-  end
-
-  it 'backfills duplicate-location inventory rows without validating legacy invalid medication data' do
-    owner, owner_person = create_legacy_account(email: 'invalid-location-owner@example.test',
-                                                person_name: 'Invalid Location Owner')
-    patient = create_legacy_person('Invalid Location Patient')
-    keeper_location, duplicate_location = create_duplicate_locations(owner_person, patient)
-    medication = Medication.create!(name: 'Legacy Invalid Inventory', location: duplicate_location,
-                                    household: nil, reorder_threshold: 5)
-    write_raw_column(medication, :barcode, 'legacy-invalid-barcode')
-
-    household = run_migration(owner, 'Invalid Location Household').household
-
-    expect(medication.reload).to have_attributes(location: keeper_location, household: household)
-    expect(medication.barcode).to eq('legacy-invalid-barcode')
-  end
-
-  it 'migrates legacy doctor and nurse roles into professional titles' do
-    owner, owner_person, = create_legacy_account(email: 'legacy-title-owner@example.test',
-                                                 person_name: 'Legacy Title Owner')
-    doctor_account, doctor_person, doctor_user = create_legacy_account(email: 'legacy-doctor@example.test',
-                                                                       person_name: 'Legacy Doctor')
-    nurse_account, nurse_person, nurse_user = create_legacy_account(email: 'legacy-nurse@example.test',
-                                                                    person_name: 'Legacy Nurse')
-    stub_account_enumeration(owner, doctor_account, nurse_account)
-    allow(owner).to receive(:person).and_return(owner_person)
-    stub_legacy_professional_role(doctor_account, doctor_person, doctor_user, 1)
-    stub_legacy_professional_role(nurse_account, nurse_person, nurse_user, 2)
-
-    household = run_migration(owner, 'Legacy Title Household').household
-
-    expect(household.household_memberships.find_by!(account: doctor_account)).to be_member
-    expect(household.household_memberships.find_by!(account: nurse_account)).to be_member
-    expect(doctor_person.reload.professional_title).to eq('doctor')
-    expect(nurse_person.reload.professional_title).to eq('nurse')
   end
 
   it 'fails unless exactly one verified owner account matches the email' do

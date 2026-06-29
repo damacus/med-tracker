@@ -2,7 +2,7 @@
 
 module Admin
   # Handles admin management of carer-patient relationships.
-  class CarerRelationshipsController < ApplicationController
+  class CarerRelationshipsController < BaseController
     def index
       authorize CarerRelationship
       relationships = Admin::CarerRelationshipsIndexQuery.new(scope: policy_scope(CarerRelationship)).call

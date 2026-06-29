@@ -1,5 +1,6 @@
 ---
 paracetamol:
+  household: fixture_household
   name: Paracetamol
   location: home
   category: Analgesic
@@ -19,6 +20,7 @@ paracetamol:
     other paracetamol-containing products.
 
 ibuprofen:
+  household: fixture_household
   name: Ibuprofen
   location: home
   category: Analgesic
@@ -36,6 +38,7 @@ ibuprofen:
     have a history of stomach ulcers.
 
 aspirin:
+  household: fixture_household
   name: Aspirin
   location: home
   category: Analgesic
@@ -53,6 +56,7 @@ aspirin:
     cause stomach irritation. If symptoms persist, consult your doctor.
 
 calpol:
+  household: fixture_household
   name: Calpol Six Plus 250mg/5ml oral suspension (McNeil Products Ltd)
   location: home
   category: Analgesic
@@ -70,6 +74,7 @@ calpol:
     other paracetamol-containing products.
 
 movicol:
+  household: fixture_household
   name: >-
     Movicol Paediatric Plain oral powder 6.9g sachets (Norgine Pharmaceuticals Ltd) 30 sachet
     15 x 2 sachets
@@ -83,6 +88,7 @@ movicol:
   expiry_date: <%= 1.year.from_now.to_date %>
 
 vitamin_d:
+  household: fixture_household
   name: Vitamin D
   location: home
   category: Vitamin
@@ -99,6 +105,7 @@ vitamin_d:
     supplements.
 
 vitamin_c:
+  household: fixture_household
   name: Vitamin C
   location: home
   category: Vitamin
@@ -115,6 +122,7 @@ vitamin_c:
     empty stomach.
 
 gabapentin:
+  household: fixture_household
   name: Gabapentin
   location: home
   category: Anticonvulsant
@@ -133,6 +141,7 @@ gabapentin:
     consulting your doctor.
 
 metformin:
+  household: fixture_household
   name: Metformin
   location: home
   category: Antidiabetic
@@ -150,6 +159,7 @@ metformin:
     pain, difficulty breathing, or stomach pain.
 
 mebeverine:
+  household: fixture_household
   name: Mebeverine
   location: home
   category: Gastrointestinal
@@ -167,6 +177,7 @@ mebeverine:
     worsen or do not improve, consult your doctor.
 
 sitagliptin:
+  household: fixture_household
   name: Sitagliptin
   location: home
   category: Antidiabetic
@@ -183,6 +194,7 @@ sitagliptin:
     Do not use to treat type 1 diabetes or diabetic ketoacidosis.
 
 simvastatin:
+  household: fixture_household
   name: Simvastatin
   location: home
   category: Cholesterol
@@ -199,6 +211,7 @@ simvastatin:
     unexplained muscle pain, tenderness or weakness. Avoid grapefruit juice.
 
 dapagliflozin:
+  household: fixture_household
   name: Dapagliflozin
   location: home
   category: Antidiabetic
@@ -216,6 +229,7 @@ dapagliflozin:
     ketoacidosis.
 
 omeprazole:
+  household: fixture_household
   name: Omeprazole
   location: home
   category: Gastrointestinal
@@ -233,6 +247,7 @@ omeprazole:
     Tell your doctor if you have liver problems. May mask symptoms of stomach cancer.
 
 duloxetine:
+  household: fixture_household
   name: Duloxetine
   location: home
   category: Antidepressant

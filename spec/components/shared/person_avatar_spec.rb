@@ -42,7 +42,6 @@ RSpec.describe Components::Shared::PersonAvatar, type: :component do
 
   it 'prefers uploaded avatars over Gravatar' do
     person.account.update!(gravatar_enabled: '1')
-    person.update!(household: Household.create!(name: 'Avatar Component Household'))
     person.avatar.attach(io: StringIO.new('avatar'), filename: 'avatar.png', content_type: 'image/png')
 
     rendered = render_inline(described_class.new(person: person))
@@ -55,6 +54,7 @@ RSpec.describe Components::Shared::PersonAvatar, type: :component do
   it 'falls back when no avatar email can be resolved' do
     account = Account.create!(email: 'avatarless@example.test', status: :verified)
     avatarless_person = Person.create!(
+      household: person.household,
       name: 'Avatarless Person',
       date_of_birth: 30.years.ago,
       account: account,
@@ -71,6 +71,7 @@ RSpec.describe Components::Shared::PersonAvatar, type: :component do
   it 'uses the linked user email when the person email is blank' do
     account = Account.create!(email: 'account-avatar@example.test', status: :verified, gravatar_enabled: '1')
     avatar_person = Person.create!(
+      household: person.household,
       name: 'User Email Avatar',
       date_of_birth: 30.years.ago,
       account: account,
@@ -87,6 +88,7 @@ RSpec.describe Components::Shared::PersonAvatar, type: :component do
   it 'uses the linked account email when person and user emails are blank' do
     account = Account.create!(email: 'account-fallback@example.test', status: :verified, gravatar_enabled: '1')
     avatar_person = Person.create!(
+      household: person.household,
       name: 'Account Email Avatar',
       date_of_birth: 30.years.ago,
       account: account,

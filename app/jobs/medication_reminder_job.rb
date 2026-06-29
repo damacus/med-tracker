@@ -25,13 +25,12 @@ class MedicationReminderJob < ApplicationJob
     person = Person.find_by(id: person_id, household: household)
     return unless person&.account
 
-    med_names = medication_names(person, scheduled_time)
-    return if med_names.empty?
+    return if medication_names(person, scheduled_time).empty?
 
     PushNotificationService.send_to_account(
       person.account,
       title: 'Medication Reminder',
-      body: reminder_body(period, scheduled_time, med_names),
+      body: reminder_body(period, scheduled_time),
       path: "/households/#{household.slug}/dashboard"
     )
   end
@@ -40,9 +39,9 @@ class MedicationReminderJob < ApplicationJob
     MedicationReminderEligibilityQuery.new(person: person, scheduled_time: scheduled_time).medication_names
   end
 
-  def reminder_body(period, scheduled_time, med_names)
+  def reminder_body(period, scheduled_time)
     period_label = scheduled_time.presence || PERIOD_LABELS[period.to_sym] || period.to_s.humanize
 
-    "#{period_label} medications: #{med_names.join(', ')}"
+    "#{period_label} medication reminder. Open MedTracker for details."
   end
 end

@@ -162,9 +162,9 @@ class RodauthMain < Rodauth::Rails::Auth
         methods - ['recovery_code']
       end
 
-      def create_household_for_account!(account_record, person)
-        household = create_owned_household(account_record, person)
-        person.update!(household: household)
+      def create_household_for_account!(account_record, person, household: nil)
+        household ||= create_owned_household(account_record, person)
+        person.update!(household: household) if person.household_id != household.id
         membership = create_owner_membership(household, account_record, person)
         create_owner_person_grant(household, membership, person)
       end
@@ -446,6 +446,7 @@ class RodauthMain < Rodauth::Rails::Auth
         @invitation = HouseholdInvitation.pending.find_by(token_digest: digest)
         throw_error_status(422, 'invitation_token', 'is invalid or expired') unless @invitation
         request.params[login_param] = @invitation.email
+        account[login_column] = @invitation.email
       end
 
       if @invitation.nil? && invite_only_registration_required?
@@ -475,13 +476,17 @@ class RodauthMain < Rodauth::Rails::Auth
       # Ensures both are created or both fail together
       ActiveRecord::Base.transaction do
         account_record = Account.find(account_id)
+        household = @invitation&.household || Household.create!(
+          name: "#{param('name')} Household",
+          created_by_account: account_record
+        )
         person = Person.create!(
           account: account_record,
           name: param('name'),
           date_of_birth: date_of_birth,
           email: account[:email],
           person_type: person_type,
-          household: @invitation&.household
+          household: household
         )
 
         User.create!(
@@ -493,7 +498,7 @@ class RodauthMain < Rodauth::Rails::Auth
         if @invitation
           accept_household_invitation!(account_record, person, @invitation)
         else
-          create_household_for_account!(account_record, person)
+          create_household_for_account!(account_record, person, household: household)
         end
 
         @invitation&.update!(accepted_at: Time.current)
@@ -512,12 +517,17 @@ class RodauthMain < Rodauth::Rails::Auth
       # Users should be prompted to update their profile with actual DOB
       ActiveRecord::Base.transaction do
         account_record = Account.find(account_id)
+        household = Household.create!(
+          name: "#{name} Household",
+          created_by_account: account_record
+        )
         person = Person.create!(
           account: account_record,
           name: name,
           email: email,
           person_type: :adult,
-          date_of_birth: 100.years.ago.to_date # Sentinel value - DOB unknown for OAuth users
+          date_of_birth: 100.years.ago.to_date, # Sentinel value - DOB unknown for OAuth users
+          household: household
         )
 
         User.create!(
@@ -526,7 +536,7 @@ class RodauthMain < Rodauth::Rails::Auth
           active: true
         )
 
-        create_household_for_account!(account_record, person)
+        create_household_for_account!(account_record, person, household: household)
       end
     end
 

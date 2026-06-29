@@ -2,8 +2,9 @@
 
 FactoryBot.define do
   factory :medication do
+    household { Current.household || Household.first || association(:household) }
     sequence(:name) { |n| "Medication #{n}" }
-    location
+    location { association(:location, household: household) }
     dosage_amount { 500 }
     dosage_unit { 'mg' }
     current_supply { 50 }

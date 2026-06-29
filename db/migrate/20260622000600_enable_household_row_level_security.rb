@@ -77,14 +77,8 @@ class EnableHouseholdRowLevelSecurity < ActiveRecord::Migration[8.1]
 
     <<~SQL
       CREATE POLICY household_tenant_isolation ON #{quoted_table}
-      USING (
-        household_id IS NULL
-        OR household_id = med_tracker.current_household_id()
-      )
-      WITH CHECK (
-        household_id IS NULL
-        OR household_id = med_tracker.current_household_id()
-      );
+      USING (household_id = med_tracker.current_household_id())
+      WITH CHECK (household_id = med_tracker.current_household_id());
     SQL
   end
 
@@ -92,15 +86,10 @@ class EnableHouseholdRowLevelSecurity < ActiveRecord::Migration[8.1]
     <<~SQL
       CREATE POLICY household_tenant_isolation ON #{quoted_table}
       USING (
-        household_id IS NULL
-        OR household_id = med_tracker.current_household_id()
+        household_id = med_tracker.current_household_id()
         OR account_id = med_tracker.current_account_id()
       )
-      WITH CHECK (
-        household_id IS NULL
-        OR household_id = med_tracker.current_household_id()
-        OR account_id = med_tracker.current_account_id()
-      );
+      WITH CHECK (household_id = med_tracker.current_household_id());
     SQL
   end
 

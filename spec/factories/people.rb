@@ -2,6 +2,7 @@
 
 FactoryBot.define do
   factory :person do
+    household { Current.household || Household.first || association(:household) }
     sequence(:name) { |n| "Person #{n}" }
     date_of_birth { 30.years.ago }
     person_type { :adult }

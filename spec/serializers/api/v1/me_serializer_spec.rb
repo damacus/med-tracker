@@ -10,8 +10,7 @@ RSpec.describe Api::V1::MeSerializer do
   let(:json) { described_class.new(user).as_json }
 
   before do
-    household = Household.create!(name: 'Me Household', slug: 'me-household')
-    user.person.update!(household: household)
+    household = user.person.household
     Current.membership = household.household_memberships.create!(
       account: user.person.account,
       person: user.person,

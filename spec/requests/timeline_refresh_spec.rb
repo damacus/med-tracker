@@ -11,10 +11,6 @@ RSpec.describe 'Timeline refresh after taking medication' do
 
   before do
     sign_in(users(:carer))
-    household = person.reload.household
-    medication.location.update!(household: household)
-    medication.update!(household: household)
-    medication.dosage_records.find_each { |dosage| dosage.update!(household: household) }
   end
 
   describe 'POST take_medication for a schedule (turbo_stream)' do

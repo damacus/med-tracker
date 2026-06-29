@@ -34,7 +34,17 @@ module PolicyHelpers
   end
 
   def household_manager?
-    household_owner? || household_administrator?
+    household_owner? || household_administrator? || platform_support_session?
+  end
+
+  def platform_admin?
+    account&.platform_admin&.active? || false
+  end
+
+  def platform_support_session?
+    platform_admin? &&
+      Current.support_access_session&.active? &&
+      Current.support_access_session.household_id == household&.id
   end
 
   def same_household?(record)

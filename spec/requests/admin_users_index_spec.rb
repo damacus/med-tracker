@@ -12,13 +12,13 @@ RSpec.describe 'Admin users index' do
       password_hash: RodauthApp.rodauth.allocate.password_hash('password'),
       status: :closed
     )
+    household = Household.find_by!(slug: default_url_options.fetch(:household_slug))
     person = Person.create!(
       name: 'Soft Deleted User',
       date_of_birth: '1990-01-01',
+      household: household,
       account: account
     )
-    household = Household.find_by!(slug: default_url_options.fetch(:household_slug))
-    person.update!(household: household)
     household.household_memberships.create!(account: account, person: person, role: :member, status: :active)
     User.create!(
       person: person,

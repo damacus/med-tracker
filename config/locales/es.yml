@@ -629,8 +629,24 @@ es:
       subtitle: Configurar los ajustes de la aplicación.
       title: Configuración
       updated: Configuración actualizada con éxito.
+    membership_roles:
+      invalid_role: Seleccione un rol de hogar válido.
+      owner_rejected: La promoción a propietario requiere soporte de administración
+        de plataforma.
+      update_submit: Actualizar rol
+      updated: Rol de membresía actualizado.
+  platform:
+    settings:
+      title: Configuración de plataforma
+      subtitle: Configurar los ajustes alojados de toda la aplicación.
+    support_access_sessions:
+      created: Acceso de soporte abierto.
+      ended: Acceso de soporte finalizado.
   authentication:
     login_required: Por favor, inicie sesión para continuar
+    privileged_mfa_required:
+      setup: Configure MFA o una llave de acceso antes de continuar.
+      verify: Verifique MFA o una llave de acceso antes de continuar.
     session_expired: Tu sesión ha caducado. Vuelve a iniciar sesión.
     two_factor_required: Para mayor seguridad, configure la autenticación de dos factores
       para su cuenta.

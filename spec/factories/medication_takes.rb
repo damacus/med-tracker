@@ -2,6 +2,7 @@
 
 FactoryBot.define do
   factory :medication_take do
+    household { schedule&.household || person_medication&.household }
     taken_at { Time.current }
     dose_amount { schedule&.dose_amount || person_medication&.dose_amount || 1.0 }
     dose_unit { schedule&.dose_unit || person_medication&.dose_unit || 'mg' }

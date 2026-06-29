@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Admin
-  class SettingsController < ApplicationController
+  class SettingsController < BaseController
     def show
       @settings = AppSettings.instance
       authorize @settings

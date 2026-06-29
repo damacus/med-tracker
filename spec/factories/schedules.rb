@@ -2,8 +2,9 @@
 
 FactoryBot.define do
   factory :schedule do
-    person
-    medication
+    household { person.household }
+    person { association(:person, household: Current.household || Household.first || association(:household)) }
+    medication { association(:medication, household: person.household) }
 
     transient do
       dosage do

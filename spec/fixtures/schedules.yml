@@ -2,6 +2,7 @@
 # Prescriptions Fixtures
 
 john_paracetamol:
+  household: fixture_household
   person: john
   medication: paracetamol
   dose_amount: 1000
@@ -14,6 +15,7 @@ john_paracetamol:
   dose_cycle: :daily
 
 john_movicol:
+  household: fixture_household
   person: john
   medication: movicol
   dose_amount: 1
@@ -27,6 +29,7 @@ john_movicol:
 
 # Ibuprofen schedules
 jane_ibuprofen:
+  household: fixture_household
   person: jane
   medication: ibuprofen
   dose_amount: 400
@@ -41,6 +44,7 @@ jane_ibuprofen:
 
 # Aspirin schedules
 bob_aspirin:
+  household: fixture_household
   person: bob
   medication: aspirin
   dose_amount: 75
@@ -55,6 +59,7 @@ bob_aspirin:
 
 # Weekly medication
 bob_weekly_med:
+  household: fixture_household
   person: bob
   medication: vitamin_d
   dose_amount: 1000
@@ -68,6 +73,7 @@ bob_weekly_med:
 
 # Adult patient schedule
 adult_patient_schedule:
+  household: fixture_household
   person: adult_patient_person
   medication: paracetamol
   dose_amount: 1000
@@ -81,6 +87,7 @@ adult_patient_schedule:
 
 # Patient schedule (for carer test)
 patient_schedule:
+  household: fixture_household
   person: child_patient
   medication: ibuprofen
   dose_amount: 200
@@ -94,6 +101,7 @@ patient_schedule:
 
 # Child schedule (for parent test)
 child_schedule:
+  household: fixture_household
   person: child_user_person
   medication: paracetamol
   dose_amount: 250
@@ -107,6 +115,7 @@ child_schedule:
 
 # Active schedule for dashboard testing
 active_schedule:
+  household: fixture_household
   person: john
   medication: paracetamol
   dose_amount: 1000

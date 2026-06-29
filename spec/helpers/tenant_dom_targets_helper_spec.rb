@@ -6,6 +6,7 @@ RSpec.describe TenantDomTargetsHelper do
   after { Current.reset }
 
   it 'keeps legacy DOM ids outside household context' do
+    Current.household = nil
     person = build(:person, id: 123)
 
     expect(helper.tenant_dom_id(person)).to eq('person_123')

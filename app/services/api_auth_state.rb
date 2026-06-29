@@ -27,8 +27,16 @@ class ApiAuthState
 
     def web_session_mfa_satisfied?(session, account)
       return true unless mfa_configured?(account)
-      return true if session[:oidc_mfa_verified] == true || session['oidc_mfa_verified'] == true
+      return true if web_session_oidc_mfa_verified?(session)
 
+      web_session_mfa_method_present?(session)
+    end
+
+    def web_session_oidc_mfa_verified?(session)
+      session[:oidc_mfa_verified] == true || session['oidc_mfa_verified'] == true
+    end
+
+    def web_session_mfa_method_present?(session)
       authenticated_by = Array(session[:authenticated_by]) | Array(session['authenticated_by'])
       authenticated_by.intersect?(MFA_METHODS)
     end

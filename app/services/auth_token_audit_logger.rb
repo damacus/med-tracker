@@ -8,7 +8,10 @@ class AuthTokenAuditLogger
     # rubocop:disable Rails/SkipsModelValidations
     PaperTrail::Version.insert(version_attrs(account:, token_type:, action:, metadata:, context:))
     # rubocop:enable Rails/SkipsModelValidations
-    SecurityAuditEvent.create!(security_event_attrs(account:, token_type:, action:, metadata:, context:))
+    security_event_attrs = security_event_attrs(account:, token_type:, action:, metadata:, context:)
+    return if security_event_attrs[:household_id].blank?
+
+    SecurityAuditEvent.create!(security_event_attrs)
   rescue StandardError => e
     Rails.logger.error("AuthTokenAuditLogger failed: #{e.class}: #{e.message}")
   end
@@ -32,7 +35,7 @@ class AuthTokenAuditLogger
 
   def security_event_attrs(account:, token_type:, action:, metadata:, context:)
     {
-      household_id: context_value(context, :household_id),
+      household_id: security_event_household_id(account:, context:),
       actor_account: account,
       actor_membership_id: context_value(context, :actor_membership_id),
       event_type: event_type(token_type:, action:),
@@ -40,6 +43,10 @@ class AuthTokenAuditLogger
       ip: context_value(context, :ip),
       request_id: context_value(context, :request_id)
     }
+  end
+
+  def security_event_household_id(account:, context:)
+    context_value(context, :household_id) || account.person&.household_id
   end
 
   def event_type(token_type:, action:)

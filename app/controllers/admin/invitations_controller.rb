@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Admin
-  class InvitationsController < ApplicationController
+  class InvitationsController < BaseController
     def index
       authorize :invitation, :index?
 

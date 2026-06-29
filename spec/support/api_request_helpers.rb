@@ -274,7 +274,8 @@ module ApiRequestHelpers
     end
 
     def shared_location_outside_people?(location, person_ids)
-      LocationMembership.where(location_id: location.id).where.not(person_id: person_ids).exists?
+      location.medications.exists? ||
+        LocationMembership.where(location_id: location.id).where.not(person_id: person_ids).exists?
     end
 
     def assign_location_to_household(location, household)

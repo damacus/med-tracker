@@ -6,6 +6,7 @@ RSpec.describe YAML do
   let(:compose_config) do
     described_class.safe_load(Rails.root.join('compose.yaml').read, aliases: true)
   end
+  let(:init_roles_sql) { Rails.root.join('compose/init-roles.sql').read }
 
   it 'isolates public assets in development web container' do
     expect(compose_config.dig('services', 'web-dev', 'tmpfs')).to include('/app/public/assets:uid=1000,gid=1000')
@@ -78,6 +79,21 @@ RSpec.describe YAML do
       'migrate-prod' => '${MIGRATION_DATABASE_ROLE:-med_tracker_owner}',
       'web-prod' => '${DATABASE_ROLE:-med_tracker_app}'
     )
+  end
+
+  it 'keeps the production web container behind the runtime role after migrations complete' do
+    expect(compose_config.dig('services', 'web-prod', 'depends_on', 'migrate-prod', 'condition'))
+      .to eq('service_completed_successfully')
+    expect(compose_config.dig('services', 'migrate-prod', 'environment', 'DATABASE_ROLE'))
+      .to eq('${MIGRATION_DATABASE_ROLE:-med_tracker_owner}')
+    expect(compose_config.dig('services', 'web-prod', 'environment', 'DATABASE_ROLE'))
+      .to eq('${DATABASE_ROLE:-med_tracker_app}')
+  end
+
+  it 'bootstraps the deployed runtime role without owner or bypassrls privileges' do
+    expect(init_roles_sql).to include('ALTER ROLE med_tracker_app NOLOGIN NOSUPERUSER NOBYPASSRLS;')
+    expect(init_roles_sql).to include('GRANT USAGE ON SCHEMA public TO med_tracker_app;')
+    expect(init_roles_sql).not_to match(/GRANT\s+USAGE,\s+CREATE\s+ON\s+SCHEMA\s+public\s+TO\s+med_tracker_app/i)
   end
 
   it 'keeps normal test runs isolated from local development OIDC credentials' do

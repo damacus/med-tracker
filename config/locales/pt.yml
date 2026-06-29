@@ -630,8 +630,24 @@ pt:
       subtitle: Configurar definições da aplicação.
       title: Definições
       updated: Definições atualizadas com sucesso.
+    membership_roles:
+      invalid_role: Selecione uma função de agregado válida.
+      owner_rejected: A promoção a proprietário requer suporte de administração
+        da plataforma.
+      update_submit: Atualizar função
+      updated: Função de associação atualizada.
+  platform:
+    settings:
+      title: Definições da plataforma
+      subtitle: Configurar definições alojadas de toda a aplicação.
+    support_access_sessions:
+      created: Acesso de suporte aberto.
+      ended: Acesso de suporte terminado.
   authentication:
     login_required: Por favor, inicie sessão para continuar
+    privileged_mfa_required:
+      setup: Configure MFA ou uma chave de acesso antes de continuar.
+      verify: Verifique MFA ou uma chave de acesso antes de continuar.
     session_expired: A sua sessão expirou. Inicie sessão novamente.
     two_factor_required: Para maior segurança, configure a autenticação de dois fatores
       para a sua conta.

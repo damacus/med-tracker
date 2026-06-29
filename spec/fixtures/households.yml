@@ -1,0 +1,9 @@
+---
+fixture_household:
+  name: Fixture Household
+  slug: fixture-household
+  status: active
+  timezone: UTC
+  subscription_plan: free
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>

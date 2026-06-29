@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Admin
-  class NhsDmdImportsController < ApplicationController
+  class NhsDmdImportsController < BaseController
     def new
       authorize :admin_nhs_dmd_import, :new?
 

@@ -145,14 +145,15 @@ RSpec.describe Person do
       expect(person_with_primary_location.locations).to contain_exactly(school_location)
     end
 
-    it 'does not create a default Home location without a household' do
+    it 'creates a default Home location inside the current household' do
       person = nil
 
       expect do
         person = described_class.create!(name: 'Unassigned Location Person', date_of_birth: 30.years.ago.to_date)
       end.not_to(change { Location.where(name: 'Home', household_id: nil).count })
 
-      expect(person.location_memberships).to be_empty
+      expect(person.location_memberships).not_to be_empty
+      expect(person.locations.first.household).to eq(Current.household)
     end
   end
 

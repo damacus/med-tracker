@@ -3,12 +3,21 @@
 medications_file = Rails.root.join('db/seeds/medications.yml')
 medications_data = YAML.load_file(medications_file)
 
-default_location = Location.find_or_create_by!(name: 'Home') do |loc|
+household_slug = Rails.env.local? ? 'fixture-household' : 'seed-household'
+household = Household.find_or_initialize_by(slug: household_slug)
+household.id ||= ActiveRecord::FixtureSet.identify(:fixture_household) if Rails.env.local?
+household.name ||= Rails.env.local? ? 'Fixture Household' : 'Seed Household'
+household.status ||= 'active'
+household.timezone ||= Time.zone.name
+household.subscription_plan ||= 'free'
+household.save!
+
+default_location = household.locations.find_or_create_by!(name: 'Home') do |loc|
   loc.description = 'Primary home location'
 end
 
 medications_data.each do |attrs|
-  medication = Medication.find_or_initialize_by(name: attrs['name'])
+  medication = household.medications.find_or_initialize_by(name: attrs['name'])
   medication.location ||= default_location
   medication.update!(
     category: attrs['category'],
