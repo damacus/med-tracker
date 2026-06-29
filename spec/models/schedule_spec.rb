@@ -91,6 +91,27 @@ RSpec.describe Schedule do
       schedule.update(active: true)
       expect(schedule.active).to be true
     end
+
+    it 'excludes paused schedules from the active scope' do
+      paused_schedule = create(:schedule, active: false)
+      active_schedule = create(:schedule)
+
+      expect(described_class.active).to include(active_schedule)
+      expect(described_class.active).not_to include(paused_schedule)
+    end
+
+    it 'reports paused schedules as inactive today' do
+      schedule.update!(active: false)
+
+      expect(schedule).to be_paused
+      expect(schedule).not_to be_active
+      expect(schedule).not_to be_active_on(Time.zone.today)
+    end
+
+    it 'pauses and resumes a schedule' do
+      expect { schedule.pause! }.to change { schedule.reload.active }.from(true).to(false)
+      expect { schedule.resume! }.to change { schedule.reload.active }.from(false).to(true)
+    end
   end
 
   describe 'validations' do
@@ -227,6 +248,14 @@ RSpec.describe Schedule do
     context 'when today is between start_date and end_date (inclusive)' do
       it 'returns true' do
         expect(schedule.active?).to be true
+      end
+    end
+
+    context 'when schedule is paused' do
+      before { schedule.active = false }
+
+      it 'returns false' do
+        expect(schedule.active?).to be false
       end
     end
 

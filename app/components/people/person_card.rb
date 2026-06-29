@@ -81,7 +81,7 @@ module Components
 
       def visible_person_medications
         @visible_person_medications ||= person.person_medications.select do |person_medication|
-          view_context.policy(person_medication).show?
+          person_medication.active? && view_context.policy(person_medication).show?
         end
       end
 

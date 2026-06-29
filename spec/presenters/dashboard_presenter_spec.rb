@@ -174,6 +174,14 @@ RSpec.describe DashboardPresenter do
       presenter = presenter_for(admin_user, people_scope: Person.all)
       expect(presenter.active_schedules).not_to include(future_schedule)
     end
+
+    it 'excludes paused schedules' do
+      paused_schedule = schedules(:john_paracetamol)
+      paused_schedule.pause!
+      presenter = presenter_for(admin_user, people_scope: Person.all)
+
+      expect(presenter.active_schedules).not_to include(paused_schedule)
+    end
   end
 
   describe '#upcoming_schedules' do

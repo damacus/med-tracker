@@ -49,7 +49,7 @@ class MedicationReminderEligibilityQuery
   end
 
   def person_medications
-    @person_medications ||= person.person_medications.routine.includes(:medication, :medication_takes).to_a
+    @person_medications ||= person.person_medications.active.routine.includes(:medication, :medication_takes).to_a
   end
 
   def due_schedule?(schedule)

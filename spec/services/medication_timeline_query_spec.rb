@@ -14,6 +14,17 @@ RSpec.describe MedicationTimelineQuery do
       expect(result.schedules).to contain_exactly(timeline_data[:other_schedule])
       expect(result.person_medications).to contain_exactly(timeline_data[:person_medication])
     end
+
+    it 'excludes paused timeline sources' do
+      medication = create(:medication)
+      paused_schedule = create(:schedule, medication: medication, active: false)
+      paused_person_medication = create(:person_medication, medication: medication, active: false)
+
+      result = described_class.new(medication: medication).call
+
+      expect(result.schedules).not_to include(paused_schedule)
+      expect(result.person_medications).not_to include(paused_person_medication)
+    end
   end
 
   def create_timeline_data_for(medication:, other_medication:)

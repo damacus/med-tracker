@@ -25,7 +25,7 @@ class MedicationTimelineQuery
   end
 
   def person_medications
-    relation = PersonMedication.where(medication: medication).includes(:person, :medication)
+    relation = PersonMedication.active.where(medication: medication).includes(:person, :medication)
     excluding.is_a?(PersonMedication) ? relation.where.not(id: excluding.id) : relation
   end
 end

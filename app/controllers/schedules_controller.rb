@@ -10,7 +10,7 @@ class SchedulesController < ApplicationController
 
   before_action :redirect_direct_new_schedule, only: :new
   before_action :set_person, except: %i[index workflow start_workflow frequency_preview]
-  before_action :set_schedule, only: %i[edit update destroy take_medication]
+  before_action :set_schedule, only: %i[edit update destroy pause resume take_medication]
 
   def index
     authorize Schedule.new(person: schedule_index_person), :index?
@@ -75,6 +75,18 @@ class SchedulesController < ApplicationController
     authorize @schedule
     @schedule.destroy
     render_schedule_destroy_success
+  end
+
+  def pause
+    authorize @schedule, :update?
+    @schedule.pause!
+    render_schedule_pause_success
+  end
+
+  def resume
+    authorize @schedule, :update?
+    @schedule.resume!
+    render_schedule_resume_success
   end
 
   def take_medication
@@ -263,6 +275,27 @@ class SchedulesController < ApplicationController
       format.html { redirect_back_or_to person_path(@person), notice: t('schedules.deleted') }
       format.turbo_stream do
         flash.now[:notice] = t('schedules.deleted')
+        render turbo_stream: [
+          turbo_stream.replace(tenant_dom_target("person_show_#{@person.id}"), person_show_view(@person.reload)),
+          turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
+        ]
+      end
+    end
+  end
+
+  def render_schedule_pause_success
+    render_schedule_active_state_success(t('schedules.paused'))
+  end
+
+  def render_schedule_resume_success
+    render_schedule_active_state_success(t('schedules.resumed'))
+  end
+
+  def render_schedule_active_state_success(notice)
+    respond_to do |format|
+      format.html { redirect_to person_path(@person), notice: notice }
+      format.turbo_stream do
+        flash.now[:notice] = notice
         render turbo_stream: [
           turbo_stream.replace(tenant_dom_target("person_show_#{@person.id}"), person_show_view(@person.reload)),
           turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))

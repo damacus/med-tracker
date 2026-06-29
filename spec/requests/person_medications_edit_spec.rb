@@ -117,4 +117,61 @@ RSpec.describe 'Person medication edit and update' do
       end
     end
   end
+
+  describe 'PATCH /people/:person_id/person_medications/:id/pause' do
+    let!(:linked_person_medication) do
+      PersonMedication.create!(person: person, medication: medications(:vitamin_c), dose_amount: 500, dose_unit: 'mg')
+    end
+
+    context 'when signed in as parent of linked child' do
+      before { sign_in(users(:parent)) }
+
+      it 'pauses the medication assignment and redirects' do
+        patch pause_person_person_medication_path(person, linked_person_medication)
+
+        expect(response).to redirect_to(person_path(person))
+        expect(linked_person_medication.reload).to be_paused
+      end
+
+      it 'returns a turbo stream refresh for the person show container' do
+        patch pause_person_person_medication_path(person, linked_person_medication),
+              headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+        expect(response).to have_http_status(:ok)
+        expect(response.media_type).to eq('text/vnd.turbo-stream.html')
+        expect(response.body).to include("target=\"#{household_dom_target("person_show_#{person.id}")}\"")
+        expect(linked_person_medication.reload).to be_paused
+      end
+    end
+
+    context 'when signed in as carer' do
+      before { sign_in(users(:carer)) }
+
+      it 'does not pause the medication assignment' do
+        carer_medication = PersonMedication.create!(person: assigned_patient, medication: medications(:ibuprofen),
+                                                    dose_amount: 200, dose_unit: 'mg')
+
+        patch pause_person_person_medication_path(assigned_patient, carer_medication)
+
+        expect(response).to redirect_to(root_path)
+        expect(carer_medication.reload).not_to be_paused
+      end
+    end
+  end
+
+  describe 'PATCH /people/:person_id/person_medications/:id/resume' do
+    let!(:linked_person_medication) do
+      PersonMedication.create!(person: person, medication: medications(:vitamin_c), dose_amount: 500, dose_unit: 'mg',
+                               active: false)
+    end
+
+    before { sign_in(users(:parent)) }
+
+    it 'resumes the medication assignment and redirects' do
+      patch resume_person_person_medication_path(person, linked_person_medication)
+
+      expect(response).to redirect_to(person_path(person))
+      expect(linked_person_medication.reload).not_to be_paused
+    end
+  end
 end

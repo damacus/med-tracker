@@ -163,7 +163,9 @@ module Medications
     end
 
     def as_needed_sources
-      @as_needed_sources ||= medication.person_medications.select(&:as_needed?) + as_needed_schedules
+      @as_needed_sources ||= medication.person_medications.select do |person_medication|
+        person_medication.active? && person_medication.as_needed?
+      end + as_needed_schedules
     end
 
     def as_needed_schedules

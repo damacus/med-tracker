@@ -72,6 +72,13 @@ RSpec.describe MedicationReminderEligibilityQuery do
       expect(build_query.medication_names).not_to include(med.name)
     end
 
+    it 'does not include medications from paused schedules' do
+      schedule = daily_schedule
+      schedule.pause!
+
+      expect(build_query.medication_names).not_to include(schedule.medication_name)
+    end
+
     it 'deduplicates medication names' do
       # Same medication on two active schedules
       med = create(:medication)
@@ -107,6 +114,14 @@ RSpec.describe MedicationReminderEligibilityQuery do
 
         names = build_query.medication_names
         expect(names).not_to include(medication.display_name)
+      end
+
+      it 'excludes paused routine person_medications' do
+        medication = create(:medication)
+        create(:person_medication, :routine, person: person, medication: medication, active: false,
+                                             max_daily_doses: 1)
+
+        expect(build_query.medication_names).not_to include(medication.display_name)
       end
     end
 
@@ -162,6 +177,13 @@ RSpec.describe MedicationReminderEligibilityQuery do
 
       times = build_query.configured_times
       expect(times).not_to include('08:00')
+    end
+
+    it 'excludes times from paused schedules' do
+      schedule = schedule_with_times(times: %w[08:00])
+      schedule.pause!
+
+      expect(build_query.configured_times).not_to include('08:00')
     end
   end
 end

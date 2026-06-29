@@ -212,6 +212,18 @@ RSpec.describe FamilyDashboard::ScheduleQuery do
       end
     end
 
+    it 'filters out paused schedules and person medications' do
+      paused_schedule = create_daily_scheduled_medication
+      paused_schedule.pause!
+      paused_person_medication = create_routine_person_medication
+      paused_person_medication.update!(active: false)
+
+      results = described_class.new([people(:john)]).call
+
+      expect(results.pluck(:source)).not_to include(paused_schedule)
+      expect(results.pluck(:source)).not_to include(paused_person_medication)
+    end
+
     context 'when a schedule has no timing restrictions' do
       let!(:schedule) do
         Schedule.create!(

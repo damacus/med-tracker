@@ -117,6 +117,22 @@ RSpec.describe Reports::IndexQuery do
       expect(result.daily_data.first).to include(expected: 2, actual: 0, percentage: 0)
     end
 
+    it 'excludes paused schedules from compliance and inventory calculations' do
+      report_date = Time.zone.today
+      person = create(:person)
+      schedule = create_daily_report_schedule(person, report_date)
+      schedule.pause!
+
+      result = described_class.new(
+        people: Person.where(id: person.id),
+        start_date: report_date,
+        end_date: report_date
+      ).call
+
+      expect(result.daily_data.first).to include(expected: 0, percentage: 100)
+      expect(result.inventory_alerts).to be_empty
+    end
+
     it 'limits inventory alerts to the soonest two items under 14 days left' do
       medication_one = create(:medication, current_supply: 3, supply_at_last_restock: 3)
       medication_two = create(:medication, current_supply: 5, supply_at_last_restock: 5)

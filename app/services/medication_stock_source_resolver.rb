@@ -14,6 +14,7 @@ class MedicationStockSourceResolver
   end
 
   def blocked_reason
+    return :paused if source.respond_to?(:paused?) && source.paused?
     return :out_of_stock if available_medications.empty?
     return :cooldown unless source.can_take_at?(taken_at)
 

@@ -4,6 +4,7 @@
 class Schedule < ApplicationRecord
   include TimingRestrictions
   include HouseholdAssignable
+  include Pausable
 
   WEEKDAY_INDEXES = Date::DAYNAMES.each_with_index.with_object({}) do |(name, index), indexes|
     indexes[name.downcase] = index
@@ -32,9 +33,7 @@ class Schedule < ApplicationRecord
 
   has_many :medication_takes, dependent: :destroy
 
-  scope :active, lambda {
-    where('start_date <= ? AND end_date >= ?', Time.zone.today, Time.zone.today)
-  }
+  scope :active, -> { where(active: true).where('start_date <= ? AND end_date >= ?', Time.zone.today, Time.zone.today) }
 
   validates :start_date, presence: true
   validates :end_date, presence: true
@@ -94,7 +93,9 @@ class Schedule < ApplicationRecord
       min_hours_between_doses
   end
 
-  def active? = start_date.present? && end_date.present? && Time.zone.today.between?(start_date, end_date)
+  def active? = active_on?(Time.zone.today)
+
+  def active_on?(date) = active && (date = normalize_date(date)).present? && within_schedule_range?(date)
 
   def cycle_period
     DoseCycle.new(dose_cycle).period

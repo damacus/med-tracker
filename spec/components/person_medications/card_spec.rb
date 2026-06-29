@@ -50,6 +50,22 @@ RSpec.describe Components::PersonMedications::Card, type: :component do
     expect(link['class']).to include('min-w-12')
   end
 
+  it 'renders pause action for manageable active assignments' do
+    rendered = render_person_medication_card(update: true)
+
+    expect(rendered.at_css("button[data-testid='pause-person-medication-#{person_medication.id}']")).to be_present
+  end
+
+  it 'renders paused state without dose actions' do
+    person_medication.update!(active: false)
+
+    rendered = render_person_medication_card(update: true)
+
+    expect(rendered.text).to include('Paused')
+    expect(rendered.at_css("button[data-testid='log-past-dose-person-medication-#{person_medication.id}']")).to be_nil
+    expect(rendered.at_css("button[data-testid='resume-person-medication-#{person_medication.id}']")).to be_present
+  end
+
   def render_person_medication_card(update: false, destroy: false)
     vc = view_context
     vc.singleton_class.define_method(:current_user) { nil }

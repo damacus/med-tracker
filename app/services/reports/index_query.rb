@@ -38,6 +38,7 @@ module Reports
 
     def schedules
       @schedules ||= Schedule.where(person_id: person_ids)
+                             .where(active: true)
                              .where('start_date <= ? AND (end_date IS NULL OR end_date >= ?)', end_date, start_date)
                              .to_a
     end

@@ -17,6 +17,7 @@ module Components
             div(class: 'flex justify-between items-start mb-4') do
               render_medication_icon
               div(class: 'flex flex-col items-end gap-2 shrink-0') do
+                render_paused_badge if schedule.paused?
                 render Components::Shared::StockBadge.new(medication: schedule.medication)
               end
             end
@@ -44,6 +45,12 @@ module Components
                    'group-hover:text-primary group-hover:bg-primary/5 transition-all'
           ) do
             render Components::Shared::MedicationIcon.new(medication: schedule.medication, size: 24)
+          end
+        end
+
+        def render_paused_badge
+          m3_badge(variant: :outlined, class: 'rounded-full uppercase text-[10px] font-black tracking-widest') do
+            t('schedules.card.paused')
           end
         end
       end

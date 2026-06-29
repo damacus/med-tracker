@@ -67,4 +67,59 @@ RSpec.describe 'Schedules' do
       expect(response).to redirect_to(schedules_workflow_path)
     end
   end
+
+  describe 'PATCH /people/:person_id/schedules/:id/pause' do
+    let(:schedule) { schedules(:child_schedule) }
+    let(:person) { schedule.person }
+
+    context 'when signed in as a parent of the linked child' do
+      before { sign_in(users(:parent)) }
+
+      it 'pauses the schedule and redirects to the person page' do
+        patch pause_person_schedule_path(person, schedule)
+
+        expect(response).to redirect_to(person_path(person))
+        expect(schedule.reload).to be_paused
+      end
+
+      it 'returns a turbo stream refresh for the person show container' do
+        patch pause_person_schedule_path(person, schedule),
+              headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+
+        expect(response).to have_http_status(:ok)
+        expect(response.media_type).to eq('text/vnd.turbo-stream.html')
+        expect(response.body).to include("target=\"#{household_dom_target("person_show_#{person.id}")}\"")
+        expect(schedule.reload).to be_paused
+      end
+    end
+
+    context 'when signed in as a carer without manage access' do
+      before { sign_in(users(:carer)) }
+
+      it 'does not pause the schedule' do
+        carer_schedule = schedules(:patient_schedule)
+
+        patch pause_person_schedule_path(carer_schedule.person, carer_schedule)
+
+        expect(response).to redirect_to(root_path)
+        expect(carer_schedule.reload).not_to be_paused
+      end
+    end
+  end
+
+  describe 'PATCH /people/:person_id/schedules/:id/resume' do
+    let(:schedule) { schedules(:child_schedule) }
+
+    before do
+      sign_in(users(:parent))
+      schedule.pause!
+    end
+
+    it 'resumes the schedule and redirects to the person page' do
+      patch resume_person_schedule_path(schedule.person, schedule)
+
+      expect(response).to redirect_to(person_path(schedule.person))
+      expect(schedule.reload).not_to be_paused
+    end
+  end
 end

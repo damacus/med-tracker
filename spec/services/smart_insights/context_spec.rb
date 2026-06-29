@@ -71,6 +71,15 @@ RSpec.describe SmartInsights::Context do
       expect(context.active_schedules).to include(active)
       expect(context.active_schedules).not_to include(expired)
     end
+
+    it 'excludes paused schedules' do
+      medication = create(:medication)
+      paused = create(:schedule, person: person, medication: medication,
+                                 start_date: 7.days.ago.to_date, end_date: 1.year.from_now.to_date,
+                                 active: false)
+
+      expect(context.active_schedules).not_to include(paused)
+    end
   end
 
   describe '#person_medications' do
@@ -82,6 +91,12 @@ RSpec.describe SmartInsights::Context do
     it 'excludes person medications for other people' do
       other = create(:person)
       pm    = create(:person_medication, person: other)
+      expect(context.person_medications).not_to include(pm)
+    end
+
+    it 'excludes paused person medications' do
+      pm = create(:person_medication, person: person, active: false)
+
       expect(context.person_medications).not_to include(pm)
     end
   end
@@ -98,6 +113,17 @@ RSpec.describe SmartInsights::Context do
     it 'includes as-needed person medications' do
       pm = create(:person_medication, :as_needed, person: person)
       expect(context.prn_sources).to include(pm)
+    end
+
+    it 'excludes paused as-needed sources' do
+      medication = create(:medication)
+      paused_schedule = create(:schedule, person: person, medication: medication,
+                                          start_date: start_date, end_date: end_date,
+                                          schedule_type: :prn, active: false)
+      paused_person_medication = create(:person_medication, :as_needed, person: person, active: false)
+
+      expect(context.prn_sources).not_to include(paused_schedule)
+      expect(context.prn_sources).not_to include(paused_person_medication)
     end
   end
 

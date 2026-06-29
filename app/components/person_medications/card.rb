@@ -19,9 +19,7 @@ module Components
       def view_template
         render M3::Card.new(
           id: tenant_dom_id(person_medication),
-          class: 'h-full flex flex-col border-none border-l-4 border-l-primary ' \
-                 'shadow-[0_8px_30px_rgb(0,0,0,0.06)] bg-card rounded-[2.5rem] transition-all ' \
-                 'duration-300 hover:scale-[1.02] hover:shadow-xl group overflow-hidden'
+          class: card_class
         ) do
           render_card_header
           render_card_content
@@ -31,11 +29,23 @@ module Components
 
       private
 
+      def card_class
+        base = 'h-full flex flex-col border-none border-l-4 border-l-primary ' \
+               'shadow-[0_8px_30px_rgb(0,0,0,0.06)] bg-card rounded-[2.5rem] transition-all ' \
+               'duration-300 group overflow-hidden'
+        return "#{base} opacity-70 grayscale-[0.2]" if person_medication.paused?
+
+        "#{base} hover:scale-[1.02] hover:shadow-xl"
+      end
+
       def render_card_header
         CardHeader(class: 'pb-4 pt-8 px-8') do
           div(class: 'flex justify-between items-start mb-4') do
             render_medication_icon
-            render Components::Shared::StockBadge.new(medication: person_medication.medication)
+            div(class: 'flex flex-col items-end gap-2 shrink-0') do
+              render_paused_badge if person_medication.paused?
+              render Components::Shared::StockBadge.new(medication: person_medication.medication)
+            end
           end
           div(class: 'min-w-0') do
             CardTitle(class: 'text-2xl font-black tracking-tight mb-1 text-foreground break-words leading-tight') do
@@ -45,6 +55,12 @@ module Components
               medication_description
             end
           end
+        end
+      end
+
+      def render_paused_badge
+        m3_badge(variant: :outlined, class: 'rounded-full uppercase text-[10px] font-black tracking-widest') do
+          t('person_medications.card.paused')
         end
       end
 
@@ -126,8 +142,11 @@ module Components
       def render_person_medication_actions
         div(class: 'flex items-center gap-2 w-full') do
           render_reorder_controls if view_context.policy(person_medication).update?
-          render_past_dose_button
-          render_edit_button if view_context.policy(person_medication).update?
+          render_past_dose_button unless person_medication.paused?
+          if view_context.policy(person_medication).update?
+            render_active_state_button
+            render_edit_button
+          end
           render_delete_dialog if view_context.policy(person_medication).destroy?
         end
       end
@@ -145,6 +164,49 @@ module Components
                    'hover:bg-tertiary-container transition-colors'
           }
         )
+      end
+
+      def render_active_state_button
+        form_with(
+          url: active_state_path,
+          method: :patch,
+          class: 'inline'
+        ) do
+          m3_button(
+            variant: :outlined,
+            type: :submit,
+            class: 'w-12 min-w-12 h-12 shrink-0 p-0 rounded-xl border-outline text-on-surface-variant ' \
+                   'hover:text-foreground hover:bg-tertiary-container transition-colors',
+            data: { testid: active_state_testid },
+            aria_label: active_state_label
+          ) do
+            render active_state_icon.new(size: 20)
+          end
+        end
+      end
+
+      def active_state_path
+        if person_medication.paused?
+          resume_person_person_medication_path(person, person_medication)
+        else
+          pause_person_person_medication_path(person, person_medication)
+        end
+      end
+
+      def active_state_label
+        if person_medication.paused?
+          t('person_medications.card.resume')
+        else
+          t('person_medications.card.pause')
+        end
+      end
+
+      def active_state_testid
+        "#{person_medication.paused? ? 'resume' : 'pause'}-person-medication-#{person_medication.id}"
+      end
+
+      def active_state_icon
+        person_medication.paused? ? Icons::RefreshCw : Icons::Clock
       end
 
       def render_edit_button

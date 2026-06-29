@@ -14,6 +14,7 @@ module SmartInsights
 
     def schedules
       @schedules ||= Schedule.where(person_id: person_ids)
+                             .where(active: true)
                              .where('start_date <= ? AND end_date >= ?', end_date, start_date)
                              .includes(:person, :medication)
                              .to_a
@@ -24,7 +25,8 @@ module SmartInsights
     end
 
     def person_medications
-      @person_medications ||= PersonMedication.where(person_id: person_ids)
+      @person_medications ||= PersonMedication.active
+                                              .where(person_id: person_ids)
                                               .includes(:person, :medication)
                                               .to_a
     end
