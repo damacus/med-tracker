@@ -54,15 +54,17 @@ class MedicationInventoryMatcher
   attr_reader :scope
 
   def exact_barcode_match(candidate)
-    return nil if candidate.barcode.blank?
+    barcode = candidate.barcode
+    return nil if barcode.blank?
 
-    scope.find_by(barcode: candidate.barcode)
+    scope.find_by(barcode: barcode)
   end
 
   def exact_dmd_match(candidate)
-    return nil if candidate.dmd_code.blank?
+    dmd_code = candidate.dmd_code
+    return nil if dmd_code.blank?
 
-    scope.find_by(dmd_code: candidate.dmd_code)
+    scope.find_by(dmd_code: dmd_code)
   end
 
   def compatible_name_match(candidate)
@@ -124,9 +126,10 @@ class MedicationInventoryMatcher
 
     amount = normalized_decimal(match[:amount])
     unit = normalized_strength_unit(match[:unit])
-    return "#{amount} #{unit}" if match[:denominator_amount].blank?
+    denominator_amount = match[:denominator_amount]
+    return "#{amount} #{unit}" if denominator_amount.blank?
 
-    denominator_amount = normalized_decimal(match[:denominator_amount])
+    denominator_amount = normalized_decimal(denominator_amount)
     denominator_unit = match[:denominator_unit].downcase
     "#{amount} #{unit}/#{denominator_amount} #{denominator_unit}"
   end
@@ -134,9 +137,11 @@ class MedicationInventoryMatcher
   def strength_from_dosage(medication)
     unit = normalized_strength_unit(medication.dosage_unit)
     return nil unless STRENGTH_UNITS.include?(unit)
-    return nil if medication.dosage_amount.blank?
 
-    "#{normalized_decimal(medication.dosage_amount)} #{unit}"
+    dosage_amount = medication.dosage_amount
+    return nil if dosage_amount.blank?
+
+    "#{normalized_decimal(dosage_amount)} #{unit}"
   end
 
   def normalized_strength_unit(unit)
