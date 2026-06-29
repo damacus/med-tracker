@@ -24,7 +24,7 @@ module Components
                 DialogDescription { t('medication_workflow.person_selection.subtitle') }
               end
               DialogMiddle do
-                if people.count <= 4
+                if people.size <= 4
                   render_person_buttons
                 else
                   render_person_combobox
