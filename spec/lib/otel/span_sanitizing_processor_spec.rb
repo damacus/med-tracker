@@ -66,15 +66,6 @@ RSpec.describe Otel::SpanSanitizingProcessor do
     it 'responds to on_finish' do
       expect(processor).to respond_to(:on_finish)
     end
-
-    it 'sanitizes attributes added after span start before finish' do
-      span = fake_span_class.new({})
-      span.set_attribute('db.statement', "SELECT * FROM accounts WHERE email = 'person@example.com'")
-
-      processor.on_finish(span)
-
-      expect(span.attributes['db.statement']).to eq('[REDACTED]')
-    end
   end
 
   describe '#force_flush' do

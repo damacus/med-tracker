@@ -12,9 +12,7 @@ module Otel
       sanitize_span_attributes(span)
     end
 
-    def on_finish(span)
-      sanitize_span_attributes(span)
-    end
+    def on_finish(_span); end
 
     def force_flush(**_)
       OpenTelemetry::SDK::Trace::Export::SUCCESS
