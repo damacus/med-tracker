@@ -20,6 +20,7 @@ module Components
           div(class: 'container mx-auto px-4 py-12 max-w-2xl') do
             render_header
             render_form
+            render_membership_role_update_form unless user.new_record?
           end
         end
 
@@ -87,12 +88,16 @@ module Components
               render_email_field(form)
               div(class: 'h-px bg-outline-variant w-full opacity-50')
               render_password_fields(form)
-              div(class: 'h-px bg-outline-variant w-full opacity-50')
-              render_membership_role_field(form)
-              render_dependent_grant_fields(form)
-              render_dependents_field(form)
+              render_create_membership_fields(form) if user.new_record?
             end
           end
+        end
+
+        def render_create_membership_fields(form)
+          div(class: 'h-px bg-outline-variant w-full opacity-50')
+          render_membership_role_field(form, field_name: 'user[membership_role]')
+          render_dependent_grant_fields(form)
+          render_dependents_field(form)
         end
 
         def render_person_fields(form)
@@ -263,7 +268,25 @@ module Components
           end
         end
 
-        def render_membership_role_field(_form)
+        def render_membership_role_update_form
+          form_with(
+            url: membership_role_admin_user_path(user),
+            method: :patch,
+            class: 'mt-8 space-y-4'
+          ) do |form|
+            m3_card(variant: :elevated, class: 'overflow-visible border-none shadow-elevation-3 rounded-[2.5rem]') do
+              div(class: 'p-10 space-y-6') do
+                render_membership_role_field(form, field_name: 'membership[role]')
+                m3_button(type: :submit, variant: :filled, size: :lg,
+                          class: 'px-8 rounded-shape-xl shadow-lg shadow-primary/20 transition-all') do
+                  t('admin.membership_roles.update_submit')
+                end
+              end
+            end
+          end
+        end
+
+        def render_membership_role_field(_form, field_name:)
           div(class: 'space-y-2') do
             render RubyUI::FormFieldLabel.new(
               for: 'user_membership_role_trigger',
@@ -290,7 +313,7 @@ module Components
                   HouseholdMembership.roles.each_key do |role|
                     render RubyUI::ComboboxItem.new do
                       render RubyUI::ComboboxRadio.new(
-                        name: 'user[membership_role]',
+                        name: field_name,
                         id: "user_membership_role_#{role}",
                         value: role,
                         checked: selected_membership_role == role,

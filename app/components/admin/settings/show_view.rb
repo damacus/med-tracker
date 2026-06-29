@@ -6,13 +6,18 @@ module Components
       class ShowView < Components::Base
         include Phlex::Rails::Helpers::FormWith
 
-        def initialize(settings:)
+        def initialize(settings:, form_url: nil, title_key: 'admin.settings.title',
+                       subtitle_key: 'admin.settings.subtitle', dom_id: 'admin_settings')
           @settings = settings
           @env_controlled = AppSettings.invite_only_source == :env
+          @form_url = form_url
+          @title_key = title_key
+          @subtitle_key = subtitle_key
+          @dom_id = dom_id
         end
 
         def view_template
-          div(id: 'admin_settings', class: 'container mx-auto px-4 py-8 pb-24 md:pb-8 max-w-6xl space-y-8') do
+          div(id: @dom_id, class: 'container mx-auto px-4 py-8 pb-24 md:pb-8 max-w-6xl space-y-8') do
             render_header
             render_access_section
           end
@@ -27,9 +32,9 @@ module Components
                 Time.current.strftime('%A, %b %d')
               end
               m3_heading(level: 1, size: '8', class: 'font-extrabold tracking-tight') do
-                t('admin.settings.title')
+                t(@title_key)
               end
-              m3_text(weight: 'muted', class: 'mt-2 block') { t('admin.settings.subtitle') }
+              m3_text(weight: 'muted', class: 'mt-2 block') { t(@subtitle_key) }
             end
           end
         end
@@ -84,10 +89,14 @@ module Components
         end
 
         def render_form
-          form_with(url: admin_settings_path, method: :patch, class: 'space-y-6') do
+          form_with(url: settings_form_url, method: :patch, class: 'space-y-6') do
             render_invite_only_toggle
             render_save_button unless @env_controlled
           end
+        end
+
+        def settings_form_url
+          @form_url || admin_settings_path
         end
 
         def render_invite_only_toggle

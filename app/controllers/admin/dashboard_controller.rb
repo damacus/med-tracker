@@ -2,7 +2,7 @@
 
 module Admin
   # Handles admin dashboard functionality
-  class DashboardController < ApplicationController
+  class DashboardController < BaseController
     def index
       authorize :admin_dashboard, :index?
 

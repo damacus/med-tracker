@@ -28,6 +28,84 @@ RSpec.describe 'Invitations' do
   end
 
   describe 'POST /create-account with an invitation' do
+    it 'pins the created account email to the invitation email' do
+      household, membership = household_bundle(email: 'pinned-owner@example.test', name: 'Pinned Invitation')
+      invitation = create(
+        :household_invitation,
+        household: household,
+        invited_by_membership: membership,
+        email: 'invited.email@example.com'
+      )
+
+      expect do
+        post create_account_path,
+             params: {
+               invitation_token: invitation.token,
+               name: 'Pinned Invitee',
+               date_of_birth: '1985-05-15',
+               email: 'attacker.supplied@example.com',
+               password: 'SecureP@ssword123!',
+               'password-confirm': 'SecureP@ssword123!'
+             }
+      end.to change(Account, :count).by(1)
+
+      expect(Account.exists?(email: 'invited.email@example.com')).to be(true)
+      expect(Account.exists?(email: 'attacker.supplied@example.com')).to be(false)
+      expect(invitation.reload.accepted_at).to be_present
+    end
+
+    it 'rejects accepted invitation tokens without creating another account' do
+      household, membership = household_bundle(email: 'accepted-owner@example.test', name: 'Accepted Invitation')
+      invitation = create(
+        :household_invitation,
+        household: household,
+        invited_by_membership: membership,
+        email: 'already.accepted@example.com',
+        accepted_at: Time.current
+      )
+
+      expect do
+        post create_account_path,
+             params: {
+               invitation_token: invitation.token,
+               name: 'Already Accepted',
+               date_of_birth: '1985-05-15',
+               email: 'already.accepted@example.com',
+               password: 'SecureP@ssword123!',
+               'password-confirm': 'SecureP@ssword123!'
+             }
+      end.not_to change(Account, :count)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.body).to include('There was an error creating your account')
+    end
+
+    it 'rejects expired invitation tokens without creating an account' do
+      household, membership = household_bundle(email: 'expired-owner@example.test', name: 'Expired Invitation')
+      invitation = create(
+        :household_invitation,
+        household: household,
+        invited_by_membership: membership,
+        email: 'expired.invitee@example.com',
+        expires_at: 1.day.ago
+      )
+
+      expect do
+        post create_account_path,
+             params: {
+               invitation_token: invitation.token,
+               name: 'Expired Invitee',
+               date_of_birth: '1985-05-15',
+               email: 'expired.invitee@example.com',
+               password: 'SecureP@ssword123!',
+               'password-confirm': 'SecureP@ssword123!'
+             }
+      end.not_to change(Account, :count)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.body).to include('There was an error creating your account')
+    end
+
     it 'links accepted parent invitations to selected existing dependents' do
       dependent = people(:child_patient)
       household, membership = household_bundle(email: 'parent-owner@example.test', name: 'Parent Invitation')

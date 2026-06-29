@@ -4,7 +4,7 @@ module Admin
   # Controller for viewing audit trail logs
   # Provides read-only access to PaperTrail versions for administrators
   # @see docs/audit-trail.md
-  class AuditLogsController < ApplicationController
+  class AuditLogsController < BaseController
     AUDIT_LOGS_PER_PAGE = 50
 
     before_action :authorize_audit_access

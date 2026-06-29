@@ -160,12 +160,21 @@ RSpec.describe 'AdminManagesUsers' do
 
       fill_in 'Email address', with: 'updated_carer@example.com'
 
-      find_by_id('membership_role_trigger').click
-      all('label', text: 'Administrator', visible: :all).last.click
-
       click_on 'Update User'
 
       expect(page).to have_text('User was successfully updated')
+      expect(page).to have_text('updated_carer@example.com')
+
+      within "[data-user-id='#{carer.id}']" do
+        click_on 'Edit'
+      end
+
+      find_by_id('membership_role_trigger').click
+      all('label', text: 'Administrator', visible: :all).last.click
+
+      click_on 'Update Role'
+
+      expect(page).to have_text('Membership role updated')
       expect(page).to have_text('updated_carer@example.com')
       expect(page).to have_text('Administrator')
     end

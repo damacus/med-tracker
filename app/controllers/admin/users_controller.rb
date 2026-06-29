@@ -2,7 +2,7 @@
 
 module Admin
   # Handles admin access to user management functionality.
-  class UsersController < ApplicationController
+  class UsersController < BaseController
     def index
       authorize User
       users = Admin::UsersIndexQuery.new(
@@ -62,7 +62,7 @@ module Admin
       authorize @user
 
       respond_to do |format|
-        if update_user_with_dependents
+        if update_user_profile
           format.html { redirect_to admin_users_path, notice: t('users.updated') }
           format.turbo_stream { render_users_index_turbo(t('users.updated')) }
         else
@@ -174,11 +174,9 @@ module Admin
       end
     end
 
-    def update_user_with_dependents
+    def update_user_profile
       ActiveRecord::Base.transaction do
-        updated = @user.update(user_params)
-        assign_dependents(household_membership_for(@user)) if updated
-        updated
+        @user.update(user_update_params)
       end
     end
 
@@ -254,6 +252,17 @@ module Admin
           :dependent_relationship_type,
           {
             dependent_ids: [],
+            person_attributes: [:id, :name, :date_of_birth, { location_ids: [] }]
+          }
+        ]
+      )
+    end
+
+    def user_update_params
+      params.expect(
+        user: [
+          :email_address,
+          {
             person_attributes: [:id, :name, :date_of_birth, { location_ids: [] }]
           }
         ]

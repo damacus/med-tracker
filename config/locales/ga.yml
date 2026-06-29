@@ -406,8 +406,23 @@ ga:
       subtitle: Cumraigh socruithe an app.
       title: Socruithe
       updated: Socruithe nuashonraithe go rathúil.
+    membership_roles:
+      invalid_role: Roghnaigh ról teaghlaigh bailí.
+      owner_rejected: Teastaíonn tacaíocht riarthóra ardáin chun ardú go húinéir.
+      update_submit: Nuashonraigh Ról
+      updated: Nuashonraíodh ról ballraíochta.
+  platform:
+    settings:
+      title: Socruithe ardáin
+      subtitle: Cumraigh socruithe óstáilte ar fud an aip.
+    support_access_sessions:
+      created: Osclaíodh rochtain tacaíochta.
+      ended: Cuireadh deireadh le rochtain tacaíochta.
   authentication:
     login_required: Logáil isteach le leanúint
+    privileged_mfa_required:
+      setup: Socraigh MFA nó eochair rochtana sula leanann tú ar aghaidh.
+      verify: Dearbhaigh MFA nó eochair rochtana sula leanann tú ar aghaidh.
     session_expired: D'éag do sheisiún. Sínigh isteach arís.
     two_factor_required: Le haghaidh slándála fheabhsaithe, socraigh fíorú dhá fhachtar
       do chuntas.

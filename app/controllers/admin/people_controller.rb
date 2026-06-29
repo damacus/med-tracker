@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Admin
-  class PeopleController < ApplicationController
+  class PeopleController < BaseController
     def index
       authorize :admin_people, :index?
 

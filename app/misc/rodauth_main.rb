@@ -446,6 +446,7 @@ class RodauthMain < Rodauth::Rails::Auth
         @invitation = HouseholdInvitation.pending.find_by(token_digest: digest)
         throw_error_status(422, 'invitation_token', 'is invalid or expired') unless @invitation
         request.params[login_param] = @invitation.email
+        account[login_column] = @invitation.email
       end
 
       if @invitation.nil? && invite_only_registration_required?

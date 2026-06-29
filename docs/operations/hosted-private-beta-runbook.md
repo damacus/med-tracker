@@ -10,6 +10,7 @@ Before onboarding another household, verify:
 
 - The web process connects with `DATABASE_ROLE=med_tracker_app`.
 - Migration/setup processes connect with the owner-capable migration role.
+- Hosted admin MFA enforcement is enabled with `HOSTED_ADMIN_MFA_REQUIRED=true`.
 - `task rubocop`, `task test`, and `task brakeman` pass on the release branch.
 - The hosted hardening audit has no `NO-GO` rows.
 - Invite-only registration is pinned by environment or platform-admin policy.
@@ -29,10 +30,11 @@ Before onboarding another household, verify:
 
 1. Platform admin signs in with MFA/passkey.
 2. Platform admin opens a support access session for one household and records a reason.
-3. The app records actor account, target household, request id, IP, reason, start time, and expiry.
-4. Support mode is visually and technically distinct from household membership.
-5. Platform admin cannot browse health or medicine data outside an active support access session.
-6. Support access end and expiry are audited.
+3. The support session records actor account, target household, request id, IP, reason, MFA proof time, start time, and expiry.
+4. The audit event records support-session start/end without raw health data or the free-text reason.
+5. Support mode is visually and technically distinct from household membership.
+6. Platform admin cannot browse health or medicine data outside an active support access session.
+7. Explicit support access end is audited; expiry audit automation remains a hosted hardening gap.
 
 ## Export and purge
 

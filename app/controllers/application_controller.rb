@@ -31,7 +31,7 @@ class ApplicationController < ActionController::Base
   attr_reader :current_household, :current_membership
 
   def pundit_user
-    AuthorizationContext.current || current_user
+    AuthorizationContext.current || support_authorization_context || current_user
   end
 
   def verify_pundit_authorization
@@ -56,6 +56,11 @@ class ApplicationController < ActionController::Base
         TenantContext.set_membership!(@current_membership)
         PaperTrail.request.controller_info = info_for_paper_trail
         yield
+      elsif active_support_access_session
+        @current_support_access_session = active_support_access_session
+        Current.support_access_session = @current_support_access_session
+        PaperTrail.request.controller_info = info_for_paper_trail
+        yield
       else
         user_not_authorized
       end
@@ -68,6 +73,14 @@ class ApplicationController < ActionController::Base
     return unless current_account
 
     current_account.household_memberships.active.find_by(household: @current_household)
+  end
+
+  def active_support_access_session
+    return @active_support_access_session if defined?(@active_support_access_session)
+    return unless current_account&.platform_admin
+
+    @active_support_access_session =
+      current_account.platform_admin.support_access_sessions.active.find_by(household: @current_household)
   end
 
   def default_household_for_urls
@@ -87,6 +100,12 @@ class ApplicationController < ActionController::Base
       household_id: Current.household&.id,
       actor_membership_id: Current.membership&.id
     }
+  end
+
+  def support_authorization_context
+    return unless Current.account && Current.household && Current.support_access_session
+
+    AuthorizationContext.new(account: Current.account, household: Current.household, membership: nil)
   end
 
   def safe_redirect_path(path)

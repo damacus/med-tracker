@@ -623,8 +623,24 @@ cy:
       subtitle: Ffurfweddu gosodiadau'r ap.
       title: Gosodiadau
       updated: Gosodiadau wedi'u diweddaru'n llwyddiannus.
+    membership_roles:
+      invalid_role: Dewiswch rôl aelwyd ddilys.
+      owner_rejected: Mae hyrwyddo i berchennog yn gofyn am gymorth gweinyddwr
+        platfform.
+      update_submit: Diweddaru Rôl
+      updated: Rôl aelodaeth wedi'i diweddaru.
+  platform:
+    settings:
+      title: Gosodiadau platfform
+      subtitle: Ffurfweddu gosodiadau gwesteio ar draws yr ap.
+    support_access_sessions:
+      created: Mynediad cymorth wedi'i agor.
+      ended: Mynediad cymorth wedi dod i ben.
   authentication:
     login_required: Mewngofnodwch i barhau
+    privileged_mfa_required:
+      setup: Gosodwch MFA neu allwedd fynediad cyn parhau.
+      verify: Dilyswch MFA neu allwedd fynediad cyn parhau.
     session_expired: Daeth eich sesiwn i ben. Mewngofnodwch eto.
     two_factor_required: Er mwy o ddiogelwch, gosodwch ddilysu dau ffactor ar gyfer
       eich cyfrif.

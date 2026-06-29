@@ -288,6 +288,15 @@ RSpec.describe 'Admin create and update turbo flows' do
   end
 
   describe 'PATCH /admin/users/:id' do
+    it 'renders role changes through the dedicated membership role form on edit' do
+      get edit_admin_user_path(users(:jane))
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include(%(action="#{membership_role_admin_user_path(users(:jane))}"))
+      expect(response.body).to include('name="membership[role]"')
+      expect(response.body).not_to include('name="user[membership_role]"')
+    end
+
     it 'returns turbo_stream and replaces users index and flash on success' do
       patch admin_user_path(users(:jane)),
             params: {
@@ -315,7 +324,7 @@ RSpec.describe 'Admin create and update turbo flows' do
       expect(users(:jane).person.reload.name).to eq('Jane Turbo Update')
     end
 
-    it 'adds selected existing children to an existing parent' do
+    it 'does not add selected existing children through the generic user update' do
       parent = users(:parent)
       dependent = people(:child_patient)
 
@@ -336,14 +345,12 @@ RSpec.describe 'Admin create and update turbo flows' do
                   }
                 }
               }
-      end.to change(CarerRelationship, :count).by(1)
+      end.not_to change(CarerRelationship, :count)
 
-      relationship = CarerRelationship.find_by!(carer: parent.person, patient: dependent)
-      expect(relationship.relationship_type).to eq('parent')
-      expect(relationship.active).to be true
+      expect(CarerRelationship.exists?(carer: parent.person, patient: dependent)).to be(false)
     end
 
-    it 'reactivates revoked dependent access grants when updating selected dependents' do
+    it 'does not reactivate revoked dependent access grants through the generic user update' do
       parent = users(:parent)
       dependent = people(:child_patient)
       membership = household.household_memberships.find_by!(account: parent.person.account)
@@ -373,11 +380,7 @@ RSpec.describe 'Admin create and update turbo flows' do
               }
             }
 
-      expect(grant.reload).to have_attributes(
-        revoked_at: nil,
-        access_level: 'manage',
-        relationship_type: 'parent'
-      )
+      expect(grant.reload).to have_attributes(revoked_at: be_present, access_level: 'view', relationship_type: 'parent')
     end
   end
 

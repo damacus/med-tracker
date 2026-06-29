@@ -112,6 +112,11 @@ Rails.application.routes.draw do
   # Defines the root path route ("/")
   root 'household_redirects#show'
 
+  namespace :platform do
+    resource :settings, only: %i[show update]
+    resources :support_access_sessions, only: %i[create destroy]
+  end
+
   scope 'households/:household_slug' do
     get 'search', to: 'searches#show'
 
@@ -195,6 +200,7 @@ Rails.application.routes.draw do
       resources :users, only: %i[index new create edit update destroy] do
         member do
           post :activate
+          patch :membership_role, to: 'membership_roles#update'
           post :verify
         end
       end

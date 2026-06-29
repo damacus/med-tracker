@@ -84,6 +84,19 @@ RSpec.describe HouseholdInvitation do
     expect(invitation.versions.last.event).to eq('resend')
   end
 
+  it 'does not store raw invitation token material in audit versions' do
+    household, membership = household_bundle(email: 'redacted-inviter@example.test', name: 'Invitation Redaction')
+    invitation = build_invitation(household: household, membership: membership)
+    invitation.save!
+    raw_token = invitation.token
+
+    invitation.resend!
+
+    version_payload = invitation.versions.last.attributes.values.join(' ')
+    expect(version_payload).not_to include(raw_token)
+    expect(version_payload).not_to include(invitation.reload.token_digest)
+  end
+
   it 'prevents duplicate active invitations within one household' do
     household, membership = household_bundle(email: 'duplicate-inviter@example.test', name: 'Invitation Duplicate')
     build_invitation(household: household, membership: membership, email: 'duplicate@example.test').save!
