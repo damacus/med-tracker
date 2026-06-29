@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'openssl'
+
 # MedicationTake records when a dose of medication was administered
 class MedicationTake < ApplicationRecord
   include OtelInstrumented
@@ -130,8 +132,13 @@ class MedicationTake < ApplicationRecord
   def otel_span_attributes(operation)
     {
       'model.name' => self.class.name,
-      'model.operation' => operation
+      'model.operation' => operation,
+      'model.id_hash' => otel_model_id_hash
     }
+  end
+
+  def otel_model_id_hash
+    OpenSSL::HMAC.hexdigest('SHA256', Rails.application.secret_key_base, "#{self.class.name}:#{id}")
   end
 
   def remember_low_stock_threshold_crossing(inventory:, stock_row:)

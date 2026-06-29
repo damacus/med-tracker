@@ -35,6 +35,7 @@ RSpec.describe Otel::AllowlistedSpanExporter do
         'model.name' => 'MedicationTake',
         'model.operation' => 'create',
         'model.id' => '123',
+        'model.id_hash' => '169e81c4d785338b1599a3af36a71fd7c21bbfb3ab7c8df5b74d9f678d5355e8',
         'medication_take.dose_amount' => '10',
         'medication_take.taken_at' => '2026-06-22T10:00:00Z',
         'account.id' => '99',
@@ -52,6 +53,7 @@ RSpec.describe Otel::AllowlistedSpanExporter do
     expect(exported_span.attributes).to eq(
       'model.name' => 'MedicationTake',
       'model.operation' => 'create',
+      'model.id_hash' => '169e81c4d785338b1599a3af36a71fd7c21bbfb3ab7c8df5b74d9f678d5355e8',
       'db.system' => 'postgresql'
     )
     expect(span.attributes).to include('model.id' => '123')
