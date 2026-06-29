@@ -18,6 +18,29 @@ RSpec.describe 'Platform settings' do
     expect(response.body).to include('Platform Settings')
   end
 
+  it 'updates platform settings for an active platform admin' do
+    PlatformAdmin.create!(account: platform_user.person.account)
+    sign_in(platform_user)
+
+    patch platform_settings_path, params: { app_settings: { invite_only: '0' } }
+
+    expect(response).to redirect_to(platform_settings_path)
+    expect(AppSettings.instance.reload.invite_only).to be(false)
+  end
+
+  it 'renders validation errors when platform settings cannot be updated' do
+    PlatformAdmin.create!(account: platform_user.person.account)
+    settings = AppSettings.instance
+    allow(AppSettings).to receive(:instance).and_return(settings)
+    allow(settings).to receive(:update).and_return(false)
+    sign_in(platform_user)
+
+    patch platform_settings_path, params: { app_settings: { invite_only: '0' } }
+
+    expect(response).to have_http_status(:unprocessable_content)
+    expect(response.body).to include('Platform Settings')
+  end
+
   it 'denies a household owner without platform admin access' do
     sign_in(household_owner)
 

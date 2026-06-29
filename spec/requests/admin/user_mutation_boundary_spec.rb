@@ -91,6 +91,17 @@ RSpec.describe 'Admin user mutation boundary' do
     expect(membership.reload.role).to eq('member')
   end
 
+  it 'rejects unsupported membership roles through the dedicated household endpoint' do
+    member = users(:jane)
+    membership = household.household_memberships.find_by!(account: member.person.account)
+
+    patch membership_role_admin_user_path(member), params: { membership: { role: 'clinician' } }
+
+    expect(response).to redirect_to(admin_users_path)
+    expect(flash[:alert]).to include('Select a valid household role')
+    expect(membership.reload.role).to eq('member')
+  end
+
   def attach_fixture_users_to_household
     attach_admin_to_household
 
