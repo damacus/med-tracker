@@ -186,8 +186,10 @@ RSpec.describe 'Person Medications Authorization' do
 
       within("##{tenant_dom_id(person_medication)}") do
         # Trigger is an icon button
+        find("[data-testid='person-medication-actions-#{person_medication.id}']").click
         delete_button = find("[data-testid='delete-person-medication-#{person_medication.id}']")
         expect(delete_button).to have_css('svg')
+        expect(delete_button).to have_text('Delete medication')
         delete_button.click
       end
 
@@ -254,12 +256,19 @@ RSpec.describe 'Person Medications Authorization' do
       )
     end
 
-    it 'shows reorder controls to parents for linked children' do
+    it 'shows reorder controls to parents for linked children', :js do
       login_as(parent)
       visit person_path(linked_child)
 
-      expect(page).to have_css("[data-testid='move-up-person-medication-#{parent_first_medication.id}']")
-      expect(page).to have_css("[data-testid='move-down-person-medication-#{parent_second_medication.id}']")
+      within("##{tenant_dom_id(parent_first_medication)}") do
+        find("[data-testid='person-medication-actions-#{parent_first_medication.id}']").click
+        expect(page).to have_css("[data-testid='move-up-person-medication-#{parent_first_medication.id}']")
+      end
+
+      within("##{tenant_dom_id(parent_second_medication)}") do
+        find("[data-testid='person-medication-actions-#{parent_second_medication.id}']").click
+        expect(page).to have_css("[data-testid='move-down-person-medication-#{parent_second_medication.id}']")
+      end
     end
 
     it 'does not show reorder controls to carers for assigned patients' do
@@ -288,6 +297,7 @@ RSpec.describe 'Person Medications Authorization' do
       visit person_path(linked_child)
 
       within("##{tenant_dom_id(person_medication)}") do
+        find("[data-testid='person-medication-actions-#{person_medication.id}']").click
         find("[data-testid='edit-person-medication-#{person_medication.id}']").click
       end
 
@@ -305,6 +315,7 @@ RSpec.describe 'Person Medications Authorization' do
       visit person_path(linked_child)
 
       within("##{tenant_dom_id(person_medication)}") do
+        find("[data-testid='person-medication-actions-#{person_medication.id}']").click
         find("[data-testid='edit-person-medication-#{person_medication.id}']").click
       end
 

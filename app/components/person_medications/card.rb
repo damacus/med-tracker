@@ -140,49 +140,80 @@ module Components
       end
 
       def render_person_medication_actions
-        div(class: 'flex min-w-0 flex-wrap items-center gap-2 w-full',
+        div(class: 'flex min-w-0 items-center gap-2 w-full',
             data: { testid: 'person-medication-card-actions' }) do
-          render_reorder_controls if view_context.policy(person_medication).update?
           render_past_dose_button unless person_medication.paused?
-          if view_context.policy(person_medication).update?
-            render_active_state_button
-            render_edit_button
-          end
-          render_delete_dialog if view_context.policy(person_medication).destroy?
+          render_actions_menu if secondary_actions?
         end
       end
 
+      def secondary_actions?
+        view_context.policy(person_medication).update? || view_context.policy(person_medication).destroy?
+      end
+
       def render_past_dose_button
-        render Components::Medications::PriorDayTakeAction.new(
-          source: person_medication,
-          context: { person: person, current_user: current_user },
-          amount: person_medication.dose_amount,
-          testid: "log-past-dose-person-medication-#{person_medication.id}",
-          button: {
-            variant: :outlined,
-            size: :lg,
-            class: 'min-w-0 flex-[1_1_12rem] rounded-shape-full py-6 font-bold border-outline ' \
-                   'text-on-surface-variant ' \
-                   'hover:bg-tertiary-container transition-colors'
-          }
-        )
+        div(class: 'min-w-0 flex-1') do
+          render Components::Medications::PriorDayTakeAction.new(
+            source: person_medication,
+            context: { person: person, current_user: current_user },
+            amount: person_medication.dose_amount,
+            testid: "log-past-dose-person-medication-#{person_medication.id}",
+            button: {
+              variant: :outlined,
+              size: :lg,
+              class: 'w-full min-w-0 overflow-hidden rounded-shape-full px-3 py-6 font-bold ' \
+                     'border-outline text-on-surface-variant hover:bg-tertiary-container transition-colors'
+            }
+          )
+        end
+      end
+
+      def render_actions_menu
+        render RubyUI::DropdownMenu.new(options: { placement: 'bottom-end' }, class: 'shrink-0') do
+          render RubyUI::DropdownMenuTrigger.new do
+            m3_button(
+              variant: :outlined,
+              type: :button,
+              class: 'shrink-0 rounded-shape-full border-outline px-3 text-on-surface-variant ' \
+                     'hover:bg-tertiary-container hover:text-foreground transition-colors',
+              data: { testid: "person-medication-actions-#{person_medication.id}" },
+              aria_label: t('person_medications.card.actions')
+            ) do
+              render Icons::MoreHorizontal.new(size: 18, aria_hidden: 'true', class: 'mr-2 shrink-0')
+              plain t('person_medications.card.actions')
+            end
+          end
+          render RubyUI::DropdownMenuContent.new(
+            class: 'w-56 rounded-shape-xl border border-border/70 bg-popover p-1 shadow-elevation-3',
+            data: { testid: "person-medication-actions-menu-#{person_medication.id}" }
+          ) do
+            if view_context.policy(person_medication).update?
+              render_reorder_controls
+              render_active_state_button
+              render_edit_button
+            end
+            render_delete_dialog if view_context.policy(person_medication).destroy?
+          end
+        end
       end
 
       def render_active_state_button
         form_with(
           url: active_state_path,
           method: :patch,
-          class: 'inline'
+          class: 'contents'
         ) do
-          m3_button(
-            variant: :outlined,
+          button(
             type: :submit,
-            class: 'min-h-11 min-w-11 shrink-0 p-0 rounded-shape-full border-outline text-on-surface-variant ' \
-                   'hover:text-foreground hover:bg-tertiary-container transition-colors',
+            role: 'menuitem',
+            class: menu_item_class,
             data: { testid: active_state_testid },
-            aria_label: active_state_label
+            data_action: 'click->ruby-ui--dropdown-menu#close',
+            data_ruby_ui__dropdown_menu_target: 'menuItem',
+            tabindex: '-1'
           ) do
-            render active_state_icon.new(size: 20)
+            render active_state_icon.new(size: 16, aria_hidden: 'true', class: 'mr-2 shrink-0')
+            span { active_state_label }
           end
         end
       end
@@ -215,49 +246,43 @@ module Components
         a(
           href: edit_person_person_medication_path(person, person_medication),
           data: { turbo_frame: 'modal', testid: "edit-person-medication-#{person_medication.id}" },
-          class: 'inline-flex items-center justify-center min-h-11 min-w-11 shrink-0 rounded-shape-full ' \
-                 'text-on-surface-variant ' \
-                 'border border-outline hover:text-foreground hover:bg-tertiary-container transition-colors',
-          aria_label: t('person_medications.card.edit')
+          class: menu_item_class,
+          role: 'menuitem',
+          data_action: 'click->ruby-ui--dropdown-menu#close',
+          data_ruby_ui__dropdown_menu_target: 'menuItem',
+          tabindex: '-1'
         ) do
-          render Icons::Pencil.new(size: 20)
+          render Icons::Pencil.new(size: 16, aria_hidden: 'true', class: 'mr-2 shrink-0')
+          span { t('person_medications.card.edit') }
         end
       end
 
       def render_reorder_controls
-        div(class: 'flex flex-col gap-1') do
-          form_with(
-            url: reorder_person_person_medication_path(person, person_medication),
-            method: :patch,
-            class: 'inline'
-          ) do
-            input(type: :hidden, name: :direction, value: 'up')
-            m3_button(
-              variant: :text,
-              type: :submit,
-              class: 'w-8 h-6 p-0 rounded-md text-on-surface-variant hover:text-foreground',
-              data: { testid: "move-up-person-medication-#{person_medication.id}" },
-              aria_label: t('person_medications.card.move_up_aria_label')
-            ) do
-              render Icons::ArrowUp.new(size: 14)
-            end
-          end
+        render_reorder_menu_item(direction: 'up', icon: Icons::ArrowUp, label: t('person_medications.card.move_up'),
+                                 testid: "move-up-person-medication-#{person_medication.id}")
+        render_reorder_menu_item(direction: 'down', icon: Icons::ArrowDown,
+                                 label: t('person_medications.card.move_down'),
+                                 testid: "move-down-person-medication-#{person_medication.id}")
+      end
 
-          form_with(
-            url: reorder_person_person_medication_path(person, person_medication),
-            method: :patch,
-            class: 'inline'
+      def render_reorder_menu_item(direction:, icon:, label:, testid:)
+        form_with(
+          url: reorder_person_person_medication_path(person, person_medication),
+          method: :patch,
+          class: 'contents'
+        ) do
+          input(type: :hidden, name: :direction, value: direction)
+          button(
+            type: :submit,
+            role: 'menuitem',
+            class: menu_item_class,
+            data: { testid: testid },
+            data_action: 'click->ruby-ui--dropdown-menu#close',
+            data_ruby_ui__dropdown_menu_target: 'menuItem',
+            tabindex: '-1'
           ) do
-            input(type: :hidden, name: :direction, value: 'down')
-            m3_button(
-              variant: :text,
-              type: :submit,
-              class: 'w-8 h-6 p-0 rounded-md text-on-surface-variant hover:text-foreground',
-              data: { testid: "move-down-person-medication-#{person_medication.id}" },
-              aria_label: t('person_medications.card.move_down_aria_label')
-            ) do
-              render Icons::ArrowDown.new(size: 14)
-            end
+            render icon.new(size: 16, aria_hidden: 'true', class: 'mr-2 shrink-0')
+            span { label }
           end
         end
       end
@@ -265,14 +290,17 @@ module Components
       def render_delete_dialog
         AlertDialog do
           AlertDialogTrigger do
-            m3_button(
-              variant: :text,
-              class: 'min-h-11 min-w-11 shrink-0 p-0 rounded-shape-full text-on-surface-variant ' \
-                     'hover:text-destructive hover:bg-destructive/5',
+            button(
+              type: :button,
+              role: 'menuitem',
+              class: "#{menu_item_class} text-destructive hover:bg-destructive/5 hover:text-destructive",
               data: { testid: "delete-person-medication-#{person_medication.id}" },
-              aria_label: t('person_medications.card.delete_aria_label')
+              data_action: 'click->ruby-ui--dropdown-menu#close',
+              data_ruby_ui__dropdown_menu_target: 'menuItem',
+              tabindex: '-1'
             ) do
-              render Icons::Trash.new(size: 20)
+              render Icons::Trash.new(size: 16, aria_hidden: 'true', class: 'mr-2 shrink-0')
+              span { t('person_medications.card.delete_aria_label') }
             end
           end
           AlertDialogContent(class: 'rounded-[2rem] border-none shadow-2xl') do
@@ -301,6 +329,12 @@ module Components
             end
           end
         end
+      end
+
+      def menu_item_class
+        'relative flex w-full cursor-pointer select-none items-center rounded-shape-sm px-3 py-2 text-sm ' \
+          'text-on-surface-variant outline-none transition-colors hover:bg-tertiary-container ' \
+          'hover:text-on-tertiary-container focus:bg-tertiary-container focus:text-on-tertiary-container'
       end
     end
   end

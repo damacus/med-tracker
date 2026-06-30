@@ -49,6 +49,7 @@ RSpec.describe 'Person Medications', type: :system do
       visit person_path(person)
 
       within("##{tenant_dom_id(person_medication)}") do
+        find("[data-testid='person-medication-actions-#{person_medication.id}']").click
         find("[data-testid='edit-person-medication-#{person_medication.id}']").click
       end
 

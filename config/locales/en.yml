@@ -977,6 +977,9 @@ en:
       give: Give
       out_of_stock: Out of Stock
       invalid_dose: Invalid Dose Configured
+      actions: Actions
+      move_up: Move up
+      move_down: Move down
       move_up_aria_label: Move medication up in list
       move_down_aria_label: Move medication down in list
       delete_aria_label: Delete medication
@@ -1107,6 +1110,7 @@ en:
       delete_aria_label: Delete medication
       ready_now: Ready Now
       waiting: Waiting
+      actions: Actions
       edit: Edit
       delete: Delete
       pause: Pause schedule

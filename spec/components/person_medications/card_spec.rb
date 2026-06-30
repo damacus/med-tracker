@@ -40,14 +40,20 @@ RSpec.describe Components::PersonMedications::Card, type: :component do
     expect(button.text).to include('Log a past dose')
   end
 
-  it 'keeps the edit action from shrinking in the card footer' do
+  it 'keeps secondary actions in an actions menu', :aggregate_failures do
     rendered = render_person_medication_card(update: true)
 
+    trigger = rendered.at_css("button[data-testid='person-medication-actions-#{person_medication.id}']")
     link = rendered.at_css("a[data-testid='edit-person-medication-#{person_medication.id}']")
+    pause_button = rendered.at_css("button[data-testid='pause-person-medication-#{person_medication.id}']")
 
+    expect(trigger).not_to be_nil
+    expect(trigger.text).to include('Actions')
     expect(link).not_to be_nil
-    expect(link['class']).to include('shrink-0')
-    expect(link['class']).to include('min-w-11')
+    expect(link['role']).to eq('menuitem')
+    expect(link.text).to include('Edit')
+    expect(pause_button['role']).to eq('menuitem')
+    expect(pause_button.text).to include('Pause medication')
   end
 
   it 'renders pause action for manageable active assignments' do
@@ -56,17 +62,16 @@ RSpec.describe Components::PersonMedications::Card, type: :component do
     expect(rendered.at_css("button[data-testid='pause-person-medication-#{person_medication.id}']")).to be_present
   end
 
-  it 'wraps action controls instead of clipping pause and edit buttons' do
+  it 'keeps the card footer on one line without clipping secondary actions' do
     rendered = render_person_medication_card(update: true, destroy: true)
     actions = rendered.at_css('[data-testid="person-medication-card-actions"]')
     action_classes = actions['class'].split
-    pause_button = rendered.at_css("button[data-testid='pause-person-medication-#{person_medication.id}']")
-    icon_classes = pause_button['class'].split
+    menu = rendered.at_css("[data-testid='person-medication-actions-menu-#{person_medication.id}']")
 
-    expect(action_classes).to include('flex-wrap')
+    expect(action_classes).not_to include('flex-wrap')
     expect(action_classes).to include('min-w-0')
-    expect(icon_classes).to include('rounded-shape-full')
-    expect(icon_classes).to include('min-h-11')
+    expect(menu).not_to be_nil
+    expect(rendered.at_css("button[data-testid='delete-person-medication-#{person_medication.id}']")).to be_present
   end
 
   it 'renders paused state without dose actions' do
