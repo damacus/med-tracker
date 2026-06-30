@@ -58,11 +58,14 @@ RSpec.describe Components::Schedules::Card::ActionsComponent, type: :component d
 
   it 'renders action controls with shared M3 sizing and shape', :aggregate_failures do
     rendered = render_as_owner
+    action_row = rendered.at_css('[data-testid="schedule-card-actions"]')
     action_elements = rendered.css('a, button').select do |element|
       element['data-testid'].to_s.match?(/log-past-dose|edit-schedule|pause-schedule|delete-schedule/)
     end
     action_classes = action_elements.map { |element| element[:class].split }
 
+    expect(action_row['class'].split).to include('flex-wrap')
+    expect(action_row['class'].split).to include('min-w-0')
     expect(action_classes).not_to be_empty
     expect(action_classes).to all(include_touch_target_class)
     expect(action_classes).to all(include('rounded-shape-full'))

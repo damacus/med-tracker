@@ -47,13 +47,26 @@ RSpec.describe Components::PersonMedications::Card, type: :component do
 
     expect(link).not_to be_nil
     expect(link['class']).to include('shrink-0')
-    expect(link['class']).to include('min-w-12')
+    expect(link['class']).to include('min-w-11')
   end
 
   it 'renders pause action for manageable active assignments' do
     rendered = render_person_medication_card(update: true)
 
     expect(rendered.at_css("button[data-testid='pause-person-medication-#{person_medication.id}']")).to be_present
+  end
+
+  it 'wraps action controls instead of clipping pause and edit buttons' do
+    rendered = render_person_medication_card(update: true, destroy: true)
+    actions = rendered.at_css('[data-testid="person-medication-card-actions"]')
+    action_classes = actions['class'].split
+    pause_button = rendered.at_css("button[data-testid='pause-person-medication-#{person_medication.id}']")
+    icon_classes = pause_button['class'].split
+
+    expect(action_classes).to include('flex-wrap')
+    expect(action_classes).to include('min-w-0')
+    expect(icon_classes).to include('rounded-shape-full')
+    expect(icon_classes).to include('min-h-11')
   end
 
   it 'renders paused state without dose actions' do
