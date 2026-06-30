@@ -77,6 +77,23 @@ The preflight checks that both runtime roles exist, are `NOLOGIN`, are not
 superusers, do not have `BYPASSRLS`, and that the app login is a member of both
 roles. If it fails, fix the bootstrap state before running `db:prepare`.
 
+## Account access bootstrap
+
+The 0.5 household cutover replaces legacy `users.role` authorization with
+household memberships and person access grants. Upgrades from pre-0.5 databases
+must preserve three pieces of access state:
+
+- every account-linked person needs an active `household_membership`;
+- every active membership linked to a person needs a self `manage`
+  `person_access_grant`;
+- active `carer_relationships` need matching grants for the patient person.
+
+MedTracker includes an idempotent Rails migration to backfill that state. It
+promotes one active membership to `owner` only when a household has no active
+owner, preferring an active `platform_admin` account when one exists. Do not
+manually deactivate accounts to recover access; missing membership/grant rows
+are the usual failure mode.
+
 ## Kubernetes and CNPG
 
 For CloudNativePG, run the bootstrap against the primary PostgreSQL pod. Example:
@@ -151,6 +168,48 @@ ORDER BY table_name;
 
 Every `null_household_id` count should be `0`.
 
+Verify the account access bootstrap:
+
+```sql
+SET row_security = off;
+
+SELECT COUNT(*) AS account_people_without_membership
+FROM people
+LEFT JOIN household_memberships
+  ON household_memberships.household_id = people.household_id
+ AND household_memberships.account_id = people.account_id
+ AND household_memberships.status = 'active'
+WHERE people.household_id IS NOT NULL
+  AND people.account_id IS NOT NULL
+  AND household_memberships.id IS NULL;
+
+SELECT COUNT(*) AS active_memberships_without_self_grant
+FROM household_memberships
+LEFT JOIN person_access_grants
+  ON person_access_grants.household_membership_id = household_memberships.id
+ AND person_access_grants.person_id = household_memberships.person_id
+ AND person_access_grants.relationship_type = 'self'
+ AND person_access_grants.access_level = 'manage'
+ AND person_access_grants.revoked_at IS NULL
+WHERE household_memberships.status = 'active'
+  AND household_memberships.person_id IS NOT NULL
+  AND person_access_grants.id IS NULL;
+
+SELECT COUNT(*) AS ownerless_households
+FROM households
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM household_memberships
+  WHERE household_memberships.household_id = households.id
+    AND household_memberships.role = 'owner'
+    AND household_memberships.status = 'active'
+);
+```
+
+All three counts should be `0`. If any count is non-zero, deploy a release that
+contains the account access backfill migration and rerun migrations with
+`DATABASE_ROLE=med_tracker_owner`.
+
 ## If an earlier 0.5 attempt failed
 
 If a 0.5 migration already enabled forced row-level security and then failed,
@@ -160,3 +219,9 @@ backfills legacy rows, then restores forced RLS before it completes.
 
 This avoids the emergency-only workaround of granting `BYPASSRLS` to the
 migration role.
+
+If users can sign in but the app redirects to login, reports that their account
+is deactivated, or shows "You are not authorized to perform this action" for
+every account after a failed cutover, check the account access bootstrap queries
+above before changing account statuses. That symptom usually means the deployed
+app cannot see an active household membership for the signing-in account.

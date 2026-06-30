@@ -658,7 +658,8 @@ class RodauthMain < Rodauth::Rails::Auth
 
     # Redirect to dashboard after successful login
     login_redirect do
-      household = Account.find_by(id: account_id)&.first_active_household
+      account = Account.find_by(id: account_id)
+      household = TenantContext.with(account: account, household: nil) { account&.first_active_household } if account
       household ? "/households/#{household.slug}/dashboard" : '/'
     end
 
