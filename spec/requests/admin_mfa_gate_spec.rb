@@ -92,4 +92,21 @@ RSpec.describe 'Hosted admin MFA gate' do
 
     expect(response).to have_http_status(:ok)
   end
+
+  it 'keeps upstream OIDC MFA proof valid after the local privileged action timestamp expires' do
+    ENV['HOSTED_ADMIN_MFA_REQUIRED'] = 'true'
+    sign_in(admin)
+    allow(ApiAuthState).to receive(:web_session_oidc_mfa_verified?).and_return(true)
+    baseline = Time.current
+
+    travel_to baseline do
+      get admin_root_path
+    end
+
+    travel_to baseline + 16.minutes do
+      get admin_root_path
+    end
+
+    expect(response).to have_http_status(:ok)
+  end
 end

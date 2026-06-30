@@ -9,7 +9,11 @@ class LocationsController < ApplicationController
 
   def show
     authorize @location
-    render Components::Locations::ShowView.new(location: @location, notice: flash[:notice])
+    render Components::Locations::ShowView.new(
+      location: @location,
+      notice: flash[:notice],
+      available_people: available_people_for_location(@location)
+    )
   end
 
   def new
@@ -131,8 +135,18 @@ class LocationsController < ApplicationController
 
   def location_main_content_streams(location)
     [
-      turbo_stream.replace('main-content', Components::Locations::ShowView.new(location: location)),
+      turbo_stream.replace(
+        'main-content',
+        Components::Locations::ShowView.new(
+          location: location,
+          available_people: available_people_for_location(location)
+        )
+      ),
       turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
     ]
+  end
+
+  def available_people_for_location(location)
+    policy_scope(Person).where.not(id: location.member_ids).order(:name)
   end
 end
