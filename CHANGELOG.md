@@ -1,5 +1,37 @@
 # Changelog
 
+## [0.5.0](https://github.com/damacus/med-tracker/compare/v0.4.0...v0.5.0) (2026-06-30)
+
+
+### ⚠ BREAKING CHANGES
+
+* **tenancy:** Hosted multi-tenant boundaries ([#1394](https://github.com/damacus/med-tracker/issues/1394))
+
+### Features
+
+* implement notification preferences and private-by-default push content ([#1353](https://github.com/damacus/med-tracker/issues/1353)) ([abeb8c9](https://github.com/damacus/med-tracker/commit/abeb8c9e1d3f406f3d406ce845d6b0e6afdb810c))
+* **schedules:** Add medication pause support across schedules and reminders ([#1393](https://github.com/damacus/med-tracker/issues/1393)) ([1bf12b2](https://github.com/damacus/med-tracker/commit/1bf12b204267527589a7eb68bf00498070662778))
+* **tenancy:** Hosted multi-tenant boundaries ([#1394](https://github.com/damacus/med-tracker/issues/1394)) ([4488d82](https://github.com/damacus/med-tracker/commit/4488d82d542849edb941ecc4e6302a439ff18971))
+
+
+### Bug Fixes
+
+* **a11y:** improve icon-only button accessibility ([#1391](https://github.com/damacus/med-tracker/issues/1391)) ([20e66d0](https://github.com/damacus/med-tracker/commit/20e66d01fa32296f7ae841b778814458ef6cf5a3))
+* authorize direct medication onboarding plans ([#1385](https://github.com/damacus/med-tracker/issues/1385)) ([6890a2c](https://github.com/damacus/med-tracker/commit/6890a2c3a5176f2c262a6941b92e85257ad90560))
+* disable active storage direct uploads ([#1381](https://github.com/damacus/med-tracker/issues/1381)) ([63698b4](https://github.com/damacus/med-tracker/commit/63698b4a22e5ebff0baf6742c698ca3380513269))
+* preserve invite-only default for household owner deployments ([#1382](https://github.com/damacus/med-tracker/issues/1382)) ([44e18c0](https://github.com/damacus/med-tracker/commit/44e18c09476cc04f9cd7459c20e131650b6fc5e3))
+* redact sensitive telemetry attributes ([#1357](https://github.com/damacus/med-tracker/issues/1357)) ([bc3ed1b](https://github.com/damacus/med-tracker/commit/bc3ed1bdae219cacbefcfbe4027267bf05d3fff4))
+* remove seeded admin credentials from docs ([#1383](https://github.com/damacus/med-tracker/issues/1383)) ([f26c6dd](https://github.com/damacus/med-tracker/commit/f26c6ddb7b30a728d11b6829856e315625f93528))
+* secure mutation and API auth boundaries ([#1389](https://github.com/damacus/med-tracker/issues/1389)) ([19b5a53](https://github.com/damacus/med-tracker/commit/19b5a5326bce2ca6388426ab78b40dfd18cf78d3))
+* **tenancy:** harden scoped pickers and mfa freshness ([#1398](https://github.com/damacus/med-tracker/issues/1398)) ([8145c3a](https://github.com/damacus/med-tracker/commit/8145c3a95a8e7733160d46ec479e97957ee00f40))
+* **timeline:** scope refresh streams to authorized records ([#1358](https://github.com/damacus/med-tracker/issues/1358)) ([19ee149](https://github.com/damacus/med-tracker/commit/19ee149b6223504f6a79ceac6c00df80cb08e268))
+
+
+### Performance Improvements
+
+* ⚡ Bolt: Use .size instead of .count for collection rendering in PersonSelection component ([#1392](https://github.com/damacus/med-tracker/issues/1392)) ([231ee70](https://github.com/damacus/med-tracker/commit/231ee7038c29d4f109d4802290c83d307518edad))
+* bulk load admin user membership roles ([#1397](https://github.com/damacus/med-tracker/issues/1397)) ([c901d54](https://github.com/damacus/med-tracker/commit/c901d54c59298c93460c17d523e76d6971946bf4))
+
 ## [0.4.0](https://github.com/damacus/med-tracker/compare/v0.3.71...v0.4.0) (2026-06-23)
 
 
