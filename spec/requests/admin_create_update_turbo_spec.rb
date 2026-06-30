@@ -161,12 +161,24 @@ RSpec.describe 'Admin create and update turbo flows' do
 
   describe 'POST /admin/users' do
     it 'renders role-aware dependent assignment controls on the user form' do
+      foreign_household = Household.create!(name: 'Foreign User Form Household', slug: 'foreign-user-form-household')
+      foreign_dependent = Person.new(
+        name: 'Foreign Dependent Picker Leak',
+        date_of_birth: 12.years.ago.to_date,
+        person_type: :minor,
+        has_capacity: false,
+        household: foreign_household
+      )
+      foreign_dependent.save!(validate: false)
+
       get new_admin_user_path
 
       expect(response).to have_http_status(:ok)
       expect(response.body).to include('data-controller="dependent-assignment"')
       expect(response.body).to include('data-dependent-assignment-target="field"')
       expect(response.body).to include('name="user[dependent_ids][]"')
+      expect(response.body).not_to include("user_dependent_#{foreign_dependent.id}")
+      expect(response.body).not_to include('Foreign Dependent Picker Leak')
     end
 
     it 'returns turbo_stream and replaces users index and flash on success' do

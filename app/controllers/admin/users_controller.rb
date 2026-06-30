@@ -148,7 +148,7 @@ module Admin
 
     def load_dependents
       @load_dependents ||=
-        Person.where(person_type: %i[minor dependent_adult], has_capacity: false).order(:name).to_a
+        dependent_assignment_scope.where(person_type: %i[minor dependent_adult], has_capacity: false).order(:name).to_a
     end
 
     def account_already_exists?

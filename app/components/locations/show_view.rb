@@ -3,11 +3,12 @@
 module Components
   module Locations
     class ShowView < Components::Base
-      attr_reader :location, :notice
+      attr_reader :location, :notice, :available_people
 
-      def initialize(location:, notice: nil)
+      def initialize(location:, notice: nil, available_people: [])
         @location = location
         @notice = notice
+        @available_people = available_people
         super()
       end
 
@@ -230,8 +231,6 @@ module Components
       end
 
       def render_add_member_dialog
-        available_people = Person.where.not(id: location.member_ids).order(:name)
-
         Dialog do
           DialogTrigger do
             m3_button(
@@ -252,7 +251,7 @@ module Components
             end
 
             DialogMiddle do
-              if available_people.to_a.any?
+              if available_people.any?
                 form_with(url: location_location_memberships_path(location), method: :post, class: 'space-y-4') do
                   div(class: 'space-y-2') do
                     label(for: 'location_membership_person_id', class: 'text-sm font-medium') do

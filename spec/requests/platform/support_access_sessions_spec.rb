@@ -15,6 +15,18 @@ RSpec.describe 'Platform support access sessions' do
     sign_in(platform_user)
   end
 
+  around do |example|
+    previous_value = ENV.fetch('HOSTED_ADMIN_MFA_REQUIRED', nil)
+    ENV.delete('HOSTED_ADMIN_MFA_REQUIRED')
+    example.run
+  ensure
+    if previous_value.nil?
+      ENV.delete('HOSTED_ADMIN_MFA_REQUIRED')
+    else
+      ENV['HOSTED_ADMIN_MFA_REQUIRED'] = previous_value
+    end
+  end
+
   it 'requires privileged MFA proof before opening support access' do
     post platform_support_access_sessions_path,
          params: {
@@ -23,6 +35,21 @@ RSpec.describe 'Platform support access sessions' do
 
     expect(response).to redirect_to(profile_path)
     expect(flash[:alert]).to include('Set up MFA or a passkey')
+  end
+
+  it 'rejects stale privileged MFA proof before opening support access' do
+    travel_to 16.minutes.ago do
+      authenticate_with_totp
+    end
+
+    expect do
+      post platform_support_access_sessions_path,
+           params: {
+             support_access_session: { household_id: target_household.id, reason: 'Investigate invitation issue' }
+           }
+    end.not_to change(SupportAccessSession, :count)
+
+    expect(response).to redirect_to('/multifactor-auth')
   end
 
   it 'requires a reason before opening support access' do
@@ -80,6 +107,21 @@ RSpec.describe 'Platform support access sessions' do
     get admin_root_path(household_slug: target_household.slug)
 
     expect(response).to have_http_status(:ok)
+  end
+
+  it 'requires hosted privileged MFA before support-mode admin access' do
+    ENV['HOSTED_ADMIN_MFA_REQUIRED'] = 'true'
+    SupportAccessSession.create!(
+      platform_admin: platform_admin,
+      household: target_household,
+      reason: 'Investigate invitation delivery failure',
+      mfa_verified_at: Time.current
+    )
+
+    get admin_root_path(household_slug: target_household.slug)
+
+    expect(response).to redirect_to(profile_path(household_slug: target_household.slug))
+    expect(flash[:alert]).to include('Set up MFA or a passkey')
   end
 
   it 'ends support access and records an audit event' do

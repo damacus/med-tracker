@@ -58,10 +58,21 @@ class LocationMembershipsController < ApplicationController
   end
 
   def location_show_streams
+    location = @location.reload
+
     [
-      turbo_stream.replace(tenant_dom_target("location_show_#{@location.id}"),
-                           Components::Locations::ShowView.new(location: @location.reload)),
+      turbo_stream.replace(
+        tenant_dom_target("location_show_#{location.id}"),
+        Components::Locations::ShowView.new(
+          location: location,
+          available_people: available_people_for_location(location)
+        )
+      ),
       turbo_stream.update('flash', Components::Layouts::Flash.new(notice: flash[:notice], alert: flash[:alert]))
     ]
+  end
+
+  def available_people_for_location(location)
+    policy_scope(Person).where.not(id: location.member_ids).order(:name)
   end
 end
