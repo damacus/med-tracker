@@ -82,6 +82,14 @@ RSpec.describe Components::Admin::Users::UsersTable, type: :component do
       expect(rendered.text).to include('Administrator')
       expect(User.column_names).not_to include('role')
     end
+
+    it 'bulk loads household membership roles for both table layouts' do
+      users = User.where(id: [current_user.id, target_user.id]).includes(person: :account).to_a
+
+      expect(count_membership_role_queries do
+        render_inline(described_class.new(users: users, current_user: current_user, household: household))
+      end).to eq(1)
+    end
   end
 
   describe 'sortable headers' do
@@ -133,5 +141,18 @@ RSpec.describe Components::Admin::Users::UsersTable, type: :component do
 
       expect(rendered.css('tbody tr').length).to eq(0)
     end
+  end
+
+  def count_membership_role_queries(&)
+    count = 0
+    subscriber = lambda do |_name, _started, _finished, _unique_id, payload|
+      next if payload[:cached] || payload[:name] == 'SCHEMA'
+
+      sql = payload[:sql]
+      count += 1 if sql.include?('FROM "household_memberships"')
+    end
+
+    ActiveSupport::Notifications.subscribed(subscriber, 'sql.active_record', &)
+    count
   end
 end

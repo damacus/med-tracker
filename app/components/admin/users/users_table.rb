@@ -134,17 +134,36 @@ module Components
         def render_table_body
           render RubyUI::TableBody.new do
             users.each do |user|
-              render Components::Admin::Users::UserRow.new(user: user, current_user: current_user, household: household)
+              render Components::Admin::Users::UserRow.new(
+                user: user,
+                current_user: current_user,
+                household: household,
+                membership_role: membership_role_for(user)
+              )
             end
           end
         end
 
         def membership_role_for(user)
-          account = user.person&.account
-          return no_membership_label unless household && account
+          account_id = user.person&.account_id
+          return no_membership_label unless household && account_id
 
-          membership = household.household_memberships.active.find_by(account: account)
+          membership = memberships_by_account_id[account_id]
           membership&.role&.titleize || no_membership_label
+        end
+
+        def memberships_by_account_id
+          return @memberships_by_account_id if defined?(@memberships_by_account_id)
+
+          account_ids = users.filter_map { |user| user.person&.account_id }.uniq
+          @memberships_by_account_id = if household && account_ids.any?
+                                         household.household_memberships
+                                                  .active
+                                                  .where(account_id: account_ids)
+                                                  .index_by(&:account_id)
+                                       else
+                                         {}
+                                       end
         end
 
         def no_membership_label
