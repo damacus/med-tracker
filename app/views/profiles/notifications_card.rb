@@ -126,6 +126,7 @@ module Views
           class: 'space-y-4'
         ) do |_f|
           render_enabled_toggle
+          render_category_toggles
           render_time_slots
           div(class: 'flex justify-end pt-2') do
             button(
@@ -154,6 +155,35 @@ module Views
               class: 'h-4 w-4 rounded border-border bg-background text-primary focus:ring-primary'
             )
           end
+        end
+      end
+
+      def render_category_toggles
+        div(class: 'space-y-3 border-t border-border pt-2') do
+          render_section_header(t('notification_settings.categories.title'), t('profiles.notifications.categories_description'))
+          div(class: 'space-y-3') do
+            %i[dose_due_enabled missed_dose_enabled low_stock_enabled private_text_enabled].each do |category|
+              render_category_toggle(category)
+            end
+          end
+        end
+      end
+
+      def render_category_toggle(category)
+        div(class: 'flex items-center justify-between gap-4') do
+          div do
+            label(class: 'text-sm font-medium text-foreground', for: "notification_preference_#{category}") { t("notification_settings.categories.#{category}.title") }
+            p(class: 'mt-0.5 text-xs text-on-surface-variant') { t("notification_settings.categories.#{category}.description") }
+          end
+          input(type: 'hidden', name: "notification_preference[#{category}]", value: '0')
+          input(
+            type: 'checkbox',
+            name: "notification_preference[#{category}]",
+            id: "notification_preference_#{category}",
+            value: '1',
+            checked: preference.public_send(category),
+            class: 'h-4 w-4 rounded border-border bg-background text-primary focus:ring-primary'
+          )
         end
       end
 

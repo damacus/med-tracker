@@ -22,26 +22,39 @@ class MedicationReminderJob < ApplicationJob
   private
 
   def deliver_reminder(household, person_id, period, scheduled_time)
-    person = Person.find_by(id: person_id, household: household)
-    return unless person&.account
+    @person = Person.find_by(id: person_id, household: household)
+    return unless @person&.account
 
-    return if medication_names(person, scheduled_time).empty?
+    @household = household
+    @pref = @person.notification_preference
+    return unless @pref&.enabled && @pref.dose_due_enabled
 
+    @scheduled_time = scheduled_time
+    @period = period
+
+    med_names = MedicationReminderEligibilityQuery.new(person: @person, scheduled_time: scheduled_time).medication_names
+    return if med_names.empty?
+
+    send_push_notification(med_names)
+  end
+
+  def send_push_notification(med_names)
     PushNotificationService.send_to_account(
-      person.account,
-      title: 'Medication Reminder',
-      body: reminder_body(period, scheduled_time),
-      path: "/households/#{household.slug}/dashboard"
+      @person.account,
+      title: notification_title,
+      body: notification_body(med_names),
+      path: "/households/#{@household.slug}/dashboard"
     )
   end
 
-  def medication_names(person, scheduled_time)
-    MedicationReminderEligibilityQuery.new(person: person, scheduled_time: scheduled_time).medication_names
+  def notification_title
+    @pref.private_text_enabled ? 'Medication reminder' : 'Medication Reminder'
   end
 
-  def reminder_body(period, scheduled_time)
-    period_label = scheduled_time.presence || PERIOD_LABELS[period.to_sym] || period.to_s.humanize
+  def notification_body(med_names)
+    return 'A dose is due.' if @pref.private_text_enabled
 
-    "#{period_label} medication reminder. Open MedTracker for details."
+    period_label = @scheduled_time.presence || PERIOD_LABELS[@period.to_sym] || @period.to_s.humanize
+    "#{period_label} medications: #{med_names.join(', ')}"
   end
 end

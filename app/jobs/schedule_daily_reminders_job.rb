@@ -16,7 +16,7 @@ class ScheduleDailyRemindersJob < ApplicationJob
   private
 
   def schedule_household_reminders(household)
-    NotificationPreference.where(household: household, enabled: true)
+    NotificationPreference.where(household: household, enabled: true, dose_due_enabled: true)
                           .includes(person: [:account, { schedules: %i[medication medication_takes] }])
                           .find_each do |pref|
       next unless pref.person&.account

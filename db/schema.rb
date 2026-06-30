@@ -456,12 +456,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_29_120000) do
   create_table "notification_preferences", force: :cascade do |t|
     t.time "afternoon_time", default: "2000-01-01 14:00:00"
     t.datetime "created_at", null: false
+    t.boolean "dose_due_enabled", default: true, null: false
     t.boolean "enabled", default: true, null: false
     t.time "evening_time", default: "2000-01-01 18:00:00"
     t.bigint "household_id", null: false
+    t.boolean "low_stock_enabled", default: true, null: false
+    t.boolean "missed_dose_enabled", default: true, null: false
     t.time "morning_time", default: "2000-01-01 08:00:00"
     t.time "night_time", default: "2000-01-01 22:00:00"
     t.bigint "person_id", null: false
+    t.boolean "private_text_enabled", default: false, null: false
     t.datetime "updated_at", null: false
     t.index ["household_id"], name: "index_notification_preferences_on_household_id"
     t.index ["id", "household_id"], name: "index_notification_preferences_on_id_and_household_id", unique: true
