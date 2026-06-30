@@ -87,6 +87,17 @@ RSpec.describe 'tenant safety architecture' do
     expect(offenders).to be_empty
   end
 
+  it 'keeps tenant people lookups out of view components' do
+    offenders = Rails.root.glob('app/components/**/*.rb').filter_map do |path|
+      matches = File.readlines(path).each_with_index.filter_map do |line, index|
+        "#{path.relative_path_from(Rails.root)}:#{index + 1}" if line.match?(/\bPerson\.(?:all|find|find_by|where)\b/)
+      end
+      matches.presence
+    end.flatten
+
+    expect(offenders).to be_empty
+  end
+
   it 'keeps default Active Storage routes disabled for tenant-owned attachments' do
     expect(Rails.application.config.active_storage.draw_routes).to be(false)
     expect(route_paths).not_to include('/rails/active_storage/direct_uploads(.:format)')

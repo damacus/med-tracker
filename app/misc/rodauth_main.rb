@@ -360,6 +360,9 @@ class RodauthMain < Rodauth::Rails::Auth
     # because they don't have any 2FA method yet
     two_factor_auth_required_redirect { two_factor_auth_path }
     two_factor_auth_return_to_requested_location? true
+    after_two_factor_authentication do
+      set_session_value(:privileged_action_mfa_verified_at, Time.current.to_i)
+    end
     before_otp_setup_route do
       # Allow OTP setup if user has no 2FA methods configured yet
       # Only require 2FA auth if they already have a method set up

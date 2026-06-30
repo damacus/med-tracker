@@ -3,6 +3,8 @@
 module HostedPrivilegedActionMfa
   extend ActiveSupport::Concern
 
+  PRIVILEGED_ACTION_MFA_TTL = 15.minutes
+
   private
 
   def require_hosted_privileged_action_mfa
@@ -31,9 +33,21 @@ module HostedPrivilegedActionMfa
 
   def privileged_action_mfa_satisfied?
     return true if ApiAuthState.web_session_oidc_mfa_verified?(session)
+    return false if privileged_action_mfa_stale?
     return false unless ApiAuthState.mfa_configured?(current_account)
+    return false unless privileged_action_mfa_verified_at
 
     ApiAuthState.web_session_mfa_method_present?(session)
+  end
+
+  def privileged_action_mfa_stale?
+    verified_at = privileged_action_mfa_verified_at
+    return false unless verified_at
+    return false if verified_at >= PRIVILEGED_ACTION_MFA_TTL.ago
+
+    session.delete(:privileged_action_mfa_verified_at)
+    session.delete('privileged_action_mfa_verified_at')
+    true
   end
 
   def redirect_to_privileged_action_mfa
@@ -49,7 +63,7 @@ module HostedPrivilegedActionMfa
   end
 
   def record_privileged_action_mfa_verified_at
-    session[:privileged_action_mfa_verified_at] ||= Time.current.to_i
+    session[:privileged_action_mfa_verified_at] = Time.current.to_i
   end
 
   def privileged_action_mfa_setup_path
