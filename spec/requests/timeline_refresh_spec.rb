@@ -80,6 +80,7 @@ RSpec.describe 'Timeline refresh after taking medication' do
       PersonMedication.create!(
         person: person,
         medication: medication,
+        administration_kind: :routine,
         max_daily_doses: 4,
         min_hours_between_doses: 1
       )
@@ -106,6 +107,23 @@ RSpec.describe 'Timeline refresh after taking medication' do
            headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
 
       expect(response.body).to include('Taken')
+    end
+
+    it 'refreshes an as-needed item into cooldown after a take' do
+      travel_to Time.zone.local(2026, 6, 30, 16, 45) do
+        person_medication.update!(
+          administration_kind: :as_needed,
+          min_hours_between_doses: 4
+        )
+
+        post take_medication_person_person_medication_path(person, person_medication),
+             headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
+      end
+
+      expected_id = "timeline_person_medication_#{person_medication.id}"
+      expect(response.body).to include(expected_id)
+      expect(response.body).to include('Available at 20:45')
+      expect(response.body).not_to include("take-dose-personmedication_#{person_medication.id}")
     end
   end
 end

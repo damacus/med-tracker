@@ -58,7 +58,7 @@ RSpec.describe Components::Dashboard::TimelineItem, type: :component do
       end
     end
 
-    it 'renders the cooldown badge with countdown text' do
+    it 'renders the cooldown badge with availability time' do
       cooldown_dose = {
         person: person,
         source: source_with_cooldown,
@@ -69,8 +69,7 @@ RSpec.describe Components::Dashboard::TimelineItem, type: :component do
 
       rendered = render_inline(described_class.new(dose: cooldown_dose))
 
-      expect(rendered.to_html).to include('Wait')
-      expect(rendered.to_html).to include('3h 30m')
+      expect(rendered.to_html).to include('Available at')
     end
 
     it 'does not render an action button for cooldown doses' do

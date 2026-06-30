@@ -17,6 +17,11 @@ module TimelineRefreshable
   end
 
   def update_timeline_item_stream(source, take)
+    if as_needed_source?(source)
+      cooldown_stream = replace_timeline_item(source)
+      return cooldown_stream if cooldown_stream
+    end
+
     turbo_stream.replace(
       timeline_dom_id(source),
       Components::Dashboard::TimelineItem.new(dose: {
@@ -82,6 +87,15 @@ module TimelineRefreshable
                                                 status: status
                                               }, current_user: current_user)
     )
+  end
+
+  def as_needed_source?(source)
+    return source.as_needed? if source.respond_to?(:as_needed?)
+    return false unless source.is_a?(Schedule)
+
+    source.schedule_type_prn? ||
+      source.schedule_config.to_h['as_needed'] == true ||
+      source.frequency.to_s.casecmp('as needed').zero?
   end
 
   def timeline_dom_id(source)
