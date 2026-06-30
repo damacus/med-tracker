@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.3](https://github.com/damacus/med-tracker/compare/v0.5.2...v0.5.3) (2026-06-30)
+
+
+### Bug Fixes
+
+* **dashboard:** block as-needed cooldown refresh ([#1406](https://github.com/damacus/med-tracker/issues/1406)) ([898cbb4](https://github.com/damacus/med-tracker/commit/898cbb4b3bdafc80d64f97405afad4a059603e54))
+
 ## [0.5.2](https://github.com/damacus/med-tracker/compare/v0.5.1...v0.5.2) (2026-06-30)
 
 
