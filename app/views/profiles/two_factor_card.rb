@@ -103,7 +103,7 @@ module Views
               'Regenerate',
               '/recovery-codes',
               method: :post,
-              class: 'inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background border border-outline hover:bg-tertiary-container hover:text-on-tertiary-container h-9 px-3',
+              class: 'inline-flex min-h-11 items-center justify-center rounded-shape-full border border-outline px-3 py-2 text-sm font-medium ring-offset-background transition-colors hover:bg-tertiary-container hover:text-on-tertiary-container focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
               data: { turbo_confirm: 'This will invalidate your existing recovery codes. Continue?' }
             )
           end

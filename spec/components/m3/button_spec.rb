@@ -5,10 +5,13 @@ require 'rails_helper'
 RSpec.describe Components::M3::Button, type: :component do
   it 'renders a filled button by default' do
     rendered = render_inline(described_class.new { 'Click me' })
+    classes = rendered.at_css('button')[:class].split
+
     expect(rendered.to_html).to include('bg-primary')
     expect(rendered.to_html).to include('text-on-primary')
     expect(rendered.to_html).to include('state-layer')
-    expect(rendered.to_html).to include('rounded-shape-full')
+    expect(classes).to include('rounded-shape-full')
+    expect(classes).to include('min-h-[44px]')
   end
 
   it 'renders a tonal button' do

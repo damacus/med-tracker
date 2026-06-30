@@ -88,7 +88,7 @@ module Views
               t('profiles.api_tokens.revoke'),
               profile_api_token_path(app_token),
               method: :delete,
-              class: 'rounded-shape-md border border-outline px-3 py-1.5 text-sm font-medium text-foreground'
+              class: 'inline-flex min-h-11 items-center justify-center rounded-shape-full border border-outline px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-tertiary-container hover:text-on-tertiary-container'
             )
           end
         end

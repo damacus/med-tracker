@@ -70,7 +70,7 @@ module Components
                 href: new_person_path,
                 variant: :outlined,
                 size: :lg,
-                class: 'rounded-xl font-bold bg-surface-container-low transition-all'
+                class: 'font-bold bg-surface-container-low transition-all'
               ) do
                 t('dashboard.quick_actions.add_person')
               end
@@ -79,7 +79,7 @@ module Components
               href: add_medication_path,
               variant: :filled,
               size: :lg,
-              class: 'rounded-xl font-bold px-8 shadow-lg shadow-primary/20 transition-all',
+              class: 'font-bold shadow-elevation-2 transition-all',
               data: { turbo_frame: 'modal' }
             ) do
               render Icons::PlusCircle.new(size: 20, class: 'mr-2')
@@ -550,7 +550,7 @@ module Components
                 href: medications_path,
                 variant: :tonal,
                 size: :lg,
-                class: 'w-full py-6 rounded-xl font-black uppercase tracking-widest transition-all'
+                class: 'w-full font-black uppercase tracking-widest transition-all'
               ) do
                 t('dashboard.inventory.order_refills')
               end
@@ -573,10 +573,11 @@ module Components
             end
           end
           div(class: 'h-3 w-full bg-surface-container rounded-full overflow-hidden shadow-inner') do
-            div(
-              class: "h-full #{medication.low_stock? ? 'bg-error' : 'bg-primary'} " \
-                     'rounded-full transition-all duration-1000',
-              style: "width: #{percentage}%"
+            progress(
+              class: "supply-progress #{medication.low_stock? ? 'text-error' : 'text-primary'}",
+              value: percentage,
+              max: 100,
+              aria: { label: t('dashboard.inventory.left', count: current) }
             )
           end
         end

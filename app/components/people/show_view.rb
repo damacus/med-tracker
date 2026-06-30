@@ -63,12 +63,12 @@ module Components
           div(class: 'flex gap-3') do
             if view_context.policy(person).update?
               m3_link(href: person_path(person, editing: true), variant: :outlined, size: :lg,
-                      class: 'rounded-xl font-bold bg-surface-container-low transition-all') do
+                      class: 'font-bold bg-surface-container-low transition-all') do
                 t('people.show.edit_person')
               end
             end
             m3_link(href: people_path, variant: :text, size: :lg,
-                    class: 'rounded-xl font-bold text-on-surface-variant hover:text-foreground') do
+                    class: 'font-bold text-on-surface-variant hover:text-foreground') do
               t('people.show.back')
             end
           end
@@ -131,7 +131,7 @@ module Components
                   href: new_person_medication_assignment_path(person),
                   variant: :tonal,
                   size: :lg,
-                  class: 'w-full py-6 rounded-xl font-bold shadow-elevation-1 transition-all',
+                  class: 'w-full font-bold shadow-elevation-1 transition-all',
                   data: { turbo_frame: 'modal' }
                 ) { t('people.show.add_medication') }
               end
@@ -140,7 +140,7 @@ module Components
                   href: new_person_carer_relationship_path(person),
                   variant: :tonal,
                   size: :lg,
-                  class: 'w-full py-6 rounded-xl font-bold shadow-elevation-1 transition-all'
+                  class: 'w-full font-bold shadow-elevation-1 transition-all'
                 ) { t('people.show.manage_parents') }
               end
             end
@@ -204,7 +204,6 @@ module Components
                 href: new_person_medication_assignment_path(person),
                 variant: :filled,
                 size: :lg,
-                class: 'rounded-xl px-8',
                 data: { turbo_frame: 'modal' }
               ) { t('people.show.add_first_any_medication') }
             end

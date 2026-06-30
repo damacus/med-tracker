@@ -27,9 +27,9 @@ module Components
 
       def render_brand
         div(class: 'mb-12 flex w-full px-4 justify-center md:justify-start') do
-          link_to root_path, class: 'group flex items-center gap-3 no-underline outline-none' do
+          link_to root_path, class: 'group flex min-h-11 items-center gap-3 no-underline outline-none' do
             div(
-              class: 'w-10 h-10 rounded-shape-lg bg-primary flex items-center justify-center ' \
+              class: 'w-11 h-11 rounded-shape-lg bg-primary flex items-center justify-center ' \
                      'text-on-primary font-bold ' \
                      'text-xl shadow-elevation-2 group-hover:scale-110 transition-transform'
             ) do

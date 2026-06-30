@@ -50,15 +50,36 @@ RSpec.describe Components::Schedules::Card::ActionsComponent, type: :component d
   end
 
   it 'renders the edit and delete links' do
+    rendered = render_as_owner
+
+    expect(rendered.css("[data-testid='edit-schedule-#{schedule.id}']")).to be_present
+    expect(rendered.css("[data-testid='delete-schedule-#{schedule.id}']")).to be_present
+  end
+
+  it 'renders action controls with shared M3 sizing and shape', :aggregate_failures do
+    rendered = render_as_owner
+    action_elements = rendered.css('a, button').select do |element|
+      element['data-testid'].to_s.match?(/log-past-dose|edit-schedule|pause-schedule|delete-schedule/)
+    end
+    action_classes = action_elements.map { |element| element[:class].split }
+
+    expect(action_classes).not_to be_empty
+    expect(action_classes).to all(include_touch_target_class)
+    expect(action_classes).to all(include('rounded-shape-full'))
+    expect(action_classes.flatten).not_to include('rounded-xl')
+    expect(action_classes.flatten).not_to include('w-12')
+    expect(action_classes.flatten).not_to include('h-12')
+  end
+
+  def include_touch_target_class
+    satisfy { |classes| classes.include?('min-h-11') || classes.include?('min-h-[44px]') }
+  end
+
+  def render_as_owner
     Current.account = account
     Current.household = household
     Current.membership = membership
 
-    rendered = render_inline(
-      described_class.new(schedule: schedule, person: person, presenter: presenter, current_user: nil)
-    )
-
-    expect(rendered.css("[data-testid='edit-schedule-#{schedule.id}']")).to be_present
-    expect(rendered.css("[data-testid='delete-schedule-#{schedule.id}']")).to be_present
+    render_inline(described_class.new(schedule: schedule, person: person, presenter: presenter, current_user: nil))
   end
 end

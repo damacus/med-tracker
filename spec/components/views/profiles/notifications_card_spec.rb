@@ -26,4 +26,19 @@ RSpec.describe Views::Profiles::NotificationsCard, type: :component do
         .to be_present
     end
   end
+
+  it 'uses shared action styles for notification buttons' do
+    rendered = render_inline(described_class.new(person: person))
+    action_classes = rendered.css('button').map { |button| button[:class].to_s.split }
+
+    expect(action_classes).to all(include_touch_target_class)
+    expect(action_classes).to all(include('rounded-shape-full'))
+    expect(action_classes.flatten).not_to include('text-white')
+    expect(action_classes.flatten).not_to include('rounded-lg')
+    expect(action_classes.flatten).not_to include('rounded-xl')
+  end
+
+  def include_touch_target_class
+    satisfy { |classes| classes.include?('min-h-11') || classes.include?('min-h-[44px]') }
+  end
 end

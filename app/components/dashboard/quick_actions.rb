@@ -18,7 +18,7 @@ module Components
                 href: url,
                 variant: :tonal,
                 size: :lg,
-                class: 'w-full py-6 rounded-xl font-bold transition-all shadow-sm'
+                class: 'w-full font-bold transition-all shadow-sm'
               ) do
                 render icon.new(size: 20, class: 'mr-2') if icon
                 plain label

@@ -183,6 +183,19 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       expect(rendered.text).to include('Add Medication')
     end
 
+    it 'renders header actions with shared M3 sizing and shape' do
+      regular_user = users(:damacus)
+      presenter = dashboard_presenter(regular_user, people_scope: Person.all)
+      rendered = render_inline(described_class.new(presenter: presenter))
+      action_links = rendered.css('a').select { |link| link.text.match?(/Add Person|Add Medication/) }
+      action_classes = action_links.map { |link| link[:class].split }
+
+      expect(action_classes).not_to be_empty
+      expect(action_classes).to all(include_touch_target_class)
+      expect(action_classes).to all(include('rounded-shape-full'))
+      expect(action_classes.flatten).not_to include('rounded-xl')
+    end
+
     it 'hides Add Person for admin users' do
       rendered = render_inline(dashboard_view)
       expect(rendered.text).not_to include('Add Person')
@@ -325,9 +338,9 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       expect(routine_task.text).not_to include('0/1 doses today')
       expect(metadata['class']).to include('mt-1.5 flex flex-col items-start gap-1.5')
       expect(meter['aria-label']).to eq('No doses given today. 1 dose slot today.')
-      expect_dense_meter(meter, width: 32)
+      expect_dense_meter(meter)
       segment = meter.at_css('[data-testid="dashboard-dose-segment"]')
-      expect_dose_segment(segment, background: 'var(--outline-variant)')
+      expect_dose_segment(segment, background: 'bg-outline-variant')
       expect(meter.css('[data-testid="dashboard-dose-segment"]').count).to eq(1)
     end
 
@@ -341,11 +354,11 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       expect(as_needed_task.text).not_to include('1/4 doses today')
       expect(metadata['class']).to include('mt-1.5 flex flex-col items-start gap-1.5')
       expect(meter['aria-label']).to eq('1 dose given today. 4 dose slots today.')
-      expect_dense_meter(meter, width: 84)
+      expect_dense_meter(meter)
       segments = meter.css('[data-testid="dashboard-dose-segment"]')
       expect(segments.count).to eq(4)
-      expect_dose_segment(segments.first, background: 'var(--primary)')
-      expect_dose_segment(segments.last, background: 'var(--outline-variant)')
+      expect_dose_segment(segments.first, background: 'bg-primary')
+      expect_dose_segment(segments.last, background: 'bg-outline-variant')
     end
 
     it 'localizes dose meter aria labels', :aggregate_failures do
@@ -493,29 +506,27 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
     )
   end
 
-  def expect_dense_meter(meter, width:)
+  def expect_dense_meter(meter)
     expect_meter_classes(meter)
-    expect_meter_style(meter, width:)
+    expect(meter['style']).to be_blank
   end
 
   def expect_meter_classes(meter)
-    expect(meter['class']).to include('grid')
+    expect(meter['class']).to include('dose-meter')
     expect(meter['class']).not_to include('border')
     expect(meter['class']).not_to include('shadow')
   end
 
-  def expect_meter_style(meter, width:)
-    expect(meter['style']).to include("width: #{width}px")
-    expect(meter['style']).to include('max-width: 100%')
-    expect(meter['style']).to include('gap: 4px')
-    expect(meter['style']).to include('align-self: flex-start')
+  def expect_dose_segment(segment, background:)
+    classes = segment['class'].split
+
+    expect(segment['style']).to be_blank
+    expect(classes).to include('dose-meter-segment', background)
+    expect(classes).not_to include('h-1', 'bg-outline-variant/70')
   end
 
-  def expect_dose_segment(segment, background:)
-    expect(segment['style']).to include('height: 6px')
-    expect(segment['style']).to include("background-color: #{background}")
-    expect(segment['class']).not_to include('h-1')
-    expect(segment['class']).not_to include('bg-outline-variant/70')
+  def include_touch_target_class
+    satisfy { |classes| classes.include?('min-h-11') || classes.include?('min-h-[44px]') }
   end
 
   def dashboard_presenter(user, people_scope:, selected_person_id: nil)

@@ -11,24 +11,19 @@ module Components
         return unless authenticated?
 
         aside(
-          class: 'app-mobile-rail fixed left-0 top-16 bottom-0 z-40 flex w-16 flex-col items-center border-r ' \
-                 'border-outline-variant/50 bg-surface-container-low py-4 md:hidden',
+          class: 'app-mobile-rail fixed inset-x-0 bottom-0 z-40 flex h-20 items-center border-t ' \
+                 'border-outline-variant/50 bg-surface-container-low px-2 ' \
+                 'pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 md:hidden',
           aria: { label: t('layouts.mobile_rail.primary_navigation') },
           data: { testid: 'mobile-rail', responsive_shell_role: 'mobile-rail' }
         ) do
           nav(
-            class: 'flex w-full flex-1 flex-col items-center gap-2 px-2',
+            class: 'flex w-full items-center justify-between gap-0',
             aria: { label: t('layouts.mobile_rail.primary_navigation') }
           ) do
             primary_navigation_items.each do |item|
               render_nav_item(item)
             end
-          end
-
-          div(
-            class: 'mt-auto flex w-full items-center justify-center px-2 ' \
-                   'pb-[max(1rem,env(safe-area-inset-bottom))] pt-4'
-          ) do
             render_nav_item(profile_navigation_item)
           end
         end
@@ -41,14 +36,14 @@ module Components
 
         link_to(
           item[:path],
-          class: 'flex min-h-[44px] min-w-[44px] items-center justify-center rounded-2xl p-1 no-underline',
+          class: 'flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl no-underline',
           aria: {
             label: item[:label],
             current: is_active ? 'page' : nil
           }
         ) do
           div(
-            class: 'flex h-12 w-12 items-center justify-center rounded-2xl transition-all state-layer ' \
+            class: 'flex h-11 w-11 items-center justify-center rounded-2xl transition-all state-layer ' \
                    "#{if is_active
                         'bg-secondary-container text-on-secondary-container shadow-sm'
                       else

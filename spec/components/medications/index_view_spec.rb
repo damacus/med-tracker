@@ -40,11 +40,11 @@ RSpec.describe Components::Medications::IndexView, type: :component do
     add_schedule_link = rendered.css('a').find { |link| link.text.include?('Add Schedule') }
     add_medication_link = rendered.css('a').find { |link| link.text.include?('Add Medication') }
 
-    expect(add_schedule_link[:class]).to include('rounded-full')
-    expect(add_schedule_link[:class]).to include('hover:bg-tertiary-container')
+    expect(add_schedule_link[:class]).to include('rounded-shape-full')
+    expect(add_schedule_link[:class]).to include('hover:bg-surface-container-low')
     expect(add_schedule_link[:class]).to include('bg-card')
     expect(add_medication_link[:class]).to include('bg-primary')
-    expect(add_medication_link[:class]).to include('text-primary-foreground')
+    expect(add_medication_link[:class]).to include('text-on-primary')
   end
 
   it 'renders scan stock for users who can restock but cannot update medication details' do
@@ -96,5 +96,26 @@ RSpec.describe Components::Medications::IndexView, type: :component do
 
     expect(action_classes).to all(include('max-w-full'))
     expect(action_classes.flat_map(&:split)).not_to include('w-full')
+  end
+
+  it 'renders header actions with shared touch-target sizing and shape' do
+    rendered = render_view(medications: [])
+    actions = rendered.at_css('.medications-index-actions')
+
+    action_elements = [
+      actions.css('button').find { |button| button.text.include?('Scan stock') },
+      actions.css('a').find { |link| link.text.include?('Add Schedule') },
+      actions.css('a').find { |link| link.text.include?('Add Medication') }
+    ]
+    action_classes = action_elements.map { |element| element[:class].to_s.split }
+
+    expect(action_classes).to all(include_touch_target_class)
+    expect(action_classes).to all(include('rounded-shape-full'))
+    expect(action_classes.flatten).not_to include('rounded-shape-xl')
+    expect(action_classes.flatten).not_to include('h-10')
+  end
+
+  def include_touch_target_class
+    satisfy { |classes| classes.include?('min-h-11') || classes.include?('min-h-[44px]') }
   end
 end

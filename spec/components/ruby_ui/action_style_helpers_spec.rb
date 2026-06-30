@@ -41,7 +41,7 @@ RSpec.describe RubyUI::ActionStyleHelpers do
       let(:size) { :md }
 
       it 'returns the shared text button spacing' do
-        expect(helper.size_classes).to eq('px-4 py-2 h-9 min-h-[36px] text-sm')
+        expect(helper.size_classes).to eq('px-4 py-2 min-h-[44px] text-sm')
       end
     end
 
@@ -50,7 +50,7 @@ RSpec.describe RubyUI::ActionStyleHelpers do
       let(:size) { :lg }
 
       it 'returns the shared icon sizing' do
-        expect(helper.size_classes).to eq('h-10 w-10 min-h-[40px] min-w-[40px]')
+        expect(helper.size_classes).to eq('h-11 w-11 min-h-11 min-w-11')
       end
     end
   end

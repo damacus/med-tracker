@@ -87,8 +87,7 @@ module Views
         button(
           type: 'button',
           aria_pressed: 'false',
-          class: 'inline-flex min-h-14 items-center justify-center gap-2 rounded-shape-lg border border-transparent bg-popover px-4 py-3 text-sm font-semibold text-on-surface-variant shadow-elevation-1 transition-all duration-300 hover:-translate-y-0.5 hover:border-border/80 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[active=true]:border-primary/30 data-[active=true]:bg-popover data-[active=true]:text-foreground data-[active=true]:shadow-elevation-2',
-          style: "animation-delay: #{index * 70}ms",
+          class: "inline-flex min-h-14 items-center justify-center gap-2 rounded-shape-lg border border-transparent bg-popover px-4 py-3 text-sm font-semibold text-on-surface-variant shadow-elevation-1 transition-all duration-300 hover:-translate-y-0.5 hover:border-border/80 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[active=true]:border-primary/30 data-[active=true]:bg-popover data-[active=true]:text-foreground data-[active=true]:shadow-elevation-2 #{appearance_delay_class(index)}",
           data: {
             action: 'click->appearance#switchAppearance',
             appearance: appearance[:id]
@@ -97,6 +96,10 @@ module Views
           render_appearance_icon(appearance[:icon])
           span { t("profiles.appearance.modes.#{appearance[:id]}") }
         end
+      end
+
+      def appearance_delay_class(index)
+        %w[delay-0 delay-75 delay-150].fetch(index, 'delay-150')
       end
 
       def render_theme_option(theme)

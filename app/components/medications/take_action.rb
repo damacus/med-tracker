@@ -100,7 +100,7 @@ module Components
                 render M3::Button.new(
                   type: :submit,
                   variant: :filled,
-                  class: 'w-full rounded-xl sm:w-auto',
+                  class: 'w-full sm:w-auto',
                   data: { optimistic_take_target: 'button' }
                 ) do
                   render_button_content(button_label, button_icon)

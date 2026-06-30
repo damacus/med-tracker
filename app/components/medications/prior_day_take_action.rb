@@ -48,7 +48,7 @@ module Components
                 render M3::Button.new(
                   type: :submit,
                   variant: :filled,
-                  class: 'w-full rounded-xl sm:w-auto'
+                  class: 'w-full sm:w-auto'
                 ) do
                   plain t('medications.prior_day_take_action.submit',
                           default: 'Record historical dose')

@@ -79,20 +79,20 @@ module Views
 
       def render_push_action_buttons
         div(class: 'flex gap-2 flex-shrink-0') do
-          button(
+          m3_button(
             type: 'button',
-            class: 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-white ' \
-                   'font-medium text-sm hover:bg-primary/90 transition-colors',
+            variant: :filled,
+            size: :sm,
             data: {
               push_notification_target: 'subscribeButton',
               action: 'push-notification#subscribe'
             },
             hidden: true
           ) { t('profiles.notifications.enable') }
-          button(
+          m3_button(
             type: 'button',
-            class: 'inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 ' \
-                   'text-sm font-medium text-on-surface-variant transition-colors hover:bg-tertiary-container',
+            variant: :outlined,
+            size: :sm,
             data: {
               push_notification_target: 'unsubscribeButton',
               action: 'push-notification#unsubscribe'
@@ -103,10 +103,11 @@ module Views
       end
 
       def render_test_button
-        button(
+        m3_button(
           type: 'button',
-          class: 'w-full inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-background px-4 py-2.5 ' \
-                 'text-sm font-bold text-foreground transition-all hover:bg-tertiary-container hover:shadow-sm active:scale-[0.98]',
+          variant: :outlined,
+          size: :sm,
+          class: 'w-full gap-2 font-bold',
           data: {
             push_notification_target: 'testButton',
             action: 'push-notification#sendTest'
@@ -129,10 +130,11 @@ module Views
           render_category_toggles
           render_time_slots
           div(class: 'flex justify-end pt-2') do
-            button(
+            m3_button(
               type: 'submit',
-              class: 'inline-flex items-center px-4 py-2 rounded-xl bg-primary text-white font-bold ' \
-                     'text-sm hover:bg-primary/90 transition-colors'
+              variant: :filled,
+              size: :sm,
+              class: 'font-bold'
             ) { t('profiles.notifications.save') }
           end
         end

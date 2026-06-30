@@ -112,7 +112,7 @@ module Components
             variant: :tonal,
             size: :md,
             icon: Icons::HandPackage,
-            class: 'inline-flex rounded-xl font-bold shadow-sm',
+            class: 'inline-flex font-bold shadow-sm',
             testid: "take-medication-#{schedule.id}",
             form_class: 'inline-block'
           },

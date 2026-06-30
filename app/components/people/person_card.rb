@@ -118,7 +118,7 @@ module Components
                 href: person_path(person),
                 variant: :outlined,
                 size: :lg,
-                class: 'flex-1 rounded-xl font-bold bg-surface-container-low'
+                class: 'flex-1 font-bold bg-surface-container-low'
               ) { t('people.card.view_medications') }
             end
 
@@ -132,7 +132,7 @@ module Components
           href: new_person_medication_assignment_path(person),
           variant: :filled,
           size: :lg,
-          class: 'w-full rounded-xl font-black py-6 shadow-lg shadow-primary/20'
+          class: 'w-full font-black shadow-elevation-2'
         ) { t('people.card.add_medication') }
       end
 
@@ -152,7 +152,7 @@ module Components
           href: new_admin_carer_relationship_path(patient_id: person.id),
           variant: :outlined,
           size: :lg,
-          class: 'flex-1 rounded-xl font-bold text-on-warning-container border-warning/50 bg-warning-container/10',
+          class: 'flex-1 font-bold text-on-warning-container border-warning/50 bg-warning-container/10',
           data: { turbo_frame: 'modal' }
         ) { t('people.card.assign_carer') }
       end
