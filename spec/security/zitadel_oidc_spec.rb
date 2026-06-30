@@ -23,7 +23,7 @@ RSpec.describe 'Zitadel OIDC Enhancements' do # rubocop:disable RSpec/DescribeCl
     end
 
     it 'skips Zitadel redirect when no OIDC ID token is present (password login)' do
-      expect(rodauth_source).to match(/next unless @oidc_id_token_for_logout/)
+      expect(rodauth_source).to include('next unless @oidc_id_token_for_logout')
     end
 
     it 'uses CGI.escape for safe URL encoding of token and redirect URI' do
