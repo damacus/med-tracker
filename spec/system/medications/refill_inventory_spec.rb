@@ -15,13 +15,13 @@ RSpec.describe 'Refill medication inventory' do
 
   it 'shows refill actions on inventory pages' do
     visit medications_path
-    expect(page).to have_text('Restock')
+    expect(page).to have_css("button[aria-label='Restock']")
 
     visit location_path(medication.location)
-    expect(page).to have_text('Restock')
+    expect(page).to have_button('Restock')
 
     visit medication_path(medication)
-    expect(page).to have_text('Restock')
+    expect(page).to have_button('Restock')
   end
 
   it 'opens medication details from inventory card view action at the top level' do
