@@ -48,7 +48,7 @@ module Components
             class: 'w-12 h-12 p-0 rounded-xl border-outline text-on-surface-variant ' \
                    'hover:text-primary hover:border-primary/50 transition-all',
             data: { turbo_frame: 'modal', testid: "edit-schedule-#{schedule.id}" },
-            'aria-label': t('schedules.card.edit', default: 'Edit schedule')
+            aria_label: t('schedules.card.edit', default: 'Edit schedule')
           ) do
             render Icons::Pencil.new(size: 20, aria_hidden: 'true')
           end
@@ -68,7 +68,7 @@ module Components
                         class: 'w-12 h-12 p-0 rounded-xl text-on-surface-variant ' \
                                'hover:text-error hover:bg-error/5 transition-all',
                         data: { testid: "delete-schedule-#{schedule.id}" },
-                        'aria-label': t('schedules.card.delete', default: 'Delete schedule')) do
+                        aria_label: t('schedules.card.delete', default: 'Delete schedule')) do
                 render Icons::Trash.new(size: 20, aria_hidden: 'true')
               end
             end
