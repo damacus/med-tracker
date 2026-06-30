@@ -14,10 +14,11 @@ RSpec.describe 'Schedule Card', type: :system do
     login_as(admin_user)
   end
 
-  it 'opens the edit modal from the schedule card' do
+  it 'opens the edit modal from the schedule card', :js do
     visit person_path(person)
 
     within("##{tenant_dom_id(schedule)}") do
+      find("[data-testid='schedule-actions-#{schedule.id}']").click
       find("[data-testid='edit-schedule-#{schedule.id}']").click
     end
 
@@ -25,10 +26,11 @@ RSpec.describe 'Schedule Card', type: :system do
     expect(page).to have_css('div[data-state="open"]')
   end
 
-  it 'updates the persisted dose when changing the selected dose in the edit modal' do
+  it 'updates the persisted dose when changing the selected dose in the edit modal', :js do
     visit person_path(person)
 
     within("##{tenant_dom_id(schedule)}") do
+      find("[data-testid='schedule-actions-#{schedule.id}']").click
       find("[data-testid='edit-schedule-#{schedule.id}']").click
     end
 

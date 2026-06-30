@@ -49,33 +49,32 @@ RSpec.describe Components::Schedules::Card::ActionsComponent, type: :component d
     expect(rendered.css("[data-testid='log-past-dose-schedule-#{schedule.id}']")).to be_present
   end
 
-  it 'renders the edit and delete links' do
+  it 'renders secondary actions in an actions menu', :aggregate_failures do
     rendered = render_as_owner
 
+    trigger = rendered.at_css("button[data-testid='schedule-actions-#{schedule.id}']")
+    edit_link = rendered.at_css("[data-testid='edit-schedule-#{schedule.id}']")
+    pause_button = rendered.at_css("[data-testid='pause-schedule-#{schedule.id}']")
+
+    expect(trigger).to be_present
+    expect(trigger.text).to include('Actions')
     expect(rendered.css("[data-testid='edit-schedule-#{schedule.id}']")).to be_present
     expect(rendered.css("[data-testid='delete-schedule-#{schedule.id}']")).to be_present
+    expect(edit_link['role']).to eq('menuitem')
+    expect(edit_link.text).to include('Edit')
+    expect(pause_button['role']).to eq('menuitem')
+    expect(pause_button.text).to include('Pause schedule')
   end
 
-  it 'renders action controls with shared M3 sizing and shape', :aggregate_failures do
+  it 'keeps action controls on one line with a labelled actions trigger', :aggregate_failures do
     rendered = render_as_owner
     action_row = rendered.at_css('[data-testid="schedule-card-actions"]')
-    action_elements = rendered.css('a, button').select do |element|
-      element['data-testid'].to_s.match?(/log-past-dose|edit-schedule|pause-schedule|delete-schedule/)
-    end
-    action_classes = action_elements.map { |element| element[:class].split }
+    trigger = rendered.at_css("button[data-testid='schedule-actions-#{schedule.id}']")
 
-    expect(action_row['class'].split).to include('flex-wrap')
+    expect(action_row['class'].split).not_to include('flex-wrap')
     expect(action_row['class'].split).to include('min-w-0')
-    expect(action_classes).not_to be_empty
-    expect(action_classes).to all(include_touch_target_class)
-    expect(action_classes).to all(include('rounded-shape-full'))
-    expect(action_classes.flatten).not_to include('rounded-xl')
-    expect(action_classes.flatten).not_to include('w-12')
-    expect(action_classes.flatten).not_to include('h-12')
-  end
-
-  def include_touch_target_class
-    satisfy { |classes| classes.include?('min-h-11') || classes.include?('min-h-[44px]') }
+    expect(trigger['class'].split).to include('rounded-shape-full')
+    expect(trigger['class'].split).to include('shrink-0')
   end
 
   def render_as_owner
