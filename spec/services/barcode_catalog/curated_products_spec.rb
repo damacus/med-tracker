@@ -67,7 +67,7 @@ RSpec.describe BarcodeCatalog::CuratedProducts do
     it 'finds Calpol Six Plus by dm+d code' do
       result = described_class.find(code: '316811000001106')
       expect(result).not_to be_nil
-      expect(result.display_name).to match(/Calpol Six Plus/)
+      expect(result.display_name).to include('Calpol Six Plus')
     end
   end
 
