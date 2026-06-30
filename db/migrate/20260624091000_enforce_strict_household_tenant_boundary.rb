@@ -20,11 +20,16 @@ class EnforceStrictHouseholdTenantBoundary < ActiveRecord::Migration[8.1]
   ].freeze
 
   def up
-    backfill_derived_household_ids
-    assert_no_null_household_ids!
-    enforce_household_id_not_null
-    replace_household_rls_policies
-    disable_global_versions_rls
+    relax_forced_rls_for_backfill
+    begin
+      backfill_derived_household_ids
+      assert_no_null_household_ids!
+      enforce_household_id_not_null
+      replace_household_rls_policies
+      disable_global_versions_rls
+    ensure
+      restore_forced_rls_after_backfill
+    end
   end
 
   def down
@@ -34,6 +39,18 @@ class EnforceStrictHouseholdTenantBoundary < ActiveRecord::Migration[8.1]
   end
 
   private
+
+  def relax_forced_rls_for_backfill
+    TENANT_TABLES.each do |table_name|
+      execute "ALTER TABLE #{quote_table_name(table_name)} NO FORCE ROW LEVEL SECURITY;" if household_table?(table_name)
+    end
+  end
+
+  def restore_forced_rls_after_backfill
+    TENANT_TABLES.each do |table_name|
+      execute "ALTER TABLE #{quote_table_name(table_name)} FORCE ROW LEVEL SECURITY;" if household_table?(table_name)
+    end
+  end
 
   def backfill_derived_household_ids
     backfill_root_household_ids

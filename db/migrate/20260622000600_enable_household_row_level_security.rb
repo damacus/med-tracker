@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 class EnableHouseholdRowLevelSecurity < ActiveRecord::Migration[8.1]
+  ROLE_NAMES = %w[med_tracker_owner med_tracker_app].freeze
+  UPGRADE_RUNBOOK_URL = 'https://damacus.github.io/med-tracker/pre-0-5-database-upgrade/'
+
   TENANT_TABLES = %w[
     people
     locations
@@ -38,6 +41,8 @@ class EnableHouseholdRowLevelSecurity < ActiveRecord::Migration[8.1]
   private
 
   def create_runtime_roles
+    ensure_runtime_roles_bootstrapped!
+
     execute <<~SQL
       DO $$
       BEGIN
@@ -46,10 +51,35 @@ class EnableHouseholdRowLevelSecurity < ActiveRecord::Migration[8.1]
         END IF;
 
         IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'med_tracker_app') THEN
-          CREATE ROLE med_tracker_app NOLOGIN NOSUPERUSER NOBYPASSRLS;
+          CREATE ROLE med_tracker_app NOLOGIN;
         END IF;
       END
       $$;
+    SQL
+  end
+
+  def ensure_runtime_roles_bootstrapped!
+    missing_roles = ROLE_NAMES.reject { |role_name| runtime_role_exists?(role_name) }
+    return if missing_roles.empty? || can_create_roles?
+
+    raise ActiveRecord::IrreversibleMigration,
+          "Database runtime roles are missing: #{missing_roles.join(', ')}. " \
+          "Run the pre-0.5 database upgrade bootstrap first: #{UPGRADE_RUNBOOK_URL}"
+  end
+
+  def runtime_role_exists?(role_name)
+    select_value(<<~SQL.squish).to_i.positive?
+      SELECT COUNT(*)
+      FROM pg_roles
+      WHERE rolname = #{quote(role_name)}
+    SQL
+  end
+
+  def can_create_roles?
+    select_value(<<~SQL.squish)
+      SELECT COALESCE(rolsuper OR rolcreaterole, false)
+      FROM pg_roles
+      WHERE rolname = current_user
     SQL
   end
 

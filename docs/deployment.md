@@ -61,6 +61,11 @@ docker compose -f docker-compose.yml run --rm web rails db:migrate
 - All environments use PostgreSQL.
 - PostgreSQL version target is `18`.
 - Use Rails credentials and environment variables for secrets; never commit them.
+- Existing databases created before 0.5 need the
+  [pre-0.5 database upgrade](pre-0-5-database-upgrade.md) bootstrap before
+  running 0.5 migrations.
+- Run migrations with `DATABASE_ROLE=med_tracker_owner`; run the web process
+  with `DATABASE_ROLE=med_tracker_app`.
 
 ## External API credentials
 
