@@ -65,20 +65,21 @@ module Components
             ) do
               render Components::Medications::InventoryScanModal.new if can_refill_medication?
               if can_create_medication?
-                Link(
+                m3_link(
                   href: add_medication_path,
                   variant: :outlined,
                   size: :lg,
-                  class: 'max-w-full justify-center rounded-full font-bold text-sm bg-card shadow-sm border-border'
+                  class: 'max-w-full justify-center rounded-shape-full font-bold text-sm bg-card shadow-sm ' \
+                         'border-border'
                 ) do
                   render Icons::PlusCircle.new(size: 20, class: 'mr-2 text-primary')
                   span { 'Add Schedule' }
                 end
-                Link(
+                m3_link(
                   href: new_medication_path,
                   variant: :filled,
                   size: :lg,
-                  class: 'max-w-full justify-center rounded-full font-bold text-sm shadow-elevation-2',
+                  class: 'max-w-full justify-center rounded-shape-full font-bold text-sm shadow-elevation-2',
                   **wizard_link_data
                 ) do
                   render Icons::Medication.new(size: 20, class: 'mr-2')

@@ -34,8 +34,8 @@ module Components
               a(
                 href: medications_path,
                 data: { turbo_frame: '_top' },
-                class: 'absolute top-4 right-4 z-10 flex h-10 w-10 items-center justify-center ' \
-                       'rounded-full border border-outline-variant/30 ' \
+                class: 'absolute top-4 right-4 z-10 flex h-11 w-11 min-h-11 min-w-11 items-center justify-center ' \
+                       'rounded-shape-full border border-outline-variant/30 ' \
                        'bg-surface-container-highest/90 text-on-surface-variant ' \
                        'shadow-elevation-1 transition-all hover:bg-secondary-container ' \
                        'hover:text-on-secondary-container',

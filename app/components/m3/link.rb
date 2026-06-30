@@ -50,7 +50,7 @@ module Components
         [
           BASE_CLASSES,
           size_classes,
-          'border border-outline bg-transparent text-primary no-underline'
+          'border border-outline bg-transparent text-primary hover:bg-surface-container-low no-underline'
         ]
       end
 

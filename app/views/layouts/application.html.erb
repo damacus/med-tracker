@@ -35,18 +35,19 @@
     <%= javascript_include_tag "appearance_boot", "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "hamburgers", "data-turbo-track": "reload" %>
-    <% if current_user %>
+    <% app_shell = current_user.present? && request.path != "/login" %>
+    <% if app_shell %>
       <%= javascript_importmap_tags %>
     <% else %>
       <%= javascript_include_tag "auth", "data-turbo-track": "reload" %>
     <% end %>
   </head>
 
-    <body class="bg-background text-foreground transition-colors duration-300"<% if current_user %> data-controller="global-search responsive-shell"<% end %>>
-    <% hide_signed_out_chrome = !current_user && request.path == "/login" %>
+    <body class="bg-background text-foreground transition-colors duration-300"<% if app_shell %> data-controller="global-search responsive-shell"<% end %>>
+    <% hide_signed_out_chrome = request.path == "/login" %>
     <% main_classes = ["transition-all duration-500"] %>
-    <% main_classes << "ml-16 pb-28 md:ml-64 md:pb-0" if current_user %>
-    <%= render Components::Layouts::Sidebar.new(current_user: current_user) %>
+    <% main_classes << "pb-28 md:ml-64 md:pb-0" if app_shell %>
+    <%= render Components::Layouts::Sidebar.new(current_user: current_user) if app_shell %>
     <%= render Components::Layouts::Navigation.new(current_user: current_user) unless hide_signed_out_chrome %>
 
     <% if content_for?(:flash) %>
@@ -62,7 +63,7 @@
         <%= yield %>
       </div>
     </main>
-    <%= render Components::GlobalSearch::Palette.new if current_user %>
+    <%= render Components::GlobalSearch::Palette.new if app_shell %>
     <turbo-frame id="modal"></turbo-frame>
   </body>
 </html>

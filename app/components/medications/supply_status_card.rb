@@ -28,8 +28,12 @@ module Components
 
             div(class: 'space-y-2') do
               div(class: 'h-2 w-full bg-secondary-container rounded-full overflow-hidden shadow-inner') do
-                div(class: "h-full #{presenter.supply_bar_class} rounded-full",
-                    style: "width: #{presenter.supply_level.percentage}%")
+                progress(
+                  class: "supply-progress #{supply_progress_text_class}",
+                  value: presenter.supply_level.percentage,
+                  max: 100,
+                  aria: { label: t('medications.show.supply_level') }
+                )
               end
               div(
                 class: 'flex justify-between items-center text-[10px] font-black uppercase ' \
@@ -60,6 +64,10 @@ module Components
 
       def presenter
         @presenter ||= ::Medications::SupplyStatusPresenter.new(medication: medication)
+      end
+
+      def supply_progress_text_class
+        presenter.supply_level.low_stock? ? 'text-error' : 'text-primary'
       end
 
       def render_forecast_section

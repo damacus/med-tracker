@@ -94,7 +94,7 @@ module Views
         div(class: 'space-y-8') do
           div(class: 'flex items-center justify-between px-2') do
             m3_heading(level: 2, size: '5', class: 'font-bold') { t('reports.index.timeline_title') }
-            m3_button(variant: :outlined, size: :sm, class: 'rounded-full') { t('reports.index.download_pdf') }
+            m3_button(variant: :outlined, size: :sm) { t('reports.index.download_pdf') }
           end
 
           m3_card(class: 'border border-border/70 bg-card p-8 shadow-elevation-2 sm:p-10') do
@@ -116,8 +116,8 @@ module Views
 
             # Active Bar
             div(
-              class: "relative w-full rounded-t-xl transition-all duration-700 group-hover:scale-x-105 #{day[:percentage] < 90 ? 'bg-primary/40' : 'bg-primary'}",
-              style: "height: #{day[:percentage]}%"
+              class: "relative w-full rounded-t-xl transition-all duration-700 group-hover:scale-x-105 #{bar_height_class(day[:percentage])} #{day[:percentage] < 90 ? 'bg-primary/40' : 'bg-primary'}",
+              data: { testid: 'report-compliance-bar' }
             ) do
               # Tooltip-like value on hover
               div(class: 'absolute -top-10 left-1/2 -translate-x-1/2 rounded bg-foreground px-2 py-1 text-[10px] font-bold whitespace-nowrap text-background opacity-0 transition-opacity group-hover:opacity-100') do
@@ -130,6 +130,8 @@ module Views
           m3_text(size: '1', weight: 'bold', class: 'text-on-surface-variant uppercase tracking-tighter font-black') { day[:day_name] }
         end
       end
+
+      def bar_height_class(percentage) = "report-compliance-bar-height-#{percentage.to_i.round(-1).clamp(0, 100)}"
 
       def render_insights_grid
         section(id: 'insights', class: 'space-y-6 scroll-mt-24') do

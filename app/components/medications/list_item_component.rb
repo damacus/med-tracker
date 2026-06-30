@@ -69,8 +69,12 @@ module Components
             span { presenter.inventory_units_label }
           end
           div(class: 'h-1.5 w-full bg-card rounded-full overflow-hidden') do
-            div(class: "h-full #{presenter.list_supply_bar_class} rounded-full transition-all duration-1000",
-                style: "width: #{presenter.supply_level.percentage}%")
+            progress(
+              class: "supply-progress #{presenter.list_inventory_text_class}",
+              value: presenter.supply_level.percentage,
+              max: 100,
+              aria: { label: t('medications.index.inventory_level') }
+            )
           end
         end
       end
@@ -89,7 +93,7 @@ module Components
             href: medication_path(medication),
             variant: :outlined,
             size: :sm,
-            class: 'flex-1 rounded-xl py-5 border-border bg-card ' \
+            class: 'flex-1 rounded-shape-full border-border bg-card ' \
                    'hover:bg-card text-on-surface-variant',
             data: { turbo_frame: '_top' }
           ) do
@@ -100,7 +104,7 @@ module Components
               href: edit_medication_path(medication, return_to: medications_path(inventory_query_params)),
               variant: :outlined,
               size: :sm,
-              class: 'rounded-xl w-10 h-10 p-0 border-border bg-card ' \
+              class: 'rounded-shape-full w-11 h-11 p-0 border-border bg-card ' \
                      'hover:bg-card text-on-surface-variant',
               data: { turbo_frame: '_top' },
               aria_label: t('medications.index.edit', default: 'Edit medication')
@@ -110,9 +114,9 @@ module Components
           end
           if can_refill
             refill_classes = if medication.reorder_received?
-                               'flex items-center justify-center rounded-xl w-10 h-10 p-0'
+                               'flex items-center justify-center rounded-shape-full w-11 h-11 p-0'
                              else
-                               'flex items-center justify-center rounded-xl w-10 h-10 p-0 ' \
+                               'flex items-center justify-center rounded-shape-full w-11 h-11 p-0 ' \
                                  'border-border bg-card ' \
                                  'hover:bg-card text-on-surface-variant'
                              end
@@ -132,7 +136,7 @@ module Components
         AlertDialog do
           AlertDialogTrigger do
             m3_button(variant: :text, size: :sm,
-                      class: 'rounded-xl w-10 h-10 p-0 text-on-surface-variant ' \
+                      class: 'rounded-shape-full w-11 h-11 p-0 text-on-surface-variant ' \
                              'hover:text-destructive hover:bg-destructive/5',
                       aria_label: t('medications.index.delete', default: 'Delete medication')) do
               render Icons::Trash.new(size: 18)
@@ -146,9 +150,9 @@ module Components
               end
             end
             AlertDialogFooter do
-              AlertDialogCancel(class: 'rounded-xl') { t('medications.index.delete_dialog.cancel') }
+              AlertDialogCancel { t('medications.index.delete_dialog.cancel') }
               form_with(url: medication_path(medication), method: :delete, class: 'inline') do
-                m3_button(variant: :destructive, type: :submit, class: 'rounded-xl shadow-lg shadow-destructive/20') do
+                m3_button(variant: :destructive, type: :submit, class: 'shadow-elevation-2') do
                   t('medications.index.delete_dialog.submit')
                 end
               end

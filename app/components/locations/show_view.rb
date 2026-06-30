@@ -175,9 +175,10 @@ module Components
           AlertDialogTrigger do
             m3_button(
               variant: :text,
-              size: :sm,
+              size: :lg,
+              icon: true,
               class: 'opacity-0 group-hover:opacity-100 transition-opacity text-on-surface-variant ' \
-                     'hover:text-destructive h-8 w-8 p-0',
+                     'hover:text-destructive',
               aria_label: t('locations.show.remove_member.aria_label', default: 'Remove member')
             ) do
               render Icons::X.new(size: 14)
@@ -193,10 +194,10 @@ module Components
             end
 
             AlertDialogFooter do
-              AlertDialogCancel(class: 'rounded-xl') { t('locations.show.remove_member.cancel') }
+              AlertDialogCancel { t('locations.show.remove_member.cancel') }
               form_with(url: location_location_membership_path(location, membership), method: :delete,
                         class: 'inline') do
-                m3_button(variant: :destructive, type: :submit, class: 'rounded-xl shadow-lg shadow-destructive/20') do
+                m3_button(variant: :destructive, type: :submit, class: 'shadow-elevation-2') do
                   t('locations.show.remove_member.submit')
                 end
               end

@@ -99,6 +99,16 @@ RSpec.describe Views::Reports::Index do
     expect(rendered).to include('Wed')
   end
 
+  it 'renders compliance bars without inline styles' do
+    rendered = Nokogiri::HTML.fragment(render(report_view))
+    bars = rendered.css('[data-testid="report-compliance-bar"]')
+
+    expect(bars.count).to eq(3)
+    expect(bars.pluck('style')).to all(be_blank)
+    expect(bars.first['class']).to include('report-compliance-bar-height-100')
+    expect(bars.last['class']).to include('report-compliance-bar-height-80')
+  end
+
   it 'renders the Today section and person filter' do
     rendered = render report_view
 

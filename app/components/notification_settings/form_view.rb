@@ -53,10 +53,11 @@ module Components
           ) { t('notification_settings.browser.status') }
           div(class: 'flex flex-col gap-3') do
             div(class: 'flex gap-3') do
-              button(
+              m3_button(
                 type: 'button',
-                class: 'inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white font-bold ' \
-                       'text-sm hover:bg-primary/90 transition-colors',
+                variant: :filled,
+                size: :sm,
+                class: 'gap-2 font-bold',
                 data: {
                   push_notification_target: 'subscribeButton',
                   action: 'push-notification#subscribe'
@@ -66,10 +67,11 @@ module Components
                 render Icons::Bell.new(size: 16)
                 plain t('notification_settings.browser.enable')
               end
-              button(
+              m3_button(
                 type: 'button',
-                class: 'inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-border ' \
-                       'text-on-surface-variant font-bold text-sm hover:bg-tertiary-container transition-colors',
+                variant: :outlined,
+                size: :sm,
+                class: 'gap-2 font-bold',
                 data: {
                   push_notification_target: 'unsubscribeButton',
                   action: 'push-notification#unsubscribe'
@@ -80,12 +82,11 @@ module Components
               end
             end
 
-            button(
+            m3_button(
               type: 'button',
-              class: 'w-full inline-flex items-center justify-center gap-2 rounded-xl border border-border ' \
-                     'bg-card px-4 py-2.5 text-sm font-bold text-foreground transition-all ' \
-                     'hover:bg-tertiary-container ' \
-                     'hover:shadow-sm active:scale-[0.98]',
+              variant: :outlined,
+              size: :sm,
+              class: 'w-full gap-2 font-bold',
               data: {
                 push_notification_target: 'testButton',
                 action: 'push-notification#sendTest'
@@ -189,16 +190,17 @@ module Components
 
       def render_actions
         div(class: 'flex gap-3 justify-end pt-4') do
-          a(
+          m3_link(
             href: root_path,
-            class: 'inline-flex items-center px-4 py-2 rounded-xl border border-border ' \
-                   'text-on-surface-variant font-bold text-sm hover:bg-tertiary-container ' \
-                   'transition-colors no-underline'
+            variant: :outlined,
+            size: :sm,
+            class: 'font-bold'
           ) { t('notification_settings.actions.cancel') }
-          button(
+          m3_button(
             type: 'submit',
-            class: 'inline-flex items-center px-4 py-2 rounded-xl bg-primary text-white font-bold ' \
-                   'text-sm hover:bg-primary/90 transition-colors'
+            variant: :filled,
+            size: :sm,
+            class: 'font-bold'
           ) { t('notification_settings.actions.save') }
         end
       end

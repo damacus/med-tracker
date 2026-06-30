@@ -32,11 +32,11 @@ module Components
             m3_heading(level: 1, size: '8', class: 'font-extrabold tracking-tight') { t('locations.index.title') }
           end
           div(class: 'hidden md:block') do
-            Link(
+            m3_link(
               href: new_location_path,
               variant: :filled,
               size: :lg,
-              class: 'rounded-2xl font-bold text-sm shadow-lg shadow-primary/20'
+              class: 'font-bold text-sm shadow-elevation-2'
             ) do
               span { t('locations.index.add_location') }
             end
@@ -114,20 +114,21 @@ module Components
 
       def render_location_actions(location)
         div(class: 'flex items-center gap-2 w-full') do
-          Link(
+          m3_link(
             href: location_path(location),
             variant: :outlined,
             size: :sm,
-            class: 'flex-1 rounded-xl py-5 border-border bg-card ' \
+            class: 'flex-1 border-border bg-card ' \
                    'hover:bg-tertiary-container text-on-surface-variant'
           ) do
             t('locations.index.view')
           end
-          Link(
+          m3_link(
             href: edit_location_path(location, return_to: locations_path),
             variant: :outlined,
-            size: :sm,
-            class: 'rounded-xl w-10 h-10 p-0 border-border ' \
+            size: :lg,
+            icon: true,
+            class: 'border-border ' \
                    'bg-card hover:bg-tertiary-container text-on-surface-variant',
             aria_label: t('locations.index.edit', default: 'Edit location')
           ) do
@@ -140,8 +141,8 @@ module Components
       def render_delete_dialog(location)
         AlertDialog do
           AlertDialogTrigger do
-            m3_button(variant: :text, size: :sm,
-                      class: 'rounded-xl w-10 h-10 p-0 text-on-surface-variant ' \
+            m3_button(variant: :text, size: :lg, icon: true,
+                      class: 'text-on-surface-variant ' \
                              'hover:text-destructive hover:bg-destructive/5',
                       aria_label: t('locations.index.delete', default: 'Delete location')) do
               render Icons::Trash.new(size: 18)
@@ -155,9 +156,9 @@ module Components
               end
             end
             AlertDialogFooter do
-              AlertDialogCancel(class: 'rounded-xl') { t('locations.index.delete_dialog.cancel') }
+              AlertDialogCancel { t('locations.index.delete_dialog.cancel') }
               form_with(url: location_path(location), method: :delete, class: 'inline') do
-                m3_button(variant: :destructive, type: :submit, class: 'rounded-xl shadow-lg shadow-destructive/20') do
+                m3_button(variant: :destructive, type: :submit, class: 'shadow-elevation-2') do
                   t('locations.index.delete_dialog.submit')
                 end
               end

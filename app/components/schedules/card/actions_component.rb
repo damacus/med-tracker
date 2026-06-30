@@ -34,7 +34,7 @@ module Components
             button: {
               variant: :outlined,
               size: :lg,
-              class: 'flex-1 rounded-xl py-6 font-bold border-outline text-on-surface-variant ' \
+              class: 'flex-1 font-bold border-outline text-on-surface-variant ' \
                      'hover:bg-surface-container-high transition-all'
             }
           )
@@ -46,7 +46,8 @@ module Components
             href: edit_person_schedule_path(person, schedule),
             variant: :outlined,
             size: :lg,
-            class: 'w-12 h-12 p-0 rounded-xl border-outline text-on-surface-variant ' \
+            icon: true,
+            class: 'border-outline text-on-surface-variant ' \
                    'hover:text-primary hover:border-primary/50 transition-all',
             data: { turbo_frame: 'modal', testid: "edit-schedule-#{schedule.id}" },
             aria_label: t('schedules.card.edit', default: 'Edit schedule')
@@ -64,8 +65,10 @@ module Components
           ) do
             m3_button(
               variant: :outlined,
+              size: :lg,
+              icon: true,
               type: :submit,
-              class: 'w-12 h-12 p-0 rounded-xl border-outline text-on-surface-variant ' \
+              class: 'border-outline text-on-surface-variant ' \
                      'hover:text-primary hover:border-primary/50 transition-all',
               data: { testid: active_state_testid },
               aria_label: active_state_label
@@ -109,8 +112,8 @@ module Components
         def render_delete_dialog
           AlertDialog do
             AlertDialogTrigger do
-              m3_button(variant: :text,
-                        class: 'w-12 h-12 p-0 rounded-xl text-on-surface-variant ' \
+              m3_button(variant: :text, size: :lg, icon: true,
+                        class: 'text-on-surface-variant ' \
                                'hover:text-error hover:bg-error/5 transition-all',
                         data: { testid: "delete-schedule-#{schedule.id}" },
                         aria_label: t('schedules.card.delete', default: 'Delete schedule')) do
@@ -125,13 +128,13 @@ module Components
                 end
               end
               AlertDialogFooter do
-                AlertDialogCancel(class: 'rounded-xl') { t('schedules.card.delete_dialog.cancel') }
+                AlertDialogCancel { t('schedules.card.delete_dialog.cancel') }
                 form_with(
                   url: person_schedule_path(person, schedule),
                   method: :delete,
                   class: 'inline'
                 ) do
-                  m3_button(variant: :destructive, type: :submit, class: 'rounded-xl shadow-lg shadow-error/20') do
+                  m3_button(variant: :destructive, type: :submit, class: 'shadow-elevation-2') do
                     t('schedules.card.delete_dialog.submit')
                   end
                 end
