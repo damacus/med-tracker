@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.2](https://github.com/damacus/med-tracker/compare/v0.5.1...v0.5.2) (2026-06-30)
+
+
+### Bug Fixes
+
+* **auth:** restore household membership bootstrap ([#1403](https://github.com/damacus/med-tracker/issues/1403)) ([8661aa8](https://github.com/damacus/med-tracker/commit/8661aa8d76d86a7f37f42f9f16515bf10cf9b692))
+
 ## [0.5.1](https://github.com/damacus/med-tracker/compare/v0.5.0...v0.5.1) (2026-06-30)
 
 
