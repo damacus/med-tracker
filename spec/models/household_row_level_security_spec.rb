@@ -42,6 +42,15 @@ RSpec.describe Household do
     person
   end
 
+  def household_person(household_name:, slug:, person_name:)
+    described_class.create!(name: household_name, slug: slug).people.create!(
+      name: person_name,
+      date_of_birth: 30.years.ago.to_date,
+      person_type: :adult,
+      has_capacity: true
+    )
+  end
+
   it 'configures the runtime role without superuser or bypassrls' do
     role = connection.select_one(<<~SQL.squish)
       SELECT rolsuper, rolbypassrls
@@ -118,6 +127,24 @@ RSpec.describe Household do
 
     with_runtime_role do
       expect(Location.where(id: location.id).count).to eq(0)
+    end
+  end
+
+  it 'allows account-linked person lookup before household context is resolved' do
+    account, _membership = household_membership_for(
+      email: 'rls-login-person@example.test',
+      household_name: 'RLS Login Person Household',
+      person_name: 'RLS Login Person'
+    )
+    other_person = household_person(
+      household_name: 'RLS Other Person Household',
+      slug: 'rls-other-person-household',
+      person_name: 'RLS Other Person'
+    )
+
+    with_runtime_role do
+      expect(Person.where(id: [account.person.id, other_person.id]).pluck(:id))
+        .to contain_exactly(account.person.id)
     end
   end
 
