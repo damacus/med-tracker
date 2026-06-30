@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.5.1](https://github.com/damacus/med-tracker/compare/v0.5.0...v0.5.1) (2026-06-30)
+
+
+### Bug Fixes
+
+* **db:** allow login-time person lookup under RLS ([#1402](https://github.com/damacus/med-tracker/issues/1402)) ([2133171](https://github.com/damacus/med-tracker/commit/2133171b11a85aceb403713a72b3d6e1f9d75956))
+* **db:** harden pre-0.5 database upgrades ([#1401](https://github.com/damacus/med-tracker/issues/1401)) ([5b5d35a](https://github.com/damacus/med-tracker/commit/5b5d35a38703ae432896e229eb9f6d727012c4f7))
+* **ui:** align shell and action controls ([#1399](https://github.com/damacus/med-tracker/issues/1399)) ([e7d752e](https://github.com/damacus/med-tracker/commit/e7d752e9e2035f0bc4340d4dd3be88337fa22af3))
+
 ## [0.5.0](https://github.com/damacus/med-tracker/compare/v0.4.0...v0.5.0) (2026-06-30)
 
 
