@@ -8,6 +8,7 @@ module DatabaseRuntimeRoleSetup
     db/migrate/20260622000800_partition_paper_trail_versions_by_household.rb
     db/migrate/20260622000900_partition_active_storage_attachments_by_household.rb
     db/migrate/20260622001000_configure_database_runtime_roles.rb
+    db/migrate/20260630141000_allow_account_linked_person_rls_login_lookup.rb
   ].freeze
 
   def self.call
@@ -27,6 +28,7 @@ module DatabaseRuntimeRoleSetup
       PartitionPaperTrailVersionsByHousehold.new.send(:enable_versions_rls)
       PartitionActiveStorageAttachmentsByHousehold.new.send(:enable_attachment_rls)
       ConfigureDatabaseRuntimeRoles.new.up
+      AllowAccountLinkedPersonRlsLoginLookup.new.up
     end
   end
 end
