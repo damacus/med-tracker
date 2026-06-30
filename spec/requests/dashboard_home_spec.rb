@@ -14,6 +14,18 @@ RSpec.describe 'Dashboard home rendering' do
 
       expect(response).to redirect_to("/households/#{household.slug}/dashboard")
     end
+
+    it 'redirects after login when RLS requires account context for membership lookup' do
+      household, = household_membership_for(users(:jane))
+      account = users(:jane).person.account
+      clear_2fa_for_account(account)
+
+      ActiveRecord::Base.connection.execute('SET LOCAL ROLE med_tracker_app')
+
+      post '/login', params: { email: account.email, password: 'password' }
+
+      expect(response).to redirect_to("/households/#{household.slug}/dashboard")
+    end
   end
 
   describe 'GET /households/:household_slug/dashboard' do
@@ -66,9 +78,12 @@ RSpec.describe 'Dashboard home rendering' do
   end
 
   def grant_person(household, membership, person, access_level: :view)
-    household.person_access_grants.create!(
+    grant = household.person_access_grants.find_or_initialize_by(
       household_membership: membership,
       person: person,
+      revoked_at: nil
+    )
+    grant.update!(
       access_level: access_level,
       relationship_type: :family_member,
       granted_by_membership: membership
