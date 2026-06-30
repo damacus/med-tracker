@@ -9,10 +9,11 @@ module Components
 
         attr_reader :user, :current_user, :household
 
-        def initialize(user:, current_user: nil, household: nil)
+        def initialize(user:, current_user: nil, household: nil, membership_role: nil)
           @user = user
           @current_user = current_user
           @household = household || Current.household
+          @membership_role = membership_role
           super()
         end
 
@@ -41,10 +42,16 @@ module Components
         private
 
         def membership_role
-          account = user.person&.account
-          return no_membership_label unless household && account
+          return @membership_role if @membership_role
 
-          membership = household.household_memberships.active.find_by(account: account)
+          lookup_membership_role
+        end
+
+        def lookup_membership_role
+          account_id = user.person&.account_id
+          return no_membership_label unless household && account_id
+
+          membership = household.household_memberships.active.find_by(account_id: account_id)
           membership&.role&.titleize || no_membership_label
         end
 
