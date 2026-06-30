@@ -10,6 +10,8 @@ Before onboarding another household, verify:
 
 - The web process connects with `DATABASE_ROLE=med_tracker_app`.
 - Migration/setup processes connect with the owner-capable migration role.
+- Existing pre-0.5 databases have completed the
+  [pre-0.5 database upgrade](../pre-0-5-database-upgrade.md) bootstrap.
 - Hosted admin MFA enforcement is enabled with `HOSTED_ADMIN_MFA_REQUIRED=true`.
 - `task rubocop`, `task test`, and `task brakeman` pass on the release branch.
 - The hosted hardening audit has no `NO-GO` rows.

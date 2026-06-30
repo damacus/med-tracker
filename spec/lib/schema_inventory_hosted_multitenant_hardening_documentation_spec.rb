@@ -54,6 +54,19 @@ RSpec.describe SchemaInventory do
     expect(runbook_doc).to include('DATABASE_ROLE=med_tracker_app')
   end
 
+  it 'publishes the pre-0.5 database upgrade runbook from the docs home page', :aggregate_failures do
+    docs_home = Rails.root.join('docs/index.md').read
+    upgrade_doc = Rails.root.join('docs/pre-0-5-database-upgrade.md').read
+
+    expect(docs_home).to include('pre-0-5-database-upgrade.md')
+    expect(upgrade_doc).to include('Pre-0.5 database upgrade')
+    expect(upgrade_doc).to include('DATABASE_ROLE=med_tracker_owner')
+    expect(upgrade_doc).to include('med_tracker:pre_0_5_database_upgrade_preflight')
+    expect(upgrade_doc).to include('med_tracker_owner')
+    expect(upgrade_doc).to include('med_tracker_app')
+    expect(upgrade_doc).to include('BYPASSRLS')
+  end
+
   def expected_requirements
     (1..18).map { |number| "FR#{number}" } + (1..4).map { |number| "NFR#{number}" }
   end

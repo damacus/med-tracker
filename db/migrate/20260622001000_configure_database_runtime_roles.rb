@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 class ConfigureDatabaseRuntimeRoles < ActiveRecord::Migration[8.1]
+  ROLE_NAMES = %w[med_tracker_owner med_tracker_app].freeze
+  UPGRADE_RUNBOOK_URL = 'https://damacus.github.io/med-tracker/pre-0-5-database-upgrade/'
+
   def up
     create_roles
     grant_roles_to_login
@@ -16,6 +19,24 @@ class ConfigureDatabaseRuntimeRoles < ActiveRecord::Migration[8.1]
   private
 
   def create_roles
+    ensure_runtime_roles_bootstrapped!
+    create_missing_runtime_roles if can_create_roles?
+    execute 'ALTER ROLE med_tracker_owner NOLOGIN;' if can_create_roles?
+    execute 'ALTER ROLE med_tracker_app NOLOGIN;' if can_create_roles?
+    execute 'ALTER ROLE med_tracker_app NOSUPERUSER NOBYPASSRLS;' if superuser?
+    verify_runtime_roles_safe!
+  end
+
+  def ensure_runtime_roles_bootstrapped!
+    missing_roles = ROLE_NAMES.reject { |role_name| runtime_role_exists?(role_name) }
+    return if missing_roles.empty? || can_create_roles?
+
+    raise ActiveRecord::IrreversibleMigration,
+          "Database runtime roles are missing: #{missing_roles.join(', ')}. " \
+          "Run the pre-0.5 database upgrade bootstrap first: #{UPGRADE_RUNBOOK_URL}"
+  end
+
+  def create_missing_runtime_roles
     execute <<~SQL
       DO $$
       BEGIN
@@ -24,13 +45,50 @@ class ConfigureDatabaseRuntimeRoles < ActiveRecord::Migration[8.1]
         END IF;
 
         IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'med_tracker_app') THEN
-          CREATE ROLE med_tracker_app NOLOGIN NOSUPERUSER NOBYPASSRLS;
+          CREATE ROLE med_tracker_app NOLOGIN;
         END IF;
       END
       $$;
     SQL
-    execute 'ALTER ROLE med_tracker_owner NOLOGIN;'
-    execute 'ALTER ROLE med_tracker_app NOLOGIN NOSUPERUSER NOBYPASSRLS;'
+  end
+
+  def verify_runtime_roles_safe!
+    unsafe_roles = select_values(<<~SQL.squish)
+      SELECT rolname
+      FROM pg_roles
+      WHERE rolname IN ('med_tracker_owner', 'med_tracker_app')
+        AND (rolsuper OR rolbypassrls)
+      ORDER BY rolname
+    SQL
+    return if unsafe_roles.empty?
+
+    raise ActiveRecord::IrreversibleMigration,
+          "Database runtime roles have unsafe attributes: #{unsafe_roles.join(', ')}. " \
+          "Run the pre-0.5 database upgrade bootstrap repair first: #{UPGRADE_RUNBOOK_URL}"
+  end
+
+  def runtime_role_exists?(role_name)
+    select_value(<<~SQL.squish).to_i.positive?
+      SELECT COUNT(*)
+      FROM pg_roles
+      WHERE rolname = #{quote(role_name)}
+    SQL
+  end
+
+  def can_create_roles?
+    select_value(<<~SQL.squish)
+      SELECT COALESCE(rolsuper OR rolcreaterole, false)
+      FROM pg_roles
+      WHERE rolname = current_user
+    SQL
+  end
+
+  def superuser?
+    select_value(<<~SQL.squish)
+      SELECT COALESCE(rolsuper, false)
+      FROM pg_roles
+      WHERE rolname = current_user
+    SQL
   end
 
   def grant_roles_to_login
@@ -39,8 +97,13 @@ class ConfigureDatabaseRuntimeRoles < ActiveRecord::Migration[8.1]
       DECLARE
         login_role text := session_user;
       BEGIN
-        EXECUTE format('GRANT med_tracker_owner TO %I', login_role);
-        EXECUTE format('GRANT med_tracker_app TO %I', login_role);
+        IF NOT pg_has_role(login_role, 'med_tracker_owner', 'member') THEN
+          EXECUTE format('GRANT med_tracker_owner TO %I', login_role);
+        END IF;
+
+        IF NOT pg_has_role(login_role, 'med_tracker_app', 'member') THEN
+          EXECUTE format('GRANT med_tracker_app TO %I', login_role);
+        END IF;
       END
       $$;
     SQL
