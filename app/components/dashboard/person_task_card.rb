@@ -89,7 +89,7 @@ module Components
           end
           div(class: 'flex shrink-0 items-center gap-2 sm:justify-end') do
             render_action(row)
-            render_status_badge(row) unless row[:status] == :upcoming
+            render_status_badge(row) unless %i[upcoming available].include?(row[:status])
           end
         end
       end
@@ -107,6 +107,7 @@ module Components
             size: :md,
             icon: Icons::HandPackage,
             testid: "take-dose-#{dose_id(row[:source])}",
+            class: 'hover:bg-tertiary-container transition-colors',
             form_class: nil
           }
         )

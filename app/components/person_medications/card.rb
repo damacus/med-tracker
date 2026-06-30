@@ -140,7 +140,8 @@ module Components
       end
 
       def render_person_medication_actions
-        div(class: 'flex items-center gap-2 w-full') do
+        div(class: 'flex min-w-0 flex-wrap items-center gap-2 w-full',
+            data: { testid: 'person-medication-card-actions' }) do
           render_reorder_controls if view_context.policy(person_medication).update?
           render_past_dose_button unless person_medication.paused?
           if view_context.policy(person_medication).update?
@@ -160,7 +161,8 @@ module Components
           button: {
             variant: :outlined,
             size: :lg,
-            class: 'flex-1 rounded-xl py-6 font-bold border-outline text-on-surface-variant ' \
+            class: 'min-w-0 flex-[1_1_12rem] rounded-shape-full py-6 font-bold border-outline ' \
+                   'text-on-surface-variant ' \
                    'hover:bg-tertiary-container transition-colors'
           }
         )
@@ -175,7 +177,7 @@ module Components
           m3_button(
             variant: :outlined,
             type: :submit,
-            class: 'w-12 min-w-12 h-12 shrink-0 p-0 rounded-xl border-outline text-on-surface-variant ' \
+            class: 'min-h-11 min-w-11 shrink-0 p-0 rounded-shape-full border-outline text-on-surface-variant ' \
                    'hover:text-foreground hover:bg-tertiary-container transition-colors',
             data: { testid: active_state_testid },
             aria_label: active_state_label
@@ -213,7 +215,7 @@ module Components
         a(
           href: edit_person_person_medication_path(person, person_medication),
           data: { turbo_frame: 'modal', testid: "edit-person-medication-#{person_medication.id}" },
-          class: 'inline-flex items-center justify-center w-12 min-w-12 h-12 shrink-0 rounded-xl ' \
+          class: 'inline-flex items-center justify-center min-h-11 min-w-11 shrink-0 rounded-shape-full ' \
                  'text-on-surface-variant ' \
                  'border border-outline hover:text-foreground hover:bg-tertiary-container transition-colors',
           aria_label: t('person_medications.card.edit')
@@ -265,7 +267,7 @@ module Components
           AlertDialogTrigger do
             m3_button(
               variant: :text,
-              class: 'w-12 min-w-12 h-12 shrink-0 p-0 rounded-xl text-on-surface-variant ' \
+              class: 'min-h-11 min-w-11 shrink-0 p-0 rounded-shape-full text-on-surface-variant ' \
                      'hover:text-destructive hover:bg-destructive/5',
               data: { testid: "delete-person-medication-#{person_medication.id}" },
               aria_label: t('person_medications.card.delete_aria_label')

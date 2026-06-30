@@ -101,6 +101,7 @@ module Components
             size: :md,
             icon: Icons::HandPackage,
             testid: "take-dose-#{dose_id}",
+            class: 'hover:bg-tertiary-container transition-colors',
             form_class: nil
           }
         )

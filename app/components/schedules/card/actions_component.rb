@@ -16,7 +16,8 @@ module Components
 
         def view_template
           CardFooter(class: 'px-8 pb-8 pt-2') do
-            div(class: 'flex items-center gap-2 w-full') do
+            div(class: 'flex min-w-0 flex-wrap items-center gap-2 w-full',
+                data: { testid: 'schedule-card-actions' }) do
               render_past_dose_button unless schedule.paused?
               render_admin_actions if administrator?
             end
@@ -34,7 +35,7 @@ module Components
             button: {
               variant: :outlined,
               size: :lg,
-              class: 'flex-1 font-bold border-outline text-on-surface-variant ' \
+              class: 'min-w-0 flex-[1_1_12rem] font-bold border-outline text-on-surface-variant ' \
                      'hover:bg-surface-container-high transition-all'
             }
           )

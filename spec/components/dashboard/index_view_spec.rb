@@ -305,13 +305,14 @@ RSpec.describe Components::Dashboard::IndexView, type: :component do
       expect(details['open']).to be_nil
     end
 
-    it 'renders as-needed availability inside the disclosure' do
+    it 'renders as-needed actions without a redundant availability badge' do
       rendered = render_inline(described_class.new(presenter: person_task_presenter))
       details = rendered.at_css('details[data-testid="dashboard-as-needed-person"]')
 
       expect(details.text).to include('As needed')
       expect(details.text).to include('Paracetamol')
-      expect(details.text).to include('Available now')
+      expect(details.text).to include('Take')
+      expect(details.text).not_to include('Available now')
     end
 
     it 'counts blocked routine rows as remaining tasks' do
