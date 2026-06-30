@@ -134,7 +134,9 @@ module Components
         }
         m3_variant = variant_map[dose[:status]] || :destructive
 
-        label = if dose[:status] == :cooldown && dose[:source].respond_to?(:countdown_display)
+        label = if dose[:status] == :cooldown && dose[:scheduled_at]
+                  t('dashboard.statuses.available_at', time: dose[:scheduled_at].strftime('%H:%M'))
+                elsif dose[:status] == :cooldown && dose[:source].respond_to?(:countdown_display)
                   "#{t('dashboard.statuses.cooldown')} (#{dose[:source].countdown_display})"
                 else
                   t("dashboard.statuses.#{dose[:status]}")

@@ -86,6 +86,12 @@ RSpec.describe DoseConstraints do
       expect(constraints(min_hours_between_doses: 4).would_violate_interval?(takes: [take], check_time: now)).to be true
     end
 
+    it 'returns true when a take was recorded at the check time' do
+      take = fake_take(taken_at: now)
+
+      expect(constraints(min_hours_between_doses: 4).would_violate_interval?(takes: [take], check_time: now)).to be true
+    end
+
     it 'returns false when the latest prior take is outside the interval window' do
       take = fake_take(taken_at: 5.hours.ago)
 

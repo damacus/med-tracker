@@ -32,7 +32,7 @@ class DoseConstraints
   def would_violate_interval?(takes:, check_time:)
     return false unless interval_limit?
 
-    last_take = takes.select { |take| take.taken_at < check_time }.max_by(&:taken_at)
+    last_take = takes.select { |take| take.taken_at <= check_time }.max_by(&:taken_at)
     return false unless last_take
 
     hours_since_last = (check_time - last_take.taken_at) / 1.hour
