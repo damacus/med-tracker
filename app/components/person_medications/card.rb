@@ -207,14 +207,11 @@ module Components
           method: :patch,
           class: 'contents'
         ) do
-          button(
+          render RubyUI::DropdownMenuItem.new(
+            as: :button,
             type: :submit,
-            role: 'menuitem',
             class: menu_item_class,
-            data: { testid: active_state_testid },
-            data_action: 'click->ruby-ui--dropdown-menu#close',
-            data_ruby_ui__dropdown_menu_target: 'menuItem',
-            tabindex: '-1'
+            data: { testid: active_state_testid }
           ) do
             render active_state_icon.new(size: 16, aria_hidden: 'true', class: 'mr-2 shrink-0')
             span { active_state_label }
@@ -247,14 +244,10 @@ module Components
       end
 
       def render_edit_button
-        a(
+        render RubyUI::DropdownMenuItem.new(
           href: edit_person_person_medication_path(person, person_medication),
           data: { turbo_frame: 'modal', testid: "edit-person-medication-#{person_medication.id}" },
-          class: menu_item_class,
-          role: 'menuitem',
-          data_action: 'click->ruby-ui--dropdown-menu#close',
-          data_ruby_ui__dropdown_menu_target: 'menuItem',
-          tabindex: '-1'
+          class: menu_item_class
         ) do
           render Icons::Pencil.new(size: 16, aria_hidden: 'true', class: 'mr-2 shrink-0')
           span { t('person_medications.card.edit') }
@@ -276,14 +269,11 @@ module Components
           class: 'contents'
         ) do
           input(type: :hidden, name: :direction, value: direction)
-          button(
+          render RubyUI::DropdownMenuItem.new(
+            as: :button,
             type: :submit,
-            role: 'menuitem',
             class: menu_item_class,
-            data: { testid: testid },
-            data_action: 'click->ruby-ui--dropdown-menu#close',
-            data_ruby_ui__dropdown_menu_target: 'menuItem',
-            tabindex: '-1'
+            data: { testid: testid }
           ) do
             render icon.new(size: 16, aria_hidden: 'true', class: 'mr-2 shrink-0')
             span { label }
@@ -292,16 +282,13 @@ module Components
       end
 
       def render_delete_dialog
-        AlertDialog do
-          AlertDialogTrigger do
-            button(
+        AlertDialog(class: 'block w-full') do
+          AlertDialogTrigger(class: 'block w-full') do
+            render RubyUI::DropdownMenuItem.new(
+              as: :button,
               type: :button,
-              role: 'menuitem',
               class: "#{menu_item_class} text-destructive hover:bg-destructive/5 hover:text-destructive",
-              data: { testid: "delete-person-medication-#{person_medication.id}" },
-              data_action: 'click->ruby-ui--dropdown-menu#close',
-              data_ruby_ui__dropdown_menu_target: 'menuItem',
-              tabindex: '-1'
+              data: { testid: "delete-person-medication-#{person_medication.id}" }
             ) do
               render Icons::Trash.new(size: 16, aria_hidden: 'true', class: 'mr-2 shrink-0')
               span { t('person_medications.card.delete_aria_label') }
@@ -336,9 +323,7 @@ module Components
       end
 
       def menu_item_class
-        'relative flex w-full cursor-pointer select-none items-center rounded-shape-sm px-3 py-2 text-sm ' \
-          'text-on-surface-variant outline-none transition-colors hover:bg-tertiary-container ' \
-          'hover:text-on-tertiary-container focus:bg-tertiary-container focus:text-on-tertiary-container'
+        'w-full rounded-shape-sm px-3 py-2 text-on-surface-variant'
       end
     end
   end

@@ -78,6 +78,8 @@ RSpec.describe Components::Schedules::Card::ActionsComponent, type: :component d
     expect(action_row['class'].split).to include('min-w-0')
     expect(trigger['class'].split).to include('rounded-shape-full')
     expect(trigger['class'].split).to include('shrink-0')
+    expect(delete_dialog_classes(rendered)).to include('block', 'w-full')
+    expect(delete_trigger_classes(rendered)).to include('block', 'w-full')
   end
 
   it 'uses design-system sizing for compact action controls', :aggregate_failures do
@@ -100,5 +102,15 @@ RSpec.describe Components::Schedules::Card::ActionsComponent, type: :component d
     Current.membership = membership
 
     render_inline(described_class.new(schedule: schedule, person: person, presenter: presenter, current_user: nil))
+  end
+
+  def delete_trigger_classes(rendered)
+    button = rendered.at_css("button[data-testid='delete-schedule-#{schedule.id}']")
+    button.ancestors.find { |node| node['data-action'] == 'click->ruby-ui--alert-dialog#open' }['class'].split
+  end
+
+  def delete_dialog_classes(rendered)
+    button = rendered.at_css("button[data-testid='delete-schedule-#{schedule.id}']")
+    button.ancestors.find { |node| node['data-controller'] == 'ruby-ui--alert-dialog' }['class'].split
   end
 end
