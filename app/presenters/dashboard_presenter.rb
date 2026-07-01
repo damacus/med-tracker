@@ -3,8 +3,10 @@
 # Presenter for the dashboard view that encapsulates data preparation logic
 class DashboardPresenter
   ALL_FAMILY_PERSON_ID = 'all'
+  DUE_NOW_STATUSES = %i[available].freeze
+  TERMINAL_TASK_STATUSES = %i[taken max_reached].freeze
 
-  delegate :routine_tasks_by_person, :as_needed_by_person, to: :dashboard_schedule
+  delegate :routine_tasks_by_person, :as_needed_by_person, :today_takes_by_person, to: :dashboard_schedule
 
   attr_reader :current_user, :selected_person_id, :base_people_scope, :household
 
@@ -65,9 +67,23 @@ class DashboardPresenter
     doses.any? { |d| d[:status] == :upcoming }
   end
 
-  def next_dose_time
-    upcoming = doses.select { |d| d[:status] == :upcoming }
-    upcoming.filter_map { |d| d[:scheduled_at] }.min
+  def next_dose_time = next_due_time
+
+  def next_due_value
+    return I18n.t('dashboard.stats.now') if due_now_count.positive?
+
+    time = next_due_time
+    return time.strftime('%H:%M') if time
+
+    I18n.t('dashboard.stats.no_upcoming_doses')
+  end
+
+  def due_now_count
+    action_rows.count { |row| due_now_row?(row) }
+  end
+
+  def tasks_left_count
+    action_rows.count { |row| task_left_row?(row) }
   end
 
   def smart_insights
@@ -83,6 +99,32 @@ class DashboardPresenter
   end
 
   private
+
+  def next_due_time
+    action_rows.filter_map { |row| next_due_time_for(row) }.min
+  end
+
+  def action_rows
+    @action_rows ||= routine_tasks_by_person.values.flatten + as_needed_by_person.values.flatten
+  end
+
+  def due_now_row?(row)
+    return true if DUE_NOW_STATUSES.include?(row[:status])
+    return false unless row[:status] == :upcoming
+
+    row[:scheduled_at].blank? || row[:scheduled_at] <= Time.current
+  end
+
+  def task_left_row?(row)
+    TERMINAL_TASK_STATUSES.exclude?(row[:status])
+  end
+
+  def next_due_time_for(row)
+    return if TERMINAL_TASK_STATUSES.include?(row[:status])
+    return if due_now_row?(row)
+
+    row[:scheduled_at]
+  end
 
   def load_people
     return Person.none if current_user.nil?

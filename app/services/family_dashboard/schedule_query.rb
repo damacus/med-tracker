@@ -3,9 +3,9 @@
 module FamilyDashboard
   # Query object to fetch a 24-hour medication schedule for a person and their dependents
   class ScheduleQuery
-    Result = Data.define(:routine_tasks, :routine_tasks_by_person, :as_needed_by_person)
+    Result = Data.define(:routine_tasks, :routine_tasks_by_person, :as_needed_by_person, :today_takes_by_person)
 
-    delegate :routine_tasks, :routine_tasks_by_person, :as_needed_by_person, to: :result
+    delegate :routine_tasks, :routine_tasks_by_person, :as_needed_by_person, :today_takes_by_person, to: :result
 
     attr_reader :current_user
 
@@ -37,12 +37,14 @@ module FamilyDashboard
       # 3. Aggregate all doses
       routine_tasks = sort_rows(aggregate_family_doses)
       as_needed_items = sort_rows(aggregate_family_as_needed_items)
+      today_takes = build_today_takes_by_person
 
       # 4. Sort by time and return
       Result.new(
         routine_tasks: routine_tasks,
         routine_tasks_by_person: group_rows_by_person(routine_tasks),
-        as_needed_by_person: group_rows_by_person(as_needed_items)
+        as_needed_by_person: group_rows_by_person(as_needed_items),
+        today_takes_by_person: today_takes
       )
     end
 
@@ -116,6 +118,10 @@ module FamilyDashboard
       aggregate_rows { |source, member| generate_as_needed_rows_for(source, member) }
     end
 
+    def build_today_takes_by_person
+      @people.index_with { |member| sort_takes(sources_for(member).flat_map { |source| todays_takes(source) }) }
+    end
+
     def aggregate_rows
       @people.each_with_object([]) do |member, rows|
         sources_for(member).each { |source| rows.concat(yield(source, member)) }
@@ -129,15 +135,15 @@ module FamilyDashboard
     def generate_doses_for(source, person)
       return [] if as_needed_source?(source)
 
-      # 1. Get doses already taken today from our preloaded association
+      # 1. Get today's takes from our preloaded association for progress and history
       # This uses the association preloaded in aggregate_family_doses to avoid N+1 queries
       takes = todays_takes(source)
-      doses = generate_taken_doses(takes, source, person)
 
       # 2. Determine if an upcoming dose should be shown
-      # We show the "next available" dose if it falls within today
-      doses << build_upcoming_row(source, person, takes) if upcoming_routine_row?(source)
-      doses
+      # We show only the next actionable routine row if it falls within today
+      return [] unless upcoming_routine_row?(source)
+
+      [build_upcoming_row(source, person, takes)]
     end
 
     def todays_takes(source) = source.medication_takes.select { |take| Time.current.all_day.cover?(take.taken_at) }
@@ -169,19 +175,6 @@ module FamilyDashboard
         taken_at: nil,
         status: status
       }.merge(dose_progress_for(takes, daily_dose_limit_for(source)))]
-    end
-
-    def generate_taken_doses(takes, source, person)
-      takes.map do |take|
-        {
-          person: person,
-          source: source,
-          scheduled_at: take.taken_at,
-          taken_at: take.taken_at,
-          status: :taken,
-          taken_from_location_name: take.inventory_location&.name
-        }.merge(dose_progress_for(takes, expected_routine_doses_for(source)))
-      end
     end
 
     def dose_progress_for(takes, limit)
@@ -270,6 +263,14 @@ module FamilyDashboard
 
     def sort_rows(rows)
       rows.sort_by { |row| [row[:scheduled_at] || Time.current.end_of_day, row[:source].id] }
+    end
+
+    def sort_takes(takes) = takes.uniq { |take| dose_history_key(take) }.sort_by(&:taken_at)
+
+    def dose_history_key(take)
+      return [take.class.name, take.id] if take.is_a?(ApplicationRecord) && take.id.present?
+
+      take.object_id
     end
 
     def group_rows_by_person(rows)

@@ -36,7 +36,7 @@ RSpec.describe 'Mobile Navigation' do
   let(:mobile_metric_label_overflow_script) do
     <<~JS
       (() => {
-        const expectedLabels = ['People', 'Active Schedules', 'Next Dose']
+        const expectedLabels = ['Next Due', 'Due Now', 'Tasks Left']
         const labels = Array.from(document.querySelectorAll('#main-content p'))
 
         return expectedLabels.map((text) => {

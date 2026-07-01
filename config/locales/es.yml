@@ -1559,6 +1559,10 @@ es:
       left: "%{count} restantes"
       order_refills: Pedir reabastecimientos
     stats:
+      next_due: Próxima dosis
+      due_now: Ahora
+      tasks_left: Tareas restantes
+      now: Ahora
       people: Personas
       active_schedules: Prescripciones Activas
       no_upcoming_doses: Ninguna hoy

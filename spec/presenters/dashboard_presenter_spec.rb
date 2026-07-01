@@ -199,6 +199,56 @@ RSpec.describe DashboardPresenter do
     end
   end
 
+  describe 'action metrics' do
+    it 'shows currently available work as the next due item' do
+      travel_to Time.zone.parse('2026-05-05 12:00:00') do
+        stub_dashboard_schedule(
+          routine_rows: [dashboard_row(metric_person, status: :upcoming, scheduled_at: 2.hours.from_now)],
+          as_needed_rows: [dashboard_row(metric_person, status: :available, scheduled_at: Time.current)]
+        )
+
+        presenter = presenter_for(admin_user, people_scope: Person.where(id: metric_person.id))
+
+        expect(presenter.next_due_value).to eq('Now')
+        expect(presenter.due_now_count).to eq(1)
+        expect(presenter.tasks_left_count).to eq(2)
+      end
+    end
+
+    it 'falls back to the next scheduled future item when nothing is due now' do
+      travel_to Time.zone.parse('2026-05-05 12:00:00') do
+        stub_dashboard_schedule(
+          routine_rows: [
+            dashboard_row(metric_person, status: :upcoming, scheduled_at: Time.zone.parse('2026-05-05 16:30:00'))
+          ],
+          as_needed_rows: [
+            dashboard_row(metric_person, status: :cooldown, scheduled_at: Time.zone.parse('2026-05-05 14:15:00'))
+          ]
+        )
+
+        presenter = presenter_for(admin_user, people_scope: Person.where(id: metric_person.id))
+
+        expect(presenter.next_due_value).to eq('14:15')
+        expect(presenter.due_now_count).to eq(0)
+        expect(presenter.tasks_left_count).to eq(2)
+      end
+    end
+
+    it 'omits terminal rows from the tasks left count' do
+      stub_dashboard_schedule(
+        routine_rows: [
+          dashboard_row(metric_person, status: :taken),
+          dashboard_row(metric_person, status: :out_of_stock)
+        ],
+        as_needed_rows: [dashboard_row(metric_person, status: :max_reached)]
+      )
+
+      presenter = presenter_for(admin_user, people_scope: Person.where(id: metric_person.id))
+
+      expect(presenter.tasks_left_count).to eq(1)
+    end
+  end
+
   describe '#smart_insights' do
     it 'bulk loads dashboard insight sources for scoped people' do
       baseline_counts = count_insight_source_queries do
@@ -248,5 +298,35 @@ RSpec.describe DashboardPresenter do
 
     presenter_for(parent_user, selected_person_id: selected_person_id,
                                people_scope: Person.where(id: [person.id] + child_ids))
+  end
+
+  def stub_dashboard_schedule(routine_rows:, as_needed_rows:)
+    query = instance_double(
+      FamilyDashboard::ScheduleQuery,
+      call: routine_rows,
+      routine_tasks: routine_rows,
+      routine_tasks_by_person: { metric_person => routine_rows },
+      as_needed_by_person: { metric_person => as_needed_rows },
+      today_takes_by_person: { metric_person => [] }
+    )
+
+    allow(FamilyDashboard::ScheduleQuery).to receive(:new).and_return(query)
+  end
+
+  def metric_person
+    people(:john)
+  end
+
+  def dashboard_row(person, status:, scheduled_at: nil)
+    {
+      person: person,
+      source: person_medications(:john_vitamin_d),
+      scheduled_at: scheduled_at,
+      taken_at: status == :taken ? Time.current : nil,
+      status: status,
+      daily_dose_count: 0,
+      daily_dose_limit: 1,
+      today_takes: []
+    }
   end
 end
